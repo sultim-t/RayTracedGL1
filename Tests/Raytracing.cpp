@@ -427,6 +427,7 @@ void CreateDevice()
 
 void CreateSwapchain(bool vsync, uint32_t windowWidth, uint32_t windowHeight)
 {
+    VkResult r;
     VkSwapchainKHR oldSwapchain = mainVk.swapchain;
 
     uint32_t formatCount = 0;
@@ -498,6 +499,11 @@ void CreateSwapchain(bool vsync, uint32_t windowWidth, uint32_t windowHeight)
         mainVk.surfaceExtent.height = std::max(surfCapabilities.minImageExtent.height, mainVk.surfaceExtent.height);
     }
 
+    VkBool32 supported;
+    r = vkGetPhysicalDeviceSurfaceSupportKHR(mainVk.physicalDevice, mainVk.queueFamilyIndices.graphics, mainVk.surface, &supported);
+    VK_CHECKERROR(r);
+    assert(supported);
+
     uint32_t imageCount = 2;
     if (surfCapabilities.maxImageCount > 0)
     {
@@ -523,7 +529,7 @@ void CreateSwapchain(bool vsync, uint32_t windowWidth, uint32_t windowHeight)
     swapchainInfo.clipped = VK_FALSE;
     swapchainInfo.oldSwapchain = oldSwapchain;
 
-    VkResult r = vkCreateSwapchainKHR(mainVk.device, &swapchainInfo, NULL, &mainVk.swapchain);
+    r = vkCreateSwapchainKHR(mainVk.device, &swapchainInfo, NULL, &mainVk.swapchain);
     VK_CHECKERROR(r);
 
     if (oldSwapchain != VK_NULL_HANDLE)
@@ -562,6 +568,23 @@ void CreateSwapchain(bool vsync, uint32_t windowWidth, uint32_t windowHeight)
 
         r = vkCreateImageView(mainVk.device, &viewInfo, nullptr, &mainVk.swapchainViews[i]);
         VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(mainVk.device, (uint64_t) mainVk.swapchainImages[i], VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Swapchain image");
+        SET_DEBUG_NAME(mainVk.device, (uint64_t) mainVk.swapchainViews[i], VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Swapchain image view");
+    }
+
+    for (uint32_t i = 0; i < imageCount; i++)
+    {
+        FrameCmdBuffers &frameCmds = mainVk.frameCmds.graphics[mainVk.currentFrameIndex];
+
+        VkCommandBuffer cmd = frameCmds.BeginCmd();
+
+        BarrierImage(cmd, mainVk.swapchainImages[i],
+                     0, 0,
+                     VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+        frameCmds.Submit(cmd);
+        frameCmds.WaitIdle();
     }
 }
 
@@ -1039,6 +1062,7 @@ void CreateStorageImage(uint32_t width, uint32_t height)
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     r = vkCreateImage(mainVk.device, &imageInfo, nullptr, &mainVk.outputImage.image);
     VK_CHECKERROR(r);
+    SET_DEBUG_NAME(mainVk.device, (uint64_t) mainVk.outputImage.image, VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Output image");
 
     VkMemoryRequirements memReqs;
     vkGetImageMemoryRequirements(mainVk.device, mainVk.outputImage.image, &memReqs);
@@ -1061,6 +1085,7 @@ void CreateStorageImage(uint32_t width, uint32_t height)
     viewInfo.image = mainVk.outputImage.image;
     r = vkCreateImageView(mainVk.device, &viewInfo, nullptr, &mainVk.outputImage.view);
     VK_CHECKERROR(r);
+    SET_DEBUG_NAME(mainVk.device, (uint64_t) mainVk.outputImage.view, VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Output image view");
 
     VkCommandBuffer cmd = mainVk.frameCmds.graphics[mainVk.currentFrameIndex].BeginCmd();
 
@@ -1142,7 +1167,7 @@ void CreateUniformBuffer()
     {
         CreateBuffer(mainVk.device, mainVk.physicalDeviceProperties,
                      sizeof(UniformData),
-                     VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
+                     VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
                      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                      rtglData.uniformBuffers[i]);
     }
@@ -1241,7 +1266,7 @@ void CreateRayTracingDescriptors()
     asBinding.binding = BINDING_RAY_AS;
     asBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     asBinding.descriptorCount = 1;
-    asBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    asBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -1399,7 +1424,7 @@ void CreateRayTracingPipeline()
 }
 
 
-void UpdateDescSetBinding(uint32_t frameIndex)
+void UpdateASDescSetBinding(uint32_t frameIndex)
 {
     VkWriteDescriptorSetAccelerationStructureKHR descSetAS = {};
     descSetAS.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
@@ -1534,14 +1559,42 @@ void ProcessInput(GLFWwindow *window)
 }
 
 
-void Draw(uint32_t frameIndex, uint32_t width, uint32_t height)
+void BlitForPresent(VkCommandBuffer cmd, VkImage sourceImage, VkImage swapchainImage, int32_t width, int32_t height)
 {
-    VkImage swapchainImage = mainVk.swapchainImages[mainVk.currentSwapchainIndex];
-    VkImage outputImage = mainVk.outputImage.image;
+    BarrierImage(cmd, sourceImage,
+                 VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                 VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
-    FrameCmdBuffers &frameCmds = mainVk.frameCmds.graphics[frameIndex];
-    VkCommandBuffer cmd = frameCmds.BeginCmd();
+    BarrierImage(cmd, swapchainImage,
+                 0, VK_ACCESS_TRANSFER_WRITE_BIT,
+                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
+    VkImageBlit region = {};
+
+    region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.srcOffsets[0] = { 0, 0, 0 };
+    region.srcOffsets[1] = { width, height, 1 };
+
+    region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.dstOffsets[0] = { 0, 0, 0 };
+    region.dstOffsets[1] = { width, height, 1 };
+
+    vkCmdBlitImage(cmd, sourceImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                   swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                   1, &region, VK_FILTER_LINEAR);
+
+    BarrierImage(cmd, sourceImage,
+                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+    BarrierImage(cmd, swapchainImage,
+                 VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+}
+
+
+void Draw(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
+{
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, mainVk.rtPipeline);
     
     VkDescriptorSet sets[] = {
@@ -1581,37 +1634,6 @@ void Draw(uint32_t frameIndex, uint32_t width, uint32_t height)
 
     vksCmdTraceRaysKHR(cmd, &raygenEntry, &missEntry, &hitEntry, &callableEntry,
                       width, height, 1);
-
-    // copy image
-    BarrierImage(cmd, outputImage,
-                 VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-                 VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-    BarrierImage(cmd, swapchainImage,
-                 0, VK_ACCESS_TRANSFER_WRITE_BIT,
-                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
-
-    VkImageCopy copyRegion = {};
-    copyRegion.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    copyRegion.srcOffset = { 0, 0, 0 };
-    copyRegion.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    copyRegion.dstOffset = { 0, 0, 0 };
-    copyRegion.extent = { width, height, 1 };
-
-    vkCmdCopyImage(cmd, outputImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                   swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                   1, &copyRegion);
-
-    BarrierImage(cmd, outputImage,
-                 VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
-
-    BarrierImage(cmd, swapchainImage,
-                 VK_ACCESS_TRANSFER_WRITE_BIT, 0,
-                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-
-    frameCmds.Submit(cmd);
-    frameCmds.WaitIdle();
 }
 
 
@@ -1633,7 +1655,6 @@ void main()
     glfwCreateWindowSurface(mainVk.instance, window.glfwHandle, NULL, &mainVk.surface);
 
     CreateDevice();
-    CreateSwapchain(true, window.width, window.height);
 
     CreateCmdPools();
     CreateSyncPrimitives();
@@ -1645,9 +1666,9 @@ void main()
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         CreateTopLevelAS(true, i);
-        UpdateDescSetBinding(i);
     }
 
+    CreateSwapchain(true, window.width, window.height);
     CreateStorageImage(window.width, window.height);
     CreateUniformBuffer();
 
@@ -1655,6 +1676,11 @@ void main()
     CreateRayTracingDescriptors();
     CreateRayTracingPipeline();
     CreateShaderBindingTable();
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        UpdateASDescSetBinding(i);
+    }
 
     while (!glfwWindowShouldClose(window.glfwHandle))
     {
@@ -1665,13 +1691,17 @@ void main()
 
         mainVk.currentFrameIndex = (mainVk.currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
-        r = vkWaitForFences(mainVk.device, 1, &mainVk.frameFences[mainVk.currentFrameIndex], VK_TRUE, UINT64_MAX);
+        VkFence frameFence = mainVk.frameFences[mainVk.currentFrameIndex];
+
+        r = vkWaitForFences(mainVk.device, 1, &frameFence, VK_TRUE, UINT64_MAX);
         VK_CHECKERROR(r);
+
+        FrameSemaphores &frameSemaphores = mainVk.frameSemaphores[mainVk.currentFrameIndex];
 
         while (true)
         {
             r = vkAcquireNextImageKHR(mainVk.device, mainVk.swapchain, UINT64_MAX,
-                                      mainVk.frameSemaphores[mainVk.currentFrameIndex].imageAvailable,
+                                      frameSemaphores.imageAvailable,
                                       VK_NULL_HANDLE, &mainVk.currentSwapchainIndex);
 
             if (r == VK_SUCCESS)
@@ -1696,12 +1726,25 @@ void main()
         mainVk.frameCmds.compute[mainVk.currentFrameIndex].Reset();
         mainVk.frameCmds.transfer[mainVk.currentFrameIndex].Reset();
 
-        Draw(mainVk.currentFrameIndex, window.width, window.height);
+        FrameCmdBuffers &frameCmds = mainVk.frameCmds.graphics[mainVk.currentFrameIndex];
+        VkCommandBuffer cmd = frameCmds.BeginCmd();
+
+        Draw(cmd, mainVk.currentFrameIndex, window.width, window.height);
+
+        VkImage outputImage = mainVk.outputImage.image;
+        VkImage swapchainImage = mainVk.swapchainImages[mainVk.currentSwapchainIndex];
+        BlitForPresent(cmd, outputImage, swapchainImage, window.width, window.height);
+
+        frameCmds.Submit(cmd, 
+                         frameSemaphores.imageAvailable, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                         frameSemaphores.renderFinished, 
+                         frameFence);
+        frameCmds.WaitIdle();
 
         VkPresentInfoKHR presentInfo = {};
         presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
         presentInfo.waitSemaphoreCount = 1;
-        presentInfo.pWaitSemaphores = &mainVk.frameSemaphores[mainVk.currentFrameIndex].renderFinished;
+        presentInfo.pWaitSemaphores = &frameSemaphores.renderFinished;
         presentInfo.swapchainCount = 1;
         presentInfo.pSwapchains = &mainVk.swapchain;
         presentInfo.pImageIndices = &mainVk.currentSwapchainIndex;

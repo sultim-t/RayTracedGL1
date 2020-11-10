@@ -163,6 +163,25 @@ public:
 		r = vkQueueSubmit(queue, 1, &submitInfo, fence);
 		VK_CHECKERROR(r);
 	}
+
+	void Submit(VkCommandBuffer cmd, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStages, VkSemaphore signalSemaphore, VkFence fence)
+	{
+		VkResult r = vkEndCommandBuffer(cmd);
+		VK_CHECKERROR(r);
+
+		VkSubmitInfo submitInfo = {};
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.commandBufferCount = 1;
+		submitInfo.pCommandBuffers = &cmd;
+		submitInfo.waitSemaphoreCount = 1;
+		submitInfo.pWaitSemaphores = &waitSemaphore;
+		submitInfo.pWaitDstStageMask = &waitStages;
+		submitInfo.signalSemaphoreCount = 1;
+		submitInfo.pSignalSemaphores = &signalSemaphore;
+
+		r = vkQueueSubmit(queue, 1, &submitInfo, fence);
+		VK_CHECKERROR(r);
+	}
 };
 
 
@@ -288,23 +307,23 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
 
 	if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
 	{
-		msg = "Vulkan::VERBOSE::[%d][%d]\n%s\n";
+		msg = "Vulkan::VERBOSE::[%d][%s]\n%s\n\n";
 	}
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT)
 	{
-		msg = "Vulkan::INFO::[%d][%d]\n%s\n";
+		msg = "Vulkan::INFO::[%d][%s]\n%s\n\n";
 	}
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
 	{
-		msg = "Vulkan::WARNING::[%d][%d]\n%s\n";
+		msg = "Vulkan::WARNING::[%d][%s]\n%s\n\n";
 	}
 	else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
 	{
-		msg = "Vulkan::ERROR::[%d][%d]\n%s\n";
+		msg = "Vulkan::ERROR::[%d][%s]\n%s\n\n";
 	}
 	else
 	{
-		msg = "Vulkan::[%d][%d]\n%s\n";
+		msg = "Vulkan::[%d][%s]\n%s\n\n";
 	}
 
 	printf(msg, pCallbackData->messageIdNumber, pCallbackData->pMessageIdName, pCallbackData->pMessage);
