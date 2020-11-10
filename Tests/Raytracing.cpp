@@ -231,9 +231,12 @@ void CreateInstance(const Window &window)
     instanceInfo.enabledExtensionCount = extensions.size();
 
 #if SVK_ENABLE_VALIDATION_LAYER
-    const char *layerName = "VK_LAYER_KHRONOS_validation";
-    instanceInfo.ppEnabledLayerNames = &layerName;
-    instanceInfo.enabledLayerCount = 1;
+    const char *layerNames[2] = {
+        "VK_LAYER_KHRONOS_validation",
+        "VK_LAYER_LUNARG_monitor"
+    };
+    instanceInfo.ppEnabledLayerNames = layerNames;
+    instanceInfo.enabledLayerCount = 2;
 #endif
 
     VkResult r = vkCreateInstance(&instanceInfo, nullptr, &mainVk.instance);
@@ -985,7 +988,7 @@ void CreateTopLevelAS(bool fastTrace, uint32_t frameIndex)
     VkCommandBuffer cmd = frameCmds.BeginCmd();
 
     rtglData.scratchBufferCurrentOffset = 0;
-    BuildBottomAS(cmd, rtglData.staticBlas, true);
+    BuildTopLevelAS(cmd, *pTlas, true);
 
     frameCmds.Submit(cmd);
     frameCmds.WaitIdle();
@@ -1236,18 +1239,19 @@ void CreateUniformBuffer()
     vkUpdateDescriptorSets(mainVk.device, MAX_FRAMES_IN_FLIGHT, writes, 0, nullptr);
 }
 
-glm::vec3 camPos = glm::vec3(0, 0, 0);
+glm::vec3 camPos = glm::vec3(0, 50, 0);
 glm::vec3 camDir = glm::vec3(0, 0, 1);
 glm::vec3 camUp = glm::vec3(0, 1, 0);
+glm::vec3 lightDir = glm::vec3(-1, -1, -1);
 
 void UpdateUniformBuffer()
 {
-    glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 1000.0f);
+    glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
     glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
 
     rtglData.uniformData.viewInverse = glm::inverse(view);
     rtglData.uniformData.projInverse = glm::inverse(persp);
-    rtglData.uniformData.lightPos = glm::vec4(0, 10, 10, 0);
+    rtglData.uniformData.lightPos = glm::vec4(lightDir.x, lightDir.y, lightDir.z, 0);
 
     Buffer &ub = rtglData.uniformBuffers[mainVk.currentFrameIndex];
 
@@ -1530,31 +1534,38 @@ void LoadModel(const char *path)
 
 void ProcessInput(GLFWwindow *window)
 {
-    float cameraSpeed = 20.0f / 60.0f;
-    float cameraRotationSpeed = 2 / 60.0f;
+    float cameraSpeed = 60.0f / 60.0f;
+    float cameraRotationSpeed = 5 / 60.0f;
+
+    glm::vec3 r = -glm::cross(camDir, glm::vec3(0, 1, 0));
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camPos += cameraSpeed * camDir;
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
         camPos -= cameraSpeed * camDir;
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camPos -= glm::normalize(glm::cross(camDir, camUp)) * cameraSpeed;
+        camPos -= r * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camPos += glm::normalize(glm::cross(camDir, camUp)) * cameraSpeed;
+        camPos += r * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        camPos -= glm::normalize(camUp) * cameraSpeed;
+        camPos -= glm::vec3(0, 1, 0) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        camPos += glm::normalize(camUp) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, -cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, cameraRotationSpeed, glm::vec3(1, 0, 0));
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, -cameraRotationSpeed, glm::vec3(1, 0, 0));
+        camPos += glm::vec3(0, 1, 0) * cameraSpeed;
 
-    glm::vec3 r = glm::cross(camDir, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
+        camDir = glm::rotate(camDir, -cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        camDir = glm::rotate(camDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        camDir = glm::rotate(camDir, -cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        camDir = glm::rotate(camDir, cameraRotationSpeed, r);
+
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
+        lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
+        lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(1, 0, 0));
+
     camUp = glm::cross(r, camDir);
 }
 
@@ -1640,6 +1651,7 @@ void Draw(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t hei
 void main()
 {
     LoadModel("BRUSHES.obj");
+    LoadModel("MODELS.obj");
 
     Window window = {};
 
@@ -1647,7 +1659,7 @@ void main()
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
     glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
 
-    window.glfwHandle = glfwCreateWindow(1280, 720, "Raytracing Test", nullptr, nullptr);
+    window.glfwHandle = glfwCreateWindow(1600, 900, "Raytracing Test", nullptr, nullptr);
     glfwGetFramebufferSize(window.glfwHandle, (int *) &window.width, (int *) &window.height);
     window.extensions = glfwGetRequiredInstanceExtensions(&window.extensionCount);
 
@@ -1729,6 +1741,7 @@ void main()
         FrameCmdBuffers &frameCmds = mainVk.frameCmds.graphics[mainVk.currentFrameIndex];
         VkCommandBuffer cmd = frameCmds.BeginCmd();
 
+        UpdateUniformBuffer();
         Draw(cmd, mainVk.currentFrameIndex, window.width, window.height);
 
         VkImage outputImage = mainVk.outputImage.image;
