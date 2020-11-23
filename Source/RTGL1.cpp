@@ -7,7 +7,7 @@ void rgCreate()
 
 }
 
-void rgCreateInstance(RgInstanceCreateInfo *info)
+RgResult rgCreateInstance(RgInstanceCreateInfo *info)
 {
 
 }

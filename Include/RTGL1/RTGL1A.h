@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-	void rgaCreate();
+	// void rgaCreate();
 
 
 #ifdef __cplusplus
