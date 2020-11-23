@@ -6,3 +6,8 @@ void rgCreate()
 {
 
 }
+
+void rgCreateInstance(RgInstanceCreateInfo *info)
+{
+
+}

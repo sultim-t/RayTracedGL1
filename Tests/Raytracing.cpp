@@ -15,7 +15,7 @@
 #include <GLFW/glfw3.h>
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include "tiny_obj_loader.h"
+#include "Libs/tinyobjloader/tiny_obj_loader.h"
 
 #define SVK_ENABLE_VALIDATION_LAYER 1
 #define MAX_FRAMES_IN_FLIGHT 2
