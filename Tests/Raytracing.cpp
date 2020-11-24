@@ -6,6 +6,7 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
+#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -41,10 +42,10 @@ enum class ShaderIndex
 };
 
 const char *ShaderNames[] = {
-    "shaders/raygen.rgen.spv",
-    "shaders/miss.rmiss.spv",
-    "shaders/shadow.rmiss.spv",
-    "shaders/closesthit.rchit.spv"
+    "../../shaders/raygen.rgen.spv",
+    "../../shaders/miss.rmiss.spv",
+    "../../shaders/shadow.rmiss.spv",
+    "../../shaders/closesthit.rchit.spv"
 };
 
 VkShaderStageFlagBits ShaderStages[] = {
@@ -1242,7 +1243,7 @@ void CreateUniformBuffer()
 glm::vec3 camPos = glm::vec3(0, 50, 0);
 glm::vec3 camDir = glm::vec3(0, 0, 1);
 glm::vec3 camUp = glm::vec3(0, 1, 0);
-glm::vec3 lightDir = glm::vec3(-1, -1, -1);
+glm::vec3 lightDir = glm::vec3(1, 1, 1);
 
 void UpdateUniformBuffer()
 {
@@ -1537,7 +1538,7 @@ void ProcessInput(GLFWwindow *window)
     float cameraSpeed = 60.0f / 60.0f;
     float cameraRotationSpeed = 5 / 60.0f;
 
-    glm::vec3 r = -glm::cross(camDir, glm::vec3(0, 1, 0));
+    glm::vec3 r = glm::cross(camDir, glm::vec3(0, 1, 0));
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         camPos += cameraSpeed * camDir;
@@ -1553,20 +1554,20 @@ void ProcessInput(GLFWwindow *window)
         camPos += glm::vec3(0, 1, 0) * cameraSpeed;
 
     if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, -cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
         camDir = glm::rotate(camDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
+        camDir = glm::rotate(camDir, -cameraRotationSpeed, glm::vec3(0, 1, 0));
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, -cameraRotationSpeed, r);
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
         camDir = glm::rotate(camDir, cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        camDir = glm::rotate(camDir, -cameraRotationSpeed, r);
 
     if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
         lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
     if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
         lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(1, 0, 0));
 
-    camUp = glm::cross(r, camDir);
+    camUp = -glm::cross(r, camDir);
 }
 
 
@@ -1650,8 +1651,8 @@ void Draw(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t hei
 
 void main()
 {
-    LoadModel("BRUSHES.obj");
-    LoadModel("MODELS.obj");
+    LoadModel("../../BRUSHES.obj");
+    LoadModel("../../MODELS.obj");
 
     Window window = {};
 

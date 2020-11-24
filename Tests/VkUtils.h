@@ -364,6 +364,7 @@ uint32_t GetQueueFamilyIndex(std::vector<VkQueueFamilyProperties> queueFamilyPro
     }
 
     assert(0);
+    return 0;
 }
 
 uint32_t GetMemoryTypeIndex(const VkPhysicalDeviceMemoryProperties &physMemProp, uint32_t memoryTypeBits, VkFlags requirementsMask)

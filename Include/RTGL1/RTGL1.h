@@ -1,9 +1,11 @@
 #pragma once
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+    typedef uint32_t RgBool32;
 
     typedef enum RgResult
     {
@@ -122,10 +124,10 @@ extern "C" {
 
     typedef struct RgRasterizedGeometryUploadInfo
     {
-        bool                depthTest;
-        bool                depthWrite;
-        bool                alphaTest;
-        bool                blendEnable;
+        RgBool32            depthTest;
+        RgBool32            depthWrite;
+        RgBool32            alphaTest;
+        RgBool32            blendEnable;
         RgBlendFactor       blendFuncSrc;
         RgBlendFactor       blendFuncDst;
         uint32_t            textureCount;
@@ -189,10 +191,9 @@ extern "C" {
         // sampler info is here too for simplicity
         RgSamplerAddressMode    addressModeU;
         RgSamplerAddressMode    addressModeV;
-        bool                    enableOverride;
+        RgBool32                enableOverride;
         float                   defaultRoughness;
         float                   defaultMetallicity;
-        float                   defaultSpecularity;
         char                    *name;
         char                    *path;
     } RgTextureCreateInfo;
@@ -206,7 +207,7 @@ extern "C" {
         float                   defaultRoughness;
         float                   defaultMetallicity;
         float                   defaultSpecularity;
-    } RgTextureUpdateInfo;
+    } RgDynamicTextureInfo;
     
     typedef struct RgAnimatedTextureCreateInfo
     {

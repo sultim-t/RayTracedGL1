@@ -6,8 +6,3 @@ void rgCreate()
 {
 
 }
-
-RgResult rgCreateInstance(RgInstanceCreateInfo *info)
-{
-
-}
