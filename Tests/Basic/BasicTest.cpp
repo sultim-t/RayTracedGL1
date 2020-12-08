@@ -5,6 +5,5 @@ int main()
 {
     std::cout << "Test" << std::endl;
 
-    rgCreate();
     return 0;
 }

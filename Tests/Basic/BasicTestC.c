@@ -5,6 +5,5 @@ int main()
 {
 	printf("Test C");
 	
-	rgCreate();
-	return 0;
+    return 0;
 }

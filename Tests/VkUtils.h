@@ -446,14 +446,6 @@ void DestroyBuffer(VkDevice device, VkBuffer buffer, VkDeviceMemory bufferMemory
     }
 }
 
-void CopyToDeviceMemory(VkDevice device, VkDeviceMemory deviceMemory, const void *data, VkDeviceSize size)
-{
-    void *mapped;
-    vkMapMemory(device, deviceMemory, 0, size, 0, &mapped);
-    memcpy(mapped, data, (size_t) size);
-    vkUnmapMemory(device, deviceMemory);
-}
-
 void BarrierImage(VkCommandBuffer cmd, VkImage image,
                   VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
                   VkImageLayout oldLayout, VkImageLayout newLayout,
