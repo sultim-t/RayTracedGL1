@@ -10,7 +10,9 @@ public:
     ~Buffer();
 
     void Init(VkDevice device, const PhysicalDevice &physDevice,
-                    VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool getAddress = false);
+              VkDeviceSize size, VkBufferUsageFlags usage, 
+              VkMemoryPropertyFlags properties);
+    void Destroy();
 
     void* Map();
     void Unmap();
@@ -18,6 +20,7 @@ public:
 
     VkBuffer GetBuffer() const;
     VkDeviceMemory GetMemory() const;
+    // To get address usage flags must contain VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
     VkDeviceAddress GetAddress() const;
     VkDeviceSize GetSize() const;
     bool IsMapped() const;

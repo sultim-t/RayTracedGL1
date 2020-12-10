@@ -1,5 +1,5 @@
 #include "RayTracingPipeline.h"
-#include "Const.h"
+#include "Generated/ShaderCommonC.h"
 
 RayTracingPipeline::RayTracingPipeline(VkDevice device, const PhysicalDevice &physDevice, const ShaderManager& sm)
 {

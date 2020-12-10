@@ -1,12 +1,14 @@
 #pragma once
+#include <stdint.h>
 
 #define MAX_STATIC_VERTEX_COUNT (2097152)
 #define MAX_DYNAMIC_VERTEX_COUNT (2097152)
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
 #define BINDING_GLOBAL_UNIFORM (0)
+#define BINDING_ACCELERATION_STRUCTURE (0)
 
-struct VertexBufferStatic
+struct ShVertexBufferStatic
 {
     float positions[6291456];
     float normals[6291456];
@@ -15,7 +17,7 @@ struct VertexBufferStatic
     uint32_t materialIds[699052];
 };
 
-struct VertexBufferDynamic
+struct ShVertexBufferDynamic
 {
     float positions[6291456];
     float normals[6291456];
@@ -24,10 +26,10 @@ struct VertexBufferDynamic
     uint32_t materialIds[699052];
 };
 
-struct GlobalUniform
+struct ShGlobalUniform
 {
-    float viewProj[4][4];
-    float viewProjPrev[4][4];
+    float viewProj[16];
+    float viewProjPrev[16];
     uint32_t positionsStride;
     uint32_t normalsStride;
     uint32_t texCoordsStride;

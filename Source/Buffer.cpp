@@ -12,26 +12,11 @@ Buffer::Buffer()
 
 Buffer::~Buffer()
 {
-    assert(!isMapped);
-
-    if (device == VK_NULL_HANDLE)
-    {
-        return;
-    }
-
-    if (memory != VK_NULL_HANDLE)
-    {
-        vkFreeMemory(device, memory, nullptr);
-    }
-
-    if (buffer != VK_NULL_HANDLE)
-    {
-        vkDestroyBuffer(device, buffer, nullptr);
-    }
+    Destroy();
 }
 
 void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSize bsize, VkBufferUsageFlags usage,
-                  VkMemoryPropertyFlags properties, bool getAddress)
+                  VkMemoryPropertyFlags properties)
 {
     device = bdevice;
 
@@ -42,11 +27,6 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
     bufferInfo.size = bsize;
     bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
-
-    if (getAddress)
-    {
-        bufferInfo.usage = usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
-    }
 
     r = vkCreateBuffer(device, &bufferInfo, nullptr, &buffer);
     VK_CHECKERROR(r);
@@ -68,6 +48,31 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
     }
 
     size = bsize;
+}
+
+void Buffer::Destroy()
+{
+    assert(!isMapped);
+
+    if (device == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    if (memory != VK_NULL_HANDLE)
+    {
+        vkFreeMemory(device, memory, nullptr);
+        memory = VK_NULL_HANDLE;
+    }
+
+    if (buffer != VK_NULL_HANDLE)
+    {
+        vkDestroyBuffer(device, buffer, nullptr);
+        buffer = VK_NULL_HANDLE;
+    }
+
+    address = 0;
+    size = 0;
 }
 
 void *Buffer::Map()

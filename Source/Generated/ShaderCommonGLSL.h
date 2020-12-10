@@ -3,6 +3,7 @@
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
 #define BINDING_GLOBAL_UNIFORM (0)
+#define BINDING_ACCELERATION_STRUCTURE (0)
 
 #ifndef DESC_SET_VERTEX_DATA
     #error Define "DESC_SET_VERTEX_DATA" before including this header.
@@ -10,8 +11,11 @@
 #ifndef DESC_SET_GLOBAL_UNIFORM
     #error Define "DESC_SET_GLOBAL_UNIFORM" before including this header.
 #endif
+#ifndef DESC_SET_ACCELERATION_STRUCTURE
+    #error Define "DESC_SET_ACCELERATION_STRUCTURE" before including this header.
+#endif
 
-struct VertexBufferStatic
+struct ShVertexBufferStatic
 {
     float positions[6291456];
     float normals[6291456];
@@ -20,7 +24,7 @@ struct VertexBufferStatic
     uint materialIds[699052];
 };
 
-struct VertexBufferDynamic
+struct ShVertexBufferDynamic
 {
     float positions[6291456];
     float normals[6291456];
@@ -29,7 +33,7 @@ struct VertexBufferDynamic
     uint materialIds[699052];
 };
 
-struct Triangle
+struct ShTriangle
 {
     mat33 positions;
     mat33 normals;
@@ -37,7 +41,7 @@ struct Triangle
     uint materialId;
 };
 
-struct GlobalUniform
+struct ShGlobalUniform
 {
     mat44 viewProj;
     mat44 viewProjPrev;
@@ -51,21 +55,21 @@ layout(set = DESC_SET_VERTEX_DATA,
     binding = BINDING_VERTEX_BUFFER_STATIC)
     readonly buffer VertexBufferStatic_BT
 {
-    VertexBufferStatic staticVertices;
+    ShVertexBufferStatic staticVertices;
 }
 
 layout(set = DESC_SET_VERTEX_DATA,
     binding = BINDING_VERTEX_BUFFER_DYNAMIC)
     readonly buffer VertexBufferDynamic_BT
 {
-    VertexBufferDynamic dynamicVertices;
+    ShVertexBufferDynamic dynamicVertices;
 }
 
 layout(set = DESC_SET_GLOBAL_UNIFORM,
     binding = BINDING_GLOBAL_UNIFORM)
     readonly uniform GlobalUniform_BT
 {
-    GlobalUniform globalUniform;
+    ShGlobalUniform globalUniform;
 }
 
 vec3 getStaticVerticesPositions(uint index)

@@ -1,12 +1,19 @@
 #pragma once
-#include "Common.h"
-#include "Buffer.h"
+#include "VertexBuffer.h"
 
 class VertexBufferStatic
 {
 public:
-    
+    VertexBufferStatic(VkDevice device, const PhysicalDevice &physDevice);
+    ~VertexBufferStatic();
+
+    void BeginCollecting();
+    void EndCollecting();
+
+    void Submit();
+    void Reset();
 
 private:
+    VkDevice device;
 
 };

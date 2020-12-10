@@ -35,17 +35,17 @@ private:
     void DestroySyncPrimitives();
 
 private:
-    VkInstance          instance;
-    VkDevice            device;
-    VkSurfaceKHR        surface;
+    VkInstance          instance{};
+    VkDevice            device{};
+    VkSurfaceKHR        surface{};
 
     // [0..MAX_FRAMES_IN_FLIGHT-1]
-    uint32_t            currentFrameIndex;
+    uint32_t            currentFrameIndex{};
 
-    VkFence             stagingStaticGeomFence;
-    VkFence             frameFences[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore         renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkFence             stagingStaticGeomFence{};
+    VkFence             frameFences[MAX_FRAMES_IN_FLIGHT]{};
+    VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT]{};
+    VkSemaphore         renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT]{};
 
     std::shared_ptr<PhysicalDevice>         physDevice;
     std::shared_ptr<Queues>                 queues;
@@ -56,6 +56,6 @@ private:
     std::shared_ptr<CommandBufferManager>   cmdBufferManager;
 
     bool                                    enableValidationLayer;
-    VkDebugUtilsMessengerEXT                debugMessenger;
+    VkDebugUtilsMessengerEXT                debugMessenger{};
     PFN_rgPrint                             debugPrint;
 };

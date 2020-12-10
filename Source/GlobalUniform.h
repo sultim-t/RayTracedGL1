@@ -5,7 +5,7 @@
 class GlobalUniform
 {
 public:
-    GlobalUniform(VkDevice device, const PhysicalDevice &physDevice, VkDeviceSize size, bool deviceLocal = false);
+    GlobalUniform(VkDevice device, const PhysicalDevice &physDevice, bool deviceLocal = false);
     ~GlobalUniform();
 
     void SetData(uint32_t frameIndex, const void *data, VkDeviceSize dataSize);

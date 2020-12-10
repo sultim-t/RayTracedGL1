@@ -1,9 +1,11 @@
 #include "GlobalUniform.h"
-#include "Const.h"
+#include "Generated/ShaderCommonC.h"
 
-GlobalUniform::GlobalUniform(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSize size, bool deviceLocal)
+GlobalUniform::GlobalUniform(VkDevice bdevice, const PhysicalDevice &physDevice, bool deviceLocal)
 {
     device = bdevice;
+
+    const VkDeviceSize size = sizeof(ShGlobalUniform);
 
     VkMemoryPropertyFlags properties = deviceLocal ?
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT :

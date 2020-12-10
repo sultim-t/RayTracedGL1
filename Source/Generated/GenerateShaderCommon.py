@@ -35,6 +35,7 @@ GLSL_TYPE_NAMES = {
 TAB_STR = "    "
 
 USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE = False
+USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
 
 
 
@@ -48,6 +49,7 @@ CONST = {
     "BINDING_VERTEX_BUFFER_STATIC": 0,
     "BINDING_VERTEX_BUFFER_DYNAMIC": 1,
     "BINDING_GLOBAL_UNIFORM": 0,
+    "BINDING_ACCELERATION_STRUCTURE": 0,
 }
 
 
@@ -56,7 +58,8 @@ CONST = {
 # ---
 MUST_BE_DEFINED_GLSL = [
     "DESC_SET_VERTEX_DATA",
-    "DESC_SET_GLOBAL_UNIFORM"
+    "DESC_SET_GLOBAL_UNIFORM",
+    "DESC_SET_ACCELERATION_STRUCTURE",
 ]
 
 
@@ -102,10 +105,10 @@ GLOBAL_UNIFORM_STRUCT = [
 
 # structTypeName: (structDefinition, onlyForGLSL)
 STRUCTS = {
-    "VertexBufferStatic":   (STATIC_BUFFER_STRUCT,      False),
-    "VertexBufferDynamic":  (DYNAMIC_BUFFER_STRUCT,     False),
-    "Triangle":             (TRIANGLE_STRUCT,           True),
-    "GlobalUniform":        (GLOBAL_UNIFORM_STRUCT,     False),
+    "ShVertexBufferStatic":   (STATIC_BUFFER_STRUCT,      False),
+    "ShVertexBufferDynamic":  (DYNAMIC_BUFFER_STRUCT,     False),
+    "ShTriangle":             (TRIANGLE_STRUCT,           True),
+    "ShGlobalUniform":        (GLOBAL_UNIFORM_STRUCT,     False),
 }
 
 # ---
@@ -123,11 +126,11 @@ BUFFERS = {
     #                 else:
     #                     ("globalUniform." + memberName + + "Stride")
     "VertexBufferStatic_BT":     ("DESC_SET_VERTEX_DATA", "BINDING_VERTEX_BUFFER_STATIC", "readonly",
-                                  "buffer", "VertexBufferStatic", "staticVertices", True),
+                                  "buffer", "ShVertexBufferStatic", "staticVertices", True),
     "VertexBufferDynamic_BT":    ("DESC_SET_VERTEX_DATA", "BINDING_VERTEX_BUFFER_DYNAMIC", "readonly",
-                                  "buffer", "VertexBufferDynamic", "dynamicVertices", True),
+                                  "buffer", "ShVertexBufferDynamic", "dynamicVertices", True),
     "GlobalUniform_BT":          ("DESC_SET_GLOBAL_UNIFORM", "BINDING_GLOBAL_UNIFORM", "readonly",
-                                  "uniform", "GlobalUniform", "globalUniform", False),
+                                  "uniform", "ShGlobalUniform", "globalUniform", False),
 }
 
 
@@ -178,7 +181,10 @@ def getStruct(name, definition, typeNames):
             elif dim <= 4:
                 r += "%s %s[%d]" % (typeNames[baseType], mname, dim)
             else:
-                r += "%s %s[%d][%d]" % (typeNames[baseType], mname, dim // 10, dim % 10)
+                if USE_MULTIDIMENSIONAL_ARRAYS_IN_C:
+                    r += "%s %s[%d][%d]" % (typeNames[baseType], mname, dim // 10, dim % 10)
+                else:
+                    r += "%s %s[%d]" % (typeNames[baseType], mname, (dim // 10) * (dim % 10))
         else:
             if dim > 4:
                 raise Exception("If count > 1, dimensions must be in [1..4]")
@@ -264,7 +270,8 @@ def getAllGetters():
 
 
 def writeToC(f):
-    f.write("#pragma once\n\n")
+    f.write("#pragma once\n")
+    f.write("#include <stdint.h>\n\n")
     f.write(getAllConstDefs())
     f.write(getAllStructDefs(C_TYPE_NAMES))
 

@@ -57,6 +57,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     CreateSyncPrimitives();
 
     cmdBufferManager = std::make_shared<CommandBufferManager>(device, queues);
+
+    uniformBuffers = std::make_shared<GlobalUniform>(device, *physDevice);
 }
 
 VulkanDevice::~VulkanDevice()

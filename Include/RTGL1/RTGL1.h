@@ -64,6 +64,17 @@ typedef struct RgInstanceCreateInfo
     char                        *overrideAlbedoRoughnessTexturePostfix;
     char                        *overrideNormalMetallicTexturePostfix;
     char                        *overrideEmissionSpecularityTexturePostfix;
+
+    // each attribute has its own stride for ability to describe vertices 
+    // that are represented as separated arrays of attribute values (i.e. Positions[], Normals[], ...)
+    // or packed into array of structs (i.e. Vertex[] where Vertex={Position, Normal, ...}).
+    // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
+    RgBool32                    vertexArrayOfStructs;
+    uint32_t                    vertexPositionStride;
+    uint32_t                    vertexNormalStride;
+    uint32_t                    vertexTexCoordStride;
+    uint32_t                    vertexColorStride;
+
 } RgInstanceCreateInfo;
 
 RgResult rgCreateInstance(
@@ -103,21 +114,14 @@ typedef struct RgGeometryCreateInfo
     RgGeometryType          geomType;
 
     uint32_t                vertexCount;
-    // 3 floats
+    // 3 first floats first floats will be used
     float                   *vertexData;
-    // each attribute has its own stride for ability to describe vertices 
-    // that are packed into array of structs (i.e. Vertex[] where Vertex={Position, Normal, ...}) 
-    // or separated arrays of attribute values (i.e. Positions[], Normals[], ...)
-    uint32_t                vertexStride;
     // 3 floats, can be null
     float                   *normalData;
-    uint32_t                normalStride;
     // 2 floats, can be null
     float                   *texCoordData;
-    uint32_t                texCoordStride;
     // RGBA packed into 32-bit uint, can be null
     uint32_t                *colorData;
-    uint32_t                colorStride;
 
     uint32_t                indexCount;
     uint32_t                *indexData;
