@@ -10,7 +10,7 @@ public:
     ~Buffer();
 
     void Init(VkDevice device, const PhysicalDevice &physDevice,
-                    VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties);
+                    VkDeviceSize size, VkBufferUsageFlags usage, VkMemoryPropertyFlags properties, bool getAddress = false);
 
     void* Map();
     void Unmap();

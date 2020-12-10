@@ -85,3 +85,13 @@ VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements2& me
 {
     return AllocDeviceMemory(memReqs2.memoryRequirements, addressQuery);
 }
+
+VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
+{
+    return memoryProperties;
+}
+
+VkPhysicalDeviceRayTracingPropertiesKHR PhysicalDevice::GetRayTracingProperties() const
+{
+    return rayTracingProperties;
+}

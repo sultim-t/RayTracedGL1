@@ -31,7 +31,7 @@ Buffer::~Buffer()
 }
 
 void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSize bsize, VkBufferUsageFlags usage,
-                        VkMemoryPropertyFlags properties)
+                  VkMemoryPropertyFlags properties, bool getAddress)
 {
     device = bdevice;
 
@@ -40,8 +40,13 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     bufferInfo.size = bsize;
-    bufferInfo.usage = usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    bufferInfo.usage = usage;
     bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    if (getAddress)
+    {
+        bufferInfo.usage = usage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT;
+    }
 
     r = vkCreateBuffer(device, &bufferInfo, nullptr, &buffer);
     VK_CHECKERROR(r);
@@ -54,10 +59,13 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
     r = vkBindBufferMemory(device, buffer, memory, 0);
     VK_CHECKERROR(r);
 
-    VkBufferDeviceAddressInfoKHR addrInfo = {};
-    addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
-    addrInfo.buffer = buffer;
-    address = vksGetBufferDeviceAddressKHR(device, &addrInfo);
+    if (bufferInfo.usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT)
+    {
+        VkBufferDeviceAddressInfoKHR addrInfo = {};
+        addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
+        addrInfo.buffer = buffer;
+        address = vksGetBufferDeviceAddressKHR(device, &addrInfo);
+    }
 
     size = bsize;
 }
@@ -87,16 +95,19 @@ void Buffer::Unmap()
 
 VkBuffer Buffer::GetBuffer() const
 {
+    assert(buffer != VK_NULL_HANDLE);
     return buffer;
 }
 
 VkDeviceMemory Buffer::GetMemory() const
 {
+    assert(memory != VK_NULL_HANDLE);
     return memory;
 }
 
 VkDeviceAddress Buffer::GetAddress() const
 {
+    assert(address != 0);
     return address;
 }
 
