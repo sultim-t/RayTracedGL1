@@ -937,7 +937,6 @@ void CreateTopLevelAS(bool fastTrace, uint32_t frameIndex)
 
     // for each isntance
     {
-        // TODO: to use this enable transforms in BLAS type info
         VkTransformMatrixKHR transformMatrix =
         {
             1.0f, 0.0f, 0.0f, 0.0f,

@@ -80,3 +80,12 @@ void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type
     VkResult r = vksDebugMarkerSetObjectNameEXT(device, &nameInfo);
     VK_CHECKERROR(r);
 }
+
+struct VBProperties
+{
+    bool vertexArrayOfStructs;
+    uint32_t positionStride;
+    uint32_t normalStride;
+    uint32_t texCoordStride;
+    uint32_t colorStride;
+};

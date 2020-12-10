@@ -19,9 +19,9 @@ RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
 RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgGeometry)
 // RgTexture, RgAnimatedTexture, RgDynamicTexture use the same pool of their indices,
 // so the type can be determined from the union of these types
-RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgStaticTexture)
-RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgAnimatedTexture)
-RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgDynamicTexture)
+typedef uint32_t RgStaticTexture;
+typedef uint32_t RgAnimatedTexture;
+typedef uint32_t RgDynamicTexture;
 #define RG_NO_TEXTURE   0
 #define RG_FALSE        0
 #define RG_TRUE         1
@@ -114,7 +114,8 @@ typedef struct RgGeometryCreateInfo
     RgGeometryType          geomType;
 
     uint32_t                vertexCount;
-    // 3 first floats first floats will be used
+    // strides are set in RgInstanceCreateInfo
+    // 3 first floats will be used
     float                   *vertexData;
     // 3 floats, can be null
     float                   *normalData;
@@ -127,6 +128,10 @@ typedef struct RgGeometryCreateInfo
     uint32_t                *indexData;
 
     RgLayeredMaterial       geomMaterial;
+
+    // TODO: seems to be redundant? as in fixed function pipeline
+    // only up to 4 textures are used per geometry
+    
     // if not null, then each triangle will be using its specified material,
     // otherwise, geomMaterial will be applied for whole geometry
     RgLayeredMaterial       *triangleMaterials;
