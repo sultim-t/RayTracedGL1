@@ -6,7 +6,7 @@
 class PhysicalDevice
 {
 public:
-    PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice);
+    explicit PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice);
     void SetDevice(VkDevice device);
 
     VkPhysicalDevice Get() const;

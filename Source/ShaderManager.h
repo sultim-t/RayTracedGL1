@@ -9,7 +9,7 @@
 class ShaderManager
 {
 public:
-    ShaderManager(VkDevice device);
+    explicit ShaderManager(VkDevice device);
     ~ShaderManager();
 
     void LoadShaderModules();

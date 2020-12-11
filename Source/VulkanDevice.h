@@ -16,7 +16,7 @@
 class VulkanDevice
 {
 public:
-    VulkanDevice(const RgInstanceCreateInfo *info);
+    explicit VulkanDevice(const RgInstanceCreateInfo *info);
     ~VulkanDevice();
 
     RgResult CreateGeometry(const RgGeometryCreateInfo *createInfo,
@@ -56,7 +56,7 @@ private:
     std::shared_ptr<CommandBufferManager>   cmdBufferManager;
 
     std::shared_ptr<GlobalUniform>          uniformBuffers;
-    std::shared_ptr<VertexBufferManager>    vertexBufferManager;
+    std::shared_ptr<Scene>                  scene;
 
     bool                                    enableValidationLayer;
     VkDebugUtilsMessengerEXT                debugMessenger;

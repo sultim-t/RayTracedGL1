@@ -17,9 +17,14 @@ public:
                  const VkAccelerationStructureGeometryKHR** ppGeometries,
                  const VkAccelerationStructureBuildOffsetInfoKHR *pOffsetInfos, 
                  bool fastTrace, bool update);
+
     //void AddTLAS(VkAccelerationStructureKHR as, VkAccelerationStructureGeometryKHR **ppGeometries, uint32_t geometryCount, bool fastTrace);
 
     void BuildBottomLevel(VkCommandBuffer cmd);
+
+
+
+    bool IsEmpty() const;
 
 private:
     void SyncScratch(VkCommandBuffer cmd);

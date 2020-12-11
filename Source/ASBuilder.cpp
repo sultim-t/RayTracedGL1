@@ -22,11 +22,10 @@ void ASBuilder::AddBLAS(
     buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
     buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
     buildInfo.flags = buildFlags;
-    // TODO: update acceleration structures, VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR
-    buildInfo.update = VK_FALSE;
-    buildInfo.srcAccelerationStructure = VK_NULL_HANDLE;
+    buildInfo.update = update ? VK_TRUE : VK_FALSE;
+    buildInfo.srcAccelerationStructure = update ? as : VK_NULL_HANDLE;
     buildInfo.dstAccelerationStructure = as;
-    buildInfo.scratchData.deviceAddress = scratchBuffer->GetScratchAddress(as);
+    buildInfo.scratchData.deviceAddress = scratchBuffer->GetScratchAddress(as, update);
     buildInfo.geometryCount = geometryCount;
     // buildInfo.pGeometries = *ppGeometries;
     buildInfo.geometryArrayOfPointers = VK_FALSE;
@@ -50,6 +49,12 @@ void ASBuilder::BuildBottomLevel(VkCommandBuffer cmd)
     scratchBuffer->Reset();
     bottomLBuildInfo.geomInfos.clear();
     bottomLBuildInfo.offsetInfos.clear();
+}
+
+bool ASBuilder::IsEmpty() const
+{
+    return bottomLBuildInfo.geomInfos.empty() && bottomLBuildInfo.offsetInfos.empty() &&
+        topLBuildInfo.geomInfos.empty() && topLBuildInfo.offsetInfos.empty();
 }
 
 void ASBuilder::SyncScratch(VkCommandBuffer cmd)

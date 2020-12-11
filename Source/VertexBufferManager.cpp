@@ -34,7 +34,9 @@ VertexBufferManager::VertexBufferManager(VkDevice device, std::shared_ptr<Physic
                            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // static and movable static share the same buffer as their data won't be changing
-    collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(staticVertsStaging, staticVertsBuffer, properties, RG_GEOMETRY_TYPE_STATIC_MOVABLE);
+    collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(staticVertsStaging, staticVertsBuffer, 
+                                                                       properties, 
+                                                                       RG_GEOMETRY_TYPE_STATIC_MOVABLE);
 
     // dynamic vertices
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -196,7 +198,8 @@ void VertexBufferManager::SubmitStaticGeometry()
     VkAccelerationStructureCreateInfoKHR blasInfo = {};
     blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
     blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+    blasInfo.flags = 
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
     blasInfo.maxGeometryCount = blasGT.size();
     blasInfo.pGeometryInfos = blasGT.data();
     r = vksCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &staticBlas.as);
@@ -206,7 +209,9 @@ void VertexBufferManager::SubmitStaticGeometry()
     VkAccelerationStructureCreateInfoKHR movableBlasInfo = {};
     movableBlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
     movableBlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    movableBlasInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+    movableBlasInfo.flags = 
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR |
+        VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
     movableBlasInfo.maxGeometryCount = movableBlasGT.size();
     movableBlasInfo.pGeometryInfos = movableBlasGT.data();
     r = vksCreateAccelerationStructureKHR(device, &movableBlasInfo, nullptr, &staticMovableBlas.as);
@@ -229,8 +234,14 @@ void VertexBufferManager::SubmitStaticGeometry()
     const VkAccelerationStructureGeometryKHR *pGeoms = geoms.data();
     const VkAccelerationStructureGeometryKHR *pMovableGeoms = movableGeoms.data();
 
-    asBuilder->AddBLAS(staticBlas.as, geoms.size(), &pGeoms, offsets.data(), true, false);
-    asBuilder->AddBLAS(staticMovableBlas.as, movableGeoms.size(), &pMovableGeoms, movableOffsets.data(), false, false);
+    assert(asBuilder->IsEmpty());
+
+    asBuilder->AddBLAS(staticBlas.as, 
+                       geoms.size(), &pGeoms, offsets.data(), 
+                       true, false);
+    asBuilder->AddBLAS(staticMovableBlas.as, 
+                       movableGeoms.size(), &pMovableGeoms, movableOffsets.data(), 
+                       false, false);
 
     asBuilder->BuildBottomLevel(cmd);
 
@@ -262,7 +273,8 @@ void VertexBufferManager::SubmitDynamicGeometry(VkCommandBuffer cmd)
     VkAccelerationStructureCreateInfoKHR blasInfo = {};
     blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
     blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+    blasInfo.flags = 
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
     blasInfo.maxGeometryCount = blasGT.size();
     blasInfo.pGeometryInfos = blasGT.data();
     r = vksCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &dynamicBlas[currentFrameIndex].as);
@@ -274,9 +286,13 @@ void VertexBufferManager::SubmitDynamicGeometry(VkCommandBuffer cmd)
 
     const auto &geoms = colDyn->GetASGeometries();
     const auto &offsets = colDyn->GetASBuildOffsetInfos();
-
     const VkAccelerationStructureGeometryKHR *pGeoms = geoms.data();
-    asBuilder->AddBLAS(dynBlas.as, geoms.size(), &pGeoms, offsets.data(), false, false);
+
+    assert(asBuilder->IsEmpty());
+
+    asBuilder->AddBLAS(dynBlas.as,
+                       geoms.size(), &pGeoms, offsets.data(),
+                       false, false);
     asBuilder->BuildBottomLevel(cmd);
 }
 
@@ -285,9 +301,18 @@ void VertexBufferManager::UpdateStaticMovableTransform(uint32_t geomIndex, const
     collectorStaticMovable->UpdateTransform(geomIndex, transform);
 }
 
-void VertexBufferManager::ResubmitStaticMovable()
+void VertexBufferManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
+    const auto &movableGeoms = collectorStaticMovable->GetASGeometriesFiltered();
+    const auto &movableOffsets = collectorStaticMovable->GetASBuildOffsetInfosFiltered();
+    const VkAccelerationStructureGeometryKHR *pMovableGeoms = movableGeoms.data();
 
+    assert(asBuilder->IsEmpty());
+    asBuilder->AddBLAS(staticMovableBlas.as, 
+                       movableGeoms.size(), &pMovableGeoms, movableOffsets.data(), 
+                       false, true);
+
+    asBuilder->BuildBottomLevel(cmd);
 }
 
 void VertexBufferManager::AllocBindASMemory(AccelerationStructure &as)

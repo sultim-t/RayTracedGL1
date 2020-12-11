@@ -14,6 +14,8 @@ public:
 
     void BeginStaticGeometry();
     void AddStaticGeometry(const RgGeometryCreateInfo &info);
+    // Submitting static geometry to the building is a heavy operation
+    // with waiting for it to complete.
     void SubmitStaticGeometry();
 
     void BeginDynamicGeometry(uint32_t frameIndex);
@@ -22,7 +24,12 @@ public:
 
     // Update transform for static movable geometry
     void UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform);
-    void ResubmitStaticMovable();
+    // After updating transforms, acceleration structures should be rebuilt
+    void ResubmitStaticMovable(VkCommandBuffer cmd);
+
+    VkAccelerationStructureKHR GetStaticBLAS() const { return staticBlas.as; }
+    VkAccelerationStructureKHR GetStaticMovableBLAS() const { return staticMovableBlas.as; }
+    VkAccelerationStructureKHR GetDynamicBLAS(uint32_t frameIndex) const { return dynamicBlas[frameIndex].as; }
 
 private:
     struct AccelerationStructure

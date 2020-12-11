@@ -8,7 +8,7 @@
 class CommandBufferManager
 {
 public:
-    CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues);
+    explicit CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues);
     ~CommandBufferManager();
 
     void PrepareForFrame(uint32_t frameIndex);

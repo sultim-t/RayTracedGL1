@@ -31,7 +31,7 @@ typedef enum RgResult
     RG_SUCCESS,
     RG_ERROR,
     RG_TOO_MANY_ISTANCES,
-    RG_NULL_INSTANCE
+    RG_WRONG_INSTANCE
 } RgResult;
 
 //typedef enum RgStructureType

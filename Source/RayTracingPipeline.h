@@ -7,7 +7,7 @@
 class RayTracingPipeline
 {
 public:
-    RayTracingPipeline(VkDevice device, const PhysicalDevice &physDevice, const ShaderManager &shaderManager);
+    explicit RayTracingPipeline(VkDevice device, const PhysicalDevice &physDevice, const ShaderManager &shaderManager);
     ~RayTracingPipeline();
 
     void GetEntries(VkStridedBufferRegionKHR &raygenEntry,

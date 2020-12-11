@@ -7,7 +7,7 @@
 class VertexCollectorFiltered : public VertexCollector
 {
 public:
-    VertexCollectorFiltered(
+    explicit VertexCollectorFiltered(
         std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, 
         const VBProperties &properties, RgGeometryType filter);
 

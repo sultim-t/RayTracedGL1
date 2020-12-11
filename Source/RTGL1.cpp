@@ -1,52 +1,35 @@
-#include <assert.h>
-#include <vector>
 #include "VulkanDevice.h"
 
+
 #define MAX_DEVICE_COUNT 8
-static std::vector<VulkanDevice *> *g_Devices = nullptr;
+static std::map<RgInstance, std::shared_ptr<VulkanDevice>> g_Devices;
 
-static uint32_t GetDeviceIndex(RgInstance rgInstance)
-{
-    uint64_t index = (uint64_t) rgInstance;
-    return index - 1;
-}
 
-static VulkanDevice *GetDevice(RgInstance rgInstance)
-{
-    if (g_Devices == nullptr)
-    {
-        return nullptr;
-    }
+#define CHECK_WRONG_INSTANCE_AND_GET \
+    auto &iterDevice = g_Devices.find(rgInstance); \
+    if (iterDevice == g_Devices.end()) { return RG_WRONG_INSTANCE; } \
+    iterDevice->second
 
-    auto &devices = *g_Devices;
 
-    uint32_t index = GetDeviceIndex(rgInstance);
-    assert(index < devices.size());
-    if (index >= devices.size())
-    {
-        return nullptr;
-    }
+#define CHECK_WRONG_INSTANCE_AND_RETURN_GET \
+    auto &iterDevice = g_Devices.find(rgInstance); \
+    if (iterDevice == g_Devices.end()) { return RG_WRONG_INSTANCE; } \
+    return iterDevice->second
 
-    return devices[index];
-}
 
 RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *result)
 {
-    if (g_Devices == nullptr)
-    {
-        g_Devices = new std::vector<VulkanDevice *>();
-    }
-
-    auto &devices = *g_Devices;
-    if (devices.size() >= MAX_DEVICE_COUNT)
+    if (g_Devices.size() >= MAX_DEVICE_COUNT)
     {
         *result = nullptr;
         return RgResult::RG_TOO_MANY_ISTANCES;
     }
 
-    devices.push_back(new VulkanDevice(info));
+    // insert new
+    const RgInstance id = reinterpret_cast<RgInstance>(g_Devices.size() + 1);
+    g_Devices[id] = std::make_shared<VulkanDevice>(info);
 
-    *result = (RgInstance)devices.size();
+    *result = id;
 
     return RgResult::RG_SUCCESS;
 }
@@ -54,73 +37,23 @@ RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *result)
 
 RgResult rgDestroyInstance(RgInstance rgInstance)
 {
-    if (g_Devices == nullptr)
-    {
-        return RgResult::RG_NULL_INSTANCE;
-    }
-
-    auto &devices = *g_Devices;
-
-    uint32_t index = GetDeviceIndex(rgInstance);
-    assert(index < devices.size());
-    if (index >= devices.size())
-    {
-        return RgResult::RG_SUCCESS;
-    }
-
-    delete devices[index];
-    devices[index] = nullptr;
-
-    bool devicePresent = false;
-    for (auto *d : devices)
-    {
-        if (d != nullptr)
-        {
-            devicePresent = true;
-            break;
-        }
-    }
-
-    if (!devicePresent)
-    {
-        delete g_Devices;
-        g_Devices = nullptr;
-    }
-
+    CHECK_WRONG_INSTANCE_AND_GET.reset();
     return RgResult::RG_SUCCESS;
 }
 
 RgResult rgCreateGeometry(RgInstance rgInstance, const RgGeometryCreateInfo *createInfo, RgGeometry *result)
 {
-    VulkanDevice *device = GetDevice(rgInstance);
-    if (device == nullptr)
-    {
-        return RgResult::RG_NULL_INSTANCE;
-    }
-
-    return device->CreateGeometry(createInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateGeometry(createInfo, result);
 }
 
 RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* updateInfo)
 {
-    VulkanDevice *device = GetDevice(rgInstance);
-    if (device == nullptr)
-    {
-        return RgResult::RG_NULL_INSTANCE;
-    }
-
-    return device->UpdateGeometryTransform(updateInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTransform(updateInfo);
 }
 
 RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, RgRasterizedGeometryUploadInfo *uploadInfo)
 {
-    VulkanDevice *device = GetDevice(rgInstance);
-    if (device == nullptr)
-    {
-        return RgResult::RG_NULL_INSTANCE;
-    }
-
-    return device->UploadRasterizedGeometry(uploadInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo);
 }
 
 RgResult rgCreateStaticTexture(RgInstance rgInstance, const RgStaticTextureCreateInfo* createInfo,
@@ -159,11 +92,5 @@ RgResult rgUpdateDynamicTexture(RgInstance rgInstance, RgDynamicTexture dynamicT
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo* frameInfo)
 {
-    VulkanDevice *device = GetDevice(rgInstance);
-    if (device == nullptr)
-    {
-        return RgResult::RG_NULL_INSTANCE;
-    }
-
-    return device->DrawFrame(frameInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DrawFrame(frameInfo);
 }

@@ -6,7 +6,7 @@
 class Queues
 {
 public:
-    Queues(VkPhysicalDevice physDevice);
+    explicit Queues(VkPhysicalDevice physDevice);
     void InitQueues(VkDevice device);
 
     void GetDeviceQueueCreateInfos(std::vector<VkDeviceQueueCreateInfo> &outInfos) const;

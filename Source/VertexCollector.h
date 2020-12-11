@@ -9,7 +9,7 @@
 class VertexCollector
 {
 public:
-    VertexCollector(std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
+    explicit VertexCollector(std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
     virtual ~VertexCollector();
 
     void BeginCollecting();
