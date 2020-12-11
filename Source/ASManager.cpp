@@ -1,9 +1,9 @@
-#include "VertexBufferManager.h"
+#include "ASManager.h"
 
 #include <array>
 #include "Generated/ShaderCommonC.h"
 
-VertexBufferManager::VertexBufferManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
+ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
                                          std::shared_ptr<CommandBufferManager> cmdManager,
                                          const RgInstanceCreateInfo &info)
 {
@@ -24,19 +24,23 @@ VertexBufferManager::VertexBufferManager(VkDevice device, std::shared_ptr<Physic
     staticVertsStaging = std::make_shared<Buffer>();
     staticVertsBuffer = std::make_shared<Buffer>();
 
-    staticVertsStaging->Init(device, *physDevice,
-                            sizeof(ShVertexBufferStatic),
-                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    staticVertsBuffer->Init(device, *physDevice,
-                           sizeof(ShVertexBufferStatic),
-                           VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    staticVertsStaging->Init(
+        device, *physDevice,
+        sizeof(ShVertexBufferStatic),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    staticVertsBuffer->Init(
+        device, *physDevice,
+        sizeof(ShVertexBufferStatic),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // static and movable static share the same buffer as their data won't be changing
-    collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(staticVertsStaging, staticVertsBuffer, 
-                                                                       properties, 
-                                                                       RG_GEOMETRY_TYPE_STATIC_MOVABLE);
+    collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(
+        device, *physDevice,
+        staticVertsStaging, staticVertsBuffer, 
+        properties, 
+        RG_GEOMETRY_TYPE_STATIC_MOVABLE);
 
     // dynamic vertices
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -44,17 +48,30 @@ VertexBufferManager::VertexBufferManager(VkDevice device, std::shared_ptr<Physic
         dynamicVertsStaging[i] = std::make_shared<Buffer>();
         dynamicVertsBuffer[i] = std::make_shared<Buffer>();
 
-        dynamicVertsStaging[i]->Init(device, *physDevice,
-                                    sizeof(ShVertexBufferDynamic),
-                                    VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                    VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-        dynamicVertsBuffer[i]->Init(device, *physDevice,
-                                   sizeof(ShVertexBufferDynamic),
-                                   VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        dynamicVertsStaging[i]->Init(
+            device, *physDevice,
+            sizeof(ShVertexBufferDynamic),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        dynamicVertsBuffer[i]->Init(
+            device, *physDevice,
+            sizeof(ShVertexBufferDynamic),
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-        collectorDynamic[i] = std::make_shared<VertexCollector>(dynamicVertsStaging[i], dynamicVertsBuffer[i], properties);
+        collectorDynamic[i] = std::make_shared<VertexCollector>(
+            device, *physDevice,
+            dynamicVertsStaging[i], dynamicVertsBuffer[i], properties);
 
+    }
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        instanceBuffers[i].Init(
+            device, *physDevice,
+            MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkTransformMatrixKHR),
+            VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 
     CreateDescriptors();
@@ -66,7 +83,7 @@ VertexBufferManager::VertexBufferManager(VkDevice device, std::shared_ptr<Physic
     VK_CHECKERROR(r);
 }
 
-void VertexBufferManager::CreateDescriptors()
+void ASManager::CreateDescriptors()
 {
     VkResult r;
     std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
@@ -145,47 +162,45 @@ void VertexBufferManager::CreateDescriptors()
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
 }
 
-VertexBufferManager::~VertexBufferManager()
+ASManager::~ASManager()
 {
     vkDestroyDescriptorPool(device, descPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
     vkDestroyFence(device, staticCopyFence, nullptr);
 }
 
-uint32_t VertexBufferManager::AddGeometry(const RgGeometryCreateInfo& info)
+// separate functions to make adding between Begin..Geometry and Submit..Geometry a bit clearer
+
+uint32_t ASManager::AddStaticGeometry(const RgGeometryCreateInfo &info)
 {
-    if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
-    {
-        return collectorDynamic[currentFrameIndex]->AddGeometry(info);
-    }
-    else
+    if (info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
     {
         return collectorStaticMovable->AddGeometry(info);
     }
+
+    assert(0);
+    return 0;
 }
 
-// separate functions to make adding between Begin..Geometry and Submit..Geometry a bit clearer
-
-void VertexBufferManager::AddStaticGeometry(const RgGeometryCreateInfo &info)
+uint32_t ASManager::AddDynamicGeometry(const RgGeometryCreateInfo &info, uint32_t frameIndex)
 {
-    assert(info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE);
-    AddGeometry(info);
+    if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
+    {
+        return collectorDynamic[frameIndex]->AddGeometry(info);
+    }
+
+    assert(0);
+    return 0;
 }
 
-void VertexBufferManager::AddDynamicGeometry(const RgGeometryCreateInfo &info)
-{
-    assert(info.geomType == RG_GEOMETRY_TYPE_DYNAMIC);
-    AddGeometry(info);
-}
-
-void VertexBufferManager::BeginStaticGeometry()
+void ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
     collectorStaticMovable->Reset();
     collectorStaticMovable->BeginCollecting();
 }
 
-void VertexBufferManager::SubmitStaticGeometry()
+void ASManager::SubmitStaticGeometry()
 {
     collectorStaticMovable->EndCollecting();
 
@@ -249,7 +264,7 @@ void VertexBufferManager::SubmitStaticGeometry()
     cmdManager->WaitForFence(staticCopyFence);
 }
 
-void VertexBufferManager::BeginDynamicGeometry(uint32_t frameIndex)
+void ASManager::BeginDynamicGeometry(uint32_t frameIndex)
 {
     currentFrameIndex = frameIndex;
 
@@ -258,7 +273,7 @@ void VertexBufferManager::BeginDynamicGeometry(uint32_t frameIndex)
     collectorDynamic[currentFrameIndex]->BeginCollecting();
 }
 
-void VertexBufferManager::SubmitDynamicGeometry(VkCommandBuffer cmd)
+void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     const auto &colDyn = collectorDynamic[currentFrameIndex];
     auto &dynBlas = dynamicBlas[currentFrameIndex];
@@ -296,12 +311,12 @@ void VertexBufferManager::SubmitDynamicGeometry(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-void VertexBufferManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
+void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
 {
     collectorStaticMovable->UpdateTransform(geomIndex, transform);
 }
 
-void VertexBufferManager::ResubmitStaticMovable(VkCommandBuffer cmd)
+void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
     const auto &movableGeoms = collectorStaticMovable->GetASGeometriesFiltered();
     const auto &movableOffsets = collectorStaticMovable->GetASBuildOffsetInfosFiltered();
@@ -315,7 +330,92 @@ void VertexBufferManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-void VertexBufferManager::AllocBindASMemory(AccelerationStructure &as)
+void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    VkResult r;
+
+    VkTransformMatrixKHR identity =
+    {
+        1.0f, 0.0f, 0.0f, 0.0f,
+        0.0f, 1.0f, 0.0f, 0.0f,
+        0.0f, 0.0f, 1.0f, 0.0f
+    };
+
+    std::vector<VkAccelerationStructureInstanceKHR> instances(3);
+
+    {
+        VkAccelerationStructureInstanceKHR &staticInstance = instances[0];
+        staticInstance.transform = identity;
+        staticInstance.instanceCustomIndex = 0;
+        staticInstance.mask = 0xFF;
+        staticInstance.instanceShaderBindingTableRecordOffset = 0;
+        staticInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        staticInstance.accelerationStructureReference = GetASAddress(staticBlas);
+    }
+    {
+        VkAccelerationStructureInstanceKHR &movableInstance = instances[1];
+        movableInstance.transform = identity;
+        movableInstance.instanceCustomIndex = 0;
+        movableInstance.mask = 0xFF;
+        movableInstance.instanceShaderBindingTableRecordOffset = 0;
+        movableInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        movableInstance.accelerationStructureReference = GetASAddress(staticMovableBlas);
+    }
+    {
+        VkAccelerationStructureInstanceKHR &dynamicInstance = instances[2];
+        dynamicInstance.transform = identity;
+        dynamicInstance.instanceCustomIndex = 0;
+        dynamicInstance.mask = 0xFF;
+        dynamicInstance.instanceShaderBindingTableRecordOffset = 0;
+        dynamicInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        dynamicInstance.accelerationStructureReference = GetASAddress(dynamicBlas[frameIndex]);
+    }
+
+    void *mapped = instanceBuffers[frameIndex].Map();
+    memcpy(mapped, instances.data(), instances.size() * sizeof(VkAccelerationStructureInstanceKHR));
+
+    instanceBuffers[frameIndex].Unmap();
+
+
+    VkAccelerationStructureCreateGeometryTypeInfoKHR geomTypeInfo = {};
+    geomTypeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_GEOMETRY_TYPE_INFO_KHR;
+    geomTypeInfo.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+    geomTypeInfo.maxPrimitiveCount = instances.size();
+
+    VkAccelerationStructureCreateInfoKHR asInfo = {};
+    asInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    asInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    asInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
+    asInfo.maxGeometryCount = 1;
+    asInfo.pGeometryInfos = &geomTypeInfo;
+    r = vksCreateAccelerationStructureKHR(device, &asInfo, nullptr, &tlas.as);
+    VK_CHECKERROR(r);
+
+    AllocBindASMemory(tlas);
+
+    assert(asBuilder->IsEmpty());
+
+    VkAccelerationStructureGeometryKHR instGeom = {};
+    instGeom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+    instGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    instGeom.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+    auto &instData = instGeom.geometry.instances;
+    instData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+    instData.arrayOfPointers = VK_FALSE;
+    instData.data.deviceAddress = instanceBuffers[frameIndex].GetAddress();
+
+    VkAccelerationStructureBuildOffsetInfoKHR offset = {};
+    offset.primitiveCount = instances.size();
+
+    const VkAccelerationStructureGeometryKHR *pGeometry = &instGeom;
+
+    asBuilder->AddTLAS(tlas.as, &pGeometry, &offset, true, false);
+    asBuilder->BuildTopLevel(cmd);
+}
+
+
+
+void ASManager::AllocBindASMemory(AccelerationStructure &as)
 {
     VkAccelerationStructureMemoryRequirementsInfoKHR memReqInfo = {};
     memReqInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_KHR;
@@ -338,8 +438,22 @@ void VertexBufferManager::AllocBindASMemory(AccelerationStructure &as)
     VK_CHECKERROR(r);
 }
 
-void VertexBufferManager::DestroyAS(AccelerationStructure &as)
+void ASManager::DestroyAS(AccelerationStructure &as)
 {
     physDevice->FreeDeviceMemory(as.memory);
     vkDestroyAccelerationStructureKHR(device, as.as, nullptr);
+}
+
+VkDeviceAddress ASManager::GetASAddress(const AccelerationStructure& as)
+{
+    return GetASAddress(as.as);
+}
+
+VkDeviceAddress ASManager::GetASAddress(VkAccelerationStructureKHR as)
+{
+    VkAccelerationStructureDeviceAddressInfoKHR addressInfo = {};
+    addressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
+    addressInfo.accelerationStructure = as;
+
+    return vksGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
 }

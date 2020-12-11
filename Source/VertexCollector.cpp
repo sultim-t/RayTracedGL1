@@ -1,38 +1,37 @@
 #include "VertexCollector.h"
 #include "Generated/ShaderCommonC.h"
 
-#define MAX_INDICES_IN_BUFFER 1 << 21
-#define MAX_GEOMETRIES_IN_BUFFER 4096
-
-VertexCollector::VertexCollector(std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties)
+VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice &physDevice, std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties)
 {
     this->stagingVertBuffer = stagingVertBuffer;
     this->vertBuffer = vertBuffer;
     this->properties = properties;
-}
 
-VertexCollector::~VertexCollector()
-{
-    Reset();
+    indices.Init(
+        device, physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
+        VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+
+    transforms.Init(
+        device, physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
+        VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
 void VertexCollector::BeginCollecting()
 {
-    assert(mappedData == nullptr);
+    assert(mappedVertexData == nullptr && mappedIndexData == nullptr && mappedTransformData == nullptr);
     assert(curVertexCount == 0 && curIndexCount == 0 && curGeometryCount == 0);
-    assert(indices.empty() && transforms.empty() && asGeometries.empty() && asBuildOffsetInfos.empty());
+    assert(asGeometries.empty() && asBuildOffsetInfos.empty());
 
     if (stagingVertBuffer.expired() || vertBuffer.expired())
     {
         return;
     }
 
-    mappedData = static_cast<uint8_t *>(stagingVertBuffer.lock()->Map());
-
-    // preallocate as changing vector's size will break pointers
-    // TODO: chains of vectors with fixed size
-    indices.resize(MAX_INDICES_IN_BUFFER);
-    transforms.resize(MAX_GEOMETRIES_IN_BUFFER);
+    mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.lock()->Map());
+    mappedIndexData = static_cast<uint32_t *>(indices.Map());
+    mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map();
 }
 
 uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
@@ -48,25 +47,28 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
         MAX_STATIC_VERTEX_COUNT :
         MAX_DYNAMIC_VERTEX_COUNT;
 
-    const uint32_t vertIndex = curVertexCount;
-    // TODO: replace curIndexCount, as now "indices" vector stores gaps if useIndices==false
-    const uint32_t indIndex = curIndexCount;
     const uint32_t geomIndex = curGeometryCount;
+    const uint32_t vertIndex = curVertexCount;
+    const uint32_t indIndex = curIndexCount;
+
+    curGeometryCount++;
+    curVertexCount += info.vertexCount;
 
     const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
     const uint32_t indexCount = useIndices ? info.indexCount : info.vertexCount / 3;
 
-    curVertexCount += info.vertexCount;
-    curIndexCount += indexCount;
-    curGeometryCount++;
+    if (useIndices)
+    {
+        curIndexCount += indexCount;
+    }
 
     assert(curVertexCount < maxVertexCount);
-    assert(curIndexCount < MAX_INDICES_IN_BUFFER);
-    assert(curGeometryCount < MAX_GEOMETRIES_IN_BUFFER);
+    assert(curIndexCount < MAX_VERTEX_COLLECTOR_INDEX_COUNT);
+    assert(curGeometryCount < MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT);
 
     if (curVertexCount >= maxVertexCount ||
-        curIndexCount >= MAX_INDICES_IN_BUFFER ||
-        curGeometryCount >= MAX_GEOMETRIES_IN_BUFFER)
+        curIndexCount >= MAX_VERTEX_COLLECTOR_INDEX_COUNT ||
+        curGeometryCount >= MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT)
     {
         return 0;
     }
@@ -80,7 +82,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
     VkAccelerationStructureCreateGeometryTypeInfoKHR geomType = {};
     geomType.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_GEOMETRY_TYPE_INFO_KHR;
     geomType.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    geomType.maxPrimitiveCount = info.indexCount;
+    geomType.maxPrimitiveCount = indexCount;
     geomType.indexType = useIndices ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_NONE_KHR;
     geomType.maxVertexCount = info.vertexCount;
     geomType.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
@@ -90,10 +92,10 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
 
     if (useIndices)
     {
-        memcpy(&indices[indIndex], info.indexData, info.indexCount * sizeof(uint32_t));
+        memcpy(mappedIndexData + indIndex, info.indexData, indexCount * sizeof(uint32_t));
     }
 
-    memcpy(&transforms[geomIndex], &info.transform, sizeof(VkTransformMatrixKHR));
+    memcpy(mappedTransformData + geomIndex, &info.transform, sizeof(RgTransform));
 
     // use positions data in the final vertex buffer: AS won't be built using staging buffer
     VkDeviceAddress vertexDataDeviceAddress =
@@ -109,12 +111,12 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
     trData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
     trData.vertexData.deviceAddress = vertexDataDeviceAddress;
     trData.vertexStride = properties.positionStride;
-    trData.transformData.hostAddress = &transforms[geomIndex];
+    trData.transformData.deviceAddress = transforms.GetAddress() + geomIndex * sizeof(RgTransform);
 
     if (useIndices)
     {
         trData.indexType = VK_INDEX_TYPE_UINT32;
-        trData.indexData.hostAddress = &indices[indIndex];
+        trData.indexData.deviceAddress = indices.GetAddress() + indIndex * sizeof(uint32_t);
     }
     else
     {
@@ -149,10 +151,10 @@ void VertexCollector::CopyDataToStaging(const RgGeometryCreateInfo &info, uint32
         offsetof(ShVertexBufferDynamic, materialIds) :
         offsetof(ShVertexBufferStatic, materialIds);
 
-    void *positionsDst = mappedData + vertIndex * properties.positionStride;
+    void *positionsDst = mappedVertexData + vertIndex * properties.positionStride;
     memcpy(positionsDst, info.vertexData, info.vertexCount * properties.positionStride);
 
-    void *normalsDst = mappedData + offsetNormals + vertIndex * properties.normalStride;
+    void *normalsDst = mappedVertexData + offsetNormals + vertIndex * properties.normalStride;
     if (info.normalData != nullptr)
     {
         memcpy(normalsDst, info.normalData, info.vertexCount * properties.normalStride);
@@ -163,7 +165,7 @@ void VertexCollector::CopyDataToStaging(const RgGeometryCreateInfo &info, uint32
         memset(normalsDst, 0, info.vertexCount * properties.normalStride);
     }
 
-    void *texCoordDst = mappedData + offsetTexCoords + vertIndex * properties.texCoordStride;
+    void *texCoordDst = mappedVertexData + offsetTexCoords + vertIndex * properties.texCoordStride;
     if (info.texCoordData != nullptr)
     {
         memcpy(texCoordDst, info.texCoordData, info.vertexCount * properties.texCoordStride);
@@ -173,7 +175,7 @@ void VertexCollector::CopyDataToStaging(const RgGeometryCreateInfo &info, uint32
         memset(texCoordDst, 0, info.vertexCount * properties.texCoordStride);
     }
 
-    void *colorDst = mappedData + offsetColors + vertIndex * properties.colorStride;
+    void *colorDst = mappedVertexData + offsetColors + vertIndex * properties.colorStride;
     if (info.colorData != nullptr)
     {
         memcpy(colorDst, info.colorData, info.vertexCount * properties.colorStride);
@@ -184,7 +186,7 @@ void VertexCollector::CopyDataToStaging(const RgGeometryCreateInfo &info, uint32
         memset(colorDst, 0xFF, info.vertexCount * properties.colorStride);
     }
 
-    void *matDst = mappedData + offsetMaterials + vertIndex * sizeof(RgLayeredMaterial);
+    void *matDst = mappedVertexData + offsetMaterials + vertIndex * sizeof(RgLayeredMaterial);
     if (info.triangleMaterials != nullptr)
     {
         memcpy(matDst, info.triangleMaterials, info.vertexCount * sizeof(RgLayeredMaterial));
@@ -208,14 +210,14 @@ void VertexCollector::EndCollecting()
 
 void VertexCollector::Reset()
 {
-    mappedData = nullptr;
+    mappedVertexData = nullptr;
+    mappedIndexData = nullptr;
+    mappedTransformData = nullptr;
 
     curVertexCount = 0;
     curIndexCount = 0;
     curGeometryCount = 0;
 
-    indices.clear();
-    transforms.clear();
     asGeometryTypes.clear();
     asGeometries.clear();
     asBuildOffsetInfos.clear();
@@ -277,11 +279,12 @@ void VertexCollector::GetCopyInfos(bool isStatic, std::vector<VkBufferCopy> &out
 
 void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &transform)
 {
-    assert(geomIndex < rgTypes.size() && geomIndex < transforms.size());
+    assert(geomIndex < rgTypes.size() && geomIndex < MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT);
+    assert(mappedTransformData != nullptr);
 
-    if (rgTypes[geomIndex] != RG_GEOMETRY_TYPE_STATIC)
+    if (rgTypes[geomIndex] == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
     {
-        memcpy(&transforms[geomIndex], &transform, sizeof(RgTransform));
+        memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
     }
 }
 

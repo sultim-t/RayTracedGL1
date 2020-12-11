@@ -8,6 +8,7 @@ class VertexCollectorFiltered : public VertexCollector
 {
 public:
     explicit VertexCollectorFiltered(
+        VkDevice device, const PhysicalDevice &physDevice,
         std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, 
         const VBProperties &properties, RgGeometryType filter);
 

@@ -11,7 +11,6 @@
 #include "Swapchain.h"
 #include "Queues.h"
 #include "GlobalUniform.h"
-#include "VertexBufferManager.h"
 
 class VulkanDevice
 {
@@ -36,6 +35,8 @@ private:
     void DestroyInstance();
     void DestroyDevice();
     void DestroySyncPrimitives();
+
+    void BeginFrame();
 
 private:
     VkInstance          instance;

@@ -1,35 +1,39 @@
 #pragma once
+
 #include "ASBuilder.h"
 #include "VertexCollectorFiltered.h"
 #include "CommandBufferManager.h"
 #include "ScratchBuffer.h"
 
-class VertexBufferManager
+class ASManager
 {
 public:
-    VertexBufferManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice,
+    ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice,
                         std::shared_ptr<CommandBufferManager> cmdManager, 
                         const RgInstanceCreateInfo &info);
-    ~VertexBufferManager();
+    ~ASManager();
 
     void BeginStaticGeometry();
-    void AddStaticGeometry(const RgGeometryCreateInfo &info);
+    uint32_t AddStaticGeometry(const RgGeometryCreateInfo &info);
     // Submitting static geometry to the building is a heavy operation
     // with waiting for it to complete.
     void SubmitStaticGeometry();
 
     void BeginDynamicGeometry(uint32_t frameIndex);
-    void AddDynamicGeometry(const RgGeometryCreateInfo &info);
-    void SubmitDynamicGeometry(VkCommandBuffer cmd);
+    uint32_t AddDynamicGeometry(const RgGeometryCreateInfo &info, uint32_t frameIndex);
+    void SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex);
 
     // Update transform for static movable geometry
     void UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform);
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 
-    VkAccelerationStructureKHR GetStaticBLAS() const { return staticBlas.as; }
-    VkAccelerationStructureKHR GetStaticMovableBLAS() const { return staticMovableBlas.as; }
-    VkAccelerationStructureKHR GetDynamicBLAS(uint32_t frameIndex) const { return dynamicBlas[frameIndex].as; }
+    //VkAccelerationStructureKHR GetStaticBLAS() const { return staticBlas.as; }
+    //VkAccelerationStructureKHR GetStaticMovableBLAS() const { return staticMovableBlas.as; }
+    //VkAccelerationStructureKHR GetDynamicBLAS(uint32_t frameIndex) const { return dynamicBlas[frameIndex].as; }
+
+    void BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex);
+    VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const { return descSets[frameIndex]; }
 
 private:
     struct AccelerationStructure
@@ -41,15 +45,16 @@ private:
 private:
     void CreateDescriptors();
 
-    uint32_t AddGeometry(const RgGeometryCreateInfo &info);
-
     void AllocBindASMemory(AccelerationStructure &as);
     void DestroyAS(AccelerationStructure &as);
+    VkDeviceAddress GetASAddress(const AccelerationStructure &as);
+    VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);
 
 private:
     VkDevice device;
     std::shared_ptr<PhysicalDevice> physDevice;
 
+    // for 
     uint32_t currentFrameIndex;
 
     // buffers for static, movable static geometry
@@ -75,6 +80,11 @@ private:
     AccelerationStructure staticMovableBlas;
     AccelerationStructure dynamicBlas[MAX_FRAMES_IN_FLIGHT];
 
+    // top level AS
+    Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];
+    AccelerationStructure tlas;
+
+    // TLAS descriptors
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;
     VkDescriptorSet descSets[MAX_FRAMES_IN_FLIGHT];

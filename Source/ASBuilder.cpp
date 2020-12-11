@@ -38,6 +38,7 @@ void ASBuilder::AddBLAS(
 void ASBuilder::BuildBottomLevel(VkCommandBuffer cmd)
 {
     assert(bottomLBuildInfo.geomInfos.size() == bottomLBuildInfo.offsetInfos.size());
+    assert(!bottomLBuildInfo.geomInfos.empty());
 
     // build bottom level
     vksCmdBuildAccelerationStructureKHR(cmd, bottomLBuildInfo.geomInfos.size(), 
@@ -49,6 +50,53 @@ void ASBuilder::BuildBottomLevel(VkCommandBuffer cmd)
     scratchBuffer->Reset();
     bottomLBuildInfo.geomInfos.clear();
     bottomLBuildInfo.offsetInfos.clear();
+}
+
+void ASBuilder::AddTLAS(
+    VkAccelerationStructureKHR as,
+    const VkAccelerationStructureGeometryKHR **ppGeometry,
+    const VkAccelerationStructureBuildOffsetInfoKHR *offsetInfo,
+    bool fastTrace, bool update)
+{
+    // while building top level, bottom level must be not
+    assert(topLBuildInfo.geomInfos.size() == topLBuildInfo.offsetInfos.size() == 0);
+
+    VkBuildAccelerationStructureFlagsKHR buildFlags = fastTrace ?
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR :
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+
+    VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {};
+    buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
+    buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    buildInfo.flags = buildFlags;
+    buildInfo.update = update ? VK_TRUE : VK_FALSE;
+    buildInfo.srcAccelerationStructure = update ? as : VK_NULL_HANDLE;
+    buildInfo.dstAccelerationStructure = as;
+    buildInfo.scratchData.deviceAddress = scratchBuffer->GetScratchAddress(as, update);
+    buildInfo.geometryCount = 1;
+    // buildInfo.pGeometries = *ppGeometries;
+    buildInfo.geometryArrayOfPointers = VK_FALSE;
+    buildInfo.ppGeometries = ppGeometry;
+
+    topLBuildInfo.geomInfos.push_back(buildInfo);
+    topLBuildInfo.offsetInfos.push_back(offsetInfo);
+}
+
+void ASBuilder::BuildTopLevel(VkCommandBuffer cmd)
+{
+    assert(topLBuildInfo.geomInfos.size() == topLBuildInfo.offsetInfos.size());
+    assert(!topLBuildInfo.geomInfos.empty());
+
+    // build bottom level
+    vksCmdBuildAccelerationStructureKHR(cmd, topLBuildInfo.geomInfos.size(),
+                                        topLBuildInfo.geomInfos.data(), topLBuildInfo.offsetInfos.data());
+
+    // sync scratch buffer access
+    SyncScratch(cmd);
+
+    scratchBuffer->Reset();
+    topLBuildInfo.geomInfos.clear();
+    topLBuildInfo.offsetInfos.clear();
 }
 
 bool ASBuilder::IsEmpty() const

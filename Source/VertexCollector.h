@@ -9,8 +9,8 @@
 class VertexCollector
 {
 public:
-    explicit VertexCollector(std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
-    virtual ~VertexCollector();
+    explicit VertexCollector(VkDevice device, const PhysicalDevice &physDevice, std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
+    virtual ~VertexCollector() = default;
 
     void BeginCollecting();
     uint32_t AddGeometry(const RgGeometryCreateInfo &info);
@@ -49,10 +49,13 @@ private:
     std::weak_ptr<Buffer> stagingVertBuffer;
     std::weak_ptr<Buffer> vertBuffer;
 
-    uint8_t *mappedData;
+    uint8_t *mappedVertexData;
+    uint32_t *mappedIndexData;
+    VkTransformMatrixKHR *mappedTransformData;
     // blasGeometries have pointers to these vectors
-    std::vector<uint32_t> indices;
-    std::vector<VkTransformMatrixKHR> transforms;
+    Buffer indices;
+    Buffer transforms;
+
     // used to determine Rg type of added geometry
     std::vector<RgGeometryType> rgTypes;
 

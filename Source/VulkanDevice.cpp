@@ -1,11 +1,85 @@
 #include "VulkanDevice.h"
 
+VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
+    enableValidationLayer(info->enableValidationLayer == RG_TRUE),
+    debugPrint(info->pfnDebugPrint),
+    currentFrameIndex(0)
+{
+    CreateInstance(info->ppWindowExtensions, info->windowExtensionCount);
+    physDevice = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
+    queues = std::make_shared<Queues>(physDevice->Get());
+
+    CreateDevice();
+    InitDeviceExtensionFunctions(device);
+    physDevice->SetDevice(device);
+    queues->InitQueues(device);
+    CreateSyncPrimitives();
+
+    cmdBufferManager = std::make_shared<CommandBufferManager>(device, queues);
+    uniformBuffers = std::make_shared<GlobalUniform>(device, *physDevice);
+
+    swapchain = std::make_shared<Swapchain>();
+
+
+
+
+}
+
+VulkanDevice::~VulkanDevice()
+{
+    DestroySyncPrimitives();
+    DestroyDevice();
+    DestroyInstance();
+}
+
+void VulkanDevice::BeginFrame()
+{
+    currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    cmdBufferManager->PrepareForFrame(currentFrameIndex);
+
+
+
+
+}
+
+RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
+{
+    
+}
+
+
+RgResult VulkanDevice::CreateGeometry(const RgGeometryCreateInfo *createInfo, RgGeometry *result)
+{
+
+}
+
+RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
+{
+
+}
+
+RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
+{
+
+}
+
+
+
+
+#pragma region init / destroy
+
 VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
     const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
     void *pUserData)
 {
+    if (pUserData == nullptr)
+    {
+        return;
+    }
+
     const char *msg;
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
@@ -36,56 +110,6 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
     fnPrint(buf);
 
     return VK_FALSE;
-}
-
-VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
-    enableValidationLayer(info->enableValidationLayer == RG_TRUE),
-    debugPrint(info->pfnDebugPrint)
-{
-    CreateInstance(info->ppWindowExtensions, info->windowExtensionCount);
-
-    physDevice = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
-    queues = std::make_shared<Queues>(physDevice->Get());
-
-    CreateDevice();
-    InitDeviceExtensionFunctions(device);
-
-    physDevice->SetDevice(device);
-
-    queues->InitQueues(device);
-
-    CreateSyncPrimitives();
-
-    cmdBufferManager = std::make_shared<CommandBufferManager>(device, queues);
-
-    uniformBuffers = std::make_shared<GlobalUniform>(device, *physDevice);
-}
-
-VulkanDevice::~VulkanDevice()
-{
-    DestroySyncPrimitives();
-    DestroyDevice();
-    DestroyInstance();
-}
-
-RgResult VulkanDevice::CreateGeometry(const RgGeometryCreateInfo *createInfo, RgGeometry *result)
-{
-    
-}
-
-RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
-{
-    
-}
-
-RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
-{
-    
-}
-
-RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
-{
-    
 }
 
 void VulkanDevice::CreateInstance(const char **ppWindowExtensions, uint32_t extensionCount)
@@ -304,3 +328,5 @@ void VulkanDevice::DestroySyncPrimitives()
         vkDestroyFence(device, frameFences[i], nullptr);
     }
 }
+
+#pragma endregion 

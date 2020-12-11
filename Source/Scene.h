@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Common.h"
-#include "VertexBufferManager.h"
+#include "ASManager.h"
 
 class Scene
 {
@@ -9,6 +9,6 @@ public:
     explicit Scene();
 
 private:
-    std::shared_ptr<VertexBufferManager> vertexBufferManager;
+    std::shared_ptr<ASManager> asManager;
 
 };
