@@ -2,21 +2,37 @@
 #include <utility>
 
 VertexCollectorFiltered::VertexCollectorFiltered(
-    std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties, RgGeometryType filter)
-    : VertexCollector(std::move(vertBuffer), properties)
+    std::shared_ptr<Buffer> stagingVertBuffer,
+    std::shared_ptr<Buffer> vertBuffer,
+    const VBProperties &properties, RgGeometryType filter)
+    : VertexCollector(std::move(stagingVertBuffer), std::move(vertBuffer), properties)
 {
     this->filter = filter;
 }
 
-const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollectorFiltered::GetBlasGeometriesFiltered() const
+const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollectorFiltered::GetASGeometriesFiltered() const
 {
     return geomsFiltered;
 }
 
 const std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR> &VertexCollectorFiltered::
-GetBlasGeometriyTypesFiltered() const
+GetASGeometryTypesFiltered() const
 {
     return geomTypesFiltered;
+}
+
+const std::vector<VkAccelerationStructureBuildOffsetInfoKHR> &VertexCollectorFiltered::GetASBuildOffsetInfosFiltered() const
+{
+    return buildOffsetInfosFiltered;
+}
+
+void VertexCollectorFiltered::Reset()
+{
+    VertexCollector::Reset();
+
+    geomTypesFiltered.clear();
+    geomsFiltered.clear();
+    buildOffsetInfosFiltered.clear();
 }
 
 void VertexCollectorFiltered::PushGeometryType(RgGeometryType type,
@@ -41,5 +57,18 @@ void VertexCollectorFiltered::PushGeometry(RgGeometryType type, const VkAccelera
     else
     {
         VertexCollector::PushGeometry(type, geom);
+    }
+}
+
+void VertexCollectorFiltered::PushOffsetInfo(RgGeometryType type,
+    const VkAccelerationStructureBuildOffsetInfoKHR& offsetInfo)
+{
+    if (type == filter)
+    {
+        buildOffsetInfosFiltered.push_back(offsetInfo);
+    }
+    else
+    {
+        VertexCollector::PushOffsetInfo(type, offsetInfo);
     }
 }

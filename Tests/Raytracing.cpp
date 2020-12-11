@@ -837,7 +837,7 @@ void CreateBottomAS(bool fastTrace)
 
     // scratch data sync
     VkMemoryBarrier memBarrier = {};
-    memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
+    memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
     memBarrier.srcAccessMask = 
         VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR | 
         VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;

@@ -13,12 +13,22 @@ public:
 
     void PrepareForFrame(uint32_t frameIndex);
 
+    // Start graphics command buffer for current frame index
     VkCommandBuffer StartGraphicsCmd();
+    // Start compute command buffer for current frame index
     VkCommandBuffer StartComputeCmd();
+    // Start transfer command buffer for current frame index
     VkCommandBuffer StartTransferCmd();
 
     void Submit(VkCommandBuffer cmd, VkFence fence = VK_NULL_HANDLE);
     void Submit(VkCommandBuffer cmd, VkSemaphore waitSemaphore, VkPipelineStageFlags waitStages, VkSemaphore signalSemaphore, VkFence fence);
+
+    void WaitForFence(VkFence fence);
+
+    void WaitGraphicsIdle();
+    void WaitComputeIdle();
+    void WaitTransferIdle();
+    void WaitDeviceIdle();
 
 private:
     VkCommandBuffer StartCmd(uint32_t frameIndex, VkCommandPool cmdPool, VkQueue queue);

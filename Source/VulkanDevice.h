@@ -45,7 +45,6 @@ private:
     // [0..MAX_FRAMES_IN_FLIGHT-1]
     uint32_t            currentFrameIndex;
 
-    VkFence             stagingStaticGeomFence;
     VkFence             frameFences[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore         renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];

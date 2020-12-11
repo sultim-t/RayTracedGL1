@@ -18,6 +18,8 @@ public:
     VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements &memReqs, bool addressQuery = false) const;
     VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements2 &memReqs2, bool addressQuery = false) const;
 
+    void FreeDeviceMemory(VkDeviceMemory memory) const;
+
 private:
     VkDevice device;
     // selected physical device

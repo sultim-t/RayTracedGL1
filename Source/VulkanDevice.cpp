@@ -277,9 +277,6 @@ void VulkanDevice::CreateSyncPrimitives()
         r = vkCreateFence(device, &fenceInfo, nullptr, &frameFences[i]);
         VK_CHECKERROR(r);
     }
-
-    r = vkCreateFence(device, &fenceInfo, nullptr, &stagingStaticGeomFence);
-    VK_CHECKERROR(r);
 }
 
 void VulkanDevice::DestroyInstance()
@@ -306,6 +303,4 @@ void VulkanDevice::DestroySyncPrimitives()
 
         vkDestroyFence(device, frameFences[i], nullptr);
     }
-
-    vkDestroyFence(device, stagingStaticGeomFence, nullptr);
 }

@@ -86,6 +86,11 @@ VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements2& me
     return AllocDeviceMemory(memReqs2.memoryRequirements, addressQuery);
 }
 
+void PhysicalDevice::FreeDeviceMemory(VkDeviceMemory memory) const
+{
+    vkFreeMemory(device, memory, nullptr);
+}
+
 VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
 {
     return memoryProperties;

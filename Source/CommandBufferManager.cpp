@@ -143,3 +143,41 @@ void CommandBufferManager::Submit(VkCommandBuffer cmd, VkSemaphore waitSemaphore
     r = vkQueueSubmit(q, 1, &submitInfo, fence);
     VK_CHECKERROR(r);
 }
+
+void CommandBufferManager::WaitForFence(VkFence fence)
+{
+    VkResult r = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+    VK_CHECKERROR(r);
+}
+
+void CommandBufferManager::WaitGraphicsIdle()
+{
+    if (auto qs = queues.lock())
+    {
+        VkResult r = vkQueueWaitIdle(qs->GetGraphics());
+        VK_CHECKERROR(r);
+    }
+}
+
+void CommandBufferManager::WaitComputeIdle()
+{
+    if (auto qs = queues.lock())
+    {
+        VkResult r = vkQueueWaitIdle(qs->GetCompute());
+        VK_CHECKERROR(r);
+    }
+}
+
+void CommandBufferManager::WaitTransferIdle()
+{
+    if (auto qs = queues.lock())
+    {
+        VkResult r = vkQueueWaitIdle(qs->GetTransfer());
+        VK_CHECKERROR(r);
+    }
+}
+
+void CommandBufferManager::WaitDeviceIdle()
+{
+    vkDeviceWaitIdle(device);
+}
