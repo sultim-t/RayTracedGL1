@@ -12,8 +12,13 @@ public:
     explicit VertexCollector(VkDevice device, const PhysicalDevice &physDevice, std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
     virtual ~VertexCollector() = default;
 
+    VertexCollector(const VertexCollector& other) = delete;
+    VertexCollector(VertexCollector&& other) noexcept = delete;
+    VertexCollector& operator=(const VertexCollector& other) = delete;
+    VertexCollector& operator=(VertexCollector&& other) noexcept = delete;
+
     void BeginCollecting();
-    uint32_t AddGeometry(const RgGeometryCreateInfo &info);
+    uint32_t AddGeometry(const RgGeometryUploadInfo &info);
     void EndCollecting();
 
     const std::vector<VkAccelerationStructureGeometryKHR>
@@ -39,7 +44,7 @@ protected:
     virtual void PushOffsetInfo(RgGeometryType type, const VkAccelerationStructureBuildOffsetInfoKHR &offsetInfo);
 
 private:
-    void CopyDataToStaging(const RgGeometryCreateInfo &info, uint32_t vertIndex, bool isStatic);
+    void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
     void GetCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const;
 
 private:

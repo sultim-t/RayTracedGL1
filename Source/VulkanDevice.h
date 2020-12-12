@@ -11,6 +11,7 @@
 #include "Swapchain.h"
 #include "Queues.h"
 #include "GlobalUniform.h"
+#include "Rasterizer.h"
 
 class VulkanDevice
 {
@@ -18,9 +19,14 @@ public:
     explicit VulkanDevice(const RgInstanceCreateInfo *info);
     ~VulkanDevice();
 
-    RgResult CreateGeometry(const RgGeometryCreateInfo *createInfo,
-                            RgGeometry *result);
+    VulkanDevice(const VulkanDevice& other) = delete;
+    VulkanDevice(VulkanDevice&& other) noexcept = delete;
+    VulkanDevice& operator=(const VulkanDevice& other) = delete;
+    VulkanDevice& operator=(VulkanDevice&& other) noexcept = delete;
+
+    RgResult UploadGeometry(const RgGeometryUploadInfo *uploadInfo, RgGeometry *result);
     RgResult UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
+
     RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo);
 
     // TODO: empty (white) texture 1x1 with index 0 (RG_NO_TEXTURE)
@@ -37,6 +43,9 @@ private:
     void DestroySyncPrimitives();
 
     void BeginFrame();
+    void TracePaths();
+    void Rasterize();
+    void EndFrame();
 
 private:
     VkInstance          instance;
@@ -58,6 +67,7 @@ private:
 
     std::shared_ptr<GlobalUniform>          uniformBuffers;
     std::shared_ptr<Scene>                  scene;
+    std::shared_ptr<Rasterizer>             rasterizer;
 
     bool                                    enableValidationLayer;
     VkDebugUtilsMessengerEXT                debugMessenger;

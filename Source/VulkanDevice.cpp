@@ -12,7 +12,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     CreateDevice();
     InitDeviceExtensionFunctions(device);
     physDevice->SetDevice(device);
-    queues->InitQueues(device);
+    queues->SetDevice(device);
     CreateSyncPrimitives();
 
     cmdBufferManager = std::make_shared<CommandBufferManager>(device, queues);
@@ -36,32 +36,90 @@ void VulkanDevice::BeginFrame()
 {
     currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
+    cmdBufferManager->WaitForFence(frameFences[currentFrameIndex]);
+    //swapchain->Acquire
+
     cmdBufferManager->PrepareForFrame(currentFrameIndex);
 
+    VkCommandBuffer cmd = cmdBufferManager->StartGraphicsCmd();
+
+    scene->PrepareForFrame(cmd);
+
+    //uniformBuffers->PrepareForFrame()
+}
+
+void VulkanDevice::TracePaths()
+{
+    //pathTrancer->Draw(cmd, scene, uniformBuffers)
 
 
 
 }
+
+void VulkanDevice::Rasterize()
+{
+    //rasterizer->Draw(cmd, uniformBuffers)
+
+
+}
+
+void VulkanDevice::EndFrame()
+{
+    //swapchain->BlitForPresent(cmd, <input image>, )
+    //cmdBufferManager->Submit(cmd,
+    //swapchain->Present(queues.graphics
+
+
+}
+
+// TODO: check all members of input structs
 
 RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 {
-    
+    BeginFrame();
+    TracePaths();
+    Rasterize();
+    EndFrame();
+
+    return RG_SUCCESS;
 }
 
 
-RgResult VulkanDevice::CreateGeometry(const RgGeometryCreateInfo *createInfo, RgGeometry *result)
+RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, RgGeometry *result)
 {
+    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0 || uploadInfo->indexCount == 0)
+    {
+        return RG_WRONG_ARGUMENT;
+    }
 
+    uint32_t geomId = scene->Upload(*uploadInfo);
+
+    *result = reinterpret_cast<RgGeometry>(geomId);
+    return RG_SUCCESS;
 }
 
 RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
 {
+    if (updateInfo == nullptr)
+    {
+        return RG_WRONG_ARGUMENT;
+    }
 
+    uint32_t geomId = reinterpret_cast<uint32_t>(updateInfo->movableStaticGeom);
+
+    scene->UpdateTransform(geomId, updateInfo->transform);
+    return RG_SUCCESS;
 }
 
 RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
 {
+    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0 || uploadInfo->indexCount == 0)
+    {
+        return RG_WRONG_ARGUMENT;
+    }
 
+    rasterizer->Upload(*uploadInfo);
+    return RG_SUCCESS;
 }
 
 
@@ -77,7 +135,7 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
 {
     if (pUserData == nullptr)
     {
-        return;
+        return VK_FALSE;
     }
 
     const char *msg;

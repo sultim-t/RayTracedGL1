@@ -7,6 +7,12 @@ class PhysicalDevice
 {
 public:
     explicit PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice);
+
+    PhysicalDevice(const PhysicalDevice& other) = delete;
+    PhysicalDevice(PhysicalDevice&& other) noexcept = delete;
+    PhysicalDevice& operator=(const PhysicalDevice& other) = delete;
+    PhysicalDevice& operator=(PhysicalDevice&& other) noexcept = delete;
+
     void SetDevice(VkDevice device);
 
     VkPhysicalDevice Get() const;

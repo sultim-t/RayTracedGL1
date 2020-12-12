@@ -1,9 +1,10 @@
 #include "GlobalUniform.h"
 #include "Generated/ShaderCommonC.h"
 
-GlobalUniform::GlobalUniform(VkDevice bdevice, const PhysicalDevice &physDevice, bool deviceLocal)
+GlobalUniform::GlobalUniform(VkDevice device, const PhysicalDevice &physDevice, bool deviceLocal)
 {
-    device = bdevice;
+    this->device = device;
+    this->uniformData = std::make_shared<ShGlobalUniform>();
 
     const VkDeviceSize size = sizeof(ShGlobalUniform);
 
@@ -13,10 +14,15 @@ GlobalUniform::GlobalUniform(VkDevice bdevice, const PhysicalDevice &physDevice,
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        uniformBuffers[i].Init(bdevice, physDevice, size,
-                           VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, properties);
+        uniformBuffers[i].Init(device, physDevice, size,
+                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, properties);
     }
 
+    CreateDescriptors();
+}
+
+void GlobalUniform::CreateDescriptors()
+{
     VkResult r;
 
     // create descriptor layout for uniform buffer
@@ -89,7 +95,27 @@ GlobalUniform::~GlobalUniform()
     vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
 }
 
-void GlobalUniform::SetData(uint32_t frameIndex, const void* data, VkDeviceSize dataSize)
+void GlobalUniform::Upload(uint32_t frameIndex)
+{
+    SetData(frameIndex, uniformData.get(), sizeof(ShGlobalUniform));
+}
+
+ShGlobalUniform *GlobalUniform::GetData()
+{
+    return uniformData.get();
+}
+
+const ShGlobalUniform *GlobalUniform::GetData() const
+{
+    return uniformData.get();
+}
+
+VkDescriptorSet GlobalUniform::GetDescSet(uint32_t frameIndex) const
+{
+    return descSets[frameIndex];
+}
+
+void GlobalUniform::SetData(uint32_t frameIndex, const void *data, VkDeviceSize dataSize)
 {
     assert(frameIndex >= 0 && frameIndex < MAX_FRAMES_IN_FLIGHT);
     assert(uniformBuffers[frameIndex].GetSize() <= dataSize);
@@ -99,4 +125,4 @@ void GlobalUniform::SetData(uint32_t frameIndex, const void* data, VkDeviceSize 
 
     uniformBuffers[frameIndex].Unmap();
 }
-     
+

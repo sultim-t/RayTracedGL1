@@ -13,14 +13,19 @@ public:
                         const RgInstanceCreateInfo &info);
     ~ASManager();
 
+    ASManager(const ASManager& other) = delete;
+    ASManager(ASManager&& other) noexcept = delete;
+    ASManager& operator=(const ASManager& other) = delete;
+    ASManager& operator=(ASManager&& other) noexcept = delete;
+
     void BeginStaticGeometry();
-    uint32_t AddStaticGeometry(const RgGeometryCreateInfo &info);
+    uint32_t AddStaticGeometry(const RgGeometryUploadInfo &info);
     // Submitting static geometry to the building is a heavy operation
     // with waiting for it to complete.
     void SubmitStaticGeometry();
 
     void BeginDynamicGeometry(uint32_t frameIndex);
-    uint32_t AddDynamicGeometry(const RgGeometryCreateInfo &info, uint32_t frameIndex);
+    uint32_t AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_t frameIndex);
     void SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex);
 
     // Update transform for static movable geometry
@@ -33,7 +38,8 @@ public:
     //VkAccelerationStructureKHR GetDynamicBLAS(uint32_t frameIndex) const { return dynamicBlas[frameIndex].as; }
 
     void BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex);
-    VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const { return descSets[frameIndex]; }
+    VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const { return buffersDescSets[frameIndex]; }
+    VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const { return asDescSets[frameIndex]; }
 
 private:
     struct AccelerationStructure
@@ -44,6 +50,8 @@ private:
 
 private:
     void CreateDescriptors();
+    void UpdateBufferDescriptors();
+    void UpdateASDescriptors(uint32_t frameIndex);
 
     void AllocBindASMemory(AccelerationStructure &as);
     void DestroyAS(AccelerationStructure &as);
@@ -82,12 +90,14 @@ private:
 
     // top level AS
     Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];
-    AccelerationStructure tlas;
+    AccelerationStructure tlas[MAX_FRAMES_IN_FLIGHT];
 
-    // TLAS descriptors
-    VkDescriptorSetLayout descSetLayout;
+    // TLAS and buffer descriptors
     VkDescriptorPool descPool;
-    VkDescriptorSet descSets[MAX_FRAMES_IN_FLIGHT];
+    VkDescriptorSetLayout buffersDescSetLayout;
+    VkDescriptorSetLayout asDescSetLayout;
+    VkDescriptorSet buffersDescSets[MAX_FRAMES_IN_FLIGHT];
+    VkDescriptorSet asDescSets[MAX_FRAMES_IN_FLIGHT];
 
     VBProperties properties;
 };

@@ -10,6 +10,11 @@ public:
     explicit RayTracingPipeline(VkDevice device, const PhysicalDevice &physDevice, const ShaderManager &shaderManager);
     ~RayTracingPipeline();
 
+    RayTracingPipeline(const RayTracingPipeline& other) = delete;
+    RayTracingPipeline(RayTracingPipeline&& other) noexcept = delete;
+    RayTracingPipeline& operator=(const RayTracingPipeline& other) = delete;
+    RayTracingPipeline& operator=(RayTracingPipeline&& other) noexcept = delete;
+
     void GetEntries(VkStridedBufferRegionKHR &raygenEntry,
                     VkStridedBufferRegionKHR &missEntry,
                     VkStridedBufferRegionKHR &hitEntry,

@@ -8,6 +8,11 @@ class ScratchBuffer
 public:
     explicit ScratchBuffer(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice);
 
+    ScratchBuffer(const ScratchBuffer& other) = delete;
+    ScratchBuffer(ScratchBuffer&& other) noexcept = delete;
+    ScratchBuffer& operator=(const ScratchBuffer& other) = delete;
+    ScratchBuffer& operator=(ScratchBuffer&& other) noexcept = delete;
+
     // get scratch buffer address for given acceleration structure
     VkDeviceAddress GetScratchAddress(VkAccelerationStructureKHR as, bool update = false);
     void Reset();

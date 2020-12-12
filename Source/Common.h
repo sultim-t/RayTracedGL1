@@ -81,6 +81,7 @@ void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type
     VK_CHECKERROR(r);
 }
 
+// TODO: remove VBProperties from here 
 struct VBProperties
 {
     bool vertexArrayOfStructs;

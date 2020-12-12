@@ -6,11 +6,16 @@
 class Queues
 {
 public:
-    explicit Queues(VkPhysicalDevice physDevice);
-    void InitQueues(VkDevice device);
+    explicit Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface);
+
+    Queues(const Queues& other) = delete;
+    Queues(Queues&& other) noexcept = delete;
+    Queues& operator=(const Queues& other) = delete;
+    Queues& operator=(Queues&& other) noexcept = delete;
+
+    void SetDevice(VkDevice device);
 
     void GetDeviceQueueCreateInfos(std::vector<VkDeviceQueueCreateInfo> &outInfos) const;
-    uint32_t GetQueueFamilyIndex(VkQueueFlagBits queueFlags) const;
 
     uint32_t GetIndexGraphics() const;
     uint32_t GetIndexCompute() const;

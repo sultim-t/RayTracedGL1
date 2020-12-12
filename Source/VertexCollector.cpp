@@ -31,10 +31,10 @@ void VertexCollector::BeginCollecting()
 
     mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.lock()->Map());
     mappedIndexData = static_cast<uint32_t *>(indices.Map());
-    mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map();
+    mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
 }
 
-uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
+uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 {
     if (stagingVertBuffer.expired() || vertBuffer.expired())
     {
@@ -136,7 +136,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryCreateInfo &info)
     return geomIndex;
 }
 
-void VertexCollector::CopyDataToStaging(const RgGeometryCreateInfo &info, uint32_t vertIndex, bool isStatic)
+void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic)
 {
     const uint32_t offsetNormals = isStatic ?
         offsetof(ShVertexBufferDynamic, normals) :

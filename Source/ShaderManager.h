@@ -1,19 +1,23 @@
 #pragma once
 
-#include <vector>
 #include <map>
 #include <string>
 
 #include "Common.h"
 
+// This class provides shader modules by their name
 class ShaderManager
 {
 public:
     explicit ShaderManager(VkDevice device);
     ~ShaderManager();
 
-    void LoadShaderModules();
-    void UnloadShaderModules();
+    ShaderManager(const ShaderManager& other) = delete;
+    ShaderManager(ShaderManager&& other) noexcept = delete;
+    ShaderManager& operator=(const ShaderManager& other) = delete;
+    ShaderManager& operator=(ShaderManager&& other) noexcept = delete;
+
+    void ReloadShaders();
 
     VkShaderModule GetShaderModule(const char *name) const;
     VkShaderStageFlagBits GetModuleStage(const char *name) const;
@@ -27,7 +31,9 @@ private:
     };
 
 private:
-    VkShaderModule LoadModule(const char *path);
+    VkShaderModule LoadModuleFromFile(const char *path);
+    void LoadShaderModules();
+    void UnloadShaderModules();
 
 private:
     VkDevice device;

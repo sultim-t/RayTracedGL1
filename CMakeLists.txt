@@ -15,9 +15,11 @@ set(PublicHeaders
     Include/RTGL1/RTGL1A.h
 )
 
+#set(PrivateHeaders 
+#    "Source/Common.h")
+
 set(Sources
-    Source/RTGL1.cpp
-    Source/RTGL1A.cpp "Source/VulkanDevice.cpp" "Source/Buffer.cpp" "Source/Scene.cpp" "Source/PhysicalDevice.cpp" "Source/Queues.cpp" "Source/Swapchain.cpp" "Source/GlobalUniform.cpp" "Source/CommandBufferManager.cpp" "Source/ShaderManager.cpp" "Source/RayTracingPipeline.cpp" "Source/VertexCollector.cpp" "Source/ASManager.cpp" "Source/VertexCollectorFiltered.cpp" "Source/ASBuilder.cpp" "Source/ScratchBuffer.cpp")
+    "Source/RTGL1.cpp" "Source/RTGL1A.cpp" "Source/VulkanDevice.cpp" "Source/Buffer.cpp" "Source/Scene.cpp" "Source/PhysicalDevice.cpp" "Source/Queues.cpp" "Source/Swapchain.cpp" "Source/GlobalUniform.cpp" "Source/CommandBufferManager.cpp" "Source/ShaderManager.cpp" "Source/RayTracingPipeline.cpp" "Source/VertexCollector.cpp" "Source/ASManager.cpp" "Source/VertexCollectorFiltered.cpp" "Source/ASBuilder.cpp" "Source/ScratchBuffer.cpp" "Source/Utils.cpp")
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}

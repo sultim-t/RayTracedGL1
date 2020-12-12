@@ -11,6 +11,11 @@ public:
     explicit CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues);
     ~CommandBufferManager();
 
+    CommandBufferManager(const CommandBufferManager& other) = delete;
+    CommandBufferManager(CommandBufferManager&& other) noexcept = delete;
+    CommandBufferManager& operator=(const CommandBufferManager& other) = delete;
+    CommandBufferManager& operator=(CommandBufferManager&& other) noexcept = delete;
+
     void PrepareForFrame(uint32_t frameIndex);
 
     // Start graphics command buffer for current frame index

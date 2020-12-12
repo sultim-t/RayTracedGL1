@@ -1,41 +1,5 @@
 #include "Queues.h"
 
-uint32_t Queues::GetQueueFamilyIndex(VkQueueFlagBits queueFlags) const
-{
-    if (queueFlags & VK_QUEUE_COMPUTE_BIT)
-    {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-        {
-            if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0))
-            {
-                return i;
-            }
-        }
-    }
-
-    if (queueFlags & VK_QUEUE_TRANSFER_BIT)
-    {
-        for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-        {
-            if ((queueFamilyProperties[i].queueFlags & queueFlags) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_GRAPHICS_BIT) == 0) && ((queueFamilyProperties[i].queueFlags & VK_QUEUE_COMPUTE_BIT) == 0))
-            {
-                return i;
-            }
-        }
-    }
-
-    for (uint32_t i = 0; i < static_cast<uint32_t>(queueFamilyProperties.size()); i++)
-    {
-        if (queueFamilyProperties[i].queueFlags & queueFlags)
-        {
-            return i;
-        }
-    }
-
-    assert(0);
-    return 0;
-}
-
 uint32_t Queues::GetIndexGraphics() const
 {
     return indexGraphics;
@@ -66,7 +30,7 @@ VkQueue Queues::GetTransfer() const
     return transfer;
 }
 
-Queues::Queues(VkPhysicalDevice physDevice)
+Queues::Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface)
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &queueFamilyCount, nullptr);
@@ -75,21 +39,43 @@ Queues::Queues(VkPhysicalDevice physDevice)
     queueFamilyProperties.resize(queueFamilyCount);
     vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &queueFamilyCount, queueFamilyProperties.data());
 
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
+    for (uint32_t i = 0; i < queueFamilyProperties.size(); i++)
+    {
+        auto flags = queueFamilyProperties[i].queueFlags;
 
-    VkDeviceQueueCreateInfo queueInfo = {};
-    const float defaultQueuePriority = 0;
+        VkBool32 presentSupported;
+        VkResult r = vkGetPhysicalDeviceSurfaceSupportKHR(physDevice, i, surface, &presentSupported);
+        VK_CHECKERROR(r);
 
-    indexGraphics = GetQueueFamilyIndex(VK_QUEUE_GRAPHICS_BIT);
-    indexCompute = GetQueueFamilyIndex(VK_QUEUE_COMPUTE_BIT);
-    indexTransfer = GetQueueFamilyIndex(VK_QUEUE_TRANSFER_BIT);
+        if ((flags & VK_QUEUE_GRAPHICS_BIT) != 0 &&
+            (flags & VK_QUEUE_COMPUTE_BIT)  != 0 &&
+            (flags & VK_QUEUE_TRANSFER_BIT) != 0 &&
+            presentSupported)
+        {
+            indexGraphics = i;
+        }
+
+        if ((flags & VK_QUEUE_GRAPHICS_BIT) == 0 &&
+            (flags & VK_QUEUE_COMPUTE_BIT)  != 0 &&
+            (flags & VK_QUEUE_TRANSFER_BIT) == 0)
+        {
+            indexCompute = i;
+        }
+
+        if ((flags & VK_QUEUE_GRAPHICS_BIT) == 0 &&
+            (flags & VK_QUEUE_COMPUTE_BIT)  == 0 &&
+            (flags & VK_QUEUE_TRANSFER_BIT) != 0)
+        {
+            indexTransfer = i;
+        }
+    }
 
     graphics = VK_NULL_HANDLE;
     compute = VK_NULL_HANDLE;
     transfer = VK_NULL_HANDLE;
 }
 
-void Queues::InitQueues(VkDevice device)
+void Queues::SetDevice(VkDevice device)
 {
     vkGetDeviceQueue(device, indexGraphics, 0, &graphics);
     vkGetDeviceQueue(device, indexCompute, 0, &compute);

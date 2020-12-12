@@ -76,6 +76,9 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
 
     CreateDescriptors();
 
+    // buffers won't be changing, update once
+    UpdateBufferDescriptors();
+
     VkFenceCreateInfo fenceInfo = {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = 0;
@@ -86,37 +89,61 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
 void ASManager::CreateDescriptors()
 {
     VkResult r;
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
 
-    // static
-    bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
-    bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    bindings[0].descriptorCount = 1;
-    bindings[0].stageFlags = VK_SHADER_STAGE_ALL;
+    {
+        std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
 
-    // dynamic
-    bindings[1].binding = BINDING_VERTEX_BUFFER_DYNAMIC;
-    bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    bindings[1].descriptorCount = 2;
-    bindings[1].stageFlags = VK_SHADER_STAGE_ALL;
+        // static
+        bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
+        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[0].descriptorCount = 1;
+        bindings[0].stageFlags = VK_SHADER_STAGE_ALL;
 
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = bindings.size();
-    layoutInfo.pBindings = bindings.data();
+        // dynamic
+        bindings[1].binding = BINDING_VERTEX_BUFFER_DYNAMIC;
+        bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[1].descriptorCount = 1;
+        bindings[1].stageFlags = VK_SHADER_STAGE_ALL;
 
-    r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
-    VK_CHECKERROR(r);
+        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = bindings.size();
+        layoutInfo.pBindings = bindings.data();
 
-    VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
+        r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &buffersDescSetLayout);
+        VK_CHECKERROR(r);
+    }
+
+    {
+        std::array<VkDescriptorSetLayoutBinding, 1> bindings{};
+
+        bindings[0].binding = BINDING_ACCELERATION_STRUCTURE;
+        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        bindings[0].descriptorCount = 1;
+        bindings[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+        layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        layoutInfo.bindingCount = bindings.size();
+        layoutInfo.pBindings = bindings.data();
+
+        r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &asDescSetLayout);
+        VK_CHECKERROR(r);
+    }
+
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
+
+    poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+
+    poolSizes[1].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
 
     VkDescriptorPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
+    poolInfo.poolSizeCount = poolSizes.size();
+    poolInfo.pPoolSizes = poolSizes.data();
+    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT * 2;
 
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
@@ -124,14 +151,24 @@ void ASManager::CreateDescriptors()
     VkDescriptorSetAllocateInfo descSetInfo = {};
     descSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     descSetInfo.descriptorPool = descPool;
-    descSetInfo.descriptorSetCount = MAX_FRAMES_IN_FLIGHT;
-    descSetInfo.pSetLayouts = &descSetLayout;
+    descSetInfo.descriptorSetCount = 1;
 
-    r = vkAllocateDescriptorSets(device, &descSetInfo, descSets);
-    VK_CHECKERROR(r);
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        descSetInfo.pSetLayouts = &buffersDescSetLayout;
+        r = vkAllocateDescriptorSets(device, &descSetInfo, &buffersDescSets[i]);
+        VK_CHECKERROR(r);
 
-    // bind buffers to descriptors
+        descSetInfo.pSetLayouts = &asDescSetLayout;
+        r = vkAllocateDescriptorSets(device, &descSetInfo, &asDescSets[i]);
+        VK_CHECKERROR(r);
+    }
+}
+
+void ASManager::UpdateBufferDescriptors()
+{
     std::array<VkDescriptorBufferInfo, 2 * MAX_FRAMES_IN_FLIGHT> bufferInfos{};
+    std::array<VkWriteDescriptorSet, 2 * MAX_FRAMES_IN_FLIGHT> writes{};
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -144,34 +181,67 @@ void ASManager::CreateDescriptors()
         bufferInfos[i * 2 + 1].range = VK_WHOLE_SIZE;
     }
 
-
-    std::array<VkWriteDescriptorSet, bufferInfos.size()> writes{};
-
-    for (uint32_t i = 0; i < bufferInfos.size(); i++)
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        VkWriteDescriptorSet &w = writes[i];
-        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        w.dstSet = descSets[i];
-        w.dstBinding = BINDING_VERTEX_BUFFER_STATIC;
-        w.dstArrayElement = 0;
-        w.descriptorCount = 1;
-        w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        w.pBufferInfo = &bufferInfos[i];
+        VkWriteDescriptorSet &staticWrt = writes[i * 2];
+        staticWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        staticWrt.dstSet = buffersDescSets[i];
+        staticWrt.dstBinding = BINDING_VERTEX_BUFFER_STATIC;
+        staticWrt.dstArrayElement = 0;
+        staticWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        staticWrt.descriptorCount = 1;
+        staticWrt.pBufferInfo = &bufferInfos[i * 2];
+
+        VkWriteDescriptorSet &dynamicWrt = writes[i * 2 + 1];
+        dynamicWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        dynamicWrt.dstSet = buffersDescSets[i];
+        dynamicWrt.dstBinding = BINDING_VERTEX_BUFFER_DYNAMIC;
+        dynamicWrt.dstArrayElement = 0;
+        dynamicWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        dynamicWrt.descriptorCount = 1;
+        dynamicWrt.pBufferInfo = &bufferInfos[i * 2 + 1];
     }
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
 }
 
+void ASManager::UpdateASDescriptors(uint32_t frameIndex)
+{
+    std::array<VkWriteDescriptorSet, MAX_FRAMES_IN_FLIGHT> writes{};
+    std::array<VkWriteDescriptorSetAccelerationStructureKHR, MAX_FRAMES_IN_FLIGHT> asWrites{};
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        VkWriteDescriptorSetAccelerationStructureKHR &asWrt = asWrites[i];
+        asWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+        asWrt.accelerationStructureCount = 1;
+        asWrt.pAccelerationStructures = &tlas[frameIndex].as;
+
+        VkWriteDescriptorSet &wrt = writes[i];
+        wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        wrt.pNext = &asWrites[i];
+        wrt.dstSet = buffersDescSets[i];
+        wrt.dstBinding = BINDING_ACCELERATION_STRUCTURE;
+        wrt.dstArrayElement = 0;
+        wrt.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        wrt.descriptorCount = 1;
+    }
+
+    vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+
+}
+
 ASManager::~ASManager()
 {
     vkDestroyDescriptorPool(device, descPool, nullptr);
-    vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, buffersDescSetLayout, nullptr);
+    vkDestroyDescriptorSetLayout(device, asDescSetLayout, nullptr);
     vkDestroyFence(device, staticCopyFence, nullptr);
 }
 
 // separate functions to make adding between Begin..Geometry and Submit..Geometry a bit clearer
 
-uint32_t ASManager::AddStaticGeometry(const RgGeometryCreateInfo &info)
+uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
 {
     if (info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
     {
@@ -182,7 +252,7 @@ uint32_t ASManager::AddStaticGeometry(const RgGeometryCreateInfo &info)
     return 0;
 }
 
-uint32_t ASManager::AddDynamicGeometry(const RgGeometryCreateInfo &info, uint32_t frameIndex)
+uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_t frameIndex)
 {
     if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
@@ -388,10 +458,10 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     asInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
     asInfo.maxGeometryCount = 1;
     asInfo.pGeometryInfos = &geomTypeInfo;
-    r = vksCreateAccelerationStructureKHR(device, &asInfo, nullptr, &tlas.as);
+    r = vksCreateAccelerationStructureKHR(device, &asInfo, nullptr, &tlas[frameIndex].as);
     VK_CHECKERROR(r);
 
-    AllocBindASMemory(tlas);
+    AllocBindASMemory(tlas[frameIndex]);
 
     assert(asBuilder->IsEmpty());
 
@@ -409,8 +479,10 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 
     const VkAccelerationStructureGeometryKHR *pGeometry = &instGeom;
 
-    asBuilder->AddTLAS(tlas.as, &pGeometry, &offset, true, false);
+    asBuilder->AddTLAS(tlas[frameIndex].as, &pGeometry, &offset, true, false);
     asBuilder->BuildTopLevel(cmd);
+
+    UpdateASDescriptors(frameIndex);
 }
 
 

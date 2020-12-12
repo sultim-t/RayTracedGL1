@@ -1,5 +1,7 @@
 #include "ShaderManager.h"
+
 #include <fstream>
+#include <vector>
 
 struct ShaderModuleDefinition
 {
@@ -22,6 +24,7 @@ static const uint32_t G_SHADERS_COUNT = sizeof(G_SHADERS) / sizeof(G_SHADERS[0])
 ShaderManager::ShaderManager(VkDevice device)
 {
     this->device = device;
+    LoadShaderModules();
 }
 
 ShaderManager::~ShaderManager()
@@ -29,11 +32,17 @@ ShaderManager::~ShaderManager()
     UnloadShaderModules();
 }
 
+void ShaderManager::ReloadShaders()
+{
+    UnloadShaderModules();
+    LoadShaderModules();
+}
+
 void ShaderManager::LoadShaderModules()
 {
     for (uint32_t i = 0; i < G_SHADERS_COUNT; i++)
     {
-        modules[G_SHADERS[i].name] = { LoadModule(G_SHADERS[i].path), G_SHADERS[i].stage};
+        modules[G_SHADERS[i].name] = { LoadModuleFromFile(G_SHADERS[i].path), G_SHADERS[i].stage};
     }
 }
 
@@ -70,7 +79,7 @@ VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo(const char* name) co
     return info;
 }
 
-VkShaderModule ShaderManager::LoadModule(const char* path)
+VkShaderModule ShaderManager::LoadModuleFromFile(const char* path)
 {
     std::ifstream shaderFile(path, std::ios::binary);
     std::vector<uint8_t> shaderSource(std::istreambuf_iterator<char>(shaderFile), {});

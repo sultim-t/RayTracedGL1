@@ -30,7 +30,8 @@ typedef enum RgResult
 {
     RG_SUCCESS,
     RG_ERROR,
-    RG_TOO_MANY_ISTANCES,
+    RG_WRONG_ARGUMENT,
+    RG_TOO_MANY_INSTANCES,
     RG_WRONG_INSTANCE
 } RgResult;
 
@@ -84,6 +85,11 @@ RgResult rgCreateInstance(
 RgResult rgDestroyInstance(
     RgInstance                  rgInstance);
 
+void rgUpdateWindowSize(
+    RgInstance                  rgInstance,
+    uint32_t                    width,
+    uint32_t                    height);
+
 typedef enum RgGeometryType
 {
     RG_GEOMETRY_TYPE_STATIC,
@@ -109,21 +115,22 @@ typedef struct RgTransform
     float       matrix[3][4];
 } RgTransform;
 
-typedef struct RgGeometryCreateInfo
+typedef struct RgGeometryUploadInfo
 {
     RgGeometryType          geomType;
 
     uint32_t                vertexCount;
-    // strides are set in RgInstanceCreateInfo
+    // strides are set in RgInstanceUploadInfo
     // 3 first floats will be used
     float                   *vertexData;
-    // 3 floats, can be null
+    // 3 floats; can be null
     float                   *normalData;
-    // 2 floats, can be null
+    // 2 floats; can be null
     float                   *texCoordData;
-    // RGBA packed into 32-bit uint, can be null
+    // RGBA packed into 32-bit uint; can be null
     uint32_t                *colorData;
 
+    // can be null, if indices are not used
     uint32_t                indexCount;
     uint32_t                *indexData;
 
@@ -137,7 +144,7 @@ typedef struct RgGeometryCreateInfo
     RgLayeredMaterial       *triangleMaterials;
 
     RgTransform             transform;
-} RgGeometryCreateInfo;
+} RgGeometryUploadInfo;
 
 typedef struct RgUpdateTransformInfo
 {
@@ -195,9 +202,9 @@ typedef struct RgRasterizedGeometryUploadInfo
     uint32_t            *indexData;
 } RgRasterizedGeometryUploadInfo;
 
-RgResult rgCreateGeometry(
+RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
-    const RgGeometryCreateInfo              *createInfo,
+    const RgGeometryUploadInfo              *uploadInfo,
     RgGeometry                              *result);
 
 RgResult rgUpdateGeometryTransform(
@@ -209,6 +216,10 @@ RgResult rgUpdateGeometryTransform(
 RgResult rgUploadRasterizedGeometry(
     RgInstance                              rgInstance,
     const RgRasterizedGeometryUploadInfo    *uploadInfo);
+
+// clear scene 
+RgResult rgClearScene(
+    RgInstance                              rgInstance);
 
 typedef struct RgExtent2D
 {

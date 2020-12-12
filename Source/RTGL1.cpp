@@ -22,7 +22,7 @@ RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *result)
     if (g_Devices.size() >= MAX_DEVICE_COUNT)
     {
         *result = nullptr;
-        return RgResult::RG_TOO_MANY_ISTANCES;
+        return RG_TOO_MANY_INSTANCES;
     }
 
     // insert new
@@ -31,19 +31,19 @@ RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *result)
 
     *result = id;
 
-    return RgResult::RG_SUCCESS;
+    return RG_SUCCESS;
 }
 
 
 RgResult rgDestroyInstance(RgInstance rgInstance)
 {
     CHECK_WRONG_INSTANCE_AND_GET.reset();
-    return RgResult::RG_SUCCESS;
+    return RG_SUCCESS;
 }
 
-RgResult rgCreateGeometry(RgInstance rgInstance, const RgGeometryCreateInfo *createInfo, RgGeometry *result)
+RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *uploadInfo, RgGeometry *result)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateGeometry(createInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadGeometry(uploadInfo, result);
 }
 
 RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* updateInfo)

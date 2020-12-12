@@ -8,6 +8,10 @@ class ASBuilder
 public:
     explicit ASBuilder(std::shared_ptr<ScratchBuffer> commonScratchBuffer);
 
+    ASBuilder(const ASBuilder& other) = delete;
+    ASBuilder(ASBuilder&& other) noexcept = delete;
+    ASBuilder& operator=(const ASBuilder& other) = delete;
+    ASBuilder& operator=(ASBuilder&& other) noexcept = delete;
 
     // TODO: change to *pGeometries when VkSDK 1.2.164 will be released
     // ppGeometries is a pointer to a pointer to an array of size "geometryCount",

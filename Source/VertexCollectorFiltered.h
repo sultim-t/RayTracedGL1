@@ -12,6 +12,11 @@ public:
         std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, 
         const VBProperties &properties, RgGeometryType filter);
 
+    VertexCollectorFiltered(const VertexCollectorFiltered& other) = delete;
+    VertexCollectorFiltered(VertexCollectorFiltered&& other) noexcept = delete;
+    VertexCollectorFiltered& operator=(const VertexCollectorFiltered& other) = delete;
+    VertexCollectorFiltered& operator=(VertexCollectorFiltered&& other) noexcept = delete;
+
     const std::vector<VkAccelerationStructureGeometryKHR>
         &GetASGeometriesFiltered() const;
     const std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR>

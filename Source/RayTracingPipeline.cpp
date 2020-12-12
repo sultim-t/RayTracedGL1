@@ -110,7 +110,7 @@ void RayTracingPipeline::CreateSBT(const PhysicalDevice &physDevice)
     shaderBindingTable = std::make_shared<Buffer>();
     shaderBindingTable->Init(device, physDevice, sbtSize,
                              VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, true);
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     std::vector<uint8_t> shaderHandles(sbtSize);
     r = vksGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, groupCount, shaderHandles.size(), shaderHandles.data());
