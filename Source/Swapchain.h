@@ -26,12 +26,18 @@ public:
     Swapchain &operator=(const Swapchain &other) = delete;
     Swapchain &operator=(Swapchain &&other) noexcept = delete;
 
-    void Recreate(std::shared_ptr<CommandBufferManager> &cmdManager, uint32_t newWidth, uint32_t newHeight, bool vsync);
+    void SetWindowSize(uint32_t imageWidth, uint32_t imageHeight);
+
+    void AcquireImage(VkSemaphore imageAvailableSemaphore);
+    void BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t imageWidth, uint32_t imageHeight, VkImageLayout imageLayout = VK_IMAGE_LAYOUT_GENERAL);
+    void Present(const Queues &queues, VkSemaphore renderFinishedSemaphore);
 
     void Subscribe(std::shared_ptr<ISwapchainDependency> subscriber);
     void Unsubscribe(const ISwapchainDependency *subscriber);
 
 private:
+    void Recreate(std::shared_ptr<CommandBufferManager> &cmdManager, uint32_t newWidth, uint32_t newHeight, bool vsync);
+
     void Create(std::shared_ptr<CommandBufferManager> &cmdManager, uint32_t newWidth, uint32_t newHeight, bool vsync);
     void Destroy();
 

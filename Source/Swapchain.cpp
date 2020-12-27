@@ -67,8 +67,101 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface, std::shared_ptr<Phys
     }
 }
 
+void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
+{
+    while (true)
+    {
+        VkResult r = vkAcquireNextImageKHR(
+            device, swapchain, UINT64_MAX,
+            imageAvailableSemaphore,
+            VK_NULL_HANDLE, &currentSwapchainIndex);
+
+        if (r == VK_SUCCESS)
+        {
+            break;
+        }
+        else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
+        {
+            // TODO: recreate swapchain
+            assert(0);
+        }
+        else
+        {
+            assert(0);
+        }
+    }
+}
+
+void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t imageWidth,
+                               uint32_t imageHeight, VkImageLayout imageLayout)
+{
+    VkImageBlit region = {};
+
+    region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.srcOffsets[0] = { 0, 0, 0 };
+    region.srcOffsets[1] = { static_cast<int32_t>(imageWidth), static_cast<int32_t>(imageHeight), 1 };
+
+    region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.dstOffsets[0] = { 0, 0, 0 };
+    region.dstOffsets[1] = { static_cast<int32_t>(surfaceExtent.width), static_cast<int32_t>(surfaceExtent.height), 1 };
+
+    VkImage swapchainImage = swapchainImages[currentSwapchainIndex];
+    VkImageLayout swapchainImageLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+    // set layout for blit
+    Utils::BarrierImage(
+        cmd, srcImage,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        imageLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    Utils::BarrierImage(
+        cmd, swapchainImage,
+        0, VK_ACCESS_TRANSFER_WRITE_BIT,
+        swapchainImageLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    vkCmdBlitImage(
+        cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &region, VK_FILTER_LINEAR);
+
+    // restore layouts
+    Utils::BarrierImage(
+        cmd, srcImage,
+        VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, imageLayout);
+
+    Utils::BarrierImage(
+        cmd, swapchainImage,
+        VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, swapchainImageLayout);
+}
+
+void Swapchain::Present(const Queues &queues, VkSemaphore renderFinishedSemaphore)
+{
+    VkPresentInfoKHR presentInfo = {};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &renderFinishedSemaphore;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &swapchain;
+    presentInfo.pImageIndices = &currentSwapchainIndex;
+    presentInfo.pResults = nullptr;
+
+    VkResult r = vkQueuePresentKHR(queues.GetGraphics(), &presentInfo);
+
+    if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
+    {
+        Recreate();
+    }
+}
+
 void Swapchain::Recreate(std::shared_ptr<CommandBufferManager> &cmdManager, uint32_t newWidth, uint32_t newHeight, bool vsync)
 {
+    if (surfaceExtent.width == newWidth && surfaceExtent.height == newHeight)
+    {
+        return;
+    }
+
     cmdManager->WaitDeviceIdle();
 
     Destroy();
