@@ -3,33 +3,31 @@
 #include <cassert>
 #include <memory>
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_beta.h>
 
 #define MAX_FRAMES_IN_FLIGHT 2
 
 #pragma region extension functions definition
 #define VK_INSTANCE_FUNCTION_LIST \
-	VK_EXTENSION_FUNCTION(CmdBeginDebugUtilsLabelEXT) \
-	VK_EXTENSION_FUNCTION(CmdEndDebugUtilsLabelEXT) \
-	VK_EXTENSION_FUNCTION(CreateDebugUtilsMessengerEXT) \
-	VK_EXTENSION_FUNCTION(DestroyDebugUtilsMessengerEXT)
+	VK_EXTENSION_FUNCTION(vkCmdBeginDebugUtilsLabelEXT) \
+	VK_EXTENSION_FUNCTION(vkCmdEndDebugUtilsLabelEXT) \
+	VK_EXTENSION_FUNCTION(vkCreateDebugUtilsMessengerEXT) \
+	VK_EXTENSION_FUNCTION(vkDestroyDebugUtilsMessengerEXT)
 
 
 #define VK_DEVICE_FUNCTION_LIST \
-	VK_EXTENSION_FUNCTION(DebugMarkerSetObjectNameEXT) \
-	VK_EXTENSION_FUNCTION(BindAccelerationStructureMemoryKHR) \
-	VK_EXTENSION_FUNCTION(CreateAccelerationStructureKHR) \
-	VK_EXTENSION_FUNCTION(DestroyAccelerationStructureKHR) \
-	VK_EXTENSION_FUNCTION(GetRayTracingShaderGroupHandlesKHR) \
-	VK_EXTENSION_FUNCTION(CreateRayTracingPipelinesKHR) \
-	VK_EXTENSION_FUNCTION(GetAccelerationStructureMemoryRequirementsKHR) \
-	VK_EXTENSION_FUNCTION(GetAccelerationStructureDeviceAddressKHR) \
-	VK_EXTENSION_FUNCTION(CmdBuildAccelerationStructureKHR) \
-	VK_EXTENSION_FUNCTION(CmdTraceRaysKHR) \
-	VK_EXTENSION_FUNCTION(GetBufferDeviceAddressKHR) 
+	VK_EXTENSION_FUNCTION(vkDebugMarkerSetObjectNameEXT) \
+	VK_EXTENSION_FUNCTION(vkCreateAccelerationStructureKHR) \
+	VK_EXTENSION_FUNCTION(vkDestroyAccelerationStructureKHR) \
+	VK_EXTENSION_FUNCTION(vkGetRayTracingShaderGroupHandlesKHR) \
+	VK_EXTENSION_FUNCTION(vkCreateRayTracingPipelinesKHR) \
+	VK_EXTENSION_FUNCTION(vkGetAccelerationStructureDeviceAddressKHR) \
+	VK_EXTENSION_FUNCTION(vkGetAccelerationStructureBuildSizesKHR) \
+	VK_EXTENSION_FUNCTION(vkCmdBuildAccelerationStructuresKHR) \
+	VK_EXTENSION_FUNCTION(vkCmdTraceRaysKHR) \
+	VK_EXTENSION_FUNCTION(vkGetBufferDeviceAddressKHR) 
 
 
-#define VK_EXTENSION_FUNCTION(fname) static PFN_vk##fname vks##fname;
+#define VK_EXTENSION_FUNCTION(fname) static PFN_##fname s##fname;
 VK_INSTANCE_FUNCTION_LIST
 VK_DEVICE_FUNCTION_LIST
 #undef VK_EXTENSION_FUNCTION
@@ -38,8 +36,8 @@ VK_DEVICE_FUNCTION_LIST
 void InitInstanceExtensionFunctions(VkInstance instance)
 {
 #define VK_EXTENSION_FUNCTION(fname) \
-		vks##fname = (PFN_vk##fname)vkGetInstanceProcAddr(instance, "vk"#fname); \
-		assert(vks##fname != nullptr);
+		s##fname = (PFN_##fname)vkGetInstanceProcAddr(instance, #fname); \
+		assert(s##fname != nullptr);
 
     VK_INSTANCE_FUNCTION_LIST
     #undef VK_EXTENSION_FUNCTION
@@ -48,8 +46,8 @@ void InitInstanceExtensionFunctions(VkInstance instance)
 void InitDeviceExtensionFunctions(VkDevice device)
 {
 #define VK_EXTENSION_FUNCTION(fname) \
-		vks##fname = (PFN_vk##fname)vkGetDeviceProcAddr(device, "vk"#fname); \
-		assert(vks##fname != nullptr);
+		s##fname = (PFN_##fname)vkGetDeviceProcAddr(device, #fname); \
+		assert(s##fname != nullptr);
 
     VK_DEVICE_FUNCTION_LIST
     #undef VK_EXTENSION_FUNCTION
@@ -77,7 +75,7 @@ void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type
     nameInfo.objectType = type;
     nameInfo.pObjectName = name;
 
-    VkResult r = vksDebugMarkerSetObjectNameEXT(device, &nameInfo);
+    VkResult r = svkDebugMarkerSetObjectNameEXT(device, &nameInfo);
     VK_CHECKERROR(r);
 }
 

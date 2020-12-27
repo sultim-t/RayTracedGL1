@@ -225,7 +225,7 @@ void VulkanDevice::CreateInstance(const char **ppWindowExtensions, uint32_t exte
         debugMessengerInfo.pfnUserCallback = DebugMessengerCallback;
         debugMessengerInfo.pUserData = static_cast<void *>(debugPrint);
 
-        r = vksCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
+        r = svkCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
         VK_CHECKERROR(r);
     }
 }
@@ -299,21 +299,27 @@ void VulkanDevice::CreateDevice()
     bufferAddressFeatures.pNext = &indexingFeatures;
     bufferAddressFeatures.bufferDeviceAddress = VK_TRUE;
 
-    VkPhysicalDeviceRayTracingFeaturesKHR rtFeatures = {};
-    rtFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_FEATURES_KHR;
-    rtFeatures.pNext = &bufferAddressFeatures;
-    rtFeatures.rayTracing = VK_TRUE;
+    VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures = {};
+    rtPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+    rtPipelineFeatures.pNext = &bufferAddressFeatures;
+    rtPipelineFeatures.rayTracingPipeline = VK_TRUE;
+
+    VkPhysicalDeviceAccelerationStructureFeaturesKHR asFeatures = {};
+    asFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
+    asFeatures.pNext = &rtPipelineFeatures;
+    asFeatures.accelerationStructure = VK_TRUE;
 
     VkPhysicalDeviceFeatures2 physicalDeviceFeatures2 = {};
     physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-    physicalDeviceFeatures2.pNext = &rtFeatures;
+    physicalDeviceFeatures2.pNext = &asFeatures;
     physicalDeviceFeatures2.features = features;
 
     std::vector<const char *> deviceExtensions;
     deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_RAY_TRACING_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
 
@@ -365,7 +371,7 @@ void VulkanDevice::DestroyInstance()
 {
     if (enableValidationLayer)
     {
-        vksDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
+        svkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }
 
     vkDestroyInstance(instance, nullptr);

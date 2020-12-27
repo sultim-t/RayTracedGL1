@@ -70,7 +70,7 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
         instanceBuffers[i].Init(
             device, *physDevice,
             MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkTransformMatrixKHR),
-            VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
+            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     }
 
@@ -274,58 +274,62 @@ void ASManager::SubmitStaticGeometry()
 {
     collectorStaticMovable->EndCollecting();
 
-    VkResult r;
-
-    DestroyAS(staticBlas);
-    DestroyAS(staticMovableBlas);
-
-    const auto &blasGT = collectorStaticMovable->GetASGeometryTypes();
-    VkAccelerationStructureCreateInfoKHR blasInfo = {};
-    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.flags = 
-        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-    blasInfo.maxGeometryCount = blasGT.size();
-    blasInfo.pGeometryInfos = blasGT.data();
-    r = vksCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &staticBlas.as);
-    VK_CHECKERROR(r);
-
-    const auto &movableBlasGT = collectorStaticMovable->GetASGeometryTypesFiltered();
-    VkAccelerationStructureCreateInfoKHR movableBlasInfo = {};
-    movableBlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    movableBlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    movableBlasInfo.flags = 
-        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR |
-        VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
-    movableBlasInfo.maxGeometryCount = movableBlasGT.size();
-    movableBlasInfo.pGeometryInfos = movableBlasGT.data();
-    r = vksCreateAccelerationStructureKHR(device, &movableBlasInfo, nullptr, &staticMovableBlas.as);
-    VK_CHECKERROR(r);
-
-    AllocBindASMemory(staticBlas);
-    AllocBindASMemory(staticMovableBlas);
-
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
     // copy from staging with barrier
     collectorStaticMovable->CopyFromStaging(cmd);
 
-    const auto &geoms = collectorStaticMovable->GetASGeometries();
+    const auto &staticGeoms = collectorStaticMovable->GetASGeometries();
     const auto &movableGeoms = collectorStaticMovable->GetASGeometriesFiltered();
 
-    const auto &offsets = collectorStaticMovable->GetASBuildOffsetInfos();
-    const auto &movableOffsets = collectorStaticMovable->GetASBuildOffsetInfosFiltered();
+    const auto &staticRanges = collectorStaticMovable->GetASBuildRangeInfos();
+    const auto &movableRanges = collectorStaticMovable->GetASBuildRangeInfosFiltered();
 
-    const VkAccelerationStructureGeometryKHR *pGeoms = geoms.data();
-    const VkAccelerationStructureGeometryKHR *pMovableGeoms = movableGeoms.data();
+    const auto &staticPrimCounts = collectorStaticMovable->GetPrimitiveCounts();
+    const auto &movablePrimCounts = collectorStaticMovable->GetPrimitiveCountsFiltered();
 
+    // destroy previous
+    DestroyAS(staticBlas);
+    DestroyAS(staticMovableBlas);
+
+    // get AS size and create buffer for AS
+    const auto staticBuildSizes = asBuilder->GetBottomBuildSizes(
+        staticGeoms.size(), staticGeoms.data(), staticPrimCounts.data(), true);
+    const auto movableBuildSizes = asBuilder->GetBottomBuildSizes(
+        movableGeoms.size(), movableGeoms.data(), movablePrimCounts.data(), true);
+
+    CreateASBuffer(staticBlas, staticBuildSizes.accelerationStructureSize);
+    CreateASBuffer(staticMovableBlas, movableBuildSizes.accelerationStructureSize);
+
+    VkResult r;
+
+    // create AS
+    VkAccelerationStructureCreateInfoKHR blasInfo = {};
+    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    blasInfo.size = staticBuildSizes.accelerationStructureSize;
+    blasInfo.buffer = staticBlas.buffer.GetBuffer();
+    r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &staticBlas.as);
+    VK_CHECKERROR(r);
+
+    VkAccelerationStructureCreateInfoKHR movableBlasInfo = {};
+    movableBlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    movableBlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    movableBlasInfo.size = movableBuildSizes.accelerationStructureSize;
+    movableBlasInfo.buffer = staticMovableBlas.buffer.GetBuffer();
+    r = svkCreateAccelerationStructureKHR(device, &movableBlasInfo, nullptr, &staticMovableBlas.as);
+    VK_CHECKERROR(r);
+
+    // build BLAS
     assert(asBuilder->IsEmpty());
 
-    asBuilder->AddBLAS(staticBlas.as, 
-                       geoms.size(), &pGeoms, offsets.data(), 
+    asBuilder->AddBLAS(staticBlas.as, staticGeoms.size(),
+                       staticGeoms.data(), staticRanges.data(),
+                       staticBuildSizes,
                        true, false);
-    asBuilder->AddBLAS(staticMovableBlas.as, 
-                       movableGeoms.size(), &pMovableGeoms, movableOffsets.data(), 
+    asBuilder->AddBLAS(staticMovableBlas.as, movableGeoms.size(),
+                       movableGeoms.data(), movableRanges.data(),
+                       movableBuildSizes,
                        false, false);
 
     asBuilder->BuildBottomLevel(cmd);
@@ -349,36 +353,40 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     auto &dynBlas = dynamicBlas[currentFrameIndex];
 
     colDyn->EndCollecting();
-
-    VkResult r;
-
-    DestroyAS(dynBlas);
-
-    const auto &blasGT = colDyn->GetASGeometryTypes();
-    VkAccelerationStructureCreateInfoKHR blasInfo = {};
-    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.flags = 
-        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
-    blasInfo.maxGeometryCount = blasGT.size();
-    blasInfo.pGeometryInfos = blasGT.data();
-    r = vksCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &dynamicBlas[currentFrameIndex].as);
-    VK_CHECKERROR(r);
-
-    AllocBindASMemory(dynBlas);
-
     colDyn->CopyFromStaging(cmd);
 
     const auto &geoms = colDyn->GetASGeometries();
-    const auto &offsets = colDyn->GetASBuildOffsetInfos();
-    const VkAccelerationStructureGeometryKHR *pGeoms = geoms.data();
+    const auto &ranges = colDyn->GetASBuildRangeInfos();
+    const auto &counts = colDyn->GetPrimitiveCounts();
 
+    DestroyAS(dynBlas);
+
+    // get AS size and create buffer for AS
+    const auto dynamicBuildSizes = asBuilder->GetBottomBuildSizes(
+        geoms.size(), geoms.data(), counts.data(), false);
+
+    CreateASBuffer(dynamicBlas[currentFrameIndex], dynamicBuildSizes.accelerationStructureSize);
+
+    // create AS
+    VkAccelerationStructureCreateInfoKHR blasInfo = {};
+    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    blasInfo.size = dynamicBuildSizes.accelerationStructureSize;
+    blasInfo.buffer = dynamicBlas[currentFrameIndex].buffer.GetBuffer();
+    VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &dynamicBlas[currentFrameIndex].as);
+    VK_CHECKERROR(r);
+
+    // build BLAS
     assert(asBuilder->IsEmpty());
 
     asBuilder->AddBLAS(dynBlas.as,
-                       geoms.size(), &pGeoms, offsets.data(),
+                       geoms.size(), geoms.data(), ranges.data(),
+                       dynamicBuildSizes,
                        false, false);
     asBuilder->BuildBottomLevel(cmd);
+
+    // reset
+    currentFrameIndex = UINT32_MAX;
 }
 
 void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
@@ -388,13 +396,17 @@ void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransfo
 
 void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
-    const auto &movableGeoms = collectorStaticMovable->GetASGeometriesFiltered();
-    const auto &movableOffsets = collectorStaticMovable->GetASBuildOffsetInfosFiltered();
-    const VkAccelerationStructureGeometryKHR *pMovableGeoms = movableGeoms.data();
+    const auto &geoms = collectorStaticMovable->GetASGeometriesFiltered();
+    const auto &ranges = collectorStaticMovable->GetASBuildRangeInfosFiltered();
+    const auto &primCounts = collectorStaticMovable->GetPrimitiveCountsFiltered();
+
+    const auto buildSizes = asBuilder->GetBottomBuildSizes(
+        geoms.size(), geoms.data(), primCounts.data(), true);
 
     assert(asBuilder->IsEmpty());
-    asBuilder->AddBLAS(staticMovableBlas.as, 
-                       movableGeoms.size(), &pMovableGeoms, movableOffsets.data(), 
+    asBuilder->AddBLAS(staticMovableBlas.as,
+                       geoms.size(), geoms.data(), ranges.data(),
+                       buildSizes,
                        false, true);
 
     asBuilder->BuildBottomLevel(cmd);
@@ -402,8 +414,6 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 
 void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    VkResult r;
-
     VkTransformMatrixKHR identity =
     {
         1.0f, 0.0f, 0.0f, 0.0f,
@@ -411,6 +421,7 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         0.0f, 0.0f, 1.0f, 0.0f
     };
 
+    // BLAS instances
     std::vector<VkAccelerationStructureInstanceKHR> instances(3);
 
     {
@@ -441,29 +452,13 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         dynamicInstance.accelerationStructureReference = GetASAddress(dynamicBlas[frameIndex]);
     }
 
+    // fill buffer
     void *mapped = instanceBuffers[frameIndex].Map();
     memcpy(mapped, instances.data(), instances.size() * sizeof(VkAccelerationStructureInstanceKHR));
 
     instanceBuffers[frameIndex].Unmap();
 
-
-    VkAccelerationStructureCreateGeometryTypeInfoKHR geomTypeInfo = {};
-    geomTypeInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_GEOMETRY_TYPE_INFO_KHR;
-    geomTypeInfo.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-    geomTypeInfo.maxPrimitiveCount = instances.size();
-
-    VkAccelerationStructureCreateInfoKHR asInfo = {};
-    asInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    asInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    asInfo.flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR;
-    asInfo.maxGeometryCount = 1;
-    asInfo.pGeometryInfos = &geomTypeInfo;
-    r = vksCreateAccelerationStructureKHR(device, &asInfo, nullptr, &tlas[frameIndex].as);
-    VK_CHECKERROR(r);
-
-    AllocBindASMemory(tlas[frameIndex]);
-
-    assert(asBuilder->IsEmpty());
+    DestroyAS(tlas[frameIndex]);
 
     VkAccelerationStructureGeometryKHR instGeom = {};
     instGeom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
@@ -474,12 +469,28 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     instData.arrayOfPointers = VK_FALSE;
     instData.data.deviceAddress = instanceBuffers[frameIndex].GetAddress();
 
-    VkAccelerationStructureBuildOffsetInfoKHR offset = {};
-    offset.primitiveCount = instances.size();
+    uint32_t primCount = instances.size();
 
-    const VkAccelerationStructureGeometryKHR *pGeometry = &instGeom;
+    // get AS size and create buffer for AS
+    const auto buildSizes = asBuilder->GetTopBuildSizes(&instGeom, &primCount, false);
 
-    asBuilder->AddTLAS(tlas[frameIndex].as, &pGeometry, &offset, true, false);
+    CreateASBuffer(tlas[frameIndex], buildSizes.accelerationStructureSize);
+
+    // create AS
+    VkAccelerationStructureCreateInfoKHR tlasInfo = {};
+    tlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    tlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+    tlasInfo.size = buildSizes.accelerationStructureSize;
+    tlasInfo.buffer = tlas[frameIndex].buffer.GetBuffer();
+    VkResult r = svkCreateAccelerationStructureKHR(device, &tlasInfo, nullptr, &tlas[frameIndex].as);
+    VK_CHECKERROR(r);
+
+    assert(asBuilder->IsEmpty());
+
+    VkAccelerationStructureBuildRangeInfoKHR range = {};
+    range.primitiveCount = primCount;
+
+    asBuilder->AddTLAS(tlas[frameIndex].as, &instGeom, &range, buildSizes, true, false);
     asBuilder->BuildTopLevel(cmd);
 
     UpdateASDescriptors(frameIndex);
@@ -487,32 +498,18 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 
 
 
-void ASManager::AllocBindASMemory(AccelerationStructure &as)
+void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
 {
-    VkAccelerationStructureMemoryRequirementsInfoKHR memReqInfo = {};
-    memReqInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_KHR;
-    memReqInfo.accelerationStructure = as.as;
-    memReqInfo.type = VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_OBJECT_KHR;
-    memReqInfo.buildType = VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR;
-
-    VkMemoryRequirements2 memReq2 = {};
-    memReq2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-    vksGetAccelerationStructureMemoryRequirementsKHR(device, &memReqInfo, &memReq2);
-
-    as.memory = physDevice->AllocDeviceMemory(memReq2, true);
-
-    VkBindAccelerationStructureMemoryInfoKHR bindInfo = {};
-    bindInfo.sType = VK_STRUCTURE_TYPE_BIND_ACCELERATION_STRUCTURE_MEMORY_INFO_KHR;
-    bindInfo.accelerationStructure = as.as;
-    bindInfo.memory = as.memory;
-
-    VkResult r = vksBindAccelerationStructureMemoryKHR(device, 1, &bindInfo);
-    VK_CHECKERROR(r);
+    as.buffer.Init(
+        device, *physDevice, size,
+        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+    );
 }
 
 void ASManager::DestroyAS(AccelerationStructure &as)
 {
-    physDevice->FreeDeviceMemory(as.memory);
+    as.buffer.Destroy();
     vkDestroyAccelerationStructureKHR(device, as.as, nullptr);
 }
 
@@ -527,5 +524,5 @@ VkDeviceAddress ASManager::GetASAddress(VkAccelerationStructureKHR as)
     addressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
     addressInfo.accelerationStructure = as;
 
-    return vksGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
+    return svkGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
 }

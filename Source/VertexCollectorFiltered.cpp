@@ -11,41 +11,38 @@ VertexCollectorFiltered::VertexCollectorFiltered(
     this->filter = filter;
 }
 
+const std::vector<uint32_t> &VertexCollectorFiltered::GetPrimitiveCountsFiltered() const
+{
+    return primCountFiltered;
+}
+
 const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollectorFiltered::GetASGeometriesFiltered() const
 {
     return geomsFiltered;
 }
 
-const std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR> &VertexCollectorFiltered::
-GetASGeometryTypesFiltered() const
+const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollectorFiltered::GetASBuildRangeInfosFiltered() const
 {
-    return geomTypesFiltered;
-}
-
-const std::vector<VkAccelerationStructureBuildOffsetInfoKHR> &VertexCollectorFiltered::GetASBuildOffsetInfosFiltered() const
-{
-    return buildOffsetInfosFiltered;
+    return buildRangeInfosFiltered;
 }
 
 void VertexCollectorFiltered::Reset()
 {
     VertexCollector::Reset();
 
-    geomTypesFiltered.clear();
     geomsFiltered.clear();
-    buildOffsetInfosFiltered.clear();
+    buildRangeInfosFiltered.clear();
 }
 
-void VertexCollectorFiltered::PushGeometryType(RgGeometryType type,
-                                               const VkAccelerationStructureCreateGeometryTypeInfoKHR &geomType)
+void VertexCollectorFiltered::PushPrimitiveCount(RgGeometryType type, uint32_t primCount)
 {
     if (type == filter)
     {
-        geomTypesFiltered.push_back(geomType);
+        primCountFiltered.push_back(primCount);
     }
     else
     {
-        VertexCollector::PushGeometryType(type, geomType);
+        VertexCollector::PushPrimitiveCount(type, primCount);
     }
 }
 
@@ -61,15 +58,15 @@ void VertexCollectorFiltered::PushGeometry(RgGeometryType type, const VkAccelera
     }
 }
 
-void VertexCollectorFiltered::PushOffsetInfo(RgGeometryType type,
-    const VkAccelerationStructureBuildOffsetInfoKHR& offsetInfo)
+void VertexCollectorFiltered::PushRangeInfo(RgGeometryType type,
+    const VkAccelerationStructureBuildRangeInfoKHR& rangeInfo)
 {
     if (type == filter)
     {
-        buildOffsetInfosFiltered.push_back(offsetInfo);
+        buildRangeInfosFiltered.push_back(rangeInfo);
     }
     else
     {
-        VertexCollector::PushOffsetInfo(type, offsetInfo);
+        VertexCollector::PushRangeInfo(type, rangeInfo);
     }
 }

@@ -10,10 +10,8 @@ ScratchBuffer::ScratchBuffer(VkDevice device, std::shared_ptr<PhysicalDevice> ph
     AddChunk(SCRATCH_CHUNK_BUFFER_SIZE);
 }
 
-VkDeviceAddress ScratchBuffer::GetScratchAddress(VkAccelerationStructureKHR as, bool update)
+VkDeviceAddress ScratchBuffer::GetScratchAddress(VkDeviceSize scratchSize)
 {
-    VkDeviceSize scratchSize = GetScratchSize(as, update);
-
     // find chunk with appropriate size
     for (auto &c : chunks)
     {
@@ -39,23 +37,6 @@ void ScratchBuffer::Reset()
     }
 }
 
-VkDeviceSize ScratchBuffer::GetScratchSize(VkAccelerationStructureKHR as, bool update) const
-{
-    VkAccelerationStructureMemoryRequirementsInfoKHR scratchMemReqInfo = {};
-    scratchMemReqInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_INFO_KHR;
-    scratchMemReqInfo.type = update ?
-        VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_UPDATE_SCRATCH_KHR :
-        VK_ACCELERATION_STRUCTURE_MEMORY_REQUIREMENTS_TYPE_BUILD_SCRATCH_KHR;
-    scratchMemReqInfo.accelerationStructure = as;
-    scratchMemReqInfo.buildType = VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR;
-
-    VkMemoryRequirements2 memReq2 = {};
-    memReq2.sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-    vksGetAccelerationStructureMemoryRequirementsKHR(device, &scratchMemReqInfo, &memReq2);
-
-    return memReq2.memoryRequirements.size;
-}
-
 void ScratchBuffer::AddChunk(VkDeviceSize size)
 {
     if (const auto pd = physDevice.lock())
@@ -64,7 +45,7 @@ void ScratchBuffer::AddChunk(VkDeviceSize size)
         auto &c = chunks.back();
 
         c.buffer.Init(device, *pd, size,
-                      VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
+                      VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     }
 }

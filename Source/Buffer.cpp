@@ -44,7 +44,7 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
         VkBufferDeviceAddressInfoKHR addrInfo = {};
         addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         addrInfo.buffer = buffer;
-        address = vksGetBufferDeviceAddressKHR(device, &addrInfo);
+        address = svkGetBufferDeviceAddressKHR(device, &addrInfo);
     }
 
     size = bsize;

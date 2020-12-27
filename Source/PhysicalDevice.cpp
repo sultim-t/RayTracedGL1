@@ -18,10 +18,12 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
 
     vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
 
-    rayTracingProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PROPERTIES_KHR;
+    rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+
     VkPhysicalDeviceProperties2 deviceProp2 = {};
     deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    deviceProp2.pNext = &rayTracingProperties;
+    deviceProp2.pNext = &rtPipelineProperties;
+
     vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
 }
 
@@ -96,7 +98,7 @@ VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
     return memoryProperties;
 }
 
-VkPhysicalDeviceRayTracingPropertiesKHR PhysicalDevice::GetRayTracingProperties() const
+VkPhysicalDeviceRayTracingPipelinePropertiesKHR PhysicalDevice::GetRTPipelineProperties() const
 {
-    return rayTracingProperties;
+    return rtPipelineProperties;
 }

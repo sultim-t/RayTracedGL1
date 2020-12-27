@@ -9,6 +9,7 @@ public:
     Buffer();
     ~Buffer();
 
+    // Create VkBuffer, allocate memory and bind it
     void Init(VkDevice device, const PhysicalDevice &physDevice,
               VkDeviceSize size, VkBufferUsageFlags usage, 
               VkMemoryPropertyFlags properties);

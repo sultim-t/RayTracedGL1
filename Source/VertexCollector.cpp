@@ -9,12 +9,12 @@ VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice &physDevi
 
     indices.Init(
         device, physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
-        VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     transforms.Init(
         device, physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
-        VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
@@ -22,7 +22,7 @@ void VertexCollector::BeginCollecting()
 {
     assert(mappedVertexData == nullptr && mappedIndexData == nullptr && mappedTransformData == nullptr);
     assert(curVertexCount == 0 && curIndexCount == 0 && curGeometryCount == 0);
-    assert(asGeometries.empty() && asBuildOffsetInfos.empty());
+    assert(asGeometries.empty() && asBuildRangeInfos.empty());
 
     if (stagingVertBuffer.expired() || vertBuffer.expired())
     {
@@ -55,11 +55,11 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     curVertexCount += info.vertexCount;
 
     const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
-    const uint32_t indexCount = useIndices ? info.indexCount : info.vertexCount / 3;
+    const uint32_t primitiveCount = useIndices ? info.indexCount : info.vertexCount / 3;
 
     if (useIndices)
     {
-        curIndexCount += indexCount;
+        curIndexCount += primitiveCount;
     }
 
     assert(curVertexCount < maxVertexCount);
@@ -78,21 +78,9 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     // copy data to buffer
     CopyDataToStaging(info, vertIndex, collectStatic);
 
-    // geometry type info
-    VkAccelerationStructureCreateGeometryTypeInfoKHR geomType = {};
-    geomType.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_GEOMETRY_TYPE_INFO_KHR;
-    geomType.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-    geomType.maxPrimitiveCount = indexCount;
-    geomType.indexType = useIndices ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_NONE_KHR;
-    geomType.maxVertexCount = info.vertexCount;
-    geomType.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-    geomType.allowsTransforms = VK_TRUE;
-
-    PushGeometryType(info.geomType, geomType);
-
     if (useIndices)
     {
-        memcpy(mappedIndexData + indIndex, info.indexData, indexCount * sizeof(uint32_t));
+        memcpy(mappedIndexData + indIndex, info.indexData, primitiveCount * sizeof(uint32_t));
     }
 
     memcpy(mappedTransformData + geomIndex, &info.transform, sizeof(RgTransform));
@@ -126,12 +114,14 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     PushGeometry(info.geomType, geom);
 
-    VkAccelerationStructureBuildOffsetInfoKHR offsetInfo = {};
-    offsetInfo.primitiveCount = indexCount;
-    offsetInfo.primitiveOffset = 0;
-    offsetInfo.firstVertex = 0;
-    offsetInfo.transformOffset = 0;
-    PushOffsetInfo(info.geomType, offsetInfo);
+    VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
+    rangeInfo.primitiveCount = primitiveCount;
+    rangeInfo.primitiveOffset = 0;
+    rangeInfo.firstVertex = 0;
+    rangeInfo.transformOffset = 0;
+    PushRangeInfo(info.geomType, rangeInfo);
+
+    PushPrimitiveCount(info.geomType, primitiveCount);
 
     return geomIndex;
 }
@@ -208,6 +198,11 @@ void VertexCollector::EndCollecting()
     stagingVertBuffer.lock()->Unmap();
 }
 
+const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts() const
+{
+    return primitiveCounts;
+}
+
 void VertexCollector::Reset()
 {
     mappedVertexData = nullptr;
@@ -218,9 +213,9 @@ void VertexCollector::Reset()
     curIndexCount = 0;
     curGeometryCount = 0;
 
-    asGeometryTypes.clear();
+    primitiveCounts.clear();
     asGeometries.clear();
-    asBuildOffsetInfos.clear();
+    asBuildRangeInfos.clear();
 }
 
 void VertexCollector::CopyFromStaging(VkCommandBuffer cmd)
@@ -288,10 +283,9 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &tra
     }
 }
 
-void VertexCollector::PushGeometryType(RgGeometryType type,
-                                       const VkAccelerationStructureCreateGeometryTypeInfoKHR &geomType)
+void VertexCollector::PushPrimitiveCount(RgGeometryType type, uint32_t primCount)
 {
-    asGeometryTypes.push_back(geomType);
+    primitiveCounts.push_back(primCount);
 }
 
 void VertexCollector::PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom)
@@ -299,9 +293,9 @@ void VertexCollector::PushGeometry(RgGeometryType type, const VkAccelerationStru
     asGeometries.push_back(geom);
 }
 
-void VertexCollector::PushOffsetInfo(RgGeometryType type, const VkAccelerationStructureBuildOffsetInfoKHR &offsetInfo)
+void VertexCollector::PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo)
 {
-    asBuildOffsetInfos.push_back(offsetInfo);
+    asBuildRangeInfos.push_back(rangeInfo);
 }
 
 const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollector::GetASGeometries() const
@@ -309,12 +303,7 @@ const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollector::GetASGeo
     return asGeometries;
 }
 
-const std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR> &VertexCollector::GetASGeometryTypes() const
+const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollector::GetASBuildRangeInfos() const
 {
-    return asGeometryTypes;
-}
-
-const std::vector<VkAccelerationStructureBuildOffsetInfoKHR> &VertexCollector::GetASBuildOffsetInfos() const
-{
-    return asBuildOffsetInfos;
+    return asBuildRangeInfos;
 }

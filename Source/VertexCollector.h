@@ -21,12 +21,12 @@ public:
     uint32_t AddGeometry(const RgGeometryUploadInfo &info);
     void EndCollecting();
 
+    const std::vector<uint32_t>
+        &GetPrimitiveCounts() const;
     const std::vector<VkAccelerationStructureGeometryKHR>
         &GetASGeometries() const;
-    const std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR>
-        &GetASGeometryTypes() const;
-    const std::vector<VkAccelerationStructureBuildOffsetInfoKHR>
-        &GetASBuildOffsetInfos() const;
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR>
+        &GetASBuildRangeInfos() const;
 
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
@@ -39,9 +39,9 @@ public:
     void UpdateTransform(uint32_t geomIndex, const RgTransform &transform);
 
 protected:
-    virtual void PushGeometryType(RgGeometryType type, const VkAccelerationStructureCreateGeometryTypeInfoKHR &geomType);
+    virtual void PushPrimitiveCount(RgGeometryType type, uint32_t primCount);
     virtual void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom);
-    virtual void PushOffsetInfo(RgGeometryType type, const VkAccelerationStructureBuildOffsetInfoKHR &offsetInfo);
+    virtual void PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
@@ -68,7 +68,7 @@ private:
     uint32_t curIndexCount;
     uint32_t curGeometryCount;
 
-    std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR> asGeometryTypes;
+    std::vector<uint32_t> primitiveCounts;
     std::vector<VkAccelerationStructureGeometryKHR> asGeometries;
-    std::vector<VkAccelerationStructureBuildOffsetInfoKHR> asBuildOffsetInfos;
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> asBuildRangeInfos;
 };

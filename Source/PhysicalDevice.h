@@ -18,7 +18,7 @@ public:
     VkPhysicalDevice Get() const;
     uint32_t GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags requirementsMask) const;
     VkPhysicalDeviceMemoryProperties GetMemoryProperties() const;
-    VkPhysicalDeviceRayTracingPropertiesKHR GetRayTracingProperties() const;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR GetRTPipelineProperties() const;
 
     // if addressQuery=true address can be queried
     VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements &memReqs, bool addressQuery = false) const;
@@ -31,5 +31,5 @@ private:
     // selected physical device
     VkPhysicalDevice physDevice;
     VkPhysicalDeviceMemoryProperties memoryProperties;
-    VkPhysicalDeviceRayTracingPropertiesKHR rayTracingProperties;
+    VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtPipelineProperties;
 };

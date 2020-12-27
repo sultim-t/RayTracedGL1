@@ -13,12 +13,11 @@ public:
     ScratchBuffer& operator=(const ScratchBuffer& other) = delete;
     ScratchBuffer& operator=(ScratchBuffer&& other) noexcept = delete;
 
-    // get scratch buffer address for given acceleration structure
-    VkDeviceAddress GetScratchAddress(VkAccelerationStructureKHR as, bool update = false);
+    // get scratch buffer address
+    VkDeviceAddress GetScratchAddress(VkDeviceSize scratchSize);
     void Reset();
 
 private:
-    VkDeviceSize GetScratchSize(VkAccelerationStructureKHR as, bool update) const;
     void AddChunk(VkDeviceSize size);
 
 private:

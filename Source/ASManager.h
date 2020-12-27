@@ -44,8 +44,8 @@ public:
 private:
     struct AccelerationStructure
     {
-        VkAccelerationStructureKHR as;
-        VkDeviceMemory memory;
+        VkAccelerationStructureKHR as = VK_NULL_HANDLE;
+        Buffer buffer = {};
     };
 
 private:
@@ -53,7 +53,7 @@ private:
     void UpdateBufferDescriptors();
     void UpdateASDescriptors(uint32_t frameIndex);
 
-    void AllocBindASMemory(AccelerationStructure &as);
+    void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size);
     void DestroyAS(AccelerationStructure &as);
     VkDeviceAddress GetASAddress(const AccelerationStructure &as);
     VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);
@@ -62,7 +62,7 @@ private:
     VkDevice device;
     std::shared_ptr<PhysicalDevice> physDevice;
 
-    // for 
+    // for adding dynamic geometry
     uint32_t currentFrameIndex;
 
     // buffers for static, movable static geometry

@@ -17,24 +17,24 @@ public:
     VertexCollectorFiltered& operator=(const VertexCollectorFiltered& other) = delete;
     VertexCollectorFiltered& operator=(VertexCollectorFiltered&& other) noexcept = delete;
 
+    const std::vector<uint32_t>
+        &GetPrimitiveCountsFiltered() const;
     const std::vector<VkAccelerationStructureGeometryKHR>
         &GetASGeometriesFiltered() const;
-    const std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR>
-        &GetASGeometryTypesFiltered() const;
-    const std::vector<VkAccelerationStructureBuildOffsetInfoKHR>
-        &GetASBuildOffsetInfosFiltered() const;
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR>
+        &GetASBuildRangeInfosFiltered() const;
 
     void Reset() override;
 
 protected:
-    void PushGeometryType(RgGeometryType type, const VkAccelerationStructureCreateGeometryTypeInfoKHR& geomType) override;
+    void PushPrimitiveCount(RgGeometryType type, uint32_t primCount) override;
     void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR& geom) override;
-    void PushOffsetInfo(RgGeometryType type, const VkAccelerationStructureBuildOffsetInfoKHR &offsetInfo) override;
+    void PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo) override;
 
 private:
     RgGeometryType filter;
 
-    std::vector<VkAccelerationStructureCreateGeometryTypeInfoKHR> geomTypesFiltered;
+    std::vector<uint32_t> primCountFiltered;
     std::vector<VkAccelerationStructureGeometryKHR> geomsFiltered;
-    std::vector<VkAccelerationStructureBuildOffsetInfoKHR> buildOffsetInfosFiltered;
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> buildRangeInfosFiltered;
 };
