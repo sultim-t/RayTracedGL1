@@ -51,7 +51,7 @@ VkAccelerationStructureBuildSizesInfoKHR ASBuilder::GetTopBuildSizes(
 {
     return GetBuildSizes(
         VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, 1,
-        pGeometry, maxPrimitiveCount, fastTrace);
+        pGeometry, pMaxPrimitiveCount, fastTrace);
 }
 
 void ASBuilder::AddBLAS(

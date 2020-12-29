@@ -201,9 +201,11 @@ void StartScene(RgInstance instance, Window *pWindow)
         0,0,1,0
     };
 
-    // static geometry can be recorded outside frame
+    rgStartNewScene(instance);
+
     RgGeometry geom;
     rgUploadGeometry(instance, &info, &geom);
+
     rgSubmitStaticGeometries(instance);
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))

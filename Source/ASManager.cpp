@@ -262,6 +262,11 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
     return UINT32_MAX;
 }
 
+void ASManager::ResetStaticGeometry()
+{
+    collectorStaticMovable->Reset();
+}
+
 void ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
@@ -507,7 +512,11 @@ void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
 void ASManager::DestroyAS(AccelerationStructure &as)
 {
     as.buffer.Destroy();
-    vkDestroyAccelerationStructureKHR(device, as.as, nullptr);
+
+    if (as.as != VK_NULL_HANDLE)
+    {
+        vkDestroyAccelerationStructureKHR(device, as.as, nullptr);
+    }
 }
 
 VkDeviceAddress ASManager::GetASAddress(const AccelerationStructure& as)

@@ -31,7 +31,7 @@ public:
     RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo);
 
     RgResult SubmitStaticGeometries();
-    RgResult ClearStaticScene();
+    RgResult StartNewStaticScene();
 
     // TODO: empty (white) texture 1x1 with index 0 (RG_NO_TEXTURE)
 

@@ -17,6 +17,7 @@ public:
 
     void* Map();
     void Unmap();
+    bool TryUnmap();
 
 
     VkBuffer GetBuffer() const;

@@ -204,11 +204,16 @@ typedef struct RgRasterizedGeometryUploadInfo
     uint32_t            *indexData;
 } RgRasterizedGeometryUploadInfo;
 
+// Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.
+// Uploaded dynamic geometries are only visible in the current frame.
 RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
     const RgGeometryUploadInfo              *uploadInfo,
     RgGeometry                              *result);
 
+// Updating transform is available only for movable static geometry.
+// Other geometry types don't need it because they are either fully static
+// or uploaded every frame, so transforms are always as they are intended.
 RgResult rgUpdateGeometryTransform(
     RgInstance                              rgInstance,
     const RgUpdateTransformInfo             *updateInfo);
@@ -249,9 +254,9 @@ RgResult rgUploadLight(
     RgInstance                              rgInstance,
     RgDirectionalLightUploadInfo            *lightInfo);
 
-RgResult rgUploadLight(
+/*RgResult rgUploadLight(
     RgInstance                              rgInstance,
-    RgSphereLightUploadInfo                  *lightInfo);
+    RgSphereLightUploadInfo                  *lightInfo);*/
 
 
 
@@ -262,8 +267,10 @@ RgResult rgUploadLight(
 RgResult rgSubmitStaticGeometries(
     RgInstance                              rgInstance);
 
-// Clear scene from all static geometries and static lights
-RgResult rgClearStaticScene(
+// Clear current scene from all static geometries and static lights
+// and make it available for recording new geometries.
+// New scene can be shown only after its submission using rgSubmitStaticGeometries.
+RgResult rgStartNewScene(
     RgInstance                              rgInstance);
 
 

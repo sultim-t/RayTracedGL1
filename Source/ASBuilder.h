@@ -1,5 +1,5 @@
 #pragma once
-
+#include <vector>
 #include "Common.h"
 #include "ScratchBuffer.h"
 

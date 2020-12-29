@@ -165,9 +165,9 @@ RgResult VulkanDevice::SubmitStaticGeometries()
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::ClearStaticScene()
+RgResult VulkanDevice::StartNewStaticScene()
 {
-    scene->ClearStatic();
+    scene->StartNewStatic();
     return RG_SUCCESS;
 }
 

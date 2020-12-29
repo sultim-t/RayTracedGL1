@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <vector>
 
 #include "Buffer.h"
@@ -47,7 +48,7 @@ protected:
 
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
-    void GetCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const;
+    void GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const;
 
 private:
     VkDevice device;
@@ -62,9 +63,6 @@ private:
     // blasGeometries have pointers to these vectors
     Buffer indices;
     Buffer transforms;
-
-    // used to determine Rg type of added geometry
-    std::vector<RgGeometryType> rgTypes;
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

@@ -19,7 +19,16 @@ VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice &physDevi
 }
 
 VertexCollector::~VertexCollector()
-{}
+{
+    // unmap buffers to destroy them 
+    if (auto sb = stagingVertBuffer.lock())
+    {
+        sb->TryUnmap();
+    }
+
+    indices.TryUnmap();
+    transforms.TryUnmap();
+}
 
 void VertexCollector::BeginCollecting()
 {
@@ -193,12 +202,17 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
 
 void VertexCollector::EndCollecting()
 {
-    if (stagingVertBuffer.expired() || vertBuffer.expired())
+    if (auto sb = stagingVertBuffer.lock())
     {
-        return;
+        sb->Unmap();
     }
 
-    stagingVertBuffer.lock()->Unmap();
+    indices.Unmap();
+    transforms.Unmap();
+
+    mappedVertexData = nullptr;
+    mappedIndexData = nullptr;
+    mappedTransformData = nullptr;
 }
 
 const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts() const
@@ -208,10 +222,6 @@ const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts() const
 
 void VertexCollector::Reset()
 {
-    mappedVertexData = nullptr;
-    mappedIndexData = nullptr;
-    mappedTransformData = nullptr;
-
     curVertexCount = 0;
     curIndexCount = 0;
     curGeometryCount = 0;
@@ -228,7 +238,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd)
 
     if (src && dst)
     {
-        std::vector<VkBufferCopy> copyInfos;
+        std::array<VkBufferCopy, 5> copyInfos = {};
         GetCopyInfos(true, copyInfos);
 
         vkCmdCopyBuffer(cmd, src->GetBuffer(), dst->GetBuffer(),
@@ -250,7 +260,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd)
     }
 }
 
-void VertexCollector::GetCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const
+void VertexCollector::GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const
 {
     const uint32_t offsetPositions = isStatic ?
         offsetof(ShVertexBufferDynamic, positions) :
@@ -268,22 +278,19 @@ void VertexCollector::GetCopyInfos(bool isStatic, std::vector<VkBufferCopy> &out
         offsetof(ShVertexBufferDynamic, materialIds) :
         offsetof(ShVertexBufferStatic, materialIds);
 
-    outInfos.push_back({ offsetPositions,offsetPositions,curVertexCount * properties.positionStride });
-    outInfos.push_back({ offsetNormals,offsetNormals,curVertexCount * properties.normalStride });
-    outInfos.push_back({ offsetTexCoords,offsetTexCoords,curVertexCount * properties.texCoordStride });
-    outInfos.push_back({ offsetColors,offsetColors,curVertexCount * properties.colorStride });
-    outInfos.push_back({ offsetMaterials,offsetMaterials,(curIndexCount / 3) * sizeof(RgLayeredMaterial) });
+    outInfos[0] = { offsetPositions,offsetPositions,curVertexCount * properties.positionStride };
+    outInfos[1] = { offsetNormals,offsetNormals,curVertexCount * properties.normalStride };
+    outInfos[2] = { offsetTexCoords,offsetTexCoords,curVertexCount * properties.texCoordStride };
+    outInfos[3] = { offsetColors,offsetColors,curVertexCount * properties.colorStride };
+    outInfos[4] = { offsetMaterials,offsetMaterials,(curIndexCount / 3) * sizeof(RgLayeredMaterial) };
 }
 
 void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &transform)
 {
-    assert(geomIndex < rgTypes.size() && geomIndex < MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT);
+    assert(geomIndex < MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT);
     assert(mappedTransformData != nullptr);
 
-    if (rgTypes[geomIndex] == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
-    {
-        memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
-    }
+    memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
 }
 
 void VertexCollector::PushPrimitiveCount(RgGeometryType type, uint32_t primCount)

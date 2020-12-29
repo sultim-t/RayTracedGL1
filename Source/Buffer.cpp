@@ -98,6 +98,19 @@ void Buffer::Unmap()
     vkUnmapMemory(device, memory);
 }
 
+bool Buffer::TryUnmap()
+{
+    assert(device != VK_NULL_HANDLE);
+
+    if (isMapped)
+    {
+        vkUnmapMemory(device, memory);
+        return true;
+    }
+
+    return false;
+}
+
 VkBuffer Buffer::GetBuffer() const
 {
     assert(buffer != VK_NULL_HANDLE);

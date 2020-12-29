@@ -61,9 +61,9 @@ RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->SubmitStaticGeometries();
 }
 
-RgResult rgClearStaticScene(RgInstance rgInstance)
+RgResult rgStartNewScene(RgInstance rgInstance)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->ClearStaticScene();
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartNewStaticScene();
 }
 
 RgResult rgCreateStaticTexture(RgInstance rgInstance, const RgStaticTextureCreateInfo* createInfo,

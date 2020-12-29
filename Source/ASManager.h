@@ -24,6 +24,8 @@ public:
     // Submitting static geometry to the building is a heavy operation
     // with waiting for it to complete.
     void SubmitStaticGeometry();
+    // If all the added geometries must be removed, call this function before submitting
+    void ResetStaticGeometry();
 
     void BeginDynamicGeometry(uint32_t frameIndex);
     uint32_t AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_t frameIndex);
