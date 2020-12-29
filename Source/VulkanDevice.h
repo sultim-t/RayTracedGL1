@@ -1,8 +1,8 @@
 #pragma once
 
-#include <memory>
-#include <vector>
 #include <RTGL1/RTGL1.h>
+
+#include <memory>
 
 #include "CommandBufferManager.h"
 #include "Common.h"
@@ -11,6 +11,7 @@
 #include "Swapchain.h"
 #include "Queues.h"
 #include "GlobalUniform.h"
+#include "PathTracer.h"
 #include "Rasterizer.h"
 
 class VulkanDevice
@@ -29,23 +30,27 @@ public:
 
     RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo);
 
+    RgResult SubmitStaticGeometries();
+    RgResult ClearStaticScene();
+
     // TODO: empty (white) texture 1x1 with index 0 (RG_NO_TEXTURE)
 
+    RgResult StartFrame(RgExtent2D surfaceExtent);
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
 
 private:
     void CreateInstance(const char **ppWindowExtensions, uint32_t extensionCount);
     void CreateDevice();
     void CreateSyncPrimitives();
+    static VkSurfaceKHR GetSurfaceFromUser(VkInstance instance, const RgInstanceCreateInfo &info);
 
     void DestroyInstance();
     void DestroyDevice();
     void DestroySyncPrimitives();
 
-    void BeginFrame();
-    void TracePaths();
-    void Rasterize();
-    void EndFrame();
+    VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);
+    void Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight);
+    void EndFrame(VkCommandBuffer cmd);
 
 private:
     VkInstance          instance;
@@ -54,6 +59,7 @@ private:
 
     // [0..MAX_FRAMES_IN_FLIGHT-1]
     uint32_t            currentFrameIndex;
+    VkCommandBuffer     currentFrameCmd;
 
     VkFence             frameFences[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
@@ -63,10 +69,14 @@ private:
     std::shared_ptr<Queues>                 queues;
     std::shared_ptr<Swapchain>              swapchain;
 
-    std::shared_ptr<CommandBufferManager>   cmdBufferManager;
+    std::shared_ptr<CommandBufferManager>   cmdManager;
 
-    std::shared_ptr<GlobalUniform>          uniformBuffers;
+    std::shared_ptr<GlobalUniform>          uniform;
     std::shared_ptr<Scene>                  scene;
+
+    std::shared_ptr<ShaderManager>          shaderManager;
+    std::shared_ptr<RayTracingPipeline>     rtPipeline;
+    std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
 
     bool                                    enableValidationLayer;

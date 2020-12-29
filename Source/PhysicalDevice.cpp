@@ -27,6 +27,9 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
     vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
 }
 
+PhysicalDevice::~PhysicalDevice()
+{}
+
 void PhysicalDevice::SetDevice(VkDevice device)
 {
     this->device = device;

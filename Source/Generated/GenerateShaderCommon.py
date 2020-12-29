@@ -98,8 +98,12 @@ TRIANGLE_STRUCT = [
 ]
 
 GLOBAL_UNIFORM_STRUCT = [
-    (TYPE_FLOAT,    44,     "viewProj",         1),
-    (TYPE_FLOAT,    44,     "viewProjPrev",     1),
+    (TYPE_FLOAT,    44,     "view",             1),
+    (TYPE_FLOAT,    44,     "invView",          1),
+    (TYPE_FLOAT,    44,     "viewPrev",         1),
+    (TYPE_FLOAT,    44,     "projection",       1),
+    (TYPE_FLOAT,    44,     "invProjection",    1),
+    (TYPE_FLOAT,    44,     "projectionPrev",   1),
     (TYPE_UINT32,   1,      "positionsStride",  1),
     (TYPE_UINT32,   1,      "normalsStride",    1),
     (TYPE_UINT32,   1,      "texCoordsStride",  1),

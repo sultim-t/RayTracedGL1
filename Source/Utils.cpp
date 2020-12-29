@@ -65,3 +65,26 @@ void Utils::BarrierImage(
         cmd, image, srcAccessMask, dstAccessMask, oldLayout, newLayout,
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, subresourceRange);
 }
+
+void Utils::WaitForFence(VkDevice device, VkFence fence)
+{
+    VkResult r = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+    VK_CHECKERROR(r);
+}
+
+void Utils::ResetFence(VkDevice device, VkFence fence)
+{
+    VkResult r = vkResetFences(device, 1, &fence);
+    VK_CHECKERROR(r);
+}
+
+void Utils::WaitAndResetFence(VkDevice device, VkFence fence)
+{
+    VkResult r;
+
+    r = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+    VK_CHECKERROR(r);
+
+    r = vkResetFences(device, 1, &fence);
+    VK_CHECKERROR(r);
+}

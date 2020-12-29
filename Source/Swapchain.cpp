@@ -1,12 +1,21 @@
 #include "Swapchain.h"
 #include "Utils.h"
 
-Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface, std::shared_ptr<PhysicalDevice> physDevice)
+Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
+                     std::shared_ptr<PhysicalDevice> physDevice,
+                     std::shared_ptr<CommandBufferManager> cmdManager) :
+    surfCapabilities({}),
+    requestedExtent({ 0, 0 }),
+    requestedVsync(true),
+    surfaceExtent({ UINT32_MAX , UINT32_MAX }),
+    isVsync(true),
+    swapchain(VK_NULL_HANDLE),
+    currentSwapchainIndex(UINT32_MAX)
 {
     this->device = device;
     this->surface = surface;
     this->physDevice = physDevice;
-    this->swapchain = VK_NULL_HANDLE;
+    this->cmdManager = cmdManager;
 
     VkResult r;
 
@@ -67,8 +76,31 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface, std::shared_ptr<Phys
     }
 }
 
+bool Swapchain::RequestNewSize(uint32_t newWidth, uint32_t newHeight)
+{
+    requestedExtent.width = newWidth;
+    requestedExtent.height = newHeight;
+
+    return requestedExtent.width != surfaceExtent.width
+        || requestedExtent.height != surfaceExtent.height;
+}
+
+bool Swapchain::RequestVsync(bool enable)
+{
+    requestedVsync = enable;
+    return requestedVsync != isVsync;
+}
+
 void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
 {
+    // if requested params are different
+    if (requestedExtent.width != surfaceExtent.width || 
+        requestedExtent.height != surfaceExtent.height || 
+        requestedVsync != isVsync)
+    {
+        Recreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+    }
+
     while (true)
     {
         VkResult r = vkAcquireNextImageKHR(
@@ -82,8 +114,7 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
         }
         else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
         {
-            // TODO: recreate swapchain
-            assert(0);
+            Recreate(requestedExtent.width, requestedExtent.height, requestedVsync);
         }
         else
         {
@@ -92,14 +123,14 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
     }
 }
 
-void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t imageWidth,
-                               uint32_t imageHeight, VkImageLayout imageLayout)
+void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t srcImageWidth,
+                               uint32_t srcImageHeight, VkImageLayout srcImageLayout)
 {
     VkImageBlit region = {};
 
     region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
     region.srcOffsets[0] = { 0, 0, 0 };
-    region.srcOffsets[1] = { static_cast<int32_t>(imageWidth), static_cast<int32_t>(imageHeight), 1 };
+    region.srcOffsets[1] = { static_cast<int32_t>(srcImageWidth), static_cast<int32_t>(srcImageHeight), 1 };
 
     region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
     region.dstOffsets[0] = { 0, 0, 0 };
@@ -112,7 +143,7 @@ void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t i
     Utils::BarrierImage(
         cmd, srcImage,
         VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
-        imageLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+        srcImageLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     Utils::BarrierImage(
         cmd, swapchainImage,
@@ -128,7 +159,7 @@ void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t i
     Utils::BarrierImage(
         cmd, srcImage,
         VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, imageLayout);
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImageLayout);
 
     Utils::BarrierImage(
         cmd, swapchainImage,
@@ -136,7 +167,7 @@ void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t i
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, swapchainImageLayout);
 }
 
-void Swapchain::Present(const Queues &queues, VkSemaphore renderFinishedSemaphore)
+void Swapchain::Present(const std::shared_ptr<Queues> &queues, VkSemaphore renderFinishedSemaphore)
 {
     VkPresentInfoKHR presentInfo = {};
     presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
@@ -147,30 +178,34 @@ void Swapchain::Present(const Queues &queues, VkSemaphore renderFinishedSemaphor
     presentInfo.pImageIndices = &currentSwapchainIndex;
     presentInfo.pResults = nullptr;
 
-    VkResult r = vkQueuePresentKHR(queues.GetGraphics(), &presentInfo);
+    VkResult r = vkQueuePresentKHR(queues->GetGraphics(), &presentInfo);
 
     if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
     {
-        Recreate();
+        Recreate(requestedExtent.width, requestedExtent.height, requestedVsync);
     }
 }
 
-void Swapchain::Recreate(std::shared_ptr<CommandBufferManager> &cmdManager, uint32_t newWidth, uint32_t newHeight, bool vsync)
+bool Swapchain::Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
 {
     if (surfaceExtent.width == newWidth && surfaceExtent.height == newHeight)
     {
-        return;
+        return false;
     }
 
     cmdManager->WaitDeviceIdle();
 
     Destroy();
-    Create(cmdManager, newWidth, newHeight, vsync);
+    Create(newWidth, newHeight, vsync);
+
+    return true;
 }
 
-void Swapchain::Create(std::shared_ptr<CommandBufferManager> &cmdManager, uint32_t newWidth, uint32_t newHeight, bool vsync)
+void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
 {
     CallCreateSubscribers(newWidth, newHeight);
+
+    this->isVsync = vsync;
 
     VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
     VK_CHECKERROR(r);
@@ -275,10 +310,10 @@ void Swapchain::Create(std::shared_ptr<CommandBufferManager> &cmdManager, uint32
 
 void Swapchain::Destroy()
 {
-    CallDestroySubscribers();
-
     if (swapchain != VK_NULL_HANDLE)
     {
+        CallDestroySubscribers();
+
         vkDestroySwapchainKHR(device, swapchain, nullptr);
     }
 

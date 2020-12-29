@@ -12,7 +12,8 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
-    void Upload(const RgRasterizedGeometryUploadInfo &uploadInfo);
+    void Upload(const RgRasterizedGeometryUploadInfo &uploadInfo) {}
+    void Draw(VkCommandBuffer cmd) {}
 
 private:
 

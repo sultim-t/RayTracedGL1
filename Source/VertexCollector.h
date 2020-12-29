@@ -1,6 +1,8 @@
 #pragma once
-#include "Common.h"
+#include <vector>
+
 #include "Buffer.h"
+#include "Common.h"
 #include "RTGL1/RTGL1.h"
 
 // The class collects vertex data to buffers with shader struct types.
@@ -10,7 +12,7 @@ class VertexCollector
 {
 public:
     explicit VertexCollector(VkDevice device, const PhysicalDevice &physDevice, std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
-    virtual ~VertexCollector() = default;
+    virtual ~VertexCollector();
 
     VertexCollector(const VertexCollector& other) = delete;
     VertexCollector(VertexCollector&& other) noexcept = delete;

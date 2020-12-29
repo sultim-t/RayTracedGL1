@@ -31,8 +31,12 @@ struct ShVertexBufferDynamic
 
 struct ShGlobalUniform
 {
-    float viewProj[16];
-    float viewProjPrev[16];
+    float view[16];
+    float invView[16];
+    float viewPrev[16];
+    float projection[16];
+    float invProjection[16];
+    float projectionPrev[16];
     uint32_t positionsStride;
     uint32_t normalsStride;
     uint32_t texCoordsStride;

@@ -11,6 +11,7 @@ public:
         VkDevice device, const PhysicalDevice &physDevice,
         std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, 
         const VBProperties &properties, RgGeometryType filter);
+    ~VertexCollectorFiltered();
 
     VertexCollectorFiltered(const VertexCollectorFiltered& other) = delete;
     VertexCollectorFiltered(VertexCollectorFiltered&& other) noexcept = delete;

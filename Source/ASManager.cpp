@@ -1,11 +1,12 @@
 #include "ASManager.h"
 
 #include <array>
+
 #include "Generated/ShaderCommonC.h"
 
 ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
-                                         std::shared_ptr<CommandBufferManager> cmdManager,
-                                         const RgInstanceCreateInfo &info)
+                     std::shared_ptr<CommandBufferManager> cmdManager,
+                     const RgInstanceCreateInfo &info)
 {
     this->device = device;
     this->physDevice = physDevice;
@@ -18,7 +19,7 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
     properties.colorStride = info.vertexColorStride;
 
     scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
-    asBuilder = std::make_shared<ASBuilder>(scratchBuffer);
+    asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
     // static vertices
     staticVertsStaging = std::make_shared<Buffer>();
@@ -172,17 +173,16 @@ void ASManager::UpdateBufferDescriptors()
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        bufferInfos[i * 2].buffer = staticVertsBuffer->GetBuffer();
-        bufferInfos[i * 2].offset = 0;
-        bufferInfos[i * 2].range = VK_WHOLE_SIZE;
+        VkDescriptorBufferInfo &staticBufInfo = bufferInfos[i * 2];
+        staticBufInfo.buffer = staticVertsBuffer->GetBuffer();
+        staticBufInfo.offset = 0;
+        staticBufInfo.range = VK_WHOLE_SIZE;
 
-        bufferInfos[i * 2 + 1].buffer = dynamicVertsBuffer[i]->GetBuffer();
-        bufferInfos[i * 2 + 1].offset = 0;
-        bufferInfos[i * 2 + 1].range = VK_WHOLE_SIZE;
-    }
+        VkDescriptorBufferInfo &dynamicBufInfo = bufferInfos[i * 2 + 1];
+        dynamicBufInfo.buffer = dynamicVertsBuffer[i]->GetBuffer();
+        dynamicBufInfo.offset = 0;
+        dynamicBufInfo.range = VK_WHOLE_SIZE;
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
         VkWriteDescriptorSet &staticWrt = writes[i * 2];
         staticWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         staticWrt.dstSet = buffersDescSets[i];
@@ -190,7 +190,7 @@ void ASManager::UpdateBufferDescriptors()
         staticWrt.dstArrayElement = 0;
         staticWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         staticWrt.descriptorCount = 1;
-        staticWrt.pBufferInfo = &bufferInfos[i * 2];
+        staticWrt.pBufferInfo = &staticBufInfo;
 
         VkWriteDescriptorSet &dynamicWrt = writes[i * 2 + 1];
         dynamicWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -199,7 +199,7 @@ void ASManager::UpdateBufferDescriptors()
         dynamicWrt.dstArrayElement = 0;
         dynamicWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         dynamicWrt.descriptorCount = 1;
-        dynamicWrt.pBufferInfo = &bufferInfos[i * 2 + 1];
+        dynamicWrt.pBufferInfo = &dynamicBufInfo;
     }
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
@@ -220,7 +220,7 @@ void ASManager::UpdateASDescriptors(uint32_t frameIndex)
         VkWriteDescriptorSet &wrt = writes[i];
         wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         wrt.pNext = &asWrites[i];
-        wrt.dstSet = buffersDescSets[i];
+        wrt.dstSet = asDescSets[i];
         wrt.dstBinding = BINDING_ACCELERATION_STRUCTURE;
         wrt.dstArrayElement = 0;
         wrt.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
@@ -228,7 +228,6 @@ void ASManager::UpdateASDescriptors(uint32_t frameIndex)
     }
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
-
 }
 
 ASManager::~ASManager()
@@ -249,7 +248,7 @@ uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
     }
 
     assert(0);
-    return 0;
+    return UINT32_MAX;
 }
 
 uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_t frameIndex)
@@ -260,7 +259,7 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
     }
 
     assert(0);
-    return 0;
+    return UINT32_MAX;
 }
 
 void ASManager::BeginStaticGeometry()
@@ -496,8 +495,6 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     UpdateASDescriptors(frameIndex);
 }
 
-
-
 void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
 {
     as.buffer.Init(
@@ -525,4 +522,24 @@ VkDeviceAddress ASManager::GetASAddress(VkAccelerationStructureKHR as)
     addressInfo.accelerationStructure = as;
 
     return svkGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
+}
+
+VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const
+{
+    return buffersDescSets[frameIndex];
+}
+
+VkDescriptorSet ASManager::GetTLASDescSet(uint32_t frameIndex) const
+{
+    return asDescSets[frameIndex];
+}
+
+VkDescriptorSetLayout ASManager::GetBuffersDescSetLayout() const
+{
+    return buffersDescSetLayout;
+}
+
+VkDescriptorSetLayout ASManager::GetTLASDescSetLayout() const
+{
+    return asDescSetLayout;
 }

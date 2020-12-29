@@ -1,13 +1,19 @@
 #pragma once
 
-#include "Common.h"
+#include "ASManager.h"
+#include "GlobalUniform.h"
 #include "ShaderManager.h"
-#include "Buffer.h"
 
 class RayTracingPipeline
 {
 public:
-    explicit RayTracingPipeline(VkDevice device, const PhysicalDevice &physDevice, const ShaderManager &shaderManager);
+    explicit RayTracingPipeline(
+        VkDevice device,
+        const std::shared_ptr<PhysicalDevice> &physDevice,
+        const std::shared_ptr<ShaderManager> &shaderManager,
+        const std::shared_ptr<ASManager> &asManager,
+        const std::shared_ptr<GlobalUniform> &uniform
+    );
     ~RayTracingPipeline();
 
     RayTracingPipeline(const RayTracingPipeline& other) = delete;
@@ -15,14 +21,16 @@ public:
     RayTracingPipeline& operator=(const RayTracingPipeline& other) = delete;
     RayTracingPipeline& operator=(RayTracingPipeline&& other) noexcept = delete;
 
-    void GetEntries(VkStridedBufferRegionKHR &raygenEntry,
-                    VkStridedBufferRegionKHR &missEntry,
-                    VkStridedBufferRegionKHR &hitEntry,
-                    VkStridedBufferRegionKHR &callableEntry);
+    void Bind(VkCommandBuffer cmd);
+
+    void GetEntries(VkStridedDeviceAddressRegionKHR &raygenEntry,
+                    VkStridedDeviceAddressRegionKHR &missEntry,
+                    VkStridedDeviceAddressRegionKHR &hitEntry,
+                    VkStridedDeviceAddressRegionKHR &callableEntry) const;
+    VkPipelineLayout GetLayout() const;
 
 private:
-    void CreateDescriptors();
-    void CreateSBT(const PhysicalDevice &physDevice);
+    void CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice);
 
     void AddGeneralGroup(uint32_t generalIndex);
     void AddHitGroup(uint32_t closestHitIndex);
@@ -35,10 +43,6 @@ private:
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
     VkPipelineLayout rtPipelineLayout;
     VkPipeline rtPipeline;
-
-    VkDescriptorPool rtDescPool;
-    VkDescriptorSetLayout rtDescSetLayout;
-    VkDescriptorSet rtDescSets[MAX_FRAMES_IN_FLIGHT];
 
     std::shared_ptr<Buffer> shaderBindingTable;
     VkDeviceSize sbtAlignment;

@@ -75,6 +75,9 @@ Queues::Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface)
     transfer = VK_NULL_HANDLE;
 }
 
+Queues::~Queues()
+{}
+
 void Queues::SetDevice(VkDevice device)
 {
     vkGetDeviceQueue(device, indexGraphics, 0, &graphics);

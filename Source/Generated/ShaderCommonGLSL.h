@@ -46,8 +46,12 @@ struct ShTriangle
 
 struct ShGlobalUniform
 {
-    mat44 viewProj;
-    mat44 viewProjPrev;
+    mat44 view;
+    mat44 invView;
+    mat44 viewPrev;
+    mat44 projection;
+    mat44 invProjection;
+    mat44 projectionPrev;
     uint positionsStride;
     uint normalsStride;
     uint texCoordsStride;

@@ -20,3 +20,10 @@ add_executable(RaytracingTest
 target_link_libraries(RaytracingTest RayTracedGL1)
 target_link_libraries(RaytracingTest glfw)
 target_include_directories(RaytracingTest PUBLIC Libs/glm)
+
+add_executable(RtglTest 
+    Libs/tinyobjloader/tiny_obj_loader.h 
+    RtglTest.cpp)
+target_link_libraries(RtglTest RayTracedGL1)
+target_link_libraries(RtglTest glfw)
+target_include_directories(RtglTest PUBLIC Libs/glm)

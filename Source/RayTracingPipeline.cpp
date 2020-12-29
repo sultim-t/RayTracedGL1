@@ -1,25 +1,37 @@
 #include "RayTracingPipeline.h"
-#include "Generated/ShaderCommonC.h"
 
-RayTracingPipeline::RayTracingPipeline(VkDevice device, const PhysicalDevice &physDevice, const ShaderManager& sm)
+RayTracingPipeline::RayTracingPipeline(
+    VkDevice device,
+    const std::shared_ptr<PhysicalDevice> &physDevice,
+    const std::shared_ptr<ShaderManager> &sm,
+    const std::shared_ptr<ASManager> &asManager,
+    const std::shared_ptr<GlobalUniform> &uniform)
 {
     this->device = device;
 
-    std::vector<VkPipelineShaderStageCreateInfo> stages;
-    stages.push_back(sm.GetStageInfo("RGen"));
-    stages.push_back(sm.GetStageInfo("RMiss"));
-    stages.push_back(sm.GetStageInfo("RMissShadow"));
-    stages.push_back(sm.GetStageInfo("RClsHit"));
+    std::vector<VkPipelineShaderStageCreateInfo> stages =
+    {
+        sm->GetStageInfo("RGen"),
+        sm->GetStageInfo("RMiss"),
+        sm->GetStageInfo("RMissShadow"),
+        sm->GetStageInfo("RClsHit"),
+    };
 
     AddGeneralGroup(0);
     AddGeneralGroup(1);
     AddGeneralGroup(2);
     AddHitGroup(3);
 
-    CreateDescriptors();
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
-        rtDescSetLayout,
+        // ray tracing acceleration structures
+        asManager->GetTLASDescSetLayout(),
+        // images
+
+        // uniform
+        uniform->GetDescSetLayout(),
+        // vertex data
+        asManager->GetBuffersDescSetLayout()
     };
 
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
@@ -30,17 +42,20 @@ RayTracingPipeline::RayTracingPipeline(VkDevice device, const PhysicalDevice &ph
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &rtPipelineLayout);
     VK_CHECKERROR(r);
 
+    VkPipelineLibraryCreateInfoKHR libInfo = {};
+    libInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
+
     VkRayTracingPipelineCreateInfoKHR pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
     pipelineInfo.stageCount = stages.size();
     pipelineInfo.pStages = stages.data();
     pipelineInfo.groupCount = shaderGroups.size();
     pipelineInfo.pGroups = shaderGroups.data();
-    pipelineInfo.maxRecursionDepth = 2;
+    pipelineInfo.maxPipelineRayRecursionDepth = 2;
     pipelineInfo.layout = rtPipelineLayout;
-    pipelineInfo.libraries.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
+    pipelineInfo.pLibraryInfo = &libInfo;
 
-    r = vksCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &rtPipeline);
+    r = svkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &rtPipeline);
     VK_CHECKERROR(r);
 
     CreateSBT(physDevice);
@@ -50,70 +65,24 @@ RayTracingPipeline::~RayTracingPipeline()
 {
     vkDestroyPipeline(device, rtPipeline, nullptr);
     vkDestroyPipelineLayout(device, rtPipelineLayout, nullptr);
-    vkDestroyDescriptorSetLayout(device, rtDescSetLayout, nullptr);
-    vkDestroyDescriptorPool(device, rtDescPool, nullptr);
 }
 
-void RayTracingPipeline::CreateDescriptors()
-{
-    VkResult r;
-
-    VkDescriptorSetLayoutBinding asBinding = {};
-    asBinding.binding = BINDING_ACCELERATION_STRUCTURE;
-    asBinding.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    asBinding.descriptorCount = 1;
-    asBinding.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &asBinding;
-
-    r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &rtDescSetLayout);
-    VK_CHECKERROR(r);
-
-    VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
-
-    VkDescriptorPoolCreateInfo poolInfo = {};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
-
-    r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &rtDescPool);
-    VK_CHECKERROR(r);
-
-    VkDescriptorSetAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = rtDescPool;
-    allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &rtDescSetLayout;
-
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        r = vkAllocateDescriptorSets(device, &allocInfo, &rtDescSets[i]);
-        VK_CHECKERROR(r);
-    }
-}
-
-void RayTracingPipeline::CreateSBT(const PhysicalDevice &physDevice)
+void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice)
 {
     VkResult r;
 
     uint32_t groupCount = shaderGroups.size();
-    sbtAlignment = physDevice.GetRayTracingProperties().shaderGroupBaseAlignment;
-    sbtHandleSize = physDevice.GetRayTracingProperties().shaderGroupHandleSize;
+    sbtAlignment = physDevice->GetRTPipelineProperties().shaderGroupBaseAlignment;
+    sbtHandleSize = physDevice->GetRTPipelineProperties().shaderGroupHandleSize;
     sbtSize = sbtAlignment * groupCount;
 
     shaderBindingTable = std::make_shared<Buffer>();
-    shaderBindingTable->Init(device, physDevice, sbtSize,
-                             VK_BUFFER_USAGE_RAY_TRACING_BIT_KHR,
+    shaderBindingTable->Init(device, *physDevice, sbtSize,
+                             VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
                              VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     std::vector<uint8_t> shaderHandles(sbtSize);
-    r = vksGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, groupCount, shaderHandles.size(), shaderHandles.data());
+    r = svkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, groupCount, shaderHandles.size(), shaderHandles.data());
     VK_CHECKERROR(r);
 
     uint8_t *mapped = (uint8_t *) shaderBindingTable->Map();
@@ -127,29 +96,43 @@ void RayTracingPipeline::CreateSBT(const PhysicalDevice &physDevice)
     shaderBindingTable->Unmap();
 }
 
-void RayTracingPipeline::GetEntries(VkStridedBufferRegionKHR &raygenEntry, VkStridedBufferRegionKHR &missEntry,
-                                    VkStridedBufferRegionKHR &hitEntry, VkStridedBufferRegionKHR &callableEntry)
+void RayTracingPipeline::Bind(VkCommandBuffer cmd)
 {
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline);
+}
+
+void RayTracingPipeline::GetEntries(
+    VkStridedDeviceAddressRegionKHR &raygenEntry,
+    VkStridedDeviceAddressRegionKHR &missEntry,
+    VkStridedDeviceAddressRegionKHR &hitEntry,
+    VkStridedDeviceAddressRegionKHR &callableEntry) const
+{
+    VkDeviceAddress bufferAddress = shaderBindingTable->GetAddress();
+
     // TODO: remove indices
     raygenEntry = {};
-    raygenEntry.buffer = shaderBindingTable->GetBuffer();
-    raygenEntry.offset = sbtAlignment * 0;
+    raygenEntry.deviceAddress = bufferAddress;
     raygenEntry.stride = sbtAlignment;
     raygenEntry.size = sbtSize;
+    // vk spec
+    assert(raygenEntry.size == raygenEntry.stride);
 
     missEntry = {};
-    missEntry.buffer = shaderBindingTable->GetBuffer();
-    missEntry.offset = sbtAlignment * 1;
+    missEntry.deviceAddress = bufferAddress;
     missEntry.stride = sbtAlignment;
-    missEntry.size = sbtSize;
+    missEntry.size = sbtSize * 2;
 
     hitEntry = {};
-    hitEntry.buffer = shaderBindingTable->GetBuffer();
-    hitEntry.offset = sbtAlignment * 2;
+    hitEntry.deviceAddress = bufferAddress;
     hitEntry.stride = sbtAlignment;
     hitEntry.size = sbtSize;
 
     callableEntry = {};
+}
+
+VkPipelineLayout RayTracingPipeline::GetLayout() const
+{
+    return rtPipelineLayout;
 }
 
 void RayTracingPipeline::AddGeneralGroup(uint32_t generalIndex)

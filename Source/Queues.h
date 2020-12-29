@@ -7,6 +7,7 @@ class Queues
 {
 public:
     explicit Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface);
+    ~Queues();
 
     Queues(const Queues& other) = delete;
     Queues(Queues&& other) noexcept = delete;

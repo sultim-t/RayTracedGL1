@@ -1,7 +1,8 @@
 #include "GlobalUniform.h"
+
 #include "Generated/ShaderCommonC.h"
 
-GlobalUniform::GlobalUniform(VkDevice device, const PhysicalDevice &physDevice, bool deviceLocal)
+GlobalUniform::GlobalUniform(VkDevice device, std::shared_ptr<PhysicalDevice> &physDevice, bool deviceLocal)
 {
     this->device = device;
     this->uniformData = std::make_shared<ShGlobalUniform>();
@@ -14,7 +15,7 @@ GlobalUniform::GlobalUniform(VkDevice device, const PhysicalDevice &physDevice, 
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        uniformBuffers[i].Init(device, physDevice, size,
+        uniformBuffers[i].Init(device, *physDevice, size,
                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, properties);
     }
 
@@ -113,6 +114,11 @@ const ShGlobalUniform *GlobalUniform::GetData() const
 VkDescriptorSet GlobalUniform::GetDescSet(uint32_t frameIndex) const
 {
     return descSets[frameIndex];
+}
+
+VkDescriptorSetLayout GlobalUniform::GetDescSetLayout() const
+{
+    return descSetLayout;
 }
 
 void GlobalUniform::SetData(uint32_t frameIndex, const void *data, VkDeviceSize dataSize)

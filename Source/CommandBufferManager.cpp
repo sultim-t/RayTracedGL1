@@ -1,4 +1,5 @@
 #include "CommandBufferManager.h"
+#include "Utils.h"
 
 CommandBufferManager::CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues)
 {

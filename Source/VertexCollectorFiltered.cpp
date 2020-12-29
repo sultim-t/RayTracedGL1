@@ -11,6 +11,9 @@ VertexCollectorFiltered::VertexCollectorFiltered(
     this->filter = filter;
 }
 
+VertexCollectorFiltered::~VertexCollectorFiltered()
+{}
+
 const std::vector<uint32_t> &VertexCollectorFiltered::GetPrimitiveCountsFiltered() const
 {
     return primCountFiltered;

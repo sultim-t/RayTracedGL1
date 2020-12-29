@@ -18,6 +18,9 @@ VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice &physDevi
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 }
 
+VertexCollector::~VertexCollector()
+{}
+
 void VertexCollector::BeginCollecting()
 {
     assert(mappedVertexData == nullptr && mappedIndexData == nullptr && mappedTransformData == nullptr);

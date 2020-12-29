@@ -1,28 +1,49 @@
 #include "VulkanDevice.h"
+#include "Utils.h"
 
 VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
+    instance(VK_NULL_HANDLE),
+    device(VK_NULL_HANDLE),
+    surface(VK_NULL_HANDLE),
+    currentFrameIndex(MAX_FRAMES_IN_FLIGHT - 1),
+    currentFrameCmd(VK_NULL_HANDLE),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
-    debugPrint(info->pfnDebugPrint),
-    currentFrameIndex(0)
+    debugPrint(info->pfnDebugPrint)
 {
+    // init vulkan instance 
     CreateInstance(info->ppWindowExtensions, info->windowExtensionCount);
-    physDevice = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
-    queues = std::make_shared<Queues>(physDevice->Get());
 
+    // create VkSurfaceKHR using user's function
+    surface = GetSurfaceFromUser(instance, *info);
+
+    // create selected physical device
+    physDevice = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
+    queues = std::make_shared<Queues>(physDevice->Get(), surface);
+
+    // create vulkan device and set extension function pointers
     CreateDevice();
     InitDeviceExtensionFunctions(device);
-    physDevice->SetDevice(device);
-    queues->SetDevice(device);
+
     CreateSyncPrimitives();
 
-    cmdBufferManager = std::make_shared<CommandBufferManager>(device, queues);
-    uniformBuffers = std::make_shared<GlobalUniform>(device, *physDevice);
+    // set device
+    physDevice->SetDevice(device);
+    queues->SetDevice(device);
 
-    swapchain = std::make_shared<Swapchain>();
+    cmdManager = std::make_shared<CommandBufferManager>(device, queues);
+    uniform = std::make_shared<GlobalUniform>(device, physDevice);
 
+    swapchain = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
+    auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, *info);
+    scene = std::make_shared<Scene>(asManager);
 
+    shaderManager = std::make_shared<ShaderManager>(device);
+    rtPipeline = std::make_shared<RayTracingPipeline>(device, physDevice, shaderManager, scene->GetASManager(), uniform);
 
+    pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
+
+    // TODO: storage image
 }
 
 VulkanDevice::~VulkanDevice()
@@ -32,54 +53,70 @@ VulkanDevice::~VulkanDevice()
     DestroyInstance();
 }
 
-void VulkanDevice::BeginFrame()
+VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
 {
     currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    cmdBufferManager->WaitForFence(frameFences[currentFrameIndex]);
-    //swapchain->Acquire
+    // wait for previous cmd with the same frame index
+    Utils::WaitAndResetFence(device, frameFences[currentFrameIndex]);
 
-    cmdBufferManager->PrepareForFrame(currentFrameIndex);
+    swapchain->RequestNewSize(surfaceWidth, surfaceHeight);
+    swapchain->RequestVsync(true);
+    swapchain->AcquireImage(imageAvailableSemaphores[currentFrameIndex]);
 
-    VkCommandBuffer cmd = cmdBufferManager->StartGraphicsCmd();
+    // reset cmds for current frame index
+    cmdManager->PrepareForFrame(currentFrameIndex);
 
-    scene->PrepareForFrame(cmd);
+    // start dynamic geometry recording to current frame
+    scene->PrepareForFrame(currentFrameIndex);
 
-    //uniformBuffers->PrepareForFrame()
+    return cmdManager->StartGraphicsCmd();
 }
 
-void VulkanDevice::TracePaths()
+void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
 {
-    //pathTrancer->Draw(cmd, scene, uniformBuffers)
+    // submit geometry
+    scene->SubmitForFrame(cmd, currentFrameIndex);
 
+    // update uniform data
+    uniform->Upload(currentFrameIndex);
 
-
+    // trace paths and draw rasterized geometry
+    pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform);
+    rasterizer->Draw(cmd);
 }
 
-void VulkanDevice::Rasterize()
+void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 {
-    //rasterizer->Draw(cmd, uniformBuffers)
+    // blit result image to present on a surface
+    swapchain->BlitForPresent(cmd, , , , );
 
+    // submit command buffer, but wait until presentation engine has completed using image
+    cmdManager->Submit(
+        cmd, 
+        imageAvailableSemaphores[currentFrameIndex], 
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
+        renderFinishedSemaphores[currentFrameIndex], 
+        frameFences[currentFrameIndex]);
 
+    // present on a surface when rendering will be finished
+    swapchain->Present(queues, renderFinishedSemaphores[currentFrameIndex]);
 }
 
-void VulkanDevice::EndFrame()
+RgResult VulkanDevice::StartFrame(RgExtent2D surfaceExtent)
 {
-    //swapchain->BlitForPresent(cmd, <input image>, )
-    //cmdBufferManager->Submit(cmd,
-    //swapchain->Present(queues.graphics
-
-
+    currentFrameCmd = BeginFrame(surfaceExtent.width, surfaceExtent.height);
+    return RG_SUCCESS;
 }
 
 // TODO: check all members of input structs
 
 RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 {
-    BeginFrame();
-    TracePaths();
-    Rasterize();
-    EndFrame();
+    Render(currentFrameCmd, frameInfo->renderExtent.width, frameInfo->renderExtent.height);
+    EndFrame(currentFrameCmd);
+
+    currentFrameCmd = VK_NULL_HANDLE;
 
     return RG_SUCCESS;
 }
@@ -122,7 +159,17 @@ RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUpload
     return RG_SUCCESS;
 }
 
+RgResult VulkanDevice::SubmitStaticGeometries()
+{
+    scene->SubmitStatic();
+    return RG_SUCCESS;
+}
 
+RgResult VulkanDevice::ClearStaticScene()
+{
+    scene->ClearStatic();
+    return RG_SUCCESS;
+}
 
 
 #pragma region init / destroy
@@ -365,6 +412,15 @@ void VulkanDevice::CreateSyncPrimitives()
         r = vkCreateFence(device, &fenceInfo, nullptr, &frameFences[i]);
         VK_CHECKERROR(r);
     }
+}
+
+VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInstanceCreateInfo &info)
+{
+    uint64_t instanceHandle = reinterpret_cast<uint64_t>(instance);
+    uint64_t surfaceHandle = 0;
+    info.pfnCreateSurface(instanceHandle, &surfaceHandle);
+
+    return reinterpret_cast<VkSurfaceKHR>(surfaceHandle);
 }
 
 void VulkanDevice::DestroyInstance()

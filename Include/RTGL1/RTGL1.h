@@ -40,25 +40,25 @@ typedef enum RgResult
 //    RG_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
 //} RgStructureType;
 
-typedef void (*PFN_rgCreateVkSurfaceKHR)(const void *pVkInstance, void *pResultVkSurfaceKHR);
+typedef void (*PFN_rgCreateVkSurfaceKHR)(uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR);
 typedef void (*PFN_rgPrint)(const char *msg);
 
 typedef struct RgInstanceCreateInfo
 {
     const char                  *name;
-    const uint32_t              physicalDeviceIndex;
+    uint32_t                    physicalDeviceIndex;
     // Vulkan OS-specific window extensions
     const char                  **ppWindowExtensions;
     uint32_t                    windowExtensionCount;
-    // pointer to the function for creating VkSurfaceKHR
+    // Pointer to the function for creating VkSurfaceKHR
     PFN_rgCreateVkSurfaceKHR    pfnCreateSurface;
     RgBool32                    enableValidationLayer;
     PFN_rgPrint                 pfnDebugPrint;
-    // size that must be allocated for rasterized geometry, in bytes;
-    // it can't be changed after rgCreateInstance; if buffer is full,
-    // rasterized data will be ignored
+    // Size that must be allocated for rasterized geometry, in bytes.
+    // It can't be changed after rgCreateInstance.
+    // If buffer is full, rasterized data will be ignored
     uint32_t                    rasterizedDataBufferSize;
-    // postfixes will be used to determine textures that should be 
+    // Postfixes will be used to determine textures that should be 
     // loaded from files if the texture should be overridden
     // i.e. if postfix="_n" then "Floor_01" => "Floor_01_n.*", 
     // where "*" is some image extension
@@ -66,7 +66,7 @@ typedef struct RgInstanceCreateInfo
     char                        *overrideNormalMetallicTexturePostfix;
     char                        *overrideEmissionSpecularityTexturePostfix;
 
-    // each attribute has its own stride for ability to describe vertices 
+    // Each attribute has its own stride for ability to describe vertices 
     // that are represented as separated arrays of attribute values (i.e. Positions[], Normals[], ...)
     // or packed into array of structs (i.e. Vertex[] where Vertex={Position, Normal, ...}).
     // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
@@ -90,12 +90,7 @@ void rgUpdateWindowSize(
     uint32_t                    width,
     uint32_t                    height);
 
-typedef enum RgGeometryType
-{
-    RG_GEOMETRY_TYPE_STATIC,
-    RG_GEOMETRY_TYPE_STATIC_MOVABLE,
-    RG_GEOMETRY_TYPE_DYNAMIC
-} RgGeometryType;
+
 
 typedef union RgTexture
 {
@@ -106,9 +101,16 @@ typedef union RgTexture
 
 typedef struct RgLayeredMaterial
 {
-    // geometry or each triangle can have up to 3 textures, RG_NO_TEXTURE is no material
+    // Geometry or each triangle can have up to 3 textures, RG_NO_TEXTURE is no material
     RgTexture   layerTextures[3];
 } RgLayeredMaterial;
+
+typedef enum RgGeometryType
+{
+    RG_GEOMETRY_TYPE_STATIC,
+    RG_GEOMETRY_TYPE_STATIC_MOVABLE,
+    RG_GEOMETRY_TYPE_DYNAMIC
+} RgGeometryType;
 
 typedef struct RgTransform
 {
@@ -120,7 +122,7 @@ typedef struct RgGeometryUploadInfo
     RgGeometryType          geomType;
 
     uint32_t                vertexCount;
-    // strides are set in RgInstanceUploadInfo
+    // Strides are set in RgInstanceUploadInfo
     // 3 first floats will be used
     float                   *vertexData;
     // 3 floats; can be null
@@ -130,17 +132,17 @@ typedef struct RgGeometryUploadInfo
     // RGBA packed into 32-bit uint; can be null
     uint32_t                *colorData;
 
-    // can be null, if indices are not used
+    // Can be null, if indices are not used
     uint32_t                indexCount;
     uint32_t                *indexData;
 
     RgLayeredMaterial       geomMaterial;
 
     // TODO: seems to be redundant? as in fixed function pipeline
-    // only up to 4 textures are used per geometry
+    // Only up to 4 textures are used per geometry
     
-    // if not null, then each triangle will be using its specified material,
-    // otherwise, geomMaterial will be applied for whole geometry
+    // If not null, then each triangle will be using its specified material.
+    // Otherwise, geomMaterial will be applied for whole geometry
     RgLayeredMaterial       *triangleMaterials;
 
     RgTransform             transform;
@@ -211,15 +213,60 @@ RgResult rgUpdateGeometryTransform(
     RgInstance                              rgInstance,
     const RgUpdateTransformInfo             *updateInfo);
 
-// upload geometry that will be drawn using rasterization,
+// Upload geometry that will be drawn using rasterization,
 // whole buffer for such geometry be discarded after frame finish
 RgResult rgUploadRasterizedGeometry(
     RgInstance                              rgInstance,
     const RgRasterizedGeometryUploadInfo    *uploadInfo);
 
-// clear scene 
-RgResult rgClearScene(
+
+
+typedef enum RgLightType
+{
+    RG_LIGHT_TYPE_STATIC,
+    RG_LIGHT_TYPE_DYNAMIC
+} RgLightType;
+
+typedef struct RgDirectionalLightUploadInfo
+{
+    RgLightType     type;
+    uint32_t        color;
+    float           intensity;
+    float           direction[3];
+    float           angularSize;
+} RgDirectionalLightUploadInfo;
+
+typedef struct RgSphereLightUploadInfo
+{
+    RgLightType     type;
+    uint32_t        color;
+    float           intensity;
+    float           position[3];
+    float           radius;
+} RgSphereLightUploadInfo;
+
+RgResult rgUploadLight(
+    RgInstance                              rgInstance,
+    RgDirectionalLightUploadInfo            *lightInfo);
+
+RgResult rgUploadLight(
+    RgInstance                              rgInstance,
+    RgSphereLightUploadInfo                  *lightInfo);
+
+
+
+// After uploading all static geometry and static lights, scene must be submitted before rendering.
+// However, movable static geometry can be moved using rgUpdateGeometryTransform.
+// When the static scene data should be changed, it must be cleared using rgClearScene
+// and new static geometries must be uploaded.
+RgResult rgSubmitStaticGeometries(
     RgInstance                              rgInstance);
+
+// Clear scene from all static geometries and static lights
+RgResult rgClearStaticScene(
+    RgInstance                              rgInstance);
+
+
 
 typedef struct RgExtent2D
 {
@@ -236,14 +283,14 @@ typedef struct RgExtent3D
 
 typedef struct RgStaticTextureCreateInfo
 {
-    // only R8G8B8A8 textures
+    // Only R8G8B8A8 textures
     uint32_t                dataSize;
     uint32_t                *data;
     uint32_t                mipmapCount;
     uint8_t                 mipmapData[32];
     RgExtent2D              mipmapSizes[32];
 
-    // sampler info is here too for simplicity
+    // Sampler info is here too for simplicity
     RgSamplerAddressMode    addressModeU;
     RgSamplerAddressMode    addressModeV;
     RgBool32                enableOverride;
@@ -294,10 +341,15 @@ RgResult rgUpdateDynamicTexture(
     RgDynamicTexture                    dynamicTexture,
     const RgDynamicTextureInfo          *updateInfo);
 
+
+
+RgResult rgStartFrame(
+    RgInstance                          rgInstance,
+    RgExtent2D                          surfaceExtent);
+
 typedef struct RgDrawFrameInfo
 {
-    uint32_t    width;
-    uint32_t    height;
+    RgExtent2D    renderExtent;
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

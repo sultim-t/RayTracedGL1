@@ -1,12 +1,12 @@
 #pragma once
 
-#include <vector>
 #include "Common.h"
 
 class PhysicalDevice
 {
 public:
     explicit PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice);
+    ~PhysicalDevice();
 
     PhysicalDevice(const PhysicalDevice& other) = delete;
     PhysicalDevice(PhysicalDevice&& other) noexcept = delete;

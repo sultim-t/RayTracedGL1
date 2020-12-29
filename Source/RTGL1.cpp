@@ -56,6 +56,16 @@ RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, RgRasterizedGeometryU
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo);
 }
 
+RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->SubmitStaticGeometries();
+}
+
+RgResult rgClearStaticScene(RgInstance rgInstance)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->ClearStaticScene();
+}
+
 RgResult rgCreateStaticTexture(RgInstance rgInstance, const RgStaticTextureCreateInfo* createInfo,
     RgStaticTexture* result)
 {
@@ -88,6 +98,11 @@ RgResult rgUpdateDynamicTexture(RgInstance rgInstance, RgDynamicTexture dynamicT
 {
     assert(0);
     return RgResult();
+}
+
+RgResult rgStartFrame(RgInstance rgInstance, RgExtent2D surfaceExtent)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceExtent);
 }
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo* frameInfo)
