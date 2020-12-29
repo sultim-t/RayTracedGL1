@@ -35,7 +35,7 @@ public:
 
     // TODO: empty (white) texture 1x1 with index 0 (RG_NO_TEXTURE)
 
-    RgResult StartFrame(RgExtent2D surfaceExtent);
+    RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
 
 private:

@@ -214,17 +214,14 @@ void StartScene(RgInstance instance, Window *pWindow)
         pWindow->UpdateSize();
         ProcessInput(pWindow->glfwHandle);
 
-        rgStartFrame(instance);
+        rgStartFrame(instance, { pWindow->width, pWindow->height });
 
         RgDrawFrameInfo frameInfo = {};
-        frameInfo.width = pWindow->width;
-        frameInfo.height = pWindow->height;
+        frameInfo.renderExtent.width = pWindow->width;
+        frameInfo.renderExtent.height = pWindow->height;
         
-
         rgDrawFrame(instance, &frameInfo);
-
     }
-
 }
 
 int main()

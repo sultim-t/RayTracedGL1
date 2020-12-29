@@ -100,9 +100,9 @@ RgResult rgUpdateDynamicTexture(RgInstance rgInstance, RgDynamicTexture dynamicT
     return RgResult();
 }
 
-RgResult rgStartFrame(RgInstance rgInstance, RgExtent2D surfaceExtent)
+RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t surfaceHeight)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceExtent);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight);
 }
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo* frameInfo)

@@ -206,6 +206,7 @@ typedef struct RgRasterizedGeometryUploadInfo
 
 // Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.
 // Uploaded dynamic geometries are only visible in the current frame.
+// "result" may be null, if its transform won't be changed
 RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
     const RgGeometryUploadInfo              *uploadInfo,

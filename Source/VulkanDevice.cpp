@@ -103,9 +103,9 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
     swapchain->Present(queues, renderFinishedSemaphores[currentFrameIndex]);
 }
 
-RgResult VulkanDevice::StartFrame(RgExtent2D surfaceExtent)
+RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
 {
-    currentFrameCmd = BeginFrame(surfaceExtent.width, surfaceExtent.height);
+    currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight);
     return RG_SUCCESS;
 }
 
@@ -131,7 +131,11 @@ RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, Rg
 
     uint32_t geomId = scene->Upload(*uploadInfo);
 
-    *result = reinterpret_cast<RgGeometry>(geomId);
+    if (result!= nullptr)
+    {
+        *result = reinterpret_cast<RgGeometry>(geomId);
+    }
+
     return RG_SUCCESS;
 }
 
