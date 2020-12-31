@@ -55,6 +55,11 @@ private:
     void UpdateBufferDescriptors();
     void UpdateASDescriptors(uint32_t frameIndex);
 
+    void SetupBLAS(
+        AccelerationStructure &as,
+        const std::vector<VkAccelerationStructureGeometryKHR> &geoms,
+        const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges,
+        const std::vector<uint32_t> &primCounts);
     void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size);
     void DestroyAS(AccelerationStructure &as);
     VkDeviceAddress GetASAddress(const AccelerationStructure &as);

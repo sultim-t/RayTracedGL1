@@ -242,6 +242,32 @@ ASManager::~ASManager()
     vkDestroyFence(device, staticCopyFence, nullptr);
 }
 
+void ASManager::SetupBLAS(AccelerationStructure &as, const std::vector<VkAccelerationStructureGeometryKHR> &geoms,
+                          const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges, const std::vector<uint32_t> &primCounts)
+{
+    // get AS size and create buffer for AS
+    const auto staticBuildSizes = asBuilder->GetBottomBuildSizes(
+        geoms.size(), geoms.data(), primCounts.data(), true);
+
+    CreateASBuffer(staticBlas, staticBuildSizes.accelerationStructureSize);
+
+    // create AS
+    VkAccelerationStructureCreateInfoKHR blasInfo = {};
+    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+    blasInfo.size = staticBuildSizes.accelerationStructureSize;
+    blasInfo.buffer = staticBlas.buffer.GetBuffer();
+    VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &staticBlas.as);
+    VK_CHECKERROR(r);
+
+    // build BLAS
+    asBuilder->AddBLAS(staticBlas.as, geoms.size(),
+                       geoms.data(), ranges.data(),
+                       staticBuildSizes,
+                       true, false);
+
+}
+
 // separate functions to make adding between Begin..Geometry and Submit..Geometry a bit clearer
 
 uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
@@ -282,11 +308,6 @@ void ASManager::SubmitStaticGeometry()
 {
     collectorStaticMovable->EndCollecting();
 
-    VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
-
-    // copy from staging with barrier
-    collectorStaticMovable->CopyFromStaging(cmd);
-
     const auto &staticGeoms = collectorStaticMovable->GetASGeometries();
     const auto &movableGeoms = collectorStaticMovable->GetASGeometriesFiltered();
 
@@ -300,46 +321,29 @@ void ASManager::SubmitStaticGeometry()
     DestroyAS(staticBlas);
     DestroyAS(staticMovableBlas);
 
-    // get AS size and create buffer for AS
-    const auto staticBuildSizes = asBuilder->GetBottomBuildSizes(
-        staticGeoms.size(), staticGeoms.data(), staticPrimCounts.data(), true);
-    const auto movableBuildSizes = asBuilder->GetBottomBuildSizes(
-        movableGeoms.size(), movableGeoms.data(), movablePrimCounts.data(), true);
-
-    CreateASBuffer(staticBlas, staticBuildSizes.accelerationStructureSize);
-    CreateASBuffer(staticMovableBlas, movableBuildSizes.accelerationStructureSize);
-
-    VkResult r;
-
-    // create AS
-    VkAccelerationStructureCreateInfoKHR blasInfo = {};
-    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.size = staticBuildSizes.accelerationStructureSize;
-    blasInfo.buffer = staticBlas.buffer.GetBuffer();
-    r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &staticBlas.as);
-    VK_CHECKERROR(r);
-
-    VkAccelerationStructureCreateInfoKHR movableBlasInfo = {};
-    movableBlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    movableBlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    movableBlasInfo.size = movableBuildSizes.accelerationStructureSize;
-    movableBlasInfo.buffer = staticMovableBlas.buffer.GetBuffer();
-    r = svkCreateAccelerationStructureKHR(device, &movableBlasInfo, nullptr, &staticMovableBlas.as);
-    VK_CHECKERROR(r);
-
-    // build BLAS
     assert(asBuilder->IsEmpty());
 
-    asBuilder->AddBLAS(staticBlas.as, staticGeoms.size(),
-                       staticGeoms.data(), staticRanges.data(),
-                       staticBuildSizes,
-                       true, false);
-    asBuilder->AddBLAS(staticMovableBlas.as, movableGeoms.size(),
-                       movableGeoms.data(), movableRanges.data(),
-                       movableBuildSizes,
-                       false, false);
+    if (staticGeoms.empty() && movableGeoms.empty())
+    {
+        return;
+    }
 
+    VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
+
+    // copy from staging with barrier
+    collectorStaticMovable->CopyFromStaging(cmd, true);
+
+    if (!staticGeoms.empty())
+    {
+        SetupBLAS(staticBlas, staticGeoms, staticRanges, staticPrimCounts);
+    }
+
+    if (!movableGeoms.empty())
+    {
+        SetupBLAS(staticMovableBlas, movableGeoms, movableRanges, movablePrimCounts);
+    }
+
+    // build AS
     asBuilder->BuildBottomLevel(cmd);
 
     cmdManager->Submit(cmd, staticCopyFence);
@@ -359,7 +363,7 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     auto &dynBlas = dynamicBlas[frameIndex];
 
     colDyn->EndCollecting();
-    colDyn->CopyFromStaging(cmd);
+    colDyn->CopyFromStaging(cmd, false);
 
     const auto &geoms = colDyn->GetASGeometries();
     const auto &ranges = colDyn->GetASBuildRangeInfos();
@@ -367,29 +371,15 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 
     DestroyAS(dynBlas);
 
-    // get AS size and create buffer for AS
-    const auto dynamicBuildSizes = asBuilder->GetBottomBuildSizes(
-        geoms.size(), geoms.data(), counts.data(), false);
-
-    CreateASBuffer(dynamicBlas[frameIndex], dynamicBuildSizes.accelerationStructureSize);
-
-    // create AS
-    VkAccelerationStructureCreateInfoKHR blasInfo = {};
-    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.size = dynamicBuildSizes.accelerationStructureSize;
-    blasInfo.buffer = dynamicBlas[frameIndex].buffer.GetBuffer();
-    VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &dynamicBlas[frameIndex].as);
-    VK_CHECKERROR(r);
-
-    // build BLAS
     assert(asBuilder->IsEmpty());
 
-    asBuilder->AddBLAS(dynBlas.as,
-                       geoms.size(), geoms.data(), ranges.data(),
-                       dynamicBuildSizes,
-                       false, false);
-    asBuilder->BuildBottomLevel(cmd);
+    if (!geoms.empty())
+    {
+        SetupBLAS(dynamicBlas[frameIndex], geoms, ranges, counts);
+
+        // build BLAS
+        asBuilder->BuildBottomLevel(cmd);
+    }
 }
 
 void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
@@ -402,6 +392,11 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     const auto &geoms = collectorStaticMovable->GetASGeometriesFiltered();
     const auto &ranges = collectorStaticMovable->GetASBuildRangeInfosFiltered();
     const auto &primCounts = collectorStaticMovable->GetPrimitiveCountsFiltered();
+
+    if (geoms.empty())
+    {
+        return;
+    }
 
     const auto buildSizes = asBuilder->GetBottomBuildSizes(
         geoms.size(), geoms.data(), primCounts.data(), true);
@@ -425,7 +420,7 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     };
 
     // BLAS instances
-    std::vector<VkAccelerationStructureInstanceKHR> instances(3);
+    std::array<VkAccelerationStructureInstanceKHR, 3> instances = {};
 
     {
         VkAccelerationStructureInstanceKHR &staticInstance = instances[0];
@@ -515,6 +510,7 @@ void ASManager::DestroyAS(AccelerationStructure &as)
     if (as.as != VK_NULL_HANDLE)
     {
         svkDestroyAccelerationStructureKHR(device, as.as, nullptr);
+        as.as = VK_NULL_HANDLE;
     }
 }
 

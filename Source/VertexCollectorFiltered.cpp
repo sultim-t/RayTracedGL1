@@ -34,6 +34,7 @@ void VertexCollectorFiltered::Reset()
     VertexCollector::Reset();
 
     geomsFiltered.clear();
+    primCountFiltered.clear();
     buildRangeInfosFiltered.clear();
 }
 

@@ -6,7 +6,7 @@ VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice& physDevi
                                  const VBProperties& properties) :
     properties({}),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr),
-    curVertexCount(0), curIndexCount(0), curGeometryCount(0)    
+    curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0)
 {
     this->device = device;
     this->stagingVertBuffer = stagingVertBuffer;
@@ -38,18 +38,25 @@ VertexCollector::~VertexCollector()
 
 void VertexCollector::BeginCollecting()
 {
-    assert(mappedVertexData == nullptr && mappedIndexData == nullptr && mappedTransformData == nullptr);
-    assert(curVertexCount == 0 && curIndexCount == 0 && curGeometryCount == 0);
+    assert((mappedVertexData == nullptr && mappedIndexData == nullptr && mappedTransformData == nullptr) ||
+           (mappedVertexData != nullptr && mappedIndexData != nullptr && mappedTransformData != nullptr));
+    assert(curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 && curGeometryCount == 0);
     assert(asGeometries.empty() && asBuildRangeInfos.empty());
 
     if (stagingVertBuffer.expired() || vertBuffer.expired())
     {
+        mappedVertexData = nullptr;
+        mappedIndexData = nullptr;
+        mappedTransformData = nullptr;
         return;
     }
 
-    mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.lock()->Map());
-    mappedIndexData = static_cast<uint32_t *>(indices.Map());
-    mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
+    if (mappedVertexData == nullptr)
+    {
+        mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.lock()->Map());
+        mappedIndexData = static_cast<uint32_t *>(indices.Map());
+        mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
+    }
 }
 
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
@@ -73,7 +80,9 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     curVertexCount += info.vertexCount;
 
     const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
-    const uint32_t primitiveCount = useIndices ? info.indexCount : info.vertexCount / 3;
+    const uint32_t primitiveCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
+
+    curPrimitiveCount += primitiveCount;
 
     if (useIndices)
     {
@@ -214,23 +223,28 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(colorDst, 0xFF, info.vertexCount * properties.colorStride);
     }
 
+    const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
+    const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
+
     // materials
     void *matDst = mappedVertexData + offsetMaterials + vertIndex * sizeof(RgLayeredMaterial);
     assert(offsetMaterials + vertIndex * sizeof(RgLayeredMaterial) < wholeBufferSize);
 
     if (info.triangleMaterials != nullptr)
     {
-        memcpy(matDst, info.triangleMaterials, info.vertexCount * sizeof(RgLayeredMaterial));
+        memcpy(matDst, info.triangleMaterials, triangleCount * sizeof(RgLayeredMaterial));
     }
     else
     {
         // TODO: info.geomMaterial
-        memset(matDst, RG_NO_TEXTURE, info.vertexCount * sizeof(RgLayeredMaterial));
+        memset(matDst, RG_NO_TEXTURE, triangleCount * sizeof(RgLayeredMaterial));
     }
 }
 
 void VertexCollector::EndCollecting()
 {
+    Reset();
+
     if (auto sb = stagingVertBuffer.lock())
     {
         sb->Unmap();
@@ -253,6 +267,7 @@ void VertexCollector::Reset()
 {
     curVertexCount = 0;
     curIndexCount = 0;
+    curPrimitiveCount = 0;
     curGeometryCount = 0;
 
     primitiveCounts.clear();
@@ -260,7 +275,7 @@ void VertexCollector::Reset()
     asBuildRangeInfos.clear();
 }
 
-void VertexCollector::CopyFromStaging(VkCommandBuffer cmd)
+void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool copyStatic)
 {
     auto src = stagingVertBuffer.lock();
     auto dst = vertBuffer.lock();
@@ -268,7 +283,12 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd)
     if (src && dst)
     {
         std::array<VkBufferCopy, 5> copyInfos = {};
-        GetCopyInfos(true, copyInfos);
+        bool hasInfo = GetCopyInfos(copyStatic, copyInfos);
+
+        if (!hasInfo)
+        {
+            return;
+        }
 
         vkCmdCopyBuffer(cmd, src->GetBuffer(), dst->GetBuffer(),
                         copyInfos.size(), copyInfos.data());
@@ -289,7 +309,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd)
     }
 }
 
-void VertexCollector::GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const
+bool VertexCollector::GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const
 {
     const uint32_t offsetPositions = isStatic ?
         offsetof(ShVertexBufferDynamic, positions) :
@@ -307,11 +327,18 @@ void VertexCollector::GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &o
         offsetof(ShVertexBufferDynamic, materialIds) :
         offsetof(ShVertexBufferStatic, materialIds);
 
-    outInfos[0] = { offsetPositions,offsetPositions,curVertexCount * properties.positionStride };
-    outInfos[1] = { offsetNormals,offsetNormals,curVertexCount * properties.normalStride };
-    outInfos[2] = { offsetTexCoords,offsetTexCoords,curVertexCount * properties.texCoordStride };
-    outInfos[3] = { offsetColors,offsetColors,curVertexCount * properties.colorStride };
-    outInfos[4] = { offsetMaterials,offsetMaterials,(curIndexCount / 3) * sizeof(RgLayeredMaterial) };
+    if (curVertexCount == 0 || curPrimitiveCount == 0)
+    {
+        return false;
+    }
+
+    outInfos[0] = { offsetPositions,offsetPositions,    curVertexCount * properties.positionStride };
+    outInfos[1] = { offsetNormals,offsetNormals,        curVertexCount * properties.normalStride };
+    outInfos[2] = { offsetTexCoords,offsetTexCoords,    curVertexCount * properties.texCoordStride };
+    outInfos[3] = { offsetColors,offsetColors,          curVertexCount * properties.colorStride };
+    outInfos[4] = { offsetMaterials,offsetMaterials,    curPrimitiveCount * sizeof(RgLayeredMaterial) };
+
+    return true;
 }
 
 void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &transform)

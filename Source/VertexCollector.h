@@ -35,7 +35,7 @@ public:
     // Should be called when blasGeometries is not needed anymore
     virtual void Reset();
     // Copy buffer from staging and set barrier
-    void CopyFromStaging(VkCommandBuffer cmd);
+    void CopyFromStaging(VkCommandBuffer cmd, bool copyStatic);
 
     // Update transform, mainly for movable static geometry as dynamic geometry
     // will be updated every frame and thus their transforms.
@@ -48,7 +48,7 @@ protected:
 
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
-    void GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const;
+    bool GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const;
 
 private:
     VkDevice device;
@@ -66,6 +66,7 @@ private:
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;
+    uint32_t curPrimitiveCount;
     uint32_t curGeometryCount;
 
     std::vector<uint32_t> primitiveCounts;

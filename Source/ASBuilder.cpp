@@ -14,6 +14,8 @@ VkAccelerationStructureBuildSizesInfoKHR ASBuilder::GetBuildSizes(
     const uint32_t *pMaxPrimitiveCount, 
     bool fastTrace) const
 {
+    assert(geometryCount > 0);
+
     // mode, srcAccelerationStructure, dstAccelerationStructure
     // and all VkDeviceOrHostAddressKHR except transformData are ignored
     // in vkGetAccelerationStructureBuildSizesKHR(..)
@@ -63,6 +65,8 @@ void ASBuilder::AddBLAS(
 {
     // while building bottom level, top level must be not
     assert(topLBuildInfo.geomInfos.empty() && topLBuildInfo.rangeInfos.empty());
+
+    assert(geometryCount > 0);
 
     VkDeviceSize scratchSize = update ? buildSizes.updateScratchSize : buildSizes.buildScratchSize;
 
