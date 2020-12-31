@@ -10,7 +10,8 @@ PathTracer::~PathTracer()
 void PathTracer::Trace(
     VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height,
     const std::shared_ptr<ASManager> &asManager,
-    const std::shared_ptr<GlobalUniform> &uniform)
+    const std::shared_ptr<GlobalUniform> &uniform, 
+    VkDescriptorSet imagesDescSet)
 {
     rtPipeline->Bind(cmd);
 
@@ -18,7 +19,7 @@ void PathTracer::Trace(
         // ray tracing acceleration structures
         asManager->GetTLASDescSet(frameIndex),
         // images
-        ,
+        imagesDescSet,
         // uniform
         uniform->GetDescSet(frameIndex),
         // vertex data

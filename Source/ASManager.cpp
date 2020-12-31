@@ -6,17 +6,12 @@
 
 ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
                      std::shared_ptr<CommandBufferManager> cmdManager,
-                     const RgInstanceCreateInfo &info)
+                     const VBProperties &properties)
 {
     this->device = device;
     this->physDevice = physDevice;
     this->cmdManager = cmdManager;
-
-    properties.vertexArrayOfStructs = info.vertexArrayOfStructs == RG_TRUE;
-    properties.positionStride = info.vertexPositionStride;
-    properties.normalStride = info.vertexNormalStride;
-    properties.texCoordStride = info.vertexTexCoordStride;
-    properties.colorStride = info.vertexColorStride;
+    this->properties = properties;
 
     scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
@@ -33,7 +28,7 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
     staticVertsBuffer->Init(
         device, *physDevice,
         sizeof(ShVertexBufferStatic),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     // static and movable static share the same buffer as their data won't be changing
@@ -57,7 +52,7 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
         dynamicVertsBuffer[i]->Init(
             device, *physDevice,
             sizeof(ShVertexBufferDynamic),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
         collectorDynamic[i] = std::make_shared<VertexCollector>(
@@ -232,6 +227,15 @@ void ASManager::UpdateASDescriptors(uint32_t frameIndex)
 
 ASManager::~ASManager()
 {
+    DestroyAS(staticBlas);
+    DestroyAS(staticMovableBlas);
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        DestroyAS(dynamicBlas[i]);
+        DestroyAS(tlas[i]);
+    }
+
     vkDestroyDescriptorPool(device, descPool, nullptr);
     vkDestroyDescriptorSetLayout(device, buffersDescSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(device, asDescSetLayout, nullptr);
@@ -344,17 +348,15 @@ void ASManager::SubmitStaticGeometry()
 
 void ASManager::BeginDynamicGeometry(uint32_t frameIndex)
 {
-    currentFrameIndex = frameIndex;
-
     // dynamic AS must be recreated
-    collectorDynamic[currentFrameIndex]->Reset();
-    collectorDynamic[currentFrameIndex]->BeginCollecting();
+    collectorDynamic[frameIndex]->Reset();
+    collectorDynamic[frameIndex]->BeginCollecting();
 }
 
 void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    const auto &colDyn = collectorDynamic[currentFrameIndex];
-    auto &dynBlas = dynamicBlas[currentFrameIndex];
+    const auto &colDyn = collectorDynamic[frameIndex];
+    auto &dynBlas = dynamicBlas[frameIndex];
 
     colDyn->EndCollecting();
     colDyn->CopyFromStaging(cmd);
@@ -369,15 +371,15 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     const auto dynamicBuildSizes = asBuilder->GetBottomBuildSizes(
         geoms.size(), geoms.data(), counts.data(), false);
 
-    CreateASBuffer(dynamicBlas[currentFrameIndex], dynamicBuildSizes.accelerationStructureSize);
+    CreateASBuffer(dynamicBlas[frameIndex], dynamicBuildSizes.accelerationStructureSize);
 
     // create AS
     VkAccelerationStructureCreateInfoKHR blasInfo = {};
     blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
     blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
     blasInfo.size = dynamicBuildSizes.accelerationStructureSize;
-    blasInfo.buffer = dynamicBlas[currentFrameIndex].buffer.GetBuffer();
-    VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &dynamicBlas[currentFrameIndex].as);
+    blasInfo.buffer = dynamicBlas[frameIndex].buffer.GetBuffer();
+    VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &dynamicBlas[frameIndex].as);
     VK_CHECKERROR(r);
 
     // build BLAS
@@ -388,9 +390,6 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
                        dynamicBuildSizes,
                        false, false);
     asBuilder->BuildBottomLevel(cmd);
-
-    // reset
-    currentFrameIndex = UINT32_MAX;
 }
 
 void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
@@ -515,7 +514,7 @@ void ASManager::DestroyAS(AccelerationStructure &as)
 
     if (as.as != VK_NULL_HANDLE)
     {
-        vkDestroyAccelerationStructureKHR(device, as.as, nullptr);
+        svkDestroyAccelerationStructureKHR(device, as.as, nullptr);
     }
 }
 

@@ -6,7 +6,7 @@ class PhysicalDevice
 {
 public:
     explicit PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice);
-    ~PhysicalDevice();
+    ~PhysicalDevice() = default;
 
     PhysicalDevice(const PhysicalDevice& other) = delete;
     PhysicalDevice(PhysicalDevice&& other) noexcept = delete;
@@ -21,8 +21,8 @@ public:
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR GetRTPipelineProperties() const;
 
     // if addressQuery=true address can be queried
-    VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements &memReqs, bool addressQuery = false) const;
-    VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements2 &memReqs2, bool addressQuery = false) const;
+    VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties, bool addressQuery = false) const;
+    VkDeviceMemory AllocDeviceMemory(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties, bool addressQuery = false) const;
 
     void FreeDeviceMemory(VkDeviceMemory memory) const;
 

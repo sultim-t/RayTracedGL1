@@ -7,12 +7,14 @@
 class RayTracingPipeline
 {
 public:
+    // TODO: remove imagesSetLayout
     explicit RayTracingPipeline(
         VkDevice device,
         const std::shared_ptr<PhysicalDevice> &physDevice,
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<ASManager> &asManager,
-        const std::shared_ptr<GlobalUniform> &uniform
+        const std::shared_ptr<GlobalUniform> &uniform,
+        VkDescriptorSetLayout imagesSetLayout
     );
     ~RayTracingPipeline();
 

@@ -5,7 +5,8 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<PhysicalDevice> &physDevice,
     const std::shared_ptr<ShaderManager> &sm,
     const std::shared_ptr<ASManager> &asManager,
-    const std::shared_ptr<GlobalUniform> &uniform)
+    const std::shared_ptr<GlobalUniform> &uniform,
+    VkDescriptorSetLayout imagesSetLayout)
 {
     this->device = device;
 
@@ -27,7 +28,7 @@ RayTracingPipeline::RayTracingPipeline(
         // ray tracing acceleration structures
         asManager->GetTLASDescSetLayout(),
         // images
-
+        imagesSetLayout,
         // uniform
         uniform->GetDescSetLayout(),
         // vertex data
@@ -113,19 +114,19 @@ void RayTracingPipeline::GetEntries(
     raygenEntry = {};
     raygenEntry.deviceAddress = bufferAddress;
     raygenEntry.stride = sbtAlignment;
-    raygenEntry.size = sbtSize;
+    raygenEntry.size = sbtAlignment;
     // vk spec
     assert(raygenEntry.size == raygenEntry.stride);
 
     missEntry = {};
     missEntry.deviceAddress = bufferAddress;
     missEntry.stride = sbtAlignment;
-    missEntry.size = sbtSize * 2;
+    missEntry.size = sbtAlignment * 2;
 
     hitEntry = {};
     hitEntry.deviceAddress = bufferAddress;
     hitEntry.stride = sbtAlignment;
-    hitEntry.size = sbtSize;
+    hitEntry.size = sbtAlignment;
 
     callableEntry = {};
 }

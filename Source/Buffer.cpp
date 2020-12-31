@@ -34,7 +34,7 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
     VkMemoryRequirements memReq = {};
     vkGetBufferMemoryRequirements(device, buffer, &memReq);
 
-    memory = physDevice.AllocDeviceMemory(memReq, true);
+    memory = physDevice.AllocDeviceMemory(memReq, properties, true);
 
     r = vkBindBufferMemory(device, buffer, memory, 0);
     VK_CHECKERROR(r);
@@ -44,7 +44,7 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
         VkBufferDeviceAddressInfoKHR addrInfo = {};
         addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         addrInfo.buffer = buffer;
-        address = svkGetBufferDeviceAddressKHR(device, &addrInfo);
+        address = vkGetBufferDeviceAddress(device, &addrInfo);
     }
 
     size = bsize;
@@ -104,7 +104,7 @@ bool Buffer::TryUnmap()
 
     if (isMapped)
     {
-        vkUnmapMemory(device, memory);
+        Unmap();
         return true;
     }
 

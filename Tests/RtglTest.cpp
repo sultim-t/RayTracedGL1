@@ -107,13 +107,13 @@ void ProcessInput(GLFWwindow *window)
 }
 
 
-static std::vector<float> _positions;
-static std::vector<float> _normals;
-static std::vector<float> _texCoords;
-static std::vector<uint32_t> _colors;
-static std::vector<uint32_t> _indices;
 
-void LoadObj(const char *path)
+void LoadObj(const char *path, 
+             std::vector<float> &_positions,
+             std::vector<float> &_normals,
+             std::vector<float> &_texCoords,
+             std::vector<uint32_t> &_colors,
+             std::vector<uint32_t> &_indices)
 {
     tinyobj::attrib_t attrib;
     std::vector<tinyobj::shape_t> shapes;
@@ -171,42 +171,114 @@ void LoadObj(const char *path)
 
 }
 
+void FillFrameInfo(RgDrawFrameInfo *frameInfo)
+{
+    glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
+    glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
+
+    glm::mat4 invView = glm::inverse(view);
+    glm::mat4 invPersp = glm::inverse(persp);
+
+    memcpy(frameInfo->view, &view[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->invView, &invView[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->projection, &persp[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->invProjection, &invPersp[0][0], 16 * sizeof(float));
+
+    //frameInfo->lightPos = glm::vec4(lightDir.x, lightDir.y, lightDir.z, 0);
+}
+
 void StartScene(RgInstance instance, Window *pWindow)
 {
-    LoadObj("../../BRUSHES.obj");
+    static std::vector<float> st_positions, dyn_positions;
+    static std::vector<float> st_normals, dyn_normals;
+    static std::vector<float> st_texCoords, dyn_texCoords;
+    static std::vector<uint32_t> st_colors, dyn_colors;
+    static std::vector<uint32_t> st_indices, dyn_indices;
 
-    RgGeometryUploadInfo info = {};
-    info.geomType = RG_GEOMETRY_TYPE_STATIC;
+    LoadObj("../../BRUSHES.obj",
+            st_positions,
+            st_normals,
+            st_texCoords,
+            st_colors,
+            st_indices);
 
-    info.vertexCount = _positions.size();
-    info.vertexData = _positions.data();
-    info.normalData = _normals.data();
-    info.texCoordData = _texCoords.data();
-    info.colorData = _colors.data();
+    LoadObj("../../MODELS.obj",
+            dyn_positions,
+            dyn_normals,
+            dyn_texCoords,
+            dyn_colors,
+            dyn_indices);
 
-    info.indexCount = _indices.size();
-    info.indexData = _indices.data();
+    RgGeometryUploadInfo st_info = {};
+    RgGeometryUploadInfo dyn_info = {};
 
-    info.geomMaterial = {
-        RG_NO_TEXTURE,
-        RG_NO_TEXTURE,
-        RG_NO_TEXTURE
-    };
+    {
+        st_info.geomType = RG_GEOMETRY_TYPE_STATIC;
 
-    info.triangleMaterials = nullptr;
+        st_info.vertexCount = st_positions.size() / 3;
+        st_info.vertexData = st_positions.data();
+        st_info.normalData = st_normals.data();
+        st_info.texCoordData = st_texCoords.data();
+        st_info.colorData = st_colors.data();
 
-    info.transform = {
-        1,0,0,0,
-        0,1,0,0,
-        0,0,1,0
-    };
+        st_info.indexCount = st_indices.size();
+        st_info.indexData = st_indices.data();
+
+        st_info.geomMaterial = {
+            RG_NO_TEXTURE,
+            RG_NO_TEXTURE,
+            RG_NO_TEXTURE
+        };
+        st_info.triangleMaterials = nullptr;
+
+        st_info.transform = {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0
+        };
+    }
+
+    {
+        dyn_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+
+        dyn_info.vertexCount = dyn_positions.size() / 3;
+        dyn_info.vertexData = dyn_positions.data();
+        dyn_info.normalData = dyn_normals.data();
+        dyn_info.texCoordData = dyn_texCoords.data();
+        dyn_info.colorData = dyn_colors.data();
+
+        dyn_info.indexCount = dyn_indices.size();
+        dyn_info.indexData = dyn_indices.data();
+
+        dyn_info.geomMaterial = {
+            RG_NO_TEXTURE,
+            RG_NO_TEXTURE,
+            RG_NO_TEXTURE
+        };
+        dyn_info.triangleMaterials = nullptr;
+
+        dyn_info.transform = {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0
+        };
+    }
+
 
     rgStartNewScene(instance);
 
-    RgGeometry geom;
-    rgUploadGeometry(instance, &info, &geom);
+    rgUploadGeometry(instance, &st_info, nullptr);
+
+    st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+    st_info.transform = {
+            1,0,0,0,
+            0,1,0,-100,
+            0,0,1,0
+    };
+    rgUploadGeometry(instance, &st_info, nullptr);
 
     rgSubmitStaticGeometries(instance);
+
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
     {
@@ -214,11 +286,17 @@ void StartScene(RgInstance instance, Window *pWindow)
         pWindow->UpdateSize();
         ProcessInput(pWindow->glfwHandle);
 
-        rgStartFrame(instance, { pWindow->width, pWindow->height });
+        rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
+
+        // dynamic geometry must be uploaded only in frame
+        rgUploadGeometry(instance, &dyn_info, nullptr);
+
 
         RgDrawFrameInfo frameInfo = {};
-        frameInfo.renderExtent.width = pWindow->width;
-        frameInfo.renderExtent.height = pWindow->height;
+        frameInfo.renderWidth = pWindow->width;
+        frameInfo.renderHeight = pWindow->height;
+
+        FillFrameInfo(&frameInfo);
         
         rgDrawFrame(instance, &frameInfo);
     }
@@ -236,7 +314,7 @@ int main()
     info.vertexPositionStride = 3 * sizeof(float);
     info.vertexNormalStride = 3 * sizeof(float);
     info.vertexTexCoordStride = 2 * sizeof(float);
-    info.vertexColorStride = 3 * sizeof(float);
+    info.vertexColorStride = sizeof(uint32_t);
     info.rasterizedDataBufferSize = 32 * 1024 * 1024;
 
     info.ppWindowExtensions = window.extensions;

@@ -1,7 +1,8 @@
 #include "CommandBufferManager.h"
 #include "Utils.h"
 
-CommandBufferManager::CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues)
+CommandBufferManager::CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues) :
+    currentFrameIndex(0)
 {
     this->device = device;
     this->queues = queues;
@@ -51,6 +52,7 @@ void CommandBufferManager::PrepareForFrame(uint32_t frameIndex)
 
 VkCommandBuffer CommandBufferManager::StartCmd(uint32_t frameIndex, VkCommandPool cmdPool, VkQueue queue)
 {
+    VkResult r;
     VkCommandBuffer cmd;
 
     VkCommandBufferAllocateInfo allocInfo = {};
@@ -59,7 +61,14 @@ VkCommandBuffer CommandBufferManager::StartCmd(uint32_t frameIndex, VkCommandPoo
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
     allocInfo.commandBufferCount = 1;
 
-    VkResult r = vkAllocateCommandBuffers(device, &allocInfo, &cmd);
+    r = vkAllocateCommandBuffers(device, &allocInfo, &cmd);
+    VK_CHECKERROR(r);
+
+    VkCommandBufferBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+
+    r = vkBeginCommandBuffer(cmd, &beginInfo);
     VK_CHECKERROR(r);
 
     cmdQueues[frameIndex][cmd] = queue;

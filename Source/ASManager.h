@@ -10,7 +10,7 @@ class ASManager
 public:
     ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice,
               std::shared_ptr<CommandBufferManager> cmdManager,
-              const RgInstanceCreateInfo &info);
+              const VBProperties &properties);
     ~ASManager();
 
     ASManager(const ASManager& other) = delete;
@@ -63,9 +63,6 @@ private:
 private:
     VkDevice device;
     std::shared_ptr<PhysicalDevice> physDevice;
-
-    // for adding dynamic geometry
-    uint32_t currentFrameIndex;
 
     // buffers for static, movable static geometry
     std::shared_ptr<Buffer> staticVertsBuffer;

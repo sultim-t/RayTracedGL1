@@ -1,8 +1,14 @@
 #include "VertexCollector.h"
 #include "Generated/ShaderCommonC.h"
 
-VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice &physDevice, std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties)
+VertexCollector::VertexCollector(VkDevice device, const PhysicalDevice& physDevice,
+                                 std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer,
+                                 const VBProperties& properties) :
+    properties({}),
+    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr),
+    curVertexCount(0), curIndexCount(0), curGeometryCount(0)    
 {
+    this->device = device;
     this->stagingVertBuffer = stagingVertBuffer;
     this->vertBuffer = vertBuffer;
     this->properties = properties;
@@ -109,6 +115,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     VkAccelerationStructureGeometryTrianglesDataKHR &trData = geom.geometry.triangles;
     trData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
     trData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
+    trData.maxVertex = curVertexCount;
     trData.vertexData.deviceAddress = vertexDataDeviceAddress;
     trData.vertexStride = properties.positionStride;
     trData.transformData.deviceAddress = transforms.GetAddress() + geomIndex * sizeof(RgTransform);
@@ -140,23 +147,36 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
 void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic)
 {
-    const uint32_t offsetNormals = isStatic ?
-        offsetof(ShVertexBufferDynamic, normals) :
-        offsetof(ShVertexBufferStatic, normals);
-    const uint32_t offsetTexCoords = isStatic ?
-        offsetof(ShVertexBufferDynamic, texCoords) :
-        offsetof(ShVertexBufferStatic, texCoords);
-    const uint32_t offsetColors = isStatic ?
-        offsetof(ShVertexBufferDynamic, colors) :
-        offsetof(ShVertexBufferStatic, colors);
-    const uint32_t offsetMaterials = isStatic ?
-        offsetof(ShVertexBufferDynamic, materialIds) :
-        offsetof(ShVertexBufferStatic, materialIds);
+    const uint32_t wholeBufferSize = isStatic ?
+        sizeof(ShVertexBufferStatic) :
+        sizeof(ShVertexBufferDynamic);
 
-    void *positionsDst = mappedVertexData + vertIndex * properties.positionStride;
+    const uint32_t offsetPositions = isStatic ?
+        offsetof(ShVertexBufferStatic, positions) :
+        offsetof(ShVertexBufferDynamic, positions);
+    const uint32_t offsetNormals = isStatic ?
+        offsetof(ShVertexBufferStatic, normals) :
+        offsetof(ShVertexBufferDynamic, normals);
+    const uint32_t offsetTexCoords = isStatic ?
+        offsetof(ShVertexBufferStatic, texCoords) :
+        offsetof(ShVertexBufferDynamic, texCoords);
+    const uint32_t offsetColors = isStatic ?
+        offsetof(ShVertexBufferStatic, colors) :
+        offsetof(ShVertexBufferDynamic, colors);
+    const uint32_t offsetMaterials = isStatic ?
+        offsetof(ShVertexBufferStatic, materialIds) :
+        offsetof(ShVertexBufferDynamic, materialIds);
+
+    // positions
+    void *positionsDst = mappedVertexData + offsetPositions + vertIndex * properties.positionStride;
+    assert(offsetPositions + vertIndex * properties.positionStride < wholeBufferSize);
+
     memcpy(positionsDst, info.vertexData, info.vertexCount * properties.positionStride);
 
+    // normals
     void *normalsDst = mappedVertexData + offsetNormals + vertIndex * properties.normalStride;
+    assert(offsetNormals + vertIndex * properties.normalStride < wholeBufferSize);
+
     if (info.normalData != nullptr)
     {
         memcpy(normalsDst, info.normalData, info.vertexCount * properties.normalStride);
@@ -167,7 +187,10 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(normalsDst, 0, info.vertexCount * properties.normalStride);
     }
 
+    // tex coords
     void *texCoordDst = mappedVertexData + offsetTexCoords + vertIndex * properties.texCoordStride;
+    assert(offsetTexCoords + vertIndex * properties.texCoordStride < wholeBufferSize);
+
     if (info.texCoordData != nullptr)
     {
         memcpy(texCoordDst, info.texCoordData, info.vertexCount * properties.texCoordStride);
@@ -177,7 +200,10 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(texCoordDst, 0, info.vertexCount * properties.texCoordStride);
     }
 
+    // colors
     void *colorDst = mappedVertexData + offsetColors + vertIndex * properties.colorStride;
+    assert(offsetColors + vertIndex * properties.colorStride < wholeBufferSize);
+
     if (info.colorData != nullptr)
     {
         memcpy(colorDst, info.colorData, info.vertexCount * properties.colorStride);
@@ -188,7 +214,10 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(colorDst, 0xFF, info.vertexCount * properties.colorStride);
     }
 
+    // materials
     void *matDst = mappedVertexData + offsetMaterials + vertIndex * sizeof(RgLayeredMaterial);
+    assert(offsetMaterials + vertIndex * sizeof(RgLayeredMaterial) < wholeBufferSize);
+
     if (info.triangleMaterials != nullptr)
     {
         memcpy(matDst, info.triangleMaterials, info.vertexCount * sizeof(RgLayeredMaterial));

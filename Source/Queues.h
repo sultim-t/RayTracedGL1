@@ -27,6 +27,7 @@ public:
 
 private:
     std::vector<VkQueueFamilyProperties> queueFamilyProperties;
+    float defaultQueuePriority;
 
     uint32_t indexGraphics;
     uint32_t indexCompute;

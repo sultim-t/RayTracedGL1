@@ -30,7 +30,14 @@ VkQueue Queues::GetTransfer() const
     return transfer;
 }
 
-Queues::Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface)
+Queues::Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface) :
+    defaultQueuePriority(0),
+    indexGraphics(UINT32_MAX),
+    indexCompute(UINT32_MAX),
+    indexTransfer(UINT32_MAX),
+    graphics(VK_NULL_HANDLE),
+    compute(VK_NULL_HANDLE),
+    transfer(VK_NULL_HANDLE)
 {
     uint32_t queueFamilyCount = 0;
     vkGetPhysicalDeviceQueueFamilyProperties(physDevice, &queueFamilyCount, nullptr);
@@ -70,9 +77,17 @@ Queues::Queues(VkPhysicalDevice physDevice, VkSurfaceKHR surface)
         }
     }
 
-    graphics = VK_NULL_HANDLE;
-    compute = VK_NULL_HANDLE;
-    transfer = VK_NULL_HANDLE;
+    assert(indexGraphics != UINT32_MAX);
+
+    if (indexCompute == UINT32_MAX)
+    {
+        indexCompute = indexGraphics;
+    }
+
+    if (indexTransfer == UINT32_MAX)
+    {
+        indexTransfer = indexGraphics;
+    }
 }
 
 Queues::~Queues()
@@ -87,16 +102,13 @@ void Queues::SetDevice(VkDevice device)
 
 void Queues::GetDeviceQueueCreateInfos(std::vector<VkDeviceQueueCreateInfo>& outInfos) const
 {
-    std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
-
     VkDeviceQueueCreateInfo queueInfo = {};
-    const float defaultQueuePriority = 0;
 
     queueInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
     queueInfo.queueFamilyIndex = indexGraphics;
     queueInfo.queueCount = 1;
     queueInfo.pQueuePriorities = &defaultQueuePriority;
-    queueCreateInfos.push_back(queueInfo);
+    outInfos.push_back(queueInfo);
 
     if (indexCompute != indexGraphics)
     {
@@ -104,7 +116,7 @@ void Queues::GetDeviceQueueCreateInfos(std::vector<VkDeviceQueueCreateInfo>& out
         queueInfo.queueFamilyIndex = indexCompute;
         queueInfo.queueCount = 1;
         queueInfo.pQueuePriorities = &defaultQueuePriority;
-        queueCreateInfos.push_back(queueInfo);
+        outInfos.push_back(queueInfo);
     }
 
     if (indexTransfer != indexGraphics && indexTransfer != indexCompute)
@@ -113,6 +125,6 @@ void Queues::GetDeviceQueueCreateInfos(std::vector<VkDeviceQueueCreateInfo>& out
         queueInfo.queueFamilyIndex = indexTransfer;
         queueInfo.queueCount = 1;
         queueInfo.pQueuePriorities = &defaultQueuePriority;
-        queueCreateInfos.push_back(queueInfo);
+        outInfos.push_back(queueInfo);
     }
 }

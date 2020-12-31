@@ -1,5 +1,6 @@
 #include "VulkanDevice.h"
 #include "Utils.h"
+#include "Generated/ShaderCommonC.h"
 
 VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     instance(VK_NULL_HANDLE),
@@ -10,6 +11,12 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugPrint(info->pfnDebugPrint)
 {
+    vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
+    vbProperties.positionStride = info->vertexPositionStride;
+    vbProperties.normalStride = info->vertexNormalStride;
+    vbProperties.texCoordStride = info->vertexTexCoordStride;
+    vbProperties.colorStride = info->vertexColorStride;
+
     // init vulkan instance 
     CreateInstance(info->ppWindowExtensions, info->windowExtensionCount);
 
@@ -35,11 +42,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     swapchain = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
-    auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, *info);
+    storageImage = std::make_shared<BasicStorageImage>(device, physDevice, cmdManager);
+    swapchain->Subscribe(storageImage);
+
+    auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, vbProperties);
     scene = std::make_shared<Scene>(asManager);
 
     shaderManager = std::make_shared<ShaderManager>(device);
-    rtPipeline = std::make_shared<RayTracingPipeline>(device, physDevice, shaderManager, scene->GetASManager(), uniform);
+    rtPipeline = std::make_shared<RayTracingPipeline>(device, physDevice, shaderManager, scene->GetASManager(), uniform, storageImage->GetDescSetLayout());
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -48,7 +58,23 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
 VulkanDevice::~VulkanDevice()
 {
+    vkDeviceWaitIdle(device);
+
+    physDevice.reset();
+    queues.reset();
+    swapchain.reset();
+    cmdManager.reset();
+    storageImage.reset();
+    uniform.reset();
+    scene.reset();
+    shaderManager.reset();
+    rtPipeline.reset();
+    pathTracer.reset();
+    rasterizer.reset();
+
+    vkDestroySurfaceKHR(instance, surface, nullptr);
     DestroySyncPrimitives();
+
     DestroyDevice();
     DestroyInstance();
 }
@@ -73,6 +99,22 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     return cmdManager->StartGraphicsCmd();
 }
 
+void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo)
+{
+    memcpy(gu->view, frameInfo->view, 16 * sizeof(float));
+    memcpy(gu->invView, frameInfo->invView, 16 * sizeof(float));
+    memcpy(gu->projection, frameInfo->projection, 16 * sizeof(float));
+    memcpy(gu->invProjection, frameInfo->invProjection, 16 * sizeof(float));
+
+    //gu->viewPrev[16];
+    //gu->projectionPrev[16];
+
+    gu->positionsStride = vbProperties.positionStride;
+    gu->normalsStride = vbProperties.normalStride;
+    gu->texCoordsStride = vbProperties.texCoordStride;
+    gu->colorsStride = vbProperties.colorStride;
+}
+
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
 {
     // submit geometry
@@ -82,14 +124,21 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     uniform->Upload(currentFrameIndex);
 
     // trace paths and draw rasterized geometry
-    pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform);
+    pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform,
+                      storageImage->GetDescSet(currentFrameIndex));
+
+    // TODO: postprocessing
+
     rasterizer->Draw(cmd);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 {
     // blit result image to present on a surface
-    swapchain->BlitForPresent(cmd, , , , );
+    swapchain->BlitForPresent(
+        cmd, storageImage->image, 
+        storageImage->width, storageImage->height,
+        storageImage->imageLayout);
 
     // submit command buffer, but wait until presentation engine has completed using image
     cmdManager->Submit(
@@ -103,6 +152,10 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
     swapchain->Present(queues, renderFinishedSemaphores[currentFrameIndex]);
 }
 
+
+
+#pragma region RTGL1 interface implementation
+
 RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
 {
     currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight);
@@ -113,10 +166,15 @@ RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
 
 RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 {
-    Render(currentFrameCmd, frameInfo->renderExtent.width, frameInfo->renderExtent.height);
+    FillUniform(uniform->GetData(), frameInfo);
+
+    //Render(currentFrameCmd, frameInfo->renderWidth, frameInfo->renderHeight);
     EndFrame(currentFrameCmd);
 
     currentFrameCmd = VK_NULL_HANDLE;
+
+    // TODO: remove waitidle that was used FOR DEBUGGING
+    vkDeviceWaitIdle(device);
 
     return RG_SUCCESS;
 }
@@ -133,7 +191,7 @@ RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, Rg
 
     if (result!= nullptr)
     {
-        *result = reinterpret_cast<RgGeometry>(geomId);
+        *result = static_cast<RgGeometry>(geomId);
     }
 
     return RG_SUCCESS;
@@ -146,7 +204,7 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
         return RG_WRONG_ARGUMENT;
     }
 
-    uint32_t geomId = reinterpret_cast<uint32_t>(updateInfo->movableStaticGeom);
+    uint32_t geomId = static_cast<uint32_t>(updateInfo->movableStaticGeom);
 
     scene->UpdateTransform(geomId, updateInfo->transform);
     return RG_SUCCESS;
@@ -174,6 +232,9 @@ RgResult VulkanDevice::StartNewStaticScene()
     scene->StartNewStatic();
     return RG_SUCCESS;
 }
+
+#pragma endregion 
+
 
 
 #pragma region init / destroy

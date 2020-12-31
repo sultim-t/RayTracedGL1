@@ -13,6 +13,7 @@
 #include "GlobalUniform.h"
 #include "PathTracer.h"
 #include "Rasterizer.h"
+#include "BasicStorageImage.h"
 
 class VulkanDevice
 {
@@ -48,6 +49,8 @@ private:
     void DestroyDevice();
     void DestroySyncPrimitives();
 
+    void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo);
+
     VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);
     void Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight);
     void EndFrame(VkCommandBuffer cmd);
@@ -71,6 +74,9 @@ private:
 
     std::shared_ptr<CommandBufferManager>   cmdManager;
 
+    // TODO: this storage image is only for debugging in the beginning
+    std::shared_ptr<BasicStorageImage>      storageImage;
+
     std::shared_ptr<GlobalUniform>          uniform;
     std::shared_ptr<Scene>                  scene;
 
@@ -82,4 +88,6 @@ private:
     bool                                    enableValidationLayer;
     VkDebugUtilsMessengerEXT                debugMessenger;
     PFN_rgPrint                             debugPrint;
+
+    VBProperties                            vbProperties;
 };

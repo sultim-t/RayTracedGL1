@@ -23,13 +23,13 @@ GLSL_TYPE_NAMES = {
     (TYPE_UINT32, 2): "uvec2",
     (TYPE_UINT32, 3): "uvec3",
     (TYPE_UINT32, 4): "uvec4",
-    (TYPE_FLOAT, 22): "mat22",
-    (TYPE_FLOAT, 23): "mat23",
-    (TYPE_FLOAT, 32): "mat32",
-    (TYPE_FLOAT, 33): "mat33",
-    (TYPE_FLOAT, 34): "mat34",
-    (TYPE_FLOAT, 43): "mat43",
-    (TYPE_FLOAT, 44): "mat44",
+    (TYPE_FLOAT, 22): "mat2",
+    (TYPE_FLOAT, 23): "mat2x3",
+    (TYPE_FLOAT, 32): "mat3x2",
+    (TYPE_FLOAT, 33): "mat3",
+    (TYPE_FLOAT, 34): "mat3x4",
+    (TYPE_FLOAT, 43): "mat4x3",
+    (TYPE_FLOAT, 44): "mat4",
 }
 
 TAB_STR = "    "
@@ -53,6 +53,7 @@ CONST = {
     "BINDING_VERTEX_BUFFER_DYNAMIC": 1,
     "BINDING_GLOBAL_UNIFORM": 0,
     "BINDING_ACCELERATION_STRUCTURE": 0,
+    "BINDING_STORAGE_IMAGE": 0,
 }
 
 
@@ -217,7 +218,7 @@ def getLayout(blockName, definition):
         "    %s %s " + blockName + "\n" \
         "{\n" \
         "    %s %s;\n" \
-        "}\n"
+        "};\n"
 
     return r % definition[:6]
 

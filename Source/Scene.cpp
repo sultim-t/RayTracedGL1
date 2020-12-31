@@ -31,6 +31,8 @@ void Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex)
     // always submit dynamic geomtetry on the frame ending
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
 
+    asManager->BuildTLAS(cmd, frameIndex);
+
     // reset
     currentFrameIndex = UINT32_MAX;
 }

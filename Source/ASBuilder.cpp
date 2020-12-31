@@ -50,7 +50,7 @@ VkAccelerationStructureBuildSizesInfoKHR ASBuilder::GetTopBuildSizes(
     const VkAccelerationStructureGeometryKHR *pGeometry, const uint32_t *pMaxPrimitiveCount, bool fastTrace)  const
 {
     return GetBuildSizes(
-        VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR, 1,
+        VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR, 1,
         pGeometry, pMaxPrimitiveCount, fastTrace);
 }
 
@@ -62,7 +62,7 @@ void ASBuilder::AddBLAS(
     bool fastTrace, bool update)
 {
     // while building bottom level, top level must be not
-    assert(topLBuildInfo.geomInfos.size() == topLBuildInfo.rangeInfos.size() == 0);
+    assert(topLBuildInfo.geomInfos.empty() && topLBuildInfo.rangeInfos.empty());
 
     VkDeviceSize scratchSize = update ? buildSizes.updateScratchSize : buildSizes.buildScratchSize;
 
@@ -109,7 +109,7 @@ void ASBuilder::AddTLAS(
     bool fastTrace, bool update)
 {
     // while building top level, bottom level must be not
-    assert(topLBuildInfo.geomInfos.size() == topLBuildInfo.rangeInfos.size() == 0);
+    assert(topLBuildInfo.geomInfos.empty() && topLBuildInfo.rangeInfos.empty());
 
     VkDeviceSize scratchSize = update ? buildSizes.updateScratchSize : buildSizes.buildScratchSize;
 

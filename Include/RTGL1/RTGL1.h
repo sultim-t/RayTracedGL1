@@ -16,7 +16,7 @@ extern "C" {
 typedef uint32_t RgBool32;
 typedef uint32_t RgFlags;
 RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
-RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgGeometry)
+typedef uint32_t RgGeometry;
 // RgTexture, RgAnimatedTexture, RgDynamicTexture use the same pool of their indices,
 // so the type can be determined from the union of these types
 typedef uint32_t RgStaticTexture;
@@ -353,11 +353,19 @@ RgResult rgUpdateDynamicTexture(
 
 RgResult rgStartFrame(
     RgInstance                          rgInstance,
-    RgExtent2D                          surfaceExtent);
+    uint32_t                            surfaceWidth, 
+    uint32_t                            surfaceHeight);
 
 typedef struct RgDrawFrameInfo
 {
-    RgExtent2D    renderExtent;
+    uint32_t        renderWidth;
+    uint32_t        renderHeight;
+    float           view[16];
+    float           projection[16];
+
+    // TODO: must be calculated inside the library
+    float           invView[16];
+    float           invProjection[16];
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

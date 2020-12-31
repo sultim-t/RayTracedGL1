@@ -7,6 +7,7 @@
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE (0)
+#define BINDING_STORAGE_IMAGE (0)
 
 #ifndef DESC_SET_VERTEX_DATA
     #error Define "DESC_SET_VERTEX_DATA" before including this header.

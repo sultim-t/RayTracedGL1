@@ -1,6 +1,8 @@
 #include "PhysicalDevice.h"
+#include <vector>
 
-PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
+PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice) :
+    device(VK_NULL_HANDLE)
 {
     VkResult r;
 
@@ -18,6 +20,7 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
 
     vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
 
+    rtPipelineProperties = {};
     rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
 
     VkPhysicalDeviceProperties2 deviceProp2 = {};
@@ -26,9 +29,6 @@ PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
 
     vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
 }
-
-PhysicalDevice::~PhysicalDevice()
-{}
 
 void PhysicalDevice::SetDevice(VkDevice device)
 {
@@ -61,14 +61,14 @@ uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags req
     return 0;
 }
 
-VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements& memReqs, bool addressQuery) const
+VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements& memReqs, VkMemoryPropertyFlags properties, bool addressQuery) const
 {
     VkDeviceMemory memory;
 
     VkMemoryAllocateInfo memAllocInfo = {};
     memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     memAllocInfo.allocationSize = memReqs.size;
-    memAllocInfo.memoryTypeIndex = GetMemoryTypeIndex(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    memAllocInfo.memoryTypeIndex = GetMemoryTypeIndex(memReqs.memoryTypeBits, properties);
 
     VkMemoryAllocateFlagsInfo allocFlagInfo = {};
 
@@ -86,9 +86,9 @@ VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements& mem
     return memory;
 }
 
-VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements2& memReqs2, bool addressQuery) const
+VkDeviceMemory PhysicalDevice::AllocDeviceMemory(const VkMemoryRequirements2& memReqs2, VkMemoryPropertyFlags properties, bool addressQuery) const
 {
-    return AllocDeviceMemory(memReqs2.memoryRequirements, addressQuery);
+    return AllocDeviceMemory(memReqs2.memoryRequirements, properties, addressQuery);
 }
 
 void PhysicalDevice::FreeDeviceMemory(VkDeviceMemory memory) const
