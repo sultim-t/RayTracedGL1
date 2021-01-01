@@ -2,6 +2,7 @@
 
 #include <array>
 
+#include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
 ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
@@ -158,7 +159,13 @@ void ASManager::CreateDescriptors()
         descSetInfo.pSetLayouts = &asDescSetLayout;
         r = vkAllocateDescriptorSets(device, &descSetInfo, &asDescSets[i]);
         VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, buffersDescSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Vertex data Desc set");
+        SET_DEBUG_NAME(device, asDescSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "TLAS Desc set");
     }
+
+    SET_DEBUG_NAME(device, buffersDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Vertex data Desc set Layout");
+    SET_DEBUG_NAME(device, asDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "TLAS Desc set Layout");
 }
 
 void ASManager::UpdateBufferDescriptors()
@@ -202,27 +209,21 @@ void ASManager::UpdateBufferDescriptors()
 
 void ASManager::UpdateASDescriptors(uint32_t frameIndex)
 {
-    std::array<VkWriteDescriptorSet, MAX_FRAMES_IN_FLIGHT> writes{};
-    std::array<VkWriteDescriptorSetAccelerationStructureKHR, MAX_FRAMES_IN_FLIGHT> asWrites{};
+    VkWriteDescriptorSetAccelerationStructureKHR asWrt = {};
+    asWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    asWrt.accelerationStructureCount = 1;
+    asWrt.pAccelerationStructures = &tlas[frameIndex].as;
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        VkWriteDescriptorSetAccelerationStructureKHR &asWrt = asWrites[i];
-        asWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-        asWrt.accelerationStructureCount = 1;
-        asWrt.pAccelerationStructures = &tlas[frameIndex].as;
+    VkWriteDescriptorSet wrt = {};
+    wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wrt.pNext = &asWrt;
+    wrt.dstSet = asDescSets[frameIndex];
+    wrt.dstBinding = BINDING_ACCELERATION_STRUCTURE;
+    wrt.dstArrayElement = 0;
+    wrt.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    wrt.descriptorCount = 1;
 
-        VkWriteDescriptorSet &wrt = writes[i];
-        wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wrt.pNext = &asWrites[i];
-        wrt.dstSet = asDescSets[i];
-        wrt.dstBinding = BINDING_ACCELERATION_STRUCTURE;
-        wrt.dstArrayElement = 0;
-        wrt.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        wrt.descriptorCount = 1;
-    }
-
-    vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+    vkUpdateDescriptorSets(device, 1, &wrt, 0, nullptr);
 }
 
 ASManager::~ASManager()
@@ -413,6 +414,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
                        false, true);
 
     asBuilder->BuildBottomLevel(cmd);
+    Utils::ASBuildMemoryBarrier(cmd);
 }
 
 bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
@@ -511,6 +513,8 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 
     asBuilder->AddTLAS(curTlas.as, &instGeom, &range, buildSizes, true, false);
     asBuilder->BuildTopLevel(cmd);
+
+    Utils::ASBuildMemoryBarrier(cmd);
 
     UpdateASDescriptors(frameIndex);
 

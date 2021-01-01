@@ -1,6 +1,8 @@
 #include "ASBuilder.h"
 #include <utility>
 
+#include "Utils.h"
+
 ASBuilder::ASBuilder(VkDevice device, std::shared_ptr<ScratchBuffer> commonScratchBuffer) :
     scratchBuffer(std::move(commonScratchBuffer))
 {
@@ -97,10 +99,10 @@ void ASBuilder::BuildBottomLevel(VkCommandBuffer cmd)
     svkCmdBuildAccelerationStructuresKHR(cmd, bottomLBuildInfo.geomInfos.size(), 
                                         bottomLBuildInfo.geomInfos.data(), bottomLBuildInfo.rangeInfos.data());
 
-    // sync scratch buffer access
-    SyncScratch(cmd);
-        
+    // sync scratch buffer and AS access
+    Utils::ASBuildMemoryBarrier(cmd);
     scratchBuffer->Reset();
+
     bottomLBuildInfo.geomInfos.clear();
     bottomLBuildInfo.rangeInfos.clear();
 }
@@ -146,10 +148,10 @@ void ASBuilder::BuildTopLevel(VkCommandBuffer cmd)
     svkCmdBuildAccelerationStructuresKHR(cmd, topLBuildInfo.geomInfos.size(),
                                         topLBuildInfo.geomInfos.data(), topLBuildInfo.rangeInfos.data());
 
-    // sync scratch buffer access
-    SyncScratch(cmd);
-
+    // sync scratch buffer and AS access
+    Utils::ASBuildMemoryBarrier(cmd);
     scratchBuffer->Reset();
+
     topLBuildInfo.geomInfos.clear();
     topLBuildInfo.rangeInfos.clear();
 }
@@ -158,22 +160,4 @@ bool ASBuilder::IsEmpty() const
 {
     return bottomLBuildInfo.geomInfos.empty() && bottomLBuildInfo.rangeInfos.empty() &&
         topLBuildInfo.geomInfos.empty() && topLBuildInfo.rangeInfos.empty();
-}
-
-void ASBuilder::SyncScratch(VkCommandBuffer cmd)
-{
-    VkMemoryBarrier memBarrier = {};
-    memBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
-    memBarrier.srcAccessMask =
-        VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR |
-        VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-    memBarrier.dstAccessMask =
-        VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-
-    vkCmdPipelineBarrier(cmd,
-                         VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
-                         VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR, 0,
-                         1, &memBarrier,
-                         0, nullptr,
-                         0, nullptr);
 }

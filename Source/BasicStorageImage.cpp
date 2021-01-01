@@ -50,8 +50,6 @@ void BasicStorageImage::CreateImage(uint32_t width, uint32_t height)
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     r = vkCreateImage(device, &imageInfo, nullptr, &image);
     VK_CHECKERROR(r);
-    SET_DEBUG_NAME(device, (uint64_t) image, VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT,
-                   "Output image");
 
     VkMemoryRequirements memReqs;
     vkGetImageMemoryRequirements(device, image, &memReqs);
@@ -74,8 +72,9 @@ void BasicStorageImage::CreateImage(uint32_t width, uint32_t height)
     viewInfo.image = image;
     r = vkCreateImageView(device, &viewInfo, nullptr, &view);
     VK_CHECKERROR(r);
-    SET_DEBUG_NAME(device, (uint64_t) view, VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT,
-                   "Output image view");
+
+    SET_DEBUG_NAME(device, image, VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Output image");
+    SET_DEBUG_NAME(device, view, VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Output image View");
 
     // TODO: cmd should be created here 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
@@ -105,6 +104,16 @@ void BasicStorageImage::DestroyImage()
         view = VK_NULL_HANDLE;
         memory = VK_NULL_HANDLE;
     }
+}
+
+void BasicStorageImage::Barrier(VkCommandBuffer cmd)
+{
+    Utils::BarrierImage(
+        cmd, image,
+        VK_ACCESS_SHADER_WRITE_BIT,
+        VK_ACCESS_SHADER_READ_BIT,
+        VK_IMAGE_LAYOUT_GENERAL,
+        VK_IMAGE_LAYOUT_GENERAL);
 }
 
 void BasicStorageImage::OnSwapchainCreate(uint32_t newWidth, uint32_t newHeight)
@@ -158,7 +167,10 @@ void BasicStorageImage::CreateDescriptors()
     {
         r = vkAllocateDescriptorSets(device, &allocInfo, &descSets[i]);
         VK_CHECKERROR(r);
+        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Storage image Desc set");
     }
+
+    SET_DEBUG_NAME(device, descLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Storage image Desc set Layout");
 }
 
 void BasicStorageImage::UpdateDescriptors()

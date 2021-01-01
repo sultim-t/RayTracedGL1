@@ -1,5 +1,7 @@
 #include "RayTracingPipeline.h"
 
+#include "Utils.h"
+
 RayTracingPipeline::RayTracingPipeline(
     VkDevice device,
     const std::shared_ptr<PhysicalDevice> &physDevice,
@@ -59,6 +61,9 @@ RayTracingPipeline::RayTracingPipeline(
     r = svkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &rtPipeline);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, rtPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Ray tracing pipeline Layout");
+    SET_DEBUG_NAME(device, rtPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Ray tracing pipeline");
+
     CreateSBT(physDevice);
 }
 
@@ -73,9 +78,12 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
     VkResult r;
 
     uint32_t groupCount = shaderGroups.size();
-    sbtAlignment = physDevice->GetRTPipelineProperties().shaderGroupBaseAlignment;
-    sbtHandleSize = physDevice->GetRTPipelineProperties().shaderGroupHandleSize;
-    sbtSize = sbtAlignment * groupCount;
+    groupBaseAlignment = physDevice->GetRTPipelineProperties().shaderGroupBaseAlignment;
+
+    handleSize = physDevice->GetRTPipelineProperties().shaderGroupHandleSize;
+    alignedHandleSize = Utils::Align(handleSize, groupBaseAlignment);
+
+    uint32_t sbtSize = alignedHandleSize * groupCount;
 
     shaderBindingTable = std::make_shared<Buffer>();
     shaderBindingTable->Init(device, *physDevice, sbtSize,
@@ -90,8 +98,8 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
 
     for (uint32_t i = 0; i < groupCount; i++)
     {
-        memcpy(mapped, shaderHandles.data() + i * sbtHandleSize, sbtHandleSize);
-        mapped += sbtAlignment;
+        memcpy(mapped, shaderHandles.data() + i * alignedHandleSize, handleSize);
+        mapped += groupBaseAlignment;
     }
 
     shaderBindingTable->Unmap();
@@ -113,20 +121,20 @@ void RayTracingPipeline::GetEntries(
     // TODO: remove indices
     raygenEntry = {};
     raygenEntry.deviceAddress = bufferAddress;
-    raygenEntry.stride = sbtAlignment;
-    raygenEntry.size = sbtAlignment;
+    raygenEntry.stride = alignedHandleSize;
+    raygenEntry.size = alignedHandleSize;
     // vk spec
     assert(raygenEntry.size == raygenEntry.stride);
 
     missEntry = {};
     missEntry.deviceAddress = bufferAddress;
-    missEntry.stride = sbtAlignment;
-    missEntry.size = sbtAlignment * 2;
+    missEntry.stride = alignedHandleSize;
+    missEntry.size = alignedHandleSize * 2;
 
     hitEntry = {};
     hitEntry.deviceAddress = bufferAddress;
-    hitEntry.stride = sbtAlignment;
-    hitEntry.size = sbtAlignment;
+    hitEntry.stride = alignedHandleSize;
+    hitEntry.size = alignedHandleSize;
 
     callableEntry = {};
 }

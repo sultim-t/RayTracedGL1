@@ -47,7 +47,8 @@ private:
     VkPipeline rtPipeline;
 
     std::shared_ptr<Buffer> shaderBindingTable;
-    VkDeviceSize sbtAlignment;
-    VkDeviceSize sbtHandleSize;
-    VkDeviceSize sbtSize;
+
+    uint32_t groupBaseAlignment;
+    uint32_t handleSize;
+    uint32_t alignedHandleSize;
 };

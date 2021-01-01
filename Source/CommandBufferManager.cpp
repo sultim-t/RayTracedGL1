@@ -47,6 +47,8 @@ void CommandBufferManager::PrepareForFrame(uint32_t frameIndex)
     vkResetCommandPool(device, computeCmds[frameIndex].pool, 0);
     vkResetCommandPool(device, transferCmds[frameIndex].pool, 0);
 
+    currentFrameIndex = frameIndex;
+
     assert(cmdQueues[frameIndex].empty());
 }
 

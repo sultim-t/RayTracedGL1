@@ -125,9 +125,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     if (sceneNotEmpty)
     {
-        //pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform,
-        //                  storageImage->GetDescSet(currentFrameIndex));
+        pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform,
+                          storageImage->GetDescSet(currentFrameIndex));
     }
+
+    storageImage->Barrier(cmd);
 
     // TODO: postprocessing
 

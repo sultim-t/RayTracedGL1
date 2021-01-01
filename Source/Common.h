@@ -43,7 +43,7 @@ void InitDeviceExtensionFunctions(VkDevice device);
 
 
 #ifndef _NDEBUG
-    #define SET_DEBUG_NAME(device, obj, type, name) AddDebugName(device, obj, type, name)
+    #define SET_DEBUG_NAME(device, obj, type, name) AddDebugName(device, reinterpret_cast<uint64_t>(obj), type, name)
 #else
     #define SET_DEBUG_NAME(device, obj, type, name) do{}while(0)
 #endif

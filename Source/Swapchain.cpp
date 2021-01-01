@@ -290,8 +290,8 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
         r = vkCreateImageView(device, &viewInfo, nullptr, &swapchainViews[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, (uint64_t) swapchainImages[i], VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Swapchain image");
-        SET_DEBUG_NAME(device, (uint64_t) swapchainViews[i], VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Swapchain image view");
+        SET_DEBUG_NAME(device, swapchainImages[i], VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Swapchain image");
+        SET_DEBUG_NAME(device, swapchainViews[i], VkDebugReportObjectTypeEXT::VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Swapchain image view");
     }
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();

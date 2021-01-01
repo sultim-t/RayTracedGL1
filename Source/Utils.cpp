@@ -66,6 +66,27 @@ void Utils::BarrierImage(
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, subresourceRange);
 }
 
+void Utils::ASBuildMemoryBarrier(VkCommandBuffer cmd)
+{
+    VkMemoryBarrier barrier = {};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask =
+        VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR |
+        VK_ACCESS_ACCELERATION_STRUCTURE_WRITE_BIT_KHR;
+    barrier.dstAccessMask = 
+        VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+
+    // wait for all building
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+        VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+        0,
+        1, &barrier,
+        0, nullptr,
+        0, nullptr);
+}
+
 void Utils::WaitForFence(VkDevice device, VkFence fence)
 {
     VkResult r = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
@@ -87,4 +108,9 @@ void Utils::WaitAndResetFence(VkDevice device, VkFence fence)
 
     r = vkResetFences(device, 1, &fence);
     VK_CHECKERROR(r);
+}
+
+uint32_t Utils::Align(uint32_t value, uint32_t alignment)
+{
+    return (value + alignment - 1) & ~(alignment - 1);
 }

@@ -124,7 +124,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     VkAccelerationStructureGeometryTrianglesDataKHR &trData = geom.geometry.triangles;
     trData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
     trData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-    trData.maxVertex = curVertexCount;
+    trData.maxVertex = 1 << 16;
     trData.vertexData.deviceAddress = vertexDataDeviceAddress;
     trData.vertexStride = properties.positionStride;
     trData.transformData.deviceAddress = transforms.GetAddress() + geomIndex * sizeof(RgTransform);

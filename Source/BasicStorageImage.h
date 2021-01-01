@@ -19,6 +19,8 @@ public:
     BasicStorageImage &operator=(const BasicStorageImage &other) = delete;
     BasicStorageImage &operator=(BasicStorageImage &&other) noexcept = delete;
 
+    void Barrier(VkCommandBuffer cmd);
+
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const
     {
         return descSets[frameIndex];

@@ -59,9 +59,6 @@ public:
     bool IsEmpty() const;
 
 private:
-    void SyncScratch(VkCommandBuffer cmd);
-
-private:
     VkDevice device;
     std::shared_ptr<ScratchBuffer> scratchBuffer;
 
