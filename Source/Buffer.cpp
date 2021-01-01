@@ -18,6 +18,12 @@ Buffer::~Buffer()
 void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSize bsize, VkBufferUsageFlags usage,
                   VkMemoryPropertyFlags properties)
 {
+    if (bsize == 0)
+    {
+        assert(0);
+        return;
+    }
+
     device = bdevice;
 
     VkResult r;
@@ -131,10 +137,16 @@ VkDeviceAddress Buffer::GetAddress() const
 
 VkDeviceSize Buffer::GetSize() const
 {
+    assert((buffer != VK_NULL_HANDLE && size != 0) || (buffer == VK_NULL_HANDLE && size == 0));
     return size;
 }
 
 bool Buffer::IsMapped() const
 {
     return isMapped;
+}
+
+bool Buffer::IsInitted() const
+{
+    return buffer != VK_NULL_HANDLE && memory !=VK_NULL_HANDLE;
 }

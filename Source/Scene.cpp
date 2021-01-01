@@ -20,21 +20,23 @@ void Scene::PrepareForFrame(uint32_t frameIndex)
     asManager->BeginDynamicGeometry(frameIndex);
 }
 
-void Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex)
+bool Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex)
 {
+    // reset
+    currentFrameIndex = UINT32_MAX;
+
     if (toResubmitMovable)
     {
         // at least one transform of static movable geometry was changed
         asManager->ResubmitStaticMovable(cmd);
+        toResubmitMovable = false;
     }
 
     // always submit dynamic geomtetry on the frame ending
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
 
-    asManager->BuildTLAS(cmd, frameIndex);
-
-    // reset
-    currentFrameIndex = UINT32_MAX;
+    // try to build top level
+    return asManager->TryBuildTLAS(cmd, frameIndex);
 }
 
 uint32_t Scene::Upload(const RgGeometryUploadInfo &uploadInfo)

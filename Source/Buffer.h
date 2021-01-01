@@ -26,6 +26,7 @@ public:
     VkDeviceAddress GetAddress() const;
     VkDeviceSize GetSize() const;
     bool IsMapped() const;
+    bool IsInitted() const;
 
 protected:
     VkDevice device;

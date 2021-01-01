@@ -16,15 +16,15 @@ CommandBufferManager::CommandBufferManager(VkDevice device, std::shared_ptr<Queu
         VkResult r;
 
         cmdPoolInfo.queueFamilyIndex = queues->GetIndexGraphics();
-        r = vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &graphicsPools[i]);
+        r = vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &graphicsCmds[i].pool);
         VK_CHECKERROR(r);
 
         cmdPoolInfo.queueFamilyIndex = queues->GetIndexCompute();
-        r = vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &computePools[i]);
+        r = vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &computeCmds[i].pool);
         VK_CHECKERROR(r);
 
         cmdPoolInfo.queueFamilyIndex = queues->GetIndexTransfer();
-        r = vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &transferPools[i]);
+        r = vkCreateCommandPool(device, &cmdPoolInfo, nullptr, &transferCmds[i].pool);
         VK_CHECKERROR(r);
     }
 }
@@ -35,34 +35,44 @@ CommandBufferManager::~CommandBufferManager()
     {
         assert(cmdQueues[i].empty());
 
-        vkDestroyCommandPool(device, graphicsPools[i], nullptr);
-        vkDestroyCommandPool(device, computePools[i], nullptr);
-        vkDestroyCommandPool(device, transferPools[i], nullptr);
+        vkDestroyCommandPool(device, graphicsCmds[i].pool, nullptr);
+        vkDestroyCommandPool(device, computeCmds[i].pool, nullptr);
+        vkDestroyCommandPool(device, transferCmds[i].pool, nullptr);
     }
 }
 
 void CommandBufferManager::PrepareForFrame(uint32_t frameIndex)
 {
-    vkResetCommandPool(device, graphicsPools[frameIndex], 0);
-    vkResetCommandPool(device, computePools[frameIndex], 0);
-    vkResetCommandPool(device, transferPools[frameIndex], 0);
+    vkResetCommandPool(device, graphicsCmds[frameIndex].pool, 0);
+    vkResetCommandPool(device, computeCmds[frameIndex].pool, 0);
+    vkResetCommandPool(device, transferCmds[frameIndex].pool, 0);
 
     assert(cmdQueues[frameIndex].empty());
 }
 
-VkCommandBuffer CommandBufferManager::StartCmd(uint32_t frameIndex, VkCommandPool cmdPool, VkQueue queue)
+VkCommandBuffer CommandBufferManager::StartCmd(uint32_t frameIndex, AllocatedCmds &allocated, VkQueue queue)
 {
     VkResult r;
-    VkCommandBuffer cmd;
 
-    VkCommandBufferAllocateInfo allocInfo = {};
-    allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
-    allocInfo.commandPool = cmdPool;
-    allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
-    allocInfo.commandBufferCount = 1;
+    uint32_t oldCount = allocated.cmds.size();
 
-    r = vkAllocateCommandBuffers(device, &allocInfo, &cmd);
-    VK_CHECKERROR(r);
+    // if not enough, allocate new buffers
+    if (allocated.curCount + 1 > oldCount)
+    {
+        allocated.cmds.resize(oldCount + cmdAllocStep);
+
+        VkCommandBufferAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
+        allocInfo.commandPool = allocated.pool;
+        allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
+        allocInfo.commandBufferCount = cmdAllocStep;
+
+        r = vkAllocateCommandBuffers(device, &allocInfo, &allocated.cmds[oldCount]);
+        VK_CHECKERROR(r);
+    }
+
+    VkCommandBuffer cmd = allocated.cmds[allocated.curCount];
+    allocated.curCount++;
 
     VkCommandBufferBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
@@ -83,7 +93,7 @@ VkCommandBuffer CommandBufferManager::StartGraphicsCmd()
         return VK_NULL_HANDLE;
     }
 
-    return StartCmd(currentFrameIndex, graphicsPools[currentFrameIndex], queues.lock()->GetGraphics());
+    return StartCmd(currentFrameIndex, graphicsCmds[currentFrameIndex], queues.lock()->GetGraphics());
 }
 
 VkCommandBuffer CommandBufferManager::StartComputeCmd()
@@ -93,7 +103,7 @@ VkCommandBuffer CommandBufferManager::StartComputeCmd()
         return VK_NULL_HANDLE;
     }
 
-    return StartCmd(currentFrameIndex, computePools[currentFrameIndex], queues.lock()->GetCompute());
+    return StartCmd(currentFrameIndex, computeCmds[currentFrameIndex], queues.lock()->GetCompute());
 }
 
 VkCommandBuffer CommandBufferManager::StartTransferCmd()
@@ -103,7 +113,7 @@ VkCommandBuffer CommandBufferManager::StartTransferCmd()
         return VK_NULL_HANDLE;
     }
 
-    return StartCmd(currentFrameIndex, transferPools[currentFrameIndex], queues.lock()->GetTransfer());
+    return StartCmd(currentFrameIndex, transferCmds[currentFrameIndex], queues.lock()->GetTransfer());
 }
 
 void CommandBufferManager::Submit(VkCommandBuffer cmd, VkFence fence)

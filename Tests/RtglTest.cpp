@@ -269,13 +269,13 @@ void StartScene(RgInstance instance, Window *pWindow)
 
     rgUploadGeometry(instance, &st_info, nullptr);
 
-    st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
-    st_info.transform = {
-            1,0,0,0,
-            0,1,0,-100,
-            0,0,1,0
-    };
-    rgUploadGeometry(instance, &st_info, nullptr);
+    //st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+    //st_info.transform = {
+    //        1,0,0,0,
+    //        0,1,0,-100,
+    //        0,0,1,0
+    //};
+    //rgUploadGeometry(instance, &st_info, nullptr);
 
     rgSubmitStaticGeometries(instance);
 
@@ -289,7 +289,7 @@ void StartScene(RgInstance instance, Window *pWindow)
         rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
 
         // dynamic geometry must be uploaded only in frame
-        rgUploadGeometry(instance, &dyn_info, nullptr);
+        //rgUploadGeometry(instance, &dyn_info, nullptr);
 
 
         RgDrawFrameInfo frameInfo = {};

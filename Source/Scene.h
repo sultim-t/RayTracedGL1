@@ -14,7 +14,8 @@ public:
     Scene& operator=(Scene&& other) noexcept = delete;
 
     void PrepareForFrame(uint32_t frameIndex);
-    void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
+    // Return true if TLAS was built
+    bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
 
     uint32_t Upload(const RgGeometryUploadInfo &uploadInfo);
     void UpdateTransform(uint32_t geomId, const RgTransform &transform);

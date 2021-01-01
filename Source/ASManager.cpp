@@ -246,24 +246,31 @@ void ASManager::SetupBLAS(AccelerationStructure &as, const std::vector<VkAcceler
                           const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges, const std::vector<uint32_t> &primCounts)
 {
     // get AS size and create buffer for AS
-    const auto staticBuildSizes = asBuilder->GetBottomBuildSizes(
+    const auto buildSizes = asBuilder->GetBottomBuildSizes(
         geoms.size(), geoms.data(), primCounts.data(), true);
 
-    CreateASBuffer(staticBlas, staticBuildSizes.accelerationStructureSize);
+    // if buffer wasn't destroyed, check if its size is not enough for current AS
+    if (!as.buffer.IsInitted() || as.buffer.GetSize() < buildSizes.accelerationStructureSize)
+    {
+        // destroy
+        DestroyAS(as, true);
 
-    // create AS
-    VkAccelerationStructureCreateInfoKHR blasInfo = {};
-    blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    blasInfo.size = staticBuildSizes.accelerationStructureSize;
-    blasInfo.buffer = staticBlas.buffer.GetBuffer();
-    VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &staticBlas.as);
-    VK_CHECKERROR(r);
+        // create
+        CreateASBuffer(as, buildSizes.accelerationStructureSize);
 
+        VkAccelerationStructureCreateInfoKHR blasInfo = {};
+        blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+        blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
+        blasInfo.size = buildSizes.accelerationStructureSize;
+        blasInfo.buffer = as.buffer.GetBuffer();
+        VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &as.as);
+        VK_CHECKERROR(r);
+    }
+    
     // build BLAS
-    asBuilder->AddBLAS(staticBlas.as, geoms.size(),
+    asBuilder->AddBLAS(as.as, geoms.size(),
                        geoms.data(), ranges.data(),
-                       staticBuildSizes,
+                       buildSizes,
                        true, false);
 
 }
@@ -369,13 +376,11 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     const auto &ranges = colDyn->GetASBuildRangeInfos();
     const auto &counts = colDyn->GetPrimitiveCounts();
 
-    DestroyAS(dynBlas);
-
     assert(asBuilder->IsEmpty());
 
     if (!geoms.empty())
     {
-        SetupBLAS(dynamicBlas[frameIndex], geoms, ranges, counts);
+        SetupBLAS(dynBlas, geoms, ranges, counts);
 
         // build BLAS
         asBuilder->BuildBottomLevel(cmd);
@@ -410,7 +415,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
+bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     VkTransformMatrixKHR identity =
     {
@@ -420,10 +425,12 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     };
 
     // BLAS instances
-    std::array<VkAccelerationStructureInstanceKHR, 3> instances = {};
+    uint32_t instanceCount = 0;
+    VkAccelerationStructureInstanceKHR instances[3] = {};
 
+    if (staticBlas.as != VK_NULL_HANDLE)
     {
-        VkAccelerationStructureInstanceKHR &staticInstance = instances[0];
+        VkAccelerationStructureInstanceKHR &staticInstance = instances[instanceCount++];
         staticInstance.transform = identity;
         staticInstance.instanceCustomIndex = 0;
         staticInstance.mask = 0xFF;
@@ -431,8 +438,10 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         staticInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         staticInstance.accelerationStructureReference = GetASAddress(staticBlas);
     }
+
+    if (staticMovableBlas.as != VK_NULL_HANDLE)
     {
-        VkAccelerationStructureInstanceKHR &movableInstance = instances[1];
+        VkAccelerationStructureInstanceKHR &movableInstance = instances[instanceCount++];
         movableInstance.transform = identity;
         movableInstance.instanceCustomIndex = 0;
         movableInstance.mask = 0xFF;
@@ -440,8 +449,10 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         movableInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         movableInstance.accelerationStructureReference = GetASAddress(staticMovableBlas);
     }
+
+    if (dynamicBlas[frameIndex].as != VK_NULL_HANDLE)
     {
-        VkAccelerationStructureInstanceKHR &dynamicInstance = instances[2];
+        VkAccelerationStructureInstanceKHR &dynamicInstance = instances[instanceCount++];
         dynamicInstance.transform = identity;
         dynamicInstance.instanceCustomIndex = 0;
         dynamicInstance.mask = 0xFF;
@@ -450,13 +461,16 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         dynamicInstance.accelerationStructureReference = GetASAddress(dynamicBlas[frameIndex]);
     }
 
+    if (instanceCount == 0)
+    {
+        return false;
+    }
+
     // fill buffer
     void *mapped = instanceBuffers[frameIndex].Map();
-    memcpy(mapped, instances.data(), instances.size() * sizeof(VkAccelerationStructureInstanceKHR));
+    memcpy(mapped, instances, instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
 
     instanceBuffers[frameIndex].Unmap();
-
-    DestroyAS(tlas[frameIndex]);
 
     VkAccelerationStructureGeometryKHR instGeom = {};
     instGeom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
@@ -467,31 +481,40 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     instData.arrayOfPointers = VK_FALSE;
     instData.data.deviceAddress = instanceBuffers[frameIndex].GetAddress();
 
-    uint32_t primCount = instances.size();
+    auto &curTlas = tlas[frameIndex];
 
     // get AS size and create buffer for AS
-    const auto buildSizes = asBuilder->GetTopBuildSizes(&instGeom, &primCount, false);
+    const auto buildSizes = asBuilder->GetTopBuildSizes(&instGeom, &instanceCount, false);
 
-    CreateASBuffer(tlas[frameIndex], buildSizes.accelerationStructureSize);
+    // if previous buffer's size is not enough
+    if (curTlas.buffer.GetSize() < buildSizes.accelerationStructureSize)
+    {
+        // destroy
+        DestroyAS(curTlas, true);
 
-    // create AS
-    VkAccelerationStructureCreateInfoKHR tlasInfo = {};
-    tlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-    tlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-    tlasInfo.size = buildSizes.accelerationStructureSize;
-    tlasInfo.buffer = tlas[frameIndex].buffer.GetBuffer();
-    VkResult r = svkCreateAccelerationStructureKHR(device, &tlasInfo, nullptr, &tlas[frameIndex].as);
-    VK_CHECKERROR(r);
+        // create
+        CreateASBuffer(curTlas, buildSizes.accelerationStructureSize);
+
+        VkAccelerationStructureCreateInfoKHR tlasInfo = {};
+        tlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
+        tlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
+        tlasInfo.size = buildSizes.accelerationStructureSize;
+        tlasInfo.buffer = curTlas.buffer.GetBuffer();
+        VkResult r = svkCreateAccelerationStructureKHR(device, &tlasInfo, nullptr, &curTlas.as);
+        VK_CHECKERROR(r);
+    }
 
     assert(asBuilder->IsEmpty());
 
     VkAccelerationStructureBuildRangeInfoKHR range = {};
-    range.primitiveCount = primCount;
+    range.primitiveCount = instanceCount;
 
-    asBuilder->AddTLAS(tlas[frameIndex].as, &instGeom, &range, buildSizes, true, false);
+    asBuilder->AddTLAS(curTlas.as, &instGeom, &range, buildSizes, true, false);
     asBuilder->BuildTopLevel(cmd);
 
     UpdateASDescriptors(frameIndex);
+
+    return true;
 }
 
 void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
@@ -503,9 +526,12 @@ void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
     );
 }
 
-void ASManager::DestroyAS(AccelerationStructure &as)
+void ASManager::DestroyAS(AccelerationStructure &as, bool withBuffer)
 {
-    as.buffer.Destroy();
+    if (withBuffer)
+    {
+        as.buffer.Destroy();
+    }
 
     if (as.as != VK_NULL_HANDLE)
     {
@@ -535,6 +561,12 @@ VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const
 
 VkDescriptorSet ASManager::GetTLASDescSet(uint32_t frameIndex) const
 {
+    // if TLAS wasn't built, return null
+    if (tlas[frameIndex].as == VK_NULL_HANDLE)
+    {
+        return VK_NULL_HANDLE;
+    }
+
     return asDescSets[frameIndex];
 }
 

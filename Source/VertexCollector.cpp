@@ -243,8 +243,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
 
 void VertexCollector::EndCollecting()
 {
-    Reset();
-
     if (auto sb = stagingVertBuffer.lock())
     {
         sb->Unmap();

@@ -36,7 +36,7 @@ public:
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 
-    void BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex);
+    bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex);
     VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const;
     VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const;
 
@@ -61,7 +61,7 @@ private:
         const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges,
         const std::vector<uint32_t> &primCounts);
     void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size);
-    void DestroyAS(AccelerationStructure &as);
+    void DestroyAS(AccelerationStructure &as, bool withBuffer = true);
     VkDeviceAddress GetASAddress(const AccelerationStructure &as);
     VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);
 

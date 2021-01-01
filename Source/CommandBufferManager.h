@@ -37,16 +37,27 @@ public:
     void WaitDeviceIdle();
 
 private:
-    VkCommandBuffer StartCmd(uint32_t frameIndex, VkCommandPool cmdPool, VkQueue queue);
+    struct AllocatedCmds
+    {
+        std::vector<VkCommandBuffer> cmds = {};
+        uint32_t curCount = 0;
+        VkCommandPool pool = VK_NULL_HANDLE;
+    };
+
+private:
+    VkCommandBuffer StartCmd(uint32_t frameIndex, AllocatedCmds &cmds, VkQueue queue);
 
 private:
     VkDevice device;
 
     uint32_t currentFrameIndex;
 
-    VkCommandPool graphicsPools[MAX_FRAMES_IN_FLIGHT];
-    VkCommandPool computePools[MAX_FRAMES_IN_FLIGHT];
-    VkCommandPool transferPools[MAX_FRAMES_IN_FLIGHT];
+    const uint32_t cmdAllocStep = 16;
+
+    // allocated cmds
+    AllocatedCmds graphicsCmds[MAX_FRAMES_IN_FLIGHT];
+    AllocatedCmds computeCmds[MAX_FRAMES_IN_FLIGHT];
+    AllocatedCmds transferCmds[MAX_FRAMES_IN_FLIGHT];
 
     std::weak_ptr<Queues> queues;
     std::map<VkCommandBuffer, VkQueue> cmdQueues[MAX_FRAMES_IN_FLIGHT];

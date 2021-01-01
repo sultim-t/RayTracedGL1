@@ -118,14 +118,16 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
 {
     // submit geometry
-    scene->SubmitForFrame(cmd, currentFrameIndex);
+    bool sceneNotEmpty = scene->SubmitForFrame(cmd, currentFrameIndex);
 
     // update uniform data
     uniform->Upload(currentFrameIndex);
 
-    // trace paths and draw rasterized geometry
-    pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform,
-                      storageImage->GetDescSet(currentFrameIndex));
+    if (sceneNotEmpty)
+    {
+        //pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform,
+        //                  storageImage->GetDescSet(currentFrameIndex));
+    }
 
     // TODO: postprocessing
 
@@ -168,7 +170,7 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 {
     FillUniform(uniform->GetData(), frameInfo);
 
-    //Render(currentFrameCmd, frameInfo->renderWidth, frameInfo->renderHeight);
+    Render(currentFrameCmd, frameInfo->renderWidth, frameInfo->renderHeight);
     EndFrame(currentFrameCmd);
 
     currentFrameCmd = VK_NULL_HANDLE;
