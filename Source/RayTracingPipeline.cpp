@@ -92,7 +92,7 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Shader binding table buffer");
 
-    std::vector<uint8_t> shaderHandles(sbtSize);
+    std::vector<uint8_t> shaderHandles(handleSize * groupCount);
     r = svkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, groupCount, shaderHandles.size(), shaderHandles.data());
     VK_CHECKERROR(r);
 
@@ -100,8 +100,10 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
 
     for (uint32_t i = 0; i < groupCount; i++)
     {
-        memcpy(mapped, shaderHandles.data() + i * alignedHandleSize, handleSize);
-        mapped += alignedHandleSize;
+        memcpy(
+            mapped + i * alignedHandleSize, 
+            shaderHandles.data() + i * handleSize,
+            handleSize);
     }
 
     shaderBindingTable->Unmap();
@@ -134,7 +136,7 @@ void RayTracingPipeline::GetEntries(
     missEntry.size = alignedHandleSize * 2;
 
     hitEntry = {};
-    hitEntry.deviceAddress = bufferAddress + alignedHandleSize * 2;
+    hitEntry.deviceAddress = bufferAddress + alignedHandleSize * 3;
     hitEntry.stride = alignedHandleSize;
     hitEntry.size = alignedHandleSize;
 
@@ -174,6 +176,7 @@ void RayTracingPipeline::AddHitGroup(uint32_t closestHitIndex, uint32_t anyHitIn
     VkRayTracingShaderGroupCreateInfoKHR group = {};
     group.sType = VK_STRUCTURE_TYPE_RAY_TRACING_SHADER_GROUP_CREATE_INFO_KHR;
     group.type = VK_RAY_TRACING_SHADER_GROUP_TYPE_TRIANGLES_HIT_GROUP_KHR;
+    group.generalShader = VK_SHADER_UNUSED_KHR;
     group.closestHitShader = closestHitIndex;
     group.anyHitShader = anyHitIndex;
     group.intersectionShader = intersectionIndex;
