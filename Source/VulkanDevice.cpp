@@ -9,6 +9,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     currentFrameIndex(MAX_FRAMES_IN_FLIGHT - 1),
     currentFrameCmd(VK_NULL_HANDLE),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
+    debugMessenger(VK_NULL_HANDLE),
     debugPrint(info->pfnDebugPrint)
 {
     vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
@@ -29,7 +30,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     // create vulkan device and set extension function pointers
     CreateDevice();
-    InitDeviceExtensionFunctions(device);
 
     CreateSyncPrimitives();
 
@@ -327,11 +327,9 @@ void VulkanDevice::CreateInstance(const char **ppWindowExtensions, uint32_t exte
     VkResult r = vkCreateInstance(&instanceInfo, nullptr, &instance);
     VK_CHECKERROR(r);
 
-    InitInstanceExtensionFunctions(instance);
-
-    if (enableValidationLayer)
+    if (enableValidationLayer && debugPrint != nullptr)
     {
-        assert(debugPrint != nullptr);
+        InitInstanceExtensionFunctions_DebugUtils(instance);
 
         // init debug utils
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {};
@@ -458,6 +456,13 @@ void VulkanDevice::CreateDevice()
 
     VkResult r = vkCreateDevice(physDevice->Get(), &deviceCreateInfo, nullptr, &device);
     VK_CHECKERROR(r);
+
+    InitDeviceExtensionFunctions(device);
+
+    if (enableValidationLayer)
+    {
+        InitDeviceExtensionFunctions_DebugUtils(device);
+    }
 }
 
 void VulkanDevice::CreateSyncPrimitives()
@@ -494,7 +499,7 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
 
 void VulkanDevice::DestroyInstance()
 {
-    if (enableValidationLayer)
+    if (debugMessenger != VK_NULL_HANDLE)
     {
         svkDestroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
     }

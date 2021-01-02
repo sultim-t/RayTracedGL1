@@ -2,18 +2,19 @@
 
 // extension functions' definitions
 #define VK_EXTENSION_FUNCTION(fname) PFN_##fname s##fname;
-    VK_INSTANCE_FUNCTION_LIST
+    VK_INSTANCE_DEBUG_UTILS_FUNCTION_LIST
     VK_DEVICE_FUNCTION_LIST
+    VK_DEVICE_DEBUG_UTILS_FUNCTION_LIST
 #undef VK_EXTENSION_FUNCTION
 
 
-void InitInstanceExtensionFunctions(VkInstance instance)
+void InitInstanceExtensionFunctions_DebugUtils(VkInstance instance)
 {
     #define VK_EXTENSION_FUNCTION(fname) \
 		s##fname = (PFN_##fname)vkGetInstanceProcAddr(instance, #fname); \
 		assert(s##fname != nullptr);
 
-    VK_INSTANCE_FUNCTION_LIST
+    VK_INSTANCE_DEBUG_UTILS_FUNCTION_LIST
     #undef VK_EXTENSION_FUNCTION
 }
 
@@ -24,6 +25,16 @@ void InitDeviceExtensionFunctions(VkDevice device)
 		assert(s##fname != nullptr);
 
     VK_DEVICE_FUNCTION_LIST
+    #undef VK_EXTENSION_FUNCTION
+}
+
+void InitDeviceExtensionFunctions_DebugUtils(VkDevice device)
+{
+#define VK_EXTENSION_FUNCTION(fname) \
+		s##fname = (PFN_##fname)vkGetDeviceProcAddr(device, #fname); \
+		assert(s##fname != nullptr);
+
+    VK_DEVICE_DEBUG_UTILS_FUNCTION_LIST
     #undef VK_EXTENSION_FUNCTION
 }
 

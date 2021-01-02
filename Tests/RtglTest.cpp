@@ -17,6 +17,8 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "Libs/tinyobjloader/tiny_obj_loader.h"
 
+#include <fstream>
+
 struct Window
 {
     Window() : width(1600), height(900), extensionCount(0)
@@ -58,9 +60,12 @@ struct Window
     uint32_t        extensionCount;
 };
 
+static std::ofstream logFile;
+
 static void DebugPrint(const char *msg)
 {
     std::cout << msg;
+    logFile << msg;
 }
 
 
@@ -221,8 +226,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         st_info.texCoordData = st_texCoords.data();
         st_info.colorData = st_colors.data();
 
-        st_info.indexCount = st_indices.size();
-        st_info.indexData = st_indices.data();
+       // st_info.indexCount = st_indices.size();
+       // st_info.indexData = st_indices.data();
 
         st_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -247,8 +252,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         dyn_info.texCoordData = dyn_texCoords.data();
         dyn_info.colorData = dyn_colors.data();
 
-        dyn_info.indexCount = dyn_indices.size();
-        dyn_info.indexData = dyn_indices.data();
+        //dyn_info.indexCount = dyn_indices.size();
+        //dyn_info.indexData = dyn_indices.data();
 
         dyn_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -306,29 +311,40 @@ int main()
 {
     static Window window = Window();
 
-    RgInstanceCreateInfo info = {};
-    info.name = "RTGL1 Test";
-    info.physicalDeviceIndex = 0;
-    info.enableValidationLayer = RG_TRUE;
+    logFile.open("LogOutput.txt");
 
-    info.vertexPositionStride = 3 * sizeof(float);
-    info.vertexNormalStride = 3 * sizeof(float);
-    info.vertexTexCoordStride = 2 * sizeof(float);
-    info.vertexColorStride = sizeof(uint32_t);
-    info.rasterizedDataBufferSize = 32 * 1024 * 1024;
-
-    info.ppWindowExtensions = window.extensions;
-    info.windowExtensionCount = window.extensionCount;
-
-    info.pfnCreateSurface = [](uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR)
+    try
     {
-        window.CreateVkSurface(vkInstance, pResultVkSurfaceKHR);
-    };
+        RgInstanceCreateInfo info = {};
+        info.name = "RTGL1 Test";
+        info.physicalDeviceIndex = 0;
+        info.enableValidationLayer = RG_TRUE;
 
-    info.pfnDebugPrint = DebugPrint;
+        info.vertexPositionStride = 3 * sizeof(float);
+        info.vertexNormalStride = 3 * sizeof(float);
+        info.vertexTexCoordStride = 2 * sizeof(float);
+        info.vertexColorStride = sizeof(uint32_t);
+        info.rasterizedDataBufferSize = 32 * 1024 * 1024;
 
-    RgInstance instance;
-    rgCreateInstance(&info, &instance);
+        info.ppWindowExtensions = window.extensions;
+        info.windowExtensionCount = window.extensionCount;
 
-    StartScene(instance, &window);
+        info.pfnCreateSurface = [](uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR)
+        {
+            window.CreateVkSurface(vkInstance, pResultVkSurfaceKHR);
+        };
+
+        info.pfnDebugPrint = DebugPrint;
+
+        RgInstance instance;
+        rgCreateInstance(&info, &instance);
+
+        StartScene(instance, &window);
+    }
+    catch(std::exception &e)
+    {
+        logFile << e.what() << '\n';
+    }
+
+    logFile.close();
 }

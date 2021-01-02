@@ -9,14 +9,13 @@
 #pragma region extension functions
 
 // extension functions' lists
-#define VK_INSTANCE_FUNCTION_LIST \
+#define VK_INSTANCE_DEBUG_UTILS_FUNCTION_LIST \
 	VK_EXTENSION_FUNCTION(vkCmdBeginDebugUtilsLabelEXT) \
 	VK_EXTENSION_FUNCTION(vkCmdEndDebugUtilsLabelEXT) \
 	VK_EXTENSION_FUNCTION(vkCreateDebugUtilsMessengerEXT) \
 	VK_EXTENSION_FUNCTION(vkDestroyDebugUtilsMessengerEXT)
 
 #define VK_DEVICE_FUNCTION_LIST \
-	VK_EXTENSION_FUNCTION(vkDebugMarkerSetObjectNameEXT) \
 	VK_EXTENSION_FUNCTION(vkCreateAccelerationStructureKHR) \
 	VK_EXTENSION_FUNCTION(vkDestroyAccelerationStructureKHR) \
 	VK_EXTENSION_FUNCTION(vkGetRayTracingShaderGroupHandlesKHR) \
@@ -26,15 +25,20 @@
 	VK_EXTENSION_FUNCTION(vkCmdBuildAccelerationStructuresKHR) \
 	VK_EXTENSION_FUNCTION(vkCmdTraceRaysKHR)
 
+#define VK_DEVICE_DEBUG_UTILS_FUNCTION_LIST \
+	VK_EXTENSION_FUNCTION(vkDebugMarkerSetObjectNameEXT)
+
 
 // extension functions' declarations
 #define VK_EXTENSION_FUNCTION(fname) extern PFN_##fname s##fname;
-    VK_INSTANCE_FUNCTION_LIST
+    VK_INSTANCE_DEBUG_UTILS_FUNCTION_LIST
     VK_DEVICE_FUNCTION_LIST
+    VK_DEVICE_DEBUG_UTILS_FUNCTION_LIST
 #undef VK_EXTENSION_FUNCTION
 
-void InitInstanceExtensionFunctions(VkInstance instance);
+void InitInstanceExtensionFunctions_DebugUtils(VkInstance instance);
 void InitDeviceExtensionFunctions(VkDevice device);
+void InitDeviceExtensionFunctions_DebugUtils(VkDevice device);
 
 #pragma endregion
 
@@ -42,12 +46,7 @@ void InitDeviceExtensionFunctions(VkDevice device);
 #define VK_CHECKERROR(x) assert(x == VK_SUCCESS)
 
 
-#ifndef _NDEBUG
-    #define SET_DEBUG_NAME(device, obj, type, name) AddDebugName(device, reinterpret_cast<uint64_t>(obj), type, name)
-#else
-    #define SET_DEBUG_NAME(device, obj, type, name) do{}while(0)
-#endif
-
+#define SET_DEBUG_NAME(device, obj, type, name) if (svkDebugMarkerSetObjectNameEXT != nullptr) AddDebugName(device, reinterpret_cast<uint64_t>(obj), type, name)
 
 void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name);
 

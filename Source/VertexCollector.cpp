@@ -86,7 +86,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     if (useIndices)
     {
-        curIndexCount += primitiveCount;
+        curIndexCount += info.indexCount;
     }
 
     assert(curVertexCount < maxVertexCount);
@@ -107,7 +107,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     if (useIndices)
     {
-        memcpy(mappedIndexData + indIndex, info.indexData, primitiveCount * sizeof(uint32_t));
+        memcpy(mappedIndexData + indIndex, info.indexData, info.indexCount * sizeof(uint32_t));
     }
 
     memcpy(mappedTransformData + geomIndex, &info.transform, sizeof(RgTransform));
