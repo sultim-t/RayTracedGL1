@@ -19,6 +19,9 @@
 
 #include <fstream>
 
+#define RG_CHECKERROR(x) assert(x == RG_SUCCESS)
+#define RG_CHECKERROR_R RG_CHECKERROR(r)
+
 struct Window
 {
     Window() : width(1600), height(900), extensionCount(0)
@@ -194,6 +197,8 @@ void FillFrameInfo(RgDrawFrameInfo *frameInfo)
 
 void StartScene(RgInstance instance, Window *pWindow)
 {
+    RgResult r;
+
     static std::vector<float> st_positions, dyn_positions;
     static std::vector<float> st_normals, dyn_normals;
     static std::vector<float> st_texCoords, dyn_texCoords;
@@ -270,9 +275,11 @@ void StartScene(RgInstance instance, Window *pWindow)
     }
 
 
-    rgStartNewScene(instance);
+    r = rgStartNewScene(instance);
+    RG_CHECKERROR_R;
 
-    rgUploadGeometry(instance, &st_info, nullptr);
+    r = rgUploadGeometry(instance, &st_info, nullptr);
+    RG_CHECKERROR_R;
 
     //st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
     //st_info.transform = {
@@ -282,8 +289,10 @@ void StartScene(RgInstance instance, Window *pWindow)
     //};
     //rgUploadGeometry(instance, &st_info, nullptr);
 
-    rgSubmitStaticGeometries(instance);
+    r = rgSubmitStaticGeometries(instance);
+    RG_CHECKERROR_R;
 
+    uint64_t frameCount = 0;
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
     {
@@ -291,10 +300,11 @@ void StartScene(RgInstance instance, Window *pWindow)
         pWindow->UpdateSize();
         ProcessInput(pWindow->glfwHandle);
 
-        rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
+        r = rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
+        RG_CHECKERROR_R;
 
         // dynamic geometry must be uploaded only in frame
-        //rgUploadGeometry(instance, &dyn_info, nullptr);
+        rgUploadGeometry(instance, &dyn_info, nullptr);
 
 
         RgDrawFrameInfo frameInfo = {};
@@ -303,7 +313,10 @@ void StartScene(RgInstance instance, Window *pWindow)
 
         FillFrameInfo(&frameInfo);
         
-        rgDrawFrame(instance, &frameInfo);
+        r = rgDrawFrame(instance, &frameInfo);
+        RG_CHECKERROR_R;
+
+        frameCount++;
     }
 }
 

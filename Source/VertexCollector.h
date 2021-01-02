@@ -12,7 +12,7 @@
 class VertexCollector
 {
 public:
-    explicit VertexCollector(VkDevice device, const PhysicalDevice &physDevice, std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, const VBProperties &properties);
+    explicit VertexCollector(VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, uint32_t bufferSize, const VBProperties &properties);
     virtual ~VertexCollector();
 
     VertexCollector(const VertexCollector& other) = delete;
@@ -30,6 +30,8 @@ public:
         &GetASGeometries() const;
     const std::vector<VkAccelerationStructureBuildRangeInfoKHR>
         &GetASBuildRangeInfos() const;
+
+    VkBuffer GetVertexBuffer() const;
 
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
@@ -54,8 +56,8 @@ private:
     VkDevice device;
     VBProperties properties;
 
-    std::weak_ptr<Buffer> stagingVertBuffer;
-    std::weak_ptr<Buffer> vertBuffer;
+    Buffer stagingVertBuffer;
+    Buffer vertBuffer;
 
     uint8_t *mappedVertexData;
     uint32_t *mappedIndexData;

@@ -8,10 +8,9 @@ class VertexCollectorFiltered : public VertexCollector
 {
 public:
     explicit VertexCollectorFiltered(
-        VkDevice device, const PhysicalDevice &physDevice,
-        std::shared_ptr<Buffer> stagingVertBuffer, std::shared_ptr<Buffer> vertBuffer, 
-        const VBProperties &properties, RgGeometryType filter);
-    ~VertexCollectorFiltered();
+        VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice,
+        uint32_t bufferSize, const VBProperties &properties, RgGeometryType filter);
+    ~VertexCollectorFiltered() override;
 
     VertexCollectorFiltered(const VertexCollectorFiltered& other) = delete;
     VertexCollectorFiltered(VertexCollectorFiltered&& other) noexcept = delete;

@@ -2,11 +2,9 @@
 #include <utility>
 
 VertexCollectorFiltered::VertexCollectorFiltered(
-    VkDevice device, const PhysicalDevice &physDevice,
-    std::shared_ptr<Buffer> stagingVertBuffer,
-    std::shared_ptr<Buffer> vertBuffer,
-    const VBProperties &properties, RgGeometryType filter)
-    : VertexCollector(device, physDevice, std::move(stagingVertBuffer), std::move(vertBuffer), properties)
+    VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
+    uint32_t bufferSize, const VBProperties &properties, RgGeometryType filter)
+    : VertexCollector(device, physDevice, bufferSize, properties)
 {
     this->filter = filter;
 }

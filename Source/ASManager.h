@@ -69,14 +69,7 @@ private:
     VkDevice device;
     std::shared_ptr<PhysicalDevice> physDevice;
 
-    // buffers for static, movable static geometry
-    std::shared_ptr<Buffer> staticVertsBuffer;
-    std::shared_ptr<Buffer> staticVertsStaging;
     VkFence staticCopyFence;
-
-    // buffers for dynamic geometry
-    std::shared_ptr<Buffer> dynamicVertsBuffer[MAX_FRAMES_IN_FLIGHT];
-    std::shared_ptr<Buffer> dynamicVertsStaging[MAX_FRAMES_IN_FLIGHT];
 
     // for filling buffers
     std::shared_ptr<VertexCollectorFiltered> collectorStaticMovable;

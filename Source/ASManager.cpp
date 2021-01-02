@@ -17,54 +17,22 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
     scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
-    // static vertices
-    staticVertsStaging = std::make_shared<Buffer>();
-    staticVertsBuffer = std::make_shared<Buffer>();
-
-    staticVertsStaging->Init(
-        device, *physDevice,
-        sizeof(ShVertexBufferStatic),
-        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "Static vertices staging buffer");
-    staticVertsBuffer->Init(
-        device, *physDevice,
-        sizeof(ShVertexBufferStatic),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Static vertices device local buffer");
-
-    // static and movable static share the same buffer as their data won't be changing
+    // static and movable static vertices share the same buffer as their data won't be changing
     collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(
-        device, *physDevice,
-        staticVertsStaging, staticVertsBuffer, 
+        device, physDevice,
+        sizeof(ShVertexBufferStatic),
         properties, 
         RG_GEOMETRY_TYPE_STATIC_MOVABLE);
 
     // dynamic vertices
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        dynamicVertsStaging[i] = std::make_shared<Buffer>();
-        dynamicVertsBuffer[i] = std::make_shared<Buffer>();
-
-        dynamicVertsStaging[i]->Init(
-            device, *physDevice,
-            sizeof(ShVertexBufferDynamic),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            "Dynamic vertices staging buffer");
-        dynamicVertsBuffer[i]->Init(
-            device, *physDevice,
-            sizeof(ShVertexBufferDynamic),
-            VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-            "Dynamic vertices device local buffer");
-
         collectorDynamic[i] = std::make_shared<VertexCollector>(
-            device, *physDevice,
-            dynamicVertsStaging[i], dynamicVertsBuffer[i], properties);
+            device, physDevice,
+            sizeof(ShVertexBufferDynamic), properties);
     }
 
+    // instance buffer for TLAS
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         instanceBuffers[i].Init(
@@ -180,12 +148,12 @@ void ASManager::UpdateBufferDescriptors()
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         VkDescriptorBufferInfo &staticBufInfo = bufferInfos[i * 2];
-        staticBufInfo.buffer = staticVertsBuffer->GetBuffer();
+        staticBufInfo.buffer = collectorStaticMovable->GetVertexBuffer();
         staticBufInfo.offset = 0;
         staticBufInfo.range = VK_WHOLE_SIZE;
 
         VkDescriptorBufferInfo &dynamicBufInfo = bufferInfos[i * 2 + 1];
-        dynamicBufInfo.buffer = dynamicVertsBuffer[i]->GetBuffer();
+        dynamicBufInfo.buffer = collectorDynamic[i]->GetVertexBuffer();
         dynamicBufInfo.offset = 0;
         dynamicBufInfo.range = VK_WHOLE_SIZE;
 
