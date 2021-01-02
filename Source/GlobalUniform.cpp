@@ -16,7 +16,8 @@ GlobalUniform::GlobalUniform(VkDevice device, std::shared_ptr<PhysicalDevice> &p
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         uniformBuffers[i].Init(device, *physDevice, size,
-                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, properties);
+                               VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, properties,
+                               "Uniform buffer");
     }
 
     CreateDescriptors();

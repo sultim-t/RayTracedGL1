@@ -25,12 +25,14 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
         device, *physDevice,
         sizeof(ShVertexBufferStatic),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        "Static vertices staging buffer");
     staticVertsBuffer->Init(
         device, *physDevice,
         sizeof(ShVertexBufferStatic),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        "Static vertices device local buffer");
 
     // static and movable static share the same buffer as their data won't be changing
     collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(
@@ -49,17 +51,18 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
             device, *physDevice,
             sizeof(ShVertexBufferDynamic),
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            "Dynamic vertices staging buffer");
         dynamicVertsBuffer[i]->Init(
             device, *physDevice,
             sizeof(ShVertexBufferDynamic),
             VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+            "Dynamic vertices device local buffer");
 
         collectorDynamic[i] = std::make_shared<VertexCollector>(
             device, *physDevice,
             dynamicVertsStaging[i], dynamicVertsBuffer[i], properties);
-
     }
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -68,7 +71,8 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
             device, *physDevice,
             MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkTransformMatrixKHR),
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+            "TLAS instance buffer");
     }
 
     CreateDescriptors();
@@ -117,7 +121,7 @@ void ASManager::CreateDescriptors()
         bindings[0].binding = BINDING_ACCELERATION_STRUCTURE;
         bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
         bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        bindings[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -526,7 +530,8 @@ void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
     as.buffer.Init(
         device, *physDevice, size,
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        "AS buffer"
     );
 }
 

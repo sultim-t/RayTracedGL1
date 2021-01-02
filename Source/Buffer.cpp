@@ -15,8 +15,10 @@ Buffer::~Buffer()
     Destroy();
 }
 
-void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSize bsize, VkBufferUsageFlags usage,
-                  VkMemoryPropertyFlags properties)
+void Buffer::Init(
+    VkDevice bdevice, const PhysicalDevice &physDevice, 
+    VkDeviceSize bsize, VkBufferUsageFlags usage,
+    VkMemoryPropertyFlags properties, const char *debugName)
 {
     if (bsize == 0)
     {
@@ -51,6 +53,11 @@ void Buffer::Init(VkDevice bdevice, const PhysicalDevice &physDevice, VkDeviceSi
         addrInfo.sType = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO;
         addrInfo.buffer = buffer;
         address = vkGetBufferDeviceAddress(device, &addrInfo);
+    }
+
+    if (debugName != nullptr)
+    {
+        SET_DEBUG_NAME(device, buffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
     }
 
     size = bsize;

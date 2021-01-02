@@ -11,8 +11,8 @@ public:
 
     // Create VkBuffer, allocate memory and bind it
     void Init(VkDevice device, const PhysicalDevice &physDevice,
-              VkDeviceSize size, VkBufferUsageFlags usage, 
-              VkMemoryPropertyFlags properties);
+              VkDeviceSize size, VkBufferUsageFlags usage,
+              VkMemoryPropertyFlags properties, const char *debugName = nullptr);
     void Destroy();
 
     void* Map();

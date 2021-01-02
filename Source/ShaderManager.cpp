@@ -42,7 +42,11 @@ void ShaderManager::LoadShaderModules()
 {
     for (uint32_t i = 0; i < G_SHADERS_COUNT; i++)
     {
-        modules[G_SHADERS[i].name] = { LoadModuleFromFile(G_SHADERS[i].path), G_SHADERS[i].stage};
+        VkShaderModule m = LoadModuleFromFile(G_SHADERS[i].path);
+        SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, G_SHADERS[i].name);
+
+        modules[G_SHADERS[i].name] = { m, G_SHADERS[i].stage };
+
     }
 }
 

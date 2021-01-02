@@ -186,7 +186,7 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 
 RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, RgGeometry *result)
 {
-    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0 || uploadInfo->indexCount == 0)
+    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
     {
         return RG_WRONG_ARGUMENT;
     }

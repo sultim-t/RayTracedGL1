@@ -86,9 +86,11 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
     uint32_t sbtSize = alignedHandleSize * groupCount;
 
     shaderBindingTable = std::make_shared<Buffer>();
-    shaderBindingTable->Init(device, *physDevice, sbtSize,
-                             VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    shaderBindingTable->Init(
+        device, *physDevice, sbtSize,
+        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+        "Shader binding table buffer");
 
     std::vector<uint8_t> shaderHandles(sbtSize);
     r = svkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, groupCount, shaderHandles.size(), shaderHandles.data());
@@ -99,7 +101,7 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
     for (uint32_t i = 0; i < groupCount; i++)
     {
         memcpy(mapped, shaderHandles.data() + i * alignedHandleSize, handleSize);
-        mapped += groupBaseAlignment;
+        mapped += alignedHandleSize;
     }
 
     shaderBindingTable->Unmap();
@@ -127,12 +129,12 @@ void RayTracingPipeline::GetEntries(
     assert(raygenEntry.size == raygenEntry.stride);
 
     missEntry = {};
-    missEntry.deviceAddress = bufferAddress;
+    missEntry.deviceAddress = bufferAddress + alignedHandleSize;
     missEntry.stride = alignedHandleSize;
     missEntry.size = alignedHandleSize * 2;
 
     hitEntry = {};
-    hitEntry.deviceAddress = bufferAddress;
+    hitEntry.deviceAddress = bufferAddress + alignedHandleSize * 2;
     hitEntry.stride = alignedHandleSize;
     hitEntry.size = alignedHandleSize;
 
