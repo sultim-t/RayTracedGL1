@@ -6,13 +6,15 @@
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
 
+struct ShGeometryInstance;
+
 // The class collects vertex data to buffers with shader struct types.
 // Geometries are passed to the class by chunks and the result of collecting
 // is a vertex buffer with ready data and infos for acceleration structure creation/building.
 class VertexCollector
 {
 public:
-    explicit VertexCollector(VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, uint32_t bufferSize, const VBProperties &properties);
+    explicit VertexCollector(VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, VkDeviceSize bufferSize, const VBProperties &properties);
     virtual ~VertexCollector();
 
     VertexCollector(const VertexCollector& other) = delete;
@@ -32,6 +34,8 @@ public:
         &GetASBuildRangeInfos() const;
 
     VkBuffer GetVertexBuffer() const;
+    VkBuffer GetIndexBuffer() const;
+    VkBuffer GetGeometryInfosBuffer() const;
 
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
@@ -50,7 +54,7 @@ protected:
 
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
-    bool GetCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const;
+    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const;
 
 private:
     VkDevice device;
@@ -62,9 +66,15 @@ private:
     uint8_t *mappedVertexData;
     uint32_t *mappedIndexData;
     VkTransformMatrixKHR *mappedTransformData;
-    // blasGeometries have pointers to these vectors
-    Buffer indices;
+
+    ShGeometryInstance *mappedGeomInfosData;
+
+    Buffer stagingIndexBuffer;
+    Buffer indexBuffer;
     Buffer transforms;
+
+    // buffer for getting info for geometry in BLAS
+    Buffer geomInfosBuffer;
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

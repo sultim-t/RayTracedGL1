@@ -5,19 +5,14 @@
 #define MAX_TOP_LEVEL_INSTANCE_COUNT (4096)
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
+#define BINDING_INDEX_BUFFER_STATIC (2)
+#define BINDING_INDEX_BUFFER_DYNAMIC (3)
+#define BINDING_GEOMETRY_INSTANCES_STATIC (4)
+#define BINDING_GEOMETRY_INSTANCES_DYNAMIC (5)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE (0)
 #define BINDING_STORAGE_IMAGE (0)
-
-#ifndef DESC_SET_VERTEX_DATA
-    #error Define "DESC_SET_VERTEX_DATA" before including this header.
-#endif
-#ifndef DESC_SET_GLOBAL_UNIFORM
-    #error Define "DESC_SET_GLOBAL_UNIFORM" before including this header.
-#endif
-#ifndef DESC_SET_ACCELERATION_STRUCTURE
-    #error Define "DESC_SET_ACCELERATION_STRUCTURE" before including this header.
-#endif
+#define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 
 struct ShVertexBufferStatic
 {
@@ -39,84 +34,79 @@ struct ShVertexBufferDynamic
 
 struct ShTriangle
 {
-    mat33 positions;
-    mat33 normals;
-    mat32 textureCoords;
-    uint materialId;
+    mat3 positions;
+    mat3 normals;
+    mat3x2 textureCoords;
+    vec3 tangent;
+    uvec3 materialId;
 };
 
 struct ShGlobalUniform
 {
-    mat44 view;
-    mat44 invView;
-    mat44 viewPrev;
-    mat44 projection;
-    mat44 invProjection;
-    mat44 projectionPrev;
+    mat4 view;
+    mat4 invView;
+    mat4 viewPrev;
+    mat4 projection;
+    mat4 invProjection;
+    mat4 projectionPrev;
     uint positionsStride;
     uint normalsStride;
     uint texCoordsStride;
     uint colorsStride;
 };
 
-layout(set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_VERTEX_BUFFER_STATIC)
-    readonly buffer VertexBufferStatic_BT
+struct ShGeometryInstance
 {
-    ShVertexBufferStatic staticVertices;
-}
-
-layout(set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_VERTEX_BUFFER_DYNAMIC)
-    readonly buffer VertexBufferDynamic_BT
-{
-    ShVertexBufferDynamic dynamicVertices;
-}
-
-layout(set = DESC_SET_GLOBAL_UNIFORM,
-    binding = BINDING_GLOBAL_UNIFORM)
-    readonly uniform GlobalUniform_BT
-{
-    ShGlobalUniform globalUniform;
-}
+    uint baseVertexIndex;
+    uint baseIndexIndex;
+    uint materialId0;
+    uint materialId1;
+    uint materialId2;
+};
 
 vec3 getStaticVerticesPositions(uint index)
 {
-    return vec3(staticVertices.positions[index * globalUniform.positionsStride + 0],
+    return vec3(
+        staticVertices.positions[index * globalUniform.positionsStride + 0],
         staticVertices.positions[index * globalUniform.positionsStride + 1],
         staticVertices.positions[index * globalUniform.positionsStride + 2]);
 }
 
 vec3 getStaticVerticesNormals(uint index)
 {
-    return vec3(staticVertices.normals[index * globalUniform.normalsStride + 0],
+    return vec3(
+        staticVertices.normals[index * globalUniform.normalsStride + 0],
         staticVertices.normals[index * globalUniform.normalsStride + 1],
         staticVertices.normals[index * globalUniform.normalsStride + 2]);
 }
 
 vec2 getStaticVerticesTexCoords(uint index)
 {
-    return vec2(staticVertices.texCoords[index * globalUniform.texCoordsStride + 0],
+    return vec2(
+        staticVertices.texCoords[index * globalUniform.texCoordsStride + 0],
         staticVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
 }
 
 vec3 getDynamicVerticesPositions(uint index)
 {
-    return vec3(dynamicVertices.positions[index * globalUniform.positionsStride + 0],
+    return vec3(
+        dynamicVertices.positions[index * globalUniform.positionsStride + 0],
         dynamicVertices.positions[index * globalUniform.positionsStride + 1],
         dynamicVertices.positions[index * globalUniform.positionsStride + 2]);
 }
 
 vec3 getDynamicVerticesNormals(uint index)
 {
-    return vec3(dynamicVertices.normals[index * globalUniform.normalsStride + 0],
+    return vec3(
+        dynamicVertices.normals[index * globalUniform.normalsStride + 0],
         dynamicVertices.normals[index * globalUniform.normalsStride + 1],
         dynamicVertices.normals[index * globalUniform.normalsStride + 2]);
 }
 
 vec2 getDynamicVerticesTexCoords(uint index)
 {
-    return vec2(dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0],
+    return vec2(
+        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0],
         dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
 }
 

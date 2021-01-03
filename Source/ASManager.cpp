@@ -37,7 +37,7 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
     {
         instanceBuffers[i].Init(
             device, *physDevice,
-            MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkTransformMatrixKHR),
+            MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR),
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
             "TLAS instance buffer");
@@ -46,7 +46,10 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
     CreateDescriptors();
 
     // buffers won't be changing, update once
-    UpdateBufferDescriptors();
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        UpdateBufferDescriptors(i);
+    }
 
     VkFenceCreateInfo fenceInfo = {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
@@ -60,19 +63,29 @@ void ASManager::CreateDescriptors()
     VkResult r;
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 4> bindings{};
 
-        // static
+        // static vertex data
         bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
         bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[0].descriptorCount = 1;
         bindings[0].stageFlags = VK_SHADER_STAGE_ALL;
 
-        // dynamic
+        // dynamic vertex data
         bindings[1].binding = BINDING_VERTEX_BUFFER_DYNAMIC;
         bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[1].descriptorCount = 1;
         bindings[1].stageFlags = VK_SHADER_STAGE_ALL;
+
+        bindings[2].binding = BINDING_INDEX_BUFFER_STATIC;
+        bindings[2].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[2].descriptorCount = 1;
+        bindings[2].stageFlags = VK_SHADER_STAGE_ALL;
+
+        bindings[3].binding = BINDING_INDEX_BUFFER_DYNAMIC;
+        bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[3].descriptorCount = 1;
+        bindings[3].stageFlags = VK_SHADER_STAGE_ALL;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -122,6 +135,9 @@ void ASManager::CreateDescriptors()
     descSetInfo.descriptorPool = descPool;
     descSetInfo.descriptorSetCount = 1;
 
+    SET_DEBUG_NAME(device, buffersDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Vertex data Desc set Layout");
+    SET_DEBUG_NAME(device, asDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "TLAS Desc set Layout");
+
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         descSetInfo.pSetLayouts = &buffersDescSetLayout;
@@ -135,46 +151,101 @@ void ASManager::CreateDescriptors()
         SET_DEBUG_NAME(device, buffersDescSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Vertex data Desc set");
         SET_DEBUG_NAME(device, asDescSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "TLAS Desc set");
     }
-
-    SET_DEBUG_NAME(device, buffersDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Vertex data Desc set Layout");
-    SET_DEBUG_NAME(device, asDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "TLAS Desc set Layout");
 }
 
-void ASManager::UpdateBufferDescriptors()
+void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 {
-    std::array<VkDescriptorBufferInfo, 2 * MAX_FRAMES_IN_FLIGHT> bufferInfos{};
-    std::array<VkWriteDescriptorSet, 2 * MAX_FRAMES_IN_FLIGHT> writes{};
+    const uint32_t bindingCount = 6;
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        VkDescriptorBufferInfo &staticBufInfo = bufferInfos[i * 2];
-        staticBufInfo.buffer = collectorStaticMovable->GetVertexBuffer();
-        staticBufInfo.offset = 0;
-        staticBufInfo.range = VK_WHOLE_SIZE;
+    std::array<VkDescriptorBufferInfo, bindingCount> bufferInfos{};
+    std::array<VkWriteDescriptorSet, bindingCount> writes{};
 
-        VkDescriptorBufferInfo &dynamicBufInfo = bufferInfos[i * 2 + 1];
-        dynamicBufInfo.buffer = collectorDynamic[i]->GetVertexBuffer();
-        dynamicBufInfo.offset = 0;
-        dynamicBufInfo.range = VK_WHOLE_SIZE;
+    // buffer infos
+    VkDescriptorBufferInfo &stVertsBufInfo = bufferInfos[BINDING_VERTEX_BUFFER_STATIC];
+    stVertsBufInfo.buffer = collectorStaticMovable->GetVertexBuffer();
+    stVertsBufInfo.offset = 0;
+    stVertsBufInfo.range = VK_WHOLE_SIZE;
 
-        VkWriteDescriptorSet &staticWrt = writes[i * 2];
-        staticWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        staticWrt.dstSet = buffersDescSets[i];
-        staticWrt.dstBinding = BINDING_VERTEX_BUFFER_STATIC;
-        staticWrt.dstArrayElement = 0;
-        staticWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        staticWrt.descriptorCount = 1;
-        staticWrt.pBufferInfo = &staticBufInfo;
+    VkDescriptorBufferInfo &dnVertsBufInfo = bufferInfos[BINDING_VERTEX_BUFFER_DYNAMIC];
+    dnVertsBufInfo.buffer = collectorDynamic[frameIndex]->GetVertexBuffer();
+    dnVertsBufInfo.offset = 0;
+    dnVertsBufInfo.range = VK_WHOLE_SIZE;
 
-        VkWriteDescriptorSet &dynamicWrt = writes[i * 2 + 1];
-        dynamicWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        dynamicWrt.dstSet = buffersDescSets[i];
-        dynamicWrt.dstBinding = BINDING_VERTEX_BUFFER_DYNAMIC;
-        dynamicWrt.dstArrayElement = 0;
-        dynamicWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        dynamicWrt.descriptorCount = 1;
-        dynamicWrt.pBufferInfo = &dynamicBufInfo;
-    }
+    VkDescriptorBufferInfo &stIndexBufInfo = bufferInfos[BINDING_INDEX_BUFFER_STATIC];
+    stIndexBufInfo.buffer = collectorStaticMovable->GetIndexBuffer();
+    stIndexBufInfo.offset = 0;
+    stIndexBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &dnIndexBufInfo = bufferInfos[BINDING_INDEX_BUFFER_DYNAMIC];
+    dnIndexBufInfo.buffer = collectorDynamic[frameIndex]->GetIndexBuffer();
+    dnIndexBufInfo.offset = 0;
+    dnIndexBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &gsBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES_STATIC];
+    gsBufInfo.buffer = collectorStaticMovable->GetGeometryInfosBuffer();
+    gsBufInfo.offset = 0;
+    gsBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &gdBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES_DYNAMIC];
+    gdBufInfo.buffer = collectorDynamic[frameIndex]->GetGeometryInfosBuffer();
+    gdBufInfo.offset = 0;
+    gdBufInfo.range = VK_WHOLE_SIZE;
+
+
+    // writes
+    VkWriteDescriptorSet &stVertWrt = writes[BINDING_VERTEX_BUFFER_STATIC];
+    stVertWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    stVertWrt.dstSet = buffersDescSets[frameIndex];
+    stVertWrt.dstBinding = BINDING_VERTEX_BUFFER_STATIC;
+    stVertWrt.dstArrayElement = 0;
+    stVertWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    stVertWrt.descriptorCount = 1;
+    stVertWrt.pBufferInfo = &stVertsBufInfo;
+
+    VkWriteDescriptorSet &dnVertWrt = writes[BINDING_VERTEX_BUFFER_DYNAMIC];
+    dnVertWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dnVertWrt.dstSet = buffersDescSets[frameIndex];
+    dnVertWrt.dstBinding = BINDING_VERTEX_BUFFER_DYNAMIC;
+    dnVertWrt.dstArrayElement = 0;
+    dnVertWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    dnVertWrt.descriptorCount = 1;
+    dnVertWrt.pBufferInfo = &dnVertsBufInfo;
+
+    VkWriteDescriptorSet &stIndexWrt = writes[BINDING_INDEX_BUFFER_STATIC];
+    stIndexWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    stIndexWrt.dstSet = buffersDescSets[frameIndex];
+    stIndexWrt.dstBinding = BINDING_INDEX_BUFFER_STATIC;
+    stIndexWrt.dstArrayElement = 0;
+    stIndexWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    stIndexWrt.descriptorCount = 1;
+    stIndexWrt.pBufferInfo = &stIndexBufInfo;
+
+    VkWriteDescriptorSet &dnIndexWrt = writes[BINDING_INDEX_BUFFER_DYNAMIC];
+    dnIndexWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    dnIndexWrt.dstSet = buffersDescSets[frameIndex];
+    dnIndexWrt.dstBinding = BINDING_INDEX_BUFFER_DYNAMIC;
+    dnIndexWrt.dstArrayElement = 0;
+    dnIndexWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    dnIndexWrt.descriptorCount = 1;
+    dnIndexWrt.pBufferInfo = &dnIndexBufInfo;
+
+    VkWriteDescriptorSet &gmStWrt = writes[BINDING_GEOMETRY_INSTANCES_STATIC];
+    gmStWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    gmStWrt.dstSet = buffersDescSets[frameIndex];
+    gmStWrt.dstBinding = BINDING_GEOMETRY_INSTANCES_STATIC;
+    gmStWrt.dstArrayElement = 0;
+    gmStWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    gmStWrt.descriptorCount = 1;
+    gmStWrt.pBufferInfo = &gsBufInfo;
+
+    VkWriteDescriptorSet &gmDnWrt = writes[BINDING_GEOMETRY_INSTANCES_DYNAMIC];
+    gmDnWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    gmDnWrt.dstSet = buffersDescSets[frameIndex];
+    gmDnWrt.dstBinding = BINDING_GEOMETRY_INSTANCES_DYNAMIC;
+    gmDnWrt.dstArrayElement = 0;
+    gmDnWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    gmDnWrt.descriptorCount = 1;
+    gmDnWrt.pBufferInfo = &gdBufInfo;
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
 }
@@ -428,7 +499,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     {
         VkAccelerationStructureInstanceKHR &dynamicInstance = instances[instanceCount++];
         dynamicInstance.transform = identity;
-        dynamicInstance.instanceCustomIndex = 0;
+        dynamicInstance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
         dynamicInstance.mask = 0xFF;
         dynamicInstance.instanceShaderBindingTableRecordOffset = 0;
         dynamicInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;

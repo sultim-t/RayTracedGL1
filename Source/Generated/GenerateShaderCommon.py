@@ -44,27 +44,23 @@ USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
 # User defined constants
 # ---
 CONST = {
-    "MAX_STATIC_VERTEX_COUNT": 1 << 21,
-    "MAX_DYNAMIC_VERTEX_COUNT": 1 << 21,
-    "MAX_VERTEX_COLLECTOR_INDEX_COUNT": 1 << 22,
-    "MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT": 1 << 18,
-    "MAX_TOP_LEVEL_INSTANCE_COUNT": 1 << 12,
-    "BINDING_VERTEX_BUFFER_STATIC": 0,
-    "BINDING_VERTEX_BUFFER_DYNAMIC": 1,
-    "BINDING_GLOBAL_UNIFORM": 0,
-    "BINDING_ACCELERATION_STRUCTURE": 0,
-    "BINDING_STORAGE_IMAGE": 0,
+    "MAX_STATIC_VERTEX_COUNT"               : 1 << 21,
+    "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
+    "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
+    "MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT" : 1 << 18,
+    "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 1 << 12,
+    "BINDING_VERTEX_BUFFER_STATIC"          : 0,
+    "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,
+    "BINDING_INDEX_BUFFER_STATIC"           : 2,
+    "BINDING_INDEX_BUFFER_DYNAMIC"          : 3,
+    "BINDING_GEOMETRY_INSTANCES_STATIC"     : 4,
+    "BINDING_GEOMETRY_INSTANCES_DYNAMIC"    : 5,
+    "BINDING_GLOBAL_UNIFORM"                : 0,
+    "BINDING_ACCELERATION_STRUCTURE"        : 0,
+    "BINDING_STORAGE_IMAGE"                 : 0,
+    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0"
 }
 
-
-# ---
-# Constants that must be defined before including generated header in GLSL
-# ---
-MUST_BE_DEFINED_GLSL = [
-    "DESC_SET_VERTEX_DATA",
-    "DESC_SET_GLOBAL_UNIFORM",
-    "DESC_SET_ACCELERATION_STRUCTURE",
-]
 
 
 # ---
@@ -95,7 +91,8 @@ TRIANGLE_STRUCT = [
     (TYPE_FLOAT,    33,     "positions",        1),
     (TYPE_FLOAT,    33,     "normals",          1),
     (TYPE_FLOAT,    32,     "textureCoords",    1),
-    (TYPE_UINT32,    1,     "materialId",       1),
+    (TYPE_FLOAT,     3,     "tangent",          1),
+    (TYPE_UINT32,    3,     "materialId",       1),
 ]
 
 GLOBAL_UNIFORM_STRUCT = [
@@ -111,37 +108,36 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,   1,      "colorsStride",     1),
 ]
 
-# structTypeName: (structDefinition, onlyForGLSL)
+GEOM_INSTANCE_STRUCT = [
+    (TYPE_UINT32,   1,      "baseVertexIndex",  1),
+    (TYPE_UINT32,   1,      "baseIndexIndex",   1),
+    (TYPE_UINT32,   1,      "materialId0",      1),
+    (TYPE_UINT32,   1,      "materialId1",      1),
+    (TYPE_UINT32,   1,      "materialId2",      1),
+]
+
+# (structTypeName): (structDefinition, onlyForGLSL)
 STRUCTS = {
-    "ShVertexBufferStatic":   (STATIC_BUFFER_STRUCT,      False),
-    "ShVertexBufferDynamic":  (DYNAMIC_BUFFER_STRUCT,     False),
-    "ShTriangle":             (TRIANGLE_STRUCT,           True),
-    "ShGlobalUniform":        (GLOBAL_UNIFORM_STRUCT,     False),
+    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False),
+    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False),
+    "ShTriangle":               (TRIANGLE_STRUCT,           True),
+    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False),
+    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False),
 }
 
 # ---
 # User defined buffers: uniform, storage buffer
 # ---
 
-BUFFERS = {
-    # blockName: (descSet, binding, memoryQualifiers, storageQualifier,
-    #            structTypeName, structName, variableStride)
-    # variableStride: If count > 1 and dimension is 2, 3 or 4
-    #                 then member will be using only base types and getters will be generated.
-    #                 It can be used if stride is defined by the variable:
-    #                 if USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE:
-    #                     ("globalUniform." + + structName + MemberName + + "Stride")
-    #                 else:
-    #                     ("globalUniform." + memberName + + "Stride")
-    "VertexBufferStatic_BT":     ("DESC_SET_VERTEX_DATA", "BINDING_VERTEX_BUFFER_STATIC", "readonly",
-                                  "buffer", "ShVertexBufferStatic", "staticVertices", True),
-    "VertexBufferDynamic_BT":    ("DESC_SET_VERTEX_DATA", "BINDING_VERTEX_BUFFER_DYNAMIC", "readonly",
-                                  "buffer", "ShVertexBufferDynamic", "dynamicVertices", True),
-    "GlobalUniform_BT":          ("DESC_SET_GLOBAL_UNIFORM", "BINDING_GLOBAL_UNIFORM", "readonly",
-                                  "uniform", "ShGlobalUniform", "globalUniform", False),
+GETTERS = {
+    # (struct type): (member to access with)
+    "ShVertexBufferStatic": "staticVertices",
+    "ShVertexBufferDynamic": "dynamicVertices",
 }
 
-
+# ---
+# User defined structs END
+# ---
 
 
 
@@ -155,17 +151,8 @@ def main():
 
 def getAllConstDefs():
     return "\n".join([
-        "#define %s (%d)" % (name, value)
+        "#define %s (%s)" % (name, str(value))
         for name, value in CONST.items()
-    ]) + "\n\n"
-
-
-def getErrorsIfndef(vars):
-    return "\n".join([
-        "#ifndef %s\n"
-        "    #error Define \"%s\" before including this header.\n"
-        "#endif" % (v, v)
-        for v in vars
     ]) + "\n\n"
 
 
@@ -212,24 +199,6 @@ def getAllStructDefs(typeNames):
     ) + "\n"
 
 
-def getLayout(blockName, definition):
-    r = "layout(set = %s,\n" \
-        "    binding = %s)\n" \
-        "    %s %s " + blockName + "\n" \
-        "{\n" \
-        "    %s %s;\n" \
-        "};\n"
-
-    return r % definition[:6]
-
-
-def getAllLayouts():
-    return "\n".join(
-        getLayout(blockName, definition)
-        for blockName, definition in BUFFERS.items()
-    ) + "\n"
-
-
 def capitalizeFirstLetter(s):
     return s[:1].upper() + s[1:]
 
@@ -242,7 +211,7 @@ def getGetter(baseMember, baseType, dim, memberName):
         strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
     else:
         strideVar = "globalUniform." + memberName + "Stride"
-    ret = GLSL_TYPE_NAMES[(baseType, dim)] + "("
+    ret = GLSL_TYPE_NAMES[(baseType, dim)] + "(\n        "
     for i in range(dim):
         ret += "%s.%s[index * %s + %d]" % (baseMember, memberName, strideVar, i)
         if i != dim - 1:
@@ -260,12 +229,12 @@ def getGetter(baseMember, baseType, dim, memberName):
 
 def getAllGetters():
     return "\n".join(
-        getGetter(bufDef[5], baseType, dim, mname)
-        for blockName, bufDef in BUFFERS.items()
+        getGetter(baseMember, baseType, dim, mname)
+        for structType, baseMember in GETTERS.items()
         # for each member in struct
-        for baseType, dim, mname, count in STRUCTS[bufDef[4]][0]
+        for baseType, dim, mname, count in STRUCTS[structType][0]
         # if using variableStride
-        if count > 1 and dim > 1 and bufDef[6]
+        if count > 1 and dim > 1
     ) + "\n"
 
 
@@ -286,9 +255,7 @@ def writeToC(f):
 
 def writeToGLSL(f):
     f.write(getAllConstDefs())
-    f.write(getErrorsIfndef(MUST_BE_DEFINED_GLSL))
     f.write(getAllStructDefs(GLSL_TYPE_NAMES))
-    f.write(getAllLayouts())
     f.write(getAllGetters())
 
 main()

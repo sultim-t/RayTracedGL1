@@ -52,7 +52,7 @@ private:
 
 private:
     void CreateDescriptors();
-    void UpdateBufferDescriptors();
+    void UpdateBufferDescriptors(uint32_t frameIndex);
     void UpdateASDescriptors(uint32_t frameIndex);
 
     void SetupBLAS(

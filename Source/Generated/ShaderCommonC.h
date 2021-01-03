@@ -8,9 +8,14 @@
 #define MAX_TOP_LEVEL_INSTANCE_COUNT (4096)
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
+#define BINDING_INDEX_BUFFER_STATIC (2)
+#define BINDING_INDEX_BUFFER_DYNAMIC (3)
+#define BINDING_GEOMETRY_INSTANCES_STATIC (4)
+#define BINDING_GEOMETRY_INSTANCES_DYNAMIC (5)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE (0)
 #define BINDING_STORAGE_IMAGE (0)
+#define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 
 struct ShVertexBufferStatic
 {
@@ -42,5 +47,14 @@ struct ShGlobalUniform
     uint32_t normalsStride;
     uint32_t texCoordsStride;
     uint32_t colorsStride;
+};
+
+struct ShGeometryInstance
+{
+    uint32_t baseVertexIndex;
+    uint32_t baseIndexIndex;
+    uint32_t materialId0;
+    uint32_t materialId1;
+    uint32_t materialId2;
 };
 
