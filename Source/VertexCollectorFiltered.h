@@ -9,7 +9,7 @@ class VertexCollectorFiltered : public VertexCollector
 public:
     explicit VertexCollectorFiltered(
         VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice,
-        VkDeviceSize bufferSize, const VBProperties &properties, RgGeometryType filter);
+        VkDeviceSize bufferSize, const VertexBufferProperties &properties, RgGeometryType filter);
     ~VertexCollectorFiltered() override;
 
     VertexCollectorFiltered(const VertexCollectorFiltered& other) = delete;

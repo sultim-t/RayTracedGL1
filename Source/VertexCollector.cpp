@@ -1,8 +1,9 @@
 #include "VertexCollector.h"
 #include "Generated/ShaderCommonC.h"
 
-VertexCollector::VertexCollector(VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, VkDeviceSize bufferSize,
-                                 const VBProperties& properties) :
+VertexCollector::VertexCollector(
+    VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
+    VkDeviceSize bufferSize, const VertexBufferProperties &properties) :
     properties({}),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0)

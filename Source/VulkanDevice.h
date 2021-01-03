@@ -89,5 +89,5 @@ private:
     VkDebugUtilsMessengerEXT                debugMessenger;
     PFN_rgPrint                             debugPrint;
 
-    VBProperties                            vbProperties;
+    VertexBufferProperties                  vbProperties;
 };

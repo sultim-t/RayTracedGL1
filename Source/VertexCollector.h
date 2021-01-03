@@ -5,6 +5,7 @@
 #include "Buffer.h"
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
+#include "VertexBufferProperties.h"
 
 struct ShGeometryInstance;
 
@@ -14,7 +15,9 @@ struct ShGeometryInstance;
 class VertexCollector
 {
 public:
-    explicit VertexCollector(VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, VkDeviceSize bufferSize, const VBProperties &properties);
+    explicit VertexCollector(
+        VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
+        VkDeviceSize bufferSize, const VertexBufferProperties &properties);
     virtual ~VertexCollector();
 
     VertexCollector(const VertexCollector& other) = delete;
@@ -62,7 +65,7 @@ private:
 
 private:
     VkDevice device;
-    VBProperties properties;
+    VertexBufferProperties properties;
 
     Buffer stagingVertBuffer;
     Buffer vertBuffer;

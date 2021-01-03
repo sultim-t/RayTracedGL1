@@ -7,7 +7,7 @@
 
 ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
                      std::shared_ptr<CommandBufferManager> cmdManager,
-                     const VBProperties &properties)
+                     const VertexBufferProperties &properties)
 {
     this->device = device;
     this->physDevice = physDevice;

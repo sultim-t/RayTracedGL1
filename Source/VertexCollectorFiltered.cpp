@@ -3,7 +3,7 @@
 
 VertexCollectorFiltered::VertexCollectorFiltered(
     VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
-    VkDeviceSize bufferSize, const VBProperties &properties, RgGeometryType filter)
+    VkDeviceSize bufferSize, const VertexBufferProperties &properties, RgGeometryType filter)
     : VertexCollector(device, physDevice, bufferSize, properties)
 {
     this->filter = filter;

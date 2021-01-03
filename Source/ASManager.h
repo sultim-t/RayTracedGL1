@@ -4,13 +4,14 @@
 #include "VertexCollectorFiltered.h"
 #include "CommandBufferManager.h"
 #include "ScratchBuffer.h"
+#include "VertexBufferProperties.h"
 
 class ASManager
 {
 public:
     ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice,
               std::shared_ptr<CommandBufferManager> cmdManager,
-              const VBProperties &properties);
+              const VertexBufferProperties &properties);
     ~ASManager();
 
     ASManager(const ASManager& other) = delete;
@@ -98,5 +99,5 @@ private:
     VkDescriptorSetLayout asDescSetLayout;
     VkDescriptorSet asDescSets[MAX_FRAMES_IN_FLIGHT];
 
-    VBProperties properties;
+    VertexBufferProperties properties;
 };

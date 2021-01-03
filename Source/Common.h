@@ -49,14 +49,3 @@ void InitDeviceExtensionFunctions_DebugUtils(VkDevice device);
 #define SET_DEBUG_NAME(device, obj, type, name) if (svkDebugMarkerSetObjectNameEXT != nullptr) AddDebugName(device, reinterpret_cast<uint64_t>(obj), type, name)
 
 void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name);
-
-
-// TODO: remove VBProperties from here 
-struct VBProperties
-{
-    bool vertexArrayOfStructs;
-    uint32_t positionStride;
-    uint32_t normalStride;
-    uint32_t texCoordStride;
-    uint32_t colorStride;
-};
