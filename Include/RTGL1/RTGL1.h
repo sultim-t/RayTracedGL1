@@ -66,15 +66,17 @@ typedef struct RgInstanceCreateInfo
     char                        *overrideNormalMetallicTexturePostfix;
     char                        *overrideEmissionSpecularityTexturePostfix;
 
+    // Vertex data strides in bytes. Must be 4-byte aligned.
+    uint32_t                    vertexPositionStride;
+    uint32_t                    vertexNormalStride;
+    uint32_t                    vertexTexCoordStride;
+    uint32_t                    vertexColorStride;
+
     // Each attribute has its own stride for ability to describe vertices 
     // that are represented as separated arrays of attribute values (i.e. Positions[], Normals[], ...)
     // or packed into array of structs (i.e. Vertex[] where Vertex={Position, Normal, ...}).
     // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
     RgBool32                    vertexArrayOfStructs;
-    uint32_t                    vertexPositionStride;
-    uint32_t                    vertexNormalStride;
-    uint32_t                    vertexTexCoordStride;
-    uint32_t                    vertexColorStride;
 
 } RgInstanceCreateInfo;
 

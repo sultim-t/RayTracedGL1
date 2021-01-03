@@ -18,14 +18,11 @@ void main()
 {
 	ShTriangle tr = getTriangle(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
 	
-	//vec3 barycentricCoords = vec3(1.0f - baryCoord.x - baryCoord.y, baryCoord.x, baryCoord.y);
-	// vec3 normal = normalize(tr.normals[0] * barycentricCoords.x + tr.normals[1] * barycentricCoords.y + tr.normals[2] * barycentricCoords.z);
-
-	vec3 normal = cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]);
-	normal = normalize(normal);
+	vec3 barycentricCoords = vec3(1.0f - baryCoord.x - baryCoord.y, baryCoord.x, baryCoord.y);
+	vec3 normal = normalize(tr.normals[0] * barycentricCoords.x + tr.normals[1] * barycentricCoords.y + tr.normals[2] * barycentricCoords.z);
 
 	vec3 lightVec = normalize(vec3(1, 1, 1));
-	hitValue = vec3(max(dot(-lightVec, normal), 0.2));
+	hitValue = vec3(max(dot(lightVec, normal), 0.2));
 
 	vec3 origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 

@@ -109,10 +109,11 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     //gu->viewPrev[16];
     //gu->projectionPrev[16];
 
-    gu->positionsStride = vbProperties.positionStride;
-    gu->normalsStride = vbProperties.normalStride;
-    gu->texCoordsStride = vbProperties.texCoordStride;
-    gu->colorsStride = vbProperties.colorStride;
+    // to remove additional division by 4 bytes in shaders
+    gu->positionsStride = vbProperties.positionStride / 4;
+    gu->normalsStride = vbProperties.normalStride / 4;
+    gu->texCoordsStride = vbProperties.texCoordStride / 4;
+    gu->colorsStride = vbProperties.colorStride / 4;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)

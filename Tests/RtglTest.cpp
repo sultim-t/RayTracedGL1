@@ -307,7 +307,7 @@ void StartScene(RgInstance instance, Window *pWindow)
 
 
         // dynamic geometry must be uploaded only in frame
-        //rgUploadGeometry(instance, &dyn_info, nullptr);
+        rgUploadGeometry(instance, &dyn_info, nullptr);
 
         RgUpdateTransformInfo uptr = {};
         uptr.movableStaticGeom = movable;
