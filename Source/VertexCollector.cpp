@@ -48,6 +48,11 @@ VertexCollector::VertexCollector(VkDevice device, const std::shared_ptr<Physical
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "BLAS geometry info buffer");
+
+    mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.Map());
+    mappedIndexData = static_cast<uint32_t *>(stagingIndexBuffer.Map());
+    mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
+    mappedGeomInfosData = static_cast<ShGeometryInstance *>(geomInfosBuffer.Map());
 }
 
 VertexCollector::~VertexCollector()
@@ -61,18 +66,8 @@ VertexCollector::~VertexCollector()
 
 void VertexCollector::BeginCollecting()
 {
-    assert((mappedVertexData == nullptr && mappedIndexData == nullptr && mappedTransformData == nullptr && mappedGeomInfosData == nullptr) ||
-           (mappedVertexData != nullptr && mappedIndexData != nullptr && mappedTransformData != nullptr && mappedGeomInfosData != nullptr));
     assert(curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 && curGeometryCount == 0);
     assert(asGeometries.empty() && asBuildRangeInfos.empty());
-
-    if (mappedVertexData == nullptr)
-    {
-        mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.Map());
-        mappedIndexData = static_cast<uint32_t *>(stagingIndexBuffer.Map());
-        mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
-        mappedGeomInfosData = static_cast<ShGeometryInstance *>(geomInfosBuffer.Map());
-    }
 }
 
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
@@ -126,8 +121,6 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     // use positions and index data in the device local buffers: AS shouldn't be built using staging buffers
     const VkDeviceAddress vertexDataDeviceAddress =
         vertBuffer.GetAddress() + vertIndex * static_cast<uint64_t>(properties.positionStride);
-    const VkDeviceAddress indexDataDeviceAddress =
-        vertBuffer.GetAddress() + indIndex * sizeof(uint32_t);
 
     // geometry info
     VkAccelerationStructureGeometryKHR geom = {};
@@ -144,6 +137,9 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     if (useIndices)
     {
+        const VkDeviceAddress indexDataDeviceAddress =
+            vertBuffer.GetAddress() + indIndex * sizeof(uint32_t);
+
         trData.indexType = VK_INDEX_TYPE_UINT32;
         trData.indexData.deviceAddress = indexDataDeviceAddress;
     }
@@ -157,7 +153,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     // geomIndex must be the same as in pGeometries in BLAS
     // for referencing it in shaders by gl_GeometryIndexEXT (RayGeometryIndexKHR)
-    assert(geomIndex == asGeometries.size() - 1);
+    //assert(geomIndex == asGeometries.size() - 1);
 
     VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
     rangeInfo.primitiveCount = primitiveCount;
@@ -173,7 +169,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     ShGeometryInstance geomInfo = {};
     geomInfo.baseVertexIndex = vertIndex;
-    geomInfo.baseIndexIndex = indIndex;
+    geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
     // RgTexture is union, all textures indices are unique even with different types
     geomInfo.materialId0 = info.geomMaterial.layerTextures[0].staticTexture;
     geomInfo.materialId1 = info.geomMaterial.layerTextures[1].staticTexture;
@@ -271,18 +267,9 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     }
 }
 
-void VertexCollector::EndCollecting()
-{
-    stagingVertBuffer.Unmap();
-    stagingIndexBuffer.Unmap();
-    transforms.Unmap();
-    geomInfosBuffer.Unmap();
 
-    mappedVertexData = nullptr;
-    mappedIndexData = nullptr;
-    mappedTransformData = nullptr;
-    mappedGeomInfosData = nullptr;
-}
+void VertexCollector::EndCollecting()
+{}
 
 const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts() const
 {
@@ -301,28 +288,30 @@ void VertexCollector::Reset()
     asBuildRangeInfos.clear();
 }
 
-void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool copyStatic)
+bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
-    // copy vertex buffers
-    auto &srcVerts = stagingVertBuffer;
-    auto &dstVerts = vertBuffer;
-
     std::array<VkBufferCopy, 5> vertCopyInfos = {};
-    bool hasInfo = GetVertBufferCopyInfos(copyStatic, vertCopyInfos);
+    bool hasInfo = GetVertBufferCopyInfos(isStatic, vertCopyInfos);
 
     if (!hasInfo)
     {
-        return;
+        return false;
     }
 
-    // copy index buffers
     vkCmdCopyBuffer(
-        cmd, 
-        srcVerts.GetBuffer(), dstVerts.GetBuffer(),
+        cmd,
+        stagingVertBuffer.GetBuffer(), vertBuffer.GetBuffer(),
         vertCopyInfos.size(), vertCopyInfos.data());
 
-    auto &srcIndices = stagingIndexBuffer;
-    auto &dstIndices = indexBuffer;
+    return true;
+}
+
+bool VertexCollector::CopyIndexDataFromStaging(VkCommandBuffer cmd)
+{
+    if (curIndexCount == 0)
+    {
+        return false;
+    }
 
     VkBufferCopy indexCopyInfo = {};
     indexCopyInfo.srcOffset = 0;
@@ -330,38 +319,56 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool copyStatic)
     indexCopyInfo.size = curIndexCount * sizeof(uint32_t);
 
     vkCmdCopyBuffer(
-        cmd, 
-        srcIndices.GetBuffer(), dstIndices.GetBuffer(),
+        cmd,
+        stagingIndexBuffer.GetBuffer(), indexBuffer.GetBuffer(),
         1, &indexCopyInfo);
 
+    return true;
+}
+
+void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
+{
+    bool vrtCopied = CopyVertexDataFromStaging(cmd, isStatic);
+    bool indCopied = CopyIndexDataFromStaging(cmd);
+
     // sync dst buffer access
-    std::array<VkBufferMemoryBarrier, 2> bufMemBarriers = {};
+    VkBufferMemoryBarrier barriers[2] = {};
+    uint32_t barrierCount = 0;
 
-    VkBufferMemoryBarrier &vrtBr = bufMemBarriers[0];
-    vrtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    vrtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    vrtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-    vrtBr.buffer = dstVerts.GetBuffer();
-    vrtBr.size = VK_WHOLE_SIZE;
+    if (vrtCopied)
+    {
+        VkBufferMemoryBarrier &vrtBr = barriers[barrierCount++];
+        vrtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        vrtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        vrtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        vrtBr.buffer = vertBuffer.GetBuffer();
+        vrtBr.size = VK_WHOLE_SIZE;
+    }
 
-    VkBufferMemoryBarrier &indBr = bufMemBarriers[1];
-    indBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    indBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    indBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    indBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    indBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-    indBr.buffer = dstIndices.GetBuffer();
-    indBr.size = indexCopyInfo.size;
+    if (indCopied)
+    {
+        VkBufferMemoryBarrier &indBr = barriers[barrierCount++];
+        indBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        indBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        indBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        indBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        indBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        indBr.buffer = indexBuffer.GetBuffer();
+        indBr.size = curIndexCount * sizeof(uint32_t);
+    }
 
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
-        0,
-        0, nullptr,
-        bufMemBarriers.size(), bufMemBarriers.data(),
-        0, nullptr);
+    if (barrierCount > 0)
+    {
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            0,
+            0, nullptr,
+            barrierCount, barriers,
+            0, nullptr);
+    }
 }
 
 bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const

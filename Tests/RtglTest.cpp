@@ -205,14 +205,14 @@ void StartScene(RgInstance instance, Window *pWindow)
     static std::vector<uint32_t> st_colors, dyn_colors;
     static std::vector<uint32_t> st_indices, dyn_indices;
 
-    LoadObj("../../BRUSHES.obj",
+    LoadObj("../../../BRUSHES.obj",
             st_positions,
             st_normals,
             st_texCoords,
             st_colors,
             st_indices);
 
-    LoadObj("../../MODELS.obj",
+    LoadObj("../../../MODELS.obj",
             dyn_positions,
             dyn_normals,
             dyn_texCoords,
@@ -281,13 +281,15 @@ void StartScene(RgInstance instance, Window *pWindow)
     r = rgUploadGeometry(instance, &st_info, nullptr);
     RG_CHECKERROR_R;
 
-    //st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
-    //st_info.transform = {
-    //        1,0,0,0,
-    //        0,1,0,-100,
-    //        0,0,1,0
-    //};
-    //rgUploadGeometry(instance, &st_info, nullptr);
+    st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+    st_info.transform = {
+            1,0,0,0,
+            0,1,0,-100,
+            0,0,1,0
+    };
+    RgGeometry movable;
+    r = rgUploadGeometry(instance, &st_info, &movable);
+    RG_CHECKERROR_R;
 
     r = rgSubmitStaticGeometries(instance);
     RG_CHECKERROR_R;
@@ -303,9 +305,19 @@ void StartScene(RgInstance instance, Window *pWindow)
         r = rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
         RG_CHECKERROR_R;
 
-        // dynamic geometry must be uploaded only in frame
-        rgUploadGeometry(instance, &dyn_info, nullptr);
 
+        // dynamic geometry must be uploaded only in frame
+        //rgUploadGeometry(instance, &dyn_info, nullptr);
+
+        RgUpdateTransformInfo uptr = {};
+        uptr.movableStaticGeom = movable;
+        uptr.transform = {
+            1,0,0,0,
+            0,1,0, -static_cast<float>(frameCount) * 0.05f + 30,
+            0,0,1,0
+        };
+        r = rgUpdateGeometryTransform(instance, &uptr);
+        RG_CHECKERROR_R;
 
         RgDrawFrameInfo frameInfo = {};
         frameInfo.renderWidth = pWindow->width;

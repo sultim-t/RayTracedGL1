@@ -92,7 +92,7 @@ TRIANGLE_STRUCT = [
     (TYPE_FLOAT,    33,     "normals",          1),
     (TYPE_FLOAT,    32,     "textureCoords",    1),
     (TYPE_FLOAT,     3,     "tangent",          1),
-    (TYPE_UINT32,    3,     "materialId",       1),
+    (TYPE_UINT32,    3,     "materialIds",      1),
 ]
 
 GLOBAL_UNIFORM_STRUCT = [
@@ -256,6 +256,6 @@ def writeToC(f):
 def writeToGLSL(f):
     f.write(getAllConstDefs())
     f.write(getAllStructDefs(GLSL_TYPE_NAMES))
-    f.write(getAllGetters())
+    #f.write(getAllGetters())
 
 main()

@@ -63,7 +63,7 @@ void ASManager::CreateDescriptors()
     VkResult r;
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 4> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 6> bindings{};
 
         // static vertex data
         bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
@@ -86,6 +86,16 @@ void ASManager::CreateDescriptors()
         bindings[3].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[3].descriptorCount = 1;
         bindings[3].stageFlags = VK_SHADER_STAGE_ALL;
+
+        bindings[4].binding = BINDING_GEOMETRY_INSTANCES_STATIC;
+        bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[4].descriptorCount = 1;
+        bindings[4].stageFlags = VK_SHADER_STAGE_ALL;
+
+        bindings[5].binding = BINDING_GEOMETRY_INSTANCES_DYNAMIC;
+        bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[5].descriptorCount = 1;
+        bindings[5].stageFlags = VK_SHADER_STAGE_ALL;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;

@@ -38,7 +38,7 @@ struct ShTriangle
     mat3 normals;
     mat3x2 textureCoords;
     vec3 tangent;
-    uvec3 materialId;
+    uvec3 materialIds;
 };
 
 struct ShGlobalUniform
@@ -63,50 +63,4 @@ struct ShGeometryInstance
     uint materialId1;
     uint materialId2;
 };
-
-vec3 getStaticVerticesPositions(uint index)
-{
-    return vec3(
-        staticVertices.positions[index * globalUniform.positionsStride + 0],
-        staticVertices.positions[index * globalUniform.positionsStride + 1],
-        staticVertices.positions[index * globalUniform.positionsStride + 2]);
-}
-
-vec3 getStaticVerticesNormals(uint index)
-{
-    return vec3(
-        staticVertices.normals[index * globalUniform.normalsStride + 0],
-        staticVertices.normals[index * globalUniform.normalsStride + 1],
-        staticVertices.normals[index * globalUniform.normalsStride + 2]);
-}
-
-vec2 getStaticVerticesTexCoords(uint index)
-{
-    return vec2(
-        staticVertices.texCoords[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
-}
-
-vec3 getDynamicVerticesPositions(uint index)
-{
-    return vec3(
-        dynamicVertices.positions[index * globalUniform.positionsStride + 0],
-        dynamicVertices.positions[index * globalUniform.positionsStride + 1],
-        dynamicVertices.positions[index * globalUniform.positionsStride + 2]);
-}
-
-vec3 getDynamicVerticesNormals(uint index)
-{
-    return vec3(
-        dynamicVertices.normals[index * globalUniform.normalsStride + 0],
-        dynamicVertices.normals[index * globalUniform.normalsStride + 1],
-        dynamicVertices.normals[index * globalUniform.normalsStride + 2]);
-}
-
-vec2 getDynamicVerticesTexCoords(uint index)
-{
-    return vec2(
-        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0],
-        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
-}
 

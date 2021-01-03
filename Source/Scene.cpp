@@ -67,7 +67,7 @@ uint32_t Scene::Upload(const RgGeometryUploadInfo &uploadInfo)
 void Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
 {
     // check if it's actually movable
-    if (std::find(movableGeomIds.begin(), movableGeomIds.end(), geomId) != movableGeomIds.end())
+    if (std::find(movableGeomIds.begin(), movableGeomIds.end(), geomId) == movableGeomIds.end())
     {
         // do nothing, if it's not
         return;

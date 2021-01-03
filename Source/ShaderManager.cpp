@@ -13,10 +13,10 @@ struct ShaderModuleDefinition
 // TODO: move this to separate file
 static ShaderModuleDefinition G_SHADERS[] =
 {
-    {"RGen",        "../../shaders/raygen.rgen.spv",        VK_SHADER_STAGE_RAYGEN_BIT_KHR },
-    {"RMiss",       "../../shaders/miss.rmiss.spv",         VK_SHADER_STAGE_MISS_BIT_KHR },
-    {"RMissShadow", "../../shaders/shadow.rmiss.spv",       VK_SHADER_STAGE_MISS_BIT_KHR },
-    {"RClsHit",     "../../shaders/closesthit.rchit.spv",   VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
+    {"RGen",        "../../../BasicRaygen.rgen.spv",           VK_SHADER_STAGE_RAYGEN_BIT_KHR },
+    {"RMiss",       "../../../BasicMiss.rmiss.spv",            VK_SHADER_STAGE_MISS_BIT_KHR },
+    {"RMissShadow", "../../../BasicShadowCheck.rmiss.spv",     VK_SHADER_STAGE_MISS_BIT_KHR },
+    {"RClsHit",     "../../../BasicClosestHit.rchit.spv",      VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
 };
 static const uint32_t G_SHADERS_COUNT = sizeof(G_SHADERS) / sizeof(G_SHADERS[0]);
 

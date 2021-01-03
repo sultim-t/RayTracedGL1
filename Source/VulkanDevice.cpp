@@ -198,6 +198,11 @@ RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, Rg
         *result = static_cast<RgGeometry>(geomId);
     }
 
+    if (geomId == UINT32_MAX)
+    {
+        return RG_ERROR;
+    }
+
     return RG_SUCCESS;
 }
 
