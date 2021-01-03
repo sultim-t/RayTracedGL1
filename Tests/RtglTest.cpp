@@ -133,6 +133,8 @@ void LoadObj(const char *path,
     bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, path);
     assert(ret);
 
+    uint32_t vertId = 0;
+
     // Loop over shapes
     for (size_t s = 0; s < shapes.size(); s++)
     {
@@ -170,7 +172,8 @@ void LoadObj(const char *path,
 
                 _colors.push_back(0xFFFFFFFF);
 
-                _indices.push_back(index_offset + v);
+                _indices.push_back(vertId);
+                vertId++;
             }
 
             index_offset += fv;
@@ -188,9 +191,9 @@ void FillFrameInfo(RgDrawFrameInfo *frameInfo)
     glm::mat4 invPersp = glm::inverse(persp);
 
     memcpy(frameInfo->view, &view[0][0], 16 * sizeof(float));
-    memcpy(frameInfo->invView, &invView[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->viewInversed, &invView[0][0], 16 * sizeof(float));
     memcpy(frameInfo->projection, &persp[0][0], 16 * sizeof(float));
-    memcpy(frameInfo->invProjection, &invPersp[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->projectionInversed, &invPersp[0][0], 16 * sizeof(float));
 
     //frameInfo->lightPos = glm::vec4(lightDir.x, lightDir.y, lightDir.z, 0);
 }
@@ -231,8 +234,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         st_info.texCoordData = st_texCoords.data();
         st_info.colorData = st_colors.data();
 
-       // st_info.indexCount = st_indices.size();
-       // st_info.indexData = st_indices.data();
+        st_info.indexCount = st_indices.size();
+        st_info.indexData = st_indices.data();
 
         st_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -257,8 +260,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         dyn_info.texCoordData = dyn_texCoords.data();
         dyn_info.colorData = dyn_colors.data();
 
-        //dyn_info.indexCount = dyn_indices.size();
-        //dyn_info.indexData = dyn_indices.data();
+        dyn_info.indexCount = dyn_indices.size();
+        dyn_info.indexData = dyn_indices.data();
 
         dyn_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -284,7 +287,7 @@ void StartScene(RgInstance instance, Window *pWindow)
     st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
     st_info.transform = {
             1,0,0,0,
-            0,1,0,-100,
+            0,1,0,0,
             0,0,1,0
     };
     RgGeometry movable;
@@ -305,8 +308,6 @@ void StartScene(RgInstance instance, Window *pWindow)
         r = rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
         RG_CHECKERROR_R;
 
-
-        // dynamic geometry must be uploaded only in frame
         rgUploadGeometry(instance, &dyn_info, nullptr);
 
         RgUpdateTransformInfo uptr = {};
@@ -365,6 +366,8 @@ int main()
         rgCreateInstance(&info, &instance);
 
         StartScene(instance, &window);
+
+        rgDestroyInstance(instance);
     }
     catch(std::exception &e)
     {

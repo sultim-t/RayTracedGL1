@@ -363,11 +363,9 @@ typedef struct RgDrawFrameInfo
     uint32_t        renderWidth;
     uint32_t        renderHeight;
     float           view[16];
+    float           viewInversed[16];
     float           projection[16];
-
-    // TODO: must be calculated inside the library
-    float           invView[16];
-    float           invProjection[16];
+    float           projectionInversed[16];
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

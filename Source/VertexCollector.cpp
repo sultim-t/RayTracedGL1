@@ -139,7 +139,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     if (useIndices)
     {
         const VkDeviceAddress indexDataDeviceAddress =
-            vertBuffer.GetAddress() + indIndex * sizeof(uint32_t);
+            indexBuffer.GetAddress() + indIndex * sizeof(uint32_t);
 
         trData.indexType = VK_INDEX_TYPE_UINT32;
         trData.indexData.deviceAddress = indexDataDeviceAddress;

@@ -102,9 +102,9 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo)
 {
     memcpy(gu->view, frameInfo->view, 16 * sizeof(float));
-    memcpy(gu->invView, frameInfo->invView, 16 * sizeof(float));
+    memcpy(gu->invView, frameInfo->viewInversed, 16 * sizeof(float));
     memcpy(gu->projection, frameInfo->projection, 16 * sizeof(float));
-    memcpy(gu->invProjection, frameInfo->invProjection, 16 * sizeof(float));
+    memcpy(gu->invProjection, frameInfo->projectionInversed, 16 * sizeof(float));
 
     //gu->viewPrev[16];
     //gu->projectionPrev[16];
@@ -179,7 +179,7 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
     currentFrameCmd = VK_NULL_HANDLE;
 
     // TODO: remove waitidle that was used FOR DEBUGGING
-    vkDeviceWaitIdle(device);
+    //vkDeviceWaitIdle(device);
 
     return RG_SUCCESS;
 }
