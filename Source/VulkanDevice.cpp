@@ -163,6 +163,11 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
 {
+    if (currentFrameCmd != VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_ENDED;
+    }
+
     currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight);
     return RG_SUCCESS;
 }
@@ -171,15 +176,17 @@ RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
 
 RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 {
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
+
     FillUniform(uniform->GetData(), frameInfo);
 
     Render(currentFrameCmd, frameInfo->renderWidth, frameInfo->renderHeight);
     EndFrame(currentFrameCmd);
 
     currentFrameCmd = VK_NULL_HANDLE;
-
-    // TODO: remove waitidle that was used FOR DEBUGGING
-    //vkDeviceWaitIdle(device);
 
     return RG_SUCCESS;
 }
@@ -216,8 +223,9 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
 
     uint32_t geomId = static_cast<uint32_t>(updateInfo->movableStaticGeom);
 
-    scene->UpdateTransform(geomId, updateInfo->transform);
-    return RG_SUCCESS;
+    bool b = scene->UpdateTransform(geomId, updateInfo->transform);
+
+    return b ? RG_SUCCESS : RG_UPDATING_NOT_MOVABLE;
 }
 
 RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
@@ -319,16 +327,13 @@ void VulkanDevice::CreateInstance(const char **ppWindowExtensions, uint32_t exte
     instanceInfo.ppEnabledExtensionNames = extensions.data();
     instanceInfo.enabledExtensionCount = extensions.size();
 
-    if (enableValidationLayer)
+    const char *layerNames[2] =
     {
-        const char *layerNames[2] =
-        {
-            "VK_LAYER_KHRONOS_validation",
-            "VK_LAYER_LUNARG_monitor"
-        };
-        instanceInfo.ppEnabledLayerNames = layerNames;
-        instanceInfo.enabledLayerCount = 2;
-    }
+        "VK_LAYER_KHRONOS_validation",
+        "VK_LAYER_LUNARG_monitor"
+    };
+    instanceInfo.ppEnabledLayerNames = layerNames;
+    instanceInfo.enabledLayerCount = enableValidationLayer ? 2 : 0;
 
     VkResult r = vkCreateInstance(&instanceInfo, nullptr, &instance);
     VK_CHECKERROR(r);

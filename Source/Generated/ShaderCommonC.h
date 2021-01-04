@@ -1,10 +1,11 @@
 #pragma once
 #include <stdint.h>
 
-#define MAX_STATIC_VERTEX_COUNT (2097152)
+#define MAX_STATIC_VERTEX_COUNT (4194304)
 #define MAX_DYNAMIC_VERTEX_COUNT (2097152)
 #define MAX_VERTEX_COLLECTOR_INDEX_COUNT (4194304)
 #define MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT (262144)
+#define MAX_VERTEX_COLLECTOR_GEOM_INFOS_COUNT (262144)
 #define MAX_TOP_LEVEL_INSTANCE_COUNT (4096)
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
@@ -19,11 +20,11 @@
 
 struct ShVertexBufferStatic
 {
-    float positions[6291456];
-    float normals[6291456];
-    float texCoords[4194304];
-    uint32_t colors[2097152];
-    uint32_t materialIds[699052];
+    float positions[12582912];
+    float normals[12582912];
+    float texCoords[8388608];
+    uint32_t colors[4194304];
+    uint32_t materialIds[1398104];
 };
 
 struct ShVertexBufferDynamic

@@ -18,10 +18,12 @@ public:
     bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
 
     uint32_t Upload(const RgGeometryUploadInfo &uploadInfo);
-    void UpdateTransform(uint32_t geomId, const RgTransform &transform);
+    bool UpdateTransform(uint32_t geomId, const RgTransform &transform);
 
     void SubmitStatic();
     void StartNewStatic();
+
+    bool IsRecordingStatic() const;
 
     std::shared_ptr<ASManager> &GetASManager();
 

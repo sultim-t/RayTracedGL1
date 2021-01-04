@@ -64,13 +64,13 @@ uint32_t Scene::Upload(const RgGeometryUploadInfo &uploadInfo)
     }
 }
 
-void Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
+bool Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
 {
     // check if it's actually movable
     if (std::find(movableGeomIds.begin(), movableGeomIds.end(), geomId) == movableGeomIds.end())
     {
         // do nothing, if it's not
-        return;
+        return false;
     }
 
     asManager->UpdateStaticMovableTransform(geomId, transform);
@@ -81,6 +81,8 @@ void Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
     {
         toResubmitMovable = true;
     }
+
+    return true;
 }
 
 void Scene::SubmitStatic()
@@ -105,6 +107,11 @@ void Scene::StartNewStatic()
     }
 
     movableGeomIds.clear();
+}
+
+bool Scene::IsRecordingStatic() const
+{
+    return isRecordingStatic;
 }
 
 std::shared_ptr<ASManager> &Scene::GetASManager()

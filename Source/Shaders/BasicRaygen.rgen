@@ -3,7 +3,7 @@
 
 #define DESC_SET_GLOBAL_UNIFORM 2
 #define DESC_SET_VERTEX_DATA 3
-#include "../Generated/ShaderCommonGLSLFunc.h"
+#include "ShaderCommonGLSLFunc.h"
 
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = BINDING_STORAGE_IMAGE, set = 1, rgba8) uniform image2D image;

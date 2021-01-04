@@ -166,11 +166,6 @@ void CommandBufferManager::Submit(VkCommandBuffer cmd, VkSemaphore waitSemaphore
     VK_CHECKERROR(r);
 }
 
-void CommandBufferManager::WaitForFence(VkFence fence)
-{
-    VkResult r = vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
-    VK_CHECKERROR(r);
-}
 
 void CommandBufferManager::WaitGraphicsIdle()
 {

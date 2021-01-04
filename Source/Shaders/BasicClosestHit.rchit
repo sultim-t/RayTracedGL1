@@ -17,10 +17,19 @@ hitAttributeEXT vec3 baryCoord;
 void main()
 {
 	ShTriangle tr = getTriangle(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
-	
-	vec3 barycentricCoords = vec3(1.0f - baryCoord.x - baryCoord.y, baryCoord.x, baryCoord.y);
-	vec3 normal = normalize(tr.normals[0] * barycentricCoords.x + tr.normals[1] * barycentricCoords.y + tr.normals[2] * barycentricCoords.z);
 
+	vec3 normal;
+
+	if ((gl_InstanceCustomIndexEXT & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
+	{
+		vec3 barycentricCoords = vec3(1.0f - baryCoord.x - baryCoord.y, baryCoord.x, baryCoord.y);
+		normal = normalize(tr.normals[0] * barycentricCoords.x + tr.normals[1] * barycentricCoords.y + tr.normals[2] * barycentricCoords.z);
+	}
+	else
+	{
+		normal = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
+	}
+	
 	vec3 lightVec = normalize(vec3(1, 1, 1));
 	hitValue = vec3(max(dot(lightVec, normal), 0.2));
 

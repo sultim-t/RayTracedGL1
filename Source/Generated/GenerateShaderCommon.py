@@ -44,10 +44,11 @@ USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
 # User defined constants
 # ---
 CONST = {
-    "MAX_STATIC_VERTEX_COUNT"               : 1 << 21,
+    "MAX_STATIC_VERTEX_COUNT"               : 1 << 22,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
     "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
     "MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT" : 1 << 18,
+    "MAX_VERTEX_COLLECTOR_GEOM_INFOS_COUNT" : 1 << 18,
     "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 1 << 12,
     "BINDING_VERTEX_BUFFER_STATIC"          : 0,
     "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,

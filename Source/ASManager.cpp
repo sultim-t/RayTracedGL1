@@ -397,18 +397,23 @@ void ASManager::SubmitStaticGeometry()
     if (!staticGeoms.empty())
     {
         SetupBLAS(staticBlas, staticGeoms, staticRanges, staticPrimCounts);
+
+        SET_DEBUG_NAME(device, staticBlas.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, "Static BLAS");
     }
 
     if (!movableGeoms.empty())
     {
         SetupBLAS(staticMovableBlas, movableGeoms, movableRanges, movablePrimCounts);
+
+        SET_DEBUG_NAME(device, staticBlas.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, "Movable static BLAS");
     }
 
     // build AS
     asBuilder->BuildBottomLevel(cmd);
 
+    // submit and wait
     cmdManager->Submit(cmd, staticCopyFence);
-    cmdManager->WaitForFence(staticCopyFence);
+    Utils::WaitAndResetFence(device, staticCopyFence);
 }
 
 void ASManager::BeginDynamicGeometry(uint32_t frameIndex)
@@ -435,6 +440,8 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     if (!geoms.empty())
     {
         SetupBLAS(dynBlas, geoms, ranges, counts);
+
+        SET_DEBUG_NAME(device, dynBlas.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, "Dynamic BLAS");
 
         // build BLAS
         asBuilder->BuildBottomLevel(cmd);
@@ -557,6 +564,8 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         tlasInfo.buffer = curTlas.buffer.GetBuffer();
         VkResult r = svkCreateAccelerationStructureKHR(device, &tlasInfo, nullptr, &curTlas.as);
         VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, curTlas.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, "TLAS");
     }
 
     assert(asBuilder->IsEmpty());

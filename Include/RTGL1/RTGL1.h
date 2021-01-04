@@ -32,7 +32,10 @@ typedef enum RgResult
     RG_ERROR,
     RG_WRONG_ARGUMENT,
     RG_TOO_MANY_INSTANCES,
-    RG_WRONG_INSTANCE
+    RG_WRONG_INSTANCE,
+    RG_FRAME_WASNT_STARTED,
+    RG_FRAME_WASNT_ENDED,
+    RG_UPDATING_NOT_MOVABLE,
 } RgResult;
 
 //typedef enum RgStructureType
