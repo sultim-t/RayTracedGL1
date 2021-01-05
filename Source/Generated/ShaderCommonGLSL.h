@@ -58,8 +58,10 @@ struct ShGlobalUniform
 
 struct ShGeometryInstance
 {
+    mat4 model;
     uint baseVertexIndex;
     uint baseIndexIndex;
+    uint primitiveCount;
     uint materialId0;
     uint materialId1;
     uint materialId2;

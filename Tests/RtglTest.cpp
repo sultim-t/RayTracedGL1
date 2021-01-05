@@ -116,6 +116,151 @@ void ProcessInput(GLFWwindow *window)
 
 
 
+void Svk_MatInverse(float *pResult, const float *pM)
+{
+    // cast to multidim array
+    const float(&m)[4][4] = *reinterpret_cast<const float(*)[4][4]>(pM);
+    float(&result)[4][4] = *reinterpret_cast<float(*)[4][4]>(pResult);
+
+    result[0][0] =
+        m[1][1] * m[2][2] * m[3][3] -
+        m[1][1] * m[2][3] * m[3][2] -
+        m[2][1] * m[1][2] * m[3][3] +
+        m[2][1] * m[1][3] * m[3][2] +
+        m[3][1] * m[1][2] * m[2][3] -
+        m[3][1] * m[1][3] * m[2][2];
+
+    result[1][0] =
+        -m[1][0] * m[2][2] * m[3][3] +
+        m[1][0] * m[2][3] * m[3][2] +
+        m[2][0] * m[1][2] * m[3][3] -
+        m[2][0] * m[1][3] * m[3][2] -
+        m[3][0] * m[1][2] * m[2][3] +
+        m[3][0] * m[1][3] * m[2][2];
+
+    result[2][0] =
+        m[1][0] * m[2][1] * m[3][3] -
+        m[1][0] * m[2][3] * m[3][1] -
+        m[2][0] * m[1][1] * m[3][3] +
+        m[2][0] * m[1][3] * m[3][1] +
+        m[3][0] * m[1][1] * m[2][3] -
+        m[3][0] * m[1][3] * m[2][1];
+
+    result[3][0] =
+        -m[1][0] * m[2][1] * m[3][2] +
+        m[1][0] * m[2][2] * m[3][1] +
+        m[2][0] * m[1][1] * m[3][2] -
+        m[2][0] * m[1][2] * m[3][1] -
+        m[3][0] * m[1][1] * m[2][2] +
+        m[3][0] * m[1][2] * m[2][1];
+
+    result[0][1] =
+        -m[0][1] * m[2][2] * m[3][3] +
+        m[0][1] * m[2][3] * m[3][2] +
+        m[2][1] * m[0][2] * m[3][3] -
+        m[2][1] * m[0][3] * m[3][2] -
+        m[3][1] * m[0][2] * m[2][3] +
+        m[3][1] * m[0][3] * m[2][2];
+
+    result[1][1] =
+        m[0][0] * m[2][2] * m[3][3] -
+        m[0][0] * m[2][3] * m[3][2] -
+        m[2][0] * m[0][2] * m[3][3] +
+        m[2][0] * m[0][3] * m[3][2] +
+        m[3][0] * m[0][2] * m[2][3] -
+        m[3][0] * m[0][3] * m[2][2];
+
+    result[2][1] =
+        -m[0][0] * m[2][1] * m[3][3] +
+        m[0][0] * m[2][3] * m[3][1] +
+        m[2][0] * m[0][1] * m[3][3] -
+        m[2][0] * m[0][3] * m[3][1] -
+        m[3][0] * m[0][1] * m[2][3] +
+        m[3][0] * m[0][3] * m[2][1];
+
+    result[3][1] =
+        m[0][0] * m[2][1] * m[3][2] -
+        m[0][0] * m[2][2] * m[3][1] -
+        m[2][0] * m[0][1] * m[3][2] +
+        m[2][0] * m[0][2] * m[3][1] +
+        m[3][0] * m[0][1] * m[2][2] -
+        m[3][0] * m[0][2] * m[2][1];
+
+    result[0][2] =
+        m[0][1] * m[1][2] * m[3][3] -
+        m[0][1] * m[1][3] * m[3][2] -
+        m[1][1] * m[0][2] * m[3][3] +
+        m[1][1] * m[0][3] * m[3][2] +
+        m[3][1] * m[0][2] * m[1][3] -
+        m[3][1] * m[0][3] * m[1][2];
+
+    result[1][2] =
+        -m[0][0] * m[1][2] * m[3][3] +
+        m[0][0] * m[1][3] * m[3][2] +
+        m[1][0] * m[0][2] * m[3][3] -
+        m[1][0] * m[0][3] * m[3][2] -
+        m[3][0] * m[0][2] * m[1][3] +
+        m[3][0] * m[0][3] * m[1][2];
+
+    result[2][2] =
+        m[0][0] * m[1][1] * m[3][3] -
+        m[0][0] * m[1][3] * m[3][1] -
+        m[1][0] * m[0][1] * m[3][3] +
+        m[1][0] * m[0][3] * m[3][1] +
+        m[3][0] * m[0][1] * m[1][3] -
+        m[3][0] * m[0][3] * m[1][1];
+
+    result[3][2] =
+        -m[0][0] * m[1][1] * m[3][2] +
+        m[0][0] * m[1][2] * m[3][1] +
+        m[1][0] * m[0][1] * m[3][2] -
+        m[1][0] * m[0][2] * m[3][1] -
+        m[3][0] * m[0][1] * m[1][2] +
+        m[3][0] * m[0][2] * m[1][1];
+
+    result[0][3] =
+        -m[0][1] * m[1][2] * m[2][3] +
+        m[0][1] * m[1][3] * m[2][2] +
+        m[1][1] * m[0][2] * m[2][3] -
+        m[1][1] * m[0][3] * m[2][2] -
+        m[2][1] * m[0][2] * m[1][3] +
+        m[2][1] * m[0][3] * m[1][2];
+
+    result[1][3] =
+        m[0][0] * m[1][2] * m[2][3] -
+        m[0][0] * m[1][3] * m[2][2] -
+        m[1][0] * m[0][2] * m[2][3] +
+        m[1][0] * m[0][3] * m[2][2] +
+        m[2][0] * m[0][2] * m[1][3] -
+        m[2][0] * m[0][3] * m[1][2];
+
+    result[2][3] =
+        -m[0][0] * m[1][1] * m[2][3] +
+        m[0][0] * m[1][3] * m[2][1] +
+        m[1][0] * m[0][1] * m[2][3] -
+        m[1][0] * m[0][3] * m[2][1] -
+        m[2][0] * m[0][1] * m[1][3] +
+        m[2][0] * m[0][3] * m[1][1];
+
+    result[3][3] =
+        m[0][0] * m[1][1] * m[2][2] -
+        m[0][0] * m[1][2] * m[2][1] -
+        m[1][0] * m[0][1] * m[2][2] +
+        m[1][0] * m[0][2] * m[2][1] +
+        m[2][0] * m[0][1] * m[1][2] -
+        m[2][0] * m[0][2] * m[1][1];
+
+    float det = m[0][0] * result[0][0] + m[0][1] * result[1][0] + m[0][2] * result[2][0] + m[0][3] * result[3][0];
+
+    det = 1.0f / det;
+
+    for (int i = 0; i < 16; i++)
+    {
+        pResult[i] = pResult[i] * det;
+    }
+}
+
+
 void LoadObj(const char *path, 
              std::vector<float> &_positions,
              std::vector<float> &_normals,
@@ -187,13 +332,17 @@ void FillFrameInfo(RgDrawFrameInfo *frameInfo)
     glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
     glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
 
-    glm::mat4 invView = glm::inverse(view);
-    glm::mat4 invPersp = glm::inverse(persp);
+    float invView[16]; 
+    float invPersp[16];
 
+    Svk_MatInverse(invView, &view[0][0]);
+    Svk_MatInverse(invPersp, &persp[0][0]);
+
+    // GLM is column major, copy matrix data directly
     memcpy(frameInfo->view, &view[0][0], 16 * sizeof(float));
-    memcpy(frameInfo->viewInversed, &invView[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->viewInversed, invView, 16 * sizeof(float));
     memcpy(frameInfo->projection, &persp[0][0], 16 * sizeof(float));
-    memcpy(frameInfo->projectionInversed, &invPersp[0][0], 16 * sizeof(float));
+    memcpy(frameInfo->projectionInversed, invPersp, 16 * sizeof(float));
 
     //frameInfo->lightPos = glm::vec4(lightDir.x, lightDir.y, lightDir.z, 0);
 }
@@ -234,8 +383,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         st_info.texCoordData = st_texCoords.data();
         st_info.colorData = st_colors.data();
 
-        st_info.indexCount = st_indices.size();
-        st_info.indexData = st_indices.data();
+        //st_info.indexCount = st_indices.size();
+        //st_info.indexData = st_indices.data();
 
         st_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -260,8 +409,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         dyn_info.texCoordData = dyn_texCoords.data();
         dyn_info.colorData = dyn_colors.data();
 
-        dyn_info.indexCount = dyn_indices.size();
-        dyn_info.indexData = dyn_indices.data();
+        //dyn_info.indexCount = dyn_indices.size();
+        //dyn_info.indexData = dyn_indices.data();
 
         dyn_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -284,7 +433,7 @@ void StartScene(RgInstance instance, Window *pWindow)
     r = rgUploadGeometry(instance, &st_info, nullptr);
     RG_CHECKERROR_R;
 
-    st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+    /*st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
     st_info.transform = {
             1,0,0,0,
             0,1,0,0,
@@ -292,7 +441,7 @@ void StartScene(RgInstance instance, Window *pWindow)
     };
     RgGeometry movable;
     r = rgUploadGeometry(instance, &st_info, &movable);
-    RG_CHECKERROR_R;
+    RG_CHECKERROR_R;*/
 
     r = rgSubmitStaticGeometries(instance);
     RG_CHECKERROR_R;
@@ -308,9 +457,18 @@ void StartScene(RgInstance instance, Window *pWindow)
         r = rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
         RG_CHECKERROR_R;
 
+        st_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+        st_info.transform = {
+            1,0,0,0,
+            0,1,0, -static_cast<float>(frameCount) * 0.05f + 5,
+            0,0,1,0
+        };
+        rgUploadGeometry(instance, &st_info, nullptr);
+
         rgUploadGeometry(instance, &dyn_info, nullptr);
 
-        RgUpdateTransformInfo uptr = {};
+
+        /*RgUpdateTransformInfo uptr = {};
         uptr.movableStaticGeom = movable;
         uptr.transform = {
             1,0,0,0,
@@ -318,7 +476,7 @@ void StartScene(RgInstance instance, Window *pWindow)
             0,0,1,0
         };
         r = rgUpdateGeometryTransform(instance, &uptr);
-        RG_CHECKERROR_R;
+        RG_CHECKERROR_R;*/
 
         RgDrawFrameInfo frameInfo = {};
         frameInfo.renderWidth = pWindow->width;

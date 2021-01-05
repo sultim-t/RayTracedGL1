@@ -1,5 +1,7 @@
 # This script generates two separate header files for C and GLSL but with identical data
 
+import sys
+
 TYPE_FLOAT = 0
 TYPE_INT32 = 1
 TYPE_UINT32 = 2
@@ -110,8 +112,10 @@ GLOBAL_UNIFORM_STRUCT = [
 ]
 
 GEOM_INSTANCE_STRUCT = [
+    (TYPE_FLOAT,    44,     "model",            1),
     (TYPE_UINT32,   1,      "baseVertexIndex",  1),
     (TYPE_UINT32,   1,      "baseIndexIndex",   1),
+    (TYPE_UINT32,   1,      "primitiveCount",   1),
     (TYPE_UINT32,   1,      "materialId0",      1),
     (TYPE_UINT32,   1,      "materialId1",      1),
     (TYPE_UINT32,   1,      "materialId2",      1),
@@ -143,11 +147,19 @@ GETTERS = {
 
 
 def main():
+    generateGetSet = False
+    if len(sys.argv) > 0:
+        if "--getset" in sys.argv:
+            generateGetSet = True
+        if "--help" in sys.argv:
+            print("--getset   : generate getters and setters for non-trivial members")
+            return
+
     # with open('ShaderConfig.csv', newline='') as csvfile:
     with open("ShaderCommonC.h", "w") as f:
         writeToC(f)
     with open("ShaderCommonGLSL.h", "w") as f:
-        writeToGLSL(f)
+        writeToGLSL(f, generateGetSet)
 
 
 def getAllConstDefs():
@@ -212,6 +224,7 @@ def getGetter(baseMember, baseType, dim, memberName):
         strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
     else:
         strideVar = "globalUniform." + memberName + "Stride"
+
     ret = GLSL_TYPE_NAMES[(baseType, dim)] + "(\n        "
     for i in range(dim):
         ret += "%s.%s[index * %s + %d]" % (baseMember, memberName, strideVar, i)
@@ -239,12 +252,35 @@ def getAllGetters():
     ) + "\n"
 
 
-# def getAllSetters():
-#     return "\n".join(
-#         getSetter()
-#         for _, definition in BUFFERS.items()
-#         if "readonly" not in definition[2]
-#     ) + "\n"
+def getSetter(baseMember, baseType, dim, memberName):
+    assert(2 <= dim <= 4)
+    if USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE:
+        strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
+    else:
+        strideVar = "globalUniform." + memberName + "Stride"
+
+    st = ""
+    for i in range(dim):
+        st += "    %s.%s[index * %s + %d] = value[%d];\n" % (baseMember, memberName, strideVar, i, i)
+
+    res = "void set%s%s(uint index, %s value)\n{\n%s}\n"
+
+    return res % (
+        capitalizeFirstLetter(baseMember), capitalizeFirstLetter(memberName),
+        GLSL_TYPE_NAMES[(baseType, dim)],
+        st
+    )
+
+
+def getAllSetters():
+    return "\n".join(
+        getSetter(baseMember, baseType, dim, mname)
+        for structType, baseMember in GETTERS.items()
+        # for each member in struct
+        for baseType, dim, mname, count in STRUCTS[structType][0]
+        # if using variableStride
+        if count > 1 and dim > 1
+    ) + "\n"
 
 
 def writeToC(f):
@@ -254,9 +290,15 @@ def writeToC(f):
     f.write(getAllStructDefs(C_TYPE_NAMES))
 
 
-def writeToGLSL(f):
+def writeToGLSL(f, generateGetSet):
     f.write(getAllConstDefs())
     f.write(getAllStructDefs(GLSL_TYPE_NAMES))
-    #f.write(getAllGetters())
+    if generateGetSet:
+        f.write(getAllGetters())
+        f.write(getAllSetters())
 
-main()
+
+
+# main
+if __name__ == "__main__":
+    main()

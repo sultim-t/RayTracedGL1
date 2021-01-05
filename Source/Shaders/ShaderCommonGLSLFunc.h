@@ -15,7 +15,10 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_VERTEX_BUFFER_STATIC)
-    readonly buffer VertexBufferStatic_BT
+#ifndef VERTEX_BUFFER_WRITEABLE
+    readonly 
+#endif
+    buffer VertexBufferStatic_BT
 {
     ShVertexBufferStatic staticVertices;
 };
@@ -23,7 +26,10 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_VERTEX_BUFFER_DYNAMIC)
-    readonly buffer VertexBufferDynamic_BT
+#ifndef VERTEX_BUFFER_WRITEABLE
+    readonly 
+#endif
+    buffer VertexBufferDynamic_BT
 {
     ShVertexBufferDynamic dynamicVertices;
 };
@@ -31,7 +37,8 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_INDEX_BUFFER_STATIC)
-    readonly buffer IndexBufferStatic_BT
+    readonly 
+    buffer IndexBufferStatic_BT
 {
     uint staticIndices[];
 };
@@ -39,7 +46,8 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_INDEX_BUFFER_DYNAMIC)
-    readonly buffer IndexBufferDynamic_BT
+    readonly 
+    buffer IndexBufferDynamic_BT
 {
     uint dynamicIndices[];
 };
@@ -47,7 +55,8 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_GEOMETRY_INSTANCES_STATIC)
-    readonly buffer GeometryInstancesStatic_BT
+    readonly 
+    buffer GeometryInstancesStatic_BT
 {
     ShGeometryInstance geometryInstancesStatic[];
 };
@@ -55,7 +64,8 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_GEOMETRY_INSTANCES_DYNAMIC)
-    readonly buffer GeometryInstancesDynamic_BT
+    readonly 
+    buffer GeometryInstancesDynamic_BT
 {
     ShGeometryInstance geometryInstancesDynamic[];
 };
@@ -106,69 +116,87 @@ vec2 getDynamicVerticesTexCoords(uint index)
         dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
 }
 
-// get info about geometry from pGeometries in one of BLAS
-ShGeometryInstance getGeomInstanceStatic(int geometryIndex)
+#ifdef VERTEX_BUFFER_WRITEABLE
+void setStaticVerticesPositions(uint index, vec3 value)
 {
-    ShGeometryInstance inst;
-    inst.baseVertexIndex = geometryInstancesStatic[geometryIndex].baseVertexIndex;
-    inst.baseIndexIndex = geometryInstancesStatic[geometryIndex].baseIndexIndex;
-    inst.materialId0 = geometryInstancesStatic[geometryIndex].materialId0;
-    inst.materialId1 = geometryInstancesStatic[geometryIndex].materialId1;
-    inst.materialId2 = geometryInstancesStatic[geometryIndex].materialId2;
-
-    return inst;
-}
-ShGeometryInstance getGeomInstanceDynamic(int geometryIndex)
-{
-    ShGeometryInstance inst;
-    inst.baseVertexIndex = geometryInstancesDynamic[geometryIndex].baseVertexIndex;
-    inst.baseIndexIndex = geometryInstancesDynamic[geometryIndex].baseIndexIndex;
-    inst.materialId0 = geometryInstancesDynamic[geometryIndex].materialId0;
-    inst.materialId1 = geometryInstancesDynamic[geometryIndex].materialId1;
-    inst.materialId2 = geometryInstancesDynamic[geometryIndex].materialId2;
-
-    return inst;
+    staticVertices.positions[index * globalUniform.positionsStride + 0] = value[0];
+    staticVertices.positions[index * globalUniform.positionsStride + 1] = value[1];
+    staticVertices.positions[index * globalUniform.positionsStride + 2] = value[2];
 }
 
-uvec3 getVertIndicesStatic(ShGeometryInstance inst, int primitiveId)
+void setStaticVerticesNormals(uint index, vec3 value)
+{
+    staticVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
+    staticVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
+    staticVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
+}
+
+void setStaticVerticesTexCoords(uint index, vec2 value)
+{
+    staticVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
+    staticVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
+}
+
+void setDynamicVerticesPositions(uint index, vec3 value)
+{
+    dynamicVertices.positions[index * globalUniform.positionsStride + 0] = value[0];
+    dynamicVertices.positions[index * globalUniform.positionsStride + 1] = value[1];
+    dynamicVertices.positions[index * globalUniform.positionsStride + 2] = value[2];
+}
+
+void setDynamicVerticesNormals(uint index, vec3 value)
+{
+    dynamicVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
+    dynamicVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
+    dynamicVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
+}
+
+void setDynamicVerticesTexCoords(uint index, vec2 value)
+{
+    dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
+    dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
+}
+#endif // VERTEX_BUFFER_WRITEABLE
+
+uvec3 getVertIndicesStatic(uint baseVertexIndex, uint baseIndexIndex, int primitiveId)
 {
     // if to use indices
-    if (inst.baseIndexIndex != UINT32_MAX)
+    if (baseIndexIndex != UINT32_MAX)
     {
         return uvec3(
-            inst.baseVertexIndex + staticIndices[inst.baseIndexIndex + primitiveId * 3 + 0],
-            inst.baseVertexIndex + staticIndices[inst.baseIndexIndex + primitiveId * 3 + 1],
-            inst.baseVertexIndex + staticIndices[inst.baseIndexIndex + primitiveId * 3 + 2]);
+            baseVertexIndex + staticIndices[baseIndexIndex + primitiveId * 3 + 0],
+            baseVertexIndex + staticIndices[baseIndexIndex + primitiveId * 3 + 1],
+            baseVertexIndex + staticIndices[baseIndexIndex + primitiveId * 3 + 2]);
     }
     else
     {
         return uvec3(
-            inst.baseVertexIndex + primitiveId * 3 + 0,
-            inst.baseVertexIndex + primitiveId * 3 + 1,
-            inst.baseVertexIndex + primitiveId * 3 + 2);
+            baseVertexIndex + primitiveId * 3 + 0,
+            baseVertexIndex + primitiveId * 3 + 1,
+            baseVertexIndex + primitiveId * 3 + 2);
     }
 }
 
-uvec3 getVertIndicesDynamic(ShGeometryInstance inst, int primitiveId)
+uvec3 getVertIndicesDynamic(uint baseVertexIndex, uint baseIndexIndex, int primitiveId)
 {
     // if to use indices
-    if (inst.baseIndexIndex != UINT32_MAX)
+    if (baseIndexIndex != UINT32_MAX)
     {
         return uvec3(
-            inst.baseVertexIndex + dynamicIndices[inst.baseIndexIndex + primitiveId * 3 + 0],
-            inst.baseVertexIndex + dynamicIndices[inst.baseIndexIndex + primitiveId * 3 + 1],
-            inst.baseVertexIndex + dynamicIndices[inst.baseIndexIndex + primitiveId * 3 + 2]);
+            baseVertexIndex + dynamicIndices[baseIndexIndex + primitiveId * 3 + 0],
+            baseVertexIndex + dynamicIndices[baseIndexIndex + primitiveId * 3 + 1],
+            baseVertexIndex + dynamicIndices[baseIndexIndex + primitiveId * 3 + 2]);
     }
     else
     {
         return uvec3(
-            inst.baseVertexIndex + primitiveId * 3 + 0,
-            inst.baseVertexIndex + primitiveId * 3 + 1,
-            inst.baseVertexIndex + primitiveId * 3 + 2);
+            baseVertexIndex + primitiveId * 3 + 0,
+            baseVertexIndex + primitiveId * 3 + 1,
+            baseVertexIndex + primitiveId * 3 + 2);
     }
 }
 
-ShTriangle getTriangleStatic(ShGeometryInstance inst, int primitiveId, uvec3 vertIndices)
+ShTriangle getTriangleStatic(uvec3 vertIndices)
 {
     ShTriangle tr;
 
@@ -184,14 +212,17 @@ ShTriangle getTriangleStatic(ShGeometryInstance inst, int primitiveId, uvec3 ver
     tr.textureCoords[1] = getStaticVerticesTexCoords(vertIndices[1]);
     tr.textureCoords[2] = getStaticVerticesTexCoords(vertIndices[2]);
 
-    tr.tangent = vec3(0);
+    // TODO
+    //tr.tangent = getStaticVerticesTangent(vertIndices[0] / 3);
 
-    tr.materialIds = uvec3(inst.materialId0, inst.materialId1, inst.materialId2);
+    //tr.materialIds[0] = getStaticVerticesMaterialIds(vertIndices[0]);
+    //tr.materialIds[1] = getStaticVerticesMaterialIds(vertIndices[1]);
+    //tr.materialIds[2] = getStaticVerticesMaterialIds(vertIndices[2]);
 
     return tr;
 }
 
-ShTriangle getTriangleDynamic(ShGeometryInstance inst, int primitiveId, uvec3 vertIndices)
+ShTriangle getTriangleDynamic(uvec3 vertIndices)
 {
     ShTriangle tr;
 
@@ -207,9 +238,12 @@ ShTriangle getTriangleDynamic(ShGeometryInstance inst, int primitiveId, uvec3 ve
     tr.textureCoords[1] = getDynamicVerticesTexCoords(vertIndices[1]);
     tr.textureCoords[2] = getDynamicVerticesTexCoords(vertIndices[2]);
 
-    tr.tangent = vec3(0);
+    // TODO
+    //tr.tangent = getDynamicVerticesTangent(vertIndices[0] / 3);
 
-    tr.materialIds = uvec3(inst.materialId0, inst.materialId1, inst.materialId2);
+    //tr.materialIds[0] = getDynamicVerticesMaterialIds(vertIndices[0]);
+    //tr.materialIds[1] = getDynamicVerticesMaterialIds(vertIndices[1]);
+    //tr.materialIds[2] = getDynamicVerticesMaterialIds(vertIndices[2]);
 
     return tr;
 }
@@ -222,18 +256,38 @@ ShTriangle getTriangle(int instanceCustomIndex, int geometryIndex, int primitive
     
     if (isDynamic)
     {
-        ShGeometryInstance inst = getGeomInstanceDynamic(geometryIndex);
-        uvec3 vertIndices = getVertIndicesDynamic(inst, primitiveId);
+        // get info about geometry from pGeometries in one of BLAS
+        ShGeometryInstance inst = geometryInstancesDynamic[geometryIndex];
+        uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        return getTriangleDynamic(inst, primitiveId, vertIndices);
+        return getTriangleDynamic(vertIndices);
     }
     else
     {
-        ShGeometryInstance inst = getGeomInstanceStatic(geometryIndex);
-        uvec3 vertIndices = getVertIndicesStatic(inst, primitiveId);
+        ShGeometryInstance inst = geometryInstancesStatic[geometryIndex];
+        uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        return getTriangleStatic(inst, primitiveId, vertIndices);
+        return getTriangleStatic(vertIndices);
     }
+}
+
+mat4 getModelMatrix(bool isDynamic, int geometryIndex)
+{
+    if (isDynamic)
+    {
+        return geometryInstancesDynamic[geometryIndex].model;
+    }
+    else
+    {
+        return geometryInstancesStatic[geometryIndex].model;
+    }
+}
+
+mat4 getModelMatrix(int instanceCustomIndex, int geometryIndex)
+{
+    bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
+    
+    return getModelMatrix(isDynamic, geometryIndex);
 }
 #endif // DESC_SET_VERTEX_DATA
 #endif // DESC_SET_GLOBAL_UNIFORM

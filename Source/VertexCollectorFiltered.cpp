@@ -72,3 +72,8 @@ void VertexCollectorFiltered::PushRangeInfo(RgGeometryType type,
         VertexCollector::PushRangeInfo(type, rangeInfo);
     }
 }
+
+uint32_t VertexCollectorFiltered::GetGeometryCount() const
+{
+    return geomsFiltered.size() + VertexCollector::GetGeometryCount();
+}

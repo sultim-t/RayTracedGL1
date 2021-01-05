@@ -31,6 +31,8 @@ protected:
     void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR& geom) override;
     void PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo) override;
 
+    uint32_t GetGeometryCount() const override;
+
 private:
     RgGeometryType filter;
 

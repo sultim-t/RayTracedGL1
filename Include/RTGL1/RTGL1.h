@@ -196,8 +196,8 @@ typedef struct RgRasterizedGeometryUploadInfo
     float               *vertexData;
     uint32_t            vertexStride;
     // 3 floats
-    float               *normalData;
-    uint32_t            normalStride;
+    //float               *normalData;
+    //uint32_t            normalStride;
     // 2 floats
     float               *texCoordData;
     uint32_t            texCoordStride;
@@ -365,6 +365,7 @@ typedef struct RgDrawFrameInfo
 {
     uint32_t        renderWidth;
     uint32_t        renderHeight;
+    // Here matrices are column major, for GLSL
     float           view[16];
     float           viewInversed[16];
     float           projection[16];

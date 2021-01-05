@@ -56,6 +56,8 @@ protected:
     virtual void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom);
     virtual void PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
+    virtual uint32_t GetGeometryCount() const;
+
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
 

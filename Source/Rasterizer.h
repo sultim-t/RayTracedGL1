@@ -1,5 +1,7 @@
 #pragma once
+
 #include "Common.h"
+#include "RTGL1/RTGL1.h"
 
 // This class provides rasterization functionality
 class Rasterizer
@@ -12,9 +14,11 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
-    void Upload(const RgRasterizedGeometryUploadInfo &uploadInfo) {}
-    void Draw(VkCommandBuffer cmd) {}
+    void Upload(const RgRasterizedGeometryUploadInfo &uploadInfo);
+    void Draw(VkCommandBuffer cmd);
 
 private:
+    VkDevice device;
+
 
 };

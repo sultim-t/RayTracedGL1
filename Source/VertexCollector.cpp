@@ -1,5 +1,6 @@
 #include "VertexCollector.h"
 #include "Generated/ShaderCommonC.h"
+#include "Matrix.h"
 
 VertexCollector::VertexCollector(
     VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
@@ -158,7 +159,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     // geomIndex must be the same as in pGeometries in BLAS
     // for referencing it in shaders by gl_GeometryIndexEXT (RayGeometryIndexKHR)
-    //assert(geomIndex == asGeometries.size() - 1);
+    assert(geomIndex == GetGeometryCount() - 1);
 
     VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
     rangeInfo.primitiveCount = primitiveCount;
@@ -175,10 +176,13 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     ShGeometryInstance geomInfo = {};
     geomInfo.baseVertexIndex = vertIndex;
     geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
+    geomInfo.primitiveCount = primitiveCount;
     // RgTexture is union, all textures indices are unique even with different types
     geomInfo.materialId0 = info.geomMaterial.layerTextures[0].staticTexture;
     geomInfo.materialId1 = info.geomMaterial.layerTextures[1].staticTexture;
     geomInfo.materialId2 = info.geomMaterial.layerTextures[2].staticTexture;
+
+    Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
     memcpy(mappedGeomInfosData + geomIndex, &geomInfo, sizeof(ShGeometryInstance));
 
@@ -429,6 +433,11 @@ void VertexCollector::PushGeometry(RgGeometryType type, const VkAccelerationStru
 void VertexCollector::PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo)
 {
     asBuildRangeInfos.push_back(rangeInfo);
+}
+
+uint32_t VertexCollector::GetGeometryCount() const
+{
+    return asGeometries.size();
 }
 
 const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollector::GetASGeometries() const
