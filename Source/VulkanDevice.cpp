@@ -53,6 +53,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
+    rasterizer = std::make_shared<Rasterizer>(device, physDevice, shaderManager, (VkDescriptorSetLayout)VK_NULL_HANDLE, info->rasterizedMaxVertexCount, info->rasterizedMaxIndexCount);
+
     // TODO: storage image
 }
 
@@ -134,7 +136,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     // TODO: postprocessing
 
-    rasterizer->Draw(cmd);
+    rasterizer->Draw(cmd, currentFrameIndex);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)

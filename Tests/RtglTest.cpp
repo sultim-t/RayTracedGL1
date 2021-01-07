@@ -383,8 +383,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         st_info.texCoordData = st_texCoords.data();
         st_info.colorData = st_colors.data();
 
-        //st_info.indexCount = st_indices.size();
-        //st_info.indexData = st_indices.data();
+        st_info.indexCount = st_indices.size();
+        st_info.indexData = st_indices.data();
 
         st_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -409,8 +409,8 @@ void StartScene(RgInstance instance, Window *pWindow)
         dyn_info.texCoordData = dyn_texCoords.data();
         dyn_info.colorData = dyn_colors.data();
 
-        //dyn_info.indexCount = dyn_indices.size();
-        //dyn_info.indexData = dyn_indices.data();
+        dyn_info.indexCount = dyn_indices.size();
+        dyn_info.indexData = dyn_indices.data();
 
         dyn_info.geomMaterial = {
             RG_NO_TEXTURE,
@@ -508,7 +508,8 @@ int main()
         info.vertexNormalStride = 3 * sizeof(float);
         info.vertexTexCoordStride = 2 * sizeof(float);
         info.vertexColorStride = sizeof(uint32_t);
-        info.rasterizedDataBufferSize = 32 * 1024 * 1024;
+        info.rasterizedMaxVertexCount = 4096;
+        info.rasterizedMaxIndexCount = 2048;
 
         info.ppWindowExtensions = window.extensions;
         info.windowExtensionCount = window.extensionCount;
