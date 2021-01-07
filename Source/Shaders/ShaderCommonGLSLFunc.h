@@ -158,7 +158,7 @@ void setDynamicVerticesTexCoords(uint index, vec2 value)
 }
 #endif // VERTEX_BUFFER_WRITEABLE
 
-uvec3 getVertIndicesStatic(uint baseVertexIndex, uint baseIndexIndex, int primitiveId)
+uvec3 getVertIndicesStatic(uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
 {
     // if to use indices
     if (baseIndexIndex != UINT32_MAX)
@@ -177,7 +177,7 @@ uvec3 getVertIndicesStatic(uint baseVertexIndex, uint baseIndexIndex, int primit
     }
 }
 
-uvec3 getVertIndicesDynamic(uint baseVertexIndex, uint baseIndexIndex, int primitiveId)
+uvec3 getVertIndicesDynamic(uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
 {
     // if to use indices
     if (baseIndexIndex != UINT32_MAX)

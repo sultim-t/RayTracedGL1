@@ -21,7 +21,7 @@ void main()
 
 	vec3 normal;
 
-	/*if ((gl_InstanceCustomIndexEXT & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
+	if ((gl_InstanceCustomIndexEXT & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
 	{
 		vec3 barycentricCoords = vec3(1.0f - baryCoord.x - baryCoord.y, baryCoord.x, baryCoord.y);
 
@@ -31,17 +31,20 @@ void main()
 
 		normal = normalize(tr.normals[0] * barycentricCoords.x + tr.normals[1] * barycentricCoords.y + tr.normals[2] * barycentricCoords.z);
 	}
-	else*/
+	else
 	{
-		tr.positions[0] = vec3(model * vec4(tr.positions[0], 1.0));
-		tr.positions[1] = vec3(model * vec4(tr.positions[1], 1.0));
-		tr.positions[2] = vec3(model * vec4(tr.positions[2], 1.0));
+		tr.positions[0] = vec3( vec4(tr.positions[0], 1.0));
+		tr.positions[1] = vec3( vec4(tr.positions[1], 1.0));
+		tr.positions[2] = vec3( vec4(tr.positions[2], 1.0));
 
 		normal = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
 	}
 	
 	vec3 lightVec = normalize(vec3(1, 1, 1));
 	hitValue = vec3(max(dot(lightVec, normal), 0.2));
+
+	//hitValue = vec3((gl_GeometryIndexEXT % 8) / 8.0, 0, 0);
+	//hitValue = vec3(0, (gl_PrimitiveID % 8) / 8.0, 0);
 
 	vec3 origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 

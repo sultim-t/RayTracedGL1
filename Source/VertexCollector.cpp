@@ -184,6 +184,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
+    assert(sizeof(ShGeometryInstance) % 16 == 0);
     memcpy(mappedGeomInfosData + geomIndex, &geomInfo, sizeof(ShGeometryInstance));
 
     return geomIndex;
@@ -191,71 +192,76 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
 void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic)
 {
-    const uint32_t wholeBufferSize = isStatic ?
+    const uint64_t wholeBufferSize = isStatic ?
         sizeof(ShVertexBufferStatic) :
         sizeof(ShVertexBufferDynamic);
 
-    const uint32_t offsetPositions = isStatic ?
+    const uint64_t offsetPositions = isStatic ?
         offsetof(ShVertexBufferStatic, positions) :
         offsetof(ShVertexBufferDynamic, positions);
-    const uint32_t offsetNormals = isStatic ?
+    const uint64_t offsetNormals = isStatic ?
         offsetof(ShVertexBufferStatic, normals) :
         offsetof(ShVertexBufferDynamic, normals);
-    const uint32_t offsetTexCoords = isStatic ?
+    const uint64_t offsetTexCoords = isStatic ?
         offsetof(ShVertexBufferStatic, texCoords) :
         offsetof(ShVertexBufferDynamic, texCoords);
-    const uint32_t offsetColors = isStatic ?
+    const uint64_t offsetColors = isStatic ?
         offsetof(ShVertexBufferStatic, colors) :
         offsetof(ShVertexBufferDynamic, colors);
-    const uint32_t offsetMaterials = isStatic ?
+    const uint64_t offsetMaterials = isStatic ?
         offsetof(ShVertexBufferStatic, materialIds) :
         offsetof(ShVertexBufferDynamic, materialIds);
 
-    // positions
-    void *positionsDst = mappedVertexData + offsetPositions + vertIndex * properties.positionStride;
-    assert(offsetPositions + (vertIndex + info.vertexCount) * properties.positionStride < wholeBufferSize);
+    const uint64_t positionStride = properties.positionStride;
+    const uint64_t normalStride = properties.normalStride;
+    const uint64_t texCoordStride = properties.texCoordStride;
+    const uint64_t colorStride = properties.colorStride;
 
-    memcpy(positionsDst, info.vertexData, info.vertexCount * properties.positionStride);
+    // positions
+    void *positionsDst = mappedVertexData + offsetPositions + vertIndex * positionStride;
+    assert(offsetPositions + (vertIndex + info.vertexCount) * positionStride < wholeBufferSize);
+
+    memcpy(positionsDst, info.vertexData, info.vertexCount * positionStride);
 
     // normals
-    void *normalsDst = mappedVertexData + offsetNormals + vertIndex * properties.normalStride;
-    assert(offsetNormals + (vertIndex + info.vertexCount) * properties.normalStride < wholeBufferSize);
+    void *normalsDst = mappedVertexData + offsetNormals + vertIndex * normalStride;
+    assert(offsetNormals + (vertIndex + info.vertexCount) * normalStride < wholeBufferSize);
 
     if (info.normalData != nullptr)
     {
-        memcpy(normalsDst, info.normalData, info.vertexCount * properties.normalStride);
+        memcpy(normalsDst, info.normalData, info.vertexCount * normalStride);
     }
     else
     {
         // TODO: generate normals
-        memset(normalsDst, 0, info.vertexCount * properties.normalStride);
+        memset(normalsDst, 0, info.vertexCount * normalStride);
     }
 
     // tex coords
-    void *texCoordDst = mappedVertexData + offsetTexCoords + vertIndex * properties.texCoordStride;
-    assert(offsetTexCoords + (vertIndex + info.vertexCount) * properties.texCoordStride < wholeBufferSize);
+    void *texCoordDst = mappedVertexData + offsetTexCoords + vertIndex * texCoordStride;
+    assert(offsetTexCoords + (vertIndex + info.vertexCount) * texCoordStride < wholeBufferSize);
 
     if (info.texCoordData != nullptr)
     {
-        memcpy(texCoordDst, info.texCoordData, info.vertexCount * properties.texCoordStride);
+        memcpy(texCoordDst, info.texCoordData, info.vertexCount * texCoordStride);
     }
     else
     {
-        memset(texCoordDst, 0, info.vertexCount * properties.texCoordStride);
+        memset(texCoordDst, 0, info.vertexCount * texCoordStride);
     }
 
     // colors
-    void *colorDst = mappedVertexData + offsetColors + info.vertexCount * properties.colorStride;
-    assert(offsetColors + (info.vertexCount + info.vertexCount) * properties.colorStride < wholeBufferSize);
+    void *colorDst = mappedVertexData + offsetColors + info.vertexCount * colorStride;
+    assert(offsetColors + (info.vertexCount + info.vertexCount) * colorStride < wholeBufferSize);
 
     if (info.colorData != nullptr)
     {
-        memcpy(colorDst, info.colorData, info.vertexCount * properties.colorStride);
+        memcpy(colorDst, info.colorData, info.vertexCount * colorStride);
     }
     else
     {
         // set white color
-        memset(colorDst, 0xFF, info.vertexCount * properties.colorStride);
+        memset(colorDst, 0xFF, info.vertexCount * colorStride);
     }
 
     const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;

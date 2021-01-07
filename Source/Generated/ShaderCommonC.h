@@ -59,5 +59,7 @@ struct ShGeometryInstance
     uint32_t materialId0;
     uint32_t materialId1;
     uint32_t materialId2;
+    uint32_t __pad0;
+    uint32_t __pad1;
 };
 

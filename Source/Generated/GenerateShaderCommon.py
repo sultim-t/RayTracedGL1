@@ -34,6 +34,28 @@ GLSL_TYPE_NAMES = {
     (TYPE_FLOAT, 44): "mat4",
 }
 
+GLSL_TYPE_SIZES_STD_430 = {
+    TYPE_FLOAT: 4,
+    TYPE_INT32: 4,
+    TYPE_UINT32: 4,
+    (TYPE_FLOAT, 2): 8,
+    (TYPE_FLOAT, 3): 16,
+    (TYPE_FLOAT, 4): 16,
+    (TYPE_INT32, 2): 8,
+    (TYPE_INT32, 3): 16,
+    (TYPE_INT32, 4): 16,
+    (TYPE_UINT32, 2): 8,
+    (TYPE_UINT32, 3): 16,
+    (TYPE_UINT32, 4): 16,
+    (TYPE_FLOAT, 22): 16,
+    (TYPE_FLOAT, 23): 24,
+    (TYPE_FLOAT, 32): 24,
+    (TYPE_FLOAT, 33): 36,
+    (TYPE_FLOAT, 34): 48,
+    (TYPE_FLOAT, 43): 48,
+    (TYPE_FLOAT, 44): 64,
+}
+
 TAB_STR = "    "
 
 USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE = False
@@ -121,13 +143,14 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,   1,      "materialId2",      1),
 ]
 
-# (structTypeName): (structDefinition, onlyForGLSL)
+# (structTypeName): (structDefinition, onlyForGLSL, align16byte)
+# align16byte -- if using a struct in dynamic array, it must be aligned with 16 bytes
 STRUCTS = {
-    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False),
-    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False),
-    "ShTriangle":               (TRIANGLE_STRUCT,           True),
-    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False),
-    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False),
+    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False),
+    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False),
+    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False),
+    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False),
+    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True),
 }
 
 # ---
@@ -173,9 +196,18 @@ def align4(a):
     return ((a + 3) >> 2) << 2
 
 
+def getMemberSizeStd430(baseType, dim, count):
+    if dim == 1:
+        return GLSL_TYPE_SIZES_STD_430[baseType] * count
+    else:
+        return GLSL_TYPE_SIZES_STD_430[(baseType, dim)] * count
+
+
 # useVecMatTypes:
-def getStruct(name, definition, typeNames):
+def getStruct(name, definition, typeNames, align16):
     r = "struct " + name + "\n{\n"
+
+    curSize = 0
 
     for baseType, dim, mname, count in definition:
         assert(count > 0)
@@ -200,14 +232,26 @@ def getStruct(name, definition, typeNames):
 
         r += ";\n"
 
+        # count size of current member
+        curSize += getMemberSizeStd430(baseType, dim, count)
+
+    if align16 and curSize % 16 != 0:
+        if (curSize % 16) % 4 != 0:
+            raise Exception("Size of struct %s is not 4-byte aligned!" % name)
+        uint32ToAdd = (curSize % 16) // 4
+        padName = typeNames[TYPE_UINT32] + " __pad%d;\n"
+        for i in range(uint32ToAdd):
+            r += TAB_STR
+            r += padName % i
+
     r += "};\n"
     return r
 
 
 def getAllStructDefs(typeNames):
     return "\n".join(
-        getStruct(name, structDef, typeNames)
-        for name, (structDef, onlyForGLSL) in STRUCTS.items()
+        getStruct(name, structDef, typeNames, align16)
+        for name, (structDef, onlyForGLSL, align16) in STRUCTS.items()
         if not (onlyForGLSL and (typeNames == C_TYPE_NAMES))
     ) + "\n"
 

@@ -57,10 +57,11 @@ typedef struct RgInstanceCreateInfo
     PFN_rgCreateVkSurfaceKHR    pfnCreateSurface;
     RgBool32                    enableValidationLayer;
     PFN_rgPrint                 pfnDebugPrint;
-    // Size that must be allocated for rasterized geometry, in bytes.
+    // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.
     // If buffer is full, rasterized data will be ignored
-    uint32_t                    rasterizedDataBufferSize;
+    uint32_t                    rasterizedMaxVertexCount;
+    uint32_t                    rasterizedMaxIndexCount;
     // Postfixes will be used to determine textures that should be 
     // loaded from files if the texture should be overridden
     // i.e. if postfix="_n" then "Floor_01" => "Floor_01_n.*", 

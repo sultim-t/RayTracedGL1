@@ -65,5 +65,7 @@ struct ShGeometryInstance
     uint materialId0;
     uint materialId1;
     uint materialId2;
+    uint __pad0;
+    uint __pad1;
 };
 
