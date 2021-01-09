@@ -143,17 +143,18 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     // TODO: postprocessing
 
+    // blit result image to present on a surface
+    swapchain->BlitForPresent(
+        cmd, storageImage->image,
+        storageImage->width, storageImage->height,
+        storageImage->imageLayout);
+
+    // draw rasterized geometry in swapchain's framebuffer
     rasterizer->Draw(cmd, currentFrameIndex, VK_NULL_HANDLE);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 {
-    // blit result image to present on a surface
-    swapchain->BlitForPresent(
-        cmd, storageImage->image, 
-        storageImage->width, storageImage->height,
-        storageImage->imageLayout);
-
     // submit command buffer, but wait until presentation engine has completed using image
     cmdManager->Submit(
         cmd, 
@@ -239,7 +240,7 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
 
 RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
 {
-    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0 || uploadInfo->indexCount == 0)
+    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
     {
         return RG_WRONG_ARGUMENT;
     }

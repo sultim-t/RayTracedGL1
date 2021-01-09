@@ -39,7 +39,8 @@ uint32_t RasterizedDataCollector::GetVertexStride()
 RasterizedDataCollector::RasterizedDataCollector(
     VkDevice device, 
     const std::shared_ptr<PhysicalDevice> &physDevice,
-    uint32_t maxVertexCount, uint32_t maxIndexCount)
+    uint32_t maxVertexCount, uint32_t maxIndexCount) :
+    curVertexCount(0), curIndexCount(0)
 {
     this->device = device;
 
@@ -68,9 +69,9 @@ RasterizedDataCollector::~RasterizedDataCollector()
 void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &info)
 {
     assert(info.vertexCount > 0);
-    assert(info.vertexStride < 3 * sizeof(float));
-    assert(info.colorStride < sizeof(uint32_t));
-    assert(info.texCoordStride < 2 * sizeof(float));
+    assert(info.vertexStride >= 3 * sizeof(float));
+    assert(info.colorData == nullptr || info.colorStride >= sizeof(uint32_t));
+    assert(info.texCoordData == nullptr || info.texCoordStride >= 2 * sizeof(float));
 
     if (curVertexCount + info.vertexCount >= vertexBuffer.GetSize() / sizeof(RasterizerVertex))
     {
@@ -98,10 +99,10 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         vert.position[1] = srcPos[1];
         vert.position[2] = srcPos[2];
 
-        vert.color = *srcColor;
+        vert.color = info.colorData ? *srcColor : UINT32_MAX;
 
-        vert.texCoord[0] = srcTexCoord[0];
-        vert.texCoord[1] = srcTexCoord[1];
+        vert.texCoord[0] = info.texCoordData ? srcTexCoord[0] : 0;
+        vert.texCoord[1] = info.texCoordData ? srcTexCoord[1] : 0;
 
         for (uint32_t t = 0; t < info.textureCount; t++)
         {
@@ -109,7 +110,7 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         }
         for (uint32_t t = info.textureCount; t < 4; t++)
         {
-            vert.textureIds[t] = info.textures[t].staticTexture;
+            vert.textureIds[t] = 0;
         }
 
         // write to mapped memory
@@ -140,6 +141,8 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
 void RasterizedDataCollector::Clear()
 {
     drawInfos.clear();
+    curVertexCount = 0;
+    curIndexCount = 0;
 }
 
 VkBuffer RasterizedDataCollector::GetVertexBuffer() const

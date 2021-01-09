@@ -312,6 +312,35 @@ void StartScene(RgInstance instance, Window *pWindow)
 
         rgUploadGeometry(instance, &dyn_info, nullptr);
 
+        float verts[] = 
+        {
+            0, 0, 0,
+            0, 0.5f, 0,
+            0.5f, 0, 0,
+            0.5f, 0, 0,
+            0, 0.5f, 0,
+            0.5f, 0.5f, 0
+        };
+
+        uint32_t colors[]
+        {
+            0xFF000000,
+            0x00FF00FF,
+            0x0000FFFF,
+            0x0000FFFF,
+            0x00FF00FF,
+            0xFF000000,
+        };
+
+        RgRasterizedGeometryUploadInfo raster = {};
+        raster.vertexData = verts;
+        raster.vertexCount = 6;
+        raster.vertexStride = 3 * sizeof(float);
+        raster.colorData = colors;
+        raster.colorStride = sizeof(uint32_t);
+
+        RgResult r = rgUploadRasterizedGeometry(instance, &raster);
+        RG_CHECKERROR_R;
 
         /*RgUpdateTransformInfo uptr = {};
         uptr.movableStaticGeom = movable;

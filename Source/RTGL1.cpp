@@ -51,7 +51,7 @@ RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransfor
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTransform(updateInfo);
 }
 
-RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, RgRasterizedGeometryUploadInfo *uploadInfo)
+RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *uploadInfo)
 {
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo);
 }

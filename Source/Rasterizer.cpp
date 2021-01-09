@@ -46,6 +46,21 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, VkDescriptorSet 
 
     const auto &drawInfos = collectors[frameIndex]->GetDrawInfos();
 
+    VkClearValue clearValue = {};
+
+    VkRenderPassBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    beginInfo.renderPass = renderPass;
+    beginInfo.framebuffer = framebuffers[frameIndex];
+    beginInfo.renderArea = curRenderArea;
+    beginInfo.clearValueCount = 1;
+    beginInfo.pClearValues = &clearValue;
+
+    vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+    vkCmdSetScissor(cmd, 0, 1, &curRenderArea);
+    vkCmdSetViewport(cmd, 0, 1, &curViewport);
+
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
     // TODO: global texture array desc set
@@ -69,6 +84,8 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, VkDescriptorSet 
             vkCmdDraw(cmd, info.vertexCount, 1, info.firstVertex, 0);
         }
     }
+
+    vkCmdEndRenderPass(cmd);
    
     collectors[frameIndex]->Clear();
 }
@@ -242,6 +259,16 @@ void Rasterizer::CreateFramebuffers(uint32_t width, uint32_t height, const VkIma
 
         SET_DEBUG_NAME(device, framebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer framebuffer");
     }
+
+    curViewport.x = 0;
+    curViewport.y = 0;
+    curViewport.minDepth = 0;
+    curViewport.maxDepth = 1;
+    curViewport.width = width;
+    curViewport.height = height;
+
+    curRenderArea.offset = { 0, 0 };
+    curRenderArea.extent = { width, height };
 }
 
 void Rasterizer::DestroyFramebuffers()

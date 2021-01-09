@@ -203,15 +203,19 @@ typedef struct RgRasterizedGeometryUploadInfo
     // 3 floats
     //float               *normalData;
     //uint32_t            normalStride;
-    // 2 floats
+    // 2 floats, can be null
     float               *texCoordData;
     uint32_t            texCoordStride;
-    // RGBA packed into 32-bit uint
+    // RGBA packed into 32-bit uint, can be null
     uint32_t            *colorData;
     uint32_t            colorStride;
 
+    // Can be 0 and null
     uint32_t            indexCount;
     uint32_t            *indexData;
+
+    // viewport;
+
 } RgRasterizedGeometryUploadInfo;
 
 // Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.

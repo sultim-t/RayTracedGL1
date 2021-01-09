@@ -50,6 +50,8 @@ private:
     VkPipelineCache     pipelineCache;
     VkPipeline          pipeline;
 
+    VkRect2D  curRenderArea;
+    VkViewport curViewport;
     std::vector<VkFramebuffer> framebuffers;
 
     std::shared_ptr<RasterizedDataCollector> collectors[MAX_FRAMES_IN_FLIGHT];
