@@ -37,6 +37,13 @@ public:
     void Subscribe(std::shared_ptr<ISwapchainDependency> subscriber);
     void Unsubscribe(const ISwapchainDependency *subscriber);
 
+    VkFormat GetSurfaceFormat() const;
+    uint32_t GetWidth() const;
+    uint32_t GetHeight() const;
+    uint32_t GetImageCount() const;
+    VkImageView GetImageView(uint32_t index) const;
+    const VkImageView *GetImageViews() const;
+
 private:
     // Safe to call even if swapchain wasn't created
     bool Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync);
@@ -44,7 +51,7 @@ private:
     void Create(uint32_t newWidth, uint32_t newHeight, bool vsync);
     void Destroy();
 
-    void CallCreateSubscribers(uint32_t newWidth, uint32_t newHeight);
+    void CallCreateSubscribers();
     void CallDestroySubscribers();
 
 private:

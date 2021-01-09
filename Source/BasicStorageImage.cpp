@@ -1,4 +1,5 @@
 #include "BasicStorageImage.h"
+#include "Swapchain.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -87,6 +88,7 @@ void BasicStorageImage::CreateImage(uint32_t width, uint32_t height)
     imageLayout = VK_IMAGE_LAYOUT_GENERAL;
 
     cmdManager->Submit(cmd);
+    cmdManager->WaitGraphicsIdle();
 
     UpdateDescriptors();
 }
@@ -116,9 +118,9 @@ void BasicStorageImage::Barrier(VkCommandBuffer cmd)
         VK_IMAGE_LAYOUT_GENERAL);
 }
 
-void BasicStorageImage::OnSwapchainCreate(uint32_t newWidth, uint32_t newHeight)
+void BasicStorageImage::OnSwapchainCreate(const Swapchain *pSwapchain)
 {
-    CreateImage(newWidth, newHeight);
+    CreateImage(pSwapchain->GetWidth(), pSwapchain->GetHeight());
 }
 
 void BasicStorageImage::OnSwapchainDestroy()

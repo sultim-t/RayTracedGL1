@@ -31,7 +31,7 @@ public:
         return descLayout;
     }
 
-    void OnSwapchainCreate(uint32_t newWidth, uint32_t newHeight) override;
+    void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
 
 private:

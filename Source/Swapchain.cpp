@@ -203,8 +203,6 @@ bool Swapchain::Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
 
 void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
 {
-    CallCreateSubscribers(newWidth, newHeight);
-
     this->isVsync = vsync;
 
     VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
@@ -306,6 +304,8 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
 
     cmdManager->Submit(cmd);
     cmdManager->WaitGraphicsIdle();
+
+    CallCreateSubscribers();
 }
 
 void Swapchain::Destroy()
@@ -323,13 +323,13 @@ void Swapchain::Destroy()
     }
 }
 
-void Swapchain::CallCreateSubscribers(uint32_t newWidth, uint32_t newHeight)
+void Swapchain::CallCreateSubscribers()
 {
     for (auto &ws : subscribers)
     {
         if (auto s = ws.lock())
         {
-            s->OnSwapchainCreate(newWidth, newHeight);
+            s->OnSwapchainCreate(this);
         }
     }
 }
@@ -366,4 +366,41 @@ void Swapchain::Unsubscribe(const ISwapchainDependency *subscriber)
 
         return true;
     });
+}
+
+VkFormat Swapchain::GetSurfaceFormat() const
+{
+    return surfaceFormat.format;
+}
+
+uint32_t Swapchain::GetWidth() const
+{
+    return surfaceExtent.width;
+}
+
+uint32_t Swapchain::GetHeight() const
+{
+    return surfaceExtent.height;
+}
+
+uint32_t Swapchain::GetImageCount() const
+{
+    assert(swapchainViews.size() == swapchainImages.size());
+    return swapchainViews.size();
+}
+
+VkImageView Swapchain::GetImageView(uint32_t index) const
+{
+    assert(index < swapchainViews.size());
+    return swapchainViews[index];
+}
+
+const VkImageView *Swapchain::GetImageViews() const
+{
+    if (!swapchainViews.empty())
+    {
+        return swapchainViews.data();
+    }
+
+    return nullptr;
 }

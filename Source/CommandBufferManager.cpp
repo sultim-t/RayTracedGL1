@@ -43,13 +43,17 @@ CommandBufferManager::~CommandBufferManager()
 
 void CommandBufferManager::PrepareForFrame(uint32_t frameIndex)
 {
+    assert(cmdQueues[frameIndex].empty());
+
     vkResetCommandPool(device, graphicsCmds[frameIndex].pool, 0);
     vkResetCommandPool(device, computeCmds[frameIndex].pool, 0);
     vkResetCommandPool(device, transferCmds[frameIndex].pool, 0);
 
-    currentFrameIndex = frameIndex;
+    graphicsCmds[frameIndex].curCount = 0;
+    computeCmds[frameIndex].curCount = 0;
+    transferCmds[frameIndex].curCount = 0;
 
-    assert(cmdQueues[frameIndex].empty());
+    currentFrameIndex = frameIndex;
 }
 
 VkCommandBuffer CommandBufferManager::StartCmd(uint32_t frameIndex, AllocatedCmds &allocated, VkQueue queue)
