@@ -13,10 +13,12 @@ struct ShaderModuleDefinition
 // TODO: move this to separate file
 static ShaderModuleDefinition G_SHADERS[] =
 {
-    {"RGen",        "../../../BasicRaygen.rgen.spv",           VK_SHADER_STAGE_RAYGEN_BIT_KHR },
-    {"RMiss",       "../../../BasicMiss.rmiss.spv",            VK_SHADER_STAGE_MISS_BIT_KHR },
-    {"RMissShadow", "../../../BasicShadowCheck.rmiss.spv",     VK_SHADER_STAGE_MISS_BIT_KHR },
-    {"RClsHit",     "../../../BasicClosestHit.rchit.spv",      VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
+    {"RGen",            "../../../BasicRaygen.rgen.spv",            VK_SHADER_STAGE_RAYGEN_BIT_KHR },
+    {"RMiss",           "../../../BasicMiss.rmiss.spv",             VK_SHADER_STAGE_MISS_BIT_KHR },
+    {"RMissShadow",     "../../../BasicShadowCheck.rmiss.spv",      VK_SHADER_STAGE_MISS_BIT_KHR },
+    {"RClsHit",         "../../../BasicClosestHit.rchit.spv",       VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
+    {"RasterizerVert",  "../../../Rasterizer.vert.spv",             VK_SHADER_STAGE_VERTEX_BIT },
+    {"RasterizerFrag",  "../../../Rasterizer.frag.spv",             VK_SHADER_STAGE_FRAGMENT_BIT },
 };
 static const uint32_t G_SHADERS_COUNT = sizeof(G_SHADERS) / sizeof(G_SHADERS[0]);
 
@@ -62,22 +64,29 @@ void ShaderManager::UnloadShaderModules()
 
 VkShaderModule ShaderManager::GetShaderModule(const char* name) const
 {
-    return modules.at(name).module;
+    const auto &m = modules.find(name);
+    return m != modules.end() ? m->second.module : VK_NULL_HANDLE;
 }
 
 VkShaderStageFlagBits ShaderManager::GetModuleStage(const char* name) const
 {
-    return modules.at(name).shaderStage;
+    const auto &m = modules.find(name);
+    return m != modules.end() ? m->second.shaderStage : static_cast<VkShaderStageFlagBits>(0);
 }
 
 VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo(const char* name) const
 {
-    auto &m = modules.at(name);
+    const auto &m = modules.find(name);
+
+    if (m == modules.end())
+    {
+        return {};
+    }
 
     VkPipelineShaderStageCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    info.module = m.module;
-    info.stage = m.shaderStage;
+    info.module = m->second.module;
+    info.stage = m->second.shaderStage;
     info.pName = "main";
 
     return info;

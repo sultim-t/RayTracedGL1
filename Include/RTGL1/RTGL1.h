@@ -183,17 +183,21 @@ typedef enum RgSamplerAddressMode
 
 typedef struct RgRasterizedGeometryUploadInfo
 {
-    RgBool32            depthTest;
-    RgBool32            depthWrite;
-    RgBool32            alphaTest;
+    // Doesn't need it.
+    //RgBool32            depthTest;
+    //RgBool32            depthWrite;
+
+    // Hardcoded for the first versions
+    /*RgBool32            alphaTest;
     RgBool32            blendEnable;
     RgBlendFactor       blendFuncSrc;
-    RgBlendFactor       blendFuncDst;
+    RgBlendFactor       blendFuncDst;*/
+
     uint32_t            textureCount;
     RgTexture           textures[4];
 
     uint32_t            vertexCount;
-    // 3 floats
+    // Position data, 3 floats
     float               *vertexData;
     uint32_t            vertexStride;
     // 3 floats
@@ -366,11 +370,13 @@ typedef struct RgDrawFrameInfo
 {
     uint32_t        renderWidth;
     uint32_t        renderHeight;
-    // Here matrices are column major, for GLSL
+    // View and projection matrices are column major
     float           view[16];
-    float           viewInversed[16];
     float           projection[16];
-    float           projectionInversed[16];
+    // Inversed matrices. Can be 0 if they
+    // should be calculated by the library
+    //float           viewInversed[16];
+    //float           projectionInversed[16];
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

@@ -1,76 +1,90 @@
 #include "Rasterizer.h"
+#include "Swapchain.h"
 #include "Generated/ShaderCommonC.h"
-
-struct RasterizerVertex
-{
-    float       position[3];
-    uint32_t    color;
-    uint32_t    materialIds[4];
-    float       texCoord[2];
-};
 
 Rasterizer::Rasterizer(
     VkDevice device, 
     const std::shared_ptr<PhysicalDevice> &physDevice, 
     const std::shared_ptr<ShaderManager> &shaderManager,
     VkDescriptorSetLayout texturesDescLayout,
+    VkFormat surfaceFormat,
     uint32_t maxVertexCount, uint32_t maxIndexCount)
 {
-    /*this->device = device;
+    this->device = device;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        vertexBuffers[i].Init(
-            device, *physDevice,
-            maxVertexCount * sizeof(RasterizerVertex),
-            VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-        indexBuffers[i].Init(
-            device, *physDevice,
-            maxIndexCount * sizeof(uint32_t),
-            VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        collectors[i] = std::make_shared<RasterizedDataCollector>(
+            device, physDevice, maxVertexCount, maxIndexCount);
     }
 
-
-
-    CreateRenderPass();
+    CreateRenderPass(surfaceFormat);
     CreatePipelineLayout(texturesDescLayout);
+    CreatePipelineCache();
     CreatePipeline(shaderManager);
-
-    vkCreateFramebuffer*/
 }
 
 Rasterizer::~Rasterizer()
 {
-    /*vkDestroyRenderPass(device, renderPass, nullptr);
+    vkDestroyRenderPass(device, renderPass, nullptr);
     vkDestroyPipelineCache(device, pipelineCache, nullptr);
-    vkDestroyPipeline(device, pipeline, nullptr);*/
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyPipeline(device, pipeline, nullptr);
+    DestroyFramebuffers();
 }
 
-void Rasterizer::Upload(const RgRasterizedGeometryUploadInfo &uploadInfo)
+void Rasterizer::Upload(const RgRasterizedGeometryUploadInfo &uploadInfo, uint32_t frameIndex)
 {
-
+    collectors[frameIndex]->AddGeometry(uploadInfo);
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
+void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, VkDescriptorSet texturesDescSet)
 {
-    /*vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, );
-
-    vkCmdBindDescriptorSets();
-
-    VkBuffer vertBuffer = vertexBuffers[frameIndex].GetBuffer();
-    VkBuffer indBuffer = indexBuffers[frameIndex].GetBuffer();
-
     VkDeviceSize offset = 0;
+    VkBuffer vrtBuffer = collectors[frameIndex]->GetVertexBuffer();
+    VkBuffer indBuffer = collectors[frameIndex]->GetIndexBuffer();
 
-    vkCmdBindVertexBuffers(cmd, 0, 1, &vertBuffer, &offset);
+    const auto &drawInfos = collectors[frameIndex]->GetDrawInfos();
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+
+    // TODO: global texture array desc set
+#if 0
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0,
+        1, &texturesDescSet,
+        0, nullptr);
+#endif
+    vkCmdBindVertexBuffers(cmd, 0, 1, &vrtBuffer, &offset);
     vkCmdBindIndexBuffer(cmd, indBuffer, offset, VK_INDEX_TYPE_UINT32);
+
+    for (const auto &info : drawInfos)
+    {
+        if (info.indexCount > 0)
+        {
+            vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
+        }
+        else
+        {
+            vkCmdDraw(cmd, info.vertexCount, 1, info.firstVertex, 0);
+        }
+    }
    
-    vkCmdDrawIndexed(cmd, indexCount, 1, 0, 0, 0);*/
+    collectors[frameIndex]->Clear();
 }
-/*
+
+void Rasterizer::OnSwapchainCreate(const Swapchain *pSwapchain)
+{
+    CreateFramebuffers(
+        pSwapchain->GetWidth(), pSwapchain->GetHeight(),
+        pSwapchain->GetImageViews(), pSwapchain->GetImageCount());
+}
+
+void Rasterizer::OnSwapchainDestroy()
+{
+    DestroyFramebuffers();
+}
+
 void Rasterizer::CreatePipelineCache()
 {
     VkPipelineCacheCreateInfo cacheInfo = {};
@@ -82,9 +96,21 @@ void Rasterizer::CreatePipelineCache()
 
 void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
 {
+    VkPipelineLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
 
+    // TODO: global texture array desc set
+#if 0
+    layoutInfo.setLayoutCount = 1;
+    layoutInfo.pSetLayouts = &texturesDescLayout;
+#endif
+    layoutInfo.pushConstantRangeCount = 0;
+    layoutInfo.pPushConstantRanges = nullptr;
 
+    VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
+    VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Rasterizer draw pipeline layout");
 }
 
 void Rasterizer::CreatePipeline(const std::shared_ptr<ShaderManager> &shaderManager)
@@ -98,36 +124,17 @@ void Rasterizer::CreatePipeline(const std::shared_ptr<ShaderManager> &shaderMana
     VkVertexInputBindingDescription vertBinding = {};
     vertBinding.binding = 0;
     vertBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertBinding.stride = sizeof(RasterizerVertex);
+    vertBinding.stride = RasterizedDataCollector::GetVertexStride();
 
-    VkVertexInputAttributeDescription attrs[4] = {};
-
-    attrs[0].binding = 0;
-    attrs[0].location = 0;
-    attrs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    attrs[0].offset = offsetof(RasterizerVertex, position);
-
-    attrs[1].binding = 0;
-    attrs[1].location = 1;
-    attrs[1].format = VK_FORMAT_R32_UINT;
-    attrs[1].offset = offsetof(RasterizerVertex, color);
-
-    attrs[2].binding = 0;
-    attrs[2].location = 2;
-    attrs[2].format = VK_FORMAT_R32G32B32A32_UINT;
-    attrs[2].offset = offsetof(RasterizerVertex, materialIds);
-
-    attrs[3].binding = 0;
-    attrs[3].location = 3;
-    attrs[3].format = VK_FORMAT_R32G32_SFLOAT;
-    attrs[3].offset = offsetof(RasterizerVertex, texCoord);
+    std::array<VkVertexInputAttributeDescription, 4> attrs = {};
+    RasterizedDataCollector::GetVertexLayout(attrs);
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &vertBinding;
-    vertexInputInfo.vertexAttributeDescriptionCount = sizeof(attrs) / sizeof(attrs[0]);
-    vertexInputInfo.pVertexAttributeDescriptions = attrs;
+    vertexInputInfo.vertexAttributeDescriptionCount = attrs.size();
+    vertexInputInfo.pVertexAttributeDescriptions = attrs.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
@@ -211,7 +218,40 @@ void Rasterizer::CreatePipeline(const std::shared_ptr<ShaderManager> &shaderMana
     VkResult r = vkCreateGraphicsPipelines(device, pipelineCache, 1, &plInfo, nullptr, &pipeline);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer draw pipeline");
+}
 
+void Rasterizer::CreateFramebuffers(uint32_t width, uint32_t height, const VkImageView *pFrameAttchs, uint32_t count)
+{
+    assert(framebuffers.empty());
+    framebuffers.resize(count);
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        VkFramebufferCreateInfo fbInfo = {};
+        fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbInfo.renderPass = renderPass;
+        fbInfo.attachmentCount = 1;
+        fbInfo.pAttachments = &pFrameAttchs[i];
+        fbInfo.width = width;
+        fbInfo.height = height;
+        fbInfo.layers = 1;
+
+        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, framebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer framebuffer");
+    }
+}
+
+void Rasterizer::DestroyFramebuffers()
+{
+    for (VkFramebuffer fb : framebuffers)
+    {
+        vkDestroyFramebuffer(device, fb, nullptr);
+    }
+
+    framebuffers.clear();
 }
 
 void Rasterizer::CreateRenderPass(VkFormat surfaceFormat)
@@ -258,73 +298,4 @@ void Rasterizer::CreateRenderPass(VkFormat surfaceFormat)
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, renderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer render pass");
-}*/
-
-/*
-void Rasterizer::CreateDescriptors()
-{
-    VkResult r;
-
-    VkDescriptorSetLayoutBinding binding = {};
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    binding.descriptorCount = 1;
-    binding.binding = BINDING_RASTERIZER_STORAGE_BUFFER;
-    binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-
-    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = 1;
-    layoutInfo.pBindings = &binding;
-
-    r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descLayout);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, descLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Rasterizer desc set layout");
-
-    VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT;
-
-    VkDescriptorPoolCreateInfo poolInfo = {};
-    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount = 1;
-    poolInfo.pPoolSizes = &poolSize;
-    poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
-
-    r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Rasterizer desc set layout");
-
-    VkDescriptorSetAllocateInfo descSetInfo = {};
-    descSetInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descSetInfo.descriptorPool = descPool;
-    descSetInfo.descriptorSetCount = 1;
-    descSetInfo.pSetLayouts = &descLayout;
-
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        r = vkAllocateDescriptorSets(device, &descSetInfo, &descSets[i]);
-        VK_CHECKERROR(r);
-
-        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Rasterizer desc set");
-    
-        VkDescriptorBufferInfo bufferInfo = {};
-        bufferInfo.buffer = ;
-        bufferInfo.offset = 0;
-        bufferInfo.range = sizeof();
-
-        VkWriteDescriptorSet wrt = {};
-        wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wrt.dstSet = descSets[i];
-        wrt.dstBinding = BINDING_RASTERIZER_STORAGE_BUFFER;
-        wrt.dstArrayElement = 0;
-        wrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        wrt.descriptorCount = 1;
-        wrt.pBufferInfo = &bufferInfo;
-
-        vkUpdateDescriptorSets(device, 1, &wrt, 0, nullptr);
-    }
 }
-
-*/

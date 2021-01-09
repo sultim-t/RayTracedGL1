@@ -1,4 +1,6 @@
 #include "VulkanDevice.h"
+
+#include "Matrix.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -49,13 +51,17 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     scene = std::make_shared<Scene>(asManager);
 
     shaderManager = std::make_shared<ShaderManager>(device);
-    rtPipeline = std::make_shared<RayTracingPipeline>(device, physDevice, shaderManager, scene->GetASManager(), uniform, storageImage->GetDescSetLayout());
+    rtPipeline = std::make_shared<RayTracingPipeline>(
+        device, physDevice, shaderManager, 
+        scene->GetASManager(), uniform, storageImage->GetDescSetLayout());
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
-    rasterizer = std::make_shared<Rasterizer>(device, physDevice, shaderManager, (VkDescriptorSetLayout)VK_NULL_HANDLE, info->rasterizedMaxVertexCount, info->rasterizedMaxIndexCount);
-
-    // TODO: storage image
+    rasterizer = std::make_shared<Rasterizer>(
+        device, physDevice, shaderManager,
+        (VkDescriptorSetLayout)VK_NULL_HANDLE, swapchain->GetSurfaceFormat(), 
+        info->rasterizedMaxVertexCount, info->rasterizedMaxIndexCount);
+    swapchain->Subscribe(rasterizer);
 }
 
 VulkanDevice::~VulkanDevice()
@@ -104,9 +110,10 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo)
 {
     memcpy(gu->view, frameInfo->view, 16 * sizeof(float));
-    memcpy(gu->invView, frameInfo->viewInversed, 16 * sizeof(float));
     memcpy(gu->projection, frameInfo->projection, 16 * sizeof(float));
-    memcpy(gu->invProjection, frameInfo->projectionInversed, 16 * sizeof(float));
+
+    Matrix::Inverse(gu->invView, frameInfo->view);
+    Matrix::Inverse(gu->invProjection, frameInfo->projection);
 
     //gu->viewPrev[16];
     //gu->projectionPrev[16];
@@ -136,7 +143,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     // TODO: postprocessing
 
-    rasterizer->Draw(cmd, currentFrameIndex);
+    rasterizer->Draw(cmd, currentFrameIndex, VK_NULL_HANDLE);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
@@ -237,7 +244,12 @@ RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUpload
         return RG_WRONG_ARGUMENT;
     }
 
-    rasterizer->Upload(*uploadInfo);
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
+
+    rasterizer->Upload(*uploadInfo, currentFrameIndex);
     return RG_SUCCESS;
 }
 
