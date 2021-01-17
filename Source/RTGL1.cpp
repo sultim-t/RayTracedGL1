@@ -66,15 +66,15 @@ RgResult rgStartNewScene(RgInstance rgInstance)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartNewStaticScene();
 }
 
-RgResult rgCreateStaticTexture(RgInstance rgInstance, const RgStaticTextureCreateInfo* createInfo,
-    RgStaticTexture* result)
+RgResult rgCreateStaticTexture(RgInstance rgInstance, const RgStaticTextureCreateInfo *createInfo,
+                               RgStaticTexture *result)
 {
     assert(0);
     return RgResult();
 }
 
-RgResult rgCreateAnimatedTexture(RgInstance rgInstance, const RgAnimatedTextureCreateInfo* createInfo,
-    RgAnimatedTexture* result)
+RgResult rgCreateAnimatedTexture(RgInstance rgInstance, const RgAnimatedTextureCreateInfo *createInfo,
+                                 RgAnimatedTexture *result)
 {
     assert(0);
     return RgResult();
@@ -86,15 +86,15 @@ RgResult rgChangeAnimatedTextureFrame(RgAnimatedTexture animatedTexture, uint32_
     return RgResult();
 }
 
-RgResult rgCreateDynamicTexture(RgInstance rgInstance, const RgDynamicTextureInfo* dynamicTextureInfo,
-    RgDynamicTexture* result)
+RgResult rgCreateDynamicTexture(RgInstance rgInstance, const RgDynamicTextureCreateInfo *createInfo,
+                                RgDynamicTexture *result)
 {
     assert(0);
     return RgResult();
 }
 
 RgResult rgUpdateDynamicTexture(RgInstance rgInstance, RgDynamicTexture dynamicTexture,
-    const RgDynamicTextureInfo* updateInfo)
+                                const RgDynamicTextureUpdateInfo *updateInfo)
 {
     assert(0);
     return RgResult();
@@ -105,7 +105,7 @@ RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t sur
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight);
 }
 
-RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo* frameInfo)
+RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *frameInfo)
 {
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->DrawFrame(frameInfo);
 }
