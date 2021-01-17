@@ -180,18 +180,6 @@ void LoadObj(const char *path,
 
 }
 
-void FillFrameInfo(RgDrawFrameInfo *frameInfo)
-{
-    glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
-    glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
-
-    // GLM is column major, copy matrix data directly
-    memcpy(frameInfo->view, &view[0][0], 16 * sizeof(float));
-    memcpy(frameInfo->projection, &persp[0][0], 16 * sizeof(float));
-
-    //frameInfo->lightPos = glm::vec4(lightDir.x, lightDir.y, lightDir.z, 0);
-}
-
 void StartScene(RgInstance instance, Window *pWindow)
 {
     RgResult r;
@@ -352,12 +340,16 @@ void StartScene(RgInstance instance, Window *pWindow)
         r = rgUpdateGeometryTransform(instance, &uptr);
         RG_CHECKERROR_R;*/
 
+        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
+        glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
+
         RgDrawFrameInfo frameInfo = {};
         frameInfo.renderWidth = pWindow->width;
         frameInfo.renderHeight = pWindow->height;
+        // GLM is column major, copy matrix data directly
+        memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
+        memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
 
-        FillFrameInfo(&frameInfo);
-        
         r = rgDrawFrame(instance, &frameInfo);
         RG_CHECKERROR_R;
 
