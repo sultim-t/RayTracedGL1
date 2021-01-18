@@ -96,12 +96,12 @@ void PhysicalDevice::FreeDeviceMemory(VkDeviceMemory memory) const
     vkFreeMemory(device, memory, nullptr);
 }
 
-VkPhysicalDeviceMemoryProperties PhysicalDevice::GetMemoryProperties() const
+const VkPhysicalDeviceMemoryProperties &PhysicalDevice::GetMemoryProperties() const
 {
     return memoryProperties;
 }
 
-VkPhysicalDeviceRayTracingPipelinePropertiesKHR PhysicalDevice::GetRTPipelineProperties() const
+const VkPhysicalDeviceRayTracingPipelinePropertiesKHR &PhysicalDevice::GetRTPipelineProperties() const
 {
     return rtPipelineProperties;
 }
