@@ -14,6 +14,8 @@
 #include "PathTracer.h"
 #include "Rasterizer.h"
 #include "BasicStorageImage.h"
+#include "MemoryAllocator.h"
+#include "TextureManager.h"
 
 class VulkanDevice
 {
@@ -35,6 +37,12 @@ public:
     RgResult StartNewStaticScene();
 
     // TODO: empty (white) texture 1x1 with index 0 (RG_NO_TEXTURE)
+    RgResult CreateStaticTexture(const RgStaticTextureCreateInfo *createInfo, RgStaticTexture *result);
+    RgResult CreateAnimatedTexture(const RgAnimatedTextureCreateInfo *createInfo, RgAnimatedTexture *result);
+    RgResult ChangeAnimatedTextureFrame(RgAnimatedTexture animatedTexture, uint32_t frameIndex);
+    RgResult CreateDynamicTexture(const RgDynamicTextureCreateInfo *createInfo, RgDynamicTexture *result);
+    RgResult UpdateDynamicTexture(RgDynamicTexture dynamicTexture, const RgDynamicTextureUpdateInfo *updateInfo);
+
 
     RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
@@ -72,6 +80,8 @@ private:
     std::shared_ptr<Queues>                 queues;
     std::shared_ptr<Swapchain>              swapchain;
 
+    std::shared_ptr<MemoryAllocator>        memAllocator;
+
     std::shared_ptr<CommandBufferManager>   cmdManager;
 
     // TODO: this storage image is only for debugging in the beginning
@@ -84,6 +94,8 @@ private:
     std::shared_ptr<RayTracingPipeline>     rtPipeline;
     std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
+
+    std::shared_ptr<TextureManager>         textureManager;
 
     bool                                    enableValidationLayer;
     VkDebugUtilsMessengerEXT                debugMessenger;

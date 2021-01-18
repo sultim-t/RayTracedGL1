@@ -39,6 +39,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     physDevice->SetDevice(device);
     queues->SetDevice(device);
 
+    memAllocator = std::make_shared<MemoryAllocator>(instance, device, physDevice->Get());
+
     cmdManager = std::make_shared<CommandBufferManager>(device, queues);
     uniform = std::make_shared<GlobalUniform>(device, physDevice);
 
@@ -46,6 +48,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     storageImage = std::make_shared<BasicStorageImage>(device, physDevice, cmdManager);
     swapchain->Subscribe(storageImage);
+
+    textureManager = std::make_shared<TextureManager>(
+        memAllocator, info->overridenTexturesDefaultPath,
+        info->overrideAlbedoAlphaTexturePostfix, info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
 
     auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, vbProperties);
     scene = std::make_shared<Scene>(asManager);
@@ -266,6 +272,36 @@ RgResult VulkanDevice::StartNewStaticScene()
     return RG_SUCCESS;
 }
 
+RgResult VulkanDevice::CreateStaticTexture(const RgStaticTextureCreateInfo *createInfo, RgStaticTexture *result)
+{
+    *result = textureManager->CreateStaticTexture(createInfo);
+    return RG_SUCCESS;
+}
+
+RgResult VulkanDevice::CreateAnimatedTexture(const RgAnimatedTextureCreateInfo *createInfo, RgAnimatedTexture *result)
+{
+    *result = textureManager->CreateAnimatedTexture(createInfo);
+    return RG_SUCCESS;
+}
+
+RgResult VulkanDevice::ChangeAnimatedTextureFrame(RgAnimatedTexture animatedTexture, uint32_t frameIndex)
+{
+    assert(0);
+    return RG_SUCCESS;
+}
+
+RgResult VulkanDevice::CreateDynamicTexture(const RgDynamicTextureCreateInfo *createInfo, RgDynamicTexture *result)
+{
+    *result = textureManager->CreateDynamicTexture(createInfo);
+    return RG_SUCCESS;
+}
+
+RgResult VulkanDevice::UpdateDynamicTexture(RgDynamicTexture dynamicTexture,
+    const RgDynamicTextureUpdateInfo *updateInfo)
+{
+    assert(0);
+    return RG_SUCCESS;
+}
 #pragma endregion 
 
 
@@ -462,6 +498,7 @@ void VulkanDevice::CreateDevice()
     deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
 
     if (enableValidationLayer)
     {
