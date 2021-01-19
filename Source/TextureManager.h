@@ -25,14 +25,14 @@
 #include "Common.h"
 #include "ImageLoader.h"
 #include "MemoryAllocator.h"
+#include "SamplerManager.h"
 #include "RTGL1/RTGL1.h"
-
-#define TEXTURE_DEBUG_NAME_MAX_LENGTH 32
 
 class TextureManager
 {
 public:
     explicit TextureManager(
+        VkDevice device,
         std::shared_ptr<MemoryAllocator> memAllocator,
         const char *defaultTexturesPath,
         const char *albedoAlphaPostfix,
@@ -45,42 +45,25 @@ public:
     TextureManager &operator=(const TextureManager &other) = delete;
     TextureManager &operator=(TextureManager &&other) noexcept = delete;
 
-    uint32_t CreateStaticTexture(const RgStaticTextureCreateInfo *createInfo);
-    uint32_t CreateAnimatedTexture(const RgAnimatedTextureCreateInfo *createInfo);
-    uint32_t CreateDynamicTexture(const RgDynamicTextureCreateInfo *createInfo);
+    uint32_t CreateStaticTexture(VkCommandBuffer cmd, const RgStaticTextureCreateInfo *createInfo);
+    uint32_t CreateAnimatedTexture(VkCommandBuffer cmd, const RgAnimatedTextureCreateInfo *createInfo);
+    uint32_t CreateDynamicTexture(VkCommandBuffer cmd, const RgDynamicTextureCreateInfo *createInfo);
+    
+private:
+    static uint32_t GetMipmapCount(const RgExtent2D &size);
+
+    void PrepareStaticTexture(
+        VkCommandBuffer cmd, 
+        const void *data, const RgExtent2D &size, 
+        const char *debugName = nullptr);
 
 private:
-    struct TextureOverrides
-    {
-        // albedo-alpha
-        const uint32_t      *aa;
-        // normal-metallic
-        const uint32_t      *nm;
-        // emission-roughness
-        const uint32_t      *er;
-        RgExtent2D          aaSize;
-        RgExtent2D          nmSize;
-        RgExtent2D          erSize;
-        char                debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
-    };
+    VkDevice device;
 
-private:
-    bool ParseOverrideTexturePaths(
-        const RgStaticTextureCreateInfo *createInfo,
-        char *albedoAlphaPath,
-        char *normalMetallic,
-        char *emissionRoughness,
-        char *debugName) const;
-
-    // Load texture overrides if they exist.
-    // Memory must freed by ClearOverrides(..) after using data.
-    void GetOverrides(const RgStaticTextureCreateInfo *createInfo, TextureOverrides *result);
-    // Free texture overrides memory.
-    void ClearOverrides();
-
-private:
     std::shared_ptr<ImageLoader> imageLoader;
     std::shared_ptr<MemoryAllocator> memAllocator;
+
+    std::shared_ptr<SamplerManager> samplerMgr;
 
     std::string defaultTexturesPath;
     std::string albedoAlphaPostfix;

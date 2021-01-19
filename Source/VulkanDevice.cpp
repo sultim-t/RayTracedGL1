@@ -70,7 +70,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     swapchain->Subscribe(storageImage);
 
     textureManager = std::make_shared<TextureManager>(
-        memAllocator, info->overridenTexturesDefaultPath,
+        memAllocator, info->overridenTexturesFolderPath,
         info->overrideAlbedoAlphaTexturePostfix, info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
 
     auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, vbProperties);
@@ -207,8 +207,6 @@ RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
     currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight);
     return RG_SUCCESS;
 }
-
-// TODO: check all members of input structs
 
 RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 {

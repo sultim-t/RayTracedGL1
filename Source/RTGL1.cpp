@@ -21,6 +21,10 @@
 #include "VulkanDevice.h"
 
 
+// TODO: check all members of input structs in RTGL1.CPP
+
+
+
 #define MAX_DEVICE_COUNT 8
 static std::map<RgInstance, std::shared_ptr<VulkanDevice>> g_Devices;
 
