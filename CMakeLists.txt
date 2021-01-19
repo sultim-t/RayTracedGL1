@@ -12,8 +12,7 @@ target_link_libraries(Vulkan INTERFACE ${Vulkan_LIBRARIES})
 
 set(PublicHeaders 
     Include/RTGL1/RTGL1.h
-    Include/RTGL1/RTGL1A.h
- "Source/ImageLoader.h" "Source/TextureManager.h" "Source/MemoryAllocator.h" "Source/SamplerManager.h" "Source/TextureOverrides.h")
+    Include/RTGL1/RTGL1A.h)
 
 set(PrivateHeaders 
     "Source/Common.h"
@@ -41,6 +40,12 @@ set(PrivateHeaders
     "Source/Matrix.h"
     "Source/Rasterizer.h"
     "Source/RasterizedDataCollector.h"
+    "Source/ImageLoader.h" 
+    "Source/TextureManager.h" 
+    "Source/MemoryAllocator.h" 
+    "Source/SamplerManager.h" 
+    "Source/TextureOverrides.h" 
+    "Source/Material.h"
     )
 
 set(Sources
@@ -70,7 +75,12 @@ set(Sources
     "Source/RasterizedDataCollector.cpp"
     "Source/Stb/stb_image_impl.cpp"
     "Source/Vma/vk_mem_alloc_imp.cpp"
-     "Source/ImageLoader.cpp" "Source/TextureManager.cpp" "Source/MemoryAllocator.cpp" "Source/SamplerManager.cpp" "Source/TextureOverrides.cpp")
+    "Source/ImageLoader.cpp" 
+    "Source/TextureManager.cpp" 
+    "Source/MemoryAllocator.cpp" 
+    "Source/SamplerManager.cpp" 
+    "Source/TextureOverrides.cpp"
+    )
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}

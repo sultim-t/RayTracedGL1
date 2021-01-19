@@ -128,6 +128,7 @@ RgResult rgDestroyInstance(
 
 typedef union RgTexture
 {
+    uint32_t            texture;
     RgStaticTexture     staticTexture;
     RgAnimatedTexture   animatedTexture;
     RgDynamicTexture    dynamicTexture;

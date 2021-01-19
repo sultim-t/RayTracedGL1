@@ -21,7 +21,7 @@
 #include "TextureOverrides.h"
 #include "Const.h"
 
-TextureOverrides::TextureOverrides(const RgStaticTextureCreateInfo *_createInfo, const ParseInfo *_parseInfo, std::shared_ptr<ImageLoader> _imageLoader) :
+TextureOverrides::TextureOverrides(const RgStaticTextureCreateInfo &_createInfo, const ParseInfo &_parseInfo, std::shared_ptr<ImageLoader> _imageLoader) :
     aa(nullptr), aaSize({}), nm(nullptr), nmSize({}), er(nullptr), erSize({}), imageLoader(_imageLoader)
 {
     char albedoAlphaPath[TEXTURE_FILE_PATH_MAX_LENGTH];
@@ -30,7 +30,7 @@ TextureOverrides::TextureOverrides(const RgStaticTextureCreateInfo *_createInfo,
 
     const bool hasOverrides = ParseOverrideTexturePaths(
         albedoAlphaPath, normalMetallic, emissionRoughness,
-        _createInfo->relativePath, _parseInfo);
+        _createInfo.relativePath, _parseInfo);
 
     if (hasOverrides)
     {
@@ -40,10 +40,10 @@ TextureOverrides::TextureOverrides(const RgStaticTextureCreateInfo *_createInfo,
     }
 
     // if file wasn't found, use data instead
-    if (_createInfo->data != nullptr && aa == nullptr)
+    if (_createInfo.data != nullptr && aa == nullptr)
     {
-        aa = _createInfo->data;
-        aaSize = _createInfo->size;
+        aa = _createInfo.data;
+        aaSize = _createInfo.size;
     }
 }
 
@@ -120,7 +120,7 @@ bool TextureOverrides::ParseOverrideTexturePaths(
     char *normalMetallicPath,
     char *emissionRoughnessPath,
     const char *relativePath,
-    const ParseInfo *parseInfo)
+    const ParseInfo &parseInfo)
 {
     char folderPath[TEXTURE_FILE_PATH_MAX_LENGTH];
     char name[TEXTURE_FILE_NAME_MAX_LENGTH];
@@ -135,9 +135,9 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo->texturesPath, name, parseInfo->albedoAlphaPostfix, extension);
-    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo->texturesPath, name, parseInfo->normalMetallicPostfix, extension);
-    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo->texturesPath, name, parseInfo->emissionRoughnessPostfix, extension);
+    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo.texturesPath, name, parseInfo.albedoAlphaPostfix, extension);
+    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo.texturesPath, name, parseInfo.normalMetallicPostfix, extension);
+    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo.texturesPath, name, parseInfo.emissionRoughnessPostfix, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 

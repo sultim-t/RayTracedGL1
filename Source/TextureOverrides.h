@@ -39,8 +39,8 @@ struct TextureOverrides
 {
 public:
     explicit TextureOverrides(
-        const RgStaticTextureCreateInfo *createInfo,
-        const ParseInfo *parseInfo,
+        const RgStaticTextureCreateInfo &createInfo,
+        const ParseInfo &parseInfo,
         std::shared_ptr<ImageLoader> imageLoader);
     ~TextureOverrides();
 
@@ -55,7 +55,7 @@ private:
         char *normalMetallicPath,
         char *emissionRoughnessPath,
         const char *relativePath,
-        const ParseInfo *parseInfo);
+        const ParseInfo &parseInfo);
 
 public:
     // Albedo-Alpha

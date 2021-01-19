@@ -28,7 +28,8 @@
 
 TextureManager::TextureManager(
     VkDevice device,
-    std::shared_ptr<MemoryAllocator> memAllocator, 
+    std::shared_ptr<MemoryAllocator> memAllocator,
+    std::shared_ptr<CommandBufferManager> &cmdManager,
     const char *defaultTexturesPath,
     const char *albedoAlphaPostfix,
     const char *normalMetallicPostfix, 
@@ -43,10 +44,25 @@ TextureManager::TextureManager(
 
     imageLoader = std::make_shared<ImageLoader>();
     samplerMgr = std::make_shared<SamplerManager>(device);
+
+    textures.resize(MAX_TEXTURE_COUNT);
+
+    // submit cmd to create empty texture
+    VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
+    CreateEmptyTexture(cmd, 0);
+    cmdManager->Submit(cmd);
+    cmdManager->WaitGraphicsIdle();
 }
 
 TextureManager::~TextureManager()
 {
+    for (uint32_t i = 0; i < textures.size(); i++)
+    {
+        if (textures[i].image != VK_NULL_HANDLE)
+        {
+            DestroyTexture(i);
+        }
+    }
 }
 
 uint32_t TextureManager::GetMipmapCount(const RgExtent2D &size)
@@ -57,7 +73,15 @@ uint32_t TextureManager::GetMipmapCount(const RgExtent2D &size)
     return std::min(widthCount, heightCount) + 1;
 }
 
-uint32_t TextureManager::CreateStaticTexture(VkCommandBuffer cmd, const RgStaticTextureCreateInfo *createInfo)
+void TextureManager::PrepareForFrame(uint32_t frameIndex)
+{
+    for (VkBuffer staging : stagingToFree[frameIndex])
+    {
+        memAllocator->DestroyStagingSrcTextureBuffer(staging);
+    }
+}
+
+uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticTextureCreateInfo &createInfo)
 {
     ParseInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();
@@ -66,16 +90,40 @@ uint32_t TextureManager::CreateStaticTexture(VkCommandBuffer cmd, const RgStatic
     parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd(createInfo, &parseInfo, imageLoader);
+    TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
 
-    VkSampler sampler = samplerMgr->GetSampler(createInfo->filter, createInfo->addressModeU, createInfo->addressModeV);
+    Material material = {};
 
-    PrepareStaticTexture(cmd, ovrd.aa, ovrd.aaSize, ovrd.debugName);
-    PrepareStaticTexture(cmd, ovrd.nm, ovrd.nmSize, ovrd.debugName);
-    PrepareStaticTexture(cmd, ovrd.er, ovrd.erSize, ovrd.debugName);
+    material.sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
+
+    material.textures.albedoAlpha       = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, ovrd.debugName);
+    material.textures.normalMetallic    = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, ovrd.debugName);
+    material.textures.emissionRoughness = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, ovrd.debugName);
+
+    uint32_t matIndex = material.textures.indices[0] + material.textures.indices[1] + material.textures.indices[2];
+
+    while (materials.find(matIndex) != materials.end())
+    {
+        matIndex++;
+    }
+
+    materials[matIndex] = material;
+
+    return matIndex;
 }
 
-void TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, const void *data, const RgExtent2D &size, const char *debugName)
+void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    assert(textures[0].image == VK_NULL_HANDLE && textures[0].view == VK_NULL_HANDLE);
+
+    uint32_t data[] = { 0xFFFFFFFF };
+    RgExtent2D size = { 1,1 };
+
+    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, "Empty texture");
+    assert(textureIndex == RG_NO_TEXTURE);
+}
+
+uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, const char *debugName)
 {
     VkResult r;
 
@@ -97,7 +145,7 @@ void TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, const void *data,
     VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &stagingMemory, &mappedData);
     if (stagingBuffer == VK_NULL_HANDLE)
     {
-        return;
+        return RG_NO_TEXTURE;
     }
 
     // copy image data to buffer
@@ -119,7 +167,9 @@ void TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, const void *data,
     VkImage finalImage = memAllocator->CreateDstTextureImage(&imageInfo, &imageMemory);
     if (finalImage == VK_NULL_HANDLE)
     {
-        return;
+        memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
+
+        return RG_NO_TEXTURE;
     }
 
     if (debugName != nullptr)
@@ -268,17 +318,83 @@ void TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, const void *data,
         SET_DEBUG_NAME(device, finalImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
     }
 
+    // push staging buffer to be deleted when it won't be in use
+    stagingToFree[frameIndex].push_back(stagingBuffer);
 
-
-    return;
+    return InsertTexture(finalImage, finalImageView);
 }
 
-uint32_t TextureManager::CreateAnimatedTexture(VkCommandBuffer cmd, const RgAnimatedTextureCreateInfo *createInfo)
+uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicTextureCreateInfo &createInfo)
 {
 
 }
 
-uint32_t TextureManager::CreateDynamicTexture(VkCommandBuffer cmd, const RgDynamicTextureCreateInfo *createInfo)
+uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedTextureCreateInfo &createInfo)
 {
 
+}
+
+void TextureManager::DestroyMaterial(uint32_t materialIndex)
+{
+    auto it = materials.find(materialIndex);
+
+    if (it == materials.end())
+    {
+        return;
+    }
+
+    Material &material = it->second;
+
+    for (auto t : material.textures.indices)
+    {
+        DestroyTexture(t);
+    }
+
+    material.sampler = VK_NULL_HANDLE;
+    material.textures = {};
+}
+
+uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view)
+{
+    auto texture = std::find_if(textures.begin(), textures.end(), [] (const Texture &t)
+    {
+        return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
+    });
+
+    texture->image = image;
+    texture->view = view;
+
+    uint32_t textureIndex = (uint32_t)std::distance(textures.begin(), texture);
+    return textureIndex;
+}
+
+void TextureManager::DestroyTexture(uint32_t textureIndex)
+{
+    Texture &texture = textures[textureIndex];
+
+    vkDestroyImage(device, texture.image, nullptr);
+    vkDestroyImageView(device, texture.view, nullptr);
+
+    texture.image = VK_NULL_HANDLE;
+    texture.view = VK_NULL_HANDLE;
+}
+
+bool TextureManager::GetMaterialTextures(
+    uint32_t materialIndex, uint32_t *outAATexture,
+    uint32_t *outNMTexture, uint32_t *outERTexture) const
+{
+    auto it = materials.find(materialIndex);
+
+    if (it == materials.end())
+    {
+        return false;
+    }
+
+    const Material &material = it->second;
+
+    *outAATexture = material.textures.albedoAlpha;
+    *outNMTexture = material.textures.normalMetallic;
+    *outERTexture = material.textures.emissionRoughness;
+
+    return true;
 }

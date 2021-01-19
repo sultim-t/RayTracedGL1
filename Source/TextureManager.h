@@ -23,6 +23,8 @@
 #include <string>
 
 #include "Common.h"
+#include "CommandBufferManager.h"
+#include "Material.h"
 #include "ImageLoader.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
@@ -34,6 +36,7 @@ public:
     explicit TextureManager(
         VkDevice device,
         std::shared_ptr<MemoryAllocator> memAllocator,
+        std::shared_ptr<CommandBufferManager> &cmdManager,
         const char *defaultTexturesPath,
         const char *albedoAlphaPostfix,
         const char *normalMetallicPostfix,
@@ -45,17 +48,28 @@ public:
     TextureManager &operator=(const TextureManager &other) = delete;
     TextureManager &operator=(TextureManager &&other) noexcept = delete;
 
-    uint32_t CreateStaticTexture(VkCommandBuffer cmd, const RgStaticTextureCreateInfo *createInfo);
-    uint32_t CreateAnimatedTexture(VkCommandBuffer cmd, const RgAnimatedTextureCreateInfo *createInfo);
-    uint32_t CreateDynamicTexture(VkCommandBuffer cmd, const RgDynamicTextureCreateInfo *createInfo);
-    
+    void PrepareForFrame(uint32_t frameIndex);
+
+    uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticTextureCreateInfo &createInfo);
+    uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedTextureCreateInfo &createInfo);
+    uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicTextureCreateInfo &createInfo);
+
+    void DestroyMaterial(uint32_t materialIndex);
+
+    bool GetMaterialTextures(uint32_t materialIndex, uint32_t *outAATexture, uint32_t *outNMTexture, uint32_t *outERTexture) const;
+
 private:
     static uint32_t GetMipmapCount(const RgExtent2D &size);
 
-    void PrepareStaticTexture(
-        VkCommandBuffer cmd, 
+    void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
+
+    uint32_t PrepareStaticTexture(
+        VkCommandBuffer cmd, uint32_t frameIndex,
         const void *data, const RgExtent2D &size, 
         const char *debugName = nullptr);
+
+    uint32_t InsertTexture(VkImage image, VkImageView view);
+    void DestroyTexture(uint32_t textureIndex);
 
 private:
     VkDevice device;
@@ -64,6 +78,13 @@ private:
     std::shared_ptr<MemoryAllocator> memAllocator;
 
     std::shared_ptr<SamplerManager> samplerMgr;
+
+    // Staging buffers that were used for uploading must be destroyed
+    // on the frame with same index when it'll be certainly not in use.
+    std::vector<VkBuffer> stagingToFree[MAX_FRAMES_IN_FLIGHT];
+
+    std::vector<Texture> textures;
+    std::map<uint32_t, Material> materials;
 
     std::string defaultTexturesPath;
     std::string albedoAlphaPostfix;

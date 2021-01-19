@@ -20,12 +20,25 @@
 
 #pragma once
 
-#define ALLOCATOR_BLOCK_SIZE_STATIC_STAGING_TEXTURES    256 * 512 * 512 * 4
-#define ALLOCATOR_BLOCK_SIZESTATIC_TEXTURES             256 * 512 * 512 * 4
-#define ALLOCATOR_BLOCK_SIZE_DYNAMIC_TEXTURES           64 * 512 * 512 * 4
+#include "Common.h"
 
-#define TEXTURE_FILE_PATH_MAX_LENGTH                    512
-#define TEXTURE_FILE_NAME_MAX_LENGTH                    256
-#define TEXTURE_FILE_EXTENSION_MAX_LENGTH               16
+struct Texture
+{
+    VkImage         image;
+    VkImageView     view;
+};
 
-#define MAX_TEXTURE_COUNT                               1024
+struct Material
+{
+    union
+    {
+        uint32_t indices[3];
+        struct
+        {
+            uint32_t albedoAlpha;
+            uint32_t normalMetallic;
+            uint32_t emissionRoughness;
+        };
+    } textures;
+    VkSampler       sampler;
+};

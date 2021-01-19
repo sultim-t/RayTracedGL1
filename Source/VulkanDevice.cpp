@@ -70,8 +70,9 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     swapchain->Subscribe(storageImage);
 
     textureManager = std::make_shared<TextureManager>(
-        memAllocator, info->overridenTexturesFolderPath,
-        info->overrideAlbedoAlphaTexturePostfix, info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
+        device, memAllocator, cmdManager,
+        info->overridenTexturesFolderPath, info->overrideAlbedoAlphaTexturePostfix, 
+        info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
 
     auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, vbProperties);
     scene = std::make_shared<Scene>(asManager);
@@ -126,6 +127,9 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
 
     // reset cmds for current frame index
     cmdManager->PrepareForFrame(currentFrameIndex);
+
+    // destroy staging buffers that were created MAX_FRAMES_IN_FLIGHT ago
+    textureManager->PrepareForFrame(currentFrameIndex);
 
     // start dynamic geometry recording to current frame
     scene->PrepareForFrame(currentFrameIndex);
@@ -292,13 +296,13 @@ RgResult VulkanDevice::StartNewStaticScene()
 
 RgResult VulkanDevice::CreateStaticTexture(const RgStaticTextureCreateInfo *createInfo, RgStaticTexture *result)
 {
-    *result = textureManager->CreateStaticTexture(createInfo);
+    *result = textureManager->CreateStaticMaterial(createInfo);
     return RG_SUCCESS;
 }
 
 RgResult VulkanDevice::CreateAnimatedTexture(const RgAnimatedTextureCreateInfo *createInfo, RgAnimatedTexture *result)
 {
-    *result = textureManager->CreateAnimatedTexture(createInfo);
+    *result = textureManager->CreateAnimatedMaterial(createInfo);
     return RG_SUCCESS;
 }
 
@@ -310,7 +314,7 @@ RgResult VulkanDevice::ChangeAnimatedTextureFrame(RgAnimatedTexture animatedText
 
 RgResult VulkanDevice::CreateDynamicTexture(const RgDynamicTextureCreateInfo *createInfo, RgDynamicTexture *result)
 {
-    *result = textureManager->CreateDynamicTexture(createInfo);
+    *result = textureManager->CreateDynamicMaterial(createInfo);
     return RG_SUCCESS;
 }
 

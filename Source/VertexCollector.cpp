@@ -197,10 +197,17 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     geomInfo.baseVertexIndex = vertIndex;
     geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
     geomInfo.primitiveCount = primitiveCount;
+
     // RgTexture is union, all textures indices are unique even with different types
-    geomInfo.materialId0 = info.geomMaterial.layerTextures[0].staticTexture;
-    geomInfo.materialId1 = info.geomMaterial.layerTextures[1].staticTexture;
-    geomInfo.materialId2 = info.geomMaterial.layerTextures[2].staticTexture;
+    uint32_t layer = 0;
+    for (auto material : info.geomMaterial.layerTextures)
+    {
+        geomInfo.texture[layer].albedoAlpha = getAA(material);
+        geomInfo.texture[layer].normalMetallic = getNM(material);
+        geomInfo.texture[layer].emissionRoughness = getER(material);
+
+        layer++;
+    }
 
     Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
