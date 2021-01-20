@@ -106,6 +106,8 @@ VulkanDevice::~VulkanDevice()
     rtPipeline.reset();
     pathTracer.reset();
     rasterizer.reset();
+    textureManager.reset();
+    memAllocator.reset();
 
     vkDestroySurfaceKHR(instance, surface, nullptr);
     DestroySyncPrimitives();

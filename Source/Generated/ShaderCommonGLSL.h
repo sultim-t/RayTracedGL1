@@ -60,9 +60,10 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     mat4 model;
-    uvec3 materials[3];
+    uvec4 materials[3];
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint primitiveCount;
+    uint __pad0;
 };
 

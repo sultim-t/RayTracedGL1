@@ -91,8 +91,6 @@ private:
     VkDevice device;
     VertexBufferProperties properties;
 
-    std::shared_ptr<TextureManager> textureMgr;
-
     Buffer stagingVertBuffer;
     Buffer vertBuffer;
 

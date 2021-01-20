@@ -57,7 +57,7 @@ void TextureDescriptors::SetEmptyTextureInfo(VkImageView view, VkSampler sampler
 
 void TextureDescriptors::CreateDescLayout()
 {
-    VkDescriptorSetLayoutBinding binding;
+    VkDescriptorSetLayoutBinding binding = {};
 
     binding.binding = BINDING_TEXTURES;
     binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;

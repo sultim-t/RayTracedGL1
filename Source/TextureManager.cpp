@@ -28,6 +28,11 @@
 
 #define EMPTY_TEXTURE_INDEX 0
 
+#define DEFAULT_TEXTURES_PATH               ""
+#define DEFAULT_ALBEDO_ALPHA_POSTFIX        ""
+#define DEFAULT_NORMAL_METALLIC_POSTFIX     "_n"
+#define DEFAULT_EMISSION_ROUGHNESS_POSTFIX  "_e"
+
 TextureManager::TextureManager(
     VkDevice device,
     std::shared_ptr<MemoryAllocator> memAllocator,
@@ -39,10 +44,11 @@ TextureManager::TextureManager(
 {
     this->device = device;
     this->memAllocator = memAllocator;
-    this->defaultTexturesPath = defaultTexturesPath;
-    this->albedoAlphaPostfix = albedoAlphaPostfix;
-    this->normalMetallicPostfix = normalMetallicPostfix;
-    this->emissionRoughnessPostfix = emissionRoughnessPostfix;
+
+    this->defaultTexturesPath = defaultTexturesPath != nullptr ? defaultTexturesPath : DEFAULT_TEXTURES_PATH;
+    this->albedoAlphaPostfix = albedoAlphaPostfix != nullptr ? albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
+    this->normalMetallicPostfix = normalMetallicPostfix != nullptr ? normalMetallicPostfix : DEFAULT_NORMAL_METALLIC_POSTFIX;
+    this->emissionRoughnessPostfix = emissionRoughnessPostfix != nullptr ? emissionRoughnessPostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
 
     imageLoader = std::make_shared<ImageLoader>();
     samplerMgr = std::make_shared<SamplerManager>(device);
@@ -59,16 +65,18 @@ TextureManager::TextureManager(
 
 TextureManager::~TextureManager()
 {
+    imageLoader.reset();
+    samplerMgr.reset();
+    textureDesc.reset();
+
     for (auto &texture : textures)
     {
+        assert((texture.image == VK_NULL_HANDLE && texture.view == VK_NULL_HANDLE) ||
+               (texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE));
+
         if (texture.image != VK_NULL_HANDLE)
         {
-            vkDestroyImage(device, texture.image, nullptr);
-        }
-
-        if (texture.view != VK_NULL_HANDLE)
-        {
-            vkDestroyImageView(device, texture.view, nullptr);
+            DestroyTexture(texture);
         }
     }
 }
@@ -87,6 +95,8 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
     {
         memAllocator->DestroyStagingSrcTextureBuffer(staging);
     }
+
+    stagingToFree[frameIndex].clear();
 }
 
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
@@ -120,13 +130,13 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
 
     uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, "Empty texture");
 
+    // must have specific index
+    assert(textureIndex == EMPTY_TEXTURE_INDEX);
+
     VkImage emptyImage = textures[textureIndex].image;
     VkImageView emptyView = textures[textureIndex].view;
 
-    // was created
     assert(emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE);
-    // must have specific index
-    assert(textureIndex == EMPTY_TEXTURE_INDEX);
 
     VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
@@ -429,9 +439,14 @@ uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view)
 
 void TextureManager::DestroyTexture(uint32_t textureIndex)
 {
-    Texture &texture = textures[textureIndex];
+    DestroyTexture(textures[textureIndex]);
+}
 
-    vkDestroyImage(device, texture.image, nullptr);
+void TextureManager::DestroyTexture(Texture &texture)
+{
+    assert(texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE);
+
+    memAllocator->DestroyTextureImage(texture.image);
     vkDestroyImageView(device, texture.view, nullptr);
 
     texture.image = VK_NULL_HANDLE;

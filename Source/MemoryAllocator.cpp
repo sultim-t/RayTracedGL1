@@ -33,7 +33,7 @@ MemoryAllocator::MemoryAllocator(
     allocatorInfo.instance = instance;
     allocatorInfo.device = device;
     allocatorInfo.physicalDevice = physDevice;
-    allocatorInfo.vulkanApiVersion = VK_VERSION_1_2;
+    allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
     allocatorInfo.frameInUseCount = MAX_FRAMES_IN_FLIGHT;
 
     allocatorInfo.flags =
@@ -52,6 +52,9 @@ MemoryAllocator::MemoryAllocator(
 
 MemoryAllocator::~MemoryAllocator()
 {
+    vmaDestroyPool(allocator, texturesStagingPool);
+    vmaDestroyPool(allocator, texturesFinalPool);
+    vmaDestroyPool(allocator, dynamicTexturesPool);
     vmaDestroyAllocator(allocator);
 }
 

@@ -178,7 +178,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
 GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT,    44,     "model",            1),
-    (TYPE_UINT32,   3,      "materials",        3),
+    (TYPE_UINT32,   4,      "materials",        3),
     (TYPE_UINT32,   1,      "baseVertexIndex",  1),
     (TYPE_UINT32,   1,      "baseIndexIndex",   1),
     (TYPE_UINT32,   1,      "primitiveCount",   1),

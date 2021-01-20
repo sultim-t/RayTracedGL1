@@ -72,6 +72,7 @@ private:
 
     uint32_t InsertTexture(VkImage image, VkImageView view);
     void DestroyTexture(uint32_t textureIndex);
+    void DestroyTexture(Texture &texture);
 
     uint32_t InsertMaterial(uint32_t frameIndex, const Material &material);
 

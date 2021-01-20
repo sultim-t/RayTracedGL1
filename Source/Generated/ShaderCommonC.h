@@ -54,9 +54,10 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     float model[16];
-    uint32_t materials[3][3];
+    uint32_t materials[4][3];
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t primitiveCount;
+    uint32_t __pad0;
 };
 
