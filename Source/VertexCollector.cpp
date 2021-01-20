@@ -200,7 +200,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
 
     // RgTexture is union, all textures indices are unique even with different types
     uint32_t layer = 0;
-    for (auto material : info.geomMaterial.layerTextures)
+    for (auto material : info.geomMaterial.layerMaterials)
     {
         geomInfo.texture[layer].albedoAlpha = getAA(material);
         geomInfo.texture[layer].normalMetallic = getNM(material);

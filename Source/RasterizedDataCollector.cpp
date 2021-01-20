@@ -126,7 +126,7 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
 
         for (uint32_t t = 0; t < info.textureCount; t++)
         {
-            vert.textureIds[t] = info.textures[t].staticTexture;
+            vert.textureIds[t] = info.textures[t];
         }
         for (uint32_t t = info.textureCount; t < 4; t++)
         {

@@ -21,7 +21,7 @@
 #include "TextureOverrides.h"
 #include "Const.h"
 
-TextureOverrides::TextureOverrides(const RgStaticTextureCreateInfo &_createInfo, const ParseInfo &_parseInfo, std::shared_ptr<ImageLoader> _imageLoader) :
+TextureOverrides::TextureOverrides(const RgStaticMaterialCreateInfo &_createInfo, const ParseInfo &_parseInfo, std::shared_ptr<ImageLoader> _imageLoader) :
     aa(nullptr), aaSize({}), nm(nullptr), nmSize({}), er(nullptr), erSize({}), imageLoader(_imageLoader)
 {
     char albedoAlphaPath[TEXTURE_FILE_PATH_MAX_LENGTH];

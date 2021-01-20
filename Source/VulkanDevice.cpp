@@ -268,6 +268,7 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
 
 RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
 {
+    // move checks to to RTGL.cpp
     if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
     {
         return RG_WRONG_ARGUMENT;
@@ -294,32 +295,47 @@ RgResult VulkanDevice::StartNewStaticScene()
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::CreateStaticTexture(const RgStaticTextureCreateInfo *createInfo, RgStaticTexture *result)
+RgResult VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
 {
-    *result = textureManager->CreateStaticMaterial(createInfo);
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
+
+    *result = textureManager->CreateStaticMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::CreateAnimatedTexture(const RgAnimatedTextureCreateInfo *createInfo, RgAnimatedTexture *result)
+RgResult VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result)
 {
-    *result = textureManager->CreateAnimatedMaterial(createInfo);
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
+
+    *result = textureManager->CreateAnimatedMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::ChangeAnimatedTextureFrame(RgAnimatedTexture animatedTexture, uint32_t frameIndex)
+RgResult VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)
 {
     assert(0);
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::CreateDynamicTexture(const RgDynamicTextureCreateInfo *createInfo, RgDynamicTexture *result)
+RgResult VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result)
 {
-    *result = textureManager->CreateDynamicMaterial(createInfo);
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
+
+    *result = textureManager->CreateDynamicMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::UpdateDynamicTexture(RgDynamicTexture dynamicTexture,
-    const RgDynamicTextureUpdateInfo *updateInfo)
+RgResult VulkanDevice::UpdateDynamicMaterial(RgMaterial dynamicMaterial,
+    const RgDynamicMaterialUpdateInfo *updateInfo)
 {
     assert(0);
     return RG_SUCCESS;

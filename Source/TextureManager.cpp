@@ -81,7 +81,7 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
     }
 }
 
-uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticTextureCreateInfo &createInfo)
+uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
 {
     ParseInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();
@@ -120,7 +120,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     RgExtent2D size = { 1,1 };
 
     uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, "Empty texture");
-    assert(textureIndex == RG_NO_TEXTURE);
+    assert(textureIndex == RG_NO_MATERIAL);
 }
 
 uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, const char *debugName)
@@ -145,7 +145,7 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
     VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &stagingMemory, &mappedData);
     if (stagingBuffer == VK_NULL_HANDLE)
     {
-        return RG_NO_TEXTURE;
+        return RG_NO_MATERIAL;
     }
 
     // copy image data to buffer
@@ -169,7 +169,7 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
     {
         memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
 
-        return RG_NO_TEXTURE;
+        return RG_NO_MATERIAL;
     }
 
     if (debugName != nullptr)
@@ -324,12 +324,12 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
     return InsertTexture(finalImage, finalImageView);
 }
 
-uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicTextureCreateInfo &createInfo)
+uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
 
 }
 
-uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedTextureCreateInfo &createInfo)
+uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
 {
 
 }

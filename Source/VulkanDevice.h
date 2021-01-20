@@ -56,12 +56,12 @@ public:
     RgResult SubmitStaticGeometries();
     RgResult StartNewStaticScene();
 
-    // TODO: empty (white) texture 1x1 with index 0 (RG_NO_TEXTURE)
-    RgResult CreateStaticTexture(const RgStaticTextureCreateInfo *createInfo, RgStaticTexture *result);
-    RgResult CreateAnimatedTexture(const RgAnimatedTextureCreateInfo *createInfo, RgAnimatedTexture *result);
-    RgResult ChangeAnimatedTextureFrame(RgAnimatedTexture animatedTexture, uint32_t frameIndex);
-    RgResult CreateDynamicTexture(const RgDynamicTextureCreateInfo *createInfo, RgDynamicTexture *result);
-    RgResult UpdateDynamicTexture(RgDynamicTexture dynamicTexture, const RgDynamicTextureUpdateInfo *updateInfo);
+    // TODO: empty (white) texture 1x1 with index 0 (RG_NO_MATERIAL)
+    RgResult CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result);
+    RgResult CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
+    RgResult ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
+    RgResult CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result);
+    RgResult UpdateDynamicMaterial(RgMaterial dynamicMaterial, const RgDynamicMaterialUpdateInfo *updateInfo);
 
 
     RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);

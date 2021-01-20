@@ -220,11 +220,10 @@ void StartScene(RgInstance instance, Window *pWindow)
         st_info.indexData = st_indices.data();
 
         st_info.geomMaterial = {
-            RG_NO_TEXTURE,
-            RG_NO_TEXTURE,
-            RG_NO_TEXTURE
+            RG_NO_MATERIAL,
+            RG_NO_MATERIAL,
+            RG_NO_MATERIAL
         };
-        st_info.triangleMaterials = nullptr;
 
         st_info.transform = {
             1,0,0,0,
@@ -246,11 +245,10 @@ void StartScene(RgInstance instance, Window *pWindow)
         dyn_info.indexData = dyn_indices.data();
 
         dyn_info.geomMaterial = {
-            RG_NO_TEXTURE,
-            RG_NO_TEXTURE,
-            RG_NO_TEXTURE
+            RG_NO_MATERIAL,
+            RG_NO_MATERIAL,
+            RG_NO_MATERIAL
         };
-        dyn_info.triangleMaterials = nullptr;
 
         dyn_info.transform = {
             1,0,0,0,
