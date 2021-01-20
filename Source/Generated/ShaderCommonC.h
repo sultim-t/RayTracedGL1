@@ -16,6 +16,7 @@
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE (0)
 #define BINDING_STORAGE_IMAGE (0)
+#define BINDING_TEXTURES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 
 struct ShVertexBufferStatic
@@ -53,13 +54,9 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     float model[16];
+    uint32_t materials[3][3];
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t primitiveCount;
-    uint32_t materialId0;
-    uint32_t materialId1;
-    uint32_t materialId2;
-    uint32_t __pad0;
-    uint32_t __pad1;
 };
 

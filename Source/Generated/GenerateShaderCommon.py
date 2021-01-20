@@ -54,6 +54,28 @@ GLSL_TYPE_NAMES = {
     (TYPE_FLOAT, 44): "mat4",
 }
 
+TYPE_ACTUAL_SIZES = {
+    TYPE_FLOAT: 4,
+    TYPE_INT32: 4,
+    TYPE_UINT32: 4,
+    (TYPE_FLOAT, 2): 8,
+    (TYPE_FLOAT, 3): 12,
+    (TYPE_FLOAT, 4): 16,
+    (TYPE_INT32, 2): 8,
+    (TYPE_INT32, 3): 12,
+    (TYPE_INT32, 4): 16,
+    (TYPE_UINT32, 2): 8,
+    (TYPE_UINT32, 3): 12,
+    (TYPE_UINT32, 4): 16,
+    (TYPE_FLOAT, 22): 16,
+    (TYPE_FLOAT, 23): 24,
+    (TYPE_FLOAT, 32): 24,
+    (TYPE_FLOAT, 33): 36,
+    (TYPE_FLOAT, 34): 48,
+    (TYPE_FLOAT, 43): 48,
+    (TYPE_FLOAT, 44): 64,
+}
+
 GLSL_TYPE_SIZES_STD_430 = {
     TYPE_FLOAT: 4,
     TYPE_INT32: 4,
@@ -103,7 +125,8 @@ CONST = {
     "BINDING_GLOBAL_UNIFORM"                : 0,
     "BINDING_ACCELERATION_STRUCTURE"        : 0,
     "BINDING_STORAGE_IMAGE"                 : 0,
-    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0"
+    "BINDING_TEXTURES"                      : 0,
+    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
 }
 
 
@@ -155,22 +178,22 @@ GLOBAL_UNIFORM_STRUCT = [
 
 GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT,    44,     "model",            1),
+    (TYPE_UINT32,   3,      "materials",        3),
     (TYPE_UINT32,   1,      "baseVertexIndex",  1),
     (TYPE_UINT32,   1,      "baseIndexIndex",   1),
     (TYPE_UINT32,   1,      "primitiveCount",   1),
-    (TYPE_UINT32,   1,      "materialId0",      1),
-    (TYPE_UINT32,   1,      "materialId1",      1),
-    (TYPE_UINT32,   1,      "materialId2",      1),
 ]
 
-# (structTypeName): (structDefinition, onlyForGLSL, align16byte)
-# align16byte -- if using a struct in dynamic array, it must be aligned with 16 bytes
+# (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)
+# align16byte   -- if using a struct in dynamic array, it must be aligned with 16 bytes
+# breakComplex  -- if member's type is not primitive and its count>0 then
+#               it'll be represented as an array of primitive types
 STRUCTS = {
-    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False),
-    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False),
-    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False),
-    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False),
-    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True),
+    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False, True),
+    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False, True),
+    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False, True),
+    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False, True),
+    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,  False),
 }
 
 # ---
@@ -219,13 +242,36 @@ def align4(a):
 def getMemberSizeStd430(baseType, dim, count):
     if dim == 1:
         return GLSL_TYPE_SIZES_STD_430[baseType] * count
+    elif count == 1:
+        return GLSL_TYPE_SIZES_STD_430[(baseType, dim)]
     else:
-        return GLSL_TYPE_SIZES_STD_430[(baseType, dim)] * count
+        return GLSL_TYPE_SIZES_STD_430[baseType] * dim * count
+
+
+def getMemberActualSize(baseType, dim, count):
+    if dim == 1:
+        return TYPE_ACTUAL_SIZES[baseType] * count
+    else:
+        return TYPE_ACTUAL_SIZES[(baseType, dim)] * count
+
+CURRENT_PAD_INDEX = 0
+
+def getPadsForStruct(typeNames, uint32ToAdd):
+    global CURRENT_PAD_INDEX
+    r = ""
+    padStr = TAB_STR + typeNames[TYPE_UINT32] + " __pad%d;\n"
+    for i in range(uint32ToAdd):
+        r += padStr % (CURRENT_PAD_INDEX + i)
+    CURRENT_PAD_INDEX += uint32ToAdd
+    return r
 
 
 # useVecMatTypes:
-def getStruct(name, definition, typeNames, align16):
+def getStruct(name, definition, typeNames, align16, breakComplex):
     r = "struct " + name + "\n{\n"
+
+    global CURRENT_PAD_INDEX
+    CURRENT_PAD_INDEX = 0
 
     curSize = 0
 
@@ -248,21 +294,41 @@ def getStruct(name, definition, typeNames, align16):
         else:
             if dim > 4:
                 raise Exception("If count > 1, dimensions must be in [1..4]")
-            r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
+            if not breakComplex:
+                if (baseType, dim) in typeNames:
+                    r += "%s %s[%d]" % (typeNames[(baseType, dim)], mname, count)
+                else:
+                    r += "%s %s[%d][%d]" % (typeNames[baseType], mname, dim, count)
+            else:
+                r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
 
         r += ";\n"
 
-        # count size of current member
-        curSize += getMemberSizeStd430(baseType, dim, count)
+        if align16:
+            if count > 1 and breakComplex:
+                # if must be represented as an array of primitive types
+                sizeStd430 = getMemberSizeStd430(baseType, 1, align4(count * dim))
+                sizeActual = getMemberActualSize(baseType, 1, align4(count * dim))
+            else:
+                # default case
+                sizeStd430 = getMemberSizeStd430(baseType, dim, count)
+                sizeActual = getMemberActualSize(baseType, dim, count)
+
+            # std430 size is always larger
+            diff = sizeStd430 - sizeActual
+
+            if diff > 0:
+                assert(diff % 4 == 0)
+                r += getPadsForStruct(typeNames, diff // 4)
+
+            # count size of current member
+            curSize += sizeStd430
 
     if align16 and curSize % 16 != 0:
         if (curSize % 16) % 4 != 0:
             raise Exception("Size of struct %s is not 4-byte aligned!" % name)
-        uint32ToAdd = (curSize % 16) // 4
-        padName = typeNames[TYPE_UINT32] + " __pad%d;\n"
-        for i in range(uint32ToAdd):
-            r += TAB_STR
-            r += padName % i
+        uint32ToAdd = ((curSize // 16 + 1) * 16 - curSize) // 4
+        r += getPadsForStruct(typeNames, uint32ToAdd)
 
     r += "};\n"
     return r
@@ -270,8 +336,8 @@ def getStruct(name, definition, typeNames, align16):
 
 def getAllStructDefs(typeNames):
     return "\n".join(
-        getStruct(name, structDef, typeNames, align16)
-        for name, (structDef, onlyForGLSL, align16) in STRUCTS.items()
+        getStruct(name, structDef, typeNames, align16, breakComplex)
+        for name, (structDef, onlyForGLSL, align16, breakComplex) in STRUCTS.items()
         if not (onlyForGLSL and (typeNames == C_TYPE_NAMES))
     ) + "\n"
 

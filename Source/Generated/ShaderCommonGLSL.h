@@ -13,6 +13,7 @@
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE (0)
 #define BINDING_STORAGE_IMAGE (0)
+#define BINDING_TEXTURES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 
 struct ShVertexBufferStatic
@@ -59,13 +60,9 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     mat4 model;
+    uvec3 materials[3];
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint primitiveCount;
-    uint materialId0;
-    uint materialId1;
-    uint materialId2;
-    uint __pad0;
-    uint __pad1;
 };
 
