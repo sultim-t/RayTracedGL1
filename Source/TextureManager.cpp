@@ -69,6 +69,14 @@ TextureManager::~TextureManager()
     samplerMgr.reset();
     textureDesc.reset();
 
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        for (VkBuffer staging : stagingToFree[i])
+        {
+            memAllocator->DestroyStagingSrcTextureBuffer(staging);
+        }
+    }
+
     for (auto &texture : textures)
     {
         assert((texture.image == VK_NULL_HANDLE && texture.view == VK_NULL_HANDLE) ||
@@ -105,14 +113,6 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
 
 void TextureManager::UpdateDescSet(uint32_t frameIndex)
 {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        for (VkBuffer staging : stagingToFree[i])
-        {
-            memAllocator->DestroyStagingSrcTextureBuffer(staging);
-        }
-    }
-
     for (uint32_t i = 0; i < textures.size(); i++)
     {
         if (textures[i].image != VK_NULL_HANDLE)
@@ -207,6 +207,11 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
     if (stagingBuffer == VK_NULL_HANDLE)
     {
         return EMPTY_TEXTURE_INDEX;
+    }
+
+    if (debugName != nullptr)
+    {
+        SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
     }
 
     // copy image data to buffer

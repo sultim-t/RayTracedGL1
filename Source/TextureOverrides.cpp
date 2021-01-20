@@ -72,7 +72,7 @@ static void ParseFilePath(const char *filePath, char *folderPath, char *name, ch
         // find last folder delimiter
         if (c == '\\' || c == '/')
         {
-            folderPathEnd = len - 1;
+            folderPathEnd = len;
             nameStart = len + 1;
             // reset, find new dot
             nameEnd = nameStart;
@@ -89,7 +89,7 @@ static void ParseFilePath(const char *filePath, char *folderPath, char *name, ch
         ++len;
     }
 
-    assert(0 < folderPathEnd && folderPathEnd < nameStart);
+    assert(folderPathEnd > 0 || folderPathEnd == nameStart);
 
     // no dot
     if (nameStart == nameEnd)
@@ -135,9 +135,9 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo.texturesPath, name, parseInfo.albedoAlphaPostfix, extension);
-    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo.texturesPath, name, parseInfo.normalMetallicPostfix, extension);
-    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s/%s%s%s", parseInfo.texturesPath, name, parseInfo.emissionRoughnessPostfix, extension);
+    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s", parseInfo.texturesPath, name, parseInfo.albedoAlphaPostfix, extension);
+    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s", parseInfo.texturesPath, name, parseInfo.normalMetallicPostfix, extension);
+    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s", parseInfo.texturesPath, name, parseInfo.emissionRoughnessPostfix, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 
