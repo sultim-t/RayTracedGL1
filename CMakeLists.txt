@@ -46,6 +46,7 @@ set(PrivateHeaders
     "Source/SamplerManager.h" 
     "Source/TextureOverrides.h" 
     "Source/Material.h"
+    "Source/TextureDescriptors.h"
     )
 
 set(Sources
@@ -80,7 +81,7 @@ set(Sources
     "Source/MemoryAllocator.cpp" 
     "Source/SamplerManager.cpp" 
     "Source/TextureOverrides.cpp"
-    )
+     "Source/TextureDescriptors.cpp")
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}

@@ -20,29 +20,40 @@
 
 #pragma once
 
+#include <vector>
+
 #include "Common.h"
 
-#define MATERIALS_MAX_LAYER_COUNT 3
-
-struct Texture
+class TextureDescriptors
 {
-    VkImage             image;
-    VkImageView         view;
-};
+public:
+    explicit TextureDescriptors(VkDevice device);
+    ~TextureDescriptors();
 
-union MaterialTextures
-{
-    uint32_t            indices[3];
-    struct
-    {
-        uint32_t        albedoAlpha;
-        uint32_t        normalMetallic;
-        uint32_t        emissionRoughness;
-    };
-};
+    TextureDescriptors(const TextureDescriptors &other) = delete;
+    TextureDescriptors(TextureDescriptors &&other) noexcept = delete;
+    TextureDescriptors &operator=(const TextureDescriptors &other) = delete;
+    TextureDescriptors &operator=(TextureDescriptors &&other) noexcept = delete;
 
-struct Material
-{
-    MaterialTextures    textures;
-    VkSampler           sampler;
+    void UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
+    void ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex);
+
+    VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
+
+    // Set texture info that should be used in ResetTextureDesc(..)
+    void SetEmptyTextureInfo(VkImageView view, VkSampler sampler);
+
+private:
+    void CreateDescLayout();
+    void CreateDescPool();
+    void CreateDescSets();
+
+private:
+    VkDevice device;
+
+    VkDescriptorPool descPool;
+    VkDescriptorSetLayout descLayout;
+    VkDescriptorSet descSets[MAX_FRAMES_IN_FLIGHT];
+
+    VkDescriptorImageInfo emptyTextureInfo;
 };

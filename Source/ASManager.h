@@ -25,12 +25,14 @@
 #include "CommandBufferManager.h"
 #include "ScratchBuffer.h"
 #include "VertexBufferProperties.h"
+#include "TextureManager.h"
 
 class ASManager
 {
 public:
     ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice,
               std::shared_ptr<CommandBufferManager> cmdManager,
+              std::shared_ptr<TextureManager> textureMgr,
               const VertexBufferProperties &properties);
     ~ASManager();
 
@@ -101,6 +103,7 @@ private:
     std::shared_ptr<ASBuilder> asBuilder;
 
     std::shared_ptr<CommandBufferManager> cmdManager;
+    std::shared_ptr<TextureManager> textureMgr;
 
     AccelerationStructure staticBlas;
     AccelerationStructure staticMovableBlas;

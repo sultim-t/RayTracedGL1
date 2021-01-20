@@ -74,7 +74,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->overridenTexturesFolderPath, info->overrideAlbedoAlphaTexturePostfix, 
         info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
 
-    auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, vbProperties);
+    auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, textureManager, vbProperties);
     scene = std::make_shared<Scene>(asManager);
 
     shaderManager = std::make_shared<ShaderManager>(device);
@@ -507,6 +507,7 @@ void VulkanDevice::CreateDevice()
     indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
     indexingFeatures.runtimeDescriptorArray = 1;
     indexingFeatures.shaderSampledImageArrayNonUniformIndexing = 1;
+    indexingFeatures.shaderStorageBufferArrayNonUniformIndexing = 1;
 
     VkPhysicalDeviceBufferDeviceAddressFeatures bufferAddressFeatures = {};
     bufferAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
@@ -537,6 +538,8 @@ void VulkanDevice::CreateDevice()
     deviceExtensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
     deviceExtensions.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
+    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
 
     if (enableValidationLayer)
     {

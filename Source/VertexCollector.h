@@ -26,6 +26,8 @@
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
 #include "VertexBufferProperties.h"
+#include "Material.h"
+#include "TextureManager.h"
 
 struct ShGeometryInstance;
 
@@ -46,7 +48,7 @@ public:
     VertexCollector& operator=(VertexCollector&& other) noexcept = delete;
 
     void BeginCollecting();
-    uint32_t AddGeometry(const RgGeometryUploadInfo &info);
+    uint32_t AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT]);
     void EndCollecting();
 
     const std::vector<uint32_t>
@@ -88,6 +90,8 @@ private:
 private:
     VkDevice device;
     VertexBufferProperties properties;
+
+    std::shared_ptr<TextureManager> textureMgr;
 
     Buffer stagingVertBuffer;
     Buffer vertBuffer;

@@ -36,6 +36,8 @@ const uint32_t *ImageLoader::LoadRGBA8(const char *path, uint32_t *outWidth, uin
 
     if (img == nullptr)
     {
+        *outWidth = 0;
+        *outHeight = 0;
         return nullptr;
     }
 

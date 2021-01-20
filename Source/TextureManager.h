@@ -28,6 +28,7 @@
 #include "ImageLoader.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
+#include "TextureDescriptors.h"
 #include "RTGL1/RTGL1.h"
 
 class TextureManager
@@ -54,9 +55,10 @@ public:
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
 
-    void DestroyMaterial(uint32_t materialIndex);
+    void DestroyMaterial(uint32_t frameIndex, uint32_t materialIndex);
 
-    bool GetMaterialTextures(uint32_t materialIndex, uint32_t *outAATexture, uint32_t *outNMTexture, uint32_t *outERTexture) const;
+    MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
+    uint32_t GetEmptyTextureIndex() const;
 
 private:
     static uint32_t GetMipmapCount(const RgExtent2D &size);
@@ -71,6 +73,8 @@ private:
     uint32_t InsertTexture(VkImage image, VkImageView view);
     void DestroyTexture(uint32_t textureIndex);
 
+    uint32_t InsertMaterial(uint32_t frameIndex, const Material &material);
+
 private:
     VkDevice device;
 
@@ -78,6 +82,7 @@ private:
     std::shared_ptr<MemoryAllocator> memAllocator;
 
     std::shared_ptr<SamplerManager> samplerMgr;
+    std::shared_ptr<TextureDescriptors> textureDesc;
 
     // Staging buffers that were used for uploading must be destroyed
     // on the frame with same index when it'll be certainly not in use.

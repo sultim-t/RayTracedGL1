@@ -92,7 +92,7 @@ void VertexCollector::BeginCollecting()
     assert(asGeometries.empty() && asBuildRangeInfos.empty());
 }
 
-uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
+uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     const bool collectStatic = info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE;
 
@@ -198,13 +198,21 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info)
     geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
     geomInfo.primitiveCount = primitiveCount;
 
+    static_assert(
+        sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0])
+        == MATERIALS_MAX_LAYER_COUNT, "Layer count must be MATERIALS_MAX_LAYER_COUNT");
+
     // RgTexture is union, all textures indices are unique even with different types
     uint32_t layer = 0;
     for (auto material : info.geomMaterial.layerMaterials)
     {
-        geomInfo.texture[layer].albedoAlpha = getAA(material);
-        geomInfo.texture[layer].normalMetallic = getNM(material);
-        geomInfo.texture[layer].emissionRoughness = getER(material);
+        assert(layer < MATERIALS_MAX_LAYER_COUNT);
+
+        uint32_t i = 0;
+        for (auto t : materials[layer].indices)
+        {
+            geomInfo.materials[layer][i++] = t;
+        }
 
         layer++;
     }

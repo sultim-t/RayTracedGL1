@@ -27,11 +27,13 @@
 
 ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
                      std::shared_ptr<CommandBufferManager> cmdManager,
+                     std::shared_ptr<TextureManager> textureMgr,
                      const VertexBufferProperties &properties)
 {
     this->device = device;
     this->physDevice = physDevice;
     this->cmdManager = cmdManager;
+    this->textureMgr = textureMgr;
     this->properties = properties;
 
     scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
@@ -355,7 +357,14 @@ uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
 {
     if (info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
     {
-        return collectorStaticMovable->AddGeometry(info);
+        MaterialTextures materials[3] =
+        {
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[0]),
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[1]),
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
+        };
+
+        return collectorStaticMovable->AddGeometry(info, materials);
     }
 
     assert(0);
@@ -366,7 +375,14 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
 {
     if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
-        return collectorDynamic[frameIndex]->AddGeometry(info);
+        MaterialTextures materials[3] =
+        {
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[0]),
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[1]),
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
+        };
+
+        return collectorDynamic[frameIndex]->AddGeometry(info, materials);
     }
 
     assert(0);

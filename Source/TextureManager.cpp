@@ -26,6 +26,8 @@
 #include "Utils.h"
 #include "TextureOverrides.h"
 
+#define EMPTY_TEXTURE_INDEX 0
+
 TextureManager::TextureManager(
     VkDevice device,
     std::shared_ptr<MemoryAllocator> memAllocator,
@@ -44,6 +46,7 @@ TextureManager::TextureManager(
 
     imageLoader = std::make_shared<ImageLoader>();
     samplerMgr = std::make_shared<SamplerManager>(device);
+    textureDesc = std::make_shared<TextureDescriptors>(device);
 
     textures.resize(MAX_TEXTURE_COUNT);
 
@@ -56,11 +59,16 @@ TextureManager::TextureManager(
 
 TextureManager::~TextureManager()
 {
-    for (uint32_t i = 0; i < textures.size(); i++)
+    for (auto &texture : textures)
     {
-        if (textures[i].image != VK_NULL_HANDLE)
+        if (texture.image != VK_NULL_HANDLE)
         {
-            DestroyTexture(i);
+            vkDestroyImage(device, texture.image, nullptr);
+        }
+
+        if (texture.view != VK_NULL_HANDLE)
+        {
+            vkDestroyImageView(device, texture.view, nullptr);
         }
     }
 }
@@ -84,10 +92,10 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
 {
     ParseInfo parseInfo = {};
-    parseInfo.texturesPath = defaultTexturesPath.c_str();
-    parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
-    parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
-    parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
+    parseInfo.texturesPath              = defaultTexturesPath.c_str();
+    parseInfo.albedoAlphaPostfix        = albedoAlphaPostfix.c_str();
+    parseInfo.normalMetallicPostfix     = normalMetallicPostfix.c_str();
+    parseInfo.emissionRoughnessPostfix  = emissionRoughnessPostfix.c_str();
 
     // load additional textures, they'll be freed after leaving the scope
     TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
@@ -100,16 +108,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     material.textures.normalMetallic    = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, ovrd.debugName);
     material.textures.emissionRoughness = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, ovrd.debugName);
 
-    uint32_t matIndex = material.textures.indices[0] + material.textures.indices[1] + material.textures.indices[2];
-
-    while (materials.find(matIndex) != materials.end())
-    {
-        matIndex++;
-    }
-
-    materials[matIndex] = material;
-
-    return matIndex;
+    return InsertMaterial(frameIndex, material);
 }
 
 void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex)
@@ -120,11 +119,34 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     RgExtent2D size = { 1,1 };
 
     uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, "Empty texture");
-    assert(textureIndex == RG_NO_MATERIAL);
+
+    VkImage emptyImage = textures[textureIndex].image;
+    VkImageView emptyView = textures[textureIndex].view;
+
+    // was created
+    assert(emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE);
+    // must have specific index
+    assert(textureIndex == EMPTY_TEXTURE_INDEX);
+
+    VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+
+    // add to all desc sets
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        textureDesc->UpdateTextureDesc(i, EMPTY_TEXTURE_INDEX, emptyView, sampler);
+    }
+
+    // if texture will be reset, it will use empty texture's info
+    textureDesc->SetEmptyTextureInfo(emptyView, sampler);
 }
 
 uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, const char *debugName)
 {
+    if (data == nullptr)
+    {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
     VkResult r;
 
     // 1. Allocate and fill buffer
@@ -145,7 +167,7 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
     VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &stagingMemory, &mappedData);
     if (stagingBuffer == VK_NULL_HANDLE)
     {
-        return RG_NO_MATERIAL;
+        return EMPTY_TEXTURE_INDEX;
     }
 
     // copy image data to buffer
@@ -169,7 +191,7 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
     {
         memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
 
-        return RG_NO_MATERIAL;
+        return EMPTY_TEXTURE_INDEX;
     }
 
     if (debugName != nullptr)
@@ -326,15 +348,47 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
-
+    assert(0);
+    return RG_NO_MATERIAL;
 }
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
 {
-
+    assert(0);
+    return RG_NO_MATERIAL;
 }
 
-void TextureManager::DestroyMaterial(uint32_t materialIndex)
+uint32_t TextureManager::InsertMaterial(uint32_t frameIndex, const Material &material)
+{
+    bool isEmpty = true;
+
+    // add texture in desc set
+    for (uint32_t t : material.textures.indices)
+    {
+        if (t != EMPTY_TEXTURE_INDEX)
+        {
+            isEmpty = false;
+            textureDesc->UpdateTextureDesc(frameIndex, t, textures[t].view, material.sampler);
+        }
+    }
+
+    if (isEmpty)
+    {
+        return RG_NO_MATERIAL;
+    }
+
+    uint32_t matIndex = material.textures.indices[0] + material.textures.indices[1] + material.textures.indices[2];
+
+    while (materials.find(matIndex) != materials.end())
+    {
+        matIndex++;
+    }
+
+    materials[matIndex] = material;
+    return matIndex;
+}
+
+void TextureManager::DestroyMaterial(uint32_t frameIndex, uint32_t materialIndex)
 {
     auto it = materials.find(materialIndex);
 
@@ -347,7 +401,13 @@ void TextureManager::DestroyMaterial(uint32_t materialIndex)
 
     for (auto t : material.textures.indices)
     {
-        DestroyTexture(t);
+        if (t != EMPTY_TEXTURE_INDEX)
+        {
+            DestroyTexture(t);
+
+            // reset descriptor to empty texture
+            textureDesc->ResetTextureDesc(frameIndex, t);
+        }
     }
 
     material.sampler = VK_NULL_HANDLE;
@@ -364,8 +424,7 @@ uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view)
     texture->image = image;
     texture->view = view;
 
-    uint32_t textureIndex = (uint32_t)std::distance(textures.begin(), texture);
-    return textureIndex;
+    return (uint32_t)std::distance(textures.begin(), texture);
 }
 
 void TextureManager::DestroyTexture(uint32_t textureIndex)
@@ -379,22 +438,26 @@ void TextureManager::DestroyTexture(uint32_t textureIndex)
     texture.view = VK_NULL_HANDLE;
 }
 
-bool TextureManager::GetMaterialTextures(
-    uint32_t materialIndex, uint32_t *outAATexture,
-    uint32_t *outNMTexture, uint32_t *outERTexture) const
+MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) const
 {
-    auto it = materials.find(materialIndex);
+    const auto it = materials.find(materialIndex);
 
     if (it == materials.end())
     {
-        return false;
+        MaterialTextures empty = {};
+        empty.albedoAlpha = EMPTY_TEXTURE_INDEX;
+        empty.normalMetallic = EMPTY_TEXTURE_INDEX;
+        empty.emissionRoughness = EMPTY_TEXTURE_INDEX;
+
+        return empty;
     }
 
     const Material &material = it->second;
 
-    *outAATexture = material.textures.albedoAlpha;
-    *outNMTexture = material.textures.normalMetallic;
-    *outERTexture = material.textures.emissionRoughness;
+    return material.textures;
+}
 
-    return true;
+uint32_t TextureManager::GetEmptyTextureIndex() const
+{
+    return EMPTY_TEXTURE_INDEX;
 }
