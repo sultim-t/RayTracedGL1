@@ -48,6 +48,11 @@ VkDescriptorSet TextureDescriptors::GetDescSet(uint32_t frameIndex) const
     return descSets[frameIndex];
 }
 
+VkDescriptorSetLayout TextureDescriptors::GetDescSetLayout() const
+{
+    return descLayout;
+}
+
 void TextureDescriptors::SetEmptyTextureInfo(VkImageView view, VkSampler sampler)
 {
     emptyTextureInfo.imageView = view;

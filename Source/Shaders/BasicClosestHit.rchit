@@ -6,30 +6,40 @@
 #define DESC_SET_VERTEX_DATA 3
 #include "ShaderCommonGLSLFunc.h"
 
-layout(binding = 0, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
+layout(binding = BINDING_TEXTURES, set = 4) uniform sampler2D textures[];
 
 
 layout(location = 0) rayPayloadInEXT vec3 hitValue;
 layout(location = 2) rayPayloadEXT bool shadowed;
-hitAttributeEXT vec3 baryCoord;
+hitAttributeEXT vec2 inBaryCoords;
 
 
 void main()
 {
+	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+
 	ShTriangle tr = getTriangle(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
 	mat4 model = getModelMatrix(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT);
+
+    vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
+  	vec3 color = vec3(1, 1, 1);
+
+	//if (tr.materials[0][0] > 0)
+	{
+		color = texture(textures[nonuniformEXT(tr.materials[0][0])], texCoord).xyz;
+	}  
 
 	vec3 normal;
 
 	if ((gl_InstanceCustomIndexEXT & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
 	{
-		vec3 barycentricCoords = vec3(1.0f - baryCoord.x - baryCoord.y, baryCoord.x, baryCoord.y);
 
 		tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
 		tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
 		tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
 
-		normal = normalize(tr.normals[0] * barycentricCoords.x + tr.normals[1] * barycentricCoords.y + tr.normals[2] * barycentricCoords.z);
+		normal = normalize(tr.normals[0] * baryCoords.x + tr.normals[1] * baryCoords.y + tr.normals[2] * baryCoords.z);
 	}
 	else
 	{
@@ -41,7 +51,7 @@ void main()
 	}
 	
 	vec3 lightVec = normalize(vec3(1, 1, 1));
-	hitValue = vec3(max(dot(lightVec, normal), 0.2));
+	hitValue = vec3(max(dot(lightVec, normal), 0.2)) * color;
 
 	//hitValue = vec3((gl_GeometryIndexEXT % 8) / 8.0, 0, 0);
 	//hitValue = vec3(0, (gl_PrimitiveID % 8) / 8.0, 0);

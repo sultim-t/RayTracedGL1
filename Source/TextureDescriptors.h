@@ -39,6 +39,7 @@ public:
     void ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex);
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
+    VkDescriptorSetLayout GetDescSetLayout() const;
 
     // Set texture info that should be used in ResetTextureDesc(..)
     void SetEmptyTextureInfo(VkImageView view, VkSampler sampler);

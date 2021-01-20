@@ -158,9 +158,9 @@ DYNAMIC_BUFFER_STRUCT = [
 TRIANGLE_STRUCT = [
     (TYPE_FLOAT,    33,     "positions",        1),
     (TYPE_FLOAT,    33,     "normals",          1),
-    (TYPE_FLOAT,    32,     "textureCoords",    1),
+    (TYPE_FLOAT,    32,     "texCoords",        1),
     (TYPE_FLOAT,     3,     "tangent",          1),
-    (TYPE_UINT32,    3,     "textureIds",       3),
+    (TYPE_UINT32,    3,     "materials",        3),
 ]
 
 GLOBAL_UNIFORM_STRUCT = [

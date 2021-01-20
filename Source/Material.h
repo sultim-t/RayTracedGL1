@@ -28,6 +28,7 @@ struct Texture
 {
     VkImage             image;
     VkImageView         view;
+    VkSampler           sampler;
 };
 
 union MaterialTextures
@@ -44,5 +45,5 @@ union MaterialTextures
 struct Material
 {
     MaterialTextures    textures;
-    VkSampler           sampler;
+    uint32_t            index;
 };

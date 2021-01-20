@@ -41,6 +41,7 @@ public:
         uint32_t width, uint32_t height,
         const std::shared_ptr<ASManager> &asManager,
         const std::shared_ptr<GlobalUniform> &uniform,
+        const std::shared_ptr<TextureManager> &textureMgr,
         VkDescriptorSet imagesDescSet);
 
 private:

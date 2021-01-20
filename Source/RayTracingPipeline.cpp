@@ -28,6 +28,7 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<ShaderManager> &sm,
     const std::shared_ptr<ASManager> &asManager,
     const std::shared_ptr<GlobalUniform> &uniform,
+    const std::shared_ptr<TextureManager> &textureMgr,
     VkDescriptorSetLayout imagesSetLayout)
 {
     this->device = device;
@@ -49,12 +50,14 @@ RayTracingPipeline::RayTracingPipeline(
     {
         // ray tracing acceleration structures
         asManager->GetTLASDescSetLayout(),
-        // images
+        // storage images
         imagesSetLayout,
         // uniform
         uniform->GetDescSetLayout(),
         // vertex data
-        asManager->GetBuffersDescSetLayout()
+        asManager->GetBuffersDescSetLayout(),
+        // textures
+        textureMgr->GetDescSetLayout()
     };
 
     VkPipelineLayoutCreateInfo plLayoutInfo = {};

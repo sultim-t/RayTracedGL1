@@ -62,6 +62,7 @@ public:
     RgResult ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
     RgResult CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result);
     RgResult UpdateDynamicMaterial(RgMaterial dynamicMaterial, const RgDynamicMaterialUpdateInfo *updateInfo);
+    RgResult DestroyMaterial(RgMaterial material);
 
 
     RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);

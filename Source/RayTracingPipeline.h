@@ -34,6 +34,7 @@ public:
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<ASManager> &asManager,
         const std::shared_ptr<GlobalUniform> &uniform,
+        const std::shared_ptr<TextureManager> &textureMgr,
         VkDescriptorSetLayout imagesSetLayout
     );
     ~RayTracingPipeline();

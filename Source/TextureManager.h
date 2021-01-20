@@ -55,26 +55,32 @@ public:
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
 
-    void DestroyMaterial(uint32_t frameIndex, uint32_t materialIndex);
+    void DestroyMaterial(uint32_t materialIndex);
 
     MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
     uint32_t GetEmptyTextureIndex() const;
 
-private:
-    static uint32_t GetMipmapCount(const RgExtent2D &size);
+    VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
+    VkDescriptorSetLayout GetDescSetLayout() const;
 
+private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
+
+    static uint32_t GetMipmapCount(const RgExtent2D &size);
 
     uint32_t PrepareStaticTexture(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        const void *data, const RgExtent2D &size, 
+        const void *data, const RgExtent2D &size,
+        VkSampler sampler,
         const char *debugName = nullptr);
 
-    uint32_t InsertTexture(VkImage image, VkImageView view);
+    uint32_t InsertTexture(VkImage image, VkImageView view, VkSampler sampler);
     void DestroyTexture(uint32_t textureIndex);
     void DestroyTexture(Texture &texture);
 
-    uint32_t InsertMaterial(uint32_t frameIndex, const Material &material);
+    uint32_t InsertMaterial(const MaterialTextures &materialTextures);
+
+    void UpdateDescSet(uint32_t frameIndex);
 
 private:
     VkDevice device;

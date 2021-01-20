@@ -36,9 +36,9 @@ struct ShTriangle
 {
     mat3 positions;
     mat3 normals;
-    mat3x2 textureCoords;
+    mat3x2 texCoords;
     vec3 tangent;
-    uvec3 textureIds[3];
+    uvec3 materials[3];
 };
 
 struct ShGlobalUniform

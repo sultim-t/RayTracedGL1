@@ -401,6 +401,10 @@ RgResult rgUpdateDynamicMaterial(
     RgInstance                          rgInstance,
     const RgDynamicMaterialUpdateInfo   *updateInfo);
 
+RgResult rgDestroyMaterial(
+    RgInstance                          rgInstance,
+    RgMaterial                          material);
+
 
 
 RgResult rgStartFrame(

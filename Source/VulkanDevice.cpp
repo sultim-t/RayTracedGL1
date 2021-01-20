@@ -80,7 +80,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager = std::make_shared<ShaderManager>(device);
     rtPipeline = std::make_shared<RayTracingPipeline>(
         device, physDevice, shaderManager, 
-        scene->GetASManager(), uniform, storageImage->GetDescSetLayout());
+        scene->GetASManager(), uniform, textureManager,
+        storageImage->GetDescSetLayout());
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -167,8 +168,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     if (sceneNotEmpty)
     {
-        pathTracer->Trace(cmd, currentFrameIndex, renderWidth, renderHeight, scene->GetASManager(), uniform,
-                          storageImage->GetDescSet(currentFrameIndex));
+        pathTracer->Trace(
+            cmd, currentFrameIndex, renderWidth, renderHeight, 
+            scene->GetASManager(), uniform, textureManager,
+            storageImage->GetDescSet(currentFrameIndex));
     }
 
     storageImage->Barrier(cmd);
@@ -340,6 +343,12 @@ RgResult VulkanDevice::UpdateDynamicMaterial(RgMaterial dynamicMaterial,
     const RgDynamicMaterialUpdateInfo *updateInfo)
 {
     assert(0);
+    return RG_SUCCESS;
+}
+
+RgResult VulkanDevice::DestroyMaterial(RgMaterial material)
+{
+    textureManager->DestroyMaterial(material);
     return RG_SUCCESS;
 }
 #pragma endregion 
