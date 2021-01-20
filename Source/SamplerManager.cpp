@@ -48,6 +48,8 @@ SamplerManager::SamplerManager(VkDevice device)
                 VkResult r = vkCreateSampler(device, &info, nullptr, &sampler);
                 VK_CHECKERROR(r);
 
+                assert(samplers.find(index) == samplers.end());
+
                 samplers[index] = sampler;
             }
         }
@@ -81,8 +83,8 @@ VkSampler SamplerManager::GetSampler(
 
 
 #define FILTER_NEAREST                          (0 << 0)
-#define FILTER_LINEAR                           (1 << 1)
-#define FILTER_MASK                             (1 << 1)
+#define FILTER_LINEAR                           (1 << 0)
+#define FILTER_MASK                             (1 << 0)
 
 #define ADDRESS_MODE_U_REPEAT                   (0 << 1)
 #define ADDRESS_MODE_U_MIRRORED_REPEAT          (1 << 1)

@@ -144,7 +144,7 @@ STATIC_BUFFER_STRUCT = [
     (TYPE_FLOAT,     3,     "normals",          CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT,     2,     "texCoords",        CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_UINT32,    1,     "colors",           CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_UINT32,    1,     "materialIds",      CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
+    #(TYPE_UINT32,    1,     "materialIds",      CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
 ]
 
 DYNAMIC_BUFFER_STRUCT = [
@@ -152,7 +152,7 @@ DYNAMIC_BUFFER_STRUCT = [
     (TYPE_FLOAT,     3,     "normals",          CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     (TYPE_FLOAT,     2,     "texCoords",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     (TYPE_UINT32,    1,     "colors",           CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_UINT32,    1,     "materialIds",      CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
+    #(TYPE_UINT32,    1,     "materialIds",      CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
 ]
 
 TRIANGLE_STRUCT = [
@@ -160,7 +160,7 @@ TRIANGLE_STRUCT = [
     (TYPE_FLOAT,    33,     "normals",          1),
     (TYPE_FLOAT,    32,     "textureCoords",    1),
     (TYPE_FLOAT,     3,     "tangent",          1),
-    (TYPE_UINT32,    3,     "materialIds",      1),
+    (TYPE_UINT32,    3,     "textureIds",       3),
 ]
 
 GLOBAL_UNIFORM_STRUCT = [
@@ -191,7 +191,7 @@ GEOM_INSTANCE_STRUCT = [
 STRUCTS = {
     "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False, True),
     "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False, True),
-    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False, True),
+    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False, False),
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False, True),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,  False),
 }

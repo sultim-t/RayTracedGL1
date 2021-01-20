@@ -85,7 +85,7 @@ private:
 
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
-    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const;
+    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 4> &outInfos) const;
 
 private:
     VkDevice device;

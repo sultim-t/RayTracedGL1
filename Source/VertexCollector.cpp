@@ -243,9 +243,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     const uint64_t offsetColors = isStatic ?
         offsetof(ShVertexBufferStatic, colors) :
         offsetof(ShVertexBufferDynamic, colors);
-    const uint64_t offsetMaterials = isStatic ?
-        offsetof(ShVertexBufferStatic, materialIds) :
-        offsetof(ShVertexBufferDynamic, materialIds);
 
     const uint64_t positionStride = properties.positionStride;
     const uint64_t normalStride = properties.normalStride;
@@ -299,22 +296,8 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(colorDst, 0xFF, info.vertexCount * colorStride);
     }
 
-    const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
-    const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
-
-    // materials
-    /*void *matDst = mappedVertexData + offsetMaterials + curPrimitiveCount * sizeof(RgLayeredMaterial);
-    assert(offsetMaterials + (curPrimitiveCount + triangleCount) * sizeof(RgLayeredMaterial) < wholeBufferSize);
-
-    if (info.triangleMaterials != nullptr)
-    {
-        memcpy(matDst, info.triangleMaterials, triangleCount * sizeof(RgLayeredMaterial));
-    }
-    else
-    {
-        // TODO: info.geomMaterial
-        memset(matDst, RG_NO_TEXTURE, triangleCount * sizeof(RgLayeredMaterial));
-    }*/
+    //const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
+    //const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 }
 
 
@@ -340,7 +323,7 @@ void VertexCollector::Reset()
 
 bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
-    std::array<VkBufferCopy, 5> vertCopyInfos = {};
+    std::array<VkBufferCopy, 4> vertCopyInfos = {};
     bool hasInfo = GetVertBufferCopyInfos(isStatic, vertCopyInfos);
 
     if (!hasInfo)
@@ -421,7 +404,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
     }
 }
 
-bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 5> &outInfos) const
+bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 4> &outInfos) const
 {
     const uint32_t offsetPositions = isStatic ?
         offsetof(ShVertexBufferStatic, positions) :
@@ -435,9 +418,6 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferC
     const uint32_t offsetColors = isStatic ?
         offsetof(ShVertexBufferStatic, colors) :
         offsetof(ShVertexBufferDynamic, colors);
-    const uint32_t offsetMaterials = isStatic ?
-        offsetof(ShVertexBufferStatic, materialIds) :
-        offsetof(ShVertexBufferDynamic, materialIds);
 
     if (curVertexCount == 0 || curPrimitiveCount == 0)
     {
@@ -448,7 +428,6 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferC
     outInfos[1] = { offsetNormals,      offsetNormals,      curVertexCount * properties.normalStride };
     outInfos[2] = { offsetTexCoords,    offsetTexCoords,    curVertexCount * properties.texCoordStride };
     outInfos[3] = { offsetColors,       offsetColors,       curVertexCount * properties.colorStride };
-    outInfos[4] = { offsetMaterials,    offsetMaterials,    curPrimitiveCount * sizeof(RgLayeredMaterial) };
 
     return true;
 }

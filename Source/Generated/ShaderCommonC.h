@@ -25,7 +25,6 @@ struct ShVertexBufferStatic
     float normals[12582912];
     float texCoords[8388608];
     uint32_t colors[4194304];
-    uint32_t materialIds[1398104];
 };
 
 struct ShVertexBufferDynamic
@@ -34,7 +33,6 @@ struct ShVertexBufferDynamic
     float normals[6291456];
     float texCoords[4194304];
     uint32_t colors[2097152];
-    uint32_t materialIds[699052];
 };
 
 struct ShGlobalUniform

@@ -215,10 +215,6 @@ ShTriangle getTriangleStatic(uvec3 vertIndices)
     // TODO
     //tr.tangent = getStaticVerticesTangent(vertIndices[0] / 3);
 
-    //tr.materialIds[0] = getStaticVerticesMaterialIds(vertIndices[0]);
-    //tr.materialIds[1] = getStaticVerticesMaterialIds(vertIndices[1]);
-    //tr.materialIds[2] = getStaticVerticesMaterialIds(vertIndices[2]);
-
     return tr;
 }
 
@@ -241,10 +237,6 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices)
     // TODO
     //tr.tangent = getDynamicVerticesTangent(vertIndices[0] / 3);
 
-    //tr.materialIds[0] = getDynamicVerticesMaterialIds(vertIndices[0]);
-    //tr.materialIds[1] = getDynamicVerticesMaterialIds(vertIndices[1]);
-    //tr.materialIds[2] = getDynamicVerticesMaterialIds(vertIndices[2]);
-
     return tr;
 }
 
@@ -254,21 +246,30 @@ ShTriangle getTriangle(int instanceCustomIndex, int geometryIndex, int primitive
 {
     bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
     
+    ShGeometryInstance inst;
+    ShTriangle tr;
+
     if (isDynamic)
     {
         // get info about geometry from pGeometries in one of BLAS
-        ShGeometryInstance inst = geometryInstancesDynamic[geometryIndex];
+        inst = geometryInstancesDynamic[geometryIndex];
         uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        return getTriangleDynamic(vertIndices);
+        tr = getTriangleDynamic(vertIndices);
     }
     else
     {
-        ShGeometryInstance inst = geometryInstancesStatic[geometryIndex];
+        inst = geometryInstancesStatic[geometryIndex];
         uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        return getTriangleStatic(vertIndices);
+        tr = getTriangleStatic(vertIndices);
     }
+
+    tr.textureIds[0] = uvec3(inst.materials[0]);
+    tr.textureIds[1] = uvec3(inst.materials[1]);
+    tr.textureIds[2] = uvec3(inst.materials[2]);
+
+    return tr;
 }
 
 mat4 getModelMatrix(bool isDynamic, int geometryIndex)
