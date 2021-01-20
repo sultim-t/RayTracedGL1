@@ -55,4 +55,6 @@ void ImageLoader::FreeLoaded()
     {
         stbi_image_free(p);
     }
+
+    loadedImages.clear();
 }

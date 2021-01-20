@@ -125,6 +125,8 @@ void TextureManager::UpdateDescSet(uint32_t frameIndex)
             textureDesc->ResetTextureDesc(frameIndex, i);
         }
     }
+
+    textureDesc->FlushDescWrites();
 }
 
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
@@ -161,7 +163,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
 {
     assert(textures[0].image == VK_NULL_HANDLE && textures[0].view == VK_NULL_HANDLE);
 
-    uint32_t data[] = { 0x00FF0000 };
+    uint32_t data[] = { 0xFFFFFFFF };
     RgExtent2D size = { 1,1 };
     VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 

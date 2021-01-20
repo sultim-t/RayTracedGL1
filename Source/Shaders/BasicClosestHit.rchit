@@ -25,7 +25,7 @@ void main()
     vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
   	vec3 color = vec3(1, 1, 1);
 
-	//if (tr.materials[0][0] > 0)
+	if (tr.materials[0][0] > 0)
 	{
 		color = texture(textures[nonuniformEXT(tr.materials[0][0])], texCoord).xyz;
 	}  

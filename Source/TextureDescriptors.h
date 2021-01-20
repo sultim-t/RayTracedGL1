@@ -38,6 +38,10 @@ public:
     void UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
     void ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex);
 
+    // Must be called after a series of UpdateTextureDesc and
+    // ResetTextureDesc to make an actual desc write 
+    void FlushDescWrites();
+
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
 
@@ -57,4 +61,8 @@ private:
     VkDescriptorSet descSets[MAX_FRAMES_IN_FLIGHT];
 
     VkDescriptorImageInfo emptyTextureInfo;
+
+    uint32_t currentWriteCount;
+    std::vector<VkDescriptorImageInfo> writeImageInfos;
+    std::vector<VkWriteDescriptorSet> writeInfos;
 };

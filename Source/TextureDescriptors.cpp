@@ -30,8 +30,12 @@ TextureDescriptors::TextureDescriptors(VkDevice _device) :
     descPool(VK_NULL_HANDLE),
     descLayout(VK_NULL_HANDLE),
     descSets{},
-    emptyTextureInfo{}
+    emptyTextureInfo{},
+    currentWriteCount(0)
 {
+    writeImageInfos.resize(MAX_TEXTURE_COUNT);
+    writeInfos.resize(MAX_TEXTURE_COUNT);
+
     CreateDescLayout();
     CreateDescPool();
     CreateDescSets();
@@ -114,15 +118,22 @@ void TextureDescriptors::CreateDescSets()
     }
 }
 
-void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view,
-                                         VkSampler sampler)
+void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
 {
-    VkDescriptorImageInfo imageInfo = {};
-    imageInfo.imageView = view;
+    assert(view != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
+
+    if  (currentWriteCount >= MAX_TEXTURE_COUNT)
+    {
+        assert(0);
+        return;
+    }
+
+    VkDescriptorImageInfo &imageInfo = writeImageInfos[currentWriteCount];
     imageInfo.sampler = sampler;
+    imageInfo.imageView = view;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    VkWriteDescriptorSet write = {};
+    VkWriteDescriptorSet &write = writeInfos[currentWriteCount];
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = descSets[frameIndex];
     write.dstBinding = BINDING_TEXTURES;
@@ -131,12 +142,22 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write.pImageInfo = &imageInfo;
 
-    vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+    currentWriteCount++;
 }
 
 void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex)
 {
-    VkWriteDescriptorSet write = {};
+    assert(emptyTextureInfo.imageView != VK_NULL_HANDLE &&
+           emptyTextureInfo.imageLayout != VK_NULL_HANDLE &&
+           emptyTextureInfo.sampler != VK_NULL_HANDLE);
+
+    if (currentWriteCount >= MAX_TEXTURE_COUNT)
+    {
+        assert(0);
+        return;
+    }
+
+    VkWriteDescriptorSet &write = writeInfos[currentWriteCount];
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = descSets[frameIndex];
     write.dstBinding = BINDING_TEXTURES;
@@ -145,5 +166,14 @@ void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureI
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     write.pImageInfo = &emptyTextureInfo;
 
-    vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+    currentWriteCount++;
+}
+
+void TextureDescriptors::FlushDescWrites()
+{
+    // must have constant size
+    assert(writeInfos.size() == MAX_TEXTURE_COUNT);
+
+    vkUpdateDescriptorSets(device, currentWriteCount, writeInfos.data(), 0, nullptr);
+    currentWriteCount = 0;
 }
