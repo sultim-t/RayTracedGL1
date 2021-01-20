@@ -317,8 +317,8 @@ typedef enum RgSamplerAddressMode
 
 typedef enum RgSamplerFilter
 {
-    RG_SAMPLER_FILTER_NEAREST,
     RG_SAMPLER_FILTER_LINEAR,
+    RG_SAMPLER_FILTER_NEAREST,
 } RgSamplerFilter;
 
 typedef struct RgStaticMaterialCreateInfo

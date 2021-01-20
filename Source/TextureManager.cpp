@@ -129,21 +129,30 @@ void TextureManager::UpdateDescSet(uint32_t frameIndex)
 
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
 {
-    ParseInfo parseInfo = {};
-    parseInfo.texturesPath              = defaultTexturesPath.c_str();
-    parseInfo.albedoAlphaPostfix        = albedoAlphaPostfix.c_str();
-    parseInfo.normalMetallicPostfix     = normalMetallicPostfix.c_str();
-    parseInfo.emissionRoughnessPostfix  = emissionRoughnessPostfix.c_str();
-
-    // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
-
+    MaterialTextures material = {};
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
-    MaterialTextures material = {};
-    material.albedoAlpha       = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.debugName);
-    material.normalMetallic    = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.debugName);
-    material.emissionRoughness = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.debugName);
+    if (!createInfo.disableOverride)
+    {
+        ParseInfo parseInfo = {};
+        parseInfo.texturesPath = defaultTexturesPath.c_str();
+        parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
+        parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
+        parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
+
+        // load additional textures, they'll be freed after leaving the scope
+        TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
+
+        material.albedoAlpha = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.debugName);
+        material.normalMetallic = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.debugName);
+        material.emissionRoughness = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.debugName);
+    }
+    else
+    {
+        material.albedoAlpha = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.relativePath);
+        material.normalMetallic = EMPTY_TEXTURE_INDEX;
+        material.emissionRoughness = EMPTY_TEXTURE_INDEX;
+    }
 
     return InsertMaterial(material);
 }

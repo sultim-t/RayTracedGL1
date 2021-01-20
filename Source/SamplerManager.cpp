@@ -82,8 +82,8 @@ VkSampler SamplerManager::GetSampler(
 }
 
 
-#define FILTER_NEAREST                          (0 << 0)
-#define FILTER_LINEAR                           (1 << 0)
+#define FILTER_LINEAR                           (0 << 0)
+#define FILTER_NEAREST                          (1 << 0)
 #define FILTER_MASK                             (1 << 0)
 
 #define ADDRESS_MODE_U_REPEAT                   (0 << 1)
