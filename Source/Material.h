@@ -45,7 +45,7 @@ union MaterialTextures
 struct Material
 {
     MaterialTextures    textures;
-    uint32_t            index;
+    uint32_t            isDynamic;
 };
 
 struct AnimatedMaterial

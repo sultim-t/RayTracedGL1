@@ -68,10 +68,12 @@ private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
 
     uint32_t PrepareStaticTexture(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const void *data, const RgExtent2D &size,
-        VkSampler sampler,
-        const char *debugName = nullptr);
+        VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
+        VkSampler sampler, bool generateMipmaps, const char *debugName = nullptr);
+
+    uint32_t PrepareDynamicTexture(
+        VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
+        VkSampler sampler, bool generateMipmaps, const char *debugName = nullptr);
 
     uint32_t InsertTexture(VkImage image, VkImageView view, VkSampler sampler);
     void DestroyTexture(uint32_t textureIndex);
@@ -80,7 +82,7 @@ private:
     uint32_t GenerateMaterialIndex(const MaterialTextures &materialTextures);
     uint32_t GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices);
 
-    uint32_t InsertMaterial(const MaterialTextures &materialTextures);
+    uint32_t InsertMaterial(const MaterialTextures &materialTextures, bool isDynamic);
     uint32_t InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices);
 
     void DestroyMaterialTextures(uint32_t materialIndex);

@@ -32,9 +32,19 @@ class TextureUploader
 public:
     struct UploadResult
     {
-        bool wasUploaded;
-        VkImage image;
-        VkImageView view;
+        bool                wasUploaded;
+        VkImage             image;
+        VkImageView         view;
+    };
+
+    struct UploadInfo
+    {
+        VkCommandBuffer     cmd;
+        uint32_t            frameIndex;
+        const void          *data;
+        RgExtent2D          size;
+        bool                generateMipmaps;
+        const char          *debugName;
     };
 
 public:
@@ -49,12 +59,17 @@ public:
     // Clear staging buffer for given frame index.
     void ClearStaging(uint32_t frameIndex);
 
-    UploadResult UploadStaticImage(VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, const char *debugName);
+    UploadResult UploadStaticImage(const UploadInfo &info);
+    UploadResult UploadDynamicImage(const UploadInfo &info);
 
     void DestroyImage(VkImage image, VkImageView view);
 
 private:
     static uint32_t GetMipmapCount(const RgExtent2D &size);
+
+    static void PrepareMipmaps(
+        VkCommandBuffer cmd, VkImage image, 
+        uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount);
 
 private:
     VkDevice device;

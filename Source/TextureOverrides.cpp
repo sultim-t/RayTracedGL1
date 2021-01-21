@@ -135,9 +135,9 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s", parseInfo.texturesPath, name, parseInfo.albedoAlphaPostfix, extension);
-    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s", parseInfo.texturesPath, name, parseInfo.normalMetallicPostfix, extension);
-    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s", parseInfo.texturesPath, name, parseInfo.emissionRoughnessPostfix, extension);
+    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, parseInfo.albedoAlphaPostfix, extension);
+    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, parseInfo.normalMetallicPostfix, extension);
+    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, parseInfo.emissionRoughnessPostfix, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 

@@ -20,7 +20,6 @@
 
 #include "TextureManager.h"
 
-#include <cmath>
 #include <numeric>
 
 #include "Const.h"
@@ -64,6 +63,28 @@ TextureManager::TextureManager(
     _cmdManager->WaitGraphicsIdle();
 }
 
+void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    assert(textures[0].image == VK_NULL_HANDLE && textures[0].view == VK_NULL_HANDLE);
+
+    uint32_t data[] = { 0xFFFFFFFF };
+    RgExtent2D size = { 1,1 };
+    VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+
+    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, "Empty texture");
+
+    // must have specific index
+    assert(textureIndex == EMPTY_TEXTURE_INDEX);
+
+    VkImage emptyImage = textures[textureIndex].image;
+    VkImageView emptyView = textures[textureIndex].view;
+
+    assert(emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE);
+
+    // if texture will be reset, it will use empty texture's info
+    textureDesc->SetEmptyTextureInfo(emptyView, sampler);
+}
+
 TextureManager::~TextureManager()
 {
     for (auto &texture : textures)
@@ -76,11 +97,6 @@ TextureManager::~TextureManager()
             DestroyTexture(texture);
         }
     }
-
-    imageLoader.reset();
-    samplerMgr.reset();
-    textureDesc.reset();
-    textureUploader.reset();
 }
 
 void TextureManager::PrepareForFrame(uint32_t frameIndex)
@@ -111,7 +127,7 @@ void TextureManager::UpdateDescSet(uint32_t frameIndex)
 
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
 {
-    MaterialTextures material = {};
+    MaterialTextures textures = {};
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
     if (!createInfo.disableOverride)
@@ -125,50 +141,38 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         // load additional textures, they'll be freed after leaving the scope
         TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
 
-        material.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.debugName);
-        material.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.debugName);
-        material.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.debugName);
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, createInfo.useMipmaps, ovrd.debugName);
+        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, createInfo.useMipmaps, ovrd.debugName);
+        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, createInfo.useMipmaps, ovrd.debugName);
     }
     else
     {
-        material.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.relativePath);
-        material.normalMetallic     = EMPTY_TEXTURE_INDEX;
-        material.emissionRoughness  = EMPTY_TEXTURE_INDEX;
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.relativePath);
+        textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
+        textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertMaterial(material);
+    return InsertMaterial(textures, false);
 }
 
-void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex)
-{
-    assert(textures[0].image == VK_NULL_HANDLE && textures[0].view == VK_NULL_HANDLE);
-
-    uint32_t data[] = { 0xFFFFFFFF };
-    RgExtent2D size = { 1,1 };
-    VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
-
-    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, "Empty texture");
-
-    // must have specific index
-    assert(textureIndex == EMPTY_TEXTURE_INDEX);
-
-    VkImage emptyImage = textures[textureIndex].image;
-    VkImageView emptyView = textures[textureIndex].view;
-
-    assert(emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE);
-
-    // if texture will be reset, it will use empty texture's info
-    textureDesc->SetEmptyTextureInfo(emptyView, sampler);
-}
-
-uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, VkSampler sampler, const char *debugName)
+uint32_t TextureManager::PrepareStaticTexture(
+    VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
+    VkSampler sampler, bool generateMipmaps, const char *debugName)
 {
     if (data == nullptr)
     {
         return EMPTY_TEXTURE_INDEX;
     }
 
-    auto result = textureUploader->UploadStaticImage(cmd, frameIndex, data, size, debugName);
+    TextureUploader::UploadInfo info = {};
+    info.cmd = cmd;
+    info.frameIndex = frameIndex;
+    info.data = data;
+    info.size = size;
+    info.generateMipmaps = generateMipmaps;
+    info.debugName = debugName;
+
+    auto result = textureUploader->UploadStaticImage(info);
 
     if (!result.wasUploaded)
     {
@@ -180,8 +184,41 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
-    assert(0);
-    return RG_NO_MATERIAL;
+    VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
+
+    MaterialTextures textures = {};
+    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.useMipmaps);
+    textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
+    textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
+
+    return InsertMaterial(textures, false);
+}
+
+uint32_t TextureManager::PrepareDynamicTexture(
+    VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, 
+    VkSampler sampler, bool generateMipmaps, const char *debugName)
+{
+    if (data == nullptr)
+    {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
+    TextureUploader::UploadInfo info = {};
+    info.cmd = cmd;
+    info.frameIndex = frameIndex;
+    info.data = data;
+    info.size = size;
+    info.generateMipmaps = generateMipmaps;
+    info.debugName = debugName;
+
+    auto result = textureUploader->UploadDynamicImage(info);
+
+    if (!result.wasUploaded)
+    {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
+    return InsertTexture(result.image, result.view, sampler);
 }
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
@@ -235,7 +272,7 @@ uint32_t TextureManager::GenerateMaterialIndex(const std::vector<uint32_t> &mate
     return matIndex;
 }
 
-uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures)
+uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures, bool isDynamic)
 {
     bool isEmpty = true;
 
@@ -256,7 +293,7 @@ uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures
     uint32_t matIndex = GenerateMaterialIndex(materialTextures);
 
     Material material = {};
-    material.index = matIndex;
+    material.isDynamic = isDynamic;
     material.textures = materialTextures;
 
     materials[matIndex] = material;
