@@ -20,27 +20,28 @@
 
 #pragma once
 #include <array>
+#include <map>
 #include <vector>
 
 #include "Buffer.h"
 #include "Common.h"
-#include "RTGL1/RTGL1.h"
-#include "VertexBufferProperties.h"
+#include "IMaterialDependency.h"
 #include "Material.h"
-#include "TextureManager.h"
+#include "VertexBufferProperties.h"
+#include "RTGL1/RTGL1.h"
 
 struct ShGeometryInstance;
 
 // The class collects vertex data to buffers with shader struct types.
 // Geometries are passed to the class by chunks and the result of collecting
 // is a vertex buffer with ready data and infos for acceleration structure creation/building.
-class VertexCollector
+class VertexCollector : public IMaterialDependency
 {
 public:
     explicit VertexCollector(
         VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
         VkDeviceSize bufferSize, const VertexBufferProperties &properties);
-    virtual ~VertexCollector();
+    ~VertexCollector() override;
 
     VertexCollector(const VertexCollector& other) = delete;
     VertexCollector(VertexCollector&& other) noexcept = delete;
@@ -73,6 +74,8 @@ public:
     // will be updated every frame and thus their transforms.
     void UpdateTransform(uint32_t geomIndex, const RgTransform &transform);
 
+    void OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo) override;
+
 protected:
     virtual void PushPrimitiveCount(RgGeometryType type, uint32_t primCount);
     virtual void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom);
@@ -86,6 +89,15 @@ private:
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
     bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 4> &outInfos) const;
+
+    void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
+
+private:
+    struct MaterialRef
+    {
+        uint32_t geomIndex;
+        uint32_t layer;
+    };
 
 private:
     VkDevice device;
@@ -111,6 +123,9 @@ private:
     uint32_t curIndexCount;
     uint32_t curPrimitiveCount;
     uint32_t curGeometryCount;
+
+    // material index to a list of () that have that material
+    std::map<uint32_t, std::vector<MaterialRef>> materialDependencies;
 
     std::vector<uint32_t> primitiveCounts;
     std::vector<VkAccelerationStructureGeometryKHR> asGeometries;

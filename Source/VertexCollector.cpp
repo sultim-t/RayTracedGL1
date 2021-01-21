@@ -198,26 +198,24 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
     geomInfo.primitiveCount = primitiveCount;
 
-    static_assert(
-        sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0])
-        == MATERIALS_MAX_LAYER_COUNT, "Layer count must be MATERIALS_MAX_LAYER_COUNT");
+    Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
-    // RgTexture is union, all textures indices are unique even with different types
-    uint32_t layer = 0;
-    for (auto material : info.geomMaterial.layerMaterials)
+    static_assert(sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0]) == MATERIALS_MAX_LAYER_COUNT, 
+                  "Layer count must be MATERIALS_MAX_LAYER_COUNT");
+
+    for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
     {
-        assert(layer < MATERIALS_MAX_LAYER_COUNT);
-
-        uint32_t i = 0;
-        for (auto t : materials[layer].indices)
+        // only for static geometry, dynamic is updated each frame,
+        // so the materials will be updated anyway
+        if (collectStatic)
         {
-            geomInfo.materials[layer][i++] = t;
+            uint32_t materialIndex = info.geomMaterial.layerMaterials[layer];
+            AddMaterialDependency(geomIndex, layer, materialIndex);
         }
 
-        layer++;
+        memcpy(geomInfo.materials[layer], materials[layer].indices,
+               TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
     }
-
-    Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
     assert(sizeof(ShGeometryInstance) % 16 == 0);
     memcpy(mappedGeomInfosData + geomIndex, &geomInfo, sizeof(ShGeometryInstance));
@@ -316,6 +314,7 @@ void VertexCollector::Reset()
     curPrimitiveCount = 0;
     curGeometryCount = 0;
 
+    materialDependencies.clear();
     primitiveCounts.clear();
     asGeometries.clear();
     asBuildRangeInfos.clear();
@@ -438,6 +437,36 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &tra
     assert(mappedTransformData != nullptr);
 
     memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
+}
+
+void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex)
+{
+    // ignore empty materials
+    if (materialIndex != RG_NO_MATERIAL)
+    {
+        auto it = materialDependencies.find(materialIndex);
+
+        if (it == materialDependencies.end())
+        {
+            materialDependencies[materialIndex] = {};
+            it = materialDependencies.find(materialIndex);
+        }
+
+        it->second.push_back({ geomIndex, layer });
+    }
+}
+
+void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo)
+{
+    // for each geom index that has this material, update geometry instance infos
+    for (const auto &p : materialDependencies[materialIndex])
+    {    
+
+        assert(p.geomIndex < curGeometryCount);
+
+        memcpy(mappedGeomInfosData[p.geomIndex].materials[p.layer], newInfo.indices, 
+               TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+    }
 }
 
 void VertexCollector::PushPrimitiveCount(RgGeometryType type, uint32_t primCount)

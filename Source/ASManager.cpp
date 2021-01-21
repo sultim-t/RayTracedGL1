@@ -25,17 +25,17 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
-ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice, 
-                     std::shared_ptr<CommandBufferManager> cmdManager,
-                     std::shared_ptr<TextureManager> textureMgr,
-                     const VertexBufferProperties &properties)
+ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevice,
+                     std::shared_ptr<CommandBufferManager> _cmdManager,
+                     std::shared_ptr<TextureManager> _textureMgr,
+                     const VertexBufferProperties &_properties)
+    :
+    device(_device),
+    physDevice(std::move(_physDevice)),
+    cmdManager(std::move(_cmdManager)),
+    textureMgr(std::move(_textureMgr)),
+    properties(_properties)
 {
-    this->device = device;
-    this->physDevice = physDevice;
-    this->cmdManager = cmdManager;
-    this->textureMgr = textureMgr;
-    this->properties = properties;
-
     scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
@@ -45,6 +45,11 @@ ASManager::ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice
         sizeof(ShVertexBufferStatic),
         properties, 
         RG_GEOMETRY_TYPE_STATIC_MOVABLE);
+
+    // subscribe to texture manager only static collector,
+    // as static geometries aren't updating its material info (in ShGeometryInstance)
+    // every frame unlike dynamic ones
+    textureMgr->Subscribe(collectorStaticMovable);
 
     // dynamic vertices
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)

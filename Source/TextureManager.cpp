@@ -26,12 +26,12 @@
 #include "Utils.h"
 #include "TextureOverrides.h"
 
-#define EMPTY_TEXTURE_INDEX 0
-
 #define DEFAULT_TEXTURES_PATH               ""
 #define DEFAULT_ALBEDO_ALPHA_POSTFIX        ""
 #define DEFAULT_NORMAL_METALLIC_POSTFIX     "_n"
 #define DEFAULT_EMISSION_ROUGHNESS_POSTFIX  "_e"
+
+constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
 
 TextureManager::TextureManager(
     VkDevice _device,
@@ -234,7 +234,7 @@ uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t fr
     return InsertAnimatedMaterial(materialIndices);
 }
 
-void TextureManager::ChangeAnimatedMaterialFrame(RgMaterial animMaterial, uint32_t materialFrame)
+void TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame)
 {
     const auto animIt = animatedMaterials.find(animMaterial);
 
@@ -244,6 +244,24 @@ void TextureManager::ChangeAnimatedMaterialFrame(RgMaterial animMaterial, uint32
 
         materialFrame = std::min(materialFrame, (uint32_t)anim.materialIndices.size());
         anim.currentFrame = materialFrame;
+
+        // notify subscribers
+        for (auto &ws : subscribers)
+        {
+            // if subscriber still exist
+            if (auto s = ws.lock())
+            {
+                uint32_t frameMatIndex = anim.materialIndices[anim.currentFrame];
+
+                // find MaterialTextures
+                auto it = materials.find(frameMatIndex);
+
+                if (it != materials.end())
+                {
+                    s->OnMaterialChange(animMaterial, it->second.textures);
+                }
+            }
+        }
     }
 }
 
@@ -367,13 +385,24 @@ void TextureManager::DestroyMaterial(uint32_t materialIndex)
 
         animatedMaterials.erase(animIt);
     }
-
-    auto it = materials.find(materialIndex);
-
-    if (it != materials.end())
+    else
     {
-        DestroyMaterialTextures(it->second);
-        materials.erase(it);
+        auto it = materials.find(materialIndex);
+
+        if (it != materials.end())
+        {
+            DestroyMaterialTextures(it->second);
+            materials.erase(it);
+        }
+    }
+
+    // notify subscribers
+    for (auto &ws : subscribers)
+    {
+        if (auto s = ws.lock())
+        {
+            s->OnMaterialChange(materialIndex, EmptyMaterialTextures);
+        }
     }
 }
 
@@ -411,12 +440,7 @@ MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) con
 {
     if (materialIndex == RG_NO_MATERIAL)
     {
-        MaterialTextures empty = {};
-        empty.albedoAlpha = EMPTY_TEXTURE_INDEX;
-        empty.normalMetallic = EMPTY_TEXTURE_INDEX;
-        empty.emissionRoughness = EMPTY_TEXTURE_INDEX;
-
-        return empty;
+        return EmptyMaterialTextures;
     }
 
     const auto animIt = animatedMaterials.find(materialIndex);
@@ -433,20 +457,10 @@ MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) con
 
     if (it == materials.end())
     {
-        MaterialTextures empty = {};
-        empty.albedoAlpha = EMPTY_TEXTURE_INDEX;
-        empty.normalMetallic = EMPTY_TEXTURE_INDEX;
-        empty.emissionRoughness = EMPTY_TEXTURE_INDEX;
-
-        return empty;
+        return EmptyMaterialTextures;
     }
 
     return it->second.textures;
-}
-
-uint32_t TextureManager::GetEmptyTextureIndex()
-{
-    return EMPTY_TEXTURE_INDEX;
 }
 
 VkDescriptorSet TextureManager::GetDescSet(uint32_t frameIndex) const
@@ -457,4 +471,22 @@ VkDescriptorSet TextureManager::GetDescSet(uint32_t frameIndex) const
 VkDescriptorSetLayout TextureManager::GetDescSetLayout() const
 {
     return textureDesc->GetDescSetLayout();
+}
+
+void TextureManager::Subscribe(std::shared_ptr<IMaterialDependency> subscriber)
+{
+    subscribers.emplace_back(subscriber);
+}
+
+void TextureManager::Unsubscribe(const IMaterialDependency *subscriber)
+{
+    subscribers.remove_if([subscriber] (const std::weak_ptr<IMaterialDependency> &ws)
+    {
+        if (const auto s = ws.lock())
+        {
+            return s.get() == subscriber;
+        }
+
+        return true;
+    });
 }

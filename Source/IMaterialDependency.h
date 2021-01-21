@@ -20,13 +20,13 @@
 
 #pragma once
 
-class Swapchain;
+#include "Material.h"
 
-class ISwapchainDependency
+class IMaterialDependency
 {
 public:
-    virtual ~ISwapchainDependency() = default;
-    virtual void OnSwapchainCreate(const Swapchain *pSwapchain) = 0;
-    virtual void OnSwapchainDestroy() = 0;
+    virtual ~IMaterialDependency() = default;
+    // If material was changed, for example, animated texture changed its current frame,
+    // then this function will be called. If material was destroyed, "newInfo" will have empty texture indices.
+    virtual void OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo) = 0;
 };
-

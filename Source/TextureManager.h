@@ -20,12 +20,14 @@
 
 #pragma once
 
+#include <list>
 #include <string>
 
 #include "Common.h"
 #include "CommandBufferManager.h"
 #include "Material.h"
 #include "ImageLoader.h"
+#include "IMaterialDependency.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 #include "TextureDescriptors.h"
@@ -54,15 +56,21 @@ public:
     uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
-    void ChangeAnimatedMaterialFrame(RgMaterial animMaterial, uint32_t materialFrame);
+    void ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
 
     void DestroyMaterial(uint32_t materialIndex);
 
     MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
-    static uint32_t GetEmptyTextureIndex();
+
+    static constexpr uint32_t GetEmptyTextureIndex();
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
+
+    // Subscribe to material change event.
+    // shared_ptr will be transformed to weak_ptr
+    void Subscribe(std::shared_ptr<IMaterialDependency> subscriber);
+    void Unsubscribe(const IMaterialDependency *subscriber);
 
 private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
@@ -107,4 +115,11 @@ private:
     std::string albedoAlphaPostfix;
     std::string normalMetallicPostfix;
     std::string emissionRoughnessPostfix;
+
+    std::list<std::weak_ptr<IMaterialDependency>> subscribers;
 };
+
+inline constexpr uint32_t TextureManager::GetEmptyTextureIndex()
+{
+    return EMPTY_TEXTURE_INDEX;
+}

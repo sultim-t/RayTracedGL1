@@ -48,6 +48,7 @@ set(PrivateHeaders
     "Source/Material.h"
     "Source/TextureDescriptors.h"
     "Source/TextureUploader.h"
+    "Source/IMaterialDependency.h"
     )
 
 set(Sources

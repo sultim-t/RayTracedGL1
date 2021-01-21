@@ -22,7 +22,9 @@
 
 #include "Common.h"
 
-#define MATERIALS_MAX_LAYER_COUNT 3
+#define EMPTY_TEXTURE_INDEX 0
+#define MATERIALS_MAX_LAYER_COUNT       3
+#define TEXTURES_PER_MATERIAL_COUNT     3
 
 struct Texture
 {
@@ -33,7 +35,7 @@ struct Texture
 
 union MaterialTextures
 {
-    uint32_t            indices[3];
+    uint32_t            indices[TEXTURES_PER_MATERIAL_COUNT];
     struct
     {
         uint32_t        albedoAlpha;
@@ -50,6 +52,7 @@ struct Material
 
 struct AnimatedMaterial
 {
+    // Indices of static materials.
     std::vector<uint32_t>   materialIndices;
     uint32_t                currentFrame;
 };

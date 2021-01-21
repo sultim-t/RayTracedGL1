@@ -122,7 +122,7 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     {
         for (uint32_t t = 0; t < RASTERIZER_TEXTURE_COUNT; t++)
         {
-            textureIds[t] = TextureManager::GetEmptyTextureIndex();
+            textureIds[t] = EMPTY_TEXTURE_INDEX;
         }
     }
 
