@@ -21,6 +21,7 @@
 #include "TextureManager.h"
 
 #include <cmath>
+#include <numeric>
 
 #include "Const.h"
 #include "Utils.h"
@@ -36,14 +37,13 @@
 TextureManager::TextureManager(
     VkDevice _device,
     std::shared_ptr<MemoryAllocator> _memAllocator,
-    std::shared_ptr<CommandBufferManager> &_cmdManager,
+    const std::shared_ptr<CommandBufferManager> &_cmdManager,
     const char *_defaultTexturesPath,
     const char *_albedoAlphaPostfix,
     const char *_normalMetallicPostfix,
     const char *_emissionRoughnessPostfix)
 :
-    device(_device),
-    memAllocator(_memAllocator)
+    device(_device)
 {
     this->defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
     this->albedoAlphaPostfix = _albedoAlphaPostfix != nullptr ? _albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
@@ -53,6 +53,7 @@ TextureManager::TextureManager(
     imageLoader = std::make_shared<ImageLoader>();
     samplerMgr = std::make_shared<SamplerManager>(device);
     textureDesc = std::make_shared<TextureDescriptors>(device);
+    textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
     textures.resize(MAX_TEXTURE_COUNT);
 
@@ -65,18 +66,6 @@ TextureManager::TextureManager(
 
 TextureManager::~TextureManager()
 {
-    imageLoader.reset();
-    samplerMgr.reset();
-    textureDesc.reset();
-
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        for (VkBuffer staging : stagingToFree[i])
-        {
-            memAllocator->DestroyStagingSrcTextureBuffer(staging);
-        }
-    }
-
     for (auto &texture : textures)
     {
         assert((texture.image == VK_NULL_HANDLE && texture.view == VK_NULL_HANDLE) ||
@@ -87,25 +76,16 @@ TextureManager::~TextureManager()
             DestroyTexture(texture);
         }
     }
-}
 
-uint32_t TextureManager::GetMipmapCount(const RgExtent2D &size)
-{
-    auto widthCount = static_cast<uint32_t>(log2(size.width));
-    auto heightCount = static_cast<uint32_t>(log2(size.height));
-
-    return std::min(widthCount, heightCount) + 1;
+    imageLoader.reset();
+    samplerMgr.reset();
+    textureDesc.reset();
+    textureUploader.reset();
 }
 
 void TextureManager::PrepareForFrame(uint32_t frameIndex)
 {
-    // clear unused staging
-    for (VkBuffer staging : stagingToFree[frameIndex])
-    {
-        memAllocator->DestroyStagingSrcTextureBuffer(staging);
-    }
-
-    stagingToFree[frameIndex].clear();
+    textureUploader->ClearStaging(frameIndex);
 
     // update desc set with current values
     UpdateDescSet(frameIndex);
@@ -145,15 +125,15 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         // load additional textures, they'll be freed after leaving the scope
         TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
 
-        material.albedoAlpha = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.debugName);
-        material.normalMetallic = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.debugName);
-        material.emissionRoughness = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.debugName);
+        material.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.debugName);
+        material.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.debugName);
+        material.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.debugName);
     }
     else
     {
-        material.albedoAlpha = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.relativePath);
-        material.normalMetallic = EMPTY_TEXTURE_INDEX;
-        material.emissionRoughness = EMPTY_TEXTURE_INDEX;
+        material.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.relativePath);
+        material.normalMetallic     = EMPTY_TEXTURE_INDEX;
+        material.emissionRoughness  = EMPTY_TEXTURE_INDEX;
     }
 
     return InsertMaterial(material);
@@ -188,208 +168,14 @@ uint32_t TextureManager::PrepareStaticTexture(VkCommandBuffer cmd, uint32_t fram
         return EMPTY_TEXTURE_INDEX;
     }
 
-    VkResult r;
+    auto result = textureUploader->UploadStaticImage(cmd, frameIndex, data, size, debugName);
 
-    // 1. Allocate and fill buffer
-
-    const VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-    const VkDeviceSize bytesPerPixel = 4;
-
-    VkDeviceSize dataSize = bytesPerPixel * size.width * size.height;
-
-    VkBufferCreateInfo stagingInfo = {};
-    stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingInfo.size = dataSize;
-    stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-    VkDeviceMemory stagingMemory, imageMemory;
-    void *mappedData;
-
-    VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &stagingMemory, &mappedData);
-    if (stagingBuffer == VK_NULL_HANDLE)
+    if (!result.wasUploaded)
     {
         return EMPTY_TEXTURE_INDEX;
     }
 
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
-    }
-
-    // copy image data to buffer
-    memcpy(mappedData, data, dataSize);
-
-    uint32_t mipmapCount = GetMipmapCount(size);
-
-    VkImageCreateInfo imageInfo = {};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = imageFormat;
-    imageInfo.extent = { size.width, size.height, 1 };
-    imageInfo.mipLevels = mipmapCount;
-    imageInfo.arrayLayers = 1;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
-
-    VkImage finalImage = memAllocator->CreateDstTextureImage(&imageInfo, &imageMemory);
-    if (finalImage == VK_NULL_HANDLE)
-    {
-        memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
-
-        return EMPTY_TEXTURE_INDEX;
-    }
-
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, finalImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
-    }
-
-    // 2. Copy buffer data to the first mipmap
-
-    VkImageSubresourceRange firstMipmap = {};
-    firstMipmap.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    firstMipmap.baseMipLevel = 0;
-    firstMipmap.levelCount = 1;
-    firstMipmap.baseArrayLayer = 0;
-    firstMipmap.layerCount = 1;
-
-    // set layout for copying
-    Utils::BarrierImage(
-        cmd, finalImage,
-        0, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-        firstMipmap);
-
-    VkBufferImageCopy copyRegion = {};
-    copyRegion.bufferOffset = 0;
-    // tigthly packed
-    copyRegion.bufferRowLength = 0;
-    copyRegion.bufferImageHeight = 0;
-    copyRegion.imageExtent = { size.width, size.height, 1 };
-    copyRegion.imageOffset = { 0,0,0 };
-    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegion.imageSubresource.mipLevel = 0;
-    copyRegion.imageSubresource.baseArrayLayer = 0;
-    copyRegion.imageSubresource.layerCount = 1;
-
-    vkCmdCopyBufferToImage(
-        cmd, stagingBuffer, finalImage,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
-
-    // 3. Create mipmaps
-
-    // first mipmap to TRANSFER_SRC to create mipmaps using blit
-    Utils::BarrierImage(
-        cmd, finalImage,
-        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-        firstMipmap);
-
-    uint32_t mipWidth = size.width;
-    uint32_t mipHeight = size.height;
-
-    for (uint32_t mipLevel = 1; mipLevel < mipmapCount; mipLevel++)
-    {
-        uint32_t prevMipWidth = mipWidth;
-        uint32_t prevMipHeight = mipHeight;
-
-        mipWidth >>= 1;
-        mipHeight >>= 1;
-
-        assert(mipWidth > 0 && mipHeight > 0);
-        assert(mipLevel != mipmapCount - 1 || (mipWidth == 1 || mipHeight == 1));
-
-        VkImageSubresourceRange curMipmap = {};
-        curMipmap.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        curMipmap.baseMipLevel = mipLevel;
-        curMipmap.levelCount = 1;
-        curMipmap.baseArrayLayer = 0;
-        curMipmap.layerCount = 1;
-
-        // current mip to TRANSFER_DST
-        Utils::BarrierImage(
-            cmd, finalImage,
-            0, VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            curMipmap);
-
-        // blit from previous mip level
-        VkImageBlit curBlit = {};
-
-        curBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        curBlit.srcSubresource.mipLevel = mipLevel - 1;
-        curBlit.srcSubresource.baseArrayLayer = 0;
-        curBlit.srcSubresource.layerCount = 1;
-        curBlit.srcOffsets[0] = { 0,0,0 };
-        curBlit.srcOffsets[1] = { (int32_t)prevMipWidth, (int32_t)prevMipHeight, 1 };
-
-        curBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        curBlit.dstSubresource.mipLevel = mipLevel;
-        curBlit.dstSubresource.baseArrayLayer = 0;
-        curBlit.dstSubresource.layerCount = 1;
-        curBlit.dstOffsets[0] = { 0,0,0 };
-        curBlit.dstOffsets[1] = { (int32_t)mipWidth, (int32_t)mipHeight, 1 };
-
-        vkCmdBlitImage(
-            cmd,
-            finalImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            finalImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            1, &curBlit, VK_FILTER_LINEAR);
-
-        // current mip to TRANSFER_SRC for the next one
-        Utils::BarrierImage(
-            cmd, finalImage,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            curMipmap);
-    }
-
-    // 4. Prepare all mipmaps for reading in ray tracing and fragment shaders
-
-    VkImageSubresourceRange allMipmaps = {};
-    allMipmaps.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    allMipmaps.baseMipLevel = 0;
-    allMipmaps.levelCount = mipmapCount;
-    allMipmaps.baseArrayLayer = 0;
-    allMipmaps.layerCount = 1;
-
-    Utils::BarrierImage(
-        cmd, finalImage,
-        VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-        allMipmaps);
-
-    VkImageViewCreateInfo viewInfo = {};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = finalImage;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = imageFormat;
-    viewInfo.components = {};
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = mipmapCount;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    VkImageView finalImageView;
-    r = vkCreateImageView(device, &viewInfo, nullptr, &finalImageView);
-    VK_CHECKERROR(r);
-
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, finalImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
-    }
-
-    // push staging buffer to be deleted when it won't be in use
-    stagingToFree[frameIndex].push_back(stagingBuffer);
-
-    return InsertTexture(finalImage, finalImageView, sampler);
+    return InsertTexture(result.image, result.view, sampler);
 }
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
@@ -400,8 +186,53 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
 {
-    assert(0);
-    return RG_NO_MATERIAL;
+    std::vector<uint32_t> materialIndices(createInfo.frameCount);
+
+    // animated material is a series of static materials
+    for (uint32_t i = 0; i < createInfo.frameCount; i++)
+    {
+        materialIndices[i] = CreateStaticMaterial(cmd, frameIndex, createInfo.frames[i]);
+    }
+
+    return InsertAnimatedMaterial(materialIndices);
+}
+
+void TextureManager::ChangeAnimatedMaterialFrame(RgMaterial animMaterial, uint32_t materialFrame)
+{
+    const auto animIt = animatedMaterials.find(animMaterial);
+
+    if (animIt != animatedMaterials.end())
+    {
+        AnimatedMaterial &anim = animIt->second;
+
+        materialFrame = std::min(materialFrame, (uint32_t)anim.materialIndices.size());
+        anim.currentFrame = materialFrame;
+    }
+}
+
+uint32_t TextureManager::GenerateMaterialIndex(const MaterialTextures &materialTextures)
+{
+    uint32_t matIndex = materialTextures.indices[0] + materialTextures.indices[1] + materialTextures.indices[2];
+
+    while (materials.find(matIndex) != materials.end())
+    {
+        matIndex++;
+    }
+
+    return matIndex;
+}
+
+uint32_t TextureManager::GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices)
+{
+    uint32_t matIndex = std::accumulate(materialIndices.begin(), materialIndices.end(), 0u);
+
+    // all materials share the same pool of indices
+    while (materials.find(matIndex) != materials.end())
+    {
+        matIndex++;
+    }
+
+    return matIndex;
 }
 
 uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures)
@@ -413,6 +244,7 @@ uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures
         if (t != EMPTY_TEXTURE_INDEX)
         {
             isEmpty = false;
+            break;
         }
     }
 
@@ -421,12 +253,7 @@ uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures
         return RG_NO_MATERIAL;
     }
 
-    uint32_t matIndex = materialTextures.indices[0] + materialTextures.indices[1] + materialTextures.indices[2];
-
-    while (materials.find(matIndex) != materials.end())
-    {
-        matIndex++;
-    }
+    uint32_t matIndex = GenerateMaterialIndex(materialTextures);
 
     Material material = {};
     material.index = matIndex;
@@ -436,17 +263,47 @@ uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures
     return matIndex;
 }
 
-void TextureManager::DestroyMaterial(uint32_t materialIndex)
+uint32_t TextureManager::InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices)
+{
+    bool isEmpty = true;
+
+    for (uint32_t m : materialIndices)
+    {
+        if (m != RG_NO_MATERIAL)
+        {
+            isEmpty = false;
+            break;
+        }    
+    }
+
+    if (isEmpty)
+    {
+        return RG_NO_MATERIAL;
+    }
+
+    uint32_t animMatIndex = GenerateMaterialIndex(materialIndices);
+
+    animatedMaterials[animMatIndex] = {};
+
+    AnimatedMaterial &animMat = animatedMaterials[animMatIndex];
+    animMat.currentFrame = 0;
+    animMat.materialIndices = std::move(materialIndices);
+
+    return animMatIndex;
+}
+
+void TextureManager::DestroyMaterialTextures(uint32_t materialIndex)
 {
     auto it = materials.find(materialIndex);
 
-    if (it == materials.end())
+    if (it != materials.end())
     {
-        return;
+        DestroyMaterialTextures(it->second);
     }
+}
 
-    Material &material = it->second;
-
+void TextureManager::DestroyMaterialTextures(const Material &material)
+{
     for (auto t : material.textures.indices)
     {
         if (t != EMPTY_TEXTURE_INDEX)
@@ -454,9 +311,33 @@ void TextureManager::DestroyMaterial(uint32_t materialIndex)
             DestroyTexture(t);
         }
     }
+}
 
-    material.index = 0;
-    material.textures = {};
+void TextureManager::DestroyMaterial(uint32_t materialIndex)
+{
+    const auto animIt = animatedMaterials.find(materialIndex);
+
+    // if it's an animated material
+    if (animIt != animatedMaterials.end())
+    {
+        AnimatedMaterial &anim = animIt->second;
+
+        // destroy each material
+        for (auto &mat : anim.materialIndices)
+        {
+            DestroyMaterialTextures(mat);
+        }
+
+        animatedMaterials.erase(animIt);
+    }
+
+    auto it = materials.find(materialIndex);
+
+    if (it != materials.end())
+    {
+        DestroyMaterialTextures(it->second);
+        materials.erase(it);
+    }
 }
 
 uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view, VkSampler sampler)
@@ -482,8 +363,7 @@ void TextureManager::DestroyTexture(Texture &texture)
 {
     assert(texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE);
 
-    memAllocator->DestroyTextureImage(texture.image);
-    vkDestroyImageView(device, texture.view, nullptr);
+    textureUploader->DestroyImage(texture.image, texture.view);
  
     texture.image = VK_NULL_HANDLE;
     texture.view = VK_NULL_HANDLE;
@@ -492,6 +372,26 @@ void TextureManager::DestroyTexture(Texture &texture)
 
 MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) const
 {
+    if (materialIndex == RG_NO_MATERIAL)
+    {
+        MaterialTextures empty = {};
+        empty.albedoAlpha = EMPTY_TEXTURE_INDEX;
+        empty.normalMetallic = EMPTY_TEXTURE_INDEX;
+        empty.emissionRoughness = EMPTY_TEXTURE_INDEX;
+
+        return empty;
+    }
+
+    const auto animIt = animatedMaterials.find(materialIndex);
+
+    if (animIt != animatedMaterials.end())
+    {
+        const AnimatedMaterial &anim = animIt->second;
+
+        // return material textures of the current frame
+        return GetMaterialTextures(anim.materialIndices[anim.currentFrame]);
+    }
+
     const auto it = materials.find(materialIndex);
 
     if (it == materials.end())
@@ -504,9 +404,7 @@ MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) con
         return empty;
     }
 
-    const Material &material = it->second;
-
-    return material.textures;
+    return it->second.textures;
 }
 
 uint32_t TextureManager::GetEmptyTextureIndex()

@@ -47,3 +47,9 @@ struct Material
     MaterialTextures    textures;
     uint32_t            index;
 };
+
+struct AnimatedMaterial
+{
+    std::vector<uint32_t>   materialIndices;
+    uint32_t                currentFrame;
+};

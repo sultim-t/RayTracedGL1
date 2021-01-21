@@ -29,7 +29,7 @@
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 #include "TextureDescriptors.h"
-#include "RTGL1/RTGL1.h"
+#include "TextureUploader.h"
 
 class TextureManager
 {
@@ -37,7 +37,7 @@ public:
     explicit TextureManager(
         VkDevice device,
         std::shared_ptr<MemoryAllocator> memAllocator,
-        std::shared_ptr<CommandBufferManager> &cmdManager,
+        const std::shared_ptr<CommandBufferManager> &cmdManager,
         const char *defaultTexturesPath,
         const char *albedoAlphaPostfix,
         const char *normalMetallicPostfix,
@@ -54,6 +54,7 @@ public:
     uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
+    void ChangeAnimatedMaterialFrame(RgMaterial animMaterial, uint32_t materialFrame);
 
     void DestroyMaterial(uint32_t materialIndex);
 
@@ -66,8 +67,6 @@ public:
 private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
 
-    static uint32_t GetMipmapCount(const RgExtent2D &size);
-
     uint32_t PrepareStaticTexture(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const void *data, const RgExtent2D &size,
@@ -78,7 +77,14 @@ private:
     void DestroyTexture(uint32_t textureIndex);
     void DestroyTexture(Texture &texture);
 
+    uint32_t GenerateMaterialIndex(const MaterialTextures &materialTextures);
+    uint32_t GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices);
+
     uint32_t InsertMaterial(const MaterialTextures &materialTextures);
+    uint32_t InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices);
+
+    void DestroyMaterialTextures(uint32_t materialIndex);
+    void DestroyMaterialTextures(const Material &material);
 
     void UpdateDescSet(uint32_t frameIndex);
 
@@ -86,16 +92,13 @@ private:
     VkDevice device;
 
     std::shared_ptr<ImageLoader> imageLoader;
-    std::shared_ptr<MemoryAllocator> memAllocator;
 
     std::shared_ptr<SamplerManager> samplerMgr;
     std::shared_ptr<TextureDescriptors> textureDesc;
-
-    // Staging buffers that were used for uploading must be destroyed
-    // on the frame with same index when it'll be certainly not in use.
-    std::vector<VkBuffer> stagingToFree[MAX_FRAMES_IN_FLIGHT];
+    std::shared_ptr<TextureUploader> textureUploader;
 
     std::vector<Texture> textures;
+    std::map<uint32_t, AnimatedMaterial> animatedMaterials;
     std::map<uint32_t, Material> materials;
 
     std::string defaultTexturesPath;

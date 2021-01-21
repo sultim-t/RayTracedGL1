@@ -323,7 +323,12 @@ RgResult VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo
 
 RgResult VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)
 {
-    assert(0);
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
+
+    textureManager->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
     return RG_SUCCESS;
 }
 
