@@ -26,6 +26,7 @@
 #include <RTGL1/RTGL1.h>
 #include "Buffer.h"
 #include "Common.h"
+#include "TextureManager.h"
 
 class RasterizedDataCollector
 {
@@ -42,6 +43,7 @@ public:
     explicit RasterizedDataCollector(
         VkDevice device, 
         const std::shared_ptr<PhysicalDevice> &physDevice,
+        std::shared_ptr<TextureManager> textureMgr,
         uint32_t maxVertexCount, uint32_t maxIndexCount);
     ~RasterizedDataCollector();
 
@@ -65,6 +67,7 @@ private:
 
 private:
     VkDevice device;
+    std::weak_ptr<TextureManager> textureMgr;
 
     Buffer vertexBuffer;
     Buffer indexBuffer;

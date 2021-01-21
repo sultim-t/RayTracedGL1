@@ -65,7 +65,7 @@ public:
     RgResult DestroyMaterial(RgMaterial material);
 
 
-    RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);
+    RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
 
 private:
@@ -80,7 +80,7 @@ private:
 
     void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo);
 
-    VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight);
+    VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
     void Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight);
     void EndFrame(VkCommandBuffer cmd);
 

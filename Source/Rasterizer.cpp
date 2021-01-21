@@ -23,25 +23,32 @@
 #include "Generated/ShaderCommonC.h"
 
 Rasterizer::Rasterizer(
-    VkDevice device, 
-    const std::shared_ptr<PhysicalDevice> &physDevice, 
-    const std::shared_ptr<ShaderManager> &shaderManager,
-    VkDescriptorSetLayout texturesDescLayout,
-    VkFormat surfaceFormat,
-    uint32_t maxVertexCount, uint32_t maxIndexCount)
+    VkDevice _device,
+    const std::shared_ptr<PhysicalDevice> &_physDevice,
+    const std::shared_ptr<ShaderManager> &_shaderManager,
+    std::shared_ptr<TextureManager> _textureMgr,
+    VkFormat _surfaceFormat,
+    uint32_t _maxVertexCount, uint32_t _maxIndexCount)
+:
+    device(_device),
+    textureMgr(_textureMgr),
+    renderPass(VK_NULL_HANDLE),
+    pipelineLayout(VK_NULL_HANDLE),
+    pipelineCache(VK_NULL_HANDLE),
+    pipeline(VK_NULL_HANDLE),
+    curRenderArea{},
+    curViewport{}
 {
-    this->device = device;
-
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         collectors[i] = std::make_shared<RasterizedDataCollector>(
-            device, physDevice, maxVertexCount, maxIndexCount);
+            device, _physDevice, _textureMgr, _maxVertexCount, _maxIndexCount);
     }
 
-    CreateRenderPass(surfaceFormat);
-    CreatePipelineLayout(texturesDescLayout);
+    CreateRenderPass(_surfaceFormat);
+    CreatePipelineLayout(_textureMgr->GetDescSetLayout());
     CreatePipelineCache();
-    CreatePipeline(shaderManager);
+    CreatePipeline(_shaderManager);
 }
 
 Rasterizer::~Rasterizer()
@@ -58,8 +65,19 @@ void Rasterizer::Upload(const RgRasterizedGeometryUploadInfo &uploadInfo, uint32
     collectors[frameIndex]->AddGeometry(uploadInfo);
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, VkDescriptorSet texturesDescSet)
+void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    VkDescriptorSet texturesDescSet;
+
+    if (auto tm = textureMgr.lock())
+    {
+        texturesDescSet = tm->GetDescSet(frameIndex);
+    }
+    else
+    {
+        return;
+    }
+
     VkDeviceSize offset = 0;
     VkBuffer vrtBuffer = collectors[frameIndex]->GetVertexBuffer();
     VkBuffer indBuffer = collectors[frameIndex]->GetIndexBuffer();
@@ -83,13 +101,10 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, VkDescriptorSet 
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
-    // TODO: global texture array desc set
-#if 0
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0,
         1, &texturesDescSet,
         0, nullptr);
-#endif
     vkCmdBindVertexBuffers(cmd, 0, 1, &vrtBuffer, &offset);
     vkCmdBindIndexBuffer(cmd, indBuffer, offset, VK_INDEX_TYPE_UINT32);
 
@@ -135,12 +150,8 @@ void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
 {
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-
-    // TODO: global texture array desc set
-#if 0
     layoutInfo.setLayoutCount = 1;
     layoutInfo.pSetLayouts = &texturesDescLayout;
-#endif
     layoutInfo.pushConstantRangeCount = 0;
     layoutInfo.pPushConstantRanges = nullptr;
 

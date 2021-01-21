@@ -196,8 +196,7 @@ typedef struct RgRasterizedGeometryUploadInfo
 
     // Only the albedo-alpha textures from the materials
     // are used for rasterized geometry.
-    uint32_t            textureCount;
-    RgMaterial          textures[4];
+    RgLayeredMaterial   textures;
 
     uint32_t            vertexCount;
     // Position data, 3 floats
@@ -410,7 +409,8 @@ RgResult rgDestroyMaterial(
 RgResult rgStartFrame(
     RgInstance                          rgInstance,
     uint32_t                            surfaceWidth, 
-    uint32_t                            surfaceHeight);
+    uint32_t                            surfaceHeight, 
+    bool                                vsync);
 
 typedef enum RgDrawFrameFlagBits
 {

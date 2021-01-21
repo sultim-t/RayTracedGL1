@@ -86,8 +86,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
     rasterizer = std::make_shared<Rasterizer>(
-        device, physDevice, shaderManager,
-        (VkDescriptorSetLayout)VK_NULL_HANDLE, swapchain->GetSurfaceFormat(), 
+        device, physDevice, shaderManager, textureManager, swapchain->GetSurfaceFormat(), 
         info->rasterizedMaxVertexCount, info->rasterizedMaxIndexCount);
     swapchain->Subscribe(rasterizer);
 }
@@ -117,7 +116,7 @@ VulkanDevice::~VulkanDevice()
     DestroyInstance();
 }
 
-VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
+VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync)
 {
     currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -125,7 +124,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     Utils::WaitAndResetFence(device, frameFences[currentFrameIndex]);
 
     swapchain->RequestNewSize(surfaceWidth, surfaceHeight);
-    swapchain->RequestVsync(true);
+    swapchain->RequestVsync(vsync);
     swapchain->AcquireImage(imageAvailableSemaphores[currentFrameIndex]);
 
     // reset cmds for current frame index
@@ -185,7 +184,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
         storageImage->imageLayout);
 
     // draw rasterized geometry in swapchain's framebuffer
-    rasterizer->Draw(cmd, currentFrameIndex, VK_NULL_HANDLE);
+    rasterizer->Draw(cmd, currentFrameIndex);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
@@ -206,14 +205,14 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 #pragma region RTGL1 interface implementation
 
-RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight)
+RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync)
 {
     if (currentFrameCmd != VK_NULL_HANDLE)
     {
         return RG_FRAME_WASNT_ENDED;
     }
 
-    currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight);
+    currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight, vsync);
     return RG_SUCCESS;
 }
 

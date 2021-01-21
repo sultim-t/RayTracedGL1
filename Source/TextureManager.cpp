@@ -509,7 +509,7 @@ MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) con
     return material.textures;
 }
 
-uint32_t TextureManager::GetEmptyTextureIndex() const
+uint32_t TextureManager::GetEmptyTextureIndex()
 {
     return EMPTY_TEXTURE_INDEX;
 }

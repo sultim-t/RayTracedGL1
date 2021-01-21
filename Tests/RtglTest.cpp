@@ -204,6 +204,10 @@ void StartScene(RgInstance instance, Window *pWindow)
             dyn_colors,
             dyn_indices);
 
+    RgStaticMaterialCreateInfo matInfo = {};
+    matInfo.relativePath = "TestImage.png";
+    matInfo.useMipmaps = RG_TRUE;
+
     RgGeometryUploadInfo st_info = {};
     RgGeometryUploadInfo dyn_info = {};
 
@@ -258,12 +262,6 @@ void StartScene(RgInstance instance, Window *pWindow)
     }
 
 
-    r = rgStartNewScene(instance);
-    RG_CHECKERROR_R;
-
-    r = rgUploadGeometry(instance, &st_info, nullptr);
-    RG_CHECKERROR_R;
-
     /*st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
     st_info.transform = {
             1,0,0,0,
@@ -274,10 +272,10 @@ void StartScene(RgInstance instance, Window *pWindow)
     r = rgUploadGeometry(instance, &st_info, &movable);
     RG_CHECKERROR_R;*/
 
-    r = rgSubmitStaticGeometries(instance);
-    RG_CHECKERROR_R;
 
     uint64_t frameCount = 0;
+
+    RgMaterial mat;
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
     {
@@ -285,16 +283,38 @@ void StartScene(RgInstance instance, Window *pWindow)
         pWindow->UpdateSize();
         ProcessInput(pWindow->glfwHandle);
 
-        r = rgStartFrame(instance, static_cast<uint32_t>(pWindow->width), static_cast<uint32_t>(pWindow->height));
+        r = rgStartFrame(instance, (uint32_t)pWindow->width, (uint32_t)pWindow->height, true);
         RG_CHECKERROR_R;
 
-        st_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+        if (frameCount == 0)
+        {
+            r = rgStartNewScene(instance);
+            RG_CHECKERROR_R;
+
+            r = rgCreateStaticMaterial(instance, &matInfo, &mat);
+            RG_CHECKERROR_R;
+
+            st_info.geomMaterial = {
+                mat,
+                RG_NO_MATERIAL,
+                RG_NO_MATERIAL
+            };
+
+
+            r = rgUploadGeometry(instance, &st_info, nullptr);
+            RG_CHECKERROR_R;
+
+            r = rgSubmitStaticGeometries(instance);
+            RG_CHECKERROR_R;
+        }
+
+        /*st_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
         st_info.transform = {
             1,0,0,0,
             0,1,0, -static_cast<float>(frameCount) * 0.05f + 5,
             0,0,1,0
         };
-        rgUploadGeometry(instance, &st_info, nullptr);
+        rgUploadGeometry(instance, &st_info, nullptr);*/
 
         rgUploadGeometry(instance, &dyn_info, nullptr);
 
@@ -308,14 +328,24 @@ void StartScene(RgInstance instance, Window *pWindow)
             0.5f, 0.5f, 0
         };
 
+        float texCoords[] =
+        {
+            0, 0, 
+            0, 1.0f,
+            1.0f, 0, 
+            1.0f, 0, 
+            0, 1.0f, 
+            1.0, 1.0f,
+        };
+
         uint32_t colors[]
         {
-            0xFF000000,
-            0x00FF00FF,
-            0x0000FFFF,
-            0x0000FFFF,
-            0x00FF00FF,
-            0xFF000000,
+            0xFFFF0000,
+            0xFFFFFFFF,
+            0xFFFFFFFF,
+            0xFFFFFFFF,
+            0xFFFFFFFF,
+            0xFF00FF00,
         };
 
         RgRasterizedGeometryUploadInfo raster = {};
@@ -324,8 +354,16 @@ void StartScene(RgInstance instance, Window *pWindow)
         raster.vertexStride = 3 * sizeof(float);
         raster.colorData = colors;
         raster.colorStride = sizeof(uint32_t);
+        raster.texCoordData = texCoords;
+        raster.texCoordStride = 2 * sizeof(float);
+        raster.textures = 
+        {
+            mat,
+            RG_NO_MATERIAL,
+            RG_NO_MATERIAL
+        };
 
-        RgResult r = rgUploadRasterizedGeometry(instance, &raster);
+        r = rgUploadRasterizedGeometry(instance, &raster);
         RG_CHECKERROR_R;
 
         /*RgUpdateTransformInfo uptr = {};
@@ -366,7 +404,7 @@ int main()
         RgInstanceCreateInfo info = {};
         info.name = "RTGL1 Test";
         info.physicalDeviceIndex = 0;
-        info.enableValidationLayer = RG_TRUE;
+        info.enableValidationLayer = RG_FALSE;
 
         info.vertexPositionStride = 3 * sizeof(float);
         info.vertexNormalStride = 3 * sizeof(float);

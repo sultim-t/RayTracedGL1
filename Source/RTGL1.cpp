@@ -124,9 +124,9 @@ RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyMaterial(material);
 }
 
-RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t surfaceHeight)
+RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight, vsync);
 }
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *frameInfo)

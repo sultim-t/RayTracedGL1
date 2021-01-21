@@ -1,13 +1,12 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
-#extension GL_EXT_nonuniform_qualifier : enable
 
 #define DESC_SET_GLOBAL_UNIFORM 2
 #define DESC_SET_VERTEX_DATA 3
+#define DESC_SET_TEXTURES 4
 #include "ShaderCommonGLSLFunc.h"
 
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
-layout(binding = BINDING_TEXTURES, set = 4) uniform sampler2D textures[];
 
 
 layout(location = 0) rayPayloadInEXT vec3 hitValue;
@@ -27,7 +26,7 @@ void main()
 
 	if (tr.materials[0][0] > 0)
 	{
-		color = texture(textures[nonuniformEXT(tr.materials[0][0])], texCoord).xyz;
+		color = getTextureSample(tr.materials[0][0], texCoord).xyz;
 	}  
 
 	vec3 normal;

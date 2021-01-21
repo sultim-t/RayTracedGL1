@@ -20,11 +20,15 @@
 
 #include "RasterizedDataCollector.h"
 
+#define RASTERIZER_TEXTURE_COUNT 3
+static_assert(RASTERIZER_TEXTURE_COUNT == 3 || RASTERIZER_TEXTURE_COUNT == 4, "RASTERIZER_TEXTURE_COUNT must be 3 or 4.");
+static_assert(RASTERIZER_TEXTURE_COUNT == sizeof(RgLayeredMaterial) / sizeof(RgMaterial), "RASTERIZER_TEXTURE_COUNT must be the same as in RgLayeredMaterial");
+
 struct RasterizedDataCollector::RasterizerVertex
 {
     float       position[3];
     uint32_t    color;
-    uint32_t    textureIds[4];
+    uint32_t    textureIds[RASTERIZER_TEXTURE_COUNT];
     float       texCoord[2];
 };
 
@@ -42,7 +46,7 @@ void RasterizedDataCollector::GetVertexLayout(std::array<VkVertexInputAttributeD
 
     attrs[2].binding = 0;
     attrs[2].location = 2;
-    attrs[2].format = VK_FORMAT_R32G32B32A32_UINT;
+    attrs[2].format = RASTERIZER_TEXTURE_COUNT == 3 ? VK_FORMAT_R32G32B32_UINT : VK_FORMAT_R32G32B32A32_UINT;
     attrs[2].offset = offsetof(RasterizerVertex, textureIds);
 
     attrs[3].binding = 0;
@@ -57,27 +61,30 @@ uint32_t RasterizedDataCollector::GetVertexStride()
 }
 
 RasterizedDataCollector::RasterizedDataCollector(
-    VkDevice device, 
-    const std::shared_ptr<PhysicalDevice> &physDevice,
-    uint32_t maxVertexCount, uint32_t maxIndexCount) :
-    curVertexCount(0), curIndexCount(0)
+    VkDevice _device,
+    const std::shared_ptr<PhysicalDevice> &_physDevice,
+    std::shared_ptr<TextureManager> _textureMgr,
+    uint32_t _maxVertexCount, uint32_t _maxIndexCount)
+:
+    device(_device),
+    textureMgr(_textureMgr),
+    curVertexCount(0),
+    curIndexCount(0)
 {
-    this->device = device;
-
     vertexBuffer.Init(
-        device, *physDevice,
-        maxVertexCount * sizeof(RasterizerVertex),
+        device, *_physDevice,
+        _maxVertexCount * sizeof(RasterizerVertex),
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     indexBuffer.Init(
-        device, *physDevice,
-        maxIndexCount * sizeof(uint32_t),
+        device, *_physDevice,
+        _maxIndexCount * sizeof(uint32_t),
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
-    mappedVertexData = static_cast<RasterizerVertex*>(vertexBuffer.Map());
-    mappedIndexData = static_cast<uint32_t*>(indexBuffer.Map());
+    mappedVertexData = static_cast<RasterizerVertex *>(vertexBuffer.Map());
+    mappedIndexData = static_cast<uint32_t *>(indexBuffer.Map());
 }
 
 RasterizedDataCollector::~RasterizedDataCollector()
@@ -99,6 +106,26 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         return;
     }
 
+    uint32_t textureIds[RASTERIZER_TEXTURE_COUNT];
+
+    if (auto mgr = textureMgr.lock())
+    {
+        for (uint32_t t = 0; t < RASTERIZER_TEXTURE_COUNT; t++)
+        {
+            uint32_t matIndex = info.textures.layerMaterials[t];
+
+            // get albedo-alpha texture index from texture manager
+            textureIds[t] = mgr->GetMaterialTextures(matIndex).albedoAlpha;
+        }
+    }
+    else
+    {
+        for (uint32_t t = 0; t < RASTERIZER_TEXTURE_COUNT; t++)
+        {
+            textureIds[t] = TextureManager::GetEmptyTextureIndex();
+        }
+    }
+
     DrawInfo drawInfo = {};
 
     RasterizerVertex *dstVerts = mappedVertexData + curVertexCount;
@@ -109,9 +136,9 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
 
     for (uint32_t i = 0; i < info.vertexCount; i++)
     {
-        float *srcPos = (float *) ((uint8_t *) info.vertexData + info.vertexStride * i);
-        uint32_t *srcColor = (uint32_t *) ((uint8_t *) info.colorData + info.colorStride * i);
-        float *srcTexCoord = (float *) ((uint8_t *) info.texCoordData + info.texCoordStride * i);
+        auto *srcPos        = (float*)      ((uint8_t*)info.vertexData      + (uint64_t)i * info.vertexStride);
+        auto *srcColor      = (uint32_t*)   ((uint8_t*)info.colorData       + (uint64_t)i * info.colorStride);
+        auto *srcTexCoord   = (float*)      ((uint8_t*)info.texCoordData    + (uint64_t)i * info.texCoordStride);
 
         RasterizerVertex vert = {};
 
@@ -124,14 +151,7 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         vert.texCoord[0] = info.texCoordData ? srcTexCoord[0] : 0;
         vert.texCoord[1] = info.texCoordData ? srcTexCoord[1] : 0;
 
-        for (uint32_t t = 0; t < info.textureCount; t++)
-        {
-            vert.textureIds[t] = info.textures[t];
-        }
-        for (uint32_t t = info.textureCount; t < 4; t++)
-        {
-            vert.textureIds[t] = 0;
-        }
+        memcpy(vert.textureIds, &textureIds, sizeof(uint32_t) * RASTERIZER_TEXTURE_COUNT);
 
         // write to mapped memory
         dstVerts[i] = vert;

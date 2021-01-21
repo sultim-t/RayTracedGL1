@@ -34,10 +34,10 @@ class Rasterizer : public ISwapchainDependency
 {
 public:
     explicit Rasterizer(
-        VkDevice device, 
+        VkDevice device,
         const std::shared_ptr<PhysicalDevice> &physDevice,
         const std::shared_ptr<ShaderManager> &shaderManager,
-        VkDescriptorSetLayout texturesDescLayout,
+        std::shared_ptr<TextureManager> textureMgr,
         VkFormat surfaceFormat,
         uint32_t maxVertexCount, uint32_t maxIndexCount);
     ~Rasterizer() override;
@@ -48,7 +48,7 @@ public:
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
     void Upload(const RgRasterizedGeometryUploadInfo &uploadInfo, uint32_t frameIndex);
-    void Draw(VkCommandBuffer cmd, uint32_t frameIndex, VkDescriptorSet texturesDescSet);
+    void Draw(VkCommandBuffer cmd, uint32_t frameIndex);
 
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
@@ -64,6 +64,7 @@ private:
 
 private:
     VkDevice device;
+    std::weak_ptr<TextureManager> textureMgr;
 
     VkRenderPass        renderPass;
     VkPipelineLayout    pipelineLayout;

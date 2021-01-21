@@ -2,15 +2,22 @@
 
 layout (location = 0) in vec4 color;
 layout (location = 1) in vec2 texCoord;
-layout (location = 2) in flat uvec4 textureIds;
+layout (location = 2) in flat uvec3 textureIds;
 
 layout (location = 0) out vec4 outColor;
 
-//layout (binding = , set = ) uniform sampler2D textures[];
+#define DESC_SET_TEXTURES 0
+#include "ShaderCommonGLSLFunc.h"
 
 void main()
 {
-    // TODO: get textures
-
     outColor = color;
+
+    for (uint i = 0; i < 3; i++)
+    {
+        if (textureIds[i] > 0)
+        {
+            outColor *= getTextureSample(textureIds[i], texCoord);
+        }
+    }
 }

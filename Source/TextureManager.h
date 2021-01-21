@@ -58,7 +58,7 @@ public:
     void DestroyMaterial(uint32_t materialIndex);
 
     MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
-    uint32_t GetEmptyTextureIndex() const;
+    static uint32_t GetEmptyTextureIndex();
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;

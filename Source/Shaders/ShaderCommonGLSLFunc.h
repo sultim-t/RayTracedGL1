@@ -1,5 +1,13 @@
 #include "ShaderCommonGLSL.h"
 
+#extension GL_EXT_nonuniform_qualifier : enable
+
+// Functions to access RTGL data.
+// Available defines:
+// * DESC_SET_GLOBAL_UNIFORM    -- to access global uniform buffer
+// * DESC_SET_VERTEX_DATA       -- to access geometry data. DESC_SET_GLOBAL_UNIFORM must be defined
+// * DESC_SET_TEXTURES          -- to access textures by index
+
 #define UINT32_MAX 0xFFFFFFFF
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
@@ -292,3 +300,32 @@ mat4 getModelMatrix(int instanceCustomIndex, int geometryIndex)
 }
 #endif // DESC_SET_VERTEX_DATA
 #endif // DESC_SET_GLOBAL_UNIFORM
+
+#ifdef DESC_SET_TEXTURES
+layout(
+    set = DESC_SET_TEXTURES,
+    binding = BINDING_TEXTURES)
+    uniform sampler2D globalTextures[];
+
+sampler2D getTexture(uint textureIndex)
+{
+    return globalTextures[nonuniformEXT(textureIndex)];
+}
+
+vec4 getTextureSample(uint textureIndex, vec2 texCoord)
+{
+    return texture(globalTextures[nonuniformEXT(textureIndex)], texCoord);
+}
+
+vec4 getTextureSampleSafe(uint textureIndex, vec2 texCoord)
+{
+    if (textureIndex != 0)
+    {
+        return texture(globalTextures[nonuniformEXT(textureIndex)], texCoord);
+    }
+    else
+    {
+        return vec4(1.0, 1.0, 1.0, 1.0);
+    }
+}
+#endif
