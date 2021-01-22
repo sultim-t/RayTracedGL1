@@ -351,6 +351,7 @@ typedef struct RgStaticMaterialCreateInfo
     
 typedef struct RgDynamicMaterialCreateInfo
 {
+    // The width and height must be > 0.
     RgExtent2D              size;
     // Only R8G8B8A8 textures.
     // If data is not null, the newly created dynamic texture will be

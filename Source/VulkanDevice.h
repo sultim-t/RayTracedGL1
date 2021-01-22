@@ -61,7 +61,7 @@ public:
     RgResult CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
     RgResult ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
     RgResult CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result);
-    RgResult UpdateDynamicMaterial(RgMaterial dynamicMaterial, const RgDynamicMaterialUpdateInfo *updateInfo);
+    RgResult UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo);
     RgResult DestroyMaterial(RgMaterial material);
 
 

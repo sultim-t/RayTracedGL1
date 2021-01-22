@@ -21,6 +21,10 @@
 #include "TextureUploader.h"
 #include "Utils.h"
 
+constexpr VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_SRGB;
+constexpr VkDeviceSize BytesPerPixel = 4;
+
+
 TextureUploader::TextureUploader(VkDevice _device, std::shared_ptr<MemoryAllocator> _memAllocator)
     : device(_device), memAllocator(std::move(_memAllocator))
 {}
@@ -140,10 +144,7 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
 
     // 1. Allocate and fill buffer
 
-    const VkFormat imageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-    const VkDeviceSize bytesPerPixel = 4;
-
-    VkDeviceSize dataSize = bytesPerPixel * size.width * size.height;
+    VkDeviceSize dataSize = BytesPerPixel * size.width * size.height;
 
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -167,12 +168,12 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
     // copy image data to buffer
     memcpy(mappedData, data, dataSize);
 
-    uint32_t mipmapCount = GetMipmapCount(size);
+    uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
 
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = imageFormat;
+    imageInfo.format = ImageFormat;
     imageInfo.extent = { size.width, size.height, 1 };
     imageInfo.mipLevels = mipmapCount;
     imageInfo.arrayLayers = 1;
@@ -226,7 +227,7 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
         cmd, stagingBuffer, finalImage,
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 
-    if (generateMipmaps)
+    if (mipmapCount > 1)
     {
         // 3A. 1. Create mipmaps
 
@@ -272,7 +273,7 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = finalImage;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = imageFormat;
+    viewInfo.format = ImageFormat;
     viewInfo.components = {};
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel = 0;
@@ -292,6 +293,7 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
     // push staging buffer to be deleted when it won't be in use
     stagingToFree[frameIndex].push_back(stagingBuffer);
 
+    // return results
     result.wasUploaded = true;
     result.image = finalImage;
     result.view = finalImageView;
@@ -307,7 +309,146 @@ TextureUploader::UploadResult TextureUploader::UploadDynamicImage(const UploadIn
     bool                generateMipmaps = info.generateMipmaps;
     const char          *debugName = info.debugName;
 
-    return {};
+    UploadResult result = {};
+    result.wasUploaded = false;
+
+    VkResult r;
+
+    // 1. Create image
+
+    uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
+
+    VkImageCreateInfo imageInfo = {};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.format = ImageFormat;
+    imageInfo.extent = { size.width, size.height, 1 };
+    imageInfo.mipLevels = mipmapCount;
+    imageInfo.arrayLayers = 1;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+
+    VkDeviceMemory memory;
+    void *mappedData;
+
+    VkImage dynamicImage = memAllocator->CreateDynamicTextureImage(&imageInfo, &memory, &mappedData);
+    if (dynamicImage == VK_NULL_HANDLE)
+    {
+        return result;
+    }
+
+    if (debugName != nullptr)
+    {
+        SET_DEBUG_NAME(device, dynamicImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
+    }
+
+    // 2. Copy data if present
+    VkDeviceSize dataSize = BytesPerPixel * size.width * size.height;
+
+    if (data != nullptr)
+    {
+        memcpy(mappedData, data, dataSize);
+    }
+
+    VkImageSubresourceRange firstMipmap = {};
+    firstMipmap.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    firstMipmap.baseMipLevel = 0;
+    firstMipmap.levelCount = 1;
+    firstMipmap.baseArrayLayer = 0;
+    firstMipmap.layerCount = 1;
+
+    if (mipmapCount > 1)
+    {
+        // 3A. 1. Create mipmaps
+
+        // first mipmap to TRANSFER_SRC to create mipmaps using blit
+        Utils::BarrierImage(
+            cmd, dynamicImage,
+            0, VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            firstMipmap);
+
+        PrepareMipmaps(cmd, dynamicImage, size.width, size.height, mipmapCount);
+
+        // 3A. 2. Prepare all mipmaps for reading in ray tracing and fragment shaders
+
+        VkImageSubresourceRange allMipmaps = {};
+        allMipmaps.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        allMipmaps.baseMipLevel = 0;
+        allMipmaps.levelCount = mipmapCount;
+        allMipmaps.baseArrayLayer = 0;
+        allMipmaps.layerCount = 1;
+
+        Utils::BarrierImage(
+            cmd, dynamicImage,
+            VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
+            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            allMipmaps);
+    }
+    else
+    {
+        // 3B. If using only one mipmap, then prepare it for shader read
+
+        Utils::BarrierImage(
+            cmd, dynamicImage,
+            0, VK_ACCESS_SHADER_READ_BIT,
+            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            firstMipmap);
+    }
+
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = dynamicImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = ImageFormat;
+    viewInfo.components = {};
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = mipmapCount;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    VkImageView dynamicImageView;
+    r = vkCreateImageView(device, &viewInfo, nullptr, &dynamicImageView);
+    VK_CHECKERROR(r);
+
+    if (debugName != nullptr)
+    {
+        SET_DEBUG_NAME(device, dynamicImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
+    }
+
+    // save pointer for updating image data
+    DynamicImageUpdateInfo updateInfo = {};
+    updateInfo.mappedData = mappedData;
+    updateInfo.size = (uint32_t)dataSize;
+
+    dynamicImageMappedData[dynamicImage] = updateInfo;
+
+    // return results
+    result.wasUploaded = true;
+    result.image = dynamicImage;
+    result.view = dynamicImageView;
+
+    return result;
+}
+
+void TextureUploader::UpdateDynamicImage(VkImage dynamicImage, const void *data)
+{
+    assert(dynamicImage != VK_NULL_HANDLE);
+
+    auto it = dynamicImageMappedData.find(dynamicImage);
+
+    if (it != dynamicImageMappedData.end())
+    {
+        auto &updateInfo = it->second;
+
+        assert(updateInfo.mappedData != nullptr);
+        memcpy(updateInfo.mappedData, data, updateInfo.size);
+    }
 }
 
 void TextureUploader::DestroyImage(VkImage image, VkImageView view)

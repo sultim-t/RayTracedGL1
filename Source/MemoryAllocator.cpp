@@ -130,6 +130,8 @@ VkImage MemoryAllocator::CreateDynamicTextureImage(const VkImageCreateInfo *info
 
     imgAllocs[image] = resultAlloc;
 
+    assert(resultAllocInfo.pMappedData != nullptr);
+
     *outMemory = resultAllocInfo.deviceMemory;
     *pOutMappedData = resultAllocInfo.pMappedData;
     return image;
@@ -245,7 +247,7 @@ void MemoryAllocator::CreateDynamicTexturesPool()
 
     // memory will be written by CPU and read by GPU
     VmaAllocationCreateInfo prototype = {};
-    prototype.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    prototype.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
 
     uint32_t memTypeIndex;
     r = vmaFindMemoryTypeIndexForImageInfo(allocator, &imageInfo, &prototype, &memTypeIndex);

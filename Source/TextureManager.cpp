@@ -191,21 +191,47 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
     textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
 
-    return InsertMaterial(textures, false);
+    return InsertMaterial(textures, true);
+}
+
+void TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialUpdateInfo &updateInfo)
+{
+    const auto it = materials.find(updateInfo.dynamicMaterial);
+
+    if (it != materials.end())
+    {
+        if (it->second.isDynamic)
+        {
+            // dynamic textures have only albedo/alpha
+            uint32_t textureIndex = it->second.textures.albedoAlpha;
+
+            if (textureIndex == EMPTY_TEXTURE_INDEX)
+            {
+                return;
+            }
+
+            VkImage img = textures[textureIndex].image;
+
+            if (img == VK_NULL_HANDLE)
+            {
+                return;
+            }
+
+            textureUploader->UpdateDynamicImage(img, updateInfo.data);
+        }
+    }
 }
 
 uint32_t TextureManager::PrepareDynamicTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, 
     VkSampler sampler, bool generateMipmaps, const char *debugName)
 {
-    if (data == nullptr)
-    {
-        return EMPTY_TEXTURE_INDEX;
-    }
+    assert(size.width > 0 && size.height > 0);
 
     TextureUploader::UploadInfo info = {};
     info.cmd = cmd;
     info.frameIndex = frameIndex;
+    // data can be null
     info.data = data;
     info.size = size;
     info.generateMipmaps = generateMipmaps;

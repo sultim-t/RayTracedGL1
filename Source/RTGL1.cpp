@@ -113,10 +113,9 @@ RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialC
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateDynamicMaterial(createInfo, result);
 }
 
-RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, RgMaterial dynamicMaterial,
-                                const RgDynamicMaterialUpdateInfo *updateInfo)
+RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialUpdateInfo *updateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateDynamicMaterial(dynamicMaterial, updateInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateDynamicMaterial(updateInfo);
 }
 
 RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)

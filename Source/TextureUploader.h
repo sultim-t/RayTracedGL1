@@ -62,14 +62,25 @@ public:
     UploadResult UploadStaticImage(const UploadInfo &info);
     UploadResult UploadDynamicImage(const UploadInfo &info);
 
+    void UpdateDynamicImage(VkImage dynamicImage, const void *data);
+
     void DestroyImage(VkImage image, VkImageView view);
 
 private:
     static uint32_t GetMipmapCount(const RgExtent2D &size);
 
+    // Generate mipmaps for VkImage. First mipmap's layout must be TRANSFER_SRC
+    // and others must have UNDEFINED
     static void PrepareMipmaps(
         VkCommandBuffer cmd, VkImage image, 
         uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount);
+
+private:
+    struct DynamicImageUpdateInfo
+    {
+        void *mappedData;
+        uint32_t size;
+    };
 
 private:
     VkDevice device;
@@ -77,7 +88,9 @@ private:
     std::shared_ptr<MemoryAllocator> memAllocator;
 
     // Staging buffers that were used for uploading must be destroyed
-    // on the frame with same index when it'll be certainly not in use.
+    // on the frame with same index when it'll be certainly not in use
     std::vector<VkBuffer> stagingToFree[MAX_FRAMES_IN_FLIGHT];
 
+    // Each dynamic image has its pointer to HOST_VISIBLE data for updating.
+    std::map<VkImage, DynamicImageUpdateInfo> dynamicImageMappedData;
 };
