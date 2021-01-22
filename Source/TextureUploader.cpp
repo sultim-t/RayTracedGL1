@@ -278,7 +278,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
 
         Utils::BarrierImage(
             cmd, image,
-            curAccessMask, VK_ACCESS_TRANSFER_READ_BIT,
+            curAccessMask, VK_ACCESS_SHADER_READ_BIT,
             curLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             curStageMask, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             firstMipmap);
