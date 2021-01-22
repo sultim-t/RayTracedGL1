@@ -169,10 +169,11 @@ uint32_t TextureManager::PrepareStaticTexture(
     info.frameIndex = frameIndex;
     info.data = data;
     info.size = size;
+    info.isDynamic = false;
     info.generateMipmaps = generateMipmaps;
     info.debugName = debugName;
 
-    auto result = textureUploader->UploadStaticImage(info);
+    auto result = textureUploader->UploadImage(info);
 
     if (!result.wasUploaded)
     {
@@ -194,7 +195,7 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     return InsertMaterial(textures, true);
 }
 
-void TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialUpdateInfo &updateInfo)
+void TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo)
 {
     const auto it = materials.find(updateInfo.dynamicMaterial);
 
@@ -217,7 +218,7 @@ void TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIn
                 return;
             }
 
-            textureUploader->UpdateDynamicImage(img, updateInfo.data);
+            textureUploader->UpdateDynamicImage(cmd, img, updateInfo.data);
         }
     }
 }
@@ -234,10 +235,11 @@ uint32_t TextureManager::PrepareDynamicTexture(
     // data can be null
     info.data = data;
     info.size = size;
+    info.isDynamic = true;
     info.generateMipmaps = generateMipmaps;
     info.debugName = debugName;
 
-    auto result = textureUploader->UploadDynamicImage(info);
+    auto result = textureUploader->UploadImage(info);
 
     if (!result.wasUploaded)
     {

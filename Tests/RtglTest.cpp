@@ -204,9 +204,43 @@ void StartScene(RgInstance instance, Window *pWindow)
             dyn_colors,
             dyn_indices);
 
-    RgStaticMaterialCreateInfo matInfo = {};
-    matInfo.relativePath = "TestImage.png";
-    matInfo.useMipmaps = RG_TRUE;
+    RgStaticMaterialCreateInfo matInfo[] = { {}, {} };
+
+    matInfo[0].relativePath = "../../../TestImage.png";
+    matInfo[0].useMipmaps = RG_TRUE;
+
+    matInfo[1].relativePath = "../../../TestImage1.png";
+    matInfo[1].useMipmaps = RG_TRUE;
+
+    RgAnimatedMaterialCreateInfo animInfo = {};
+    animInfo.frameCount = 2;
+    animInfo.frames = matInfo;
+
+    uint32_t dynMatDataA[] =
+    {
+        0xFF0000FF, 0xFF0000FF,
+        0xFF0000FF, 0xFF0000FF
+    };
+    uint32_t dynMatDataB[] =
+    {
+        0xFF00FF00, 0xFF00FF00,
+        0xFF00FF00, 0xFF00FF00
+    };
+    uint32_t dynMatDataC[] =
+    {
+        0xFFFF0000, 0xFFFF0000,
+        0xFFFF0000, 0xFFFF0000
+    };
+    uint32_t *dynMatDatas[] =
+    {
+        dynMatDataA, dynMatDataB, dynMatDataC
+    };
+    uint32_t dynMatPrevState = 2;
+    uint32_t dynMatState = 0;
+
+    RgDynamicMaterialCreateInfo dynMatInfo = {};
+    dynMatInfo.size = {2, 2};
+    dynMatInfo.useMipmaps = RG_FALSE;
 
     RgGeometryUploadInfo st_info = {};
     RgGeometryUploadInfo dyn_info = {};
@@ -291,7 +325,7 @@ void StartScene(RgInstance instance, Window *pWindow)
             r = rgStartNewScene(instance);
             RG_CHECKERROR_R;
 
-            r = rgCreateStaticMaterial(instance, &matInfo, &mat);
+            r = rgCreateDynamicMaterial(instance, &dynMatInfo, &mat);
             RG_CHECKERROR_R;
 
             st_info.geomMaterial = {
@@ -305,6 +339,25 @@ void StartScene(RgInstance instance, Window *pWindow)
             RG_CHECKERROR_R;
 
             r = rgSubmitStaticGeometries(instance);
+            RG_CHECKERROR_R;
+        }
+
+        //rgChangeAnimatedMaterialFrame(instance, mat, frameCount % 120 > 60);
+
+        if (frameCount % 60 == 0)
+        {
+            dynMatState = (dynMatState + 1) % 3;
+        }
+
+        if (dynMatState != dynMatPrevState)
+        {
+            dynMatPrevState = dynMatState;
+
+            RgDynamicMaterialUpdateInfo updInfo;
+            updInfo.dynamicMaterial = mat;
+            updInfo.data = dynMatDatas[dynMatState];
+
+            r = rgUpdateDynamicMaterial(instance, &updInfo);
             RG_CHECKERROR_R;
         }
 

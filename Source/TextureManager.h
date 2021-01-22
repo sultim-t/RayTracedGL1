@@ -59,7 +59,7 @@ public:
     void ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
 
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
-    void UpdateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialUpdateInfo &updateInfo);
+    void UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo);
 
     void DestroyMaterial(uint32_t materialIndex);
 

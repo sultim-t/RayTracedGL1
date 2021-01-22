@@ -350,7 +350,7 @@ RgResult VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *
         return RG_FRAME_WASNT_STARTED;
     }
 
-    textureManager->UpdateDynamicMaterial(currentFrameCmd, currentFrameIndex, *updateInfo);
+    textureManager->UpdateDynamicMaterial(currentFrameCmd, *updateInfo);
     return RG_SUCCESS;
 }
 

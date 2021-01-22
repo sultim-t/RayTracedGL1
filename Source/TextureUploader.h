@@ -44,6 +44,7 @@ public:
         const void          *data;
         RgExtent2D          size;
         bool                generateMipmaps;
+        bool                isDynamic;
         const char          *debugName;
     };
 
@@ -59,12 +60,17 @@ public:
     // Clear staging buffer for given frame index.
     void ClearStaging(uint32_t frameIndex);
 
-    UploadResult UploadStaticImage(const UploadInfo &info);
-    UploadResult UploadDynamicImage(const UploadInfo &info);
-
-    void UpdateDynamicImage(VkImage dynamicImage, const void *data);
-
+    UploadResult UploadImage(const UploadInfo &info);
+    void UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicImage, const void *data);
     void DestroyImage(VkImage image, VkImageView view);
+
+private:
+    enum class ImagePrepareType
+    {
+        INIT,
+        INIT_WITHOUT_COPYING,
+        UPDATE
+    };
 
 private:
     static uint32_t GetMipmapCount(const RgExtent2D &size);
@@ -75,11 +81,23 @@ private:
         VkCommandBuffer cmd, VkImage image, 
         uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount);
 
+    // Image must have TRANSFER_DST layout
+    static void CopyStagingToImage(
+        VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size);
+
+    bool CreateImage(const UploadInfo &info, VkImage *result);
+    // Create mipmaps and prepare image for usage in shaders
+    void PrepareImage(VkImage image, VkBuffer staging, const UploadInfo &info, ImagePrepareType prepareType);
+    VkImageView CreateImageView(VkImage image, uint32_t mipmapCount);
+
 private:
-    struct DynamicImageUpdateInfo
+    struct DynamicImageInfo
     {
-        void *mappedData;
-        uint32_t size;
+        VkBuffer    stagingBuffer;
+        void        *mappedData;
+        uint32_t    dataSize;
+        RgExtent2D  imageSize;
+        bool        generateMipmaps;
     };
 
 private:
@@ -92,5 +110,5 @@ private:
     std::vector<VkBuffer> stagingToFree[MAX_FRAMES_IN_FLIGHT];
 
     // Each dynamic image has its pointer to HOST_VISIBLE data for updating.
-    std::map<VkImage, DynamicImageUpdateInfo> dynamicImageMappedData;
+    std::map<VkImage, DynamicImageInfo> dynamicImageInfos;
 };

@@ -47,18 +47,16 @@ MemoryAllocator::MemoryAllocator(
 
     CreateTexturesStagingPool();
     CreateTexturesFinalPool();
-    CreateDynamicTexturesPool();
 }
 
 MemoryAllocator::~MemoryAllocator()
 {
     vmaDestroyPool(allocator, texturesStagingPool);
     vmaDestroyPool(allocator, texturesFinalPool);
-    vmaDestroyPool(allocator, dynamicTexturesPool);
     vmaDestroyAllocator(allocator);
 }
 
-VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo *info, VkDeviceMemory *outMemory, void **pOutMappedData)
+VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo *info, void **pOutMappedData, VkDeviceMemory *outMemory)
 {
     VmaAllocationCreateInfo allocInfo = {};
     // alloc TRANSFER_SRC buffer with writeable by CPU memory
@@ -79,7 +77,11 @@ VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo
 
     bufAllocs[buffer] = resultAlloc;
 
-    *outMemory = resultAllocInfo.deviceMemory;
+    if (outMemory != nullptr)
+    {
+        *outMemory = resultAllocInfo.deviceMemory;
+    }
+
     *pOutMappedData = resultAllocInfo.pMappedData;
     return buffer;
 }
@@ -105,35 +107,11 @@ VkImage MemoryAllocator::CreateDstTextureImage(const VkImageCreateInfo *info, Vk
 
     imgAllocs[image] = resultAlloc;
 
-    *outMemory = resultAllocInfo.deviceMemory;
-    return image;
-}
-
-VkImage MemoryAllocator::CreateDynamicTextureImage(const VkImageCreateInfo *info, VkDeviceMemory *outMemory, void **pOutMappedData)
-{
-    VmaAllocationCreateInfo allocInfo = {};
-    // alloc SAMPLED_BIT image with writeable by CPU memory
-    allocInfo.pool = dynamicTexturesPool;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
-
-    VkImage image;
-    VmaAllocation resultAlloc;
-    VmaAllocationInfo resultAllocInfo = {};
-
-    VkResult r = vmaCreateImage(allocator, info, &allocInfo, &image, &resultAlloc, &resultAllocInfo);
-    VK_CHECKERROR(r);
-
-    if (image == VK_NULL_HANDLE)
+    if (outMemory != nullptr)
     {
-        return VK_NULL_HANDLE;
+        *outMemory = resultAllocInfo.deviceMemory;
     }
 
-    imgAllocs[image] = resultAlloc;
-
-    assert(resultAllocInfo.pMappedData != nullptr);
-
-    *outMemory = resultAllocInfo.deviceMemory;
-    *pOutMappedData = resultAllocInfo.pMappedData;
     return image;
 }
 
@@ -182,7 +160,7 @@ void MemoryAllocator::CreateTexturesStagingPool()
     VmaPoolCreateInfo poolInfo = {};
     poolInfo.frameInUseCount = MAX_FRAMES_IN_FLIGHT;
     poolInfo.memoryTypeIndex = memTypeIndex;
-    poolInfo.blockSize = ALLOCATOR_BLOCK_SIZE_STATIC_STAGING_TEXTURES;
+    poolInfo.blockSize = ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES;
     // buddy algorithm as textures has commonly a size of power of 2
     poolInfo.flags = VMA_POOL_CREATE_BUDDY_ALGORITHM_BIT;
 
@@ -219,48 +197,11 @@ void MemoryAllocator::CreateTexturesFinalPool()
     VmaPoolCreateInfo poolInfo = {};
     poolInfo.frameInUseCount = MAX_FRAMES_IN_FLIGHT;
     poolInfo.memoryTypeIndex = memTypeIndex;
-    poolInfo.blockSize = ALLOCATOR_BLOCK_SIZE_STATIC_STAGING_TEXTURES;
+    poolInfo.blockSize = ALLOCATOR_BLOCK_SIZE_TEXTURES;
     // buddy algorithm as textures has commonly a size of power of 2
     poolInfo.flags = VMA_POOL_CREATE_BUDDY_ALGORITHM_BIT;
 
     r = vmaCreatePool(allocator, &poolInfo, &texturesFinalPool);
-    VK_CHECKERROR(r);
-}
-
-void MemoryAllocator::CreateDynamicTexturesPool()
-{
-    VkResult r;
-
-    // Vma will create and destroy it for identifying the memory type index 
-    VkImageCreateInfo imageInfo = {};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
-    imageInfo.extent.width = 1;
-    imageInfo.extent.height = 1;
-    imageInfo.extent.depth = 1;
-    imageInfo.mipLevels = 1;
-    imageInfo.arrayLayers = 1;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-
-    // memory will be written by CPU and read by GPU
-    VmaAllocationCreateInfo prototype = {};
-    prototype.usage = VMA_MEMORY_USAGE_CPU_TO_GPU;
-
-    uint32_t memTypeIndex;
-    r = vmaFindMemoryTypeIndexForImageInfo(allocator, &imageInfo, &prototype, &memTypeIndex);
-    VK_CHECKERROR(r);
-
-    VmaPoolCreateInfo poolInfo = {};
-    poolInfo.frameInUseCount = MAX_FRAMES_IN_FLIGHT;
-    poolInfo.memoryTypeIndex = memTypeIndex;
-    poolInfo.blockSize = ALLOCATOR_BLOCK_SIZE_DYNAMIC_TEXTURES;
-    // buddy algorithm as textures has commonly a size of power of 2
-    poolInfo.flags = VMA_POOL_CREATE_BUDDY_ALGORITHM_BIT;
-
-    r = vmaCreatePool(allocator, &poolInfo, &dynamicTexturesPool);
     VK_CHECKERROR(r);
 }
 

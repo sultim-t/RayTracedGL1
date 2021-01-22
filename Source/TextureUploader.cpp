@@ -38,6 +38,11 @@ TextureUploader::~TextureUploader()
             memAllocator->DestroyStagingSrcTextureBuffer(staging);
         }
     }
+
+    for (auto &p : dynamicImageInfos)
+    {
+        memAllocator->DestroyStagingSrcTextureBuffer(p.second.stagingBuffer);
+    }
 }
 
 void TextureUploader::ClearStaging(uint32_t frameIndex)
@@ -128,45 +133,32 @@ void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_
     }
 }
 
-TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInfo &info)
+void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size)
 {
-    VkCommandBuffer     cmd = info.cmd;
-    uint32_t            frameIndex = info.frameIndex;
-    const void          *data = info.data;
-    const RgExtent2D    &size = info.size;
+    VkBufferImageCopy copyRegion = {};
+    copyRegion.bufferOffset = 0;
+    // tigthly packed
+    copyRegion.bufferRowLength = 0;
+    copyRegion.bufferImageHeight = 0;
+    copyRegion.imageExtent = { size.width, size.height, 1 };
+    copyRegion.imageOffset = { 0,0,0 };
+    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.imageSubresource.mipLevel = 0;
+    copyRegion.imageSubresource.baseArrayLayer = 0;
+    copyRegion.imageSubresource.layerCount = 1;
+
+    vkCmdCopyBufferToImage(
+        cmd, staging, image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+}
+
+bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
+{
+    const RgExtent2D    &size           = info.size;
     bool                generateMipmaps = info.generateMipmaps;
-    const char          *debugName = info.debugName;
+    const char          *debugName      = info.debugName;
 
-    UploadResult result = {};
-    result.wasUploaded = false;
-
-    VkResult r;
-
-    // 1. Allocate and fill buffer
-
-    VkDeviceSize dataSize = BytesPerPixel * size.width * size.height;
-
-    VkBufferCreateInfo stagingInfo = {};
-    stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingInfo.size = dataSize;
-    stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-    VkDeviceMemory stagingMemory, imageMemory;
-    void *mappedData;
-
-    VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &stagingMemory, &mappedData);
-    if (stagingBuffer == VK_NULL_HANDLE)
-    {
-        return result;
-    }
-
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
-    }
-
-    // copy image data to buffer
-    memcpy(mappedData, data, dataSize);
+    // 1. Create image and allocate its memory
 
     uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
 
@@ -181,18 +173,28 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    VkImage finalImage = memAllocator->CreateDstTextureImage(&imageInfo, &imageMemory);
-    if (finalImage == VK_NULL_HANDLE)
+    VkImage image = memAllocator->CreateDstTextureImage(&imageInfo);
+    if (image == VK_NULL_HANDLE)
     {
-        memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
-
-        return result;
+        return false;
     }
 
     if (debugName != nullptr)
     {
-        SET_DEBUG_NAME(device, finalImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
+        SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
     }
+
+    *result = image;
+    return true;
+}
+
+void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const UploadInfo &info, ImagePrepareType prepareType)
+{
+    VkCommandBuffer     cmd             = info.cmd;
+    const RgExtent2D    &size           = info.size;
+    bool                generateMipmaps = info.generateMipmaps;
+
+    uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
 
     // 2. Copy buffer data to the first mipmap
 
@@ -203,29 +205,42 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
     firstMipmap.baseArrayLayer = 0;
     firstMipmap.layerCount = 1;
 
-    // set layout for copying
-    Utils::BarrierImage(
-        cmd, finalImage,
-        0, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-        firstMipmap);
+    VkAccessFlags curAccessMask;
+    VkImageLayout curLayout;
+    VkPipelineStageFlags curStageMask;
 
-    VkBufferImageCopy copyRegion = {};
-    copyRegion.bufferOffset = 0;
-    // tigthly packed
-    copyRegion.bufferRowLength = 0;
-    copyRegion.bufferImageHeight = 0;
-    copyRegion.imageExtent = { size.width, size.height, 1 };
-    copyRegion.imageOffset = { 0,0,0 };
-    copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    copyRegion.imageSubresource.mipLevel = 0;
-    copyRegion.imageSubresource.baseArrayLayer = 0;
-    copyRegion.imageSubresource.layerCount = 1;
+    // if image was already prepared
+    if (prepareType == ImagePrepareType::UPDATE)
+    {
+        curAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        curLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        curStageMask = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    }
+    else
+    {
+        curAccessMask = 0;
+        curLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        curStageMask = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+    }
 
-    vkCmdCopyBufferToImage(
-        cmd, stagingBuffer, finalImage,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
+    // if need to copy from staging
+    if (prepareType != ImagePrepareType::INIT_WITHOUT_COPYING)
+    {
+        // set layout for copying
+        Utils::BarrierImage(
+            cmd, image,
+            curAccessMask, VK_ACCESS_TRANSFER_WRITE_BIT,
+            curLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            firstMipmap);
+
+        // update params
+        curAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        curLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        curStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+        CopyStagingToImage(cmd, staging, image, size);
+    }
 
     if (mipmapCount > 1)
     {
@@ -233,13 +248,13 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
 
         // first mipmap to TRANSFER_SRC to create mipmaps using blit
         Utils::BarrierImage(
-            cmd, finalImage,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
+            cmd, image,
+            curAccessMask, VK_ACCESS_TRANSFER_READ_BIT,
+            curLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+            curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
             firstMipmap);
 
-        PrepareMipmaps(cmd, finalImage, size.width, size.height, mipmapCount);
+        PrepareMipmaps(cmd, image, size.width, size.height, mipmapCount);
 
         // 3A. 2. Prepare all mipmaps for reading in ray tracing and fragment shaders
 
@@ -251,7 +266,7 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
         allMipmaps.layerCount = 1;
 
         Utils::BarrierImage(
-            cmd, finalImage,
+            cmd, image,
             VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
             VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
@@ -262,16 +277,21 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
         // 3B. Prepare only the first mipmap for reading in ray tracing and fragment shaders
 
         Utils::BarrierImage(
-            cmd, finalImage,
-            VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            cmd, image,
+            curAccessMask, VK_ACCESS_TRANSFER_READ_BIT,
+            curLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            curStageMask, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             firstMipmap);
     }
+}
+
+VkImageView TextureUploader::CreateImageView(VkImage image, uint32_t mipmapCount)
+{
+    VkImageView view;
 
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = finalImage;
+    viewInfo.image = image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = ImageFormat;
     viewInfo.components = {};
@@ -281,178 +301,145 @@ TextureUploader::UploadResult TextureUploader::UploadStaticImage(const UploadInf
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 1;
 
-    VkImageView finalImageView;
-    r = vkCreateImageView(device, &viewInfo, nullptr, &finalImageView);
+    VkResult r = vkCreateImageView(device, &viewInfo, nullptr, &view);
     VK_CHECKERROR(r);
 
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, finalImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
-    }
-
-    // push staging buffer to be deleted when it won't be in use
-    stagingToFree[frameIndex].push_back(stagingBuffer);
-
-    // return results
-    result.wasUploaded = true;
-    result.image = finalImage;
-    result.view = finalImageView;
-    return result;
+    return view;
 }
 
-TextureUploader::UploadResult TextureUploader::UploadDynamicImage(const UploadInfo &info)
+TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &info)
 {
-    VkCommandBuffer     cmd = info.cmd;
-    uint32_t            frameIndex = info.frameIndex;
-    const void          *data = info.data;
-    const RgExtent2D    &size = info.size;
+    uint32_t            frameIndex      = info.frameIndex;
+    const void          *data           = info.data;
+    const RgExtent2D    &size           = info.size;
+    const char          *debugName      = info.debugName;
+    bool                isDynamic       = info.isDynamic;
     bool                generateMipmaps = info.generateMipmaps;
-    const char          *debugName = info.debugName;
+
+    // static textures must not have null data
+    assert(isDynamic || data != nullptr);
 
     UploadResult result = {};
     result.wasUploaded = false;
 
     VkResult r;
-
-    // 1. Create image
-
-    uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
-
-    VkImageCreateInfo imageInfo = {};
-    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
-    imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = ImageFormat;
-    imageInfo.extent = { size.width, size.height, 1 };
-    imageInfo.mipLevels = mipmapCount;
-    imageInfo.arrayLayers = 1;
-    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
-    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-
-    VkDeviceMemory memory;
     void *mappedData;
+    VkImage image;
 
-    VkImage dynamicImage = memAllocator->CreateDynamicTextureImage(&imageInfo, &memory, &mappedData);
-    if (dynamicImage == VK_NULL_HANDLE)
+    // 1. Allocate and fill buffer
+    VkDeviceSize dataSize = BytesPerPixel * size.width * size.height;
+
+    VkBufferCreateInfo stagingInfo = {};
+    stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    stagingInfo.size = dataSize;
+    stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &mappedData);
+    if (stagingBuffer == VK_NULL_HANDLE)
     {
         return result;
     }
 
     if (debugName != nullptr)
     {
-        SET_DEBUG_NAME(device, dynamicImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
+        SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
     }
 
-    // 2. Copy data if present
-    VkDeviceSize dataSize = BytesPerPixel * size.width * size.height;
-
-    if (data != nullptr)
+    bool wasCreated = CreateImage(info, &image);
+    if (!wasCreated)
     {
-        memcpy(mappedData, data, dataSize);
+        // clean created resources
+        memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
+        return result;
     }
 
-    VkImageSubresourceRange firstMipmap = {};
-    firstMipmap.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    firstMipmap.baseMipLevel = 0;
-    firstMipmap.levelCount = 1;
-    firstMipmap.baseArrayLayer = 0;
-    firstMipmap.layerCount = 1;
-
-    if (mipmapCount > 1)
+    // if it's a dynamic texture and the data is not provided yet
+    if (isDynamic && data == nullptr)
     {
-        // 3A. 1. Create mipmaps
-
-        // first mipmap to TRANSFER_SRC to create mipmaps using blit
-        Utils::BarrierImage(
-            cmd, dynamicImage,
-            0, VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            firstMipmap);
-
-        PrepareMipmaps(cmd, dynamicImage, size.width, size.height, mipmapCount);
-
-        // 3A. 2. Prepare all mipmaps for reading in ray tracing and fragment shaders
-
-        VkImageSubresourceRange allMipmaps = {};
-        allMipmaps.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        allMipmaps.baseMipLevel = 0;
-        allMipmaps.levelCount = mipmapCount;
-        allMipmaps.baseArrayLayer = 0;
-        allMipmaps.layerCount = 1;
-
-        Utils::BarrierImage(
-            cmd, dynamicImage,
-            VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            allMipmaps);
+        // create image without copying
+        PrepareImage(image, VK_NULL_HANDLE, info, ImagePrepareType::INIT_WITHOUT_COPYING);
     }
     else
     {
-        // 3B. If using only one mipmap, then prepare it for shader read
-
-        Utils::BarrierImage(
-            cmd, dynamicImage,
-            0, VK_ACCESS_SHADER_READ_BIT,
-            VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-            VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
-            firstMipmap);
+        // copy image data to buffer
+        memcpy(mappedData, data, dataSize);
+        // and copy it to image
+        PrepareImage(image, stagingBuffer, info, ImagePrepareType::INIT);
     }
 
-    VkImageViewCreateInfo viewInfo = {};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = dynamicImage;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = ImageFormat;
-    viewInfo.components = {};
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = mipmapCount;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
-
-    VkImageView dynamicImageView;
-    r = vkCreateImageView(device, &viewInfo, nullptr, &dynamicImageView);
-    VK_CHECKERROR(r);
+    // create image view
+    VkImageView imageView = CreateImageView(image, GetMipmapCount(size));
 
     if (debugName != nullptr)
     {
-        SET_DEBUG_NAME(device, dynamicImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
+        SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
     }
 
-    // save pointer for updating image data
-    DynamicImageUpdateInfo updateInfo = {};
-    updateInfo.mappedData = mappedData;
-    updateInfo.size = (uint32_t)dataSize;
+    // save info about created image
+    if (isDynamic)
+    {
+        // for dynamic images:
+        // save pointer for updating image data
+        DynamicImageInfo updateInfo = {};
+        updateInfo.stagingBuffer = stagingBuffer;
+        updateInfo.mappedData = mappedData;
+        updateInfo.dataSize = (uint32_t)dataSize;
+        updateInfo.imageSize = size;
+        updateInfo.generateMipmaps = generateMipmaps;
 
-    dynamicImageMappedData[dynamicImage] = updateInfo;
+        dynamicImageInfos[image] = updateInfo;
+    }
+    else
+    {
+        // for static images that won't be updated:
+        // push staging buffer to be deleted when it won't be in use
+        stagingToFree[frameIndex].push_back(stagingBuffer);
+    }
 
     // return results
     result.wasUploaded = true;
-    result.image = dynamicImage;
-    result.view = dynamicImageView;
-
+    result.image = image;
+    result.view = imageView;
     return result;
 }
 
-void TextureUploader::UpdateDynamicImage(VkImage dynamicImage, const void *data)
+void TextureUploader::UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicImage, const void *data)
 {
     assert(dynamicImage != VK_NULL_HANDLE);
 
-    auto it = dynamicImageMappedData.find(dynamicImage);
+    auto it = dynamicImageInfos.find(dynamicImage);
 
-    if (it != dynamicImageMappedData.end())
+    if (it != dynamicImageInfos.end())
     {
         auto &updateInfo = it->second;
 
         assert(updateInfo.mappedData != nullptr);
-        memcpy(updateInfo.mappedData, data, updateInfo.size);
+        memcpy(updateInfo.mappedData, data, updateInfo.dataSize);
+
+        UploadInfo info = {};
+        info.cmd = cmd;
+        info.size = updateInfo.imageSize;
+        info.generateMipmaps = updateInfo.generateMipmaps;
+
+        // copy from staging
+        PrepareImage(dynamicImage, updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);
     }
 }
 
 void TextureUploader::DestroyImage(VkImage image, VkImageView view)
 {
+    auto it = dynamicImageInfos.find(image);
+
+    // if it's a dynamic texture
+    if (it != dynamicImageInfos.end())
+    {
+        // destroy its staging buffer, as it exists for
+        // whole dynamic image lifetime
+        memAllocator->DestroyStagingSrcTextureBuffer(it->second.stagingBuffer);
+
+        dynamicImageInfos.erase(it);
+    }
+
     memAllocator->DestroyTextureImage(image);
     vkDestroyImageView(device, view, nullptr);
 }

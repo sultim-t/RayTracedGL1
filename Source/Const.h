@@ -20,9 +20,8 @@
 
 #pragma once
 
-#define ALLOCATOR_BLOCK_SIZE_STATIC_STAGING_TEXTURES    256 * 512 * 512 * 4
-#define ALLOCATOR_BLOCK_SIZESTATIC_TEXTURES             256 * 512 * 512 * 4
-#define ALLOCATOR_BLOCK_SIZE_DYNAMIC_TEXTURES           64 * 512 * 512 * 4
+#define ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES           256 * 512 * 512 * 4
+#define ALLOCATOR_BLOCK_SIZE_TEXTURES                   256 * 512 * 512 * 4
 
 #define TEXTURE_FILE_PATH_MAX_LENGTH                    512
 #define TEXTURE_FILE_NAME_MAX_LENGTH                    256
