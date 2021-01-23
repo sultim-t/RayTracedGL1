@@ -61,7 +61,7 @@ public:
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
     void UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo);
 
-    void DestroyMaterial(uint32_t materialIndex);
+    void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
 
     MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
 
@@ -87,8 +87,8 @@ private:
         VkSampler sampler, bool generateMipmaps, const char *debugName = nullptr);
 
     uint32_t InsertTexture(VkImage image, VkImageView view, VkSampler sampler);
-    void DestroyTexture(uint32_t textureIndex);
-    void DestroyTexture(Texture &texture);
+    void DestroyTexture(const Texture &texture);
+    void AddToBeDestroyed(uint32_t frameIndex, const Texture &texture);
 
     uint32_t GenerateMaterialIndex(const MaterialTextures &materialTextures);
     uint32_t GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices);
@@ -96,8 +96,8 @@ private:
     uint32_t InsertMaterial(const MaterialTextures &materialTextures, bool isDynamic);
     uint32_t InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices);
 
-    void DestroyMaterialTextures(uint32_t materialIndex);
-    void DestroyMaterialTextures(const Material &material);
+    void DestroyMaterialTextures(uint32_t frameIndex, uint32_t materialIndex);
+    void DestroyMaterialTextures(uint32_t frameIndex, const Material &material);
 
     void UpdateDescSet(uint32_t frameIndex);
 
@@ -111,6 +111,10 @@ private:
     std::shared_ptr<TextureUploader> textureUploader;
 
     std::vector<Texture> textures;
+    // Textures are not destroyed immediately, but when
+    // they won't be in use
+    std::vector<Texture> texturesToDestroy[MAX_FRAMES_IN_FLIGHT];
+
     std::map<uint32_t, AnimatedMaterial> animatedMaterials;
     std::map<uint32_t, Material> materials;
 

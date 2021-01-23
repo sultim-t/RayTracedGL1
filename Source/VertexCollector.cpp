@@ -461,7 +461,6 @@ void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTex
     // for each geom index that has this material, update geometry instance infos
     for (const auto &p : materialDependencies[materialIndex])
     {    
-
         assert(p.geomIndex < curGeometryCount);
 
         memcpy(mappedGeomInfosData[p.geomIndex].materials[p.layer], newInfo.indices, 

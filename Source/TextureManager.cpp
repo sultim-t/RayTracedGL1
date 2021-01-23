@@ -97,10 +97,26 @@ TextureManager::~TextureManager()
             DestroyTexture(texture);
         }
     }
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        for (auto &texture : texturesToDestroy[i])
+        {
+            DestroyTexture(texture);
+        }
+    }
 }
 
 void TextureManager::PrepareForFrame(uint32_t frameIndex)
 {
+    // destroy delayed textures
+    for (auto &texture : texturesToDestroy[frameIndex])
+    {
+        DestroyTexture(texture);
+    }
+    texturesToDestroy[frameIndex].clear();
+
+    // clear staging buffer that are not in use
     textureUploader->ClearStaging(frameIndex);
 
     // update desc set with current values
@@ -375,28 +391,35 @@ uint32_t TextureManager::InsertAnimatedMaterial(std::vector<uint32_t> &materialI
     return animMatIndex;
 }
 
-void TextureManager::DestroyMaterialTextures(uint32_t materialIndex)
+void TextureManager::DestroyMaterialTextures(uint32_t frameIndex, uint32_t materialIndex)
 {
     auto it = materials.find(materialIndex);
 
     if (it != materials.end())
     {
-        DestroyMaterialTextures(it->second);
+        DestroyMaterialTextures(frameIndex, it->second);
     }
 }
 
-void TextureManager::DestroyMaterialTextures(const Material &material)
+void TextureManager::DestroyMaterialTextures(uint32_t frameIndex, const Material &material)
 {
     for (auto t : material.textures.indices)
     {
         if (t != EMPTY_TEXTURE_INDEX)
         {
-            DestroyTexture(t);
+            Texture &texture = textures[t];
+
+            AddToBeDestroyed(frameIndex, texture);
+
+            // null data
+            texture.image = VK_NULL_HANDLE;
+            texture.view = VK_NULL_HANDLE;
+            texture.sampler = VK_NULL_HANDLE;
         }
     }
 }
 
-void TextureManager::DestroyMaterial(uint32_t materialIndex)
+void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex)
 {
     const auto animIt = animatedMaterials.find(materialIndex);
 
@@ -408,7 +431,7 @@ void TextureManager::DestroyMaterial(uint32_t materialIndex)
         // destroy each material
         for (auto &mat : anim.materialIndices)
         {
-            DestroyMaterialTextures(mat);
+            DestroyMaterialTextures(currentFrameIndex, mat);
         }
 
         animatedMaterials.erase(animIt);
@@ -419,7 +442,7 @@ void TextureManager::DestroyMaterial(uint32_t materialIndex)
 
         if (it != materials.end())
         {
-            DestroyMaterialTextures(it->second);
+            DestroyMaterialTextures(currentFrameIndex, it->second);
             materials.erase(it);
         }
     }
@@ -429,6 +452,7 @@ void TextureManager::DestroyMaterial(uint32_t materialIndex)
     {
         if (auto s = ws.lock())
         {
+            // send them empty texture indices as material is destroyed
             s->OnMaterialChange(materialIndex, EmptyMaterialTextures);
         }
     }
@@ -448,20 +472,17 @@ uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view, VkSample
     return (uint32_t)std::distance(textures.begin(), texture);
 }
 
-void TextureManager::DestroyTexture(uint32_t textureIndex)
+void TextureManager::DestroyTexture(const Texture &texture)
 {
-    DestroyTexture(textures[textureIndex]);
+    assert(texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE);
+    textureUploader->DestroyImage(texture.image, texture.view);
 }
 
-void TextureManager::DestroyTexture(Texture &texture)
+void TextureManager::AddToBeDestroyed(uint32_t frameIndex, const Texture &texture)
 {
     assert(texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE);
 
-    textureUploader->DestroyImage(texture.image, texture.view);
- 
-    texture.image = VK_NULL_HANDLE;
-    texture.view = VK_NULL_HANDLE;
-    texture.sampler = VK_NULL_HANDLE;
+    texturesToDestroy[frameIndex].push_back(texture);
 }
 
 MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) const
