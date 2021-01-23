@@ -330,6 +330,8 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
 
 void Swapchain::Destroy()
 {
+    vkDeviceWaitIdle(device);
+
     if (swapchain != VK_NULL_HANDLE)
     {
         CallDestroySubscribers();

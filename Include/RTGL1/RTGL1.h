@@ -39,6 +39,7 @@ RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
 typedef uint32_t RgGeometry;
 typedef uint32_t RgMaterial;
 
+#define RG_NULL_HANDLE      0
 #define RG_NO_MATERIAL      0
 #define RG_FALSE            0
 #define RG_TRUE             1
@@ -216,8 +217,11 @@ typedef struct RgRasterizedGeometryUploadInfo
     uint32_t            indexCount;
     uint32_t            *indexData;
 
-    // viewport;
+    // viewport ?
 
+    // View-projection matrix to apply to this rasterized geometry.
+    // Matrix is column major.
+    float               viewProjection[16];
 } RgRasterizedGeometryUploadInfo;
 
 // Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.

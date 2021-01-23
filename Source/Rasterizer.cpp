@@ -19,6 +19,9 @@
 // SOFTWARE.
 
 #include "Rasterizer.h"
+
+#include <array>
+
 #include "Swapchain.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -110,6 +113,24 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
 
     for (const auto &info : drawInfos)
     {
+        vkCmdPushConstants(
+            cmd, pipelineLayout,
+            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            0, 16 * sizeof(float) + 3 * sizeof(uint32_t),
+            info.viewProj);
+
+        /*vkCmdPushConstants(
+            cmd, pipelineLayout, 
+            VK_SHADER_STAGE_VERTEX_BIT, 
+            0, 16 * sizeof(float),
+            info.viewProj);
+
+        vkCmdPushConstants(
+            cmd, pipelineLayout,
+            VK_SHADER_STAGE_FRAGMENT_BIT,
+            16 * sizeof(float), 3 * sizeof(uint32_t),
+            info.textureIndices);*/
+
         if (info.indexCount > 0)
         {
             vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
@@ -148,12 +169,17 @@ void Rasterizer::CreatePipelineCache()
 
 void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
 {
+    VkPushConstantRange pushConst = {};
+    pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConst.offset = 0;
+    pushConst.size = 16 * sizeof(float) + 3 * sizeof(uint32_t);
+
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = 1;
     layoutInfo.pSetLayouts = &texturesDescLayout;
-    layoutInfo.pushConstantRangeCount = 0;
-    layoutInfo.pPushConstantRanges = nullptr;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &pushConst;
 
     VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
@@ -174,14 +200,17 @@ void Rasterizer::CreatePipeline(const std::shared_ptr<ShaderManager> &shaderMana
     vertBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
     vertBinding.stride = RasterizedDataCollector::GetVertexStride();
 
-    std::array<VkVertexInputAttributeDescription, 4> attrs = {};
-    RasterizedDataCollector::GetVertexLayout(attrs);
+    std::array<VkVertexInputAttributeDescription, 8> attrs = {};
+    uint32_t attrsCount;
+
+    RasterizedDataCollector::GetVertexLayout(attrs.data(), &attrsCount);
+    assert(attrsCount <= attrs.size());
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
     vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
     vertexInputInfo.vertexBindingDescriptionCount = 1;
     vertexInputInfo.pVertexBindingDescriptions = &vertBinding;
-    vertexInputInfo.vertexAttributeDescriptionCount = attrs.size();
+    vertexInputInfo.vertexAttributeDescriptionCount = attrsCount;
     vertexInputInfo.pVertexAttributeDescriptions = attrs.data();
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
