@@ -34,12 +34,14 @@ class RasterizedDataCollector
 public:
     struct DrawInfo
     {
-        float viewProj[16];
-        uint32_t textureIndices[RASTERIZER_TEXTURE_COUNT];
-        uint32_t vertexCount;
-        uint32_t firstVertex;
-        uint32_t indexCount;
-        uint32_t firstIndex;
+        float       viewProj[16];
+        uint32_t    textureIndices[RASTERIZER_TEXTURE_COUNT];
+        uint32_t    vertexCount;
+        uint32_t    firstVertex;
+        uint32_t    indexCount;
+        uint32_t    firstIndex;
+        bool        isDefaultViewport;
+        VkViewport  viewport;
     };
 
 public:

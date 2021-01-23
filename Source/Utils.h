@@ -21,6 +21,7 @@
 #pragma once
 
 #include "Common.h"
+#include "RTGL1/RTGL1.h"
 
 class Utils
 {
@@ -58,4 +59,7 @@ public:
     static void WaitAndResetFence(VkDevice device, VkFence fence);
 
     static uint32_t Align(uint32_t value, uint32_t alignment);
+
+    static bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
+    static bool IsDefaultViewport(const RgViewport &viewport);
 };

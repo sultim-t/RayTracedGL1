@@ -20,6 +20,8 @@
 
 #include "RasterizedDataCollector.h"
 
+#include "Utils.h"
+
 static_assert(RASTERIZER_TEXTURE_COUNT == sizeof(RgLayeredMaterial) / sizeof(RgMaterial), "RASTERIZER_TEXTURE_COUNT must be the same as in RgLayeredMaterial");
 
 struct RasterizedDataCollector::RasterizerVertex
@@ -101,6 +103,16 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     }
 
     DrawInfo drawInfo = {};
+
+    drawInfo.viewport.x = info.viewport.x;
+    drawInfo.viewport.y = info.viewport.y;
+    drawInfo.viewport.width = info.viewport.width;
+    drawInfo.viewport.height = info.viewport.height;
+    drawInfo.viewport.minDepth = 0.0f;
+    drawInfo.viewport.maxDepth = 1.0f;
+
+    drawInfo.isDefaultViewport = Utils::IsDefaultViewport(info.viewport);
+
     memcpy(drawInfo.viewProj, info.viewProjection, 16 * sizeof(float));
 
     // copy texture indices

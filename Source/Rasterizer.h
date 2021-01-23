@@ -62,6 +62,9 @@ private:
     void DestroyFramebuffers();
     //void CreateDescriptors();
 
+    // If info's viewport is not the same as current one, new VkViewport will be set.
+    void TrySetViewport(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkViewport &curViewport);
+
 private:
     VkDevice device;
     std::weak_ptr<TextureManager> textureMgr;
@@ -71,8 +74,8 @@ private:
     VkPipelineCache     pipelineCache;
     VkPipeline          pipeline;
 
-    VkRect2D  curRenderArea;
-    VkViewport curViewport;
+    VkRect2D  fbRenderArea;
+    VkViewport fbViewport;
     std::vector<VkFramebuffer> framebuffers;
 
     std::shared_ptr<RasterizedDataCollector> collectors[MAX_FRAMES_IN_FLIGHT];

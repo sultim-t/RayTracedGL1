@@ -134,3 +134,30 @@ uint32_t Utils::Align(uint32_t value, uint32_t alignment)
 {
     return (value + alignment - 1) & ~(alignment - 1);
 }
+
+bool Utils::AreViewportsSame(const VkViewport &a, const VkViewport &b)
+{
+    // special epsilons for viewports
+    const float eps = 0.1f;
+    const float depthEps = 0.001f;
+
+    return
+        std::abs(a.x        - b.x)          < eps &&
+        std::abs(a.y        - b.y)          < eps &&
+        std::abs(a.width    - b.width)      < eps &&
+        std::abs(a.height   - b.height)     < eps &&
+        std::abs(a.minDepth - b.minDepth)   < depthEps &&
+        std::abs(a.maxDepth - b.maxDepth)   < depthEps;
+}
+
+bool Utils::IsDefaultViewport(const RgViewport &viewport)
+{
+    constexpr float eps = 0.01f;
+
+    return
+        std::abs(viewport.width)    < eps &&
+        std::abs(viewport.height)   < eps &&
+        std::abs(viewport.x)        < eps &&
+        std::abs(viewport.y)        < eps;
+}
+

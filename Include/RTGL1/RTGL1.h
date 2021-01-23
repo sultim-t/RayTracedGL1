@@ -171,6 +171,29 @@ typedef struct RgUpdateTransformInfo
     RgTransform     transform;
 } RgUpdateTransformInfo;
 
+typedef struct RgExtent2D
+{
+    uint32_t    width;
+    uint32_t    height;
+} RgExtent2D;
+
+typedef struct RgExtent3D
+{
+    uint32_t    width;
+    uint32_t    height;
+    uint32_t    depth;
+} RgExtent3D;
+
+// Struct is used to transform from NDC to window coordinates.
+// All members are in pixels.
+typedef struct RgViewport
+{
+    float       x;
+    float       y;
+    float       width;
+    float       height;
+} RgViewport;
+
 typedef enum RgBlendFactor
 {
     RG_BLEND_FACTOR_ONE,
@@ -217,7 +240,9 @@ typedef struct RgRasterizedGeometryUploadInfo
     uint32_t            indexCount;
     uint32_t            *indexData;
 
-    // viewport ?
+    // Viewport to draw in. If every member is about 0,
+    // then full screen is used. 
+    RgViewport          viewport;
 
     // View-projection matrix to apply to this rasterized geometry.
     // Matrix is column major.
@@ -294,20 +319,6 @@ RgResult rgSubmitStaticGeometries(
 RgResult rgStartNewScene(
     RgInstance                          rgInstance);
 
-
-
-typedef struct RgExtent2D
-{
-    uint32_t    width;
-    uint32_t    height;
-} RgExtent2D;
-
-typedef struct RgExtent3D
-{
-    uint32_t    width;
-    uint32_t    height;
-    uint32_t    depth;
-} RgExtent3D;
 
 typedef enum RgSamplerAddressMode
 {

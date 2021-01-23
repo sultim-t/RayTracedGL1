@@ -23,6 +23,7 @@
 #include <array>
 
 #include "Swapchain.h"
+#include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
 Rasterizer::Rasterizer(
@@ -39,8 +40,8 @@ Rasterizer::Rasterizer(
     pipelineLayout(VK_NULL_HANDLE),
     pipelineCache(VK_NULL_HANDLE),
     pipeline(VK_NULL_HANDLE),
-    curRenderArea{},
-    curViewport{}
+    fbRenderArea{},
+    fbViewport{}
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -93,14 +94,11 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.renderPass = renderPass;
     beginInfo.framebuffer = framebuffers[frameIndex];
-    beginInfo.renderArea = curRenderArea;
+    beginInfo.renderArea = fbRenderArea;
     beginInfo.clearValueCount = 1;
     beginInfo.pClearValues = &clearValue;
 
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-    vkCmdSetScissor(cmd, 0, 1, &curRenderArea);
-    vkCmdSetViewport(cmd, 0, 1, &curViewport);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
@@ -111,25 +109,19 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
     vkCmdBindVertexBuffers(cmd, 0, 1, &vrtBuffer, &offset);
     vkCmdBindIndexBuffer(cmd, indBuffer, offset, VK_INDEX_TYPE_UINT32);
 
+    vkCmdSetScissor(cmd, 0, 1, &fbRenderArea);
+    vkCmdSetViewport(cmd, 0, 1, &fbViewport);
+    VkViewport curViewport = fbViewport;
+
     for (const auto &info : drawInfos)
     {
+        TrySetViewport(cmd, info, curViewport);
+
         vkCmdPushConstants(
             cmd, pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
             0, 16 * sizeof(float) + 3 * sizeof(uint32_t),
             info.viewProj);
-
-        /*vkCmdPushConstants(
-            cmd, pipelineLayout, 
-            VK_SHADER_STAGE_VERTEX_BIT, 
-            0, 16 * sizeof(float),
-            info.viewProj);
-
-        vkCmdPushConstants(
-            cmd, pipelineLayout,
-            VK_SHADER_STAGE_FRAGMENT_BIT,
-            16 * sizeof(float), 3 * sizeof(uint32_t),
-            info.textureIndices);*/
 
         if (info.indexCount > 0)
         {
@@ -144,6 +136,17 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
     vkCmdEndRenderPass(cmd);
    
     collectors[frameIndex]->Clear();
+}
+
+void Rasterizer::TrySetViewport(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkViewport &curViewport)
+{
+    const VkViewport &newViewport = info.isDefaultViewport ? fbViewport : info.viewport;
+
+    if (!Utils::AreViewportsSame(curViewport, newViewport))
+    {
+        vkCmdSetViewport(cmd, 0, 1, &newViewport);
+        curViewport = newViewport;
+    }
 }
 
 void Rasterizer::OnSwapchainCreate(const Swapchain *pSwapchain)
@@ -320,15 +323,15 @@ void Rasterizer::CreateFramebuffers(uint32_t width, uint32_t height, const VkIma
         SET_DEBUG_NAME(device, framebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer framebuffer");
     }
 
-    curViewport.x = 0;
-    curViewport.y = 0;
-    curViewport.minDepth = 0;
-    curViewport.maxDepth = 1;
-    curViewport.width = width;
-    curViewport.height = height;
+    fbViewport.x = 0;
+    fbViewport.y = 0;
+    fbViewport.minDepth = 0;
+    fbViewport.maxDepth = 1;
+    fbViewport.width = width;
+    fbViewport.height = height;
 
-    curRenderArea.offset = { 0, 0 };
-    curRenderArea.extent = { width, height };
+    fbRenderArea.offset = { 0, 0 };
+    fbRenderArea.extent = { width, height };
 }
 
 void Rasterizer::DestroyFramebuffers()
