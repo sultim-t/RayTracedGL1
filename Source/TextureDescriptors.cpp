@@ -36,6 +36,11 @@ TextureDescriptors::TextureDescriptors(VkDevice _device) :
     writeImageInfos.resize(MAX_TEXTURE_COUNT);
     writeInfos.resize(MAX_TEXTURE_COUNT);
 
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        writeCache[i].resize(MAX_TEXTURE_COUNT);
+    }
+
     CreateDescLayout();
     CreateDescPool();
     CreateDescSets();
@@ -118,6 +123,23 @@ void TextureDescriptors::CreateDescSets()
     }
 }
 
+bool TextureDescriptors::IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
+{
+    return writeCache[frameIndex][textureIndex].view == view
+        && writeCache[frameIndex][textureIndex].sampler == sampler;
+}
+
+void TextureDescriptors::AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
+{
+    writeCache[frameIndex][textureIndex].view = view;
+    writeCache[frameIndex][textureIndex].sampler = sampler;
+}
+
+void TextureDescriptors::ResetCache(uint32_t frameIndex, uint32_t textureIndex)
+{
+    writeCache[frameIndex][textureIndex] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+}
+
 void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
 {
     assert(view != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
@@ -125,6 +147,12 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
     if  (currentWriteCount >= MAX_TEXTURE_COUNT)
     {
         assert(0);
+        return;
+    }
+
+    // don't update if already is set to given parameters
+    if (IsCached(frameIndex, textureIndex, view, sampler))
+    {
         return;
     }
 
@@ -143,6 +171,8 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
     write.pImageInfo = &imageInfo;
 
     currentWriteCount++;
+
+    AddToCache(frameIndex, textureIndex, view, sampler);
 }
 
 void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex)
@@ -167,6 +197,8 @@ void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureI
     write.pImageInfo = &emptyTextureInfo;
 
     currentWriteCount++;
+
+    ResetCache(frameIndex, textureIndex);
 }
 
 void TextureDescriptors::FlushDescWrites()

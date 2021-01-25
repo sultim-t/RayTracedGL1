@@ -53,6 +53,17 @@ private:
     void CreateDescPool();
     void CreateDescSets();
 
+    bool IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
+    void AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
+    void ResetCache(uint32_t frameIndex, uint32_t textureIndex);
+
+private:
+    struct UpdatedDescCache
+    {
+        VkImageView view;
+        VkSampler sampler;
+    };
+
 private:
     VkDevice device;
 
@@ -65,4 +76,6 @@ private:
     uint32_t currentWriteCount;
     std::vector<VkDescriptorImageInfo> writeImageInfos;
     std::vector<VkWriteDescriptorSet> writeInfos;
+
+    std::vector<UpdatedDescCache> writeCache[MAX_FRAMES_IN_FLIGHT];
 };
