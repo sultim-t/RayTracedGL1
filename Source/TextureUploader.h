@@ -73,7 +73,7 @@ private:
     };
 
 private:
-    static uint32_t GetMipmapCount(const RgExtent2D &size);
+    static uint32_t GetMipmapCount(const RgExtent2D &size, bool generateMipmaps);
 
     // Generate mipmaps for VkImage. First mipmap's layout must be TRANSFER_SRC
     // and others must have UNDEFINED

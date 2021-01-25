@@ -417,6 +417,7 @@ RgResult rgUpdateDynamicMaterial(
     RgInstance                          rgInstance,
     const RgDynamicMaterialUpdateInfo   *updateInfo);
 
+// Destroying RG_NO_MATERIAL has no effect.
 RgResult rgDestroyMaterial(
     RgInstance                          rgInstance,
     RgMaterial                          material);

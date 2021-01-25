@@ -56,8 +56,13 @@ void TextureUploader::ClearStaging(uint32_t frameIndex)
     stagingToFree[frameIndex].clear();
 }
 
-uint32_t TextureUploader::GetMipmapCount(const RgExtent2D &size)
+uint32_t TextureUploader::GetMipmapCount(const RgExtent2D &size, bool generateMipmaps)
 {
+    if (!generateMipmaps)
+    {
+        return 1;
+    }
+
     auto widthCount = static_cast<uint32_t>(log2(size.width));
     auto heightCount = static_cast<uint32_t>(log2(size.height));
 
@@ -160,14 +165,12 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
 
     // 1. Create image and allocate its memory
 
-    uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
-
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.format = ImageFormat;
     imageInfo.extent = { size.width, size.height, 1 };
-    imageInfo.mipLevels = mipmapCount;
+    imageInfo.mipLevels = GetMipmapCount(size, generateMipmaps);
     imageInfo.arrayLayers = 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -194,7 +197,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
     const RgExtent2D    &size           = info.size;
     bool                generateMipmaps = info.generateMipmaps;
 
-    uint32_t mipmapCount = generateMipmaps ? GetMipmapCount(size) : 1;
+    uint32_t mipmapCount = GetMipmapCount(size, generateMipmaps);
 
     // 2. Copy buffer data to the first mipmap
 
@@ -368,7 +371,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     }
 
     // create image view
-    VkImageView imageView = CreateImageView(image, GetMipmapCount(size));
+    VkImageView imageView = CreateImageView(image, GetMipmapCount(size, generateMipmaps));
 
     if (debugName != nullptr)
     {

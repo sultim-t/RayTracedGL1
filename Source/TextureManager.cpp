@@ -175,28 +175,7 @@ uint32_t TextureManager::PrepareStaticTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
     VkSampler sampler, bool generateMipmaps, const char *debugName)
 {
-    if (data == nullptr)
-    {
-        return EMPTY_TEXTURE_INDEX;
-    }
-
-    TextureUploader::UploadInfo info = {};
-    info.cmd = cmd;
-    info.frameIndex = frameIndex;
-    info.data = data;
-    info.size = size;
-    info.isDynamic = false;
-    info.generateMipmaps = generateMipmaps;
-    info.debugName = debugName;
-
-    auto result = textureUploader->UploadImage(info);
-
-    if (!result.wasUploaded)
-    {
-        return EMPTY_TEXTURE_INDEX;
-    }
-
-    return InsertTexture(result.image, result.view, sampler);
+    return PrepareTexture(false, cmd, frameIndex, data, size, sampler, generateMipmaps, debugName);
 }
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
@@ -243,15 +222,27 @@ uint32_t TextureManager::PrepareDynamicTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, 
     VkSampler sampler, bool generateMipmaps, const char *debugName)
 {
+    return PrepareTexture(true, cmd, frameIndex, data, size, sampler, generateMipmaps, debugName);
+}
+
+uint32_t TextureManager::PrepareTexture(
+    bool isDynamic, VkCommandBuffer cmd, uint32_t frameIndex, const void *data,
+    const RgExtent2D &size, VkSampler sampler, bool generateMipmaps, const char *debugName)
+{
+    // only dynamic textures can have null data
+    if (!isDynamic && data == nullptr)
+    {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
     assert(size.width > 0 && size.height > 0);
 
     TextureUploader::UploadInfo info = {};
     info.cmd = cmd;
     info.frameIndex = frameIndex;
-    // data can be null
     info.data = data;
     info.size = size;
-    info.isDynamic = true;
+    info.isDynamic = isDynamic;
     info.generateMipmaps = generateMipmaps;
     info.debugName = debugName;
 
@@ -267,6 +258,11 @@ uint32_t TextureManager::PrepareDynamicTexture(
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
 {
+    if (createInfo.frameCount == 0)
+    {
+        return RG_NO_MATERIAL;
+    }
+
     std::vector<uint32_t> materialIndices(createInfo.frameCount);
 
     // animated material is a series of static materials
@@ -464,6 +460,15 @@ uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view, VkSample
     {
         return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
     });
+
+    // if coudn't find empty space, use empty texture
+    if (texture == textures.end())
+    {
+        // clean created data
+        textureUploader->DestroyImage(image, view);
+
+        return EMPTY_TEXTURE_INDEX;
+    }
 
     texture->image = image;
     texture->view = view;

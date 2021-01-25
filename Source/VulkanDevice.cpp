@@ -351,6 +351,11 @@ RgResult VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *
 
 RgResult VulkanDevice::DestroyMaterial(RgMaterial material)
 {
+    if (material == RG_NO_MATERIAL)
+    {
+        return RG_SUCCESS;
+    }
+
     textureManager->DestroyMaterial(currentFrameIndex, material);
     return RG_SUCCESS;
 }
