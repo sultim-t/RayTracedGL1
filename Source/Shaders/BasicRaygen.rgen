@@ -26,7 +26,7 @@ void main()
 
 	traceRayEXT(
 		topLevelAS,
-		gl_RayFlagsOpaqueEXT, 
+		gl_RayFlagsNoneEXT, 
 		0xFF, 
 		0, 0, 	// sbtRecordOffset, sbtRecordStride
 		0, 		// missIndex

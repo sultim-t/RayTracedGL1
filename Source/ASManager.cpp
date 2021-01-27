@@ -320,11 +320,16 @@ void ASManager::UpdateASDescriptors(uint32_t frameIndex)
 ASManager::~ASManager()
 {
     DestroyAS(staticBlas);
+    DestroyAS(transparentStaticBlas);
+
     DestroyAS(staticMovableBlas);
+    DestroyAS(transparentStaticMovableBlas);
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         DestroyAS(dynamicBlas[i]);
+        DestroyAS(transparentDynamicBlas[i]);
+
         DestroyAS(tlas[i]);
     }
 
@@ -428,22 +433,31 @@ void ASManager::SubmitStaticGeometry()
 
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    const auto &staticGeoms         = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_NON_MOVABLE);
-    const auto &movableGeoms        = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_MOVABLE);
+    const auto &staticGeoms                 = collectorStatic->GetASGeometries(     FT::OPAQUE      | FT::STATIC_NON_MOVABLE);
+    const auto &movableGeoms                = collectorStatic->GetASGeometries(     FT::OPAQUE      | FT::STATIC_MOVABLE    );
+    const auto &transparentStaticGeoms      = collectorStatic->GetASGeometries(     FT::TRANSPARENT | FT::STATIC_NON_MOVABLE);
+    const auto &transparentMovableGeoms     = collectorStatic->GetASGeometries(     FT::TRANSPARENT | FT::STATIC_MOVABLE    );
 
-    const auto &staticRanges        = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_NON_MOVABLE);
-    const auto &movableRanges       = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_MOVABLE);
+    const auto &staticRanges                = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE      | FT::STATIC_NON_MOVABLE);
+    const auto &movableRanges               = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE      | FT::STATIC_MOVABLE    );
+    const auto &transparentStaticRanges     = collectorStatic->GetASBuildRangeInfos(FT::TRANSPARENT | FT::STATIC_NON_MOVABLE);
+    const auto &transparentMovableRanges    = collectorStatic->GetASBuildRangeInfos(FT::TRANSPARENT | FT::STATIC_MOVABLE    );
 
-    const auto &staticPrimCounts    = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_NON_MOVABLE);
-    const auto &movablePrimCounts   = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_MOVABLE);
+    const auto &staticPrimCounts            = collectorStatic->GetPrimitiveCounts(  FT::OPAQUE      | FT::STATIC_NON_MOVABLE);
+    const auto &movablePrimCounts           = collectorStatic->GetPrimitiveCounts(  FT::OPAQUE      | FT::STATIC_MOVABLE    );
+    const auto &transparentStaticPrimCounts = collectorStatic->GetPrimitiveCounts(  FT::TRANSPARENT | FT::STATIC_NON_MOVABLE);
+    const auto &transparentMovablePrimCounts= collectorStatic->GetPrimitiveCounts(  FT::TRANSPARENT | FT::STATIC_MOVABLE    );
 
     // destroy previous
     DestroyAS(staticBlas);
     DestroyAS(staticMovableBlas);
 
+    DestroyAS(transparentStaticBlas);
+    DestroyAS(transparentStaticMovableBlas);
+
     assert(asBuilder->IsEmpty());
 
-    if (staticGeoms.empty() && movableGeoms.empty())
+    if (staticGeoms.empty() && movableGeoms.empty() && transparentStaticGeoms.empty() && transparentMovableGeoms.empty())
     {
         return;
     }
@@ -458,9 +472,19 @@ void ASManager::SubmitStaticGeometry()
         SetupBLAS(staticBlas, staticGeoms, staticRanges, staticPrimCounts, "Static BLAS");
     }
 
+    if (!transparentStaticGeoms.empty())
+    {
+        SetupBLAS(transparentStaticBlas, transparentStaticGeoms, transparentStaticRanges, transparentStaticPrimCounts, "Static transparent BLAS");
+    }
+
     if (!movableGeoms.empty())
     {
         SetupBLAS(staticMovableBlas, movableGeoms, movableRanges, movablePrimCounts, "Movable static BLAS");
+    }
+
+    if (!transparentMovableGeoms.empty())
+    {
+        SetupBLAS(transparentStaticMovableBlas, transparentMovableGeoms, transparentMovableRanges, transparentMovablePrimCounts, "Movable static transparent BLAS");
     }
 
     // build AS
@@ -484,23 +508,38 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 
     const auto &colDyn = collectorDynamic[frameIndex];
     auto &dynBlas = dynamicBlas[frameIndex];
+    auto &transparentDynBlas = transparentDynamicBlas[frameIndex];
 
     colDyn->EndCollecting();
     colDyn->CopyFromStaging(cmd, false);
 
-    const auto &geoms   = colDyn->GetASGeometries(FT::OPAQUE | FT::DYNAMIC);
-    const auto &ranges  = colDyn->GetASBuildRangeInfos(FT::OPAQUE | FT::DYNAMIC);
-    const auto &counts  = colDyn->GetPrimitiveCounts(FT::OPAQUE | FT::DYNAMIC);
+    const auto &geoms               = colDyn->GetASGeometries(      FT::OPAQUE      | FT::DYNAMIC);
+    const auto &ranges              = colDyn->GetASBuildRangeInfos( FT::OPAQUE      | FT::DYNAMIC);
+    const auto &counts              = colDyn->GetPrimitiveCounts(   FT::OPAQUE      | FT::DYNAMIC);
+
+    const auto &transparentGeoms    = colDyn->GetASGeometries(      FT::TRANSPARENT | FT::DYNAMIC);
+    const auto &transparentRanges   = colDyn->GetASBuildRangeInfos( FT::TRANSPARENT | FT::DYNAMIC);
+    const auto &transparentCounts   = colDyn->GetPrimitiveCounts(   FT::TRANSPARENT | FT::DYNAMIC);
 
     assert(asBuilder->IsEmpty());
+
+    if (geoms.empty() && transparentGeoms.empty())
+    {
+        return;
+    }
 
     if (!geoms.empty())
     {
         SetupBLAS(dynBlas, geoms, ranges, counts, "Dynamic BLAS");
-
-        // build BLAS
-        asBuilder->BuildBottomLevel(cmd);
     }
+
+    if (!transparentGeoms.empty())
+    {
+        SetupBLAS(transparentDynBlas, transparentGeoms, transparentRanges, transparentCounts, "Dynamic transparent BLAS");
+    }
+
+    // build BLAS
+    asBuilder->BuildBottomLevel(cmd);
 }
 
 void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
@@ -514,21 +553,41 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 
     const auto &geoms       = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_MOVABLE);
     const auto &ranges      = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_MOVABLE);
-    const auto &primCounts  = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_MOVABLE);
+    const auto &counts  = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_MOVABLE);
 
-    if (geoms.empty())
+    const auto &transparentGeoms = collectorStatic->GetASGeometries(FT::TRANSPARENT | FT::STATIC_MOVABLE);
+    const auto &transparentRanges = collectorStatic->GetASBuildRangeInfos(FT::TRANSPARENT | FT::STATIC_MOVABLE);
+    const auto &transparentCounts = collectorStatic->GetPrimitiveCounts(FT::TRANSPARENT | FT::STATIC_MOVABLE);
+
+    if (geoms.empty() && transparentGeoms.empty())
     {
         return;
     }
 
-    const auto buildSizes = asBuilder->GetBottomBuildSizes(
-        geoms.size(), geoms.data(), primCounts.data(), true);
-
     assert(asBuilder->IsEmpty());
-    asBuilder->AddBLAS(staticMovableBlas.as,
-                       geoms.size(), geoms.data(), ranges.data(),
-                       buildSizes,
-                       false, true);
+
+    const auto buildSizes = asBuilder->GetBottomBuildSizes(geoms.size(), geoms.data(), counts.data(), true);
+    const auto transparentBuildSizes = asBuilder->GetBottomBuildSizes(transparentGeoms.size(), transparentGeoms.data(), counts.data(), true);
+
+    if (!geoms.empty())
+    {
+        // update with same geometries, but modified transforms
+        asBuilder->AddBLAS(
+            staticMovableBlas.as,
+            geoms.size(), geoms.data(), ranges.data(),
+            buildSizes,
+            false, true);
+    }
+
+    if (!transparentGeoms.empty())
+    {
+        // update with same geometries, but modified transforms
+        asBuilder->AddBLAS(
+            transparentStaticMovableBlas.as,
+            transparentGeoms.size(), transparentGeoms.data(), transparentRanges.data(),
+            transparentBuildSizes,
+            false, true);
+    }
 
     asBuilder->BuildBottomLevel(cmd);
     Utils::ASBuildMemoryBarrier(cmd);
@@ -545,7 +604,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 
     // BLAS instances
     uint32_t instanceCount = 0;
-    VkAccelerationStructureInstanceKHR instances[3] = {};
+    VkAccelerationStructureInstanceKHR instances[8] = {};
+
+    // add opaque
 
     if (staticBlas.as != VK_NULL_HANDLE)
     {
@@ -554,7 +615,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         staticInstance.instanceCustomIndex = 0;
         staticInstance.mask = 0xFF;
         staticInstance.instanceShaderBindingTableRecordOffset = 0;
-        staticInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        staticInstance.flags = 
+            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | 
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         staticInstance.accelerationStructureReference = GetASAddress(staticBlas);
     }
 
@@ -565,7 +628,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         movableInstance.instanceCustomIndex = 0;
         movableInstance.mask = 0xFF;
         movableInstance.instanceShaderBindingTableRecordOffset = 0;
-        movableInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        movableInstance.flags = 
+            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | 
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         movableInstance.accelerationStructureReference = GetASAddress(staticMovableBlas);
     }
 
@@ -576,8 +641,51 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
         dynamicInstance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
         dynamicInstance.mask = 0xFF;
         dynamicInstance.instanceShaderBindingTableRecordOffset = 0;
-        dynamicInstance.flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        dynamicInstance.flags = 
+            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | 
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
         dynamicInstance.accelerationStructureReference = GetASAddress(dynamicBlas[frameIndex]);
+    }
+
+    // add transparent
+
+    if (transparentStaticBlas.as != VK_NULL_HANDLE)
+    {
+        VkAccelerationStructureInstanceKHR &staticInstance = instances[instanceCount++];
+        staticInstance.transform = identity;
+        staticInstance.instanceCustomIndex = 0;
+        staticInstance.mask = 0xFF;
+        staticInstance.instanceShaderBindingTableRecordOffset = 1;
+        staticInstance.flags =
+            VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR |
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        staticInstance.accelerationStructureReference = GetASAddress(transparentStaticBlas);
+    }
+
+    if (transparentStaticMovableBlas.as != VK_NULL_HANDLE)
+    {
+        VkAccelerationStructureInstanceKHR &movableInstance = instances[instanceCount++];
+        movableInstance.transform = identity;
+        movableInstance.instanceCustomIndex = 0;
+        movableInstance.mask = 0xFF;
+        movableInstance.instanceShaderBindingTableRecordOffset = 1;
+        movableInstance.flags =
+            VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR |
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        movableInstance.accelerationStructureReference = GetASAddress(transparentStaticMovableBlas);
+    }
+
+    if (transparentDynamicBlas[frameIndex].as != VK_NULL_HANDLE)
+    {
+        VkAccelerationStructureInstanceKHR &dynamicInstance = instances[instanceCount++];
+        dynamicInstance.transform = identity;
+        dynamicInstance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
+        dynamicInstance.mask = 0xFF;
+        dynamicInstance.instanceShaderBindingTableRecordOffset = 1;
+        dynamicInstance.flags =
+            VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR |
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+        dynamicInstance.accelerationStructureReference = GetASAddress(transparentDynamicBlas[frameIndex]);
     }
 
     if (instanceCount == 0)

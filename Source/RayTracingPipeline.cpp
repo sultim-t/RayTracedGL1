@@ -40,12 +40,19 @@ RayTracingPipeline::RayTracingPipeline(
         sm->GetStageInfo("RMiss"),
         sm->GetStageInfo("RMissShadow"),
         sm->GetStageInfo("RClsHit"),
+        sm->GetStageInfo("RAnyHit"),
     };
-
+    
     AddGeneralGroup(0);
     AddGeneralGroup(1);
     AddGeneralGroup(2);
+    // only opaque
     AddHitGroup(3);
+    // opaque/transparent
+    AddHitGroup(3, 4);
+
+    this->hitGroupCount = 2;
+    this->missShaderCount = 2;
 
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
@@ -157,14 +164,14 @@ void RayTracingPipeline::GetEntries(
     assert(raygenEntry.size == raygenEntry.stride);
 
     missEntry = {};
-    missEntry.deviceAddress = bufferAddress + alignedHandleSize;
+    missEntry.deviceAddress = bufferAddress + raygenEntry.size;
     missEntry.stride = alignedHandleSize;
-    missEntry.size = alignedHandleSize * 2;
+    missEntry.size = alignedHandleSize * missShaderCount;
 
     hitEntry = {};
-    hitEntry.deviceAddress = bufferAddress + alignedHandleSize * 3;
+    hitEntry.deviceAddress = bufferAddress + raygenEntry.size + missEntry.size;
     hitEntry.stride = alignedHandleSize;
-    hitEntry.size = alignedHandleSize;
+    hitEntry.size = alignedHandleSize * hitGroupCount;
 
     callableEntry = {};
 }

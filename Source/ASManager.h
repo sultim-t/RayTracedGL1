@@ -98,8 +98,6 @@ private:
     // for filling buffers
     std::shared_ptr<VertexCollector> collectorStatic;
     std::shared_ptr<VertexCollector> collectorDynamic[MAX_FRAMES_IN_FLIGHT];
-    std::shared_ptr<VertexCollector> collectorStaticTransparent;
-    std::shared_ptr<VertexCollector> collectorDynamicTransparent[MAX_FRAMES_IN_FLIGHT];
 
     // building
     std::shared_ptr<ScratchBuffer> scratchBuffer;
@@ -111,6 +109,10 @@ private:
     AccelerationStructure staticBlas;
     AccelerationStructure staticMovableBlas;
     AccelerationStructure dynamicBlas[MAX_FRAMES_IN_FLIGHT];
+
+    AccelerationStructure transparentStaticBlas;
+    AccelerationStructure transparentStaticMovableBlas;
+    AccelerationStructure transparentDynamicBlas[MAX_FRAMES_IN_FLIGHT];
 
     // top level AS
     Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];

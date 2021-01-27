@@ -37,6 +37,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"RMiss",           "../../../BasicMiss.rmiss.spv",             VK_SHADER_STAGE_MISS_BIT_KHR },
     {"RMissShadow",     "../../../BasicShadowCheck.rmiss.spv",      VK_SHADER_STAGE_MISS_BIT_KHR },
     {"RClsHit",         "../../../BasicClosestHit.rchit.spv",       VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
+    {"RAnyHit",         "../../../BasicAnyHit.rahit.spv",           VK_SHADER_STAGE_ANY_HIT_BIT_KHR },
     {"RasterizerVert",  "../../../Rasterizer.vert.spv",             VK_SHADER_STAGE_VERTEX_BIT },
     {"RasterizerFrag",  "../../../Rasterizer.frag.spv",             VK_SHADER_STAGE_FRAGMENT_BIT },
 };
@@ -116,7 +117,8 @@ VkShaderModule ShaderManager::LoadModuleFromFile(const char* path)
 {
     std::ifstream shaderFile(path, std::ios::binary);
     std::vector<uint8_t> shaderSource(std::istreambuf_iterator<char>(shaderFile), {});
-    assert(!shaderSource.empty());
+
+    assert(!shaderSource.empty() && "Can't find shader file");
 
     VkShaderModule shaderModule;
 

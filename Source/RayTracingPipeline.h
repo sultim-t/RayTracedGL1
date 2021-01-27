@@ -73,4 +73,7 @@ private:
     uint32_t groupBaseAlignment;
     uint32_t handleSize;
     uint32_t alignedHandleSize;
+
+    uint32_t hitGroupCount;
+    uint32_t missShaderCount;
 };

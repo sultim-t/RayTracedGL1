@@ -518,7 +518,7 @@ const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollector::Ge
 
 void VertexCollector::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
 {
-    assert(filters.find(type) == filters.end());
+    assert(filters.find(type) != filters.end());
 
     filters[type]->PushPrimitiveCount(type, primCount);
 }
@@ -526,7 +526,7 @@ void VertexCollector::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, ui
 void VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
                                    const VkAccelerationStructureGeometryKHR &geom)
 {
-    assert(filters.find(type) == filters.end());
+    assert(filters.find(type) != filters.end());
 
     filters[type]->PushGeometry(type, geom);
 }
@@ -534,7 +534,7 @@ void VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
 void VertexCollector::PushRangeInfo(VertexCollectorFilterTypeFlags type,
                                     const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo)
 {
-    assert(filters.find(type) == filters.end());
+    assert(filters.find(type) != filters.end());
 
     filters[type]->PushRangeInfo(type, rangeInfo);
 }
@@ -575,7 +575,7 @@ void VertexCollector::InitFilters(VertexCollectorFilterTypeFlags flags)
         for (FT pt : VertexCollectorFilterGroup_PassThrough)
         {
             // if flags contain this pair of group bits
-            if ((flags & (cf | pt)) == flags)
+            if ((flags & (cf | pt)) == (cf | pt))
             {
                 AddFilter(cf | pt);
             }

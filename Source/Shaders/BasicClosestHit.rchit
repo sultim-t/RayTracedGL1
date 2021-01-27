@@ -10,7 +10,7 @@ layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationSt
 
 
 layout(location = 0) rayPayloadInEXT vec3 hitValue;
-layout(location = 2) rayPayloadEXT bool shadowed;
+layout(location = 1) rayPayloadEXT bool shadowed;
 hitAttributeEXT vec2 inBaryCoords;
 
 
@@ -61,12 +61,12 @@ void main()
 	
 	traceRayEXT(
 		topLevelAS, 
-		gl_RayFlagsTerminateOnFirstHitEXT | gl_RayFlagsOpaqueEXT | gl_RayFlagsSkipClosestHitShaderEXT, 
+		gl_RayFlagsSkipClosestHitShaderEXT, 
 		0xFF, 
 		0, 0, 	// sbtRecordOffset, sbtRecordStride
 		1, 		// shadow missIndex
 		origin, 0.001, lightVec, 10000.0, 
-		2);		// shadow payload
+		1);		// shadow payload
 	
 	if (shadowed) 
 	{
