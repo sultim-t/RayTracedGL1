@@ -20,7 +20,7 @@
 
 #include "VertexCollectorFilter.h"
 
-VertexCollectorFilter::VertexCollectorFilter(VertexCollectorFilterTypeFlagBits _filter) : filter(_filter)
+VertexCollectorFilter::VertexCollectorFilter(VertexCollectorFilterTypeFlags _filter) : filter(_filter)
 {}
 
 VertexCollectorFilter::~VertexCollectorFilter()
@@ -70,11 +70,6 @@ void VertexCollectorFilter::PushRangeInfo(VertexCollectorFilterTypeFlags type, c
     {
         asBuildRangeInfos.push_back(rangeInfo);
     }
-}
-
-VertexCollectorFilterTypeFlagBits VertexCollectorFilter::GetFilter() const
-{
-    return filter;
 }
 
 uint32_t VertexCollectorFilter::GetGeometryCount() const

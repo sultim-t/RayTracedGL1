@@ -321,7 +321,7 @@ void VertexCollector::Reset()
 
     for (auto &f : filters)
     {
-        f->Reset();
+        f.second->Reset();
     }
 }
 
@@ -488,73 +488,55 @@ VkBuffer VertexCollector::GetGeometryInfosBuffer() const
     return geomInfosBuffer.GetBuffer();
 }
 
-const std::vector<uint32_t> *VertexCollector::GetPrimitiveCounts(
-    VertexCollectorFilterTypeFlagBits filter) const
+const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts(
+    VertexCollectorFilterTypeFlags filter) const
 {
-    for (const auto &f : filters)
-    {
-        if (f->GetFilter() == filter)
-        {
-            return &f->GetPrimitiveCounts();
-        }
-    }
+    auto f = filters.find(filter);
+    assert(f != filters.end());
 
-    return nullptr;
+    return f->second->GetPrimitiveCounts();
 }
 
-const std::vector<VkAccelerationStructureGeometryKHR> *VertexCollector::GetASGeometries(
-    VertexCollectorFilterTypeFlagBits filter) const
+const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollector::GetASGeometries(
+    VertexCollectorFilterTypeFlags filter) const
 {
-    for (const auto &f : filters)
-    {
-        if (f->GetFilter() == filter)
-        {
-            return &f->GetASGeometries();
-        }
-    }
+    auto f = filters.find(filter);
+    assert(f != filters.end());
 
-    return nullptr;
+    return f->second->GetASGeometries();
 }
 
-const std::vector<VkAccelerationStructureBuildRangeInfoKHR> *VertexCollector::GetASBuildRangeInfos(
-    VertexCollectorFilterTypeFlagBits filter) const
+const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollector::GetASBuildRangeInfos(
+    VertexCollectorFilterTypeFlags filter) const
 {
-    for (const auto &f : filters)
-    {
-        if (f->GetFilter() == filter)
-        {
-            return &f->GetASBuildRangeInfos();
-        }
-    }
+    auto f = filters.find(filter);
+    assert(f != filters.end());
 
-    return nullptr;
+    return f->second->GetASBuildRangeInfos();
 }
 
 
 void VertexCollector::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
 {
-    for (auto &f : filters)
-    {
-        f->PushPrimitiveCount(type, primCount);
-    }
+    assert(filters.find(type) == filters.end());
+
+    filters[type]->PushPrimitiveCount(type, primCount);
 }
 
 void VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
                                    const VkAccelerationStructureGeometryKHR &geom)
 {
-    for (auto &f : filters)
-    {
-        f->PushGeometry(type, geom);
-    }
+    assert(filters.find(type) == filters.end());
+
+    filters[type]->PushGeometry(type, geom);
 }
 
 void VertexCollector::PushRangeInfo(VertexCollectorFilterTypeFlags type,
                                     const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo)
 {
-    for (auto &f : filters)
-    {
-        f->PushRangeInfo(type, rangeInfo);
-    }
+    assert(filters.find(type) == filters.end());
+
+    filters[type]->PushRangeInfo(type, rangeInfo);
 }
 
 uint32_t VertexCollector::GetAllGeometryCount() const
@@ -563,20 +545,22 @@ uint32_t VertexCollector::GetAllGeometryCount() const
 
     for (const auto &f : filters)
     {
-        count += f->GetGeometryCount();
+        count += f.second->GetGeometryCount();
     }
 
     return count;
 }
 
-void VertexCollector::AddFilter(VertexCollectorFilterTypeFlagBits filter)
+void VertexCollector::AddFilter(VertexCollectorFilterTypeFlags filterGroup)
 {
-    if (filter == VertexCollectorFilterTypeFlagBits::NONE)
+    if (filterGroup == (VertexCollectorFilterTypeFlags)0)
     {
         return;
     }
 
-    filters.emplace_back(std::make_shared<VertexCollectorFilter>(filter));
+    assert(filters.find(filterGroup) == filters.end());
+
+    filters[filterGroup] = std::make_shared<VertexCollectorFilter>(filterGroup);
 }
 
 // try create filters for each group (mask)
@@ -585,20 +569,16 @@ void VertexCollector::InitFilters(VertexCollectorFilterTypeFlags flags)
     typedef VertexCollectorFilterTypeFlags FL;
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    constexpr FT allFlagBits[] =
+    // iterate over all pairs of group bits
+    for (FT cf : VertexCollectorFilterGroup_ChangeFrequency)
     {
-        FT::STATIC_NON_MOVABLE,
-        FT::STATIC_MOVABLE,
-        FT::DYNAMIC,
-        FT::OPAQUE,
-        FT::TRANSPARENT,
-    };
-
-    for (FT f : allFlagBits)
-    {
-        if (flags & (FL)f)
+        for (FT pt : VertexCollectorFilterGroup_PassThrough)
         {
-            AddFilter(f);
+            // if flags contain this pair of group bits
+            if ((flags & (cf | pt)) == flags)
+            {
+                AddFilter(cf | pt);
+            }
         }
     }
 }

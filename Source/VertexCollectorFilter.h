@@ -28,7 +28,7 @@
 class VertexCollectorFilter
 {
 public:
-    explicit VertexCollectorFilter(VertexCollectorFilterTypeFlagBits filter);
+    explicit VertexCollectorFilter(VertexCollectorFilterTypeFlags filter);
     ~VertexCollectorFilter();
 
     VertexCollectorFilter(const VertexCollectorFilter& other) = delete;
@@ -49,11 +49,10 @@ public:
     void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR& geom);
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
-    VertexCollectorFilterTypeFlagBits GetFilter() const;
     uint32_t GetGeometryCount() const;
 
 private:
-    VertexCollectorFilterTypeFlagBits filter;
+    VertexCollectorFilterTypeFlags filter;
 
     std::vector<uint32_t> primitiveCounts;
     std::vector<VkAccelerationStructureGeometryKHR> asGeometries;

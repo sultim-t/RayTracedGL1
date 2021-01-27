@@ -24,21 +24,47 @@
 
 enum class VertexCollectorFilterTypeFlagBits
 {
-    NONE                    = 0,
+    NONE                        = 0,
 
-    STATIC_NON_MOVABLE      = 1 << 0,
-    STATIC_MOVABLE          = 2 << 0,
-    DYNAMIC                 = 4 << 0,
-    MASK_CHANGE_FREQUENCY   = STATIC_NON_MOVABLE | STATIC_MOVABLE | DYNAMIC,
+    STATIC_NON_MOVABLE          = 1 << 0,
+    STATIC_MOVABLE              = 2 << 0,
+    DYNAMIC                     = 4 << 0,
+    MASK_CHANGE_FREQUENCY_GROUP = STATIC_NON_MOVABLE | STATIC_MOVABLE | DYNAMIC,
 
-    OPAQUE                  = 1 << 3,
-    TRANSPARENT             = 2 << 3,
-    MASK_PASS_THROUGH       = OPAQUE | TRANSPARENT,
+    OPAQUE                      = 1 << 3,
+    TRANSPARENT                 = 2 << 3,
+    MASK_PASS_THROUGH_GROUP     = OPAQUE | TRANSPARENT,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
+
+
+constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_ChangeFrequency[] =
+{
+    VertexCollectorFilterTypeFlagBits::STATIC_NON_MOVABLE,
+    VertexCollectorFilterTypeFlagBits::STATIC_MOVABLE,
+    VertexCollectorFilterTypeFlagBits::DYNAMIC,
+};
+
+constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrough[] =
+{
+    VertexCollectorFilterTypeFlagBits::OPAQUE,
+    VertexCollectorFilterTypeFlagBits::TRANSPARENT,
+};
 
 inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlagBits b)
 {
     typedef VertexCollectorFilterTypeFlags FL;
     return static_cast<FL>(static_cast<FL>(a) | static_cast<FL>(b));
+}
+
+inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlags a, VertexCollectorFilterTypeFlagBits b)
+{
+    typedef VertexCollectorFilterTypeFlags FL;
+    return static_cast<FL>(a | static_cast<FL>(b));
+}
+
+inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlags b)
+{
+    typedef VertexCollectorFilterTypeFlags FL;
+    return static_cast<FL>(static_cast<FL>(a) | b);
 }

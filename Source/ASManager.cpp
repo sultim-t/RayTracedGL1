@@ -25,11 +25,13 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
-ASManager::ASManager(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocator,
-                     std::shared_ptr<CommandBufferManager> _cmdManager,
-                     std::shared_ptr<TextureManager> _textureMgr,
-                     const VertexBufferProperties &_properties)
-    :
+ASManager::ASManager(
+    VkDevice _device, 
+    std::shared_ptr<MemoryAllocator> _allocator,
+    std::shared_ptr<CommandBufferManager> _cmdManager,
+    std::shared_ptr<TextureManager> _textureMgr,
+    const VertexBufferProperties &_properties)
+:
     device(_device),
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
@@ -46,7 +48,7 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocat
     collectorStatic = std::make_shared<VertexCollector>(
         device, allocator,
         sizeof(ShVertexBufferStatic), properties,
-        (FL)FT::STATIC_NON_MOVABLE | (FL)FT::STATIC_MOVABLE);
+        FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE | FT::OPAQUE | FT::TRANSPARENT);
 
     // subscribe to texture manager only static collector,
     // as static geometries aren't updating its material info (in ShGeometryInstance)
@@ -59,7 +61,7 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocat
         collectorDynamic[i] = std::make_shared<VertexCollector>(
             device, allocator,
             sizeof(ShVertexBufferDynamic), properties,
-            (FL)FT::DYNAMIC);
+            FT::DYNAMIC | FT::OPAQUE | FT::TRANSPARENT);
     }
 
     // instance buffer for TLAS
@@ -370,7 +372,7 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
 
 }
 
-// separate functions to make adding between Begin..Geometry and Submit..Geometry a bit clearer
+// separate functions to make adding between Begin..Geometry() and Submit..Geometry() a bit clearer
 
 uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
 {
@@ -426,14 +428,14 @@ void ASManager::SubmitStaticGeometry()
 
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    const auto &staticGeoms         = *collectorStatic->GetASGeometries(FT::STATIC_NON_MOVABLE);
-    const auto &movableGeoms        = *collectorStatic->GetASGeometries(FT::STATIC_MOVABLE);
+    const auto &staticGeoms         = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_NON_MOVABLE);
+    const auto &movableGeoms        = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_MOVABLE);
 
-    const auto &staticRanges        = *collectorStatic->GetASBuildRangeInfos(FT::STATIC_NON_MOVABLE);
-    const auto &movableRanges       = *collectorStatic->GetASBuildRangeInfos(FT::STATIC_MOVABLE);
+    const auto &staticRanges        = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_NON_MOVABLE);
+    const auto &movableRanges       = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_MOVABLE);
 
-    const auto &staticPrimCounts    = *collectorStatic->GetPrimitiveCounts(FT::STATIC_NON_MOVABLE);
-    const auto &movablePrimCounts   = *collectorStatic->GetPrimitiveCounts(FT::STATIC_MOVABLE);
+    const auto &staticPrimCounts    = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_NON_MOVABLE);
+    const auto &movablePrimCounts   = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_MOVABLE);
 
     // destroy previous
     DestroyAS(staticBlas);
@@ -486,9 +488,9 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     colDyn->EndCollecting();
     colDyn->CopyFromStaging(cmd, false);
 
-    const auto &geoms   = *colDyn->GetASGeometries(FT::DYNAMIC);
-    const auto &ranges  = *colDyn->GetASBuildRangeInfos(FT::DYNAMIC);
-    const auto &counts  = *colDyn->GetPrimitiveCounts(FT::DYNAMIC);
+    const auto &geoms   = colDyn->GetASGeometries(FT::OPAQUE | FT::DYNAMIC);
+    const auto &ranges  = colDyn->GetASBuildRangeInfos(FT::OPAQUE | FT::DYNAMIC);
+    const auto &counts  = colDyn->GetPrimitiveCounts(FT::OPAQUE | FT::DYNAMIC);
 
     assert(asBuilder->IsEmpty());
 
@@ -510,9 +512,9 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    const auto &geoms       = *collectorStatic->GetASGeometries(FT::STATIC_MOVABLE);
-    const auto &ranges      = *collectorStatic->GetASBuildRangeInfos(FT::STATIC_MOVABLE);
-    const auto &primCounts  = *collectorStatic->GetPrimitiveCounts(FT::STATIC_MOVABLE);
+    const auto &geoms       = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_MOVABLE);
+    const auto &ranges      = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_MOVABLE);
+    const auto &primCounts  = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_MOVABLE);
 
     if (geoms.empty())
     {

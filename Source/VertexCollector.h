@@ -75,16 +75,16 @@ public:
 
 
     // Get primitive counts from filters. Null if corresponding filter wasn't found.
-    const std::vector<uint32_t> *GetPrimitiveCounts(
-        VertexCollectorFilterTypeFlagBits filter) const;
+    const std::vector<uint32_t> &GetPrimitiveCounts(
+        VertexCollectorFilterTypeFlags filter) const;
 
     // Get AS geometries data from filters. Null if corresponding filter wasn't found.
-    const std::vector<VkAccelerationStructureGeometryKHR> *GetASGeometries(
-        VertexCollectorFilterTypeFlagBits filter) const;
+    const std::vector<VkAccelerationStructureGeometryKHR> &GetASGeometries(
+        VertexCollectorFilterTypeFlags filter) const;
 
     // Get AS build range infos from filters. Null if corresponding filter wasn't found.
-    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> *GetASBuildRangeInfos(
-        VertexCollectorFilterTypeFlagBits filter) const;
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &GetASBuildRangeInfos(
+        VertexCollectorFilterTypeFlags filter) const;
 
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
@@ -95,8 +95,12 @@ private:
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
 
+    // Parse flags to flag bit pairs and create instances of
+    // VertexCollectorFilter. Flag bit pair contains one bit from
+    // each flag bit group (e.g. change frequency group and pass through group).
     void InitFilters(VertexCollectorFilterTypeFlags flags);
-    void AddFilter(VertexCollectorFilterTypeFlagBits filter);
+
+    void AddFilter(VertexCollectorFilterTypeFlags filterGroup);
     void PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount);
     void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom);
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
@@ -139,5 +143,5 @@ private:
     // material index to a list of () that have that material
     std::map<uint32_t, std::vector<MaterialRef>> materialDependencies;
 
-    std::vector<std::shared_ptr<VertexCollectorFilter>> filters;
+    std::map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
 };
