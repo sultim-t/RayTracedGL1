@@ -54,6 +54,8 @@ typedef enum RgResult
     RG_FRAME_WASNT_STARTED,
     RG_FRAME_WASNT_ENDED,
     RG_UPDATING_NOT_MOVABLE,
+    RG_CANT_UPDATE_DYNAMIC_MATERIAL,
+    RG_CANT_UPDATE_ANIMATED_MATERIAL,
 } RgResult;
 
 //typedef enum RgStructureType

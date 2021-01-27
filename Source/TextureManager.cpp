@@ -190,7 +190,7 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     return InsertMaterial(textures, true);
 }
 
-void TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo)
+bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo)
 {
     const auto it = materials.find(updateInfo.dynamicMaterial);
 
@@ -203,19 +203,22 @@ void TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 
             if (textureIndex == EMPTY_TEXTURE_INDEX)
             {
-                return;
+                return false;
             }
 
             VkImage img = textures[textureIndex].image;
 
             if (img == VK_NULL_HANDLE)
             {
-                return;
+                return false;
             }
 
             textureUploader->UpdateDynamicImage(cmd, img, updateInfo.data);
+            return true;
         }
     }
+
+    return false;
 }
 
 uint32_t TextureManager::PrepareDynamicTexture(
@@ -274,7 +277,7 @@ uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t fr
     return InsertAnimatedMaterial(materialIndices);
 }
 
-void TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame)
+bool TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame)
 {
     const auto animIt = animatedMaterials.find(animMaterial);
 
@@ -302,7 +305,11 @@ void TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t
                 }
             }
         }
+
+        return true;
     }
+
+    return false;
 }
 
 uint32_t TextureManager::GenerateMaterialIndex(const MaterialTextures &materialTextures)

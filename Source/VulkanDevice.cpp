@@ -323,8 +323,8 @@ RgResult VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo
 
 RgResult VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)
 {
-    textureManager->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
-    return RG_SUCCESS;
+    bool wasChanged = textureManager->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
+    return wasChanged ? RG_SUCCESS : RG_CANT_UPDATE_ANIMATED_MATERIAL;
 }
 
 RgResult VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result)
@@ -345,8 +345,8 @@ RgResult VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *
         return RG_FRAME_WASNT_STARTED;
     }
 
-    textureManager->UpdateDynamicMaterial(currentFrameCmd, *updateInfo);
-    return RG_SUCCESS;
+    bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameCmd, *updateInfo);
+    return wasUpdated ? RG_SUCCESS : RG_CANT_UPDATE_DYNAMIC_MATERIAL;
 }
 
 RgResult VulkanDevice::DestroyMaterial(RgMaterial material)

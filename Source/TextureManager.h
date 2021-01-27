@@ -56,10 +56,10 @@ public:
     uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
 
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
-    void ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
+    bool ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
 
     uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
-    void UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo);
+    bool UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo);
 
     void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
 
