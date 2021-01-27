@@ -82,8 +82,9 @@ private:
         AccelerationStructure &as,
         const std::vector<VkAccelerationStructureGeometryKHR> &geoms,
         const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges,
-        const std::vector<uint32_t> &primCounts);
-    void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size);
+        const std::vector<uint32_t> &primCounts,
+        const char *debugName = nullptr);
+    void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, const char *debugName = nullptr);
     void DestroyAS(AccelerationStructure &as, bool withBuffer = true);
     VkDeviceAddress GetASAddress(const AccelerationStructure &as);
     VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);

@@ -60,6 +60,11 @@ void InitDeviceExtensionFunctions_DebugUtils(VkDevice device)
 
 void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name)
 {
+    if (name == nullptr)
+    {
+        return;
+    }
+
     VkDebugMarkerObjectNameInfoEXT nameInfo = {};
     nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
     nameInfo.object = obj;

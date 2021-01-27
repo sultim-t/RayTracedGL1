@@ -182,10 +182,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
         return false;
     }
 
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
-    }
+    SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
 
     *result = image;
     return true;
@@ -343,10 +340,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         return result;
     }
 
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
-    }
+    SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
 
     bool wasCreated = CreateImage(info, &image);
     if (!wasCreated)
@@ -373,10 +367,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     // create image view
     VkImageView imageView = CreateImageView(image, GetMipmapCount(size, generateMipmaps));
 
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
-    }
+    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
 
     // save info about created image
     if (isDynamic)

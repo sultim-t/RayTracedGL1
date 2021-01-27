@@ -75,10 +75,7 @@ void Buffer::Init(
         address = vkGetBufferDeviceAddress(device, &addrInfo);
     }
 
-    if (debugName != nullptr)
-    {
-        SET_DEBUG_NAME(device, buffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
-    }
+    SET_DEBUG_NAME(device, buffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
 
     size = bsize;
 }
