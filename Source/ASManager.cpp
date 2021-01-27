@@ -40,7 +40,7 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevi
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
     // static and movable static vertices share the same buffer as their data won't be changing
-    collectorStaticMovable = std::make_shared<VertexCollectorFiltered>(
+    collectorStaticMovable = std::make_shared<VertexCollectorFilter>(
         device, physDevice,
         sizeof(ShVertexBufferStatic),
         properties, 

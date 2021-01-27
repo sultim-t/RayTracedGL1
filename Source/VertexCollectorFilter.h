@@ -24,18 +24,18 @@
 
 // This class collects vertex data in the same way as VertexCollector
 // but geometries with type==filter will be stored to the separate arrays
-class VertexCollectorFiltered : public VertexCollector
+class VertexCollectorFilter : public VertexCollector
 {
 public:
-    explicit VertexCollectorFiltered(
+    explicit VertexCollectorFilter(
         VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice,
         VkDeviceSize bufferSize, const VertexBufferProperties &properties, RgGeometryType filter);
-    ~VertexCollectorFiltered() override;
+    ~VertexCollectorFilter() override;
 
-    VertexCollectorFiltered(const VertexCollectorFiltered& other) = delete;
-    VertexCollectorFiltered(VertexCollectorFiltered&& other) noexcept = delete;
-    VertexCollectorFiltered& operator=(const VertexCollectorFiltered& other) = delete;
-    VertexCollectorFiltered& operator=(VertexCollectorFiltered&& other) noexcept = delete;
+    VertexCollectorFilter(const VertexCollectorFilter& other) = delete;
+    VertexCollectorFilter(VertexCollectorFilter&& other) noexcept = delete;
+    VertexCollectorFilter& operator=(const VertexCollectorFilter& other) = delete;
+    VertexCollectorFilter& operator=(VertexCollectorFilter&& other) noexcept = delete;
 
     const std::vector<uint32_t>
         &GetPrimitiveCountsFiltered() const;
