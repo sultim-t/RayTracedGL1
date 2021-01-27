@@ -23,6 +23,7 @@
 #include <map>
 
 #include "Common.h"
+#include "PhysicalDevice.h"
 #include "Vma/vk_mem_alloc.h"
 
 // Device memory allocator.
@@ -32,7 +33,7 @@ public:
     explicit MemoryAllocator(
         VkInstance instance,
         VkDevice device,
-        VkPhysicalDevice physDevice);
+        std::shared_ptr<PhysicalDevice> physDevice);
     ~MemoryAllocator();
 
     MemoryAllocator(const MemoryAllocator &other) = delete;
@@ -40,6 +41,15 @@ public:
     MemoryAllocator &operator=(const MemoryAllocator &other) = delete;
     MemoryAllocator &operator=(MemoryAllocator &&other) noexcept = delete;
 
+    VkDevice GetDevice();
+
+
+    // If addressQuery=true device address can be queried
+    VkDeviceMemory AllocDedicated(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties, bool addressQuery = false) const;
+    VkDeviceMemory AllocDedicated(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties, bool addressQuery = false) const;
+    void FreeDedicated(VkDeviceMemory memory) const;
+
+    
     VkBuffer CreateStagingSrcTextureBuffer(
         const VkBufferCreateInfo *info, 
         void **pOutMappedData, VkDeviceMemory *outMemory = nullptr);
@@ -56,6 +66,8 @@ private:
 
 private:
     VkDevice device;
+    std::shared_ptr<PhysicalDevice> physDevice;
+
     VmaAllocator allocator;
 
     // pool for staging buffers for texture data, CPU_ONLY

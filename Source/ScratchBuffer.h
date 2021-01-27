@@ -26,7 +26,7 @@
 class ScratchBuffer
 {
 public:
-    explicit ScratchBuffer(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice);
+    explicit ScratchBuffer(std::shared_ptr<MemoryAllocator> allocator);
 
     ScratchBuffer(const ScratchBuffer& other) = delete;
     ScratchBuffer(ScratchBuffer&& other) noexcept = delete;
@@ -47,8 +47,6 @@ private:
         uint32_t currentOffset = 0;
     };
 
-    VkDevice device;
-
-    std::weak_ptr<PhysicalDevice> physDevice;
+    std::weak_ptr<MemoryAllocator> allocator;
     std::list<ChunkBuffer> chunks;
 };

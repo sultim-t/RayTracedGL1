@@ -58,7 +58,7 @@ uint32_t RasterizedDataCollector::GetVertexStride()
 
 RasterizedDataCollector::RasterizedDataCollector(
     VkDevice _device,
-    const std::shared_ptr<PhysicalDevice> &_physDevice,
+    const std::shared_ptr<MemoryAllocator> &_allocator,
     std::shared_ptr<TextureManager> _textureMgr,
     uint32_t _maxVertexCount, uint32_t _maxIndexCount)
 :
@@ -68,13 +68,13 @@ RasterizedDataCollector::RasterizedDataCollector(
     curIndexCount(0)
 {
     vertexBuffer.Init(
-        device, *_physDevice,
+        _allocator,
         _maxVertexCount * sizeof(RasterizerVertex),
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     indexBuffer.Init(
-        device, *_physDevice,
+        _allocator,
         _maxIndexCount * sizeof(uint32_t),
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);

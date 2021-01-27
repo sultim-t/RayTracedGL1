@@ -23,7 +23,7 @@
 #include "Matrix.h"
 
 VertexCollector::VertexCollector(
-    VkDevice _device, const std::shared_ptr<PhysicalDevice> &_physDevice, 
+    VkDevice _device, const std::shared_ptr<MemoryAllocator> &_allocator,
     VkDeviceSize _bufferSize, const VertexBufferProperties &_properties,
     VertexCollectorFilterTypeFlags _filters) :
     device(_device),
@@ -35,39 +35,39 @@ VertexCollector::VertexCollector(
 
     // vertex buffers
     stagingVertBuffer.Init(
-        device, *_physDevice, _bufferSize,
+        _allocator, _bufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Vertices data staging buffer");
 
     vertBuffer.Init(
-        device, *_physDevice, _bufferSize,
+        _allocator, _bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Vertices data device local buffer");
 
     // index buffers
     stagingIndexBuffer.Init(
-        device, *_physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
+        _allocator, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Index data staging buffer");
 
     indexBuffer.Init(
-        device, *_physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
+        _allocator, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Index data device local buffer");
 
     // transforms buffer
     transforms.Init(
-        device, *_physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
+        _allocator, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Vertex collector transforms buffer");
 
     geomInfosBuffer.Init(
-        device, *_physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(ShGeometryInstance),
+        _allocator, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(ShGeometryInstance),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "BLAS geometry info buffer");

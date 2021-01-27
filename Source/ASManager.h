@@ -30,7 +30,7 @@
 class ASManager
 {
 public:
-    ASManager(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice,
+    ASManager(VkDevice device, std::shared_ptr<MemoryAllocator> allocator,
               std::shared_ptr<CommandBufferManager> cmdManager,
               std::shared_ptr<TextureManager> textureMgr,
               const VertexBufferProperties &properties);
@@ -90,7 +90,7 @@ private:
 
 private:
     VkDevice device;
-    std::shared_ptr<PhysicalDevice> physDevice;
+    std::shared_ptr<MemoryAllocator> allocator;
 
     VkFence staticCopyFence;
 

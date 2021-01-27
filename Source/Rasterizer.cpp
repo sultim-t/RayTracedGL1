@@ -28,7 +28,7 @@
 
 Rasterizer::Rasterizer(
     VkDevice _device,
-    const std::shared_ptr<PhysicalDevice> &_physDevice,
+    const std::shared_ptr<MemoryAllocator> &_allocator,
     const std::shared_ptr<ShaderManager> &_shaderManager,
     std::shared_ptr<TextureManager> _textureMgr,
     VkFormat _surfaceFormat,
@@ -46,7 +46,7 @@ Rasterizer::Rasterizer(
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         collectors[i] = std::make_shared<RasterizedDataCollector>(
-            device, _physDevice, _textureMgr, _maxVertexCount, _maxIndexCount);
+            device, _allocator, _textureMgr, _maxVertexCount, _maxIndexCount);
     }
 
     CreateRenderPass(_surfaceFormat);

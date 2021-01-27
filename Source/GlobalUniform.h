@@ -27,7 +27,7 @@ struct ShGlobalUniform;
 class GlobalUniform
 {
 public:
-    explicit GlobalUniform(VkDevice device, std::shared_ptr<PhysicalDevice> &physDevice, bool deviceLocal = false);
+    explicit GlobalUniform(VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator, bool deviceLocal = false);
     ~GlobalUniform();
 
     GlobalUniform(const GlobalUniform &other) = delete;

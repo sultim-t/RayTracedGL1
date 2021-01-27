@@ -40,7 +40,7 @@ class VertexCollector : public IMaterialDependency
 {
 public:
     explicit VertexCollector(
-        VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
+        VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator,
         VkDeviceSize bufferSize, const VertexBufferProperties &properties,
         VertexCollectorFilterTypeFlags filters);
     ~VertexCollector() override;

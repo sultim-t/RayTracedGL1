@@ -47,7 +47,7 @@ public:
 public:
     explicit RasterizedDataCollector(
         VkDevice device, 
-        const std::shared_ptr<PhysicalDevice> &physDevice,
+        const std::shared_ptr<MemoryAllocator> &allocator,
         std::shared_ptr<TextureManager> textureMgr,
         uint32_t maxVertexCount, uint32_t maxIndexCount);
     ~RasterizedDataCollector();

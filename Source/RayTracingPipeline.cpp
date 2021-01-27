@@ -25,6 +25,7 @@
 RayTracingPipeline::RayTracingPipeline(
     VkDevice device,
     const std::shared_ptr<PhysicalDevice> &physDevice,
+    const std::shared_ptr<MemoryAllocator> &allocator,
     const std::shared_ptr<ShaderManager> &sm,
     const std::shared_ptr<ASManager> &asManager,
     const std::shared_ptr<GlobalUniform> &uniform,
@@ -87,7 +88,7 @@ RayTracingPipeline::RayTracingPipeline(
     SET_DEBUG_NAME(device, rtPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Ray tracing pipeline Layout");
     SET_DEBUG_NAME(device, rtPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Ray tracing pipeline");
 
-    CreateSBT(physDevice);
+    CreateSBT(physDevice, allocator);
 }
 
 RayTracingPipeline::~RayTracingPipeline()
@@ -96,7 +97,9 @@ RayTracingPipeline::~RayTracingPipeline()
     vkDestroyPipelineLayout(device, rtPipelineLayout, nullptr);
 }
 
-void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice)
+void RayTracingPipeline::CreateSBT(
+    const std::shared_ptr<PhysicalDevice> &physDevice, 
+    const std::shared_ptr<MemoryAllocator> &allocator)
 {
     VkResult r;
 
@@ -110,7 +113,7 @@ void RayTracingPipeline::CreateSBT(const std::shared_ptr<PhysicalDevice> &physDe
 
     shaderBindingTable = std::make_shared<Buffer>();
     shaderBindingTable->Init(
-        device, *physDevice, sbtSize,
+        allocator, sbtSize,
         VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Shader binding table buffer");

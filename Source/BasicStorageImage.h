@@ -22,7 +22,7 @@
 
 #include "Common.h"
 #include "CommandBufferManager.h"
-#include "PhysicalDevice.h"
+#include "MemoryAllocator.h"
 #include "ISwapchainDependency.h"
 
 // Temporary class for simple storing of a ray traced image 
@@ -30,7 +30,7 @@ class BasicStorageImage final : public ISwapchainDependency
 {
 public:
     explicit BasicStorageImage(VkDevice device,
-                      std::shared_ptr<PhysicalDevice> physDevice,
+                      std::shared_ptr<MemoryAllocator> allocator,
                       std::shared_ptr<CommandBufferManager> cmdManager);
     ~BasicStorageImage() override;
 
@@ -68,7 +68,7 @@ public:
 
 private:
     VkDevice device;
-    std::shared_ptr<PhysicalDevice> physDevice;
+    std::shared_ptr<MemoryAllocator> allocator;
     std::shared_ptr<CommandBufferManager> cmdManager;
 
     VkImageView view;

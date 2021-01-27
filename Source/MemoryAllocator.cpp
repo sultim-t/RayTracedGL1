@@ -23,16 +23,20 @@
 #include "Const.h"
 
 MemoryAllocator::MemoryAllocator(
-    VkInstance instance,
-    VkDevice device,
-    VkPhysicalDevice physDevice)
+    VkInstance _instance,
+    VkDevice _device,
+    std::shared_ptr<PhysicalDevice> _physDevice)
+:
+    device(_device),
+    physDevice(std::move(_physDevice)),
+    allocator(VK_NULL_HANDLE),
+    texturesStagingPool(VK_NULL_HANDLE),
+    texturesFinalPool(VK_NULL_HANDLE)
 {
-    this->device = device;
-
     VmaAllocatorCreateInfo allocatorInfo = {};
-    allocatorInfo.instance = instance;
+    allocatorInfo.instance = _instance;
     allocatorInfo.device = device;
-    allocatorInfo.physicalDevice = physDevice;
+    allocatorInfo.physicalDevice = physDevice->Get();
     allocatorInfo.vulkanApiVersion = VK_API_VERSION_1_2;
     allocatorInfo.frameInUseCount = MAX_FRAMES_IN_FLIGHT;
 
@@ -205,3 +209,44 @@ void MemoryAllocator::CreateTexturesFinalPool()
     VK_CHECKERROR(r);
 }
 
+VkDevice MemoryAllocator::GetDevice()
+{
+    return device;
+}
+
+VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties,
+                                               bool addressQuery) const
+{
+    VkDeviceMemory memory;
+
+    VkMemoryAllocateInfo memAllocInfo = {};
+    memAllocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    memAllocInfo.allocationSize = memReqs.size;
+    memAllocInfo.memoryTypeIndex = physDevice->GetMemoryTypeIndex(memReqs.memoryTypeBits, properties);
+
+    VkMemoryAllocateFlagsInfo allocFlagInfo = {};
+
+    if (addressQuery)
+    {
+        allocFlagInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
+        allocFlagInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
+
+        memAllocInfo.pNext = &allocFlagInfo;
+    }
+
+    VkResult r = vkAllocateMemory(device, &memAllocInfo, nullptr, &memory);
+    VK_CHECKERROR(r);
+
+    return memory;
+}
+
+VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties,
+                                               bool addressQuery) const
+{
+    return AllocDedicated(memReqs2.memoryRequirements, properties, addressQuery);
+}
+
+void MemoryAllocator::FreeDedicated(VkDeviceMemory memory) const
+{
+    vkFreeMemory(device, memory, nullptr);
+}

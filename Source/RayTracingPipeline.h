@@ -31,6 +31,7 @@ public:
     explicit RayTracingPipeline(
         VkDevice device,
         const std::shared_ptr<PhysicalDevice> &physDevice,
+        const std::shared_ptr<MemoryAllocator> &allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<ASManager> &asManager,
         const std::shared_ptr<GlobalUniform> &uniform,
@@ -53,7 +54,7 @@ public:
     VkPipelineLayout GetLayout() const;
 
 private:
-    void CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice);
+    void CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice, const std::shared_ptr<MemoryAllocator> &allocator);
 
     void AddGeneralGroup(uint32_t generalIndex);
     void AddHitGroup(uint32_t closestHitIndex);

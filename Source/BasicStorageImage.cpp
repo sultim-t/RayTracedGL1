@@ -19,24 +19,28 @@
 // SOFTWARE.
 
 #include "BasicStorageImage.h"
+
 #include "Swapchain.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
 BasicStorageImage::BasicStorageImage(
-    VkDevice device,
-    std::shared_ptr<PhysicalDevice> physDevice,
-    std::shared_ptr<CommandBufferManager> cmdManager) :
+    VkDevice _device,
+    std::shared_ptr<MemoryAllocator> _allocator,
+    std::shared_ptr<CommandBufferManager> _cmdManager)
+:
     image(VK_NULL_HANDLE),
     imageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
     width(0),height(0),
+    device(_device),
+    allocator(std::move(_allocator)),
+    cmdManager(std::move(_cmdManager)),
     view(VK_NULL_HANDLE),
-    memory(VK_NULL_HANDLE)
+    memory(VK_NULL_HANDLE),
+    descLayout(VK_NULL_HANDLE),
+    descPool(VK_NULL_HANDLE),
+    descSets{}
 {
-    this->device = device;
-    this->physDevice = physDevice;
-    this->cmdManager = cmdManager;
-
     CreateDescriptors();
 }
 
@@ -75,7 +79,7 @@ void BasicStorageImage::CreateImage(uint32_t width, uint32_t height)
     VkMemoryRequirements memReqs;
     vkGetImageMemoryRequirements(device, image, &memReqs);
 
-    memory = physDevice->AllocDeviceMemory(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    memory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     r = vkBindImageMemory(device, image, memory, 0);
     VK_CHECKERROR(r);
@@ -119,7 +123,7 @@ void BasicStorageImage::DestroyImage()
     {
         vkDestroyImage(device, image, nullptr);
         vkDestroyImageView(device, view, nullptr);
-        physDevice->FreeDeviceMemory(memory);
+        allocator->FreeDedicated(memory);
 
         image = VK_NULL_HANDLE;
         imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;

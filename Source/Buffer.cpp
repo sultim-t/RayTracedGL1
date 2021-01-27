@@ -36,7 +36,7 @@ Buffer::~Buffer()
 }
 
 void Buffer::Init(
-    VkDevice bdevice, const PhysicalDevice &physDevice, 
+    const std::shared_ptr<MemoryAllocator> &allocator,
     VkDeviceSize bsize, VkBufferUsageFlags usage,
     VkMemoryPropertyFlags properties, const char *debugName)
 {
@@ -46,7 +46,7 @@ void Buffer::Init(
         return;
     }
 
-    device = bdevice;
+    device = allocator->GetDevice();
 
     VkResult r;
 
@@ -62,7 +62,7 @@ void Buffer::Init(
     VkMemoryRequirements memReq = {};
     vkGetBufferMemoryRequirements(device, buffer, &memReq);
 
-    memory = physDevice.AllocDeviceMemory(memReq, properties, true);
+    memory = allocator->AllocDedicated(memReq, properties, true);
 
     r = vkBindBufferMemory(device, buffer, memory, 0);
     VK_CHECKERROR(r);
@@ -92,6 +92,7 @@ void Buffer::Destroy()
         return;
     }
 
+    // memory is guaranteed to be dedicated
     if (memory != VK_NULL_HANDLE)
     {
         vkFreeMemory(device, memory, nullptr);

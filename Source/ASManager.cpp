@@ -25,13 +25,13 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
-ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevice,
+ASManager::ASManager(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocator,
                      std::shared_ptr<CommandBufferManager> _cmdManager,
                      std::shared_ptr<TextureManager> _textureMgr,
                      const VertexBufferProperties &_properties)
     :
     device(_device),
-    physDevice(std::move(_physDevice)),
+    allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
     textureMgr(std::move(_textureMgr)),
     properties(_properties)
@@ -39,12 +39,12 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevi
     typedef VertexCollectorFilterTypeFlags FL;
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
+    scratchBuffer = std::make_shared<ScratchBuffer>(allocator);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
-        device, physDevice,
+        device, allocator,
         sizeof(ShVertexBufferStatic), properties,
         (FL)FT::STATIC_NON_MOVABLE | (FL)FT::STATIC_MOVABLE);
 
@@ -57,7 +57,7 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevi
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         collectorDynamic[i] = std::make_shared<VertexCollector>(
-            device, physDevice,
+            device, allocator,
             sizeof(ShVertexBufferDynamic), properties,
             (FL)FT::DYNAMIC);
     }
@@ -66,7 +66,7 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevi
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         instanceBuffers[i].Init(
-            device, *physDevice,
+            allocator,
             MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR),
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
@@ -636,7 +636,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size)
 {
     as.buffer.Init(
-        device, *physDevice, size,
+        allocator, size,
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "AS buffer"

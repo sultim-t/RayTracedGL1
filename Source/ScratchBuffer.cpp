@@ -22,11 +22,9 @@
 
 constexpr VkDeviceSize SCRATCH_CHUNK_BUFFER_SIZE = (1 << 24);
 
-ScratchBuffer::ScratchBuffer(VkDevice device, std::shared_ptr<PhysicalDevice> physDevice)
+ScratchBuffer::ScratchBuffer(std::shared_ptr<MemoryAllocator> _allocator)
+    : allocator(_allocator)
 {
-    this->device = device;
-    this->physDevice = physDevice;
-
     AddChunk(SCRATCH_CHUNK_BUFFER_SIZE);
 }
 
@@ -59,13 +57,13 @@ void ScratchBuffer::Reset()
 
 void ScratchBuffer::AddChunk(VkDeviceSize size)
 {
-    if (const auto pd = physDevice.lock())
+    if (const auto allc = allocator.lock())
     {
         chunks.emplace_back();
         auto &c = chunks.back();
 
         c.buffer.Init(
-            device, *pd, size,
+            allc, size,
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             "Scratch buffer");

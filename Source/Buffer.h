@@ -21,7 +21,7 @@
 #pragma once
 
 #include "Common.h"
-#include "PhysicalDevice.h"
+#include "MemoryAllocator.h"
 
 class Buffer
 {
@@ -30,7 +30,7 @@ public:
     ~Buffer();
 
     // Create VkBuffer, allocate memory and bind it
-    void Init(VkDevice device, const PhysicalDevice &physDevice,
+    void Init(const std::shared_ptr<MemoryAllocator> &allocator,
               VkDeviceSize size, VkBufferUsageFlags usage,
               VkMemoryPropertyFlags properties, const char *debugName = nullptr);
     void Destroy();

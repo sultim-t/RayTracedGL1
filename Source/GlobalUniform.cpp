@@ -22,20 +22,23 @@
 
 #include "Generated/ShaderCommonC.h"
 
-GlobalUniform::GlobalUniform(VkDevice device, std::shared_ptr<PhysicalDevice> &physDevice, bool deviceLocal)
+GlobalUniform::GlobalUniform(VkDevice _device, const std::shared_ptr<MemoryAllocator> &_allocator, bool _deviceLocal)
+:
+    device(_device),
+    uniformData(std::make_shared<ShGlobalUniform>()),
+    descPool(VK_NULL_HANDLE),
+    descSetLayout(VK_NULL_HANDLE),
+    descSets{}
 {
-    this->device = device;
-    this->uniformData = std::make_shared<ShGlobalUniform>();
-
     const VkDeviceSize size = sizeof(ShGlobalUniform);
 
-    VkMemoryPropertyFlags properties = deviceLocal ?
+    VkMemoryPropertyFlags properties = _deviceLocal ?
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT :
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        uniformBuffers[i].Init(device, *physDevice, size,
+        uniformBuffers[i].Init(_allocator, size,
                                VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, properties,
                                "Uniform buffer");
     }

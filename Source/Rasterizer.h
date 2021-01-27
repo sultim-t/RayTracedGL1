@@ -24,7 +24,6 @@
 
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
-#include "Buffer.h"
 #include "ShaderManager.h"
 #include "ISwapchainDependency.h"
 #include "RasterizedDataCollector.h"
@@ -35,7 +34,7 @@ class Rasterizer : public ISwapchainDependency
 public:
     explicit Rasterizer(
         VkDevice device,
-        const std::shared_ptr<PhysicalDevice> &physDevice,
+        const std::shared_ptr<MemoryAllocator> &allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
         std::shared_ptr<TextureManager> textureMgr,
         VkFormat surfaceFormat,

@@ -56,17 +56,16 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     CreateSyncPrimitives();
 
     // set device
-    physDevice->SetDevice(device);
     queues->SetDevice(device);
 
-    memAllocator = std::make_shared<MemoryAllocator>(instance, device, physDevice->Get());
+    memAllocator = std::make_shared<MemoryAllocator>(instance, device, physDevice);
 
     cmdManager = std::make_shared<CommandBufferManager>(device, queues);
-    uniform = std::make_shared<GlobalUniform>(device, physDevice);
+    uniform = std::make_shared<GlobalUniform>(device, memAllocator);
 
     swapchain = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
-    storageImage = std::make_shared<BasicStorageImage>(device, physDevice, cmdManager);
+    storageImage = std::make_shared<BasicStorageImage>(device, memAllocator, cmdManager);
     swapchain->Subscribe(storageImage);
 
     textureManager = std::make_shared<TextureManager>(
@@ -74,19 +73,19 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->overridenTexturesFolderPath, info->overrideAlbedoAlphaTexturePostfix, 
         info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
 
-    auto asManager = std::make_shared<ASManager>(device, physDevice, cmdManager, textureManager, vbProperties);
+    auto asManager = std::make_shared<ASManager>(device, memAllocator, cmdManager, textureManager, vbProperties);
     scene = std::make_shared<Scene>(asManager);
 
     shaderManager = std::make_shared<ShaderManager>(device);
     rtPipeline = std::make_shared<RayTracingPipeline>(
-        device, physDevice, shaderManager, 
+        device, physDevice, memAllocator, shaderManager,
         scene->GetASManager(), uniform, textureManager,
         storageImage->GetDescSetLayout());
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
     rasterizer = std::make_shared<Rasterizer>(
-        device, physDevice, shaderManager, textureManager, swapchain->GetSurfaceFormat(), 
+        device, memAllocator, shaderManager, textureManager, swapchain->GetSurfaceFormat(),
         info->rasterizedMaxVertexCount, info->rasterizedMaxIndexCount);
     swapchain->Subscribe(rasterizer);
 }
