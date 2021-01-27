@@ -566,11 +566,10 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 
     assert(asBuilder->IsEmpty());
 
-    const auto buildSizes = asBuilder->GetBottomBuildSizes(geoms.size(), geoms.data(), counts.data(), true);
-    const auto transparentBuildSizes = asBuilder->GetBottomBuildSizes(transparentGeoms.size(), transparentGeoms.data(), counts.data(), true);
-
     if (!geoms.empty())
     {
+        const auto buildSizes = asBuilder->GetBottomBuildSizes(geoms.size(), geoms.data(), counts.data(), true);
+
         // update with same geometries, but modified transforms
         asBuilder->AddBLAS(
             staticMovableBlas.as,
@@ -581,6 +580,8 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 
     if (!transparentGeoms.empty())
     {
+        const auto transparentBuildSizes = asBuilder->GetBottomBuildSizes(transparentGeoms.size(), transparentGeoms.data(), counts.data(), true);
+
         // update with same geometries, but modified transforms
         asBuilder->AddBLAS(
             transparentStaticMovableBlas.as,
