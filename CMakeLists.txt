@@ -49,6 +49,7 @@ set(PrivateHeaders
     "Source/TextureDescriptors.h"
     "Source/TextureUploader.h"
     "Source/IMaterialDependency.h"
+    "Source/VertexCollectorFilterType.h"
     )
 
 set(Sources

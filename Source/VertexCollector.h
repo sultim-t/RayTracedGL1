@@ -28,6 +28,7 @@
 #include "IMaterialDependency.h"
 #include "Material.h"
 #include "VertexBufferProperties.h"
+#include "VertexCollectorFilter.h"
 #include "RTGL1/RTGL1.h"
 
 struct ShGeometryInstance;
@@ -40,7 +41,8 @@ class VertexCollector : public IMaterialDependency
 public:
     explicit VertexCollector(
         VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
-        VkDeviceSize bufferSize, const VertexBufferProperties &properties);
+        VkDeviceSize bufferSize, const VertexBufferProperties &properties,
+        VertexCollectorFilterTypeFlags filters);
     ~VertexCollector() override;
 
     VertexCollector(const VertexCollector& other) = delete;
@@ -51,17 +53,6 @@ public:
     void BeginCollecting();
     uint32_t AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT]);
     void EndCollecting();
-
-    const std::vector<uint32_t>
-        &GetPrimitiveCounts() const;
-    const std::vector<VkAccelerationStructureGeometryKHR>
-        &GetASGeometries() const;
-    const std::vector<VkAccelerationStructureBuildRangeInfoKHR>
-        &GetASBuildRangeInfos() const;
-
-    VkBuffer GetVertexBuffer() const;
-    VkBuffer GetIndexBuffer() const;
-    VkBuffer GetGeometryInfosBuffer() const;
 
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
@@ -74,14 +65,26 @@ public:
     // will be updated every frame and thus their transforms.
     void UpdateTransform(uint32_t geomIndex, const RgTransform &transform);
 
+    // When material data is changed, this function is called
     void OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo) override;
 
-protected:
-    virtual void PushPrimitiveCount(RgGeometryType type, uint32_t primCount);
-    virtual void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom);
-    virtual void PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
-    virtual uint32_t GetGeometryCount() const;
+    VkBuffer GetVertexBuffer() const;
+    VkBuffer GetIndexBuffer() const;
+    VkBuffer GetGeometryInfosBuffer() const;
+
+
+    // Get primitive counts from filters. Null if corresponding filter wasn't found.
+    const std::vector<uint32_t> *GetPrimitiveCounts(
+        VertexCollectorFilterTypeFlagBits filter) const;
+
+    // Get AS geometries data from filters. Null if corresponding filter wasn't found.
+    const std::vector<VkAccelerationStructureGeometryKHR> *GetASGeometries(
+        VertexCollectorFilterTypeFlagBits filter) const;
+
+    // Get AS build range infos from filters. Null if corresponding filter wasn't found.
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> *GetASBuildRangeInfos(
+        VertexCollectorFilterTypeFlagBits filter) const;
 
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
@@ -91,6 +94,15 @@ private:
     bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 4> &outInfos) const;
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
+
+    void InitFilters(VertexCollectorFilterTypeFlags flags);
+    void AddFilter(VertexCollectorFilterTypeFlagBits filter);
+    void PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount);
+    void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom);
+    void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
+    uint32_t GetAllGeometryCount() const;
+
+    static VertexCollectorFilterTypeFlags GetFilterTypeFlags(const RgGeometryUploadInfo &info);
 
 private:
     struct MaterialRef
@@ -127,7 +139,5 @@ private:
     // material index to a list of () that have that material
     std::map<uint32_t, std::vector<MaterialRef>> materialDependencies;
 
-    std::vector<uint32_t> primitiveCounts;
-    std::vector<VkAccelerationStructureGeometryKHR> asGeometries;
-    std::vector<VkAccelerationStructureBuildRangeInfoKHR> asBuildRangeInfos;
+    std::vector<std::shared_ptr<VertexCollectorFilter>> filters;
 };

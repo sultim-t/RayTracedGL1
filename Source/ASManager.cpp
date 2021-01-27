@@ -36,27 +36,30 @@ ASManager::ASManager(VkDevice _device, std::shared_ptr<PhysicalDevice> _physDevi
     textureMgr(std::move(_textureMgr)),
     properties(_properties)
 {
+    typedef VertexCollectorFilterTypeFlags FL;
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
     scratchBuffer = std::make_shared<ScratchBuffer>(device, physDevice);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
     // static and movable static vertices share the same buffer as their data won't be changing
-    collectorStaticMovable = std::make_shared<VertexCollectorFilter>(
+    collectorStatic = std::make_shared<VertexCollector>(
         device, physDevice,
-        sizeof(ShVertexBufferStatic),
-        properties, 
-        RG_GEOMETRY_TYPE_STATIC_MOVABLE);
+        sizeof(ShVertexBufferStatic), properties,
+        (FL)FT::STATIC_NON_MOVABLE | (FL)FT::STATIC_MOVABLE);
 
     // subscribe to texture manager only static collector,
     // as static geometries aren't updating its material info (in ShGeometryInstance)
     // every frame unlike dynamic ones
-    textureMgr->Subscribe(collectorStaticMovable);
+    textureMgr->Subscribe(collectorStatic);
 
     // dynamic vertices
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         collectorDynamic[i] = std::make_shared<VertexCollector>(
             device, physDevice,
-            sizeof(ShVertexBufferDynamic), properties);
+            sizeof(ShVertexBufferDynamic), properties,
+            (FL)FT::DYNAMIC);
     }
 
     // instance buffer for TLAS
@@ -199,7 +202,7 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 
     // buffer infos
     VkDescriptorBufferInfo &stVertsBufInfo = bufferInfos[BINDING_VERTEX_BUFFER_STATIC];
-    stVertsBufInfo.buffer = collectorStaticMovable->GetVertexBuffer();
+    stVertsBufInfo.buffer = collectorStatic->GetVertexBuffer();
     stVertsBufInfo.offset = 0;
     stVertsBufInfo.range = VK_WHOLE_SIZE;
 
@@ -209,7 +212,7 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     dnVertsBufInfo.range = VK_WHOLE_SIZE;
 
     VkDescriptorBufferInfo &stIndexBufInfo = bufferInfos[BINDING_INDEX_BUFFER_STATIC];
-    stIndexBufInfo.buffer = collectorStaticMovable->GetIndexBuffer();
+    stIndexBufInfo.buffer = collectorStatic->GetIndexBuffer();
     stIndexBufInfo.offset = 0;
     stIndexBufInfo.range = VK_WHOLE_SIZE;
 
@@ -219,7 +222,7 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     dnIndexBufInfo.range = VK_WHOLE_SIZE;
 
     VkDescriptorBufferInfo &gsBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES_STATIC];
-    gsBufInfo.buffer = collectorStaticMovable->GetGeometryInfosBuffer();
+    gsBufInfo.buffer = collectorStatic->GetGeometryInfosBuffer();
     gsBufInfo.offset = 0;
     gsBufInfo.range = VK_WHOLE_SIZE;
 
@@ -369,7 +372,7 @@ uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
         };
 
-        return collectorStaticMovable->AddGeometry(info, materials);
+        return collectorStatic->AddGeometry(info, materials);
     }
 
     assert(0);
@@ -396,28 +399,30 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
 
 void ASManager::ResetStaticGeometry()
 {
-    collectorStaticMovable->Reset();
+    collectorStatic->Reset();
 }
 
 void ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
-    collectorStaticMovable->Reset();
-    collectorStaticMovable->BeginCollecting();
+    collectorStatic->Reset();
+    collectorStatic->BeginCollecting();
 }
 
 void ASManager::SubmitStaticGeometry()
 {
-    collectorStaticMovable->EndCollecting();
+    collectorStatic->EndCollecting();
 
-    const auto &staticGeoms = collectorStaticMovable->GetASGeometries();
-    const auto &movableGeoms = collectorStaticMovable->GetASGeometriesFiltered();
+    typedef VertexCollectorFilterTypeFlagBits FT;
 
-    const auto &staticRanges = collectorStaticMovable->GetASBuildRangeInfos();
-    const auto &movableRanges = collectorStaticMovable->GetASBuildRangeInfosFiltered();
+    const auto &staticGeoms         = *collectorStatic->GetASGeometries(FT::STATIC_NON_MOVABLE);
+    const auto &movableGeoms        = *collectorStatic->GetASGeometries(FT::STATIC_MOVABLE);
 
-    const auto &staticPrimCounts = collectorStaticMovable->GetPrimitiveCounts();
-    const auto &movablePrimCounts = collectorStaticMovable->GetPrimitiveCountsFiltered();
+    const auto &staticRanges        = *collectorStatic->GetASBuildRangeInfos(FT::STATIC_NON_MOVABLE);
+    const auto &movableRanges       = *collectorStatic->GetASBuildRangeInfos(FT::STATIC_MOVABLE);
+
+    const auto &staticPrimCounts    = *collectorStatic->GetPrimitiveCounts(FT::STATIC_NON_MOVABLE);
+    const auto &movablePrimCounts   = *collectorStatic->GetPrimitiveCounts(FT::STATIC_MOVABLE);
 
     // destroy previous
     DestroyAS(staticBlas);
@@ -433,7 +438,7 @@ void ASManager::SubmitStaticGeometry()
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
     // copy from staging with barrier
-    collectorStaticMovable->CopyFromStaging(cmd, true);
+    collectorStatic->CopyFromStaging(cmd, true);
 
     if (!staticGeoms.empty())
     {
@@ -466,15 +471,17 @@ void ASManager::BeginDynamicGeometry(uint32_t frameIndex)
 
 void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
     const auto &colDyn = collectorDynamic[frameIndex];
     auto &dynBlas = dynamicBlas[frameIndex];
 
     colDyn->EndCollecting();
     colDyn->CopyFromStaging(cmd, false);
 
-    const auto &geoms = colDyn->GetASGeometries();
-    const auto &ranges = colDyn->GetASBuildRangeInfos();
-    const auto &counts = colDyn->GetPrimitiveCounts();
+    const auto &geoms   = *colDyn->GetASGeometries(FT::DYNAMIC);
+    const auto &ranges  = *colDyn->GetASBuildRangeInfos(FT::DYNAMIC);
+    const auto &counts  = *colDyn->GetPrimitiveCounts(FT::DYNAMIC);
 
     assert(asBuilder->IsEmpty());
 
@@ -491,14 +498,16 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 
 void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
 {
-    collectorStaticMovable->UpdateTransform(geomIndex, transform);
+    collectorStatic->UpdateTransform(geomIndex, transform);
 }
 
 void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
-    const auto &geoms = collectorStaticMovable->GetASGeometriesFiltered();
-    const auto &ranges = collectorStaticMovable->GetASBuildRangeInfosFiltered();
-    const auto &primCounts = collectorStaticMovable->GetPrimitiveCountsFiltered();
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    const auto &geoms       = *collectorStatic->GetASGeometries(FT::STATIC_MOVABLE);
+    const auto &ranges      = *collectorStatic->GetASBuildRangeInfos(FT::STATIC_MOVABLE);
+    const auto &primCounts  = *collectorStatic->GetPrimitiveCounts(FT::STATIC_MOVABLE);
 
     if (geoms.empty())
     {

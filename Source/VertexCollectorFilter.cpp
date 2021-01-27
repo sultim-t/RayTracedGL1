@@ -19,81 +19,65 @@
 // SOFTWARE.
 
 #include "VertexCollectorFilter.h"
-#include <utility>
 
-VertexCollectorFilter::VertexCollectorFilter(
-    VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
-    VkDeviceSize bufferSize, const VertexBufferProperties &properties, RgGeometryType filter)
-    : VertexCollector(device, physDevice, bufferSize, properties)
-{
-    this->filter = filter;
-}
+VertexCollectorFilter::VertexCollectorFilter(VertexCollectorFilterTypeFlagBits _filter) : filter(_filter)
+{}
 
 VertexCollectorFilter::~VertexCollectorFilter()
 {}
 
-const std::vector<uint32_t> &VertexCollectorFilter::GetPrimitiveCountsFiltered() const
+const std::vector<uint32_t> &VertexCollectorFilter::GetPrimitiveCounts() const
 {
-    return primCountFiltered;
+    return primitiveCounts;
 }
 
-const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollectorFilter::GetASGeometriesFiltered() const
+const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollectorFilter::GetASGeometries() const
 {
-    return geomsFiltered;
+    return asGeometries;
 }
 
-const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollectorFilter::GetASBuildRangeInfosFiltered() const
+const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollectorFilter::GetASBuildRangeInfos() const
 {
-    return buildRangeInfosFiltered;
+    return asBuildRangeInfos;
 }
 
 void VertexCollectorFilter::Reset()
 {
-    VertexCollector::Reset();
-
-    geomsFiltered.clear();
-    primCountFiltered.clear();
-    buildRangeInfosFiltered.clear();
+    asGeometries.clear();
+    primitiveCounts.clear();
+    asBuildRangeInfos.clear();
 }
 
-void VertexCollectorFilter::PushPrimitiveCount(RgGeometryType type, uint32_t primCount)
+void VertexCollectorFilter::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
 {
-    if (type == filter)
+    if (type & (uint32_t)filter)
     {
-        primCountFiltered.push_back(primCount);
-    }
-    else
-    {
-        VertexCollector::PushPrimitiveCount(type, primCount);
+        primitiveCounts.push_back(primCount);
     }
 }
 
-void VertexCollectorFilter::PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom)
+void VertexCollectorFilter::PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom)
 {
-    if (type == filter)
+    if (type & (uint32_t)filter)
     {
-        geomsFiltered.push_back(geom);
-    }
-    else
-    {
-        VertexCollector::PushGeometry(type, geom);
+        asGeometries.push_back(geom);
     }
 }
 
-void VertexCollectorFilter::PushRangeInfo(RgGeometryType type,
-    const VkAccelerationStructureBuildRangeInfoKHR& rangeInfo)
+void VertexCollectorFilter::PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR& rangeInfo)
 {
-    if (type == filter)
+    if (type & (uint32_t)filter)
     {
-        buildRangeInfosFiltered.push_back(rangeInfo);
+        asBuildRangeInfos.push_back(rangeInfo);
     }
-    else
-    {
-        VertexCollector::PushRangeInfo(type, rangeInfo);
-    }
+}
+
+VertexCollectorFilterTypeFlagBits VertexCollectorFilter::GetFilter() const
+{
+    return filter;
 }
 
 uint32_t VertexCollectorFilter::GetGeometryCount() const
 {
-    return geomsFiltered.size() + VertexCollector::GetGeometryCount();
+    return (uint32_t)asGeometries.size();
 }

@@ -23,50 +23,51 @@
 #include "Matrix.h"
 
 VertexCollector::VertexCollector(
-    VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice, 
-    VkDeviceSize bufferSize, const VertexBufferProperties &properties) :
-    properties({}),
+    VkDevice _device, const std::shared_ptr<PhysicalDevice> &_physDevice, 
+    VkDeviceSize _bufferSize, const VertexBufferProperties &_properties,
+    VertexCollectorFilterTypeFlags _filters) :
+    device(_device),
+    properties(_properties),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0)
 {
-    this->device = device;
-    this->properties = properties;
+    assert(_filters != 0);
 
     // vertex buffers
     stagingVertBuffer.Init(
-        device, *physDevice, bufferSize,
+        device, *_physDevice, _bufferSize,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Vertices data staging buffer");
 
     vertBuffer.Init(
-        device, *physDevice, bufferSize,
+        device, *_physDevice, _bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Vertices data device local buffer");
 
     // index buffers
     stagingIndexBuffer.Init(
-        device, *physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
+        device, *_physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Index data staging buffer");
 
     indexBuffer.Init(
-        device, *physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
+        device, *_physDevice, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Index data device local buffer");
 
     // transforms buffer
     transforms.Init(
-        device, *physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
+        device, *_physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Vertex collector transforms buffer");
 
     geomInfosBuffer.Init(
-        device, *physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(ShGeometryInstance),
+        device, *_physDevice, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(ShGeometryInstance),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "BLAS geometry info buffer");
@@ -75,6 +76,8 @@ VertexCollector::VertexCollector(
     mappedIndexData = static_cast<uint32_t *>(stagingIndexBuffer.Map());
     mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
     mappedGeomInfosData = static_cast<ShGeometryInstance *>(geomInfosBuffer.Map());
+
+    InitFilters(_filters);
 }
 
 VertexCollector::~VertexCollector()
@@ -89,13 +92,18 @@ VertexCollector::~VertexCollector()
 void VertexCollector::BeginCollecting()
 {
     assert(curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 && curGeometryCount == 0);
-    assert(asGeometries.empty() && asBuildRangeInfos.empty());
+    assert(GetAllGeometryCount() == 0);
 }
 
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
-    const bool collectStatic = info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+    typedef VertexCollectorFilterTypeFlagBits FT;
 
+    VertexCollectorFilterTypeFlags filterFlags = GetFilterTypeFlags(info);
+
+    constexpr uint32_t filterStaticMask = (uint32_t)FT::STATIC_NON_MOVABLE | (uint32_t)FT::STATIC_MOVABLE;
+    const bool collectStatic = filterFlags & filterStaticMask;
+    
     const uint32_t maxVertexCount = collectStatic ?
         MAX_STATIC_VERTEX_COUNT :
         MAX_DYNAMIC_VERTEX_COUNT;
@@ -175,20 +183,20 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         trData.indexData = {};
     }
 
-    PushGeometry(info.geomType, geom);
+    PushGeometry(filterFlags, geom);
 
     // geomIndex must be the same as in pGeometries in BLAS
     // for referencing it in shaders by gl_GeometryIndexEXT (RayGeometryIndexKHR)
-    assert(geomIndex == GetGeometryCount() - 1);
+    assert(geomIndex == GetAllGeometryCount() - 1);
 
     VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
     rangeInfo.primitiveCount = primitiveCount;
     rangeInfo.primitiveOffset = 0;
     rangeInfo.firstVertex = 0;
     rangeInfo.transformOffset = 0;
-    PushRangeInfo(info.geomType, rangeInfo);
+    PushRangeInfo(filterFlags, rangeInfo);
 
-    PushPrimitiveCount(info.geomType, primitiveCount);
+    PushPrimitiveCount(filterFlags, primitiveCount);
 
     // copy geom info
     assert(geomInfosBuffer.IsMapped());
@@ -302,11 +310,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
 void VertexCollector::EndCollecting()
 {}
 
-const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts() const
-{
-    return primitiveCounts;
-}
-
 void VertexCollector::Reset()
 {
     curVertexCount = 0;
@@ -315,9 +318,11 @@ void VertexCollector::Reset()
     curGeometryCount = 0;
 
     materialDependencies.clear();
-    primitiveCounts.clear();
-    asGeometries.clear();
-    asBuildRangeInfos.clear();
+
+    for (auto &f : filters)
+    {
+        f->Reset();
+    }
 }
 
 bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic)
@@ -468,36 +473,6 @@ void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTex
     }
 }
 
-void VertexCollector::PushPrimitiveCount(RgGeometryType type, uint32_t primCount)
-{
-    primitiveCounts.push_back(primCount);
-}
-
-void VertexCollector::PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR &geom)
-{
-    asGeometries.push_back(geom);
-}
-
-void VertexCollector::PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo)
-{
-    asBuildRangeInfos.push_back(rangeInfo);
-}
-
-uint32_t VertexCollector::GetGeometryCount() const
-{
-    return asGeometries.size();
-}
-
-const std::vector<VkAccelerationStructureGeometryKHR> &VertexCollector::GetASGeometries() const
-{
-    return asGeometries;
-}
-
-const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollector::GetASBuildRangeInfos() const
-{
-    return asBuildRangeInfos;
-}
-
 VkBuffer VertexCollector::GetVertexBuffer() const
 {
     return vertBuffer.GetBuffer();
@@ -511,4 +486,162 @@ VkBuffer VertexCollector::GetIndexBuffer() const
 VkBuffer VertexCollector::GetGeometryInfosBuffer() const
 {
     return geomInfosBuffer.GetBuffer();
+}
+
+const std::vector<uint32_t> *VertexCollector::GetPrimitiveCounts(
+    VertexCollectorFilterTypeFlagBits filter) const
+{
+    for (const auto &f : filters)
+    {
+        if (f->GetFilter() == filter)
+        {
+            return &f->GetPrimitiveCounts();
+        }
+    }
+
+    return nullptr;
+}
+
+const std::vector<VkAccelerationStructureGeometryKHR> *VertexCollector::GetASGeometries(
+    VertexCollectorFilterTypeFlagBits filter) const
+{
+    for (const auto &f : filters)
+    {
+        if (f->GetFilter() == filter)
+        {
+            return &f->GetASGeometries();
+        }
+    }
+
+    return nullptr;
+}
+
+const std::vector<VkAccelerationStructureBuildRangeInfoKHR> *VertexCollector::GetASBuildRangeInfos(
+    VertexCollectorFilterTypeFlagBits filter) const
+{
+    for (const auto &f : filters)
+    {
+        if (f->GetFilter() == filter)
+        {
+            return &f->GetASBuildRangeInfos();
+        }
+    }
+
+    return nullptr;
+}
+
+
+void VertexCollector::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
+{
+    for (auto &f : filters)
+    {
+        f->PushPrimitiveCount(type, primCount);
+    }
+}
+
+void VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
+                                   const VkAccelerationStructureGeometryKHR &geom)
+{
+    for (auto &f : filters)
+    {
+        f->PushGeometry(type, geom);
+    }
+}
+
+void VertexCollector::PushRangeInfo(VertexCollectorFilterTypeFlags type,
+                                    const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo)
+{
+    for (auto &f : filters)
+    {
+        f->PushRangeInfo(type, rangeInfo);
+    }
+}
+
+uint32_t VertexCollector::GetAllGeometryCount() const
+{
+    uint32_t count = 0;
+
+    for (const auto &f : filters)
+    {
+        count += f->GetGeometryCount();
+    }
+
+    return count;
+}
+
+void VertexCollector::AddFilter(VertexCollectorFilterTypeFlagBits filter)
+{
+    if (filter == VertexCollectorFilterTypeFlagBits::NONE)
+    {
+        return;
+    }
+
+    filters.emplace_back(std::make_shared<VertexCollectorFilter>(filter));
+}
+
+// try create filters for each group (mask)
+void VertexCollector::InitFilters(VertexCollectorFilterTypeFlags flags)
+{
+    typedef VertexCollectorFilterTypeFlags FL;
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    constexpr FT allFlagBits[] =
+    {
+        FT::STATIC_NON_MOVABLE,
+        FT::STATIC_MOVABLE,
+        FT::DYNAMIC,
+        FT::OPAQUE,
+        FT::TRANSPARENT,
+    };
+
+    for (FT f : allFlagBits)
+    {
+        if (flags & (FL)f)
+        {
+            AddFilter(f);
+        }
+    }
+}
+
+VertexCollectorFilterTypeFlags VertexCollector::GetFilterTypeFlags(const RgGeometryUploadInfo &info)
+{
+    typedef VertexCollectorFilterTypeFlagBits FT;
+    VertexCollectorFilterTypeFlags flags = 0;
+
+    switch (info.geomType)
+    {
+        case RG_GEOMETRY_TYPE_STATIC:
+        {
+            flags |= (uint32_t)FT::STATIC_NON_MOVABLE;
+            break;
+        }
+        case RG_GEOMETRY_TYPE_STATIC_MOVABLE:
+        {
+            flags |= (uint32_t)FT::STATIC_MOVABLE;
+            break;
+        }
+        case RG_GEOMETRY_TYPE_DYNAMIC:
+        {
+            flags |= (uint32_t)FT::DYNAMIC;
+            break;
+        }
+        default: assert(0);
+    }
+
+    switch (info.passThroughType)
+    {
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE:
+        {
+            flags |= (uint32_t)FT::OPAQUE;
+            break;
+        }
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_TRANSPARENT:
+        {
+            flags |= (uint32_t)FT::TRANSPARENT;
+            break;
+        }
+        default: assert(0);
+    }
+
+    return flags;
 }

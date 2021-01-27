@@ -20,17 +20,16 @@
 
 #pragma once
 
-#include "VertexCollector.h"
+#include <vector>
+#include "VertexCollectorFilterType.h"
 
-// This class collects vertex data in the same way as VertexCollector
-// but geometries with type==filter will be stored to the separate arrays
-class VertexCollectorFilter : public VertexCollector
+// Instances of this class are added to VertexCollector to
+// collect AS data separately for specific filter types.
+class VertexCollectorFilter
 {
 public:
-    explicit VertexCollectorFilter(
-        VkDevice device, const std::shared_ptr<PhysicalDevice> &physDevice,
-        VkDeviceSize bufferSize, const VertexBufferProperties &properties, RgGeometryType filter);
-    ~VertexCollectorFilter() override;
+    explicit VertexCollectorFilter(VertexCollectorFilterTypeFlagBits filter);
+    ~VertexCollectorFilter();
 
     VertexCollectorFilter(const VertexCollectorFilter& other) = delete;
     VertexCollectorFilter(VertexCollectorFilter&& other) noexcept = delete;
@@ -38,25 +37,25 @@ public:
     VertexCollectorFilter& operator=(VertexCollectorFilter&& other) noexcept = delete;
 
     const std::vector<uint32_t>
-        &GetPrimitiveCountsFiltered() const;
+        &GetPrimitiveCounts() const;
     const std::vector<VkAccelerationStructureGeometryKHR>
-        &GetASGeometriesFiltered() const;
+        &GetASGeometries() const;
     const std::vector<VkAccelerationStructureBuildRangeInfoKHR>
-        &GetASBuildRangeInfosFiltered() const;
+        &GetASBuildRangeInfos() const;
 
-    void Reset() override;
+    void Reset();
 
-protected:
-    void PushPrimitiveCount(RgGeometryType type, uint32_t primCount) override;
-    void PushGeometry(RgGeometryType type, const VkAccelerationStructureGeometryKHR& geom) override;
-    void PushRangeInfo(RgGeometryType type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo) override;
+    void PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount);
+    void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR& geom);
+    void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
-    uint32_t GetGeometryCount() const override;
+    VertexCollectorFilterTypeFlagBits GetFilter() const;
+    uint32_t GetGeometryCount() const;
 
 private:
-    RgGeometryType filter;
+    VertexCollectorFilterTypeFlagBits filter;
 
-    std::vector<uint32_t> primCountFiltered;
-    std::vector<VkAccelerationStructureGeometryKHR> geomsFiltered;
-    std::vector<VkAccelerationStructureBuildRangeInfoKHR> buildRangeInfosFiltered;
+    std::vector<uint32_t> primitiveCounts;
+    std::vector<VkAccelerationStructureGeometryKHR> asGeometries;
+    std::vector<VkAccelerationStructureBuildRangeInfoKHR> asBuildRangeInfos;
 };

@@ -21,11 +21,11 @@
 #pragma once
 
 #include "ASBuilder.h"
-#include "VertexCollectorFilter.h"
 #include "CommandBufferManager.h"
 #include "ScratchBuffer.h"
-#include "VertexBufferProperties.h"
 #include "TextureManager.h"
+#include "VertexBufferProperties.h"
+#include "VertexCollector.h"
 
 class ASManager
 {
@@ -95,7 +95,7 @@ private:
     VkFence staticCopyFence;
 
     // for filling buffers
-    std::shared_ptr<VertexCollectorFilter> collectorStaticMovable;
+    std::shared_ptr<VertexCollector> collectorStatic;
     std::shared_ptr<VertexCollector> collectorDynamic[MAX_FRAMES_IN_FLIGHT];
 
     // building

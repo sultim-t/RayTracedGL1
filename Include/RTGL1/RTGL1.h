@@ -139,6 +139,12 @@ typedef enum RgGeometryType
     RG_GEOMETRY_TYPE_DYNAMIC
 } RgGeometryType;
 
+typedef enum RgGeometryPassThroughType
+{
+    RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
+    RG_GEOMETRY_PASS_THROUGH_TYPE_TRANSPARENT
+} RgGeometryPassThroughType;
+
 typedef struct RgTransform
 {
     float       matrix[3][4];
@@ -146,7 +152,8 @@ typedef struct RgTransform
 
 typedef struct RgGeometryUploadInfo
 {
-    RgGeometryType          geomType;
+    RgGeometryType              geomType;
+    RgGeometryPassThroughType   passThroughType;
 
     uint32_t                vertexCount;
     // Strides are set in RgInstanceUploadInfo
