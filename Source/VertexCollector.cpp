@@ -493,6 +493,7 @@ ShGeometryInstance *VertexCollector::GetGeomInfoAddress(uint32_t geomIndex)
     uint32_t localIndex = geomLocalIndex[geomIndex];
 
     uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(type);
+    assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
     return &mappedGeomInfosData[offset * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT + localIndex];
 }
@@ -518,7 +519,7 @@ void VertexCollector::WriteGeomInfoTransform(uint32_t geomIndex, const RgTransfo
     float modelMatix[16];
     Matrix::ToMat4Transposed(modelMatix, src);
 
-    memcpy(dst->model, &modelMatix, 16 * sizeof(float));
+    memcpy(dst->model, modelMatix, 16 * sizeof(float));
 }
 
 

@@ -169,11 +169,12 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT,    44,     "projection",               1),
     (TYPE_FLOAT,    44,     "invProjection",            1),
     (TYPE_FLOAT,    44,     "projectionPrev",           1),
-    (TYPE_INT32,    1,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
     (TYPE_UINT32,   1,      "positionsStride",          1),
     (TYPE_UINT32,   1,      "normalsStride",            1),
     (TYPE_UINT32,   1,      "texCoordsStride",          1),
     (TYPE_UINT32,   1,      "colorsStride",             1),
+    # for std140
+    (TYPE_INT32,    4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
 
 GEOM_INSTANCE_STRUCT = [

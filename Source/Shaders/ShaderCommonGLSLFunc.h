@@ -257,7 +257,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     ShGeometryInstance inst;
     ShTriangle tr;
 
-    int geometryIndex = globalUniform.instanceGeomInfoOffset[instanceID] + localGeometryIndex;
+    int geometryIndex = globalUniform.instanceGeomInfoOffset[instanceID].x + localGeometryIndex;
 
     if (isDynamic)
     {
@@ -297,7 +297,7 @@ mat4 getModelMatrix(bool isDynamic, int geometryIndex)
 mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {
     bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-    int geometryIndex = globalUniform.instanceGeomInfoOffset[instanceID] + localGeometryIndex;
+    int geometryIndex = globalUniform.instanceGeomInfoOffset[instanceID].x + localGeometryIndex;
 
     return getModelMatrix(isDynamic, geometryIndex);
 }

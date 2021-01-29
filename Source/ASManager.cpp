@@ -671,7 +671,8 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     // for getting offsets in geomInfos buffer by instance ID in shaders,
     // this array will be copied to uniform buffer
-    int32_t instanceGeomInfoOffset[MAX_TOP_LEVEL_INSTANCE_COUNT];
+    // note: std140 requires elements to be aligned by sizeof(vec4)
+    int32_t instanceGeomInfoOffset[MAX_TOP_LEVEL_INSTANCE_COUNT * 4];
 
 
     for (auto &blas : allStaticBlas)
@@ -682,7 +683,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
         if (isAdded)
         {
-            instanceGeomInfoOffset[instanceCount] = VertexCollectorFilterTypeFlagsToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlagsToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
             instanceCount++;
             assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);
@@ -697,7 +698,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
         if (isAdded)
         {
-            instanceGeomInfoOffset[instanceCount] = VertexCollectorFilterTypeFlagsToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlagsToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
             instanceCount++;
             assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);
@@ -711,7 +712,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     // copy geometry offsets to uniform to access geomInfos
     // with instance ID and geometry index in shaders
-    memcpy(uniform->GetData()->instanceGeomInfoOffset, instanceGeomInfoOffset, instanceCount * sizeof(int32_t));
+    memcpy(uniform->GetData()->instanceGeomInfoOffset, instanceGeomInfoOffset, instanceCount * 4 * sizeof(int32_t));
 
 
     // fill buffer
