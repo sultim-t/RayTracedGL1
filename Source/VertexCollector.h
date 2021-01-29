@@ -86,6 +86,11 @@ public:
     const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &GetASBuildRangeInfos(
         VertexCollectorFilterTypeFlags filter) const;
 
+    // Are all geometries for each filter type in "flags" empty?
+    bool AreGeometriesEmpty(VertexCollectorFilterTypeFlags flags) const;
+    // Are all geometries of this type empty?
+    bool AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type) const;
+
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
 

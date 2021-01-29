@@ -340,14 +340,26 @@ ASManager::~ASManager()
 }
 
 void ASManager::SetupBLAS(AccelerationStructure &as,
-                          const std::vector<VkAccelerationStructureGeometryKHR> &geoms,
-                          const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges, 
-                          const std::vector<uint32_t> &primCounts,
+                          const std::shared_ptr<VertexCollector> &vertCollector,
+                          VertexCollectorFilterTypeFlags filter,
                           const char *debugName)
 {
+    const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
+
+    if (geoms.empty())
+    {
+        return;
+    }
+
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges = vertCollector->GetASBuildRangeInfos(filter);
+    const std::vector<uint32_t> &primCounts = vertCollector->GetPrimitiveCounts(filter);
+
+    bool fastTrace = !IsFastBuild(filter);
+    bool update = false;
+
     // get AS size and create buffer for AS
     const auto buildSizes = asBuilder->GetBottomBuildSizes(
-        geoms.size(), geoms.data(), primCounts.data(), true);
+        geoms.size(), geoms.data(), primCounts.data(), fastTrace);
 
     // if no buffer, or it was created, but its size is too small for current AS
     if (!as.buffer.IsInitted() || as.buffer.GetSize() < buildSizes.accelerationStructureSize)
@@ -368,13 +380,43 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
 
         SET_DEBUG_NAME(device, as.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
     }
-    
-    // build BLAS
+
+    // add BLAS, all passed arrays must be alive until BuildBottomLevel() call
     asBuilder->AddBLAS(as.as, geoms.size(),
                        geoms.data(), ranges.data(),
                        buildSizes,
-                       true, false);
+                       fastTrace, update);
+}
 
+void ASManager::SetupCreatedBLAS(AccelerationStructure &as, 
+                                 const std::shared_ptr<VertexCollector> &vertCollector,
+                                 VertexCollectorFilterTypeFlags filter)
+{
+    const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
+
+    if (geoms.empty())
+    {
+        return;
+    }
+
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges = vertCollector->GetASBuildRangeInfos(filter);
+    const std::vector<uint32_t> &primCounts = vertCollector->GetPrimitiveCounts(filter);
+
+    bool fastTrace = !IsFastBuild(filter);
+
+    // must be just updated
+    bool update = true;
+
+    const auto buildSizes = asBuilder->GetBottomBuildSizes(
+        geoms.size(), geoms.data(), primCounts.data(), fastTrace);
+
+    assert(as.buffer.IsInitted() && as.buffer.GetSize() >= buildSizes.accelerationStructureSize);
+
+    // add BLAS, all passed arrays must be alive until BuildBottomLevel() call
+    asBuilder->AddBLAS(as.as, geoms.size(),
+                       geoms.data(), ranges.data(),
+                       buildSizes,
+                       fastTrace, update);
 }
 
 // separate functions to make adding between Begin..Geometry() and Submit..Geometry() a bit clearer
@@ -433,21 +475,6 @@ void ASManager::SubmitStaticGeometry()
 
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    const auto &staticGeoms                 = collectorStatic->GetASGeometries(     FT::OPAQUE      | FT::STATIC_NON_MOVABLE);
-    const auto &movableGeoms                = collectorStatic->GetASGeometries(     FT::OPAQUE      | FT::STATIC_MOVABLE    );
-    const auto &transparentStaticGeoms      = collectorStatic->GetASGeometries(     FT::TRANSPARENT | FT::STATIC_NON_MOVABLE);
-    const auto &transparentMovableGeoms     = collectorStatic->GetASGeometries(     FT::TRANSPARENT | FT::STATIC_MOVABLE    );
-
-    const auto &staticRanges                = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE      | FT::STATIC_NON_MOVABLE);
-    const auto &movableRanges               = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE      | FT::STATIC_MOVABLE    );
-    const auto &transparentStaticRanges     = collectorStatic->GetASBuildRangeInfos(FT::TRANSPARENT | FT::STATIC_NON_MOVABLE);
-    const auto &transparentMovableRanges    = collectorStatic->GetASBuildRangeInfos(FT::TRANSPARENT | FT::STATIC_MOVABLE    );
-
-    const auto &staticPrimCounts            = collectorStatic->GetPrimitiveCounts(  FT::OPAQUE      | FT::STATIC_NON_MOVABLE);
-    const auto &movablePrimCounts           = collectorStatic->GetPrimitiveCounts(  FT::OPAQUE      | FT::STATIC_MOVABLE    );
-    const auto &transparentStaticPrimCounts = collectorStatic->GetPrimitiveCounts(  FT::TRANSPARENT | FT::STATIC_NON_MOVABLE);
-    const auto &transparentMovablePrimCounts= collectorStatic->GetPrimitiveCounts(  FT::TRANSPARENT | FT::STATIC_MOVABLE    );
-
     // destroy previous
     DestroyAS(staticBlas);
     DestroyAS(staticMovableBlas);
@@ -457,7 +484,8 @@ void ASManager::SubmitStaticGeometry()
 
     assert(asBuilder->IsEmpty());
 
-    if (staticGeoms.empty() && movableGeoms.empty() && transparentStaticGeoms.empty() && transparentMovableGeoms.empty())
+    // skip if all static geometries are empty
+    if (collectorStatic->AreGeometriesEmpty(FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE))
     {
         return;
     }
@@ -467,25 +495,11 @@ void ASManager::SubmitStaticGeometry()
     // copy from staging with barrier
     collectorStatic->CopyFromStaging(cmd, true);
 
-    if (!staticGeoms.empty())
-    {
-        SetupBLAS(staticBlas, staticGeoms, staticRanges, staticPrimCounts, "Static BLAS");
-    }
+    SetupBLAS(staticBlas,                   collectorStatic, FT::OPAQUE | FT::STATIC_NON_MOVABLE, "Static BLAS");
+    SetupBLAS(staticMovableBlas,            collectorStatic, FT::OPAQUE | FT::STATIC_MOVABLE, "Movable static BLAS");
 
-    if (!transparentStaticGeoms.empty())
-    {
-        SetupBLAS(transparentStaticBlas, transparentStaticGeoms, transparentStaticRanges, transparentStaticPrimCounts, "Static transparent BLAS");
-    }
-
-    if (!movableGeoms.empty())
-    {
-        SetupBLAS(staticMovableBlas, movableGeoms, movableRanges, movablePrimCounts, "Movable static BLAS");
-    }
-
-    if (!transparentMovableGeoms.empty())
-    {
-        SetupBLAS(transparentStaticMovableBlas, transparentMovableGeoms, transparentMovableRanges, transparentMovablePrimCounts, "Movable static transparent BLAS");
-    }
+    SetupBLAS(transparentStaticBlas,        collectorStatic, FT::TRANSPARENT | FT::STATIC_NON_MOVABLE, "Static transparent BLAS");
+    SetupBLAS(transparentStaticMovableBlas, collectorStatic, FT::TRANSPARENT | FT::STATIC_MOVABLE, "Movable static transparent BLAS");
 
     // build AS
     asBuilder->BuildBottomLevel(cmd);
@@ -513,30 +527,15 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     colDyn->EndCollecting();
     colDyn->CopyFromStaging(cmd, false);
 
-    const auto &geoms               = colDyn->GetASGeometries(      FT::OPAQUE      | FT::DYNAMIC);
-    const auto &ranges              = colDyn->GetASBuildRangeInfos( FT::OPAQUE      | FT::DYNAMIC);
-    const auto &counts              = colDyn->GetPrimitiveCounts(   FT::OPAQUE      | FT::DYNAMIC);
-
-    const auto &transparentGeoms    = colDyn->GetASGeometries(      FT::TRANSPARENT | FT::DYNAMIC);
-    const auto &transparentRanges   = colDyn->GetASBuildRangeInfos( FT::TRANSPARENT | FT::DYNAMIC);
-    const auto &transparentCounts   = colDyn->GetPrimitiveCounts(   FT::TRANSPARENT | FT::DYNAMIC);
-
     assert(asBuilder->IsEmpty());
 
-    if (geoms.empty() && transparentGeoms.empty())
+    if (colDyn->AreGeometriesEmpty(FT::DYNAMIC))
     {
         return;
     }
 
-    if (!geoms.empty())
-    {
-        SetupBLAS(dynBlas, geoms, ranges, counts, "Dynamic BLAS");
-    }
-
-    if (!transparentGeoms.empty())
-    {
-        SetupBLAS(transparentDynBlas, transparentGeoms, transparentRanges, transparentCounts, "Dynamic transparent BLAS");
-    }
+    SetupBLAS(dynBlas,            colDyn, FT::OPAQUE | FT::DYNAMIC, "Dynamic BLAS");
+    SetupBLAS(transparentDynBlas, colDyn, FT::TRANSPARENT | FT::DYNAMIC, "Dynamic transparent BLAS");
 
     // build BLAS
     asBuilder->BuildBottomLevel(cmd);
@@ -551,44 +550,15 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    const auto &geoms       = collectorStatic->GetASGeometries(FT::OPAQUE | FT::STATIC_MOVABLE);
-    const auto &ranges      = collectorStatic->GetASBuildRangeInfos(FT::OPAQUE | FT::STATIC_MOVABLE);
-    const auto &counts  = collectorStatic->GetPrimitiveCounts(FT::OPAQUE | FT::STATIC_MOVABLE);
-
-    const auto &transparentGeoms = collectorStatic->GetASGeometries(FT::TRANSPARENT | FT::STATIC_MOVABLE);
-    const auto &transparentRanges = collectorStatic->GetASBuildRangeInfos(FT::TRANSPARENT | FT::STATIC_MOVABLE);
-    const auto &transparentCounts = collectorStatic->GetPrimitiveCounts(FT::TRANSPARENT | FT::STATIC_MOVABLE);
-
-    if (geoms.empty() && transparentGeoms.empty())
+    if (collectorStatic->AreGeometriesEmpty(FT::STATIC_MOVABLE))
     {
         return;
     }
 
     assert(asBuilder->IsEmpty());
 
-    if (!geoms.empty())
-    {
-        const auto buildSizes = asBuilder->GetBottomBuildSizes(geoms.size(), geoms.data(), counts.data(), true);
-
-        // update with same geometries, but modified transforms
-        asBuilder->AddBLAS(
-            staticMovableBlas.as,
-            geoms.size(), geoms.data(), ranges.data(),
-            buildSizes,
-            false, true);
-    }
-
-    if (!transparentGeoms.empty())
-    {
-        const auto transparentBuildSizes = asBuilder->GetBottomBuildSizes(transparentGeoms.size(), transparentGeoms.data(), transparentCounts.data(), true);
-
-        // update with same geometries, but modified transforms
-        asBuilder->AddBLAS(
-            transparentStaticMovableBlas.as,
-            transparentGeoms.size(), transparentGeoms.data(), transparentRanges.data(),
-            transparentBuildSizes,
-            false, true);
-    }
+    SetupCreatedBLAS(staticMovableBlas, collectorStatic, FT::OPAQUE | FT::STATIC_MOVABLE);
+    SetupCreatedBLAS(staticMovableBlas, collectorStatic, FT::TRANSPARENT | FT::STATIC_MOVABLE);
 
     asBuilder->BuildBottomLevel(cmd);
     Utils::ASBuildMemoryBarrier(cmd);
@@ -785,6 +755,15 @@ VkDeviceAddress ASManager::GetASAddress(VkAccelerationStructureKHR as)
     addressInfo.accelerationStructure = as;
 
     return svkGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
+}
+
+bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
+{
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    // fast trace for static
+    // fast build for dynamic
+    return filter & FT::DYNAMIC;
 }
 
 VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const

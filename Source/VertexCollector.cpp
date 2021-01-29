@@ -515,6 +515,28 @@ const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &VertexCollector::Ge
     return f->second->GetASBuildRangeInfos();
 }
 
+bool VertexCollector::AreGeometriesEmpty(VertexCollectorFilterTypeFlags flags) const
+{
+    for (const auto &p : filters)
+    {
+        const auto &f = p.second;
+
+        // if filter includes any type from flags
+        // and it's not empty
+        if ((f->GetFilter() & flags) && f->GetGeometryCount() > 0)
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+bool VertexCollector::AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type) const
+{
+    return AreGeometriesEmpty((VertexCollectorFilterTypeFlags)type);
+}
+
 
 void VertexCollector::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
 {

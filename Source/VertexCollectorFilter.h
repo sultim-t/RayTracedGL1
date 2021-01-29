@@ -21,6 +21,8 @@
 #pragma once
 
 #include <vector>
+
+#include "Common.h"
 #include "VertexCollectorFilterType.h"
 
 // Instances of this class are added to VertexCollector to
@@ -49,6 +51,7 @@ public:
     void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR& geom);
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
+    VertexCollectorFilterTypeFlags GetFilter() const;
     uint32_t GetGeometryCount() const;
 
 private:

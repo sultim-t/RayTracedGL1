@@ -20,9 +20,7 @@
 
 #pragma once
 
-#include "Common.h"
-
-enum class VertexCollectorFilterTypeFlagBits
+enum class VertexCollectorFilterTypeFlagBits : uint32_t
 {
     NONE                        = 0,
 
@@ -67,4 +65,22 @@ inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBit
 {
     typedef VertexCollectorFilterTypeFlags FL;
     return static_cast<FL>(static_cast<FL>(a) | b);
+}
+
+inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlagBits b)
+{
+    typedef VertexCollectorFilterTypeFlags FL;
+    return static_cast<FL>(static_cast<FL>(a) & static_cast<FL>(b));
+}
+
+inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlags a, VertexCollectorFilterTypeFlagBits b)
+{
+    typedef VertexCollectorFilterTypeFlags FL;
+    return static_cast<FL>(a & static_cast<FL>(b));
+}
+
+inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlags b)
+{
+    typedef VertexCollectorFilterTypeFlags FL;
+    return static_cast<FL>(static_cast<FL>(a) & b);
 }

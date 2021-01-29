@@ -80,14 +80,21 @@ private:
 
     void SetupBLAS(
         AccelerationStructure &as,
-        const std::vector<VkAccelerationStructureGeometryKHR> &geoms,
-        const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges,
-        const std::vector<uint32_t> &primCounts,
+        const std::shared_ptr<VertexCollector> &vertCollector,
+        VertexCollectorFilterTypeFlags filter,
         const char *debugName = nullptr);
+
+    void SetupCreatedBLAS(
+        AccelerationStructure &as,
+        const std::shared_ptr<VertexCollector> &vertCollector,
+        VertexCollectorFilterTypeFlags filter);
+
     void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, const char *debugName = nullptr);
     void DestroyAS(AccelerationStructure &as, bool withBuffer = true);
     VkDeviceAddress GetASAddress(const AccelerationStructure &as);
     VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);
+
+    static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);
 
 private:
     VkDevice device;

@@ -72,6 +72,11 @@ void VertexCollectorFilter::PushRangeInfo(VertexCollectorFilterTypeFlags type, c
     }
 }
 
+VertexCollectorFilterTypeFlags VertexCollectorFilter::GetFilter() const
+{
+    return filter;
+}
+
 uint32_t VertexCollectorFilter::GetGeometryCount() const
 {
     return (uint32_t)asGeometries.size();
