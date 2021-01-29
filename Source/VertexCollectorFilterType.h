@@ -24,29 +24,29 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
 {
     NONE                        = 0,
 
-    STATIC_NON_MOVABLE          = 1 << 0,
-    STATIC_MOVABLE              = 2 << 0,
-    DYNAMIC                     = 4 << 0,
-    MASK_CHANGE_FREQUENCY_GROUP = STATIC_NON_MOVABLE | STATIC_MOVABLE | DYNAMIC,
+    CF_STATIC_NON_MOVABLE       = 1 << 0,
+    CF_STATIC_MOVABLE           = 2 << 0,
+    CF_DYNAMIC                  = 4 << 0,
+    MASK_CHANGE_FREQUENCY_GROUP = CF_STATIC_NON_MOVABLE | CF_STATIC_MOVABLE | CF_DYNAMIC,
 
-    OPAQUE                      = 1 << 3,
-    TRANSPARENT                 = 2 << 3,
-    MASK_PASS_THROUGH_GROUP     = OPAQUE | TRANSPARENT,
+    PT_OPAQUE                   = 1 << 3,
+    PT_TRANSPARENT              = 2 << 3,
+    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_TRANSPARENT,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
 
 
 constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_ChangeFrequency[] =
 {
-    VertexCollectorFilterTypeFlagBits::STATIC_NON_MOVABLE,
-    VertexCollectorFilterTypeFlagBits::STATIC_MOVABLE,
-    VertexCollectorFilterTypeFlagBits::DYNAMIC,
+    VertexCollectorFilterTypeFlagBits::CF_STATIC_NON_MOVABLE,
+    VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE,
+    VertexCollectorFilterTypeFlagBits::CF_DYNAMIC,
 };
 
 constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrough[] =
 {
-    VertexCollectorFilterTypeFlagBits::OPAQUE,
-    VertexCollectorFilterTypeFlagBits::TRANSPARENT,
+    VertexCollectorFilterTypeFlagBits::PT_OPAQUE,
+    VertexCollectorFilterTypeFlagBits::PT_TRANSPARENT,
 };
 
 inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlagBits b)

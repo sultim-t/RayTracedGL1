@@ -48,7 +48,7 @@ ASManager::ASManager(
         {
             auto filter = cf | pt;
 
-            if (filter & FT::DYNAMIC)
+            if (filter & FT::CF_DYNAMIC)
             {
                 for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
                 {
@@ -69,7 +69,7 @@ ASManager::ASManager(
     collectorStatic = std::make_shared<VertexCollector>(
         device, allocator,
         sizeof(ShVertexBufferStatic), properties,
-        FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE | FT::OPAQUE | FT::TRANSPARENT);
+        FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::PT_OPAQUE | FT::PT_TRANSPARENT);
 
     // subscribe to texture manager only static collector,
     // as static geometries aren't updating its material info (in ShGeometryInstance)
@@ -82,7 +82,7 @@ ASManager::ASManager(
         collectorDynamic[i] = std::make_shared<VertexCollector>(
             device, allocator,
             sizeof(ShVertexBufferDynamic), properties,
-            FT::DYNAMIC | FT::OPAQUE | FT::TRANSPARENT);
+            FT::CF_DYNAMIC | FT::PT_OPAQUE | FT::PT_TRANSPARENT);
     }
 
     // instance buffer for TLAS
@@ -497,12 +497,12 @@ void ASManager::SubmitStaticGeometry()
 
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    auto staticFlags = FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE;
+    auto staticFlags = FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE;
 
     // destroy previous static
     for (auto &staticBlas : allStaticBlas)
     {
-        assert(!(staticBlas.filter & FT::DYNAMIC));
+        assert(!(staticBlas.filter & FT::CF_DYNAMIC));
 
         // if flags have any of static bits
         if (staticBlas.filter & staticFlags)
@@ -560,7 +560,7 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 
     assert(asBuilder->IsEmpty());
 
-    if (colDyn->AreGeometriesEmpty(FT::DYNAMIC))
+    if (colDyn->AreGeometriesEmpty(FT::CF_DYNAMIC))
     {
         return;
     }
@@ -569,7 +569,7 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     for (auto &dynamicBlas : allDynamicBlas[frameIndex])
     {
         // must be dynamic
-        assert(dynamicBlas.filter & FT::DYNAMIC);
+        assert(dynamicBlas.filter & FT::CF_DYNAMIC);
 
         SetupBLAS(dynamicBlas, colDyn);
     }
@@ -587,7 +587,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    if (collectorStatic->AreGeometriesEmpty(FT::STATIC_MOVABLE))
+    if (collectorStatic->AreGeometriesEmpty(FT::CF_STATIC_MOVABLE))
     {
         return;
     }
@@ -597,10 +597,10 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     // update movable blas
     for (auto &blas : allStaticBlas)
     {
-        assert(!(blas.filter & FT::DYNAMIC));
+        assert(!(blas.filter & FT::CF_DYNAMIC));
 
         // if flags have any of static bits
-        if (blas.filter & FT::STATIC_MOVABLE)
+        if (blas.filter & FT::CF_STATIC_MOVABLE)
         {
             auto &movableBlas = blas;
 
@@ -634,7 +634,7 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
 
     instance.mask = 0xFF;
 
-    if (filter & FT::DYNAMIC)
+    if (filter & FT::CF_DYNAMIC)
     {
         instance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
     }
@@ -643,7 +643,7 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
         instance.instanceCustomIndex = 0;
     }
 
-    if (filter & FT::OPAQUE)
+    if (filter & FT::PT_OPAQUE)
     {
         instance.instanceShaderBindingTableRecordOffset = 0;
         instance.flags =
@@ -671,7 +671,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 
     for (auto &blas : allStaticBlas)
     {
-        assert(!(blas.filter & FT::DYNAMIC));
+        assert(!(blas.filter & FT::CF_DYNAMIC));
 
         bool isAdded = SetupTLASInstance(blas, instances[instanceCount]);
 
@@ -683,7 +683,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
 
     for (auto &blas : allDynamicBlas[frameIndex])
     {
-        assert(blas.filter & FT::DYNAMIC);
+        assert(blas.filter & FT::CF_DYNAMIC);
 
         bool isAdded = SetupTLASInstance(blas, instances[instanceCount]);
 
@@ -794,7 +794,7 @@ bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
 
     // fast trace for static
     // fast build for dynamic
-    return filter & FT::DYNAMIC;
+    return filter & FT::CF_DYNAMIC;
 }
 
 const char *ASManager::GetBLASDebugName(VertexCollectorFilterTypeFlags filter)
@@ -805,27 +805,27 @@ const char *ASManager::GetBLASDebugName(VertexCollectorFilterTypeFlags filter)
 
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    if (filter == (FT::STATIC_NON_MOVABLE | FT::TRANSPARENT))
+    if (filter == (FT::CF_STATIC_NON_MOVABLE | FT::PT_TRANSPARENT))
     {
         return "BLAS static transparent";
     }
-    else if (filter == (FT::STATIC_MOVABLE | FT::TRANSPARENT))
+    else if (filter == (FT::CF_STATIC_MOVABLE | FT::PT_TRANSPARENT))
     {
         return "BLAS movable static transparent";
     }
-    else if (filter == (FT::DYNAMIC | FT::TRANSPARENT))
+    else if (filter == (FT::CF_DYNAMIC | FT::PT_TRANSPARENT))
     {
         return "BLAS dynamic transparent";
     }
-    else if (filter == (FT::STATIC_NON_MOVABLE | FT::OPAQUE))
+    else if (filter == (FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE))
     {
         return "BLAS static opaque";
     }
-    else if (filter == (FT::STATIC_MOVABLE | FT::OPAQUE))
+    else if (filter == (FT::CF_STATIC_MOVABLE | FT::PT_OPAQUE))
     {
         return "BLAS movable static opaque";
     }
-    else if (filter == (FT::DYNAMIC | FT::OPAQUE))
+    else if (filter == (FT::CF_DYNAMIC | FT::PT_OPAQUE))
     {
         return "BLAS dynamic opaque";
     }

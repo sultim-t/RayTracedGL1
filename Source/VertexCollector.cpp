@@ -100,7 +100,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     typedef VertexCollectorFilterTypeFlagBits FT;
     VertexCollectorFilterTypeFlags filterFlags = GetFilterTypeFlags(info);
 
-    const bool collectStatic = filterFlags & (FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE);
+    const bool collectStatic = filterFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
     
     const uint32_t maxVertexCount = collectStatic ?
         MAX_STATIC_VERTEX_COUNT :
@@ -159,7 +159,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     geom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
     geom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
 
-    geom.flags = filterFlags & FT::OPAQUE ?
+    geom.flags = filterFlags & FT::PT_OPAQUE ?
         VK_GEOMETRY_OPAQUE_BIT_KHR :
         VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
 
@@ -616,17 +616,17 @@ VertexCollectorFilterTypeFlags VertexCollector::GetFilterTypeFlags(const RgGeome
     {
         case RG_GEOMETRY_TYPE_STATIC:
         {
-            flags |= (uint32_t)FT::STATIC_NON_MOVABLE;
+            flags |= (uint32_t)FT::CF_STATIC_NON_MOVABLE;
             break;
         }
         case RG_GEOMETRY_TYPE_STATIC_MOVABLE:
         {
-            flags |= (uint32_t)FT::STATIC_MOVABLE;
+            flags |= (uint32_t)FT::CF_STATIC_MOVABLE;
             break;
         }
         case RG_GEOMETRY_TYPE_DYNAMIC:
         {
-            flags |= (uint32_t)FT::DYNAMIC;
+            flags |= (uint32_t)FT::CF_DYNAMIC;
             break;
         }
         default: assert(0);
@@ -636,12 +636,12 @@ VertexCollectorFilterTypeFlags VertexCollector::GetFilterTypeFlags(const RgGeome
     {
         case RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE:
         {
-            flags |= (uint32_t)FT::OPAQUE;
+            flags |= (uint32_t)FT::PT_OPAQUE;
             break;
         }
         case RG_GEOMETRY_PASS_THROUGH_TYPE_TRANSPARENT:
         {
-            flags |= (uint32_t)FT::TRANSPARENT;
+            flags |= (uint32_t)FT::PT_TRANSPARENT;
             break;
         }
         default: assert(0);
