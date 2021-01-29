@@ -98,11 +98,9 @@ void VertexCollector::BeginCollecting()
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
-
     VertexCollectorFilterTypeFlags filterFlags = GetFilterTypeFlags(info);
 
-    constexpr uint32_t filterStaticMask = (uint32_t)FT::STATIC_NON_MOVABLE | (uint32_t)FT::STATIC_MOVABLE;
-    const bool collectStatic = filterFlags & filterStaticMask;
+    const bool collectStatic = filterFlags & (FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE);
     
     const uint32_t maxVertexCount = collectStatic ?
         MAX_STATIC_VERTEX_COUNT :
@@ -160,6 +158,10 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     VkAccelerationStructureGeometryKHR geom = {};
     geom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
     geom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
+
+    geom.flags = filterFlags & FT::OPAQUE ?
+        VK_GEOMETRY_OPAQUE_BIT_KHR :
+        VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
 
     VkAccelerationStructureGeometryTrianglesDataKHR &trData = geom.geometry.triangles;
     trData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;

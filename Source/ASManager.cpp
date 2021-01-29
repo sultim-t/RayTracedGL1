@@ -41,6 +41,27 @@ ASManager::ASManager(
     typedef VertexCollectorFilterTypeFlags FL;
     typedef VertexCollectorFilterTypeFlagBits FT;
 
+    // init AS structs for each dimension
+    for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
+    {
+        for (auto pt : VertexCollectorFilterGroup_PassThrough)
+        {
+            auto filter = cf | pt;
+
+            if (filter & FT::DYNAMIC)
+            {
+                for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+                {
+                    allDynamicBlas[i].emplace_back(cf | pt);
+                }
+            }
+            else
+            {
+                allStaticBlas.emplace_back(cf | pt);
+            }
+        }
+    }
+
     scratchBuffer = std::make_shared<ScratchBuffer>(allocator);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
@@ -319,16 +340,17 @@ void ASManager::UpdateASDescriptors(uint32_t frameIndex)
 
 ASManager::~ASManager()
 {
-    DestroyAS(staticBlas);
-    DestroyAS(transparentStaticBlas);
-
-    DestroyAS(staticMovableBlas);
-    DestroyAS(transparentStaticMovableBlas);
+    for (auto &as : allStaticBlas)
+    {
+        DestroyAS(as);
+    }
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        DestroyAS(dynamicBlas[i]);
-        DestroyAS(transparentDynamicBlas[i]);
+        for (auto &as : allDynamicBlas[i])
+        {
+            DestroyAS(as);
+        }
 
         DestroyAS(tlas[i]);
     }
@@ -340,10 +362,9 @@ ASManager::~ASManager()
 }
 
 void ASManager::SetupBLAS(AccelerationStructure &as,
-                          const std::shared_ptr<VertexCollector> &vertCollector,
-                          VertexCollectorFilterTypeFlags filter,
-                          const char *debugName)
+                          const std::shared_ptr<VertexCollector> &vertCollector)
 {
+    auto filter = as.filter;
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
 
     if (geoms.empty())
@@ -365,7 +386,7 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
     if (!as.buffer.IsInitted() || as.buffer.GetSize() < buildSizes.accelerationStructureSize)
     {
         // destroy
-        DestroyAS(as, true);
+        DestroyAS(as);
 
         // create
         CreateASBuffer(as, buildSizes.accelerationStructureSize, "BLAS buffer");
@@ -378,6 +399,7 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
         VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &as.as);
         VK_CHECKERROR(r);
 
+        const char *debugName = GetBLASDebugName(filter);
         SET_DEBUG_NAME(device, as.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
     }
 
@@ -388,10 +410,10 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
                        fastTrace, update);
 }
 
-void ASManager::SetupCreatedBLAS(AccelerationStructure &as, 
-                                 const std::shared_ptr<VertexCollector> &vertCollector,
-                                 VertexCollectorFilterTypeFlags filter)
+void ASManager::UpdateBLAS(AccelerationStructure &as, 
+                                 const std::shared_ptr<VertexCollector> &vertCollector)
 {
+    auto filter = as.filter;
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
 
     if (geoms.empty())
@@ -475,17 +497,24 @@ void ASManager::SubmitStaticGeometry()
 
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    // destroy previous
-    DestroyAS(staticBlas);
-    DestroyAS(staticMovableBlas);
+    auto staticFlags = FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE;
 
-    DestroyAS(transparentStaticBlas);
-    DestroyAS(transparentStaticMovableBlas);
+    // destroy previous static
+    for (auto &staticBlas : allStaticBlas)
+    {
+        assert(!(staticBlas.filter & FT::DYNAMIC));
+
+        // if flags have any of static bits
+        if (staticBlas.filter & staticFlags)
+        {
+            DestroyAS(staticBlas);
+        }
+    }
 
     assert(asBuilder->IsEmpty());
 
     // skip if all static geometries are empty
-    if (collectorStatic->AreGeometriesEmpty(FT::STATIC_NON_MOVABLE | FT::STATIC_MOVABLE))
+    if (collectorStatic->AreGeometriesEmpty(staticFlags))
     {
         return;
     }
@@ -495,12 +524,16 @@ void ASManager::SubmitStaticGeometry()
     // copy from staging with barrier
     collectorStatic->CopyFromStaging(cmd, true);
 
-    SetupBLAS(staticBlas,                   collectorStatic, FT::OPAQUE | FT::STATIC_NON_MOVABLE, "Static BLAS");
-    SetupBLAS(staticMovableBlas,            collectorStatic, FT::OPAQUE | FT::STATIC_MOVABLE, "Movable static BLAS");
-
-    SetupBLAS(transparentStaticBlas,        collectorStatic, FT::TRANSPARENT | FT::STATIC_NON_MOVABLE, "Static transparent BLAS");
-    SetupBLAS(transparentStaticMovableBlas, collectorStatic, FT::TRANSPARENT | FT::STATIC_MOVABLE, "Movable static transparent BLAS");
-
+    // setup static blas
+    for (auto &staticBlas : allStaticBlas)
+    {
+        // if flags have any of static bits
+        if (staticBlas.filter & staticFlags)
+        {
+            SetupBLAS(staticBlas, collectorStatic);
+        }
+    }
+    
     // build AS
     asBuilder->BuildBottomLevel(cmd);
 
@@ -521,8 +554,6 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     typedef VertexCollectorFilterTypeFlagBits FT;
 
     const auto &colDyn = collectorDynamic[frameIndex];
-    auto &dynBlas = dynamicBlas[frameIndex];
-    auto &transparentDynBlas = transparentDynamicBlas[frameIndex];
 
     colDyn->EndCollecting();
     colDyn->CopyFromStaging(cmd, false);
@@ -534,8 +565,14 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
         return;
     }
 
-    SetupBLAS(dynBlas,            colDyn, FT::OPAQUE | FT::DYNAMIC, "Dynamic BLAS");
-    SetupBLAS(transparentDynBlas, colDyn, FT::TRANSPARENT | FT::DYNAMIC, "Dynamic transparent BLAS");
+    // recreate dynamic blas
+    for (auto &dynamicBlas : allDynamicBlas[frameIndex])
+    {
+        // must be dynamic
+        assert(dynamicBlas.filter & FT::DYNAMIC);
+
+        SetupBLAS(dynamicBlas, colDyn);
+    }
 
     // build BLAS
     asBuilder->BuildBottomLevel(cmd);
@@ -557,106 +594,103 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 
     assert(asBuilder->IsEmpty());
 
-    SetupCreatedBLAS(staticMovableBlas, collectorStatic, FT::OPAQUE | FT::STATIC_MOVABLE);
-    SetupCreatedBLAS(staticMovableBlas, collectorStatic, FT::TRANSPARENT | FT::STATIC_MOVABLE);
+    // update movable blas
+    for (auto &blas : allStaticBlas)
+    {
+        assert(!(blas.filter & FT::DYNAMIC));
+
+        // if flags have any of static bits
+        if (blas.filter & FT::STATIC_MOVABLE)
+        {
+            auto &movableBlas = blas;
+
+            UpdateBLAS(blas, collectorStatic);
+        }
+    }
 
     asBuilder->BuildBottomLevel(cmd);
     Utils::ASBuildMemoryBarrier(cmd);
 }
 
-bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
+bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAccelerationStructureInstanceKHR &instance)
 {
-    VkTransformMatrixKHR identity =
+    if (as.as == VK_NULL_HANDLE)
+    {
+        return false;
+    }
+
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    auto filter = as.filter;
+
+    instance.accelerationStructureReference = GetASAddress(as);
+
+    instance.transform = 
     {
         1.0f, 0.0f, 0.0f, 0.0f,
         0.0f, 1.0f, 0.0f, 0.0f,
         0.0f, 0.0f, 1.0f, 0.0f
     };
 
+    instance.mask = 0xFF;
+
+    if (filter & FT::DYNAMIC)
+    {
+        instance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
+    }
+    else
+    {
+        instance.instanceCustomIndex = 0;
+    }
+
+    if (filter & FT::OPAQUE)
+    {
+        instance.instanceShaderBindingTableRecordOffset = 0;
+        instance.flags =
+            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+    }
+    else
+    {
+        instance.instanceShaderBindingTableRecordOffset = 1;
+        instance.flags =
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+    }
+
+    return true;
+}
+
+bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
     // BLAS instances
     uint32_t instanceCount = 0;
-    VkAccelerationStructureInstanceKHR instances[8] = {};
+    VkAccelerationStructureInstanceKHR instances[32] = {};
 
-    // add opaque
 
-    if (staticBlas.as != VK_NULL_HANDLE)
+    for (auto &blas : allStaticBlas)
     {
-        VkAccelerationStructureInstanceKHR &staticInstance = instances[instanceCount++];
-        staticInstance.transform = identity;
-        staticInstance.instanceCustomIndex = 0;
-        staticInstance.mask = 0xFF;
-        staticInstance.instanceShaderBindingTableRecordOffset = 0;
-        staticInstance.flags = 
-            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | 
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        staticInstance.accelerationStructureReference = GetASAddress(staticBlas);
+        assert(!(blas.filter & FT::DYNAMIC));
+
+        bool isAdded = SetupTLASInstance(blas, instances[instanceCount]);
+
+        if (isAdded)
+        {
+            instanceCount++;
+        }
     }
 
-    if (staticMovableBlas.as != VK_NULL_HANDLE)
+    for (auto &blas : allDynamicBlas[frameIndex])
     {
-        VkAccelerationStructureInstanceKHR &movableInstance = instances[instanceCount++];
-        movableInstance.transform = identity;
-        movableInstance.instanceCustomIndex = 0;
-        movableInstance.mask = 0xFF;
-        movableInstance.instanceShaderBindingTableRecordOffset = 0;
-        movableInstance.flags = 
-            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | 
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        movableInstance.accelerationStructureReference = GetASAddress(staticMovableBlas);
-    }
+        assert(blas.filter & FT::DYNAMIC);
 
-    if (dynamicBlas[frameIndex].as != VK_NULL_HANDLE)
-    {
-        VkAccelerationStructureInstanceKHR &dynamicInstance = instances[instanceCount++];
-        dynamicInstance.transform = identity;
-        dynamicInstance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-        dynamicInstance.mask = 0xFF;
-        dynamicInstance.instanceShaderBindingTableRecordOffset = 0;
-        dynamicInstance.flags = 
-            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR | 
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        dynamicInstance.accelerationStructureReference = GetASAddress(dynamicBlas[frameIndex]);
-    }
+        bool isAdded = SetupTLASInstance(blas, instances[instanceCount]);
 
-    // add transparent
-
-    if (transparentStaticBlas.as != VK_NULL_HANDLE)
-    {
-        VkAccelerationStructureInstanceKHR &staticInstance = instances[instanceCount++];
-        staticInstance.transform = identity;
-        staticInstance.instanceCustomIndex = 0;
-        staticInstance.mask = 0xFF;
-        staticInstance.instanceShaderBindingTableRecordOffset = 1;
-        staticInstance.flags =
-            VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        staticInstance.accelerationStructureReference = GetASAddress(transparentStaticBlas);
-    }
-
-    if (transparentStaticMovableBlas.as != VK_NULL_HANDLE)
-    {
-        VkAccelerationStructureInstanceKHR &movableInstance = instances[instanceCount++];
-        movableInstance.transform = identity;
-        movableInstance.instanceCustomIndex = 0;
-        movableInstance.mask = 0xFF;
-        movableInstance.instanceShaderBindingTableRecordOffset = 1;
-        movableInstance.flags =
-            VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        movableInstance.accelerationStructureReference = GetASAddress(transparentStaticMovableBlas);
-    }
-
-    if (transparentDynamicBlas[frameIndex].as != VK_NULL_HANDLE)
-    {
-        VkAccelerationStructureInstanceKHR &dynamicInstance = instances[instanceCount++];
-        dynamicInstance.transform = identity;
-        dynamicInstance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-        dynamicInstance.mask = 0xFF;
-        dynamicInstance.instanceShaderBindingTableRecordOffset = 1;
-        dynamicInstance.flags =
-            VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
-        dynamicInstance.accelerationStructureReference = GetASAddress(transparentDynamicBlas[frameIndex]);
+        if (isAdded)
+        {
+            instanceCount++;
+        }
     }
 
     if (instanceCount == 0)
@@ -688,7 +722,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     if (curTlas.buffer.GetSize() < buildSizes.accelerationStructureSize)
     {
         // destroy
-        DestroyAS(curTlas, true);
+        DestroyAS(curTlas);
 
         // create
         CreateASBuffer(curTlas, buildSizes.accelerationStructureSize, "TLAS buffer");
@@ -729,12 +763,9 @@ void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, con
     );
 }
 
-void ASManager::DestroyAS(AccelerationStructure &as, bool withBuffer)
+void ASManager::DestroyAS(AccelerationStructure &as)
 {
-    if (withBuffer)
-    {
-        as.buffer.Destroy();
-    }
+    as.buffer.Destroy();
 
     if (as.as != VK_NULL_HANDLE)
     {
@@ -764,6 +795,44 @@ bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
     // fast trace for static
     // fast build for dynamic
     return filter & FT::DYNAMIC;
+}
+
+const char *ASManager::GetBLASDebugName(VertexCollectorFilterTypeFlags filter)
+{
+#ifdef NDEBUG
+    return nullptr;
+#endif
+
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    if (filter == (FT::STATIC_NON_MOVABLE | FT::TRANSPARENT))
+    {
+        return "BLAS static transparent";
+    }
+    else if (filter == (FT::STATIC_MOVABLE | FT::TRANSPARENT))
+    {
+        return "BLAS movable static transparent";
+    }
+    else if (filter == (FT::DYNAMIC | FT::TRANSPARENT))
+    {
+        return "BLAS dynamic transparent";
+    }
+    else if (filter == (FT::STATIC_NON_MOVABLE | FT::OPAQUE))
+    {
+        return "BLAS static opaque";
+    }
+    else if (filter == (FT::STATIC_MOVABLE | FT::OPAQUE))
+    {
+        return "BLAS movable static opaque";
+    }
+    else if (filter == (FT::DYNAMIC | FT::OPAQUE))
+    {
+        return "BLAS dynamic opaque";
+    }
+
+    // in debug mode, every BLAS must have a name
+    assert(0);
+    return nullptr;
 }
 
 VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const

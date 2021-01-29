@@ -69,8 +69,13 @@ public:
 private:
     struct AccelerationStructure
     {
+        AccelerationStructure() {}
+        AccelerationStructure(VertexCollectorFilterTypeFlags _filter) : filter(_filter) {}
+
         VkAccelerationStructureKHR as = VK_NULL_HANDLE;
         Buffer buffer = {};
+        // Used only for BLAS
+        VertexCollectorFilterTypeFlags filter = 0;
     };
 
 private:
@@ -80,21 +85,23 @@ private:
 
     void SetupBLAS(
         AccelerationStructure &as,
-        const std::shared_ptr<VertexCollector> &vertCollector,
-        VertexCollectorFilterTypeFlags filter,
-        const char *debugName = nullptr);
+        const std::shared_ptr<VertexCollector> &vertCollector);
 
-    void SetupCreatedBLAS(
+    void UpdateBLAS(
         AccelerationStructure &as,
-        const std::shared_ptr<VertexCollector> &vertCollector,
-        VertexCollectorFilterTypeFlags filter);
+        const std::shared_ptr<VertexCollector> &vertCollector);
 
     void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, const char *debugName = nullptr);
-    void DestroyAS(AccelerationStructure &as, bool withBuffer = true);
+    void DestroyAS(AccelerationStructure &as);
     VkDeviceAddress GetASAddress(const AccelerationStructure &as);
     VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);
 
+    bool SetupTLASInstance(
+        const AccelerationStructure &as,
+        VkAccelerationStructureInstanceKHR &instance);
+
     static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);
+    static const char *GetBLASDebugName(VertexCollectorFilterTypeFlags filter);
 
 private:
     VkDevice device;
@@ -113,13 +120,8 @@ private:
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<TextureManager> textureMgr;
 
-    AccelerationStructure staticBlas;
-    AccelerationStructure staticMovableBlas;
-    AccelerationStructure dynamicBlas[MAX_FRAMES_IN_FLIGHT];
-
-    AccelerationStructure transparentStaticBlas;
-    AccelerationStructure transparentStaticMovableBlas;
-    AccelerationStructure transparentDynamicBlas[MAX_FRAMES_IN_FLIGHT];
+    std::vector<AccelerationStructure> allStaticBlas;
+    std::vector<AccelerationStructure> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];
 
     // top level AS
     Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];
