@@ -113,9 +113,8 @@ CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 22,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
     "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
-    "MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT" : 1 << 18,
-    "MAX_VERTEX_COLLECTOR_GEOM_INFOS_COUNT" : 1 << 18,
-    "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 1 << 12,
+    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : 1 << 14,
+    "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 32,
     "BINDING_VERTEX_BUFFER_STATIC"          : 0,
     "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,
     "BINDING_INDEX_BUFFER_STATIC"           : 2,
@@ -298,7 +297,7 @@ def getStruct(name, definition, typeNames, align16, breakComplex):
                 if (baseType, dim) in typeNames:
                     r += "%s %s[%d]" % (typeNames[(baseType, dim)], mname, count)
                 else:
-                    r += "%s %s[%d][%d]" % (typeNames[baseType], mname, dim, count)
+                    r += "%s %s[%d][%d]" % (typeNames[baseType], mname, count, dim)
             else:
                 r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
 

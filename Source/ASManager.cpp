@@ -654,6 +654,7 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
     {
         instance.instanceShaderBindingTableRecordOffset = 1;
         instance.flags =
+            VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |
             VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
     }
 
@@ -697,6 +698,8 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex)
     {
         return false;
     }
+
+    assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
     // fill buffer
     void *mapped = instanceBuffers[frameIndex].Map();

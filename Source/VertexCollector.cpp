@@ -61,13 +61,13 @@ VertexCollector::VertexCollector(
 
     // transforms buffer
     transforms.Init(
-        _allocator, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(VkTransformMatrixKHR),
+        _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR),
         VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Vertex collector transforms buffer");
 
     geomInfosBuffer.Init(
-        _allocator, MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT * sizeof(ShGeometryInstance),
+        _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "BLAS geometry info buffer");
@@ -125,11 +125,11 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
 
     assert(curVertexCount < maxVertexCount);
     assert(curIndexCount < MAX_VERTEX_COLLECTOR_INDEX_COUNT);
-    assert(curGeometryCount < MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT);
+    assert(curGeometryCount < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
 
     if (curVertexCount >= maxVertexCount ||
         curIndexCount >= MAX_VERTEX_COLLECTOR_INDEX_COUNT ||
-        curGeometryCount >= MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT)
+        curGeometryCount >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT)
     {
         return UINT32_MAX;
     }
@@ -440,10 +440,16 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferC
 
 void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &transform)
 {
-    assert(geomIndex < MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT);
+    assert(geomIndex < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
     assert(mappedTransformData != nullptr);
+    assert(mappedGeomInfosData != nullptr);
 
     memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
+
+    float modelMatix[16];
+    Matrix::ToMat4Transposed(modelMatix, transform);
+
+    memcpy(mappedGeomInfosData[geomIndex].model, &modelMatix, 16 * sizeof(float));
 }
 
 void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex)

@@ -4,9 +4,8 @@
 #define MAX_STATIC_VERTEX_COUNT (4194304)
 #define MAX_DYNAMIC_VERTEX_COUNT (2097152)
 #define MAX_VERTEX_COLLECTOR_INDEX_COUNT (4194304)
-#define MAX_VERTEX_COLLECTOR_TRANSFORMS_COUNT (262144)
-#define MAX_VERTEX_COLLECTOR_GEOM_INFOS_COUNT (262144)
-#define MAX_TOP_LEVEL_INSTANCE_COUNT (4096)
+#define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT (16384)
+#define MAX_TOP_LEVEL_INSTANCE_COUNT (32)
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
 #define BINDING_INDEX_BUFFER_STATIC (2)
@@ -52,7 +51,7 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     float model[16];
-    uint32_t materials[4][3];
+    uint32_t materials[3][4];
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t primitiveCount;
