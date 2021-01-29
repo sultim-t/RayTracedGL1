@@ -159,7 +159,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
 {
     // submit geometry
-    bool sceneNotEmpty = scene->SubmitForFrame(cmd, currentFrameIndex);
+    bool sceneNotEmpty = scene->SubmitForFrame(cmd, currentFrameIndex, uniform);
 
     // update uniform data
     uniform->Upload(currentFrameIndex);

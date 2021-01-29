@@ -40,7 +40,7 @@ void Scene::PrepareForFrame(uint32_t frameIndex)
     asManager->BeginDynamicGeometry(frameIndex);
 }
 
-bool Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex)
+bool Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
 {
     // reset
     currentFrameIndex = UINT32_MAX;
@@ -56,7 +56,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex)
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
 
     // try to build top level
-    return asManager->TryBuildTLAS(cmd, frameIndex);
+    return asManager->TryBuildTLAS(cmd, frameIndex, uniform);
 }
 
 uint32_t Scene::Upload(const RgGeometryUploadInfo &uploadInfo)

@@ -22,6 +22,7 @@
 
 #include "ASBuilder.h"
 #include "CommandBufferManager.h"
+#include "GlobalUniform.h"
 #include "ScratchBuffer.h"
 #include "TextureManager.h"
 #include "VertexBufferProperties.h"
@@ -59,7 +60,7 @@ public:
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 
-    bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex);
+    bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
     VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const;
     VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const;
 

@@ -42,6 +42,7 @@ struct ShGlobalUniform
     float projection[16];
     float invProjection[16];
     float projectionPrev[16];
+    int32_t instanceGeomInfoOffset[32];
     uint32_t positionsStride;
     uint32_t normalsStride;
     uint32_t texCoordsStride;

@@ -48,28 +48,26 @@ void VertexCollectorFilter::Reset()
     asBuildRangeInfos.clear();
 }
 
-void VertexCollectorFilter::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
+uint32_t VertexCollectorFilter::PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom)
 {
-    if (type & (uint32_t)filter)
-    {
-        primitiveCounts.push_back(primCount);
-    }
+    assert((type & filter) == filter);
+
+    uint32_t localIndex = (uint32_t)asGeometries.size();
+    asGeometries.push_back(geom);
+
+    return localIndex;
 }
 
-void VertexCollectorFilter::PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom)
+void VertexCollectorFilter::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
 {
-    if (type & (uint32_t)filter)
-    {
-        asGeometries.push_back(geom);
-    }
+    assert((type & filter) == filter);
+    primitiveCounts.push_back(primCount);
 }
 
 void VertexCollectorFilter::PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR& rangeInfo)
 {
-    if (type & (uint32_t)filter)
-    {
-        asBuildRangeInfos.push_back(rangeInfo);
-    }
+    assert((type & filter) == filter);
+    asBuildRangeInfos.push_back(rangeInfo);
 }
 
 VertexCollectorFilterTypeFlags VertexCollectorFilter::GetFilter() const

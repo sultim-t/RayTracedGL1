@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "Common.h"
+
 enum class VertexCollectorFilterTypeFlagBits : uint32_t
 {
     NONE                        = 0,
@@ -84,3 +86,5 @@ inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBit
     typedef VertexCollectorFilterTypeFlags FL;
     return static_cast<FL>(static_cast<FL>(a) & b);
 }
+
+uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags);

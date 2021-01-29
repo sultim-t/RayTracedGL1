@@ -86,7 +86,7 @@ set(Sources
     "Source/TextureOverrides.cpp"
     "Source/TextureDescriptors.cpp" 
     "Source/TextureUploader.cpp"
-    )
+    "Source/VertexCollectorFilterType.cpp")
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}

@@ -18,41 +18,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma once
+#include "VertexCollectorFilterType.h"
 
-#include "ASManager.h"
-
-class Scene
+uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags)
 {
-public:
-    explicit Scene(std::shared_ptr<ASManager> asManager);
-    ~Scene();
+    uint32_t result = 0;
 
-    Scene(const Scene& other) = delete;
-    Scene(Scene&& other) noexcept = delete;
-    Scene& operator=(const Scene& other) = delete;
-    Scene& operator=(Scene&& other) noexcept = delete;
+    for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
+    {
+        for (auto pt : VertexCollectorFilterGroup_PassThrough)
+        {
+            if ((cf | pt) == flags)
+            {
+                return result;
+            }
 
-    void PrepareForFrame(uint32_t frameIndex);
-    // Return true if TLAS was built
-    bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
+            result++;
+        }
+    }
 
-    uint32_t Upload(const RgGeometryUploadInfo &uploadInfo);
-    bool UpdateTransform(uint32_t geomId, const RgTransform &transform);
-
-    void SubmitStatic();
-    void StartNewStatic();
-
-    bool IsRecordingStatic() const;
-
-    std::shared_ptr<ASManager> &GetASManager();
-
-private:
-    std::shared_ptr<ASManager> asManager;
-
-    std::vector<uint32_t> movableGeomIds;
-    bool toResubmitMovable;
-
-    uint32_t currentFrameIndex;
-    bool isRecordingStatic;
-};
+    return UINT32_MAX;
+}

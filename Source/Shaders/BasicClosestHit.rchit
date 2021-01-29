@@ -18,8 +18,8 @@ void main()
 {
 	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
 
-	ShTriangle tr = getTriangle(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
-	mat4 model = getModelMatrix(gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT);
+	ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
+	mat4 model = getModelMatrix(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT);
 
     vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
   	vec3 color = vec3(1, 1, 1);

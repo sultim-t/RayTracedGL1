@@ -48,6 +48,7 @@ struct ShGlobalUniform
     mat4 projection;
     mat4 invProjection;
     mat4 projectionPrev;
+    int instanceGeomInfoOffset[32];
     uint positionsStride;
     uint normalsStride;
     uint texCoordsStride;

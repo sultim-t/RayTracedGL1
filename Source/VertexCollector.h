@@ -100,14 +100,19 @@ private:
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
 
+    ShGeometryInstance *GetGeomInfoAddress(uint32_t geomIndex);
+    void WriteGeomInfo(uint32_t geomIndex, const ShGeometryInstance &src);
+    void WriteGeomInfoMaterials(uint32_t geomIndex, uint32_t layer, const MaterialTextures &src);
+    void WriteGeomInfoTransform(uint32_t geomIndex, const RgTransform &src);
+
     // Parse flags to flag bit pairs and create instances of
     // VertexCollectorFilter. Flag bit pair contains one bit from
     // each flag bit group (e.g. change frequency group and pass through group).
     void InitFilters(VertexCollectorFilterTypeFlags flags);
 
     void AddFilter(VertexCollectorFilterTypeFlags filterGroup);
+    uint32_t PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom);
     void PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount);
-    void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom);
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
     uint32_t GetAllGeometryCount() const;
 
@@ -147,6 +152,12 @@ private:
 
     // material index to a list of () that have that material
     std::map<uint32_t, std::vector<MaterialRef>> materialDependencies;
+
+    // each geometry has its type as they're can be in different filters
+    std::map<uint32_t, VertexCollectorFilterTypeFlags> geomType;
+    // geometry index in its filter's space, i.e.
+    // geomIndex = ToOffset(geomType) * MAX_BLAS_GEOMS + geomLocalIndex
+    std::map<uint32_t, VertexCollectorFilterTypeFlags> geomLocalIndex;
 
     std::map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
 };

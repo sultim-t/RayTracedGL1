@@ -47,8 +47,8 @@ public:
 
     void Reset();
 
+    uint32_t PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR& geom);
     void PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount);
-    void PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR& geom);
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
 
     VertexCollectorFilterTypeFlags GetFilter() const;

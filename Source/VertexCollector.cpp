@@ -66,8 +66,9 @@ VertexCollector::VertexCollector(
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "Vertex collector transforms buffer");
 
+    // geometry instance info for each geometry in each top level instance
     geomInfosBuffer.Init(
-        _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
+        _allocator,  MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
         "BLAS geometry info buffer");
@@ -98,9 +99,9 @@ void VertexCollector::BeginCollecting()
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
-    VertexCollectorFilterTypeFlags filterFlags = GetFilterTypeFlags(info);
+    VertexCollectorFilterTypeFlags geomFlags = GetFilterTypeFlags(info);
 
-    const bool collectStatic = filterFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
+    const bool collectStatic = geomFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
     
     const uint32_t maxVertexCount = collectStatic ?
         MAX_STATIC_VERTEX_COUNT :
@@ -109,6 +110,8 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     const uint32_t geomIndex = curGeometryCount;
     const uint32_t vertIndex = curVertexCount;
     const uint32_t indIndex = curIndexCount;
+
+    geomType[geomIndex] = geomFlags;
 
     curGeometryCount++;
     curVertexCount += info.vertexCount;
@@ -159,7 +162,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     geom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
     geom.geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
 
-    geom.flags = filterFlags & FT::PT_OPAQUE ?
+    geom.flags = geomFlags & FT::PT_OPAQUE ?
         VK_GEOMETRY_OPAQUE_BIT_KHR :
         VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
 
@@ -185,10 +188,12 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         trData.indexData = {};
     }
 
-    PushGeometry(filterFlags, geom);
+    uint32_t localIndex = PushGeometry(geomFlags, geom);
+    geomLocalIndex[geomIndex] = localIndex;
 
-    // geomIndex must be the same as in pGeometries in BLAS
-    // for referencing it in shaders by gl_GeometryIndexEXT (RayGeometryIndexKHR)
+    // geomIndex must be the same as in pGeometries in BLAS,
+    // geomIndex is a global index. For referencing this geometry's info,
+    // the pair of gl_InstanceID and gl_GeometryIndexEXT is used
     assert(geomIndex == GetAllGeometryCount() - 1);
 
     VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
@@ -196,12 +201,14 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     rangeInfo.primitiveOffset = 0;
     rangeInfo.firstVertex = 0;
     rangeInfo.transformOffset = 0;
-    PushRangeInfo(filterFlags, rangeInfo);
+    PushRangeInfo(geomFlags, rangeInfo);
 
-    PushPrimitiveCount(filterFlags, primitiveCount);
+    PushPrimitiveCount(geomFlags, primitiveCount);
 
     // copy geom info
     assert(geomInfosBuffer.IsMapped());
+
+    static_assert(sizeof(ShGeometryInstance) % 16 == 0, "Std140 structs must be aligned by 16 bytes");
 
     ShGeometryInstance geomInfo = {};
     geomInfo.baseVertexIndex = vertIndex;
@@ -227,8 +234,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
                TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
     }
 
-    assert(sizeof(ShGeometryInstance) % 16 == 0);
-    memcpy(mappedGeomInfosData + geomIndex, &geomInfo, sizeof(ShGeometryInstance));
+    WriteGeomInfo(geomIndex, geomInfo);
 
     return geomIndex;
 }
@@ -319,6 +325,8 @@ void VertexCollector::Reset()
     curPrimitiveCount = 0;
     curGeometryCount = 0;
 
+    geomType.clear();
+    geomLocalIndex.clear();
     materialDependencies.clear();
 
     for (auto &f : filters)
@@ -442,14 +450,10 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &tra
 {
     assert(geomIndex < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
     assert(mappedTransformData != nullptr);
-    assert(mappedGeomInfosData != nullptr);
 
     memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
 
-    float modelMatix[16];
-    Matrix::ToMat4Transposed(modelMatix, transform);
-
-    memcpy(mappedGeomInfosData[geomIndex].model, &modelMatix, 16 * sizeof(float));
+    WriteGeomInfoTransform(geomIndex, transform);
 }
 
 void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex)
@@ -468,7 +472,6 @@ void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, 
         it->second.push_back({ geomIndex, layer });
     }
 }
-
 void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo)
 {
     // for each geom index that has this material, update geometry instance infos
@@ -476,10 +479,48 @@ void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTex
     {    
         assert(p.geomIndex < curGeometryCount);
 
-        memcpy(mappedGeomInfosData[p.geomIndex].materials[p.layer], newInfo.indices, 
-               TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+        WriteGeomInfoMaterials(p.geomIndex, p.layer, newInfo);
     }
 }
+
+ShGeometryInstance *VertexCollector::GetGeomInfoAddress(uint32_t geomIndex)
+{
+    assert(mappedGeomInfosData != nullptr);
+    assert(geomType.find(geomIndex) != geomType.end());
+    assert(geomLocalIndex.find(geomIndex) != geomLocalIndex.end());
+
+    VertexCollectorFilterTypeFlags type = geomType[geomIndex];
+    uint32_t localIndex = geomLocalIndex[geomIndex];
+
+    uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(type);
+
+    return &mappedGeomInfosData[offset * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT + localIndex];
+}
+
+void VertexCollector::WriteGeomInfo(uint32_t geomIndex, const ShGeometryInstance &src)
+{
+    ShGeometryInstance *dst = GetGeomInfoAddress(geomIndex);
+
+    memcpy(dst, &src, sizeof(ShGeometryInstance));
+}
+
+void VertexCollector::WriteGeomInfoMaterials(uint32_t geomIndex, uint32_t layer, const MaterialTextures &src)
+{
+    ShGeometryInstance *dst = GetGeomInfoAddress(geomIndex);
+
+    memcpy(dst->materials[layer], src.indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+}
+
+void VertexCollector::WriteGeomInfoTransform(uint32_t geomIndex, const RgTransform &src)
+{
+    ShGeometryInstance *dst = GetGeomInfoAddress(geomIndex);
+
+    float modelMatix[16];
+    Matrix::ToMat4Transposed(modelMatix, src);
+
+    memcpy(dst->model, &modelMatix, 16 * sizeof(float));
+}
+
 
 VkBuffer VertexCollector::GetVertexBuffer() const
 {
@@ -545,20 +586,19 @@ bool VertexCollector::AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type)
     return AreGeometriesEmpty((VertexCollectorFilterTypeFlags)type);
 }
 
+uint32_t VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
+                                   const VkAccelerationStructureGeometryKHR &geom)
+{
+    assert(filters.find(type) != filters.end());
+
+    return filters[type]->PushGeometry(type, geom);
+}
 
 void VertexCollector::PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount)
 {
     assert(filters.find(type) != filters.end());
 
     filters[type]->PushPrimitiveCount(type, primCount);
-}
-
-void VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
-                                   const VkAccelerationStructureGeometryKHR &geom)
-{
-    assert(filters.find(type) != filters.end());
-
-    filters[type]->PushGeometry(type, geom);
 }
 
 void VertexCollector::PushRangeInfo(VertexCollectorFilterTypeFlags type,
