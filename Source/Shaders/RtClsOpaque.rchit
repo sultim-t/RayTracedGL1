@@ -62,10 +62,10 @@ void main()
 	}
 	
 	vec3 lightVec = normalize(vec3(1.0, 1.0, 1.0));
-	flaot light = max(dot(lightVec, normal), 0.2);
+	float light = max(dot(lightVec, normal), 0.2);
 
 	payload.color = vec4(light * color, 1.0);
-	payloadShadow.isShadowed = true;  
+	payloadShadow.isShadowed = 1;  
 
 	vec3 origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
 	
@@ -78,7 +78,7 @@ void main()
 		origin, 0.001, lightVec, 10000.0, 
 		1);		// shadow payload
 	
-	if (payloadShadow.isShadowed) 
+	if (payloadShadow.isShadowed != 0) 
 	{
 		payload.color *= 0.3;
 	}

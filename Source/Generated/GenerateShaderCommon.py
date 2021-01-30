@@ -205,7 +205,7 @@ STRUCTS = {
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False,  True),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,   False),
     "ShPayload":                (PAYLOAD_STRUCT,            True,   False,  False),
-    "ShSPayloadhadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
+    "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
 }
 
 # ---

@@ -71,7 +71,7 @@ struct ShPayload
     float tranparDistance;
 };
 
-struct ShSPayloadhadow
+struct ShPayloadShadow
 {
     uint isShadowed;
 };

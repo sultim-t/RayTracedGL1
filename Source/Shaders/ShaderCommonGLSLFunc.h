@@ -354,7 +354,7 @@ vec4 getTextureSample(uint textureIndex, vec2 texCoord)
         return vec4(1.0, 1.0, 1.0, 1.0);
     }
 }*/
-#endif
+#endif // DESC_SET_TEXTURES
 
 vec4 blendUnder(vec4 src, vec4 dst)
 {

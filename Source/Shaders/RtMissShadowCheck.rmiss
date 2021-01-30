@@ -21,9 +21,11 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 
+#include "ShaderCommonGLSL.h"
+
 layout(location = 1) rayPayloadEXT ShPayloadShadow payloadShadow;
 
 void main()
 {
-	payloadShadow.isShadowed = false;
+	payloadShadow.isShadowed = 0;
 }
