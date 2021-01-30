@@ -360,7 +360,7 @@ vec4 blendUnder(vec4 src, vec4 dst)
 {
     // dst is under src
     return vec4(
-        dst.a * dst.rgb + (1 - dst.a) * src.rgb,
+        dst.a * dst.rgb + (1 - dst.a) * src.a * src.rgb,
         src.a - src.a * dst.a + dst.a
     );
 }

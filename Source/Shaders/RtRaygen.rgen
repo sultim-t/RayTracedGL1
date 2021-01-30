@@ -48,7 +48,7 @@ void main()
 	traceRayEXT(
 		topLevelAS,
 		gl_RayFlagsNoneEXT, 
-		0xFF, 
+		INSTANCE_MASK_ALL, 
 		0, 0, 	// sbtRecordOffset, sbtRecordStride
 		SBT_INDEX_MISS_DEFAULT, 
 		origin.xyz, 0.001, dir.xyz, 10000.0, 

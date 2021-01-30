@@ -126,6 +126,8 @@ CONST = {
     "BINDING_STORAGE_IMAGE"                 : 0,
     "BINDING_TEXTURES"                      : 0,
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
+    "INSTANCE_MASK_ALL"                     : "0xFF",
+    "INSTANCE_MASK_HAS_SHADOWS"             : "1",
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,
     "SBT_INDEX_MISS_DEFAULT"                : 0,

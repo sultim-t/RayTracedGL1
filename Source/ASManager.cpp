@@ -632,8 +632,6 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
         0.0f, 0.0f, 1.0f, 0.0f
     };
 
-    instance.mask = 0xFF;
-
     if (filter & FT::CF_DYNAMIC)
     {
         // for choosing buffers with dynamic data
@@ -642,6 +640,16 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
     else
     {
         instance.instanceCustomIndex = 0;
+    }
+
+    // blended geometries don't have shadows
+    if (filter & (FT::PT_BLEND_ADDITIVE | FT::PT_BLEND_UNDER))
+    {
+        instance.mask = ~INSTANCE_MASK_HAS_SHADOWS;
+    }
+    else
+    {
+        instance.mask = INSTANCE_MASK_HAS_SHADOWS;
     }
 
     if (filter & FT::PT_OPAQUE)

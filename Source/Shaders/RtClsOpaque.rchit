@@ -32,6 +32,26 @@ layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
 hitAttributeEXT vec2 inBaryCoords;
 
+// lightDirection is pointed to the light
+bool isShadowed(vec3 lightDirection)
+{
+	vec3 origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+	
+	// prepare shadow payload
+	payloadShadow.isShadowed = 1;  
+	
+	traceRayEXT(
+		topLevelAS, 
+		gl_RayFlagsSkipClosestHitShaderEXT, 
+		INSTANCE_MASK_HAS_SHADOWS, 
+		0, 0, 	// sbtRecordOffset, sbtRecordStride
+		SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
+		origin, 0.001, lightDirection, 10000.0, 
+		PAYLOAD_INDEX_SHADOW);
+
+	return payloadShadow.isShadowed == 1;
+}
+
 void main()
 {
 	ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
@@ -64,21 +84,18 @@ void main()
 	vec3 lightVec = normalize(vec3(1.0, 1.0, 1.0));
 	float light = max(dot(lightVec, normal), 0.2);
 
-	payload.color = vec4(light * color, 1.0);
-	payloadShadow.isShadowed = 1;  
-
-	vec3 origin = gl_WorldRayOriginEXT + gl_WorldRayDirectionEXT * gl_HitTEXT;
+	// if transparency hit distance is further than the closest hit,
+	// then overwrite blended transparency
+	if (payload.transparDistance > gl_HitTEXT)
+	{
+		payload.color = vec4(light * color, 1.0);
+	}
+	else
+	{
+		payload.color += vec4(light * color, 1.0);
+	}
 	
-	traceRayEXT(
-		topLevelAS, 
-		gl_RayFlagsSkipClosestHitShaderEXT, 
-		0xFF, 
-		0, 0, 	// sbtRecordOffset, sbtRecordStride
-		SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
-		origin, 0.001, lightVec, 10000.0, 
-		PAYLOAD_INDEX_SHADOW);
-	
-	if (payloadShadow.isShadowed != 0) 
+	if (isShadowed(lightVec)) 
 	{
 		payload.color *= 0.3;
 	}
