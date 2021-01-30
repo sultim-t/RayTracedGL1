@@ -54,10 +54,17 @@ public:
     VkPipelineLayout GetLayout() const;
 
 private:
+    void CreatePipeline(
+        const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
+        const VkPipelineShaderStageCreateInfo *pStages, uint32_t stageCount);
     void CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice, const std::shared_ptr<MemoryAllocator> &allocator);
 
     void AddGeneralGroup(uint32_t generalIndex);
+
+    void AddRayGenGroup(uint32_t raygenIndex);
+    void AddMissGroup(uint32_t missIndex);
     void AddHitGroup(uint32_t closestHitIndex);
+    void AddHitGroupOnlyAny(uint32_t anyHitIndex);
     void AddHitGroup(uint32_t closestHitIndex, uint32_t anyHitIndex);
     void AddHitGroup(uint32_t closestHitIndex, uint32_t anyHitIndex, uint32_t intersectionIndex);
 

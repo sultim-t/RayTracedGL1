@@ -25,7 +25,7 @@
 #define DESC_SET_TEXTURES 4
 #include "ShaderCommonGLSLFunc.h"
 
-layout(location = 0) rayPayloadInEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 hitAttributeEXT vec2 inBaryCoords;
 
 void main()
@@ -43,7 +43,7 @@ void main()
 	// commutative
 	payload.color = blendAdditive(color, payload.color);
 #else
-	if (curDistance > payload.tranparDistance)
+	if (curDistance > payload.transparDistance)
 	{
 		// previous is under current
 		payload.color = blendUnder(color, payload.color);
@@ -55,7 +55,7 @@ void main()
 	}
 #endif
 
-	payload.tranparDistance = curDistance;
+	payload.transparDistance = curDistance;
 
 	// blended geometry can't be a closest hit, so ignore this intersection
 	ignoreIntersectionEXT;

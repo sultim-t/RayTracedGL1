@@ -23,7 +23,7 @@
 
 #include "ShaderCommonGLSL.h"
 
-layout(location = 0) rayPayloadInEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 
 void main()
 {

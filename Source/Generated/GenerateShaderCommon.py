@@ -126,6 +126,14 @@ CONST = {
     "BINDING_STORAGE_IMAGE"                 : 0,
     "BINDING_TEXTURES"                      : 0,
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
+    "PAYLOAD_INDEX_DEFAULT"                 : 0,
+    "PAYLOAD_INDEX_SHADOW"                  : 1,
+    "SBT_INDEX_MISS_DEFAULT"                : 0,
+    "SBT_INDEX_MISS_SHADOW"                 : 1,
+    "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
+    "SBT_INDEX_HITGROUP_ALPHA_TESTED"       : 1,
+    "SBT_INDEX_HITGROUP_BLEND_ADDITIVE"     : 2,
+    "SBT_INDEX_HITGROUP_BLEND_UNDER"        : 3,
 }
 
 
@@ -187,7 +195,7 @@ GEOM_INSTANCE_STRUCT = [
 
 PAYLOAD_STRUCT = [
     (TYPE_FLOAT,    4,      "color",            1),
-    (TYPE_FLOAT,    1,      "tranparDistance",  1),
+    (TYPE_FLOAT,    1,      "transparDistance", 1),
 ]
 
 PAYLOAD_SHADOW_STRUCT = [

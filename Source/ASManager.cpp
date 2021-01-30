@@ -52,12 +52,12 @@ ASManager::ASManager(
             {
                 for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
                 {
-                    allDynamicBlas[i].emplace_back(cf | pt);
+                    allDynamicBlas[i].emplace_back(filter);
                 }
             }
             else
             {
-                allStaticBlas.emplace_back(cf | pt);
+                allStaticBlas.emplace_back(filter);
             }
         }
     }
@@ -375,8 +375,8 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
     const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges = vertCollector->GetASBuildRangeInfos(filter);
     const std::vector<uint32_t> &primCounts = vertCollector->GetPrimitiveCounts(filter);
 
-    bool fastTrace = !IsFastBuild(filter);
-    bool update = false;
+    const bool fastTrace = !IsFastBuild(filter);
+    const bool update = false;
 
     // get AS size and create buffer for AS
     const auto buildSizes = asBuilder->GetBottomBuildSizes(
@@ -424,10 +424,10 @@ void ASManager::UpdateBLAS(AccelerationStructure &as,
     const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges = vertCollector->GetASBuildRangeInfos(filter);
     const std::vector<uint32_t> &primCounts = vertCollector->GetPrimitiveCounts(filter);
 
-    bool fastTrace = !IsFastBuild(filter);
+    const bool fastTrace = !IsFastBuild(filter);
 
     // must be just updated
-    bool update = true;
+    const bool update = true;
 
     const auto buildSizes = asBuilder->GetBottomBuildSizes(
         geoms.size(), geoms.data(), primCounts.data(), fastTrace);
@@ -636,6 +636,7 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
 
     if (filter & FT::CF_DYNAMIC)
     {
+        // for choosing buffers with dynamic data
         instance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
     }
     else
@@ -645,14 +646,26 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
 
     if (filter & FT::PT_OPAQUE)
     {
-        instance.instanceShaderBindingTableRecordOffset = 0;
+        instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
         instance.flags =
             VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
             VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
     }
-    else
+    else 
     {
-        instance.instanceShaderBindingTableRecordOffset = 1;
+        if (filter & FT::PT_ALPHA_TESTED)
+        {
+            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
+        }
+        else if (filter &FT::PT_BLEND_ADDITIVE)
+        {
+            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_ADDITIVE;
+        }
+        else if (filter & FT::PT_BLEND_UNDER)
+        {
+            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_UNDER;
+        }
+        
         instance.flags =
             VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |
             VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;

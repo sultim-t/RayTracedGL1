@@ -51,6 +51,8 @@ private:
     };
 
 private:
+    static VkShaderStageFlagBits GetStageByExtension(const char *name);
+
     VkShaderModule LoadModuleFromFile(const char *path);
     void LoadShaderModules();
     void UnloadShaderModules();

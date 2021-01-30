@@ -20,58 +20,115 @@
 
 #include "RayTracingPipeline.h"
 
+#include "Generated/ShaderCommonC.h"
 #include "Utils.h"
 
 RayTracingPipeline::RayTracingPipeline(
-    VkDevice device,
-    const std::shared_ptr<PhysicalDevice> &physDevice,
-    const std::shared_ptr<MemoryAllocator> &allocator,
-    const std::shared_ptr<ShaderManager> &sm,
-    const std::shared_ptr<ASManager> &asManager,
-    const std::shared_ptr<GlobalUniform> &uniform,
-    const std::shared_ptr<TextureManager> &textureMgr,
-    VkDescriptorSetLayout imagesSetLayout)
+    VkDevice _device,
+    const std::shared_ptr<PhysicalDevice> &_physDevice,
+    const std::shared_ptr<MemoryAllocator> &_allocator,
+    const std::shared_ptr<ShaderManager> &_shaderMgr,
+    const std::shared_ptr<ASManager> &_asMgr,
+    const std::shared_ptr<GlobalUniform> &_uniform,
+    const std::shared_ptr<TextureManager> &_textureMgr,
+    VkDescriptorSetLayout _imagesSetLayout)
+:
+    device(_device),
+    rtPipelineLayout(VK_NULL_HANDLE),
+    rtPipeline(VK_NULL_HANDLE),
+    groupBaseAlignment(0),
+    handleSize(0),
+    alignedHandleSize(0),
+    hitGroupCount(0),
+    missShaderCount(0)
 {
-    this->device = device;
-
-    std::vector<VkPipelineShaderStageCreateInfo> stages =
+    std::vector<const char *> stageNames =
     {
-        sm->GetStageInfo("RGen"),
-        sm->GetStageInfo("RMiss"),
-        sm->GetStageInfo("RMissShadow"),
-        sm->GetStageInfo("RClsHit"),
-        sm->GetStageInfo("RAnyHit"),
+        "RGen",
+        "RMiss",
+        "RMissShadow",
+        "RClsOpaque",
+        "RAlphaTest",
+        "RBlendAdditive",
+        "RBlendUnder",
     };
-    
-    AddGeneralGroup(0);
-    AddGeneralGroup(1);
-    AddGeneralGroup(2);
+
+#pragma region Utilities
+    // get stage infos by names 
+    std::vector<VkPipelineShaderStageCreateInfo> stages(stageNames.size());
+
+    for (uint32_t i = 0; i < stageNames.size(); i++)
+    {
+        stages[i] = _shaderMgr->GetStageInfo(stageNames[i]);
+    }
+
+    // simple lambda to get index in "stages" by name
+    auto toIndex = [&stageNames] (const char *shaderName)
+    {
+        for (uint32_t i = 0; i < stageNames.size(); i++)
+        {
+            if (std::strcmp(shaderName, stageNames[i]) == 0)
+            {
+                return i;
+            }
+        }
+
+        return UINT32_MAX;
+    };
+#pragma endregion
+
+
+    // set shader binding table structure the same as defined with SBT_INDEX_* 
+
+    AddRayGenGroup(toIndex("RGen"));
+
+    AddMissGroup(toIndex("RMiss"));                                 assert(missShaderCount - 1 == SBT_INDEX_MISS_DEFAULT);
+    AddMissGroup(toIndex("RMissShadow"));                           assert(missShaderCount - 1 == SBT_INDEX_MISS_SHADOW);
+
     // only opaque
-    AddHitGroup(3);
-    // opaque/transparent
-    AddHitGroup(3, 4);
+    AddHitGroup(toIndex("RClsOpaque"));                             assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_FULLY_OPAQUE);
+    // alpha tested and then opaque
+    AddHitGroup(toIndex("RClsOpaque"), toIndex("RAlphaTest"));      assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_ALPHA_TESTED);
+    // blend additive and then opaque
+    AddHitGroup(toIndex("RClsOpaque"), toIndex("RBlendAdditive"));  assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_BLEND_ADDITIVE);
+    // blend under and then opaque
+    AddHitGroup(toIndex("RClsOpaque"), toIndex("RBlendUnder"));     assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_BLEND_UNDER);
 
-    this->hitGroupCount = 2;
-    this->missShaderCount = 2;
 
+    // all set layouts to be used
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
         // ray tracing acceleration structures
-        asManager->GetTLASDescSetLayout(),
+        _asMgr->GetTLASDescSetLayout(),
         // storage images
-        imagesSetLayout,
+        _imagesSetLayout,
         // uniform
-        uniform->GetDescSetLayout(),
+        _uniform->GetDescSetLayout(),
         // vertex data
-        asManager->GetBuffersDescSetLayout(),
+        _asMgr->GetBuffersDescSetLayout(),
         // textures
-        textureMgr->GetDescSetLayout()
+        _textureMgr->GetDescSetLayout()
     };
 
+    CreatePipeline(setLayouts.data(), setLayouts.size(),
+                   stages.data(), stages.size());
+
+    CreateSBT(_physDevice, _allocator);
+}
+
+RayTracingPipeline::~RayTracingPipeline()
+{
+    vkDestroyPipeline(device, rtPipeline, nullptr);
+    vkDestroyPipelineLayout(device, rtPipelineLayout, nullptr);
+}
+
+void RayTracingPipeline::CreatePipeline(const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
+                                        const VkPipelineShaderStageCreateInfo *pStages, uint32_t stageCount)
+{
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    plLayoutInfo.setLayoutCount = setLayouts.size();
-    plLayoutInfo.pSetLayouts = setLayouts.data();
+    plLayoutInfo.setLayoutCount = setLayoutCount;
+    plLayoutInfo.pSetLayouts = pSetLayouts;
 
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &rtPipelineLayout);
     VK_CHECKERROR(r);
@@ -81,8 +138,8 @@ RayTracingPipeline::RayTracingPipeline(
 
     VkRayTracingPipelineCreateInfoKHR pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    pipelineInfo.stageCount = stages.size();
-    pipelineInfo.pStages = stages.data();
+    pipelineInfo.stageCount = stageCount;
+    pipelineInfo.pStages = pStages;
     pipelineInfo.groupCount = shaderGroups.size();
     pipelineInfo.pGroups = shaderGroups.data();
     pipelineInfo.maxPipelineRayRecursionDepth = 2;
@@ -94,14 +151,6 @@ RayTracingPipeline::RayTracingPipeline(
 
     SET_DEBUG_NAME(device, rtPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Ray tracing pipeline Layout");
     SET_DEBUG_NAME(device, rtPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Ray tracing pipeline");
-
-    CreateSBT(physDevice, allocator);
-}
-
-RayTracingPipeline::~RayTracingPipeline()
-{
-    vkDestroyPipeline(device, rtPipeline, nullptr);
-    vkDestroyPipelineLayout(device, rtPipelineLayout, nullptr);
 }
 
 void RayTracingPipeline::CreateSBT(
@@ -194,9 +243,26 @@ void RayTracingPipeline::AddGeneralGroup(uint32_t generalIndex)
     shaderGroups.push_back(group);
 }
 
+void RayTracingPipeline::AddRayGenGroup(uint32_t raygenIndex)
+{
+    AddGeneralGroup(raygenIndex);
+}
+
+void RayTracingPipeline::AddMissGroup(uint32_t missIndex)
+{
+    AddGeneralGroup(missIndex);
+
+    missShaderCount++;
+}
+
 void RayTracingPipeline::AddHitGroup(uint32_t closestHitIndex)
 {
     AddHitGroup(closestHitIndex, VK_SHADER_UNUSED_KHR, VK_SHADER_UNUSED_KHR);
+}
+
+void RayTracingPipeline::AddHitGroupOnlyAny(uint32_t anyHitIndex)
+{
+    AddHitGroup(VK_SHADER_UNUSED_KHR, anyHitIndex, VK_SHADER_UNUSED_KHR);
 }
 
 void RayTracingPipeline::AddHitGroup(uint32_t closestHitIndex, uint32_t anyHitIndex)
@@ -215,4 +281,6 @@ void RayTracingPipeline::AddHitGroup(uint32_t closestHitIndex, uint32_t anyHitIn
     group.intersectionShader = intersectionIndex;
 
     shaderGroups.push_back(group);
+
+    hitGroupCount++;
 }

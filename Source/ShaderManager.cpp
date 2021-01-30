@@ -31,17 +31,19 @@ struct ShaderModuleDefinition
 };
 
 // TODO: move this to separate file
+// Note: set shader stage to VK_SHADER_STAGE_ALL, to identify stage by the file extension
 static ShaderModuleDefinition G_SHADERS[] =
 {
-    {"RGen",            "../../../BasicRaygen.rgen.spv",            VK_SHADER_STAGE_RAYGEN_BIT_KHR },
-    {"RMiss",           "../../../BasicMiss.rmiss.spv",             VK_SHADER_STAGE_MISS_BIT_KHR },
-    {"RMissShadow",     "../../../BasicShadowCheck.rmiss.spv",      VK_SHADER_STAGE_MISS_BIT_KHR },
-    {"RClsHit",         "../../../BasicClosestHit.rchit.spv",       VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
-    {"RAnyHit",         "../../../BasicAnyHit.rahit.spv",           VK_SHADER_STAGE_ANY_HIT_BIT_KHR },
-    {"RasterizerVert",  "../../../Rasterizer.vert.spv",             VK_SHADER_STAGE_VERTEX_BIT },
-    {"RasterizerFrag",  "../../../Rasterizer.frag.spv",             VK_SHADER_STAGE_FRAGMENT_BIT },
+    {"RGen",            "../../../RtRaygen.rgen.spv"            , VK_SHADER_STAGE_ALL },
+    {"RMiss",           "../../../RtMiss.rmiss.spv"             , VK_SHADER_STAGE_ALL },
+    {"RMissShadow",     "../../../RtMissShadowCheck.rmiss.spv"  , VK_SHADER_STAGE_ALL },
+    {"RClsOpaque",      "../../../RtClsOpaque.rchit.spv"        , VK_SHADER_STAGE_ALL },
+    {"RAlphaTest",      "../../../RtAlphaTest.rahit.spv"        , VK_SHADER_STAGE_ALL },
+    {"RBlendAdditive",  "../../../RtBlendAdditive.rahit.spv"    , VK_SHADER_STAGE_ALL },
+    {"RBlendUnder",     "../../../RtBlendUnder.rahit.spv"       , VK_SHADER_STAGE_ALL },
+    {"RasterizerVert",  "../../../Rasterizer.vert.spv"          , VK_SHADER_STAGE_ALL },
+    {"RasterizerFrag",  "../../../Rasterizer.frag.spv"          , VK_SHADER_STAGE_ALL },
 };
-static const uint32_t G_SHADERS_COUNT = sizeof(G_SHADERS) / sizeof(G_SHADERS[0]);
 
 
 ShaderManager::ShaderManager(VkDevice device)
@@ -63,12 +65,18 @@ void ShaderManager::ReloadShaders()
 
 void ShaderManager::LoadShaderModules()
 {
-    for (uint32_t i = 0; i < G_SHADERS_COUNT; i++)
+    for (auto &s : G_SHADERS)
     {
-        VkShaderModule m = LoadModuleFromFile(G_SHADERS[i].path);
-        SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, G_SHADERS[i].name);
+        if (s.stage == VK_SHADER_STAGE_ALL)
+        {
+            // parse stage if needed, it's done only once, as paths won't be changing
+            s.stage = GetStageByExtension(s.path);
+        }
 
-        modules[G_SHADERS[i].name] = { m, G_SHADERS[i].stage };
+        VkShaderModule m = LoadModuleFromFile(s.path);
+        SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, s.name);
+
+        modules[s.name] = { m, s.stage };
 
     }
 }
@@ -131,4 +139,65 @@ VkShaderModule ShaderManager::LoadModuleFromFile(const char* path)
     VK_CHECKERROR(r);
 
     return shaderModule;
+}
+
+VkShaderStageFlagBits ShaderManager::GetStageByExtension(const char *name)
+{
+    // assume that file names end with ".spv"
+
+    if (std::strstr(name, ".vert.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_VERTEX_BIT;
+    }
+    else if(std::strstr(name, ".frag.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_FRAGMENT_BIT;
+    }
+    else if (std::strstr(name, ".comp.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_COMPUTE_BIT;
+    }
+    else if (std::strstr(name, ".rgen.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    }
+    else if (std::strstr(name, ".rahit.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
+    }
+    else if (std::strstr(name, ".rchit.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
+    }
+    else if (std::strstr(name, ".rmiss.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_MISS_BIT_KHR;
+    }
+    else if (std::strstr(name, ".rcall.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
+    }
+    else if (std::strstr(name, ".rint.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
+    }
+    else if (std::strstr(name, ".tesc.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+    }
+    else if (std::strstr(name, ".tese.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+    }
+    else if (std::strstr(name, ".mesh.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_MESH_BIT_NV;
+    }
+    else if (std::strstr(name, ".task.spv") != nullptr)
+    {
+        return VK_SHADER_STAGE_TASK_BIT_NV;
+    }
+
+    assert(0);
+    return VK_SHADER_STAGE_ALL;
 }

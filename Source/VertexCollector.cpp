@@ -208,7 +208,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     // copy geom info
     assert(geomInfosBuffer.IsMapped());
 
-    static_assert(sizeof(ShGeometryInstance) % 16 == 0, "Std140 structs must be aligned by 16 bytes");
+    static_assert(sizeof(ShGeometryInstance) % 16 == 0, "Std430 structs must be aligned by 16 bytes");
 
     ShGeometryInstance geomInfo = {};
     geomInfo.baseVertexIndex = vertIndex;

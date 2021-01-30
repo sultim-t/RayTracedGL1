@@ -28,8 +28,8 @@
 
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
 
-layout(location = 0) rayPayloadInEXT ShPayload payload;
-layout(location = 1) rayPayloadEXT ShPayloadShadow payloadShadow;
+layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
 hitAttributeEXT vec2 inBaryCoords;
 
 void main()
@@ -74,9 +74,9 @@ void main()
 		gl_RayFlagsSkipClosestHitShaderEXT, 
 		0xFF, 
 		0, 0, 	// sbtRecordOffset, sbtRecordStride
-		1, 		// shadow missIndex
+		SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
 		origin, 0.001, lightVec, 10000.0, 
-		1);		// shadow payload
+		PAYLOAD_INDEX_SHADOW);
 	
 	if (payloadShadow.isShadowed != 0) 
 	{

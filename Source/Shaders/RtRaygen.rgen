@@ -27,7 +27,7 @@
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
 layout(binding = BINDING_STORAGE_IMAGE, set = 1, rgba8) uniform image2D image;
 
-layout(location = 0) rayPayloadEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
 
 void main() 
 {
@@ -43,16 +43,16 @@ void main()
 	// so the first tranparent-blended (additive or under) surface 
 	// could overwrite these values
 	payload.color = vec4(0.0);
-	payload.tranparDistance = 0;
+	payload.transparDistance = 0;
 
 	traceRayEXT(
 		topLevelAS,
 		gl_RayFlagsNoneEXT, 
 		0xFF, 
 		0, 0, 	// sbtRecordOffset, sbtRecordStride
-		0, 		// missIndex
+		SBT_INDEX_MISS_DEFAULT, 
 		origin.xyz, 0.001, dir.xyz, 10000.0, 
-		0);		// payload
+		PAYLOAD_INDEX_DEFAULT);	
 
 	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(payload.color.rgb, 0.0));
 }
