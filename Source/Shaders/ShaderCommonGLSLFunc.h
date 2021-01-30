@@ -365,10 +365,7 @@ vec4 blendUnder(vec4 src, vec4 dst)
     );
 }
 
-vec3 blendAdditive(vec3 src, float srcAlpha, vec3 dst)
+vec4 blendAdditive(vec4 src, vec4 dst)
 {
-    // dst is under src
-    return vec3(
-        srcAlpha * src + dst
-    );
+    return src + dst;
 }

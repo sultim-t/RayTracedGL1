@@ -26,22 +26,8 @@
 #define DESC_SET_TEXTURES 4
 #include "ShaderCommonGLSLFunc.h"
 
-struct TransparencyPayload
-{
-	vec4 color;
-	float distance;
-};
-
-layout(location = 0) rayPayloadInEXT TransparencyPayload transparPayload;
+layout(location = 0) rayPayloadInEXT ShPayload payload;
 hitAttributeEXT vec2 inBaryCoords;
-
-
-#ifdef ADDITIVE_BLENDING 
-	#define BLEND_FUNC blendAdditive
-#else
-	#define BLEND_FUNC blendUnder
-#endif
-
 
 void main()
 {
@@ -52,20 +38,25 @@ void main()
  
   	vec4 color = getTextureSample(tr.materials[0][0], texCoord);
 
-	float curDistance = gl_RayTmaxEXT;
+	float curDistance = gl_HitTEXT;
 
-	if (curDistance > transparPayload.distance)
+#ifdef ADDITIVE_BLENDING 
+	// commutative
+	payload.color = blendAdditive(color, payload.color);
+#else
+	if (curDistance > payload.tranparDistance)
 	{
 		// previous is under current
-		transparPayload.color = BLEND_FUNC(color, transparPayload.color);
+		payload.color = blendUnder(color, payload.color);
 	}
 	else
 	{
 		// current is under previous
-		transparPayload.color = BLEND_FUNC(transparPayload.color, color);
+		payload.color = blendUnder(payload.color, color);
 	}
+#endif
 
-	transparPayload.distance = curDistance;
+	payload.tranparDistance = curDistance;
 
 	// blended geometry can't be a closest hit, so ignore this intersection
 	ignoreIntersectionEXT;

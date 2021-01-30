@@ -185,16 +185,27 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,   1,      "primitiveCount",   1),
 ]
 
+PAYLOAD_STRUCT = [
+    (TYPE_FLOAT,    4,      "color",            1),
+    (TYPE_FLOAT,    1,      "tranparDistance",  1),
+]
+
+PAYLOAD_SHADOW_STRUCT = [
+    (TYPE_UINT32,    1,     "isShadowed",       1),
+]
+
 # (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)
 # align16byte   -- if using a struct in dynamic array, it must be aligned with 16 bytes
 # breakComplex  -- if member's type is not primitive and its count>0 then
 #               it'll be represented as an array of primitive types
 STRUCTS = {
-    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False, True),
-    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False, True),
-    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False, False),
-    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False, True),
-    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,  False),
+    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False,  True),
+    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False,  True),
+    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False,  False),
+    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False,  True),
+    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,   False),
+    "ShPayload":                (PAYLOAD_STRUCT,            True,   False,  False),
+    "ShSPayloadhadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
 }
 
 # ---

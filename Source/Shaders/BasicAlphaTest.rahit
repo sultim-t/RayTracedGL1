@@ -26,9 +26,11 @@
 #define DESC_SET_TEXTURES 4
 #include "ShaderCommonGLSLFunc.h"
 
+hitAttributeEXT vec2 inBaryCoords;
+
+
 #define ALPHA_THRESHOLD 0.5
 
-hitAttributeEXT vec2 inBaryCoords;
 
 void main()
 {

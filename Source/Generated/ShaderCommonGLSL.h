@@ -65,3 +65,14 @@ struct ShGeometryInstance
     uint __pad0;
 };
 
+struct ShPayload
+{
+    vec4 color;
+    float tranparDistance;
+};
+
+struct ShSPayloadhadow
+{
+    uint isShadowed;
+};
+
