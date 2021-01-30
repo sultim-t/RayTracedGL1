@@ -69,7 +69,7 @@ ASManager::ASManager(
     collectorStatic = std::make_shared<VertexCollector>(
         device, allocator,
         sizeof(ShVertexBufferStatic), properties,
-        FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::PT_OPAQUE | FT::PT_TRANSPARENT);
+        FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::MASK_PASS_THROUGH_GROUP);
 
     // subscribe to texture manager only static collector,
     // as static geometries aren't updating its material info (in ShGeometryInstance)
@@ -82,7 +82,7 @@ ASManager::ASManager(
         collectorDynamic[i] = std::make_shared<VertexCollector>(
             device, allocator,
             sizeof(ShVertexBufferDynamic), properties,
-            FT::CF_DYNAMIC | FT::PT_OPAQUE | FT::PT_TRANSPARENT);
+            FT::CF_DYNAMIC | FT::MASK_PASS_THROUGH_GROUP);
     }
 
     // instance buffer for TLAS
@@ -399,7 +399,7 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
         VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &as.as);
         VK_CHECKERROR(r);
 
-        const char *debugName = GetBLASDebugName(filter);
+        const char *debugName = GetVertexCollectorFilterTypeFlagsNameForBLAS(filter);
         SET_DEBUG_NAME(device, as.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
     }
 
@@ -812,44 +812,6 @@ bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
     // fast trace for static
     // fast build for dynamic
     return filter & FT::CF_DYNAMIC;
-}
-
-const char *ASManager::GetBLASDebugName(VertexCollectorFilterTypeFlags filter)
-{
-#ifdef NDEBUG
-    return nullptr;
-#endif
-
-    typedef VertexCollectorFilterTypeFlagBits FT;
-
-    if (filter == (FT::CF_STATIC_NON_MOVABLE | FT::PT_TRANSPARENT))
-    {
-        return "BLAS static transparent";
-    }
-    else if (filter == (FT::CF_STATIC_MOVABLE | FT::PT_TRANSPARENT))
-    {
-        return "BLAS movable static transparent";
-    }
-    else if (filter == (FT::CF_DYNAMIC | FT::PT_TRANSPARENT))
-    {
-        return "BLAS dynamic transparent";
-    }
-    else if (filter == (FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE))
-    {
-        return "BLAS static opaque";
-    }
-    else if (filter == (FT::CF_STATIC_MOVABLE | FT::PT_OPAQUE))
-    {
-        return "BLAS movable static opaque";
-    }
-    else if (filter == (FT::CF_DYNAMIC | FT::PT_OPAQUE))
-    {
-        return "BLAS dynamic opaque";
-    }
-
-    // in debug mode, every BLAS must have a name
-    assert(0);
-    return nullptr;
 }
 
 VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const

@@ -102,7 +102,6 @@ private:
         VkAccelerationStructureInstanceKHR &instance);
 
     static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);
-    static const char *GetBLASDebugName(VertexCollectorFilterTypeFlags filter);
 
 private:
     VkDevice device;

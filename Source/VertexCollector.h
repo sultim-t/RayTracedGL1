@@ -116,8 +116,6 @@ private:
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
     uint32_t GetAllGeometryCount() const;
 
-    static VertexCollectorFilterTypeFlags GetFilterTypeFlags(const RgGeometryUploadInfo &info);
-
 private:
     struct MaterialRef
     {

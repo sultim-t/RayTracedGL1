@@ -28,11 +28,7 @@ void main()
 	{
 		// accept
 		//terminateRayEXT;
-	}
-	else
-	{
-		// continue
-		ignoreIntersectionEXT;
+		return;
 	}
 
 	//hitValue += color.rgb * color.a;

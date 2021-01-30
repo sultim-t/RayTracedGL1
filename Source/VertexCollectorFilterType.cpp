@@ -20,6 +20,10 @@
 
 #include "VertexCollectorFilterType.h"
 
+// file scope typedefs
+typedef VertexCollectorFilterTypeFlagBits FT;
+typedef VertexCollectorFilterTypeFlags FL;
+
 uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags)
 {
     uint32_t result = 0;
@@ -38,4 +42,91 @@ uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags f
     }
 
     return UINT32_MAX;
+}
+
+struct FLName
+{
+    FL          flags;
+    const char  *name;
+};
+
+const static FLName FL_NAMES[] =
+{
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE,                "BLAS static opaque"                    },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_ALPHA_TESTED,          "BLAS static alpha tested"              },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_TRANSPARENT_BLENDED,   "BLAS static blended"                   },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_REFRACTIVE_REFLECTIVE, "BLAS static refractive-reflective"     },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_ONLY_REFLECTIVE,       "BLAS static reflective"                },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_PORTAL,                "BLAS static portal"                    },
+
+    { FT::CF_STATIC_MOVABLE     | FT::PT_OPAQUE,                "BLAS movable opaque"                   },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_ALPHA_TESTED,          "BLAS movable alpha tested"             },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_TRANSPARENT_BLENDED,   "BLAS movable blended"                  },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_REFRACTIVE_REFLECTIVE, "BLAS movable refractive-reflective"    },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_ONLY_REFLECTIVE,       "BLAS movable reflective"               },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_PORTAL,                "BLAS movable portal"                   },
+
+    { FT::CF_DYNAMIC            | FT::PT_OPAQUE,                "BLAS dynamic opaque"                   },
+    { FT::CF_DYNAMIC            | FT::PT_ALPHA_TESTED,          "BLAS dynamic alpha tested"             },
+    { FT::CF_DYNAMIC            | FT::PT_TRANSPARENT_BLENDED,   "BLAS dynamic blended"                  },
+    { FT::CF_DYNAMIC            | FT::PT_REFRACTIVE_REFLECTIVE, "BLAS dynamic refractive-reflective"    },
+    { FT::CF_DYNAMIC            | FT::PT_ONLY_REFLECTIVE,       "BLAS dynamic reflective"               },
+    { FT::CF_DYNAMIC            | FT::PT_PORTAL,                "BLAS dynamic portal"                   },
+};
+
+const char *GetVertexCollectorFilterTypeFlagsNameForBLAS(VertexCollectorFilterTypeFlags flags)
+{
+    for (const FLName &p : FL_NAMES)
+    {
+        if (p.flags == flags)
+        {
+            return p.name;
+        }
+    }
+
+    // in debug mode, every BLAS must have a name
+    assert(0);
+    return nullptr;
+}
+
+VertexCollectorFilterTypeFlags GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info)
+{
+    VertexCollectorFilterTypeFlags flags = 0;
+
+    switch (info.geomType)
+    {
+        case RG_GEOMETRY_TYPE_STATIC:
+        {
+            flags |= (uint32_t)FT::CF_STATIC_NON_MOVABLE;
+            break;
+        }
+        case RG_GEOMETRY_TYPE_STATIC_MOVABLE:
+        {
+            flags |= (uint32_t)FT::CF_STATIC_MOVABLE;
+            break;
+        }
+        case RG_GEOMETRY_TYPE_DYNAMIC:
+        {
+            flags |= (uint32_t)FT::CF_DYNAMIC;
+            break;
+        }
+        default: assert(0);
+    }
+
+    switch (info.passThroughType)
+    {
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE:
+        {
+            flags |= (uint32_t)FT::PT_OPAQUE;
+            break;
+        }
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_TRANSPARENT:
+        {
+            flags |= (uint32_t)FT::PT_ALPHA_TESTED;
+            break;
+        }
+        default: assert(0);
+    }
+
+    return flags;
 }

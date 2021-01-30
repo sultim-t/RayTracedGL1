@@ -21,6 +21,7 @@
 #pragma once
 
 #include "Common.h"
+#include "RTGL1/RTGL1.h"
 
 enum class VertexCollectorFilterTypeFlagBits : uint32_t
 {
@@ -32,8 +33,12 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
     MASK_CHANGE_FREQUENCY_GROUP = CF_STATIC_NON_MOVABLE | CF_STATIC_MOVABLE | CF_DYNAMIC,
 
     PT_OPAQUE                   = 1 << 3,
-    PT_TRANSPARENT              = 2 << 3,
-    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_TRANSPARENT,
+    PT_ALPHA_TESTED             = 2 << 3,
+    PT_TRANSPARENT_BLENDED      = 4 << 3,
+    PT_REFRACTIVE_REFLECTIVE    = 8 << 3,
+    PT_ONLY_REFLECTIVE          = 16 << 3,
+    PT_PORTAL                   = 32 << 3,
+    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_TRANSPARENT_BLENDED | PT_REFRACTIVE_REFLECTIVE | PT_ONLY_REFLECTIVE | PT_PORTAL,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
 
@@ -48,7 +53,11 @@ constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_ChangeFre
 constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrough[] =
 {
     VertexCollectorFilterTypeFlagBits::PT_OPAQUE,
-    VertexCollectorFilterTypeFlagBits::PT_TRANSPARENT,
+    VertexCollectorFilterTypeFlagBits::PT_ALPHA_TESTED,
+    VertexCollectorFilterTypeFlagBits::PT_TRANSPARENT_BLENDED,
+    VertexCollectorFilterTypeFlagBits::PT_REFRACTIVE_REFLECTIVE,
+    VertexCollectorFilterTypeFlagBits::PT_ONLY_REFLECTIVE,
+    VertexCollectorFilterTypeFlagBits::PT_PORTAL,
 };
 
 inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlagBits b)
@@ -88,3 +97,5 @@ inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBit
 }
 
 uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags);
+const char *GetVertexCollectorFilterTypeFlagsNameForBLAS(VertexCollectorFilterTypeFlags flags);
+VertexCollectorFilterTypeFlags GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info);

@@ -99,7 +99,7 @@ void VertexCollector::BeginCollecting()
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
-    VertexCollectorFilterTypeFlags geomFlags = GetFilterTypeFlags(info);
+    VertexCollectorFilterTypeFlags geomFlags = GetVertexCollectorFilterTypeFlagsForGeometry(info);
 
     const bool collectStatic = geomFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
     
@@ -652,47 +652,4 @@ void VertexCollector::InitFilters(VertexCollectorFilterTypeFlags flags)
             }
         }
     }
-}
-
-VertexCollectorFilterTypeFlags VertexCollector::GetFilterTypeFlags(const RgGeometryUploadInfo &info)
-{
-    typedef VertexCollectorFilterTypeFlagBits FT;
-    VertexCollectorFilterTypeFlags flags = 0;
-
-    switch (info.geomType)
-    {
-        case RG_GEOMETRY_TYPE_STATIC:
-        {
-            flags |= (uint32_t)FT::CF_STATIC_NON_MOVABLE;
-            break;
-        }
-        case RG_GEOMETRY_TYPE_STATIC_MOVABLE:
-        {
-            flags |= (uint32_t)FT::CF_STATIC_MOVABLE;
-            break;
-        }
-        case RG_GEOMETRY_TYPE_DYNAMIC:
-        {
-            flags |= (uint32_t)FT::CF_DYNAMIC;
-            break;
-        }
-        default: assert(0);
-    }
-
-    switch (info.passThroughType)
-    {
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE:
-        {
-            flags |= (uint32_t)FT::PT_OPAQUE;
-            break;
-        }
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_TRANSPARENT:
-        {
-            flags |= (uint32_t)FT::PT_TRANSPARENT;
-            break;
-        }
-        default: assert(0);
-    }
-
-    return flags;
 }
