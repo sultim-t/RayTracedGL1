@@ -1,4 +1,5 @@
-glslc --target-env=vulkan1.2 -O -I "../Generated" BasicAnyHit.rahit -o ../../Build/BasicAnyHit.rahit.spv 
+glslc --target-env=vulkan1.2 -O -I "../Generated" RtBlendUnder.rahit -o ../../Build/RtBlendUnder.rahit.spv
+glslc --target-env=vulkan1.2 -O -I "../Generated" RtBlendAdditive.rahit -o ../../Build/RtBlendAdditive.rahit.spv
 glslc --target-env=vulkan1.2 -O -I "../Generated" BasicClosestHit.rchit -o ../../Build/BasicClosestHit.rchit.spv 
 glslc --target-env=vulkan1.2 -O -I "../Generated" BasicMiss.rmiss -o ../../Build/BasicMiss.rmiss.spv 
 glslc --target-env=vulkan1.2 -O -I "../Generated" BasicRaygen.rgen -o ../../Build/BasicRaygen.rgen.spv 
