@@ -59,7 +59,6 @@ private:
     void CreatePipeline(const std::shared_ptr<ShaderManager> &shaderManager);
     void CreateFramebuffers(uint32_t width, uint32_t height, const VkImageView *pFrameAttchs, uint32_t count);
     void DestroyFramebuffers();
-    //void CreateDescriptors();
 
     // If info's viewport is not the same as current one, new VkViewport will be set.
     void TrySetViewport(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkViewport &curViewport);
@@ -78,8 +77,4 @@ private:
     std::vector<VkFramebuffer> framebuffers;
 
     std::shared_ptr<RasterizedDataCollector> collectors[MAX_FRAMES_IN_FLIGHT];
-
-    //VkDescriptorSetLayout descLayout;
-    //VkDescriptorPool descPool;
-    //VkDescriptorSet descSets[MAX_FRAMES_IN_FLIGHT];
 };

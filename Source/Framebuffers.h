@@ -1,0 +1,72 @@
+// Copyright (c) 2020-2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#pragma once
+
+#include <vector>
+
+#include "Common.h"
+#include "CommandBufferManager.h"
+#include "ISwapchainDependency.h"
+#include "MemoryAllocator.h"
+
+// Hold info for previous and current frames
+#define FRAMEBUFFERS_HISTORY_LENGTH 2
+
+class Framebuffers : public ISwapchainDependency
+{
+public:
+    explicit Framebuffers(VkDevice device,
+                          std::shared_ptr<MemoryAllocator> allocator,
+                          std::shared_ptr<CommandBufferManager> cmdManager);
+    ~Framebuffers();
+
+    Framebuffers(const Framebuffers &other) = delete;
+    Framebuffers(Framebuffers &&other) noexcept = delete;
+    Framebuffers &operator=(const Framebuffers &other) = delete;
+    Framebuffers &operator=(Framebuffers &&other) noexcept = delete;
+
+    void OnSwapchainCreate(const Swapchain *pSwapchain) override;
+    void OnSwapchainDestroy() override;
+
+    VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
+    VkDescriptorSetLayout GetDescSetLayout() const;
+
+private:
+    void CreateImages(uint32_t width, uint32_t height);
+    void CreateDescriptors();
+    void UpdateDescriptors();
+
+    void DestroyImages();
+
+private:
+    VkDevice device;
+
+    std::shared_ptr<MemoryAllocator> allocator;
+    std::shared_ptr<CommandBufferManager> cmdManager;
+
+    std::vector<VkImage> images;
+    std::vector<VkDeviceMemory> imageMemories;
+    std::vector<VkImageView> imageViews;
+
+    VkDescriptorSetLayout descSetLayout;
+    VkDescriptorPool descPool;
+    VkDescriptorSet descSets[FRAMEBUFFERS_HISTORY_LENGTH];
+};

@@ -16,7 +16,6 @@
 #define BINDING_GEOMETRY_INSTANCES_DYNAMIC (5)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE (0)
-#define BINDING_STORAGE_IMAGE (0)
 #define BINDING_TEXTURES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_MASK_ALL (0xFF)
@@ -71,8 +70,20 @@ struct ShGeometryInstance
     uint32_t __pad0;
 };
 
-extern uint32_t ShFramebuffers_Count;
-extern VkFormat ShFramebuffers_Formats[];
-extern uint32_t ShFramebuffers_Bindings[];
-extern const char *ShFramebuffers_DebugNames[];
+enum FramebufferImageIndex
+{
+    FB_IMAGE_ALBEDO = 0,
+    FB_IMAGE_NORMAL = 1,
+    FB_IMAGE_NORMAL_PREV = 2,
+    FB_IMAGE_NORMAL_GEOMETRY = 3,
+    FB_IMAGE_NORMAL_GEOMETRY_PREV = 4,
+    FB_IMAGE_METALLIC = 5,
+    FB_IMAGE_METALLIC_PREV = 6,
+};
+
+extern const uint32_t ShFramebuffers_Count;
+extern const VkFormat ShFramebuffers_Formats[];
+extern const uint32_t ShFramebuffers_Bindings[];
+extern const uint32_t ShFramebuffers_BindingsSwapped[];
+extern const char *const ShFramebuffers_DebugNames[];
 
