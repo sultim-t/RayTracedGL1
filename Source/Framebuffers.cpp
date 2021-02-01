@@ -76,7 +76,7 @@ void Framebuffers::CreateDescriptors()
     r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Framebuffers Desc set Layout");
+    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Framebuffers Desc set Layout");
 
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -97,7 +97,7 @@ void Framebuffers::CreateDescriptors()
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descPool;
         allocInfo.descriptorSetCount = ShFramebuffers_Count;
-        allocInfo.pSetLayouts = &descLayout;
+        allocInfo.pSetLayouts = &descSetLayout;
 
         r = vkAllocateDescriptorSets(device, &allocInfo, &descSets[i]);
         VK_CHECKERROR(r);
@@ -114,6 +114,25 @@ void Framebuffers::OnSwapchainCreate(const Swapchain *pSwapchain)
 void Framebuffers::OnSwapchainDestroy()
 {
     DestroyImages();
+}
+
+void Framebuffers::Barrier(VkCommandBuffer cmd, uint32_t framebufferImageIndex)
+{
+    assert(framebufferImageIndex < images.size());
+
+    Utils::BarrierImage(
+        cmd, images[framebufferImageIndex],
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
+}
+
+void Framebuffers::PresentToSwapchain(VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain)
+{
+    // TODO: present to swapchain another image; don't use swapchain's size; layout?
+    swapchain->BlitForPresent(
+        cmd, images[FramebufferImageIndex::FB_IMAGE_ALBEDO],
+        swapchain->GetWidth(), swapchain->GetHeight(),
+        VK_IMAGE_LAYOUT_GENERAL);
 }
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const

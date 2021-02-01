@@ -31,7 +31,7 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<ASManager> &_asMgr,
     const std::shared_ptr<GlobalUniform> &_uniform,
     const std::shared_ptr<TextureManager> &_textureMgr,
-    VkDescriptorSetLayout _imagesSetLayout)
+    const std::shared_ptr<Framebuffers> &framebuffers)
 :
     device(_device),
     rtPipelineLayout(VK_NULL_HANDLE),
@@ -101,7 +101,7 @@ RayTracingPipeline::RayTracingPipeline(
         // ray tracing acceleration structures
         _asMgr->GetTLASDescSetLayout(),
         // storage images
-        _imagesSetLayout,
+        framebuffers->GetDescSetLayout(),
         // uniform
         _uniform->GetDescSetLayout(),
         // vertex data

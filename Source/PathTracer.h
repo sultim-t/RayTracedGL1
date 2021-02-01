@@ -23,6 +23,7 @@
 #include "Common.h"
 #include "RayTracingPipeline.h"
 #include "GlobalUniform.h"
+#include "Framebuffers.h"
 
 class PathTracer
 {
@@ -35,14 +36,13 @@ public:
     PathTracer& operator=(const PathTracer& other) = delete;
     PathTracer& operator=(PathTracer&& other) noexcept = delete;
 
-    // TODO: remove imagesDescSet
     void Trace(
         VkCommandBuffer cmd, uint32_t frameIndex,
         uint32_t width, uint32_t height,
         const std::shared_ptr<ASManager> &asManager,
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<TextureManager> &textureMgr,
-        VkDescriptorSet imagesDescSet);
+        const std::shared_ptr<Framebuffers> &framebuffers);
 
 private:
     VkDevice device;

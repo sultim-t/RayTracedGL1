@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 #include "PathTracer.h"
+#include "Generated/ShaderCommonC.h"
 
 PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rtPipeline)
     : device(_device), rtPipeline(_rtPipeline)
@@ -32,7 +33,7 @@ void PathTracer::Trace(
     const std::shared_ptr<ASManager> &asManager,
     const std::shared_ptr<GlobalUniform> &uniform,
     const std::shared_ptr<TextureManager> &textureMgr,
-    VkDescriptorSet imagesDescSet)
+    const std::shared_ptr<Framebuffers> &framebuffers)
 {
     rtPipeline->Bind(cmd);
 
@@ -40,7 +41,7 @@ void PathTracer::Trace(
         // ray tracing acceleration structures
         asManager->GetTLASDescSet(frameIndex),
         // storage images
-        imagesDescSet,
+        framebuffers->GetDescSet(frameIndex),
         // uniform
         uniform->GetDescSet(frameIndex),
         // vertex data
@@ -62,4 +63,7 @@ void PathTracer::Trace(
         cmd,
         &raygenEntry, &missEntry, &hitEntry, &callableEntry,
         width, height, 1);
+
+    // sync access
+    framebuffers->Barrier(cmd, FramebufferImageIndex::FB_IMAGE_ALBEDO);
 }

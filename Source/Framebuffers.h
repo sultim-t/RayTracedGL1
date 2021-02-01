@@ -46,12 +46,16 @@ public:
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
 
+    void Barrier(VkCommandBuffer cmd, uint32_t framebufferImageIndex);
+    void PresentToSwapchain(VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain);
+
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
 
 private:
-    void CreateImages(uint32_t width, uint32_t height);
     void CreateDescriptors();
+
+    void CreateImages(uint32_t width, uint32_t height);
     void UpdateDescriptors();
 
     void DestroyImages();
@@ -65,6 +69,8 @@ private:
     std::vector<VkImage> images;
     std::vector<VkDeviceMemory> imageMemories;
     std::vector<VkImageView> imageViews;
+
+    std::vector<VkImageMemoryBarrier> barriers;
 
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;

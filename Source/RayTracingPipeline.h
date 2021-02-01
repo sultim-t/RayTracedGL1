@@ -23,11 +23,11 @@
 #include "ASManager.h"
 #include "GlobalUniform.h"
 #include "ShaderManager.h"
+#include "Framebuffers.h"
 
 class RayTracingPipeline
 {
 public:
-    // TODO: remove imagesSetLayout
     explicit RayTracingPipeline(
         VkDevice device,
         const std::shared_ptr<PhysicalDevice> &physDevice,
@@ -36,7 +36,7 @@ public:
         const std::shared_ptr<ASManager> &asManager,
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<TextureManager> &textureMgr,
-        VkDescriptorSetLayout imagesSetLayout
+        const std::shared_ptr<Framebuffers> &framebuffers
     );
     ~RayTracingPipeline();
 

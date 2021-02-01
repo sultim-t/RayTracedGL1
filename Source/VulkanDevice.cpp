@@ -65,8 +65,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     swapchain = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
-    storageImage = std::make_shared<BasicStorageImage>(device, memAllocator, cmdManager);
-    swapchain->Subscribe(storageImage);
+    framebuffers = std::make_shared<Framebuffers>(device, memAllocator, cmdManager);
+    swapchain->Subscribe(framebuffers);
 
     textureManager = std::make_shared<TextureManager>(
         device, memAllocator, cmdManager,
@@ -79,8 +79,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager = std::make_shared<ShaderManager>(device);
     rtPipeline = std::make_shared<RayTracingPipeline>(
         device, physDevice, memAllocator, shaderManager,
-        scene->GetASManager(), uniform, textureManager,
-        storageImage->GetDescSetLayout());
+        scene->GetASManager(), uniform, textureManager, framebuffers);
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -98,7 +97,7 @@ VulkanDevice::~VulkanDevice()
     queues.reset();
     swapchain.reset();
     cmdManager.reset();
-    storageImage.reset();
+    framebuffers.reset();
     uniform.reset();
     scene.reset();
     shaderManager.reset();
@@ -168,19 +167,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     {
         pathTracer->Trace(
             cmd, currentFrameIndex, renderWidth, renderHeight, 
-            scene->GetASManager(), uniform, textureManager,
-            storageImage->GetDescSet(currentFrameIndex));
+            scene->GetASManager(), uniform, textureManager, framebuffers);
     }
-
-    storageImage->Barrier(cmd);
 
     // TODO: postprocessing
 
     // blit result image to present on a surface
-    swapchain->BlitForPresent(
-        cmd, storageImage->image,
-        storageImage->width, storageImage->height,
-        storageImage->imageLayout);
+    framebuffers->PresentToSwapchain(cmd, swapchain);
 
     // draw rasterized geometry in swapchain's framebuffer
     rasterizer->Draw(cmd, currentFrameIndex);

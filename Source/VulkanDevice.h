@@ -33,7 +33,7 @@
 #include "GlobalUniform.h"
 #include "PathTracer.h"
 #include "Rasterizer.h"
-#include "BasicStorageImage.h"
+#include "Framebuffers.h"
 #include "MemoryAllocator.h"
 #include "TextureManager.h"
 
@@ -104,8 +104,7 @@ private:
 
     std::shared_ptr<CommandBufferManager>   cmdManager;
 
-    // TODO: this storage image is only for debugging in the beginning
-    std::shared_ptr<BasicStorageImage>      storageImage;
+    std::shared_ptr<Framebuffers>           framebuffers;
 
     std::shared_ptr<GlobalUniform>          uniform;
     std::shared_ptr<Scene>                  scene;
