@@ -27,6 +27,7 @@
 // * DESC_SET_GLOBAL_UNIFORM    -- to access global uniform buffer
 // * DESC_SET_VERTEX_DATA       -- to access geometry data. DESC_SET_GLOBAL_UNIFORM must be defined
 // * DESC_SET_TEXTURES          -- to access textures by index
+// * DESC_SET_FRAMEBUFFERS      -- to access framebuffers (defined in ShaderCommonGLSL.h)
 
 #define UINT32_MAX 0xFFFFFFFF
 

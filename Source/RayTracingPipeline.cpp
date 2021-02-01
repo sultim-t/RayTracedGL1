@@ -204,7 +204,6 @@ void RayTracingPipeline::GetEntries(
 {
     VkDeviceAddress bufferAddress = shaderBindingTable->GetAddress();
 
-    // TODO: remove indices
     raygenEntry = {};
     raygenEntry.deviceAddress = bufferAddress;
     raygenEntry.stride = alignedHandleSize;

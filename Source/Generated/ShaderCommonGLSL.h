@@ -88,46 +88,32 @@ struct ShPayloadShadow
     uint isShadowed;
 };
 
-#ifdef DESC_SET_IMAGES
+#ifdef DESC_SET_FRAMEBUFFERS
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 0,
-    rgba32f)
-uniform image2D shImageAlbedo;
+    set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba32f)
+    uniform image2D fbImageAlbedo;
 
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 1,
-    rgba32f)
-uniform image2D shImageNormal;
+    set = DESC_SET_FRAMEBUFFERS, binding = 1, rgba32f)
+    uniform image2D fbImageNormal;
 
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 2,
-    rgba32f)
-uniform image2D shImageNormalPrev;
+    set = DESC_SET_FRAMEBUFFERS, binding = 2, rgba32f)
+    uniform image2D fbImageNormalPrev;
 
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 3,
-    rgba32f)
-uniform image2D shImageNormalGeometry;
+    set = DESC_SET_FRAMEBUFFERS, binding = 3, rgba32f)
+    uniform image2D fbImageNormalGeometry;
 
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 4,
-    rgba32f)
-uniform image2D shImageNormalGeometryPrev;
+    set = DESC_SET_FRAMEBUFFERS, binding = 4, rgba32f)
+    uniform image2D fbImageNormalGeometryPrev;
 
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 5,
-    rgba32f)
-uniform image2D shImageMetallic;
+    set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba32f)
+    uniform image2D fbImageMetallic;
 
 layout(
-    set = DESC_SET_IMAGES,
-    binding = 6,
-    rgba32f)
-uniform image2D shImageMetallicPrev;
+    set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba32f)
+    uniform image2D fbImageMetallicPrev;
 #endif

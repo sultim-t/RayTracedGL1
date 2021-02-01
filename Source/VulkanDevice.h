@@ -56,7 +56,6 @@ public:
     RgResult SubmitStaticGeometries();
     RgResult StartNewStaticScene();
 
-    // TODO: empty (white) texture 1x1 with index 0 (RG_NO_MATERIAL)
     RgResult CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result);
     RgResult CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
     RgResult ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);

@@ -306,21 +306,22 @@ GETTERS = {
 
 
 # --------------------------------------------------------------------------------------------- #
-# User defined images
+# User defined framebuffers
 # --------------------------------------------------------------------------------------------- #
 
-IMAGES_DESC_SET_NAME        = "DESC_SET_IMAGES"
-IMAGES_BASE_BINDING         = 0
-IMAGES_PREFIX               = "shImage"
-IMAGES_STORE_PREV_POSTFIX   = "Prev"
-IMAGES_FLAGS_STORE_PREV     = 1
+FRAMEBUF_DESC_SET_NAME      = "DESC_SET_FRAMEBUFFERS"
+FRAMEBUF_BASE_BINDING       = 0
+FRAMEBUF_PREFIX             = "fbImage"
+FRAMEBUF_DEBUG_NAME_PREFIX  = "Framebuf "
+FRAMEBUF_STORE_PREV_POSTFIX = "Prev"
+FRAMEBUF_FLAGS_STORE_PREV   = 1
 
-IMAGES = {
+FRAMEBUFFERS = {
     # (image name) : (base format type, components, flags)
     "Albedo"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "Normal"            : (TYPE_FLOAT32,    COMPONENT_RGBA, IMAGES_FLAGS_STORE_PREV),
-    "NormalGeometry"    : (TYPE_FLOAT32,    COMPONENT_RGBA, IMAGES_FLAGS_STORE_PREV),
-    "Metallic"          : (TYPE_FLOAT32,    COMPONENT_RGBA, IMAGES_FLAGS_STORE_PREV),
+    "Normal"            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "NormalGeometry"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "Metallic"          : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
 }
 
 
@@ -545,44 +546,69 @@ def getGLSLImage2DType(baseFormat):
     #return "iimage2D"
 
 
-CURRENT_IMAGE_BINDING_COUNT = 0
+CURRENT_FRAMEBUF_BINDING_COUNT = 0
 
-def getGLSLImageDeclaration(imageName, baseFormat, components, flags):
-    global CURRENT_IMAGE_BINDING_COUNT
+def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
+    global CURRENT_FRAMEBUF_BINDING_COUNT
 
-    binding = IMAGES_BASE_BINDING + CURRENT_IMAGE_BINDING_COUNT
-    CURRENT_IMAGE_BINDING_COUNT += 1
+    binding = FRAMEBUF_BASE_BINDING + CURRENT_FRAMEBUF_BINDING_COUNT
+    CURRENT_FRAMEBUF_BINDING_COUNT += 1
 
     template = ("layout(\n"
-                "    set = %s,\n"
-                "    binding = %d,\n"
-                "    %s)\n"
-                "uniform %s %s;\n")
+                "    set = %s, binding = %d, %s)\n"
+                "    uniform %s %s;\n")
 
-    r = template % (IMAGES_DESC_SET_NAME, binding, 
+    r = template % (FRAMEBUF_DESC_SET_NAME, binding, 
         GLSL_IMAGE_FORMATS[(baseFormat, components)], 
-        getGLSLImage2DType(baseFormat), imageName)
+        getGLSLImage2DType(baseFormat), name)
 
-    if flags & IMAGES_FLAGS_STORE_PREV:
+    if flags & FRAMEBUF_FLAGS_STORE_PREV:
         r += "\n"
-        r += getGLSLImageDeclaration(
-            imageName + IMAGES_STORE_PREV_POSTFIX, baseFormat, components, 
-            flags & ~IMAGES_FLAGS_STORE_PREV)
+        r += getGLSLFramebufDeclaration(
+            name + FRAMEBUF_STORE_PREV_POSTFIX, baseFormat, components, 
+            flags & ~FRAMEBUF_FLAGS_STORE_PREV)
 
     return r
 
 
-def getAllGLSLImageDeclarations():
-    global CURRENT_IMAGE_BINDING_COUNT
-    CURRENT_IMAGE_BINDING_COUNT = 0
-    return "#ifdef " + IMAGES_DESC_SET_NAME + "\n" + "\n".join(
-        getGLSLImageDeclaration(IMAGES_PREFIX + name, baseFormat, components, flags)
-        for name, (baseFormat, components, flags) in IMAGES.items()
+def getAllGLSLFramebufDeclarations():
+    global CURRENT_FRAMEBUF_BINDING_COUNT
+    CURRENT_FRAMEBUF_BINDING_COUNT = 0
+    return "#ifdef " + FRAMEBUF_DESC_SET_NAME + "\n" + "\n".join(
+        getGLSLFramebufDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
+        for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
     ) + "#endif\n"
 
 
-def getAllVulkanImageDeclarations():
-    return 0
+def getAllVulkanFramebufDeclarations():
+    return ("extern uint32_t ShFramebuffers_Count;\n"
+            "extern VkFormat ShFramebuffers_Formats[];\n"
+            "extern uint32_t ShFramebuffers_Bindings[];\n"
+            "extern const char *ShFramebuffers_DebugNames[];\n\n")
+
+
+def getAllVulkanFramebufDefinitions():
+    template = ("uint32_t ShFramebuffers_Count = %d;\n\n"
+                "VkFormat ShFramebuffers_Formats[] = \n{\n%s};\n\n"
+                "uint32_t ShFramebuffers_Bindings[] = \n{\n%s};\n\n"
+                "const char *ShFramebuffers_DebugNames[] = \n{\n%s};\n\n")
+    formats = ""
+    count = 0
+    bindings = ""
+    names = ""
+    for name, (baseFormat, components, flags) in FRAMEBUFFERS.items():
+        count += 1
+        formats += TAB_STR + VULKAN_IMAGE_FORMATS[(baseFormat, components)] + ",\n"
+        bindings += TAB_STR + str(count - 1) + ",\n"
+        names += TAB_STR + "\"" + FRAMEBUF_DEBUG_NAME_PREFIX + name + "\",\n"
+
+        if flags & FRAMEBUF_FLAGS_STORE_PREV:
+            count += 1
+            formats += TAB_STR + VULKAN_IMAGE_FORMATS[(baseFormat, components)] + ",\n"
+            bindings += TAB_STR + str(count - 1) + ",\n"
+            names += TAB_STR + "\"" + FRAMEBUF_DEBUG_NAME_PREFIX + name + FRAMEBUF_STORE_PREV_POSTFIX + "\",\n"
+
+    return template % (count, formats, bindings, names)
 
 
 FILE_HEADER = "// This file was generated by GenerateShaderCommon.py\n\n"
@@ -591,12 +617,15 @@ FILE_HEADER = "// This file was generated by GenerateShaderCommon.py\n\n"
 def writeToC(headerFile, sourceFile):
     headerFile.write(FILE_HEADER)
     headerFile.write("#pragma once\n")
-    headerFile.write("#include <stdint.h>\n\n")
+    # headerFile.write("#include <stdint.h>\n\n")
+    headerFile.write("#include \"../Common.h\"\n\n")
     headerFile.write(getAllConstDefs())
     headerFile.write(getAllStructDefs(C_TYPE_NAMES))
+    headerFile.write(getAllVulkanFramebufDeclarations())
 
     sourceFile.write(FILE_HEADER)
-    sourceFile.write("#include \"%s\"\n\n" % os.path.basename(headerFile.name))
+    sourceFile.write("#include \"%s\"\n" % os.path.basename(headerFile.name))
+    sourceFile.write(getAllVulkanFramebufDefinitions())
 
 
 def writeToGLSL(f, generateGetSet):
@@ -606,7 +635,7 @@ def writeToGLSL(f, generateGetSet):
     if generateGetSet:
         f.write(getAllGLSLGetters())
         f.write(getAllGLSLSetters())
-    f.write(getAllGLSLImageDeclarations())
+    f.write(getAllGLSLFramebufDeclarations())
 
 
 
