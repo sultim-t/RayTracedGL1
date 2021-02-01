@@ -537,6 +537,14 @@ def getAllGLSLSetters():
     ) + "\n"
 
 
+def getGLSLImage2DType(baseFormat):
+    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32:
+        return "image2D"
+    else:
+        return "uimage2D"
+    #return "iimage2D"
+
+
 CURRENT_IMAGE_BINDING_COUNT = 0
 
 def getGLSLImageDeclaration(imageName, baseFormat, components, flags):
@@ -549,9 +557,11 @@ def getGLSLImageDeclaration(imageName, baseFormat, components, flags):
                 "    set = %s,\n"
                 "    binding = %d,\n"
                 "    %s)\n"
-                "uniform image2D %s;\n")
+                "uniform %s %s;\n")
 
-    r = template % (IMAGES_DESC_SET_NAME, binding, GLSL_IMAGE_FORMATS[(baseFormat, components)], imageName)
+    r = template % (IMAGES_DESC_SET_NAME, binding, 
+        GLSL_IMAGE_FORMATS[(baseFormat, components)], 
+        getGLSLImage2DType(baseFormat), imageName)
 
     if flags & IMAGES_FLAGS_STORE_PREV:
         r += "\n"
