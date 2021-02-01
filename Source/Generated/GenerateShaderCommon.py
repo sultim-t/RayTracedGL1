@@ -21,6 +21,7 @@
 # This script generates two separate header files for C and GLSL but with identical data
 
 import sys
+import os
 
 
 TYPE_FLOAT32    = 0
@@ -116,54 +117,54 @@ COMPONENT_RGBA  = 3
 VULKAN_IMAGE_FORMATS = {
     (TYPE_UNORM8,   COMPONENT_R):       "VK_FORMAT_R8_UNORM",
     (TYPE_UNORM8,   COMPONENT_RG):      "VK_FORMAT_R8G8_UNORM",
-    #(TYPE_UNORM8,   COMPONENT_RGB):     "VK_FORMAT_R8G8B8_UNORM",
+   #(TYPE_UNORM8,   COMPONENT_RGB):     "VK_FORMAT_R8G8B8_UNORM",
     (TYPE_UNORM8,   COMPONENT_RGBA):    "VK_FORMAT_R8G8B8A8_UNORM",
 
     (TYPE_UINT16,   COMPONENT_R):       "VK_FORMAT_R16_UINT",
     (TYPE_UINT16,   COMPONENT_RG):      "VK_FORMAT_R16G16_UINT",
-    #(TYPE_UINT16,   COMPONENT_RGB):     "VK_FORMAT_R16G16B16_UINT",
+   #(TYPE_UINT16,   COMPONENT_RGB):     "VK_FORMAT_R16G16B16_UINT",
     (TYPE_UINT16,   COMPONENT_RGBA):    "VK_FORMAT_R16G16B16A16_UINT",
 
     (TYPE_UINT32,   COMPONENT_R):       "VK_FORMAT_R32_UINT",
     (TYPE_UINT32,   COMPONENT_RG):      "VK_FORMAT_R32G32_UINT",
-    #(TYPE_UINT32,   COMPONENT_RGB):     "VK_FORMAT_R32G32B32_UINT",
+   #(TYPE_UINT32,   COMPONENT_RGB):     "VK_FORMAT_R32G32B32_UINT",
     (TYPE_UINT32,   COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_UINT",
 
     (TYPE_FLOAT16,  COMPONENT_R):       "VK_FORMAT_R16_SFLOAT",
     (TYPE_FLOAT16,  COMPONENT_RG):      "VK_FORMAT_R16G16_SFLOAT",
-    #(TYPE_FLOAT16,  COMPONENT_RGB):     "VK_FORMAT_R16G16B16_SFLOAT",
+   #(TYPE_FLOAT16,  COMPONENT_RGB):     "VK_FORMAT_R16G16B16_SFLOAT",
     (TYPE_FLOAT16,  COMPONENT_RGBA):    "VK_FORMAT_R16G16B16A16_SFLOAT",
 
     (TYPE_FLOAT32,  COMPONENT_R):       "VK_FORMAT_R32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RG):      "VK_FORMAT_R32G32_SFLOAT",
-    #(TYPE_FLOAT32,  COMPONENT_RGB):     "VK_FORMAT_R32G32B32_SFLOAT",
+   #(TYPE_FLOAT32,  COMPONENT_RGB):     "VK_FORMAT_R32G32B32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_SFLOAT",
 }
 
 GLSL_IMAGE_FORMATS = {
     (TYPE_UNORM8,   COMPONENT_R):       "r8",
     (TYPE_UNORM8,   COMPONENT_RG):      "rg8",
-    #(TYPE_UNORM8,   COMPONENT_RGB):     "",
+   #(TYPE_UNORM8,   COMPONENT_RGB):     "",
     (TYPE_UNORM8,   COMPONENT_RGBA):    "rgba8",
 
     (TYPE_UINT16,   COMPONENT_R):       "r16ui",
     (TYPE_UINT16,   COMPONENT_RG):      "rg16ui",
-    #(TYPE_UINT16,   COMPONENT_RGB):     "",
+   #(TYPE_UINT16,   COMPONENT_RGB):     "",
     (TYPE_UINT16,   COMPONENT_RGBA):    "rgba16ui",
 
     (TYPE_UINT32,   COMPONENT_R):       "r32ui",
     (TYPE_UINT32,   COMPONENT_RG):      "rg32ui",
-    #(TYPE_UINT32,   COMPONENT_RGB):     "",
+   #(TYPE_UINT32,   COMPONENT_RGB):     "",
     (TYPE_UINT32,   COMPONENT_RGBA):    "rgba32ui",
 
     (TYPE_FLOAT16,  COMPONENT_R):       "r16f",
     (TYPE_FLOAT16,  COMPONENT_RG):      "rg16f",
-    #(TYPE_FLOAT16,  COMPONENT_RGB):     "",
+   #(TYPE_FLOAT16,  COMPONENT_RGB):     "",
     (TYPE_FLOAT16,  COMPONENT_RGBA):    "rgba16f",
 
     (TYPE_FLOAT32,  COMPONENT_R):       "r32f",
     (TYPE_FLOAT32,  COMPONENT_RG):      "rg32f",
-    #(TYPE_FLOAT32,  COMPONENT_RGB):     "",
+   #(TYPE_FLOAT32,  COMPONENT_RGB):     "",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "rgba32f",
 }
 
@@ -176,9 +177,13 @@ USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
 
 
 
+
+
+
 # --------------------------------------------------------------------------------------------- #
 # User defined constants
 # --------------------------------------------------------------------------------------------- #
+
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 22,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
@@ -298,9 +303,35 @@ GETTERS = {
     "ShVertexBufferDynamic": "dynamicVertices",
 }
 
+
+
+# --------------------------------------------------------------------------------------------- #
+# User defined images
+# --------------------------------------------------------------------------------------------- #
+
+IMAGES_DESC_SET_NAME        = "DESC_SET_IMAGES"
+IMAGES_BASE_BINDING         = 0
+IMAGES_PREFIX               = "shImage"
+IMAGES_STORE_PREV_POSTFIX   = "Prev"
+IMAGES_FLAGS_STORE_PREV     = 1
+
+IMAGES = {
+    # (image name) : (base format type, components, flags)
+    "Albedo"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "Normal"            : (TYPE_FLOAT32,    COMPONENT_RGBA, IMAGES_FLAGS_STORE_PREV),
+    "NormalGeometry"    : (TYPE_FLOAT32,    COMPONENT_RGBA, IMAGES_FLAGS_STORE_PREV),
+    "Metallic"          : (TYPE_FLOAT32,    COMPONENT_RGBA, IMAGES_FLAGS_STORE_PREV),
+}
+
+
+
 # ---
 # User defined structs END
 # ---
+
+
+
+
 
 
 
@@ -314,8 +345,9 @@ def main():
             return
 
     # with open('ShaderConfig.csv', newline='') as csvfile:
-    with open("ShaderCommonC.h", "w") as f:
-        writeToC(f)
+    with open("ShaderCommonC.h", "w") as headerFile:
+        with open("ShaderCommonC.cpp", "w") as sourceFile:
+            writeToC(headerFile, sourceFile)
     with open("ShaderCommonGLSL.h", "w") as f:
         writeToGLSL(f, generateGetSet)
 
@@ -440,7 +472,7 @@ def capitalizeFirstLetter(s):
 
 # Get getter for a member with variable stride.
 # Currently, stride is defined as a member in GlobalUniform
-def getGetter(baseMember, baseType, dim, memberName):
+def getGLSLGetter(baseMember, baseType, dim, memberName):
     assert(2 <= dim <= 4)
     if USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE:
         strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
@@ -463,9 +495,9 @@ def getGetter(baseMember, baseType, dim, memberName):
     )
 
 
-def getAllGetters():
+def getAllGLSLGetters():
     return "\n".join(
-        getGetter(baseMember, baseType, dim, mname)
+        getGLSLGetter(baseMember, baseType, dim, mname)
         for structType, baseMember in GETTERS.items()
         # for each member in struct
         for baseType, dim, mname, count in STRUCTS[structType][0]
@@ -474,7 +506,7 @@ def getAllGetters():
     ) + "\n"
 
 
-def getSetter(baseMember, baseType, dim, memberName):
+def getGLSLSetter(baseMember, baseType, dim, memberName):
     assert(2 <= dim <= 4)
     if USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE:
         strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
@@ -494,9 +526,9 @@ def getSetter(baseMember, baseType, dim, memberName):
     )
 
 
-def getAllSetters():
+def getAllGLSLSetters():
     return "\n".join(
-        getSetter(baseMember, baseType, dim, mname)
+        getGLSLSetter(baseMember, baseType, dim, mname)
         for structType, baseMember in GETTERS.items()
         # for each member in struct
         for baseType, dim, mname, count in STRUCTS[structType][0]
@@ -505,19 +537,66 @@ def getAllSetters():
     ) + "\n"
 
 
-def writeToC(f):
-    f.write("#pragma once\n")
-    f.write("#include <stdint.h>\n\n")
-    f.write(getAllConstDefs())
-    f.write(getAllStructDefs(C_TYPE_NAMES))
+CURRENT_IMAGE_BINDING_COUNT = 0
+
+def getGLSLImageDeclaration(imageName, baseFormat, components, flags):
+    global CURRENT_IMAGE_BINDING_COUNT
+
+    binding = IMAGES_BASE_BINDING + CURRENT_IMAGE_BINDING_COUNT
+    CURRENT_IMAGE_BINDING_COUNT += 1
+
+    template = ("layout(\n"
+                "    set = %s,\n"
+                "    binding = %d,\n"
+                "    %s)\n"
+                "uniform image2D %s;\n")
+
+    r = template % (IMAGES_DESC_SET_NAME, binding, GLSL_IMAGE_FORMATS[(baseFormat, components)], imageName)
+
+    if flags & IMAGES_FLAGS_STORE_PREV:
+        r += "\n"
+        r += getGLSLImageDeclaration(
+            imageName + IMAGES_STORE_PREV_POSTFIX, baseFormat, components, 
+            flags & ~IMAGES_FLAGS_STORE_PREV)
+
+    return r
+
+
+def getAllGLSLImageDeclarations():
+    global CURRENT_IMAGE_BINDING_COUNT
+    CURRENT_IMAGE_BINDING_COUNT = 0
+    return "#ifdef " + IMAGES_DESC_SET_NAME + "\n" + "\n".join(
+        getGLSLImageDeclaration(IMAGES_PREFIX + name, baseFormat, components, flags)
+        for name, (baseFormat, components, flags) in IMAGES.items()
+    ) + "#endif\n"
+
+
+def getAllVulkanImageDeclarations():
+    return 0
+
+
+FILE_HEADER = "// This file was generated by GenerateShaderCommon.py\n\n"
+
+
+def writeToC(headerFile, sourceFile):
+    headerFile.write(FILE_HEADER)
+    headerFile.write("#pragma once\n")
+    headerFile.write("#include <stdint.h>\n\n")
+    headerFile.write(getAllConstDefs())
+    headerFile.write(getAllStructDefs(C_TYPE_NAMES))
+
+    sourceFile.write(FILE_HEADER)
+    sourceFile.write("#include \"%s\"\n\n" % os.path.basename(headerFile.name))
 
 
 def writeToGLSL(f, generateGetSet):
+    f.write(FILE_HEADER)
     f.write(getAllConstDefs())
     f.write(getAllStructDefs(GLSL_TYPE_NAMES))
     if generateGetSet:
-        f.write(getAllGetters())
-        f.write(getAllSetters())
+        f.write(getAllGLSLGetters())
+        f.write(getAllGLSLSetters())
+    f.write(getAllGLSLImageDeclarations())
 
 
 
