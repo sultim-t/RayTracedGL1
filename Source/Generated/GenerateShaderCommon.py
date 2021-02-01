@@ -22,81 +22,151 @@
 
 import sys
 
-TYPE_FLOAT = 0
-TYPE_INT32 = 1
-TYPE_UINT32 = 2
+
+TYPE_FLOAT32    = 0
+TYPE_INT32      = 1
+TYPE_UINT32     = 2
+
 
 C_TYPE_NAMES = {
-    TYPE_FLOAT: "float",
-    TYPE_INT32: "int32_t",
-    TYPE_UINT32: "uint32_t",
+    TYPE_FLOAT32:   "float",
+    TYPE_INT32:     "int32_t",
+    TYPE_UINT32:    "uint32_t",
 }
 
 GLSL_TYPE_NAMES = {
-    TYPE_FLOAT: "float",
-    TYPE_INT32: "int",
-    TYPE_UINT32: "uint",
-    (TYPE_FLOAT, 2): "vec2",
-    (TYPE_FLOAT, 3): "vec3",
-    (TYPE_FLOAT, 4): "vec4",
-    (TYPE_INT32, 2): "ivec2",
-    (TYPE_INT32, 3): "ivec3",
-    (TYPE_INT32, 4): "ivec4",
-    (TYPE_UINT32, 2): "uvec2",
-    (TYPE_UINT32, 3): "uvec3",
-    (TYPE_UINT32, 4): "uvec4",
-    (TYPE_FLOAT, 22): "mat2",
-    (TYPE_FLOAT, 23): "mat2x3",
-    (TYPE_FLOAT, 32): "mat3x2",
-    (TYPE_FLOAT, 33): "mat3",
-    (TYPE_FLOAT, 34): "mat3x4",
-    (TYPE_FLOAT, 43): "mat4x3",
-    (TYPE_FLOAT, 44): "mat4",
+    TYPE_FLOAT32:       "float",
+    TYPE_INT32:         "int",
+    TYPE_UINT32:        "uint",
+    (TYPE_FLOAT32, 2):  "vec2",
+    (TYPE_FLOAT32, 3):  "vec3",
+    (TYPE_FLOAT32, 4):  "vec4",
+    (TYPE_INT32, 2):    "ivec2",
+    (TYPE_INT32, 3):    "ivec3",
+    (TYPE_INT32, 4):    "ivec4",
+    (TYPE_UINT32, 2):   "uvec2",
+    (TYPE_UINT32, 3):   "uvec3",
+    (TYPE_UINT32, 4):   "uvec4",
+    (TYPE_FLOAT32, 22): "mat2",
+    (TYPE_FLOAT32, 23): "mat2x3",
+    (TYPE_FLOAT32, 32): "mat3x2",
+    (TYPE_FLOAT32, 33): "mat3",
+    (TYPE_FLOAT32, 34): "mat3x4",
+    (TYPE_FLOAT32, 43): "mat4x3",
+    (TYPE_FLOAT32, 44): "mat4",
 }
 
+
 TYPE_ACTUAL_SIZES = {
-    TYPE_FLOAT: 4,
+    TYPE_FLOAT32: 4,
     TYPE_INT32: 4,
     TYPE_UINT32: 4,
-    (TYPE_FLOAT, 2): 8,
-    (TYPE_FLOAT, 3): 12,
-    (TYPE_FLOAT, 4): 16,
+    (TYPE_FLOAT32, 2): 8,
+    (TYPE_FLOAT32, 3): 12,
+    (TYPE_FLOAT32, 4): 16,
     (TYPE_INT32, 2): 8,
     (TYPE_INT32, 3): 12,
     (TYPE_INT32, 4): 16,
     (TYPE_UINT32, 2): 8,
     (TYPE_UINT32, 3): 12,
     (TYPE_UINT32, 4): 16,
-    (TYPE_FLOAT, 22): 16,
-    (TYPE_FLOAT, 23): 24,
-    (TYPE_FLOAT, 32): 24,
-    (TYPE_FLOAT, 33): 36,
-    (TYPE_FLOAT, 34): 48,
-    (TYPE_FLOAT, 43): 48,
-    (TYPE_FLOAT, 44): 64,
+    (TYPE_FLOAT32, 22): 16,
+    (TYPE_FLOAT32, 23): 24,
+    (TYPE_FLOAT32, 32): 24,
+    (TYPE_FLOAT32, 33): 36,
+    (TYPE_FLOAT32, 34): 48,
+    (TYPE_FLOAT32, 43): 48,
+    (TYPE_FLOAT32, 44): 64,
 }
 
 GLSL_TYPE_SIZES_STD_430 = {
-    TYPE_FLOAT: 4,
+    TYPE_FLOAT32: 4,
     TYPE_INT32: 4,
     TYPE_UINT32: 4,
-    (TYPE_FLOAT, 2): 8,
-    (TYPE_FLOAT, 3): 16,
-    (TYPE_FLOAT, 4): 16,
+    (TYPE_FLOAT32, 2): 8,
+    (TYPE_FLOAT32, 3): 16,
+    (TYPE_FLOAT32, 4): 16,
     (TYPE_INT32, 2): 8,
     (TYPE_INT32, 3): 16,
     (TYPE_INT32, 4): 16,
     (TYPE_UINT32, 2): 8,
     (TYPE_UINT32, 3): 16,
     (TYPE_UINT32, 4): 16,
-    (TYPE_FLOAT, 22): 16,
-    (TYPE_FLOAT, 23): 24,
-    (TYPE_FLOAT, 32): 24,
-    (TYPE_FLOAT, 33): 36,
-    (TYPE_FLOAT, 34): 48,
-    (TYPE_FLOAT, 43): 48,
-    (TYPE_FLOAT, 44): 64,
+    (TYPE_FLOAT32, 22): 16,
+    (TYPE_FLOAT32, 23): 24,
+    (TYPE_FLOAT32, 32): 24,
+    (TYPE_FLOAT32, 33): 36,
+    (TYPE_FLOAT32, 34): 48,
+    (TYPE_FLOAT32, 43): 48,
+    (TYPE_FLOAT32, 44): 64,
 }
+
+
+# These types are only for image format use!
+TYPE_UNORM8     = 3
+TYPE_UINT16     = 4
+TYPE_FLOAT16    = 5
+
+COMPONENT_R     = 0
+COMPONENT_RG    = 1
+#COMPONENT_RGB   = 2
+COMPONENT_RGBA  = 3
+
+
+VULKAN_IMAGE_FORMATS = {
+    (TYPE_UNORM8,   COMPONENT_R):       "VK_FORMAT_R8_UNORM",
+    (TYPE_UNORM8,   COMPONENT_RG):      "VK_FORMAT_R8G8_UNORM",
+    #(TYPE_UNORM8,   COMPONENT_RGB):     "VK_FORMAT_R8G8B8_UNORM",
+    (TYPE_UNORM8,   COMPONENT_RGBA):    "VK_FORMAT_R8G8B8A8_UNORM",
+
+    (TYPE_UINT16,   COMPONENT_R):       "VK_FORMAT_R16_UINT",
+    (TYPE_UINT16,   COMPONENT_RG):      "VK_FORMAT_R16G16_UINT",
+    #(TYPE_UINT16,   COMPONENT_RGB):     "VK_FORMAT_R16G16B16_UINT",
+    (TYPE_UINT16,   COMPONENT_RGBA):    "VK_FORMAT_R16G16B16A16_UINT",
+
+    (TYPE_UINT32,   COMPONENT_R):       "VK_FORMAT_R32_UINT",
+    (TYPE_UINT32,   COMPONENT_RG):      "VK_FORMAT_R32G32_UINT",
+    #(TYPE_UINT32,   COMPONENT_RGB):     "VK_FORMAT_R32G32B32_UINT",
+    (TYPE_UINT32,   COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_UINT",
+
+    (TYPE_FLOAT16,  COMPONENT_R):       "VK_FORMAT_R16_SFLOAT",
+    (TYPE_FLOAT16,  COMPONENT_RG):      "VK_FORMAT_R16G16_SFLOAT",
+    #(TYPE_FLOAT16,  COMPONENT_RGB):     "VK_FORMAT_R16G16B16_SFLOAT",
+    (TYPE_FLOAT16,  COMPONENT_RGBA):    "VK_FORMAT_R16G16B16A16_SFLOAT",
+
+    (TYPE_FLOAT32,  COMPONENT_R):       "VK_FORMAT_R32_SFLOAT",
+    (TYPE_FLOAT32,  COMPONENT_RG):      "VK_FORMAT_R32G32_SFLOAT",
+    #(TYPE_FLOAT32,  COMPONENT_RGB):     "VK_FORMAT_R32G32B32_SFLOAT",
+    (TYPE_FLOAT32,  COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_SFLOAT",
+}
+
+GLSL_IMAGE_FORMATS = {
+    (TYPE_UNORM8,   COMPONENT_R):       "r8",
+    (TYPE_UNORM8,   COMPONENT_RG):      "rg8",
+    #(TYPE_UNORM8,   COMPONENT_RGB):     "",
+    (TYPE_UNORM8,   COMPONENT_RGBA):    "rgba8",
+
+    (TYPE_UINT16,   COMPONENT_R):       "r16ui",
+    (TYPE_UINT16,   COMPONENT_RG):      "rg16ui",
+    #(TYPE_UINT16,   COMPONENT_RGB):     "",
+    (TYPE_UINT16,   COMPONENT_RGBA):    "rgba16ui",
+
+    (TYPE_UINT32,   COMPONENT_R):       "r32ui",
+    (TYPE_UINT32,   COMPONENT_RG):      "rg32ui",
+    #(TYPE_UINT32,   COMPONENT_RGB):     "",
+    (TYPE_UINT32,   COMPONENT_RGBA):    "rgba32ui",
+
+    (TYPE_FLOAT16,  COMPONENT_R):       "r16f",
+    (TYPE_FLOAT16,  COMPONENT_RG):      "rg16f",
+    #(TYPE_FLOAT16,  COMPONENT_RGB):     "",
+    (TYPE_FLOAT16,  COMPONENT_RGBA):    "rgba16f",
+
+    (TYPE_FLOAT32,  COMPONENT_R):       "r32f",
+    (TYPE_FLOAT32,  COMPONENT_RG):      "rg32f",
+    #(TYPE_FLOAT32,  COMPONENT_RGB):     "",
+    (TYPE_FLOAT32,  COMPONENT_RGBA):    "rgba32f",
+}
+
 
 TAB_STR = "    "
 
@@ -106,9 +176,9 @@ USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
 
 
 
-# ---
+# --------------------------------------------------------------------------------------------- #
 # User defined constants
-# ---
+# --------------------------------------------------------------------------------------------- #
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 22,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
@@ -140,68 +210,68 @@ CONST = {
 
 
 
-# ---
+# --------------------------------------------------------------------------------------------- #
 # User defined structs
-# ---
+# --------------------------------------------------------------------------------------------- #
 # Each member is defined as a tuple (base type, dimensions, name, count).
 # Dimensions:   1 - scalar, 2 - *vec2, 3 - *vec3, 4 - *vec4, [xy] - *mat[xy] (i.e. 32 - *mat32)
 # If count > 1 and dimensions is 2, 3 or 4 (matrices are not supported)
 # then it'll be represented as an array with size (count*dimensions).
 
 STATIC_BUFFER_STRUCT = [
-    (TYPE_FLOAT,     3,     "positions",        CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT,     3,     "normals",          CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT,     2,     "texCoords",        CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_UINT32,    1,     "colors",           CONST["MAX_STATIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,    1,     "materialIds",      CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
+    (TYPE_FLOAT32,      3,     "positions",        CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      3,     "normals",          CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      2,     "texCoords",        CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_UINT32,       1,     "colors",           CONST["MAX_STATIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "materialIds",      CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
 ]
 
 DYNAMIC_BUFFER_STRUCT = [
-    (TYPE_FLOAT,     3,     "positions",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT,     3,     "normals",          CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT,     2,     "texCoords",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_UINT32,    1,     "colors",           CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,    1,     "materialIds",      CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
+    (TYPE_FLOAT32,      3,     "positions",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      3,     "normals",          CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      2,     "texCoords",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    (TYPE_UINT32,       1,     "colors",           CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "materialIds",      CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
 ]
 
 TRIANGLE_STRUCT = [
-    (TYPE_FLOAT,    33,     "positions",        1),
-    (TYPE_FLOAT,    33,     "normals",          1),
-    (TYPE_FLOAT,    32,     "texCoords",        1),
-    (TYPE_FLOAT,     3,     "tangent",          1),
-    (TYPE_UINT32,    3,     "materials",        3),
+    (TYPE_FLOAT32,     33,     "positions",        1),
+    (TYPE_FLOAT32,     33,     "normals",          1),
+    (TYPE_FLOAT32,     32,     "texCoords",        1),
+    (TYPE_FLOAT32,      3,     "tangent",          1),
+    (TYPE_UINT32,       3,     "materials",        3),
 ]
 
 GLOBAL_UNIFORM_STRUCT = [
-    (TYPE_FLOAT,    44,     "view",                     1),
-    (TYPE_FLOAT,    44,     "invView",                  1),
-    (TYPE_FLOAT,    44,     "viewPrev",                 1),
-    (TYPE_FLOAT,    44,     "projection",               1),
-    (TYPE_FLOAT,    44,     "invProjection",            1),
-    (TYPE_FLOAT,    44,     "projectionPrev",           1),
-    (TYPE_UINT32,   1,      "positionsStride",          1),
-    (TYPE_UINT32,   1,      "normalsStride",            1),
-    (TYPE_UINT32,   1,      "texCoordsStride",          1),
-    (TYPE_UINT32,   1,      "colorsStride",             1),
+    (TYPE_FLOAT32,     44,      "view",                     1),
+    (TYPE_FLOAT32,     44,      "invView",                  1),
+    (TYPE_FLOAT32,     44,      "viewPrev",                 1),
+    (TYPE_FLOAT32,     44,      "projection",               1),
+    (TYPE_FLOAT32,     44,      "invProjection",            1),
+    (TYPE_FLOAT32,     44,      "projectionPrev",           1),
+    (TYPE_UINT32,       1,      "positionsStride",          1),
+    (TYPE_UINT32,       1,      "normalsStride",            1),
+    (TYPE_UINT32,       1,      "texCoordsStride",          1),
+    (TYPE_UINT32,       1,      "colorsStride",             1),
     # for std140
-    (TYPE_INT32,    4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
+    (TYPE_INT32,        4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
 
 GEOM_INSTANCE_STRUCT = [
-    (TYPE_FLOAT,    44,     "model",            1),
-    (TYPE_UINT32,   4,      "materials",        3),
-    (TYPE_UINT32,   1,      "baseVertexIndex",  1),
-    (TYPE_UINT32,   1,      "baseIndexIndex",   1),
-    (TYPE_UINT32,   1,      "primitiveCount",   1),
+    (TYPE_FLOAT32,     44,      "model",            1),
+    (TYPE_UINT32,       4,      "materials",        3),
+    (TYPE_UINT32,       1,      "baseVertexIndex",  1),
+    (TYPE_UINT32,       1,      "baseIndexIndex",   1),
+    (TYPE_UINT32,       1,      "primitiveCount",   1),
 ]
 
 PAYLOAD_STRUCT = [
-    (TYPE_FLOAT,    4,      "color",            1),
-    (TYPE_FLOAT,    1,      "transparDistance", 1),
+    (TYPE_FLOAT32,      4,      "color",            1),
+    (TYPE_FLOAT32,      1,      "transparDistance", 1),
 ]
 
 PAYLOAD_SHADOW_STRUCT = [
-    (TYPE_UINT32,    1,     "isShadowed",       1),
+    (TYPE_UINT32,       1,     "isShadowed",       1),
 ]
 
 # (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)
@@ -218,9 +288,9 @@ STRUCTS = {
     "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
 }
 
-# ---
+# --------------------------------------------------------------------------------------------- #
 # User defined buffers: uniform, storage buffer
-# ---
+# --------------------------------------------------------------------------------------------- #
 
 GETTERS = {
     # (struct type): (member to access with)
