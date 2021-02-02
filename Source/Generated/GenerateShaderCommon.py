@@ -189,7 +189,10 @@ CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 22,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
     "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
-    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : 1 << 14,
+    "MAX_GEOMETRY_PRIMITIVE_COUNT_POW"      : 18,
+    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" : 14,
+    "MAX_GEOMETRY_PRIMITIVE_COUNT"          : "1 << MAX_GEOMETRY_PRIMITIVE_COUNT_POW",
+    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : "1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW",
     "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 32,
     "BINDING_VERTEX_BUFFER_STATIC"          : 0,
     "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,
@@ -272,6 +275,10 @@ GEOM_INSTANCE_STRUCT = [
 
 PAYLOAD_STRUCT = [
     (TYPE_FLOAT32,      4,      "color",            1),
+    (TYPE_FLOAT32,      2,      "baryCoords",       1),
+    (TYPE_UINT32,       1,      "instIdAndIndex",   1),
+    (TYPE_UINT32,       1,      "geomAndPrimIndex", 1),
+    (TYPE_FLOAT32,      1,      "clsHitDistance",   1),
     (TYPE_FLOAT32,      1,      "transparDistance", 1),
 ]
 

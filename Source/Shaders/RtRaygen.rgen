@@ -23,11 +23,92 @@
 
 #define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_GLOBAL_UNIFORM 2
+#define DESC_SET_VERTEX_DATA 3
+#define DESC_SET_TEXTURES 4
 #include "ShaderCommonGLSLFunc.h"
 
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
+
+// lightDirection is pointed to the light
+bool isShadowed(vec3 origin, vec3 lightDirection)
+{
+	// prepare shadow payload
+	payloadShadow.isShadowed = 1;  
+	
+	traceRayEXT(
+		topLevelAS, 
+		gl_RayFlagsSkipClosestHitShaderEXT, 
+		INSTANCE_MASK_HAS_SHADOWS, 
+		0, 0, 	// sbtRecordOffset, sbtRecordStride
+		SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
+		origin, 0.001, lightDirection, 10000.0, 
+		PAYLOAD_INDEX_SHADOW);
+
+	return payloadShadow.isShadowed == 1;
+}
+
+vec4 getClosestHitColor(vec3 hitPoint, ShPayload hitPayload)
+{
+	int instanceId, instCustomIndex;
+	int geomIndex, primIndex;
+
+	unpackInstanceIdAndCustomIndex(hitPayload.instIdAndIndex, instanceId, instCustomIndex);
+	unpackGeometryAndPrimitiveIndex(hitPayload.geomAndPrimIndex, geomIndex, primIndex);
+
+	ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
+	mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
+
+	vec2 inBaryCoords = hitPayload.baryCoords;
+	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+    vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
+  	vec3 color = getTextureSample(tr.materials[0][0], texCoord).xyz;
+
+	vec3 normal;
+
+	if ((instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
+	{
+
+		tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
+		tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
+		tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
+
+		normal = normalize(tr.normals[0] * baryCoords.x + tr.normals[1] * baryCoords.y + tr.normals[2] * baryCoords.z);
+	}
+	else
+	{
+		tr.positions[0] = vec3( vec4(tr.positions[0], 1.0));
+		tr.positions[1] = vec3( vec4(tr.positions[1], 1.0));
+		tr.positions[2] = vec3( vec4(tr.positions[2], 1.0));
+
+		normal = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
+	}
+	
+	vec3 lightVec = normalize(vec3(1.0, 1.0, 1.0));
+	float light = max(dot(lightVec, normal), 0.2);
+
+	vec4 result = vec4(1.0);
+
+	// if transparency hit distance is further than the closest hit,
+	// then overwrite blended transparency
+	if (hitPayload.transparDistance > hitPayload.clsHitDistance)
+	{
+		result = vec4(light * color, 1.0);
+	}
+	else
+	{
+		result = hitPayload.color + vec4(light * color, 1.0);
+	}
+	
+	if (isShadowed(hitPoint, lightVec)) 
+	{
+		result *= 0.3;
+	}
+
+	return result;
+}
 
 void main() 
 {
@@ -43,8 +124,12 @@ void main()
 	// so the first tranparent-blended (additive or under) surface 
 	// could overwrite these values
 	payload.color = vec4(0.0);
+	payload.baryCoords = vec2(0.0);
+	payload.instIdAndIndex = 0;
+	payload.geomAndPrimIndex = 0;
+	payload.clsHitDistance = 0;
 	payload.transparDistance = 0;
-
+	
 	traceRayEXT(
 		topLevelAS,
 		gl_RayFlagsNoneEXT, 
@@ -54,5 +139,9 @@ void main()
 		origin.xyz, 0.001, dir.xyz, 10000.0, 
 		PAYLOAD_INDEX_DEFAULT);	
 
-	imageStore(framebufAlbedo, ivec2(gl_LaunchIDEXT.xy), vec4(payload.color.rgb, 0.0));
+	vec3 clsHitPoint = origin.xyz + dir.xyz * payload.clsHitDistance;
+
+	vec4 color = getClosestHitColor(clsHitPoint, payload);
+
+	imageStore(framebufAlbedo, ivec2(gl_LaunchIDEXT.xy), color);
 }

@@ -370,3 +370,56 @@ vec4 blendAdditive(vec4 src, vec4 dst)
 {
     return src + dst;
 }
+
+// instanceID is assumed to be < 256 (i.e. 8 bits ) and 
+// instanceCustomIndexEXT is 24 bits by Vulkan spec
+uint packInstanceIdAndCustomIndex(int instanceID, int instanceCustomIndexEXT)
+{
+    return (instanceID << 24) | instanceCustomIndexEXT;
+}
+
+ivec2 unpackInstanceIdAndCustomIndex(uint instanceIdAndIndex)
+{
+    return ivec2(
+        instanceIdAndIndex >> 24,
+        instanceIdAndIndex & 0xFFFFFF
+    );
+}
+
+void unpackInstanceIdAndCustomIndex(uint instanceIdAndIndex, out int instanceId, out int instanceCustomIndexEXT)
+{
+    instanceId = int(instanceIdAndIndex >> 24);
+    instanceCustomIndexEXT = int(instanceIdAndIndex & 0xFFFFFF);
+}
+
+uint packGeometryAndPrimitiveIndex(int geometryIndex, int primitiveIndex)
+{
+#if MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW + MAX_GEOMETRY_PRIMITIVE_COUNT_POW != 32
+    #error The sum of MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW and MAX_GEOMETRY_PRIMITIVE_COUNT_POW must be 32\
+        for packing geometry and primitive index
+#endif
+
+    return primitiveIndex << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW | geometryIndex;
+}
+
+ivec2 unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex)
+{
+#if (1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW) != MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT
+    #error MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT must be (1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW)
+#endif
+
+    return ivec2(
+        geomAndPrimIndex >> MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW,
+        geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1)
+    );
+}
+
+void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryIndex, out int primitiveIndex)
+{
+#if (1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW) != MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT
+    #error MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT must be (1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW)
+#endif
+
+    geometryIndex = int(geomAndPrimIndex >> MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW);
+    primitiveIndex = int(geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1));
+}
