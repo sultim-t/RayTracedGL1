@@ -243,47 +243,47 @@ DYNAMIC_BUFFER_STRUCT = [
 ]
 
 TRIANGLE_STRUCT = [
-    (TYPE_FLOAT32,     33,     "positions",        1),
-    (TYPE_FLOAT32,     33,     "normals",          1),
-    (TYPE_FLOAT32,     32,     "texCoords",        1),
-    (TYPE_FLOAT32,      3,     "tangent",          1),
-    (TYPE_UINT32,       3,     "materials",        3),
+    (TYPE_FLOAT32,     33,     "positions",             1),
+    (TYPE_FLOAT32,     33,     "normals",               1),
+    (TYPE_FLOAT32,     32,     "texCoords",             1),
+    (TYPE_FLOAT32,      3,     "tangent",               1),
+    (TYPE_UINT32,       3,     "materials",             3),
 ]
 
 GLOBAL_UNIFORM_STRUCT = [
-    (TYPE_FLOAT32,     44,      "view",                     1),
-    (TYPE_FLOAT32,     44,      "invView",                  1),
-    (TYPE_FLOAT32,     44,      "viewPrev",                 1),
-    (TYPE_FLOAT32,     44,      "projection",               1),
-    (TYPE_FLOAT32,     44,      "invProjection",            1),
-    (TYPE_FLOAT32,     44,      "projectionPrev",           1),
-    (TYPE_UINT32,       1,      "positionsStride",          1),
-    (TYPE_UINT32,       1,      "normalsStride",            1),
-    (TYPE_UINT32,       1,      "texCoordsStride",          1),
-    (TYPE_UINT32,       1,      "colorsStride",             1),
+    (TYPE_FLOAT32,     44,      "view",                 1),
+    (TYPE_FLOAT32,     44,      "invView",              1),
+    (TYPE_FLOAT32,     44,      "viewPrev",             1),
+    (TYPE_FLOAT32,     44,      "projection",           1),
+    (TYPE_FLOAT32,     44,      "invProjection",        1),
+    (TYPE_FLOAT32,     44,      "projectionPrev",       1),
+    (TYPE_UINT32,       1,      "positionsStride",      1),
+    (TYPE_UINT32,       1,      "normalsStride",        1),
+    (TYPE_UINT32,       1,      "texCoordsStride",      1),
+    (TYPE_UINT32,       1,      "colorsStride",         1),
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
 
 GEOM_INSTANCE_STRUCT = [
-    (TYPE_FLOAT32,     44,      "model",            1),
-    (TYPE_UINT32,       4,      "materials",        3),
-    (TYPE_UINT32,       1,      "baseVertexIndex",  1),
-    (TYPE_UINT32,       1,      "baseIndexIndex",   1),
-    (TYPE_UINT32,       1,      "primitiveCount",   1),
+    (TYPE_FLOAT32,     44,      "model",                1),
+    (TYPE_UINT32,       4,      "materials",            3),
+    (TYPE_UINT32,       1,      "baseVertexIndex",      1),
+    (TYPE_UINT32,       1,      "baseIndexIndex",       1),
+    (TYPE_UINT32,       1,      "primitiveCount",       1),
 ]
 
 PAYLOAD_STRUCT = [
-    (TYPE_FLOAT32,      4,      "color",            1),
-    (TYPE_FLOAT32,      2,      "baryCoords",       1),
-    (TYPE_UINT32,       1,      "instIdAndIndex",   1),
-    (TYPE_UINT32,       1,      "geomAndPrimIndex", 1),
-    (TYPE_FLOAT32,      1,      "clsHitDistance",   1),
-    (TYPE_FLOAT32,      1,      "transparDistance", 1),
+    (TYPE_FLOAT32,      4,      "color",                1),
+    (TYPE_FLOAT32,      2,      "baryCoords",           1),
+    (TYPE_UINT32,       1,      "instIdAndIndex",       1),
+    (TYPE_UINT32,       1,      "geomAndPrimIndex",     1),
+    (TYPE_FLOAT32,      1,      "clsHitDistance",       1),
+    (TYPE_FLOAT32,      1,      "maxTransparDistance",  1),
 ]
 
 PAYLOAD_SHADOW_STRUCT = [
-    (TYPE_UINT32,       1,      "isShadowed",       1),
+    (TYPE_UINT32,       1,      "isShadowed",           1),
 ]
 
 # (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)

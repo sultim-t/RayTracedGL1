@@ -28,6 +28,12 @@
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 hitAttributeEXT vec2 inBaryCoords;
 
+#ifdef ADDITIVE_BLENDING 
+	#define BLEND_FUNC blendAdditive
+#else
+	#define BLEND_FUNC blendUnder
+#endif
+
 void main()
 {
 	ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
@@ -39,23 +45,17 @@ void main()
 
 	float curDistance = gl_HitTEXT;
 
-#ifdef ADDITIVE_BLENDING 
-	// commutative
-	payload.color = blendAdditive(color, payload.color);
-#else
-	if (curDistance > payload.transparDistance)
+	if (curDistance > payload.maxTransparDistance)
 	{
 		// previous is under current
-		payload.color = blendUnder(color, payload.color);
+		payload.color = BLEND_FUNC(color, payload.color);
+		payload.maxTransparDistance = curDistance;
 	}
 	else
 	{
 		// current is under previous
-		payload.color = blendUnder(payload.color, color);
+		payload.color = BLEND_FUNC(payload.color, color);
 	}
-#endif
-
-	payload.transparDistance = curDistance;
 
 	// blended geometry can't be a closest hit, so ignore this intersection
 	ignoreIntersectionEXT;

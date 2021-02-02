@@ -86,7 +86,7 @@ struct ShPayload
     uint instIdAndIndex;
     uint geomAndPrimIndex;
     float clsHitDistance;
-    float transparDistance;
+    float maxTransparDistance;
 };
 
 struct ShPayloadShadow
