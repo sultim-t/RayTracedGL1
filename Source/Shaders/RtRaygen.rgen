@@ -21,11 +21,11 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 
+#define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_GLOBAL_UNIFORM 2
 #include "ShaderCommonGLSLFunc.h"
 
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
-layout(binding = BINDING_STORAGE_IMAGE, set = 1, rgba8) uniform image2D image;
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
 
@@ -54,5 +54,5 @@ void main()
 		origin.xyz, 0.001, dir.xyz, 10000.0, 
 		PAYLOAD_INDEX_DEFAULT);	
 
-	imageStore(image, ivec2(gl_LaunchIDEXT.xy), vec4(payload.color.rgb, 0.0));
+	imageStore(framebufAlbedo, ivec2(gl_LaunchIDEXT.xy), vec4(payload.color.rgb, 0.0));
 }

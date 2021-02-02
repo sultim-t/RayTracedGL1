@@ -26,6 +26,7 @@
 #include "CommandBufferManager.h"
 #include "ISwapchainDependency.h"
 #include "MemoryAllocator.h"
+#include "Generated/ShaderCommonCFramebuf.h"
 
 // Hold info for previous and current frames
 #define FRAMEBUFFERS_HISTORY_LENGTH 2
@@ -46,7 +47,7 @@ public:
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
 
-    void Barrier(VkCommandBuffer cmd, uint32_t framebufferImageIndex);
+    void Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebufferImageIndex);
     void PresentToSwapchain(VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain);
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;

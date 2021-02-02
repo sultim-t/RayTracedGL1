@@ -48,6 +48,8 @@ set(PrivateHeaders
     "Source/TextureDescriptors.h"
     "Source/TextureUploader.h"
     "Source/IMaterialDependency.h"
+    "Source/Generated/ShaderCommonC.h"
+    "Source/Generated/ShaderCommonCFramebuf.h"
     "Source/Framebuffers.h")
 
 set(Sources
@@ -84,7 +86,7 @@ set(Sources
     "Source/TextureDescriptors.cpp" 
     "Source/TextureUploader.cpp"
     "Source/VertexCollectorFilterType.cpp"
-    "Source/Generated/ShaderCommonC.cpp" 
+    "Source/Generated/ShaderCommonCFramebuf.cpp" 
     "Source/Framebuffers.cpp")
 
 add_library(RayTracedGL1 STATIC  

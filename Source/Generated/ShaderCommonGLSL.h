@@ -90,29 +90,29 @@ struct ShPayloadShadow
 #ifdef DESC_SET_FRAMEBUFFERS
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba32f)
-    uniform image2D fbImageAlbedo;
+    uniform image2D framebufAlbedo;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 1, rgba32f)
-    uniform image2D fbImageNormal;
+    uniform image2D framebufNormal;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 2, rgba32f)
-    uniform image2D fbImageNormalPrev;
+    uniform image2D framebufNormalPrev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 3, rgba32f)
-    uniform image2D fbImageNormalGeometry;
+    uniform image2D framebufNormalGeometry;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 4, rgba32f)
-    uniform image2D fbImageNormalGeometryPrev;
+    uniform image2D framebufNormalGeometryPrev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba32f)
-    uniform image2D fbImageMetallic;
+    uniform image2D framebufMetallic;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba32f)
-    uniform image2D fbImageMetallicPrev;
+    uniform image2D framebufMetallicPrev;
 #endif

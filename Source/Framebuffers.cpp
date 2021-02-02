@@ -20,7 +20,6 @@
 
 #include "Framebuffers.h"
 
-#include "Generated/ShaderCommonC.h"
 #include "Swapchain.h"
 #include "Utils.h"
 
@@ -96,7 +95,7 @@ void Framebuffers::CreateDescriptors()
         VkDescriptorSetAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
         allocInfo.descriptorPool = descPool;
-        allocInfo.descriptorSetCount = ShFramebuffers_Count;
+        allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &descSetLayout;
 
         r = vkAllocateDescriptorSets(device, &allocInfo, &descSets[i]);
@@ -116,7 +115,7 @@ void Framebuffers::OnSwapchainDestroy()
     DestroyImages();
 }
 
-void Framebuffers::Barrier(VkCommandBuffer cmd, uint32_t framebufferImageIndex)
+void Framebuffers::Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebufferImageIndex)
 {
     assert(framebufferImageIndex < images.size());
 
@@ -230,10 +229,10 @@ void Framebuffers::UpdateDescriptors()
     {
         for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
         {
-            auto &wrt = writes[k * FRAMEBUFFERS_HISTORY_LENGTH + i];
+            auto &wrt = writes[k * ShFramebuffers_Count + i];
 
             wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            wrt.dstSet = descSets[i];
+            wrt.dstSet = descSets[k];
             wrt.dstBinding = k == 0 ?
                 ShFramebuffers_Bindings[i] :
                 ShFramebuffers_BindingsSwapped[i];
