@@ -399,7 +399,7 @@ uint packGeometryAndPrimitiveIndex(int geometryIndex, int primitiveIndex)
         for packing geometry and primitive index
 #endif
 
-    return primitiveIndex << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW | geometryIndex;
+    return (primitiveIndex << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW) | geometryIndex;
 }
 
 ivec2 unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex)
@@ -420,6 +420,6 @@ void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryInde
     #error MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT must be (1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW)
 #endif
 
-    geometryIndex = int(geomAndPrimIndex >> MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW);
-    primitiveIndex = int(geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1));
+    primitiveIndex = int(geomAndPrimIndex >> MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW);
+    geometryIndex = int(geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1));
 }
