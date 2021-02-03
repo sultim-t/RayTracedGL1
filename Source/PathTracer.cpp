@@ -66,4 +66,8 @@ void PathTracer::Trace(
 
     // sync access
     framebuffers->Barrier(cmd, FramebufferImageIndex::FB_IMAGE_ALBEDO);
+    framebuffers->Barrier(cmd, FramebufferImageIndex::FB_IMAGE_NORMAL);
+    framebuffers->Barrier(cmd, FramebufferImageIndex::FB_IMAGE_NORMAL_GEOMETRY);
+    framebuffers->Barrier(cmd, FramebufferImageIndex::FB_IMAGE_METALLIC_ROUGHNESS);
+    framebuffers->Barrier(cmd, FramebufferImageIndex::FB_IMAGE_DEPTH);
 }

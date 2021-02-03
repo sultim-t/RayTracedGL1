@@ -9,8 +9,10 @@ enum FramebufferImageIndex
     FB_IMAGE_NORMAL_PREV = 2,
     FB_IMAGE_NORMAL_GEOMETRY = 3,
     FB_IMAGE_NORMAL_GEOMETRY_PREV = 4,
-    FB_IMAGE_METALLIC = 5,
-    FB_IMAGE_METALLIC_PREV = 6,
+    FB_IMAGE_METALLIC_ROUGHNESS = 5,
+    FB_IMAGE_METALLIC_ROUGHNESS_PREV = 6,
+    FB_IMAGE_DEPTH = 7,
+    FB_IMAGE_DEPTH_PREV = 8,
 };
 
 extern const uint32_t ShFramebuffers_Count;

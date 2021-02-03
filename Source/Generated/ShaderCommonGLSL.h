@@ -28,6 +28,12 @@
 #define SBT_INDEX_HITGROUP_ALPHA_TESTED (1)
 #define SBT_INDEX_HITGROUP_BLEND_ADDITIVE (2)
 #define SBT_INDEX_HITGROUP_BLEND_UNDER (3)
+#define MATERIAL_ALBEDO_ALPHA_INDEX (0)
+#define MATERIAL_NORMAL_METALLIC_INDEX (1)
+#define MATERIAL_EMISSION_ROUGHNESS_INDEX (2)
+#define MATERIAL_NO_TEXTURE (0)
+
+#define MAX_RAY_LENGTH (10000.0)
 
 struct ShVertexBufferStatic
 {
@@ -116,10 +122,18 @@ layout(
     uniform image2D framebufNormalGeometryPrev;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba32f)
-    uniform image2D framebufMetallic;
+    set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba8)
+    uniform image2D framebufMetallicRoughness;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba32f)
-    uniform image2D framebufMetallicPrev;
+    set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba8)
+    uniform image2D framebufMetallicRoughnessPrev;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 7, r32f)
+    uniform image2D framebufDepth;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 8, r32f)
+    uniform image2D framebufDepthPrev;
 #endif

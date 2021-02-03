@@ -214,8 +214,15 @@ CONST = {
     "SBT_INDEX_HITGROUP_ALPHA_TESTED"       : 1,
     "SBT_INDEX_HITGROUP_BLEND_ADDITIVE"     : 2,
     "SBT_INDEX_HITGROUP_BLEND_UNDER"        : 3,
+    "MATERIAL_ALBEDO_ALPHA_INDEX"           : 0,
+    "MATERIAL_NORMAL_METALLIC_INDEX"        : 1,
+    "MATERIAL_EMISSION_ROUGHNESS_INDEX"     : 2,
+    "MATERIAL_NO_TEXTURE"                   : 0,
 }
 
+CONST_GLSL_ONLY = {
+    "MAX_RAY_LENGTH"                        : "10000.0"
+}
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -329,7 +336,8 @@ FRAMEBUFFERS = {
     "Albedo"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Normal"            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "Metallic"          : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "MetallicRoughness" : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "Depth"             : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
 }
 
 
@@ -362,10 +370,10 @@ def main():
         writeToGLSL(f, generateGetSet)
 
 
-def getAllConstDefs():
+def getAllConstDefs(constDict):
     return "\n".join([
         "#define %s (%s)" % (name, str(value))
-        for name, value in CONST.items()
+        for name, value in constDict.items()
     ]) + "\n\n"
 
 
@@ -548,7 +556,7 @@ def getAllGLSLSetters():
 
 
 def getGLSLImage2DType(baseFormat):
-    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32:
+    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8:
         return "image2D"
     else:
         return "uimage2D"
@@ -656,7 +664,7 @@ def writeToC(commonHeaderFile, fbHeaderFile, fbSourceFile):
     commonHeaderFile.write(FILE_HEADER)
     commonHeaderFile.write("#pragma once\n")
     commonHeaderFile.write("#include <stdint.h>\n\n")
-    commonHeaderFile.write(getAllConstDefs())
+    commonHeaderFile.write(getAllConstDefs(CONST))
     commonHeaderFile.write(getAllStructDefs(C_TYPE_NAMES))
     
     fbHeaderFile.write(FILE_HEADER)
@@ -671,7 +679,8 @@ def writeToC(commonHeaderFile, fbHeaderFile, fbSourceFile):
 
 def writeToGLSL(f, generateGetSet):
     f.write(FILE_HEADER)
-    f.write(getAllConstDefs())
+    f.write(getAllConstDefs(CONST))
+    f.write(getAllConstDefs(CONST_GLSL_ONLY))
     f.write(getAllStructDefs(GLSL_TYPE_NAMES))
     if generateGetSet:
         f.write(getAllGLSLGetters())

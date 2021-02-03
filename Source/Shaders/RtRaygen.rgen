@@ -50,58 +50,89 @@ bool isShadowed(vec3 origin, vec3 lightDirection)
 	return payloadShadow.isShadowed == 1;
 }
 
-vec4 getClosestHitColor(vec3 hitPoint, ShPayload hitPayload)
+void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 {
 	int instanceId, instCustomIndex;
 	int geomIndex, primIndex;
 
-	unpackInstanceIdAndCustomIndex(hitPayload.instIdAndIndex, instanceId, instCustomIndex);
-	unpackGeometryAndPrimitiveIndex(hitPayload.geomAndPrimIndex, geomIndex, primIndex);
+	unpackInstanceIdAndCustomIndex(payload.instIdAndIndex, instanceId, instCustomIndex);
+	unpackGeometryAndPrimitiveIndex(payload.geomAndPrimIndex, geomIndex, primIndex);
 
 	ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
 	mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
 
-	vec2 inBaryCoords = hitPayload.baryCoords;
+	vec2 inBaryCoords = payload.baryCoords;
 	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
-  	vec3 color = getTextureSample(tr.materials[0][0], texCoord).xyz;
-
-	vec3 normal;
+    
+    vec2 texCoord = tr.texCoords * baryCoords;
+	vec3 normalGeom;
+  	
+    // to world space
+    tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
+    tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
+    tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
 
 	if ((instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
 	{
-
-		tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
-		tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
-		tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
-
-		normal = normalize(tr.normals[0] * baryCoords.x + tr.normals[1] * baryCoords.y + tr.normals[2] * baryCoords.z);
+		normalGeom = normalize(tr.normals * baryCoords);
 	}
 	else
 	{
-		tr.positions[0] = vec3( vec4(tr.positions[0], 1.0));
-		tr.positions[1] = vec3( vec4(tr.positions[1], 1.0));
-		tr.positions[2] = vec3( vec4(tr.positions[2], 1.0));
-
-		normal = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
+        // positions are in world space
+		normalGeom = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
 	}
 	
-	vec3 lightVec = normalize(vec3(1.0, 1.0, 1.0));
-	float light = max(dot(lightVec, normal), 0.2);
-
-	// assuming that (hitPayload.maxTransparDistance < hitPayload.clsHitDistance)
-	vec4 result = hitPayload.color + vec4(light * color, 1.0);
+	vec3 albedo;
+	vec3 normal;
+	float metallic;
+	vec3 emission;
+	float roughness;
 	
-	if (isShadowed(hitPoint, lightVec)) 
+	if (tr.materials[MATERIAL_ALBEDO_ALPHA_INDEX][0] != MATERIAL_NO_TEXTURE)
 	{
-		result *= 0.3;
+		albedo = getTextureSample(tr.materials[MATERIAL_ALBEDO_ALPHA_INDEX][0], texCoord).rgb;
+	}
+	else
+	{
+		albedo = vec3(1.0);
+	}
+	
+	if (tr.materials[MATERIAL_NORMAL_METALLIC_INDEX][0] != MATERIAL_NO_TEXTURE)
+	{
+		vec4 nm = getTextureSample(tr.materials[MATERIAL_NORMAL_METALLIC_INDEX][0], texCoord);
+		metallic = nm.a;
+
+		// TODO: normal maps, tangents
+		normal = normalGeom;
+	}
+	else
+	{
+		normal = normalGeom;
+		metallic = 0.0;
+	}
+	
+	if (tr.materials[MATERIAL_EMISSION_ROUGHNESS_INDEX][0] != MATERIAL_NO_TEXTURE)
+	{
+		vec4 er = getTextureSample(tr.materials[MATERIAL_EMISSION_ROUGHNESS_INDEX][0], texCoord);
+		emission = er.rgb;
+		roughness = er.a;
+	}
+	else
+	{
+		emission = vec3(0.0);
+		roughness = 1.0;
 	}
 
-	return result;
+	imageStore(framebufAlbedo,              pix, vec4(albedo, 0));
+	imageStore(framebufNormal,              pix, vec4(normal, 0));
+	imageStore(framebufNormalGeometry,      pix, vec4(normalGeom, 0));
+	imageStore(framebufMetallicRoughness,   pix, vec4(metallic, roughness, 0, 0));
+	imageStore(framebufDepth,               pix, vec4(payload.clsHitDistance));
 }
 
 void main() 
 {
+	const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 	const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
 	const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
 	vec2 d = inUV * 2.0 - 1.0;
@@ -126,7 +157,7 @@ void main()
 		INSTANCE_MASK_ALL, 
 		0, 0, 	// sbtRecordOffset, sbtRecordStride
 		SBT_INDEX_MISS_DEFAULT, 
-		origin.xyz, 0.001, dir.xyz, 10000.0, 
+		origin.xyz, 0.001, dir.xyz, MAX_RAY_LENGTH, 
 		PAYLOAD_INDEX_DEFAULT);	
 
 	vec4 color;
@@ -155,13 +186,17 @@ void main()
 				PAYLOAD_INDEX_DEFAULT);	
 		}
 		
-		color = getClosestHitColor(clsHitPoint, payload);
+		processPrimaryHit(origin.xyz + dir.xyz * payload.clsHitDistance, pix);
 	}
 	else
 	{
 		// sky
 		color = vec4(0.85, 0.95, 1.0, 1.0);
-	}
 
-	imageStore(framebufAlbedo, ivec2(gl_LaunchIDEXT.xy), color);
+		imageStore(framebufAlbedo,              pix, color);
+		imageStore(framebufNormal,              pix, vec4(0.0));
+		imageStore(framebufNormalGeometry,      pix, vec4(0.0));
+	    imageStore(framebufMetallicRoughness,   pix, vec4(0, 0, 0, 0));
+		imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH));
+	}
 }
