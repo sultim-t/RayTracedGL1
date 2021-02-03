@@ -55,6 +55,8 @@ MemoryAllocator::MemoryAllocator(
 
 MemoryAllocator::~MemoryAllocator()
 {
+    assert(bufAllocs.size() == 0);
+
     vmaDestroyPool(allocator, texturesStagingPool);
     vmaDestroyPool(allocator, texturesFinalPool);
     vmaDestroyAllocator(allocator);

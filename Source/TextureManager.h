@@ -39,6 +39,7 @@ public:
     explicit TextureManager(
         VkDevice device,
         std::shared_ptr<MemoryAllocator> memAllocator,
+        std::shared_ptr<SamplerManager> samplerManager,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
         const char *defaultTexturesPath,
         const char *albedoAlphaPostfix,

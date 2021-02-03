@@ -203,6 +203,7 @@ CONST = {
     "BINDING_GLOBAL_UNIFORM"                : 0,
     "BINDING_ACCELERATION_STRUCTURE"        : 0,
     "BINDING_TEXTURES"                      : 0,
+    "BINDING_BLUE_NOISE"                    : 0,
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_HAS_SHADOWS"             : "1",

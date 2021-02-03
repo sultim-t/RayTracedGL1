@@ -50,7 +50,9 @@ set(PrivateHeaders
     "Source/IMaterialDependency.h"
     "Source/Generated/ShaderCommonC.h"
     "Source/Generated/ShaderCommonCFramebuf.h"
-    "Source/Framebuffers.h")
+    "Source/Generated/BlueNoiseFileNames.h"
+    "Source/Framebuffers.h"
+    "Source/BlueNoise.h")
 
 set(Sources
     "Source/RTGL1.cpp"
@@ -87,7 +89,9 @@ set(Sources
     "Source/TextureUploader.cpp"
     "Source/VertexCollectorFilterType.cpp"
     "Source/Generated/ShaderCommonCFramebuf.cpp" 
-    "Source/Framebuffers.cpp")
+    "Source/Generated/BlueNoiseFileNames.cpp"
+    "Source/Framebuffers.cpp"
+    "Source/BlueNoise.cpp")
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}

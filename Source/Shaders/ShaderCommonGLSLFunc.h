@@ -360,15 +360,13 @@ vec4 getTextureSample(uint textureIndex, vec2 texCoord)
 vec4 blendUnder(vec4 src, vec4 dst)
 {
     // dst is under src
-    return vec4(
-        dst.a * dst.rgb + (1 - dst.a) * src.a * src.rgb,
-        src.a - src.a * dst.a + dst.a
-    );
+    return dst * (vec4(1.0) - src);
+    //return src * src.a + dst * (vec4(1.0) - src);
 }
 
 vec4 blendAdditive(vec4 src, vec4 dst)
 {
-    return src + dst;
+    return src * src.a + dst;
 }
 
 // instanceID is assumed to be < 256 (i.e. 8 bits ) and 

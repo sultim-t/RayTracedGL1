@@ -68,8 +68,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     framebuffers = std::make_shared<Framebuffers>(device, memAllocator, cmdManager);
     swapchain->Subscribe(framebuffers);
 
+    samplerManager = std::make_shared<SamplerManager>(device);
+
+    blueNoise = std::make_shared<BlueNoise>(
+        device, "../../../BlueNoise/Data/64_64/",
+        memAllocator, cmdManager, samplerManager);
+
     textureManager = std::make_shared<TextureManager>(
-        device, memAllocator, cmdManager,
+        device, memAllocator, samplerManager, cmdManager,
         info->overridenTexturesFolderPath, info->overrideAlbedoAlphaTexturePostfix, 
         info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
 
@@ -104,6 +110,8 @@ VulkanDevice::~VulkanDevice()
     rtPipeline.reset();
     pathTracer.reset();
     rasterizer.reset();
+    samplerManager.reset();
+    blueNoise.reset();
     textureManager.reset();
     memAllocator.reset();
 

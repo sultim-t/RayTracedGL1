@@ -24,8 +24,9 @@
 
 #include <memory>
 
-#include "CommandBufferManager.h"
 #include "Common.h"
+
+#include "CommandBufferManager.h"
 #include "PhysicalDevice.h"
 #include "Scene.h"
 #include "Swapchain.h"
@@ -36,6 +37,7 @@
 #include "Framebuffers.h"
 #include "MemoryAllocator.h"
 #include "TextureManager.h"
+#include "BlueNoise.h"
 
 class VulkanDevice
 {
@@ -114,6 +116,8 @@ private:
     std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
 
+    std::shared_ptr<SamplerManager>         samplerManager;
+    std::shared_ptr<BlueNoise>              blueNoise;
     std::shared_ptr<TextureManager>         textureManager;
 
     bool                                    enableValidationLayer;

@@ -36,13 +36,15 @@ constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_
 TextureManager::TextureManager(
     VkDevice _device,
     std::shared_ptr<MemoryAllocator> _memAllocator,
+    std::shared_ptr<SamplerManager> _samplerMgr,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     const char *_defaultTexturesPath,
     const char *_albedoAlphaPostfix,
     const char *_normalMetallicPostfix,
     const char *_emissionRoughnessPostfix)
 :
-    device(_device)
+    device(_device),
+    samplerMgr(_samplerMgr)
 {
     this->defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
     this->albedoAlphaPostfix = _albedoAlphaPostfix != nullptr ? _albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
@@ -50,7 +52,6 @@ TextureManager::TextureManager(
     this->emissionRoughnessPostfix = _emissionRoughnessPostfix != nullptr ? _emissionRoughnessPostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
 
     imageLoader = std::make_shared<ImageLoader>();
-    samplerMgr = std::make_shared<SamplerManager>(device);
     textureDesc = std::make_shared<TextureDescriptors>(device);
     textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
