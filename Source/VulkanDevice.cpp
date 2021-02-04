@@ -66,10 +66,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     swapchain = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
-    framebuffers = std::make_shared<Framebuffers>(device, memAllocator, cmdManager);
-    swapchain->Subscribe(framebuffers);
-
     samplerManager = std::make_shared<SamplerManager>(device);
+
+    framebuffers = std::make_shared<Framebuffers>(device, memAllocator, cmdManager, samplerManager);
+    swapchain->Subscribe(framebuffers);
 
     blueNoise = std::make_shared<BlueNoise>(
         device, "../../../BlueNoise/Data/64_64/",

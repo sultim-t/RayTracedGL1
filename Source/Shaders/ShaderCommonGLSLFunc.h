@@ -387,6 +387,18 @@ vec4 getBlueNoiseSample(uint seed)
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
+vec4 getCurrentBlueNoiseSample(ivec2 pix)
+{
+    uvec4 seed = texelFetch(framebufRandomSeed_Sampler, pix, 0);
+    return getBlueNoiseSample(seed.x);
+}
+
+vec4 getPreviousBlueNoiseSample(ivec2 pix)
+{
+    uvec4 seed = texelFetch(framebufRandomSeed_Prev_Sampler, pix, 0);
+    return getBlueNoiseSample(seed.x);
+}
+
 // Sample disk uniformly
 vec2 sampleDisk(uint seed, float radius)
 {

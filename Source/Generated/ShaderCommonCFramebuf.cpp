@@ -48,18 +48,48 @@ uint32_t const ShFramebuffers_BindingsSwapped[] =
     9,
 };
 
+uint32_t const ShFramebuffers_Sampler_Bindings[] = 
+{
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+};
+
+uint32_t const ShFramebuffers_Sampler_BindingsSwapped[] = 
+{
+    11,
+    13,
+    12,
+    15,
+    14,
+    17,
+    16,
+    19,
+    18,
+    21,
+    20,
+};
+
 const char *const ShFramebuffers_DebugNames[] = 
 {
     "Framebuf Albedo",
     "Framebuf Normal",
-    "Framebuf NormalPrev",
+    "Framebuf Normal_Prev",
     "Framebuf NormalGeometry",
-    "Framebuf NormalGeometryPrev",
+    "Framebuf NormalGeometry_Prev",
     "Framebuf MetallicRoughness",
-    "Framebuf MetallicRoughnessPrev",
+    "Framebuf MetallicRoughness_Prev",
     "Framebuf Depth",
-    "Framebuf DepthPrev",
+    "Framebuf Depth_Prev",
     "Framebuf RandomSeed",
-    "Framebuf RandomSeedPrev",
+    "Framebuf RandomSeed_Prev",
 };
 

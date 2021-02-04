@@ -26,6 +26,7 @@
 #include "CommandBufferManager.h"
 #include "ISwapchainDependency.h"
 #include "MemoryAllocator.h"
+#include "SamplerManager.h"
 #include "Generated/ShaderCommonCFramebuf.h"
 
 // Hold info for previous and current frames
@@ -36,7 +37,8 @@ class Framebuffers : public ISwapchainDependency
 public:
     explicit Framebuffers(VkDevice device,
                           std::shared_ptr<MemoryAllocator> allocator,
-                          std::shared_ptr<CommandBufferManager> cmdManager);
+                          std::shared_ptr<CommandBufferManager> cmdManager,
+                          std::shared_ptr<SamplerManager> samplerManager);
     ~Framebuffers();
 
     Framebuffers(const Framebuffers &other) = delete;
@@ -72,6 +74,7 @@ private:
 
     std::shared_ptr<MemoryAllocator> allocator;
     std::shared_ptr<CommandBufferManager> cmdManager;
+    std::shared_ptr<SamplerManager> samplerManager;
 
     std::vector<VkImage> images;
     std::vector<VkDeviceMemory> imageMemories;

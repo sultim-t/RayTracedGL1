@@ -109,6 +109,9 @@ struct ShPayloadShadow
 };
 
 #ifdef DESC_SET_FRAMEBUFFERS
+
+// framebuffers
+
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba32f)
     uniform image2D framebufAlbedo;
@@ -119,7 +122,7 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 2, rgba32f)
-    uniform image2D framebufNormalPrev;
+    uniform image2D framebufNormal_Prev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 3, rgba32f)
@@ -127,7 +130,7 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 4, rgba32f)
-    uniform image2D framebufNormalGeometryPrev;
+    uniform image2D framebufNormalGeometry_Prev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba8)
@@ -135,7 +138,7 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba8)
-    uniform image2D framebufMetallicRoughnessPrev;
+    uniform image2D framebufMetallicRoughness_Prev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 7, r32f)
@@ -143,7 +146,7 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 8, r32f)
-    uniform image2D framebufDepthPrev;
+    uniform image2D framebufDepth_Prev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 9, r32ui)
@@ -151,5 +154,51 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 10, r32ui)
-    uniform uimage2D framebufRandomSeedPrev;
+    uniform uimage2D framebufRandomSeed_Prev;
+
+// samplers
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 11)
+    uniform sampler2D framebufAlbedo_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 12)
+    uniform sampler2D framebufNormal_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 13)
+    uniform sampler2D framebufNormal_Prev_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 14)
+    uniform sampler2D framebufNormalGeometry_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 15)
+    uniform sampler2D framebufNormalGeometry_Prev_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 16)
+    uniform sampler2D framebufMetallicRoughness_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 17)
+    uniform sampler2D framebufMetallicRoughness_Prev_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 18)
+    uniform sampler2D framebufDepth_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 19)
+    uniform sampler2D framebufDepth_Prev_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 20)
+    uniform usampler2D framebufRandomSeed_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 21)
+    uniform usampler2D framebufRandomSeed_Prev_Sampler;
 #endif

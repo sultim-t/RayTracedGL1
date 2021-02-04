@@ -21,5 +21,7 @@ extern const uint32_t ShFramebuffers_Count;
 extern const VkFormat ShFramebuffers_Formats[];
 extern const uint32_t ShFramebuffers_Bindings[];
 extern const uint32_t ShFramebuffers_BindingsSwapped[];
+extern const uint32_t ShFramebuffers_Sampler_Bindings[];
+extern const uint32_t ShFramebuffers_Sampler_BindingsSwapped[];
 extern const char *const ShFramebuffers_DebugNames[];
 

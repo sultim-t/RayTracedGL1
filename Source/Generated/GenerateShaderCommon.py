@@ -340,10 +340,11 @@ GETTERS = {
 FRAMEBUF_DESC_SET_NAME      = "DESC_SET_FRAMEBUFFERS"
 FRAMEBUF_BASE_BINDING       = 0
 FRAMEBUF_PREFIX             = "framebuf"
+FRAMEBUF_SAMPLER_POSTFIX    = "_Sampler"
 FRAMEBUF_DEBUG_NAME_PREFIX  = "Framebuf "
 # only info for 2 frames are used: current and previous
 FRAMEBUF_FLAGS_STORE_PREV   = 1
-FRAMEBUF_STORE_PREV_POSTFIX = "Prev"
+FRAMEBUF_STORE_PREV_POSTFIX = "_Prev"
 
 FRAMEBUFFERS = {
     # (image name) : (base format type, components, flags)
@@ -574,9 +575,19 @@ def getAllGLSLSetters():
 def getGLSLImage2DType(baseFormat):
     if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8:
         return "image2D"
+    elif baseFormat == TYPE_INT32:
+        return "iimage2D"
     else:
         return "uimage2D"
-    #return "iimage2D"
+
+    
+def getGLSLSampler2DType(baseFormat):
+    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8:
+        return "sampler2D"
+    elif baseFormat == TYPE_INT32:
+        return "isampler2D"
+    else:
+        return "usampler2D"
 
 
 CURRENT_FRAMEBUF_BINDING_COUNT = 0
@@ -585,11 +596,12 @@ def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
     global CURRENT_FRAMEBUF_BINDING_COUNT
 
     binding = FRAMEBUF_BASE_BINDING + CURRENT_FRAMEBUF_BINDING_COUNT
+    bindingSampler = binding + 1
     CURRENT_FRAMEBUF_BINDING_COUNT += 1
 
-    template = ("layout(\n"
-                "    set = %s, binding = %d, %s)\n"
-                "    uniform %s %s;\n")
+    template =         ("layout(\n"
+                        "    set = %s, binding = %d, %s)\n"
+                        "    uniform %s %s;\n")
 
     r = template % (FRAMEBUF_DESC_SET_NAME, binding, 
         GLSL_IMAGE_FORMATS[(baseFormat, components)], 
@@ -604,19 +616,57 @@ def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
     return r
 
 
+def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
+    global CURRENT_FRAMEBUF_BINDING_COUNT
+
+    binding = FRAMEBUF_BASE_BINDING + CURRENT_FRAMEBUF_BINDING_COUNT - 1
+    bindingSampler = binding + 1
+    CURRENT_FRAMEBUF_BINDING_COUNT += 1
+
+    templateSampler =  ("layout(\n"
+                        "    set = %s, binding = %d)\n"
+                        "    uniform %s %s;\n")
+
+    r = templateSampler % (FRAMEBUF_DESC_SET_NAME, bindingSampler,
+        getGLSLSampler2DType(baseFormat), name + FRAMEBUF_SAMPLER_POSTFIX)
+
+    if flags & FRAMEBUF_FLAGS_STORE_PREV:
+        r += "\n"
+        r += getGLSLFramebufSamplerDeclaration(
+            name + FRAMEBUF_STORE_PREV_POSTFIX, baseFormat, components, 
+            flags & ~FRAMEBUF_FLAGS_STORE_PREV)
+
+    return r
+
+
 def getAllGLSLFramebufDeclarations():
     global CURRENT_FRAMEBUF_BINDING_COUNT
     CURRENT_FRAMEBUF_BINDING_COUNT = 0
-    return "#ifdef " + FRAMEBUF_DESC_SET_NAME + "\n" + "\n".join(
-        getGLSLFramebufDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
-        for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
-    ) + "#endif\n"
+    return "#ifdef " + FRAMEBUF_DESC_SET_NAME + "\n\n// framebuffers\n\n" \
+        + "\n".join(
+            getGLSLFramebufDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
+            for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
+        ) \
+        + "\n// samplers\n\n" \
+        + "\n".join(
+            getGLSLFramebufSamplerDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
+            for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
+        ) \
+        + "#endif\n"
+
+
+def removeCoupledDuplicateChars(str, charToRemove = '_'):
+    r = ""
+    for i in range(0, len(str)):
+        if i == 0 or str[i] != str[i - 1] or str[i] != charToRemove:
+            r += str[i]
+    return r
 
 
 # make all letters capital and insert "_" before 
 # capital letters in the original string
 def capitalizeForEnum(s):
-    return "_".join(filter(None, re.split("([A-Z][^A-Z]*)", s))).upper()
+    return removeCoupledDuplicateChars("_".join(filter(None, re.split("([A-Z][^A-Z]*)", s))).upper())
 
 
 def getAllFramebufConstants():
@@ -637,6 +687,8 @@ def getAllVulkanFramebufDeclarations():
             "extern const VkFormat ShFramebuffers_Formats[];\n"
             "extern const uint32_t ShFramebuffers_Bindings[];\n"
             "extern const uint32_t ShFramebuffers_BindingsSwapped[];\n"
+            "extern const uint32_t ShFramebuffers_Sampler_Bindings[];\n"
+            "extern const uint32_t ShFramebuffers_Sampler_BindingsSwapped[];\n"
             "extern const char *const ShFramebuffers_DebugNames[];\n\n")
 
 
@@ -645,24 +697,29 @@ def getAllVulkanFramebufDefinitions():
                 "VkFormat const ShFramebuffers_Formats[] = \n{\n%s};\n\n"
                 "uint32_t const ShFramebuffers_Bindings[] = \n{\n%s};\n\n"
                 "uint32_t const ShFramebuffers_BindingsSwapped[] = \n{\n%s};\n\n"
+                "uint32_t const ShFramebuffers_Sampler_Bindings[] = \n{\n%s};\n\n"
+                "uint32_t const ShFramebuffers_Sampler_BindingsSwapped[] = \n{\n%s};\n\n"
                 "const char *const ShFramebuffers_DebugNames[] = \n{\n%s};\n\n")
     formats = ""
     count = 0
-    bindings = ""
+    samplerCount = 0
+    bindings = ""    
     bindingsSwapped = ""
+    samplerBindings = ""
+    samplerBindingsSwapped = ""
     names = ""
     for name, (baseFormat, components, flags) in FRAMEBUFFERS.items():
         formats += TAB_STR + VULKAN_IMAGE_FORMATS[(baseFormat, components)] + ",\n"
         names += TAB_STR + "\"" + FRAMEBUF_DEBUG_NAME_PREFIX + name + "\",\n"
 
         if not flags & FRAMEBUF_FLAGS_STORE_PREV:
-            bindings        += TAB_STR + str(count)     + ",\n"
-            bindingsSwapped += TAB_STR + str(count)     + ",\n"
+            bindings                += TAB_STR + str(count)     + ",\n"
+            bindingsSwapped         += TAB_STR + str(count)     + ",\n"
         else:
-            bindings        += TAB_STR + str(count)     + ",\n"
-            bindings        += TAB_STR + str(count + 1) + ",\n"
-            bindingsSwapped += TAB_STR + str(count + 1)     + ",\n"
-            bindingsSwapped += TAB_STR + str(count)     + ",\n"
+            bindings                += TAB_STR + str(count)     + ",\n"
+            bindings                += TAB_STR + str(count + 1) + ",\n"
+            bindingsSwapped         += TAB_STR + str(count + 1)     + ",\n"
+            bindingsSwapped         += TAB_STR + str(count)     + ",\n"
             
             formats += TAB_STR + VULKAN_IMAGE_FORMATS[(baseFormat, components)] + ",\n"
             names += TAB_STR + "\"" + FRAMEBUF_DEBUG_NAME_PREFIX + name + FRAMEBUF_STORE_PREV_POSTFIX + "\",\n"
@@ -670,7 +727,20 @@ def getAllVulkanFramebufDefinitions():
 
         count += 1
 
-    return template % (count, formats, bindings, bindingsSwapped, names)
+    for name, (baseFormat, components, flags) in FRAMEBUFFERS.items():
+        if not flags & FRAMEBUF_FLAGS_STORE_PREV:
+            samplerBindings         += TAB_STR + str(count + samplerCount)     + ",\n"
+            samplerBindingsSwapped  += TAB_STR + str(count + samplerCount)     + ",\n"
+        else:
+            samplerBindings         += TAB_STR + str(count + samplerCount)     + ",\n"
+            samplerBindings         += TAB_STR + str(count + samplerCount + 1) + ",\n"
+            samplerBindingsSwapped  += TAB_STR + str(count + samplerCount + 1)  + ",\n"
+            samplerBindingsSwapped  += TAB_STR + str(count + samplerCount)     + ",\n"
+            samplerCount += 1
+
+        samplerCount += 1
+
+    return template % (count, formats, bindings, bindingsSwapped, samplerBindings, samplerBindingsSwapped, names)
 
 
 FILE_HEADER = "// This file was generated by GenerateShaderCommon.py\n\n"
