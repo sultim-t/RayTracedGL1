@@ -23,6 +23,7 @@
 import sys
 import os
 import re
+from math import log2
 
 
 TYPE_FLOAT32    = 0
@@ -220,11 +221,17 @@ CONST = {
     "MATERIAL_EMISSION_ROUGHNESS_INDEX"     : 2,
     "MATERIAL_NO_TEXTURE"                   : 0,
     "BLUE_NOISE_TEXTURE_COUNT"              : 64,
+    "BLUE_NOISE_TEXTURE_SIZE"               : 64,
+    "BLUE_NOISE_TEXTURE_SIZE_POW"           : 0xFFFFFFFF,    # this value will be calculated
 }
 
 CONST_GLSL_ONLY = {
     "MAX_RAY_LENGTH"                        : "10000.0"
 }
+
+
+def evalConst():
+    CONST["BLUE_NOISE_TEXTURE_SIZE_POW"] = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
 
 
 # --------------------------------------------------------------------------------------------- #
@@ -340,6 +347,7 @@ FRAMEBUFFERS = {
     "NormalGeometry"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness" : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"             : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "RandomSeed"        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
 }
 
 
@@ -363,6 +371,7 @@ def main():
             print("--getset   : generate getters and setters for non-trivial members")
             return
 
+    evalConst()
     # with open('ShaderConfig.csv', newline='') as csvfile:
     with open("ShaderCommonC.h", "w") as commonHeaderFile:
         with open("ShaderCommonCFramebuf.h", "w") as fbHeaderFile:
@@ -688,7 +697,6 @@ def writeToGLSL(f, generateGetSet):
         f.write(getAllGLSLGetters())
         f.write(getAllGLSLSetters())
     f.write(getAllGLSLFramebufDeclarations())
-
 
 
 # main

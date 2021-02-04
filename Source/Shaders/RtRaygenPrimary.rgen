@@ -25,30 +25,12 @@
 #define DESC_SET_GLOBAL_UNIFORM 2
 #define DESC_SET_VERTEX_DATA 3
 #define DESC_SET_TEXTURES 4
+#define DESC_SET_RANDOM 5
 #include "ShaderCommonGLSLFunc.h"
 
 layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
-layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
-
-// lightDirection is pointed to the light
-bool isShadowed(vec3 origin, vec3 lightDirection)
-{
-	// prepare shadow payload
-	payloadShadow.isShadowed = 1;  
-	
-	traceRayEXT(
-		topLevelAS, 
-		gl_RayFlagsSkipClosestHitShaderEXT, 
-		INSTANCE_MASK_HAS_SHADOWS, 
-		0, 0, 	// sbtRecordOffset, sbtRecordStride
-		SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
-		origin, 0.001, lightDirection, 10000.0, 
-		PAYLOAD_INDEX_SHADOW);
-
-	return payloadShadow.isShadowed == 1;
-}
 
 void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 {
@@ -141,6 +123,14 @@ void main()
 	vec4 target = globalUniform.invProjection * vec4(d.x, d.y, 1, 1) ;
 	vec4 dir = globalUniform.invView * vec4(normalize(target.xyz / target.w), 0) ;
 
+	// TODO: uniform
+	uint frameIndex = 0;
+	float renderWidth = 1600;
+	float renderHeight = 900;
+
+	uint randomSeed = getRandomSeed(pix, frameIndex, renderWidth, renderHeight);
+	imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
+
 	// start color is fully transparent black and dist = 0,
 	// so the first tranparent-blended (additive or under) surface 
 	// could overwrite these values
@@ -193,7 +183,7 @@ void main()
 		// sky
 		color = vec4(0.85, 0.95, 1.0, 1.0);
 
-		imageStore(framebufAlbedo,              pix, color);
+		imageStore(framebufAlbedo,              pix, vec4(getBlueNoiseSample(randomSeed)));
 		imageStore(framebufNormal,              pix, vec4(0.0));
 		imageStore(framebufNormalGeometry,      pix, vec4(0.0));
 	    imageStore(framebufMetallicRoughness,   pix, vec4(0, 0, 0, 0));

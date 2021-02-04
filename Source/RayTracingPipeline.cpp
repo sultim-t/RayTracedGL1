@@ -31,7 +31,8 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<ASManager> &_asMgr,
     const std::shared_ptr<GlobalUniform> &_uniform,
     const std::shared_ptr<TextureManager> &_textureMgr,
-    const std::shared_ptr<Framebuffers> &framebuffers)
+    const std::shared_ptr<Framebuffers> &_framebuffers,
+    const std::shared_ptr<BlueNoise> &_blueNoise)
 :
     device(_device),
     rtPipelineLayout(VK_NULL_HANDLE),
@@ -44,7 +45,7 @@ RayTracingPipeline::RayTracingPipeline(
 {
     std::vector<const char *> stageNames =
     {
-        "RGen",
+        "RGenPrimary",
         "RMiss",
         "RMissShadow",
         "RClsOpaque",
@@ -73,6 +74,7 @@ RayTracingPipeline::RayTracingPipeline(
             }
         }
 
+        assert(0);
         return UINT32_MAX;
     };
 #pragma endregion
@@ -80,7 +82,7 @@ RayTracingPipeline::RayTracingPipeline(
 
     // set shader binding table structure the same as defined with SBT_INDEX_* 
 
-    AddRayGenGroup(toIndex("RGen"));
+    AddRayGenGroup(toIndex("RGenPrimary"));
 
     AddMissGroup(toIndex("RMiss"));                                 assert(missShaderCount - 1 == SBT_INDEX_MISS_DEFAULT);
     AddMissGroup(toIndex("RMissShadow"));                           assert(missShaderCount - 1 == SBT_INDEX_MISS_SHADOW);
@@ -101,13 +103,15 @@ RayTracingPipeline::RayTracingPipeline(
         // ray tracing acceleration structures
         _asMgr->GetTLASDescSetLayout(),
         // storage images
-        framebuffers->GetDescSetLayout(),
+        _framebuffers->GetDescSetLayout(),
         // uniform
         _uniform->GetDescSetLayout(),
         // vertex data
         _asMgr->GetBuffersDescSetLayout(),
         // textures
-        _textureMgr->GetDescSetLayout()
+        _textureMgr->GetDescSetLayout(),
+        // uniform random
+        _blueNoise->GetDescSetLayout()
     };
 
     CreatePipeline(setLayouts.data(), setLayouts.size(),

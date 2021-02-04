@@ -33,7 +33,8 @@ void PathTracer::Trace(
     const std::shared_ptr<ASManager> &asManager,
     const std::shared_ptr<GlobalUniform> &uniform,
     const std::shared_ptr<TextureManager> &textureMgr,
-    const std::shared_ptr<Framebuffers> &framebuffers)
+    const std::shared_ptr<Framebuffers> &framebuffers,
+    const std::shared_ptr<BlueNoise> &blueNoise)
 {
     rtPipeline->Bind(cmd);
 
@@ -47,7 +48,9 @@ void PathTracer::Trace(
         // vertex data
         asManager->GetBuffersDescSet(frameIndex),
         // textures
-        textureMgr->GetDescSet(frameIndex)
+        textureMgr->GetDescSet(frameIndex),
+        // uniform random
+        blueNoise->GetDescSet()
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 

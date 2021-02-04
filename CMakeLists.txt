@@ -89,7 +89,6 @@ set(Sources
     "Source/TextureUploader.cpp"
     "Source/VertexCollectorFilterType.cpp"
     "Source/Generated/ShaderCommonCFramebuf.cpp" 
-    "Source/Generated/BlueNoiseFileNames.cpp"
     "Source/Framebuffers.cpp"
     "Source/BlueNoise.cpp")
 

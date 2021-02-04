@@ -28,6 +28,7 @@
 // * DESC_SET_VERTEX_DATA       -- to access geometry data. DESC_SET_GLOBAL_UNIFORM must be defined
 // * DESC_SET_TEXTURES          -- to access textures by index
 // * DESC_SET_FRAMEBUFFERS      -- to access framebuffers (defined in ShaderCommonGLSL.h)
+// * DESC_SET_RANDOM            -- to access blue noise (uniform distribution) and sampling points on surfaces
 
 #define UINT32_MAX 0xFFFFFFFF
 
@@ -44,9 +45,9 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_VERTEX_BUFFER_STATIC)
-#ifndef VERTEX_BUFFER_WRITEABLE
+    #ifndef VERTEX_BUFFER_WRITEABLE
     readonly 
-#endif
+    #endif
     buffer VertexBufferStatic_BT
 {
     ShVertexBufferStatic staticVertices;
@@ -55,9 +56,9 @@ layout(
 layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_VERTEX_BUFFER_DYNAMIC)
-#ifndef VERTEX_BUFFER_WRITEABLE
+    #ifndef VERTEX_BUFFER_WRITEABLE
     readonly 
-#endif
+    #endif
     buffer VertexBufferDynamic_BT
 {
     ShVertexBufferDynamic dynamicVertices;
@@ -325,6 +326,8 @@ mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIn
 #endif // DESC_SET_VERTEX_DATA
 #endif // DESC_SET_GLOBAL_UNIFORM
 
+
+
 #ifdef DESC_SET_TEXTURES
 layout(
     set = DESC_SET_TEXTURES,
@@ -340,22 +343,64 @@ vec4 getTextureSample(uint textureIndex, vec2 texCoord)
 {
     return texture(globalTextures[nonuniformEXT(textureIndex)], texCoord);
 }
-
-// If texture index is 0, then empty texture will be sampled.
-// Assuming, that it's a white color with alpha=1.0.
-
-/*vec4 getTextureSampleSafe(uint textureIndex, vec2 texCoord)
-{
-    if (textureIndex != 0)
-    {
-        return texture(globalTextures[nonuniformEXT(textureIndex)], texCoord);
-    }
-    else
-    {
-        return vec4(1.0, 1.0, 1.0, 1.0);
-    }
-}*/
 #endif // DESC_SET_TEXTURES
+
+
+
+#ifdef DESC_SET_RANDOM
+layout(
+    set = DESC_SET_RANDOM,
+    binding = BINDING_BLUE_NOISE)
+    uniform sampler2DArray blueNoiseTextures;
+
+uint packRandomSeed(uint textureIndex, uvec2 offset)
+{
+    return 
+        textureIndex << (BLUE_NOISE_TEXTURE_SIZE_POW * 2) | 
+        offset.y     <<  BLUE_NOISE_TEXTURE_SIZE_POW     | 
+        offset.x;
+}
+
+void unpackRandomSeed(uint seed, out uint textureIndex, out uvec2 offset)
+{
+    textureIndex = seed >> (BLUE_NOISE_TEXTURE_SIZE_POW * 2);
+    offset.y     = (seed >> BLUE_NOISE_TEXTURE_SIZE_POW) & (BLUE_NOISE_TEXTURE_SIZE - 1);
+    offset.x     = seed                                  & (BLUE_NOISE_TEXTURE_SIZE - 1);
+}
+
+vec4 getBlueNoiseSample(uint x, uint y, uint index)
+{
+    return texelFetch(blueNoiseTextures, ivec3(x, y, index), 0);
+}
+
+vec4 getBlueNoiseSample(uint seed)
+{
+    uint texIndex;
+    uvec2 offset;
+    unpackRandomSeed(seed, texIndex, offset);
+
+    return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
+}
+
+uint getRandomSeed(ivec2 pix, uint frameId, float screenWidth, float screenHeight)
+{
+    uint idX = pix.x / BLUE_NOISE_TEXTURE_SIZE;
+    uint idY = pix.y / BLUE_NOISE_TEXTURE_SIZE;
+
+    uint countX = uint(ceil(screenWidth / BLUE_NOISE_TEXTURE_SIZE));
+    uint countY = uint(ceil(screenHeight / BLUE_NOISE_TEXTURE_SIZE));
+
+    uint texIndex = (idY * countX + idX) + countX * countY * frameId;
+    texIndex = texIndex % BLUE_NOISE_TEXTURE_COUNT;
+    
+    uvec2 offset = uvec2(pix.x % BLUE_NOISE_TEXTURE_SIZE,
+                         pix.y % BLUE_NOISE_TEXTURE_SIZE);
+
+    return packRandomSeed(texIndex, offset);
+}
+#endif // DESC_SET_RANDOM
+
+
 
 vec4 blendUnder(vec4 src, vec4 dst)
 {

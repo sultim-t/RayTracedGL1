@@ -125,13 +125,13 @@ void Framebuffers::Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebuffe
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
-void Framebuffers::PresentToSwapchain(VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain)
+void Framebuffers::PresentToSwapchain(
+    VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain,
+    FramebufferImageIndex framebufferImageIndex, uint32_t srcWidth, uint32_t srcHeight, VkImageLayout srcLayout)
 {
-    // TODO: present to swapchain another image; don't use swapchain's size; layout?
     swapchain->BlitForPresent(
-        cmd, images[FramebufferImageIndex::FB_IMAGE_ALBEDO],
-        swapchain->GetWidth(), swapchain->GetHeight(),
-        VK_IMAGE_LAYOUT_GENERAL);
+        cmd, images[framebufferImageIndex],
+        srcWidth, srcHeight, srcLayout);
 }
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const

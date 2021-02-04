@@ -34,7 +34,7 @@ struct ShaderModuleDefinition
 // Note: set shader stage to VK_SHADER_STAGE_ALL, to identify stage by the file extension
 static ShaderModuleDefinition G_SHADERS[] =
 {
-    {"RGen",            "../../../RtRaygen.rgen.spv"            , VK_SHADER_STAGE_ALL },
+    {"RGenPrimary",     "../../../RtRaygenPrimary.rgen.spv"     , VK_SHADER_STAGE_ALL },
     {"RMiss",           "../../../RtMiss.rmiss.spv"             , VK_SHADER_STAGE_ALL },
     {"RMissShadow",     "../../../RtMissShadowCheck.rmiss.spv"  , VK_SHADER_STAGE_ALL },
     {"RClsOpaque",      "../../../RtClsOpaque.rchit.spv"        , VK_SHADER_STAGE_ALL },

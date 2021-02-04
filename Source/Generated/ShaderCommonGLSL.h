@@ -34,6 +34,8 @@
 #define MATERIAL_EMISSION_ROUGHNESS_INDEX (2)
 #define MATERIAL_NO_TEXTURE (0)
 #define BLUE_NOISE_TEXTURE_COUNT (64)
+#define BLUE_NOISE_TEXTURE_SIZE (64)
+#define BLUE_NOISE_TEXTURE_SIZE_POW (6)
 
 #define MAX_RAY_LENGTH (10000.0)
 
@@ -138,4 +140,12 @@ layout(
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 8, r32f)
     uniform image2D framebufDepthPrev;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 9, r32ui)
+    uniform uimage2D framebufRandomSeed;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 10, r32ui)
+    uniform uimage2D framebufRandomSeedPrev;
 #endif

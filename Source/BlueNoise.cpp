@@ -47,14 +47,15 @@ BlueNoise::BlueNoise(
     const std::string folderPath = _textureFolder;
     std::string curFileName = folderPath + BlueNoiseFileNames[0];
 
-    uint32_t width, height;
-    const uint32_t *data = imageLoader.LoadRGBA8(curFileName.c_str(), &width, &height);
+    uint32_t w, h;
+    const uint32_t *data = imageLoader.LoadRGBA8(curFileName.c_str(), &w, &h);
+    assert(w == BLUE_NOISE_TEXTURE_SIZE && h == BLUE_NOISE_TEXTURE_SIZE);
 
     const VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
     const uint32_t bytesPerPixel = 4;
 
     // allocate buffer for all textures
-    const VkDeviceSize oneTextureSize = bytesPerPixel * width * height;
+    const VkDeviceSize oneTextureSize = bytesPerPixel * BLUE_NOISE_TEXTURE_SIZE * BLUE_NOISE_TEXTURE_SIZE;
     const VkDeviceSize dataSize = oneTextureSize * BlueNoiseFileNamesCount;
 
     VkBufferCreateInfo stagingInfo = {};
@@ -75,10 +76,8 @@ BlueNoise::BlueNoise(
     {
         curFileName = folderPath + BlueNoiseFileNames[i];
 
-        uint32_t w, h;
-
         const uint32_t *src = imageLoader.LoadRGBA8(curFileName.c_str(), &w, &h);
-        assert(w == width && h == height);
+        assert(w == BLUE_NOISE_TEXTURE_SIZE && h == BLUE_NOISE_TEXTURE_SIZE);
 
         void *dst = (uint8_t *)mappedData + oneTextureSize * i;
         
@@ -91,7 +90,7 @@ BlueNoise::BlueNoise(
     info.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     info.imageType = VK_IMAGE_TYPE_2D;
     info.format = imageFormat;
-    info.extent = { width, height, 1 };
+    info.extent = { BLUE_NOISE_TEXTURE_SIZE, BLUE_NOISE_TEXTURE_SIZE, 1 };
     info.mipLevels = 1;
     info.arrayLayers = BlueNoiseFileNamesCount;
     info.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -102,6 +101,8 @@ BlueNoise::BlueNoise(
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
     blueNoiseImages = allocator->CreateDstTextureImage(&info);
+
+    SET_DEBUG_NAME(device, blueNoiseImages, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Blue noise Image");
 
     // copy from buffer to image
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
@@ -126,7 +127,7 @@ BlueNoise::BlueNoise(
     copyInfo.bufferRowLength = 0;
     copyInfo.bufferImageHeight = 0;
     copyInfo.imageOffset = { 0, 0, 0 };
-    copyInfo.imageExtent = { width, height, 1 };
+    copyInfo.imageExtent = { BLUE_NOISE_TEXTURE_SIZE, BLUE_NOISE_TEXTURE_SIZE, 1 };
     copyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copyInfo.imageSubresource.mipLevel = 0;
     copyInfo.imageSubresource.baseArrayLayer = 0;
@@ -163,6 +164,8 @@ BlueNoise::BlueNoise(
 
     VkResult r = vkCreateImageView(device, &viewInfo, nullptr, &blueNoiseImagesView);
     VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, blueNoiseImagesView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Blue noise View");
 
     VkSampler sampler = _samplerManager->GetSampler(
         RG_SAMPLER_FILTER_NEAREST, 
@@ -245,4 +248,8 @@ void BlueNoise::CreateDescriptors(VkSampler sampler)
     write.pImageInfo = &imgInfo;
 
     vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);
+
+    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Blue noise Desc set layout");
+    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Blue noise Desc pool");
+    SET_DEBUG_NAME(device, descSet, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Blue noise Desc set");
 }

@@ -85,7 +85,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager = std::make_shared<ShaderManager>(device);
     rtPipeline = std::make_shared<RayTracingPipeline>(
         device, physDevice, memAllocator, shaderManager,
-        scene->GetASManager(), uniform, textureManager, framebuffers);
+        scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
 
     pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -175,13 +175,15 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     {
         pathTracer->Trace(
             cmd, currentFrameIndex, renderWidth, renderHeight, 
-            scene->GetASManager(), uniform, textureManager, framebuffers);
+            scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
     }
 
     // TODO: postprocessing
 
     // blit result image to present on a surface
-    framebuffers->PresentToSwapchain(cmd, swapchain);
+    framebuffers->PresentToSwapchain(
+        cmd, swapchain, FramebufferImageIndex::FB_IMAGE_ALBEDO,
+        swapchain->GetWidth(), swapchain->GetHeight(), VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer
     rasterizer->Draw(cmd, currentFrameIndex);

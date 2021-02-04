@@ -42,7 +42,8 @@ public:
         const std::shared_ptr<ASManager> &asManager,
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<TextureManager> &textureMgr,
-        const std::shared_ptr<Framebuffers> &framebuffers);
+        const std::shared_ptr<Framebuffers> &framebuffers, 
+        const std::shared_ptr<BlueNoise> &blueNoise);
 
 private:
     VkDevice device;

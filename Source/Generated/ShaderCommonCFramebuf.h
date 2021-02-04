@@ -13,6 +13,8 @@ enum FramebufferImageIndex
     FB_IMAGE_METALLIC_ROUGHNESS_PREV = 6,
     FB_IMAGE_DEPTH = 7,
     FB_IMAGE_DEPTH_PREV = 8,
+    FB_IMAGE_RANDOM_SEED = 9,
+    FB_IMAGE_RANDOM_SEED_PREV = 10,
 };
 
 extern const uint32_t ShFramebuffers_Count;

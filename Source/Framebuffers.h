@@ -48,7 +48,13 @@ public:
     void OnSwapchainDestroy() override;
 
     void Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebufferImageIndex);
-    void PresentToSwapchain(VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain);
+
+    void PresentToSwapchain(
+        VkCommandBuffer cmd,
+        const std::shared_ptr<Swapchain> &swapchain,
+        FramebufferImageIndex framebufferImageIndex,
+        uint32_t srcWidth, uint32_t srcHeight,
+        VkImageLayout srcLayout);
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
