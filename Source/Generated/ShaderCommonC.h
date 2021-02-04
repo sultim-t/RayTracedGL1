@@ -68,6 +68,10 @@ struct ShGlobalUniform
     uint32_t normalsStride;
     uint32_t texCoordsStride;
     uint32_t colorsStride;
+    float renderWidth;
+    float renderHeight;
+    uint32_t frameIndex;
+    uint32_t _pad0;
     int32_t instanceGeomInfoOffset[128];
 };
 

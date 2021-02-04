@@ -79,7 +79,7 @@ private:
     void DestroyDevice();
     void DestroySyncPrimitives();
 
-    void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo);
+    void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo) const;
 
     VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
     void Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight);
@@ -93,6 +93,8 @@ private:
     // [0..MAX_FRAMES_IN_FLIGHT-1]
     uint32_t            currentFrameIndex;
     VkCommandBuffer     currentFrameCmd;
+
+    uint32_t            frameCount;
 
     VkFence             frameFences[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];

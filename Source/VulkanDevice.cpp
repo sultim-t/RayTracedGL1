@@ -30,6 +30,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     surface(VK_NULL_HANDLE),
     currentFrameIndex(MAX_FRAMES_IN_FLIGHT - 1),
     currentFrameCmd(VK_NULL_HANDLE),
+    frameCount(1),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
     debugPrint(info->pfnDebugPrint)
@@ -145,7 +146,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     return cmdManager->StartGraphicsCmd();
 }
 
-void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo)
+void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo) const
 {
     memcpy(gu->view, frameInfo->view, 16 * sizeof(float));
     memcpy(gu->projection, frameInfo->projection, 16 * sizeof(float));
@@ -161,6 +162,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     gu->normalsStride = vbProperties.normalStride / 4;
     gu->texCoordsStride = vbProperties.texCoordStride / 4;
     gu->colorsStride = vbProperties.colorStride / 4;
+
+    gu->renderWidth = frameInfo->renderWidth;
+    gu->renderHeight = frameInfo->renderHeight;
+    gu->frameIndex = frameCount - 1;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
@@ -201,6 +206,8 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
     // present on a surface when rendering will be finished
     swapchain->Present(queues, renderFinishedSemaphores[currentFrameIndex]);
+
+    frameCount++;
 }
 
 

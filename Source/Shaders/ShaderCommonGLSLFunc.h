@@ -30,7 +30,8 @@
 // * DESC_SET_FRAMEBUFFERS      -- to access framebuffers (defined in ShaderCommonGLSL.h)
 // * DESC_SET_RANDOM            -- to access blue noise (uniform distribution) and sampling points on surfaces
 
-#define UINT32_MAX 0xFFFFFFFF
+#define UINT32_MAX  0xFFFFFFFF
+#define M_PI        3.14159265358979323846
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
 layout(
@@ -353,6 +354,10 @@ layout(
     binding = BINDING_BLUE_NOISE)
     uniform sampler2DArray blueNoiseTextures;
 
+#if BLUE_NOISE_TEXTURE_SIZE_POW * 2 > 31
+    #error BLUE_NOISE_TEXTURE_SIZE_POW must be lower, around 6-8
+#endif
+
 uint packRandomSeed(uint textureIndex, uvec2 offset)
 {
     return 
@@ -382,7 +387,42 @@ vec4 getBlueNoiseSample(uint seed)
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
-uint getRandomSeed(ivec2 pix, uint frameId, float screenWidth, float screenHeight)
+// Sample disk uniformly
+vec2 sampleDisk(uint seed, float radius)
+{
+    // uniform distribution
+    vec4 u = getBlueNoiseSample(seed);
+
+    // polar mapping
+    float r = radius * sqrt(u[0]);
+    float phi = 2 * M_PI * u[1];
+    
+    return vec2(
+        r * cos(phi), 
+        r * sin(phi)
+    );
+
+    // pdf = M_PI * radius * radius;
+}
+
+// Sample direction from cosine-weighted unit hemisphere oriented to Z axis
+vec3 sampleHemisphere(uint seed)
+{
+    vec4 u = getBlueNoiseSample(seed);
+
+    float r = sqrt(u[0]);
+    float phi = 2 * M_PI * u[1];
+
+    return vec3( 
+        r * cos(phi),
+        r * sin(phi),
+        sqrt(1 - u[0])
+    );
+
+    // pdf = z / M_PI;
+}
+
+uint getRandomSeed(ivec2 pix, uint frameIndex, float screenWidth, float screenHeight)
 {
     uint idX = pix.x / BLUE_NOISE_TEXTURE_SIZE;
     uint idY = pix.y / BLUE_NOISE_TEXTURE_SIZE;
@@ -390,8 +430,8 @@ uint getRandomSeed(ivec2 pix, uint frameId, float screenWidth, float screenHeigh
     uint countX = uint(ceil(screenWidth / BLUE_NOISE_TEXTURE_SIZE));
     uint countY = uint(ceil(screenHeight / BLUE_NOISE_TEXTURE_SIZE));
 
-    uint texIndex = (idY * countX + idX) + countX * countY * frameId;
-    texIndex = texIndex % BLUE_NOISE_TEXTURE_COUNT;
+    uint texIndex = (idY * countX + idX) /*+ countX * countY * (frameIndex % 16)*/;
+    texIndex = (texIndex + frameIndex) % BLUE_NOISE_TEXTURE_COUNT;
     
     uvec2 offset = uvec2(pix.x % BLUE_NOISE_TEXTURE_SIZE,
                          pix.y % BLUE_NOISE_TEXTURE_SIZE);

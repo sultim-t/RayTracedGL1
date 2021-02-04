@@ -123,12 +123,7 @@ void main()
 	vec4 target = globalUniform.invProjection * vec4(d.x, d.y, 1, 1) ;
 	vec4 dir = globalUniform.invView * vec4(normalize(target.xyz / target.w), 0) ;
 
-	// TODO: uniform
-	uint frameIndex = 0;
-	float renderWidth = 1600;
-	float renderHeight = 900;
-
-	uint randomSeed = getRandomSeed(pix, frameIndex, renderWidth, renderHeight);
+	uint randomSeed = getRandomSeed(pix, globalUniform.frameIndex, globalUniform.renderWidth, globalUniform.renderHeight);
 	imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
 
 	// start color is fully transparent black and dist = 0,
@@ -183,7 +178,7 @@ void main()
 		// sky
 		color = vec4(0.85, 0.95, 1.0, 1.0);
 
-		imageStore(framebufAlbedo,              pix, vec4(getBlueNoiseSample(randomSeed)));
+		imageStore(framebufAlbedo,              pix, getBlueNoiseSample(randomSeed));
 		imageStore(framebufNormal,              pix, vec4(0.0));
 		imageStore(framebufNormalGeometry,      pix, vec4(0.0));
 	    imageStore(framebufMetallicRoughness,   pix, vec4(0, 0, 0, 0));

@@ -277,6 +277,11 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "normalsStride",        1),
     (TYPE_UINT32,       1,      "texCoordsStride",      1),
     (TYPE_UINT32,       1,      "colorsStride",         1),
+    (TYPE_FLOAT32,      1,      "renderWidth",          1),
+    (TYPE_FLOAT32,      1,      "renderHeight",         1),
+    (TYPE_UINT32,       1,      "frameIndex",           1),
+    # for std140
+    (TYPE_UINT32,       1,      "_pad0",                1),
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
