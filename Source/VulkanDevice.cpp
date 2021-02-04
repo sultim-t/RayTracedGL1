@@ -30,7 +30,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     surface(VK_NULL_HANDLE),
     currentFrameIndex(MAX_FRAMES_IN_FLIGHT - 1),
     currentFrameCmd(VK_NULL_HANDLE),
-    frameCount(1),
+    frameId(1),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
     debugPrint(info->pfnDebugPrint)
@@ -165,7 +165,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
 
     gu->renderWidth = frameInfo->renderWidth;
     gu->renderHeight = frameInfo->renderHeight;
-    gu->frameIndex = frameCount - 1;
+    gu->frameId = frameId;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
@@ -187,8 +187,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, swapchain, FramebufferImageIndex::FB_IMAGE_ALBEDO,
-        swapchain->GetWidth(), swapchain->GetHeight(), VK_IMAGE_LAYOUT_GENERAL);
+        cmd, currentFrameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_ALBEDO,
+        renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer
     rasterizer->Draw(cmd, currentFrameIndex);
@@ -207,7 +207,7 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
     // present on a surface when rendering will be finished
     swapchain->Present(queues, renderFinishedSemaphores[currentFrameIndex]);
 
-    frameCount++;
+    frameId++;
 }
 
 

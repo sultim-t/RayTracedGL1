@@ -23,6 +23,8 @@
 #include "Swapchain.h"
 #include "Utils.h"
 
+static_assert(MAX_FRAMES_IN_FLIGHT == FRAMEBUFFERS_HISTORY_LENGTH, "Framebuffers class logic must be changed if history length is not equal to max frames in flight");
+
 Framebuffers::Framebuffers(
     VkDevice _device, 
     std::shared_ptr<MemoryAllocator> _allocator, 
@@ -133,9 +135,18 @@ void Framebuffers::OnSwapchainDestroy()
     DestroyImages();
 }
 
-void Framebuffers::Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebufferImageIndex)
+void Framebuffers::Barrier(
+    VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufferImageIndex)
 {
     assert(framebufferImageIndex < images.size());
+    assert(frameIndex < FRAMEBUFFERS_HISTORY_LENGTH);
+
+    // if framubuffer with given index can be swapped,
+    // use one that is currently in use
+    if (ShFramebuffers_Bindings[framebufferImageIndex] != ShFramebuffers_BindingsSwapped[framebufferImageIndex])
+    {
+        framebufferImageIndex = (FramebufferImageIndex)(framebufferImageIndex + frameIndex);
+    }
 
     Utils::BarrierImage(
         cmd, images[framebufferImageIndex],
@@ -144,8 +155,10 @@ void Framebuffers::Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebuffe
 }
 
 void Framebuffers::PresentToSwapchain(
-    VkCommandBuffer cmd, const std::shared_ptr<Swapchain> &swapchain,
-    FramebufferImageIndex framebufferImageIndex, uint32_t srcWidth, uint32_t srcHeight, VkImageLayout srcLayout)
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    const std::shared_ptr<Swapchain> &swapchain,
+    FramebufferImageIndex framebufferImageIndex, 
+    uint32_t srcWidth, uint32_t srcHeight, VkImageLayout srcLayout)
 {
     swapchain->BlitForPresent(
         cmd, images[framebufferImageIndex],
@@ -154,7 +167,6 @@ void Framebuffers::PresentToSwapchain(
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const
 {
-    static_assert(MAX_FRAMES_IN_FLIGHT == FRAMEBUFFERS_HISTORY_LENGTH, "Framebuffers::GetDescSet must be changed if history length is not equal to max frames in flight");
     return descSets[frameIndex];
 }
 

@@ -93,8 +93,8 @@ private:
     // [0..MAX_FRAMES_IN_FLIGHT-1]
     uint32_t            currentFrameIndex;
     VkCommandBuffer     currentFrameCmd;
-
-    uint32_t            frameCount;
+    // incremented every frame
+    uint32_t            frameId;
 
     VkFence             frameFences[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];

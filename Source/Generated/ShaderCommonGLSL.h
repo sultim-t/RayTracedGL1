@@ -78,7 +78,7 @@ struct ShGlobalUniform
     uint colorsStride;
     float renderWidth;
     float renderHeight;
-    uint frameIndex;
+    uint frameId;
     uint _pad0;
     int instanceGeomInfoOffset[128];
 };

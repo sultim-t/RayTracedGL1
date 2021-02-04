@@ -49,10 +49,13 @@ public:
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
 
-    void Barrier(VkCommandBuffer cmd, FramebufferImageIndex framebufferImageIndex);
+    void Barrier(
+        VkCommandBuffer cmd,
+        uint32_t frameIndex,
+        FramebufferImageIndex framebufferImageIndex);
 
     void PresentToSwapchain(
-        VkCommandBuffer cmd,
+        VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<Swapchain> &swapchain,
         FramebufferImageIndex framebufferImageIndex,
         uint32_t srcWidth, uint32_t srcHeight,
