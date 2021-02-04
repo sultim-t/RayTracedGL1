@@ -27,6 +27,8 @@
 #include "ImageLoader.h"
 #include "Utils.h"
 
+static_assert(BLUE_NOISE_TEXTURE_COUNT == BlueNoiseFileNamesCount, "");
+
 BlueNoise::BlueNoise(
     VkDevice _device,
     const char *_textureFolder,

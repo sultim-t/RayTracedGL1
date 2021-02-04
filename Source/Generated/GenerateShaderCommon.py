@@ -219,6 +219,7 @@ CONST = {
     "MATERIAL_NORMAL_METALLIC_INDEX"        : 1,
     "MATERIAL_EMISSION_ROUGHNESS_INDEX"     : 2,
     "MATERIAL_NO_TEXTURE"                   : 0,
+    "BLUE_NOISE_TEXTURE_COUNT"              : 64,
 }
 
 CONST_GLSL_ONLY = {
