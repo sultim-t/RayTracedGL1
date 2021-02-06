@@ -35,6 +35,7 @@ struct ShaderModuleDefinition
 static ShaderModuleDefinition G_SHADERS[] =
 {
     {"RGenPrimary",     "../../../RtRaygenPrimary.rgen.spv"     , VK_SHADER_STAGE_ALL },
+    {"RGenDirect",      "../../../RtRaygenDirect.rgen.spv"      , VK_SHADER_STAGE_ALL },
     {"RMiss",           "../../../RtMiss.rmiss.spv"             , VK_SHADER_STAGE_ALL },
     {"RMissShadow",     "../../../RtMissShadowCheck.rmiss.spv"  , VK_SHADER_STAGE_ALL },
     {"RClsOpaque",      "../../../RtClsOpaque.rchit.spv"        , VK_SHADER_STAGE_ALL },

@@ -40,12 +40,14 @@ RayTracingPipeline::RayTracingPipeline(
     groupBaseAlignment(0),
     handleSize(0),
     alignedHandleSize(0),
+    raygenShaderCount(0),
     hitGroupCount(0),
     missShaderCount(0)
 {
     std::vector<const char *> stageNames =
     {
         "RGenPrimary",
+        "RGenDirect",
         "RMiss",
         "RMissShadow",
         "RClsOpaque",
@@ -82,7 +84,8 @@ RayTracingPipeline::RayTracingPipeline(
 
     // set shader binding table structure the same as defined with SBT_INDEX_* 
 
-    AddRayGenGroup(toIndex("RGenPrimary"));
+    AddRayGenGroup(toIndex("RGenPrimary"));                         assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_PRIMARY);
+    AddRayGenGroup(toIndex("RGenDirect"));                          assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_DIRECT);
 
     AddMissGroup(toIndex("RMiss"));                                 assert(missShaderCount - 1 == SBT_INDEX_MISS_DEFAULT);
     AddMissGroup(toIndex("RMissShadow"));                           assert(missShaderCount - 1 == SBT_INDEX_MISS_SHADOW);
@@ -201,29 +204,45 @@ void RayTracingPipeline::Bind(VkCommandBuffer cmd)
 }
 
 void RayTracingPipeline::GetEntries(
+    uint32_t sbtRayGenIndex,
     VkStridedDeviceAddressRegionKHR &raygenEntry,
     VkStridedDeviceAddressRegionKHR &missEntry,
     VkStridedDeviceAddressRegionKHR &hitEntry,
     VkStridedDeviceAddressRegionKHR &callableEntry) const
 {
+    assert(sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY || 
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT);
+
     VkDeviceAddress bufferAddress = shaderBindingTable->GetAddress();
 
+    uint64_t offset = 0;
+
+
     raygenEntry = {};
-    raygenEntry.deviceAddress = bufferAddress;
+    raygenEntry.deviceAddress = bufferAddress + offset + (uint64_t)sbtRayGenIndex * alignedHandleSize;
     raygenEntry.stride = alignedHandleSize;
     raygenEntry.size = alignedHandleSize;
     // vk spec
     assert(raygenEntry.size == raygenEntry.stride);
 
+    offset += (uint64_t)raygenShaderCount * alignedHandleSize;
+
+
     missEntry = {};
-    missEntry.deviceAddress = bufferAddress + raygenEntry.size;
+    missEntry.deviceAddress = bufferAddress + offset;
     missEntry.stride = alignedHandleSize;
-    missEntry.size = alignedHandleSize * missShaderCount;
+    missEntry.size = (uint64_t)missShaderCount * alignedHandleSize;
+
+    offset += (uint64_t)missShaderCount * alignedHandleSize;
+
 
     hitEntry = {};
-    hitEntry.deviceAddress = bufferAddress + raygenEntry.size + missEntry.size;
+    hitEntry.deviceAddress = bufferAddress + offset;
     hitEntry.stride = alignedHandleSize;
-    hitEntry.size = alignedHandleSize * hitGroupCount;
+    hitEntry.size = (uint64_t)hitGroupCount * alignedHandleSize;
+
+    offset += (uint64_t)hitGroupCount * alignedHandleSize;
+
 
     callableEntry = {};
 }
@@ -249,6 +268,8 @@ void RayTracingPipeline::AddGeneralGroup(uint32_t generalIndex)
 void RayTracingPipeline::AddRayGenGroup(uint32_t raygenIndex)
 {
     AddGeneralGroup(raygenIndex);
+
+    raygenShaderCount++;
 }
 
 void RayTracingPipeline::AddMissGroup(uint32_t missIndex)

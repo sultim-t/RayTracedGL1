@@ -210,6 +210,8 @@ CONST = {
     "INSTANCE_MASK_HAS_SHADOWS"             : "1",
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,
+    "SBT_INDEX_RAYGEN_PRIMARY"              : 0,
+    "SBT_INDEX_RAYGEN_DIRECT"               : 1,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
     "SBT_INDEX_MISS_SHADOW"                 : 1,
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,

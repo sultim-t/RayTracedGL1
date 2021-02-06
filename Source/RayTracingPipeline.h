@@ -49,7 +49,8 @@ public:
 
     void Bind(VkCommandBuffer cmd);
 
-    void GetEntries(VkStridedDeviceAddressRegionKHR &raygenEntry,
+    void GetEntries(uint32_t sbtRayGenIndex,
+                    VkStridedDeviceAddressRegionKHR &raygenEntry,
                     VkStridedDeviceAddressRegionKHR &missEntry,
                     VkStridedDeviceAddressRegionKHR &hitEntry,
                     VkStridedDeviceAddressRegionKHR &callableEntry) const;
@@ -83,6 +84,7 @@ private:
     uint32_t handleSize;
     uint32_t alignedHandleSize;
 
+    uint32_t raygenShaderCount;
     uint32_t hitGroupCount;
     uint32_t missShaderCount;
 };
