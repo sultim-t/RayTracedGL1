@@ -348,12 +348,16 @@ FRAMEBUF_STORE_PREV_POSTFIX = "_Prev"
 
 FRAMEBUFFERS = {
     # (image name) : (base format type, components, flags)
-    "Albedo"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "Normal"            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "NormalGeometry"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "MetallicRoughness" : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "Depth"             : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
-    "RandomSeed"        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "Albedo"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "Normal"                : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "NormalGeometry"        : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "MetallicRoughness"     : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "Depth"                 : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "RandomSeed"            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "LightDirectDiffuse"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "LightDirectSpecular"   : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 
