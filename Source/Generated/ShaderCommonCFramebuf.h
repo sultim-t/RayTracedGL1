@@ -21,6 +21,7 @@ enum FramebufferImageIndex
     FB_IMAGE_LIGHT_DIRECT_SPECULAR_PREV = 14,
     FB_IMAGE_SURFACE_POSITION = 15,
     FB_IMAGE_VIEW_DIRECTION = 16,
+    FB_IMAGE_FINAL = 17,
 };
 
 extern const uint32_t ShFramebuffers_Count;

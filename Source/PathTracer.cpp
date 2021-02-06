@@ -91,4 +91,6 @@ void PathTracer::Trace(
 
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_DIRECT_DIFFUSE);
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_DIRECT_SPECULAR);
+
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_FINAL);
 }

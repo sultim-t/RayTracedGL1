@@ -360,6 +360,7 @@ FRAMEBUFFERS = {
     "LightDirectSpecular"   : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 

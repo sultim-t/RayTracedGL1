@@ -187,7 +187,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, currentFrameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_ALBEDO,
+        cmd, currentFrameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_FINAL,
         renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer

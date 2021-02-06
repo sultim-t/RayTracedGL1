@@ -112,7 +112,12 @@ struct ShDirectionalLight
 	vec3 color;
 };
 
-void processDirectionalLight(ivec2 pix, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float roughness, vec3 viewDirection, ShDirectionalLight dirLight)
+void processDirectionalLight(
+	ivec2 pix, vec3 surfPosition, 
+	vec3 surfNormal, vec3 surfNormalGeom,
+	float roughness, vec3 viewDirection, 
+	ShDirectionalLight dirLight,
+	out vec3 outDiffuse, out vec3 outSpecular)
 {
 	uint seed = getCurrentRandomSeed(pix);
 	vec2 disk = sampleDisk(seed, tan(dirLight.angularDiameter * 0.5));
@@ -129,8 +134,8 @@ void processDirectionalLight(ivec2 pix, vec3 surfPosition, vec3 surfNormal, vec3
 
 	if (nl <= 0 || ngl <= 0)
 	{
-		imageStore(framebufLightDirectDiffuse, pix, vec4(0.0));
-		imageStore(framebufLightDirectSpecular, pix, vec4(0.0));
+		outDiffuse = vec3(0.0);
+		outSpecular = vec3(0.0);
 		return;
 	}
 
@@ -138,33 +143,53 @@ void processDirectionalLight(ivec2 pix, vec3 surfPosition, vec3 surfNormal, vec3
 
 	if (isShadowed)
 	{
-		imageStore(framebufLightDirectDiffuse, pix, vec4(0.0));
-		imageStore(framebufLightDirectSpecular, pix, vec4(0.0));
+		outDiffuse = vec3(0.0);
+		outSpecular = vec3(0.0);
 		return;
 	}
 
-	vec3 diffuse = getBRDFLambertian(1.0) * dirLight.color * nl;
-	vec3 specular = getBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, roughness) * dirLight.color * nl;
-
-	imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
-	imageStore(framebufLightDirectSpecular, pix, vec4(specular, 0.0));
+	outDiffuse = getBRDFLambertian(1.0) * dirLight.color * nl;
+	outSpecular = getBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, roughness) * dirLight.color * nl;
 }
 
 void main()
 {
 	const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+
+	vec4 depth = texelFetch(framebufDepth_Sampler, pix, 0);
+
+	if (depth.x > MAX_RAY_LENGTH - 1.0f)
+	{
+		vec4 skyColor = texelFetch(framebufAlbedo_Sampler, pix, 0);
+		imageStore(framebufFinal, pix, skyColor);
+		return;
+	}
 	
 	vec4 surfPosition = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
 	vec4 surfNormal = texelFetch(framebufNormal_Sampler, pix, 0);
 	vec4 surfNormalGeom = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
 	vec4 viewDirection = texelFetch(framebufViewDirection_Sampler, pix, 0);
 
-	float roughness = 0.5;
+	float roughness = 0.8;
 	
 	ShDirectionalLight lt;
-	lt.direction = vec3(-1, 1, 1);
-	lt.angularDiameter = 1;
-	lt.color = vec3(1, 1, 1);
+	lt.direction = normalize(vec3(-1, 1, 1));
+	lt.angularDiameter = 0.2;
+	lt.color = vec3(5, 5, 5);
 
-	processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, roughness, viewDirection.xyz, lt);
+	vec3 diffuse, specular;
+	processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, roughness, -viewDirection.xyz, lt, diffuse, specular);
+
+	imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
+	imageStore(framebufLightDirectSpecular, pix, vec4(specular, 0.0));
+
+
+	// temp
+	vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
+
+	float specularity = 0.1;
+	float ambient = 0.2;
+	vec4 color = albedo * (vec4(diffuse, 0.0) * (1 - specularity) + vec4(specular, 0.0) * specularity) * (1 - ambient) + ambient;
+
+	imageStore(framebufFinal, pix, color);
 }
