@@ -94,13 +94,19 @@ public:
 private:
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
 
+    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const;
+    
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
-    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const;
+    bool CopyGeometryInfosFromStaging(VkCommandBuffer cmd);
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
 
+    // Return address of mapped memory.
     ShGeometryInstance *GetGeomInfoAddress(uint32_t geomIndex);
+    // Mark memory to be copied to device local buffer
+    void MarkGeomInfoIndexToCopy(uint32_t geomIndex);
+
     void WriteGeomInfo(uint32_t geomIndex, const ShGeometryInstance &src);
     void WriteGeomInfoMaterials(uint32_t geomIndex, uint32_t layer, const MaterialTextures &src);
     void WriteGeomInfoTransform(uint32_t geomIndex, const RgTransform &src);
@@ -141,7 +147,9 @@ private:
     Buffer transforms;
 
     // buffer for getting info for geometry in BLAS
+    Buffer stagingGeomInfosBuffer;
     Buffer geomInfosBuffer;
+    uint32_t geomInfosCopyRegions[32];
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;
@@ -153,9 +161,10 @@ private:
 
     // each geometry has its type as they're can be in different filters
     std::map<uint32_t, VertexCollectorFilterTypeFlags> geomType;
+
     // geometry index in its filter's space, i.e.
     // geomIndex = ToOffset(geomType) * MAX_BLAS_GEOMS + geomLocalIndex
-    std::map<uint32_t, VertexCollectorFilterTypeFlags> geomLocalIndex;
+    std::map<uint32_t, uint32_t> geomLocalIndex;
 
     std::map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
 };

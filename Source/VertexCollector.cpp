@@ -29,6 +29,7 @@ VertexCollector::VertexCollector(
     device(_device),
     properties(_properties),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
+    geomInfosCopyRegions{},
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0)
 {
     assert(_filters != 0);
@@ -44,7 +45,7 @@ VertexCollector::VertexCollector(
         _allocator, _bufferSize,
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Vertices data device local buffer");
+        "Vertices data buffer");
 
     // index buffers
     stagingIndexBuffer.Init(
@@ -57,7 +58,7 @@ VertexCollector::VertexCollector(
         _allocator, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Index data device local buffer");
+        "Index data buffer");
 
     // transforms buffer
     transforms.Init(
@@ -67,16 +68,24 @@ VertexCollector::VertexCollector(
         "Vertex collector transforms buffer");
 
     // geometry instance info for each geometry in each top level instance
-    geomInfosBuffer.Init(
+    stagingGeomInfosBuffer.Init(
         _allocator,  MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
-        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "BLAS geometry info buffer");
+        "Geometry info staging buffer");
+
+    geomInfosBuffer.Init(
+        _allocator, MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        "Geometry info buffer");
+
+    static_assert(sizeof(geomInfosCopyRegions) / sizeof(geomInfosCopyRegions[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Number of geomInfo copy regions must be MAX_TOP_LEVEL_INSTANCE_COUNT");
 
     mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.Map());
     mappedIndexData = static_cast<uint32_t *>(stagingIndexBuffer.Map());
     mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
-    mappedGeomInfosData = static_cast<ShGeometryInstance *>(geomInfosBuffer.Map());
+    mappedGeomInfosData = static_cast<ShGeometryInstance *>(stagingGeomInfosBuffer.Map());
 
     InitFilters(_filters);
 }
@@ -87,7 +96,7 @@ VertexCollector::~VertexCollector()
     stagingVertBuffer.TryUnmap();
     stagingIndexBuffer.TryUnmap();
     transforms.TryUnmap();
-    geomInfosBuffer.TryUnmap();
+    stagingGeomInfosBuffer.TryUnmap();
 }
 
 void VertexCollector::BeginCollecting()
@@ -205,40 +214,45 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
 
     PushPrimitiveCount(geomFlags, primitiveCount);
 
-    // copy geom info
-    assert(geomInfosBuffer.IsMapped());
-
-    static_assert(sizeof(ShGeometryInstance) % 16 == 0, "Std430 structs must be aligned by 16 bytes");
-
-    ShGeometryInstance geomInfo = {};
-    geomInfo.baseVertexIndex = vertIndex;
-    geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
-    geomInfo.primitiveCount = primitiveCount;
-    geomInfo.color = info.color;
-    geomInfo.defaultRoughness = info.defaultRoughness;
-    geomInfo.defaultMetallicity = info.defaultMetallicity;
-    geomInfo.defaultEmission = info.defaultEmission;
-
-    Matrix::ToMat4Transposed(geomInfo.model, info.transform);
-
-    static_assert(sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0]) == MATERIALS_MAX_LAYER_COUNT, 
-                  "Layer count must be MATERIALS_MAX_LAYER_COUNT");
-
-    for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
     {
-        // only for static geometry, dynamic is updated each frame,
-        // so the materials will be updated anyway
-        if (collectStatic)
+        // copy geom info
+        assert(stagingGeomInfosBuffer.IsMapped());
+
+        static_assert(sizeof(ShGeometryInstance) % 16 == 0, "Std430 structs must be aligned by 16 bytes");
+
+        ShGeometryInstance geomInfo = {};
+        geomInfo.baseVertexIndex = vertIndex;
+        geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
+        geomInfo.primitiveCount = primitiveCount;
+        geomInfo.color = info.color;
+        geomInfo.defaultRoughness = info.defaultRoughness;
+        geomInfo.defaultMetallicity = info.defaultMetallicity;
+        geomInfo.defaultEmission = info.defaultEmission;
+
+        Matrix::ToMat4Transposed(geomInfo.model, info.transform);
+
+        static_assert(sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0]) == MATERIALS_MAX_LAYER_COUNT,
+                      "Layer count must be MATERIALS_MAX_LAYER_COUNT");
+
+        for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
         {
-            uint32_t materialIndex = info.geomMaterial.layerMaterials[layer];
-            AddMaterialDependency(geomIndex, layer, materialIndex);
+            // only for static geometry, dynamic is updated each frame,
+            // so the materials will be updated anyway
+            if (collectStatic)
+            {
+                uint32_t materialIndex = info.geomMaterial.layerMaterials[layer];
+                AddMaterialDependency(geomIndex, layer, materialIndex);
+            }
+
+            memcpy(geomInfo.materials[layer], materials[layer].indices,
+                   TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
         }
 
-        memcpy(geomInfo.materials[layer], materials[layer].indices,
-               TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
-    }
+        WriteGeomInfo(geomIndex, geomInfo);
 
-    WriteGeomInfo(geomIndex, geomInfo);
+        // mark to be copied from staging
+        MarkGeomInfoIndexToCopy(geomIndex);
+    }
 
     return geomIndex;
 }
@@ -315,6 +329,11 @@ void VertexCollector::Reset()
     geomLocalIndex.clear();
     materialDependencies.clear();
 
+    for (uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++)
+    {
+        geomInfosCopyRegions[type] = 0;
+    }
+
     for (auto &f : filters)
     {
         f.second->Reset();
@@ -359,23 +378,57 @@ bool VertexCollector::CopyIndexDataFromStaging(VkCommandBuffer cmd)
     return true;
 }
 
+bool VertexCollector::CopyGeometryInfosFromStaging(VkCommandBuffer cmd)
+{
+    VkBufferCopy infos[MAX_TOP_LEVEL_INSTANCE_COUNT];
+    uint32_t infoCount = 0;
+
+    for (uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++)
+    {
+        if (geomInfosCopyRegions[type] > 0)
+        {
+            uint64_t typeOffset = sizeof(ShGeometryInstance) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * type;
+
+            infos[infoCount].srcOffset = typeOffset;
+            infos[infoCount].dstOffset = typeOffset;
+            infos[infoCount].size = geomInfosCopyRegions[type];
+
+            infoCount++;
+        }
+    }
+
+    if (infoCount == 0)
+    {
+        return false;
+    }
+
+    vkCmdCopyBuffer(
+        cmd,
+        stagingGeomInfosBuffer.GetBuffer(), geomInfosBuffer.GetBuffer(),
+        infoCount, infos);
+
+    return true;
+}
+
 void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
     bool vrtCopied = CopyVertexDataFromStaging(cmd, isStatic);
     bool indCopied = CopyIndexDataFromStaging(cmd);
+    bool gmtCopied = CopyGeometryInfosFromStaging(cmd);
 
     // sync dst buffer access
-    VkBufferMemoryBarrier barriers[2] = {};
+    VkBufferMemoryBarrier barriers[3] = {};
     uint32_t barrierCount = 0;
 
     if (vrtCopied)
     {
         VkBufferMemoryBarrier &vrtBr = barriers[barrierCount++];
+
         vrtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         vrtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         vrtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
         vrtBr.buffer = vertBuffer.GetBuffer();
         vrtBr.size = VK_WHOLE_SIZE;
     }
@@ -383,13 +436,27 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
     if (indCopied)
     {
         VkBufferMemoryBarrier &indBr = barriers[barrierCount++];
+
         indBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         indBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         indBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         indBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        indBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        indBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
         indBr.buffer = indexBuffer.GetBuffer();
         indBr.size = curIndexCount * sizeof(uint32_t);
+    }
+
+    if (gmtCopied)
+    {
+        VkBufferMemoryBarrier &gmtBr = barriers[barrierCount++];
+
+        gmtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        gmtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        gmtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        gmtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        gmtBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        gmtBr.buffer = geomInfosBuffer.GetBuffer();
+        gmtBr.size = VK_WHOLE_SIZE;
     }
 
     if (barrierCount > 0)
@@ -471,13 +538,31 @@ ShGeometryInstance *VertexCollector::GetGeomInfoAddress(uint32_t geomIndex)
     assert(geomType.find(geomIndex) != geomType.end());
     assert(geomLocalIndex.find(geomIndex) != geomLocalIndex.end());
 
-    VertexCollectorFilterTypeFlags type = geomType[geomIndex];
+    VertexCollectorFilterTypeFlags typeFlags = geomType[geomIndex];
     uint32_t localIndex = geomLocalIndex[geomIndex];
 
-    uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(type);
+    uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(typeFlags);
     assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
     return &mappedGeomInfosData[offset * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT + localIndex];
+}
+
+void VertexCollector::MarkGeomInfoIndexToCopy(uint32_t geomIndex)
+{
+    assert(mappedGeomInfosData != nullptr);
+    assert(geomType.find(geomIndex) != geomType.end());
+    assert(geomLocalIndex.find(geomIndex) != geomLocalIndex.end());
+
+    VertexCollectorFilterTypeFlags typeFlags = geomType[geomIndex];
+    uint32_t localIndex = geomLocalIndex[geomIndex];
+
+    uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(typeFlags);
+    assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
+
+    // make sure that old value was for previous geometry of the same type
+    assert(geomInfosCopyRegions[offset] == localIndex * sizeof(ShGeometryInstance));
+
+    geomInfosCopyRegions[offset] = (localIndex + 1) * sizeof(ShGeometryInstance);
 }
 
 void VertexCollector::WriteGeomInfo(uint32_t geomIndex, const ShGeometryInstance &src)
