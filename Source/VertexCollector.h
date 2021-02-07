@@ -99,6 +99,7 @@ private:
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
     bool CopyGeometryInfosFromStaging(VkCommandBuffer cmd);
+    bool CopyTransformsFromStaging(VkCommandBuffer cmd);
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
 
@@ -144,7 +145,9 @@ private:
 
     Buffer stagingIndexBuffer;
     Buffer indexBuffer;
-    Buffer transforms;
+
+    Buffer stagingTransformsBuffer;
+    Buffer transformsBuffer;
 
     // buffer for getting info for geometry in BLAS
     Buffer stagingGeomInfosBuffer;

@@ -34,6 +34,7 @@ VertexCollector::VertexCollector(
 {
     assert(_filters != 0);
 
+
     // vertex buffers
     stagingVertBuffer.Init(
         _allocator, _bufferSize,
@@ -46,6 +47,7 @@ VertexCollector::VertexCollector(
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Vertices data buffer");
+
 
     // index buffers
     stagingIndexBuffer.Init(
@@ -60,12 +62,20 @@ VertexCollector::VertexCollector(
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Index data buffer");
 
+
     // transforms buffer
-    transforms.Init(
+    stagingTransformsBuffer.Init(
         _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR),
-        VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "Vertex collector transforms buffer");
+        "BLAS transforms staging buffer");
+
+    transformsBuffer.Init(
+        _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        "BLAS transforms buffer");
+
 
     // geometry instance info for each geometry in each top level instance
     stagingGeomInfosBuffer.Init(
@@ -80,11 +90,12 @@ VertexCollector::VertexCollector(
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         "Geometry info buffer");
 
+
     static_assert(sizeof(geomInfosCopyRegions) / sizeof(geomInfosCopyRegions[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Number of geomInfo copy regions must be MAX_TOP_LEVEL_INSTANCE_COUNT");
 
     mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.Map());
     mappedIndexData = static_cast<uint32_t *>(stagingIndexBuffer.Map());
-    mappedTransformData = static_cast<VkTransformMatrixKHR *>(transforms.Map());
+    mappedTransformData = static_cast<VkTransformMatrixKHR *>(stagingTransformsBuffer.Map());
     mappedGeomInfosData = static_cast<ShGeometryInstance *>(stagingGeomInfosBuffer.Map());
 
     InitFilters(_filters);
@@ -95,7 +106,7 @@ VertexCollector::~VertexCollector()
     // unmap buffers to destroy them 
     stagingVertBuffer.TryUnmap();
     stagingIndexBuffer.TryUnmap();
-    transforms.TryUnmap();
+    stagingTransformsBuffer.TryUnmap();
     stagingGeomInfosBuffer.TryUnmap();
 }
 
@@ -156,7 +167,8 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         memcpy(mappedIndexData + indIndex, info.indexData, info.indexCount * sizeof(uint32_t));
     }
 
-    memcpy(mappedTransformData + geomIndex, &info.transform, sizeof(RgTransform));
+    static_assert(sizeof(RgTransform) == sizeof(VkTransformMatrixKHR), "RgTransform and VkTransformMatrixKHR must have the same structure to be used in AS building");
+    memcpy(mappedTransformData + geomIndex, &info.transform, sizeof(VkTransformMatrixKHR));
 
     const uint32_t offsetPositions = collectStatic ?
         offsetof(ShVertexBufferStatic, positions) :
@@ -181,7 +193,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     trData.maxVertex = info.vertexCount;
     trData.vertexData.deviceAddress = vertexDataDeviceAddress;
     trData.vertexStride = properties.positionStride;
-    trData.transformData.deviceAddress = transforms.GetAddress() + geomIndex * sizeof(RgTransform);
+    trData.transformData.deviceAddress = transformsBuffer.GetAddress() + geomIndex * sizeof(VkTransformMatrixKHR);
 
     if (useIndices)
     {
@@ -365,15 +377,15 @@ bool VertexCollector::CopyIndexDataFromStaging(VkCommandBuffer cmd)
         return false;
     }
 
-    VkBufferCopy indexCopyInfo = {};
-    indexCopyInfo.srcOffset = 0;
-    indexCopyInfo.dstOffset = 0;
-    indexCopyInfo.size = curIndexCount * sizeof(uint32_t);
+    VkBufferCopy info = {};
+    info.srcOffset = 0;
+    info.dstOffset = 0;
+    info.size = curIndexCount * sizeof(uint32_t);
 
     vkCmdCopyBuffer(
         cmd,
         stagingIndexBuffer.GetBuffer(), indexBuffer.GetBuffer(),
-        1, &indexCopyInfo);
+        1, &info);
 
     return true;
 }
@@ -410,14 +422,35 @@ bool VertexCollector::CopyGeometryInfosFromStaging(VkCommandBuffer cmd)
     return true;
 }
 
+bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd)
+{
+    if (curGeometryCount == 0)
+    {
+        return false;
+    }
+
+    VkBufferCopy info = {};
+    info.srcOffset = 0;
+    info.dstOffset = 0;
+    info.size = curGeometryCount * sizeof(VkTransformMatrixKHR);
+
+    vkCmdCopyBuffer(
+        cmd,
+        stagingTransformsBuffer.GetBuffer(), transformsBuffer.GetBuffer(),
+        1, &info);
+
+    return true;
+}
+
 void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
     bool vrtCopied = CopyVertexDataFromStaging(cmd, isStatic);
     bool indCopied = CopyIndexDataFromStaging(cmd);
     bool gmtCopied = CopyGeometryInfosFromStaging(cmd);
+    bool trnCopied = CopyTransformsFromStaging(cmd);
 
     // sync dst buffer access
-    VkBufferMemoryBarrier barriers[3] = {};
+    VkBufferMemoryBarrier barriers[4] = {};
     uint32_t barrierCount = 0;
 
     if (vrtCopied)
@@ -457,6 +490,19 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
         gmtBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
         gmtBr.buffer = geomInfosBuffer.GetBuffer();
         gmtBr.size = VK_WHOLE_SIZE;
+    }
+
+    if (trnCopied)
+    {
+        VkBufferMemoryBarrier &trnBr = barriers[barrierCount++];
+
+        trnBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        trnBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        trnBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        trnBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        trnBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        trnBr.buffer = transformsBuffer.GetBuffer();
+        trnBr.size = curGeometryCount * sizeof(VkTransformMatrixKHR);
     }
 
     if (barrierCount > 0)
@@ -500,7 +546,8 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &tra
     assert(geomIndex < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
     assert(mappedTransformData != nullptr);
 
-    memcpy(mappedTransformData + geomIndex, &transform, sizeof(RgTransform));
+    static_assert(sizeof(RgTransform) == sizeof(VkTransformMatrixKHR), "RgTransform and VkTransformMatrixKHR must have the same structure to be used in AS building");
+    memcpy(mappedTransformData + geomIndex, &transform, sizeof(VkTransformMatrixKHR));
 
     WriteGeomInfoTransform(geomIndex, transform);
 }
