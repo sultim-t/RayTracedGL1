@@ -42,7 +42,7 @@ TextureOverrides::TextureOverrides(const RgStaticMaterialCreateInfo &_createInfo
     // if file wasn't found, use data instead
     if (_createInfo.data != nullptr && aa == nullptr)
     {
-        aa = _createInfo.data;
+        aa = (uint32_t*)_createInfo.data;
         aaSize = _createInfo.size;
     }
 }

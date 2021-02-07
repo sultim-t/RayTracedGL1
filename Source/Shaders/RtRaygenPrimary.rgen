@@ -72,7 +72,7 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 	
 	if (tr.materials[MATERIAL_ALBEDO_ALPHA_INDEX][0] != MATERIAL_NO_TEXTURE)
 	{
-		albedo = getTextureSample(tr.materials[MATERIAL_ALBEDO_ALPHA_INDEX][0], texCoord).rgb;
+		albedo = getTextureSample(tr.materials[MATERIAL_ALBEDO_ALPHA_INDEX][0], texCoord).rgb * tr.geomColor.rgb;
 	}
 	else
 	{

@@ -169,8 +169,10 @@ void main()
 	vec4 surfNormal = texelFetch(framebufNormal_Sampler, pix, 0);
 	vec4 surfNormalGeom = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
 	vec4 viewDirection = texelFetch(framebufViewDirection_Sampler, pix, 0);
-
-	float roughness = 0.8;
+	
+	vec4 mr = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
+	float surfMetallic = mr.r;
+	float surfRoughness = mr.g;
 	
 	ShDirectionalLight lt;
 	lt.direction = normalize(vec3(-1, 1, 1));
@@ -178,7 +180,7 @@ void main()
 	lt.color = vec3(5, 5, 5);
 
 	vec3 diffuse, specular;
-	processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, roughness, -viewDirection.xyz, lt, diffuse, specular);
+	processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, lt, diffuse, specular);
 
 	imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
 	imageStore(framebufLightDirectSpecular, pix, vec4(specular, 0.0));
@@ -187,9 +189,8 @@ void main()
 	// temp
 	vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
 
-	float specularity = 0.1;
 	float ambient = 0.2;
-	vec4 l = vec4(diffuse, 0.0) * (1 - specularity) + vec4(specular, 0.0) * specularity;
+	vec4 l = vec4(diffuse, 0.0) * (1 - surfMetallic) + vec4(specular, 0.0) * surfMetallic;
 	vec4 color = (l.x + l.y + l.z) / 3 < ambient ?
 		albedo * ambient :
 		albedo * l;
