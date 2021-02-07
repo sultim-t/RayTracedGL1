@@ -161,7 +161,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     gu->positionsStride = vbProperties.positionStride / 4;
     gu->normalsStride = vbProperties.normalStride / 4;
     gu->texCoordsStride = vbProperties.texCoordStride / 4;
-    gu->colorsStride = vbProperties.colorStride / 4;
 
     gu->renderWidth = frameInfo->renderWidth;
     gu->renderHeight = frameInfo->renderHeight;

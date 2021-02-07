@@ -96,7 +96,7 @@ private:
 
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
-    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 4> &outInfos) const;
+    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const;
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
 

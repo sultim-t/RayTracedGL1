@@ -248,7 +248,7 @@ STATIC_BUFFER_STRUCT = [
     (TYPE_FLOAT32,      3,     "positions",        CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      3,     "normals",          CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoords",        CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_UINT32,       1,     "colors",           CONST["MAX_STATIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "colors",           CONST["MAX_STATIC_VERTEX_COUNT"]),
     #(TYPE_UINT32,      1,     "materialIds",      CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
 ]
 
@@ -256,7 +256,7 @@ DYNAMIC_BUFFER_STRUCT = [
     (TYPE_FLOAT32,      3,     "positions",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      3,     "normals",          CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoords",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_UINT32,       1,     "colors",           CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "colors",           CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     #(TYPE_UINT32,      1,     "materialIds",      CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
 ]
 
@@ -264,10 +264,16 @@ TRIANGLE_STRUCT = [
     (TYPE_FLOAT32,     33,     "positions",             1),
     (TYPE_FLOAT32,     33,     "normals",               1),
     (TYPE_FLOAT32,     32,     "texCoords",             1),
-    (TYPE_FLOAT32,      3,     "tangent",               1),
     (TYPE_UINT32,       3,     "materials",             3),
+    (TYPE_FLOAT32,      4,     "geomColor",             1),
+    (TYPE_FLOAT32,      3,     "tangent",               1),
+    (TYPE_FLOAT32,      1,     "geomRoughness",         1),
+    (TYPE_FLOAT32,      3,     "geomEmission",          1),
+    (TYPE_FLOAT32,      1,     "geomMetallicity",       1),
 ]
 
+# Must be careful with std140 offsets! They are set manually.
+# Other structs are using std430 and padding is done automatically.
 GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,     44,      "view",                 1),
     (TYPE_FLOAT32,     44,      "invView",              1),
@@ -278,12 +284,13 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "positionsStride",      1),
     (TYPE_UINT32,       1,      "normalsStride",        1),
     (TYPE_UINT32,       1,      "texCoordsStride",      1),
-    (TYPE_UINT32,       1,      "colorsStride",         1),
+    #(TYPE_UINT32,      1,      "colorsStride",         1),
     (TYPE_FLOAT32,      1,      "renderWidth",          1),
     (TYPE_FLOAT32,      1,      "renderHeight",         1),
     (TYPE_UINT32,       1,      "frameId",              1),
     # for std140
     (TYPE_UINT32,       1,      "_pad0",                1),
+    (TYPE_UINT32,       1,      "_pad1",                1),
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
@@ -294,6 +301,10 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
     (TYPE_UINT32,       1,      "primitiveCount",       1),
+    (TYPE_UINT32,       1,      "color",                1),
+    (TYPE_FLOAT32,      1,      "defaultRoughness",     1),
+    (TYPE_FLOAT32,      1,      "defaultMetallicity",   1),
+    (TYPE_FLOAT32,      1,      "defaultEmission",      1),
 ]
 
 PAYLOAD_STRUCT = [

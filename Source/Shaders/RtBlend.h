@@ -41,7 +41,7 @@ void main()
 	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
     vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
  
-  	vec4 color = getTextureSample(tr.materials[0][0], texCoord);
+  	vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.geomColor;
 
 	float curDistance = gl_HitTEXT;
 

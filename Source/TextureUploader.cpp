@@ -21,10 +21,6 @@
 #include "TextureUploader.h"
 #include "Utils.h"
 
-constexpr VkFormat ImageFormat = VK_FORMAT_R8G8B8A8_SRGB;
-constexpr VkDeviceSize BytesPerPixel = 4;
-
-
 TextureUploader::TextureUploader(VkDevice _device, std::shared_ptr<MemoryAllocator> _memAllocator)
     : device(_device), memAllocator(std::move(_memAllocator))
 {}
@@ -159,18 +155,16 @@ void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, 
 
 bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
 {
-    const RgExtent2D    &size           = info.size;
-    bool                generateMipmaps = info.generateMipmaps;
-    const char          *debugName      = info.debugName;
-
+    const RgExtent2D &size = info.size;
+ 
     // 1. Create image and allocate its memory
 
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.format = ImageFormat;
+    imageInfo.format = info.format;
     imageInfo.extent = { size.width, size.height, 1 };
-    imageInfo.mipLevels = GetMipmapCount(size, generateMipmaps);
+    imageInfo.mipLevels = GetMipmapCount(size, info.generateMipmaps);
     imageInfo.arrayLayers = 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -182,7 +176,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
         return false;
     }
 
-    SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, debugName);
+    SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, info.debugName);
 
     *result = image;
     return true;
@@ -285,7 +279,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
     }
 }
 
-VkImageView TextureUploader::CreateImageView(VkImage image, uint32_t mipmapCount)
+VkImageView TextureUploader::CreateImageView(VkImage image, VkFormat format, uint32_t mipmapCount)
 {
     VkImageView view;
 
@@ -293,7 +287,7 @@ VkImageView TextureUploader::CreateImageView(VkImage image, uint32_t mipmapCount
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = ImageFormat;
+    viewInfo.format = format;
     viewInfo.components = {};
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel = 0;
@@ -309,15 +303,11 @@ VkImageView TextureUploader::CreateImageView(VkImage image, uint32_t mipmapCount
 
 TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &info)
 {
-    uint32_t            frameIndex      = info.frameIndex;
-    const void          *data           = info.data;
-    const RgExtent2D    &size           = info.size;
-    const char          *debugName      = info.debugName;
-    bool                isDynamic       = info.isDynamic;
-    bool                generateMipmaps = info.generateMipmaps;
+    const void          *data   = info.data;
+    const RgExtent2D    &size   = info.size;
 
     // static textures must not have null data
-    assert(isDynamic || data != nullptr);
+    assert(info.isDynamic || data != nullptr);
 
     UploadResult result = {};
     result.wasUploaded = false;
@@ -327,7 +317,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     VkImage image;
 
     // 1. Allocate and fill buffer
-    VkDeviceSize dataSize = BytesPerPixel * size.width * size.height;
+    VkDeviceSize dataSize = info.bytesPerPixel * size.width * size.height;
 
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -340,7 +330,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         return result;
     }
 
-    SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, debugName);
+    SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.debugName);
 
     bool wasCreated = CreateImage(info, &image);
     if (!wasCreated)
@@ -351,7 +341,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     }
 
     // if it's a dynamic texture and the data is not provided yet
-    if (isDynamic && data == nullptr)
+    if (info.isDynamic && data == nullptr)
     {
         // create image without copying
         PrepareImage(image, VK_NULL_HANDLE, info, ImagePrepareType::INIT_WITHOUT_COPYING);
@@ -365,12 +355,12 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     }
 
     // create image view
-    VkImageView imageView = CreateImageView(image, GetMipmapCount(size, generateMipmaps));
+    VkImageView imageView = CreateImageView(image, info.format, GetMipmapCount(size, info.generateMipmaps));
 
-    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, debugName);
+    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.debugName);
 
     // save info about created image
-    if (isDynamic)
+    if (info.isDynamic)
     {
         // for dynamic images:
         // save pointer for updating image data
@@ -379,7 +369,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         updateInfo.mappedData = mappedData;
         updateInfo.dataSize = (uint32_t)dataSize;
         updateInfo.imageSize = size;
-        updateInfo.generateMipmaps = generateMipmaps;
+        updateInfo.generateMipmaps = info.generateMipmaps;
 
         dynamicImageInfos[image] = updateInfo;
     }
@@ -387,7 +377,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     {
         // for static images that won't be updated:
         // push staging buffer to be deleted when it won't be in use
-        stagingToFree[frameIndex].push_back(stagingBuffer);
+        stagingToFree[info.frameIndex].push_back(stagingBuffer);
     }
 
     // return results

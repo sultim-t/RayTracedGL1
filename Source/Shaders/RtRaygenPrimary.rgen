@@ -54,15 +54,15 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
     tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
     tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
 
-	if ((instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
+	//if ((instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
 	{
 		normalGeom = normalize(tr.normals * baryCoords);
 	}
-	else
-	{
-        // positions are in world space
-		normalGeom = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
-	}
+	//else
+	//{
+    //    // positions are in world space
+	//	normalGeom = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
+	//}
 	
 	vec3 albedo;
 	vec3 normal;
@@ -76,7 +76,7 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 	}
 	else
 	{
-		albedo = vec3(1.0);
+		albedo = tr.geomColor.rgb;
 	}
 	
 	if (tr.materials[MATERIAL_NORMAL_METALLIC_INDEX][0] != MATERIAL_NO_TEXTURE)
@@ -90,7 +90,7 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 	else
 	{
 		normal = normalGeom;
-		metallic = 0.0;
+		metallic = tr.geomMetallicity;
 	}
 	
 	if (tr.materials[MATERIAL_EMISSION_ROUGHNESS_INDEX][0] != MATERIAL_NO_TEXTURE)
@@ -101,8 +101,8 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 	}
 	else
 	{
-		emission = vec3(0.0);
-		roughness = 1.0;
+		emission = tr.geomEmission;
+		roughness = tr.geomRoughness;
 	}
 
 	imageStore(framebufAlbedo,              pix, vec4(albedo, 0));

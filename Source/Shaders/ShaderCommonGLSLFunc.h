@@ -33,6 +33,16 @@
 #define UINT32_MAX  0xFFFFFFFF
 #define M_PI        3.14159265358979323846
 
+vec4 unpackLittleEndianUintColor(uint c)
+{
+    return vec4(
+         (c & 0x000000FF)        / 255.0,
+        ((c & 0x0000FF00) >> 8)  / 255.0,
+        ((c & 0x00FF0000) >> 16) / 255.0,
+        ((c & 0xFF000000) >> 24) / 255.0
+    );
+}
+
 #ifdef DESC_SET_GLOBAL_UNIFORM
 layout(
     set = DESC_SET_GLOBAL_UNIFORM,
@@ -301,6 +311,11 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.materials[0] = uvec3(inst.materials[0]);
     tr.materials[1] = uvec3(inst.materials[1]);
     tr.materials[2] = uvec3(inst.materials[2]);
+
+    tr.geomColor = unpackLittleEndianUintColor(inst.color);
+    tr.geomRoughness = inst.defaultRoughness;
+    tr.geomMetallicity = inst.defaultMetallicity;
+    tr.geomEmission = tr.geomColor.rgb * inst.defaultEmission;
 
     return tr;
 }

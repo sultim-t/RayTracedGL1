@@ -214,6 +214,10 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     geomInfo.baseVertexIndex = vertIndex;
     geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
     geomInfo.primitiveCount = primitiveCount;
+    geomInfo.color = info.color;
+    geomInfo.defaultRoughness = info.defaultRoughness;
+    geomInfo.defaultMetallicity = info.defaultMetallicity;
+    geomInfo.defaultEmission = info.defaultEmission;
 
     Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
@@ -254,14 +258,10 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     const uint64_t offsetTexCoords = isStatic ?
         offsetof(ShVertexBufferStatic, texCoords) :
         offsetof(ShVertexBufferDynamic, texCoords);
-    const uint64_t offsetColors = isStatic ?
-        offsetof(ShVertexBufferStatic, colors) :
-        offsetof(ShVertexBufferDynamic, colors);
 
     const uint64_t positionStride = properties.positionStride;
     const uint64_t normalStride = properties.normalStride;
     const uint64_t texCoordStride = properties.texCoordStride;
-    const uint64_t colorStride = properties.colorStride;
 
     // positions
     void *positionsDst = mappedVertexData + offsetPositions + vertIndex * positionStride;
@@ -296,20 +296,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(texCoordDst, 0, info.vertexCount * texCoordStride);
     }
 
-    // colors
-    void *colorDst = mappedVertexData + offsetColors + info.vertexCount * colorStride;
-    assert(offsetColors + (info.vertexCount + info.vertexCount) * colorStride < wholeBufferSize);
-
-    if (info.colorData != nullptr)
-    {
-        memcpy(colorDst, info.colorData, info.vertexCount * colorStride);
-    }
-    else
-    {
-        // set white color
-        memset(colorDst, 0xFF, info.vertexCount * colorStride);
-    }
-
     //const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
     //const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 }
@@ -337,7 +323,7 @@ void VertexCollector::Reset()
 
 bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
-    std::array<VkBufferCopy, 4> vertCopyInfos = {};
+    std::array<VkBufferCopy, 3> vertCopyInfos = {};
     bool hasInfo = GetVertBufferCopyInfos(isStatic, vertCopyInfos);
 
     if (!hasInfo)
@@ -418,7 +404,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
     }
 }
 
-bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 4> &outInfos) const
+bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const
 {
     const uint32_t offsetPositions = isStatic ?
         offsetof(ShVertexBufferStatic, positions) :
@@ -429,19 +415,15 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferC
     const uint32_t offsetTexCoords = isStatic ?
         offsetof(ShVertexBufferStatic, texCoords) :
         offsetof(ShVertexBufferDynamic, texCoords);
-    const uint32_t offsetColors = isStatic ?
-        offsetof(ShVertexBufferStatic, colors) :
-        offsetof(ShVertexBufferDynamic, colors);
 
     if (curVertexCount == 0 || curPrimitiveCount == 0)
     {
         return false;
     }
 
-    outInfos[0] = { offsetPositions,    offsetPositions,    curVertexCount * properties.positionStride };
-    outInfos[1] = { offsetNormals,      offsetNormals,      curVertexCount * properties.normalStride };
-    outInfos[2] = { offsetTexCoords,    offsetTexCoords,    curVertexCount * properties.texCoordStride };
-    outInfos[3] = { offsetColors,       offsetColors,       curVertexCount * properties.colorStride };
+    outInfos[0] = { offsetPositions,    offsetPositions,    (uint64_t)curVertexCount * properties.positionStride };
+    outInfos[1] = { offsetNormals,      offsetNormals,      (uint64_t)curVertexCount * properties.normalStride };
+    outInfos[2] = { offsetTexCoords,    offsetTexCoords,    (uint64_t)curVertexCount * properties.texCoordStride };
 
     return true;
 }

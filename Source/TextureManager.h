@@ -82,16 +82,16 @@ private:
 
     uint32_t PrepareStaticTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-        VkSampler sampler, bool generateMipmaps, const char *debugName = nullptr);
+        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName = nullptr);
 
     uint32_t PrepareDynamicTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-        VkSampler sampler, bool generateMipmaps, const char *debugName = nullptr);
+        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName = nullptr);
 
     uint32_t PrepareTexture(
         bool isDynamic,
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-        VkSampler sampler, bool generateMipmaps, const char *debugName = nullptr);
+        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName = nullptr);
 
     uint32_t InsertTexture(VkImage image, VkImageView view, VkSampler sampler);
     void DestroyTexture(const Texture &texture);

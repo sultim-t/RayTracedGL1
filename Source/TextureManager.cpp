@@ -31,6 +31,10 @@
 #define DEFAULT_NORMAL_METALLIC_POSTFIX     "_n"
 #define DEFAULT_EMISSION_ROUGHNESS_POSTFIX  "_e"
 
+constexpr VkFormat      IMAGE_FORMAT_SRGB = VK_FORMAT_R8G8B8A8_SRGB;
+constexpr VkFormat      IMAGE_FORMAT_UNORM = VK_FORMAT_R8G8B8A8_UNORM;
+constexpr VkDeviceSize  IMAGE_BYTES_PER_PIXEL = 4;
+
 constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
 
 TextureManager::TextureManager(
@@ -72,7 +76,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     RgExtent2D size = { 1,1 };
     VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, "Empty texture");
+    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, false, "Empty texture");
 
     // must have specific index
     assert(textureIndex == EMPTY_TEXTURE_INDEX);
@@ -161,13 +165,13 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         // load additional textures, they'll be freed after leaving the scope
         TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
 
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, createInfo.useMipmaps, ovrd.debugName);
-        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, createInfo.useMipmaps, ovrd.debugName);
-        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, createInfo.useMipmaps, ovrd.debugName);
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
+        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
+        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
     }
     else
     {
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.relativePath);
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
         textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
         textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
     }
@@ -177,9 +181,9 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 
 uint32_t TextureManager::PrepareStaticTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-    VkSampler sampler, bool generateMipmaps, const char *debugName)
+    VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
 {
-    return PrepareTexture(false, cmd, frameIndex, data, size, sampler, generateMipmaps, debugName);
+    return PrepareTexture(false, cmd, frameIndex, data, size, sampler,  generateMipmaps, debugName);
 }
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
@@ -187,7 +191,7 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
     MaterialTextures textures = {};
-    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.useMipmaps);
+    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.isSRGB, createInfo.useMipmaps);
     textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
     textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
 
@@ -227,14 +231,14 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 
 uint32_t TextureManager::PrepareDynamicTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, 
-    VkSampler sampler, bool generateMipmaps, const char *debugName)
+    VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
 {
     return PrepareTexture(true, cmd, frameIndex, data, size, sampler, generateMipmaps, debugName);
 }
 
 uint32_t TextureManager::PrepareTexture(
     bool isDynamic, VkCommandBuffer cmd, uint32_t frameIndex, const void *data,
-    const RgExtent2D &size, VkSampler sampler, bool generateMipmaps, const char *debugName)
+    const RgExtent2D &size, VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
 {
     // only dynamic textures can have null data
     if (!isDynamic && data == nullptr)
@@ -249,6 +253,8 @@ uint32_t TextureManager::PrepareTexture(
     info.frameIndex = frameIndex;
     info.data = data;
     info.size = size;
+    info.format = isSRGB ? IMAGE_FORMAT_SRGB : IMAGE_FORMAT_UNORM;
+    info.bytesPerPixel = IMAGE_BYTES_PER_PIXEL;
     info.isDynamic = isDynamic;
     info.generateMipmaps = generateMipmaps;
     info.debugName = debugName;

@@ -47,7 +47,6 @@ struct ShVertexBufferStatic
     float positions[12582912];
     float normals[12582912];
     float texCoords[8388608];
-    uint32_t colors[4194304];
 };
 
 struct ShVertexBufferDynamic
@@ -55,7 +54,6 @@ struct ShVertexBufferDynamic
     float positions[6291456];
     float normals[6291456];
     float texCoords[4194304];
-    uint32_t colors[2097152];
 };
 
 struct ShGlobalUniform
@@ -69,11 +67,11 @@ struct ShGlobalUniform
     uint32_t positionsStride;
     uint32_t normalsStride;
     uint32_t texCoordsStride;
-    uint32_t colorsStride;
     float renderWidth;
     float renderHeight;
     uint32_t frameId;
     uint32_t _pad0;
+    uint32_t _pad1;
     int32_t instanceGeomInfoOffset[128];
 };
 
@@ -84,6 +82,10 @@ struct ShGeometryInstance
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t primitiveCount;
+    uint32_t color;
+    float defaultRoughness;
+    float defaultMetallicity;
+    float defaultEmission;
     uint32_t __pad0;
 };
 
