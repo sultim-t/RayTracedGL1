@@ -172,7 +172,7 @@ void main()
 	
 	vec4 mr = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
 	float surfMetallic = mr.r;
-	float surfRoughness = mr.g;
+	float surfRoughness = max(mr.g, 0.001);
 	
 	ShDirectionalLight lt;
 	lt.direction = normalize(vec3(-1, 1, 1));
