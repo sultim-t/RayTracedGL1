@@ -22,83 +22,126 @@
 #include "Generated/ShaderCommonC.h"
 #include "Matrix.h"
 
+#define INDEX_BUFFER_SIZE       (MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t))
+#define TRANSFORM_BUFFER_SIZE   (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR))
+#define GEOM_INFO_BUFFER_SIZE   (MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance))
+
 VertexCollector::VertexCollector(
-    VkDevice _device, const std::shared_ptr<MemoryAllocator> &_allocator,
-    VkDeviceSize _bufferSize, const VertexBufferProperties &_properties,
-    VertexCollectorFilterTypeFlags _filters) :
+    VkDevice _device, 
+    const std::shared_ptr<MemoryAllocator> &_allocator,
+    VkDeviceSize _bufferSize,
+    const VertexBufferProperties &_properties,
+    VertexCollectorFilterTypeFlags _filters) 
+:
     device(_device),
     properties(_properties),
-    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
+    filtersFlags(_filters),
     geomInfosCopyRegions{},
-    curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0)
+    curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0),
+    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr)
 {
-    assert(_filters != 0);
+    assert(filtersFlags != 0);
 
+    vertBuffer = std::make_shared<Buffer>();
+    indexBuffer = std::make_shared<Buffer>();
+    transformsBuffer = std::make_shared<Buffer>();
+    geomInfosBuffer = std::make_shared<Buffer>();
+
+    // vertex buffers
+    vertBuffer->Init(
+        _allocator, _bufferSize,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic Vertices data buffer" : "Static Vertices data buffer");
+
+    // index buffers
+    indexBuffer->Init(
+        _allocator, INDEX_BUFFER_SIZE,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic Index data buffer" : "Static Index data buffer");
+
+    // transforms buffer
+    transformsBuffer->Init(
+        _allocator, TRANSFORM_BUFFER_SIZE,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic BLAS transforms buffer" : "Static BLAS transforms buffer");
+
+    // geometry instance info for each geometry in each top level instance
+    geomInfosBuffer->Init(
+        _allocator, GEOM_INFO_BUFFER_SIZE,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic Geometry info buffer" : "Static Geometry info buffer");
+
+    // device local buffers are 
+    InitStagingBuffers(_allocator);
+    InitFilters(filtersFlags);
+}
+
+VertexCollector::VertexCollector(
+    const std::shared_ptr<const VertexCollector> &_src,
+    const std::shared_ptr<MemoryAllocator> &_allocator)
+:
+    device(_src->device),
+    properties(_src->properties),
+    filtersFlags(_src->filtersFlags),
+    vertBuffer(_src->vertBuffer),
+    indexBuffer(_src->indexBuffer),
+    transformsBuffer(_src->transformsBuffer),
+    geomInfosBuffer(_src->geomInfosBuffer),
+    geomInfosCopyRegions{},
+    curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0),
+    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr)
+{
+    // device local buffers are shared with the "src" vertex collector
+    InitStagingBuffers(_allocator);
+    InitFilters(filtersFlags);
+}
+
+void VertexCollector::InitStagingBuffers(const std::shared_ptr<MemoryAllocator> &allocator)
+{
+    // device local buffers must not be empty
+    assert(vertBuffer       && vertBuffer->GetSize() > 0);
+    assert(indexBuffer      && indexBuffer->GetSize() > 0);
+    assert(transformsBuffer && transformsBuffer->GetSize() > 0);
+    assert(geomInfosBuffer  && geomInfosBuffer->GetSize() > 0);
+
+    static_assert(sizeof(geomInfosCopyRegions) / sizeof(geomInfosCopyRegions[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Number of geomInfo copy regions must be MAX_TOP_LEVEL_INSTANCE_COUNT");
 
     // vertex buffers
     stagingVertBuffer.Init(
-        _allocator, _bufferSize,
+        allocator, vertBuffer->GetSize(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "Vertices data staging buffer");
-
-    vertBuffer.Init(
-        _allocator, _bufferSize,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Vertices data buffer");
-
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic Vertices data staging buffer" : "Static Vertices data staging buffer");
 
     // index buffers
     stagingIndexBuffer.Init(
-        _allocator, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
+        allocator, indexBuffer->GetSize(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "Index data staging buffer");
-
-    indexBuffer.Init(
-        _allocator, MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Index data buffer");
-
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic Index data staging buffer" : "Static Index data staging buffer");
 
     // transforms buffer
     stagingTransformsBuffer.Init(
-        _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR),
+        allocator, transformsBuffer->GetSize(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "BLAS transforms staging buffer");
-
-    transformsBuffer.Init(
-        _allocator, MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "BLAS transforms buffer");
-
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic BLAS transforms staging buffer" : "Static BLAS transforms staging buffer");
 
     // geometry instance info for each geometry in each top level instance
     stagingGeomInfosBuffer.Init(
-        _allocator,  MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
+        allocator, geomInfosBuffer->GetSize(),
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "Geometry info staging buffer");
-
-    geomInfosBuffer.Init(
-        _allocator, MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance),
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Geometry info buffer");
-
-
-    static_assert(sizeof(geomInfosCopyRegions) / sizeof(geomInfosCopyRegions[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Number of geomInfo copy regions must be MAX_TOP_LEVEL_INSTANCE_COUNT");
+        filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? "Dynamic Geometry info staging buffer" : "Static Geometry info staging buffer");
 
     mappedVertexData = static_cast<uint8_t *>(stagingVertBuffer.Map());
     mappedIndexData = static_cast<uint32_t *>(stagingIndexBuffer.Map());
     mappedTransformData = static_cast<VkTransformMatrixKHR *>(stagingTransformsBuffer.Map());
     mappedGeomInfosData = static_cast<ShGeometryInstance *>(stagingGeomInfosBuffer.Map());
-
-    InitFilters(_filters);
 }
 
 VertexCollector::~VertexCollector()
@@ -176,7 +219,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
 
     // use positions and index data in the device local buffers: AS shouldn't be built using staging buffers
     const VkDeviceAddress vertexDataDeviceAddress =
-        vertBuffer.GetAddress() + offsetPositions + vertIndex * static_cast<uint64_t>(properties.positionStride);
+        vertBuffer->GetAddress() + offsetPositions + vertIndex * static_cast<uint64_t>(properties.positionStride);
 
     // geometry info
     VkAccelerationStructureGeometryKHR geom = {};
@@ -193,12 +236,12 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
     trData.maxVertex = info.vertexCount;
     trData.vertexData.deviceAddress = vertexDataDeviceAddress;
     trData.vertexStride = properties.positionStride;
-    trData.transformData.deviceAddress = transformsBuffer.GetAddress() + geomIndex * sizeof(VkTransformMatrixKHR);
+    trData.transformData.deviceAddress = transformsBuffer->GetAddress() + geomIndex * sizeof(VkTransformMatrixKHR);
 
     if (useIndices)
     {
         const VkDeviceAddress indexDataDeviceAddress =
-            indexBuffer.GetAddress() + indIndex * sizeof(uint32_t);
+            indexBuffer->GetAddress() + indIndex * sizeof(uint32_t);
 
         trData.indexType = VK_INDEX_TYPE_UINT32;
         trData.indexData.deviceAddress = indexDataDeviceAddress;
@@ -364,7 +407,7 @@ bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStat
 
     vkCmdCopyBuffer(
         cmd,
-        stagingVertBuffer.GetBuffer(), vertBuffer.GetBuffer(),
+        stagingVertBuffer.GetBuffer(), vertBuffer->GetBuffer(),
         vertCopyInfos.size(), vertCopyInfos.data());
 
     return true;
@@ -384,7 +427,7 @@ bool VertexCollector::CopyIndexDataFromStaging(VkCommandBuffer cmd)
 
     vkCmdCopyBuffer(
         cmd,
-        stagingIndexBuffer.GetBuffer(), indexBuffer.GetBuffer(),
+        stagingIndexBuffer.GetBuffer(), indexBuffer->GetBuffer(),
         1, &info);
 
     return true;
@@ -416,7 +459,7 @@ bool VertexCollector::CopyGeometryInfosFromStaging(VkCommandBuffer cmd)
 
     vkCmdCopyBuffer(
         cmd,
-        stagingGeomInfosBuffer.GetBuffer(), geomInfosBuffer.GetBuffer(),
+        stagingGeomInfosBuffer.GetBuffer(), geomInfosBuffer->GetBuffer(),
         infoCount, infos);
 
     return true;
@@ -436,7 +479,7 @@ bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd)
 
     vkCmdCopyBuffer(
         cmd,
-        stagingTransformsBuffer.GetBuffer(), transformsBuffer.GetBuffer(),
+        stagingTransformsBuffer.GetBuffer(), transformsBuffer->GetBuffer(),
         1, &info);
 
     return true;
@@ -462,7 +505,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
         vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         vrtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
-        vrtBr.buffer = vertBuffer.GetBuffer();
+        vrtBr.buffer = vertBuffer->GetBuffer();
         vrtBr.size = VK_WHOLE_SIZE;
     }
 
@@ -475,7 +518,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
         indBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         indBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         indBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
-        indBr.buffer = indexBuffer.GetBuffer();
+        indBr.buffer = indexBuffer->GetBuffer();
         indBr.size = curIndexCount * sizeof(uint32_t);
     }
 
@@ -488,7 +531,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
         gmtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         gmtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         gmtBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        gmtBr.buffer = geomInfosBuffer.GetBuffer();
+        gmtBr.buffer = geomInfosBuffer->GetBuffer();
         gmtBr.size = VK_WHOLE_SIZE;
     }
 
@@ -501,7 +544,7 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
         trnBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         trnBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
         trnBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
-        trnBr.buffer = transformsBuffer.GetBuffer();
+        trnBr.buffer = transformsBuffer->GetBuffer();
         trnBr.size = curGeometryCount * sizeof(VkTransformMatrixKHR);
     }
 
@@ -639,17 +682,17 @@ void VertexCollector::WriteGeomInfoTransform(uint32_t geomIndex, const RgTransfo
 
 VkBuffer VertexCollector::GetVertexBuffer() const
 {
-    return vertBuffer.GetBuffer();
+    return vertBuffer->GetBuffer();
 }
 
 VkBuffer VertexCollector::GetIndexBuffer() const
 {
-    return indexBuffer.GetBuffer();
+    return indexBuffer->GetBuffer();
 }
 
 VkBuffer VertexCollector::GetGeometryInfosBuffer() const
 {
-    return geomInfosBuffer.GetBuffer();
+    return geomInfosBuffer->GetBuffer();
 }
 
 const std::vector<uint32_t> &VertexCollector::GetPrimitiveCounts(

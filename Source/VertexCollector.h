@@ -43,6 +43,12 @@ public:
         VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator,
         VkDeviceSize bufferSize, const VertexBufferProperties &properties,
         VertexCollectorFilterTypeFlags filters);
+
+    // Create new vertex collector, but with shared device local buffers
+    explicit VertexCollector(
+        const std::shared_ptr<const VertexCollector> &src,
+        const std::shared_ptr<MemoryAllocator> &allocator);
+
     ~VertexCollector() override;
 
     VertexCollector(const VertexCollector& other) = delete;
@@ -92,6 +98,8 @@ public:
     bool AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type) const;
 
 private:
+    void InitStagingBuffers(const std::shared_ptr<MemoryAllocator> &allocator);
+
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
 
     bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const;
@@ -133,31 +141,31 @@ private:
 private:
     VkDevice device;
     VertexBufferProperties properties;
+    VertexCollectorFilterTypeFlags filtersFlags;
 
     Buffer stagingVertBuffer;
-    Buffer vertBuffer;
-
-    uint8_t *mappedVertexData;
-    uint32_t *mappedIndexData;
-    VkTransformMatrixKHR *mappedTransformData;
-
-    ShGeometryInstance *mappedGeomInfosData;
+    std::shared_ptr<Buffer> vertBuffer;
 
     Buffer stagingIndexBuffer;
-    Buffer indexBuffer;
+    std::shared_ptr<Buffer> indexBuffer;
 
     Buffer stagingTransformsBuffer;
-    Buffer transformsBuffer;
+    std::shared_ptr<Buffer> transformsBuffer;
 
     // buffer for getting info for geometry in BLAS
     Buffer stagingGeomInfosBuffer;
-    Buffer geomInfosBuffer;
+    std::shared_ptr<Buffer> geomInfosBuffer;
     uint32_t geomInfosCopyRegions[32];
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;
     uint32_t curPrimitiveCount;
     uint32_t curGeometryCount;
+
+    uint8_t *mappedVertexData;
+    uint32_t *mappedIndexData;
+    VkTransformMatrixKHR *mappedTransformData;
+    ShGeometryInstance *mappedGeomInfosData;
 
     // material index to a list of () that have that material
     std::map<uint32_t, std::vector<MaterialRef>> materialDependencies;

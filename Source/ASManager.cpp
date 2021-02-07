@@ -41,6 +41,7 @@ ASManager::ASManager(
     typedef VertexCollectorFilterTypeFlags FL;
     typedef VertexCollectorFilterTypeFlagBits FT;
 
+
     // init AS structs for each dimension
     for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
     {
@@ -62,8 +63,10 @@ ASManager::ASManager(
         }
     }
 
+
     scratchBuffer = std::make_shared<ScratchBuffer>(allocator);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
+
 
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
@@ -76,14 +79,19 @@ ASManager::ASManager(
     // every frame unlike dynamic ones
     textureMgr->Subscribe(collectorStatic);
 
+
     // dynamic vertices
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    collectorDynamic[0] = std::make_shared<VertexCollector>(
+        device, allocator,
+        sizeof(ShVertexBufferDynamic), properties,
+        FT::CF_DYNAMIC | FT::MASK_PASS_THROUGH_GROUP);
+
+    // other dynamic vertex collectors should share the same device local buffers as the first one
+    for (uint32_t i = 1; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        collectorDynamic[i] = std::make_shared<VertexCollector>(
-            device, allocator,
-            sizeof(ShVertexBufferDynamic), properties,
-            FT::CF_DYNAMIC | FT::MASK_PASS_THROUGH_GROUP);
+        collectorDynamic[i] = std::make_shared<VertexCollector>(collectorDynamic[0], allocator);
     }
+
 
     // instance buffer for TLAS
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -96,6 +104,7 @@ ASManager::ASManager(
             "TLAS instance buffer");
     }
 
+
     CreateDescriptors();
 
     // buffers won't be changing, update once
@@ -103,6 +112,7 @@ ASManager::ASManager(
     {
         UpdateBufferDescriptors(i);
     }
+
 
     VkFenceCreateInfo fenceInfo = {};
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
