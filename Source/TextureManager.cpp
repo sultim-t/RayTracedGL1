@@ -119,7 +119,10 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
 
     // clear staging buffer that are not in use
     textureUploader->ClearStaging(frameIndex);
+}
 
+void TextureManager::SubmitDescriptors(uint32_t frameIndex)
+{
     // update desc set with current values
     UpdateDescSet(frameIndex);
 }

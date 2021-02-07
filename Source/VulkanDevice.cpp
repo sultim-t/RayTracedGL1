@@ -170,6 +170,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
 {
+    textureManager->SubmitDescriptors(currentFrameIndex);
+
     // submit geometry
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, currentFrameIndex, uniform);
 
@@ -617,6 +619,10 @@ void VulkanDevice::CreateSyncPrimitives()
 
         r = vkCreateFence(device, &fenceInfo, nullptr, &frameFences[i]);
         VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, imageAvailableSemaphores[i], VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, "Image available semaphore");
+        SET_DEBUG_NAME(device, renderFinishedSemaphores[i], VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, "Render finished semaphore");
+        SET_DEBUG_NAME(device, frameFences[i], VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT, "Frame fence");
     }
 }
 

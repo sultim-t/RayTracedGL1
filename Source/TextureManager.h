@@ -53,6 +53,7 @@ public:
     TextureManager &operator=(TextureManager &&other) noexcept = delete;
 
     void PrepareForFrame(uint32_t frameIndex);
+    void SubmitDescriptors(uint32_t frameIndex);
 
     uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
 

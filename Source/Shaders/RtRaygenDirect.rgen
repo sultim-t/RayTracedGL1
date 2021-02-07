@@ -189,7 +189,10 @@ void main()
 
 	float specularity = 0.1;
 	float ambient = 0.2;
-	vec4 color = albedo * (vec4(diffuse, 0.0) * (1 - specularity) + vec4(specular, 0.0) * specularity) * (1 - ambient) + ambient;
+	vec4 l = vec4(diffuse, 0.0) * (1 - specularity) + vec4(specular, 0.0) * specularity;
+	vec4 color = (l.x + l.y + l.z) / 3 < ambient ?
+		albedo * ambient :
+		albedo * l;
 
 	imageStore(framebufFinal, pix, color);
 }

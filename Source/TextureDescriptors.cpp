@@ -181,24 +181,8 @@ void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureI
            emptyTextureInfo.imageLayout != VK_NULL_HANDLE &&
            emptyTextureInfo.sampler != VK_NULL_HANDLE);
 
-    if (currentWriteCount >= MAX_TEXTURE_COUNT)
-    {
-        assert(0);
-        return;
-    }
-
-    VkWriteDescriptorSet &write = writeInfos[currentWriteCount];
-    write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    write.dstSet = descSets[frameIndex];
-    write.dstBinding = BINDING_TEXTURES;
-    write.dstArrayElement = textureIndex;
-    write.descriptorCount = 1;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    write.pImageInfo = &emptyTextureInfo;
-
-    currentWriteCount++;
-
-    ResetCache(frameIndex, textureIndex);
+    // try to update with empty data
+    UpdateTextureDesc(frameIndex, textureIndex, emptyTextureInfo.imageView, emptyTextureInfo.sampler);
 }
 
 void TextureDescriptors::FlushDescWrites()
