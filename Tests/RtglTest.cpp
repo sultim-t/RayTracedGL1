@@ -118,7 +118,6 @@ void LoadObj(const char *path,
              std::vector<float> &_positions,
              std::vector<float> &_normals,
              std::vector<float> &_texCoords,
-             std::vector<uint32_t> &_colors,
              std::vector<uint32_t> &_indices)
 {
     tinyobj::attrib_t attrib;
@@ -168,8 +167,6 @@ void LoadObj(const char *path,
                 _texCoords.push_back(tx);
                 _texCoords.push_back(ty);
 
-                _colors.push_back(0xFFFFFFFF);
-
                 _indices.push_back(vertId);
                 vertId++;
             }
@@ -187,21 +184,18 @@ void StartScene(RgInstance instance, Window *pWindow)
     static std::vector<float> st_positions, dyn_positions;
     static std::vector<float> st_normals, dyn_normals;
     static std::vector<float> st_texCoords, dyn_texCoords;
-    static std::vector<uint32_t> st_colors, dyn_colors;
     static std::vector<uint32_t> st_indices, dyn_indices;
 
     LoadObj("../../../BRUSHES.obj",
             st_positions,
             st_normals,
             st_texCoords,
-            st_colors,
             st_indices);
 
     LoadObj("../../../MODELS.obj",
             dyn_positions,
             dyn_normals,
             dyn_texCoords,
-            dyn_colors,
             dyn_indices);
 
     RgStaticMaterialCreateInfo matInfo[] = { {}, {} };
@@ -216,32 +210,6 @@ void StartScene(RgInstance instance, Window *pWindow)
     animInfo.frameCount = 2;
     animInfo.frames = matInfo;
 
-    uint32_t dynMatDataA[] =
-    {
-        0xFF0000FF, 0xFF0000FF,
-        0xFF0000FF, 0xFF0000FF
-    };
-    uint32_t dynMatDataB[] =
-    {
-        0xFF00FF00, 0xFF00FF00,
-        0xFF00FF00, 0xFF00FF00
-    };
-    uint32_t dynMatDataC[] =
-    {
-        0xFFFF0000, 0xFFFF0000,
-        0xFFFF0000, 0xFFFF0000
-    };
-    uint32_t *dynMatDatas[] =
-    {
-        dynMatDataA, dynMatDataB, dynMatDataC
-    };
-    uint32_t dynMatPrevState = 2;
-    uint32_t dynMatState = 0;
-
-    RgDynamicMaterialCreateInfo dynMatInfo = {};
-    dynMatInfo.size = {2, 2};
-    dynMatInfo.useMipmaps = RG_FALSE;
-
     RgGeometryUploadInfo st_info = {};
     RgGeometryUploadInfo dyn_info = {};
 
@@ -252,11 +220,11 @@ void StartScene(RgInstance instance, Window *pWindow)
         st_info.vertexData = st_positions.data();
         st_info.normalData = st_normals.data();
         st_info.texCoordData = st_texCoords.data();
-        st_info.colorData = st_colors.data();
 
         st_info.indexCount = st_indices.size();
         st_info.indexData = st_indices.data();
 
+        st_info.color = 0xFFFFFFFF;
         st_info.geomMaterial = {
             RG_NO_MATERIAL,
             RG_NO_MATERIAL,
@@ -272,16 +240,17 @@ void StartScene(RgInstance instance, Window *pWindow)
 
     {
         dyn_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+        dyn_info.passThroughType = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE;
 
         dyn_info.vertexCount = dyn_positions.size() / 3;
         dyn_info.vertexData = dyn_positions.data();
         dyn_info.normalData = dyn_normals.data();
         dyn_info.texCoordData = dyn_texCoords.data();
-        dyn_info.colorData = dyn_colors.data();
 
         dyn_info.indexCount = dyn_indices.size();
         dyn_info.indexData = dyn_indices.data();
 
+        dyn_info.color = 0xFFFFFFFF;
         dyn_info.geomMaterial = {
             RG_NO_MATERIAL,
             RG_NO_MATERIAL,
@@ -309,7 +278,7 @@ void StartScene(RgInstance instance, Window *pWindow)
 
     uint64_t frameCount = 0;
 
-    RgMaterial mat;
+    RgMaterial mat = RG_NO_MATERIAL;
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
     {
@@ -325,14 +294,9 @@ void StartScene(RgInstance instance, Window *pWindow)
             r = rgStartNewScene(instance);
             RG_CHECKERROR_R;
 
-            r = rgCreateDynamicMaterial(instance, &dynMatInfo, &mat);
+            r = rgCreateAnimatedMaterial(instance, &animInfo, &mat);
             RG_CHECKERROR_R;
 
-            st_info.geomMaterial = {
-                mat,
-                RG_NO_MATERIAL,
-                RG_NO_MATERIAL
-            };
 
 
             r = rgUploadGeometry(instance, &st_info, nullptr);
@@ -342,24 +306,7 @@ void StartScene(RgInstance instance, Window *pWindow)
             RG_CHECKERROR_R;
         }
 
-        //rgChangeAnimatedMaterialFrame(instance, mat, frameCount % 120 > 60);
-
-        if (frameCount % 60 == 0)
-        {
-            dynMatState = (dynMatState + 1) % 3;
-        }
-
-        if (dynMatState != dynMatPrevState)
-        {
-            dynMatPrevState = dynMatState;
-
-            RgDynamicMaterialUpdateInfo updInfo;
-            updInfo.dynamicMaterial = mat;
-            updInfo.data = dynMatDatas[dynMatState];
-
-            r = rgUpdateDynamicMaterial(instance, &updInfo);
-            RG_CHECKERROR_R;
-        }
+        rgChangeAnimatedMaterialFrame(instance, mat, frameCount % 120 > 60);
 
         /*st_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
         st_info.transform = {
@@ -368,6 +315,8 @@ void StartScene(RgInstance instance, Window *pWindow)
             0,0,1,0
         };
         rgUploadGeometry(instance, &st_info, nullptr);*/
+
+        dyn_info.geomMaterial.layerMaterials[0] = mat;
 
         rgUploadGeometry(instance, &dyn_info, nullptr);
 
@@ -416,8 +365,22 @@ void StartScene(RgInstance instance, Window *pWindow)
             RG_NO_MATERIAL
         };
 
-        r = rgUploadRasterizedGeometry(instance, &raster);
-        RG_CHECKERROR_R;
+        float idnt[] =
+        {
+            1,0,0,0,
+            0,1,0,0,
+            0,0,1,0,
+            0,0,0,1
+        };
+        memcpy(raster.viewProjection, idnt, 16 * sizeof(float));
+
+        raster.viewport.x = -800;
+        raster.viewport.y = -450;
+        raster.viewport.width = 1600;
+        raster.viewport.height = 900;
+
+        //r = rgUploadRasterizedGeometry(instance, &raster);
+        //RG_CHECKERROR_R;
 
         /*RgUpdateTransformInfo uptr = {};
         uptr.movableStaticGeom = movable;
@@ -444,6 +407,8 @@ void StartScene(RgInstance instance, Window *pWindow)
 
         frameCount++;
     }
+
+    rgDestroyMaterial(instance, mat);
 }
 
 int main()
@@ -457,7 +422,7 @@ int main()
         RgInstanceCreateInfo info = {};
         info.name = "RTGL1 Test";
         info.physicalDeviceIndex = 0;
-        info.enableValidationLayer = RG_FALSE;
+        info.enableValidationLayer = RG_TRUE;
 
         info.vertexPositionStride = 3 * sizeof(float);
         info.vertexNormalStride = 3 * sizeof(float);
