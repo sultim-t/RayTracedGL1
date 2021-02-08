@@ -620,8 +620,10 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
         }
     }
 
+    // copy transforms to device-local memory
+    collectorStatic->CopyTransformsFromStaging(cmd);
+
     asBuilder->BuildBottomLevel(cmd);
-    Utils::ASBuildMemoryBarrier(cmd);
 }
 
 bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAccelerationStructureInstanceKHR &instance)
@@ -795,8 +797,6 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     asBuilder->AddTLAS(curTlas.as, &instGeom, &range, buildSizes, true, false);
     asBuilder->BuildTopLevel(cmd);
-
-    Utils::ASBuildMemoryBarrier(cmd);
 
     UpdateASDescriptors(frameIndex);
 

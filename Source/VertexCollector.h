@@ -67,8 +67,10 @@ public:
     // Should be called when blasGeometries is not needed anymore
     virtual void Reset();
     // Copy buffer from staging and set barrier
-    // "isStatic" is required to determine what GLSL struct to use for copying
-    void CopyFromStaging(VkCommandBuffer cmd, bool isStatic);
+    // "isStaticVertexData" is required to determine what GLSL struct to use for copying
+    bool CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData);
+    // Returns false, if wasn't copied
+    bool CopyTransformsFromStaging(VkCommandBuffer cmd);
 
     // Update transform, mainly for movable static geometry as dynamic geometry
     // will be updated every frame and thus their transforms.
@@ -110,7 +112,7 @@ private:
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
     bool CopyGeometryInfosFromStaging(VkCommandBuffer cmd);
-    bool CopyTransformsFromStaging(VkCommandBuffer cmd);
+    bool CopyTransformsFromStaging(VkCommandBuffer cmd, bool insertMemBarrier);
 
     void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
 

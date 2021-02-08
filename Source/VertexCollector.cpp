@@ -467,7 +467,7 @@ bool VertexCollector::CopyGeometryInfosFromStaging(VkCommandBuffer cmd)
     return true;
 }
 
-bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd)
+bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd, bool insertMemBarrier)
 {
     if (curGeometryCount == 0)
     {
@@ -484,15 +484,40 @@ bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd)
         stagingTransformsBuffer.GetBuffer(), transformsBuffer->GetBuffer(),
         1, &info);
 
+    if (insertMemBarrier)
+    {
+        VkBufferMemoryBarrier trnBr = {};
+        trnBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        trnBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        trnBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        trnBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        trnBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+        trnBr.buffer = transformsBuffer->GetBuffer();
+        trnBr.size = curGeometryCount * sizeof(VkTransformMatrixKHR);
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
+            0,
+            0, nullptr,
+            1, &trnBr,
+            0, nullptr);
+    }
+
     return true;
 }
 
-void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
+bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd)
 {
-    bool vrtCopied = CopyVertexDataFromStaging(cmd, isStatic);
+    return CopyTransformsFromStaging(cmd, true);
+}
+
+bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData)
+{
+    bool vrtCopied = CopyVertexDataFromStaging(cmd, isStaticVertexData);
     bool indCopied = CopyIndexDataFromStaging(cmd);
     bool gmtCopied = CopyGeometryInfosFromStaging(cmd);
-    bool trnCopied = CopyTransformsFromStaging(cmd);
+    bool trnCopied = CopyTransformsFromStaging(cmd, false);
 
     // sync dst buffer access
     VkBufferMemoryBarrier barriers[4] = {};
@@ -554,12 +579,16 @@ void VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStatic)
     {
         vkCmdPipelineBarrier(
             cmd,
-            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
             0,
             0, nullptr,
             barrierCount, barriers,
             0, nullptr);
+
+        return true;
     }
+
+    return false;
 }
 
 bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const
