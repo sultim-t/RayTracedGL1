@@ -20,7 +20,6 @@
 #include <fstream>
 
 #define RG_CHECKERROR(x) assert(x == RG_SUCCESS)
-#define RG_CHECKERROR_R RG_CHECKERROR(r)
 
 struct Window
 {
@@ -72,12 +71,12 @@ static void DebugPrint(const char *msg)
 }
 
 
-static glm::vec3 camPos = glm::vec3(0, 50, 0);
-static glm::vec3 camDir = glm::vec3(0, 0, 1);
-static glm::vec3 camUp = glm::vec3(0, 1, 0);
-static glm::vec3 lightDir = glm::vec3(1, 1, 1);
+static glm::vec3 camPos     = glm::vec3(0, 2, -8);
+static glm::vec3 camDir     = glm::vec3(0, 0, 1);
+static glm::vec3 camUp      = glm::vec3(0, 1, 0);
+static glm::vec3 lightDir   = glm::vec3(1, 1, 1);
 
-void ProcessInput(GLFWwindow *window)
+static void ProcessInput(GLFWwindow *window)
 {
     float cameraSpeed = 60.0f / 60.0f;
     float cameraRotationSpeed = 5 / 60.0f;
@@ -111,10 +110,10 @@ void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
         lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(1, 0, 0));
 
-    camUp = -glm::cross(r, camDir);
+    camUp = glm::cross(-r, camDir);
 }
 
-void LoadObj(const char *path, 
+static void LoadObj(const char *path,
              std::vector<float> &_positions,
              std::vector<float> &_normals,
              std::vector<float> &_texCoords,
@@ -177,108 +176,132 @@ void LoadObj(const char *path,
 
 }
 
-void StartScene(RgInstance instance, Window *pWindow)
+static float quadPositions[] =
 {
-    RgResult r;
+    0, 0, 0,
+    0, 1, 0,
+    1, 0, 0,
+    1, 0, 0,
+    0, 1, 0,
+    1, 1, 0
+};
 
-    static std::vector<float> st_positions, dyn_positions;
-    static std::vector<float> st_normals, dyn_normals;
-    static std::vector<float> st_texCoords, dyn_texCoords;
-    static std::vector<uint32_t> st_indices, dyn_indices;
+static float quadTexCoords[] =
+{
+    0, 0,
+    0, 1,
+    1, 0,
+    1, 0,
+    0, 1,
+    1, 1,
+};
 
-    LoadObj("../../../BRUSHES.obj",
-            st_positions,
-            st_normals,
-            st_texCoords,
-            st_indices);
+static uint32_t quadColorsABGR[]
+{
+    0xFFFF0000,
+    0xFFFFFFFF,
+    0xFFFFFFFF,
+    0xFFFFFFFF,
+    0xFFFFFFFF,
+    0xFF00FF00,
+};
 
-    LoadObj("../../../MODELS.obj",
-            dyn_positions,
-            dyn_normals,
-            dyn_texCoords,
-            dyn_indices);
+static float identityMatrix43[] =
+{
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0
+};
+static float identityMatrix44[] =
+{
+    1, 0, 0, 0,
+    0, 1, 0, 0,
+    0, 0, 1, 0,
+    0, 0, 0, 1
+};
 
-    RgStaticMaterialCreateInfo matInfo[] = { {}, {} };
+static void MainLoop(RgInstance instance, Window *pWindow)
+{
+    std::vector<float>       cubePositions;
+    std::vector<float>       cubeNormals;
+    std::vector<float>       cubeTexCoords;
+    std::vector<uint32_t>    cubeIndices;
 
-    matInfo[0].relativePath = "../../../TestImage.png";
-    matInfo[0].useMipmaps = RG_TRUE;
-
-    matInfo[1].relativePath = "../../../TestImage1.png";
-    matInfo[1].useMipmaps = RG_TRUE;
-
-    RgAnimatedMaterialCreateInfo animInfo = {};
-    animInfo.frameCount = 2;
-    animInfo.frames = matInfo;
-
-    RgGeometryUploadInfo st_info = {};
-    RgGeometryUploadInfo dyn_info = {};
-
-    {
-        st_info.geomType = RG_GEOMETRY_TYPE_STATIC;
-
-        st_info.vertexCount = st_positions.size() / 3;
-        st_info.vertexData = st_positions.data();
-        st_info.normalData = st_normals.data();
-        st_info.texCoordData = st_texCoords.data();
-
-        st_info.indexCount = st_indices.size();
-        st_info.indexData = st_indices.data();
-
-        st_info.color = 0xFFFFFFFF;
-        st_info.geomMaterial = {
-            RG_NO_MATERIAL,
-            RG_NO_MATERIAL,
-            RG_NO_MATERIAL
-        };
-
-        st_info.transform = {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0
-        };
-    }
-
-    {
-        dyn_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
-        dyn_info.passThroughType = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE;
-
-        dyn_info.vertexCount = dyn_positions.size() / 3;
-        dyn_info.vertexData = dyn_positions.data();
-        dyn_info.normalData = dyn_normals.data();
-        dyn_info.texCoordData = dyn_texCoords.data();
-
-        dyn_info.indexCount = dyn_indices.size();
-        dyn_info.indexData = dyn_indices.data();
-
-        dyn_info.color = 0xFFFFFFFF;
-        dyn_info.geomMaterial = {
-            RG_NO_MATERIAL,
-            RG_NO_MATERIAL,
-            RG_NO_MATERIAL
-        };
-
-        dyn_info.transform = {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0
-        };
-    }
+    // cube with extents: (-1,-1,-1) (1,1,1)
+    LoadObj("../../../Cube.obj", cubePositions, cubeNormals, cubeTexCoords, cubeIndices);
 
 
-    /*st_info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
-    st_info.transform = {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0
+    // geometry infos
+    RgGeometryUploadInfo cubeInfo = {};
+    cubeInfo.vertexCount = cubePositions.size() / 3;
+    cubeInfo.vertexData = cubePositions.data();
+    cubeInfo.normalData = cubeNormals.data();
+    cubeInfo.texCoordData = cubeTexCoords.data();
+    cubeInfo.indexCount = cubeIndices.size();
+    cubeInfo.indexData = cubeIndices.data();
+    cubeInfo.color = 0xFFFFFFFF;
+    cubeInfo.geomMaterial = {
+        RG_NO_MATERIAL,
+        RG_NO_MATERIAL,
+        RG_NO_MATERIAL
     };
-    RgGeometry movable;
-    r = rgUploadGeometry(instance, &st_info, &movable);
-    RG_CHECKERROR_R;*/
+    cubeInfo.transform = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0
+    };
+
+    RgGeometryUploadInfo stInfo = cubeInfo;
+    stInfo.geomType = RG_GEOMETRY_TYPE_STATIC;
+    stInfo.transform =
+    {
+        30, 0, 0, 0,
+        0, 1, 0, -1,
+        0, 0, 30, 0
+    };
+
+    const void const  * a = nullptr;
+
+    RgGeometryUploadInfo mvInfo = cubeInfo;
+    mvInfo.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+
+    RgGeometryUploadInfo dnInfo = cubeInfo;
+    dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
 
 
-    uint64_t frameCount = 0;
+    // texture info
+    RgStaticMaterialCreateInfo textureInfo = {};
+    textureInfo.relativePath = "../../../TestImage.png";
+    textureInfo.useMipmaps = RG_TRUE;
 
-    RgMaterial mat = RG_NO_MATERIAL;
+
+    // rasterized geometry for HUD
+    RgRasterizedGeometryUploadInfo raster = {};
+    raster.vertexData = quadPositions;
+    raster.vertexCount = 6;
+    raster.vertexStride = 3 * sizeof(float);
+    raster.texCoordData = quadTexCoords;
+    raster.texCoordStride = 2 * sizeof(float);
+    raster.colorData = quadColorsABGR;
+    raster.colorStride = sizeof(uint32_t);
+    raster.textures =
+    {
+        RG_NO_MATERIAL,
+        RG_NO_MATERIAL,
+        RG_NO_MATERIAL
+    };
+    memcpy(raster.viewProjection, identityMatrix44, 16 * sizeof(float));
+    raster.viewport.x = -800;
+    raster.viewport.y = -450;
+    raster.viewport.width = 100;
+    raster.viewport.height = 100;
+
+
+    RgResult    r           = RG_SUCCESS;
+    uint64_t    frameCount  = 0;
+    RgMaterial  material    = RG_NO_MATERIAL;
+    RgGeometry  movableGeom = UINT32_MAX;
+
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
     {
@@ -287,152 +310,112 @@ void StartScene(RgInstance instance, Window *pWindow)
         ProcessInput(pWindow->glfwHandle);
 
         r = rgStartFrame(instance, (uint32_t)pWindow->width, (uint32_t)pWindow->height, true);
-        RG_CHECKERROR_R;
+        RG_CHECKERROR(r);
 
         if (frameCount == 0)
         {
+            // upload material
+            r = rgCreateStaticMaterial(instance, &textureInfo, &material);
+            RG_CHECKERROR(r);
+
+
+            // start static scene upload
             r = rgStartNewScene(instance);
-            RG_CHECKERROR_R;
+            RG_CHECKERROR(r);
 
-            r = rgCreateAnimatedMaterial(instance, &animInfo, &mat);
-            RG_CHECKERROR_R;
+            r = rgUploadGeometry(instance, &stInfo, nullptr);
+            RG_CHECKERROR(r);
 
+            mvInfo.geomMaterial.layerMaterials[0] = material;
+            r = rgUploadGeometry(instance, &mvInfo, &movableGeom);
+            RG_CHECKERROR(r);
 
-
-            r = rgUploadGeometry(instance, &st_info, nullptr);
-            RG_CHECKERROR_R;
-
+            // upload static geometry
             r = rgSubmitStaticGeometries(instance);
-            RG_CHECKERROR_R;
+            RG_CHECKERROR(r);
         }
 
-        rgChangeAnimatedMaterialFrame(instance, mat, frameCount % 120 > 60);
 
-        /*st_info.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
-        st_info.transform = {
-            1,0,0,0,
-            0,1,0, -static_cast<float>(frameCount) * 0.05f + 5,
-            0,0,1,0
+        // update transform of movable geometry
+        RgUpdateTransformInfo updateInfo = {};
+        updateInfo.movableStaticGeom = movableGeom;
+        updateInfo.transform = {
+            0.3f, 0, 0, 5.0f - 0.05f * (frameCount % 200),
+            0, 4, 0, 4,
+            0, 0, 0.3f, 0
         };
-        rgUploadGeometry(instance, &st_info, nullptr);*/
+        r = rgUpdateGeometryTransform(instance, &updateInfo);
+        RG_CHECKERROR(r);
 
-        dyn_info.geomMaterial.layerMaterials[0] = mat;
 
-        rgUploadGeometry(instance, &dyn_info, nullptr);
-
-        float verts[] = 
-        {
-            0, 0, 0,
-            0, 0.5f, 0,
-            0.5f, 0, 0,
-            0.5f, 0, 0,
-            0, 0.5f, 0,
-            0.5f, 0.5f, 0
+        // dynamic geometry must be uploaded each frame
+        dnInfo.transform = {
+            0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 30) % 200),
+            0, 4, 0, 4,
+            0, 0, 0.3f, 0
         };
+        rgUploadGeometry(instance, &dnInfo, nullptr);
 
-        float texCoords[] =
-        {
-            0, 0, 
-            0, 1.0f,
-            1.0f, 0, 
-            1.0f, 0, 
-            0, 1.0f, 
-            1.0, 1.0f,
+        dnInfo.transform = {
+            0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 60) % 200),
+            0, 4, 0, 4,
+            0, 0, 0.3f, 0
         };
+        rgUploadGeometry(instance, &dnInfo, nullptr);
 
-        uint32_t colors[]
-        {
-            0xFFFF0000,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            0xFFFFFFFF,
-            0xFF00FF00,
-        };
+        // upload rasterized geometry
+        r = rgUploadRasterizedGeometry(instance, &raster);
+        RG_CHECKERROR(r);
 
-        RgRasterizedGeometryUploadInfo raster = {};
-        raster.vertexData = verts;
-        raster.vertexCount = 6;
-        raster.vertexStride = 3 * sizeof(float);
-        raster.colorData = colors;
-        raster.colorStride = sizeof(uint32_t);
-        raster.texCoordData = texCoords;
-        raster.texCoordStride = 2 * sizeof(float);
-        raster.textures = 
-        {
-            mat,
-            RG_NO_MATERIAL,
-            RG_NO_MATERIAL
-        };
 
-        float idnt[] =
-        {
-            1,0,0,0,
-            0,1,0,0,
-            0,0,1,0,
-            0,0,0,1
-        };
-        memcpy(raster.viewProjection, idnt, 16 * sizeof(float));
-
-        raster.viewport.x = -800;
-        raster.viewport.y = -450;
-        raster.viewport.width = 1600;
-        raster.viewport.height = 900;
-
-        //r = rgUploadRasterizedGeometry(instance, &raster);
-        //RG_CHECKERROR_R;
-
-        /*RgUpdateTransformInfo uptr = {};
-        uptr.movableStaticGeom = movable;
-        uptr.transform = {
-            1,0,0,0,
-            0,1,0, -static_cast<float>(frameCount) * 0.05f + 30,
-            0,0,1,0
-        };
-        r = rgUpdateGeometryTransform(instance, &uptr);
-        RG_CHECKERROR_R;*/
-
-        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
-        glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
-
+        // submit frame to be rendered
         RgDrawFrameInfo frameInfo = {};
         frameInfo.renderWidth = pWindow->width;
         frameInfo.renderHeight = pWindow->height;
+
         // GLM is column major, copy matrix data directly
-        memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
+        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
         memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
 
+        glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
+        memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
+
         r = rgDrawFrame(instance, &frameInfo);
-        RG_CHECKERROR_R;
+        RG_CHECKERROR(r);
 
         frameCount++;
     }
 
-    rgDestroyMaterial(instance, mat);
+    rgDestroyMaterial(instance, material);
 }
 
 int main()
 {
+    RgResult r          = RG_SUCCESS;;
+    RgInstance instance = RG_NULL_HANDLE;
+
     static Window window = Window();
 
     logFile.open("LogOutput.txt");
 
     try
     {
+
         RgInstanceCreateInfo info = {};
-        info.name = "RTGL1 Test";
-        info.physicalDeviceIndex = 0;
-        info.enableValidationLayer = RG_TRUE;
 
-        info.vertexPositionStride = 3 * sizeof(float);
-        info.vertexNormalStride = 3 * sizeof(float);
-        info.vertexTexCoordStride = 2 * sizeof(float);
-        info.vertexColorStride = sizeof(uint32_t);
-        info.rasterizedMaxVertexCount = 4096;
-        info.rasterizedMaxIndexCount = 2048;
+        info.name                       = "RTGL1 Test";
+        info.physicalDeviceIndex        = 0;
+        info.enableValidationLayer      = RG_TRUE;
 
-        info.ppWindowExtensions = window.extensions;
-        info.windowExtensionCount = window.extensionCount;
+        info.vertexPositionStride       = 3 * sizeof(float);
+        info.vertexNormalStride         = 3 * sizeof(float);
+        info.vertexTexCoordStride       = 2 * sizeof(float);
+        info.vertexColorStride          = sizeof(uint32_t);
+        info.rasterizedMaxVertexCount   = 4096;
+        info.rasterizedMaxIndexCount    = 2048;
+
+        info.ppWindowExtensions         = window.extensions;
+        info.windowExtensionCount       = window.extensionCount;
 
         info.pfnCreateSurface = [](uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR)
         {
@@ -441,12 +424,14 @@ int main()
 
         info.pfnDebugPrint = DebugPrint;
 
-        RgInstance instance;
-        rgCreateInstance(&info, &instance);
+        r = rgCreateInstance(&info, &instance);
+        RG_CHECKERROR(r);
 
-        StartScene(instance, &window);
+        MainLoop(instance, &window);
 
-        rgDestroyInstance(instance);
+        r = rgDestroyInstance(instance);
+        RG_CHECKERROR(r);
+
     }
     catch(std::exception &e)
     {
