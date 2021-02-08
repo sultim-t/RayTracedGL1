@@ -22,6 +22,8 @@
 
 #include "Generated/ShaderCommonC.h"
 
+using namespace RTGL1;
+
 GlobalUniform::GlobalUniform(VkDevice _device, const std::shared_ptr<MemoryAllocator> &_allocator, bool _deviceLocal)
 :
     device(_device),

@@ -21,6 +21,8 @@
 #include "TextureUploader.h"
 #include "Utils.h"
 
+using namespace RTGL1;
+
 TextureUploader::TextureUploader(VkDevice _device, std::shared_ptr<MemoryAllocator> _memAllocator)
     : device(_device), memAllocator(std::move(_memAllocator))
 {}

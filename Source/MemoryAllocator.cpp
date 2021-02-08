@@ -22,6 +22,8 @@
 
 #include "Const.h"
 
+using namespace RTGL1;
+
 MemoryAllocator::MemoryAllocator(
     VkInstance _instance,
     VkDevice _device,

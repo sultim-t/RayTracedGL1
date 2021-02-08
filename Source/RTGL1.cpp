@@ -20,6 +20,8 @@
 
 #include "VulkanDevice.h"
 
+using namespace RTGL1;
+
 
 // TODO: check all members of input structs in RTGL1.CPP
 

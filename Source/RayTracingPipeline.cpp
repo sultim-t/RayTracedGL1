@@ -23,6 +23,8 @@
 #include "Generated/ShaderCommonC.h"
 #include "Utils.h"
 
+using namespace RTGL1;
+
 RayTracingPipeline::RayTracingPipeline(
     VkDevice _device,
     const std::shared_ptr<PhysicalDevice> &_physDevice,

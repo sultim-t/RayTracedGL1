@@ -23,6 +23,8 @@
 #include <fstream>
 #include <vector>
 
+using namespace RTGL1;
+
 struct ShaderModuleDefinition
 {
     const char *name;

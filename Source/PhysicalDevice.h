@@ -22,6 +22,9 @@
 
 #include "Common.h"
 
+namespace RTGL1
+{
+
 class PhysicalDevice
 {
 public:
@@ -44,3 +47,5 @@ private:
     VkPhysicalDeviceMemoryProperties memoryProperties;
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtPipelineProperties;
 };
+
+}

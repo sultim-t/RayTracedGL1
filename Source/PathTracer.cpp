@@ -21,6 +21,8 @@
 #include "PathTracer.h"
 #include "Generated/ShaderCommonC.h"
 
+using namespace RTGL1;
+
 PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rtPipeline)
     : device(_device), rtPipeline(_rtPipeline)
 {}

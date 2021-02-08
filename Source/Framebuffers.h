@@ -29,6 +29,9 @@
 #include "SamplerManager.h"
 #include "Generated/ShaderCommonCFramebuf.h"
 
+namespace RTGL1
+{
+
 // Hold info for previous and current frames
 #define FRAMEBUFFERS_HISTORY_LENGTH 2
 
@@ -89,3 +92,5 @@ private:
     VkDescriptorPool descPool;
     VkDescriptorSet descSets[FRAMEBUFFERS_HISTORY_LENGTH];
 };
+
+}

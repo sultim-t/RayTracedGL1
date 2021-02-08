@@ -20,6 +20,8 @@
 
 #include "Queues.h"
 
+using namespace RTGL1;
+
 uint32_t Queues::GetIndexGraphics() const
 {
     return indexGraphics;

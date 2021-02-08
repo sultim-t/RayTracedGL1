@@ -22,6 +22,8 @@
 #include "Generated/ShaderCommonC.h"
 #include "Matrix.h"
 
+using namespace RTGL1;
+
 #define INDEX_BUFFER_SIZE       (MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t))
 #define TRANSFORM_BUFFER_SIZE   (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR))
 #define GEOM_INFO_BUFFER_SIZE   (MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance))

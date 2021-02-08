@@ -44,6 +44,8 @@
 
 #include "Matrix.h"
 
+using namespace RTGL1;
+
 void Matrix::Inverse(float *inversed, const float *m)
 {
     // Copied from "Mesa - The 3D Graphics Library" (MIT license)

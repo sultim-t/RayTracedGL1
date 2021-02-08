@@ -33,6 +33,9 @@
 #include "TextureDescriptors.h"
 #include "TextureUploader.h"
 
+namespace RTGL1
+{
+
 class TextureManager
 {
 public:
@@ -136,4 +139,6 @@ private:
 inline constexpr uint32_t TextureManager::GetEmptyTextureIndex()
 {
     return EMPTY_TEXTURE_INDEX;
+}
+
 }

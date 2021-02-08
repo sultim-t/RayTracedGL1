@@ -26,6 +26,8 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
+using namespace RTGL1;
+
 Rasterizer::Rasterizer(
     VkDevice _device,
     const std::shared_ptr<MemoryAllocator> &_allocator,

@@ -21,6 +21,9 @@
 #pragma once
 #include "Common.h"
 
+namespace RTGL1
+{
+
 struct VertexBufferProperties
 {
     bool vertexArrayOfStructs;
@@ -29,3 +32,5 @@ struct VertexBufferProperties
     uint32_t texCoordStride;
     uint32_t colorStride;
 };
+
+}

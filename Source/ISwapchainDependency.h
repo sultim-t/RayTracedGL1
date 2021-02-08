@@ -20,6 +20,9 @@
 
 #pragma once
 
+namespace RTGL1
+{
+
 class Swapchain;
 
 class ISwapchainDependency
@@ -30,3 +33,4 @@ public:
     virtual void OnSwapchainDestroy() = 0;
 };
 
+}

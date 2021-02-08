@@ -24,6 +24,8 @@
 
 #include "Stb/stb_image.h"
 
+using namespace RTGL1;
+
 ImageLoader::~ImageLoader()
 {
     assert(loadedImages.empty());

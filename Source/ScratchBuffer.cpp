@@ -20,6 +20,8 @@
 
 #include "ScratchBuffer.h"
 
+using namespace RTGL1;
+
 constexpr VkDeviceSize SCRATCH_CHUNK_BUFFER_SIZE = (1 << 24);
 
 ScratchBuffer::ScratchBuffer(std::shared_ptr<MemoryAllocator> _allocator)

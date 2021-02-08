@@ -22,6 +22,9 @@
 
 #include "Common.h"
 
+namespace RTGL1
+{
+
 #define EMPTY_TEXTURE_INDEX 0
 #define MATERIALS_MAX_LAYER_COUNT       3
 #define TEXTURES_PER_MATERIAL_COUNT     3
@@ -56,3 +59,5 @@ struct AnimatedMaterial
     std::vector<uint32_t>   materialIndices;
     uint32_t                currentFrame;
 };
+
+}

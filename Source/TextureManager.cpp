@@ -26,6 +26,8 @@
 #include "Utils.h"
 #include "TextureOverrides.h"
 
+using namespace RTGL1;
+
 #define DEFAULT_TEXTURES_PATH               ""
 #define DEFAULT_ALBEDO_ALPHA_POSTFIX        ""
 #define DEFAULT_NORMAL_METALLIC_POSTFIX     "_n"

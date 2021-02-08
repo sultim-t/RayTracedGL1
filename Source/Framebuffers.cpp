@@ -20,6 +20,8 @@
 
 #include "Framebuffers.h"
 
+using namespace RTGL1;
+
 #include "Swapchain.h"
 #include "Utils.h"
 

@@ -26,6 +26,9 @@
 #include "MemoryAllocator.h"
 #include "RTGL1/RTGL1.h"
 
+namespace RTGL1
+{
+
 // Uploads texture data to device.
 class TextureUploader
 {
@@ -114,3 +117,5 @@ private:
     // Each dynamic image has its pointer to HOST_VISIBLE data for updating.
     std::map<VkImage, DynamicImageInfo> dynamicImageInfos;
 };
+
+}

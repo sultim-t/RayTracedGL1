@@ -23,6 +23,9 @@
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
 
+namespace RTGL1
+{
+
 class Utils
 {
 public:
@@ -63,3 +66,5 @@ public:
     static bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
     static bool IsDefaultViewport(const RgViewport &viewport);
 };
+
+}

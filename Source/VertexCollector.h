@@ -31,6 +31,9 @@
 #include "VertexCollectorFilter.h"
 #include "RTGL1/RTGL1.h"
 
+namespace RTGL1
+{
+
 struct ShGeometryInstance;
 
 // The class collects vertex data to buffers with shader struct types.
@@ -179,3 +182,5 @@ private:
 
     std::map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
 };
+
+}

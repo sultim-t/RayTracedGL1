@@ -27,6 +27,8 @@
 #include "ImageLoader.h"
 #include "Utils.h"
 
+using namespace RTGL1;
+
 static_assert(BLUE_NOISE_TEXTURE_COUNT == BlueNoiseFileNamesCount, "");
 
 BlueNoise::BlueNoise(

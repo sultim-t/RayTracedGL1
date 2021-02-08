@@ -23,10 +23,10 @@
 #include <cassert>
 
 // file scope typedefs
-typedef VertexCollectorFilterTypeFlagBits FT;
-typedef VertexCollectorFilterTypeFlags FL;
+typedef RTGL1::VertexCollectorFilterTypeFlagBits FT;
+typedef RTGL1::VertexCollectorFilterTypeFlags FL;
 
-uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags)
+uint32_t RTGL1::VertexCollectorFilterTypeFlagsToOffset(FL flags)
 {
     uint32_t result = 0;
 
@@ -79,7 +79,7 @@ const static FLName FL_NAMES[] =
     { FT::CF_DYNAMIC            | FT::PT_PORTAL,                "BLAS dynamic portal"                   },
 };
 
-const char *GetVertexCollectorFilterTypeFlagsNameForBLAS(VertexCollectorFilterTypeFlags flags)
+const char *RTGL1::GetVertexCollectorFilterTypeFlagsNameForBLAS(FL flags)
 {
     for (const FLName &p : FL_NAMES)
     {
@@ -94,7 +94,7 @@ const char *GetVertexCollectorFilterTypeFlagsNameForBLAS(VertexCollectorFilterTy
     return nullptr;
 }
 
-VertexCollectorFilterTypeFlags GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info)
+FL RTGL1::GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info)
 {
     FL flags = 0;
 

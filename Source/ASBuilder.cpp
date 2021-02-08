@@ -23,6 +23,8 @@
 
 #include "Utils.h"
 
+using namespace RTGL1;
+
 ASBuilder::ASBuilder(VkDevice device, std::shared_ptr<ScratchBuffer> commonScratchBuffer) :
     scratchBuffer(std::move(commonScratchBuffer))
 {

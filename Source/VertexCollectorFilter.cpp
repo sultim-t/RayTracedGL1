@@ -20,6 +20,8 @@
 
 #include "VertexCollectorFilter.h"
 
+using namespace RTGL1;
+
 VertexCollectorFilter::VertexCollectorFilter(VertexCollectorFilterTypeFlags _filter) : filter(_filter)
 {}
 

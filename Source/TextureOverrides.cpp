@@ -21,6 +21,8 @@
 #include "TextureOverrides.h"
 #include "Const.h"
 
+using namespace RTGL1;
+
 TextureOverrides::TextureOverrides(const RgStaticMaterialCreateInfo &_createInfo, const ParseInfo &_parseInfo, std::shared_ptr<ImageLoader> _imageLoader) :
     aa(nullptr), aaSize({}), nm(nullptr), nmSize({}), er(nullptr), erSize({}), imageLoader(_imageLoader)
 {

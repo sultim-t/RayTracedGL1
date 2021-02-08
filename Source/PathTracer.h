@@ -25,6 +25,9 @@
 #include "GlobalUniform.h"
 #include "Framebuffers.h"
 
+namespace RTGL1
+{
+
 class PathTracer
 {
 public:
@@ -49,3 +52,5 @@ private:
     VkDevice device;
     std::shared_ptr<RayTracingPipeline> rtPipeline;
 };
+
+}

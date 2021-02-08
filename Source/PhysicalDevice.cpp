@@ -21,6 +21,8 @@
 #include "PhysicalDevice.h"
 #include <vector>
 
+using namespace RTGL1;
+
 PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
 {
     VkResult r;

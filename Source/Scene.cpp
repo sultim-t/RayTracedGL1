@@ -20,6 +20,8 @@
 
 #include "Scene.h"
 
+using namespace RTGL1;
+
 Scene::Scene(std::shared_ptr<ASManager> asManager) :
     toResubmitMovable(false),
     currentFrameIndex(UINT32_MAX),

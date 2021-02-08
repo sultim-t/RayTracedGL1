@@ -25,6 +25,9 @@
 
 #include "Common.h"
 
+namespace RTGL1
+{
+
 // This class provides shader modules by their name
 class ShaderManager
 {
@@ -62,3 +65,5 @@ private:
 
     std::map<std::string, ShaderModule> modules;
 };
+
+}

@@ -22,6 +22,9 @@
 
 #include "ASManager.h"
 
+namespace RTGL1
+{
+
 class Scene
 {
 public:
@@ -56,3 +59,5 @@ private:
     uint32_t currentFrameIndex;
     bool isRecordingStatic;
 };
+
+}

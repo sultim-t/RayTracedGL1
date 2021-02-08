@@ -22,6 +22,9 @@
 
 #include "Buffer.h"
 
+namespace RTGL1
+{
+
 struct ShGlobalUniform;
 
 class GlobalUniform
@@ -59,3 +62,5 @@ private:
     VkDescriptorSetLayout   descSetLayout;
     VkDescriptorSet         descSets[MAX_FRAMES_IN_FLIGHT];
 };
+
+}

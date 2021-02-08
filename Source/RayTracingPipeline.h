@@ -26,6 +26,9 @@
 #include "ShaderManager.h"
 #include "Framebuffers.h"
 
+namespace RTGL1
+{
+
 class RayTracingPipeline
 {
 public:
@@ -88,3 +91,5 @@ private:
     uint32_t hitGroupCount;
     uint32_t missShaderCount;
 };
+
+}

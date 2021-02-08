@@ -23,6 +23,9 @@
 #include "Common.h"
 #include "MemoryAllocator.h"
 
+namespace RTGL1
+{
+
 class Buffer
 {
 public:
@@ -58,3 +61,5 @@ protected:
 private:
     bool isMapped;
 };
+
+}

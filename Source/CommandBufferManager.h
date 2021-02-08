@@ -26,6 +26,9 @@
 #include "Common.h"
 #include "Queues.h"
 
+namespace RTGL1
+{
+
 class CommandBufferManager
 {
 public:
@@ -81,3 +84,5 @@ private:
     std::weak_ptr<Queues> queues;
     std::map<VkCommandBuffer, VkQueue> cmdQueues[MAX_FRAMES_IN_FLIGHT];
 };
+
+}

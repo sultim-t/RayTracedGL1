@@ -22,6 +22,9 @@
 
 #include "RTGL1/RTGL1.h"
 
+namespace RTGL1
+{
+
 class Matrix
 {
 public:
@@ -30,3 +33,5 @@ public:
     static void ToMat4(float *result, const RgTransform &m);
     static void ToMat4Transposed(float *result, const RgTransform &m);
 };
+
+}

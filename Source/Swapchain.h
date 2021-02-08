@@ -22,10 +22,14 @@
 
 #include <list>
 #include <vector>
+
 #include "Common.h"
 #include "PhysicalDevice.h"
 #include "CommandBufferManager.h"
 #include "ISwapchainDependency.h"
+
+namespace RTGL1
+{
 
 class Swapchain
 {
@@ -100,3 +104,5 @@ private:
 
     std::list<std::weak_ptr<ISwapchainDependency>> subscribers;
 };
+
+}

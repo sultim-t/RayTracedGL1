@@ -20,6 +20,8 @@
 
 #include "Utils.h"
 
+using namespace RTGL1;
+
 void Utils::BarrierImage(
     VkCommandBuffer cmd, VkImage image, VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
     VkImageLayout oldLayout, VkImageLayout newLayout, VkPipelineStageFlags srcStageMask,

@@ -2,7 +2,10 @@
 
 #pragma once
 
-constexpr char* const BlueNoiseFileNames[] =
+namespace RTGL1
+{
+
+constexpr char *const BlueNoiseFileNames[] =
 {
     "LDR_RG01_0.png",
     "LDR_RG01_1.png",
@@ -71,3 +74,5 @@ constexpr char* const BlueNoiseFileNames[] =
 };
 
 constexpr int BlueNoiseFileNamesCount = 64;
+
+}

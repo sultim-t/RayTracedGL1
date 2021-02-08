@@ -25,6 +25,8 @@
 #include "Generated/ShaderCommonC.h"
 #include "Const.h"
 
+using namespace RTGL1;
+
 TextureDescriptors::TextureDescriptors(VkDevice _device) :
     device(_device),
     descPool(VK_NULL_HANDLE),

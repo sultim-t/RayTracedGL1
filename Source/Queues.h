@@ -23,6 +23,9 @@
 #include <vector>
 #include "Common.h"
 
+namespace RTGL1
+{
+
 class Queues
 {
 public:
@@ -57,3 +60,5 @@ private:
     VkQueue compute;
     VkQueue transfer;
 };
+
+}

@@ -22,6 +22,9 @@
 
 #include "RTGL1/RTGL1.h"
 
+namespace RTGL1
+{
+
 enum class VertexCollectorFilterTypeFlagBits : uint32_t
 {
     NONE                        = 0,
@@ -100,3 +103,5 @@ inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBit
 uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags);
 const char *GetVertexCollectorFilterTypeFlagsNameForBLAS(VertexCollectorFilterTypeFlags flags);
 VertexCollectorFilterTypeFlags GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info);
+
+}

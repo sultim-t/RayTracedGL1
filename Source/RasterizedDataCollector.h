@@ -27,6 +27,9 @@
 #include "Common.h"
 #include "TextureManager.h"
 
+namespace RTGL1
+{
+
 #define RASTERIZER_TEXTURE_COUNT 3
 
 class RasterizedDataCollector
@@ -85,3 +88,5 @@ private:
 
     std::vector<DrawInfo> drawInfos;
 };
+
+}

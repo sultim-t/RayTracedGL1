@@ -20,6 +20,8 @@
 
 #include "Buffer.h"
 
+using namespace RTGL1;
+
 Buffer::Buffer()
     :
     device(VK_NULL_HANDLE),

@@ -20,6 +20,9 @@
 
 #pragma once
 
+namespace RTGL1
+{
+
 #define ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES           256 * 512 * 512 * 4
 #define ALLOCATOR_BLOCK_SIZE_TEXTURES                   256 * 512 * 512 * 4
 
@@ -28,3 +31,5 @@
 #define TEXTURE_FILE_EXTENSION_MAX_LENGTH               16
 
 #define MAX_TEXTURE_COUNT                               1024
+
+}

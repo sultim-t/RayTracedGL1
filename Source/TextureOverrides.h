@@ -24,6 +24,9 @@
 #include "RTGL1/RTGL1.h"
 #include "ImageLoader.h"
 
+namespace RTGL1
+{
+
 #define TEXTURE_DEBUG_NAME_MAX_LENGTH 32
 
 struct ParseInfo
@@ -75,3 +78,5 @@ public:
 private:
     std::weak_ptr<ImageLoader> imageLoader;
 };
+
+}

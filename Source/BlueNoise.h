@@ -27,6 +27,9 @@
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 
+namespace RTGL1
+{
+
 class BlueNoise
 {
 public:
@@ -59,3 +62,5 @@ private:
     VkDescriptorPool descPool;
     VkDescriptorSet descSet;
 };
+
+}

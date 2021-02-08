@@ -22,6 +22,8 @@
 
 #include "Utils.h"
 
+using namespace RTGL1;
+
 static_assert(RASTERIZER_TEXTURE_COUNT == sizeof(RgLayeredMaterial) / sizeof(RgMaterial), "RASTERIZER_TEXTURE_COUNT must be the same as in RgLayeredMaterial");
 
 struct RasterizedDataCollector::RasterizerVertex

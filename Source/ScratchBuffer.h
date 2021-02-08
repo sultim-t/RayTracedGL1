@@ -20,8 +20,12 @@
 
 #pragma once
 
-#include "Buffer.h"
 #include <list>
+
+#include "Buffer.h"
+
+namespace RTGL1
+{
 
 class ScratchBuffer
 {
@@ -50,3 +54,5 @@ private:
     std::weak_ptr<MemoryAllocator> allocator;
     std::list<ChunkBuffer> chunks;
 };
+
+}

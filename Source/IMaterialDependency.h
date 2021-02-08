@@ -22,6 +22,9 @@
 
 #include "Material.h"
 
+namespace RTGL1
+{
+
 class IMaterialDependency
 {
 public:
@@ -30,3 +33,5 @@ public:
     // then this function will be called. If material was destroyed, "newInfo" will have empty texture indices.
     virtual void OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo) = 0;
 };
+
+}

@@ -24,6 +24,8 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
+using namespace RTGL1;
+
 VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     instance(VK_NULL_HANDLE),
     device(VK_NULL_HANDLE),

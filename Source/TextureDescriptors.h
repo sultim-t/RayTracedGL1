@@ -24,6 +24,9 @@
 
 #include "Common.h"
 
+namespace RTGL1
+{
+
 class TextureDescriptors
 {
 public:
@@ -79,3 +82,5 @@ private:
 
     std::vector<UpdatedDescCache> writeCache[MAX_FRAMES_IN_FLIGHT];
 };
+
+}

@@ -19,9 +19,14 @@
 // SOFTWARE.
 
 #pragma once
+
 #include <vector>
+
 #include "Common.h"
 #include "ScratchBuffer.h"
+
+namespace RTGL1
+{
 
 class ASBuilder
 {
@@ -91,3 +96,5 @@ private:
     BuildInfo bottomLBuildInfo;
     BuildInfo topLBuildInfo;
 };
+
+}

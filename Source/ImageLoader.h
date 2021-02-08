@@ -23,6 +23,9 @@
 #include <cstdint>
 #include <vector>
 
+namespace RTGL1
+{
+
 // Loading images from files.
 class ImageLoader
 {
@@ -44,3 +47,5 @@ public:
 private:
     std::vector<void*> loadedImages;
 };
+
+}

@@ -28,6 +28,9 @@
 #include "VertexBufferProperties.h"
 #include "VertexCollector.h"
 
+namespace RTGL1
+{
+
 class ASManager
 {
 public:
@@ -138,3 +141,5 @@ private:
 
     VertexBufferProperties properties;
 };
+
+}

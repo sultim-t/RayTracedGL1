@@ -25,6 +25,8 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
+using namespace RTGL1;
+
 ASManager::ASManager(
     VkDevice _device, 
     std::shared_ptr<MemoryAllocator> _allocator,

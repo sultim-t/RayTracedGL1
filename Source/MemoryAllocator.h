@@ -26,6 +26,9 @@
 #include "PhysicalDevice.h"
 #include "Vma/vk_mem_alloc.h"
 
+namespace RTGL1
+{
+
 // Device memory allocator.
 class MemoryAllocator
 {
@@ -80,3 +83,5 @@ private:
     std::map<VkBuffer, VmaAllocation> bufAllocs;
     std::map<VkImage, VmaAllocation> imgAllocs;
 };
+
+}

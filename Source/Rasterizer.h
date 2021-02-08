@@ -28,6 +28,9 @@
 #include "ISwapchainDependency.h"
 #include "RasterizedDataCollector.h"
 
+namespace RTGL1
+{
+
 // This class provides rasterization functionality
 class Rasterizer : public ISwapchainDependency
 {
@@ -78,3 +81,5 @@ private:
 
     std::shared_ptr<RasterizedDataCollector> collectors[MAX_FRAMES_IN_FLIGHT];
 };
+
+}

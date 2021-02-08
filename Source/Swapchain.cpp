@@ -21,6 +21,8 @@
 #include "Swapchain.h"
 #include "Utils.h"
 
+using namespace RTGL1;
+
 Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
                      std::shared_ptr<PhysicalDevice> physDevice,
                      std::shared_ptr<CommandBufferManager> cmdManager) :

@@ -39,6 +39,9 @@
 #include "TextureManager.h"
 #include "BlueNoise.h"
 
+namespace RTGL1
+{
+
 class VulkanDevice
 {
 public:
@@ -128,3 +131,5 @@ private:
 
     VertexBufferProperties                  vbProperties;
 };
+
+}
