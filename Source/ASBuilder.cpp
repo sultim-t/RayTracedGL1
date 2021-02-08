@@ -92,7 +92,13 @@ void ASBuilder::AddBLAS(
 
     assert(geometryCount > 0);
 
-    VkDeviceSize scratchSize = update ? buildSizes.updateScratchSize : buildSizes.buildScratchSize;
+    VkDeviceSize scratchSize = buildSizes.buildScratchSize;
+
+    // use bigger scratch size, if need to update
+    if (update && scratchSize < buildSizes.updateScratchSize)
+    {
+        scratchSize = buildSizes.updateScratchSize;
+    }
 
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {};
     buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
