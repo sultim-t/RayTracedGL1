@@ -107,7 +107,7 @@ private:
 
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
 
-    bool GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const;
+    bool GetVertBufferCopyInfos(bool isStatic, VkBufferCopy *pOutInfos, uint32_t *outCount) const;
     
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);

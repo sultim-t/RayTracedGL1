@@ -24,9 +24,27 @@
 
 using namespace RTGL1;
 
-#define INDEX_BUFFER_SIZE       (MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t))
-#define TRANSFORM_BUFFER_SIZE   (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR))
-#define GEOM_INFO_BUFFER_SIZE   (MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance))
+constexpr uint32_t INDEX_BUFFER_SIZE        = MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t);
+constexpr uint32_t TRANSFORM_BUFFER_SIZE    = MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR);
+constexpr uint32_t GEOM_INFO_BUFFER_SIZE    = MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(ShGeometryInstance);
+
+constexpr uint64_t OFFSET_TEX_COORDS_STATIC[] =
+{
+    offsetof(ShVertexBufferStatic, texCoords),
+    offsetof(ShVertexBufferStatic, texCoordsLayer1),
+    offsetof(ShVertexBufferStatic, texCoordsLayer2),
+};
+
+constexpr uint64_t OFFSET_TEX_COORDS_DYNAMIC[] =
+{
+    offsetof(ShVertexBufferDynamic, texCoords),
+};
+
+constexpr uint32_t TEXCOORD_LAYER_COUNT_STATIC = sizeof(OFFSET_TEX_COORDS_STATIC) / sizeof(OFFSET_TEX_COORDS_STATIC[0]);
+constexpr uint32_t TEXCOORD_LAYER_COUNT_DYNAMIC = sizeof(OFFSET_TEX_COORDS_DYNAMIC) / sizeof(OFFSET_TEX_COORDS_DYNAMIC[0]);
+
+constexpr uint32_t MAX_VERTEX_BUFFER_MEMBER_COUNT = 8;
+
 
 VertexCollector::VertexCollector(
     VkDevice _device, 
@@ -356,18 +374,10 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     //const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 
     // additional tex coords for static geometry
-    const uint32_t MaxTexCoordLayerCount = 3;
+    const uint64_t *offsetTexCoords = isStatic ? OFFSET_TEX_COORDS_STATIC : OFFSET_TEX_COORDS_DYNAMIC;
+    uint32_t        offsetCount     = isStatic ? TEXCOORD_LAYER_COUNT_STATIC : TEXCOORD_LAYER_COUNT_DYNAMIC;
 
-    const uint64_t offsetTexCoords[MaxTexCoordLayerCount] =
-    {
-        isStatic ? offsetof(ShVertexBufferStatic, texCoords) : offsetof(ShVertexBufferDynamic, texCoords),
-        offsetof(ShVertexBufferStatic, texCoordsLayer1),
-        offsetof(ShVertexBufferStatic, texCoordsLayer2),
-    };
-
-    uint32_t texCoordLayerCount = isStatic ? MaxTexCoordLayerCount : 1;
-
-    for (uint32_t i = 0; i < texCoordLayerCount; i++)
+    for (uint32_t i = 0; i < offsetCount; i++)
     {
         void *texCoordDst = mappedVertexData + offsetTexCoords[i] + vertIndex * texCoordStride;
         assert(offsetTexCoords[i] + (vertIndex + info.vertexCount) * texCoordStride < wholeBufferSize);
@@ -411,8 +421,10 @@ void VertexCollector::Reset()
 
 bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
-    std::array<VkBufferCopy, 3> vertCopyInfos = {};
-    bool hasInfo = GetVertBufferCopyInfos(isStatic, vertCopyInfos);
+    std::array<VkBufferCopy, MAX_VERTEX_BUFFER_MEMBER_COUNT> vertCopyInfos = {};
+
+    uint32_t count;
+    bool hasInfo = GetVertBufferCopyInfos(isStatic, vertCopyInfos.data(), &count);
 
     if (!hasInfo)
     {
@@ -422,7 +434,7 @@ bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStat
     vkCmdCopyBuffer(
         cmd,
         stagingVertBuffer.GetBuffer(), vertBuffer->GetBuffer(),
-        vertCopyInfos.size(), vertCopyInfos.data());
+        count, vertCopyInfos.data());
 
     return true;
 }
@@ -603,27 +615,40 @@ bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexDa
     return false;
 }
 
-bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::array<VkBufferCopy, 3> &outInfos) const
+bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, VkBufferCopy *pOutInfos, uint32_t *outCount) const
 {
-    const uint32_t offsetPositions = isStatic ?
-        offsetof(ShVertexBufferStatic, positions) :
-        offsetof(ShVertexBufferDynamic, positions);
-    const uint32_t offsetNormals = isStatic ?
-        offsetof(ShVertexBufferStatic, normals) :
-        offsetof(ShVertexBufferDynamic, normals);
-    const uint32_t offsetTexCoords = isStatic ?
-        offsetof(ShVertexBufferStatic, texCoords) :
-        offsetof(ShVertexBufferDynamic, texCoords);
-
     if (curVertexCount == 0 || curPrimitiveCount == 0)
     {
         return false;
     }
 
-    outInfos[0] = { offsetPositions,    offsetPositions,    (uint64_t)curVertexCount * properties.positionStride };
-    outInfos[1] = { offsetNormals,      offsetNormals,      (uint64_t)curVertexCount * properties.normalStride };
-    outInfos[2] = { offsetTexCoords,    offsetTexCoords,    (uint64_t)curVertexCount * properties.texCoordStride };
+    const uint32_t offsetPositions = isStatic ?
+        offsetof(ShVertexBufferStatic, positions) :
+        offsetof(ShVertexBufferDynamic, positions);
 
+    const uint32_t offsetNormals = isStatic ?
+        offsetof(ShVertexBufferStatic, normals) :
+        offsetof(ShVertexBufferDynamic, normals);
+
+    const uint64_t *offsetTexCoords = isStatic ? OFFSET_TEX_COORDS_STATIC : OFFSET_TEX_COORDS_DYNAMIC;
+    uint32_t        offsetCount     = isStatic ? TEXCOORD_LAYER_COUNT_STATIC : TEXCOORD_LAYER_COUNT_DYNAMIC;
+
+    uint32_t count = 0;
+
+    pOutInfos[count++] = { offsetPositions,    offsetPositions,    (uint64_t)curVertexCount * properties.positionStride };
+    pOutInfos[count++] = { offsetNormals,      offsetNormals,      (uint64_t)curVertexCount * properties.normalStride };
+
+    if (MAX_VERTEX_BUFFER_MEMBER_COUNT < count + offsetCount)
+    {
+        assert(0);
+    }
+
+    for (uint32_t i = 0; i < offsetCount; i++)
+    {
+        pOutInfos[count++] = { offsetTexCoords[i], offsetTexCoords[i], (uint64_t)curVertexCount * properties.texCoordStride };
+    }
+
+    *outCount = count;
     return true;
 }
 
