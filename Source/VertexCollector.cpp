@@ -327,9 +327,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     const uint64_t offsetNormals = isStatic ?
         offsetof(ShVertexBufferStatic, normals) :
         offsetof(ShVertexBufferDynamic, normals);
-    const uint64_t offsetTexCoords = isStatic ?
-        offsetof(ShVertexBufferStatic, texCoords) :
-        offsetof(ShVertexBufferDynamic, texCoords);
 
     const uint64_t positionStride = properties.positionStride;
     const uint64_t normalStride = properties.normalStride;
@@ -355,21 +352,35 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
         memset(normalsDst, 0, info.vertexCount * normalStride);
     }
 
-    // tex coords
-    void *texCoordDst = mappedVertexData + offsetTexCoords + vertIndex * texCoordStride;
-    assert(offsetTexCoords + (vertIndex + info.vertexCount) * texCoordStride < wholeBufferSize);
-
-    if (info.texCoordData != nullptr)
-    {
-        memcpy(texCoordDst, info.texCoordData, info.vertexCount * texCoordStride);
-    }
-    else
-    {
-        memset(texCoordDst, 0, info.vertexCount * texCoordStride);
-    }
-
     //const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
     //const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
+
+    // additional tex coords for static geometry
+    const uint32_t MaxTexCoordLayerCount = 3;
+
+    const uint64_t offsetTexCoords[MaxTexCoordLayerCount] =
+    {
+        isStatic ? offsetof(ShVertexBufferStatic, texCoords) : offsetof(ShVertexBufferDynamic, texCoords),
+        offsetof(ShVertexBufferStatic, texCoordsLayer1),
+        offsetof(ShVertexBufferStatic, texCoordsLayer2),
+    };
+
+    uint32_t texCoordLayerCount = isStatic ? MaxTexCoordLayerCount : 1;
+
+    for (uint32_t i = 0; i < texCoordLayerCount; i++)
+    {
+        void *texCoordDst = mappedVertexData + offsetTexCoords[i] + vertIndex * texCoordStride;
+        assert(offsetTexCoords[i] + (vertIndex + info.vertexCount) * texCoordStride < wholeBufferSize);
+
+        if (info.texCoordLayerData[i] != nullptr)
+        {
+            memcpy(texCoordDst, info.texCoordLayerData[i], info.vertexCount * texCoordStride);
+        }
+        else
+        {
+            memset(texCoordDst, 0, info.vertexCount * texCoordStride);
+        }
+    }
 }
 
 

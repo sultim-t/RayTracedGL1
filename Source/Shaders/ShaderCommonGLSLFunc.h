@@ -275,9 +275,17 @@ ShTriangle getTriangleStatic(uvec3 vertIndices)
     tr.normals[1] = getStaticVerticesNormals(vertIndices[1]);
     tr.normals[2] = getStaticVerticesNormals(vertIndices[2]);
 
-    tr.texCoords[0] = getStaticVerticesTexCoords(vertIndices[0]);
-    tr.texCoords[1] = getStaticVerticesTexCoords(vertIndices[1]);
-    tr.texCoords[2] = getStaticVerticesTexCoords(vertIndices[2]);
+    tr.layerTexCoord[0][0] = getStaticVerticesTexCoords(vertIndices[0]);
+    tr.layerTexCoord[0][1] = getStaticVerticesTexCoords(vertIndices[1]);
+    tr.layerTexCoord[0][2] = getStaticVerticesTexCoords(vertIndices[2]);
+
+    tr.layerTexCoord[1][0] = getStaticVerticesTexCoordsLayer1(vertIndices[0]);
+    tr.layerTexCoord[1][1] = getStaticVerticesTexCoordsLayer1(vertIndices[1]);
+    tr.layerTexCoord[1][2] = getStaticVerticesTexCoordsLayer1(vertIndices[2]);
+
+    tr.layerTexCoord[2][0] = getStaticVerticesTexCoordsLayer2(vertIndices[0]);
+    tr.layerTexCoord[2][1] = getStaticVerticesTexCoordsLayer2(vertIndices[1]);
+    tr.layerTexCoord[2][2] = getStaticVerticesTexCoordsLayer2(vertIndices[2]);
 
     // TODO
     //tr.tangent = getStaticVerticesTangent(vertIndices[0] / 3);
@@ -297,9 +305,9 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices)
     tr.normals[1] = getDynamicVerticesNormals(vertIndices[1]);
     tr.normals[2] = getDynamicVerticesNormals(vertIndices[2]);
 
-    tr.texCoords[0] = getDynamicVerticesTexCoords(vertIndices[0]);
-    tr.texCoords[1] = getDynamicVerticesTexCoords(vertIndices[1]);
-    tr.texCoords[2] = getDynamicVerticesTexCoords(vertIndices[2]);
+    tr.layerTexCoord[0][0] = getDynamicVerticesTexCoords(vertIndices[0]);
+    tr.layerTexCoord[0][1] = getDynamicVerticesTexCoords(vertIndices[1]);
+    tr.layerTexCoord[0][2] = getDynamicVerticesTexCoords(vertIndices[2]);
 
     // TODO
     //tr.tangent = getDynamicVerticesTangent(vertIndices[0] / 3);
@@ -325,6 +333,11 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr = getTriangleDynamic(vertIndices);
+
+        // only one material for dynamic geometry
+        tr.materials[0] = uvec3(inst.materials[0]);
+        tr.materials[1] = uvec3(MATERIAL_NO_TEXTURE);
+        tr.materials[2] = uvec3(MATERIAL_NO_TEXTURE);
     }
     else
     {
@@ -332,11 +345,11 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr = getTriangleStatic(vertIndices);
-    }
 
-    tr.materials[0] = uvec3(inst.materials[0]);
-    tr.materials[1] = uvec3(inst.materials[1]);
-    tr.materials[2] = uvec3(inst.materials[2]);
+        tr.materials[0] = uvec3(inst.materials[0]);
+        tr.materials[1] = uvec3(inst.materials[1]);
+        tr.materials[2] = uvec3(inst.materials[2]);
+    }
 
     tr.geomColor = inst.color;
     tr.geomRoughness = inst.defaultRoughness;

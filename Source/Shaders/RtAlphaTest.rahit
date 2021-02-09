@@ -37,8 +37,9 @@ void main()
 	ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
 
 	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
+    vec2 texCoord = tr.layerTexCoord[0] * baryCoords;
  
+	// check only first material
  	vec4 color = getTextureSample(tr.materials[0][0], texCoord);
 
 	// if must be discarded

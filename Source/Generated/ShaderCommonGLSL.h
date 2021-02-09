@@ -63,7 +63,7 @@ struct ShTriangle
 {
     mat3 positions;
     mat3 normals;
-    mat3x2 texCoords;
+    mat3x2 layerTexCoord[3];
     uvec3 materials[3];
     vec4 geomColor;
     vec3 tangent;

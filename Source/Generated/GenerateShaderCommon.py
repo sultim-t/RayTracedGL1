@@ -270,7 +270,7 @@ DYNAMIC_BUFFER_STRUCT = [
 TRIANGLE_STRUCT = [
     (TYPE_FLOAT32,     33,     "positions",             1),
     (TYPE_FLOAT32,     33,     "normals",               1),
-    (TYPE_FLOAT32,     32,     "texCoords",             1),
+    (TYPE_FLOAT32,     32,     "layerTexCoord",         3),
     (TYPE_UINT32,       3,     "materials",             3),
     (TYPE_FLOAT32,      4,     "geomColor",             1),
     (TYPE_FLOAT32,      3,     "tangent",               1),
@@ -476,7 +476,7 @@ def getStruct(name, definition, typeNames, align16, breakComplex):
                 else:
                     r += "%s %s[%d]" % (typeNames[baseType], mname, (dim // 10) * (dim % 10))
         else:
-            if dim > 4:
+            if dim > 4 and typeNames == C_TYPE_NAMES:
                 raise Exception("If count > 1, dimensions must be in [1..4]")
             if not breakComplex:
                 if (baseType, dim) in typeNames:

@@ -158,13 +158,15 @@ typedef struct RgGeometryUploadInfo
     RgGeometryPassThroughType   passThroughType;
 
     uint32_t                vertexCount;
-    // Strides are set in RgInstanceUploadInfo
+    // Strides are set in RgInstanceUploadInfo.
     // 3 first floats will be used
     void                    *vertexData;
-    // 3 floats; can be null
+    // 3 first floats will be used
     void                    *normalData;
-    // 2 floats; can be null
-    void                    *texCoordData;
+    // Up to 3 texture coordinated per vertex for static geometry.
+    // Dynamic geometry uses only 1 layer.
+    // 2 first floats will be used
+    void                    *texCoordLayerData[3];
 
     // Can be null, if indices are not used.
     // indexData is an array of uint32_t of size indexCount.

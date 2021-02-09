@@ -46,53 +46,49 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
     vec2 inBaryCoords = payload.baryCoords;
     vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
     
-    vec2 texCoord = tr.texCoords * baryCoords;
-    // TODO: different texture coordinates for each material layer
-    vec2 texCoord1 = texCoord;
-    vec2 texCoord2 = texCoord;
     
-    
-    vec3 normalGeom;
-
-    // to world space
-    tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
-    tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
-    tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
-
-    //if ((instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC)
+    vec2 texCoords[] = 
     {
-        normalGeom = normalize(tr.normals * baryCoords);
-    }
-    //else
-    //{
-    //    // positions are in world space
-    //    normalGeom = normalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
-    //}
+        tr.layerTexCoord[0] * baryCoords,
+        tr.layerTexCoord[1] * baryCoords,
+        tr.layerTexCoord[2] * baryCoords
+    };
+
     
+    vec3 albedo;
     vec3 normal;
     float metallic;
     vec3 emission;
     float roughness;
     
-    vec3 albedo = tr.geomColor.rgb;
+
+    albedo = tr.geomColor.rgb;
 
     if (tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
     {
-        albedo *= getTextureSample(tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX], texCoord).rgb;
+        albedo *= getTextureSample(tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[0]).rgb;
     }
     if (tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
     {
-        albedo *= getTextureSample(tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX], texCoord1).rgb * 2;
+        albedo *= getTextureSample(tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[1]).rgb;
     }   
     if (tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
     {
-        albedo *= getTextureSample(tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX], texCoord2).rgb * 2;
+        albedo *= getTextureSample(tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[2]).rgb;
     }
     
 
+    // convert normals to world space
+    tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
+    tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
+    tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
+
+    vec3 normalGeom = normalize(tr.normals * baryCoords);
+
+
     if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
     {
-        vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoord);
+        vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0]);
         metallic = nm.a;
 
         // TODO: normal maps, tangents
@@ -107,7 +103,7 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 
     if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
     {
-        vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoord);
+        vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0]);
         emission = er.rgb;
         roughness = er.a;
     }

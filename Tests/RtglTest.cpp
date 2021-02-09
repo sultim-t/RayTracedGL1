@@ -236,7 +236,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.vertexCount = cubePositions.size() / 3;
     cubeInfo.vertexData = cubePositions.data();
     cubeInfo.normalData = cubeNormals.data();
-    cubeInfo.texCoordData = cubeTexCoords.data();
+    cubeInfo.texCoordLayerData[0] = cubeTexCoords.data();
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.indexData = cubeIndices.data();
     cubeInfo.color[0] = cubeInfo.color[1] = cubeInfo.color[2] = cubeInfo.color[3] = 1.0f;
