@@ -38,9 +38,8 @@ void PathTracer::Trace(
     const std::shared_ptr<Framebuffers> &framebuffers,
     const std::shared_ptr<BlueNoise> &blueNoise)
 {
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
-
     rtPipeline->Bind(cmd);
+
 
     VkDescriptorSet sets[] = {
         // ray tracing acceleration structures
@@ -65,12 +64,14 @@ void PathTracer::Trace(
 
 
     // primary
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_PRIMARY, raygenEntry, missEntry, hitEntry, callableEntry);
 
     svkCmdTraceRaysKHR(
         cmd,
         &raygenEntry, &missEntry, &hitEntry, &callableEntry,
         width, height, 1);
+
 
     // sync access
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_ALBEDO);
@@ -82,7 +83,6 @@ void PathTracer::Trace(
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_SURFACE_POSITION);
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_VIEW_DIRECTION);
 
-
     // direct lighting
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
 
@@ -90,9 +90,4 @@ void PathTracer::Trace(
         cmd,
         &raygenEntry, &missEntry, &hitEntry, &callableEntry,
         width, height, 1);
-
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_DIRECT_DIFFUSE);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_DIRECT_SPECULAR);
-
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_FINAL);
 }

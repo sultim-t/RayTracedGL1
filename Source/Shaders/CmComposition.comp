@@ -1,0 +1,62 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_COMPOSE_WORKGROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_WORKGROUP_SIZE_Y, local_size_z = 1) in;
+
+void main()
+{
+    uvec2 upix = gl_GlobalInvocationID.xy;
+    ivec2 pix = ivec2(upix.x, upix.y);
+
+    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
+    {
+        return;
+    }
+
+    vec4 albedo             = texelFetch(framebufAlbedo_Sampler, pix, 0);
+    vec4 depth              = texelFetch(framebufDepth_Sampler, pix, 0);
+
+    if (depth.x > MAX_RAY_LENGTH - 1.0f)
+    {
+        imageStore(framebufFinal, pix, albedo);
+        return;
+    }
+
+    vec4 diffuse            = texelFetch(framebufLightDirectDiffuse_Sampler, pix, 0);
+    vec4 specular           = texelFetch(framebufLightDirectSpecular_Sampler, pix, 0);
+    vec4 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
+
+    float surfMetallic = metallicRoughness.r;
+    
+    float ambient = 0.2;
+    vec4 l = diffuse * (1 - surfMetallic) + specular * surfMetallic;
+
+    vec4 color = (l.x + l.y + l.z) / 3 < ambient ?
+        albedo * ambient :
+        albedo * l;
+
+    imageStore(framebufFinal, pix, color);
+}

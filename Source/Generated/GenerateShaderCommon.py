@@ -112,61 +112,50 @@ TYPE_FLOAT16    = 5
 
 COMPONENT_R     = 0
 COMPONENT_RG    = 1
-#COMPONENT_RGB   = 2
-COMPONENT_RGBA  = 3
+COMPONENT_RGBA  = 2
 
 
 VULKAN_IMAGE_FORMATS = {
     (TYPE_UNORM8,   COMPONENT_R):       "VK_FORMAT_R8_UNORM",
     (TYPE_UNORM8,   COMPONENT_RG):      "VK_FORMAT_R8G8_UNORM",
-   #(TYPE_UNORM8,   COMPONENT_RGB):     "VK_FORMAT_R8G8B8_UNORM",
     (TYPE_UNORM8,   COMPONENT_RGBA):    "VK_FORMAT_R8G8B8A8_UNORM",
 
     (TYPE_UINT16,   COMPONENT_R):       "VK_FORMAT_R16_UINT",
     (TYPE_UINT16,   COMPONENT_RG):      "VK_FORMAT_R16G16_UINT",
-   #(TYPE_UINT16,   COMPONENT_RGB):     "VK_FORMAT_R16G16B16_UINT",
     (TYPE_UINT16,   COMPONENT_RGBA):    "VK_FORMAT_R16G16B16A16_UINT",
 
     (TYPE_UINT32,   COMPONENT_R):       "VK_FORMAT_R32_UINT",
     (TYPE_UINT32,   COMPONENT_RG):      "VK_FORMAT_R32G32_UINT",
-   #(TYPE_UINT32,   COMPONENT_RGB):     "VK_FORMAT_R32G32B32_UINT",
     (TYPE_UINT32,   COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_UINT",
 
     (TYPE_FLOAT16,  COMPONENT_R):       "VK_FORMAT_R16_SFLOAT",
     (TYPE_FLOAT16,  COMPONENT_RG):      "VK_FORMAT_R16G16_SFLOAT",
-   #(TYPE_FLOAT16,  COMPONENT_RGB):     "VK_FORMAT_R16G16B16_SFLOAT",
     (TYPE_FLOAT16,  COMPONENT_RGBA):    "VK_FORMAT_R16G16B16A16_SFLOAT",
 
     (TYPE_FLOAT32,  COMPONENT_R):       "VK_FORMAT_R32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RG):      "VK_FORMAT_R32G32_SFLOAT",
-   #(TYPE_FLOAT32,  COMPONENT_RGB):     "VK_FORMAT_R32G32B32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_SFLOAT",
 }
 
 GLSL_IMAGE_FORMATS = {
     (TYPE_UNORM8,   COMPONENT_R):       "r8",
     (TYPE_UNORM8,   COMPONENT_RG):      "rg8",
-   #(TYPE_UNORM8,   COMPONENT_RGB):     "",
     (TYPE_UNORM8,   COMPONENT_RGBA):    "rgba8",
 
     (TYPE_UINT16,   COMPONENT_R):       "r16ui",
     (TYPE_UINT16,   COMPONENT_RG):      "rg16ui",
-   #(TYPE_UINT16,   COMPONENT_RGB):     "",
     (TYPE_UINT16,   COMPONENT_RGBA):    "rgba16ui",
 
     (TYPE_UINT32,   COMPONENT_R):       "r32ui",
     (TYPE_UINT32,   COMPONENT_RG):      "rg32ui",
-   #(TYPE_UINT32,   COMPONENT_RGB):     "",
     (TYPE_UINT32,   COMPONENT_RGBA):    "rgba32ui",
 
     (TYPE_FLOAT16,  COMPONENT_R):       "r16f",
     (TYPE_FLOAT16,  COMPONENT_RG):      "rg16f",
-   #(TYPE_FLOAT16,  COMPONENT_RGB):     "",
     (TYPE_FLOAT16,  COMPONENT_RGBA):    "rgba16f",
 
     (TYPE_FLOAT32,  COMPONENT_R):       "r32f",
     (TYPE_FLOAT32,  COMPONENT_RG):      "rg32f",
-   #(TYPE_FLOAT32,  COMPONENT_RGB):     "",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "rgba32f",
 }
 
@@ -175,6 +164,7 @@ TAB_STR = "    "
 
 USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE = False
 USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
+CONST_TO_EVALUATE = "CONST VALUE MUST BE EVALUATED"
 
 
 
@@ -187,14 +177,16 @@ USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
 # --------------------------------------------------------------------------------------------- #
 
 CONST = {
-    "MAX_STATIC_VERTEX_COUNT"               : 1 << 22,
+    "MAX_STATIC_VERTEX_COUNT"               : 1 << 20,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
     "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
+   
     "MAX_GEOMETRY_PRIMITIVE_COUNT_POW"      : 18,
     "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" : 14,
     "MAX_GEOMETRY_PRIMITIVE_COUNT"          : "1 << MAX_GEOMETRY_PRIMITIVE_COUNT_POW",
     "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : "1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW",
     "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 32,
+    
     "BINDING_VERTEX_BUFFER_STATIC"          : 0,
     "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,
     "BINDING_INDEX_BUFFER_STATIC"           : 2,
@@ -205,11 +197,14 @@ CONST = {
     "BINDING_ACCELERATION_STRUCTURE"        : 0,
     "BINDING_TEXTURES"                      : 0,
     "BINDING_BLUE_NOISE"                    : 0,
+    
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_HAS_SHADOWS"             : "1",
+    
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,
+    
     "SBT_INDEX_RAYGEN_PRIMARY"              : 0,
     "SBT_INDEX_RAYGEN_DIRECT"               : 1,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
@@ -218,13 +213,18 @@ CONST = {
     "SBT_INDEX_HITGROUP_ALPHA_TESTED"       : 1,
     "SBT_INDEX_HITGROUP_BLEND_ADDITIVE"     : 2,
     "SBT_INDEX_HITGROUP_BLEND_UNDER"        : 3,
+    
     "MATERIAL_ALBEDO_ALPHA_INDEX"           : 0,
     "MATERIAL_NORMAL_METALLIC_INDEX"        : 1,
     "MATERIAL_EMISSION_ROUGHNESS_INDEX"     : 2,
     "MATERIAL_NO_TEXTURE"                   : 0,
+    
     "BLUE_NOISE_TEXTURE_COUNT"              : 64,
     "BLUE_NOISE_TEXTURE_SIZE"               : 64,
-    "BLUE_NOISE_TEXTURE_SIZE_POW"           : 0xFFFFFFFF,    # this value will be calculated
+    "BLUE_NOISE_TEXTURE_SIZE_POW"           : CONST_TO_EVALUATE,
+
+    "COMPUTE_COMPOSE_WORKGROUP_SIZE_X"      : 16,
+    "COMPUTE_COMPOSE_WORKGROUP_SIZE_Y"      : 16,
 }
 
 CONST_GLSL_ONLY = {
@@ -234,30 +234,37 @@ CONST_GLSL_ONLY = {
 
 def evalConst():
     CONST["BLUE_NOISE_TEXTURE_SIZE_POW"] = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
+    assert len([None for _, v in CONST.items() if v == CONST_TO_EVALUATE]) == 0, "All CONST_TO_EVALUATE values must be calculated"
 
 
 # --------------------------------------------------------------------------------------------- #
 # User defined structs
 # --------------------------------------------------------------------------------------------- #
 # Each member is defined as a tuple (base type, dimensions, name, count).
-# Dimensions:   1 - scalar, 2 - *vec2, 3 - *vec3, 4 - *vec4, [xy] - *mat[xy] (i.e. 32 - *mat32)
+# Dimensions:   1 - scalar, 
+#               2 - gvec2,
+#               3 - gvec3, 
+#               4 - gvec4, 
+#               [xy] - gmat[xy] (i.e. 32 - gmat32)
 # If count > 1 and dimensions is 2, 3 or 4 (matrices are not supported)
 # then it'll be represented as an array with size (count*dimensions).
 
 STATIC_BUFFER_STRUCT = [
-    (TYPE_FLOAT32,      3,     "positions",        CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      3,     "normals",          CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      2,     "texCoords",        CONST["MAX_STATIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "colors",           CONST["MAX_STATIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "materialIds",      CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
+    (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      2,     "texCoordsLayer1",       CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      2,     "texCoordsLayer2",       CONST["MAX_STATIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "colors",                CONST["MAX_STATIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "materialIds",           CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
 ]
 
 DYNAMIC_BUFFER_STRUCT = [
-    (TYPE_FLOAT32,      3,     "positions",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      3,     "normals",          CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      2,     "texCoords",        CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "colors",           CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "materialIds",      CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
+    (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "colors",                CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    #(TYPE_UINT32,      1,     "materialIds",           CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
 ]
 
 TRIANGLE_STRUCT = [

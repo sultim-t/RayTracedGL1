@@ -52,7 +52,9 @@ set(PrivateHeaders
     "Source/Generated/ShaderCommonCFramebuf.h"
     "Source/Generated/BlueNoiseFileNames.h"
     "Source/Framebuffers.h"
-    "Source/BlueNoise.h")
+    "Source/BlueNoise.h"
+    "Source/ImageComposition.h"
+)
 
 set(Sources
     "Source/RTGL1.cpp"
@@ -90,7 +92,9 @@ set(Sources
     "Source/VertexCollectorFilterType.cpp"
     "Source/Generated/ShaderCommonCFramebuf.cpp" 
     "Source/Framebuffers.cpp"
-    "Source/BlueNoise.cpp")
+    "Source/BlueNoise.cpp"
+    "Source/ImageComposition.cpp"
+)
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}

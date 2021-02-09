@@ -134,6 +134,20 @@ vec2 getStaticVerticesTexCoords(uint index)
         staticVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
 }
 
+vec2 getStaticVerticesTexCoordsLayer1(uint index)
+{
+    return vec2(
+        staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 0],
+        staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 1]);
+}
+
+vec2 getStaticVerticesTexCoordsLayer2(uint index)
+{
+    return vec2(
+        staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 0],
+        staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 1]);
+}
+
 vec3 getDynamicVerticesPositions(uint index)
 {
     return vec3(
@@ -176,6 +190,18 @@ void setStaticVerticesTexCoords(uint index, vec2 value)
 {
     staticVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
     staticVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
+}
+
+void setStaticVerticesTexCoordsLayer1(uint index, vec2 value)
+{
+    staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 0] = value[0];
+    staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 1] = value[1];
+}
+
+void setStaticVerticesTexCoordsLayer2(uint index, vec2 value)
+{
+    staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 0] = value[0];
+    staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 1] = value[1];
 }
 
 void setDynamicVerticesPositions(uint index, vec3 value)

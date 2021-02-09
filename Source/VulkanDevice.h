@@ -38,6 +38,7 @@
 #include "MemoryAllocator.h"
 #include "TextureManager.h"
 #include "BlueNoise.h"
+#include "ImageComposition.h"
 
 namespace RTGL1
 {
@@ -120,6 +121,7 @@ private:
     std::shared_ptr<RayTracingPipeline>     rtPipeline;
     std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
+    std::shared_ptr<ImageComposition>       imageComposition;
 
     std::shared_ptr<SamplerManager>         samplerManager;
     std::shared_ptr<BlueNoise>              blueNoise;

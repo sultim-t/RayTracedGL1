@@ -35,32 +35,32 @@ layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadSha
 
 float square(float x)
 {
-	return x * x;
+    return x * x;
 }
 
 // lightDirection is pointed to the light
 bool castShadowRay(vec3 origin, vec3 lightDirection)
 {
-	// prepare shadow payload
-	payloadShadow.isShadowed = 1;  
-	
-	traceRayEXT(
-		topLevelAS, 
-		gl_RayFlagsSkipClosestHitShaderEXT, 
-		INSTANCE_MASK_HAS_SHADOWS, 
-		0, 0, 	// sbtRecordOffset, sbtRecordStride
-		SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
-		origin, 0.001, lightDirection, 10000.0, 
-		PAYLOAD_INDEX_SHADOW);
+    // prepare shadow payload
+    payloadShadow.isShadowed = 1;  
+    
+    traceRayEXT(
+        topLevelAS, 
+        gl_RayFlagsSkipClosestHitShaderEXT, 
+        INSTANCE_MASK_HAS_SHADOWS, 
+        0, 0, 	// sbtRecordOffset, sbtRecordStride
+        SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
+        origin, 0.001, lightDirection, 10000.0, 
+        PAYLOAD_INDEX_SHADOW);
 
-	return payloadShadow.isShadowed == 1;
+    return payloadShadow.isShadowed == 1;
 }
 
 // subsurfaceAlbedo -- 0 if all light is absorbed,
 //                     1 if no light is absorbed
 float getBRDFLambertian(float subsurfaceAlbedo)
 {
-	return subsurfaceAlbedo / M_PI;
+    return subsurfaceAlbedo / M_PI;
 }
 
 // nl -- cos between surface normal and light direction
@@ -68,8 +68,8 @@ float getBRDFLambertian(float subsurfaceAlbedo)
 // n2 -- refractive index of dst media
 float getFresnelSchlick(float nl, float n1, float n2)
 {
-	float F0 = square((n1 - n2) / (n1 + n2));
-	return F0 + (1 - F0) * pow(1 - max(nl, 0), 5);
+    float F0 = square((n1 - n2) / (n1 + n2));
+    return F0 + (1 - F0) * pow(1 - max(nl, 0), 5);
 }
 
 // n -- macrosurface normal
@@ -78,122 +78,109 @@ float getFresnelSchlick(float nl, float n1, float n2)
 // alpha -- roughness
 float getBRDFSmithGGX(vec3 n, vec3 v, vec3 l, float alpha)
 {
-	float nl = dot(n, l);
+    float nl = dot(n, l);
 
-	if (nl <= 0)
-	{
-		return 0;
-	}
+    if (nl <= 0)
+    {
+        return 0;
+    }
 
-	vec3 h = normalize(v + l);
+    vec3 h = normalize(v + l);
 
-	nl = max(nl, 0);
-	float nv = max(dot(n, v), 0);
-	float nh = max(dot(n, h), 0);
-	float nhSq = nh * nh;
-	float nlSq = nl * nl;
+    nl = max(nl, 0);
+    float nv = max(dot(n, v), 0);
+    float nh = max(dot(n, h), 0);
+    float nhSq = nh * nh;
+    float nlSq = nl * nl;
 
-	float alphaSq = alpha * alpha;
+    float alphaSq = alpha * alpha;
 
-	float F = 1; // getFresnelSchlick(nl, n1, n2);
-	float D = nh * alphaSq / (M_PI * square(1 + nhSq * (alphaSq - 1)));
+    float F = 1; // getFresnelSchlick(nl, n1, n2);
+    float D = nh * alphaSq / (M_PI * square(1 + nhSq * (alphaSq - 1)));
 
-	// approximation for SmithGGX, Hammon
-	// inlcudes 1 / (4 * nl * nv)
-	float G2Modif = 0.5 / mix(2 * nl * nv, nl + nv, alpha);
+    // approximation for SmithGGX, Hammon
+    // inlcudes 1 / (4 * nl * nv)
+    float G2Modif = 0.5 / mix(2 * nl * nv, nl + nv, alpha);
 
-	return F * G2Modif * D;
+    return F * G2Modif * D;
 }
 
 struct ShDirectionalLight
 {
-	vec3 direction;
-	float angularDiameter;
-	vec3 color;
+    vec3 direction;
+    float angularDiameter;
+    vec3 color;
 };
 
 void processDirectionalLight(
-	ivec2 pix, vec3 surfPosition, 
-	vec3 surfNormal, vec3 surfNormalGeom,
-	float roughness, vec3 viewDirection, 
-	ShDirectionalLight dirLight,
-	out vec3 outDiffuse, out vec3 outSpecular)
+    ivec2 pix, vec3 surfPosition, 
+    vec3 surfNormal, vec3 surfNormalGeom,
+    float roughness, vec3 viewDirection, 
+    ShDirectionalLight dirLight,
+    out vec3 outDiffuse, out vec3 outSpecular)
 {
-	uint seed = getCurrentRandomSeed(pix);
-	vec2 disk = sampleDisk(seed, tan(dirLight.angularDiameter * 0.5));
+    uint seed = getCurrentRandomSeed(pix);
+    vec2 disk = sampleDisk(seed, tan(dirLight.angularDiameter * 0.5));
 
-	vec3 dir;
-	{
-		vec3 r = normalize(cross(dirLight.direction, vec3(0, 1, 0)));
-		vec3 u = cross(r, dirLight.direction);
-		dir = normalize(dirLight.direction + r * disk.x + u * disk.y);
-	}
+    vec3 dir;
+    {
+        vec3 r = normalize(cross(dirLight.direction, vec3(0, 1, 0)));
+        vec3 u = cross(r, dirLight.direction);
+        dir = normalize(dirLight.direction + r * disk.x + u * disk.y);
+    }
 
-	float nl = dot(surfNormal, dir);
-	float ngl = dot(surfNormalGeom,dir);
+    float nl = dot(surfNormal, dir);
+    float ngl = dot(surfNormalGeom,dir);
 
-	if (nl <= 0 || ngl <= 0)
-	{
-		outDiffuse = vec3(0.0);
-		outSpecular = vec3(0.0);
-		return;
-	}
+    if (nl <= 0 || ngl <= 0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
 
-	bool isShadowed = castShadowRay(surfPosition, dir);
+    bool isShadowed = castShadowRay(surfPosition, dir);
 
-	if (isShadowed)
-	{
-		outDiffuse = vec3(0.0);
-		outSpecular = vec3(0.0);
-		return;
-	}
+    if (isShadowed)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
 
-	outDiffuse = getBRDFLambertian(1.0) * dirLight.color * nl;
-	outSpecular = getBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, roughness) * dirLight.color * nl;
+    outDiffuse = getBRDFLambertian(1.0) * dirLight.color * nl;
+    outSpecular = getBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, roughness) * dirLight.color * nl;
 }
 
 void main()
 {
-	const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-	vec4 depth = texelFetch(framebufDepth_Sampler, pix, 0);
+    vec4 depth = texelFetch(framebufDepth_Sampler, pix, 0);
 
-	if (depth.x > MAX_RAY_LENGTH - 1.0f)
-	{
-		vec4 skyColor = texelFetch(framebufAlbedo_Sampler, pix, 0);
-		imageStore(framebufFinal, pix, skyColor);
-		return;
-	}
-	
-	vec4 surfPosition = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
-	vec4 surfNormal = texelFetch(framebufNormal_Sampler, pix, 0);
-	vec4 surfNormalGeom = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
-	vec4 viewDirection = texelFetch(framebufViewDirection_Sampler, pix, 0);
-	
-	vec4 mr = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
-	float surfMetallic = mr.r;
-	float surfRoughness = max(mr.g, 0.001);
-	
-	ShDirectionalLight lt;
-	lt.direction = normalize(vec3(-1, 1, 1));
-	lt.angularDiameter = 0.2;
-	lt.color = vec3(5, 5, 5);
+    if (depth.x > MAX_RAY_LENGTH - 1.0f)
+    {
+        imageStore(framebufLightDirectDiffuse, pix, vec4(0.0));
+        imageStore(framebufLightDirectSpecular, pix, vec4(0.0));
+        return;
+    }
+    
+    vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
+    vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
+    vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
+    vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
+    vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
+    
+    float surfRoughness = max(surfMetallicRoughness.g, 0.001);
+    
+    ShDirectionalLight lt;
+    lt.direction = normalize(vec3(-1, 1, 1));
+    lt.angularDiameter = 0.2;
+    lt.color = vec3(5, 5, 5);
 
-	vec3 diffuse, specular;
-	processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, lt, diffuse, specular);
+    vec3 diffuse, specular;
+    processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, lt, diffuse, specular);
 
-	imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
-	imageStore(framebufLightDirectSpecular, pix, vec4(specular, 0.0));
-
-
-	// temp
-	vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
-
-	float ambient = 0.2;
-	vec4 l = vec4(diffuse, 0.0) * (1 - surfMetallic) + vec4(specular, 0.0) * surfMetallic;
-	vec4 color = (l.x + l.y + l.z) / 3 < ambient ?
-		albedo * ambient :
-		albedo * l;
-
-	imageStore(framebufFinal, pix, color);
+    imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
+    imageStore(framebufLightDirectSpecular, pix, vec4(specular, 0.0));
 }

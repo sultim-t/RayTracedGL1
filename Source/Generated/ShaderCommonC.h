@@ -7,7 +7,7 @@ namespace RTGL1
 
 #include <stdint.h>
 
-#define MAX_STATIC_VERTEX_COUNT (4194304)
+#define MAX_STATIC_VERTEX_COUNT (1048576)
 #define MAX_DYNAMIC_VERTEX_COUNT (2097152)
 #define MAX_VERTEX_COLLECTOR_INDEX_COUNT (4194304)
 #define MAX_GEOMETRY_PRIMITIVE_COUNT_POW (18)
@@ -45,12 +45,16 @@ namespace RTGL1
 #define BLUE_NOISE_TEXTURE_COUNT (64)
 #define BLUE_NOISE_TEXTURE_SIZE (64)
 #define BLUE_NOISE_TEXTURE_SIZE_POW (6)
+#define COMPUTE_COMPOSE_WORKGROUP_SIZE_X (16)
+#define COMPUTE_COMPOSE_WORKGROUP_SIZE_Y (16)
 
 struct ShVertexBufferStatic
 {
-    float positions[12582912];
-    float normals[12582912];
-    float texCoords[8388608];
+    float positions[3145728];
+    float normals[3145728];
+    float texCoords[2097152];
+    float texCoordsLayer1[2097152];
+    float texCoordsLayer2[2097152];
 };
 
 struct ShVertexBufferDynamic

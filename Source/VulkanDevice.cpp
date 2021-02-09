@@ -46,12 +46,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     // init vulkan instance 
     CreateInstance(info->ppWindowExtensions, info->windowExtensionCount);
 
+
     // create VkSurfaceKHR using user's function
     surface = GetSurfaceFromUser(instance, *info);
 
+
     // create selected physical device
-    physDevice = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
-    queues = std::make_shared<Queues>(physDevice->Get(), surface);
+    physDevice          = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
+    queues              = std::make_shared<Queues>(physDevice->Get(), surface);
 
     // create vulkan device and set extension function pointers
     CreateDevice();
@@ -61,40 +63,81 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     // set device
     queues->SetDevice(device);
 
-    memAllocator = std::make_shared<MemoryAllocator>(instance, device, physDevice);
 
-    cmdManager = std::make_shared<CommandBufferManager>(device, queues);
-    uniform = std::make_shared<GlobalUniform>(device, memAllocator);
+    memAllocator        = std::make_shared<MemoryAllocator>(instance, device, physDevice);
 
-    swapchain = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
+    cmdManager          = std::make_shared<CommandBufferManager>(device, queues);
 
-    samplerManager = std::make_shared<SamplerManager>(device);
+    uniform             = std::make_shared<GlobalUniform>(device, memAllocator);
 
-    framebuffers = std::make_shared<Framebuffers>(device, memAllocator, cmdManager, samplerManager);
+    swapchain           = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
+
+    samplerManager      = std::make_shared<SamplerManager>(device);
+
+    framebuffers        = std::make_shared<Framebuffers>(
+        device,
+        memAllocator, 
+        cmdManager, 
+        samplerManager);
+
+    blueNoise           = std::make_shared<BlueNoise>(
+        device,
+        "../../../BlueNoise/Data/64_64/",
+        memAllocator,
+        cmdManager, 
+        samplerManager);
+
+    textureManager      = std::make_shared<TextureManager>(
+        device, 
+        memAllocator,
+        samplerManager, 
+        cmdManager,
+        info->overridenTexturesFolderPath,
+        info->overrideAlbedoAlphaTexturePostfix, 
+        info->overrideNormalMetallicTexturePostfix, 
+        info->overrideEmissionRoughnessTexturePostfix);
+
+    auto asManager      = std::make_shared<ASManager>(
+        device, 
+        memAllocator, 
+        cmdManager, 
+        textureManager, 
+        vbProperties);
+    
+    scene               = std::make_shared<Scene>(asManager);
+
+    shaderManager       = std::make_shared<ShaderManager>(device);
+   
+    rtPipeline          = std::make_shared<RayTracingPipeline>(
+        device, 
+        physDevice, 
+        memAllocator, 
+        shaderManager,
+        scene->GetASManager(),
+        uniform, 
+        textureManager,
+        framebuffers, 
+        blueNoise);
+
+    pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
+
+    rasterizer          = std::make_shared<Rasterizer>(
+        device,
+        memAllocator,
+        shaderManager,
+        textureManager, 
+        swapchain->GetSurfaceFormat(),
+        info->rasterizedMaxVertexCount, 
+        info->rasterizedMaxIndexCount);
+
+    imageComposition    = std::make_shared<ImageComposition>(
+        device, 
+        framebuffers, 
+        shaderManager, 
+        uniform);
+
+
     swapchain->Subscribe(framebuffers);
-
-    blueNoise = std::make_shared<BlueNoise>(
-        device, "../../../BlueNoise/Data/64_64/",
-        memAllocator, cmdManager, samplerManager);
-
-    textureManager = std::make_shared<TextureManager>(
-        device, memAllocator, samplerManager, cmdManager,
-        info->overridenTexturesFolderPath, info->overrideAlbedoAlphaTexturePostfix, 
-        info->overrideNormalMetallicTexturePostfix, info->overrideEmissionRoughnessTexturePostfix);
-
-    auto asManager = std::make_shared<ASManager>(device, memAllocator, cmdManager, textureManager, vbProperties);
-    scene = std::make_shared<Scene>(asManager);
-
-    shaderManager = std::make_shared<ShaderManager>(device);
-    rtPipeline = std::make_shared<RayTracingPipeline>(
-        device, physDevice, memAllocator, shaderManager,
-        scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
-
-    pathTracer = std::make_shared<PathTracer>(device, rtPipeline);
-
-    rasterizer = std::make_shared<Rasterizer>(
-        device, memAllocator, shaderManager, textureManager, swapchain->GetSurfaceFormat(),
-        info->rasterizedMaxVertexCount, info->rasterizedMaxIndexCount);
     swapchain->Subscribe(rasterizer);
 }
 
@@ -107,6 +150,7 @@ VulkanDevice::~VulkanDevice()
     swapchain.reset();
     cmdManager.reset();
     framebuffers.reset();
+    imageComposition.reset();
     uniform.reset();
     scene.reset();
     shaderManager.reset();
@@ -129,21 +173,23 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
 {
     currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
+    uint32_t frameIndex = currentFrameIndex;
+
     // wait for previous cmd with the same frame index
-    Utils::WaitAndResetFence(device, frameFences[currentFrameIndex]);
+    Utils::WaitAndResetFence(device, frameFences[frameIndex]);
 
     swapchain->RequestNewSize(surfaceWidth, surfaceHeight);
     swapchain->RequestVsync(vsync);
-    swapchain->AcquireImage(imageAvailableSemaphores[currentFrameIndex]);
+    swapchain->AcquireImage(imageAvailableSemaphores[frameIndex]);
 
     // reset cmds for current frame index
-    cmdManager->PrepareForFrame(currentFrameIndex);
+    cmdManager->PrepareForFrame(frameIndex);
 
     // destroy staging buffers that were created MAX_FRAMES_IN_FLIGHT ago
-    textureManager->PrepareForFrame(currentFrameIndex);
+    textureManager->PrepareForFrame(frameIndex);
 
     // start dynamic geometry recording to current frame
-    scene->PrepareForFrame(currentFrameIndex);
+    scene->PrepareForFrame(frameIndex);
 
     return cmdManager->StartGraphicsCmd();
 }
@@ -171,44 +217,53 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
 {
-    textureManager->SubmitDescriptors(currentFrameIndex);
+    uint32_t frameIndex = currentFrameIndex;
+
+    textureManager->SubmitDescriptors(frameIndex);
 
     // submit geometry
-    bool sceneNotEmpty = scene->SubmitForFrame(cmd, currentFrameIndex, uniform);
+    bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
 
     // update uniform data
-    uniform->Upload(currentFrameIndex);
+    uniform->Upload(frameIndex);
 
     if (sceneNotEmpty)
     {
         pathTracer->Trace(
-            cmd, currentFrameIndex, renderWidth, renderHeight, 
+            cmd, frameIndex, renderWidth, renderHeight,
             scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
     }
 
     // TODO: postprocessing
 
+
+    imageComposition->Compose(cmd, frameIndex, uniform);
+
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_FINAL);
+
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, currentFrameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_FINAL,
+        cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_FINAL,
         renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer
-    rasterizer->Draw(cmd, currentFrameIndex);
+    rasterizer->Draw(cmd, frameIndex);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 {
+    uint32_t frameIndex = currentFrameIndex;
+
     // submit command buffer, but wait until presentation engine has completed using image
     cmdManager->Submit(
         cmd, 
-        imageAvailableSemaphores[currentFrameIndex], 
+        imageAvailableSemaphores[frameIndex],
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
-        renderFinishedSemaphores[currentFrameIndex], 
-        frameFences[currentFrameIndex]);
+        renderFinishedSemaphores[frameIndex],
+        frameFences[frameIndex]);
 
     // present on a surface when rendering will be finished
-    swapchain->Present(queues, renderFinishedSemaphores[currentFrameIndex]);
+    swapchain->Present(queues, renderFinishedSemaphores[frameIndex]);
 
     frameId++;
 }

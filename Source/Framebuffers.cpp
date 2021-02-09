@@ -74,7 +74,7 @@ void Framebuffers::CreateDescriptors()
         bnd.binding = ShFramebuffers_Bindings[i];
         bnd.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         bnd.descriptorCount = 1;
-        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
     }
 
     // gsampler2D
@@ -86,7 +86,7 @@ void Framebuffers::CreateDescriptors()
         bnd.binding = ShFramebuffers_Sampler_Bindings[i];
         bnd.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bnd.descriptorCount = 1;
-        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
     }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};

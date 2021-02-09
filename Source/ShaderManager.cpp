@@ -44,6 +44,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"RAlphaTest",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtAlphaTest.rahit.spv"        , VK_SHADER_STAGE_ALL },
     {"RBlendAdditive",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendAdditive.rahit.spv"    , VK_SHADER_STAGE_ALL },
     {"RBlendUnder",     "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendUnder.rahit.spv"       , VK_SHADER_STAGE_ALL },
+    {"CComposition",     "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmComposition.comp.spv"       , VK_SHADER_STAGE_ALL },
     {"RasterizerVert",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"          , VK_SHADER_STAGE_ALL },
     {"RasterizerFrag",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"          , VK_SHADER_STAGE_ALL },
 };
@@ -112,6 +113,7 @@ VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo(const char* name) co
 
     if (m == modules.end())
     {
+        assert(0);
         return {};
     }
 
