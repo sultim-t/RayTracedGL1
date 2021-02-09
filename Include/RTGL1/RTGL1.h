@@ -171,8 +171,8 @@ typedef struct RgGeometryUploadInfo
     uint32_t                indexCount;
     void                    *indexData;
 
-    // RGBA packed into little endian 32-bit uint
-    uint32_t                color;
+    // RGBA color for this geometry.
+    float                   color[4];
     // These default values will be used if no overriding 
     // texture is found.
     float                   defaultRoughness;
@@ -301,7 +301,7 @@ typedef enum RgLightType
 typedef struct RgDirectionalLightUploadInfo
 {
     RgLightType     type;
-    uint32_t        color;
+    float           color[3];
     float           intensity;
     float           direction[3];
     float           angularSize;
@@ -310,7 +310,7 @@ typedef struct RgDirectionalLightUploadInfo
 typedef struct RgSphereLightUploadInfo
 {
     RgLightType     type;
-    uint32_t        color;
+    float           color[3];
     float           intensity;
     float           position[3];
     float           radius;

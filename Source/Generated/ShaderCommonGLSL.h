@@ -91,14 +91,15 @@ struct ShGeometryInstance
 {
     mat4 model;
     uvec4 materials[3];
+    vec4 color;
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint primitiveCount;
-    uint color;
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
     uint __pad0;
+    uint __pad1;
 };
 
 struct ShPayload

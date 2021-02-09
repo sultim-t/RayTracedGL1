@@ -23,13 +23,13 @@
 namespace RTGL1
 {
 
-#define ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES           256 * 512 * 512 * 4
-#define ALLOCATOR_BLOCK_SIZE_TEXTURES                   256 * 512 * 512 * 4
+constexpr uint32_t ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES    = 64 * 512 * 512 * 4;
+constexpr uint32_t ALLOCATOR_BLOCK_SIZE_TEXTURES            = 64 * 512 * 512 * 4;
 
-#define TEXTURE_FILE_PATH_MAX_LENGTH                    512
-#define TEXTURE_FILE_NAME_MAX_LENGTH                    256
-#define TEXTURE_FILE_EXTENSION_MAX_LENGTH               16
+constexpr uint32_t TEXTURE_FILE_PATH_MAX_LENGTH             = 512;
+constexpr uint32_t TEXTURE_FILE_NAME_MAX_LENGTH             = 256;
+constexpr uint32_t TEXTURE_FILE_EXTENSION_MAX_LENGTH        = 16;
 
-#define MAX_TEXTURE_COUNT                               1024
+constexpr uint32_t MAX_TEXTURE_COUNT                        = 1024;
 
 }

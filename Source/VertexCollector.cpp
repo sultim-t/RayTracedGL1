@@ -281,10 +281,11 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         geomInfo.baseVertexIndex = vertIndex;
         geomInfo.baseIndexIndex = useIndices ? indIndex : UINT32_MAX;
         geomInfo.primitiveCount = primitiveCount;
-        geomInfo.color = info.color;
         geomInfo.defaultRoughness = info.defaultRoughness;
         geomInfo.defaultMetallicity = info.defaultMetallicity;
         geomInfo.defaultEmission = info.defaultEmission;
+
+        memcpy(geomInfo.color, info.color, sizeof(geomInfo.color));
 
         Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 

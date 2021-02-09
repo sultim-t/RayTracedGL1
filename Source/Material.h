@@ -25,9 +25,9 @@
 namespace RTGL1
 {
 
-#define EMPTY_TEXTURE_INDEX 0
-#define MATERIALS_MAX_LAYER_COUNT       3
-#define TEXTURES_PER_MATERIAL_COUNT     3
+constexpr uint32_t EMPTY_TEXTURE_INDEX          = 0;
+constexpr uint32_t MATERIALS_MAX_LAYER_COUNT    = 3;
+constexpr uint32_t TEXTURES_PER_MATERIAL_COUNT  = 3;
 
 struct Texture
 {

@@ -312,7 +312,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.materials[1] = uvec3(inst.materials[1]);
     tr.materials[2] = uvec3(inst.materials[2]);
 
-    tr.geomColor = unpackLittleEndianUintColor(inst.color);
+    tr.geomColor = inst.color;
     tr.geomRoughness = inst.defaultRoughness;
     tr.geomMetallicity = inst.defaultMetallicity;
     tr.geomEmission = tr.geomColor.rgb * inst.defaultEmission;

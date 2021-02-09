@@ -29,34 +29,34 @@ layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 hitAttributeEXT vec2 inBaryCoords;
 
 #ifdef ADDITIVE_BLENDING 
-	#define BLEND_FUNC blendAdditive
+    #define BLEND_FUNC blendAdditive
 #else
-	#define BLEND_FUNC blendUnder
+    #define BLEND_FUNC blendUnder
 #endif
 
 void main()
 {
-	ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
+    ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
 
-	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
     vec2 texCoord = tr.texCoords[0] * baryCoords.x + tr.texCoords[1] * baryCoords.y + tr.texCoords[2] * baryCoords.z;
  
-  	vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.geomColor;
+    vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.geomColor;
 
-	float curDistance = gl_HitTEXT;
+    float curDistance = gl_HitTEXT;
 
-	if (curDistance > payload.maxTransparDistance)
-	{
-		// previous is under current
-		payload.color = BLEND_FUNC(color, payload.color);
-		payload.maxTransparDistance = curDistance;
-	}
-	else
-	{
-		// current is under previous
-		payload.color = BLEND_FUNC(payload.color, color);
-	}
+    if (curDistance > payload.maxTransparDistance)
+    {
+        // previous is under current
+        payload.color = BLEND_FUNC(color, payload.color);
+        payload.maxTransparDistance = curDistance;
+    }
+    else
+    {
+        // current is under previous
+        payload.color = BLEND_FUNC(payload.color, color);
+    }
 
-	// blended geometry can't be a closest hit, so ignore this intersection
-	ignoreIntersectionEXT;
+    // blended geometry can't be a closest hit, so ignore this intersection
+    ignoreIntersectionEXT;
 }

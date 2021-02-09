@@ -83,14 +83,15 @@ struct ShGeometryInstance
 {
     float model[16];
     uint32_t materials[3][4];
+    float color[4];
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t primitiveCount;
-    uint32_t color;
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
     uint32_t __pad0;
+    uint32_t __pad1;
 };
 
 }

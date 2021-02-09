@@ -196,7 +196,7 @@ static float quadTexCoords[] =
     1, 1,
 };
 
-static uint32_t quadColorsABGR[]
+static uint32_t quadColorsABGR[] =
 {
     0xFFFF0000,
     0xFFFFFFFF,
@@ -239,7 +239,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.texCoordData = cubeTexCoords.data();
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.indexData = cubeIndices.data();
-    cubeInfo.color = 0xFFFFFFFF;
+    cubeInfo.color[0] = cubeInfo.color[1] = cubeInfo.color[2] = cubeInfo.color[3] = 1.0f;
     cubeInfo.geomMaterial = {
         RG_NO_MATERIAL,
         RG_NO_MATERIAL,

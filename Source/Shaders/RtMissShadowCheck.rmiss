@@ -28,5 +28,5 @@ layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadInEXT ShPayloadShadow payloadS
 
 void main()
 {
-	payloadShadow.isShadowed = 0;
+    payloadShadow.isShadowed = 0;
 }

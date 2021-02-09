@@ -27,7 +27,7 @@
 namespace RTGL1
 {
 
-#define MAX_FRAMES_IN_FLIGHT 2
+constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 #pragma region extension functions
 
