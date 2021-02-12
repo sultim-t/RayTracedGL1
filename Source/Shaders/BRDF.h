@@ -37,10 +37,7 @@ float evalBRDFLambertian(float subsurfaceAlbedo)
 // u1, u2   -- uniform random numbers
 vec3 sampleLambertian(vec3 n, float u1, float u2, out float pdf)
 {
-    vec3 d = sampleHemisphere(n, u1, u2);
-    pdf = d.z / M_PI;
-
-    return d;
+    return sampleOrientedHemisphere(n, u1, u2, pdf);
 }
 
 
@@ -126,8 +123,8 @@ vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
 // v        -- direction to viewer
 // alpha    -- roughness
 // u1, u2   -- uniform random numbers
-// outPdf   -- PDF of sampled normal
-vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float outPdf)
+// pdf      -- PDF of sampled normal
+vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float pdf)
 {
     // microfacet normal
     vec3 m = sampleGGXVNDF(v, alpha, u1, u2);
@@ -137,7 +134,7 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float o
     if (nm <= 0)
     {
         pdf = 0;
-        return;
+        return vec3(0.0);
     }
 
     // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
@@ -150,4 +147,6 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float o
 
     // VNDF PDF
     pdf = G1 * max(0, dot(v, m)) * D / v.z;
+
+    return m;
 }

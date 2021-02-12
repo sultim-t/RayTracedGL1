@@ -52,6 +52,7 @@ public:
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
 
+    // Barrier framebuffer image for given frameIndex 
     void Barrier(
         VkCommandBuffer cmd,
         uint32_t frameIndex,

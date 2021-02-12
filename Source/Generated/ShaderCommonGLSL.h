@@ -25,6 +25,7 @@
 #define PAYLOAD_INDEX_SHADOW (1)
 #define SBT_INDEX_RAYGEN_PRIMARY (0)
 #define SBT_INDEX_RAYGEN_DIRECT (1)
+#define SBT_INDEX_RAYGEN_INDIRECT (2)
 #define SBT_INDEX_MISS_DEFAULT (0)
 #define SBT_INDEX_MISS_SHADOW (1)
 #define SBT_INDEX_HITGROUP_FULLY_OPAQUE (0)
@@ -121,6 +122,17 @@ struct ShPayloadShadow
     uint isShadowed;
 };
 
+struct ShHitInfo
+{
+    vec3 albedo;
+    float metallic;
+    vec3 normal;
+    float roughness;
+    vec3 normalGeom;
+    float hitDistance;
+    vec3 emission;
+};
+
 #ifdef DESC_SET_FRAMEBUFFERS
 
 // framebuffers
@@ -179,95 +191,119 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 13, rgba32f)
-    uniform image2D framebufLightDirectSpecular;
+    uniform image2D framebufLightSpecular;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 14, rgba32f)
-    uniform image2D framebufLightDirectSpecular_Prev;
+    uniform image2D framebufLightSpecular_Prev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 15, rgba32f)
-    uniform image2D framebufSurfacePosition;
+    uniform image2D framebufLightIndirect;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 16, rgba32f)
-    uniform image2D framebufViewDirection;
+    uniform image2D framebufLightIndirect_Prev;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 17, rgba32f)
+    uniform image2D framebufSurfacePosition;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 18, rgba32f)
+    uniform image2D framebufViewDirection;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 19, rgba32f)
     uniform image2D framebufFinal;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 20, rgba32f)
+    uniform image2D framebufDebugBounceNormal;
 
 // samplers
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 18)
+    set = DESC_SET_FRAMEBUFFERS, binding = 21)
     uniform sampler2D framebufAlbedo_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 19)
+    set = DESC_SET_FRAMEBUFFERS, binding = 22)
     uniform sampler2D framebufNormal_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 20)
+    set = DESC_SET_FRAMEBUFFERS, binding = 23)
     uniform sampler2D framebufNormal_Prev_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 21)
+    set = DESC_SET_FRAMEBUFFERS, binding = 24)
     uniform sampler2D framebufNormalGeometry_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 22)
+    set = DESC_SET_FRAMEBUFFERS, binding = 25)
     uniform sampler2D framebufNormalGeometry_Prev_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 23)
+    set = DESC_SET_FRAMEBUFFERS, binding = 26)
     uniform sampler2D framebufMetallicRoughness_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 24)
+    set = DESC_SET_FRAMEBUFFERS, binding = 27)
     uniform sampler2D framebufMetallicRoughness_Prev_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 25)
+    set = DESC_SET_FRAMEBUFFERS, binding = 28)
     uniform sampler2D framebufDepth_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 26)
+    set = DESC_SET_FRAMEBUFFERS, binding = 29)
     uniform sampler2D framebufDepth_Prev_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 27)
+    set = DESC_SET_FRAMEBUFFERS, binding = 30)
     uniform usampler2D framebufRandomSeed_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 28)
+    set = DESC_SET_FRAMEBUFFERS, binding = 31)
     uniform usampler2D framebufRandomSeed_Prev_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 29)
+    set = DESC_SET_FRAMEBUFFERS, binding = 32)
     uniform sampler2D framebufLightDirectDiffuse_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 30)
+    set = DESC_SET_FRAMEBUFFERS, binding = 33)
     uniform sampler2D framebufLightDirectDiffuse_Prev_Sampler;
 
 layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 31)
-    uniform sampler2D framebufLightDirectSpecular_Sampler;
-
-layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 32)
-    uniform sampler2D framebufLightDirectSpecular_Prev_Sampler;
-
-layout(
-    set = DESC_SET_FRAMEBUFFERS, binding = 33)
-    uniform sampler2D framebufSurfacePosition_Sampler;
-
-layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 34)
-    uniform sampler2D framebufViewDirection_Sampler;
+    uniform sampler2D framebufLightSpecular_Sampler;
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 35)
+    uniform sampler2D framebufLightSpecular_Prev_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 36)
+    uniform sampler2D framebufLightIndirect_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 37)
+    uniform sampler2D framebufLightIndirect_Prev_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 38)
+    uniform sampler2D framebufSurfacePosition_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 39)
+    uniform sampler2D framebufViewDirection_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 40)
     uniform sampler2D framebufFinal_Sampler;
+
+layout(
+    set = DESC_SET_FRAMEBUFFERS, binding = 41)
+    uniform sampler2D framebufDebugBounceNormal_Sampler;
 #endif

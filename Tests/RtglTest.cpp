@@ -71,46 +71,34 @@ static void DebugPrint(const char *msg)
 }
 
 
-static glm::vec3 camPos     = glm::vec3(0, 2, -8);
-static glm::vec3 camDir     = glm::vec3(0, 0, 1);
-static glm::vec3 camUp      = glm::vec3(0, 1, 0);
-static glm::vec3 lightDir   = glm::vec3(1, 1, 1);
+static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, -8);
+static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
+static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
+static glm::vec3 LIGHT_DIR      = glm::vec3(1, 1, 1);
 
 static void ProcessInput(GLFWwindow *window)
 {
     float cameraSpeed = 60.0f / 60.0f;
     float cameraRotationSpeed = 5 / 60.0f;
 
-    glm::vec3 r = glm::cross(camDir, glm::vec3(0, 1, 0));
+    glm::vec3 r = glm::cross(CAMERA_DIR, glm::vec3(0, 1, 0));
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
-        camPos += cameraSpeed * camDir;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
-        camPos -= cameraSpeed * camDir;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-        camPos -= r * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-        camPos += r * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        camPos -= glm::vec3(0, 1, 0) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        camPos += glm::vec3(0, 1, 0) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)       CAMERA_POS += cameraSpeed * CAMERA_DIR;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)       CAMERA_POS -= cameraSpeed * CAMERA_DIR;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)       CAMERA_POS -= r * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)       CAMERA_POS += r * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)       CAMERA_POS -= glm::vec3(0, 1, 0) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)       CAMERA_POS += glm::vec3(0, 1, 0) * cameraSpeed;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, -cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, cameraRotationSpeed, r);
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
-        camDir = glm::rotate(camDir, -cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)    CAMERA_DIR = glm::rotate(CAMERA_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)   CAMERA_DIR = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)      CAMERA_DIR = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)    CAMERA_DIR = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
 
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)
-        lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)
-        lightDir = glm::rotate(lightDir, cameraRotationSpeed, glm::vec3(1, 0, 0));
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)       LIGHT_DIR = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)       LIGHT_DIR = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
 
-    camUp = glm::cross(-r, camDir);
+    CAMERA_UP = glm::cross(-r, CAMERA_DIR);
 }
 
 static void LoadObj(const char *path,
@@ -267,6 +255,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgGeometryUploadInfo dnInfo = cubeInfo;
     dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+    dnInfo.color[0] = 1.0f;
+    dnInfo.color[1] = dnInfo.color[2] = dnInfo.color[3] = 0.0f;
 
 
     // texture info
@@ -299,6 +289,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
+    float       toMove  = 0;
     RgMaterial  material    = RG_NO_MATERIAL;
     RgGeometry  movableGeom = UINT32_MAX;
 
@@ -377,13 +368,18 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
         memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
 
-        glm::mat4 view = glm::lookAt(camPos, camPos + camDir, camUp);
+        glm::mat4 view = glm::lookAt(CAMERA_POS, CAMERA_POS + CAMERA_DIR, CAMERA_UP);
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
         r = rgDrawFrame(instance, &frameInfo);
         RG_CHECKERROR(r);
 
         frameCount++;
+
+        if (!toMove && frameCount > 0)
+        {
+            frameCount = 1;
+        }
     }
 
     rgDestroyMaterial(instance, material);

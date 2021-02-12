@@ -21,82 +21,8 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 
-#define DESC_SET_FRAMEBUFFERS 1
-#define DESC_SET_GLOBAL_UNIFORM 2
-#define DESC_SET_VERTEX_DATA 3
-#define DESC_SET_TEXTURES 4
-#define DESC_SET_RANDOM 5
-#include "ShaderCommonGLSLFunc.h"
-
-layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
-
-layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
-layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
-
-// lightDirection is pointed to the light
-bool castShadowRay(vec3 origin, vec3 lightDirection)
-{
-    // prepare shadow payload
-    payloadShadow.isShadowed = 1;  
-    
-    traceRayEXT(
-        topLevelAS, 
-        gl_RayFlagsSkipClosestHitShaderEXT, 
-        INSTANCE_MASK_HAS_SHADOWS, 
-        0, 0, 	// sbtRecordOffset, sbtRecordStride
-        SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
-        origin, 0.001, lightDirection, 10000.0, 
-        PAYLOAD_INDEX_SHADOW);
-
-    return payloadShadow.isShadowed == 1;
-}
-
-struct ShDirectionalLight
-{
-    vec3 direction;
-    float angularDiameterDegrees;
-    vec3 color;
-};
-
-void processDirectionalLight(
-    ivec2 pix, vec3 surfPosition, 
-    vec3 surfNormal, vec3 surfNormalGeom,
-    float surfRoughness, vec3 viewDirection, 
-    ShDirectionalLight dirLight,
-    out vec3 outDiffuse, out vec3 outSpecular)
-{
-    uint seed = getCurrentRandomSeed(pix);
-    vec2 disk = sampleDisk(seed, tan(radians(dirLight.angularDiameterDegrees * 0.5)));
-
-    vec3 dir;
-    {
-        vec3 r = normalize(cross(dirLight.direction, vec3(0, 1, 0)));
-        vec3 u = cross(r, dirLight.direction);
-        dir = normalize(dirLight.direction + r * disk.x + u * disk.y);
-    }
-
-    float nl = dot(surfNormal, dir);
-    float ngl = dot(surfNormalGeom,dir);
-
-    if (nl <= 0 || ngl <= 0)
-    {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
-        return;
-    }
-
-    bool isShadowed = castShadowRay(surfPosition, dir);
-
-    if (isShadowed)
-    {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
-        return;
-    }
-
-    outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl;
-    outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, surfRoughness) * dirLight.color * nl;
-}
+#define RAYGEN_SHADOW_PAYLOAD
+#include "RaygenCommon.h"
 
 void main()
 {
@@ -107,7 +33,7 @@ void main()
     if (depth.x > MAX_RAY_LENGTH - 1.0f)
     {
         imageStore(framebufLightDirectDiffuse, pix, vec4(0.0));
-        imageStore(framebufLightDirectSpecular, pix, vec4(0.0));
+        imageStore(framebufLightSpecular, pix, vec4(0.0));
         return;
     }
     
@@ -118,14 +44,9 @@ void main()
     vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     float surfRoughness         = surfMetallicRoughness.g;
     
-    ShDirectionalLight lt;
-    lt.direction = normalize(vec3(-1, 1, 1));
-    lt.angularDiameterDegrees = 0.5;
-    lt.color = vec3(5, 5, 5);
-
     vec3 diffuse, specular;
-    processDirectionalLight(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, lt, diffuse, specular);
+    processDirectIllumination(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, diffuse, specular);
 
     imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
-    imageStore(framebufLightDirectSpecular, pix, vec4(specular, 0.0));
+    imageStore(framebufLightSpecular, pix, vec4(specular, 0.0));
 }

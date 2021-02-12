@@ -21,105 +21,18 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 
-#define DESC_SET_FRAMEBUFFERS 1
-#define DESC_SET_GLOBAL_UNIFORM 2
-#define DESC_SET_VERTEX_DATA 3
-#define DESC_SET_TEXTURES 4
-#define DESC_SET_RANDOM 5
-#include "ShaderCommonGLSLFunc.h"
-
-layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
-
-layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
+#include "RaygenCommon.h"
 
 void processPrimaryHit(vec3 hitPosition, ivec2 pix)
 {
-    int instanceId, instCustomIndex;
-    int geomIndex, primIndex;
+    ShHitInfo h = getHitInfo(payload);
 
-    unpackInstanceIdAndCustomIndex(payload.instIdAndIndex, instanceId, instCustomIndex);
-    unpackGeometryAndPrimitiveIndex(payload.geomAndPrimIndex, geomIndex, primIndex);
-
-    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
-    mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
-
-    vec2 inBaryCoords = payload.baryCoords;
-    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    
-    
-    vec2 texCoords[] = 
-    {
-        tr.layerTexCoord[0] * baryCoords,
-        tr.layerTexCoord[1] * baryCoords,
-        tr.layerTexCoord[2] * baryCoords
-    };
-
-    
-    vec3 albedo;
-    vec3 normal;
-    float metallic;
-    vec3 emission;
-    float roughness;
-    
-
-    albedo = tr.geomColor.rgb;
-
-    if (tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        albedo *= getTextureSample(tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[0]).rgb;
-    }
-    if (tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        albedo *= getTextureSample(tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[1]).rgb;
-    }   
-    if (tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        albedo *= getTextureSample(tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[2]).rgb;
-    }
-    
-
-    // convert normals to world space
-    tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
-    tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
-    tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
-
-    vec3 normalGeom = normalize(tr.normals * baryCoords);
-
-
-    if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0]);
-        metallic = nm.a;
-
-        // TODO: normal maps, tangents
-        normal = normalGeom;
-    }
-    else
-    {
-        normal = normalGeom;
-        metallic = tr.geomMetallicity;
-    }
-    
-
-    if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0]);
-        emission = er.rgb;
-        roughness = er.a;
-    }
-    else
-    {
-        emission = tr.geomEmission;
-        roughness = tr.geomRoughness;
-    }
-
-
-    imageStore(framebufAlbedo,              pix, vec4(albedo, 0));
-    imageStore(framebufNormal,              pix, vec4(normal, 0));
-    imageStore(framebufNormalGeometry,      pix, vec4(normalGeom, 0));
-    imageStore(framebufMetallicRoughness,   pix, vec4(metallic, max(roughness, 0.001), 0, 0));
-    imageStore(framebufDepth,               pix, vec4(payload.clsHitDistance));
-    imageStore(framebufSurfacePosition,      pix, vec4(hitPosition, 0.0));
+    imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
+    imageStore(framebufNormal,              pix, vec4(h.normal, 0));
+    imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
+    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, max(h.roughness, 0.001), 0, 0));
+    imageStore(framebufDepth,               pix, vec4(h.hitDistance));
+    imageStore(framebufSurfacePosition,     pix, vec4(hitPosition, 0.0));
 }
 
 void main() 
@@ -138,15 +51,12 @@ void main()
     uint randomSeed = getRandomSeed(pix, globalUniform.frameId, globalUniform.renderWidth, globalUniform.renderHeight);
     imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
 
+    imageStore(framebufLightIndirect, pix, vec4(0.0));
+    
     // start color is fully transparent black and dist = 0,
     // so the first tranparent-blended (additive or under) surface 
     // could overwrite these values
-    payload.color = vec4(0.0);
-    payload.baryCoords = vec2(0.0);
-    payload.instIdAndIndex = 0;
-    payload.geomAndPrimIndex = 0;
-    payload.clsHitDistance = -1;
-    payload.maxTransparDistance = -1;
+    resetPayload();
     
     traceRayEXT(
         topLevelAS,

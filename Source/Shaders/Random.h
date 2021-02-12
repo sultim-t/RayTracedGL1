@@ -19,13 +19,13 @@
 // SOFTWARE.
 
 
+#define M_PI        3.14159265358979323846
+
+
 // Sample disk uniformly
 // u1, u2 -- uniform random numbers
 vec2 sampleDisk(float radius, float u1, float u2)
 {
-    // uniform distribution
-    vec4 u = getBlueNoiseSample(seed);
-
     // polar mapping
     float r = radius * sqrt(u1);
     float phi = 2 * M_PI * u2;
@@ -42,8 +42,6 @@ vec2 sampleDisk(float radius, float u1, float u2)
 // u1, u2 -- uniform random numbers
 vec3 sampleHemisphere(float u1, float u2)
 {
-    vec4 u = getBlueNoiseSample(seed);
-
     float r = sqrt(u1);
     float phi = 2 * M_PI * u2;
 
@@ -54,6 +52,77 @@ vec3 sampleHemisphere(float u1, float u2)
     );
 
     // pdf = z / M_PI;
+}
+
+// "Building an Orthonormal Basis, Revisited"
+void revisedONB(vec3 n, out vec3 b1, out vec3 b2)
+{
+    if(n.z < 0.0)
+    {
+        const float a = 1.0f / (1.0f - n.z);
+        const float b = n.x * n.y * a;
+
+        b1 = vec3(1.0f - n.x * n.x * a, -b, n.x);
+        b2 = vec3(b, n.y * n.y * a - 1.0f, -n.y);
+    }
+    else
+    {
+        const float a = 1.0f / (1.0f + n.z);
+        const float b = -n.x * n.y * a;
+
+        b1 = vec3(1.0f - n.x * n.x * a, b, -n.x);
+        b2 = vec3(b, 1.0f - n.y * n.y * a, -n.y);
+    }
+}
+
+// "Building an Orthonormal Basis from a 3D Unit Vector Without Normalization", Frisvad
+void frisvadONB(vec3 n, out vec3 b1, out vec3 b2)
+{
+    if(n.z < -0.9999999)
+    {
+        b1 = vec3( 0.0, -1.0, 0.0);
+        b2 = vec3( -1.0, 0.0, 0.0);
+        
+        return;
+    }
+
+    const float a = 1.0 / (1.0 + n.z);
+    const float b = -n.x * n.y * a;
+
+    b1 = vec3(1.0 - n.x * n.x * a, b, n.x);
+    b2 = vec3(b, 1.0 - n.y * n.y * a, -n.y);
+}
+
+// Sample direction in a hemisphere oriented to a normal n
+vec3 sampleOrientedHemisphere(vec3 n, float u1, float u2, out float pdf)
+{
+    vec3 a = sampleHemisphere(u1, u2);
+    pdf = a.z / M_PI;
+
+    mat3 basis;
+    basis[2] = n;
+
+    //revisedONB(n, basis[0], basis[1]);
+    frisvadONB(n, basis[0], basis[1]);
+
+    return normalize(basis * a);
+
+    /*
+    // Ray Tracing Gems, Chapter 16 "Sampling Transformations Zoo"
+    float a = 1 - 2 * u1;
+    float b = sqrt(1 - a * a);
+    float phi = 2 * M_PI * u2;
+
+    // ? may be negative
+    pdf = a / M_PI;
+
+    vec3 r = vec3(
+        n.x + b * cos(phi),
+        n.y + b * sin(phi),
+        n.z + a
+    );
+
+    return normalize(r);*/
 }
 
 
@@ -124,7 +193,7 @@ vec2 sampleDisk(uint seed, float radius)
 {
     // uniform distribution
     vec4 u = getBlueNoiseSample(seed);
-    sampleDisk(radius, u[0], u1[1]);
+    return sampleDisk(radius, u[0], u[1]);
 }
 
 vec3 sampleHemisphere(uint seed)
@@ -141,7 +210,7 @@ uint getRandomSeed(ivec2 pix, uint frameIndex, float screenWidth, float screenHe
     uint countX = uint(ceil(screenWidth / BLUE_NOISE_TEXTURE_SIZE));
     uint countY = uint(ceil(screenHeight / BLUE_NOISE_TEXTURE_SIZE));
 
-    uint texIndex = (idY * countX + idX) /*+ countX * countY * (frameIndex % 16)*/;
+    uint texIndex = idY * countX + idX + frameIndex % 2048;
     texIndex = (texIndex + frameIndex) % BLUE_NOISE_TEXTURE_COUNT;
     
     uvec2 offset = uvec2(pix.x % BLUE_NOISE_TEXTURE_SIZE,

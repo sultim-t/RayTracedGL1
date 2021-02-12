@@ -50,6 +50,7 @@ RayTracingPipeline::RayTracingPipeline(
     {
         "RGenPrimary",
         "RGenDirect",
+        "RGenIndirect",
         "RMiss",
         "RMissShadow",
         "RClsOpaque",
@@ -88,6 +89,7 @@ RayTracingPipeline::RayTracingPipeline(
 
     AddRayGenGroup(toIndex("RGenPrimary"));                         assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_PRIMARY);
     AddRayGenGroup(toIndex("RGenDirect"));                          assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_DIRECT);
+    AddRayGenGroup(toIndex("RGenIndirect"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT);
 
     AddMissGroup(toIndex("RMiss"));                                 assert(missShaderCount - 1 == SBT_INDEX_MISS_DEFAULT);
     AddMissGroup(toIndex("RMissShadow"));                           assert(missShaderCount - 1 == SBT_INDEX_MISS_SHADOW);
@@ -213,7 +215,8 @@ void RayTracingPipeline::GetEntries(
     VkStridedDeviceAddressRegionKHR &callableEntry) const
 {
     assert(sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY || 
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT);
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT  ||
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT);
 
     VkDeviceAddress bufferAddress = shaderBindingTable->GetAddress();
 

@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 18;
+const uint32_t RTGL1::ShFramebuffers_Count = 21;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -17,6 +17,9 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32_SFLOAT,
     VK_FORMAT_R32_UINT,
     VK_FORMAT_R32_UINT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -46,6 +49,9 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     15,
     16,
     17,
+    18,
+    19,
+    20,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -65,16 +71,16 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     11,
     14,
     13,
-    15,
     16,
+    15,
     17,
+    18,
+    19,
+    20,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
-    18,
-    19,
-    20,
     21,
     22,
     23,
@@ -90,28 +96,37 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     33,
     34,
     35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
-    18,
-    20,
-    19,
-    22,
     21,
-    24,
     23,
-    26,
+    22,
     25,
-    28,
+    24,
     27,
-    30,
+    26,
     29,
-    32,
+    28,
     31,
+    30,
     33,
-    34,
+    32,
     35,
+    34,
+    37,
+    36,
+    38,
+    39,
+    40,
+    41,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -129,10 +144,13 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf RandomSeed_Prev",
     "Framebuf LightDirectDiffuse",
     "Framebuf LightDirectDiffuse_Prev",
-    "Framebuf LightDirectSpecular",
-    "Framebuf LightDirectSpecular_Prev",
+    "Framebuf LightSpecular",
+    "Framebuf LightSpecular_Prev",
+    "Framebuf LightIndirect",
+    "Framebuf LightIndirect_Prev",
     "Framebuf SurfacePosition",
     "Framebuf ViewDirection",
     "Framebuf Final",
+    "Framebuf DebugBounceNormal",
 };
 

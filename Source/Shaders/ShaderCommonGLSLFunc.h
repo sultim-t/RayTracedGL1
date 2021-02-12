@@ -32,7 +32,6 @@
 // * DESC_SET_RANDOM            -- to access blue noise (uniform distribution) and sampling points on surfaces
 
 #define UINT32_MAX  0xFFFFFFFF
-#define M_PI        3.14159265358979323846
 
 vec4 unpackLittleEndianUintColor(uint c)
 {
@@ -467,3 +466,90 @@ void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryInde
     primitiveIndex = int(geomAndPrimIndex >> MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW);
     geometryIndex = int(geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1));
 }
+
+#ifdef DESC_SET_VERTEX_DATA
+#ifdef DESC_SET_GLOBAL_UNIFORM
+#ifdef DESC_SET_TEXTURES
+ShHitInfo getHitInfo(ShPayload pl)
+{
+    ShHitInfo h;
+
+    int instanceId, instCustomIndex;
+    int geomIndex, primIndex;
+
+    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
+    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
+
+    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
+    mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
+
+    vec2 inBaryCoords = pl.baryCoords;
+    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+    
+    
+    vec2 texCoords[] = 
+    {
+        tr.layerTexCoord[0] * baryCoords,
+        tr.layerTexCoord[1] * baryCoords,
+        tr.layerTexCoord[2] * baryCoords
+    };
+    
+
+    h.albedo = tr.geomColor.rgb;
+
+    if (tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+    {
+        h.albedo *= getTextureSample(tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[0]).rgb;
+    }
+    if (tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+    {
+        h.albedo *= getTextureSample(tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[1]).rgb;
+    }   
+    if (tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+    {
+        h.albedo *= getTextureSample(tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[2]).rgb;
+    }
+    
+
+    // convert normals to world space
+    tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
+    tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
+    tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
+
+    h.normalGeom = normalize(tr.normals * baryCoords);
+
+
+    if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
+    {
+        vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0]);
+        h.metallic = nm.a;
+
+        // TODO: normal maps, tangents
+        h.normal = h.normalGeom;
+    }
+    else
+    {
+        h.normal = h.normalGeom;
+        h.metallic = tr.geomMetallicity;
+    }
+    
+
+    if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
+    {
+        vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0]);
+        h.emission = er.rgb;
+        h.roughness = er.a;
+    }
+    else
+    {
+        h.emission = tr.geomEmission;
+        h.roughness = tr.geomRoughness;
+    }
+
+    h.hitDistance = pl.clsHitDistance;
+
+    return h;
+}
+#endif // DESC_SET_TEXTURES
+#endif // DESC_SET_GLOBAL_UNIFORM
+#endif // DESC_SET_VERTEX_DATA

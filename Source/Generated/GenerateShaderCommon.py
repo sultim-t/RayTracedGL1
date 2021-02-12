@@ -207,6 +207,7 @@ CONST = {
     
     "SBT_INDEX_RAYGEN_PRIMARY"              : 0,
     "SBT_INDEX_RAYGEN_DIRECT"               : 1,
+    "SBT_INDEX_RAYGEN_INDIRECT"             : 2,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
     "SBT_INDEX_MISS_SHADOW"                 : 1,
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
@@ -327,6 +328,16 @@ PAYLOAD_SHADOW_STRUCT = [
     (TYPE_UINT32,       1,      "isShadowed",           1),
 ]
 
+HIT_INFO_STRUCT = [
+    (TYPE_FLOAT32,      3,      "albedo",               1),
+    (TYPE_FLOAT32,      1,      "metallic",             1),
+    (TYPE_FLOAT32,      3,      "normal",               1),
+    (TYPE_FLOAT32,      1,      "roughness",            1),
+    (TYPE_FLOAT32,      3,      "normalGeom",           1),
+    (TYPE_FLOAT32,      1,      "hitDistance",          1),
+    (TYPE_FLOAT32,      3,      "emission",             1),
+]
+
 # (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)
 # align16byte   -- if using a struct in dynamic array, it must be aligned with 16 bytes
 # breakComplex  -- if member's type is not primitive and its count>0 then
@@ -339,6 +350,7 @@ STRUCTS = {
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,   False),
     "ShPayload":                (PAYLOAD_STRUCT,            True,   False,  False),
     "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
+    "ShHitInfo":                (HIT_INFO_STRUCT,           True,   False,  False),
 }
 
 # --------------------------------------------------------------------------------------------- #
@@ -375,10 +387,12 @@ FRAMEBUFFERS = {
     "Depth"                 : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "LightDirectDiffuse"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "LightDirectSpecular"   : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "LightSpecular"         : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "LightIndirect"         : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "DebugBounceNormal"     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 

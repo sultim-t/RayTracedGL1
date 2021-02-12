@@ -1,0 +1,137 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+#extension GL_EXT_ray_tracing : require
+
+#define RAYGEN_SHADOW_PAYLOAD
+#include "RaygenCommon.h"
+
+// viewDirection -- is direction to viewer
+void processIndirectIllumination(
+    ivec2 pix, vec3 surfPosition, 
+    vec3 surfNormal, vec3 surfNormalGeom,
+    float surfRoughness, vec3 viewDirection)
+{
+    uint seed = getCurrentRandomSeed(pix);
+    vec4 u = getBlueNoiseSample(seed);
+    
+    vec3 color = vec3(0.0);
+    vec3 throughput = vec3(1.0);
+    
+    vec3 bounceDirection;
+    vec3 contribution;
+
+    // TODO
+    bool isSpecular = false;
+
+    if (isSpecular)
+    {
+        // sample microfacet normal
+        float nPdf;
+        vec3 m = sampleSmithGGX(surfNormal, viewDirection, surfRoughness, u[0], u[1], nPdf);
+
+        // light sample
+        bounceDirection = reflect(viewDirection, m);
+
+        // PDF of light sample, i.e. nPdf weighted by the Jacobian of the reflection operator
+        float pdf = nPdf / (4 * dot(viewDirection, m));
+
+        throughput *= evalBRDFSmithGGX(surfNormal, viewDirection, bounceDirection, surfRoughness) / pdf;
+    }
+    else
+    {
+        float pdf;
+        bounceDirection = sampleLambertian(surfNormal, u[0], u[1], pdf);
+        throughput *= evalBRDFLambertian(1.0) / pdf;
+    }
+
+    // got the bounce direction, trace ray
+    resetPayload();
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsNoneEXT, 
+        INSTANCE_MASK_ALL, 
+        0, 0,     // sbtRecordOffset, sbtRecordStride
+        SBT_INDEX_MISS_DEFAULT, 
+        surfPosition, 0.001, bounceDirection, MAX_RAY_LENGTH, 
+        PAYLOAD_INDEX_DEFAULT);    
+
+    imageStore(framebufDebugBounceNormal, pix, vec4(bounceDirection, 0));
+
+    if (payload.clsHitDistance > 0)
+    {
+        ShHitInfo h = getHitInfo(payload);
+        vec3 hitPos = surfPosition + payload.clsHitDistance * bounceDirection;
+        
+        // TODO: emmision
+
+        // calculate direct illumination in hit position
+        vec3 diffuse, specular;
+        processDirectIllumination(pix, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, diffuse, specular);
+
+        throughput *= h.albedo;
+
+        //contribution = throughput * (diffuse * (1 - metallic) + specular * metallic);
+        contribution = throughput * diffuse;
+    }
+    else
+    {
+        // TODO: skybox
+        vec3 skyColor = vec3(0.85, 0.95, 1.0);
+        contribution = throughput * skyColor;
+    }
+
+    if (isSpecular)
+    {
+        vec3 spec = imageLoad(framebufLightSpecular, pix).rgb;
+        spec += contribution;
+
+        imageStore(framebufLightSpecular, pix, vec4(spec, 0.0));
+    }
+    else
+    {
+        vec3 diff = imageLoad(framebufLightIndirect, pix).rgb;
+        diff += contribution;
+
+        imageStore(framebufLightIndirect, pix, vec4(diff, 0.0));
+    }
+}
+
+void main()
+{
+    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+
+    vec4 depth = texelFetch(framebufDepth_Sampler, pix, 0);
+
+    if (depth.x > MAX_RAY_LENGTH - 1.0f)
+    {
+        return;
+    }
+    
+    vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
+    vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
+    vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
+    vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
+    vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
+    float surfRoughness         = surfMetallicRoughness.g;
+
+    processIndirectIllumination(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz);        
+}

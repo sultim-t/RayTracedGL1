@@ -83,8 +83,20 @@ void PathTracer::Trace(
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_SURFACE_POSITION);
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_VIEW_DIRECTION);
 
-    // direct lighting
+    // direct illumination
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
+
+    svkCmdTraceRaysKHR(
+        cmd,
+        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+        width, height, 1);
+
+    
+    // sync access
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_SPECULAR);
+
+    // indirect illumination
+    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
 
     svkCmdTraceRaysKHR(
         cmd,
