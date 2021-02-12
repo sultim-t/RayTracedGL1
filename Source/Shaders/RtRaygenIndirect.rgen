@@ -74,8 +74,6 @@ void processIndirectIllumination(
         surfPosition, 0.001, bounceDirection, MAX_RAY_LENGTH, 
         PAYLOAD_INDEX_DEFAULT);    
 
-    imageStore(framebufDebugBounceNormal, pix, vec4(bounceDirection, 0));
-
     if (payload.clsHitDistance > 0)
     {
         ShHitInfo h = getHitInfo(payload);

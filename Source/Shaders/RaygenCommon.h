@@ -123,7 +123,7 @@ void processDirectIllumination(
     ShDirectionalLight lt;
     lt.direction = normalize(vec3(-1, 1, 1));
     lt.angularDiameterDegrees = 0.5;
-    lt.color = vec3(5, 5, 5);
+    lt.color = vec3(10, 10, 10);
 
     uint seed = getCurrentRandomSeed(pix);
     processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, lt, outDiffuse, outSpecular);

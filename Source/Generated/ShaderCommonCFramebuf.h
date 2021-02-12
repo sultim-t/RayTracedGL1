@@ -29,7 +29,6 @@ enum FramebufferImageIndex
     FB_IMAGE_SURFACE_POSITION = 17,
     FB_IMAGE_VIEW_DIRECTION = 18,
     FB_IMAGE_FINAL = 19,
-    FB_IMAGE_DEBUG_BOUNCE_NORMAL = 20,
 };
 
 extern const uint32_t ShFramebuffers_Count;

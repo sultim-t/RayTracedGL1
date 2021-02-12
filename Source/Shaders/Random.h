@@ -210,7 +210,7 @@ uint getRandomSeed(ivec2 pix, uint frameIndex, float screenWidth, float screenHe
     uint countX = uint(ceil(screenWidth / BLUE_NOISE_TEXTURE_SIZE));
     uint countY = uint(ceil(screenHeight / BLUE_NOISE_TEXTURE_SIZE));
 
-    uint texIndex = idY * countX + idX + frameIndex % 2048;
+    uint texIndex = idY * countX + idX;
     texIndex = (texIndex + frameIndex) % BLUE_NOISE_TEXTURE_COUNT;
     
     uvec2 offset = uvec2(pix.x % BLUE_NOISE_TEXTURE_SIZE,
