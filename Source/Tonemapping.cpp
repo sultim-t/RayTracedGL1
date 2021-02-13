@@ -126,7 +126,7 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
 
     // calculate average luminance
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, histogramPipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, avgLuminancePipeline);
 
     // only one working group
     vkCmdDispatch(cmd, 1, 1, 1);

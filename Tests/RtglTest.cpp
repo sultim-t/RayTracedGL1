@@ -368,7 +368,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         frameInfo.renderHeight = pWindow->height;
 
         auto tm = std::chrono::system_clock::now() - timeStart;
-        frameInfo.currentTime = tm.count();
+        frameInfo.currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(tm).count() / 1000.0f;
 
         // GLM is column major, copy matrix data directly
         glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);

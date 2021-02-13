@@ -31,13 +31,9 @@ layout(set = 2, binding = BINDING_LUM_HISTOGRAM) buffer Historam_BT
     uint histogram[COMPUTE_LUM_HISTOGRAM_BIN_COUNT];
 };
 
-layout(local_size_x = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X, local_size_y = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y, local_size_z = 1) in;
+layout(local_size_x = COMPUTE_LUM_HISTOGRAM_BIN_COUNT, local_size_y = 1, local_size_z = 1) in;
 
-#if COMPUTE_LUM_HISTOGRAM_BIN_COUNT != COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X * COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y
-    #error
-#endif
-
-shared uint histogramWorkGroup[COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X * COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y];
+shared uint histogramWorkGroup[COMPUTE_LUM_HISTOGRAM_BIN_COUNT];
 
 // https://bruop.github.io/exposure/
 // http://www.alextardif.com/HistogramLuminance.html
@@ -69,14 +65,14 @@ void main()
     if (localBinIndex == 0)
     {
         float pixelCount = globalUniform.renderWidth * globalUniform.renderHeight;
-        float blackPixelCount = float(localBinIndex);
+        float blackPixelCount = countInLocalBin;
 
         uint finalWeightedCount = histogramWorkGroup[0];
         
         float weightedLogAverage = (finalWeightedCount / max(pixelCount - blackPixelCount, 1.0)) - 1.0;
 
         float logLuminanceRange = globalUniform.maxLogLuminance - globalUniform.minLogLuminance;
-        float weightedAvgLuminance = exp2(((weightedLogAverage / 254.0) * logLuminanceRange) + globalUniform.minLogLuminance);
+        float weightedAvgLuminance = exp2(weightedLogAverage / 254.0 * logLuminanceRange + globalUniform.minLogLuminance);
 
         float lastFrameLuminance = imageLoad(framebufAvgLuminance, ivec2(0, 0)).x;
 
