@@ -60,7 +60,7 @@ void Framebuffers::CreateDescriptors()
 {
     VkResult r;
 
-    const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
+    const uint32_t allBindingsCount = ShFramebuffers_Count + ShFramebuffers_Sampler_Count;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
 
     std::vector<VkDescriptorSetLayoutBinding> bindings(allBindingsCount);
@@ -78,7 +78,7 @@ void Framebuffers::CreateDescriptors()
     }
 
     // gsampler2D
-    for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
+    for (uint32_t i = 0; i < ShFramebuffers_Sampler_Count; i++)
     {
         VkDescriptorSetLayoutBinding &bnd = bindings[samplerBindingOffset + i];
 
@@ -186,13 +186,39 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
     for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
     {
         VkFormat format = ShFramebuffers_Formats[i];
+        FramebufferImageFlags flags = ShFramebuffers_Flags[i];
+
+        VkExtent3D extent;
+        
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_1X1_SIZE)
+        {
+            extent = { 1, 1, 1 };
+        }
+        else
+        {
+            extent = { width, height, 1 };
+
+            if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE)
+            {
+                extent.width /= 2;
+            }
+            
+            if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE)
+            {
+                extent.height /= 2;
+            }
+        }
+
+        extent.width  = extent.width  < 1 ? 0 : extent.width;
+        extent.height = extent.height < 1 ? 0 : extent.height;
+        extent.depth  = extent.depth  < 1 ? 0 : extent.depth;
 
         // create image
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
         imageInfo.format = format;
-        imageInfo.extent = { width, height, 1 };
+        imageInfo.extent = extent;
         imageInfo.mipLevels = 1;
         imageInfo.arrayLayers = 1;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -251,7 +277,7 @@ void Framebuffers::UpdateDescriptors()
 {
     VkSampler nearestSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
+    const uint32_t allBindingsCount = ShFramebuffers_Count + ShFramebuffers_Sampler_Count;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
 
     std::vector<VkDescriptorImageInfo> imageInfos(allBindingsCount);
@@ -265,7 +291,7 @@ void Framebuffers::UpdateDescriptors()
     }
 
     // gsampler2D
-    for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
+    for (uint32_t i = 0; i < ShFramebuffers_Sampler_Count; i++)
     {
         imageInfos[samplerBindingOffset + i].sampler = nearestSampler;
         imageInfos[samplerBindingOffset + i].imageView = imageViews[i];
@@ -293,7 +319,7 @@ void Framebuffers::UpdateDescriptors()
         }
 
         // gsampler2D
-        for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
+        for (uint32_t i = 0; i < ShFramebuffers_Sampler_Count; i++)
         {
             auto &wrt = writes[k * allBindingsCount + samplerBindingOffset + i];
 

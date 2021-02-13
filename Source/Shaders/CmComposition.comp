@@ -24,12 +24,11 @@
 #define DESC_SET_GLOBAL_UNIFORM 1
 #include "ShaderCommonGLSLFunc.h"
 
-layout(local_size_x = COMPUTE_COMPOSE_WORKGROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_WORKGROUP_SIZE_Y, local_size_z = 1) in;
+layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
 
 void main()
 {
-    uvec2 upix = gl_GlobalInvocationID.xy;
-    ivec2 pix = ivec2(upix.x, upix.y);
+    ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {

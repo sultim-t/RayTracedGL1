@@ -132,6 +132,9 @@ private:
     PFN_rgPrint                             debugPrint;
 
     VertexBufferProperties                  vbProperties;
+
+    double                                  previousFrameTime;
+    double                                  currentFrameTime;
 };
 
 }

@@ -197,6 +197,7 @@ CONST = {
     "BINDING_ACCELERATION_STRUCTURE"        : 0,
     "BINDING_TEXTURES"                      : 0,
     "BINDING_BLUE_NOISE"                    : 0,
+    "BINDING_LUM_HISTOGRAM"                 : 0,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
     "INSTANCE_MASK_ALL"                     : "0xFF",
@@ -224,8 +225,12 @@ CONST = {
     "BLUE_NOISE_TEXTURE_SIZE"               : 64,
     "BLUE_NOISE_TEXTURE_SIZE_POW"           : CONST_TO_EVALUATE,
 
-    "COMPUTE_COMPOSE_WORKGROUP_SIZE_X"      : 16,
-    "COMPUTE_COMPOSE_WORKGROUP_SIZE_Y"      : 16,
+    "COMPUTE_COMPOSE_GROUP_SIZE_X"          : 16,
+    "COMPUTE_COMPOSE_GROUP_SIZE_Y"          : 16,
+
+    "COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X"    : 16,
+    "COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y"    : 16,
+    "COMPUTE_LUM_HISTOGRAM_BIN_COUNT"       : 256,
 }
 
 CONST_GLSL_ONLY = {
@@ -283,24 +288,26 @@ TRIANGLE_STRUCT = [
 # Must be careful with std140 offsets! They are set manually.
 # Other structs are using std430 and padding is done automatically.
 GLOBAL_UNIFORM_STRUCT = [
-    (TYPE_FLOAT32,     44,      "view",                 1),
-    (TYPE_FLOAT32,     44,      "invView",              1),
-    (TYPE_FLOAT32,     44,      "viewPrev",             1),
-    (TYPE_FLOAT32,     44,      "projection",           1),
-    (TYPE_FLOAT32,     44,      "invProjection",        1),
-    (TYPE_FLOAT32,     44,      "projectionPrev",       1),
-    (TYPE_UINT32,       1,      "positionsStride",      1),
-    (TYPE_UINT32,       1,      "normalsStride",        1),
-    (TYPE_UINT32,       1,      "texCoordsStride",      1),
-    #(TYPE_UINT32,      1,      "colorsStride",         1),
-    (TYPE_FLOAT32,      1,      "renderWidth",          1),
-    (TYPE_FLOAT32,      1,      "renderHeight",         1),
-    (TYPE_UINT32,       1,      "frameId",              1),
+    (TYPE_FLOAT32,     44,      "view",                         1),
+    (TYPE_FLOAT32,     44,      "invView",                      1),
+    (TYPE_FLOAT32,     44,      "viewPrev",                     1),
+    (TYPE_FLOAT32,     44,      "projection",                   1),
+    (TYPE_FLOAT32,     44,      "invProjection",                1),
+    (TYPE_FLOAT32,     44,      "projectionPrev",               1),
+    (TYPE_UINT32,       1,      "positionsStride",              1),
+    (TYPE_UINT32,       1,      "normalsStride",                1),
+    (TYPE_UINT32,       1,      "texCoordsStride",              1),
+    (TYPE_FLOAT32,      1,      "renderWidth",                  1),
+    (TYPE_FLOAT32,      1,      "renderHeight",                 1),
+    (TYPE_UINT32,       1,      "frameId",                      1),
+    (TYPE_FLOAT32,      1,      "minLogLuminance",              1),
+    (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
+    (TYPE_FLOAT32,      1,      "timeDelta",                    1),
+    (TYPE_FLOAT32,      1,      "_pad1",                        1),
+    (TYPE_FLOAT32,      1,      "_pad2",                        1),
+    (TYPE_FLOAT32,      1,      "_pad3",                        1),
     # for std140
-    (TYPE_UINT32,       1,      "_pad0",                1),
-    (TYPE_UINT32,       1,      "_pad1",                1),
-    # for std140
-    (TYPE_INT32,        4,      "instanceGeomInfoOffset",   CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
+    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
 
 GEOM_INSTANCE_STRUCT = [
@@ -374,9 +381,20 @@ FRAMEBUF_BASE_BINDING       = 0
 FRAMEBUF_PREFIX             = "framebuf"
 FRAMEBUF_SAMPLER_POSTFIX    = "_Sampler"
 FRAMEBUF_DEBUG_NAME_PREFIX  = "Framebuf "
-# only info for 2 frames are used: current and previous
-FRAMEBUF_FLAGS_STORE_PREV   = 1
 FRAMEBUF_STORE_PREV_POSTFIX = "_Prev"
+
+# only info for 2 frames are used: current and previous
+FRAMEBUF_FLAGS_STORE_PREV           = 1
+FRAMEBUF_FLAGS_NO_SAMPLER           = 2
+FRAMEBUF_FLAGS_FORCE_1X1_SIZE       = 4
+FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE    = 8
+FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE    = 16
+
+FRAMEBUF_FLAGS_ENUM = {
+    "FRAMEBUF_FLAGS_FORCE_1X1_SIZE"     : FRAMEBUF_FLAGS_FORCE_1X1_SIZE,
+    "FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE"  : FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE,
+    "FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE"  : FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE,
+}
 
 FRAMEBUFFERS = {
     # (image name) : (base format type, components, flags)
@@ -392,7 +410,8 @@ FRAMEBUFFERS = {
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    #"Debug"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "TonemappingHistogram"  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_NO_SAMPLER | FRAMEBUF_FLAGS_FORCE_1X1_SIZE),
+    #"Debug"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 
@@ -690,6 +709,7 @@ def getAllGLSLFramebufDeclarations():
         + "\n".join(
             getGLSLFramebufSamplerDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
+            if not (flags & FRAMEBUF_FLAGS_NO_SAMPLER)
         ) \
         + "#endif\n"
 
@@ -715,17 +735,38 @@ def getAllFramebufConstants():
         if flags & FRAMEBUF_FLAGS_STORE_PREV:
             names.append(name + FRAMEBUF_STORE_PREV_POSTFIX)
 
-    return "enum FramebufferImageIndex\n{\n" + "\n".join(
-        "    FB_IMAGE_%s = %d," % (capitalizeForEnum(names[i]), i)
+    fbEnum = "enum FramebufferImageIndex\n{\n" + "\n".join(
+        "    FB_IMAGE_INDEX_%s = %d," % (capitalizeForEnum(names[i]), i)
         for i in range(len(names))
     ) + "\n};\n\n"
 
+    fbFlags = "enum FramebufferImageFlagBits\n{\n" + "\n".join(
+        "    FB_IMAGE_FLAGS_%s = %d," % (flName, flValue)
+        for (flName, flValue) in FRAMEBUF_FLAGS_ENUM.items()
+    ) + "\n};\ntypedef uint32_t FramebufferImageFlags;\n\n"
+
+    return fbEnum + fbFlags
+
+
+def getPublicFlags(flags):
+    r = " | ".join(
+        "RTGL1::FB_IMAGE_FLAGS_" + flName
+        for (flName, flValue) in FRAMEBUF_FLAGS_ENUM.items()
+        if flValue & flags
+    )
+    if r == "":
+        return "0"
+    else:
+        return r
+    
 
 def getAllVulkanFramebufDeclarations():
     return ("extern const uint32_t ShFramebuffers_Count;\n"
             "extern const VkFormat ShFramebuffers_Formats[];\n"
+            "extern const FramebufferImageFlags ShFramebuffers_Flags[];\n"
             "extern const uint32_t ShFramebuffers_Bindings[];\n"
             "extern const uint32_t ShFramebuffers_BindingsSwapped[];\n"
+            "extern const uint32_t ShFramebuffers_Sampler_Count;\n"
             "extern const uint32_t ShFramebuffers_Sampler_Bindings[];\n"
             "extern const uint32_t ShFramebuffers_Sampler_BindingsSwapped[];\n"
             "extern const char *const ShFramebuffers_DebugNames[];\n\n")
@@ -734,13 +775,16 @@ def getAllVulkanFramebufDeclarations():
 def getAllVulkanFramebufDefinitions():
     template = ("const uint32_t RTGL1::ShFramebuffers_Count = %d;\n\n"
                 "const VkFormat RTGL1::ShFramebuffers_Formats[] = \n{\n%s};\n\n"
+                "const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Bindings[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = \n{\n%s};\n\n"
+                "const uint32_t RTGL1::ShFramebuffers_Sampler_Count = %d;\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = \n{\n%s};\n\n"
                 "const char *const RTGL1::ShFramebuffers_DebugNames[] = \n{\n%s};\n\n")
     formats = ""
     count = 0
+    publicFlags = ""
     samplerCount = 0
     bindings = ""    
     bindingsSwapped = ""
@@ -750,6 +794,7 @@ def getAllVulkanFramebufDefinitions():
     for name, (baseFormat, components, flags) in FRAMEBUFFERS.items():
         formats += TAB_STR + VULKAN_IMAGE_FORMATS[(baseFormat, components)] + ",\n"
         names += TAB_STR + "\"" + FRAMEBUF_DEBUG_NAME_PREFIX + name + "\",\n"
+        publicFlags += TAB_STR + getPublicFlags(flags) + ",\n"
 
         if not flags & FRAMEBUF_FLAGS_STORE_PREV:
             bindings                += TAB_STR + str(count)     + ",\n"
@@ -767,6 +812,9 @@ def getAllVulkanFramebufDefinitions():
         count += 1
 
     for name, (baseFormat, components, flags) in FRAMEBUFFERS.items():
+        if flags & FRAMEBUF_FLAGS_NO_SAMPLER:
+            continue
+
         if not flags & FRAMEBUF_FLAGS_STORE_PREV:
             samplerBindings         += TAB_STR + str(count + samplerCount)     + ",\n"
             samplerBindingsSwapped  += TAB_STR + str(count + samplerCount)     + ",\n"
@@ -779,7 +827,7 @@ def getAllVulkanFramebufDefinitions():
 
         samplerCount += 1
 
-    return template % (count, formats, bindings, bindingsSwapped, samplerBindings, samplerBindingsSwapped, names)
+    return template % (count, formats, publicFlags, bindings, bindingsSwapped, samplerCount, samplerBindings, samplerBindingsSwapped, names)
 
 
 FILE_HEADER = "// This file was generated by GenerateShaderCommon.py\n\n"

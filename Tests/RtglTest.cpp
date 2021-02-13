@@ -18,6 +18,7 @@
 #include "Libs/tinyobjloader/tiny_obj_loader.h"
 
 #include <fstream>
+#include <chrono>
 
 #define RG_CHECKERROR(x) assert(x == RG_SUCCESS)
 
@@ -210,6 +211,8 @@ static float identityMatrix44[] =
 
 static void MainLoop(RgInstance instance, Window *pWindow)
 {
+    auto timeStart = std::chrono::system_clock::now();
+
     std::vector<float>       cubePositions;
     std::vector<float>       cubeNormals;
     std::vector<float>       cubeTexCoords;
@@ -363,6 +366,9 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RgDrawFrameInfo frameInfo = {};
         frameInfo.renderWidth = pWindow->width;
         frameInfo.renderHeight = pWindow->height;
+
+        auto tm = std::chrono::system_clock::now() - timeStart;
+        frameInfo.currentTime = tm.count();
 
         // GLM is column major, copy matrix data directly
         glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);

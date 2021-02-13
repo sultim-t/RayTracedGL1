@@ -74,14 +74,14 @@ void PathTracer::Trace(
 
 
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_ALBEDO);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_NORMAL);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_NORMAL_GEOMETRY);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_METALLIC_ROUGHNESS);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_RANDOM_SEED);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_SURFACE_POSITION);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_VIEW_DIRECTION);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_NORMAL);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_DEPTH);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_RANDOM_SEED);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_SURFACE_POSITION);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_VIEW_DIRECTION);
 
     // direct illumination
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
@@ -93,7 +93,7 @@ void PathTracer::Trace(
 
     
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_SPECULAR);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_SPECULAR);
 
     // indirect illumination
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);

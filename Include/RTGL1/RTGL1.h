@@ -475,12 +475,13 @@ typedef RgFlags RgDrawFrameFlags;
 
 typedef struct RgDrawFrameInfo
 {
-    RgDrawFrameFlags    flags;
-    uint32_t            renderWidth;
-    uint32_t            renderHeight;
     // View and projection matrices are column major.
     float               view[16];
     float               projection[16];
+    uint32_t            renderWidth;
+    uint32_t            renderHeight;
+    double              currentTime;
+    RgDrawFrameFlags    flags;
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

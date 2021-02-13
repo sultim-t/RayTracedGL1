@@ -34,8 +34,6 @@ RTGL1::ImageComposition::ImageComposition(
     device(_device),
     framebuffers(std::move(_framebuffers))
 {
-
-
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
         framebuffers->GetDescSetLayout(),
@@ -56,12 +54,12 @@ void RTGL1::ImageComposition::Compose(
     const std::shared_ptr<const GlobalUniform> &uniform)
 {
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_ALBEDO);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_METALLIC_ROUGHNESS);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_DIRECT_DIFFUSE);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_SPECULAR);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_LIGHT_INDIRECT);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_DEPTH);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_DIRECT_DIFFUSE);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_SPECULAR);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_INDIRECT);
 
 
     // bind pipeline
@@ -82,8 +80,8 @@ void RTGL1::ImageComposition::Compose(
                             0, nullptr);
 
     // start compute shader
-    uint32_t wgCountX = std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_WORKGROUP_SIZE_X);
-    uint32_t wgCountY = std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_WORKGROUP_SIZE_Y);
+    uint32_t wgCountX = std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_GROUP_SIZE_X);
+    uint32_t wgCountY = std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_GROUP_SIZE_Y);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }

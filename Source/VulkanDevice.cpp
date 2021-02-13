@@ -35,7 +35,9 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     frameId(1),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
-    debugPrint(info->pfnDebugPrint)
+    debugPrint(info->pfnDebugPrint),
+    previousFrameTime(-1.0 / 60.0),
+    currentFrameTime(0)
 {
     vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
     vbProperties.positionStride = info->vertexPositionStride;
@@ -213,6 +215,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     gu->renderWidth = frameInfo->renderWidth;
     gu->renderHeight = frameInfo->renderHeight;
     gu->frameId = frameId;
+
+    gu->minLogLuminance = -10.0f;
+    gu->maxLogLuminance = 2.0f;
+    gu->timeDelta = currentFrameTime - previousFrameTime;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
@@ -234,16 +240,14 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
             scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
     }
 
-    // TODO: postprocessing
-
-
+    // tonemapping and final image composition
     imageComposition->Compose(cmd, frameIndex, uniform);
 
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_FINAL);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_FINAL,
+        cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL,
         renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer
@@ -289,6 +293,9 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
     {
         return RG_FRAME_WASNT_STARTED;
     }
+
+    previousFrameTime = currentFrameTime;
+    currentFrameTime = frameInfo->currentTime;
 
     FillUniform(uniform->GetData(), frameInfo);
 
