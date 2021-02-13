@@ -43,6 +43,14 @@ const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] =
     0,
     0,
     0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     RTGL1::FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_1X1_SIZE,
 };
 
@@ -96,8 +104,6 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     20,
 };
 
-const uint32_t RTGL1::ShFramebuffers_Sampler_Count = 20;
-
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
     21,
@@ -120,6 +126,7 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     38,
     39,
     40,
+    FB_SAMPLER_INVALID_BINDING,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
@@ -144,6 +151,7 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] =
     38,
     39,
     40,
+    FB_SAMPLER_INVALID_BINDING,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -168,6 +176,6 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf SurfacePosition",
     "Framebuf ViewDirection",
     "Framebuf Final",
-    "Framebuf TonemappingHistogram",
+    "Framebuf AvgLuminance",
 };
 

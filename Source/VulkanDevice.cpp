@@ -132,6 +132,13 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->rasterizedMaxVertexCount, 
         info->rasterizedMaxIndexCount);
 
+    tonemapping = std::make_shared<Tonemapping>(
+        device,
+        framebuffers,
+        shaderManager,
+        uniform,
+        memAllocator);
+
     imageComposition    = std::make_shared<ImageComposition>(
         device, 
         framebuffers, 
@@ -152,6 +159,7 @@ VulkanDevice::~VulkanDevice()
     swapchain.reset();
     cmdManager.reset();
     framebuffers.reset();
+    tonemapping.reset();
     imageComposition.reset();
     uniform.reset();
     scene.reset();
@@ -240,7 +248,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
             scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
     }
 
-    // tonemapping and final image composition
+    // tonemapping
+    tonemapping->Tonemap(cmd, frameIndex, uniform);
+
+    // final image composition
     imageComposition->Compose(cmd, frameIndex, uniform);
 
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);

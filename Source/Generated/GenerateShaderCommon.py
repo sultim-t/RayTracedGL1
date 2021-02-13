@@ -376,12 +376,13 @@ GETTERS = {
 # User defined framebuffers
 # --------------------------------------------------------------------------------------------- #
 
-FRAMEBUF_DESC_SET_NAME      = "DESC_SET_FRAMEBUFFERS"
-FRAMEBUF_BASE_BINDING       = 0
-FRAMEBUF_PREFIX             = "framebuf"
-FRAMEBUF_SAMPLER_POSTFIX    = "_Sampler"
-FRAMEBUF_DEBUG_NAME_PREFIX  = "Framebuf "
-FRAMEBUF_STORE_PREV_POSTFIX = "_Prev"
+FRAMEBUF_DESC_SET_NAME              = "DESC_SET_FRAMEBUFFERS"
+FRAMEBUF_BASE_BINDING               = 0
+FRAMEBUF_PREFIX                     = "framebuf"
+FRAMEBUF_SAMPLER_POSTFIX            = "_Sampler"
+FRAMEBUF_DEBUG_NAME_PREFIX          = "Framebuf "
+FRAMEBUF_STORE_PREV_POSTFIX         = "_Prev"
+FRAMEBUF_SAMPLER_INVALID_BINDING    = "FB_SAMPLER_INVALID_BINDING"
 
 # only info for 2 frames are used: current and previous
 FRAMEBUF_FLAGS_STORE_PREV           = 1
@@ -410,7 +411,7 @@ FRAMEBUFFERS = {
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "TonemappingHistogram"  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_NO_SAMPLER | FRAMEBUF_FLAGS_FORCE_1X1_SIZE),
+    "AvgLuminance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_NO_SAMPLER | FRAMEBUF_FLAGS_FORCE_1X1_SIZE),
     #"Debug"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
@@ -735,6 +736,8 @@ def getAllFramebufConstants():
         if flags & FRAMEBUF_FLAGS_STORE_PREV:
             names.append(name + FRAMEBUF_STORE_PREV_POSTFIX)
 
+    fbConst = "#define " + FRAMEBUF_SAMPLER_INVALID_BINDING + " 0xFFFFFFFF\n\n"
+
     fbEnum = "enum FramebufferImageIndex\n{\n" + "\n".join(
         "    FB_IMAGE_INDEX_%s = %d," % (capitalizeForEnum(names[i]), i)
         for i in range(len(names))
@@ -745,7 +748,7 @@ def getAllFramebufConstants():
         for (flName, flValue) in FRAMEBUF_FLAGS_ENUM.items()
     ) + "\n};\ntypedef uint32_t FramebufferImageFlags;\n\n"
 
-    return fbEnum + fbFlags
+    return fbConst + fbEnum + fbFlags
 
 
 def getPublicFlags(flags):
@@ -766,7 +769,6 @@ def getAllVulkanFramebufDeclarations():
             "extern const FramebufferImageFlags ShFramebuffers_Flags[];\n"
             "extern const uint32_t ShFramebuffers_Bindings[];\n"
             "extern const uint32_t ShFramebuffers_BindingsSwapped[];\n"
-            "extern const uint32_t ShFramebuffers_Sampler_Count;\n"
             "extern const uint32_t ShFramebuffers_Sampler_Bindings[];\n"
             "extern const uint32_t ShFramebuffers_Sampler_BindingsSwapped[];\n"
             "extern const char *const ShFramebuffers_DebugNames[];\n\n")
@@ -778,7 +780,6 @@ def getAllVulkanFramebufDefinitions():
                 "const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Bindings[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = \n{\n%s};\n\n"
-                "const uint32_t RTGL1::ShFramebuffers_Sampler_Count = %d;\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = \n{\n%s};\n\n"
                 "const char *const RTGL1::ShFramebuffers_DebugNames[] = \n{\n%s};\n\n")
@@ -797,37 +798,41 @@ def getAllVulkanFramebufDefinitions():
         publicFlags += TAB_STR + getPublicFlags(flags) + ",\n"
 
         if not flags & FRAMEBUF_FLAGS_STORE_PREV:
-            bindings                += TAB_STR + str(count)     + ",\n"
-            bindingsSwapped         += TAB_STR + str(count)     + ",\n"
+            bindings                += TAB_STR + str(count)         + ",\n"
+            bindingsSwapped         += TAB_STR + str(count)         + ",\n"
         else:
-            bindings                += TAB_STR + str(count)     + ",\n"
-            bindings                += TAB_STR + str(count + 1) + ",\n"
+            bindings                += TAB_STR + str(count)         + ",\n"
+            bindings                += TAB_STR + str(count + 1)     + ",\n"
             bindingsSwapped         += TAB_STR + str(count + 1)     + ",\n"
-            bindingsSwapped         += TAB_STR + str(count)     + ",\n"
+            bindingsSwapped         += TAB_STR + str(count)         + ",\n"
             
             formats += TAB_STR + VULKAN_IMAGE_FORMATS[(baseFormat, components)] + ",\n"
             names += TAB_STR + "\"" + FRAMEBUF_DEBUG_NAME_PREFIX + name + FRAMEBUF_STORE_PREV_POSTFIX + "\",\n"
+            publicFlags += TAB_STR + getPublicFlags(flags) + ",\n"
             count += 1
 
         count += 1
 
     for name, (baseFormat, components, flags) in FRAMEBUFFERS.items():
+        bindingIndex     = str(count + samplerCount)
+        bindingIndexNext = str(count + samplerCount + 1)
+        
         if flags & FRAMEBUF_FLAGS_NO_SAMPLER:
-            continue
+            bindingIndex = bindingIndexNext = FRAMEBUF_SAMPLER_INVALID_BINDING
 
         if not flags & FRAMEBUF_FLAGS_STORE_PREV:
-            samplerBindings         += TAB_STR + str(count + samplerCount)     + ",\n"
-            samplerBindingsSwapped  += TAB_STR + str(count + samplerCount)     + ",\n"
+            samplerBindings         += TAB_STR + bindingIndex       + ",\n"
+            samplerBindingsSwapped  += TAB_STR + bindingIndex       + ",\n"
         else:
-            samplerBindings         += TAB_STR + str(count + samplerCount)     + ",\n"
-            samplerBindings         += TAB_STR + str(count + samplerCount + 1) + ",\n"
-            samplerBindingsSwapped  += TAB_STR + str(count + samplerCount + 1)  + ",\n"
-            samplerBindingsSwapped  += TAB_STR + str(count + samplerCount)     + ",\n"
+            samplerBindings         += TAB_STR + bindingIndex       + ",\n"
+            samplerBindings         += TAB_STR + bindingIndexNext   + ",\n"
+            samplerBindingsSwapped  += TAB_STR + bindingIndexNext   + ",\n"
+            samplerBindingsSwapped  += TAB_STR + bindingIndex       + ",\n"
             samplerCount += 1
 
         samplerCount += 1
 
-    return template % (count, formats, publicFlags, bindings, bindingsSwapped, samplerCount, samplerBindings, samplerBindingsSwapped, names)
+    return template % (count, formats, publicFlags, bindings, bindingsSwapped, samplerBindings, samplerBindingsSwapped, names)
 
 
 FILE_HEADER = "// This file was generated by GenerateShaderCommon.py\n\n"

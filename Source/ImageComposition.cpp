@@ -29,7 +29,7 @@ RTGL1::ImageComposition::ImageComposition(
     VkDevice _device,
     std::shared_ptr<Framebuffers> _framebuffers,
     const std::shared_ptr<const ShaderManager> &_shaderManager,
-    const std::shared_ptr<const GlobalUniform> &uniform)
+    const std::shared_ptr<const GlobalUniform> &_uniform)
 :
     device(_device),
     framebuffers(std::move(_framebuffers))
@@ -37,7 +37,7 @@ RTGL1::ImageComposition::ImageComposition(
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
         framebuffers->GetDescSetLayout(),
-        uniform->GetDescSetLayout()
+        _uniform->GetDescSetLayout()
     };
 
     CreatePipeline(setLayouts.data(), setLayouts.size(), _shaderManager);

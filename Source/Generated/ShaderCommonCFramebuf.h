@@ -7,6 +7,8 @@
 namespace RTGL1
 {
 
+#define FB_SAMPLER_INVALID_BINDING 0xFFFFFFFF
+
 enum FramebufferImageIndex
 {
     FB_IMAGE_INDEX_ALBEDO = 0,
@@ -29,7 +31,7 @@ enum FramebufferImageIndex
     FB_IMAGE_INDEX_SURFACE_POSITION = 17,
     FB_IMAGE_INDEX_VIEW_DIRECTION = 18,
     FB_IMAGE_INDEX_FINAL = 19,
-    FB_IMAGE_INDEX_TONEMAPPING_HISTOGRAM = 20,
+    FB_IMAGE_INDEX_AVG_LUMINANCE = 20,
 };
 
 enum FramebufferImageFlagBits
@@ -45,7 +47,6 @@ extern const VkFormat ShFramebuffers_Formats[];
 extern const FramebufferImageFlags ShFramebuffers_Flags[];
 extern const uint32_t ShFramebuffers_Bindings[];
 extern const uint32_t ShFramebuffers_BindingsSwapped[];
-extern const uint32_t ShFramebuffers_Sampler_Count;
 extern const uint32_t ShFramebuffers_Sampler_Bindings[];
 extern const uint32_t ShFramebuffers_Sampler_BindingsSwapped[];
 extern const char *const ShFramebuffers_DebugNames[];

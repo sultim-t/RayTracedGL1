@@ -553,3 +553,9 @@ ShHitInfo getHitInfo(ShPayload pl)
 #endif // DESC_SET_TEXTURES
 #endif // DESC_SET_GLOBAL_UNIFORM
 #endif // DESC_SET_VERTEX_DATA
+
+
+float getLuminance(vec3 c)
+{
+    return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
+}

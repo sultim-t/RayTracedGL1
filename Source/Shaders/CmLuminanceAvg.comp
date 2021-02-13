@@ -1,0 +1,89 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+#extension GL_EXT_control_flow_attributes : enable
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(set = 2, binding = BINDING_LUM_HISTOGRAM) buffer Historam_BT
+{
+    uint histogram[COMPUTE_LUM_HISTOGRAM_BIN_COUNT];
+};
+
+layout(local_size_x = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X, local_size_y = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y, local_size_z = 1) in;
+
+#if COMPUTE_LUM_HISTOGRAM_BIN_COUNT != COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X * COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y
+    #error
+#endif
+
+shared uint histogramWorkGroup[COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X * COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y];
+
+// https://bruop.github.io/exposure/
+// http://www.alextardif.com/HistogramLuminance.html
+
+void main()
+{
+    uint localBinIndex = uint(gl_LocalInvocationIndex);
+
+    uint countInLocalBin = histogram[localBinIndex];
+    histogramWorkGroup[localBinIndex] = countInLocalBin * localBinIndex;
+
+    groupMemoryBarrier();
+
+    // for the next frame
+    histogram[localBinIndex] = 0;
+
+    [[unroll]]
+    for (uint cutoff = (COMPUTE_LUM_HISTOGRAM_BIN_COUNT >> 1); cutoff > 0; cutoff >>= 1)
+    {
+        if (localBinIndex < cutoff)
+        {
+            histogramWorkGroup[localBinIndex] += histogramWorkGroup[localBinIndex + cutoff];
+        }
+
+        groupMemoryBarrier();
+    }
+
+    // only one invocation should write the result
+    if (localBinIndex == 0)
+    {
+        float pixelCount = globalUniform.renderWidth * globalUniform.renderHeight;
+        float blackPixelCount = float(localBinIndex);
+
+        uint finalWeightedCount = histogramWorkGroup[0];
+        
+        float weightedLogAverage = (finalWeightedCount / max(pixelCount - blackPixelCount, 1.0)) - 1.0;
+
+        float logLuminanceRange = globalUniform.maxLogLuminance - globalUniform.minLogLuminance;
+        float weightedAvgLuminance = exp2(((weightedLogAverage / 254.0) * logLuminanceRange) + globalUniform.minLogLuminance);
+
+        float lastFrameLuminance = imageLoad(framebufAvgLuminance, ivec2(0, 0)).x;
+
+        float tau = 1.1;
+        float t = 1.0 - exp(-globalUniform.timeDelta * tau);
+        float adaptedLuminance = lastFrameLuminance + (weightedAvgLuminance - lastFrameLuminance) * t;
+
+        imageStore(framebufAvgLuminance, ivec2(0, 0), vec4(adaptedLuminance, 0, 0, 0));
+    }
+}

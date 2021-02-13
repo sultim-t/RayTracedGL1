@@ -54,6 +54,7 @@ set(PrivateHeaders
     "Source/Framebuffers.h"
     "Source/BlueNoise.h"
     "Source/ImageComposition.h"
+    "Source/Tonemapping.h"
 )
 
 set(Sources
@@ -94,6 +95,7 @@ set(Sources
     "Source/Framebuffers.cpp"
     "Source/BlueNoise.cpp"
     "Source/ImageComposition.cpp"
+    "Source/Tonemapping.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

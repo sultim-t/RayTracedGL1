@@ -60,38 +60,48 @@ void Framebuffers::CreateDescriptors()
 {
     VkResult r;
 
-    const uint32_t allBindingsCount = ShFramebuffers_Count + ShFramebuffers_Sampler_Count;
+    const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
 
     std::vector<VkDescriptorSetLayoutBinding> bindings(allBindingsCount);
+    uint32_t bndCount = 0;
 
     // gimage2D
     for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
     {
-        VkDescriptorSetLayoutBinding &bnd = bindings[i];
+        VkDescriptorSetLayoutBinding &bnd = bindings[bndCount];
 
         // after swapping bindings, cur will become prev, and prev - cur
         bnd.binding = ShFramebuffers_Bindings[i];
         bnd.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         bnd.descriptorCount = 1;
         bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
+
+        bndCount++;
     }
 
     // gsampler2D
-    for (uint32_t i = 0; i < ShFramebuffers_Sampler_Count; i++)
+    for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
     {
-        VkDescriptorSetLayoutBinding &bnd = bindings[samplerBindingOffset + i];
+        VkDescriptorSetLayoutBinding &bnd = bindings[bndCount];
+
+        if (ShFramebuffers_Sampler_Bindings[i] == FB_SAMPLER_INVALID_BINDING)
+        {
+            continue;
+        }
 
         // after swapping bindings, cur will become prev, and prev - cur
         bnd.binding = ShFramebuffers_Sampler_Bindings[i];
         bnd.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bnd.descriptorCount = 1;
         bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
+
+        bndCount++;
     }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-    layoutInfo.bindingCount = bindings.size();
+    layoutInfo.bindingCount = bndCount;
     layoutInfo.pBindings = bindings.data();
 
     r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
@@ -277,7 +287,7 @@ void Framebuffers::UpdateDescriptors()
 {
     VkSampler nearestSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    const uint32_t allBindingsCount = ShFramebuffers_Count + ShFramebuffers_Sampler_Count;
+    const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
 
     std::vector<VkDescriptorImageInfo> imageInfos(allBindingsCount);
@@ -291,7 +301,7 @@ void Framebuffers::UpdateDescriptors()
     }
 
     // gsampler2D
-    for (uint32_t i = 0; i < ShFramebuffers_Sampler_Count; i++)
+    for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
     {
         imageInfos[samplerBindingOffset + i].sampler = nearestSampler;
         imageInfos[samplerBindingOffset + i].imageView = imageViews[i];
@@ -299,13 +309,14 @@ void Framebuffers::UpdateDescriptors()
     }
 
     std::vector<VkWriteDescriptorSet> writes(allBindingsCount * FRAMEBUFFERS_HISTORY_LENGTH);
+    uint32_t wrtCount = 0;
 
     for (uint32_t k = 0; k < FRAMEBUFFERS_HISTORY_LENGTH; k++)
     {
         // gimage2D
         for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
         {
-            auto &wrt = writes[k * allBindingsCount + i];
+            auto &wrt = writes[wrtCount];
 
             wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             wrt.dstSet = descSets[k];
@@ -316,26 +327,37 @@ void Framebuffers::UpdateDescriptors()
             wrt.descriptorCount = 1;
             wrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
             wrt.pImageInfo = &imageInfos[i];
+
+            wrtCount++;
         }
 
         // gsampler2D
-        for (uint32_t i = 0; i < ShFramebuffers_Sampler_Count; i++)
+        for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
         {
-            auto &wrt = writes[k * allBindingsCount + samplerBindingOffset + i];
+            auto &wrt = writes[wrtCount];
+
+            uint32_t dstBinding = k == 0 ?
+                ShFramebuffers_Sampler_Bindings[i] :
+                ShFramebuffers_Sampler_BindingsSwapped[i];
+
+            if (dstBinding == FB_SAMPLER_INVALID_BINDING)
+            {
+                continue;
+            }
 
             wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             wrt.dstSet = descSets[k];
-            wrt.dstBinding = k == 0 ?
-                ShFramebuffers_Sampler_Bindings[i] :
-                ShFramebuffers_Sampler_BindingsSwapped[i];
+            wrt.dstBinding = dstBinding;
             wrt.dstArrayElement = 0;
             wrt.descriptorCount = 1;
             wrt.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
             wrt.pImageInfo = &imageInfos[samplerBindingOffset + i];
+
+            wrtCount++;
         }
     }
 
-    vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
+    vkUpdateDescriptorSets(device, wrtCount, writes.data(), 0, nullptr);
 }
 
 void Framebuffers::DestroyImages()

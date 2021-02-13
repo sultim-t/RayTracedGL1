@@ -227,7 +227,7 @@ layout(
 
 layout(
     set = DESC_SET_FRAMEBUFFERS, binding = 20, rgba32f)
-    uniform image2D framebufTonemappingHistogram;
+    uniform image2D framebufAvgLuminance;
 
 // samplers
 
