@@ -38,13 +38,13 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
 
     PT_OPAQUE                   = 1 << 3,
     PT_ALPHA_TESTED             = 2 << 3,
-    PT_BLEND_ADDITIVE           = 4 << 3,
-    PT_BLEND_UNDER              = 8 << 3,
-    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_BLEND_ADDITIVE | PT_BLEND_UNDER,
+    /*PT_BLEND_ADDITIVE           = 4 << 3,*/
+    PT_BLEND_UNDER              = 4 << 3,
+    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | /*PT_BLEND_ADDITIVE |*/ PT_BLEND_UNDER,
 
-    PV_WORLD                    = 1 << 7,
-    PV_FIRST_PERSON             = 2 << 7,
-    PV_FIRST_PERSON_VIEWER      = 4 << 7,
+    PV_WORLD                    = 1 << 6,
+    PV_FIRST_PERSON             = 2 << 6,
+    PV_FIRST_PERSON_VIEWER      = 4 << 6,
     MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;

@@ -37,7 +37,6 @@ constexpr FT VertexCollectorFilterGroup_PassThrough[] =
 {
     FT::PT_OPAQUE,
     FT::PT_ALPHA_TESTED,
-    FT::PT_BLEND_ADDITIVE,
     FT::PT_BLEND_UNDER,
 };
 
@@ -95,17 +94,17 @@ const static FLName FL_NAMES[] =
 {
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE,                "BLAS static opaque"                    },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_ALPHA_TESTED,          "BLAS static alpha tested"              },
-    { FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_ADDITIVE,        "BLAS static blended additive"          },
+    //{ FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_ADDITIVE,        "BLAS static blended additive"          },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_UNDER,           "BLAS static blended under"             },
 
     { FT::CF_STATIC_MOVABLE     | FT::PT_OPAQUE,                "BLAS movable opaque"                   },
     { FT::CF_STATIC_MOVABLE     | FT::PT_ALPHA_TESTED,          "BLAS movable alpha tested"             },
-    { FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_ADDITIVE,        "BLAS movable blended additive"         },
+    //{ FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_ADDITIVE,        "BLAS movable blended additive"         },
     { FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_UNDER,           "BLAS movable blended under"            },
 
     { FT::CF_DYNAMIC            | FT::PT_OPAQUE,                "BLAS dynamic opaque"                   },
     { FT::CF_DYNAMIC            | FT::PT_ALPHA_TESTED,          "BLAS dynamic alpha tested"             },
-    { FT::CF_DYNAMIC            | FT::PT_BLEND_ADDITIVE,        "BLAS dynamic blended additive"         },
+    //{ FT::CF_DYNAMIC            | FT::PT_BLEND_ADDITIVE,        "BLAS dynamic blended additive"         },
     { FT::CF_DYNAMIC            | FT::PT_BLEND_UNDER,           "BLAS dynamic blended under"            },
 };
 
@@ -161,10 +160,10 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
             break;
         }
         case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_ADDITIVE:
-        {
+        /*{
             flags |= (FL)FT::PT_BLEND_ADDITIVE;
             break;
-        }
+        }*/
         case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_UNDER:
         {
             flags |= (FL)FT::PT_BLEND_UNDER;
