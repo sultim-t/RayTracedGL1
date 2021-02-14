@@ -133,6 +133,8 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
 
 
     // sync access to histogram buffer
+    br.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
     vkCmdPipelineBarrier(
         cmd,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,

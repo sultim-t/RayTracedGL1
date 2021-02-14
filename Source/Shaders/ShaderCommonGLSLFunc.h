@@ -26,11 +26,14 @@
 // Functions to access RTGL data.
 // Available defines:
 // * DESC_SET_GLOBAL_UNIFORM    -- to access global uniform buffer
-// * DESC_SET_VERTEX_DATA       -- to access geometry data. DESC_SET_GLOBAL_UNIFORM must be defined
+// * DESC_SET_VERTEX_DATA       -- to access geometry data;
+//                                 DESC_SET_GLOBAL_UNIFORM must be defined; 
+//                                 Define VERTEX_BUFFER_WRITEABLE for writing
 // * DESC_SET_TEXTURES          -- to access textures by index
 // * DESC_SET_FRAMEBUFFERS      -- to access framebuffers (defined in ShaderCommonGLSL.h)
 // * DESC_SET_RANDOM            -- to access blue noise (uniform distribution) and sampling points on surfaces
-// * DESC_SET_TONEMAPPING       -- to access histogram and average luminance
+// * DESC_SET_TONEMAPPING       -- to access histogram and average luminance;
+//                                 define TONEMAPPING_BUFFER_WRITEABLE for writing
 
 #define UINT32_MAX  0xFFFFFFFF
 
@@ -556,7 +559,11 @@ ShHitInfo getHitInfo(ShPayload pl)
 #endif // DESC_SET_VERTEX_DATA
 
 #ifdef DESC_SET_TONEMAPPING
-layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM) buffer Historam_BT
+layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM) 
+#ifndef TONEMAPPING_BUFFER_WRITEABLE
+    readonly
+#endif
+    buffer Historam_BT
 {
     ShTonemapping tonemapping;
 };

@@ -25,6 +25,7 @@
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
 #define DESC_SET_TONEMAPPING 2
+#define TONEMAPPING_BUFFER_WRITEABLE
 #include "ShaderCommonGLSLFunc.h"
 
 layout(local_size_x = COMPUTE_LUM_HISTOGRAM_BIN_COUNT, local_size_y = 1, local_size_z = 1) in;
