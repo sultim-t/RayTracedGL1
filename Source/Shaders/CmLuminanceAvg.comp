@@ -61,15 +61,22 @@ void main()
     // only one invocation should write the result
     if (localBinIndex == 0)
     {
+        if (globalUniform.stopEyeAdaptation != 0)
+        {
+            return;
+        }
+
+        float minLogLuminance = globalUniform.minLogLuminance;
+        float maxLogLuminance = globalUniform.maxLogLuminance;
+        float logLuminanceRange = maxLogLuminance - minLogLuminance;
+
         float pixelCount = globalUniform.renderWidth * globalUniform.renderHeight;
         float blackPixelCount = countInLocalBin;
 
         uint finalWeightedCount = histogramWorkGroup[0];
         
         float weightedLogAverage = (finalWeightedCount / max(pixelCount - blackPixelCount, 1.0)) - 1.0;
-
-        float logLuminanceRange = globalUniform.maxLogLuminance - globalUniform.minLogLuminance;
-        float weightedAvgLuminance = exp2(weightedLogAverage / 254.0 * logLuminanceRange + globalUniform.minLogLuminance);
+        float weightedAvgLuminance = exp2(weightedLogAverage / 254.0 * logLuminanceRange + minLogLuminance);
 
         float lastFrameLuminance = tonemapping.avgLuminance;
 

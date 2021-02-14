@@ -20,6 +20,8 @@
 
 #include "VulkanDevice.h"
 
+#include <algorithm>
+
 #include "Matrix.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
@@ -225,7 +227,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     gu->renderHeight = frameInfo->renderHeight;
     gu->frameId = frameId;
 
-    gu->timeDelta = currentFrameTime - previousFrameTime;
+    gu->timeDelta = std::max<double>(currentFrameTime - previousFrameTime, 0.001);
     
     if (frameInfo->overrideTonemappingParams)
     {
@@ -235,10 +237,12 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     }
     else
     {
-        gu->minLogLuminance = -10.0f;
-        gu->maxLogLuminance = 2.0f;
+        gu->minLogLuminance = -2.0f;
+        gu->maxLogLuminance = 10.0f;
         gu->luminanceWhitePoint = 1.5f;
     }
+
+    gu->stopEyeAdaptation = frameInfo->disableEyeAdaptation;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)

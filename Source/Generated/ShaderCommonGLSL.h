@@ -91,11 +91,11 @@ struct ShGlobalUniform
     float renderWidth;
     float renderHeight;
     uint frameId;
+    float timeDelta;
     float minLogLuminance;
     float maxLogLuminance;
-    float timeDelta;
     float luminanceWhitePoint;
-    float _pad2;
+    uint stopEyeAdaptation;
     float _pad3;
     int instanceGeomInfoOffset[128];
 };

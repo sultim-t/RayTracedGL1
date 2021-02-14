@@ -294,18 +294,22 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,     44,      "projection",                   1),
     (TYPE_FLOAT32,     44,      "invProjection",                1),
     (TYPE_FLOAT32,     44,      "projectionPrev",               1),
+
     (TYPE_UINT32,       1,      "positionsStride",              1),
     (TYPE_UINT32,       1,      "normalsStride",                1),
     (TYPE_UINT32,       1,      "texCoordsStride",              1),
     (TYPE_FLOAT32,      1,      "renderWidth",                  1),
+
     (TYPE_FLOAT32,      1,      "renderHeight",                 1),
     (TYPE_UINT32,       1,      "frameId",                      1),
-    (TYPE_FLOAT32,      1,      "minLogLuminance",              1),
-    (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "timeDelta",                    1),
+    (TYPE_FLOAT32,      1,      "minLogLuminance",              1),
+
+    (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "luminanceWhitePoint",          1),
-    (TYPE_FLOAT32,      1,      "_pad2",                        1),
+    (TYPE_UINT32,       1,      "stopEyeAdaptation",            1),
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
+
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",       CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]

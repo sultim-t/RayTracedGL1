@@ -482,6 +482,9 @@ typedef struct RgDrawFrameInfo
     uint32_t            renderWidth;
     uint32_t            renderHeight;
     double              currentTime;
+    RgBool32            disableEyeAdaptation;
+    // True, if default values for minLogLuminance, maxLogLuminance
+    // and luminanceWhitePoint should be used.
     RgBool32            overrideTonemappingParams;
     float               minLogLuminance;
     float               maxLogLuminance;
