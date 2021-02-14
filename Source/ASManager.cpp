@@ -378,7 +378,9 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
     auto filter = as.filter;
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
 
-    if (geoms.empty())
+    as.isEmpty = geoms.empty();
+
+    if (as.isEmpty)
     {
         return;
     }
@@ -398,6 +400,7 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
     {
         // destroy
         DestroyAS(as);
+        as.isEmpty = false;
 
         // create
         CreateASBuffer(as, buildSizes.accelerationStructureSize, "BLAS buffer");
@@ -427,7 +430,9 @@ void ASManager::UpdateBLAS(AccelerationStructure &as,
     auto filter = as.filter;
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
 
-    if (geoms.empty())
+    as.isEmpty = geoms.empty();
+
+    if (as.isEmpty)
     {
         return;
     }
@@ -627,7 +632,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 
 bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAccelerationStructureInstanceKHR &instance)
 {
-    if (as.as == VK_NULL_HANDLE)
+    if (as.as == VK_NULL_HANDLE || as.isEmpty)
     {
         return false;
     }
@@ -656,7 +661,7 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
     instance.mask = 0;
 
     // blended geometries don't have shadows
-    if (!(filter & (FT::PT_BLEND_ADDITIVE | FT::PT_BLEND_UNDER)))
+    if (!(filter & (/*FT::PT_BLEND_ADDITIVE |*/ FT::PT_BLEND_UNDER)))
     {
         instance.mask |= INSTANCE_MASK_HAS_SHADOWS;
     }
@@ -689,10 +694,10 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
         {
             instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
         }
-        else if (filter &FT::PT_BLEND_ADDITIVE)
+        /*else if (filter &FT::PT_BLEND_ADDITIVE)
         {
             instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_ADDITIVE;
-        }
+        }*/
         else if (filter & FT::PT_BLEND_UNDER)
         {
             instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_UNDER;
@@ -825,6 +830,7 @@ void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, con
 
 void ASManager::DestroyAS(AccelerationStructure &as)
 {
+    as.isEmpty = true;
     as.buffer.Destroy();
 
     if (as.as != VK_NULL_HANDLE)

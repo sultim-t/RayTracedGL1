@@ -80,6 +80,7 @@ private:
         Buffer buffer = {};
         // Used only for BLAS
         VertexCollectorFilterTypeFlags filter = 0;
+        bool isEmpty = true;
     };
 
 private:
