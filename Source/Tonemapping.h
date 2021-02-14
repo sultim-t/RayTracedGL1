@@ -50,9 +50,12 @@ public:
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
 
+    VkDescriptorSetLayout GetDescSetLayout() const;
+    VkDescriptorSet GetDescSet() const;
+
 private:
-    void CreateHistogramBuffer(const std::shared_ptr<MemoryAllocator> &allocator);
-    void CreateHistogramDescriptors();
+    void CreateTonemappingBuffer(const std::shared_ptr<MemoryAllocator> &allocator);
+    void CreateTonemappingDescriptors();
 
     void CreatePipeline(
         VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
@@ -63,10 +66,10 @@ private:
 
     std::shared_ptr<Framebuffers> framebuffers;
 
-    Buffer histogramBuffer;
-    VkDescriptorSetLayout histogramDescSetLayout;
-    VkDescriptorPool histogramDescPool;
-    VkDescriptorSet histogramDescSet;
+    Buffer tmBuffer;
+    VkDescriptorSetLayout tmDescSetLayout;
+    VkDescriptorPool tmDescPool;
+    VkDescriptorSet tmDescSet;
 
     VkPipelineLayout pipelineLayout;
 

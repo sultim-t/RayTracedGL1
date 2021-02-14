@@ -35,14 +35,14 @@ RTGL1::Tonemapping::Tonemapping(
     device(_device),
     framebuffers(std::move(_framebuffers))
 {
-    CreateHistogramBuffer(_allocator);
-    CreateHistogramDescriptors();
+    CreateTonemappingBuffer(_allocator);
+    CreateTonemappingDescriptors();
 
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
         framebuffers->GetDescSetLayout(),
         _uniform->GetDescSetLayout(),
-        histogramDescSetLayout
+        tmDescSetLayout
     };
 
     CreatePipeline(setLayouts.data(), setLayouts.size(), _shaderManager);
@@ -51,10 +51,10 @@ RTGL1::Tonemapping::Tonemapping(
 
 RTGL1::Tonemapping::~Tonemapping()
 {
-    histogramBuffer.Destroy();
+    tmBuffer.Destroy();
 
-    vkDestroyDescriptorPool(device, histogramDescPool, nullptr);
-    vkDestroyDescriptorSetLayout(device, histogramDescSetLayout, nullptr);
+    vkDestroyDescriptorPool(device, tmDescPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, tmDescSetLayout, nullptr);
 
     vkDestroyPipeline(device, histogramPipeline, nullptr);
     vkDestroyPipeline(device, avgLuminancePipeline, nullptr);
@@ -67,7 +67,7 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
     br.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     br.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     br.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-    br.buffer = histogramBuffer.GetBuffer();
+    br.buffer = tmBuffer.GetBuffer();
     br.offset = 0;
     br.size = VK_WHOLE_SIZE;
 
@@ -93,7 +93,7 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
     {
         framebuffers->GetDescSet(frameIndex),
         uniform->GetDescSet(frameIndex),
-        histogramDescSet
+        tmDescSet
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
@@ -131,20 +131,38 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
     // only one working group
     vkCmdDispatch(cmd, 1, 1, 1);
 
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_AVG_LUMINANCE);
+
+    // sync access to histogram buffer
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        0, nullptr,
+        1, &br,
+        0, nullptr);
 }
 
-void RTGL1::Tonemapping::CreateHistogramBuffer(const std::shared_ptr<MemoryAllocator> &allocator)
+VkDescriptorSetLayout RTGL1::Tonemapping::GetDescSetLayout() const
 {
-    histogramBuffer.Init(
+    return tmDescSetLayout;
+}
+
+VkDescriptorSet RTGL1::Tonemapping::GetDescSet() const
+{
+    return tmDescSet;
+}
+
+void RTGL1::Tonemapping::CreateTonemappingBuffer(const std::shared_ptr<MemoryAllocator> &allocator)
+{
+    tmBuffer.Init(
         allocator,
-        COMPUTE_LUM_HISTOGRAM_BIN_COUNT * sizeof(uint32_t),
+        sizeof(ShTonemapping),
         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        "Tonemapping Histogram buffer");
+        "Tonemapping buffer");
 }
 
-void RTGL1::Tonemapping::CreateHistogramDescriptors()
+void RTGL1::Tonemapping::CreateTonemappingDescriptors()
 {
     VkResult r;
 
@@ -159,7 +177,7 @@ void RTGL1::Tonemapping::CreateHistogramDescriptors()
     layoutInfo.bindingCount = 1;
     layoutInfo.pBindings = &binding;
 
-    r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &histogramDescSetLayout);
+    r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &tmDescSetLayout);
     VK_CHECKERROR(r);
 
     VkDescriptorPoolSize poolSize = {};
@@ -172,26 +190,26 @@ void RTGL1::Tonemapping::CreateHistogramDescriptors()
     poolInfo.poolSizeCount = 1;
     poolInfo.pPoolSizes = &poolSize;
 
-    r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &histogramDescPool);
+    r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &tmDescPool);
     VK_CHECKERROR(r);
 
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    allocInfo.descriptorPool = histogramDescPool;
+    allocInfo.descriptorPool = tmDescPool;
     allocInfo.descriptorSetCount = 1;
-    allocInfo.pSetLayouts = &histogramDescSetLayout;
+    allocInfo.pSetLayouts = &tmDescSetLayout;
 
-    r = vkAllocateDescriptorSets(device, &allocInfo, &histogramDescSet);
+    r = vkAllocateDescriptorSets(device, &allocInfo, &tmDescSet);
     VK_CHECKERROR(r);
 
     VkDescriptorBufferInfo bfInfo = {};
-    bfInfo.buffer = histogramBuffer.GetBuffer();
+    bfInfo.buffer = tmBuffer.GetBuffer();
     bfInfo.offset = 0;
     bfInfo.range = VK_WHOLE_SIZE;
 
     VkWriteDescriptorSet wrt = {};
     wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wrt.dstSet = histogramDescSet;
+    wrt.dstSet = tmDescSet;
     wrt.dstBinding = BINDING_LUM_HISTOGRAM;
     wrt.dstArrayElement = 0;
     wrt.descriptorCount = 1;

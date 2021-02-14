@@ -31,7 +31,6 @@ enum FramebufferImageIndex
     FB_IMAGE_INDEX_SURFACE_POSITION = 17,
     FB_IMAGE_INDEX_VIEW_DIRECTION = 18,
     FB_IMAGE_INDEX_FINAL = 19,
-    FB_IMAGE_INDEX_AVG_LUMINANCE = 20,
 };
 
 enum FramebufferImageFlagBits

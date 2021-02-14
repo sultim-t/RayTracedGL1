@@ -29,7 +29,8 @@ RTGL1::ImageComposition::ImageComposition(
     VkDevice _device,
     std::shared_ptr<Framebuffers> _framebuffers,
     const std::shared_ptr<const ShaderManager> &_shaderManager,
-    const std::shared_ptr<const GlobalUniform> &_uniform)
+    const std::shared_ptr<const GlobalUniform> &_uniform,
+    const std::shared_ptr<const Tonemapping> &_tonemapping)
 :
     device(_device),
     framebuffers(std::move(_framebuffers))
@@ -37,7 +38,8 @@ RTGL1::ImageComposition::ImageComposition(
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
         framebuffers->GetDescSetLayout(),
-        _uniform->GetDescSetLayout()
+        _uniform->GetDescSetLayout(),
+        _tonemapping->GetDescSetLayout()
     };
 
     CreatePipeline(setLayouts.data(), setLayouts.size(), _shaderManager);
@@ -51,7 +53,8 @@ RTGL1::ImageComposition::~ImageComposition()
 
 void RTGL1::ImageComposition::Compose(
     VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<const GlobalUniform> &uniform)
+    const std::shared_ptr<const GlobalUniform> &uniform,
+    const std::shared_ptr<const Tonemapping> &tonemapping)
 {
     // sync access
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
@@ -70,7 +73,8 @@ void RTGL1::ImageComposition::Compose(
     VkDescriptorSet sets[] =
     {
         framebuffers->GetDescSet(frameIndex),
-        uniform->GetDescSet(frameIndex)
+        uniform->GetDescSet(frameIndex),
+        tonemapping->GetDescSet()
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 

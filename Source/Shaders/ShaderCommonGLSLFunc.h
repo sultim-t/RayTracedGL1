@@ -30,6 +30,7 @@
 // * DESC_SET_TEXTURES          -- to access textures by index
 // * DESC_SET_FRAMEBUFFERS      -- to access framebuffers (defined in ShaderCommonGLSL.h)
 // * DESC_SET_RANDOM            -- to access blue noise (uniform distribution) and sampling points on surfaces
+// * DESC_SET_TONEMAPPING       -- to access histogram and average luminance
 
 #define UINT32_MAX  0xFFFFFFFF
 
@@ -553,6 +554,13 @@ ShHitInfo getHitInfo(ShPayload pl)
 #endif // DESC_SET_TEXTURES
 #endif // DESC_SET_GLOBAL_UNIFORM
 #endif // DESC_SET_VERTEX_DATA
+
+#ifdef DESC_SET_TONEMAPPING
+layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM) buffer Historam_BT
+{
+    ShTonemapping tonemapping;
+};
+#endif // DESC_SET_TONEMAPPING
 
 
 float getLuminance(vec3 c)

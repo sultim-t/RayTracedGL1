@@ -86,7 +86,7 @@ struct ShGlobalUniform
     float minLogLuminance;
     float maxLogLuminance;
     float timeDelta;
-    float _pad1;
+    float luminanceWhitePoint;
     float _pad2;
     float _pad3;
     int32_t instanceGeomInfoOffset[128];
@@ -105,6 +105,12 @@ struct ShGeometryInstance
     float defaultEmission;
     uint32_t __pad0;
     uint32_t __pad1;
+};
+
+struct ShTonemapping
+{
+    uint32_t histogram[256];
+    float avgLuminance;
 };
 
 }

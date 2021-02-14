@@ -143,7 +143,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device, 
         framebuffers, 
         shaderManager, 
-        uniform);
+        uniform, 
+        tonemapping);
 
 
     swapchain->Subscribe(framebuffers);
@@ -224,9 +225,20 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     gu->renderHeight = frameInfo->renderHeight;
     gu->frameId = frameId;
 
-    gu->minLogLuminance = -10.0f;
-    gu->maxLogLuminance = 2.0f;
     gu->timeDelta = currentFrameTime - previousFrameTime;
+    
+    if (frameInfo->overrideTonemappingParams)
+    {
+        gu->minLogLuminance = frameInfo->minLogLuminance;
+        gu->maxLogLuminance = frameInfo->maxLogLuminance;
+        gu->luminanceWhitePoint = frameInfo->luminanceWhitePoint;
+    }
+    else
+    {
+        gu->minLogLuminance = -10.0f;
+        gu->maxLogLuminance = 2.0f;
+        gu->luminanceWhitePoint = 1.5f;
+    }
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
@@ -252,7 +264,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     tonemapping->Tonemap(cmd, frameIndex, uniform);
 
     // final image composition
-    imageComposition->Compose(cmd, frameIndex, uniform);
+    imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
 
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 

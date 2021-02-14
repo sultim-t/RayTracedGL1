@@ -24,12 +24,8 @@
 
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_TONEMAPPING 2
 #include "ShaderCommonGLSLFunc.h"
-
-layout(set = 2, binding = BINDING_LUM_HISTOGRAM) buffer Historam_BT
-{
-    uint histogram[COMPUTE_LUM_HISTOGRAM_BIN_COUNT];
-};
 
 layout(local_size_x = COMPUTE_LUM_HISTOGRAM_BIN_COUNT, local_size_y = 1, local_size_z = 1) in;
 
@@ -37,18 +33,19 @@ shared uint histogramWorkGroup[COMPUTE_LUM_HISTOGRAM_BIN_COUNT];
 
 // https://bruop.github.io/exposure/
 // http://www.alextardif.com/HistogramLuminance.html
+// https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
 
 void main()
 {
     uint localBinIndex = uint(gl_LocalInvocationIndex);
 
-    uint countInLocalBin = histogram[localBinIndex];
+    uint countInLocalBin = tonemapping.histogram[localBinIndex];
     histogramWorkGroup[localBinIndex] = countInLocalBin * localBinIndex;
 
     groupMemoryBarrier();
 
     // for the next frame
-    histogram[localBinIndex] = 0;
+    tonemapping.histogram[localBinIndex] = 0;
 
     [[unroll]]
     for (uint cutoff = (COMPUTE_LUM_HISTOGRAM_BIN_COUNT >> 1); cutoff > 0; cutoff >>= 1)
@@ -74,12 +71,12 @@ void main()
         float logLuminanceRange = globalUniform.maxLogLuminance - globalUniform.minLogLuminance;
         float weightedAvgLuminance = exp2(weightedLogAverage / 254.0 * logLuminanceRange + globalUniform.minLogLuminance);
 
-        float lastFrameLuminance = imageLoad(framebufAvgLuminance, ivec2(0, 0)).x;
+        float lastFrameLuminance = tonemapping.avgLuminance;
 
         float tau = 1.1;
         float t = 1.0 - exp(-globalUniform.timeDelta * tau);
         float adaptedLuminance = lastFrameLuminance + (weightedAvgLuminance - lastFrameLuminance) * t;
 
-        imageStore(framebufAvgLuminance, ivec2(0, 0), vec4(adaptedLuminance, 0, 0, 0));
+        tonemapping.avgLuminance = adaptedLuminance;
     }
 }

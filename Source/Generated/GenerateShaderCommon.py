@@ -303,7 +303,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "minLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "timeDelta",                    1),
-    (TYPE_FLOAT32,      1,      "_pad1",                        1),
+    (TYPE_FLOAT32,      1,      "luminanceWhitePoint",          1),
     (TYPE_FLOAT32,      1,      "_pad2",                        1),
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
     # for std140
@@ -345,6 +345,11 @@ HIT_INFO_STRUCT = [
     (TYPE_FLOAT32,      3,      "emission",             1),
 ]
 
+TONEMAPPING_STRUCT = [
+    (TYPE_UINT32,       1,      "histogram",            CONST["COMPUTE_LUM_HISTOGRAM_BIN_COUNT"]),
+    (TYPE_FLOAT32,      1,      "avgLuminance",         1),
+]
+
 # (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)
 # align16byte   -- if using a struct in dynamic array, it must be aligned with 16 bytes
 # breakComplex  -- if member's type is not primitive and its count>0 then
@@ -358,6 +363,7 @@ STRUCTS = {
     "ShPayload":                (PAYLOAD_STRUCT,            True,   False,  False),
     "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
     "ShHitInfo":                (HIT_INFO_STRUCT,           True,   False,  False),
+    "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  False,  False),
 }
 
 # --------------------------------------------------------------------------------------------- #
@@ -411,7 +417,6 @@ FRAMEBUFFERS = {
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "AvgLuminance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_NO_SAMPLER | FRAMEBUF_FLAGS_FORCE_1X1_SIZE),
     #"Debug"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
@@ -513,7 +518,9 @@ def getStruct(name, definition, typeNames, align16, breakComplex):
             if dim > 4 and typeNames == C_TYPE_NAMES:
                 raise Exception("If count > 1, dimensions must be in [1..4]")
             if not breakComplex:
-                if (baseType, dim) in typeNames:
+                if dim == 1:
+                    r += "%s %s[%d]" % (typeNames[baseType], mname, count)
+                elif (baseType, dim) in typeNames:
                     r += "%s %s[%d]" % (typeNames[(baseType, dim)], mname, count)
                 else:
                     r += "%s %s[%d][%d]" % (typeNames[baseType], mname, count, dim)
@@ -658,9 +665,7 @@ def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
     bindingSampler = binding + 1
     CURRENT_FRAMEBUF_BINDING_COUNT += 1
 
-    template =         ("layout(\n"
-                        "    set = %s, binding = %d, %s)\n"
-                        "    uniform %s %s;\n")
+    template = ("layout(set = %s, binding = %d, %s) uniform %s %s;")
 
     r = template % (FRAMEBUF_DESC_SET_NAME, binding, 
         GLSL_IMAGE_FORMATS[(baseFormat, components)], 
@@ -682,9 +687,7 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
     bindingSampler = binding + 1
     CURRENT_FRAMEBUF_BINDING_COUNT += 1
 
-    templateSampler =  ("layout(\n"
-                        "    set = %s, binding = %d)\n"
-                        "    uniform %s %s;\n")
+    templateSampler = ("layout(set = %s, binding = %d) uniform %s %s;")
 
     r = templateSampler % (FRAMEBUF_DESC_SET_NAME, bindingSampler,
         getGLSLSampler2DType(baseFormat), name + FRAMEBUF_SAMPLER_POSTFIX)
@@ -701,18 +704,18 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
 def getAllGLSLFramebufDeclarations():
     global CURRENT_FRAMEBUF_BINDING_COUNT
     CURRENT_FRAMEBUF_BINDING_COUNT = 0
-    return "#ifdef " + FRAMEBUF_DESC_SET_NAME + "\n\n// framebuffers\n\n" \
+    return "#ifdef " + FRAMEBUF_DESC_SET_NAME + "\n\n// framebuffers\n" \
         + "\n".join(
             getGLSLFramebufDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
         ) \
-        + "\n// samplers\n\n" \
+        + "\n\n// samplers\n" \
         + "\n".join(
             getGLSLFramebufSamplerDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
             if not (flags & FRAMEBUF_FLAGS_NO_SAMPLER)
         ) \
-        + "#endif\n"
+        + "\n\n#endif\n"
 
 
 def removeCoupledDuplicateChars(str, charToRemove = '_'):

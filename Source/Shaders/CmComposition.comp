@@ -22,6 +22,7 @@
 
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_TONEMAPPING 2
 #include "ShaderCommonGLSLFunc.h"
 
 layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
@@ -32,6 +33,12 @@ void main()
 
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {
+        return;
+    }
+
+    if (pix.y > 16 && pix.y < 64 && pix.x > 16 && pix.x < 128)
+    {
+        imageStore(framebufFinal, pix, vec4(pow(tonemapping.avgLuminance, 1/2.2)));
         return;
     }
 
@@ -51,8 +58,19 @@ void main()
 
     float surfMetallic = metallicRoughness.r;
     
-    vec3 l = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
-    vec3 color = albedo * l;
+    vec3 light = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
+    vec3 color = albedo * light;
+
+    float avgLuminance = tonemapping.avgLuminance;
+
+    float lIn = getLuminance(color);
+    lIn = max(lIn, exp2(globalUniform.minLogLuminance));
+
+    float lInAdj = lIn / avgLuminance;
+    // Reinhard
+    float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
+    
+    color = color * lOut / lIn;
 
     imageStore(framebufFinal, pix, vec4(pow(color, vec3(1 / 2.2)), 0));
 }

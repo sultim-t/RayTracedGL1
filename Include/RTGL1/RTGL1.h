@@ -478,10 +478,14 @@ typedef struct RgDrawFrameInfo
     // View and projection matrices are column major.
     float               view[16];
     float               projection[16];
+    RgDrawFrameFlags    flags;
     uint32_t            renderWidth;
     uint32_t            renderHeight;
     double              currentTime;
-    RgDrawFrameFlags    flags;
+    RgBool32            overrideTonemappingParams;
+    float               minLogLuminance;
+    float               maxLogLuminance;
+    float               luminanceWhitePoint;
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

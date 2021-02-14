@@ -24,12 +24,8 @@
 
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_TONEMAPPING 2
 #include "ShaderCommonGLSLFunc.h"
-
-layout(set = 2, binding = BINDING_LUM_HISTOGRAM) buffer Historam_BT
-{
-    uint histogram[COMPUTE_LUM_HISTOGRAM_BIN_COUNT];
-};
 
 layout(local_size_x = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X, local_size_y = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y, local_size_z = 1) in;
 
@@ -58,6 +54,7 @@ uint getColorBin(vec3 c, float minLogLuminance, float maxLogLuminance)
 
 // https://bruop.github.io/exposure/
 // http://www.alextardif.com/HistogramLuminance.html
+// https://knarkowicz.wordpress.com/2016/01/09/automatic-exposure/
 
 void main()
 {
@@ -72,6 +69,7 @@ void main()
 
     if (pix.x < uint(globalUniform.renderWidth) && pix.y < uint(globalUniform.renderHeight))
     {
+        // TODO: use illumination buffer
         vec3 diffuse            = texelFetch(framebufLightDirectDiffuse_Sampler, pix, 0).xyz;
         vec3 specular           = texelFetch(framebufLightSpecular_Sampler, pix, 0).xyz;
         vec3 indirect           = texelFetch(framebufLightIndirect_Sampler, pix, 0).xyz;
@@ -89,5 +87,5 @@ void main()
     // add the results of each bin in the current work group to global histogram;
     // assuming that the amount of bins == amount of invocations in work group
     uint globalBinIndex = gl_LocalInvocationIndex;
-    atomicAdd(histogram[globalBinIndex], histogramWorkGroup[wgBinIndex]);
+    atomicAdd(tonemapping.histogram[globalBinIndex], histogramWorkGroup[wgBinIndex]);
 }
