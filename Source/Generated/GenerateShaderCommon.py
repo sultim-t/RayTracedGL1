@@ -200,7 +200,9 @@ CONST = {
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
     
-    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
+    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
+    "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
+    "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_HAS_SHADOWS"             : "1 << 0",
@@ -356,6 +358,7 @@ HIT_INFO_STRUCT = [
     (TYPE_FLOAT32,      3,      "normalGeom",           1),
     (TYPE_FLOAT32,      1,      "hitDistance",          1),
     (TYPE_FLOAT32,      3,      "emission",             1),
+    (TYPE_UINT32,       1,      "instCustomIndex",      1),
 ]
 
 TONEMAPPING_STRUCT = [

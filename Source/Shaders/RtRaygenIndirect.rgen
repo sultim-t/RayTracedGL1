@@ -26,7 +26,7 @@
 
 // viewDirection -- is direction to viewer
 void processIndirectIllumination(
-    ivec2 pix, vec3 surfPosition, 
+    ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection)
 {
@@ -65,10 +65,24 @@ void processIndirectIllumination(
 
     // got the bounce direction, trace ray
     resetPayload();
+
+    uint cullMask = INSTANCE_MASK_HAS_SHADOWS;
+
+    if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
+    {
+        // no first-person viewer indirect illumination -- on first-person
+        cullMask |= INSTANCE_MASK_FIRST_PERSON;
+    }
+    else if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
+    {
+        // no first-person indirect illumination -- on first-person viewer
+        cullMask |= INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+
     traceRayEXT(
         topLevelAS,
         gl_RayFlagsNoneEXT, 
-        INSTANCE_MASK_ALL, 
+        cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
         surfPosition, 0.001, bounceDirection, MAX_RAY_LENGTH, 
@@ -83,7 +97,7 @@ void processIndirectIllumination(
 
         // calculate direct illumination in hit position
         vec3 diffuse, specular;
-        processDirectIllumination(pix, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, diffuse, specular);
+        processDirectIllumination(pix, primaryInstCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, diffuse, specular);
 
         throughput *= h.albedo;
 
@@ -130,6 +144,7 @@ void main()
     vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     float surfRoughness         = surfMetallicRoughness.g;
+    uint instCustomIndex        = floatBitsToUint(surfMetallicRoughness.a);
 
-    processIndirectIllumination(pix, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz);        
+    processIndirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz);        
 }

@@ -552,6 +552,8 @@ ShHitInfo getHitInfo(ShPayload pl)
 
     h.hitDistance = pl.clsHitDistance;
 
+    h.instCustomIndex = instCustomIndex;
+
     return h;
 }
 #endif // DESC_SET_TEXTURES

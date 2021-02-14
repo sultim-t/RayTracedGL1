@@ -20,6 +20,8 @@
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
+#define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
+#define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
 #define INSTANCE_MASK_ALL (0xFF)
 #define INSTANCE_MASK_HAS_SHADOWS (1 << 0)
 #define INSTANCE_MASK_FIRST_PERSON (1 << 1)
@@ -146,6 +148,7 @@ struct ShHitInfo
     vec3 normalGeom;
     float hitDistance;
     vec3 emission;
+    uint instCustomIndex;
 };
 
 struct ShTonemapping

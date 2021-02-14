@@ -645,24 +645,35 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
         0.0f, 0.0f, 1.0f, 0.0f
     };
 
+    instance.instanceCustomIndex = 0;
+
     if (filter & FT::CF_DYNAMIC)
     {
         // for choosing buffers with dynamic data
         instance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
     }
-    else
-    {
-        instance.instanceCustomIndex = 0;
-    }
+
+    instance.mask = 0;
 
     // blended geometries don't have shadows
-    if (filter & (FT::PT_BLEND_ADDITIVE | FT::PT_BLEND_UNDER))
+    if (!(filter & (FT::PT_BLEND_ADDITIVE | FT::PT_BLEND_UNDER)))
     {
-        instance.mask = ~INSTANCE_MASK_HAS_SHADOWS;
+        instance.mask |= INSTANCE_MASK_HAS_SHADOWS;
     }
-    else
+
+    if (filter & FT::PV_FIRST_PERSON)
     {
-        instance.mask = INSTANCE_MASK_HAS_SHADOWS;
+        instance.mask |= INSTANCE_MASK_FIRST_PERSON;
+        instance.mask &= ~INSTANCE_MASK_HAS_SHADOWS;
+
+        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON;
+    }
+    else if (filter & FT::PV_FIRST_PERSON_VIEWER)
+    {
+        instance.mask |= INSTANCE_MASK_FIRST_PERSON_VIEWER;
+        instance.mask &= ~INSTANCE_MASK_HAS_SHADOWS;
+
+        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER;
     }
 
     if (filter & FT::PT_OPAQUE)

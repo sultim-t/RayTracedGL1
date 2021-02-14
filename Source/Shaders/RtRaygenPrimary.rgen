@@ -30,7 +30,7 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
     imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
     imageStore(framebufNormal,              pix, vec4(h.normal, 0));
     imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
-    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, max(h.roughness, 0.001), 0, 0));
+    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, max(h.roughness, 0.001), 0, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufDepth,               pix, vec4(h.hitDistance));
     imageStore(framebufSurfacePosition,     pix, vec4(hitPosition, 0.0));
 }
@@ -58,10 +58,13 @@ void main()
     // could overwrite these values
     resetPayload();
     
+
+    uint cullMask = INSTANCE_MASK_ALL & (~INSTANCE_MASK_FIRST_PERSON_VIEWER);
+
     traceRayEXT(
         topLevelAS,
         gl_RayFlagsNoneEXT, 
-        INSTANCE_MASK_ALL, 
+        cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
         origin.xyz, 0.001, viewDirection.xyz, MAX_RAY_LENGTH, 
@@ -86,7 +89,7 @@ void main()
             traceRayEXT(
                 topLevelAS,
                 gl_RayFlagsNoneEXT, 
-                INSTANCE_MASK_ALL, 
+                cullMask, 
                 0, 0,     // sbtRecordOffset, sbtRecordStride
                 SBT_INDEX_MISS_DEFAULT, 
                 origin.xyz, 0.001, viewDirection.xyz, payload.clsHitDistance, 
@@ -98,12 +101,12 @@ void main()
     else
     {
         // sky
-        color = vec4(0.85, 0.95, 1.0, 1.0);
+        color = vec4(0.85, 0.95, 1.0, 0.0);
 
         imageStore(framebufAlbedo,              pix, color);
         imageStore(framebufNormal,              pix, vec4(0.0));
         imageStore(framebufNormalGeometry,      pix, vec4(0.0));
-        imageStore(framebufMetallicRoughness,   pix, vec4(0, 0, 0, 0));
+        imageStore(framebufMetallicRoughness,   pix, vec4(0, 0, 0, uintBitsToFloat(0)));
         imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH));
         // imageStore(framebufSurfacePosition,      pix, vec4(0.0));
     }

@@ -49,15 +49,15 @@ void resetPayload()
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
 // lightDirection is pointed to the light
-bool castShadowRay(vec3 origin, vec3 lightDirection)
+bool castShadowRay(vec3 origin, vec3 lightDirection, uint cullMask)
 {
     // prepare shadow payload
     payloadShadow.isShadowed = 1;  
-    
+
     traceRayEXT(
         topLevelAS, 
         gl_RayFlagsSkipClosestHitShaderEXT, 
-        INSTANCE_MASK_HAS_SHADOWS, 
+        cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
         origin, 0.001, lightDirection, 10000.0, 
@@ -78,7 +78,7 @@ void processDirectionalLight(
     uint seed, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, 
-    ShDirectionalLight dirLight,
+    ShDirectionalLight dirLight, uint shadowCullMask,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     vec2 disk = sampleDisk(seed, tan(radians(dirLight.angularDiameterDegrees * 0.5)));
@@ -100,7 +100,7 @@ void processDirectionalLight(
         return;
     }
 
-    bool isShadowed = castShadowRay(surfPosition, dir);
+    bool isShadowed = castShadowRay(surfPosition, dir, shadowCullMask);
 
     if (isShadowed)
     {
@@ -115,7 +115,7 @@ void processDirectionalLight(
 
 // viewDirection -- is direction to viewer
 void processDirectIllumination(
-    ivec2 pix, vec3 surfPosition, 
+    ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, 
     out vec3 outDiffuse, out vec3 outSpecular)
@@ -125,7 +125,20 @@ void processDirectIllumination(
     lt.angularDiameterDegrees = 0.5;
     lt.color = vec3(10, 10, 10);
 
+    uint shadowCullMask = INSTANCE_MASK_HAS_SHADOWS;
+
+    if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
+    {
+        // no first-person viewer shadows -- on first-person
+        shadowCullMask |= INSTANCE_MASK_FIRST_PERSON;
+    }
+    else if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
+    {
+        // no first-person shadows -- on first-person viewer
+        shadowCullMask |= INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+
     uint seed = getCurrentRandomSeed(pix);
-    processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, lt, outDiffuse, outSpecular);
+    processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, lt, shadowCullMask, outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
