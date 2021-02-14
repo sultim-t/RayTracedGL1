@@ -26,7 +26,43 @@
 typedef RTGL1::VertexCollectorFilterTypeFlagBits FT;
 typedef RTGL1::VertexCollectorFilterTypeFlags FL;
 
-uint32_t RTGL1::VertexCollectorFilterTypeFlagsToOffset(FL flags)
+constexpr FT VertexCollectorFilterGroup_ChangeFrequency[] =
+{
+    FT::CF_STATIC_NON_MOVABLE,
+    FT::CF_STATIC_MOVABLE,
+    FT::CF_DYNAMIC,
+};
+
+constexpr FT VertexCollectorFilterGroup_PassThrough[] =
+{
+    FT::PT_OPAQUE,
+    FT::PT_ALPHA_TESTED,
+    FT::PT_BLEND_ADDITIVE,
+    FT::PT_BLEND_UNDER,
+};
+
+constexpr FT VertexCollectorFilterGroup_PrimaryVisibility[] =
+{
+    FT::PV_WORLD,
+    FT::PV_FIRST_PERSON,
+    FT::PV_FIRST_PERSON_VIEWER,
+};
+
+void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(FL)> f)
+{
+    for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
+    {
+        for (auto pt : VertexCollectorFilterGroup_PassThrough)
+        {
+            for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
+            {
+                f(cf | pt | pm);
+            }
+        }
+    }
+}
+
+uint32_t RTGL1::VertexCollectorFilterTypeFlags_ToOffset(FL flags)
 {
     uint32_t result = 0;
 
@@ -34,12 +70,15 @@ uint32_t RTGL1::VertexCollectorFilterTypeFlagsToOffset(FL flags)
     {
         for (auto pt : VertexCollectorFilterGroup_PassThrough)
         {
-            if ((cf | pt) == flags)
+            for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
             {
-                return result;
-            }
+                if ((cf | pt | pm) == flags)
+                {
+                    return result;
+                }
 
-            result++;
+                result++;
+            }
         }
     }
 
@@ -58,32 +97,23 @@ const static FLName FL_NAMES[] =
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_ALPHA_TESTED,          "BLAS static alpha tested"              },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_ADDITIVE,        "BLAS static blended additive"          },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_UNDER,           "BLAS static blended under"             },
-    { FT::CF_STATIC_NON_MOVABLE | FT::PT_REFRACTIVE_REFLECTIVE, "BLAS static refractive-reflective"     },
-    { FT::CF_STATIC_NON_MOVABLE | FT::PT_ONLY_REFLECTIVE,       "BLAS static reflective"                },
-    { FT::CF_STATIC_NON_MOVABLE | FT::PT_PORTAL,                "BLAS static portal"                    },
 
     { FT::CF_STATIC_MOVABLE     | FT::PT_OPAQUE,                "BLAS movable opaque"                   },
     { FT::CF_STATIC_MOVABLE     | FT::PT_ALPHA_TESTED,          "BLAS movable alpha tested"             },
     { FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_ADDITIVE,        "BLAS movable blended additive"         },
     { FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_UNDER,           "BLAS movable blended under"            },
-    { FT::CF_STATIC_MOVABLE     | FT::PT_REFRACTIVE_REFLECTIVE, "BLAS movable refractive-reflective"    },
-    { FT::CF_STATIC_MOVABLE     | FT::PT_ONLY_REFLECTIVE,       "BLAS movable reflective"               },
-    { FT::CF_STATIC_MOVABLE     | FT::PT_PORTAL,                "BLAS movable portal"                   },
 
     { FT::CF_DYNAMIC            | FT::PT_OPAQUE,                "BLAS dynamic opaque"                   },
     { FT::CF_DYNAMIC            | FT::PT_ALPHA_TESTED,          "BLAS dynamic alpha tested"             },
     { FT::CF_DYNAMIC            | FT::PT_BLEND_ADDITIVE,        "BLAS dynamic blended additive"         },
     { FT::CF_DYNAMIC            | FT::PT_BLEND_UNDER,           "BLAS dynamic blended under"            },
-    { FT::CF_DYNAMIC            | FT::PT_REFRACTIVE_REFLECTIVE, "BLAS dynamic refractive-reflective"    },
-    { FT::CF_DYNAMIC            | FT::PT_ONLY_REFLECTIVE,       "BLAS dynamic reflective"               },
-    { FT::CF_DYNAMIC            | FT::PT_PORTAL,                "BLAS dynamic portal"                   },
 };
 
-const char *RTGL1::GetVertexCollectorFilterTypeFlagsNameForBLAS(FL flags)
+const char *RTGL1::VertexCollectorFilterTypeFlags_GetNameForBLAS(FL flags)
 {
     for (const FLName &p : FL_NAMES)
     {
-        if (p.flags == flags)
+        if (p.flags & flags)
         {
             return p.name;
         }
@@ -94,7 +124,7 @@ const char *RTGL1::GetVertexCollectorFilterTypeFlagsNameForBLAS(FL flags)
     return nullptr;
 }
 
-FL RTGL1::GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info)
+FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadInfo &info)
 {
     FL flags = 0;
 
@@ -138,6 +168,26 @@ FL RTGL1::GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInf
         case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_UNDER:
         {
             flags |= (FL)FT::PT_BLEND_UNDER;
+            break;
+        }
+        default: assert(0);
+    }
+
+    switch (info.visibilityType)
+    {
+        case RG_GEOMETRY_VISIBILITY_TYPE_WORLD:
+        {
+            flags |= (FL)FT::PV_WORLD;
+            break;
+        }
+        case RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON:
+        {
+            flags |= (FL)FT::PV_FIRST_PERSON;
+            break;
+        }
+        case RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER:
+        {
+            flags |= (FL)FT::PV_FIRST_PERSON_VIEWER;
             break;
         }
         default: assert(0);

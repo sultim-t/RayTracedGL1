@@ -185,6 +185,7 @@ CONST = {
     "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" : 14,
     "MAX_GEOMETRY_PRIMITIVE_COUNT"          : "1 << MAX_GEOMETRY_PRIMITIVE_COUNT_POW",
     "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : "1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW",
+    
     "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 32,
     
     "BINDING_VERTEX_BUFFER_STATIC"          : 0,
@@ -200,8 +201,16 @@ CONST = {
     "BINDING_LUM_HISTOGRAM"                 : 0,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"    : "1 << 0",
+
     "INSTANCE_MASK_ALL"                     : "0xFF",
-    "INSTANCE_MASK_HAS_SHADOWS"             : "1",
+    "INSTANCE_MASK_HAS_SHADOWS"             : "1 << 0",
+    "INSTANCE_MASK_FIRST_PERSON"            : "1 << 1",
+    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 2",
+    "INSTANCE_MASK_EMPTY_3"                 : "1 << 3",
+    "INSTANCE_MASK_EMPTY_4"                 : "1 << 4",
+    "INSTANCE_MASK_EMPTY_5"                 : "1 << 5",
+    "INSTANCE_MASK_EMPTY_6"                 : "1 << 6",
+    "INSTANCE_MASK_EMPTY_7"                 : "1 << 7",
     
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,

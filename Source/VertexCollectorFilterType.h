@@ -22,6 +22,8 @@
 
 #include "RTGL1/RTGL1.h"
 
+#include <functional>
+
 namespace RTGL1
 {
 
@@ -38,31 +40,14 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
     PT_ALPHA_TESTED             = 2 << 3,
     PT_BLEND_ADDITIVE           = 4 << 3,
     PT_BLEND_UNDER              = 8 << 3,
-    PT_REFRACTIVE_REFLECTIVE    = 16 << 3,
-    PT_ONLY_REFLECTIVE          = 32 << 3,
-    PT_PORTAL                   = 64 << 3,
-    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_BLEND_ADDITIVE | PT_BLEND_UNDER | PT_REFRACTIVE_REFLECTIVE | PT_ONLY_REFLECTIVE | PT_PORTAL,
+    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_BLEND_ADDITIVE | PT_BLEND_UNDER,
+
+    PV_WORLD                    = 1 << 7,
+    PV_FIRST_PERSON             = 2 << 7,
+    PV_FIRST_PERSON_VIEWER      = 4 << 7,
+    MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
-
-
-constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_ChangeFrequency[] =
-{
-    VertexCollectorFilterTypeFlagBits::CF_STATIC_NON_MOVABLE,
-    VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE,
-    VertexCollectorFilterTypeFlagBits::CF_DYNAMIC,
-};
-
-constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrough[] =
-{
-    VertexCollectorFilterTypeFlagBits::PT_OPAQUE,
-    VertexCollectorFilterTypeFlagBits::PT_ALPHA_TESTED,
-    VertexCollectorFilterTypeFlagBits::PT_BLEND_ADDITIVE,
-    VertexCollectorFilterTypeFlagBits::PT_BLEND_UNDER,
-    VertexCollectorFilterTypeFlagBits::PT_REFRACTIVE_REFLECTIVE,
-    VertexCollectorFilterTypeFlagBits::PT_ONLY_REFLECTIVE,
-    VertexCollectorFilterTypeFlagBits::PT_PORTAL,
-};
 
 inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlagBits b)
 {
@@ -100,8 +85,9 @@ inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBit
     return static_cast<FL>(static_cast<FL>(a) & b);
 }
 
-uint32_t VertexCollectorFilterTypeFlagsToOffset(VertexCollectorFilterTypeFlags flags);
-const char *GetVertexCollectorFilterTypeFlagsNameForBLAS(VertexCollectorFilterTypeFlags flags);
-VertexCollectorFilterTypeFlags GetVertexCollectorFilterTypeFlagsForGeometry(const RgGeometryUploadInfo &info);
+uint32_t                        VertexCollectorFilterTypeFlags_ToOffset(VertexCollectorFilterTypeFlags flags);
+const char*                     VertexCollectorFilterTypeFlags_GetNameForBLAS(VertexCollectorFilterTypeFlags flags);
+VertexCollectorFilterTypeFlags  VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadInfo &info);
+void                            VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(VertexCollectorFilterTypeFlags)> f);
 
 }

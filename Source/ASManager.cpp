@@ -45,25 +45,20 @@ ASManager::ASManager(
 
 
     // init AS structs for each dimension
-    for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
+    VertexCollectorFilterTypeFlags_IterateOverFlags([this] (FL filter)
     {
-        for (auto pt : VertexCollectorFilterGroup_PassThrough)
+        if (filter & FT::CF_DYNAMIC)
         {
-            auto filter = cf | pt;
-
-            if (filter & FT::CF_DYNAMIC)
+            for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
             {
-                for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-                {
-                    allDynamicBlas[i].emplace_back(filter);
-                }
-            }
-            else
-            {
-                allStaticBlas.emplace_back(filter);
+                allDynamicBlas[i].emplace_back(filter);
             }
         }
-    }
+        else
+        {
+            allStaticBlas.emplace_back(filter);
+        }
+    });
 
 
     scratchBuffer = std::make_shared<ScratchBuffer>(allocator);
@@ -74,7 +69,9 @@ ASManager::ASManager(
     collectorStatic = std::make_shared<VertexCollector>(
         device, allocator,
         sizeof(ShVertexBufferStatic), properties,
-        FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::MASK_PASS_THROUGH_GROUP);
+        FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | 
+        FT::MASK_PASS_THROUGH_GROUP | 
+        FT::MASK_PRIMARY_VISIBILITY_GROUP);
 
     // subscribe to texture manager only static collector,
     // as static geometries aren't updating its material info (in ShGeometryInstance)
@@ -86,7 +83,9 @@ ASManager::ASManager(
     collectorDynamic[0] = std::make_shared<VertexCollector>(
         device, allocator,
         sizeof(ShVertexBufferDynamic), properties,
-        FT::CF_DYNAMIC | FT::MASK_PASS_THROUGH_GROUP);
+        FT::CF_DYNAMIC | 
+        FT::MASK_PASS_THROUGH_GROUP | 
+        FT::MASK_PRIMARY_VISIBILITY_GROUP);
 
     // other dynamic vertex collectors should share the same device local buffers as the first one
     for (uint32_t i = 1; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -411,7 +410,7 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
         VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &as.as);
         VK_CHECKERROR(r);
 
-        const char *debugName = GetVertexCollectorFilterTypeFlagsNameForBLAS(filter);
+        const char *debugName = VertexCollectorFilterTypeFlags_GetNameForBLAS(filter);
         SET_DEBUG_NAME(device, as.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
     }
 
@@ -718,7 +717,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
         if (isAdded)
         {
-            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlagsToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlags_ToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
             instanceCount++;
             assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);
@@ -733,7 +732,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
         if (isAdded)
         {
-            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlagsToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlags_ToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
             instanceCount++;
             assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);

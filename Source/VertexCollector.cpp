@@ -182,7 +182,7 @@ void VertexCollector::BeginCollecting()
 uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
-    VertexCollectorFilterTypeFlags geomFlags = GetVertexCollectorFilterTypeFlagsForGeometry(info);
+    VertexCollectorFilterTypeFlags geomFlags = VertexCollectorFilterTypeFlags_GetForGeometry(info);
 
     const bool collectStatic = geomFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
     
@@ -699,7 +699,7 @@ ShGeometryInstance *VertexCollector::GetGeomInfoAddress(uint32_t geomIndex)
     VertexCollectorFilterTypeFlags typeFlags = geomType[geomIndex];
     uint32_t localIndex = geomLocalIndex[geomIndex];
 
-    uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(typeFlags);
+    uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(typeFlags);
     assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
     return &mappedGeomInfosData[offset * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT + localIndex];
@@ -714,7 +714,7 @@ void VertexCollector::MarkGeomInfoIndexToCopy(uint32_t geomIndex)
     VertexCollectorFilterTypeFlags typeFlags = geomType[geomIndex];
     uint32_t localIndex = geomLocalIndex[geomIndex];
 
-    uint32_t offset = VertexCollectorFilterTypeFlagsToOffset(typeFlags);
+    uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(typeFlags);
     assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
     // make sure that old value was for previous geometry of the same type
@@ -866,15 +866,12 @@ void VertexCollector::InitFilters(VertexCollectorFilterTypeFlags flags)
     typedef VertexCollectorFilterTypeFlagBits FT;
 
     // iterate over all pairs of group bits
-    for (FT cf : VertexCollectorFilterGroup_ChangeFrequency)
+    VertexCollectorFilterTypeFlags_IterateOverFlags([this, flags] (FL f)
     {
-        for (FT pt : VertexCollectorFilterGroup_PassThrough)
+        // if flags contain this pair of group bits
+        if ((flags & f) == f)
         {
-            // if flags contain this pair of group bits
-            if ((flags & (cf | pt)) == (cf | pt))
-            {
-                AddFilter(cf | pt);
-            }
+            AddFilter(f);
         }
-    }
+    });
 }
