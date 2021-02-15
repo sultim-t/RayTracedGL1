@@ -136,6 +136,8 @@ void processDirectionalLight(
     float d = getBlueNoiseSample(seed).x;
     uint dirLightIndex = uint(d * dirLightCount);
 
+    float oneOverPdf = dirLightCount;
+
     ShLightDirectional dirLight = lightSourcesDirecitional[dirLightIndex];
 
     vec2 disk = sampleDisk(seed, dirLight.tanAngularRadius);
@@ -168,6 +170,9 @@ void processDirectionalLight(
 
     outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl;
     outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, surfRoughness) * dirLight.color * nl;
+
+    outDiffuse *= oneOverPdf;
+    outSpecular *= oneOverPdf;
 }
 
 // viewDirection -- is direction to viewer

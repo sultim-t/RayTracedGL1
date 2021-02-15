@@ -117,7 +117,9 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
 {
     ShLightDirectional light = {};
     memcpy(light.color, info.color.data, sizeof(float) * 3);
-    memcpy(light.direction, info.direction.data, sizeof(float) * 3);
+    light.direction[0] = -info.direction.data[0];
+    light.direction[1] = -info.direction.data[1];
+    light.direction[2] = -info.direction.data[2];
     light.tanAngularRadius = tanf((info.angularDiameterDegrees * 0.5) * RG_PI / 180.0);
 
     if (directionalLightCount + 1 >= maxDirectionalLightCount)

@@ -75,7 +75,7 @@ static void DebugPrint(const char *msg)
 static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, -8);
 static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
-static glm::vec3 LIGHT_DIR      = glm::vec3(1, 1, 1);
+static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
 static glm::vec3 LIGHT_COLOR    = glm::vec3(10, 10, 10);
 
 static void ProcessInput(GLFWwindow *window)
