@@ -303,7 +303,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         geomInfo.defaultMetallicity = info.defaultMetallicity;
         geomInfo.defaultEmission = info.defaultEmission;
 
-        memcpy(geomInfo.color, info.color, sizeof(geomInfo.color));
+        memcpy(geomInfo.color, info.color.data, sizeof(geomInfo.color));
 
         Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 

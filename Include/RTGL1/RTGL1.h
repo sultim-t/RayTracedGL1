@@ -159,6 +159,16 @@ typedef struct RgTransform
     float       matrix[3][4];
 } RgTransform;
 
+typedef struct RgFloat3
+{
+    float       data[3];
+} RgFloat3;
+
+typedef struct RgFloat4
+{
+    float       data[4];
+} RgFloat4;
+
 typedef struct RgGeometryUploadInfo
 {
     RgGeometryType                  geomType;
@@ -182,7 +192,7 @@ typedef struct RgGeometryUploadInfo
     void                    *indexData;
 
     // RGBA color for this geometry.
-    float                   color[4];
+    RgFloat4                color;
     // These default values will be used if no overriding 
     // texture is found.
     float                   defaultRoughness;
@@ -311,26 +321,26 @@ typedef enum RgLightType
 typedef struct RgDirectionalLightUploadInfo
 {
     RgLightType     type;
-    float           color[3];
-    float           direction[3];
+    RgFloat3        color;
+    RgFloat3        direction;
     float           angularDiameterDegrees;
 } RgDirectionalLightUploadInfo;
 
-typedef struct RgSphereLightUploadInfo
+typedef struct RgSphericalLightUploadInfo
 {
     RgLightType     type;
-    float           color[3];
-    float           position[3];
+    RgFloat3        color;
+    RgFloat3        position;
     float           radius;
-} RgSphereLightUploadInfo;
+} RgSphericalLightUploadInfo;
 
-RgResult rgUploadLight(
+RgResult rgUploadDirectionalLight(
     RgInstance                          rgInstance,
     RgDirectionalLightUploadInfo        *lightInfo);
 
-/*RgResult rgUploadLight(
+RgResult rgUploadSphericalLight(
     RgInstance                          rgInstance,
-    RgSphereLightUploadInfo             *lightInfo);*/
+    RgSphericalLightUploadInfo          *lightInfo);
 
 
 
@@ -419,8 +429,8 @@ typedef struct RgDynamicMaterialUpdateInfo
 
 typedef struct RgAnimatedMaterialCreateInfo
 {
-    uint32_t                        frameCount;
-    RgStaticMaterialCreateInfo      *frames;
+    uint32_t                            frameCount;
+    RgStaticMaterialCreateInfo          *frames;
 } RgAnimatedMaterialCreateInfo;
 
 RgResult rgCreateStaticMaterial(

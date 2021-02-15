@@ -76,28 +76,37 @@ static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, -8);
 static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
 static glm::vec3 LIGHT_DIR      = glm::vec3(1, 1, 1);
+static glm::vec3 LIGHT_COLOR    = glm::vec3(10, 10, 10);
 
 static void ProcessInput(GLFWwindow *window)
 {
-    float cameraSpeed = 60.0f / 60.0f;
-    float cameraRotationSpeed = 5 / 60.0f;
+    float delta = 1.0 / 60.0f;
+
+    float cameraSpeed = 5 * delta;
+    float cameraRotationSpeed = 2 * delta;
+    float lightColorChangeSpeed = 30 * delta;
 
     glm::vec3 r = glm::cross(CAMERA_DIR, glm::vec3(0, 1, 0));
 
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)       CAMERA_POS += cameraSpeed * CAMERA_DIR;
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)       CAMERA_POS -= cameraSpeed * CAMERA_DIR;
-    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)       CAMERA_POS -= r * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)       CAMERA_POS += r * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)       CAMERA_POS -= glm::vec3(0, 1, 0) * cameraSpeed;
-    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)       CAMERA_POS += glm::vec3(0, 1, 0) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)       CAMERA_POS  += cameraSpeed * CAMERA_DIR;
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)       CAMERA_POS  -= cameraSpeed * CAMERA_DIR;
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)       CAMERA_POS  -= r * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)       CAMERA_POS  += r * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)       CAMERA_POS  -= glm::vec3(0, 1, 0) * cameraSpeed;
+    if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)       CAMERA_POS  += glm::vec3(0, 1, 0) * cameraSpeed;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)    CAMERA_DIR = glm::rotate(CAMERA_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)   CAMERA_DIR = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)      CAMERA_DIR = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)    CAMERA_DIR = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)    CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)      CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)    CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
 
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)       LIGHT_DIR = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)       LIGHT_DIR = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
+    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)       LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)       LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
+
+    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)       LIGHT_COLOR -= glm::vec3(lightColorChangeSpeed);
+    if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)       LIGHT_COLOR += glm::vec3(lightColorChangeSpeed);
+
+    LIGHT_COLOR = glm::clamp(LIGHT_COLOR, glm::vec3(0.0f), glm::vec3(10000.0f));
 
     CAMERA_UP = glm::cross(-r, CAMERA_DIR);
 }
@@ -230,7 +239,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.texCoordLayerData[0] = cubeTexCoords.data();
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.indexData = cubeIndices.data();
-    cubeInfo.color[0] = cubeInfo.color[1] = cubeInfo.color[2] = cubeInfo.color[3] = 1.0f;
+    cubeInfo.color = { 1.0f, 1.0f, 1.0f, 1.0f };
     cubeInfo.geomMaterial = {
         RG_NO_MATERIAL,
         RG_NO_MATERIAL,
@@ -251,15 +260,12 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         0, 0, 30, 0
     };
 
-    const void const  * a = nullptr;
-
     RgGeometryUploadInfo mvInfo = cubeInfo;
     mvInfo.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
 
     RgGeometryUploadInfo dnInfo = cubeInfo;
     dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
-    dnInfo.color[0] = 1.0f;
-    dnInfo.color[1] = dnInfo.color[2] = dnInfo.color[3] = 0.0f;
+    dnInfo.color = { 1.0f, 0.0f, 0.0f, 0.0f };
 
 
     // texture info
@@ -360,6 +366,14 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         // upload rasterized geometry
         r = rgUploadRasterizedGeometry(instance, &raster);
         RG_CHECKERROR(r);
+
+
+        // upload light
+        RgDirectionalLightUploadInfo dirLight = {};
+        dirLight.color = { LIGHT_COLOR[0], LIGHT_COLOR[1], LIGHT_COLOR[2] };
+        dirLight.direction = { LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2] };
+        dirLight.angularDiameterDegrees = 0.5f;
+        r = rgUploadDirectionalLight(instance, &dirLight);
 
 
         // submit frame to be rendered

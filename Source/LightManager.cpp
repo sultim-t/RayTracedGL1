@@ -23,15 +23,18 @@
 #include <cmath>
 #include <array>
 
-constexpr double RG_PI = 3.141592653589793238462643383279502884197169399375105820974944592307816406;
-
 #include "Generated/ShaderCommonC.h"
 
-constexpr uint32_t START_MAX_LIGHT_COUNT_SPHERICAL = 512;
+namespace RTGL1
+{
+constexpr double RG_PI = 3.141592653589793238462643383279502884197169399375105820974944592307816406;
+
+constexpr uint32_t START_MAX_LIGHT_COUNT_SPHERICAL = 1024;
 constexpr uint32_t START_MAX_LIGHT_COUNT_DIRECTIONAL = 32;
 
-constexpr uint32_t STEP_LIGHT_COUNT_SPHERICAL = 512;
+constexpr uint32_t STEP_LIGHT_COUNT_SPHERICAL = 1024;
 constexpr uint32_t STEP_LIGHT_COUNT_DIRECTIONAL = 32;
+}
 
 RTGL1::LightManager::LightManager(
     VkDevice _device, 
@@ -72,20 +75,19 @@ uint32_t RTGL1::LightManager::GetDirectionalLightCount() const
     return directionalLightCount;
 }
 
-void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphereLightUploadInfo &info)
+void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info)
 {
     ShLightSpherical light = {};
-    light.color[0] = info.color[0];
-    light.color[1] = info.color[1];
-    light.color[2] = info.color[2];
-    light.position[0] = info.position[0];
-    light.position[1] = info.position[1];
-    light.position[2] = info.position[2];
+    memcpy(light.color, info.color.data, sizeof(float) * 3);
+    memcpy(light.position, info.position.data, sizeof(float) * 3);
     light.radius = info.radius;
 
     if (sphericalLightCount + 1 >= maxSphericalLightCount)
     {
-        uint32_t oldCount = maxSphericalLightCount;
+        // TODO: schedule buffer to be destroyed in the next frame
+        return;
+
+        /*uint32_t oldCount = maxSphericalLightCount;
         maxSphericalLightCount += STEP_LIGHT_COUNT_SPHERICAL;
 
         ShLightSpherical *copy = new ShLightSpherical[oldCount];
@@ -100,7 +102,7 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphereL
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             needDescSetUpdate[i] = true;
-        }
+        }*/
     }
 
     ShLightSpherical *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
@@ -114,17 +116,16 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphereL
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info)
 {
     ShLightDirectional light = {};
-    light.color[0] = info.color[0];
-    light.color[1] = info.color[1];
-    light.color[2] = info.color[2];
-    light.direction[0] = info.direction[0];
-    light.direction[1] = info.direction[1];
-    light.direction[2] = info.direction[2];
+    memcpy(light.color, info.color.data, sizeof(float) * 3);
+    memcpy(light.direction, info.direction.data, sizeof(float) * 3);
     light.tanAngularRadius = tanf((info.angularDiameterDegrees * 0.5) * RG_PI / 180.0);
 
     if (directionalLightCount + 1 >= maxDirectionalLightCount)
     {
-        uint32_t oldCount = maxDirectionalLightCount;
+        // TODO: schedule buffer to be destroyed in the next frame
+        return;
+
+        /*uint32_t oldCount = maxDirectionalLightCount;
         maxDirectionalLightCount += STEP_LIGHT_COUNT_DIRECTIONAL;
 
         ShLightDirectional *copy = new ShLightDirectional[oldCount];
@@ -139,7 +140,7 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
         for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
         {
             needDescSetUpdate[i] = true;
-        }
+        }*/
     }
 
     ShLightDirectional *dst = (ShLightDirectional*)directionalLights->GetMapped(frameIndex);
@@ -148,6 +149,12 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
     memcpy(dst, &light, sizeof(ShLightDirectional));
 
     directionalLightCount++;
+}
+
+void RTGL1::LightManager::Clear()
+{
+    sphericalLightCount = 0;
+    directionalLightCount = 0;
 }
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)

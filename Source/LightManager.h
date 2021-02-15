@@ -44,8 +44,9 @@ public:
     uint32_t GetSphericalLightCount() const;
     uint32_t GetDirectionalLightCount() const;
 
-    void AddSphericalLight(uint32_t frameIndex, const RgSphereLightUploadInfo &info);
+    void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info);
+    void Clear();
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 

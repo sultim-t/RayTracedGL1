@@ -47,6 +47,7 @@ public:
     bool UpdateTransform(uint32_t geomId, const RgTransform &transform);
 
     void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
+    void UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo);
 
     void SubmitStatic();
     void StartNewStatic();

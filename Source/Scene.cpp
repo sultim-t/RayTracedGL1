@@ -44,6 +44,7 @@ void Scene::PrepareForFrame(uint32_t frameIndex)
 bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
 {
     lightManager->CopyFromStaging(cmd, frameIndex);
+    lightManager->Clear();
 
     if (toResubmitMovable)
     {
@@ -142,4 +143,9 @@ const std::shared_ptr<LightManager> &RTGL1::Scene::GetLightManager()
 void Scene::UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo)
 {
     lightManager->AddDirectionalLight(frameIndex, lightInfo);
+}
+
+void Scene::UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo)
+{
+    lightManager->AddSphericalLight(frameIndex, lightInfo);
 }

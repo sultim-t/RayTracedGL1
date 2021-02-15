@@ -411,6 +411,12 @@ RgResult VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *lightInfo
     return RG_SUCCESS;
 }
 
+RgResult VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *lightInfo)
+{
+    scene->UploadLight(currentFrameIndex, *lightInfo);
+    return RG_SUCCESS;
+}
+
 RgResult VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
