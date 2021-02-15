@@ -43,7 +43,7 @@ void main()
     vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     float surfRoughness         = surfMetallicRoughness.g;
-    uint instCustomIndex        = floatBitsToUint(surfMetallicRoughness.a);
+    uint instCustomIndex        = floatBitsToUint(surfNormal.a);
     
     vec3 diffuse, specular;
     processDirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, diffuse, specular);

@@ -657,28 +657,25 @@ bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAcceleratio
         // for choosing buffers with dynamic data
         instance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
     }
+    // blended geometry doesn't have indirect illumination
 
-    instance.mask = 0;
-
-    // blended geometries don't have shadows
-    if (!(filter & (/*FT::PT_BLEND_ADDITIVE |*/ FT::PT_BLEND_UNDER)))
+    if (filter & (/*FT::PT_BLEND_ADDITIVE |*/ FT::PT_BLEND_UNDER))
     {
-        instance.mask |= INSTANCE_MASK_HAS_SHADOWS;
+        instance.mask = INSTANCE_MASK_BLENDED;
     }
-
-    if (filter & FT::PV_FIRST_PERSON)
+    else if (filter & FT::PV_FIRST_PERSON)
     {
-        instance.mask |= INSTANCE_MASK_FIRST_PERSON;
-        instance.mask &= ~INSTANCE_MASK_HAS_SHADOWS;
-
+        instance.mask = INSTANCE_MASK_FIRST_PERSON;
         instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON;
     }
     else if (filter & FT::PV_FIRST_PERSON_VIEWER)
     {
-        instance.mask |= INSTANCE_MASK_FIRST_PERSON_VIEWER;
-        instance.mask &= ~INSTANCE_MASK_HAS_SHADOWS;
-
+        instance.mask = INSTANCE_MASK_FIRST_PERSON_VIEWER;
         instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER;
+    }
+    else
+    {
+        instance.mask = INSTANCE_MASK_WORLD;
     }
 
     if (filter & FT::PT_OPAQUE)

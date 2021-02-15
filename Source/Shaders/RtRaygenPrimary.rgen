@@ -28,9 +28,9 @@ void processPrimaryHit(vec3 hitPosition, ivec2 pix)
     ShHitInfo h = getHitInfo(payload);
 
     imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
-    imageStore(framebufNormal,              pix, vec4(h.normal, 0));
+    imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
-    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, max(h.roughness, 0.001), 0, uintBitsToFloat(h.instCustomIndex)));
+    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, max(h.roughness, 0.001), 0, 0));
     imageStore(framebufDepth,               pix, vec4(h.hitDistance));
     imageStore(framebufSurfacePosition,     pix, vec4(hitPosition, 0.0));
 }
@@ -59,7 +59,7 @@ void main()
     resetPayload();
     
 
-    uint cullMask = INSTANCE_MASK_ALL & (~INSTANCE_MASK_FIRST_PERSON_VIEWER);
+    uint cullMask = getPrimaryVisibilityCullMask();
 
     traceRayEXT(
         topLevelAS,
@@ -79,7 +79,7 @@ void main()
 
         // if transparency hit distance is further than the closest hit,
         // then need to cast again, but new ray's max distance is clsHitDistance
-        if (payload.maxTransparDistance > payload.clsHitDistance)
+        /*if (payload.maxTransparDistance > payload.clsHitDistance)
         {
             payload.color = vec4(0.0);
             payload.maxTransparDistance = -1;
@@ -94,9 +94,9 @@ void main()
                 SBT_INDEX_MISS_DEFAULT, 
                 origin.xyz, 0.001, viewDirection.xyz, payload.clsHitDistance, 
                 PAYLOAD_INDEX_DEFAULT);    
-        }
+        }*/
         
-        processPrimaryHit(origin.xyz + viewDirection.xyz * payload.clsHitDistance, pix);
+        processPrimaryHit(clsHitPoint, pix);
     }
     else
     {

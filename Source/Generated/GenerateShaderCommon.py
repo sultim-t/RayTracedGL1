@@ -205,10 +205,10 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
-    "INSTANCE_MASK_HAS_SHADOWS"             : "1 << 0",
+    "INSTANCE_MASK_WORLD"                   : "1 << 0",
     "INSTANCE_MASK_FIRST_PERSON"            : "1 << 1",
     "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 2",
-    "INSTANCE_MASK_EMPTY_3"                 : "1 << 3",
+    "INSTANCE_MASK_BLENDED"                 : "1 << 3",
     "INSTANCE_MASK_EMPTY_4"                 : "1 << 4",
     "INSTANCE_MASK_EMPTY_5"                 : "1 << 5",
     "INSTANCE_MASK_EMPTY_6"                 : "1 << 6",

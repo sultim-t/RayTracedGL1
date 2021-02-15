@@ -47,6 +47,55 @@ void resetPayload()
     payload.maxTransparDistance = -1;
 }
 
+
+uint getPrimaryVisibilityCullMask()
+{
+    return INSTANCE_MASK_ALL & (~INSTANCE_MASK_FIRST_PERSON_VIEWER);
+}
+
+uint getShadowCullMask(uint primaryInstCustomIndex)
+{
+    if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
+    {
+        // no first-person viewer shadows -- on first-person
+        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON;
+    }
+    else if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
+    {
+        // no first-person shadows -- on first-person viewer
+        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+    else
+    {
+        // no first-person shadows -- on world
+        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+    
+    // blended geometry doesn't have shadows
+}
+
+uint getIndirectIlluminationCullMask(uint primaryInstCustomIndex)
+{
+    if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
+    {
+        // no first-person viewer indirect illumination -- on first-person
+        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON;
+    }
+    else if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
+    {
+        // no first-person indirect illumination -- on first-person viewer
+        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+    else
+    {
+        // no first-person indirect illumination -- on first-person viewer
+        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+    
+    // blended geometry doesn't have indirect illumination
+}
+
+
 #ifdef RAYGEN_SHADOW_PAYLOAD
 // lightDirection is pointed to the light
 bool castShadowRay(vec3 origin, vec3 lightDirection, uint cullMask)
@@ -125,18 +174,7 @@ void processDirectIllumination(
     lt.angularDiameterDegrees = 0.5;
     lt.color = vec3(10, 10, 10);
 
-    uint shadowCullMask = INSTANCE_MASK_HAS_SHADOWS;
-
-    if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
-    {
-        // no first-person viewer shadows -- on first-person
-        shadowCullMask |= INSTANCE_MASK_FIRST_PERSON;
-    }
-    else if ((primaryInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
-    {
-        // no first-person shadows -- on first-person viewer
-        shadowCullMask |= INSTANCE_MASK_FIRST_PERSON_VIEWER;
-    }
+    uint shadowCullMask = getShadowCullMask(primaryInstCustomIndex);
 
     uint seed = getCurrentRandomSeed(pix);
     processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, lt, shadowCullMask, outDiffuse, outSpecular);
