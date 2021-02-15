@@ -122,4 +122,20 @@ struct ShTonemapping
     float avgLuminance;
 };
 
+struct ShLightSpherical
+{
+    float position[3];
+    float radius;
+    float color[3];
+    uint32_t __pad0;
+};
+
+struct ShLightDirectional
+{
+    float direction[3];
+    float angularDiameterRad;
+    float color[3];
+    uint32_t __pad0;
+};
+
 }

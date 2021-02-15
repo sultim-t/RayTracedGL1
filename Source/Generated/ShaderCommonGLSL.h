@@ -157,6 +157,22 @@ struct ShTonemapping
     float avgLuminance;
 };
 
+struct ShLightSpherical
+{
+    vec3 position;
+    float radius;
+    vec3 color;
+    uint __pad0;
+};
+
+struct ShLightDirectional
+{
+    vec3 direction;
+    float angularDiameterRad;
+    vec3 color;
+    uint __pad0;
+};
+
 #ifdef DESC_SET_FRAMEBUFFERS
 
 // framebuffers

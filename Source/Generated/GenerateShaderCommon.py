@@ -361,13 +361,25 @@ HIT_INFO_STRUCT = [
     (TYPE_UINT32,       1,      "instCustomIndex",      1),
 ]
 
+LIGHT_SPHERICAL_STRUCT = [
+    (TYPE_FLOAT32,      3,      "position",             1),
+    (TYPE_FLOAT32,      1,      "radius",               1),
+    (TYPE_FLOAT32,      3,      "color",                1),
+]
+
+LIGHT_DIRECTIONAL_STRUCT = [
+    (TYPE_FLOAT32,      3,      "direction",            1),
+    (TYPE_FLOAT32,      1,      "angularDiameterRad",   1),
+    (TYPE_FLOAT32,      3,      "color",                1),
+]
+
 TONEMAPPING_STRUCT = [
     (TYPE_UINT32,       1,      "histogram",            CONST["COMPUTE_LUM_HISTOGRAM_BIN_COUNT"]),
     (TYPE_FLOAT32,      1,      "avgLuminance",         1),
 ]
 
-# (structTypeName): (structDefinition, onlyForGLSL, align16byte, breakComplex)
-# align16byte   -- if using a struct in dynamic array, it must be aligned with 16 bytes
+# (structTypeName): (structDefinition, onlyForGLSL, alignStd430, breakComplex)
+# alignStd430   -- if using a struct in dynamic array, it must be aligned with 16 bytes
 # breakComplex  -- if member's type is not primitive and its count>0 then
 #               it'll be represented as an array of primitive types
 STRUCTS = {
@@ -380,6 +392,8 @@ STRUCTS = {
     "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
     "ShHitInfo":                (HIT_INFO_STRUCT,           True,   False,  False),
     "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  False,  False),
+    "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  True,   False),
+    "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  True,   False),
 }
 
 # --------------------------------------------------------------------------------------------- #
@@ -505,14 +519,23 @@ def getPadsForStruct(typeNames, uint32ToAdd):
     return r
 
 
+def align(c, alignment):
+    if c % alignment != 0:
+        x = c // alignment + 1
+        return x * alignment
+    else:
+        return c
+
+
 # useVecMatTypes:
-def getStruct(name, definition, typeNames, align16, breakComplex):
+def getStruct(name, definition, typeNames, alignStd430, breakComplex):
     r = "struct " + name + "\n{\n"
 
     global CURRENT_PAD_INDEX
     CURRENT_PAD_INDEX = 0
 
     curSize = 0
+    curOffset = 0
 
     for baseType, dim, mname, count in definition:
         assert(count > 0)
@@ -545,30 +568,24 @@ def getStruct(name, definition, typeNames, align16, breakComplex):
 
         r += ";\n"
 
-        if align16:
-            if count > 1 and breakComplex:
-                # if must be represented as an array of primitive types
-                sizeStd430 = getMemberSizeStd430(baseType, 1, align4(count * dim))
-                sizeActual = getMemberActualSize(baseType, 1, align4(count * dim))
-            else:
-                # default case
-                sizeStd430 = getMemberSizeStd430(baseType, dim, count)
-                sizeActual = getMemberActualSize(baseType, dim, count)
+        if alignStd430:
+            for i in range(count):
+                memberSize = getMemberActualSize(baseType, dim, 1)
+                memberAlignment = getMemberSizeStd430(baseType, dim, 1)
 
-            # std430 size is always larger
-            diff = sizeStd430 - sizeActual
+                alignedOffset = align(curOffset, memberAlignment)
+                diff = alignedOffset - curOffset
 
-            if diff > 0:
-                assert(diff % 4 == 0)
-                r += getPadsForStruct(typeNames, diff // 4)
+                if diff > 0:
+                    assert (diff) % 4 == 0
+                    r += getPadsForStruct(typeNames, diff // 4)
 
-            # count size of current member
-            curSize += sizeStd430
+                curSize += curOffset + memberSize
 
-    if align16 and curSize % 16 != 0:
+    if alignStd430 and curSize % 16 != 0:
         if (curSize % 16) % 4 != 0:
             raise Exception("Size of struct %s is not 4-byte aligned!" % name)
-        uint32ToAdd = ((curSize // 16 + 1) * 16 - curSize) // 4
+        uint32ToAdd = (align(curSize, 16) - curSize) // 4
         r += getPadsForStruct(typeNames, uint32ToAdd)
 
     r += "};\n"
@@ -577,8 +594,8 @@ def getStruct(name, definition, typeNames, align16, breakComplex):
 
 def getAllStructDefs(typeNames):
     return "\n".join(
-        getStruct(name, structDef, typeNames, align16, breakComplex)
-        for name, (structDef, onlyForGLSL, align16, breakComplex) in STRUCTS.items()
+        getStruct(name, structDef, typeNames, alignStd430, breakComplex)
+        for name, (structDef, onlyForGLSL, alignStd430, breakComplex) in STRUCTS.items()
         if not (onlyForGLSL and (typeNames == C_TYPE_NAMES))
     ) + "\n"
 
