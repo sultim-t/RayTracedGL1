@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ASManager.h"
+#include "LightManager.h"
 
 namespace RTGL1
 {
@@ -28,7 +29,9 @@ namespace RTGL1
 class Scene
 {
 public:
-    explicit Scene(std::shared_ptr<ASManager> asManager);
+    explicit Scene(
+        std::shared_ptr<ASManager> asManager,
+        std::shared_ptr<LightManager> lightManager);
     ~Scene();
 
     Scene(const Scene& other) = delete;
@@ -40,23 +43,24 @@ public:
     // Return true if TLAS was built
     bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
 
-    uint32_t Upload(const RgGeometryUploadInfo &uploadInfo);
+    uint32_t Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
     bool UpdateTransform(uint32_t geomId, const RgTransform &transform);
+
+    void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
 
     void SubmitStatic();
     void StartNewStatic();
 
-    bool IsRecordingStatic() const;
-
-    std::shared_ptr<ASManager> &GetASManager();
+    const std::shared_ptr<ASManager> &GetASManager();
+    const std::shared_ptr<LightManager> &GetLightManager();
 
 private:
     std::shared_ptr<ASManager> asManager;
+    std::shared_ptr<LightManager> lightManager;
 
     std::vector<uint32_t> movableGeomIds;
     bool toResubmitMovable;
 
-    uint32_t currentFrameIndex;
     bool isRecordingStatic;
 };
 

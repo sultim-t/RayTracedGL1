@@ -92,6 +92,11 @@ RgResult rgStartNewScene(RgInstance rgInstance)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartNewStaticScene();
 }
 
+RgResult rgUploadLight(RgInstance rgInstance, RgDirectionalLightUploadInfo *lightInfo)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(lightInfo);
+}
+
 RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *createInfo,
                                RgMaterial *result)
 {

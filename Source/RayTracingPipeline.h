@@ -20,11 +20,11 @@
 
 #pragma once
 
-#include "ASManager.h"
 #include "BlueNoise.h"
 #include "GlobalUniform.h"
 #include "ShaderManager.h"
 #include "Framebuffers.h"
+#include "Scene.h"
 
 namespace RTGL1
 {
@@ -37,7 +37,7 @@ public:
         const std::shared_ptr<PhysicalDevice> &physDevice,
         const std::shared_ptr<MemoryAllocator> &allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
-        const std::shared_ptr<ASManager> &asManager,
+        const std::shared_ptr<Scene> &scene,
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<TextureManager> &textureMgr,
         const std::shared_ptr<Framebuffers> &framebuffers,

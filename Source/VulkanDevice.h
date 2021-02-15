@@ -63,6 +63,8 @@ public:
     RgResult SubmitStaticGeometries();
     RgResult StartNewStaticScene();
 
+    RgResult UploadLight(const RgDirectionalLightUploadInfo *lightInfo);
+
     RgResult CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result);
     RgResult CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
     RgResult ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);

@@ -32,7 +32,7 @@ PathTracer::~PathTracer()
 
 void PathTracer::Trace(
     VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height,
-    const std::shared_ptr<ASManager> &asManager,
+    const std::shared_ptr<Scene> &scene,
     const std::shared_ptr<GlobalUniform> &uniform,
     const std::shared_ptr<TextureManager> &textureMgr,
     const std::shared_ptr<Framebuffers> &framebuffers,
@@ -43,17 +43,19 @@ void PathTracer::Trace(
 
     VkDescriptorSet sets[] = {
         // ray tracing acceleration structures
-        asManager->GetTLASDescSet(frameIndex),
+        scene->GetASManager()->GetTLASDescSet(frameIndex),
         // storage images
         framebuffers->GetDescSet(frameIndex),
         // uniform
         uniform->GetDescSet(frameIndex),
         // vertex data
-        asManager->GetBuffersDescSet(frameIndex),
+        scene->GetASManager()->GetBuffersDescSet(frameIndex),
         // textures
         textureMgr->GetDescSet(frameIndex),
         // uniform random
-        blueNoise->GetDescSet()
+        blueNoise->GetDescSet(),
+        // light sources
+        scene->GetLightManager()->GetDescSet(frameIndex)
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 

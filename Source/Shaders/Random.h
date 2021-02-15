@@ -165,16 +165,15 @@ vec4 getBlueNoiseSample(uint seed)
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
-vec4 getCurrentBlueNoiseSample(ivec2 pix)
+uint makeSeed(uint seed, uint salt)
 {
-    uvec4 seed = texelFetch(framebufRandomSeed_Sampler, pix, 0);
-    return getBlueNoiseSample(seed.x);
-}
+    uint texIndex;
+    uvec2 offset;
+    unpackRandomSeed(seed, texIndex, offset);
 
-vec4 getPreviousBlueNoiseSample(ivec2 pix)
-{
-    uvec4 seed = texelFetch(framebufRandomSeed_Prev_Sampler, pix, 0);
-    return getBlueNoiseSample(seed.x);
+    texIndex = (texIndex + salt) % BLUE_NOISE_TEXTURE_COUNT;
+
+    return packRandomSeed(texIndex, offset);
 }
 
 uint getCurrentRandomSeed(ivec2 pix)

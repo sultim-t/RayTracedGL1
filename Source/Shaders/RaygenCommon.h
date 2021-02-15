@@ -20,14 +20,15 @@
 
 #extension GL_EXT_ray_tracing : require
 
-#define DESC_SET_FRAMEBUFFERS 1
-#define DESC_SET_GLOBAL_UNIFORM 2
-#define DESC_SET_VERTEX_DATA 3
-#define DESC_SET_TEXTURES 4
-#define DESC_SET_RANDOM 5
 #include "ShaderCommonGLSLFunc.h"
 
-layout(binding = BINDING_ACCELERATION_STRUCTURE, set = 0) uniform accelerationStructureEXT topLevelAS;
+#ifdef DESC_SET_TLAS 
+#ifdef DESC_SET_GLOBAL_UNIFORM 
+#ifdef DESC_SET_VERTEX_DATA 
+#ifdef DESC_SET_TEXTURES
+#ifdef DESC_SET_RANDOM 
+#ifdef DESC_SET_LIGHT_SOURCES 
+layout(binding = BINDING_ACCELERATION_STRUCTURE, set = DESC_SET_TLAS) uniform accelerationStructureEXT topLevelAS;
 
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
@@ -115,22 +116,29 @@ bool castShadowRay(vec3 origin, vec3 lightDirection, uint cullMask)
     return payloadShadow.isShadowed == 1;
 }
 
-struct ShDirectionalLight
-{
-    vec3 direction;
-    float angularDiameterDegrees;
-    vec3 color;
-};
-
 // viewDirection -- is direction to viewer
 void processDirectionalLight(
     uint seed, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, 
-    ShDirectionalLight dirLight, uint shadowCullMask,
+    uint shadowCullMask,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    vec2 disk = sampleDisk(seed, tan(radians(dirLight.angularDiameterDegrees * 0.5)));
+    uint dirLightCount = globalUniform.lightSourceCountDirectional;
+
+    if (dirLightCount == 0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    float d = getBlueNoiseSample(seed).x;
+    uint dirLightIndex = uint(d * dirLightCount);
+
+    ShLightDirectional dirLight = lightSourcesDirecitional[dirLightIndex];
+
+    vec2 disk = sampleDisk(seed, dirLight.tanAngularRadius);
 
     vec3 dir;
     {
@@ -169,14 +177,15 @@ void processDirectIllumination(
     float surfRoughness, vec3 viewDirection, 
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    ShDirectionalLight lt;
-    lt.direction = normalize(vec3(-1, 1, 1));
-    lt.angularDiameterDegrees = 0.5;
-    lt.color = vec3(10, 10, 10);
-
+    uint seed = getCurrentRandomSeed(pix);
     uint shadowCullMask = getShadowCullMask(primaryInstCustomIndex);
 
-    uint seed = getCurrentRandomSeed(pix);
-    processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, lt, shadowCullMask, outDiffuse, outSpecular);
+    processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, shadowCullMask, outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
+#endif // DESC_SET_LIGHT_SOURCES 
+#endif // DESC_SET_TLAS 
+#endif // DESC_SET_GLOBAL_UNIFORM 
+#endif // DESC_SET_VERTEX_DATA 
+#endif // DESC_SET_TEXTURES
+#endif // DESC_SET_RANDOM 

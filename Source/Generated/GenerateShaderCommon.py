@@ -199,6 +199,8 @@ CONST = {
     "BINDING_TEXTURES"                      : 0,
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
+    "BINDING_LIGHT_SOURCES_SPHERICAL"       : 0,
+    "BINDING_LIGHT_SOURCES_DIRECTIONAL"     : 1,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -319,7 +321,17 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "luminanceWhitePoint",          1),
     (TYPE_UINT32,       1,      "stopEyeAdaptation",            1),
+    (TYPE_UINT32,       1,      "lightSourceCountSpherical",    1),
+    
+    (TYPE_UINT32,       1,      "lightSourceCountDirectional",  1),
+    (TYPE_FLOAT32,      1,      "_pad1",                        1),
+    (TYPE_FLOAT32,      1,      "_pad2",                        1),
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
+    
+    #(TYPE_FLOAT32,      1,      "_pad0",                        1),
+    #(TYPE_FLOAT32,      1,      "_pad1",                        1),
+    #(TYPE_FLOAT32,      1,      "_pad2",                        1),
+    #(TYPE_FLOAT32,      1,      "_pad3",                        1),
 
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",       CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
@@ -369,7 +381,7 @@ LIGHT_SPHERICAL_STRUCT = [
 
 LIGHT_DIRECTIONAL_STRUCT = [
     (TYPE_FLOAT32,      3,      "direction",            1),
-    (TYPE_FLOAT32,      1,      "angularDiameterRad",   1),
+    (TYPE_FLOAT32,      1,      "tanAngularRadius",     1),
     (TYPE_FLOAT32,      3,      "color",                1),
 ]
 

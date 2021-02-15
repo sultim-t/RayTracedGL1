@@ -112,7 +112,7 @@ const char *RTGL1::VertexCollectorFilterTypeFlags_GetNameForBLAS(FL flags)
 {
     for (const FLName &p : FL_NAMES)
     {
-        if ((p.flags & flags) == flags)
+        if ((p.flags & flags) == p.flags)
         {
             return p.name;
         }

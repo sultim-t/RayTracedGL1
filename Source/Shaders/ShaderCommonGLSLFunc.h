@@ -576,3 +576,16 @@ float getLuminance(vec3 c)
 {
     return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
 }
+
+
+#ifdef DESC_SET_LIGHT_SOURCES
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPHERICAL) readonly buffer LightSourcesSpherical_BT
+{
+    ShLightSpherical lightSourcesSpherical[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIRECTIONAL) readonly buffer LightSourcesDirectional_BT
+{
+    ShLightDirectional lightSourcesDirecitional[];
+};
+#endif

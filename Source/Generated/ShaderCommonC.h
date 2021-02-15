@@ -26,6 +26,8 @@ namespace RTGL1
 #define BINDING_TEXTURES (0)
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
+#define BINDING_LIGHT_SOURCES_SPHERICAL (0)
+#define BINDING_LIGHT_SOURCES_DIRECTIONAL (1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -97,6 +99,10 @@ struct ShGlobalUniform
     float maxLogLuminance;
     float luminanceWhitePoint;
     uint32_t stopEyeAdaptation;
+    uint32_t lightSourceCountSpherical;
+    uint32_t lightSourceCountDirectional;
+    float _pad1;
+    float _pad2;
     float _pad3;
     int32_t instanceGeomInfoOffset[128];
 };
@@ -133,7 +139,7 @@ struct ShLightSpherical
 struct ShLightDirectional
 {
     float direction[3];
-    float angularDiameterRad;
+    float tanAngularRadius;
     float color[3];
     uint32_t __pad0;
 };

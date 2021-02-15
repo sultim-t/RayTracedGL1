@@ -312,16 +312,14 @@ typedef struct RgDirectionalLightUploadInfo
 {
     RgLightType     type;
     float           color[3];
-    float           intensity;
     float           direction[3];
-    float           angularSize;
+    float           angularDiameterDegrees;
 } RgDirectionalLightUploadInfo;
 
 typedef struct RgSphereLightUploadInfo
 {
     RgLightType     type;
     float           color[3];
-    float           intensity;
     float           position[3];
     float           radius;
 } RgSphereLightUploadInfo;

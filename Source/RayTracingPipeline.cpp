@@ -30,7 +30,7 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<PhysicalDevice> &_physDevice,
     const std::shared_ptr<MemoryAllocator> &_allocator,
     const std::shared_ptr<ShaderManager> &_shaderMgr,
-    const std::shared_ptr<ASManager> &_asMgr,
+    const std::shared_ptr<Scene> &_scene,
     const std::shared_ptr<GlobalUniform> &_uniform,
     const std::shared_ptr<TextureManager> &_textureMgr,
     const std::shared_ptr<Framebuffers> &_framebuffers,
@@ -108,17 +108,19 @@ RayTracingPipeline::RayTracingPipeline(
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
         // ray tracing acceleration structures
-        _asMgr->GetTLASDescSetLayout(),
+        _scene->GetASManager()->GetTLASDescSetLayout(),
         // storage images
         _framebuffers->GetDescSetLayout(),
         // uniform
         _uniform->GetDescSetLayout(),
         // vertex data
-        _asMgr->GetBuffersDescSetLayout(),
+        _scene->GetASManager()->GetBuffersDescSetLayout(),
         // textures
         _textureMgr->GetDescSetLayout(),
         // uniform random
-        _blueNoise->GetDescSetLayout()
+        _blueNoise->GetDescSetLayout(),
+        // light sources
+        _scene->GetLightManager()->GetDescSetLayout()
     };
 
     CreatePipeline(setLayouts.data(), setLayouts.size(),

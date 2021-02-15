@@ -19,6 +19,8 @@
 #define BINDING_TEXTURES (0)
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
+#define BINDING_LIGHT_SOURCES_SPHERICAL (0)
+#define BINDING_LIGHT_SOURCES_DIRECTIONAL (1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -105,6 +107,10 @@ struct ShGlobalUniform
     float maxLogLuminance;
     float luminanceWhitePoint;
     uint stopEyeAdaptation;
+    uint lightSourceCountSpherical;
+    uint lightSourceCountDirectional;
+    float _pad1;
+    float _pad2;
     float _pad3;
     int instanceGeomInfoOffset[128];
 };
@@ -168,7 +174,7 @@ struct ShLightSpherical
 struct ShLightDirectional
 {
     vec3 direction;
-    float angularDiameterRad;
+    float tanAngularRadius;
     vec3 color;
     uint __pad0;
 };

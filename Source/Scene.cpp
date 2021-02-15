@@ -22,30 +22,28 @@
 
 using namespace RTGL1;
 
-Scene::Scene(std::shared_ptr<ASManager> asManager) :
+Scene::Scene(
+    std::shared_ptr<ASManager> _asManager,
+    std::shared_ptr<LightManager> _lightManager)
+:
     toResubmitMovable(false),
-    currentFrameIndex(UINT32_MAX),
-    isRecordingStatic(false)
-{
-    this->asManager = asManager;
-}
+    isRecordingStatic(false),
+    asManager(std::move(_asManager)),
+    lightManager(std::move(_lightManager))
+{}
 
 Scene::~Scene()
 {}
 
 void Scene::PrepareForFrame(uint32_t frameIndex)
 {
-    assert(frameIndex < MAX_FRAMES_IN_FLIGHT);
-    currentFrameIndex = frameIndex;
-
     // dynamic geomtry
     asManager->BeginDynamicGeometry(frameIndex);
 }
 
-bool Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
+bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
 {
-    // reset
-    currentFrameIndex = UINT32_MAX;
+    lightManager->CopyFromStaging(cmd, frameIndex);
 
     if (toResubmitMovable)
     {
@@ -61,11 +59,11 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd,  uint32_t frameIndex, const std:
     return asManager->TryBuildTLAS(cmd, frameIndex, uniform);
 }
 
-uint32_t Scene::Upload(const RgGeometryUploadInfo &uploadInfo)
+uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
 {
     if (uploadInfo.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
-        return asManager->AddDynamicGeometry(uploadInfo, currentFrameIndex);
+        return asManager->AddDynamicGeometry(uploadInfo, frameIndex);
     }
     else
     {
@@ -131,12 +129,17 @@ void Scene::StartNewStatic()
     movableGeomIds.clear();
 }
 
-bool Scene::IsRecordingStatic() const
-{
-    return isRecordingStatic;
-}
-
-std::shared_ptr<ASManager> &Scene::GetASManager()
+const std::shared_ptr<ASManager> &Scene::GetASManager()
 {
     return asManager;
+}
+
+const std::shared_ptr<LightManager> &RTGL1::Scene::GetLightManager()
+{
+    return lightManager;
+}
+
+void Scene::UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo)
+{
+    lightManager->AddDirectionalLight(frameIndex, lightInfo);
 }

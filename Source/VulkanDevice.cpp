@@ -108,7 +108,9 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         textureManager, 
         vbProperties);
     
-    scene               = std::make_shared<Scene>(asManager);
+    auto lightManager   = std::make_shared<LightManager>(device, memAllocator);
+
+    scene               = std::make_shared<Scene>(asManager, lightManager);
 
     shaderManager       = std::make_shared<ShaderManager>(device);
    
@@ -117,7 +119,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         physDevice, 
         memAllocator, 
         shaderManager,
-        scene->GetASManager(),
+        scene,
         uniform, 
         textureManager,
         framebuffers, 
@@ -209,14 +211,14 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
 
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo) const
 {
+    memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
+    memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
+
     memcpy(gu->view, frameInfo->view, 16 * sizeof(float));
     memcpy(gu->projection, frameInfo->projection, 16 * sizeof(float));
 
     Matrix::Inverse(gu->invView, frameInfo->view);
     Matrix::Inverse(gu->invProjection, frameInfo->projection);
-
-    //gu->viewPrev[16];
-    //gu->projectionPrev[16];
 
     // to remove additional division by 4 bytes in shaders
     gu->positionsStride = vbProperties.positionStride / 4;
@@ -243,6 +245,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     }
 
     gu->stopEyeAdaptation = frameInfo->disableEyeAdaptation;
+
+    gu->lightSourceCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
+    gu->lightSourceCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
@@ -261,7 +266,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     {
         pathTracer->Trace(
             cmd, frameIndex, renderWidth, renderHeight,
-            scene->GetASManager(), uniform, textureManager, framebuffers, blueNoise);
+            scene, uniform, textureManager, framebuffers, blueNoise);
     }
 
     // tonemapping
@@ -342,7 +347,7 @@ RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, Rg
         return RG_WRONG_ARGUMENT;
     }
 
-    uint32_t geomId = scene->Upload(*uploadInfo);
+    uint32_t geomId = scene->Upload(currentFrameIndex, *uploadInfo);
 
     if (result!= nullptr)
     {
@@ -397,6 +402,12 @@ RgResult VulkanDevice::SubmitStaticGeometries()
 RgResult VulkanDevice::StartNewStaticScene()
 {
     scene->StartNewStatic();
+    return RG_SUCCESS;
+}
+
+RgResult VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *lightInfo)
+{
+    scene->UploadLight(currentFrameIndex, *lightInfo);
     return RG_SUCCESS;
 }
 
