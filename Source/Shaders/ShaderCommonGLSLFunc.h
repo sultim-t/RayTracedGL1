@@ -509,9 +509,9 @@ ShHitInfo getHitInfo(ShPayload pl)
     
     uint blendsFlags[] = 
     {
-        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  << (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
-        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) << (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
-        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  << (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
+        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
+        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
+        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
     };
 
 
