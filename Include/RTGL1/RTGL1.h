@@ -154,6 +154,14 @@ typedef enum RgGeometryVisibilityType
     RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER
 } RgGeometryPrimaryVisibilityType;
 
+typedef enum RgGeometryMaterialBlendType
+{
+    RG_GEOMETRY_MATERIAL_BLEND_TYPE_OPAQUE,
+    RG_GEOMETRY_MATERIAL_BLEND_TYPE_ALPHA,
+    RG_GEOMETRY_MATERIAL_BLEND_TYPE_ADD,
+    RG_GEOMETRY_MATERIAL_BLEND_TYPE_SHADE
+} RgGeometryMaterialBlendType;
+
 typedef struct RgTransform
 {
     float       matrix[3][4];
@@ -175,33 +183,34 @@ typedef struct RgGeometryUploadInfo
     RgGeometryPassThroughType       passThroughType;
     RgGeometryVisibilityType        visibilityType;
 
-    uint32_t                vertexCount;
+    uint32_t                        vertexCount;
     // Strides are set in RgInstanceUploadInfo.
     // 3 first floats will be used
-    void                    *vertexData;
+    void                            *vertexData;
     // 3 first floats will be used
-    void                    *normalData;
+    void                            *normalData;
     // Up to 3 texture coordinated per vertex for static geometry.
     // Dynamic geometry uses only 1 layer.
     // 2 first floats will be used
-    void                    *texCoordLayerData[3];
+    void                            *texCoordLayerData[3];
 
     // Can be null, if indices are not used.
     // indexData is an array of uint32_t of size indexCount.
-    uint32_t                indexCount;
-    void                    *indexData;
+    uint32_t                        indexCount;
+    void                            *indexData;
 
-    // RGBA color for this geometry.
-    RgFloat4                color;
+    // RGBA color for each material layer.
+    RgFloat4                        layerColors[3];
+    RgGeometryMaterialBlendType     layerBlendingTypes[3];
     // These default values will be used if no overriding 
     // texture is found.
-    float                   defaultRoughness;
-    float                   defaultMetallicity;
+    float                           defaultRoughness;
+    float                           defaultMetallicity;
     // Emission = defaultEmission * color
-    float                   defaultEmission;
+    float                           defaultEmission;
 
-    RgLayeredMaterial       geomMaterial;
-    RgTransform             transform;
+    RgLayeredMaterial               geomMaterial;
+    RgTransform                     transform;
 } RgGeometryUploadInfo;
 
 typedef struct RgUpdateTransformInfo

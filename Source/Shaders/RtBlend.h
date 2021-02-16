@@ -42,7 +42,7 @@ void main()
     vec2 texCoord = tr.layerTexCoord[0] * baryCoords;
  
 	// check only first material
-    vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.geomColor;
+    vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.materialColors[0];
 
     float curDistance = gl_HitTEXT;
 

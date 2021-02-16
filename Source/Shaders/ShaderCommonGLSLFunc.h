@@ -342,6 +342,8 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.materials[0] = uvec3(inst.materials[0]);
         tr.materials[1] = uvec3(MATERIAL_NO_TEXTURE);
         tr.materials[2] = uvec3(MATERIAL_NO_TEXTURE);
+        
+        tr.materialColors[0] = inst.materialColors[0];
     }
     else
     {
@@ -353,12 +355,19 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.materials[0] = uvec3(inst.materials[0]);
         tr.materials[1] = uvec3(inst.materials[1]);
         tr.materials[2] = uvec3(inst.materials[2]);
+
+        tr.materialColors[0] = inst.materialColors[0];
+        tr.materialColors[1] = inst.materialColors[1];
+        tr.materialColors[2] = inst.materialColors[2];
     }
 
-    tr.geomColor = inst.color;
+    tr.materialsBlendFlags = inst.materialsBlendFlags;
+
     tr.geomRoughness = inst.defaultRoughness;
     tr.geomMetallicity = inst.defaultMetallicity;
-    tr.geomEmission = tr.geomColor.rgb * inst.defaultEmission;
+
+    // use the first layer's color
+    tr.geomEmission = tr.materialColors[0].rgb * inst.defaultEmission;
 
     return tr;
 }
@@ -498,22 +507,42 @@ ShHitInfo getHitInfo(ShPayload pl)
         tr.layerTexCoord[2] * baryCoords
     };
     
+    uint blendsFlags[] = 
+    {
+        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  << (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
+        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) << (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
+        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  << (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
+    };
 
-    h.albedo = tr.geomColor.rgb;
 
-    if (tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+    vec3 dst = vec3(1.0);
+
+    for (uint i = 0; i < 3; i++)
     {
-        h.albedo *= getTextureSample(tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[0]).rgb;
-    }
-    if (tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        h.albedo *= getTextureSample(tr.materials[1][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[1]).rgb;
-    }   
-    if (tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        h.albedo *= getTextureSample(tr.materials[2][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[2]).rgb;
+        if (tr.materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+        {
+            vec4 src = tr.materialColors[i] * getTextureSample(tr.materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i]);
+
+            if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0)
+            {
+                dst = src.rgb;
+            }
+            else if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA) != 0)
+            {
+                dst = src.rgb * src.a + dst * (1 - src.a);
+            }
+            else if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD) != 0)
+            {
+                dst += src.rgb;
+            }
+            else // if (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)
+            {
+                dst = 2 * dst * src.rgb;
+            }
+        }
     }
     
+    h.albedo = dst;
 
     // convert normals to world space
     tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));

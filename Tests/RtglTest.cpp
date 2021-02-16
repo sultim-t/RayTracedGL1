@@ -239,7 +239,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.texCoordLayerData[0] = cubeTexCoords.data();
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.indexData = cubeIndices.data();
-    cubeInfo.color = { 1.0f, 1.0f, 1.0f, 1.0f };
+    cubeInfo.layerColors[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
     cubeInfo.geomMaterial = {
         RG_NO_MATERIAL,
         RG_NO_MATERIAL,
@@ -265,7 +265,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgGeometryUploadInfo dnInfo = cubeInfo;
     dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
-    dnInfo.color = { 1.0f, 0.0f, 0.0f, 0.0f };
+    cubeInfo.layerColors[0] = { 1.0f, 0.0f, 0.0f, 0.0f };
 
 
     // texture info

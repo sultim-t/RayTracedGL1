@@ -48,6 +48,14 @@
 #define MATERIAL_NORMAL_METALLIC_INDEX (1)
 #define MATERIAL_EMISSION_ROUGHNESS_INDEX (2)
 #define MATERIAL_NO_TEXTURE (0)
+#define MATERIAL_BLENDING_FLAG_OPAQUE (1 << 0)
+#define MATERIAL_BLENDING_FLAG_ALPHA (1 << 1)
+#define MATERIAL_BLENDING_FLAG_ADD (1 << 2)
+#define MATERIAL_BLENDING_FLAG_SHADE (1 << 3)
+#define MATERIAL_BLENDING_FLAG_BIT_COUNT (4)
+#define MATERIAL_BLENDING_MASK_FIRST_LAYER (15)
+#define MATERIAL_BLENDING_MASK_SECOND_LAYER (240)
+#define MATERIAL_BLENDING_MASK_THIRD_LAYER (3840)
 #define BLUE_NOISE_TEXTURE_COUNT (64)
 #define BLUE_NOISE_TEXTURE_SIZE (64)
 #define BLUE_NOISE_TEXTURE_SIZE_POW (6)
@@ -80,8 +88,9 @@ struct ShTriangle
     mat3 positions;
     mat3 normals;
     mat3x2 layerTexCoord[3];
+    vec4 materialColors[3];
     uvec3 materials[3];
-    vec4 geomColor;
+    uint materialsBlendFlags;
     vec3 tangent;
     float geomRoughness;
     vec3 geomEmission;
@@ -119,7 +128,8 @@ struct ShGeometryInstance
 {
     mat4 model;
     uvec4 materials[3];
-    vec4 color;
+    vec4 materialColors[3];
+    uint materialsBlendFlags;
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint primitiveCount;
@@ -127,7 +137,6 @@ struct ShGeometryInstance
     float defaultMetallicity;
     float defaultEmission;
     uint __pad0;
-    uint __pad1;
 };
 
 struct ShPayload

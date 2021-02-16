@@ -55,6 +55,14 @@ namespace RTGL1
 #define MATERIAL_NORMAL_METALLIC_INDEX (1)
 #define MATERIAL_EMISSION_ROUGHNESS_INDEX (2)
 #define MATERIAL_NO_TEXTURE (0)
+#define MATERIAL_BLENDING_FLAG_OPAQUE (1 << 0)
+#define MATERIAL_BLENDING_FLAG_ALPHA (1 << 1)
+#define MATERIAL_BLENDING_FLAG_ADD (1 << 2)
+#define MATERIAL_BLENDING_FLAG_SHADE (1 << 3)
+#define MATERIAL_BLENDING_FLAG_BIT_COUNT (4)
+#define MATERIAL_BLENDING_MASK_FIRST_LAYER (15)
+#define MATERIAL_BLENDING_MASK_SECOND_LAYER (240)
+#define MATERIAL_BLENDING_MASK_THIRD_LAYER (3840)
 #define BLUE_NOISE_TEXTURE_COUNT (64)
 #define BLUE_NOISE_TEXTURE_SIZE (64)
 #define BLUE_NOISE_TEXTURE_SIZE_POW (6)
@@ -111,7 +119,8 @@ struct ShGeometryInstance
 {
     float model[16];
     uint32_t materials[3][4];
-    float color[4];
+    float materialColors[3][4];
+    uint32_t materialsBlendFlags;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t primitiveCount;
@@ -119,7 +128,6 @@ struct ShGeometryInstance
     float defaultMetallicity;
     float defaultEmission;
     uint32_t __pad0;
-    uint32_t __pad1;
 };
 
 struct ShTonemapping

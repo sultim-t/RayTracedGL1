@@ -168,7 +168,7 @@ void processDirectionalLight(
         return;
     }
 
-    outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl;
+    outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl * M_PI;
     outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, surfRoughness) * dirLight.color * nl;
 
     outDiffuse *= oneOverPdf;

@@ -173,6 +173,29 @@ VertexCollector::~VertexCollector()
     stagingGeomInfosBuffer.TryUnmap();
 }
 
+static uint32_t GetMaterialsBlendFlags(const RgGeometryMaterialBlendType blendingTypes[], uint32_t count)
+{
+    uint32_t r = 0;
+
+    for (uint32_t i = 0; i < count; i++)
+    {
+        RgGeometryMaterialBlendType b = blendingTypes[i];
+
+        uint32_t bitOffset = MATERIAL_BLENDING_FLAG_BIT_COUNT * i;
+
+        switch (b)
+        {
+            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_OPAQUE:    r |= MATERIAL_BLENDING_FLAG_OPAQUE  << bitOffset; break;
+            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_ALPHA:     r |= MATERIAL_BLENDING_FLAG_ALPHA   << bitOffset; break;
+            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_ADD:       r |= MATERIAL_BLENDING_FLAG_ADD     << bitOffset; break;
+            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_SHADE:     r |= MATERIAL_BLENDING_FLAG_SHADE   << bitOffset; break;
+            default: assert(0); break;
+        }
+    }
+
+    return r;
+}
+
 void VertexCollector::BeginCollecting()
 {
     assert(curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 && curGeometryCount == 0);
@@ -303,12 +326,12 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         geomInfo.defaultMetallicity = info.defaultMetallicity;
         geomInfo.defaultEmission = info.defaultEmission;
 
-        memcpy(geomInfo.color, info.color.data, sizeof(geomInfo.color));
-
         Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
         static_assert(sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0]) == MATERIALS_MAX_LAYER_COUNT,
                       "Layer count must be MATERIALS_MAX_LAYER_COUNT");
+
+        geomInfo.materialsBlendFlags = GetMaterialsBlendFlags(info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT);
 
         for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
         {
@@ -320,8 +343,8 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
                 AddMaterialDependency(geomIndex, layer, materialIndex);
             }
 
-            memcpy(geomInfo.materials[layer], materials[layer].indices,
-                   TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+            memcpy(geomInfo.materials[layer], materials[layer].indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+            memcpy(geomInfo.materialColors[layer], info.layerColors[layer].data, sizeof(info.layerColors[layer].data));
         }
 
         WriteGeomInfo(geomIndex, geomInfo);

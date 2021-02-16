@@ -233,6 +233,15 @@ CONST = {
     "MATERIAL_NORMAL_METALLIC_INDEX"        : 1,
     "MATERIAL_EMISSION_ROUGHNESS_INDEX"     : 2,
     "MATERIAL_NO_TEXTURE"                   : 0,
+
+    "MATERIAL_BLENDING_FLAG_OPAQUE"         : "1 << 0",
+    "MATERIAL_BLENDING_FLAG_ALPHA"          : "1 << 1",
+    "MATERIAL_BLENDING_FLAG_ADD"            : "1 << 2",
+    "MATERIAL_BLENDING_FLAG_SHADE"          : "1 << 3",
+    "MATERIAL_BLENDING_FLAG_BIT_COUNT"      : 4,
+    "MATERIAL_BLENDING_MASK_FIRST_LAYER"    : CONST_TO_EVALUATE,
+    "MATERIAL_BLENDING_MASK_SECOND_LAYER"   : CONST_TO_EVALUATE,
+    "MATERIAL_BLENDING_MASK_THIRD_LAYER"    : CONST_TO_EVALUATE,
     
     "BLUE_NOISE_TEXTURE_COUNT"              : 64,
     "BLUE_NOISE_TEXTURE_SIZE"               : 64,
@@ -252,6 +261,9 @@ CONST_GLSL_ONLY = {
 
 
 def evalConst():
+    CONST["MATERIAL_BLENDING_MASK_FIRST_LAYER"]  = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 0)
+    CONST["MATERIAL_BLENDING_MASK_SECOND_LAYER"] = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 1)
+    CONST["MATERIAL_BLENDING_MASK_THIRD_LAYER"]  = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 2)
     CONST["BLUE_NOISE_TEXTURE_SIZE_POW"] = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
     assert len([None for _, v in CONST.items() if v == CONST_TO_EVALUATE]) == 0, "All CONST_TO_EVALUATE values must be calculated"
 
@@ -290,8 +302,9 @@ TRIANGLE_STRUCT = [
     (TYPE_FLOAT32,     33,     "positions",             1),
     (TYPE_FLOAT32,     33,     "normals",               1),
     (TYPE_FLOAT32,     32,     "layerTexCoord",         3),
+    (TYPE_FLOAT32,      4,     "materialColors",        3),
     (TYPE_UINT32,       3,     "materials",             3),
-    (TYPE_FLOAT32,      4,     "geomColor",             1),
+    (TYPE_UINT32,       1,     "materialsBlendFlags",   1),
     (TYPE_FLOAT32,      3,     "tangent",               1),
     (TYPE_FLOAT32,      1,     "geomRoughness",         1),
     (TYPE_FLOAT32,      3,     "geomEmission",          1),
@@ -340,7 +353,8 @@ GLOBAL_UNIFORM_STRUCT = [
 GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,     44,      "model",                1),
     (TYPE_UINT32,       4,      "materials",            3),
-    (TYPE_FLOAT32,      4,      "color",                1),
+    (TYPE_FLOAT32,      4,      "materialColors",       3),
+    (TYPE_UINT32,       1,      "materialsBlendFlags",  1),
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
     (TYPE_UINT32,       1,      "primitiveCount",       1),
