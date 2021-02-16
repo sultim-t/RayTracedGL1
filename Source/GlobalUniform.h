@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "Buffer.h"
+#include "AutoBuffer.h"
 
 namespace RTGL1
 {
@@ -30,7 +30,7 @@ struct ShGlobalUniform;
 class GlobalUniform
 {
 public:
-    explicit GlobalUniform(VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator, bool deviceLocal = false);
+    explicit GlobalUniform(VkDevice device, std::shared_ptr<MemoryAllocator> &allocator);
     ~GlobalUniform();
 
     GlobalUniform(const GlobalUniform &other) = delete;
@@ -39,7 +39,7 @@ public:
     GlobalUniform &operator=(GlobalUniform &&other) noexcept = delete;
 
     // Send current data
-    void Upload(uint32_t frameIndex);
+    void Upload(VkCommandBuffer cmd, uint32_t frameIndex);
 
     // Getters for modifying uniform buffer data that will be uploaded
     ShGlobalUniform *GetData();
@@ -56,11 +56,11 @@ private:
     VkDevice device;
 
     std::shared_ptr<ShGlobalUniform> uniformData;
-    Buffer uniformBuffers[MAX_FRAMES_IN_FLIGHT];
+    std::shared_ptr<AutoBuffer> uniformBuffer;
 
     VkDescriptorPool        descPool;
     VkDescriptorSetLayout   descSetLayout;
-    VkDescriptorSet         descSets[MAX_FRAMES_IN_FLIGHT];
+    VkDescriptorSet         descSet;
 };
 
 }

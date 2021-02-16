@@ -18,6 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#pragma once
+
 #include "Buffer.h"
 #include "MemoryAllocator.h"
 
@@ -49,6 +51,8 @@ public:
     void *GetMapped(uint32_t frameIndex);
     VkBuffer GetStaging(uint32_t frameIndex);
     VkBuffer GetDeviceLocal();
+
+    VkDeviceSize GetSize() const;
 
 private:
     VkDevice device;

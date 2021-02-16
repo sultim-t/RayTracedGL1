@@ -260,7 +260,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
 
     // update uniform data
-    uniform->Upload(frameIndex);
+    uniform->Upload(cmd, frameIndex);
 
     if (sceneNotEmpty)
     {
