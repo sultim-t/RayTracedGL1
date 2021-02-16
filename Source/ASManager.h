@@ -27,6 +27,7 @@
 #include "TextureManager.h"
 #include "VertexBufferProperties.h"
 #include "VertexCollector.h"
+#include "ASComponent.h"
 
 namespace RTGL1
 {
@@ -71,38 +72,20 @@ public:
     VkDescriptorSetLayout GetTLASDescSetLayout() const;
 
 private:
-    struct AccelerationStructure
-    {
-        AccelerationStructure() {}
-        AccelerationStructure(VertexCollectorFilterTypeFlags _filter) : filter(_filter) {}
-
-        VkAccelerationStructureKHR as = VK_NULL_HANDLE;
-        Buffer buffer = {};
-        // Used only for BLAS
-        VertexCollectorFilterTypeFlags filter = 0;
-        bool isEmpty = true;
-    };
-
-private:
     void CreateDescriptors();
     void UpdateBufferDescriptors(uint32_t frameIndex);
     void UpdateASDescriptors(uint32_t frameIndex);
 
     void SetupBLAS(
-        AccelerationStructure &as,
+        BLASComponent &as,
         const std::shared_ptr<VertexCollector> &vertCollector);
 
     void UpdateBLAS(
-        AccelerationStructure &as,
+        BLASComponent &as,
         const std::shared_ptr<VertexCollector> &vertCollector);
 
-    void CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, const char *debugName = nullptr);
-    void DestroyAS(AccelerationStructure &as);
-    VkDeviceAddress GetASAddress(const AccelerationStructure &as);
-    VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as);
-
-    bool SetupTLASInstance(
-        const AccelerationStructure &as,
+    bool SetupTLASInstanceFromBLAS(
+        const BLASComponent &as,
         VkAccelerationStructureInstanceKHR &instance);
 
     static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);
@@ -124,12 +107,12 @@ private:
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<TextureManager> textureMgr;
 
-    std::vector<AccelerationStructure> allStaticBlas;
-    std::vector<AccelerationStructure> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];
+    std::vector<std::unique_ptr<BLASComponent>> allStaticBlas;
+    std::vector<std::unique_ptr<BLASComponent>> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];
 
     // top level AS
     Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];
-    AccelerationStructure tlas[MAX_FRAMES_IN_FLIGHT];
+    std::unique_ptr<TLASComponent> tlas[MAX_FRAMES_IN_FLIGHT];
 
     // TLAS and buffer descriptors
     VkDescriptorPool descPool;

@@ -28,12 +28,12 @@
 using namespace RTGL1;
 
 ASManager::ASManager(
-    VkDevice _device, 
+    VkDevice _device,
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<CommandBufferManager> _cmdManager,
     std::shared_ptr<TextureManager> _textureMgr,
     const VertexBufferProperties &_properties)
-:
+    :
     device(_device),
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
@@ -51,14 +51,19 @@ ASManager::ASManager(
         {
             for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
             {
-                allDynamicBlas[i].emplace_back(filter);
+                allDynamicBlas[i].emplace_back(std::make_unique<BLASComponent>(device, filter));
             }
         }
         else
         {
-            allStaticBlas.emplace_back(filter);
+            allStaticBlas.emplace_back(std::make_unique<BLASComponent>(device, filter));
         }
     });
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        tlas[i] = std::make_unique<TLASComponent>(device);
+    }
 
 
     scratchBuffer = std::make_shared<ScratchBuffer>(allocator);
@@ -330,10 +335,13 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 
 void ASManager::UpdateASDescriptors(uint32_t frameIndex)
 {
+    VkAccelerationStructureKHR as = tlas[frameIndex]->GetAS();
+    assert(as != VK_NULL_HANDLE);
+
     VkWriteDescriptorSetAccelerationStructureKHR asWrt = {};
     asWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
     asWrt.accelerationStructureCount = 1;
-    asWrt.pAccelerationStructures = &tlas[frameIndex].as;
+    asWrt.pAccelerationStructures = &as;
 
     VkWriteDescriptorSet wrt = {};
     wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -353,17 +361,17 @@ ASManager::~ASManager()
 {
     for (auto &as : allStaticBlas)
     {
-        DestroyAS(as);
+        as->Destroy();
     }
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         for (auto &as : allDynamicBlas[i])
         {
-            DestroyAS(as);
+            as->Destroy();
         }
 
-        DestroyAS(tlas[i]);
+        tlas[i]->Destroy();
     }
 
     vkDestroyDescriptorPool(device, descPool, nullptr);
@@ -372,15 +380,14 @@ ASManager::~ASManager()
     vkDestroyFence(device, staticCopyFence, nullptr);
 }
 
-void ASManager::SetupBLAS(AccelerationStructure &as,
-                          const std::shared_ptr<VertexCollector> &vertCollector)
+void ASManager::SetupBLAS(BLASComponent &blas, const std::shared_ptr<VertexCollector> &vertCollector)
 {
-    auto filter = as.filter;
+    auto filter = blas.GetFilter();
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
 
-    as.isEmpty = geoms.empty();
+    blas.RegisterGeometries(geoms);
 
-    if (as.isEmpty)
+    if (blas.IsEmpty())
     {
         return;
     }
@@ -392,47 +399,28 @@ void ASManager::SetupBLAS(AccelerationStructure &as,
     const bool update = false;
 
     // get AS size and create buffer for AS
-    const auto buildSizes = asBuilder->GetBottomBuildSizes(
-        geoms.size(), geoms.data(), primCounts.data(), fastTrace);
+    const auto buildSizes = asBuilder->GetBottomBuildSizes(geoms.size(), geoms.data(), primCounts.data(), fastTrace);
 
     // if no buffer, or it was created, but its size is too small for current AS
-    if (!as.buffer.IsInitted() || as.buffer.GetSize() < buildSizes.accelerationStructureSize)
-    {
-        // destroy
-        DestroyAS(as);
-        as.isEmpty = false;
+    blas.RecreateIfNotValid(buildSizes, allocator);
 
-        // create
-        CreateASBuffer(as, buildSizes.accelerationStructureSize, "BLAS buffer");
-
-        VkAccelerationStructureCreateInfoKHR blasInfo = {};
-        blasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-        blasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-        blasInfo.size = buildSizes.accelerationStructureSize;
-        blasInfo.buffer = as.buffer.GetBuffer();
-        VkResult r = svkCreateAccelerationStructureKHR(device, &blasInfo, nullptr, &as.as);
-        VK_CHECKERROR(r);
-
-        const char *debugName = VertexCollectorFilterTypeFlags_GetNameForBLAS(filter);
-        SET_DEBUG_NAME(device, as.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
-    }
+    assert(blas.GetAS() != VK_NULL_HANDLE);
 
     // add BLAS, all passed arrays must be alive until BuildBottomLevel() call
-    asBuilder->AddBLAS(as.as, geoms.size(),
+    asBuilder->AddBLAS(blas.GetAS(), geoms.size(),
                        geoms.data(), ranges.data(),
                        buildSizes,
                        fastTrace, update);
 }
 
-void ASManager::UpdateBLAS(AccelerationStructure &as, 
-                                 const std::shared_ptr<VertexCollector> &vertCollector)
+void ASManager::UpdateBLAS(BLASComponent &blas, const std::shared_ptr<VertexCollector> &vertCollector)
 {
-    auto filter = as.filter;
+    auto filter = blas.GetFilter();
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
 
-    as.isEmpty = geoms.empty();
+    blas.RegisterGeometries(geoms);
 
-    if (as.isEmpty)
+    if (blas.IsEmpty())
     {
         return;
     }
@@ -448,10 +436,11 @@ void ASManager::UpdateBLAS(AccelerationStructure &as,
     const auto buildSizes = asBuilder->GetBottomBuildSizes(
         geoms.size(), geoms.data(), primCounts.data(), fastTrace);
 
-    assert(as.buffer.IsInitted() && as.buffer.GetSize() >= buildSizes.accelerationStructureSize);
+    assert(blas.IsValid(buildSizes));
+    assert(blas.GetAS() != VK_NULL_HANDLE);
 
     // add BLAS, all passed arrays must be alive until BuildBottomLevel() call
-    asBuilder->AddBLAS(as.as, geoms.size(),
+    asBuilder->AddBLAS(blas.GetAS(), geoms.size(),
                        geoms.data(), ranges.data(),
                        buildSizes,
                        fastTrace, update);
@@ -518,12 +507,12 @@ void ASManager::SubmitStaticGeometry()
     // destroy previous static
     for (auto &staticBlas : allStaticBlas)
     {
-        assert(!(staticBlas.filter & FT::CF_DYNAMIC));
+        assert(!(staticBlas->GetFilter() & FT::CF_DYNAMIC));
 
         // if flags have any of static bits
-        if (staticBlas.filter & staticFlags)
+        if (staticBlas->GetFilter() & staticFlags)
         {
-            DestroyAS(staticBlas);
+            staticBlas->Destroy();
         }
     }
 
@@ -544,9 +533,9 @@ void ASManager::SubmitStaticGeometry()
     for (auto &staticBlas : allStaticBlas)
     {
         // if flags have any of static bits
-        if (staticBlas.filter & staticFlags)
+        if (staticBlas->GetFilter() & staticFlags)
         {
-            SetupBLAS(staticBlas, collectorStatic);
+            SetupBLAS(*staticBlas, collectorStatic);
         }
     }
     
@@ -585,9 +574,9 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     for (auto &dynamicBlas : allDynamicBlas[frameIndex])
     {
         // must be dynamic
-        assert(dynamicBlas.filter & FT::CF_DYNAMIC);
+        assert(dynamicBlas->GetFilter() & FT::CF_DYNAMIC);
 
-        SetupBLAS(dynamicBlas, colDyn);
+        SetupBLAS(*dynamicBlas, colDyn);
     }
 
     // build BLAS
@@ -613,14 +602,14 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     // update movable blas
     for (auto &blas : allStaticBlas)
     {
-        assert(!(blas.filter & FT::CF_DYNAMIC));
+        assert(!(blas->GetFilter() & FT::CF_DYNAMIC));
 
         // if flags have any of static bits
-        if (blas.filter & FT::CF_STATIC_MOVABLE)
+        if (blas->GetFilter() & FT::CF_STATIC_MOVABLE)
         {
             auto &movableBlas = blas;
 
-            UpdateBLAS(blas, collectorStatic);
+            UpdateBLAS(*blas, collectorStatic);
         }
     }
 
@@ -630,18 +619,18 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-bool ASManager::SetupTLASInstance(const AccelerationStructure &as, VkAccelerationStructureInstanceKHR &instance)
+bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerationStructureInstanceKHR &instance)
 {
-    if (as.as == VK_NULL_HANDLE || as.isEmpty)
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    if (blas.GetAS() == VK_NULL_HANDLE || blas.IsEmpty())
     {
         return false;
     }
 
-    typedef VertexCollectorFilterTypeFlagBits FT;
+    auto filter = blas.GetFilter();
 
-    auto filter = as.filter;
-
-    instance.accelerationStructureReference = GetASAddress(as);
+    instance.accelerationStructureReference = blas.GetASAddress();
 
     instance.transform = 
     {
@@ -724,13 +713,13 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     for (auto &blas : allStaticBlas)
     {
-        assert(!(blas.filter & FT::CF_DYNAMIC));
+        assert(!(blas->GetFilter() & FT::CF_DYNAMIC));
 
-        bool isAdded = SetupTLASInstance(blas, instances[instanceCount]);
+        bool isAdded = SetupTLASInstanceFromBLAS(*blas, instances[instanceCount]);
 
         if (isAdded)
         {
-            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlags_ToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlags_ToOffset(blas->GetFilter()) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
             instanceCount++;
             assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);
@@ -739,13 +728,13 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     for (auto &blas : allDynamicBlas[frameIndex])
     {
-        assert(blas.filter & FT::CF_DYNAMIC);
+        assert(blas->GetFilter() & FT::CF_DYNAMIC);
 
-        bool isAdded = SetupTLASInstance(blas, instances[instanceCount]);
+        bool isAdded = SetupTLASInstanceFromBLAS(*blas, instances[instanceCount]);
 
         if (isAdded)
         {
-            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlags_ToOffset(blas.filter) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+            instanceGeomInfoOffset[instanceCount * 4] = VertexCollectorFilterTypeFlags_ToOffset(blas->GetFilter()) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
             instanceCount++;
             assert(instanceCount < MAX_TOP_LEVEL_INSTANCE_COUNT);
@@ -783,72 +772,21 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
     const auto buildSizes = asBuilder->GetTopBuildSizes(&instGeom, &instanceCount, false);
 
     // if previous buffer's size is not enough
-    if (curTlas.buffer.GetSize() < buildSizes.accelerationStructureSize)
-    {
-        // destroy
-        DestroyAS(curTlas);
-
-        // create
-        CreateASBuffer(curTlas, buildSizes.accelerationStructureSize, "TLAS buffer");
-
-        VkAccelerationStructureCreateInfoKHR tlasInfo = {};
-        tlasInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR;
-        tlasInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR;
-        tlasInfo.size = buildSizes.accelerationStructureSize;
-        tlasInfo.buffer = curTlas.buffer.GetBuffer();
-        VkResult r = svkCreateAccelerationStructureKHR(device, &tlasInfo, nullptr, &curTlas.as);
-        VK_CHECKERROR(r);
-
-        SET_DEBUG_NAME(device, curTlas.as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, "TLAS");
-    }
+    curTlas->RecreateIfNotValid(buildSizes, allocator);
 
     assert(asBuilder->IsEmpty());
 
     VkAccelerationStructureBuildRangeInfoKHR range = {};
     range.primitiveCount = instanceCount;
 
-    asBuilder->AddTLAS(curTlas.as, &instGeom, &range, buildSizes, true, false);
+    assert(curTlas->GetAS() != VK_NULL_HANDLE);
+
+    asBuilder->AddTLAS(curTlas->GetAS(), &instGeom, &range, buildSizes, true, false);
     asBuilder->BuildTopLevel(cmd);
 
     UpdateASDescriptors(frameIndex);
 
     return true;
-}
-
-void ASManager::CreateASBuffer(AccelerationStructure &as, VkDeviceSize size, const char *debugName)
-{
-    as.buffer.Init(
-        allocator, size,
-        VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        debugName
-    );
-}
-
-void ASManager::DestroyAS(AccelerationStructure &as)
-{
-    as.isEmpty = true;
-    as.buffer.Destroy();
-
-    if (as.as != VK_NULL_HANDLE)
-    {
-        svkDestroyAccelerationStructureKHR(device, as.as, nullptr);
-        as.as = VK_NULL_HANDLE;
-    }
-}
-
-VkDeviceAddress ASManager::GetASAddress(const AccelerationStructure& as)
-{
-    return GetASAddress(as.as);
-}
-
-VkDeviceAddress ASManager::GetASAddress(VkAccelerationStructureKHR as)
-{
-    VkAccelerationStructureDeviceAddressInfoKHR addressInfo = {};
-    addressInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR;
-    addressInfo.accelerationStructure = as;
-
-    return svkGetAccelerationStructureDeviceAddressKHR(device, &addressInfo);
 }
 
 bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
@@ -868,7 +806,7 @@ VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const
 VkDescriptorSet ASManager::GetTLASDescSet(uint32_t frameIndex) const
 {
     // if TLAS wasn't built, return null
-    if (tlas[frameIndex].as == VK_NULL_HANDLE)
+    if (tlas[frameIndex]->GetAS() == VK_NULL_HANDLE)
     {
         return VK_NULL_HANDLE;
     }

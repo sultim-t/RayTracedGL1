@@ -57,6 +57,7 @@ set(PrivateHeaders
     "Source/Tonemapping.h"
     "Source/LightManager.h"
     "Source/AutoBuffer.h"
+    "Source/ASComponent.h"
 )
 
 set(Sources
@@ -100,6 +101,7 @@ set(Sources
     "Source/Tonemapping.cpp"
     "Source/LightManager.cpp"
     "Source/AutoBuffer.cpp"
+    "Source/ASComponent.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  
