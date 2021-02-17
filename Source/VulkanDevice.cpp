@@ -248,6 +248,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
 
     gu->lightSourceCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
     gu->lightSourceCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
+
+    memcpy(gu->skyColorDefault, frameInfo->skyColor.data, sizeof(float) * 3);
+    gu->skyColorMultiplier = frameInfo->skyColorMultiplier;
+
+    gu->skyType =
+        frameInfo->skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
+        frameInfo->skyType == RG_SKY_TYPE_GEOMETRY ? SKY_TYPE_TLAS : 
+        SKY_TYPE_COLOR;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)

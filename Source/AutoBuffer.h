@@ -46,11 +46,13 @@ public:
     void Create(VkDeviceSize size, VkBufferUsageFlags usage);
     void Destroy();
 
-    void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, VkDeviceSize size, VkDeviceSize offset = 0);
+    void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
 
-    void *GetMapped(uint32_t frameIndex);
     VkBuffer GetStaging(uint32_t frameIndex);
+    void *GetMapped(uint32_t frameIndex);
+
     VkBuffer GetDeviceLocal();
+    VkDeviceAddress GetDeviceAddress();
 
     VkDeviceSize GetSize() const;
 

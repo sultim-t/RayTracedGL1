@@ -79,7 +79,7 @@ public:
     // GetBuildSizes(..) for TLAS
     VkAccelerationStructureBuildSizesInfoKHR GetTopBuildSizes(
         const VkAccelerationStructureGeometryKHR *pGeometry,
-        const uint32_t *pMaxPrimitiveCount, bool fastTrace) const;
+        uint32_t maxPrimitiveCount, bool fastTrace) const;
 
     bool IsEmpty() const;
 

@@ -265,6 +265,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgGeometryUploadInfo dnInfo = cubeInfo;
     dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+    dnInfo.visibilityType = RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX;
     cubeInfo.layerColors[0] = { 1.0f, 0.0f, 0.0f, 0.0f };
 
 

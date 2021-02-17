@@ -32,7 +32,7 @@ namespace RTGL1
 struct ASComponent
 {
 protected:
-    explicit ASComponent(VkDevice device);
+    explicit ASComponent(VkDevice device, const char *debugName);
 
 public:
     virtual ~ASComponent() = 0;
@@ -61,8 +61,7 @@ protected:
 private:
     void CreateBuffer(
         const std::shared_ptr<MemoryAllocator> &allocator,
-        VkDeviceSize size,
-        const char *debugName = nullptr);
+        VkDeviceSize size);
 
     VkDeviceAddress GetASAddress(VkAccelerationStructureKHR as) const;
 
@@ -73,6 +72,7 @@ protected:
     VkAccelerationStructureKHR as;
 
     bool isEmpty;
+    const char *debugName;
 };
 
 
@@ -94,7 +94,7 @@ private:
 struct TLASComponent : public ASComponent
 {
 public:
-    explicit TLASComponent(VkDevice device);
+    explicit TLASComponent(VkDevice device, const char *debugName = nullptr);
 
 protected:
     void CreateAS(VkDeviceSize size) override;

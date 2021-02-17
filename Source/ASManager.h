@@ -111,7 +111,7 @@ private:
     std::vector<std::unique_ptr<BLASComponent>> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];
 
     // top level AS
-    Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];
+    std::unique_ptr<AutoBuffer> instanceBuffer;
     std::unique_ptr<TLASComponent> tlas[MAX_FRAMES_IN_FLIGHT];
 
     std::unique_ptr<TLASComponent> skyboxTlas[MAX_FRAMES_IN_FLIGHT];

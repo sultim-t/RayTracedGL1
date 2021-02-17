@@ -20,23 +20,24 @@
 
 #include "ASComponent.h"
 
-RTGL1::ASComponent::ASComponent(VkDevice _device)
+RTGL1::ASComponent::ASComponent(VkDevice _device, const char *_debugName)
 :
     device(_device),
     as(VK_NULL_HANDLE),
     buffer{},
-    isEmpty(true)
+    isEmpty(true),
+    debugName(_debugName)
 {}
 
 RTGL1::BLASComponent::BLASComponent(VkDevice _device, VertexCollectorFilterTypeFlags _filter)
 :
-    ASComponent(_device),
+    ASComponent(_device, VertexCollectorFilterTypeFlags_GetNameForBLAS(filter)),
     filter(_filter)
 {}
 
-RTGL1::TLASComponent::TLASComponent(VkDevice _device)
+RTGL1::TLASComponent::TLASComponent(VkDevice _device, const char *_debugName)
 : 
-    ASComponent(_device)
+    ASComponent(_device, _debugName)
 {}
 
 RTGL1::ASComponent::~ASComponent()
@@ -44,7 +45,7 @@ RTGL1::ASComponent::~ASComponent()
     Destroy();
 }
 
-void RTGL1::ASComponent::CreateBuffer(const std::shared_ptr<MemoryAllocator> &allocator, VkDeviceSize size, const char *debugName)
+void RTGL1::ASComponent::CreateBuffer(const std::shared_ptr<MemoryAllocator> &allocator, VkDeviceSize size)
 {
     assert(!buffer.IsInitted());
 
@@ -52,7 +53,7 @@ void RTGL1::ASComponent::CreateBuffer(const std::shared_ptr<MemoryAllocator> &al
         allocator, size,
         VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        debugName
+        GetBufferDebugName()
     );
 }
 
@@ -83,7 +84,7 @@ void RTGL1::ASComponent::RecreateIfNotValid(const VkAccelerationStructureBuildSi
         Destroy();
 
         // create
-        CreateBuffer(allocator, buildSizes.accelerationStructureSize, GetBufferDebugName());
+        CreateBuffer(allocator, buildSizes.accelerationStructureSize);
         CreateAS(buildSizes.accelerationStructureSize);
 
         isEmpty = false;
@@ -103,7 +104,6 @@ void RTGL1::BLASComponent::CreateAS(VkDeviceSize size)
     VkResult r = svkCreateAccelerationStructureKHR(device, &info, nullptr, &as);
     VK_CHECKERROR(r);
 
-    const char *debugName = VertexCollectorFilterTypeFlags_GetNameForBLAS(filter);
     SET_DEBUG_NAME(device, as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
 }
 
@@ -120,7 +120,7 @@ void RTGL1::TLASComponent::CreateAS(VkDeviceSize size)
     VkResult r = svkCreateAccelerationStructureKHR(device, &tlasInfo, nullptr, &as);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, "TLAS");
+    SET_DEBUG_NAME(device, as, VK_DEBUG_REPORT_OBJECT_TYPE_ACCELERATION_STRUCTURE_KHR_EXT, debugName);
 }
 
 bool RTGL1::ASComponent::IsValid(const VkAccelerationStructureBuildSizesInfoKHR &buildSizes) const

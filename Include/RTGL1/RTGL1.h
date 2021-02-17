@@ -490,14 +490,17 @@ typedef enum RgDrawFrameFlagBits
     RG_DRAW_FRAME_FORCE_METALLICITY_ONE     = 1 << 5,
     RG_DRAW_FRAME_FORCE_METALLICITY_ZERO    = 1 << 6,
 
-    RG_DRAW_FRAME_FORCE_ROUGHNESS_MASK = 
-        RG_DRAW_FRAME_FORCE_ROUGHNESS_ONE | 
-        RG_DRAW_FRAME_FORCE_ROUGHNESS_ZERO,
-    RG_DRAW_FRAME_FORCE_METALLICITY_MASK = 
-        RG_DRAW_FRAME_FORCE_METALLICITY_ONE | 
-        RG_DRAW_FRAME_FORCE_METALLICITY_ZERO,
+    RG_DRAW_FRAME_FORCE_ROUGHNESS_MASK = RG_DRAW_FRAME_FORCE_ROUGHNESS_ONE | RG_DRAW_FRAME_FORCE_ROUGHNESS_ZERO,
+    RG_DRAW_FRAME_FORCE_METALLICITY_MASK = RG_DRAW_FRAME_FORCE_METALLICITY_ONE | RG_DRAW_FRAME_FORCE_METALLICITY_ZERO,
 } RgDrawFrameFlagBits;
 typedef RgFlags RgDrawFrameFlags;
+
+typedef enum RgSkyType
+{
+    RG_SKY_TYPE_COLOR,
+    RG_SKY_TYPE_CUBEMAP,
+    RG_SKY_TYPE_GEOMETRY
+} RgSkyType;
 
 typedef struct RgDrawFrameInfo
 {
@@ -515,6 +518,10 @@ typedef struct RgDrawFrameInfo
     float               minLogLuminance;
     float               maxLogLuminance;
     float               luminanceWhitePoint;
+    RgFloat3            skyColor;
+    float               skyColorMultiplier;
+    RgSkyType           skyType;
+    
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

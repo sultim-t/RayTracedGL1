@@ -64,8 +64,8 @@ ASManager::ASManager(
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        tlas[i] = std::make_unique<TLASComponent>(device);
-        skyboxTlas[i] = std::make_unique<TLASComponent>(device);
+        tlas[i] = std::make_unique<TLASComponent>(device, "TLAS main");
+        skyboxTlas[i] = std::make_unique<TLASComponent>(device, "TLAS skybox");
     }
 
 
@@ -103,16 +103,11 @@ ASManager::ASManager(
 
 
     // instance buffer for TLAS
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        // multiplying by 2 for main/skybox
-        instanceBuffers[i].Init(
-            allocator,
-            2 * MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR),
-            VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            "TLAS instance buffer");
-    }
+    instanceBuffer = std::make_unique<AutoBuffer>(device, allocator, "TLAS instance buffer staging", "TLAS instance buffer");
+
+    // multiplying by 2 for main/skybox
+    VkDeviceSize instanceBufferSize = 2 * MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR);
+    instanceBuffer->Create(instanceBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
 
     CreateDescriptors();
@@ -732,8 +727,11 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
     return true;
 }
 
-static void WriteInstanceGeomInfoOffset(int32_t *instanceGeomInfoOffset, uint32_t *index, uint32_t *skyboxIndex, VertexCollectorFilterTypeFlags flags)
+static void WriteInstanceGeomInfoOffset(int32_t *instanceGeomInfoOffset, uint32_t index, uint32_t skyboxIndex, VertexCollectorFilterTypeFlags flags)
 {
+    assert(index < MAX_TOP_LEVEL_INSTANCE_COUNT);
+    assert(skyboxIndex < MAX_TOP_LEVEL_INSTANCE_COUNT);
+
     uint32_t arrayOffset = VertexCollectorFilterTypeFlags_ToOffset(flags) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
     bool isSkybox = flags & VertexCollectorFilterTypeFlagBits::PV_SKYBOX;
@@ -741,20 +739,13 @@ static void WriteInstanceGeomInfoOffset(int32_t *instanceGeomInfoOffset, uint32_
     if (!isSkybox)
     {
         // mulitplying by 4 for ivec4
-        instanceGeomInfoOffset[4 * (*index)] = arrayOffset;
-
-        (*index)++;
+        instanceGeomInfoOffset[4 * index] = arrayOffset;
     }
     else
     {
         uint32_t skyboxStartIndex = MAX_TOP_LEVEL_INSTANCE_COUNT;
-        instanceGeomInfoOffset[4 * (skyboxStartIndex + (*skyboxIndex))] = arrayOffset;
-
-        (*skyboxIndex)++;
+        instanceGeomInfoOffset[4 * (skyboxStartIndex + skyboxIndex)] = arrayOffset;
     }
-
-    assert((*index) < MAX_TOP_LEVEL_INSTANCE_COUNT);
-    assert((*skyboxIndex) < MAX_TOP_LEVEL_INSTANCE_COUNT);
 }
 
 bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
@@ -771,40 +762,39 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
     // for getting offsets in geomInfos buffer by instance ID in shaders,
     // this array will be copied to uniform buffer
     // note: std140 requires elements to be aligned by sizeof(vec4)
-    int32_t instanceGeomInfoOffset[MAX_TOP_LEVEL_INSTANCE_COUNT * 4];
+    int32_t instanceGeomInfoOffset[sizeof(ShGlobalUniform::instanceGeomInfoOffset) / sizeof(int32_t)];
 
-
-    for (auto &blas : allStaticBlas)
+    std::vector<std::unique_ptr<BLASComponent>> *blasArrays[] =
     {
-        assert(!(blas->GetFilter() & FT::CF_DYNAMIC));
+        &allStaticBlas,
+        &allDynamicBlas[frameIndex],
+    };
 
-        // add to appropriate TLAS instances array
-        auto &i = blas->GetFilter() & FT::PV_SKYBOX ?
-            skyboxInstances[skyboxInstanceCount] :
-            instances[instanceCount];
-
-        bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, i);
-
-        if (isAdded)
-        {
-            WriteInstanceGeomInfoOffset(instanceGeomInfoOffset, &instanceCount, &skyboxInstanceCount, blas->GetFilter());
-        }
-    }
-
-    for (auto &blas : allDynamicBlas[frameIndex])
+    for (auto *blasArr : blasArrays)
     {
-        assert(blas->GetFilter() & FT::CF_DYNAMIC);
-
-        // add to appropriate TLAS instances array
-        auto &i = blas->GetFilter() & FT::PV_SKYBOX ?
-            skyboxInstances[skyboxInstanceCount] :
-            instances[instanceCount];
-
-        bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, i);
-
-        if (isAdded)
+        for (auto &blas : *blasArr)
         {
-            WriteInstanceGeomInfoOffset(instanceGeomInfoOffset, &instanceCount, &skyboxInstanceCount, blas->GetFilter());
+            // add to appropriate TLAS instances array
+            if (blas->GetFilter() & FT::PV_SKYBOX)
+            {
+                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, skyboxInstances[skyboxInstanceCount]);
+
+                if (isAdded)
+                {
+                    WriteInstanceGeomInfoOffset(instanceGeomInfoOffset, instanceCount, skyboxInstanceCount, blas->GetFilter());
+                    skyboxInstanceCount++;
+                }
+            }
+            else
+            {
+                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, instances[instanceCount]);
+
+                if (isAdded)
+                {
+                    WriteInstanceGeomInfoOffset(instanceGeomInfoOffset, instanceCount, skyboxInstanceCount, blas->GetFilter());
+                    instanceCount++;
+                }
+            }
         }
     }
 
@@ -817,15 +807,16 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
     // with instance ID and geometry index in shaders;
     // multiplying by 4 -- for ivec4
     // multiplying by 2 -- for main/skybox
-    memcpy(uniform->GetData()->instanceGeomInfoOffset, instanceGeomInfoOffset, sizeof(int32_t) * instanceCount * 2 * 4);
+    memcpy(uniform->GetData()->instanceGeomInfoOffset, instanceGeomInfoOffset, sizeof(instanceGeomInfoOffset));
 
 
     // fill buffer
-    auto *mapped = (VkAccelerationStructureInstanceKHR *)instanceBuffers[frameIndex].Map();
+    auto *mapped = (VkAccelerationStructureInstanceKHR*)instanceBuffer->GetMapped(frameIndex);
+
     memcpy(mapped, instances, instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
     memcpy(mapped + MAX_TOP_LEVEL_INSTANCE_COUNT, skyboxInstances, skyboxInstanceCount * sizeof(VkAccelerationStructureInstanceKHR));
 
-    instanceBuffers[frameIndex].Unmap();
+    instanceBuffer->CopyFromStaging(cmd, frameIndex);
 
 
     TLASComponent *allTLAS[] =
@@ -856,11 +847,11 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
         instData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
         instData.arrayOfPointers = VK_FALSE;
         instData.data.deviceAddress = 
-            instanceBuffers[frameIndex].GetAddress() 
+            instanceBuffer->GetDeviceAddress()
             + sizeof(VkAccelerationStructureInstanceKHR) * MAX_TOP_LEVEL_INSTANCE_COUNT * i;
 
         // get AS size and create buffer for AS
-        buildSizes[i] = asBuilder->GetTopBuildSizes(&instGeom, &instanceCounts[i], false);
+        buildSizes[i] = asBuilder->GetTopBuildSizes(&instGeom, instanceCounts[i], false);
 
         // if previous buffer's size is not enough
         allTLAS[i]->RecreateIfNotValid(buildSizes[i], allocator);
@@ -869,15 +860,15 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
     }
 
 
-    assert(asBuilder->IsEmpty());
-
     for (uint32_t i = 0; i < allTLASCount; i++)
     {
+        assert(asBuilder->IsEmpty());
+
         assert(allTLAS[i]->GetAS() != VK_NULL_HANDLE);
         asBuilder->AddTLAS(allTLAS[i]->GetAS(), &instGeoms[i], &ranges[i], buildSizes[i], true, false);
-    }
 
-    asBuilder->BuildTopLevel(cmd);
+        asBuilder->BuildTopLevel(cmd);
+    }
 
 
     UpdateASDescriptors(frameIndex);
