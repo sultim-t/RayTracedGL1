@@ -749,7 +749,7 @@ static void WriteInstanceGeomInfoOffset(int32_t *instanceGeomInfoOffset, uint32_
     }
 }
 
-bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
+bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool ignoreSkyboxTLAS)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -782,6 +782,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
                 if (isAdded)
                 {
+                    // if skybox TLAS is ignored, skybox geometry must not be previously added
+                    assert(!ignoreSkyboxTLAS);
+
                     WriteInstanceGeomInfoOffset(instanceGeomInfoOffset, instanceCount, skyboxInstanceCount, blas->GetFilter());
                     skyboxInstanceCount++;
                 }
@@ -834,7 +837,7 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
         instanceCount,
         skyboxInstanceCount
     };
-    
+
     for (uint32_t i = 0; i < allTLASCount; i++)
     {
         VkAccelerationStructureGeometryKHR &instGeom = instGeoms[i];
@@ -858,8 +861,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
         ranges[i].primitiveCount = instanceCounts[i];
     }
 
+    uint32_t tlasToBuild = ignoreSkyboxTLAS ? 1 : allTLASCount;
 
-    for (uint32_t i = 0; i < allTLASCount; i++)
+    for (uint32_t i = 0; i < tlasToBuild; i++)
     {
         assert(asBuilder->IsEmpty());
 

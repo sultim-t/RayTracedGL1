@@ -24,12 +24,14 @@ using namespace RTGL1;
 
 Scene::Scene(
     std::shared_ptr<ASManager> _asManager,
-    std::shared_ptr<LightManager> _lightManager)
+    std::shared_ptr<LightManager> _lightManager,
+    bool _disableGeometrySkybox)
 :
     toResubmitMovable(false),
     isRecordingStatic(false),
     asManager(std::move(_asManager)),
-    lightManager(std::move(_lightManager))
+    lightManager(std::move(_lightManager)),
+    disableGeometrySkybox(_disableGeometrySkybox)
 {}
 
 Scene::~Scene()
@@ -57,11 +59,16 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
 
     // try to build top level
-    return asManager->TryBuildTLAS(cmd, frameIndex, uniform);
+    return asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox);
 }
 
 uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
 {
+    if (disableGeometrySkybox && uploadInfo.visibilityType == RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX)
+    {
+        return UINT32_MAX;
+    }
+
     if (uploadInfo.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
         return asManager->AddDynamicGeometry(uploadInfo, frameIndex);

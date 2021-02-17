@@ -39,7 +39,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     debugMessenger(VK_NULL_HANDLE),
     debugPrint(info->pfnDebugPrint),
     previousFrameTime(-1.0 / 60.0),
-    currentFrameTime(0)
+    currentFrameTime(0),
+    disableGeometrySkybox(info->disableGeometrySkybox)
 {
     vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
     vbProperties.positionStride = info->vertexPositionStride;
@@ -110,7 +111,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     
     auto lightManager   = std::make_shared<LightManager>(device, memAllocator);
 
-    scene               = std::make_shared<Scene>(asManager, lightManager);
+    scene               = std::make_shared<Scene>(asManager, lightManager, disableGeometrySkybox);
 
     shaderManager       = std::make_shared<ShaderManager>(device);
    
@@ -209,33 +210,33 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     return cmdManager->StartGraphicsCmd();
 }
 
-void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo) const
+void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frameInfo) const
 {
     memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
     memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
 
-    memcpy(gu->view, frameInfo->view, 16 * sizeof(float));
-    memcpy(gu->projection, frameInfo->projection, 16 * sizeof(float));
+    memcpy(gu->view, frameInfo.view, 16 * sizeof(float));
+    memcpy(gu->projection, frameInfo.projection, 16 * sizeof(float));
 
-    Matrix::Inverse(gu->invView, frameInfo->view);
-    Matrix::Inverse(gu->invProjection, frameInfo->projection);
+    Matrix::Inverse(gu->invView, frameInfo.view);
+    Matrix::Inverse(gu->invProjection, frameInfo.projection);
 
     // to remove additional division by 4 bytes in shaders
     gu->positionsStride = vbProperties.positionStride / 4;
     gu->normalsStride = vbProperties.normalStride / 4;
     gu->texCoordsStride = vbProperties.texCoordStride / 4;
 
-    gu->renderWidth = frameInfo->renderWidth;
-    gu->renderHeight = frameInfo->renderHeight;
+    gu->renderWidth = frameInfo.renderWidth;
+    gu->renderHeight = frameInfo.renderHeight;
     gu->frameId = frameId;
 
     gu->timeDelta = std::max<double>(currentFrameTime - previousFrameTime, 0.001);
     
-    if (frameInfo->overrideTonemappingParams)
+    if (frameInfo.overrideTonemappingParams)
     {
-        gu->minLogLuminance = frameInfo->minLogLuminance;
-        gu->maxLogLuminance = frameInfo->maxLogLuminance;
-        gu->luminanceWhitePoint = frameInfo->luminanceWhitePoint;
+        gu->minLogLuminance = frameInfo.minLogLuminance;
+        gu->maxLogLuminance = frameInfo.maxLogLuminance;
+        gu->luminanceWhitePoint = frameInfo.luminanceWhitePoint;
     }
     else
     {
@@ -244,23 +245,28 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
         gu->luminanceWhitePoint = 1.5f;
     }
 
-    gu->stopEyeAdaptation = frameInfo->disableEyeAdaptation;
+    gu->stopEyeAdaptation = frameInfo.disableEyeAdaptation;
 
     gu->lightSourceCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
     gu->lightSourceCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
 
-    memcpy(gu->skyColorDefault, frameInfo->skyColorDefault.data, sizeof(float) * 3);
-    gu->skyColorMultiplier = frameInfo->skyColorMultiplier;
+    memcpy(gu->skyColorDefault, frameInfo.skyColorDefault.data, sizeof(float) * 3);
+    gu->skyColorMultiplier = frameInfo.skyColorMultiplier;
 
-    memcpy(gu->skyViewerPosition, frameInfo->skyViewerPosition.data, sizeof(float) * 3);
+    memcpy(gu->skyViewerPosition, frameInfo.skyViewerPosition.data, sizeof(float) * 3);
 
     gu->skyType =
-        frameInfo->skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
-        frameInfo->skyType == RG_SKY_TYPE_GEOMETRY ? SKY_TYPE_TLAS : 
+        frameInfo.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
+        frameInfo.skyType == RG_SKY_TYPE_GEOMETRY ? SKY_TYPE_TLAS : 
         SKY_TYPE_COLOR;
+
+    if (disableGeometrySkybox && gu->skyType == SKY_TYPE_TLAS)
+    {
+        gu->skyType == SKY_TYPE_COLOR;
+    }
 }
 
-void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight)
+void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
 {
     uint32_t frameIndex = currentFrameIndex;
 
@@ -275,7 +281,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     if (sceneNotEmpty)
     {
         pathTracer->Trace(
-            cmd, frameIndex, renderWidth, renderHeight,
+            cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
             scene, uniform, textureManager, framebuffers, blueNoise);
     }
 
@@ -290,7 +296,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t re
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL,
-        renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
+        frameInfo.renderWidth, frameInfo.renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer
     rasterizer->Draw(cmd, frameIndex);
@@ -339,9 +345,12 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
     previousFrameTime = currentFrameTime;
     currentFrameTime = frameInfo->currentTime;
 
-    FillUniform(uniform->GetData(), frameInfo);
+    if (frameInfo->renderWidth > 0 && frameInfo->renderHeight > 0)
+    {
+        FillUniform(uniform->GetData(), *frameInfo);
+        Render(currentFrameCmd, *frameInfo);
+    }
 
-    Render(currentFrameCmd, frameInfo->renderWidth, frameInfo->renderHeight);
     EndFrame(currentFrameCmd);
 
     currentFrameCmd = VK_NULL_HANDLE;

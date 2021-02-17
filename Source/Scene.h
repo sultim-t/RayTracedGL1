@@ -31,7 +31,8 @@ class Scene
 public:
     explicit Scene(
         std::shared_ptr<ASManager> asManager,
-        std::shared_ptr<LightManager> lightManager);
+        std::shared_ptr<LightManager> lightManager,
+        bool disableGeometrySkybox);
     ~Scene();
 
     Scene(const Scene& other) = delete;
@@ -63,6 +64,8 @@ private:
     bool toResubmitMovable;
 
     bool isRecordingStatic;
+
+    bool disableGeometrySkybox;
 };
 
 }

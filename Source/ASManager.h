@@ -64,7 +64,7 @@ public:
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 
-    bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
+    bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool ignoreSkyboxTLAS);
     VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const;
     VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const;
 

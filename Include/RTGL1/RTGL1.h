@@ -115,6 +115,10 @@ typedef struct RgInstanceCreateInfo
     // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
     RgBool32                    vertexArrayOfStructs;
 
+    // If true, acceleration structures related to skybox won't be built,
+    // sky type RG_SKY_TYPE_GEOMETRY will be reset to RG_SKY_TYPE_COLOR.
+    RgBool32                    disableGeometrySkybox;
+
 } RgInstanceCreateInfo;
 
 RgResult rgCreateInstance(

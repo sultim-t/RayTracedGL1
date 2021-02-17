@@ -87,10 +87,10 @@ private:
     void DestroyDevice();
     void DestroySyncPrimitives();
 
-    void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frameInfo) const;
+    void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frameInfo) const;
 
     VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
-    void Render(VkCommandBuffer cmd, uint32_t renderWidth, uint32_t renderHeight);
+    void Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo);
     void EndFrame(VkCommandBuffer cmd);
 
 private:
@@ -140,6 +140,8 @@ private:
 
     double                                  previousFrameTime;
     double                                  currentFrameTime;
+
+    bool                                    disableGeometrySkybox;
 };
 
 }
