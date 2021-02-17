@@ -357,6 +357,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
     
     (TYPE_FLOAT32,      4,      "skyColorDefault",              1),
+    
+    (TYPE_FLOAT32,      4,      "skyViewerPosition",            1),
 
     #(TYPE_FLOAT32,      3,      "skyColorDefault",              1),
     #(TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),

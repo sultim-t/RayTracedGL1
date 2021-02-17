@@ -249,8 +249,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo *frame
     gu->lightSourceCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
     gu->lightSourceCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
 
-    memcpy(gu->skyColorDefault, frameInfo->skyColor.data, sizeof(float) * 3);
+    memcpy(gu->skyColorDefault, frameInfo->skyColorDefault.data, sizeof(float) * 3);
     gu->skyColorMultiplier = frameInfo->skyColorMultiplier;
+
+    memcpy(gu->skyViewerPosition, frameInfo->skyViewerPosition.data, sizeof(float) * 3);
 
     gu->skyType =
         frameInfo->skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :

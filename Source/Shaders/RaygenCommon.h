@@ -133,19 +133,19 @@ ShPayload traceIndirectRay(uint primaryInstCustomIndex, vec3 surfPosition, vec3 
     return payload;
 }
 
-ShPayload traceSkyRay(vec3 direction)
+ShPayload traceSkyRay(vec3 origin, vec3 direction)
 {
     resetPayload();
 
     uint cullMask = INSTANCE_MASK_SKYBOX;
 
     traceRayEXT(
-        topLevelAS,
+        skyboxTopLevelAS,
         gl_RayFlagsNoneEXT, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
-        vec3(0.0), 0.001, direction, MAX_RAY_LENGTH, 
+        origin, 0.001, direction, MAX_RAY_LENGTH, 
         PAYLOAD_INDEX_DEFAULT); 
 
     return payload;
@@ -157,9 +157,12 @@ vec3 getSky(vec3 direction)
 
     if (skyType == SKY_TYPE_TLAS)
     {
-        ShPayload p = traceSkyRay(direction);
+        ShPayload p = traceSkyRay(globalUniform.skyViewerPosition.xyz, direction);
 
-        return getHitInfoAlbedoOnly(p) * globalUniform.skyColorMultiplier;
+        if (p.clsHitDistance > 0)
+        {
+            return getHitInfoAlbedoOnly(p) * globalUniform.skyColorMultiplier;
+        }
     }
     else if (skyType == SKY_TYPE_CUBEMAP)
     {
@@ -167,10 +170,8 @@ vec3 getSky(vec3 direction)
 
         return c * globalUniform.skyColorMultiplier;
     }
-    else
-    {
-        return vec3(globalUniform.skyColorDefault) * globalUniform.skyColorMultiplier;
-    }
+    
+    return vec3(globalUniform.skyColorDefault) * globalUniform.skyColorMultiplier;
 }
 
 

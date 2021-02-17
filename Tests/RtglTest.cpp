@@ -253,8 +253,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgGeometryUploadInfo stInfo = cubeInfo;
     stInfo.geomType = RG_GEOMETRY_TYPE_STATIC;
-    stInfo.transform =
-    {
+    stInfo.transform = {
         30, 0, 0, 0,
         0, 1, 0, -1,
         0, 0, 30, 0
@@ -266,7 +265,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     RgGeometryUploadInfo dnInfo = cubeInfo;
     dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
     dnInfo.visibilityType = RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX;
-    cubeInfo.layerColors[0] = { 1.0f, 0.0f, 0.0f, 0.0f };
+    dnInfo.layerColors[0] = { 1.0f, 0.0f, 0.0f, 0.0f };
 
 
     // texture info
@@ -353,14 +352,14 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         dnInfo.transform = {
             0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 30) % 200),
             0, 4, 0, 4,
-            0, 0, 0.3f, 0
+            0, 0, 0.3f, 4
         };
         rgUploadGeometry(instance, &dnInfo, nullptr);
 
         dnInfo.transform = {
             0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 60) % 200),
             0, 4, 0, 4,
-            0, 0, 0.3f, 0
+            0, 0, 0.3f, 4
         };
         rgUploadGeometry(instance, &dnInfo, nullptr);
 
@@ -391,6 +390,12 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         glm::mat4 view = glm::lookAt(CAMERA_POS, CAMERA_POS + CAMERA_DIR, CAMERA_UP);
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
+
+        frameInfo.skyColorDefault = { 0.71f, 0.88f, 1.0f };
+        frameInfo.skyType = RG_SKY_TYPE_GEOMETRY;
+        frameInfo.skyColorMultiplier = 1;
+
+        frameInfo.skyViewerPosition = { CAMERA_POS.x / 50, CAMERA_POS.y / 50, CAMERA_POS.z / 50 };
 
         r = rgDrawFrame(instance, &frameInfo);
         RG_CHECKERROR(r);

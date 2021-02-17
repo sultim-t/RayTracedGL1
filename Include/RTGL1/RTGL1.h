@@ -518,9 +518,13 @@ typedef struct RgDrawFrameInfo
     float               minLogLuminance;
     float               maxLogLuminance;
     float               luminanceWhitePoint;
-    RgFloat3            skyColor;
-    float               skyColorMultiplier;
     RgSkyType           skyType;
+    // Used as a main color for RG_SKY_TYPE_COLOR and ray-miss color for RG_SKY_TYPE_GEOMETRY.
+    RgFloat3            skyColorDefault;
+    // The result sky color is multiplied by this value.
+    float               skyColorMultiplier;
+    // A point from which rays are traced while using RG_SKY_TYPE_GEOMETRY.
+    RgFloat3            skyViewerPosition;
     
 } RgDrawFrameInfo;
 

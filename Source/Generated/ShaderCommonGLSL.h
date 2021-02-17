@@ -127,6 +127,7 @@ struct ShGlobalUniform
     float skyColorMultiplier;
     float _pad3;
     vec4 skyColorDefault;
+    vec4 skyViewerPosition;
     int instanceGeomInfoOffset[288];
 };
 
