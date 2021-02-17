@@ -181,12 +181,12 @@ CONST = {
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
     "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
    
-    "MAX_GEOMETRY_PRIMITIVE_COUNT_POW"      : 18,
-    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" : 14,
-    "MAX_GEOMETRY_PRIMITIVE_COUNT"          : "1 << MAX_GEOMETRY_PRIMITIVE_COUNT_POW",
-    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : "1 << MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW",
+    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : 1 << 13,
+    "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" : CONST_TO_EVALUATE,
+    "MAX_GEOMETRY_PRIMITIVE_COUNT"          : CONST_TO_EVALUATE,
+    "MAX_GEOMETRY_PRIMITIVE_COUNT_POW"      : CONST_TO_EVALUATE,
     
-    "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 32,
+    "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 36,
     
     "BINDING_VERTEX_BUFFER_STATIC"          : 0,
     "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,
@@ -195,7 +195,8 @@ CONST = {
     "BINDING_GEOMETRY_INSTANCES_STATIC"     : 4,
     "BINDING_GEOMETRY_INSTANCES_DYNAMIC"    : 5,
     "BINDING_GLOBAL_UNIFORM"                : 0,
-    "BINDING_ACCELERATION_STRUCTURE"        : 0,
+    "BINDING_ACCELERATION_STRUCTURE_MAIN"   : 0,
+    "BINDING_ACCELERATION_STRUCTURE_SKYBOX" : 1,
     "BINDING_TEXTURES"                      : 0,
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
@@ -205,13 +206,14 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
+    "INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX"                 : "1 << 3",
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_WORLD"                   : "1 << 0",
     "INSTANCE_MASK_FIRST_PERSON"            : "1 << 1",
     "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 2",
-    "INSTANCE_MASK_BLENDED"                 : "1 << 3",
-    "INSTANCE_MASK_EMPTY_4"                 : "1 << 4",
+    "INSTANCE_MASK_SKYBOX"                  : "1 << 3",
+    "INSTANCE_MASK_BLENDED"                 : "1 << 4",
     "INSTANCE_MASK_EMPTY_5"                 : "1 << 5",
     "INSTANCE_MASK_EMPTY_6"                 : "1 << 6",
     "INSTANCE_MASK_EMPTY_7"                 : "1 << 7",
@@ -242,6 +244,10 @@ CONST = {
     "MATERIAL_BLENDING_MASK_FIRST_LAYER"    : CONST_TO_EVALUATE,
     "MATERIAL_BLENDING_MASK_SECOND_LAYER"   : CONST_TO_EVALUATE,
     "MATERIAL_BLENDING_MASK_THIRD_LAYER"    : CONST_TO_EVALUATE,
+
+    "SKY_TYPE_COLOR"                        : 0,
+    "SKY_TYPE_CUBEMAP"                      : 1,
+    "SKY_TYPE_TLAS"                         : 2,
     
     "BLUE_NOISE_TEXTURE_COUNT"              : 64,
     "BLUE_NOISE_TEXTURE_SIZE"               : 64,
@@ -260,11 +266,20 @@ CONST_GLSL_ONLY = {
 }
 
 
+def align4(a):
+    return ((a + 3) >> 2) << 2
+
+
 def evalConst():
-    CONST["MATERIAL_BLENDING_MASK_FIRST_LAYER"]  = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 0)
-    CONST["MATERIAL_BLENDING_MASK_SECOND_LAYER"] = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 1)
-    CONST["MATERIAL_BLENDING_MASK_THIRD_LAYER"]  = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 2)
-    CONST["BLUE_NOISE_TEXTURE_SIZE_POW"] = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
+    CONST["MATERIAL_BLENDING_MASK_FIRST_LAYER"]     = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 0)
+    CONST["MATERIAL_BLENDING_MASK_SECOND_LAYER"]    = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 1)
+    CONST["MATERIAL_BLENDING_MASK_THIRD_LAYER"]     = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 2)
+
+    CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW"]  = int(log2(CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"]))
+    CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]       = 32 - CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW"]
+    CONST["MAX_GEOMETRY_PRIMITIVE_COUNT"]           = 1 << CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]
+    CONST["BLUE_NOISE_TEXTURE_SIZE_POW"]            = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
+
     assert len([None for _, v in CONST.items() if v == CONST_TO_EVALUATE]) == 0, "All CONST_TO_EVALUATE values must be calculated"
 
 
@@ -337,17 +352,24 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "lightSourceCountSpherical",    1),
     
     (TYPE_UINT32,       1,      "lightSourceCountDirectional",  1),
-    (TYPE_FLOAT32,      1,      "_pad1",                        1),
-    (TYPE_FLOAT32,      1,      "_pad2",                        1),
+    (TYPE_UINT32,       1,      "skyType",                      1),
+    (TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
     
+    (TYPE_FLOAT32,      4,      "skyColorDefault",              1),
+
+    #(TYPE_FLOAT32,      3,      "skyColorDefault",              1),
+    #(TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),
+   
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
     #(TYPE_FLOAT32,      1,      "_pad2",                        1),
     #(TYPE_FLOAT32,      1,      "_pad3",                        1),
 
     # for std140
-    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
+    # TODO: separate to 2 different main/skybox arrays (and remove multiplication by 2)
+    # TODO: array of MAX_TOP_LEVEL_INSTANCE_COUNT elements packed to an array of ivec4: align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4
+    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       2 * CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
 ]
 
 GEOM_INSTANCE_STRUCT = [
@@ -512,10 +534,6 @@ def getAllConstDefs(constDict):
         "#define %s (%s)" % (name, str(value))
         for name, value in constDict.items()
     ]) + "\n\n"
-
-
-def align4(a):
-    return ((a + 3) >> 2) << 2
 
 
 def getMemberSizeStd430(baseType, dim, count):

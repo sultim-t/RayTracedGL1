@@ -28,7 +28,8 @@
 #ifdef DESC_SET_TEXTURES
 #ifdef DESC_SET_RANDOM 
 #ifdef DESC_SET_LIGHT_SOURCES 
-layout(binding = BINDING_ACCELERATION_STRUCTURE, set = DESC_SET_TLAS) uniform accelerationStructureEXT topLevelAS;
+layout(binding = BINDING_ACCELERATION_STRUCTURE_MAIN, set = DESC_SET_TLAS) uniform accelerationStructureEXT topLevelAS;
+layout(binding = BINDING_ACCELERATION_STRUCTURE_SKYBOX, set = DESC_SET_TLAS) uniform accelerationStructureEXT skyboxTopLevelAS;
 
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
@@ -36,17 +37,6 @@ layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
 #ifdef RAYGEN_SHADOW_PAYLOAD
 layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
 #endif // RAYGEN_SHADOW_PAYLOAD
-
-
-void resetPayload()
-{
-    payload.color = vec4(0.0);
-    payload.baryCoords = vec2(0.0);
-    payload.instIdAndIndex = 0;
-    payload.geomAndPrimIndex = 0;
-    payload.clsHitDistance = -1;
-    payload.maxTransparDistance = -1;
-}
 
 
 uint getPrimaryVisibilityCullMask()
@@ -97,12 +87,101 @@ uint getIndirectIlluminationCullMask(uint primaryInstCustomIndex)
 }
 
 
+void resetPayload()
+{
+    payload.color = vec4(0.0);
+    payload.baryCoords = vec2(0.0);
+    payload.instIdAndIndex = 0;
+    payload.geomAndPrimIndex = 0;
+    payload.clsHitDistance = -1;
+    payload.maxTransparDistance = -1;
+}
+
+ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
+{
+    resetPayload();
+
+    uint cullMask = getPrimaryVisibilityCullMask();
+
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsNoneEXT, 
+        cullMask, 
+        0, 0,     // sbtRecordOffset, sbtRecordStride
+        SBT_INDEX_MISS_DEFAULT, 
+        origin, 0.001, direction, MAX_RAY_LENGTH, 
+        PAYLOAD_INDEX_DEFAULT);
+
+    return payload; 
+}
+
+ShPayload traceIndirectRay(uint primaryInstCustomIndex, vec3 surfPosition, vec3 bounceDirection)
+{
+    resetPayload();
+
+    uint cullMask = getIndirectIlluminationCullMask(primaryInstCustomIndex);
+
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsNoneEXT, 
+        cullMask, 
+        0, 0,     // sbtRecordOffset, sbtRecordStride
+        SBT_INDEX_MISS_DEFAULT, 
+        surfPosition, 0.001, bounceDirection, MAX_RAY_LENGTH, 
+        PAYLOAD_INDEX_DEFAULT); 
+
+    return payload;
+}
+
+ShPayload traceSkyRay(vec3 direction)
+{
+    resetPayload();
+
+    uint cullMask = INSTANCE_MASK_SKYBOX;
+
+    traceRayEXT(
+        topLevelAS,
+        gl_RayFlagsNoneEXT, 
+        cullMask, 
+        0, 0,     // sbtRecordOffset, sbtRecordStride
+        SBT_INDEX_MISS_DEFAULT, 
+        vec3(0.0), 0.001, direction, MAX_RAY_LENGTH, 
+        PAYLOAD_INDEX_DEFAULT); 
+
+    return payload;
+}
+
+vec3 getSky(vec3 direction)
+{
+    uint skyType = globalUniform.skyType;
+
+    if (skyType == SKY_TYPE_TLAS)
+    {
+        ShPayload p = traceSkyRay(direction);
+
+        return getHitInfoAlbedoOnly(p) * globalUniform.skyColorMultiplier;
+    }
+    else if (skyType == SKY_TYPE_CUBEMAP)
+    {
+        vec3 c = vec3(1.0); // textureCubemap();
+
+        return c * globalUniform.skyColorMultiplier;
+    }
+    else
+    {
+        return vec3(globalUniform.skyColorDefault) * globalUniform.skyColorMultiplier;
+    }
+}
+
+
 #ifdef RAYGEN_SHADOW_PAYLOAD
 // lightDirection is pointed to the light
-bool castShadowRay(vec3 origin, vec3 lightDirection, uint cullMask)
+bool traceShadowRay(uint primaryInstCustomIndex, vec3 origin, vec3 lightDirection)
 {
     // prepare shadow payload
     payloadShadow.isShadowed = 1;  
+
+    uint cullMask = getShadowCullMask(primaryInstCustomIndex);
 
     traceRayEXT(
         topLevelAS, 
@@ -118,10 +197,10 @@ bool castShadowRay(vec3 origin, vec3 lightDirection, uint cullMask)
 
 // viewDirection -- is direction to viewer
 void processDirectionalLight(
-    uint seed, vec3 surfPosition, 
+    uint seed, uint primaryInstCustomIndex,
+    vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, 
-    uint shadowCullMask,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint dirLightCount = globalUniform.lightSourceCountDirectional;
@@ -159,7 +238,7 @@ void processDirectionalLight(
         return;
     }
 
-    bool isShadowed = castShadowRay(surfPosition, dir, shadowCullMask);
+    bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition, dir);
 
     if (isShadowed)
     {
@@ -183,9 +262,8 @@ void processDirectIllumination(
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint seed = getCurrentRandomSeed(pix);
-    uint shadowCullMask = getShadowCullMask(primaryInstCustomIndex);
 
-    processDirectionalLight(seed, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, shadowCullMask, outDiffuse, outSpecular);
+    processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
 #endif // DESC_SET_LIGHT_SOURCES 

@@ -45,6 +45,7 @@ constexpr FT VertexCollectorFilterGroup_PrimaryVisibility[] =
     FT::PV_WORLD,
     FT::PV_FIRST_PERSON,
     FT::PV_FIRST_PERSON_VIEWER,
+    FT::PV_SKYBOX,
 };
 
 void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(FL)> f)
@@ -187,6 +188,11 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
         case RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER:
         {
             flags |= (FL)FT::PV_FIRST_PERSON_VIEWER;
+            break;
+        }
+        case RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX:
+        {
+            flags |= (FL)FT::PV_SKYBOX;
             break;
         }
         default: assert(0);

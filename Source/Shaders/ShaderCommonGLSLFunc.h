@@ -319,6 +319,21 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices)
     return tr;
 }
 
+// Get geometry index in "geometryInstances*" array by instanceID, localGeometryIndex.
+// instanceCustomIndex is used for determining if should use offsets for main or skybox.
+int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryIndex)
+{
+    // if not skybox
+    if ((instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) == 0)
+    {
+        return globalUniform.instanceGeomInfoOffset[instanceID].x + localGeometryIndex;
+    }
+    else
+    {
+        return globalUniform.instanceGeomInfoOffset[MAX_TOP_LEVEL_INSTANCE_COUNT + instanceID].x + localGeometryIndex;
+    }
+}
+
 // localGeometryIndex is index of geometry in pGeometries in BLAS
 // primitiveId is index of a triangle
 ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
@@ -328,7 +343,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     ShGeometryInstance inst;
     ShTriangle tr;
 
-    int geometryIndex = globalUniform.instanceGeomInfoOffset[instanceID].x + localGeometryIndex;
+    int geometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
 
     if (isDynamic)
     {
@@ -387,7 +402,7 @@ mat4 getModelMatrix(bool isDynamic, int geometryIndex)
 mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {
     bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-    int geometryIndex = globalUniform.instanceGeomInfoOffset[instanceID].x + localGeometryIndex;
+    int geometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
 
     return getModelMatrix(isDynamic, geometryIndex);
 }
@@ -483,45 +498,23 @@ void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryInde
 #ifdef DESC_SET_VERTEX_DATA
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_TEXTURES
-ShHitInfo getHitInfo(ShPayload pl)
+
+vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3])
 {
-    ShHitInfo h;
-
-    int instanceId, instCustomIndex;
-    int geomIndex, primIndex;
-
-    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
-    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
-
-    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
-    mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
-
-    vec2 inBaryCoords = pl.baryCoords;
-    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    
-    
-    vec2 texCoords[] = 
-    {
-        tr.layerTexCoord[0] * baryCoords,
-        tr.layerTexCoord[1] * baryCoords,
-        tr.layerTexCoord[2] * baryCoords
-    };
-    
     uint blendsFlags[] = 
     {
-        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
-        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
-        (tr.materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
+        (materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
+        (materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
+        (materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
     };
-
 
     vec3 dst = vec3(1.0);
 
     for (uint i = 0; i < 3; i++)
     {
-        if (tr.materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+        if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {
-            vec4 src = tr.materialColors[i] * getTextureSample(tr.materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i]);
+            vec4 src = materialColors[i] * getTextureSample(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i]);
 
             if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0)
             {
@@ -541,8 +534,57 @@ ShHitInfo getHitInfo(ShPayload pl)
             }
         }
     }
+
+    return dst;
+}
+
+vec3 getHitInfoAlbedoOnly(ShPayload pl)
+{
+    int instanceId, instCustomIndex;
+    int geomIndex, primIndex;
+
+    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
+    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
+
+    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
+
+    vec2 inBaryCoords = pl.baryCoords;
+    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+
+    vec2 texCoords[] = 
+    {
+        tr.layerTexCoord[0] * baryCoords,
+        tr.layerTexCoord[1] * baryCoords,
+        tr.layerTexCoord[2] * baryCoords
+    };
+
+    return processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
+}
+
+ShHitInfo getHitInfo(ShPayload pl)
+{
+    ShHitInfo h;
+
+    int instanceId, instCustomIndex;
+    int geomIndex, primIndex;
+
+    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
+    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
+
+    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
+    mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
+
+    vec2 inBaryCoords = pl.baryCoords;
+    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
     
-    h.albedo = dst;
+    vec2 texCoords[] = 
+    {
+        tr.layerTexCoord[0] * baryCoords,
+        tr.layerTexCoord[1] * baryCoords,
+        tr.layerTexCoord[2] * baryCoords
+    };
+    
+    h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
 
     // convert normals to world space
     tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));

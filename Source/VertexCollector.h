@@ -160,7 +160,7 @@ private:
     // buffer for getting info for geometry in BLAS
     Buffer stagingGeomInfosBuffer;
     std::shared_ptr<Buffer> geomInfosBuffer;
-    uint32_t geomInfosCopyRegions[32];
+    uint32_t geomInfosCopyRegions[36];
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

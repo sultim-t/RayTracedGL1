@@ -84,7 +84,7 @@ private:
         BLASComponent &as,
         const std::shared_ptr<VertexCollector> &vertCollector);
 
-    bool SetupTLASInstanceFromBLAS(
+    static bool SetupTLASInstanceFromBLAS(
         const BLASComponent &as,
         VkAccelerationStructureInstanceKHR &instance);
 
@@ -113,6 +113,8 @@ private:
     // top level AS
     Buffer instanceBuffers[MAX_FRAMES_IN_FLIGHT];
     std::unique_ptr<TLASComponent> tlas[MAX_FRAMES_IN_FLIGHT];
+
+    std::unique_ptr<TLASComponent> skyboxTlas[MAX_FRAMES_IN_FLIGHT];
 
     // TLAS and buffer descriptors
     VkDescriptorPool descPool;

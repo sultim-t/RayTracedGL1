@@ -143,7 +143,7 @@ void ASBuilder::AddTLAS(
     bool fastTrace, bool update)
 {
     // while building top level, bottom level must be not
-    assert(topLBuildInfo.geomInfos.empty() && topLBuildInfo.rangeInfos.empty());
+    assert(bottomLBuildInfo.geomInfos.empty() && bottomLBuildInfo.rangeInfos.empty());
 
     VkDeviceSize scratchSize = update ? buildSizes.updateScratchSize : buildSizes.buildScratchSize;
 

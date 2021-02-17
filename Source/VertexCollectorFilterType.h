@@ -45,7 +45,8 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
     PV_WORLD                    = 1 << 6,
     PV_FIRST_PERSON             = 2 << 6,
     PV_FIRST_PERSON_VIEWER      = 4 << 6,
-    MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER,
+    PV_SKYBOX                   = 8 << 6,
+    MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER | PV_SKYBOX,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
 
