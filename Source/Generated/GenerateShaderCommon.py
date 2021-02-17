@@ -370,8 +370,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     # for std140
     # TODO: separate to 2 different main/skybox arrays (and remove multiplication by 2)
-    # TODO: array of MAX_TOP_LEVEL_INSTANCE_COUNT elements packed to an array of ivec4: align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4
-    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       2 * CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]),
+    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
 ]
 
 GEOM_INSTANCE_STRUCT = [
@@ -428,22 +427,31 @@ TONEMAPPING_STRUCT = [
     (TYPE_FLOAT32,      1,      "avgLuminance",         1),
 ]
 
-# (structTypeName): (structDefinition, onlyForGLSL, alignStd430, breakComplex)
-# alignStd430   -- if using a struct in dynamic array, it must be aligned with 16 bytes
-# breakComplex  -- if member's type is not primitive and its count>0 then
-#               it'll be represented as an array of primitive types
+
+STRUCT_ALIGNMENT_NONE       = 0
+STRUCT_ALIGNMENT_STD430     = 1
+STRUCT_ALIGNMENT_STD140     = 2
+
+STRUCT_BREAK_TYPE_NONE      = 0
+STRUCT_BREAK_TYPE_COMPLEX   = 1
+STRUCT_BREAK_TYPE_ONLY_C    = 2
+
+# (structTypeName): (structDefinition, onlyForGLSL, alignmentFlags, breakComplex)
+# alignmentFlags    -- if using a struct in dynamic array, it must be aligned with 16 bytes
+# breakType         -- if member's type is not primitive and its count>0 then
+#                      it'll be represented as an array of primitive types
 STRUCTS = {
-    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  False,  True),
-    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  False,  True),
-    "ShTriangle":               (TRIANGLE_STRUCT,           True,   False,  False),
-    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  False,  True),
-    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  True,   False),
-    "ShPayload":                (PAYLOAD_STRUCT,            True,   False,  False),
-    "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   False,  False),
-    "ShHitInfo":                (HIT_INFO_STRUCT,           True,   False,  False),
-    "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  False,  False),
-    "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  True,   False),
-    "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  True,   False),
+    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
+    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
+    "ShTriangle":               (TRIANGLE_STRUCT,           True,   0,                          0),
+    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
+    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShPayload":                (PAYLOAD_STRUCT,            True,   0,                          0),
+    "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   0,                          0),
+    "ShHitInfo":                (HIT_INFO_STRUCT,           True,   0,                          0),
+    "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
+    "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
 }
 
 # --------------------------------------------------------------------------------------------- #
@@ -574,8 +582,11 @@ def align(c, alignment):
 
 
 # useVecMatTypes:
-def getStruct(name, definition, typeNames, alignStd430, breakComplex):
+def getStruct(name, definition, typeNames, alignmentType, breakType):
     r = "struct " + name + "\n{\n"
+
+    if alignmentType == STRUCT_ALIGNMENT_STD140 and typeNames == C_TYPE_NAMES:
+        print("Struct \"" + name + "\" is using std140, alignment must be set manually.")
 
     global CURRENT_PAD_INDEX
     CURRENT_PAD_INDEX = 0
@@ -602,19 +613,19 @@ def getStruct(name, definition, typeNames, alignStd430, breakComplex):
         else:
             if dim > 4 and typeNames == C_TYPE_NAMES:
                 raise Exception("If count > 1, dimensions must be in [1..4]")
-            if not breakComplex:
+            if breakType == STRUCT_BREAK_TYPE_COMPLEX or (typeNames == C_TYPE_NAMES and breakType == STRUCT_BREAK_TYPE_ONLY_C):
+                r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
+            else:
                 if dim == 1:
                     r += "%s %s[%d]" % (typeNames[baseType], mname, count)
                 elif (baseType, dim) in typeNames:
                     r += "%s %s[%d]" % (typeNames[(baseType, dim)], mname, count)
                 else:
                     r += "%s %s[%d][%d]" % (typeNames[baseType], mname, count, dim)
-            else:
-                r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
 
         r += ";\n"
 
-        if alignStd430:
+        if (alignmentType == STRUCT_ALIGNMENT_STD430):
             for i in range(count):
                 memberSize = getMemberActualSize(baseType, dim, 1)
                 memberAlignment = getMemberSizeStd430(baseType, dim, 1)
@@ -628,7 +639,7 @@ def getStruct(name, definition, typeNames, alignStd430, breakComplex):
 
                 curSize += curOffset + memberSize
 
-    if alignStd430 and curSize % 16 != 0:
+    if (alignmentType == STRUCT_ALIGNMENT_STD430) and curSize % 16 != 0:
         if (curSize % 16) % 4 != 0:
             raise Exception("Size of struct %s is not 4-byte aligned!" % name)
         uint32ToAdd = (align(curSize, 16) - curSize) // 4
@@ -640,8 +651,8 @@ def getStruct(name, definition, typeNames, alignStd430, breakComplex):
 
 def getAllStructDefs(typeNames):
     return "\n".join(
-        getStruct(name, structDef, typeNames, alignStd430, breakComplex)
-        for name, (structDef, onlyForGLSL, alignStd430, breakComplex) in STRUCTS.items()
+        getStruct(name, structDef, typeNames, alignmentType, breakType)
+        for name, (structDef, onlyForGLSL, alignmentType, breakType) in STRUCTS.items()
         if not (onlyForGLSL and (typeNames == C_TYPE_NAMES))
     ) + "\n"
 

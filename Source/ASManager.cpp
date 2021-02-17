@@ -740,13 +740,12 @@ static void WriteInstanceGeomInfoOffset(int32_t *instanceGeomInfoOffset, uint32_
 
     if (!isSkybox)
     {
-        // mulitplying by 4 for ivec4
-        instanceGeomInfoOffset[4 * index] = arrayOffset;
+        instanceGeomInfoOffset[index] = arrayOffset;
     }
     else
     {
         uint32_t skyboxStartIndex = MAX_TOP_LEVEL_INSTANCE_COUNT;
-        instanceGeomInfoOffset[4 * (skyboxStartIndex + skyboxIndex)] = arrayOffset;
+        instanceGeomInfoOffset[skyboxStartIndex + skyboxIndex] = arrayOffset;
     }
 }
 
@@ -807,8 +806,6 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     // copy geometry offsets to uniform to access geomInfos
     // with instance ID and geometry index in shaders;
-    // multiplying by 4 -- for ivec4
-    // multiplying by 2 -- for main/skybox
     memcpy(uniform->GetData()->instanceGeomInfoOffset, instanceGeomInfoOffset, sizeof(instanceGeomInfoOffset));
 
 

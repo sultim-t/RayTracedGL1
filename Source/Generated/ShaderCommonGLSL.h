@@ -128,7 +128,7 @@ struct ShGlobalUniform
     float _pad3;
     vec4 skyColorDefault;
     vec4 skyViewerPosition;
-    int instanceGeomInfoOffset[288];
+    ivec4 instanceGeomInfoOffset[18];
 };
 
 struct ShGeometryInstance

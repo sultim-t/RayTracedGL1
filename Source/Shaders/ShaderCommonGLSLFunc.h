@@ -323,15 +323,13 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices)
 // instanceCustomIndex is used for determining if should use offsets for main or skybox.
 int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {
-    // if not skybox
-    if ((instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) == 0)
+    // offset if skybox
+    if ((instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) != 0)
     {
-        return globalUniform.instanceGeomInfoOffset[instanceID].x + localGeometryIndex;
+        instanceID += MAX_TOP_LEVEL_INSTANCE_COUNT;
     }
-    else
-    {
-        return globalUniform.instanceGeomInfoOffset[MAX_TOP_LEVEL_INSTANCE_COUNT + instanceID].x + localGeometryIndex;
-    }
+    
+    return globalUniform.instanceGeomInfoOffset[instanceID / 4][instanceID % 4] + localGeometryIndex;
 }
 
 // localGeometryIndex is index of geometry in pGeometries in BLAS
