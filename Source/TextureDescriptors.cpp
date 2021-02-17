@@ -92,6 +92,8 @@ void TextureDescriptors::CreateDescLayout()
 
     VkResult r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descLayout);
     VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, descLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Textures Desc set layout");
 }
 
 void TextureDescriptors::CreateDescPool()
@@ -108,6 +110,8 @@ void TextureDescriptors::CreateDescPool()
 
     VkResult r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Textures Desc pool");
 }
 
 void TextureDescriptors::CreateDescSets()
@@ -122,6 +126,8 @@ void TextureDescriptors::CreateDescSets()
     {
         VkResult r = vkAllocateDescriptorSets(device, &setInfo, &descSets[i]);
         VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Textures desc set");
     }
 }
 

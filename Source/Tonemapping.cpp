@@ -182,6 +182,8 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &tmDescSetLayout);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, tmDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Tonemapping Desc set layout");
+
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     poolSize.descriptorCount = 1;
@@ -195,6 +197,8 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &tmDescPool);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, tmDescPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Tonemapping Desc pool");
+
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     allocInfo.descriptorPool = tmDescPool;
@@ -203,6 +207,8 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
 
     r = vkAllocateDescriptorSets(device, &allocInfo, &tmDescSet);
     VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, tmDescSet, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Tonemapping Desc set");
 
     VkDescriptorBufferInfo bfInfo = {};
     bfInfo.buffer = tmBuffer.GetBuffer();

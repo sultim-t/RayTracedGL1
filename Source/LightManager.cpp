@@ -207,7 +207,7 @@ void RTGL1::LightManager::CreateDescriptors()
     r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Light buffers desc set layout");
+    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Light buffers Desc set layout");
 
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -222,7 +222,7 @@ void RTGL1::LightManager::CreateDescriptors()
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Light buffers desc set pool");
+    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Light buffers Desc set pool");
 
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -235,7 +235,7 @@ void RTGL1::LightManager::CreateDescriptors()
         r = vkAllocateDescriptorSets(device, &allocInfo, &descSets[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Light buffers desc set");
+        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Light buffers Desc set");
     }
     
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
