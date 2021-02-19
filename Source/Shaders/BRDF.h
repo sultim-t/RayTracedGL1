@@ -51,7 +51,14 @@ float getFresnelSchlick(float nl, float n1, float n2)
     return F0 + (1 - F0) * pow(1 - max(nl, 0), 5);
 }
 
-#define MIN_GGX_ROUGHNESS 0.025
+// Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
+// s -- is either l or v
+float G1GGX(vec3 s, vec3 n, float alpha)
+{
+    return 2 * dot(n, s) / (dot(n, s) * (2 - alpha) + alpha);
+}
+
+#define MIN_GGX_ROUGHNESS 0.001
 
 // n -- macrosurface normal
 // v -- direction to viewer
@@ -125,7 +132,7 @@ vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
 // alpha    -- roughness
 // u1, u2   -- uniform random numbers
 // pdf      -- PDF of sampled normal
-vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float pdf)
+vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2/*, out float pdf*/)
 {
     alpha = max(alpha, MIN_GGX_ROUGHNESS);
 
@@ -137,8 +144,10 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float p
     // microfacet normal
     vec3 me = sampleGGXVNDF(ve, alpha, u1, u2);
 
-    // m to world sapce
-    vec3 m = basis * me;
+    // m to world space
+    return basis * me; 
+
+    /*vec3 m = basis * me;
 
     float nm = dot(n, m);
 
@@ -148,9 +157,7 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float p
         return vec3(0.0);
     }
 
-    // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
-    // G1(ve)
-    float G1 = 2 * dot(n, ve) / (dot(n, ve) * (2 - alpha) + alpha);
+    float G1 = G1GGX(ve, n, alpha);
 
     float alphaSq = alpha * alpha;
 
@@ -162,5 +169,5 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float p
     // VNDF PDF
     pdf = G1 * max(0, dot(ve, me)) * D / ve.z;
 
-    return m;
+    return m;*/
 }

@@ -31,62 +31,73 @@
 #define RAYGEN_SHADOW_PAYLOAD
 #include "RaygenCommon.h"
 
-// v -- is direction to viewer
+// v -- direction to viewer
+// n -- surface normal
+void getBounce(
+    uint seed, vec3 n, float roughness, 
+    vec3 v, out vec3 bounceDirection, inout vec3 throughput, out bool isSpecular)
+{
+    vec4 u = getBlueNoiseSample(seed);
+
+    // trace either specular or diffuse ray
+    float specPr = 0.5;
+    float nonSpecPr = 1 - specPr;
+    isSpecular = u[0] < specPr;
+
+    if (isSpecular)
+    {
+        // sample microfacet normal
+        vec3 m = sampleSmithGGX(n, v, roughness, u[0], u[1]);
+
+        // light sample; incident vector must point to surface
+        vec3 l = reflect(-v, m);
+
+        float nl = max(dot(n, l), 0.0);
+        float nv = max(dot(n, v), 0.0);
+
+        if (nl > 0 && nv > 0)
+        {
+            bounceDirection = l;
+            
+            // "Sampling the GGX Distribution of Visible Normals", Heitz
+            // equation 19: F * G2(v,l) / G1(v)
+            // let G2 be the simplest: G2(v,l) = G1(v) * G1(l)
+            // => F * G1(l)
+            
+            float F = 1.0f; // getFresnelSchlick(nl, n1, n2);
+            float G1 = G1GGX(l, n, roughness);
+
+            throughput *= G1;
+            throughput *= 1 / specPr;
+
+            return;
+        }
+    }
+
+    float pdf;
+    bounceDirection = sampleLambertian(n, u[0], u[1], pdf);
+    throughput *= evalBRDFLambertian(1.0) / pdf;
+    throughput *= 1 / nonSpecPr;
+}
+
+// v -- direction to viewer
 void processIndirectIllumination(
     ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 v)
 {
     uint seed = getCurrentRandomSeed(pix);
-    vec4 u = getBlueNoiseSample(seed);
     
-    vec3 color = vec3(0.0);
     vec3 throughput = vec3(1.0);
     
+    bool isSpecular;
     vec3 bounceDirection;
-    vec3 contribution;
-
-    // TODO
-    bool isSpecular = surfRoughness < 0.5;
-
-    if (isSpecular)
-    {
-        // sample microfacet normal
-        float nPdf;
-        vec3 m = sampleSmithGGX(surfNormal, v, surfRoughness, u[0], u[1], nPdf);
-
-        // light sample; incident vector must point to surface
-        vec3 l = reflect(-v, m);
-
-        float nl = max(dot(surfNormal, l), 0.0);
-        float nv = max(dot(surfNormal, v), 0.0);
-
-        if (nl > 0 && nv > 0 && nPdf > 0)
-        {
-            // PDF of light sample, i.e. nPdf weighted by the Jacobian of the reflection operator
-            float pdf = nPdf / (4 * dot(v, m));
-
-            bounceDirection = l; 
-            throughput *= evalBRDFSmithGGX(surfNormal, v, l, surfRoughness) / pdf;
-        }
-        else
-        {
-            float pdf;
-            bounceDirection = sampleLambertian(surfNormal, u[0], u[1], pdf);
-            throughput *= evalBRDFLambertian(1.0) / pdf;
-        
-            isSpecular = false;
-        }
-    }
-    else
-    {
-        float pdf;
-        bounceDirection = sampleLambertian(surfNormal, u[0], u[1], pdf);
-        throughput *= evalBRDFLambertian(1.0) / pdf;
-    }
+    getBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput, isSpecular);
 
     // got the bounce direction, trace ray
     ShPayload p = traceIndirectRay(primaryInstCustomIndex, surfPosition, bounceDirection); 
+
+    vec3 contribution;
 
     if (p.clsHitDistance > 0)
     {
