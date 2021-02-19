@@ -31,11 +31,11 @@
 #define RAYGEN_SHADOW_PAYLOAD
 #include "RaygenCommon.h"
 
-// viewDirection -- is direction to viewer
+// v -- is direction to viewer
 void processIndirectIllumination(
     ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
-    float surfRoughness, vec3 viewDirection)
+    float surfRoughness, vec3 v)
 {
     uint seed = getCurrentRandomSeed(pix);
     vec4 u = getBlueNoiseSample(seed);
@@ -47,21 +47,36 @@ void processIndirectIllumination(
     vec3 contribution;
 
     // TODO
-    bool isSpecular = false;
+    bool isSpecular = surfRoughness < 0.5;
 
     if (isSpecular)
     {
         // sample microfacet normal
         float nPdf;
-        vec3 m = sampleSmithGGX(surfNormal, viewDirection, surfRoughness, u[0], u[1], nPdf);
+        vec3 m = sampleSmithGGX(surfNormal, v, surfRoughness, u[0], u[1], nPdf);
 
-        // light sample
-        bounceDirection = reflect(viewDirection, m);
+        // light sample; incident vector must point to surface
+        vec3 l = reflect(-v, m);
 
-        // PDF of light sample, i.e. nPdf weighted by the Jacobian of the reflection operator
-        float pdf = nPdf / (4 * dot(viewDirection, m));
+        float nl = max(dot(surfNormal, l), 0.0);
+        float nv = max(dot(surfNormal, v), 0.0);
 
-        throughput *= evalBRDFSmithGGX(surfNormal, viewDirection, bounceDirection, surfRoughness) / pdf;
+        if (nl > 0 && nv > 0 && nPdf > 0)
+        {
+            // PDF of light sample, i.e. nPdf weighted by the Jacobian of the reflection operator
+            float pdf = nPdf / (4 * dot(v, m));
+
+            bounceDirection = l; 
+            throughput *= evalBRDFSmithGGX(surfNormal, v, l, surfRoughness) / pdf;
+        }
+        else
+        {
+            float pdf;
+            bounceDirection = sampleLambertian(surfNormal, u[0], u[1], pdf);
+            throughput *= evalBRDFLambertian(1.0) / pdf;
+        
+            isSpecular = false;
+        }
     }
     else
     {

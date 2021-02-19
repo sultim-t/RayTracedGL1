@@ -51,12 +51,16 @@ float getFresnelSchlick(float nl, float n1, float n2)
     return F0 + (1 - F0) * pow(1 - max(nl, 0), 5);
 }
 
+#define MIN_GGX_ROUGHNESS 0.025
+
 // n -- macrosurface normal
 // v -- direction to viewer
 // l -- direction to light
 // alpha -- roughness
 float evalBRDFSmithGGX(vec3 n, vec3 v, vec3 l, float alpha)
 {
+    alpha = max(alpha, MIN_GGX_ROUGHNESS);
+
     float nl = dot(n, l);
 
     if (nl <= 0)
@@ -84,17 +88,14 @@ float evalBRDFSmithGGX(vec3 n, vec3 v, vec3 l, float alpha)
 
 
 // "Sampling the GGX Distribution of Visible Normals", Heitz
-// v        -- direction to viewer
+// v        -- direction to viewer, normal's direction is (0,0,1)
 // alpha    -- roughness
 // u1, u2   -- uniform random numbers
 // output   -- normal sampled with PDF D_v(Ne) = G1(v) * max(0, dot(v, Ne)) * D(Ne) / v.z
 vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
 {
-    float alpha_x = alpha;
-    float alpha_y = alpha;
-
     // Section 3.2: transforming the view direction to the hemisphere configuration
-    vec3 Vh = normalize(vec3(alpha_x * v.x, alpha_y * v.y, v.z));
+    vec3 Vh = normalize(vec3(alpha * v.x, alpha * v.y, v.z));
     
     // Section 4.1: orthonormal basis (with special case if cross product is zero)
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
@@ -113,21 +114,31 @@ vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
     vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
     
     // Section 3.4: transforming the normal back to the ellipsoid configuration
-    vec3 Ne = normalize(vec3(alpha_x * Nh.x, alpha_y * Nh.y, max(0.0, Nh.z)));    
+    vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));    
     
     return Ne;
 }
 
 // Sample microfacet normal
-// n        -- macrosurface normal
-// v        -- direction to viewer
+// n        -- macrosurface normal, world space
+// v        -- direction to viewer, world space
 // alpha    -- roughness
 // u1, u2   -- uniform random numbers
 // pdf      -- PDF of sampled normal
 vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float pdf)
 {
+    alpha = max(alpha, MIN_GGX_ROUGHNESS);
+
+    mat3 basis = getONB(n);
+
+    // get v in normal's space, basis is orthogonal
+    vec3 ve = transpose(basis) * v;
+
     // microfacet normal
-    vec3 m = sampleGGXVNDF(v, alpha, u1, u2);
+    vec3 me = sampleGGXVNDF(ve, alpha, u1, u2);
+
+    // m to world sapce
+    vec3 m = basis * me;
 
     float nm = dot(n, m);
 
@@ -138,15 +149,18 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2, out float p
     }
 
     // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
-    float G1 = 2 * dot(n, v) / (dot(n, v) * (2 - alpha) + alpha);
+    // G1(ve)
+    float G1 = 2 * dot(n, ve) / (dot(n, ve) * (2 - alpha) + alpha);
 
     float alphaSq = alpha * alpha;
 
     // D for microfacet normal
-    float D = nm * alphaSq / (M_PI * square(1 + nm * nm * (alphaSq - 1)));
-
+    // D(me)
+    float c = (me.x * me.x + me.y * me.y) / alphaSq + me.z * me.z;
+    float D = 1.0 / (M_PI * alphaSq * c * c);
+    
     // VNDF PDF
-    pdf = G1 * max(0, dot(v, m)) * D / v.z;
+    pdf = G1 * max(0, dot(ve, me)) * D / ve.z;
 
     return m;
 }

@@ -93,17 +93,24 @@ void frisvadONB(vec3 n, out vec3 b1, out vec3 b2)
     b2 = vec3(b, 1.0 - n.y * n.y * a, -n.y);
 }
 
+mat3 getONB(vec3 n)
+{
+    mat3 basis;
+    basis[2] = n;
+
+    //revisedONB(n, basis[0], basis[1]);
+    frisvadONB(n, basis[0], basis[1]);
+
+    return basis;
+}
+
 // Sample direction in a hemisphere oriented to a normal n
 vec3 sampleOrientedHemisphere(vec3 n, float u1, float u2, out float pdf)
 {
     vec3 a = sampleHemisphere(u1, u2);
     pdf = a.z / M_PI;
 
-    mat3 basis;
-    basis[2] = n;
-
-    //revisedONB(n, basis[0], basis[1]);
-    frisvadONB(n, basis[0], basis[1]);
+    mat3 basis = getONB(n);
 
     return normalize(basis * a);
 
