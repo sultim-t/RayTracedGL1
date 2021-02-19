@@ -496,6 +496,15 @@ RgResult VulkanDevice::DestroyMaterial(RgMaterial material)
     textureManager->DestroyMaterial(currentFrameIndex, material);
     return RG_SUCCESS;
 }
+RgResult VulkanDevice::CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result)
+{
+
+    return RG_SUCCESS;
+}
+RgResult VulkanDevice::DestroyCubemap(RgCubemap cubemap)
+{
+    return RG_SUCCESS;
+}
 #pragma endregion 
 
 

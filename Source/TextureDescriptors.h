@@ -30,7 +30,7 @@ namespace RTGL1
 class TextureDescriptors
 {
 public:
-    explicit TextureDescriptors(VkDevice device);
+    explicit TextureDescriptors(VkDevice device, uint32_t maxTextureCount, uint32_t bindingIndex);
     ~TextureDescriptors();
 
     TextureDescriptors(const TextureDescriptors &other) = delete;
@@ -52,9 +52,7 @@ public:
     void SetEmptyTextureInfo(VkImageView view, VkSampler sampler);
 
 private:
-    void CreateDescLayout();
-    void CreateDescPool();
-    void CreateDescSets();
+    void CreateDescriptors(uint32_t maxTextureCount);
 
     bool IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
     void AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
@@ -69,6 +67,8 @@ private:
 
 private:
     VkDevice device;
+
+    uint32_t bindingIndex;
 
     VkDescriptorPool descPool;
     VkDescriptorSetLayout descLayout;

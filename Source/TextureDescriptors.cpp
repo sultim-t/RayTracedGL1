@@ -19,33 +19,28 @@
 // SOFTWARE.
 
 #include "TextureDescriptors.h"
-
-#include <array>
-
-#include "Generated/ShaderCommonC.h"
 #include "Const.h"
 
 using namespace RTGL1;
 
-TextureDescriptors::TextureDescriptors(VkDevice _device) :
+TextureDescriptors::TextureDescriptors(VkDevice _device, uint32_t _maxTextureCount, uint32_t _bindingIndex) :
     device(_device),
+    bindingIndex(_bindingIndex),
     descPool(VK_NULL_HANDLE),
     descLayout(VK_NULL_HANDLE),
     descSets{},
     emptyTextureInfo{},
     currentWriteCount(0)
 {
-    writeImageInfos.resize(MAX_TEXTURE_COUNT);
-    writeInfos.resize(MAX_TEXTURE_COUNT);
+    writeImageInfos.resize(_maxTextureCount);
+    writeInfos.resize(_maxTextureCount);
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        writeCache[i].resize(MAX_TEXTURE_COUNT);
+        writeCache[i].resize(_maxTextureCount);
     }
 
-    CreateDescLayout();
-    CreateDescPool();
-    CreateDescSets();
+    CreateDescriptors(_maxTextureCount);
 }
 
 TextureDescriptors::~TextureDescriptors()
@@ -71,19 +66,14 @@ void TextureDescriptors::SetEmptyTextureInfo(VkImageView view, VkSampler sampler
     emptyTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
-void TextureDescriptors::CreateDescLayout()
+void TextureDescriptors::CreateDescriptors(uint32_t maxTextureCount)
 {
     VkDescriptorSetLayoutBinding binding = {};
 
-    binding.binding = BINDING_TEXTURES;
+    binding.binding = bindingIndex;
     binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-    binding.descriptorCount = MAX_TEXTURE_COUNT;
-    binding.stageFlags =
-        VK_SHADER_STAGE_FRAGMENT_BIT |
-        VK_SHADER_STAGE_RAYGEN_BIT_KHR |
-        VK_SHADER_STAGE_ANY_HIT_BIT_KHR |
-        VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR |
-        VK_SHADER_STAGE_MISS_BIT_KHR;
+    binding.descriptorCount = maxTextureCount;
+    binding.stageFlags = VK_SHADER_STAGE_ALL;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -94,13 +84,10 @@ void TextureDescriptors::CreateDescLayout()
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, descLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Textures Desc set layout");
-}
 
-void TextureDescriptors::CreateDescPool()
-{
     VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLER;
-    poolSize.descriptorCount = MAX_TEXTURE_COUNT;
+    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize.descriptorCount = maxTextureCount * MAX_FRAMES_IN_FLIGHT;
 
     VkDescriptorPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -108,14 +95,11 @@ void TextureDescriptors::CreateDescPool()
     poolInfo.poolSizeCount = 1;
     poolInfo.pPoolSizes = &poolSize;
 
-    VkResult r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
+    r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Textures Desc pool");
-}
 
-void TextureDescriptors::CreateDescSets()
-{
     VkDescriptorSetAllocateInfo setInfo = {};
     setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
     setInfo.descriptorPool = descPool;
@@ -124,7 +108,7 @@ void TextureDescriptors::CreateDescSets()
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        VkResult r = vkAllocateDescriptorSets(device, &setInfo, &descSets[i]);
+        r = vkAllocateDescriptorSets(device, &setInfo, &descSets[i]);
         VK_CHECKERROR(r);
 
         SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Textures desc set");
@@ -152,7 +136,7 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
 {
     assert(view != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
 
-    if  (currentWriteCount >= MAX_TEXTURE_COUNT)
+    if  (currentWriteCount >= writeInfos.size())
     {
         assert(0);
         return;
@@ -172,7 +156,7 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
     VkWriteDescriptorSet &write = writeInfos[currentWriteCount];
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     write.dstSet = descSets[frameIndex];
-    write.dstBinding = BINDING_TEXTURES;
+    write.dstBinding = bindingIndex;
     write.dstArrayElement = textureIndex;
     write.descriptorCount = 1;
     write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -195,9 +179,6 @@ void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureI
 
 void TextureDescriptors::FlushDescWrites()
 {
-    // must have constant size
-    assert(writeInfos.size() == MAX_TEXTURE_COUNT);
-
     vkUpdateDescriptorSets(device, currentWriteCount, writeInfos.data(), 0, nullptr);
     currentWriteCount = 0;
 }

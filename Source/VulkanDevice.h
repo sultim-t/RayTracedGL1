@@ -73,6 +73,9 @@ public:
     RgResult UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo);
     RgResult DestroyMaterial(RgMaterial material);
 
+    RgResult CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result);
+    RgResult DestroyCubemap(RgCubemap cubemap);
+
 
     RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);

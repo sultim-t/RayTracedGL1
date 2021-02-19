@@ -38,9 +38,11 @@ typedef uint32_t RgFlags;
 RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
 typedef uint32_t RgGeometry;
 typedef uint32_t RgMaterial;
+typedef uint32_t RgCubemap;
 
 #define RG_NULL_HANDLE      0
 #define RG_NO_MATERIAL      0
+#define RG_EMPTY_CUBEMAP    0
 #define RG_FALSE            0
 #define RG_TRUE             1
 
@@ -475,6 +477,56 @@ RgResult rgUpdateDynamicMaterial(
 RgResult rgDestroyMaterial(
     RgInstance                          rgInstance,
     RgMaterial                          material);
+
+
+
+typedef struct RgCubemapCreateInfo
+{
+    union
+    {
+        const void          *data[6];
+        struct
+        {
+            const void      *positiveX;
+            const void      *negativeX;
+            const void      *positiveY;
+            const void      *negativeY;
+            const void      *positiveZ;
+            const void      *negativeZ;
+        } dataFaces;
+    };
+
+    // Overriding paths for each cubemap face.
+    struct
+    {
+        const char *relativePaths[6];
+        struct
+        {
+            const char *positiveX;
+            const char *negativeX;
+            const char *positiveY;
+            const char *negativeY;
+            const char *positiveZ;
+            const char *negativeZ;
+        } relativePathFaces;
+    };
+
+    // width = height = sideSize
+    uint32_t                sideSize;
+    RgBool32                useMipmaps;
+    RgBool32                isSRGB;
+    RgBool32                disableOverride;
+    RgSamplerFilter         filter;
+} RgCubemapCreateInfo;
+
+RgResult rgCreateCubemap(
+    RgInstance                          rgInstance,
+    const RgCubemapCreateInfo           *createInfo,
+    RgCubemap                           *result);
+
+RgResult rgDestroyCubemap(
+    RgInstance                          rgInstance,
+    RgCubemap                           cubemap);
 
 
 

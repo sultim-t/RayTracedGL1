@@ -135,6 +135,16 @@ RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyMaterial(material);
 }
 
+RgResult rgCreateCubemap(RgInstance rgInstance, const RgCubemapCreateInfo *createInfo, RgCubemap *result)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateSkyboxCubemap(createInfo, result);
+}
+
+RgResult rgDestroyCubemap(RgInstance rgInstance, RgCubemap cubemap)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyCubemap(cubemap);
+}
+
 RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t surfaceHeight, RgBool32 vsync)
 {
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight, vsync);

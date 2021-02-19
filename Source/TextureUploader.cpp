@@ -164,6 +164,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.flags = info.isCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
     imageInfo.format = info.format;
     imageInfo.extent = { size.width, size.height, 1 };
     imageInfo.mipLevels = GetMipmapCount(size, info.generateMipmaps);
@@ -281,14 +282,14 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
     }
 }
 
-VkImageView TextureUploader::CreateImageView(VkImage image, VkFormat format, uint32_t mipmapCount)
+VkImageView TextureUploader::CreateImageView(VkImage image, VkFormat format, bool isCubemap, uint32_t mipmapCount)
 {
     VkImageView view;
 
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.image = image;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = isCubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
     viewInfo.format = format;
     viewInfo.components = {};
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -319,7 +320,9 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     VkImage image;
 
     // 1. Allocate and fill buffer
-    VkDeviceSize dataSize = info.bytesPerPixel * size.width * size.height;
+    uint32_t faceNumber = info.isCubemap ? 6 : 1;
+    VkDeviceSize faceSize = (VkDeviceSize)info.bytesPerPixel * size.width * size.height;
+    VkDeviceSize dataSize = faceSize * faceNumber;
 
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -351,13 +354,27 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     else
     {
         // copy image data to buffer
-        memcpy(mappedData, data, dataSize);
+        if (info.isCubemap)
+        {
+            assert(faceNumber == 6);
+
+            for (uint32_t i = 0; i < 6; i++)
+            {
+                memcpy((uint8_t*)mappedData + i * faceSize, info.cubemap.faces[i], faceSize);
+            }
+        }
+        else
+        {
+            assert(faceSize == dataSize);
+
+            memcpy(mappedData, data, dataSize);
+        }
         // and copy it to image
         PrepareImage(image, stagingBuffer, info, ImagePrepareType::INIT);
     }
 
     // create image view
-    VkImageView imageView = CreateImageView(image, info.format, GetMipmapCount(size, info.generateMipmaps));
+    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info.generateMipmaps));
 
     SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.debugName);
 

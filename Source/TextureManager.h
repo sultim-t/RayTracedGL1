@@ -109,8 +109,6 @@ private:
     void DestroyMaterialTextures(uint32_t frameIndex, uint32_t materialIndex);
     void DestroyMaterialTextures(uint32_t frameIndex, const Material &material);
 
-    void UpdateDescSet(uint32_t frameIndex);
-
 private:
     VkDevice device;
 

@@ -25,17 +25,9 @@
 #include "Const.h"
 #include "Utils.h"
 #include "TextureOverrides.h"
+#include "Generated/ShaderCommonC.h"
 
 using namespace RTGL1;
-
-#define DEFAULT_TEXTURES_PATH               ""
-#define DEFAULT_ALBEDO_ALPHA_POSTFIX        ""
-#define DEFAULT_NORMAL_METALLIC_POSTFIX     "_n"
-#define DEFAULT_EMISSION_ROUGHNESS_POSTFIX  "_e"
-
-constexpr VkFormat      IMAGE_FORMAT_SRGB = VK_FORMAT_R8G8B8A8_SRGB;
-constexpr VkFormat      IMAGE_FORMAT_UNORM = VK_FORMAT_R8G8B8A8_UNORM;
-constexpr VkDeviceSize  IMAGE_BYTES_PER_PIXEL = 4;
 
 constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
 
@@ -58,7 +50,7 @@ TextureManager::TextureManager(
     this->emissionRoughnessPostfix = _emissionRoughnessPostfix != nullptr ? _emissionRoughnessPostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
 
     imageLoader = std::make_shared<ImageLoader>();
-    textureDesc = std::make_shared<TextureDescriptors>(device);
+    textureDesc = std::make_shared<TextureDescriptors>(device, MAX_TEXTURE_COUNT, BINDING_TEXTURES);
     textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
     textures.resize(MAX_TEXTURE_COUNT);
@@ -130,11 +122,6 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
 void TextureManager::SubmitDescriptors(uint32_t frameIndex)
 {
     // update desc set with current values
-    UpdateDescSet(frameIndex);
-}
-
-void TextureManager::UpdateDescSet(uint32_t frameIndex)
-{
     for (uint32_t i = 0; i < textures.size(); i++)
     {
         if (textures[i].image != VK_NULL_HANDLE)
@@ -255,11 +242,12 @@ uint32_t TextureManager::PrepareTexture(
     info.frameIndex = frameIndex;
     info.data = data;
     info.size = size;
-    info.format = isSRGB ? IMAGE_FORMAT_SRGB : IMAGE_FORMAT_UNORM;
-    info.bytesPerPixel = IMAGE_BYTES_PER_PIXEL;
+    info.format = isSRGB ? TEXTURE_IMAGE_FORMAT_SRGB : TEXTURE_IMAGE_FORMAT_UNORM;
+    info.bytesPerPixel = TEXTURE_IMAGE_BYTES_PER_PIXEL;
     info.isDynamic = isDynamic;
     info.generateMipmaps = generateMipmaps;
     info.debugName = debugName;
+    info.isCubemap = false;
 
     auto result = textureUploader->UploadImage(info);
 

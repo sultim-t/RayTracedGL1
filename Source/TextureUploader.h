@@ -44,13 +44,21 @@ public:
     {
         VkCommandBuffer     cmd;
         uint32_t            frameIndex;
-        const void          *data;
+        union
+        {
+            const void *data;
+            struct
+            {
+                const void *faces[6];
+            } cubemap;
+        };
         RgExtent2D          size;
         VkFormat            format;
         uint32_t            bytesPerPixel;
         bool                generateMipmaps;
         bool                isDynamic;
         const char          *debugName;
+        bool                isCubemap;
     };
 
 public:
@@ -93,7 +101,7 @@ private:
     bool CreateImage(const UploadInfo &info, VkImage *result);
     // Create mipmaps and prepare image for usage in shaders
     void PrepareImage(VkImage image, VkBuffer staging, const UploadInfo &info, ImagePrepareType prepareType);
-    VkImageView CreateImageView(VkImage image, VkFormat format, uint32_t mipmapCount);
+    VkImageView CreateImageView(VkImage image, VkFormat format, bool isCubemap, uint32_t mipmapCount);
 
 private:
     struct DynamicImageInfo

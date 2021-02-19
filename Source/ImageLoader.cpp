@@ -33,6 +33,11 @@ ImageLoader::~ImageLoader()
 
 const uint32_t *ImageLoader::LoadRGBA8(const char *path, uint32_t *outWidth, uint32_t *outHeight)
 {
+    if (path == nullptr)
+    {
+        return;
+    }
+
     int width, height, channels;
     uint8_t *img = stbi_load(path, &width, &height, &channels, 4);
 

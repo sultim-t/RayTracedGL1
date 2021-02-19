@@ -23,13 +23,22 @@
 namespace RTGL1
 {
 
-constexpr uint32_t ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES    = 64 * 512 * 512 * 4;
-constexpr uint32_t ALLOCATOR_BLOCK_SIZE_TEXTURES            = 64 * 512 * 512 * 4;
+constexpr uint32_t  ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES   = 64 * 512 * 512 * 4;
+constexpr uint32_t  ALLOCATOR_BLOCK_SIZE_TEXTURES           = 64 * 512 * 512 * 4;
 
-constexpr uint32_t TEXTURE_FILE_PATH_MAX_LENGTH             = 512;
-constexpr uint32_t TEXTURE_FILE_NAME_MAX_LENGTH             = 256;
-constexpr uint32_t TEXTURE_FILE_EXTENSION_MAX_LENGTH        = 16;
+constexpr uint32_t  TEXTURE_FILE_PATH_MAX_LENGTH            = 512;
+constexpr uint32_t  TEXTURE_FILE_NAME_MAX_LENGTH            = 256;
+constexpr uint32_t  TEXTURE_FILE_EXTENSION_MAX_LENGTH       = 16;
 
-constexpr uint32_t MAX_TEXTURE_COUNT                        = 1024;
+constexpr uint32_t  MAX_TEXTURE_COUNT                       = 1024;
+
+constexpr char      *DEFAULT_TEXTURES_PATH                  = "";
+constexpr char      *DEFAULT_ALBEDO_ALPHA_POSTFIX           = "";
+constexpr char      *DEFAULT_NORMAL_METALLIC_POSTFIX        = "_n";
+constexpr char      *DEFAULT_EMISSION_ROUGHNESS_POSTFIX     = "_e";
+
+constexpr VkFormat      TEXTURE_IMAGE_FORMAT_SRGB           = VK_FORMAT_R8G8B8A8_SRGB;
+constexpr VkFormat      TEXTURE_IMAGE_FORMAT_UNORM          = VK_FORMAT_R8G8B8A8_UNORM;
+constexpr VkDeviceSize  TEXTURE_IMAGE_BYTES_PER_PIXEL       = 4;
 
 }
