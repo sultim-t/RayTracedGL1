@@ -22,6 +22,7 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "Const.h"
+#include "TextureOverrides.h"
 
 constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
@@ -29,7 +30,9 @@ RTGL1::CubemapManager::CubemapManager(
     VkDevice _device,
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<SamplerManager> _samplerManager,
-    const std::shared_ptr<CommandBufferManager> &_cmdManager)
+    const std::shared_ptr<CommandBufferManager> &_cmdManager,
+    const char *_defaultTexturesPath,
+    const char *_albedoAlphaPostfix)
 :
     device(_device),
     allocator(std::move(_allocator)),
@@ -37,6 +40,10 @@ RTGL1::CubemapManager::CubemapManager(
     cubemaps(MAX_CUBEMAP_COUNT),
     emptyCubemapInfo{}
 {
+    defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
+    albedoAlphaPostfix = _albedoAlphaPostfix != nullptr ? _albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
+
+    imageLoader = std::make_shared<ImageLoader>();
     cubemapDesc = std::make_shared<TextureDescriptors>(device, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
     cubemapUploader = std::make_shared<TextureUploader>(device, allocator);
 
@@ -87,8 +94,7 @@ RTGL1::CubemapManager::~CubemapManager()
 
             if (t.image != VK_NULL_HANDLE)
             {
-                vkDestroyImage(device, t.image, nullptr);
-                vkDestroyImageView(device, t.view, nullptr);
+                cubemapUploader->DestroyImage(t.image, t.view);
             }
         }
     }
@@ -108,7 +114,6 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     TextureUploader::UploadInfo upload = {};
     upload.cmd = cmd;
     upload.frameIndex = frameIndex;
-    upload.size.width = upload.size.height = info.sideSize;
     upload.format = info.isSRGB ? TEXTURE_IMAGE_FORMAT_SRGB : TEXTURE_IMAGE_FORMAT_UNORM;
     upload.bytesPerPixel = TEXTURE_IMAGE_BYTES_PER_PIXEL;
     upload.generateMipmaps = info.useMipmaps;
@@ -116,9 +121,64 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     upload.isDynamic = false;
     upload.debugName = nullptr;
 
-    for (uint32_t i = 0; i < 6; i++)
+    ParseInfo parseInfo = {};
+    parseInfo.texturesPath = defaultTexturesPath.c_str();
+    parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
+
+    RgExtent2D size = { info.sideSize, info.sideSize };
+
+    // load additional textures, they'll be freed after leaving the scope
+    TextureOverrides ovrd0(info.relativePaths[0], info.data[0], size, parseInfo, imageLoader);
+    TextureOverrides ovrd1(info.relativePaths[1], info.data[1], size, parseInfo, imageLoader);
+    TextureOverrides ovrd2(info.relativePaths[2], info.data[2], size, parseInfo, imageLoader);
+    TextureOverrides ovrd3(info.relativePaths[3], info.data[3], size, parseInfo, imageLoader);
+    TextureOverrides ovrd4(info.relativePaths[4], info.data[4], size, parseInfo, imageLoader);
+    TextureOverrides ovrd5(info.relativePaths[5], info.data[5], size, parseInfo, imageLoader);
+
+    TextureOverrides *ovrd[] =
     {
-        upload.cubemap.faces[i] = info.data[i];
+        &ovrd0,
+        &ovrd1,
+        &ovrd2,
+        &ovrd3,
+        &ovrd4,
+        &ovrd5,
+    };
+
+    // all overrides must have albedo data and the same and square size
+    bool useOvrd = true;
+
+    const RgExtent2D ovrdSize = { ovrd[0]->aaSize.width, ovrd[0]->aaSize.height };
+
+    for (auto &o : ovrd)
+    {
+        if (o->aa == nullptr ||
+            o->aaSize.width != o->aaSize.height ||
+            o->aaSize.width != ovrdSize.width || o->aaSize.height != ovrdSize.height)
+        {
+            useOvrd = false;
+            break;
+        }
+    }
+
+    if (useOvrd)
+    {
+        upload.size.width = upload.size.height = ovrdSize.width;
+        upload.debugName = ovrd[0]->debugName;
+
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            upload.cubemap.faces[i] = ovrd[i]->aa;
+        }
+    }
+    else
+    {
+        upload.size.width = upload.size.height = info.sideSize;
+
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            upload.cubemap.faces[i] = info.data[i];
+        }
     }
 
     auto &i = cubemapUploader->UploadImage(upload);

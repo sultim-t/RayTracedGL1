@@ -102,6 +102,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->overrideNormalMetallicTexturePostfix, 
         info->overrideEmissionRoughnessTexturePostfix);
 
+    cubemapManager      = std::make_shared<CubemapManager>(
+        device,
+        memAllocator,
+        samplerManager,
+        cmdManager,
+        info->overridenTexturesFolderPath,
+        info->overrideAlbedoAlphaTexturePostfix);
+
     auto asManager      = std::make_shared<ASManager>(
         device, 
         memAllocator, 
@@ -176,6 +184,7 @@ VulkanDevice::~VulkanDevice()
     samplerManager.reset();
     blueNoise.reset();
     textureManager.reset();
+    cubemapManager.reset();
     memAllocator.reset();
 
     vkDestroySurfaceKHR(instance, surface, nullptr);

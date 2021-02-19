@@ -67,7 +67,7 @@ uint32_t TextureUploader::GetMipmapCount(const RgExtent2D &size, bool generateMi
     return std::min(widthCount, heightCount) + 1;
 }
 
-void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount)
+void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount, uint32_t layerCount)
 {
     if (mipmapCount <= 1)
     {
@@ -93,7 +93,7 @@ void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_
         curMipmap.baseMipLevel = mipLevel;
         curMipmap.levelCount = 1;
         curMipmap.baseArrayLayer = 0;
-        curMipmap.layerCount = 1;
+        curMipmap.layerCount = layerCount;
 
         // current mip to TRANSFER_DST
         Utils::BarrierImage(
@@ -109,14 +109,14 @@ void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_
         curBlit.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         curBlit.srcSubresource.mipLevel = mipLevel - 1;
         curBlit.srcSubresource.baseArrayLayer = 0;
-        curBlit.srcSubresource.layerCount = 1;
+        curBlit.srcSubresource.layerCount = layerCount;
         curBlit.srcOffsets[0] = { 0,0,0 };
         curBlit.srcOffsets[1] = { (int32_t)prevMipWidth, (int32_t)prevMipHeight, 1 };
 
         curBlit.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         curBlit.dstSubresource.mipLevel = mipLevel;
         curBlit.dstSubresource.baseArrayLayer = 0;
-        curBlit.dstSubresource.layerCount = 1;
+        curBlit.dstSubresource.layerCount = layerCount;
         curBlit.dstOffsets[0] = { 0,0,0 };
         curBlit.dstOffsets[1] = { (int32_t)mipWidth, (int32_t)mipHeight, 1 };
 
@@ -136,7 +136,7 @@ void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_
     }
 }
 
-void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size)
+void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t layerCount)
 {
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
@@ -148,7 +148,7 @@ void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, 
     copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copyRegion.imageSubresource.mipLevel = 0;
     copyRegion.imageSubresource.baseArrayLayer = 0;
-    copyRegion.imageSubresource.layerCount = 1;
+    copyRegion.imageSubresource.layerCount = layerCount;
 
     vkCmdCopyBufferToImage(
         cmd, staging, image,
@@ -168,7 +168,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
     imageInfo.format = info.format;
     imageInfo.extent = { size.width, size.height, 1 };
     imageInfo.mipLevels = GetMipmapCount(size, info.generateMipmaps);
-    imageInfo.arrayLayers = 1;
+    imageInfo.arrayLayers = info.isCubemap ? 6 : 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -190,6 +190,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
     VkCommandBuffer     cmd             = info.cmd;
     const RgExtent2D    &size           = info.size;
     bool                generateMipmaps = info.generateMipmaps;
+    uint32_t            layerCount      = info.isCubemap ? 6 : 1;
 
     uint32_t mipmapCount = GetMipmapCount(size, generateMipmaps);
 
@@ -200,7 +201,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
     firstMipmap.baseMipLevel = 0;
     firstMipmap.levelCount = 1;
     firstMipmap.baseArrayLayer = 0;
-    firstMipmap.layerCount = 1;
+    firstMipmap.layerCount = layerCount;
 
     VkAccessFlags curAccessMask;
     VkImageLayout curLayout;
@@ -236,7 +237,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
         curLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
         curStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
-        CopyStagingToImage(cmd, staging, image, size);
+        CopyStagingToImage(cmd, staging, image, size, layerCount);
     }
 
     if (mipmapCount > 1)
@@ -251,7 +252,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
             curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
             firstMipmap);
 
-        PrepareMipmaps(cmd, image, size.width, size.height, mipmapCount);
+        PrepareMipmaps(cmd, image, size.width, size.height, mipmapCount, layerCount);
 
         // 3A. 2. Prepare all mipmaps for reading in ray tracing and fragment shaders
 
@@ -260,7 +261,7 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
         allMipmaps.baseMipLevel = 0;
         allMipmaps.levelCount = mipmapCount;
         allMipmaps.baseArrayLayer = 0;
-        allMipmaps.layerCount = 1;
+        allMipmaps.layerCount = layerCount;
 
         Utils::BarrierImage(
             cmd, image,
@@ -296,7 +297,7 @@ VkImageView TextureUploader::CreateImageView(VkImage image, VkFormat format, boo
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = mipmapCount;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = 1;
+    viewInfo.subresourceRange.layerCount = isCubemap ? 6 : 1;
 
     VkResult r = vkCreateImageView(device, &viewInfo, nullptr, &view);
     VK_CHECKERROR(r);

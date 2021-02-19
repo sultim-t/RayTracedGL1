@@ -42,7 +42,9 @@ struct TextureOverrides
 {
 public:
     explicit TextureOverrides(
-        const RgStaticMaterialCreateInfo &createInfo,
+        const char *relativePath,
+        const void *defaultData,
+        const RgExtent2D &defaultSize,
         const ParseInfo &parseInfo,
         std::shared_ptr<ImageLoader> imageLoader);
     ~TextureOverrides();

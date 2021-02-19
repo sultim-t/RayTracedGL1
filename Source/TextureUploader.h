@@ -92,11 +92,11 @@ private:
     // and others must have UNDEFINED
     static void PrepareMipmaps(
         VkCommandBuffer cmd, VkImage image, 
-        uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount);
+        uint32_t baseWidth, uint32_t baseHeight, uint32_t mipmapCount, uint32_t layerCount);
 
     // Image must have TRANSFER_DST layout
     static void CopyStagingToImage(
-        VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size);
+        VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t layerCount);
 
     bool CreateImage(const UploadInfo &info, VkImage *result);
     // Create mipmaps and prepare image for usage in shaders

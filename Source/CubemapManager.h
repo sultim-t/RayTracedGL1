@@ -21,6 +21,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 #include "RTGL1/RTGL1.h"
 #include "Common.h"
@@ -30,6 +31,7 @@
 #include "TextureDescriptors.h"
 #include "TextureUploader.h"
 #include "CommandBufferManager.h"
+#include "ImageLoader.h"
 
 namespace RTGL1
 {
@@ -41,7 +43,9 @@ public:
         VkDevice device, 
         std::shared_ptr<MemoryAllocator> allocator,
         std::shared_ptr<SamplerManager> samplerManager,
-        const std::shared_ptr<CommandBufferManager> &cmdManager);
+        const std::shared_ptr<CommandBufferManager> &cmdManager,
+        const char *defaultTexturesPath,
+        const char *albedoAlphaPostfix);
     ~CubemapManager();
 
     CubemapManager(const CubemapManager &other) = delete;
@@ -63,15 +67,20 @@ private:
 
 private:
     VkDevice device;
-    std::shared_ptr<MemoryAllocator> allocator;
-    std::shared_ptr<SamplerManager> samplerManager;
+
+    std::shared_ptr<MemoryAllocator>    allocator;
+    std::shared_ptr<ImageLoader>        imageLoader;
+    std::shared_ptr<SamplerManager>     samplerManager;
     std::shared_ptr<TextureDescriptors> cubemapDesc;
-    std::shared_ptr<TextureUploader> cubemapUploader;
+    std::shared_ptr<TextureUploader>    cubemapUploader;
 
     std::vector<Texture>    cubemaps;
     std::vector<Texture>    cubemapsToDestroy[MAX_FRAMES_IN_FLIGHT];
 
     VkDescriptorImageInfo   emptyCubemapInfo;    
+
+    std::string defaultTexturesPath;
+    std::string albedoAlphaPostfix;
 };
 
 }

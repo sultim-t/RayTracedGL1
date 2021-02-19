@@ -152,7 +152,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
 
         // load additional textures, they'll be freed after leaving the scope
-        TextureOverrides ovrd(createInfo, parseInfo, imageLoader);
+        TextureOverrides ovrd(createInfo.relativePath, createInfo.data, createInfo.size, parseInfo, imageLoader);
 
         textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
         textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);

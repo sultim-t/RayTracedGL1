@@ -23,8 +23,17 @@
 
 using namespace RTGL1;
 
-TextureOverrides::TextureOverrides(const RgStaticMaterialCreateInfo &_createInfo, const ParseInfo &_parseInfo, std::shared_ptr<ImageLoader> _imageLoader) :
-    aa(nullptr), aaSize({}), nm(nullptr), nmSize({}), er(nullptr), erSize({}), imageLoader(_imageLoader)
+TextureOverrides::TextureOverrides(
+    const char *_relativePath, 
+    const void *_defaultData, 
+    const RgExtent2D &_defaultSize,
+    const ParseInfo &_parseInfo, 
+    std::shared_ptr<ImageLoader> _imageLoader) 
+:
+    aa(nullptr), aaSize({}), 
+    nm(nullptr), nmSize({}), 
+    er(nullptr), erSize({}), 
+    imageLoader(_imageLoader)
 {
     char albedoAlphaPath[TEXTURE_FILE_PATH_MAX_LENGTH];
     char normalMetallic[TEXTURE_FILE_PATH_MAX_LENGTH];
@@ -32,7 +41,7 @@ TextureOverrides::TextureOverrides(const RgStaticMaterialCreateInfo &_createInfo
 
     const bool hasOverrides = ParseOverrideTexturePaths(
         albedoAlphaPath, normalMetallic, emissionRoughness,
-        _createInfo.relativePath, _parseInfo);
+        _relativePath, _parseInfo);
 
     if (hasOverrides)
     {
@@ -42,10 +51,10 @@ TextureOverrides::TextureOverrides(const RgStaticMaterialCreateInfo &_createInfo
     }
 
     // if file wasn't found, use data instead
-    if (_createInfo.data != nullptr && aa == nullptr)
+    if (_defaultData != nullptr && aa == nullptr)
     {
-        aa = (uint32_t*)_createInfo.data;
-        aaSize = _createInfo.size;
+        aa = (uint32_t*)_defaultData;
+        aaSize = _defaultSize;
     }
 }
 
@@ -137,9 +146,13 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, parseInfo.albedoAlphaPostfix, extension);
-    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, parseInfo.normalMetallicPostfix, extension);
-    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, parseInfo.emissionRoughnessPostfix, extension);
+    const char *albedoAlphaPostfix       = parseInfo.albedoAlphaPostfix       != nullptr ? parseInfo.albedoAlphaPostfix       : "";
+    const char *normalMetallicPostfix    = parseInfo.normalMetallicPostfix    != nullptr ? parseInfo.normalMetallicPostfix    : "";
+    const char *emissionRoughnessPostfix = parseInfo.emissionRoughnessPostfix != nullptr ? parseInfo.emissionRoughnessPostfix : "";
+
+    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, albedoAlphaPostfix, extension);
+    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, normalMetallicPostfix, extension);
+    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, emissionRoughnessPostfix, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 

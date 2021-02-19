@@ -40,6 +40,7 @@
 #include "BlueNoise.h"
 #include "ImageComposition.h"
 #include "Tonemapping.h"
+#include "CubemapManager.h"
 
 namespace RTGL1
 {
@@ -134,6 +135,7 @@ private:
     std::shared_ptr<SamplerManager>         samplerManager;
     std::shared_ptr<BlueNoise>              blueNoise;
     std::shared_ptr<TextureManager>         textureManager;
+    std::shared_ptr<CubemapManager>         cubemapManager;
 
     bool                                    enableValidationLayer;
     VkDebugUtilsMessengerEXT                debugMessenger;
