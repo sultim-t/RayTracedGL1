@@ -151,6 +151,30 @@ ShPayload traceSkyRay(vec3 origin, vec3 direction)
     return payload;
 }
 
+// Get sky color for primary visibility, i.e. without skyColorMultiplier
+vec3 getSkyPrimary(vec3 direction)
+{
+    uint skyType = globalUniform.skyType;
+
+    if (skyType == SKY_TYPE_TLAS)
+    {
+        ShPayload p = traceSkyRay(globalUniform.skyViewerPosition.xyz, direction);
+
+        if (p.clsHitDistance > 0)
+        {
+            return getHitInfoAlbedoOnly(p);
+        }
+    }
+    else if (skyType == SKY_TYPE_CUBEMAP)
+    {
+        vec3 c = vec3(1.0); // textureCubemap();
+
+        return c;
+    }
+    
+    return globalUniform.skyColorDefault.xyz;
+}
+
 vec3 getSky(vec3 direction)
 {
     uint skyType = globalUniform.skyType;
@@ -171,7 +195,7 @@ vec3 getSky(vec3 direction)
         return c * globalUniform.skyColorMultiplier;
     }
     
-    return vec3(globalUniform.skyColorDefault) * globalUniform.skyColorMultiplier;
+    return globalUniform.skyColorDefault.xyz * globalUniform.skyColorMultiplier;
 }
 
 
@@ -224,6 +248,8 @@ void processDirectionalLight(
 
     vec3 dir;
     {
+        /*mat3 basis = getONB(dirLight.direction);
+        dir = normalize(dirLight.direction + basis[0] * disk.x + basis[1] * disk.y);*/
         vec3 r = normalize(cross(dirLight.direction, vec3(0, 1, 0)));
         vec3 u = cross(r, dirLight.direction);
         dir = normalize(dirLight.direction + r * disk.x + u * disk.y);
