@@ -25,6 +25,7 @@
 #include "ShaderManager.h"
 #include "Framebuffers.h"
 #include "Scene.h"
+#include "CubemapManager.h"
 
 namespace RTGL1
 {
@@ -39,9 +40,10 @@ public:
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<Scene> &scene,
         const std::shared_ptr<GlobalUniform> &uniform,
-        const std::shared_ptr<TextureManager> &textureMgr,
+        const std::shared_ptr<TextureManager> &textureManager,
         const std::shared_ptr<Framebuffers> &framebuffers,
-        const std::shared_ptr<BlueNoise> &blueNoise
+        const std::shared_ptr<BlueNoise> &blueNoise,
+        const std::shared_ptr<CubemapManager> &cubemapManager
     );
     ~RayTracingPipeline();
 

@@ -355,7 +355,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "lightSourceCountDirectional",  1),
     (TYPE_UINT32,       1,      "skyType",                      1),
     (TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),
-    (TYPE_FLOAT32,      1,      "_pad3",                        1),
+    (TYPE_UINT32,       1,      "skyCubemapIndex",              1),
     
     (TYPE_FLOAT32,      4,      "skyColorDefault",              1),
     

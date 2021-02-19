@@ -34,7 +34,8 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<GlobalUniform> &_uniform,
     const std::shared_ptr<TextureManager> &_textureMgr,
     const std::shared_ptr<Framebuffers> &_framebuffers,
-    const std::shared_ptr<BlueNoise> &_blueNoise)
+    const std::shared_ptr<BlueNoise> &_blueNoise,
+    const std::shared_ptr<CubemapManager> &_cubemapMgr)
 :
     device(_device),
     rtPipelineLayout(VK_NULL_HANDLE),
@@ -120,7 +121,9 @@ RayTracingPipeline::RayTracingPipeline(
         // uniform random
         _blueNoise->GetDescSetLayout(),
         // light sources
-        _scene->GetLightManager()->GetDescSetLayout()
+        _scene->GetLightManager()->GetDescSetLayout(),
+        // cubemaps, for a cubemap type of skyboxes
+        _cubemapMgr->GetDescSetLayout()
     };
 
     CreatePipeline(setLayouts.data(), setLayouts.size(),

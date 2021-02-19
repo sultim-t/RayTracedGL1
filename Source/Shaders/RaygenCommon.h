@@ -22,15 +22,21 @@
 
 #include "ShaderCommonGLSLFunc.h"
 
-#ifdef DESC_SET_TLAS 
-#ifdef DESC_SET_GLOBAL_UNIFORM 
-#ifdef DESC_SET_VERTEX_DATA 
-#ifdef DESC_SET_TEXTURES
-#ifdef DESC_SET_RANDOM 
-#ifdef DESC_SET_LIGHT_SOURCES 
-layout(binding = BINDING_ACCELERATION_STRUCTURE_MAIN, set = DESC_SET_TLAS) uniform accelerationStructureEXT topLevelAS;
-layout(binding = BINDING_ACCELERATION_STRUCTURE_SKYBOX, set = DESC_SET_TLAS) uniform accelerationStructureEXT skyboxTopLevelAS;
+#if !defined(DESC_SET_TLAS) || \
+    !defined(DESC_SET_GLOBAL_UNIFORM) || \
+    !defined(DESC_SET_VERTEX_DATA) || \
+    !defined(DESC_SET_TEXTURES) || \
+    !defined(DESC_SET_RANDOM) || \
+    !defined(DESC_SET_LIGHT_SOURCES)
+        #error Descriptor set indices must be set!
+#endif
 
+layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uniform accelerationStructureEXT topLevelAS;
+layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_SKYBOX) uniform accelerationStructureEXT skyboxTopLevelAS;
+
+#ifdef DESC_SET_CUBEMAPS
+layout(set = DESC_SET_CUBEMAPS, binding = BINDING_CUBEMAPS) uniform samplerCube globalCubemaps[];
+#endif
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
 
@@ -133,6 +139,7 @@ ShPayload traceIndirectRay(uint primaryInstCustomIndex, vec3 surfPosition, vec3 
     return payload;
 }
 
+#ifdef DESC_SET_CUBEMAPS
 ShPayload traceSkyRay(vec3 origin, vec3 direction)
 {
     resetPayload();
@@ -167,9 +174,7 @@ vec3 getSkyPrimary(vec3 direction)
     }
     else if (skyType == SKY_TYPE_CUBEMAP)
     {
-        vec3 c = vec3(1.0); // textureCubemap();
-
-        return c;
+        return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
     }
     
     return globalUniform.skyColorDefault.xyz;
@@ -190,14 +195,13 @@ vec3 getSky(vec3 direction)
     }
     else if (skyType == SKY_TYPE_CUBEMAP)
     {
-        vec3 c = vec3(1.0); // textureCubemap();
-
-        return c * globalUniform.skyColorMultiplier;
+        return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb
+            * globalUniform.skyColorMultiplier;
     }
     
     return globalUniform.skyColorDefault.xyz * globalUniform.skyColorMultiplier;
 }
-
+#endif
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
 // lightDirection is pointed to the light
@@ -293,9 +297,3 @@ void processDirectIllumination(
     processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
-#endif // DESC_SET_LIGHT_SOURCES 
-#endif // DESC_SET_TLAS 
-#endif // DESC_SET_GLOBAL_UNIFORM 
-#endif // DESC_SET_VERTEX_DATA 
-#endif // DESC_SET_TEXTURES
-#endif // DESC_SET_RANDOM 

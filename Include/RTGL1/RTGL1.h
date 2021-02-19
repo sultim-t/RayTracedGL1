@@ -581,6 +581,8 @@ typedef struct RgDrawFrameInfo
     float               skyColorMultiplier;
     // A point from which rays are traced while using RG_SKY_TYPE_GEOMETRY.
     RgFloat3            skyViewerPosition;
+    // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
+    RgCubemap           skyCubemap;
     
 } RgDrawFrameInfo;
 

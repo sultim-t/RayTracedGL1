@@ -36,7 +36,8 @@ void PathTracer::Trace(
     const std::shared_ptr<GlobalUniform> &uniform,
     const std::shared_ptr<TextureManager> &textureMgr,
     const std::shared_ptr<Framebuffers> &framebuffers,
-    const std::shared_ptr<BlueNoise> &blueNoise)
+    const std::shared_ptr<BlueNoise> &blueNoise,
+    const std::shared_ptr<CubemapManager> &cubemapMgr)
 {
     rtPipeline->Bind(cmd);
 
@@ -55,7 +56,9 @@ void PathTracer::Trace(
         // uniform random
         blueNoise->GetDescSet(),
         // light sources
-        scene->GetLightManager()->GetDescSet(frameIndex)
+        scene->GetLightManager()->GetDescSet(frameIndex),
+        // cubemaps
+        cubemapMgr->GetDescSet(frameIndex)
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 

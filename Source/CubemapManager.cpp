@@ -257,3 +257,8 @@ void RTGL1::CubemapManager::SubmitDescriptors(uint32_t frameIndex)
 
     cubemapDesc->FlushDescWrites();
 }
+
+bool RTGL1::CubemapManager::IsCubemapValid(uint32_t cubemapIndex) const
+{
+    return cubemapIndex < MAX_CUBEMAP_COUNT;
+}

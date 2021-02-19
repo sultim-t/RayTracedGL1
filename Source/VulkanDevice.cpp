@@ -132,7 +132,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform, 
         textureManager,
         framebuffers, 
-        blueNoise);
+        blueNoise, 
+        cubemapManager);
 
     pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -212,6 +213,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
 
     // destroy staging buffers that were created MAX_FRAMES_IN_FLIGHT ago
     textureManager->PrepareForFrame(frameIndex);
+    cubemapManager->PrepareForFrame(frameIndex);
 
     // start dynamic geometry recording to current frame
     scene->PrepareForFrame(frameIndex);
@@ -273,6 +275,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
     {
         gu->skyType == SKY_TYPE_COLOR;
     }
+
+    gu->skyCubemapIndex = cubemapManager->IsCubemapValid(frameInfo.skyCubemap) ? frameInfo.skyCubemap : RG_EMPTY_CUBEMAP;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
@@ -280,6 +284,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
     uint32_t frameIndex = currentFrameIndex;
 
     textureManager->SubmitDescriptors(frameIndex);
+    cubemapManager->SubmitDescriptors(frameIndex);
 
     // submit geometry
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
@@ -291,7 +296,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
     {
         pathTracer->Trace(
             cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
-            scene, uniform, textureManager, framebuffers, blueNoise);
+            scene, uniform, textureManager, framebuffers, blueNoise, cubemapManager);
     }
 
     // tonemapping
@@ -507,11 +512,17 @@ RgResult VulkanDevice::DestroyMaterial(RgMaterial material)
 }
 RgResult VulkanDevice::CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result)
 {
+    if (currentFrameCmd == VK_NULL_HANDLE)
+    {
+        return RG_FRAME_WASNT_STARTED;
+    }
 
+    *result = cubemapManager->CreateCubemap(currentFrameCmd, currentFrameIndex, *createInfo);
     return RG_SUCCESS;
 }
 RgResult VulkanDevice::DestroyCubemap(RgCubemap cubemap)
 {
+    cubemapManager->DestroyCubemap(currentFrameIndex, cubemap);
     return RG_SUCCESS;
 }
 #pragma endregion 

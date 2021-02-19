@@ -117,7 +117,7 @@ struct ShGlobalUniform
     uint32_t lightSourceCountDirectional;
     uint32_t skyType;
     float skyColorMultiplier;
-    float _pad3;
+    uint32_t skyCubemapIndex;
     float skyColorDefault[4];
     float skyViewerPosition[4];
     int32_t instanceGeomInfoOffset[72];

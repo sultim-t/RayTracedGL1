@@ -28,6 +28,7 @@
 #define DESC_SET_TEXTURES 4
 #define DESC_SET_RANDOM 5
 #define DESC_SET_LIGHT_SOURCES 6
+#define DESC_SET_CUBEMAPS 7
 #define RAYGEN_SHADOW_PAYLOAD
 #include "RaygenCommon.h"
 

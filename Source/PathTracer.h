@@ -44,9 +44,10 @@ public:
         uint32_t width, uint32_t height,
         const std::shared_ptr<Scene> &scene,
         const std::shared_ptr<GlobalUniform> &uniform,
-        const std::shared_ptr<TextureManager> &textureMgr,
+        const std::shared_ptr<TextureManager> &textureManager,
         const std::shared_ptr<Framebuffers> &framebuffers, 
-        const std::shared_ptr<BlueNoise> &blueNoise);
+        const std::shared_ptr<BlueNoise> &blueNoise,
+        const std::shared_ptr<CubemapManager> &_cubemapManager);
 
 private:
     VkDevice device;

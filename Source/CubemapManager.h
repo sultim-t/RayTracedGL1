@@ -62,6 +62,8 @@ public:
     void PrepareForFrame(uint32_t frameIndex);
     void SubmitDescriptors(uint32_t frameIndex);
 
+    bool IsCubemapValid(uint32_t cubemapIndex) const;
+
 private:
     void CreateEmptyCubemap(VkCommandBuffer cmd);
 
