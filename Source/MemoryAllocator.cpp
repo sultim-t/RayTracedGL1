@@ -76,7 +76,12 @@ VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo
     VmaAllocationInfo resultAllocInfo = {};
 
     VkResult r = vmaCreateBuffer(allocator, info, &allocInfo, &buffer, &resultAlloc, &resultAllocInfo);
+    
     VK_CHECKERROR(r);
+    if (r != VK_SUCCESS)
+    {
+        return VK_NULL_HANDLE;
+    }
 
     if (buffer == VK_NULL_HANDLE)
     {
@@ -106,7 +111,12 @@ VkImage MemoryAllocator::CreateDstTextureImage(const VkImageCreateInfo *info, Vk
     VmaAllocationInfo resultAllocInfo = {};
 
     VkResult r = vmaCreateImage(allocator, info, &allocInfo, &image, &resultAlloc, &resultAllocInfo);
+  
     VK_CHECKERROR(r);
+    if (r != VK_SUCCESS)
+    {
+        return VK_NULL_HANDLE;
+    }
 
     if (image == VK_NULL_HANDLE)
     {
