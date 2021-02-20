@@ -77,6 +77,8 @@ static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
 static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
 static glm::vec3 LIGHT_COLOR    = glm::vec3(10, 10, 10);
+static float ROUGHNESS          = 0.5f;
+static float METALLICITY        = 0.5f;
 
 static void ProcessInput(GLFWwindow *window)
 {
@@ -100,6 +102,8 @@ static void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)      CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
     if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)    CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
 
+    CAMERA_UP = glm::cross(-r, CAMERA_DIR);
+
     if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)       LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
     if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)       LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
 
@@ -108,7 +112,19 @@ static void ProcessInput(GLFWwindow *window)
 
     LIGHT_COLOR = glm::clamp(LIGHT_COLOR, glm::vec3(0.0f), glm::vec3(10000.0f));
 
-    CAMERA_UP = glm::cross(-r, CAMERA_DIR);
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    {
+        if (glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS)      ROUGHNESS += delta;
+        if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) ROUGHNESS -= delta;
+    }
+    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+    {
+        if (glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS)      METALLICITY += delta;
+        if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) METALLICITY -= delta;
+    }
+
+    ROUGHNESS   = std::max(std::min(ROUGHNESS, 1.0f), 0.0f);
+    METALLICITY = std::max(std::min(METALLICITY, 1.0f), 0.0f);
 }
 
 static void LoadObj(const char *path,
@@ -240,6 +256,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.indexData = cubeIndices.data();
     cubeInfo.layerColors[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    cubeInfo.defaultRoughness = 1;
+    cubeInfo.defaultMetallicity = 0;
     cubeInfo.geomMaterial = {
         RG_NO_MATERIAL,
         RG_NO_MATERIAL,
@@ -264,7 +282,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgGeometryUploadInfo dnInfo = cubeInfo;
     dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
-    dnInfo.visibilityType = RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX;
     dnInfo.layerColors[0] = { 1.0f, 0.0f, 0.0f, 0.0f };
 
 
@@ -272,6 +289,17 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     RgStaticMaterialCreateInfo textureInfo = {};
     textureInfo.relativePath = "../../../TestImage.png";
     textureInfo.useMipmaps = RG_TRUE;
+
+
+    // skybox info
+    RgCubemapCreateInfo skyboxInfo = {};
+    skyboxInfo.relativePathFaces.positiveX = "../../../Cubemap/px.png";
+    skyboxInfo.relativePathFaces.positiveY = "../../../Cubemap/py.png";
+    skyboxInfo.relativePathFaces.positiveZ = "../../../Cubemap/pz.png";
+    skyboxInfo.relativePathFaces.negativeX = "../../../Cubemap/nx.png";
+    skyboxInfo.relativePathFaces.negativeY = "../../../Cubemap/ny.png";
+    skyboxInfo.relativePathFaces.negativeZ = "../../../Cubemap/nz.png";
+    skyboxInfo.useMipmaps = RG_TRUE;
 
 
     // rasterized geometry for HUD
@@ -301,6 +329,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     float       toMove  = 0;
     RgMaterial  material    = RG_NO_MATERIAL;
     RgGeometry  movableGeom = UINT32_MAX;
+    RgCubemap   skybox = RG_EMPTY_CUBEMAP;
 
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
@@ -316,6 +345,11 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         {
             // upload material
             r = rgCreateStaticMaterial(instance, &textureInfo, &material);
+            RG_CHECKERROR(r);
+
+
+            // create skybox
+            r = rgCreateCubemap(instance, &skyboxInfo, &skybox);
             RG_CHECKERROR(r);
 
 
@@ -349,6 +383,9 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
         // dynamic geometry must be uploaded each frame
+        dnInfo.defaultMetallicity = METALLICITY;
+        dnInfo.defaultRoughness = ROUGHNESS;
+
         dnInfo.transform = {
             0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 30) % 200),
             0, 4, 0, 4,
@@ -392,9 +429,9 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
         frameInfo.skyColorDefault = { 0.71f, 0.88f, 1.0f };
-        frameInfo.skyType = RG_SKY_TYPE_GEOMETRY;
+        frameInfo.skyType = RG_SKY_TYPE_CUBEMAP;
+        frameInfo.skyCubemap = skybox;
         frameInfo.skyColorMultiplier = 1;
-
         frameInfo.skyViewerPosition = { CAMERA_POS.x / 50, CAMERA_POS.y / 50, CAMERA_POS.z / 50 };
 
         r = rgDrawFrame(instance, &frameInfo);

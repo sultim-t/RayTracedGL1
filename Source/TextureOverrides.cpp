@@ -33,7 +33,8 @@ TextureOverrides::TextureOverrides(
     aa(nullptr), aaSize({}), 
     nm(nullptr), nmSize({}), 
     er(nullptr), erSize({}), 
-    imageLoader(_imageLoader)
+    imageLoader(_imageLoader),
+    debugName{}
 {
     char albedoAlphaPath[TEXTURE_FILE_PATH_MAX_LENGTH];
     char normalMetallic[TEXTURE_FILE_PATH_MAX_LENGTH];
@@ -126,6 +127,24 @@ static void ParseFilePath(const char *filePath, char *folderPath, char *name, ch
     extension[extLen] = '\0';
 }
 
+static void SPrintfIfNotNull(
+    char **dst, 
+    const char *postfix,
+    const char *texturesPath,
+    const char *folderPath,
+    const char *name,
+    const char *extension)
+{
+    if (postfix != nullptr)
+    {
+        sprintf_s(*dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
+    }
+    else
+    {
+        *dst = nullptr;
+    }
+}
+
 bool TextureOverrides::ParseOverrideTexturePaths(
     char *albedoAlphaPath,
     char *normalMetallicPath,
@@ -146,13 +165,9 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    const char *albedoAlphaPostfix       = parseInfo.albedoAlphaPostfix       != nullptr ? parseInfo.albedoAlphaPostfix       : "";
-    const char *normalMetallicPostfix    = parseInfo.normalMetallicPostfix    != nullptr ? parseInfo.normalMetallicPostfix    : "";
-    const char *emissionRoughnessPostfix = parseInfo.emissionRoughnessPostfix != nullptr ? parseInfo.emissionRoughnessPostfix : "";
-
-    sprintf_s(albedoAlphaPath,       TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, albedoAlphaPostfix, extension);
-    sprintf_s(normalMetallicPath,    TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, normalMetallicPostfix, extension);
-    sprintf_s(emissionRoughnessPath, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", parseInfo.texturesPath, folderPath, name, emissionRoughnessPostfix, extension);
+    SPrintfIfNotNull(&albedoAlphaPath,       parseInfo.albedoAlphaPostfix,       parseInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(&normalMetallicPath,    parseInfo.normalMetallicPostfix,    parseInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(&emissionRoughnessPath, parseInfo.emissionRoughnessPostfix, parseInfo.texturesPath, folderPath, name, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 

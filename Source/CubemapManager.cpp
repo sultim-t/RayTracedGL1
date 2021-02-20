@@ -173,11 +173,24 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     }
     else
     {
+        bool isValid = info.sideSize > 0;
+
         upload.size.width = upload.size.height = info.sideSize;
 
-        for (uint32_t i = 0; i < 6; i++)
+        for (uint32_t i = 0; i < 6 && isValid; i++)
         {
             upload.cubemap.faces[i] = info.data[i];
+
+            if (info.data[i] == nullptr)
+            {
+                isValid = false;
+            }
+        }
+
+        // if original data is not valid
+        if (!isValid)
+        {
+            return RG_EMPTY_CUBEMAP;
         }
     }
 

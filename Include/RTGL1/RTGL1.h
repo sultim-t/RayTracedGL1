@@ -497,7 +497,7 @@ typedef struct RgCubemapCreateInfo
     };
 
     // Overriding paths for each cubemap face.
-    struct
+    union
     {
         const char *relativePaths[6];
         struct
