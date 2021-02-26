@@ -72,13 +72,32 @@ static void DebugPrint(const char *msg)
 }
 
 
+static std::vector<const char *> cubemapNames = {
+    "Cubemap/S (1)",
+    "Cubemap/S (2)",
+    "Cubemap/S (3)",
+    "Cubemap/S (4)",
+    "Cubemap/S (5)",
+    "Cubemap/S (6)",
+    "Cubemap/S (7)",
+    "Cubemap/S (8)",
+    "Cubemap/S (9)",
+    "Cubemap/S (10)",
+    "Cubemap/S (11)",
+    "Cubemap/S (12)",
+};
+
+
 static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, -8);
 static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
 static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
-static glm::vec3 LIGHT_COLOR    = glm::vec3(10, 10, 10);
+static glm::vec3 LIGHT_COLOR    = glm::vec3(1, 1, 1);
 static float ROUGHNESS          = 0.5f;
 static float METALLICITY        = 0.5f;
+static float SUN_INTENSITY      = 1.0f;
+static float SKY_INTENSITY      = 1.0f;
+static uint32_t SKYBOX_CURRENT  = 0;
 
 static void ProcessInput(GLFWwindow *window)
 {
@@ -97,34 +116,53 @@ static void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)       CAMERA_POS  -= glm::vec3(0, 1, 0) * cameraSpeed;
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)       CAMERA_POS  += glm::vec3(0, 1, 0) * cameraSpeed;
 
-    if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS)    CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_LEFT)  == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
     if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)      CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
-    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)    CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_UP)    == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
+    if (glfwGetKey(window, GLFW_KEY_DOWN)  == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
 
     CAMERA_UP = glm::cross(-r, CAMERA_DIR);
 
-    if (glfwGetKey(window, GLFW_KEY_1) == GLFW_PRESS)       LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
-    if (glfwGetKey(window, GLFW_KEY_2) == GLFW_PRESS)       LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
+    if (glfwGetKey(window, GLFW_KEY_1)     == GLFW_PRESS)   LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
+    if (glfwGetKey(window, GLFW_KEY_2)     == GLFW_PRESS)   LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
 
-    if (glfwGetKey(window, GLFW_KEY_3) == GLFW_PRESS)       LIGHT_COLOR -= glm::vec3(lightColorChangeSpeed);
-    if (glfwGetKey(window, GLFW_KEY_4) == GLFW_PRESS)       LIGHT_COLOR += glm::vec3(lightColorChangeSpeed);
-
-    LIGHT_COLOR = glm::clamp(LIGHT_COLOR, glm::vec3(0.0f), glm::vec3(10000.0f));
-
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS)
+    auto controlFloat = [window] (int mainKey, float &value, float speed)
     {
-        if (glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS)      ROUGHNESS += delta;
-        if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) ROUGHNESS -= delta;
-    }
-    if (glfwGetKey(window, GLFW_KEY_M) == GLFW_PRESS)
+        if (glfwGetKey(window, mainKey) == GLFW_PRESS)
+        {
+            if (glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS)      value += speed;
+            if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) value -= speed;
+        }
+    };
+
+    controlFloat(GLFW_KEY_R, ROUGHNESS, delta);
+    controlFloat(GLFW_KEY_M, METALLICITY, delta);
+    controlFloat(GLFW_KEY_I, SUN_INTENSITY, delta);
+    controlFloat(GLFW_KEY_O, SKY_INTENSITY, delta);
+
+    ROUGHNESS       = std::max(std::min(ROUGHNESS, 1.0f), 0.0f);
+    METALLICITY     = std::max(std::min(METALLICITY, 1.0f), 0.0f);
+    SUN_INTENSITY   = std::max(SUN_INTENSITY, 0.0f);
+    SKY_INTENSITY   = std::max(SKY_INTENSITY, 0.0f);
+    LIGHT_COLOR     = SUN_INTENSITY * glm::vec3(1, 1, 1);
+
+
+    // switches
+    static auto lastTimePressed = std::chrono::system_clock::now();
+
+    auto now = std::chrono::system_clock::now();
+    float secondsSinceLastTime = std::chrono::duration_cast<std::chrono::milliseconds>(now - lastTimePressed).count() / 1000.0f;
+
+    if (secondsSinceLastTime < 0.5f)
     {
-        if (glfwGetKey(window, GLFW_KEY_KP_ADD) == GLFW_PRESS)      METALLICITY += delta;
-        if (glfwGetKey(window, GLFW_KEY_KP_SUBTRACT) == GLFW_PRESS) METALLICITY -= delta;
+        return;
     }
 
-    ROUGHNESS   = std::max(std::min(ROUGHNESS, 1.0f), 0.0f);
-    METALLICITY = std::max(std::min(METALLICITY, 1.0f), 0.0f);
+    if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
+    {
+        SKYBOX_CURRENT = ((uint64_t)SKYBOX_CURRENT + 1) % cubemapNames.size();
+        lastTimePressed = now;
+    }
 }
 
 static void LoadObj(const char *path,
@@ -291,17 +329,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     textureInfo.useMipmaps = RG_TRUE;
 
 
-    // skybox info
-    RgCubemapCreateInfo skyboxInfo = {};
-    skyboxInfo.relativePathFaces.positiveX = "../../../Cubemap/px.png";
-    skyboxInfo.relativePathFaces.positiveY = "../../../Cubemap/py.png";
-    skyboxInfo.relativePathFaces.positiveZ = "../../../Cubemap/pz.png";
-    skyboxInfo.relativePathFaces.negativeX = "../../../Cubemap/nx.png";
-    skyboxInfo.relativePathFaces.negativeY = "../../../Cubemap/ny.png";
-    skyboxInfo.relativePathFaces.negativeZ = "../../../Cubemap/nz.png";
-    skyboxInfo.useMipmaps = RG_TRUE;
-
-
     // rasterized geometry for HUD
     RgRasterizedGeometryUploadInfo raster = {};
     raster.vertexData = quadPositions;
@@ -329,7 +356,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     float       toMove  = 0;
     RgMaterial  material    = RG_NO_MATERIAL;
     RgGeometry  movableGeom = UINT32_MAX;
-    RgCubemap   skybox = RG_EMPTY_CUBEMAP;
+
+    std::vector<RgCubemap> skyboxes(cubemapNames.size());
 
 
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
@@ -348,9 +376,31 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             RG_CHECKERROR(r);
 
 
-            // create skybox
-            r = rgCreateCubemap(instance, &skyboxInfo, &skybox);
-            RG_CHECKERROR(r);
+            // create skyboxes
+            for (uint32_t i = 0; i < cubemapNames.size(); i++)
+            {
+                std::string skyboxFolderPath = std::string("../../../") + cubemapNames[i] + "/";
+
+                std::string px = skyboxFolderPath + "px.png";
+                std::string py = skyboxFolderPath + "py.png";
+                std::string pz = skyboxFolderPath + "pz.png";
+                std::string nx = skyboxFolderPath + "nx.png";
+                std::string ny = skyboxFolderPath + "ny.png";
+                std::string nz = skyboxFolderPath + "nz.png";
+
+                RgCubemapCreateInfo skyboxInfo = {};
+                skyboxInfo.useMipmaps = RG_TRUE;
+                skyboxInfo.isSRGB = RG_TRUE;
+                skyboxInfo.relativePathFaces.positiveX = px.c_str();
+                skyboxInfo.relativePathFaces.positiveY = py.c_str();
+                skyboxInfo.relativePathFaces.positiveZ = pz.c_str();
+                skyboxInfo.relativePathFaces.negativeX = nx.c_str();
+                skyboxInfo.relativePathFaces.negativeY = ny.c_str();
+                skyboxInfo.relativePathFaces.negativeZ = nz.c_str();
+
+                r = rgCreateCubemap(instance, &skyboxInfo, &skyboxes[i]);
+                RG_CHECKERROR(r);    
+            }
 
 
             // start static scene upload
@@ -430,8 +480,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         frameInfo.skyColorDefault = { 0.71f, 0.88f, 1.0f };
         frameInfo.skyType = RG_SKY_TYPE_CUBEMAP;
-        frameInfo.skyCubemap = skybox;
-        frameInfo.skyColorMultiplier = 1;
+        frameInfo.skyCubemap = skyboxes[SKYBOX_CURRENT];
+        frameInfo.skyColorMultiplier = SKY_INTENSITY;
         frameInfo.skyViewerPosition = { CAMERA_POS.x / 50, CAMERA_POS.y / 50, CAMERA_POS.z / 50 };
 
         r = rgDrawFrame(instance, &frameInfo);
