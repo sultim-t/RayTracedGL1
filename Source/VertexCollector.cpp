@@ -57,8 +57,8 @@ VertexCollector::VertexCollector(
     geomInfosCopyRegions{},
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
-    texCoordsToCopyLowerBound(0),
-    texCoordsToCopyUpperBound(UINT64_MAX)
+    texCoordsToCopyLowerBound(UINT64_MAX),
+    texCoordsToCopyUpperBound(0)
 {
     assert(filtersFlags != 0);
 
@@ -114,8 +114,8 @@ VertexCollector::VertexCollector(
     geomInfosCopyRegions{},
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
-    texCoordsToCopyLowerBound(0),
-    texCoordsToCopyUpperBound(UINT64_MAX)
+    texCoordsToCopyLowerBound(UINT64_MAX),
+    texCoordsToCopyUpperBound(0)
 {
     // device local buffers are shared with the "src" vertex collector
     InitStagingBuffers(_allocator);
@@ -422,7 +422,7 @@ void RTGL1::VertexCollector::CopyTexCoordsToStaging(bool isStatic, uint32_t glob
             void *texCoordDst = mappedVertexData + dstOffsetBegin;
             assert(dstOffsetEnd < wholeBufferSize);
 
-            memcpy(texCoordDst, texCoordLayerData[i], vertexCount * texCoordStride);
+            memcpy(texCoordDst, texCoordLayerData[i], texCoordDataSize);
 
 
             if (addToCopy)
@@ -612,8 +612,8 @@ bool RTGL1::VertexCollector::RecopyTexCoordsFromStaging(VkCommandBuffer cmd)
         0, nullptr);
 
     texCoordsToCopy.clear();
-    texCoordsToCopyLowerBound = 0;
-    texCoordsToCopyUpperBound = UINT64_MAX;
+    texCoordsToCopyLowerBound = UINT64_MAX;
+    texCoordsToCopyUpperBound = 0;
 }
 
 bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData)
