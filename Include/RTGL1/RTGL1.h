@@ -174,15 +174,15 @@ typedef struct RgTransform
     float       matrix[3][4];
 } RgTransform;
 
-typedef struct RgFloat3
+typedef struct RgFloat3D
 {
     float       data[3];
-} RgFloat3;
+} RgFloat3D;
 
-typedef struct RgFloat4
+typedef struct RgFloat4D
 {
     float       data[4];
-} RgFloat4;
+} RgFloat4D;
 
 typedef struct RgGeometryUploadInfo
 {
@@ -207,7 +207,7 @@ typedef struct RgGeometryUploadInfo
     void                            *indexData;
 
     // RGBA color for each material layer.
-    RgFloat4                        layerColors[3];
+    RgFloat4D                       layerColors[3];
     RgGeometryMaterialBlendType     layerBlendingTypes[3];
     // These default values will be used if no overriding 
     // texture is found.
@@ -225,6 +225,21 @@ typedef struct RgUpdateTransformInfo
     RgGeometry      movableStaticGeom;
     RgTransform     transform;
 } RgUpdateTransformInfo;
+
+// Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.
+// Uploaded dynamic geometries are only visible in the current frame.
+// "result" may be null, if its transform won't be changed
+RgResult rgUploadGeometry(
+    RgInstance                              rgInstance,
+    const RgGeometryUploadInfo *uploadInfo,
+    RgGeometry *result);
+
+// Updating transform is available only for movable static geometry.
+// Other geometry types don't need it because they are either fully static
+// or uploaded every frame, so transforms are always as they are intended.
+RgResult rgUpdateGeometryTransform(
+    RgInstance                              rgInstance,
+    const RgUpdateTransformInfo *updateInfo);
 
 typedef struct RgExtent2D
 {
@@ -305,21 +320,6 @@ typedef struct RgRasterizedGeometryUploadInfo
     float               viewProjection[16];
 } RgRasterizedGeometryUploadInfo;
 
-// Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.
-// Uploaded dynamic geometries are only visible in the current frame.
-// "result" may be null, if its transform won't be changed
-RgResult rgUploadGeometry(
-    RgInstance                              rgInstance,
-    const RgGeometryUploadInfo              *uploadInfo,
-    RgGeometry                              *result);
-
-// Updating transform is available only for movable static geometry.
-// Other geometry types don't need it because they are either fully static
-// or uploaded every frame, so transforms are always as they are intended.
-RgResult rgUpdateGeometryTransform(
-    RgInstance                              rgInstance,
-    const RgUpdateTransformInfo             *updateInfo);
-
 // Upload geometry that will be drawn using rasterization,
 // whole buffer for such geometry be discarded after frame finish
 RgResult rgUploadRasterizedGeometry(
@@ -337,16 +337,16 @@ typedef enum RgLightType
 typedef struct RgDirectionalLightUploadInfo
 {
     RgLightType     type;
-    RgFloat3        color;
-    RgFloat3        direction;
+    RgFloat3D       color;
+    RgFloat3D       direction;
     float           angularDiameterDegrees;
 } RgDirectionalLightUploadInfo;
 
 typedef struct RgSphericalLightUploadInfo
 {
     RgLightType     type;
-    RgFloat3        color;
-    RgFloat3        position;
+    RgFloat3D       color;
+    RgFloat3D       position;
     float           radius;
 } RgSphericalLightUploadInfo;
 
@@ -576,11 +576,11 @@ typedef struct RgDrawFrameInfo
     float               luminanceWhitePoint;
     RgSkyType           skyType;
     // Used as a main color for RG_SKY_TYPE_COLOR and ray-miss color for RG_SKY_TYPE_GEOMETRY.
-    RgFloat3            skyColorDefault;
+    RgFloat3D           skyColorDefault;
     // The result sky color is multiplied by this value.
     float               skyColorMultiplier;
     // A point from which rays are traced while using RG_SKY_TYPE_GEOMETRY.
-    RgFloat3            skyViewerPosition;
+    RgFloat3D           skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
     RgCubemap           skyCubemap;
     
