@@ -48,6 +48,9 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     lightManager->CopyFromStaging(cmd, frameIndex);
     lightManager->Clear();
 
+    // copy to device-local, if there were any tex coords change for static geometry
+    asManager->ResubmitStaticTexCoords(cmd);
+
     if (toResubmitMovable)
     {
         // at least one transform of static movable geometry was changed
@@ -83,6 +86,7 @@ uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadIn
 
         uint32_t geomId = asManager->AddStaticGeometry(uploadInfo);
 
+        allStaticGeomIds.push_back(geomId);
         if (uploadInfo.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
         {
             movableGeomIds.push_back(geomId);
@@ -113,6 +117,19 @@ bool Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
     return true;
 }
 
+bool RTGL1::Scene::UpdateTexCoords(uint32_t geomId, const RgUpdateTexCoordsInfo &texCoordsInfo)
+{
+    // check if it's static
+    if (std::find(allStaticGeomIds.begin(), allStaticGeomIds.end(), geomId) == allStaticGeomIds.end())
+    {
+        // do nothing, if it's not
+        return false;
+    }
+
+    asManager->UpdateStaticTexCoords(geomId, texCoordsInfo);
+    return true;
+}
+
 void Scene::SubmitStatic()
 {
     // submit even if nothing was recorded
@@ -134,6 +151,7 @@ void Scene::StartNewStatic()
         asManager->ResetStaticGeometry();
     }
 
+    allStaticGeomIds.clear();
     movableGeomIds.clear();
 }
 

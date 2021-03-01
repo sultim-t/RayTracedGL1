@@ -77,6 +77,11 @@ RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransfor
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTransform(updateInfo);
 }
 
+RgResult rgUpdateGeometryTexCoords(RgInstance rgInstance, const RgUpdateTexCoordsInfo *updateInfo)
+{
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTexCoords(updateInfo);
+}
+
 RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *uploadInfo)
 {
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo);

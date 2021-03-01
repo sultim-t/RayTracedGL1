@@ -70,11 +70,14 @@ public:
     // "isStaticVertexData" is required to determine what GLSL struct to use for copying
     bool CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData);
     // Returns false, if wasn't copied
-    bool CopyTransformsFromStaging(VkCommandBuffer cmd);
+    bool RecopyTransformsFromStaging(VkCommandBuffer cmd);
+    bool RecopyTexCoordsFromStaging(VkCommandBuffer cmd);
 
-    // Update transform, mainly for movable static geometry as dynamic geometry
+    // Update transform, only for movable static geometry as dynamic geometry
     // will be updated every frame and thus their transforms.
     void UpdateTransform(uint32_t geomIndex, const RgTransform &transform);
+    // Update texture coordinates 
+    void UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
 
     // When material data is changed, this function is called
     void OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo) override;
@@ -106,8 +109,11 @@ private:
     void InitStagingBuffers(const std::shared_ptr<MemoryAllocator> &allocator);
 
     void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
+    void CopyTexCoordsToStaging(
+        bool isStatic, uint32_t globalVertIndex, uint32_t vertexCount, 
+        const void *const texCoordLayerData[3], bool addToCopy = false);
 
-    bool GetVertBufferCopyInfos(bool isStatic, VkBufferCopy *pOutInfos, uint32_t *outCount) const;
+    bool GetVertBufferCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const;
     
     bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
@@ -183,6 +189,12 @@ private:
     std::map<uint32_t, uint32_t> geomLocalIndex;
 
     std::map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
+
+    // if some static geometries changed their tex coords, then they should be copied 
+    // from staging to device-local; this array holds copy ranges; freed after vkCmdCopy call
+    std::vector<VkBufferCopy> texCoordsToCopy;
+    VkDeviceSize texCoordsToCopyLowerBound;
+    VkDeviceSize texCoordsToCopyUpperBound;
 };
 
 }

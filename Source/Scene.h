@@ -46,6 +46,7 @@ public:
 
     uint32_t Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
     bool UpdateTransform(uint32_t geomId, const RgTransform &transform);
+    bool UpdateTexCoords(uint32_t geomId, const RgUpdateTexCoordsInfo &texCoordsInfo);
 
     void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo);
@@ -60,6 +61,8 @@ private:
     std::shared_ptr<ASManager> asManager;
     std::shared_ptr<LightManager> lightManager;
 
+    // Non-movable and movable geometry IDs
+    std::vector<uint32_t> allStaticGeomIds;
     std::vector<uint32_t> movableGeomIds;
     bool toResubmitMovable;
 

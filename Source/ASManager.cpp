@@ -615,6 +615,23 @@ void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransfo
     collectorStatic->UpdateTransform(geomIndex, transform);
 }
 
+void RTGL1::ASManager::UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
+{
+    collectorStatic->UpdateTexCoords(geomIndex, texCoordsInfo);
+}
+
+void RTGL1::ASManager::ResubmitStaticTexCoords(VkCommandBuffer cmd)
+{
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
+    if (collectorStatic->AreGeometriesEmpty(FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE))
+    {
+        return;
+    }
+
+    collectorStatic->RecopyTexCoordsFromStaging(cmd);
+}
+
 void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
@@ -641,7 +658,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     }
 
     // copy transforms to device-local memory
-    collectorStatic->CopyTransformsFromStaging(cmd);
+    collectorStatic->RecopyTransformsFromStaging(cmd);
 
     asBuilder->BuildBottomLevel(cmd);
 }

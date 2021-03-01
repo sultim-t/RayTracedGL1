@@ -406,7 +406,21 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
 
     bool b = scene->UpdateTransform(geomId, updateInfo->transform);
 
-    return b ? RG_SUCCESS : RG_UPDATING_NOT_MOVABLE;
+    return b ? RG_SUCCESS : RG_UPDATING_TRANSFORM_FOR_NON_MOVABLE;
+}
+
+RgResult RTGL1::VulkanDevice::UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo)
+{
+    if (updateInfo == nullptr)
+    {
+        return RG_WRONG_ARGUMENT;
+    }
+
+    uint32_t geomId = static_cast<uint32_t>(updateInfo->staticGeom);
+
+    bool b = scene->UpdateTexCoords(geomId, *updateInfo);
+
+    return b ? RG_SUCCESS : RG_UPDATING_TEXCOORDS_FOR_NON_STATIC;
 }
 
 RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)

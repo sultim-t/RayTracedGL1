@@ -64,6 +64,11 @@ public:
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 
+    // Update texture coordinates for static geometry, it 
+    // doesn't require AS rebuilding, but only copying from staging to device-local 
+    void UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
+    void ResubmitStaticTexCoords(VkCommandBuffer cmd);
+
     bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool ignoreSkyboxTLAS);
     VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const;
     VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const;

@@ -55,7 +55,8 @@ typedef enum RgResult
     RG_WRONG_INSTANCE,
     RG_FRAME_WASNT_STARTED,
     RG_FRAME_WASNT_ENDED,
-    RG_UPDATING_NOT_MOVABLE,
+    RG_UPDATING_TRANSFORM_FOR_NON_MOVABLE,
+    RG_UPDATING_TEXCOORDS_FOR_NON_STATIC,
     RG_CANT_UPDATE_DYNAMIC_MATERIAL,
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
 } RgResult;
@@ -226,20 +227,38 @@ typedef struct RgUpdateTransformInfo
     RgTransform     transform;
 } RgUpdateTransformInfo;
 
+typedef struct RgUpdateTexCoordsInfo
+{
+    // movable or non-movable static geometry index
+    RgGeometry      staticGeom;
+    uint32_t        vertexOffset;
+    uint32_t        vertexCount;
+    // If an array member is null, then texture coordinates
+    // won't be updated for that layer.
+    void            *texCoordLayerData[3];
+} RgUpdateTexCoordsInfo;
+
+
 // Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.
 // Uploaded dynamic geometries are only visible in the current frame.
 // "result" may be null, if its transform won't be changed
 RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
-    const RgGeometryUploadInfo *uploadInfo,
-    RgGeometry *result);
+    const RgGeometryUploadInfo              *uploadInfo,
+    RgGeometry                              *result);
 
 // Updating transform is available only for movable static geometry.
 // Other geometry types don't need it because they are either fully static
 // or uploaded every frame, so transforms are always as they are intended.
 RgResult rgUpdateGeometryTransform(
     RgInstance                              rgInstance,
-    const RgUpdateTransformInfo *updateInfo);
+    const RgUpdateTransformInfo             *updateInfo);
+
+RgResult rgUpdateGeometryTexCoords(
+    RgInstance                              rgInstance,
+    const RgUpdateTexCoordsInfo             *updateInfo);
+
+
 
 typedef struct RgExtent2D
 {

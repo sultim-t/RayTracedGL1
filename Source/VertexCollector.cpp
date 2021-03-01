@@ -43,8 +43,6 @@ constexpr uint64_t OFFSET_TEX_COORDS_DYNAMIC[] =
 constexpr uint32_t TEXCOORD_LAYER_COUNT_STATIC = sizeof(OFFSET_TEX_COORDS_STATIC) / sizeof(OFFSET_TEX_COORDS_STATIC[0]);
 constexpr uint32_t TEXCOORD_LAYER_COUNT_DYNAMIC = sizeof(OFFSET_TEX_COORDS_DYNAMIC) / sizeof(OFFSET_TEX_COORDS_DYNAMIC[0]);
 
-constexpr uint32_t MAX_VERTEX_BUFFER_MEMBER_COUNT = 8;
-
 
 VertexCollector::VertexCollector(
     VkDevice _device, 
@@ -58,7 +56,9 @@ VertexCollector::VertexCollector(
     filtersFlags(_filters),
     geomInfosCopyRegions{},
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0),
-    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr)
+    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
+    texCoordsToCopyLowerBound(0),
+    texCoordsToCopyUpperBound(UINT64_MAX)
 {
     assert(filtersFlags != 0);
 
@@ -113,7 +113,9 @@ VertexCollector::VertexCollector(
     geomInfosBuffer(_src->geomInfosBuffer),
     geomInfosCopyRegions{},
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curGeometryCount(0),
-    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr)
+    mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), mappedGeomInfosData(nullptr),
+    texCoordsToCopyLowerBound(0),
+    texCoordsToCopyUpperBound(UINT64_MAX)
 {
     // device local buffers are shared with the "src" vertex collector
     InitStagingBuffers(_allocator);
@@ -209,9 +211,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
 
     const bool collectStatic = geomFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
     
-    const uint32_t maxVertexCount = collectStatic ?
-        MAX_STATIC_VERTEX_COUNT :
-        MAX_DYNAMIC_VERTEX_COUNT;
+    const uint32_t maxVertexCount = collectStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
 
     const uint32_t geomIndex = curGeometryCount;
     const uint32_t vertIndex = curVertexCount;
@@ -232,14 +232,11 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
         curIndexCount += info.indexCount;
     }
 
-    assert(curVertexCount < maxVertexCount);
-    assert(curIndexCount < MAX_VERTEX_COLLECTOR_INDEX_COUNT);
-    assert(curGeometryCount < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
-
     if (curVertexCount >= maxVertexCount ||
         curIndexCount >= MAX_VERTEX_COLLECTOR_INDEX_COUNT ||
         curGeometryCount >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT)
     {
+        assert(0);
         return UINT32_MAX;
     }
 
@@ -371,7 +368,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
 
     const uint64_t positionStride = properties.positionStride;
     const uint64_t normalStride = properties.normalStride;
-    const uint64_t texCoordStride = properties.texCoordStride;
 
     // positions
     void *positionsDst = mappedVertexData + offsetPositions + vertIndex * positionStride;
@@ -390,28 +386,57 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     else
     {
         // TODO: generate normals
-        memset(normalsDst, 0, info.vertexCount * normalStride);
+        // memset(normalsDst, 0, info.vertexCount * normalStride);
     }
 
     //const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
     //const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 
+    CopyTexCoordsToStaging(isStatic, vertIndex, info.vertexCount, info.texCoordLayerData);
+}
+
+void RTGL1::VertexCollector::CopyTexCoordsToStaging(bool isStatic, uint32_t globalVertIndex, uint32_t vertexCount, const void *const texCoordLayerData[3], bool addToCopy)
+{
+    assert(mappedVertexData != nullptr);
+
+    const uint64_t texCoordStride = properties.texCoordStride;
+    const uint64_t wholeBufferSize = isStatic ?
+        sizeof(ShVertexBufferStatic) :
+        sizeof(ShVertexBufferDynamic);
+
+    const uint64_t texCoordDataSize = vertexCount * texCoordStride;
+
+
     // additional tex coords for static geometry
     const uint64_t *offsetTexCoords = isStatic ? OFFSET_TEX_COORDS_STATIC : OFFSET_TEX_COORDS_DYNAMIC;
     uint32_t        offsetCount     = isStatic ? TEXCOORD_LAYER_COUNT_STATIC : TEXCOORD_LAYER_COUNT_DYNAMIC;
 
+
     for (uint32_t i = 0; i < offsetCount; i++)
     {
-        void *texCoordDst = mappedVertexData + offsetTexCoords[i] + vertIndex * texCoordStride;
-        assert(offsetTexCoords[i] + (vertIndex + info.vertexCount) * texCoordStride < wholeBufferSize);
+        if (texCoordLayerData[i] != nullptr)
+        {
+            uint64_t dstOffsetBegin = offsetTexCoords[i] + globalVertIndex * texCoordStride;
+            uint64_t dstOffsetEnd = dstOffsetBegin + texCoordDataSize;
 
-        if (info.texCoordLayerData[i] != nullptr)
-        {
-            memcpy(texCoordDst, info.texCoordLayerData[i], info.vertexCount * texCoordStride);
-        }
-        else
-        {
-            memset(texCoordDst, 0, info.vertexCount * texCoordStride);
+            void *texCoordDst = mappedVertexData + dstOffsetBegin;
+            assert(dstOffsetEnd < wholeBufferSize);
+
+            memcpy(texCoordDst, texCoordLayerData[i], vertexCount * texCoordStride);
+
+
+            if (addToCopy)
+            {
+                texCoordsToCopyLowerBound = std::min(dstOffsetBegin, texCoordsToCopyLowerBound);
+                texCoordsToCopyUpperBound = std::max(dstOffsetEnd, texCoordsToCopyUpperBound);
+
+                VkBufferCopy cp = {};
+                cp.srcOffset = dstOffsetBegin;
+                cp.dstOffset = dstOffsetBegin;
+                cp.size = texCoordDataSize;
+
+                texCoordsToCopy.push_back(cp);
+            }
         }
     }
 }
@@ -444,12 +469,9 @@ void VertexCollector::Reset()
 
 bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic)
 {
-    std::array<VkBufferCopy, MAX_VERTEX_BUFFER_MEMBER_COUNT> vertCopyInfos = {};
+    std::vector<VkBufferCopy> vertCopyInfos;
 
-    uint32_t count;
-    bool hasInfo = GetVertBufferCopyInfos(isStatic, vertCopyInfos.data(), &count);
-
-    if (!hasInfo)
+    if (!GetVertBufferCopyInfos(isStatic, vertCopyInfos))
     {
         return false;
     }
@@ -457,7 +479,7 @@ bool VertexCollector::CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStat
     vkCmdCopyBuffer(
         cmd,
         stagingVertBuffer.GetBuffer(), vertBuffer->GetBuffer(),
-        count, vertCopyInfos.data());
+        vertCopyInfos.size(), vertCopyInfos.data());
 
     return true;
 }
@@ -554,9 +576,44 @@ bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd, bool insert
     return true;
 }
 
-bool VertexCollector::CopyTransformsFromStaging(VkCommandBuffer cmd)
+bool VertexCollector::RecopyTransformsFromStaging(VkCommandBuffer cmd)
 {
     return CopyTransformsFromStaging(cmd, true);
+}
+
+bool RTGL1::VertexCollector::RecopyTexCoordsFromStaging(VkCommandBuffer cmd)
+{
+    if (curGeometryCount == 0 || texCoordsToCopy.empty())
+    {
+        return false;
+    }
+
+    vkCmdCopyBuffer(
+        cmd,
+        stagingVertBuffer.GetBuffer(), vertBuffer->GetBuffer(),
+        texCoordsToCopy.size(), texCoordsToCopy.data());
+
+    VkBufferMemoryBarrier txcBr = {};
+    txcBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    txcBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    txcBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    txcBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    txcBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    txcBr.buffer = vertBuffer->GetBuffer();
+    txcBr.offset = texCoordsToCopyLowerBound;
+    txcBr.size = texCoordsToCopyUpperBound - texCoordsToCopyLowerBound;
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+        0,
+        0, nullptr,
+        1, &txcBr,
+        0, nullptr);
+
+    texCoordsToCopy.clear();
+    texCoordsToCopyLowerBound = 0;
+    texCoordsToCopyUpperBound = UINT64_MAX;
 }
 
 bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData)
@@ -638,7 +695,7 @@ bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexDa
     return false;
 }
 
-bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, VkBufferCopy *pOutInfos, uint32_t *outCount) const
+bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const
 {
     if (curVertexCount == 0 || curPrimitiveCount == 0)
     {
@@ -655,23 +712,19 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, VkBufferCopy *pOutIn
 
     const uint64_t *offsetTexCoords = isStatic ? OFFSET_TEX_COORDS_STATIC : OFFSET_TEX_COORDS_DYNAMIC;
     uint32_t        offsetCount     = isStatic ? TEXCOORD_LAYER_COUNT_STATIC : TEXCOORD_LAYER_COUNT_DYNAMIC;
+    
+    // positions, normals + texCoords
+    uint32_t count = 2 + offsetCount;
+    outInfos.reserve(count);
 
-    uint32_t count = 0;
-
-    pOutInfos[count++] = { offsetPositions,    offsetPositions,    (uint64_t)curVertexCount * properties.positionStride };
-    pOutInfos[count++] = { offsetNormals,      offsetNormals,      (uint64_t)curVertexCount * properties.normalStride };
-
-    if (MAX_VERTEX_BUFFER_MEMBER_COUNT < count + offsetCount)
-    {
-        assert(0);
-    }
+    outInfos.push_back({ offsetPositions,    offsetPositions,    (uint64_t)curVertexCount * properties.positionStride });
+    outInfos.push_back({ offsetNormals,      offsetNormals,      (uint64_t)curVertexCount * properties.normalStride   });
 
     for (uint32_t i = 0; i < offsetCount; i++)
     {
-        pOutInfos[count++] = { offsetTexCoords[i], offsetTexCoords[i], (uint64_t)curVertexCount * properties.texCoordStride };
+        outInfos.push_back({ offsetTexCoords[i], offsetTexCoords[i], (uint64_t)curVertexCount * properties.texCoordStride });
     }
 
-    *outCount = count;
     return true;
 }
 
@@ -684,6 +737,38 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &tra
     memcpy(mappedTransformData + geomIndex, &transform, sizeof(VkTransformMatrixKHR));
 
     WriteGeomInfoTransform(geomIndex, transform);
+}
+
+void RTGL1::VertexCollector::UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
+{
+    // check if exist 
+    auto f = geomType.find(geomIndex);
+
+    if (f == geomType.end())
+    {
+        assert(0);
+        return;
+    }
+
+    // must be static
+    assert((f->second & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC) == 0);
+
+    const bool isStatic = true;
+    const uint32_t maxVertexCount = isStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
+
+    // base vertex index is saved in geometry instance info
+    const ShGeometryInstance *geomInst = GetGeomInfoAddress(geomIndex);
+
+    uint32_t globalVertIndex = geomInst->baseVertexIndex;
+    uint32_t dstVertIndex = globalVertIndex + texCoordsInfo.vertexOffset;
+
+    if (dstVertIndex + texCoordsInfo.vertexCount >= maxVertexCount)
+    {
+        assert(0);
+        return;
+    }
+
+    CopyTexCoordsToStaging(isStatic, dstVertIndex, texCoordsInfo.vertexCount, texCoordsInfo.texCoordLayerData, true);
 }
 
 void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex)

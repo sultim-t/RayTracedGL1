@@ -73,17 +73,17 @@ static void DebugPrint(const char *msg)
 
 
 static std::vector<const char *> cubemapNames = {
-    "Cubemap/S (1)",
+    //"Cubemap/S (1)",
     "Cubemap/S (2)",
-    "Cubemap/S (3)",
-    "Cubemap/S (4)",
-    "Cubemap/S (5)",
-    "Cubemap/S (6)",
+    //"Cubemap/S (3)",
+    //"Cubemap/S (4)",
+    //"Cubemap/S (5)",
+    //"Cubemap/S (6)",
     "Cubemap/S (7)",
-    "Cubemap/S (8)",
-    "Cubemap/S (9)",
-    "Cubemap/S (10)",
-    "Cubemap/S (11)",
+    //"Cubemap/S (8)",
+    //"Cubemap/S (9)",
+    //"Cubemap/S (10)",
+    //"Cubemap/S (11)",
     "Cubemap/S (12)",
 };
 
@@ -279,11 +279,16 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     std::vector<float>       cubePositions;
     std::vector<float>       cubeNormals;
     std::vector<float>       cubeTexCoords;
+    std::vector<float>       cubeTexCoordsModif;
     std::vector<uint32_t>    cubeIndices;
 
     // cube with extents: (-1,-1,-1) (1,1,1)
     LoadObj("../../../Cube.obj", cubePositions, cubeNormals, cubeTexCoords, cubeIndices);
 
+    for (auto f : cubeTexCoords)
+    {
+        cubeTexCoordsModif.push_back(f * 0.25f);
+    }
 
     // geometry infos
     RgGeometryUploadInfo cubeInfo = {};
@@ -353,7 +358,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
-    float       toMove  = 0;
+    bool        toMove      = false;
     RgMaterial  material    = RG_NO_MATERIAL;
     RgGeometry  movableGeom = UINT32_MAX;
 
@@ -424,11 +429,20 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RgUpdateTransformInfo updateInfo = {};
         updateInfo.movableStaticGeom = movableGeom;
         updateInfo.transform = {
-            0.3f, 0, 0, 5.0f - 0.05f * (frameCount % 200),
+            0.3f, 0, 0, toMove ? 5.0f - 0.05f * (frameCount % 200) : -2.5f,
             0, 4, 0, 4,
             0, 0, 0.3f, 0
         };
         r = rgUpdateGeometryTransform(instance, &updateInfo);
+        RG_CHECKERROR(r);
+
+
+        RgUpdateTexCoordsInfo texCoordsInfo = {};
+        texCoordsInfo.staticGeom = movableGeom;
+        texCoordsInfo.texCoordLayerData[0] = (frameCount % 120) > 60 ? cubeTexCoords.data() : cubeTexCoordsModif.data();
+        texCoordsInfo.vertexOffset = 0;
+        texCoordsInfo.vertexCount = cubeInfo.vertexCount;
+        r = rgUpdateGeometryTexCoords(instance, &texCoordsInfo);
         RG_CHECKERROR(r);
 
 
@@ -437,16 +451,16 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         dnInfo.defaultRoughness = ROUGHNESS;
 
         dnInfo.transform = {
-            0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 30) % 200),
-            0, 4, 0, 4,
-            0, 0, 0.3f, 4
+            0.3f, 0, 0, toMove ? 5.0f - 0.05f * ((frameCount + 30) % 200) : 0,
+            0, 4, 0, 0,
+            0, 0, 0.3f, 0
         };
         rgUploadGeometry(instance, &dnInfo, nullptr);
 
         dnInfo.transform = {
-            0.3f, 0, 0, 5.0f - 0.05f * ((frameCount + 60) % 200),
-            0, 4, 0, 4,
-            0, 0, 0.3f, 4
+            0.3f, 0, 0, toMove ? 5.0f - 0.05f * ((frameCount + 60) % 200) : 2.5f,
+            0, 4, 0, 0,
+            0, 0, 0.3f, 0
         };
         rgUploadGeometry(instance, &dnInfo, nullptr);
 
@@ -488,11 +502,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RG_CHECKERROR(r);
 
         frameCount++;
-
-        if (!toMove && frameCount > 0)
-        {
-            frameCount = 1;
-        }
     }
 
     rgDestroyMaterial(instance, material);

@@ -58,6 +58,7 @@ public:
 
     RgResult UploadGeometry(const RgGeometryUploadInfo *uploadInfo, RgGeometry *result);
     RgResult UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
+    RgResult UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo);
 
     RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo);
 
