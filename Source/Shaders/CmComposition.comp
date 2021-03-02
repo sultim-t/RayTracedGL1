@@ -36,12 +36,6 @@ void main()
         return;
     }
 
-    if (pix.y > 16 && pix.y < 64 && pix.x > 16 && pix.x < 128)
-    {
-        imageStore(framebufFinal, pix, vec4(pow(tonemapping.avgLuminance, 1/2.2)));
-        return;
-    }
-
     vec3 albedo             = texelFetch(framebufAlbedo_Sampler, pix, 0).xyz;
     vec4 depth              = texelFetch(framebufDepth_Sampler, pix, 0);
 

@@ -20,6 +20,7 @@
 
 #include "ShaderCommonGLSL.h"
 #include "BRDF.h"
+#include "Utils.h"
 
 #extension GL_EXT_nonuniform_qualifier : enable
 
@@ -35,17 +36,7 @@
 // * DESC_SET_TONEMAPPING       -- to access histogram and average luminance;
 //                                 define TONEMAPPING_BUFFER_WRITEABLE for writing
 
-#define UINT32_MAX  0xFFFFFFFF
 
-vec4 unpackLittleEndianUintColor(uint c)
-{
-    return vec4(
-         (c & 0x000000FF)        / 255.0,
-        ((c & 0x0000FF00) >> 8)  / 255.0,
-        ((c & 0x00FF0000) >> 16) / 255.0,
-        ((c & 0xFF000000) >> 24) / 255.0
-    );
-}
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
 layout(
@@ -57,354 +48,9 @@ layout(
 };
 
 #ifdef DESC_SET_VERTEX_DATA
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_VERTEX_BUFFER_STATIC)
-    #ifndef VERTEX_BUFFER_WRITEABLE
-    readonly 
-    #endif
-    buffer VertexBufferStatic_BT
-{
-    ShVertexBufferStatic staticVertices;
-};
+    #include "VertexData.inl"
+#endif
 
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_VERTEX_BUFFER_DYNAMIC)
-    #ifndef VERTEX_BUFFER_WRITEABLE
-    readonly 
-    #endif
-    buffer VertexBufferDynamic_BT
-{
-    ShVertexBufferDynamic dynamicVertices;
-};
-
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_INDEX_BUFFER_STATIC)
-    readonly 
-    buffer IndexBufferStatic_BT
-{
-    uint staticIndices[];
-};
-
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_INDEX_BUFFER_DYNAMIC)
-    readonly 
-    buffer IndexBufferDynamic_BT
-{
-    uint dynamicIndices[];
-};
-
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_GEOMETRY_INSTANCES_STATIC)
-    readonly 
-    buffer GeometryInstancesStatic_BT
-{
-    ShGeometryInstance geometryInstancesStatic[];
-};
-
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_GEOMETRY_INSTANCES_DYNAMIC)
-    readonly 
-    buffer GeometryInstancesDynamic_BT
-{
-    ShGeometryInstance geometryInstancesDynamic[];
-};
-
-vec3 getStaticVerticesPositions(uint index)
-{
-    return vec3(
-        staticVertices.positions[index * globalUniform.positionsStride + 0],
-        staticVertices.positions[index * globalUniform.positionsStride + 1],
-        staticVertices.positions[index * globalUniform.positionsStride + 2]);
-}
-
-vec3 getStaticVerticesNormals(uint index)
-{
-    return vec3(
-        staticVertices.normals[index * globalUniform.normalsStride + 0],
-        staticVertices.normals[index * globalUniform.normalsStride + 1],
-        staticVertices.normals[index * globalUniform.normalsStride + 2]);
-}
-
-vec2 getStaticVerticesTexCoords(uint index)
-{
-    return vec2(
-        staticVertices.texCoords[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
-}
-
-vec2 getStaticVerticesTexCoordsLayer1(uint index)
-{
-    return vec2(
-        staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 1]);
-}
-
-vec2 getStaticVerticesTexCoordsLayer2(uint index)
-{
-    return vec2(
-        staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 1]);
-}
-
-vec3 getDynamicVerticesPositions(uint index)
-{
-    return vec3(
-        dynamicVertices.positions[index * globalUniform.positionsStride + 0],
-        dynamicVertices.positions[index * globalUniform.positionsStride + 1],
-        dynamicVertices.positions[index * globalUniform.positionsStride + 2]);
-}
-
-vec3 getDynamicVerticesNormals(uint index)
-{
-    return vec3(
-        dynamicVertices.normals[index * globalUniform.normalsStride + 0],
-        dynamicVertices.normals[index * globalUniform.normalsStride + 1],
-        dynamicVertices.normals[index * globalUniform.normalsStride + 2]);
-}
-
-vec2 getDynamicVerticesTexCoords(uint index)
-{
-    return vec2(
-        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0],
-        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
-}
-
-#ifdef VERTEX_BUFFER_WRITEABLE
-void setStaticVerticesPositions(uint index, vec3 value)
-{
-    staticVertices.positions[index * globalUniform.positionsStride + 0] = value[0];
-    staticVertices.positions[index * globalUniform.positionsStride + 1] = value[1];
-    staticVertices.positions[index * globalUniform.positionsStride + 2] = value[2];
-}
-
-void setStaticVerticesNormals(uint index, vec3 value)
-{
-    staticVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
-    staticVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
-    staticVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
-}
-
-void setStaticVerticesTexCoords(uint index, vec2 value)
-{
-    staticVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
-    staticVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
-}
-
-void setStaticVerticesTexCoordsLayer1(uint index, vec2 value)
-{
-    staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 0] = value[0];
-    staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 1] = value[1];
-}
-
-void setStaticVerticesTexCoordsLayer2(uint index, vec2 value)
-{
-    staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 0] = value[0];
-    staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 1] = value[1];
-}
-
-void setDynamicVerticesPositions(uint index, vec3 value)
-{
-    dynamicVertices.positions[index * globalUniform.positionsStride + 0] = value[0];
-    dynamicVertices.positions[index * globalUniform.positionsStride + 1] = value[1];
-    dynamicVertices.positions[index * globalUniform.positionsStride + 2] = value[2];
-}
-
-void setDynamicVerticesNormals(uint index, vec3 value)
-{
-    dynamicVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
-    dynamicVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
-    dynamicVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
-}
-
-void setDynamicVerticesTexCoords(uint index, vec2 value)
-{
-    dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
-    dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
-}
-#endif // VERTEX_BUFFER_WRITEABLE
-
-uvec3 getVertIndicesStatic(uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
-{
-    // if to use indices
-    if (baseIndexIndex != UINT32_MAX)
-    {
-        return uvec3(
-            baseVertexIndex + staticIndices[baseIndexIndex + primitiveId * 3 + 0],
-            baseVertexIndex + staticIndices[baseIndexIndex + primitiveId * 3 + 1],
-            baseVertexIndex + staticIndices[baseIndexIndex + primitiveId * 3 + 2]);
-    }
-    else
-    {
-        return uvec3(
-            baseVertexIndex + primitiveId * 3 + 0,
-            baseVertexIndex + primitiveId * 3 + 1,
-            baseVertexIndex + primitiveId * 3 + 2);
-    }
-}
-
-uvec3 getVertIndicesDynamic(uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
-{
-    // if to use indices
-    if (baseIndexIndex != UINT32_MAX)
-    {
-        return uvec3(
-            baseVertexIndex + dynamicIndices[baseIndexIndex + primitiveId * 3 + 0],
-            baseVertexIndex + dynamicIndices[baseIndexIndex + primitiveId * 3 + 1],
-            baseVertexIndex + dynamicIndices[baseIndexIndex + primitiveId * 3 + 2]);
-    }
-    else
-    {
-        return uvec3(
-            baseVertexIndex + primitiveId * 3 + 0,
-            baseVertexIndex + primitiveId * 3 + 1,
-            baseVertexIndex + primitiveId * 3 + 2);
-    }
-}
-
-ShTriangle getTriangleStatic(uvec3 vertIndices)
-{
-    ShTriangle tr;
-
-    tr.positions[0] = getStaticVerticesPositions(vertIndices[0]);
-    tr.positions[1] = getStaticVerticesPositions(vertIndices[1]);
-    tr.positions[2] = getStaticVerticesPositions(vertIndices[2]);
-
-    tr.normals[0] = getStaticVerticesNormals(vertIndices[0]);
-    tr.normals[1] = getStaticVerticesNormals(vertIndices[1]);
-    tr.normals[2] = getStaticVerticesNormals(vertIndices[2]);
-
-    tr.layerTexCoord[0][0] = getStaticVerticesTexCoords(vertIndices[0]);
-    tr.layerTexCoord[0][1] = getStaticVerticesTexCoords(vertIndices[1]);
-    tr.layerTexCoord[0][2] = getStaticVerticesTexCoords(vertIndices[2]);
-
-    tr.layerTexCoord[1][0] = getStaticVerticesTexCoordsLayer1(vertIndices[0]);
-    tr.layerTexCoord[1][1] = getStaticVerticesTexCoordsLayer1(vertIndices[1]);
-    tr.layerTexCoord[1][2] = getStaticVerticesTexCoordsLayer1(vertIndices[2]);
-
-    tr.layerTexCoord[2][0] = getStaticVerticesTexCoordsLayer2(vertIndices[0]);
-    tr.layerTexCoord[2][1] = getStaticVerticesTexCoordsLayer2(vertIndices[1]);
-    tr.layerTexCoord[2][2] = getStaticVerticesTexCoordsLayer2(vertIndices[2]);
-
-    // TODO
-    //tr.tangent = getStaticVerticesTangent(vertIndices[0] / 3);
-
-    return tr;
-}
-
-ShTriangle getTriangleDynamic(uvec3 vertIndices)
-{
-    ShTriangle tr;
-
-    tr.positions[0] = getDynamicVerticesPositions(vertIndices[0]);
-    tr.positions[1] = getDynamicVerticesPositions(vertIndices[1]);
-    tr.positions[2] = getDynamicVerticesPositions(vertIndices[2]);
-
-    tr.normals[0] = getDynamicVerticesNormals(vertIndices[0]);
-    tr.normals[1] = getDynamicVerticesNormals(vertIndices[1]);
-    tr.normals[2] = getDynamicVerticesNormals(vertIndices[2]);
-
-    tr.layerTexCoord[0][0] = getDynamicVerticesTexCoords(vertIndices[0]);
-    tr.layerTexCoord[0][1] = getDynamicVerticesTexCoords(vertIndices[1]);
-    tr.layerTexCoord[0][2] = getDynamicVerticesTexCoords(vertIndices[2]);
-
-    // TODO
-    //tr.tangent = getDynamicVerticesTangent(vertIndices[0] / 3);
-
-    return tr;
-}
-
-// Get geometry index in "geometryInstances*" array by instanceID, localGeometryIndex.
-// instanceCustomIndex is used for determining if should use offsets for main or skybox.
-int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryIndex)
-{
-    // offset if skybox
-    if ((instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) != 0)
-    {
-        instanceID += MAX_TOP_LEVEL_INSTANCE_COUNT;
-    }
-    
-    return globalUniform.instanceGeomInfoOffset[instanceID / 4][instanceID % 4] + localGeometryIndex;
-}
-
-// localGeometryIndex is index of geometry in pGeometries in BLAS
-// primitiveId is index of a triangle
-ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
-{
-    bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-    
-    ShGeometryInstance inst;
-    ShTriangle tr;
-
-    int geometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
-
-    if (isDynamic)
-    {
-        // get info about geometry from pGeometries in one of BLAS
-        inst = geometryInstancesDynamic[geometryIndex];
-        uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        tr = getTriangleDynamic(vertIndices);
-
-        // only one material for dynamic geometry
-        tr.materials[0] = uvec3(inst.materials[0]);
-        tr.materials[1] = uvec3(MATERIAL_NO_TEXTURE);
-        tr.materials[2] = uvec3(MATERIAL_NO_TEXTURE);
-        
-        tr.materialColors[0] = inst.materialColors[0];
-    }
-    else
-    {
-        inst = geometryInstancesStatic[geometryIndex];
-        uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        tr = getTriangleStatic(vertIndices);
-
-        tr.materials[0] = uvec3(inst.materials[0]);
-        tr.materials[1] = uvec3(inst.materials[1]);
-        tr.materials[2] = uvec3(inst.materials[2]);
-
-        tr.materialColors[0] = inst.materialColors[0];
-        tr.materialColors[1] = inst.materialColors[1];
-        tr.materialColors[2] = inst.materialColors[2];
-    }
-
-    tr.materialsBlendFlags = inst.materialsBlendFlags;
-
-    tr.geomRoughness = inst.defaultRoughness;
-    tr.geomMetallicity = inst.defaultMetallicity;
-
-    // use the first layer's color
-    tr.geomEmission = tr.materialColors[0].rgb * inst.defaultEmission;
-
-    return tr;
-}
-
-mat4 getModelMatrix(bool isDynamic, int geometryIndex)
-{
-    if (isDynamic)
-    {
-        return geometryInstancesDynamic[geometryIndex].model;
-    }
-    else
-    {
-        return geometryInstancesStatic[geometryIndex].model;
-    }
-}
-
-mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
-{
-    bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-    int geometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
-
-    return getModelMatrix(isDynamic, geometryIndex);
-}
-#endif // DESC_SET_VERTEX_DATA
 #endif // DESC_SET_GLOBAL_UNIFORM
 
 
@@ -424,21 +70,14 @@ vec4 getTextureSample(uint textureIndex, vec2 texCoord)
 {
     return texture(globalTextures[nonuniformEXT(textureIndex)], texCoord);
 }
+
+vec4 getTextureSampleGrad(uint textureIndex, vec2 texCoord, vec2 dPdx, vec2 dPdy)
+{
+    return textureGrad(globalTextures[nonuniformEXT(textureIndex)], texCoord, dPdx, dPdy);
+}
 #endif // DESC_SET_TEXTURES
 
 
-
-vec4 blendUnder(vec4 src, vec4 dst)
-{
-    // dst is under src
-    return dst * (vec4(1.0) - src);
-    //return src * src.a + dst * (vec4(1.0) - src);
-}
-
-vec4 blendAdditive(vec4 src, vec4 dst)
-{
-    return src * src.a + dst;
-}
 
 // instanceID is assumed to be < 256 (i.e. 8 bits ) and 
 // instanceCustomIndexEXT is 24 bits by Vulkan spec
@@ -493,141 +132,23 @@ void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryInde
     geometryIndex = int(geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1));
 }
 
+
+
 #ifdef DESC_SET_VERTEX_DATA
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_TEXTURES
 
-vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3])
-{
-    uint blendsFlags[] = 
-    {
-        (materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
-        (materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
-        (materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
-    };
+    #include "HitInfo.inl"
 
-    vec3 dst = vec3(1.0);
+    #define TEXTURE_GRADIENTS
+        #include "HitInfo.inl"
+    #undef TEXTURE_GRADIENTS
 
-    for (uint i = 0; i < 3; i++)
-    {
-        if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
-        {
-            vec4 src = materialColors[i] * getTextureSample(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i]);
-
-            if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0)
-            {
-                dst = src.rgb;
-            }
-            else if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA) != 0)
-            {
-                dst = src.rgb * src.a + dst * (1 - src.a);
-            }
-            else if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD) != 0)
-            {
-                dst += src.rgb;
-            }
-            else // if (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)
-            {
-                dst = 2 * dst * src.rgb;
-            }
-        }
-    }
-
-    return dst;
-}
-
-vec3 getHitInfoAlbedoOnly(ShPayload pl)
-{
-    int instanceId, instCustomIndex;
-    int geomIndex, primIndex;
-
-    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
-    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
-
-    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
-
-    vec2 inBaryCoords = pl.baryCoords;
-    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-
-    vec2 texCoords[] = 
-    {
-        tr.layerTexCoord[0] * baryCoords,
-        tr.layerTexCoord[1] * baryCoords,
-        tr.layerTexCoord[2] * baryCoords
-    };
-
-    return processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
-}
-
-ShHitInfo getHitInfo(ShPayload pl)
-{
-    ShHitInfo h;
-
-    int instanceId, instCustomIndex;
-    int geomIndex, primIndex;
-
-    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
-    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
-
-    ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
-    mat4 model = getModelMatrix(instanceId, instCustomIndex, geomIndex);
-
-    vec2 inBaryCoords = pl.baryCoords;
-    vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    
-    vec2 texCoords[] = 
-    {
-        tr.layerTexCoord[0] * baryCoords,
-        tr.layerTexCoord[1] * baryCoords,
-        tr.layerTexCoord[2] * baryCoords
-    };
-    
-    h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
-
-    // convert normals to world space
-    tr.normals[0] = vec3(model * vec4(tr.normals[0], 0.0));
-    tr.normals[1] = vec3(model * vec4(tr.normals[1], 0.0));
-    tr.normals[2] = vec3(model * vec4(tr.normals[2], 0.0));
-
-    h.normalGeom = normalize(tr.normals * baryCoords);
-
-
-    if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0]);
-        h.metallic = nm.a;
-
-        // TODO: normal maps, tangents
-        h.normal = h.normalGeom;
-    }
-    else
-    {
-        h.normal = h.normalGeom;
-        h.metallic = tr.geomMetallicity;
-    }
-    
-
-    if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-        vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0]);
-        h.emission = er.rgb;
-        h.roughness = er.a;
-    }
-    else
-    {
-        h.emission = tr.geomEmission;
-        h.roughness = tr.geomRoughness;
-    }
-
-    h.hitDistance = pl.clsHitDistance;
-
-    h.instCustomIndex = instCustomIndex;
-
-    return h;
-}
 #endif // DESC_SET_TEXTURES
 #endif // DESC_SET_GLOBAL_UNIFORM
 #endif // DESC_SET_VERTEX_DATA
+
+
 
 #ifdef DESC_SET_TONEMAPPING
 layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM) 
@@ -640,11 +161,6 @@ layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM)
 };
 #endif // DESC_SET_TONEMAPPING
 
-
-float getLuminance(vec3 c)
-{
-    return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
-}
 
 
 #ifdef DESC_SET_LIGHT_SOURCES
