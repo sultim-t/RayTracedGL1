@@ -29,7 +29,7 @@
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 #include "TextureDescriptors.h"
-#include "TextureUploader.h"
+#include "CubemapUploader.h"
 #include "CommandBufferManager.h"
 #include "ImageLoader.h"
 
@@ -74,7 +74,7 @@ private:
     std::shared_ptr<ImageLoader>        imageLoader;
     std::shared_ptr<SamplerManager>     samplerManager;
     std::shared_ptr<TextureDescriptors> cubemapDesc;
-    std::shared_ptr<TextureUploader>    cubemapUploader;
+    std::shared_ptr<CubemapUploader>    cubemapUploader;
 
     std::vector<Texture>    cubemaps;
     std::vector<Texture>    cubemapsToDestroy[MAX_FRAMES_IN_FLIGHT];

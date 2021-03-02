@@ -330,7 +330,7 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
 
         geomInfo.materialsBlendFlags = GetMaterialsBlendFlags(info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT);
 
-        for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
+        for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
         {
             // only for static geometry, dynamic is updated each frame,
             // so the materials will be updated anyway
@@ -342,6 +342,13 @@ uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const Ma
 
             memcpy(geomInfo.materials[layer], materials[layer].indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
             memcpy(geomInfo.materialColors[layer], info.layerColors[layer].data, sizeof(info.layerColors[layer].data));
+
+            // ignore lower level layers, if they won't be visible (i.e. current one is opaque) 
+            if (info.layerBlendingTypes[layer] == RG_GEOMETRY_MATERIAL_BLEND_TYPE_OPAQUE &&
+                info.geomMaterial.layerMaterials[layer] != RG_NO_MATERIAL)
+            {
+                break;
+            }
         }
 
         WriteGeomInfo(geomIndex, geomInfo);

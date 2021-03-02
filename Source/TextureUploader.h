@@ -73,11 +73,11 @@ public:
     // Clear staging buffer for given frame index.
     void ClearStaging(uint32_t frameIndex);
 
-    UploadResult UploadImage(const UploadInfo &info);
+    virtual UploadResult UploadImage(const UploadInfo &info);
     void UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicImage, const void *data);
     void DestroyImage(VkImage image, VkImageView view);
 
-private:
+protected:
     enum class ImagePrepareType
     {
         INIT,
@@ -85,7 +85,7 @@ private:
         UPDATE
     };
 
-private:
+protected:
     static uint32_t GetMipmapCount(const RgExtent2D &size, bool generateMipmaps);
 
     // Generate mipmaps for VkImage. First mipmap's layout must be TRANSFER_SRC
@@ -96,11 +96,11 @@ private:
 
     // Image must have TRANSFER_DST layout
     static void CopyStagingToImage(
-        VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t layerCount);
+        VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t baseLayer, uint32_t layerCount);
 
     bool CreateImage(const UploadInfo &info, VkImage *result);
     // Create mipmaps and prepare image for usage in shaders
-    void PrepareImage(VkImage image, VkBuffer staging, const UploadInfo &info, ImagePrepareType prepareType);
+    void PrepareImage(VkImage image, VkBuffer staging[], const UploadInfo &info, ImagePrepareType prepareType);
     VkImageView CreateImageView(VkImage image, VkFormat format, bool isCubemap, uint32_t mipmapCount);
 
 private:
@@ -113,7 +113,7 @@ private:
         bool        generateMipmaps;
     };
 
-private:
+protected:
     VkDevice device;
 
     std::shared_ptr<MemoryAllocator> memAllocator;

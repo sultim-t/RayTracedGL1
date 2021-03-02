@@ -59,6 +59,7 @@ set(PrivateHeaders
     "Source/AutoBuffer.h"
     "Source/ASComponent.h"
     "Source/CubemapManager.h"
+    "Source/CubemapUploader.h"
 )
 
 set(Sources
@@ -104,6 +105,7 @@ set(Sources
     "Source/AutoBuffer.cpp"
     "Source/ASComponent.cpp"
     "Source/CubemapManager.cpp"
+    "Source/CubemapUploader.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

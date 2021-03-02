@@ -136,7 +136,7 @@ void TextureUploader::PrepareMipmaps(VkCommandBuffer cmd, VkImage image, uint32_
     }
 }
 
-void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t layerCount)
+void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t baseLayer, uint32_t layerCount)
 {
     VkBufferImageCopy copyRegion = {};
     copyRegion.bufferOffset = 0;
@@ -147,7 +147,7 @@ void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, 
     copyRegion.imageOffset = { 0,0,0 };
     copyRegion.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copyRegion.imageSubresource.mipLevel = 0;
-    copyRegion.imageSubresource.baseArrayLayer = 0;
+    copyRegion.imageSubresource.baseArrayLayer = baseLayer;
     copyRegion.imageSubresource.layerCount = layerCount;
 
     vkCmdCopyBufferToImage(
@@ -185,7 +185,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
     return true;
 }
 
-void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const UploadInfo &info, ImagePrepareType prepareType)
+void TextureUploader::PrepareImage(VkImage image, VkBuffer staging[], const UploadInfo &info, ImagePrepareType prepareType)
 {
     VkCommandBuffer     cmd             = info.cmd;
     const RgExtent2D    &size           = info.size;
@@ -224,20 +224,23 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging, const Upload
     // if need to copy from staging
     if (prepareType != ImagePrepareType::INIT_WITHOUT_COPYING)
     {
-        // set layout for copying
-        Utils::BarrierImage(
-            cmd, image,
-            curAccessMask, VK_ACCESS_TRANSFER_WRITE_BIT,
-            curLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-            curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            firstMipmap);
+        for (uint32_t i = 0; i < layerCount; i++)
+        {
+            // set layout for copying
+            Utils::BarrierImage(
+                cmd, image,
+                curAccessMask, VK_ACCESS_TRANSFER_WRITE_BIT,
+                curLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                firstMipmap);
 
-        // update params
-        curAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        curLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        curStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+            // update params
+            curAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            curLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+            curStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
-        CopyStagingToImage(cmd, staging, image, size, layerCount);
+            CopyStagingToImage(cmd, staging[i], image, size, i, 1);
+        }
     }
 
     if (mipmapCount > 1)
@@ -307,6 +310,9 @@ VkImageView TextureUploader::CreateImageView(VkImage image, VkFormat format, boo
 
 TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &info)
 {
+    // cubemaps are processed in other class
+    assert(!info.isCubemap);
+
     const void          *data   = info.data;
     const RgExtent2D    &size   = info.size;
 
@@ -321,9 +327,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     VkImage image;
 
     // 1. Allocate and fill buffer
-    uint32_t faceNumber = info.isCubemap ? 6 : 1;
-    VkDeviceSize faceSize = (VkDeviceSize)info.bytesPerPixel * size.width * size.height;
-    VkDeviceSize dataSize = faceSize * faceNumber;
+    VkDeviceSize dataSize = (VkDeviceSize)info.bytesPerPixel * size.width * size.height;
 
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -355,23 +359,10 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     else
     {
         // copy image data to buffer
-        if (info.isCubemap)
-        {
-            assert(faceNumber == 6);
+        memcpy(mappedData, data, dataSize);
 
-            for (uint32_t i = 0; i < 6; i++)
-            {
-                memcpy((uint8_t*)mappedData + i * faceSize, info.cubemap.faces[i], faceSize);
-            }
-        }
-        else
-        {
-            assert(faceSize == dataSize);
-
-            memcpy(mappedData, data, dataSize);
-        }
         // and copy it to image
-        PrepareImage(image, stagingBuffer, info, ImagePrepareType::INIT);
+        PrepareImage(image, &stagingBuffer, info, ImagePrepareType::INIT);
     }
 
     // create image view
@@ -426,7 +417,7 @@ void TextureUploader::UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicIma
         info.generateMipmaps = updateInfo.generateMipmaps;
 
         // copy from staging
-        PrepareImage(dynamicImage, updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);
+        PrepareImage(dynamicImage, &updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);
     }
 }
 

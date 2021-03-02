@@ -45,7 +45,7 @@ RTGL1::CubemapManager::CubemapManager(
 
     imageLoader = std::make_shared<ImageLoader>();
     cubemapDesc = std::make_shared<TextureDescriptors>(device, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
-    cubemapUploader = std::make_shared<TextureUploader>(device, allocator);
+    cubemapUploader = std::make_shared<CubemapUploader>(device, allocator);
 
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
     CreateEmptyCubemap(cmd);
