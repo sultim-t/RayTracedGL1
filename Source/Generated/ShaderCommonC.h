@@ -77,6 +77,7 @@ namespace RTGL1
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X (16)
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y (16)
 #define COMPUTE_LUM_HISTOGRAM_BIN_COUNT (256)
+#define COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X (256)
 
 struct ShVertexBufferStatic
 {
@@ -121,6 +122,7 @@ struct ShGlobalUniform
     float skyColorDefault[4];
     float skyViewerPosition[4];
     int32_t instanceGeomInfoOffset[72];
+    int32_t instanceGeomCount[72];
 };
 
 struct ShGeometryInstance

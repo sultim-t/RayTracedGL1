@@ -21,7 +21,7 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 
-#include "ShaderCommonGLSL.h"
+#include "ShaderCommonGLSLFunc.h"
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 

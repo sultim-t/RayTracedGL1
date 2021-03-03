@@ -70,6 +70,7 @@
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X (16)
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y (16)
 #define COMPUTE_LUM_HISTOGRAM_BIN_COUNT (256)
+#define COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X (256)
 
 #define MAX_RAY_LENGTH (10000.0)
 
@@ -116,6 +117,7 @@ struct ShGlobalUniform
     vec4 skyColorDefault;
     vec4 skyViewerPosition;
     ivec4 instanceGeomInfoOffset[18];
+    ivec4 instanceGeomCount[18];
 };
 
 struct ShGeometryInstance

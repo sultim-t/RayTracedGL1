@@ -42,8 +42,6 @@ public:
     ASComponent &operator=(const ASComponent &other) = delete;
     ASComponent &operator=(ASComponent &&other) noexcept = delete;
 
-    void RegisterGeometries(const std::vector<VkAccelerationStructureGeometryKHR> &geoms);
-
     void RecreateIfNotValid(
         const VkAccelerationStructureBuildSizesInfoKHR &buildSizes, 
         const std::shared_ptr<MemoryAllocator> &allocator);
@@ -52,7 +50,6 @@ public:
     VkDeviceAddress GetASAddress() const;
 
     bool IsValid(const VkAccelerationStructureBuildSizesInfoKHR &buildSizes) const;
-    bool IsEmpty() const;
 
 protected:
     virtual void CreateAS(VkDeviceSize size) = 0;
@@ -71,7 +68,6 @@ protected:
     Buffer buffer;
     VkAccelerationStructureKHR as;
 
-    bool isEmpty;
     const char *debugName;
 };
 
@@ -82,12 +78,18 @@ public:
     explicit BLASComponent(VkDevice device, VertexCollectorFilterTypeFlags filter);
     VertexCollectorFilterTypeFlags GetFilter() const;
 
+    void SetGeometryCount(uint32_t geomCount);
+
+    bool IsEmpty() const;
+    uint32_t GetGeomCount() const;
+
 protected:
     void CreateAS(VkDeviceSize size) override;
     const char *GetBufferDebugName() const override;
 
 private:
     VertexCollectorFilterTypeFlags filter;
+    uint32_t geomCount;
 };
 
 

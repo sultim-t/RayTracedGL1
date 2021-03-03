@@ -24,15 +24,14 @@ RTGL1::ASComponent::ASComponent(VkDevice _device, const char *_debugName)
 :
     device(_device),
     as(VK_NULL_HANDLE),
-    buffer{},
-    isEmpty(true),
     debugName(_debugName)
 {}
 
 RTGL1::BLASComponent::BLASComponent(VkDevice _device, VertexCollectorFilterTypeFlags _filter)
 :
     ASComponent(_device, VertexCollectorFilterTypeFlags_GetNameForBLAS(filter)),
-    filter(_filter)
+    filter(_filter),
+    geomCount(0)
 {}
 
 RTGL1::TLASComponent::TLASComponent(VkDevice _device, const char *_debugName)
@@ -61,7 +60,6 @@ void RTGL1::ASComponent::Destroy()
 {
     assert(device != VK_NULL_HANDLE);
 
-    isEmpty = true;
     buffer.Destroy();
 
     if (as != VK_NULL_HANDLE)
@@ -69,11 +67,6 @@ void RTGL1::ASComponent::Destroy()
         svkDestroyAccelerationStructureKHR(device, as, nullptr);
         as = VK_NULL_HANDLE;
     }
-}
-
-void RTGL1::ASComponent::RegisterGeometries(const std::vector<VkAccelerationStructureGeometryKHR> &geoms)
-{
-    isEmpty = geoms.empty();
 }
 
 void RTGL1::ASComponent::RecreateIfNotValid(const VkAccelerationStructureBuildSizesInfoKHR &buildSizes, const std::shared_ptr<MemoryAllocator> &allocator)
@@ -86,8 +79,6 @@ void RTGL1::ASComponent::RecreateIfNotValid(const VkAccelerationStructureBuildSi
         // create
         CreateBuffer(allocator, buildSizes.accelerationStructureSize);
         CreateAS(buildSizes.accelerationStructureSize);
-
-        isEmpty = false;
     }
 }
 
@@ -128,11 +119,6 @@ bool RTGL1::ASComponent::IsValid(const VkAccelerationStructureBuildSizesInfoKHR 
     return buffer.IsInitted() && buffer.GetSize() >= buildSizes.accelerationStructureSize;
 }
 
-bool RTGL1::ASComponent::IsEmpty() const
-{
-    return isEmpty;
-}
-
 VkAccelerationStructureKHR RTGL1::ASComponent::GetAS() const
 {
     return as;
@@ -169,4 +155,19 @@ const char *RTGL1::TLASComponent::GetBufferDebugName() const
 RTGL1::VertexCollectorFilterTypeFlags RTGL1::BLASComponent::GetFilter() const
 {
     return filter;
+}
+
+void RTGL1::BLASComponent::SetGeometryCount(uint32_t geomCount)
+{
+    this->geomCount = geomCount;
+}
+
+bool RTGL1::BLASComponent::IsEmpty() const
+{
+    return geomCount == 0;
+}
+
+uint32_t RTGL1::BLASComponent::GetGeomCount() const
+{
+    return geomCount;
 }

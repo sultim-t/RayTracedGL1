@@ -260,6 +260,8 @@ CONST = {
     "COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X"    : 16,
     "COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y"    : 16,
     "COMPUTE_LUM_HISTOGRAM_BIN_COUNT"       : 256,
+
+    "COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X"  : 256,
 }
 
 CONST_GLSL_ONLY = {
@@ -348,9 +350,6 @@ GLOBAL_UNIFORM_STRUCT = [
     
     (TYPE_FLOAT32,      4,      "skyViewerPosition",            1),
 
-    #(TYPE_FLOAT32,      3,      "skyColorDefault",              1),
-    #(TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),
-   
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
     #(TYPE_FLOAT32,      1,      "_pad2",                        1),
@@ -359,6 +358,7 @@ GLOBAL_UNIFORM_STRUCT = [
     # for std140
     # TODO: separate to 2 different main/skybox arrays (and remove multiplication by 2)
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",       2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
+    (TYPE_INT32,        4,      "instanceGeomCount",            2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
 ]
 
 GEOM_INSTANCE_STRUCT = [
