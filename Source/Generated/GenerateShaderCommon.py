@@ -32,24 +32,24 @@ TYPE_UINT32     = 2
 
 
 C_TYPE_NAMES = {
-    TYPE_FLOAT32:   "float",
-    TYPE_INT32:     "int32_t",
-    TYPE_UINT32:    "uint32_t",
+    TYPE_FLOAT32:       "float",
+    TYPE_INT32:         "int32_t",
+    TYPE_UINT32:        "uint32_t",
 }
 
 GLSL_TYPE_NAMES = {
     TYPE_FLOAT32:       "float",
     TYPE_INT32:         "int",
     TYPE_UINT32:        "uint",
-    (TYPE_FLOAT32, 2):  "vec2",
-    (TYPE_FLOAT32, 3):  "vec3",
-    (TYPE_FLOAT32, 4):  "vec4",
-    (TYPE_INT32, 2):    "ivec2",
-    (TYPE_INT32, 3):    "ivec3",
-    (TYPE_INT32, 4):    "ivec4",
-    (TYPE_UINT32, 2):   "uvec2",
-    (TYPE_UINT32, 3):   "uvec3",
-    (TYPE_UINT32, 4):   "uvec4",
+    (TYPE_FLOAT32,  2): "vec2",
+    (TYPE_FLOAT32,  3): "vec3",
+    (TYPE_FLOAT32,  4): "vec4",
+    (TYPE_INT32,    2): "ivec2",
+    (TYPE_INT32,    3): "ivec3",
+    (TYPE_INT32,    4): "ivec4",
+    (TYPE_UINT32,   2): "uvec2",
+    (TYPE_UINT32,   3): "uvec3",
+    (TYPE_UINT32,   4): "uvec4",
     (TYPE_FLOAT32, 22): "mat2",
     (TYPE_FLOAT32, 23): "mat2x3",
     (TYPE_FLOAT32, 32): "mat3x2",
@@ -61,18 +61,18 @@ GLSL_TYPE_NAMES = {
 
 
 TYPE_ACTUAL_SIZES = {
-    TYPE_FLOAT32: 4,
-    TYPE_INT32: 4,
-    TYPE_UINT32: 4,
-    (TYPE_FLOAT32, 2): 8,
-    (TYPE_FLOAT32, 3): 12,
-    (TYPE_FLOAT32, 4): 16,
-    (TYPE_INT32, 2): 8,
-    (TYPE_INT32, 3): 12,
-    (TYPE_INT32, 4): 16,
-    (TYPE_UINT32, 2): 8,
-    (TYPE_UINT32, 3): 12,
-    (TYPE_UINT32, 4): 16,
+    TYPE_FLOAT32:   4,
+    TYPE_INT32:     4,
+    TYPE_UINT32:    4,
+    (TYPE_FLOAT32,  2): 8,
+    (TYPE_FLOAT32,  3): 12,
+    (TYPE_FLOAT32,  4): 16,
+    (TYPE_INT32,    2): 8,
+    (TYPE_INT32,    3): 12,
+    (TYPE_INT32,    4): 16,
+    (TYPE_UINT32,   2): 8,
+    (TYPE_UINT32,   3): 12,
+    (TYPE_UINT32,   4): 16,
     (TYPE_FLOAT32, 22): 16,
     (TYPE_FLOAT32, 23): 24,
     (TYPE_FLOAT32, 32): 24,
@@ -83,18 +83,18 @@ TYPE_ACTUAL_SIZES = {
 }
 
 GLSL_TYPE_SIZES_STD_430 = {
-    TYPE_FLOAT32: 4,
-    TYPE_INT32: 4,
-    TYPE_UINT32: 4,
-    (TYPE_FLOAT32, 2): 8,
-    (TYPE_FLOAT32, 3): 16,
-    (TYPE_FLOAT32, 4): 16,
-    (TYPE_INT32, 2): 8,
-    (TYPE_INT32, 3): 16,
-    (TYPE_INT32, 4): 16,
-    (TYPE_UINT32, 2): 8,
-    (TYPE_UINT32, 3): 16,
-    (TYPE_UINT32, 4): 16,
+    TYPE_FLOAT32:   4,
+    TYPE_INT32:     4,
+    TYPE_UINT32:    4,
+    (TYPE_FLOAT32,  2): 8,
+    (TYPE_FLOAT32,  3): 16,
+    (TYPE_FLOAT32,  4): 16,
+    (TYPE_INT32,    2): 8,
+    (TYPE_INT32,    3): 16,
+    (TYPE_INT32,    4): 16,
+    (TYPE_UINT32,   2): 8,
+    (TYPE_UINT32,   3): 16,
+    (TYPE_UINT32,   4): 16,
     (TYPE_FLOAT32, 22): 16,
     (TYPE_FLOAT32, 23): 24,
     (TYPE_FLOAT32, 32): 24,
@@ -314,19 +314,6 @@ DYNAMIC_BUFFER_STRUCT = [
     #(TYPE_UINT32,      1,     "materialIds",           CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
 ]
 
-TRIANGLE_STRUCT = [
-    (TYPE_FLOAT32,     33,     "positions",             1),
-    (TYPE_FLOAT32,     33,     "normals",               1),
-    (TYPE_FLOAT32,     32,     "layerTexCoord",         3),
-    (TYPE_FLOAT32,      4,     "materialColors",        3),
-    (TYPE_UINT32,       3,     "materials",             3),
-    (TYPE_UINT32,       1,     "materialsBlendFlags",   1),
-    (TYPE_FLOAT32,      3,     "tangent",               1),
-    (TYPE_FLOAT32,      1,     "geomRoughness",         1),
-    (TYPE_FLOAT32,      3,     "geomEmission",          1),
-    (TYPE_FLOAT32,      1,     "geomMetallicity",       1),
-]
-
 # Must be careful with std140 offsets! They are set manually.
 # Other structs are using std430 and padding is done automatically.
 GLOBAL_UNIFORM_STRUCT = [
@@ -387,30 +374,6 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,      1,      "defaultEmission",      1),
 ]
 
-PAYLOAD_STRUCT = [
-    (TYPE_FLOAT32,      4,      "color",                1),
-    (TYPE_FLOAT32,      2,      "baryCoords",           1),
-    (TYPE_UINT32,       1,      "instIdAndIndex",       1),
-    (TYPE_UINT32,       1,      "geomAndPrimIndex",     1),
-    (TYPE_FLOAT32,      1,      "clsHitDistance",       1),
-    (TYPE_FLOAT32,      1,      "maxTransparDistance",  1),
-]
-
-PAYLOAD_SHADOW_STRUCT = [
-    (TYPE_UINT32,       1,      "isShadowed",           1),
-]
-
-HIT_INFO_STRUCT = [
-    (TYPE_FLOAT32,      3,      "albedo",               1),
-    (TYPE_FLOAT32,      1,      "metallic",             1),
-    (TYPE_FLOAT32,      3,      "normal",               1),
-    (TYPE_FLOAT32,      1,      "roughness",            1),
-    (TYPE_FLOAT32,      3,      "normalGeom",           1),
-    (TYPE_FLOAT32,      1,      "hitDistance",          1),
-    (TYPE_FLOAT32,      3,      "emission",             1),
-    (TYPE_UINT32,       1,      "instCustomIndex",      1),
-]
-
 LIGHT_SPHERICAL_STRUCT = [
     (TYPE_FLOAT32,      3,      "position",             1),
     (TYPE_FLOAT32,      1,      "radius",               1),
@@ -444,12 +407,8 @@ STRUCT_BREAK_TYPE_ONLY_C    = 2
 STRUCTS = {
     "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
     "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
-    "ShTriangle":               (TRIANGLE_STRUCT,           True,   0,                          0),
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShPayload":                (PAYLOAD_STRUCT,            True,   0,                          0),
-    "ShPayloadShadow":          (PAYLOAD_SHADOW_STRUCT,     True,   0,                          0),
-    "ShHitInfo":                (HIT_INFO_STRUCT,           True,   0,                          0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
     "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),

@@ -89,20 +89,6 @@ struct ShVertexBufferDynamic
     float texCoords[4194304];
 };
 
-struct ShTriangle
-{
-    mat3 positions;
-    mat3 normals;
-    mat3x2 layerTexCoord[3];
-    vec4 materialColors[3];
-    uvec3 materials[3];
-    uint materialsBlendFlags;
-    vec3 tangent;
-    float geomRoughness;
-    vec3 geomEmission;
-    float geomMetallicity;
-};
-
 struct ShGlobalUniform
 {
     mat4 view;
@@ -145,33 +131,6 @@ struct ShGeometryInstance
     float defaultMetallicity;
     float defaultEmission;
     uint __pad0;
-};
-
-struct ShPayload
-{
-    vec4 color;
-    vec2 baryCoords;
-    uint instIdAndIndex;
-    uint geomAndPrimIndex;
-    float clsHitDistance;
-    float maxTransparDistance;
-};
-
-struct ShPayloadShadow
-{
-    uint isShadowed;
-};
-
-struct ShHitInfo
-{
-    vec3 albedo;
-    float metallic;
-    vec3 normal;
-    float roughness;
-    vec3 normalGeom;
-    float hitDistance;
-    vec3 emission;
-    uint instCustomIndex;
 };
 
 struct ShTonemapping

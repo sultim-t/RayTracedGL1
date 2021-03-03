@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 #include "ShaderCommonGLSL.h"
+#include "Structs.h"
 #include "BRDF.h"
 #include "Utils.h"
 

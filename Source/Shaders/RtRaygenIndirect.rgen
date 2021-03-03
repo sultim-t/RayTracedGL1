@@ -111,6 +111,8 @@ void processIndirectIllumination(
         vec3 diffuse, specular;
         processDirectIllumination(pix, primaryInstCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, diffuse, specular);
 
+        // TODO: Ray Tracing Gems, ch. 20.3.2-20.3.3: 
+        // calculate texture lod with ray differentials using G-buffer for the first bounce
         throughput *= h.albedo;
 
         //contribution = throughput * (diffuse * (1 - metallic) + specular * metallic);
