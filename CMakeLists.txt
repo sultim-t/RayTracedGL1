@@ -60,6 +60,7 @@ set(PrivateHeaders
     "Source/ASComponent.h"
     "Source/CubemapManager.h"
     "Source/CubemapUploader.h"
+    "Source/GeomInfoManager.h"
 )
 
 set(Sources
@@ -106,6 +107,7 @@ set(Sources
     "Source/ASComponent.cpp"
     "Source/CubemapManager.cpp"
     "Source/CubemapUploader.cpp"
+    "Source/GeomInfoManager.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

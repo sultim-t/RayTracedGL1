@@ -35,9 +35,11 @@ namespace RTGL1
 class ASManager
 {
 public:
-    ASManager(VkDevice device, std::shared_ptr<MemoryAllocator> allocator,
+    ASManager(VkDevice device, 
+              std::shared_ptr<MemoryAllocator> allocator,
               std::shared_ptr<CommandBufferManager> cmdManager,
-              std::shared_ptr<TextureManager> textureMgr,
+              std::shared_ptr<TextureManager> textureManager,
+              std::shared_ptr<GeomInfoManager> geomInfoManager,
               const VertexBufferProperties &properties);
     ~ASManager();
 
@@ -111,6 +113,7 @@ private:
 
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<TextureManager> textureMgr;
+    std::shared_ptr<GeomInfoManager> geomInfoManager;
 
     std::vector<std::unique_ptr<BLASComponent>> allStaticBlas;
     std::vector<std::unique_ptr<BLASComponent>> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];

@@ -23,16 +23,22 @@
 using namespace RTGL1;
 
 Scene::Scene(
-    std::shared_ptr<ASManager> _asManager,
-    std::shared_ptr<LightManager> _lightManager,
+    VkDevice _device,
+    std::shared_ptr<MemoryAllocator> &_allocator,
+    std::shared_ptr<CommandBufferManager> &_cmdManager,
+    std::shared_ptr<TextureManager> &_textureManager,
+    const VertexBufferProperties &_properties,
     bool _disableGeometrySkybox)
 :
     toResubmitMovable(false),
     isRecordingStatic(false),
-    asManager(std::move(_asManager)),
-    lightManager(std::move(_lightManager)),
     disableGeometrySkybox(_disableGeometrySkybox)
-{}
+{
+    lightManager = std::make_shared<LightManager>(_device, _allocator);
+    geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
+
+    asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, _properties);
+}
 
 Scene::~Scene()
 {}
@@ -60,6 +66,10 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
     // always submit dynamic geomtetry on the frame ending
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
+
+    // copy geom infos to device-local
+    geomInfoMgr->CopyFromStaging(cmd, frameIndex);
+    geomInfoMgr->ResetOnlyDynamic(frameIndex);
 
     // try to build top level
     return asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox);

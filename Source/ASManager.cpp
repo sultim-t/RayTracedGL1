@@ -33,13 +33,15 @@ ASManager::ASManager(
     VkDevice _device,
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<CommandBufferManager> _cmdManager,
-    std::shared_ptr<TextureManager> _textureMgr,
+    std::shared_ptr<TextureManager> _textureManager,
+    std::shared_ptr<GeomInfoManager> _geomInfoManager,
     const VertexBufferProperties &_properties)
     :
     device(_device),
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
-    textureMgr(std::move(_textureMgr)),
+    textureMgr(std::move(_textureManager)),
+    geomInfoManager(std::move(_geomInfoManager)),
     properties(_properties)
 {
     typedef VertexCollectorFilterTypeFlags FL;
@@ -75,7 +77,7 @@ ASManager::ASManager(
 
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
-        device, allocator,
+        device, allocator, _geomInfoManager,
         sizeof(ShVertexBufferStatic), properties,
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -89,7 +91,7 @@ ASManager::ASManager(
 
     // dynamic vertices
     collectorDynamic[0] = std::make_shared<VertexCollector>(
-        device, allocator,
+        device, allocator, _geomInfoManager,
         sizeof(ShVertexBufferDynamic), properties,
         FT::CF_DYNAMIC | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -159,15 +161,10 @@ void ASManager::CreateDescriptors()
         bindings[3].descriptorCount = 1;
         bindings[3].stageFlags = VK_SHADER_STAGE_ALL;
 
-        bindings[4].binding = BINDING_GEOMETRY_INSTANCES_STATIC;
+        bindings[4].binding = BINDING_GEOMETRY_INSTANCES;
         bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[4].descriptorCount = 1;
         bindings[4].stageFlags = VK_SHADER_STAGE_ALL;
-
-        bindings[5].binding = BINDING_GEOMETRY_INSTANCES_DYNAMIC;
-        bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[5].descriptorCount = 1;
-        bindings[5].stageFlags = VK_SHADER_STAGE_ALL;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -244,7 +241,7 @@ void ASManager::CreateDescriptors()
 
 void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 {
-    const uint32_t bindingCount = 6;
+    const uint32_t bindingCount = 5;
 
     std::array<VkDescriptorBufferInfo, bindingCount> bufferInfos{};
     std::array<VkWriteDescriptorSet, bindingCount> writes{};
@@ -270,15 +267,10 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     dnIndexBufInfo.offset = 0;
     dnIndexBufInfo.range = VK_WHOLE_SIZE;
 
-    VkDescriptorBufferInfo &gsBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES_STATIC];
-    gsBufInfo.buffer = collectorStatic->GetGeometryInfosBuffer();
+    VkDescriptorBufferInfo &gsBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES];
+    gsBufInfo.buffer = geomInfoManager->GetBuffer();
     gsBufInfo.offset = 0;
     gsBufInfo.range = VK_WHOLE_SIZE;
-
-    VkDescriptorBufferInfo &gdBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES_DYNAMIC];
-    gdBufInfo.buffer = collectorDynamic[frameIndex]->GetGeometryInfosBuffer();
-    gdBufInfo.offset = 0;
-    gdBufInfo.range = VK_WHOLE_SIZE;
 
 
     // writes
@@ -318,23 +310,14 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     dnIndexWrt.descriptorCount = 1;
     dnIndexWrt.pBufferInfo = &dnIndexBufInfo;
 
-    VkWriteDescriptorSet &gmStWrt = writes[BINDING_GEOMETRY_INSTANCES_STATIC];
-    gmStWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    gmStWrt.dstSet = buffersDescSets[frameIndex];
-    gmStWrt.dstBinding = BINDING_GEOMETRY_INSTANCES_STATIC;
-    gmStWrt.dstArrayElement = 0;
-    gmStWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    gmStWrt.descriptorCount = 1;
-    gmStWrt.pBufferInfo = &gsBufInfo;
-
-    VkWriteDescriptorSet &gmDnWrt = writes[BINDING_GEOMETRY_INSTANCES_DYNAMIC];
-    gmDnWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    gmDnWrt.dstSet = buffersDescSets[frameIndex];
-    gmDnWrt.dstBinding = BINDING_GEOMETRY_INSTANCES_DYNAMIC;
-    gmDnWrt.dstArrayElement = 0;
-    gmDnWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    gmDnWrt.descriptorCount = 1;
-    gmDnWrt.pBufferInfo = &gdBufInfo;
+    VkWriteDescriptorSet &gmWrt = writes[BINDING_GEOMETRY_INSTANCES];
+    gmWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    gmWrt.dstSet = buffersDescSets[frameIndex];
+    gmWrt.dstBinding = BINDING_GEOMETRY_INSTANCES;
+    gmWrt.dstArrayElement = 0;
+    gmWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    gmWrt.descriptorCount = 1;
+    gmWrt.pBufferInfo = &gsBufInfo;
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
 }
@@ -514,12 +497,15 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
 void ASManager::ResetStaticGeometry()
 {
     collectorStatic->Reset();
+    geomInfoManager->ResetWithStatic();
 }
 
 void ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
     collectorStatic->Reset();
+    geomInfoManager->ResetWithStatic();
+
     collectorStatic->BeginCollecting();
 }
 

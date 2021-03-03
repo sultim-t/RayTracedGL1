@@ -47,6 +47,7 @@ public:
     void Destroy();
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
+    void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, const VkBufferCopy *copyInfos, uint32_t copyInfosCount);
 
     VkBuffer GetStaging(uint32_t frameIndex);
     void *GetMapped(uint32_t frameIndex);

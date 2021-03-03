@@ -111,6 +111,18 @@ void RTGL1::AutoBuffer::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex
         1, &info);
 }
 
+void RTGL1::AutoBuffer::CopyFromStaging(
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    const VkBufferCopy *copyInfos, uint32_t copyInfosCount)
+{
+    assert(staging[frameIndex].GetSize() == deviceLocal.GetSize());
+
+    vkCmdCopyBuffer(
+        cmd,
+        staging[frameIndex].GetBuffer(), deviceLocal.GetBuffer(),
+        copyInfosCount, copyInfos);
+}
+
 void *RTGL1::AutoBuffer::GetMapped(uint32_t frameIndex)
 {
     assert(staging[frameIndex].IsMapped());

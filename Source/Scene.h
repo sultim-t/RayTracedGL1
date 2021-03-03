@@ -30,8 +30,11 @@ class Scene
 {
 public:
     explicit Scene(
-        std::shared_ptr<ASManager> asManager,
-        std::shared_ptr<LightManager> lightManager,
+        VkDevice device,
+        std::shared_ptr<MemoryAllocator> &allocator,
+        std::shared_ptr<CommandBufferManager> &cmdManager,
+        std::shared_ptr<TextureManager> &textureManager,
+        const VertexBufferProperties &properties,
         bool disableGeometrySkybox);
     ~Scene();
 
@@ -60,6 +63,7 @@ public:
 private:
     std::shared_ptr<ASManager> asManager;
     std::shared_ptr<LightManager> lightManager;
+    std::shared_ptr<GeomInfoManager> geomInfoMgr;
 
     // Non-movable and movable geometry IDs
     std::vector<uint32_t> allStaticGeomIds;
