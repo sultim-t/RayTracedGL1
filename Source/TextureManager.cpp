@@ -152,7 +152,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
 
         // load additional textures, they'll be freed after leaving the scope
-        TextureOverrides ovrd(createInfo.relativePath, createInfo.data, createInfo.size, parseInfo, imageLoader);
+        TextureOverrides ovrd(createInfo.relativePath, createInfo.textureData, createInfo.size, parseInfo, imageLoader);
 
         textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
         textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
@@ -160,9 +160,9 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     }
     else
     {
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
-        textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
-        textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.textureData.albedoAlphaData,        createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
+        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, createInfo.textureData.normalsMetallicityData, createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
+        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, createInfo.textureData.emissionRoughnessData,  createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
     }
 
     return InsertMaterial(textures, false);
@@ -180,7 +180,7 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
     MaterialTextures textures = {};
-    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, createInfo.data, createInfo.size, sampler, createInfo.isSRGB, createInfo.useMipmaps);
+    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, createInfo.textureData.albedoAlphaData, createInfo.size, sampler, createInfo.isSRGB, createInfo.useMipmaps);
     textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
     textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
 
@@ -191,28 +191,42 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 {
     const auto it = materials.find(updateInfo.dynamicMaterial);
 
-    if (it != materials.end())
+    // if exist and dynamic
+    if (it != materials.end() && it->second.isDynamic)
     {
-        if (it->second.isDynamic)
+        const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
         {
-            // dynamic textures have only albedo/alpha
-            uint32_t textureIndex = it->second.textures.albedoAlpha;
+            updateInfo.textureData.albedoAlphaData,
+            updateInfo.textureData.normalsMetallicityData,
+            updateInfo.textureData.emissionRoughnessData,
+        };
+
+        auto &textureIndices = it->second.textures.indices;
+        static_assert(sizeof(textureIndices) / sizeof(textureIndices[0]) == TEXTURES_PER_MATERIAL_COUNT, "");
+
+        bool wasUpdated = false;
+
+        for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+        {
+            uint32_t textureIndex = textureIndices[i];
 
             if (textureIndex == EMPTY_TEXTURE_INDEX)
             {
-                return false;
+                continue;
             }
 
             VkImage img = textures[textureIndex].image;
 
             if (img == VK_NULL_HANDLE)
             {
-                return false;
+                continue;
             }
 
-            textureUploader->UpdateDynamicImage(cmd, img, updateInfo.data);
-            return true;
+            textureUploader->UpdateDynamicImage(cmd, img, updateData[i]);
+            wasUpdated = true;
         }
+
+        return wasUpdated;
     }
 
     return false;

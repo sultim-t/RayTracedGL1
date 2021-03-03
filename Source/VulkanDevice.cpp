@@ -273,7 +273,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
 
     if (disableGeometrySkybox && gu->skyType == SKY_TYPE_TLAS)
     {
-        gu->skyType == SKY_TYPE_COLOR;
+        gu->skyType = SKY_TYPE_COLOR;
     }
 
     gu->skyCubemapIndex = cubemapManager->IsCubemapValid(frameInfo.skyCubemap) ? frameInfo.skyCubemap : RG_EMPTY_CUBEMAP;

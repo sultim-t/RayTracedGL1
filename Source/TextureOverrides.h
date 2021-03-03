@@ -43,6 +43,12 @@ struct TextureOverrides
 public:
     explicit TextureOverrides(
         const char *relativePath,
+        const RgTextureData &defaultData,
+        const RgExtent2D &defaultSize,
+        const ParseInfo &parseInfo,
+        std::shared_ptr<ImageLoader> imageLoader);
+    explicit TextureOverrides(
+        const char *relativePath,
         const void *defaultData,
         const RgExtent2D &defaultSize,
         const ParseInfo &parseInfo,

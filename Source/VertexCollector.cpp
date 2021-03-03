@@ -621,6 +621,8 @@ bool RTGL1::VertexCollector::RecopyTexCoordsFromStaging(VkCommandBuffer cmd)
     texCoordsToCopy.clear();
     texCoordsToCopyLowerBound = UINT64_MAX;
     texCoordsToCopyUpperBound = 0;
+
+    return true;
 }
 
 bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData)

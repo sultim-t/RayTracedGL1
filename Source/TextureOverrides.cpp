@@ -23,9 +23,22 @@
 
 using namespace RTGL1;
 
+
+TextureOverrides::TextureOverrides(
+    const char *_relativePath,
+    const void *_defaultData,
+    const RgExtent2D &_defaultSize,
+    const ParseInfo &_parseInfo,
+    std::shared_ptr<ImageLoader> _imageLoader)
+:
+    TextureOverrides(_relativePath, 
+                     RgTextureData{ _defaultData, nullptr, nullptr }, _defaultSize, 
+                     _parseInfo, std::move(_imageLoader))
+{}
+
 TextureOverrides::TextureOverrides(
     const char *_relativePath, 
-    const void *_defaultData, 
+    const RgTextureData &_defaultData,
     const RgExtent2D &_defaultSize,
     const ParseInfo &_parseInfo, 
     std::shared_ptr<ImageLoader> _imageLoader) 
@@ -33,8 +46,8 @@ TextureOverrides::TextureOverrides(
     aa(nullptr), aaSize({}), 
     nm(nullptr), nmSize({}), 
     er(nullptr), erSize({}), 
-    imageLoader(_imageLoader),
-    debugName{}
+    debugName{},
+    imageLoader(_imageLoader)
 {
     char albedoAlphaPath[TEXTURE_FILE_PATH_MAX_LENGTH];
     char normalMetallic[TEXTURE_FILE_PATH_MAX_LENGTH];
@@ -51,11 +64,23 @@ TextureOverrides::TextureOverrides(
         er = _imageLoader->LoadRGBA8(emissionRoughness, &erSize.width, &erSize.height);
     }
 
-    // if file wasn't found, use data instead
-    if (_defaultData != nullptr && aa == nullptr)
+    // if file wasn't found, use default data instead
+    if (_defaultData.albedoAlphaData != nullptr && aa == nullptr)
     {
-        aa = (uint32_t*)_defaultData;
+        aa = (uint32_t*)_defaultData.albedoAlphaData;
         aaSize = _defaultSize;
+    }
+
+    if (_defaultData.normalsMetallicityData != nullptr && nm == nullptr)
+    {
+        nm = (uint32_t *)_defaultData.normalsMetallicityData;
+        nmSize = _defaultSize;
+    }
+
+    if (_defaultData.emissionRoughnessData != nullptr && er == nullptr)
+    {
+        er = (uint32_t *)_defaultData.emissionRoughnessData;
+        erSize = _defaultSize;
     }
 }
 
