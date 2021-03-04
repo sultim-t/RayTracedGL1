@@ -219,10 +219,10 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
 
     for (uint32_t i = frameBegin; i < frameEnd; i++)
     {
-        ShGeometryInstance *dst = GetGeomInfoAddress(frameIndex, localGeomIndex, flags);
+        ShGeometryInstance *dst = GetGeomInfoAddress(i, localGeomIndex, flags);
         memcpy(dst, &src, sizeof(ShGeometryInstance));
 
-        MarkGeomInfoIndexToCopy(frameIndex, localGeomIndex, flags);
+        MarkGeomInfoIndexToCopy(i, localGeomIndex, flags);
     }
 
     return globalGeomIndex;
