@@ -83,14 +83,10 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     geomInfoMgr->CopyFromStaging(cmd, frameIndex);
     geomInfoMgr->ResetOnlyDynamic(frameIndex);
 
-    uint32_t maxGeomCountInInstance = 0;
-    uint32_t maxGeomCountInSkyboxInstance = 0;
-
     ShVertPreprocessing push = {};
 
     // try to build top level
-    bool built = asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox, 
-                                         &maxGeomCountInInstance, &maxGeomCountInSkyboxInstance, &push);
+    bool built = asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox, &push);
     
     // update uniform data
     uniform->Upload(cmd, frameIndex);
@@ -100,8 +96,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     // and preprocessing transforms all vertices to world space
     if (built)
     {
-        vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, 
-                                maxGeomCountInInstance, maxGeomCountInSkyboxInstance, push);
+        vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
     }
 
     return built;

@@ -76,8 +76,6 @@ public:
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<GlobalUniform> &uniform, 
         bool ignoreSkyboxTLAS,
-        uint32_t *outMaxGeomCountInInstance,
-        uint32_t *outMaxGeomCountInSkyboxInstance,
         ShVertPreprocessing *outPush);
 
     void OnVertexPreprocessingBegin(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic);

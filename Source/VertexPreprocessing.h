@@ -50,8 +50,6 @@ public:
         VkCommandBuffer cmd, uint32_t frameIndex, uint32_t preprocMode,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<ASManager> &asManager,
-        uint32_t maxGeomCountInInstance,
-        uint32_t maxGeomCountInSkyboxInstance,
         const ShVertPreprocessing &push);
 
 private:

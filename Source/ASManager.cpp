@@ -761,8 +761,6 @@ bool ASManager::TryBuildTLAS(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     const std::shared_ptr<GlobalUniform> &uniform, 
     bool ignoreSkyboxTLAS,
-    uint32_t *outMaxGeomCountInInstance,
-    uint32_t *outMaxGeomCountInSkyboxInstance,
     ShVertPreprocessing *outPush)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
@@ -774,8 +772,6 @@ bool ASManager::TryBuildTLAS(
     uint32_t skyboxInstanceCount = 0;
     VkAccelerationStructureInstanceKHR skyboxInstances[MAX_TOP_LEVEL_INSTANCE_COUNT] = {};
 
-    *outMaxGeomCountInInstance = 0;
-    *outMaxGeomCountInSkyboxInstance = 0;
     *outPush = {};
 
     // write geometry offsets to uniform to access geomInfos
@@ -806,8 +802,6 @@ bool ASManager::TryBuildTLAS(
 
                 if (isAdded)
                 {
-                    *outMaxGeomCountInInstance  = std::max(*outMaxGeomCountInInstance , blas->GetGeomCount());
-
                     // mark bit if dynamic
                     if (isDynamic)
                     {
@@ -826,8 +820,6 @@ bool ASManager::TryBuildTLAS(
                 {
                     // if skybox TLAS is ignored, skybox geometry must not be previously added
                     assert(!ignoreSkyboxTLAS);
-                    
-                    *outMaxGeomCountInSkyboxInstance = std::max(*outMaxGeomCountInSkyboxInstance, blas->GetGeomCount());
                     
                     // mark bit if dynamic
                     if (isDynamic)

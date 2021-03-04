@@ -29,12 +29,9 @@ layout(local_size_x = COMPUTE_VERT_PREPROC_GROUP_SIZE_X, local_size_y = 1, local
 
 layout (constant_id = 0) const uint preprocessMode = VERT_PREPROC_MODE_ONLY_DYNAMIC;
 
-layout(push_constant) uniform Push_BT 
+layout(push_constant) uniform Push_BT
 {
-    uint tlasInstanceCount;
-    uint skyboxTlasInstanceCount;
-    uint tlasInstanceIsDynamicBits[(MAX_TOP_LEVEL_INSTANCE_COUNT + 31) / 32];
-    uint skyboxTlasInstanceIsDynamicBits[(MAX_TOP_LEVEL_INSTANCE_COUNT + 31) / 32];
+    ShVertPreprocessing push;
 };
 
 vec3 getTangent(vec3 localPos[3], vec2 texCoord[3])
@@ -55,27 +52,37 @@ vec3 getTangent(vec3 localPos[3], vec2 texCoord[3])
 
 void main()
 {
-    // TODO:
-    //skyboxTlasInstanceCount;
+    uint tlasInstanceIndex = gl_WorkGroupID.x;
     
-    for (uint tlasInstanceIndex = 0; tlasInstanceIndex < tlasInstanceCount; tlasInstanceIndex++)
+    bool isDynamic;
+    
+    // if not skybox
+    if (tlasInstanceIndex < push.tlasInstanceCount)
     {
-        const bool isDynamic = (tlasInstanceIsDynamicBits[tlasInstanceIndex / 32] & (1 << tlasInstanceIndex)) != 0;
+        isDynamic = (push.tlasInstanceIsDynamicBits[tlasInstanceIndex / 32] & (1 << tlasInstanceIndex)) != 0;
+    }
+    else
+    {
+        isDynamic = (push.skyboxTlasInstanceIsDynamicBits[tlasInstanceIndex / 32] & (1 << tlasInstanceIndex)) != 0;
 
-        if (isDynamic)
-        {
-            #define VERTEX_PREPROCESS_PARTIAL_DYNAMIC
-            #include "VertexPreprocessPartial.inl"
-        }
-        /*else if (preprocessMode == VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE)
-        {       
-            #define VERTEX_PREPROCESS_PARTIAL_MOVABLE
-            #include "VertexPreprocessPartial.inl"
-        }*/
-        else if (preprocessMode == VERT_PREPROC_MODE_ALL)
-        {       
-            #define VERTEX_PREPROCESS_PARTIAL_STATIC
-            #include "VertexPreprocessPartial.inl"
-        }
+        // skybox offset
+        tlasInstanceIndex += MAX_TOP_LEVEL_INSTANCE_COUNT;
+    } 
+
+
+    if (isDynamic)
+    {
+        #define VERTEX_PREPROCESS_PARTIAL_DYNAMIC
+        #include "VertexPreprocessPartial.inl"
+    }
+    /*else if (preprocessMode == VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE)
+    {       
+        #define VERTEX_PREPROCESS_PARTIAL_MOVABLE
+        #include "VertexPreprocessPartial.inl"
+    }*/
+    else if (preprocessMode == VERT_PREPROC_MODE_ALL)
+    {       
+        #define VERTEX_PREPROCESS_PARTIAL_STATIC
+        #include "VertexPreprocessPartial.inl"
     }
 }

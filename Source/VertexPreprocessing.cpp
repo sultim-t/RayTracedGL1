@@ -53,8 +53,6 @@ void RTGL1::VertexPreprocessing::Preprocess(
     VkCommandBuffer cmd, uint32_t frameIndex, uint32_t preprocMode,
     const std::shared_ptr<const GlobalUniform> &uniform,
     const std::shared_ptr<ASManager> &asManager,
-    uint32_t maxGeomCountInInstance,
-    uint32_t maxGeomCountInSkyboxInstance,
     const ShVertPreprocessing &push)
 {
     asManager->OnVertexPreprocessingBegin(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);
@@ -84,7 +82,7 @@ void RTGL1::VertexPreprocessing::Preprocess(
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShVertPreprocessing), &push);
 
 
-    vkCmdDispatch(cmd, 1, 1, 1);
+    vkCmdDispatch(cmd, push.tlasInstanceCount + push.skyboxTlasInstanceCount, 1, 1);
 
 
     asManager->OnVertexPreprocessingFinish(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);
