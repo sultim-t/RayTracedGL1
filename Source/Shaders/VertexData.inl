@@ -358,17 +358,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.materialColors[1] = inst.materialColors[1];
         tr.materialColors[2] = inst.materialColors[2];
     }
-    
-    const mat3 model3 = mat3(inst.model);
-
-    // to world space
-    tr.normals[0] = model3 * tr.normals[0];
-    tr.normals[1] = model3 * tr.normals[1];
-    tr.normals[2] = model3 * tr.normals[2];
-
-    tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
-    tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
-    tr.positions[2] = (inst.model * vec4(tr.positions[2], 1.0)).xyz;
 
     tr.materialsBlendFlags = inst.materialsBlendFlags;
 

@@ -32,6 +32,8 @@
 namespace RTGL1
 {
 
+struct ShVertPreprocessing;
+
 class ASManager
 {
 public:
@@ -48,7 +50,6 @@ public:
     ASManager& operator=(const ASManager& other) = delete;
     ASManager& operator=(ASManager&& other) noexcept = delete;
 
-    // Static geometry recording is frameIndex-agnostic
     void BeginStaticGeometry();
     uint32_t AddStaticGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info);
     // Submitting static geometry to the building is a heavy operation
@@ -71,7 +72,17 @@ public:
     void UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
     void ResubmitStaticTexCoords(VkCommandBuffer cmd);
 
-    bool TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool ignoreSkyboxTLAS);
+    bool TryBuildTLAS(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<GlobalUniform> &uniform, 
+        bool ignoreSkyboxTLAS,
+        uint32_t *outMaxGeomCountInInstance,
+        uint32_t *outMaxGeomCountInSkyboxInstance,
+        ShVertPreprocessing *outPush);
+
+    void OnVertexPreprocessingBegin(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic);
+    void OnVertexPreprocessingFinish(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic);
+
     VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const;
     VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const;
 

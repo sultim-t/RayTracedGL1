@@ -158,6 +158,14 @@ struct ShLightDirectional
     uint __pad0;
 };
 
+struct ShVertPreprocessing
+{
+    uint tlasInstanceCount;
+    uint skyboxTlasInstanceCount;
+    uint tlasInstanceIsDynamicBits[2];
+    uint skyboxTlasInstanceIsDynamicBits[2];
+};
+
 #ifdef DESC_SET_FRAMEBUFFERS
 
 // framebuffers

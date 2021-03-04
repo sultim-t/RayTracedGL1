@@ -61,6 +61,7 @@ set(PrivateHeaders
     "Source/CubemapManager.h"
     "Source/CubemapUploader.h"
     "Source/GeomInfoManager.h"
+    "Source/VertexPreprocessing.h"
 )
 
 set(Sources
@@ -108,6 +109,7 @@ set(Sources
     "Source/CubemapManager.cpp"
     "Source/CubemapUploader.cpp"
     "Source/GeomInfoManager.cpp"
+    "Source/VertexPreprocessing.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

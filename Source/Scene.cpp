@@ -19,6 +19,7 @@
 // SOFTWARE.
 
 #include "Scene.h"
+#include "Generated/ShaderCommonC.h"
 
 using namespace RTGL1;
 
@@ -27,17 +28,22 @@ Scene::Scene(
     std::shared_ptr<MemoryAllocator> &_allocator,
     std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<TextureManager> &_textureManager,
+    const std::shared_ptr<const GlobalUniform> &_uniform,
+    const std::shared_ptr<const ShaderManager> &_shaderManager,
     const VertexBufferProperties &_properties,
     bool _disableGeometrySkybox)
 :
     toResubmitMovable(false),
     isRecordingStatic(false),
+    submittedStaticInCurrentFrame(false),
     disableGeometrySkybox(_disableGeometrySkybox)
 {
     lightManager = std::make_shared<LightManager>(_device, _allocator);
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
 
     asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, _properties);
+  
+    vertPreproc = std::make_shared<VertexPreprocessing>(_device, _uniform, asManager, _shaderManager);
 }
 
 Scene::~Scene()
@@ -62,6 +68,8 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
         // at least one transform of static movable geometry was changed
         asManager->ResubmitStaticMovable(cmd);
         toResubmitMovable = false;
+
+        submittedStaticInCurrentFrame = true;
     }
 
     // always submit dynamic geomtetry on the frame ending
@@ -71,8 +79,33 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     geomInfoMgr->CopyFromStaging(cmd, frameIndex);
     geomInfoMgr->ResetOnlyDynamic(frameIndex);
 
+    uint32_t maxGeomCountInInstance = 0;
+    uint32_t maxGeomCountInSkyboxInstance = 0;
+
+    ShVertPreprocessing push = {};
+
     // try to build top level
-    return asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox);
+    bool built = asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox, 
+                                         &maxGeomCountInInstance, &maxGeomCountInSkyboxInstance, &push);
+
+    // preprocess vertices, but only after building AS,
+    // as AS building relies on relative vertex positions
+    // and preprocessing transforms all vertices to world space
+    if (built)
+    {
+        bool onlyDynamic = !submittedStaticInCurrentFrame;
+
+        asManager->OnVertexPreprocessingBegin(cmd, frameIndex, onlyDynamic);
+
+        vertPreproc->Preprocess(cmd, frameIndex, onlyDynamic, uniform, asManager, 
+                                maxGeomCountInInstance, maxGeomCountInSkyboxInstance, push);
+
+        asManager->OnVertexPreprocessingFinish(cmd, frameIndex, onlyDynamic);
+    }
+
+    submittedStaticInCurrentFrame = false;
+
+    return built;
 }
 
 uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
@@ -150,6 +183,8 @@ void Scene::SubmitStatic()
 
     asManager->SubmitStaticGeometry();
     isRecordingStatic = false;
+
+    submittedStaticInCurrentFrame = true;
 }
 
 void Scene::StartNewStatic()

@@ -757,7 +757,13 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
     instanceGeomCount[index] = geomCount;
 }
 
-bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool ignoreSkyboxTLAS)
+bool ASManager::TryBuildTLAS(
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    const std::shared_ptr<GlobalUniform> &uniform, 
+    bool ignoreSkyboxTLAS,
+    uint32_t *outMaxGeomCountInInstance,
+    uint32_t *outMaxGeomCountInSkyboxInstance,
+    ShVertPreprocessing *outPush)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -767,6 +773,10 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     uint32_t skyboxInstanceCount = 0;
     VkAccelerationStructureInstanceKHR skyboxInstances[MAX_TOP_LEVEL_INSTANCE_COUNT] = {};
+
+    *outMaxGeomCountInInstance = 0;
+    *outMaxGeomCountInSkyboxInstance = 0;
+    *outPush = {};
 
     // write geometry offsets to uniform to access geomInfos
     // with instance ID and local (in terms of BLAS) geometry index in shaders;
@@ -786,8 +796,29 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
     {
         for (auto &blas : *blasArr)
         {
+            bool isSkybox = blas->GetFilter() & FT::PV_SKYBOX;
+            bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
+
             // add to appropriate TLAS instances array
-            if (blas->GetFilter() & FT::PV_SKYBOX)
+            if (!isSkybox)
+            {
+                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, instances[instanceCount]);
+
+                if (isAdded)
+                {
+                    *outMaxGeomCountInInstance  = std::max(*outMaxGeomCountInInstance , blas->GetGeomCount());
+
+                    // mark bit if dynamic
+                    if (isDynamic)
+                    {
+                        outPush->tlasInstanceIsDynamicBits[instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
+                    }
+
+                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, instanceCount, *blas);
+                    instanceCount++;
+                }
+            }
+            else
             {
                 bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, skyboxInstances[skyboxInstanceCount]);
 
@@ -795,21 +826,17 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
                 {
                     // if skybox TLAS is ignored, skybox geometry must not be previously added
                     assert(!ignoreSkyboxTLAS);
+                    
+                    *outMaxGeomCountInSkyboxInstance = std::max(*outMaxGeomCountInSkyboxInstance, blas->GetGeomCount());
+                    
+                    // mark bit if dynamic
+                    if (isDynamic)
+                    {
+                        outPush->skyboxTlasInstanceIsDynamicBits[skyboxInstanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (skyboxInstanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
+                    }
 
                     WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, skyboxInstanceCount, *blas);
-
                     skyboxInstanceCount++;
-                }
-            }
-            else
-            {
-                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, instances[instanceCount]);
-
-                if (isAdded)
-                {
-                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, instanceCount, *blas);
-
-                    instanceCount++;
                 }
             }
         }
@@ -819,6 +846,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
     {
         return false;
     }
+
+    outPush->tlasInstanceCount = instanceCount;
+    outPush->skyboxTlasInstanceCount = skyboxInstanceCount;
 
 
     // fill buffer
@@ -885,6 +915,26 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const std
 
     UpdateASDescriptors(frameIndex);
     return true;
+}
+
+void ASManager::OnVertexPreprocessingBegin(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic)
+{
+    if (!onlyDynamic)
+    {
+        collectorStatic->InsertVertexPreprocessBeginBarrier(cmd);
+    }
+
+    collectorDynamic[frameIndex]->InsertVertexPreprocessBeginBarrier(cmd);
+}
+
+void ASManager::OnVertexPreprocessingFinish(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic)
+{
+    if (!onlyDynamic)
+    {
+        collectorStatic->InsertVertexPreprocessFinishBarrier(cmd);
+    }
+
+    collectorDynamic[frameIndex]->InsertVertexPreprocessFinishBarrier(cmd);
 }
 
 bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)

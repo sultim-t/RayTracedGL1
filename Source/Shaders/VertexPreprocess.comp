@@ -27,11 +27,14 @@
 
 layout(local_size_x = COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X, local_size_y = 1, local_size_z = 1) in;
 
+layout (constant_id = 0) const uint onlyDynamic = 1;
+
 layout(push_constant) uniform Push_BT 
 {
     uint tlasInstanceCount;
     uint skyboxTlasInstanceCount;
     uint tlasInstanceIsDynamicBits[(MAX_TOP_LEVEL_INSTANCE_COUNT + 31) / 32];
+    uint skyboxTlasInstanceIsDynamicBits[(MAX_TOP_LEVEL_INSTANCE_COUNT + 31) / 32];
 };
 
 vec3 getTangent(vec3 localPos[3], vec2 texCoord[3])
@@ -65,7 +68,7 @@ void main()
                 #include "VertexPreprocessPartial.inl"
             #undef VERTEX_PREPROCESS_PARTIAL_DYNAMIC
         }
-        else
+        else if (onlyDynamic == 0)
         {       
             #define VERTEX_PREPROCESS_PARTIAL_STATIC
                 #include "VertexPreprocessPartial.inl"

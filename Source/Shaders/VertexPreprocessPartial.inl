@@ -48,18 +48,21 @@
 const uint geomIndexOffset = uint(globalUniform.instanceGeomInfoOffset[tlasInstanceIndex]);
 const uint geomCount = uint(globalUniform.instanceGeomCount[tlasInstanceIndex]);
 
-for (uint globalGeomIndex = geomIndexOffset; globalGeomIndex < geomIndexOffset + geomCount; globalGeomIndex++)
+for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; localGeomIndex += gl_WorkGroupSize.x)
 {
-    const ShGeometryInstance inst = geometryInstances[globalGeomIndex];
+    const ShGeometryInstance inst = geometryInstances[geomIndexOffset + localGeomIndex];
 
     const bool useIndices = inst.baseIndexIndex != UINT32_MAX;
-    const bool genNormals = false;
+    // TODO: provide info
+    const bool genNormals = true;
 
     const mat4 model = inst.model;
     const mat3 model3 = mat3(model);
 
-    for (uint v = inst.baseVertexIndex; v < inst.baseVertexIndex + inst.vertexCount; v += 3)
+    for (uint l = 0; l < inst.vertexCount; l += 3)
     {
+        const uint v = inst.baseVertexIndex + l;
+
         const uvec3 vertexIndices = uvec3(
             v + 0,
             v + 1,
@@ -127,8 +130,10 @@ for (uint globalGeomIndex = geomIndexOffset; globalGeomIndex < geomIndexOffset +
     }
 
     // if not using indices, baseIndexIndex=UINT32_MAX, so loop will be skipped
-    for (uint i = inst.baseIndexIndex; i < inst.baseIndexIndex + inst.indexCount; i += 3)
+    for (uint l = 0; l < inst.indexCount; l += 3)
     {
+        const uint i = inst.baseIndexIndex + l;
+
         const uvec3 vertexIndices = uvec3(
             staticIndices[i + 0],
             staticIndices[i + 1],

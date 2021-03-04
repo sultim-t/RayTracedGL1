@@ -163,4 +163,12 @@ struct ShLightDirectional
     uint32_t __pad0;
 };
 
+struct ShVertPreprocessing
+{
+    uint32_t tlasInstanceCount;
+    uint32_t skyboxTlasInstanceCount;
+    uint32_t tlasInstanceIsDynamicBits[2];
+    uint32_t skyboxTlasInstanceIsDynamicBits[2];
+};
+
 }

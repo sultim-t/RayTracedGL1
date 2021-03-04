@@ -110,15 +110,17 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->overridenTexturesFolderPath,
         info->overrideAlbedoAlphaTexturePostfix);
 
+    shaderManager       = std::make_shared<ShaderManager>(device);
+
     scene               = std::make_shared<Scene>(
         device,
         memAllocator,
         cmdManager,
         textureManager,
+        uniform,
+        shaderManager,
         vbProperties, 
         disableGeometrySkybox);
-
-    shaderManager       = std::make_shared<ShaderManager>(device);
    
     rtPipeline          = std::make_shared<RayTracingPipeline>(
         device, 

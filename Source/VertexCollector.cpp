@@ -572,26 +572,32 @@ bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexDa
     bool indCopied = CopyIndexDataFromStaging(cmd);
     bool trnCopied = CopyTransformsFromStaging(cmd, false);
 
-    // sync dst buffer access
-    VkBufferMemoryBarrier barriers[4] = {};
-    uint32_t barrierCount = 0;
-
     if (vrtCopied)
     {
-        VkBufferMemoryBarrier &vrtBr = barriers[barrierCount++];
+        VkBufferMemoryBarrier vrtBr = {};
 
         vrtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         vrtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         vrtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
+        vrtBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
         vrtBr.buffer = vertBuffer->GetBuffer();
         vrtBr.size = VK_WHOLE_SIZE;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | 
+                                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | 
+                                            VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+            0,
+            0, nullptr,
+            1, &vrtBr,
+            0, nullptr);
     }
 
     if (indCopied)
     {
-        VkBufferMemoryBarrier &indBr = barriers[barrierCount++];
+        VkBufferMemoryBarrier indBr = {};
 
         indBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         indBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -600,11 +606,20 @@ bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexDa
         indBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR | VK_ACCESS_SHADER_READ_BIT;
         indBr.buffer = indexBuffer->GetBuffer();
         indBr.size = curIndexCount * sizeof(uint32_t);
+        
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | 
+                                            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+            0,
+            0, nullptr,
+            1, &indBr,
+            0, nullptr);
     }
 
     if (trnCopied)
     {
-        VkBufferMemoryBarrier &trnBr = barriers[barrierCount++];
+        VkBufferMemoryBarrier trnBr = {};
 
         trnBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
         trnBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
@@ -613,22 +628,17 @@ bool VertexCollector::CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexDa
         trnBr.dstAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
         trnBr.buffer = transformsBuffer->GetBuffer();
         trnBr.size = curTransformCount * sizeof(VkTransformMatrixKHR);
-    }
-
-    if (barrierCount > 0)
-    {
+        
         vkCmdPipelineBarrier(
             cmd,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR,
             0,
             0, nullptr,
-            barrierCount, barriers,
+            1, &trnBr,
             0, nullptr);
-
-        return true;
     }
 
-    return false;
+    return vrtCopied || indCopied || trnCopied;
 }
 
 bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const
@@ -792,8 +802,55 @@ bool VertexCollector::AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type)
     return AreGeometriesEmpty((VertexCollectorFilterTypeFlags)type);
 }
 
+void VertexCollector::InsertVertexPreprocessBeginBarrier(VkCommandBuffer cmd)
+{
+    // sync only positions
+    const uint64_t positionsSize = std::max(
+        sizeof(ShVertexBufferDynamic::positions), 
+        sizeof(ShVertexBufferStatic::positions));
+
+    VkBufferMemoryBarrier vrtBr = {};
+
+    vrtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    vrtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    vrtBr.srcAccessMask = VK_ACCESS_ACCELERATION_STRUCTURE_READ_BIT_KHR;
+    vrtBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    vrtBr.buffer = GetVertexBuffer();
+    vrtBr.size = positionsSize;
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        0,
+        0, nullptr,
+        1, &vrtBr,
+        0, nullptr);
+}
+
+void VertexCollector::InsertVertexPreprocessFinishBarrier(VkCommandBuffer cmd)
+{
+    VkBufferMemoryBarrier vrtBr = {};
+
+    vrtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+    vrtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    vrtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    vrtBr.srcAccessMask = VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT;
+    vrtBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    vrtBr.buffer = GetVertexBuffer();
+    vrtBr.size = VK_WHOLE_SIZE;
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+        0,
+        0, nullptr,
+        1, &vrtBr,
+        0, nullptr);
+}
+
 uint32_t VertexCollector::PushGeometry(VertexCollectorFilterTypeFlags type,
-                                   const VkAccelerationStructureGeometryKHR &geom)
+                                       const VkAccelerationStructureGeometryKHR &geom)
 {
     assert(filters.find(type) != filters.end());
 

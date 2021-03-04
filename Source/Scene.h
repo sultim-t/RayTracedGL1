@@ -22,6 +22,7 @@
 
 #include "ASManager.h"
 #include "LightManager.h"
+#include "VertexPreprocessing.h"
 
 namespace RTGL1
 {
@@ -34,8 +35,11 @@ public:
         std::shared_ptr<MemoryAllocator> &allocator,
         std::shared_ptr<CommandBufferManager> &cmdManager,
         std::shared_ptr<TextureManager> &textureManager,
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const ShaderManager> &shaderManager,
         const VertexBufferProperties &properties,
         bool disableGeometrySkybox);
+
     ~Scene();
 
     Scene(const Scene& other) = delete;
@@ -64,6 +68,7 @@ private:
     std::shared_ptr<ASManager> asManager;
     std::shared_ptr<LightManager> lightManager;
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
+    std::shared_ptr<VertexPreprocessing> vertPreproc;
 
     // Non-movable and movable geometry IDs
     std::vector<uint32_t> allStaticGeomIds;
@@ -71,6 +76,7 @@ private:
     bool toResubmitMovable;
 
     bool isRecordingStatic;
+    bool submittedStaticInCurrentFrame;
 
     bool disableGeometrySkybox;
 };

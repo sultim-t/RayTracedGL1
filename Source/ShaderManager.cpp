@@ -50,6 +50,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CLuminanceAvg",       "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceAvg.comp.spv"      , VK_SHADER_STAGE_ALL },
     {"RasterizerVert",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"          , VK_SHADER_STAGE_ALL },
     {"RasterizerFrag",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"          , VK_SHADER_STAGE_ALL },
+    {"VertexPreprocess",    "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/VertexPreprocess.comp.spv"    , VK_SHADER_STAGE_ALL },
 };
 
 
@@ -84,7 +85,6 @@ void ShaderManager::LoadShaderModules()
         SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, s.name);
 
         modules[s.name] = { m, s.stage };
-
     }
 }
 

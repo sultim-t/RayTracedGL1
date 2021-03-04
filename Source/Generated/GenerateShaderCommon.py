@@ -268,6 +268,10 @@ CONST_GLSL_ONLY = {
 }
 
 
+def align(c, alignment):
+    return ((c + alignment - 1) // alignment) * alignment
+
+
 def align4(a):
     return ((a + 3) >> 2) << 2
 
@@ -389,6 +393,13 @@ TONEMAPPING_STRUCT = [
     (TYPE_FLOAT32,      1,      "avgLuminance",         1),
 ]
 
+VERT_PREPROC_PUSH_STRUCT = [
+    (TYPE_UINT32,       1,      "tlasInstanceCount",                1),
+    (TYPE_UINT32,       1,      "skyboxTlasInstanceCount",          1),
+    (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",        align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
+    (TYPE_UINT32,       1,      "skyboxTlasInstanceIsDynamicBits",  align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
+]
+
 
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
@@ -410,6 +421,7 @@ STRUCTS = {
     "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
     "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,  False,  0,                          0),
 }
 
 # --------------------------------------------------------------------------------------------- #
@@ -529,14 +541,6 @@ def getPadsForStruct(typeNames, uint32ToAdd):
         r += padStr % (CURRENT_PAD_INDEX + i)
     CURRENT_PAD_INDEX += uint32ToAdd
     return r
-
-
-def align(c, alignment):
-    if c % alignment != 0:
-        x = c // alignment + 1
-        return x * alignment
-    else:
-        return c
 
 
 # useVecMatTypes:

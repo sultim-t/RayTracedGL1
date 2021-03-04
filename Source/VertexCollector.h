@@ -62,9 +62,11 @@ public:
     VertexCollector& operator=(const VertexCollector& other) = delete;
     VertexCollector& operator=(VertexCollector&& other) noexcept = delete;
 
+
     void BeginCollecting(bool isStatic);
     uint32_t AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT]);
     void EndCollecting();
+
 
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
@@ -76,11 +78,13 @@ public:
     bool RecopyTransformsFromStaging(VkCommandBuffer cmd);
     bool RecopyTexCoordsFromStaging(VkCommandBuffer cmd);
 
+
     // Update transform, only for movable static geometry as dynamic geometry
     // will be updated every frame and thus their transforms.
     void UpdateTransform(uint32_t geomIndex, const RgTransform &transform);
     // Update texture coordinates 
     void UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
+
 
     // When material data is changed, this function is called
     void OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo) override;
@@ -91,21 +95,25 @@ public:
 
 
     // Get primitive counts from filters. Null if corresponding filter wasn't found.
-    const std::vector<uint32_t> &GetPrimitiveCounts(
-        VertexCollectorFilterTypeFlags filter) const;
+    const std::vector<uint32_t> &GetPrimitiveCounts(VertexCollectorFilterTypeFlags filter) const;
 
     // Get AS geometries data from filters. Null if corresponding filter wasn't found.
-    const std::vector<VkAccelerationStructureGeometryKHR> &GetASGeometries(
-        VertexCollectorFilterTypeFlags filter) const;
+    const std::vector<VkAccelerationStructureGeometryKHR> &GetASGeometries(VertexCollectorFilterTypeFlags filter) const;
 
     // Get AS build range infos from filters. Null if corresponding filter wasn't found.
-    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &GetASBuildRangeInfos(
-        VertexCollectorFilterTypeFlags filter) const;
+    const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &GetASBuildRangeInfos(VertexCollectorFilterTypeFlags filter) const;
+
 
     // Are all geometries for each filter type in "flags" empty?
     bool AreGeometriesEmpty(VertexCollectorFilterTypeFlags flags) const;
     // Are all geometries of this type empty?
     bool AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type) const;
+
+
+    // Make sure that AS building was done
+    void InsertVertexPreprocessBeginBarrier(VkCommandBuffer cmd);
+    // Make sure that preprocessing is done
+    void InsertVertexPreprocessFinishBarrier(VkCommandBuffer cmd);
 
 private:
     void InitStagingBuffers(const std::shared_ptr<MemoryAllocator> &allocator);
