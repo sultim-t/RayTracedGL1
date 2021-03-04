@@ -57,6 +57,12 @@ void Scene::PrepareForFrame(uint32_t frameIndex)
 
 bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
 {
+    uint32_t preprocMode = submittedStaticInCurrentFrame ? VERT_PREPROC_MODE_ALL : 
+                           toResubmitMovable             ? VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE : 
+                                                           VERT_PREPROC_MODE_ONLY_DYNAMIC;
+    submittedStaticInCurrentFrame = false;
+
+
     lightManager->CopyFromStaging(cmd, frameIndex);
     lightManager->Clear();
 
@@ -68,8 +74,6 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
         // at least one transform of static movable geometry was changed
         asManager->ResubmitStaticMovable(cmd);
         toResubmitMovable = false;
-
-        submittedStaticInCurrentFrame = true;
     }
 
     // always submit dynamic geomtetry on the frame ending
@@ -96,17 +100,9 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     // and preprocessing transforms all vertices to world space
     if (built)
     {
-        bool onlyDynamic = true;
-
-        asManager->OnVertexPreprocessingBegin(cmd, frameIndex, onlyDynamic);
-
-        vertPreproc->Preprocess(cmd, frameIndex, onlyDynamic, uniform, asManager, 
+        vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, 
                                 maxGeomCountInInstance, maxGeomCountInSkyboxInstance, push);
-
-        asManager->OnVertexPreprocessingFinish(cmd, frameIndex, onlyDynamic);
     }
-
-    submittedStaticInCurrentFrame = false;
 
     return built;
 }

@@ -47,9 +47,9 @@ public:
     VertexPreprocessing & operator=(VertexPreprocessing &&other) noexcept = delete;
 
     void Preprocess(
-        VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic,
+        VkCommandBuffer cmd, uint32_t frameIndex, uint32_t preprocMode,
         const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const ASManager> &asManager,
+        const std::shared_ptr<ASManager> &asManager,
         uint32_t maxGeomCountInInstance,
         uint32_t maxGeomCountInSkyboxInstance,
         const ShVertPreprocessing &push);
@@ -61,7 +61,8 @@ private:
     VkDevice device;
     VkPipelineLayout pipelineLayout;
     VkPipeline pipelineOnlyDynamic;
-    VkPipeline pipelineStaticDynamic;
+    VkPipeline pipelineDynamicAndMovable;
+    VkPipeline pipelineAll;
 };
 
 }

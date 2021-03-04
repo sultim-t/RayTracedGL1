@@ -270,7 +270,9 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
         trData.indexData = {};
     }
 
+
     uint32_t localIndex = PushGeometry(geomFlags, geom);
+
 
     VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
     rangeInfo.primitiveCount = primitiveCount;
@@ -279,7 +281,9 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     rangeInfo.transformOffset = 0;
     PushRangeInfo(geomFlags, rangeInfo);
 
+
     PushPrimitiveCount(geomFlags, primitiveCount);
+
 
     ShGeometryInstance geomInfo = {};
     geomInfo.baseVertexIndex = vertIndex;
@@ -295,7 +299,17 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     static_assert(sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0]) == MATERIALS_MAX_LAYER_COUNT,
                   "Layer count must be MATERIALS_MAX_LAYER_COUNT");
 
-    geomInfo.materialsBlendFlags = GetMaterialsBlendFlags(info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT);
+    geomInfo.flags = GetMaterialsBlendFlags(info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT);
+
+    if (info.normalData == nullptr)
+    {
+        geomInfo.flags |= GEOM_INST_FLAG_GENERATE_NORMALS;
+    }
+
+    if (geomFlags & FT::CF_STATIC_MOVABLE)
+    {
+        geomInfo.flags |= GEOM_INST_FLAG_IS_MOVABLE;
+    }
 
     for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
     {
@@ -369,11 +383,6 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     if (info.normalData != nullptr)
     {
         memcpy(normalsDst, info.normalData, info.vertexCount * normalStride);
-    }
-    else
-    {
-        // TODO: generate normals
-        // memset(normalsDst, 0, info.vertexCount * normalStride);
     }
 
     //const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;

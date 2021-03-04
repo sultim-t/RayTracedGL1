@@ -58,6 +58,8 @@
 #define MATERIAL_BLENDING_MASK_FIRST_LAYER (15)
 #define MATERIAL_BLENDING_MASK_SECOND_LAYER (240)
 #define MATERIAL_BLENDING_MASK_THIRD_LAYER (3840)
+#define GEOM_INST_FLAG_IS_MOVABLE (1 << 30)
+#define GEOM_INST_FLAG_GENERATE_NORMALS (1 << 31)
 #define SKY_TYPE_COLOR (0)
 #define SKY_TYPE_CUBEMAP (1)
 #define SKY_TYPE_TLAS (2)
@@ -69,7 +71,10 @@
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X (16)
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y (16)
 #define COMPUTE_LUM_HISTOGRAM_BIN_COUNT (256)
-#define COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X (256)
+#define COMPUTE_VERT_PREPROC_GROUP_SIZE_X (256)
+#define VERT_PREPROC_MODE_ONLY_DYNAMIC (0)
+#define VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE (1)
+#define VERT_PREPROC_MODE_ALL (2)
 
 #define MAX_RAY_LENGTH (10000.0)
 
@@ -126,7 +131,7 @@ struct ShGeometryInstance
     mat4 model;
     uvec4 materials[3];
     vec4 materialColors[3];
-    uint materialsBlendFlags;
+    uint flags;
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint vertexCount;

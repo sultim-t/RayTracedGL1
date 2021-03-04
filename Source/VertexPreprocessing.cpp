@@ -45,18 +45,25 @@ RTGL1::VertexPreprocessing::~VertexPreprocessing()
 {
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyPipeline(device, pipelineOnlyDynamic, nullptr);
-    vkDestroyPipeline(device, pipelineStaticDynamic, nullptr);
+    vkDestroyPipeline(device, pipelineDynamicAndMovable, nullptr);
+    vkDestroyPipeline(device, pipelineAll, nullptr);
 }
 
 void RTGL1::VertexPreprocessing::Preprocess(
-    VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic,
+    VkCommandBuffer cmd, uint32_t frameIndex, uint32_t preprocMode,
     const std::shared_ptr<const GlobalUniform> &uniform,
-    const std::shared_ptr<const ASManager> &asManager,
+    const std::shared_ptr<ASManager> &asManager,
     uint32_t maxGeomCountInInstance,
     uint32_t maxGeomCountInSkyboxInstance,
     const ShVertPreprocessing &push)
 {
-    VkPipeline pl = onlyDynamic ? pipelineOnlyDynamic : pipelineStaticDynamic;
+    asManager->OnVertexPreprocessingBegin(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);
+
+
+    VkPipeline pl = 
+        preprocMode == VERT_PREPROC_MODE_ALL ? pipelineAll :
+        preprocMode == VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE ? pipelineDynamicAndMovable :
+        pipelineOnlyDynamic;
    
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pl);
 
@@ -78,6 +85,9 @@ void RTGL1::VertexPreprocessing::Preprocess(
 
 
     vkCmdDispatch(cmd, 1, 1, 1);
+
+
+    asManager->OnVertexPreprocessingFinish(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);
 }
 
 void RTGL1::VertexPreprocessing::CreatePipeline(
@@ -121,22 +131,31 @@ void RTGL1::VertexPreprocessing::CreatePipeline(
     plInfo.layout = pipelineLayout;
     plInfo.stage = shaderManager->GetStageInfo("VertexPreprocess");
     plInfo.stage.pSpecializationInfo = &specInfo;
-
+    
     {
-        specInfoDataOnlyDynamic = 0;
-
-        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineStaticDynamic);
-        VK_CHECKERROR(r);
-
-        SET_DEBUG_NAME(device, pipelineStaticDynamic, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex static/dynamic preprocessing pipeline");
-    }
-
-    {
-        specInfoDataOnlyDynamic = 1;
+        specInfoDataOnlyDynamic = VERT_PREPROC_MODE_ONLY_DYNAMIC;
 
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineOnlyDynamic);
         VK_CHECKERROR(r);
 
         SET_DEBUG_NAME(device, pipelineOnlyDynamic, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex only dynamic preprocessing pipeline");
+    }
+    
+    {
+        specInfoDataOnlyDynamic = VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE;
+
+        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineDynamicAndMovable);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, pipelineDynamicAndMovable, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex movable/dynamic preprocessing pipeline");
+    }
+
+    {
+        specInfoDataOnlyDynamic = VERT_PREPROC_MODE_ALL;
+
+        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineAll);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, pipelineAll, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex static/movable/dynamic preprocessing pipeline");
     }
 }

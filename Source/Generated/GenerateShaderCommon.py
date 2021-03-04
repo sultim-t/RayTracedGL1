@@ -244,6 +244,8 @@ CONST = {
     "MATERIAL_BLENDING_MASK_FIRST_LAYER"    : CONST_TO_EVALUATE,
     "MATERIAL_BLENDING_MASK_SECOND_LAYER"   : CONST_TO_EVALUATE,
     "MATERIAL_BLENDING_MASK_THIRD_LAYER"    : CONST_TO_EVALUATE,
+    "GEOM_INST_FLAG_IS_MOVABLE"             : "1 << 30",
+    "GEOM_INST_FLAG_GENERATE_NORMALS"       : "1 << 31",
 
     "SKY_TYPE_COLOR"                        : 0,
     "SKY_TYPE_CUBEMAP"                      : 1,
@@ -260,7 +262,10 @@ CONST = {
     "COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y"    : 16,
     "COMPUTE_LUM_HISTOGRAM_BIN_COUNT"       : 256,
 
-    "COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X"  : 256,
+    "COMPUTE_VERT_PREPROC_GROUP_SIZE_X"     : 256,
+    "VERT_PREPROC_MODE_ONLY_DYNAMIC"        : 0,
+    "VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE" : 1,
+    "VERT_PREPROC_MODE_ALL"                 : 2,
 }
 
 CONST_GLSL_ONLY = {
@@ -277,6 +282,8 @@ def align4(a):
 
 
 def evalConst():
+    # flags for each layer + GEOM_INST_FLAG_GENERATE_NORMALS, GEOM_INST_FLAG_IS_MOVABLE
+    assert CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 3 + 2 < 32
     CONST["MATERIAL_BLENDING_MASK_FIRST_LAYER"]     = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 0)
     CONST["MATERIAL_BLENDING_MASK_SECOND_LAYER"]    = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 1)
     CONST["MATERIAL_BLENDING_MASK_THIRD_LAYER"]     = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 2)
@@ -366,7 +373,7 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,     44,      "model",                1),
     (TYPE_UINT32,       4,      "materials",            3),
     (TYPE_FLOAT32,      4,      "materialColors",       3),
-    (TYPE_UINT32,       1,      "materialsBlendFlags",  1),
+    (TYPE_UINT32,       1,      "flags",                1),
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
     (TYPE_UINT32,       1,      "vertexCount",          1),

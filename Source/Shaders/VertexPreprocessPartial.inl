@@ -29,7 +29,7 @@
     #define SET_TANGENTS setDynamicVerticesTangents
     #define INDICES dynamicIndices
 
-#elif defined(VERTEX_PREPROCESS_PARTIAL_STATIC)
+#elif defined(VERTEX_PREPROCESS_PARTIAL_STATIC) || defined(VERTEX_PREPROCESS_PARTIAL_MOVABLE)
 
     #define GET_POSITIONS getStaticVerticesPositions
     #define SET_POSITIONS setStaticVerticesPositions
@@ -54,9 +54,17 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 {
     const ShGeometryInstance inst = geometryInstances[geomIndexOffset + localGeomIndex];
 
+#ifdef VERTEX_PREPROCESS_PARTIAL_MOVABLE
+    const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
+    
+    if (!isMovable)
+    {
+        continue;
+    }
+#endif
+
     const bool useIndices = inst.baseIndexIndex != UINT32_MAX;
-    // TODO: provide info
-    const bool genNormals = true;
+    const bool genNormals = (inst.flags & GEOM_INST_FLAG_GENERATE_NORMALS) != 0;
 
     const mat4 model = inst.model;
     const mat3 model3 = mat3(model);
@@ -70,6 +78,13 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
             v + 1,
             v + 2);
         
+        //const vec3 globalPos[] = 
+        //{
+        //    (model * vec4(localPos[0], 1.0)).xyz,
+        //    (model * vec4(localPos[1], 1.0)).xyz,
+        //    (model * vec4(localPos[2], 1.0)).xyz
+        //};
+
         //SET_POSITIONS(vertexIndices[0], globalPos[0]);
         //SET_POSITIONS(vertexIndices[1], globalPos[1]);
         //SET_POSITIONS(vertexIndices[2], globalPos[2]);
@@ -85,38 +100,11 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 
             if (genNormals)
             {
-                const vec3 globalPos[] = 
-                {
-                    (model * vec4(localPos[0], 1.0)).xyz,
-                    (model * vec4(localPos[1], 1.0)).xyz,
-                    (model * vec4(localPos[2], 1.0)).xyz
-                };
+                const vec3 localNormal = normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
 
-                const vec3 globalNormal = normalize(cross(globalPos[1] - globalPos[0], globalPos[2] - globalPos[0]));
-
-                SET_NORMALS(vertexIndices[0], globalNormal);
-                SET_NORMALS(vertexIndices[1], globalNormal);
-                SET_NORMALS(vertexIndices[2], globalNormal);
-            }
-            else
-            {
-                const vec3 localNormal[] = 
-                {
-                    GET_NORMALS(vertexIndices[0]),
-                    GET_NORMALS(vertexIndices[1]),
-                    GET_NORMALS(vertexIndices[2])
-                };
-
-                const vec3 globalNormal[] = 
-                {
-                    model3 * localNormal[0],
-                    model3 * localNormal[1],
-                    model3 * localNormal[2]
-                };
-                
-                SET_NORMALS(vertexIndices[0], globalNormal[0]);
-                SET_NORMALS(vertexIndices[1], globalNormal[1]);
-                SET_NORMALS(vertexIndices[2], globalNormal[2]);
+                SET_NORMALS(vertexIndices[0], localNormal);
+                SET_NORMALS(vertexIndices[1], localNormal);
+                SET_NORMALS(vertexIndices[2], localNormal);
             }
 
             const vec2 texCoord[] = 
@@ -148,38 +136,11 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 
         if (genNormals)
         {
-            const vec3 globalPos[] = 
-            {
-                (model * vec4(localPos[0], 1.0)).xyz,
-                (model * vec4(localPos[1], 1.0)).xyz,
-                (model * vec4(localPos[2], 1.0)).xyz
-            };
-
-            const vec3 globalNormal = normalize(cross(globalPos[1] - globalPos[0], globalPos[2] - globalPos[0]));
+            const vec3 localNormal = normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
             
-            SET_NORMALS(vertexIndices[0], globalNormal);
-            SET_NORMALS(vertexIndices[1], globalNormal);
-            SET_NORMALS(vertexIndices[2], globalNormal);
-        }
-        else
-        {
-            const vec3 localNormal[] = 
-            {
-                GET_NORMALS(vertexIndices[0]),
-                GET_NORMALS(vertexIndices[1]),
-                GET_NORMALS(vertexIndices[2])
-            };
-
-            const vec3 globalNormal[] = 
-            {
-                model3 * localNormal[0],
-                model3 * localNormal[1],
-                model3 * localNormal[2]
-            };
-            
-            SET_NORMALS(vertexIndices[0], globalNormal[0]);
-            SET_NORMALS(vertexIndices[1], globalNormal[1]);
-            SET_NORMALS(vertexIndices[2], globalNormal[2]);
+            SET_NORMALS(vertexIndices[0], localNormal);
+            SET_NORMALS(vertexIndices[1], localNormal);
+            SET_NORMALS(vertexIndices[2], localNormal);
         }
         
         const vec2 texCoord[] = 
@@ -202,3 +163,7 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 #undef GET_TEXCOORDS
 #undef SET_TANGENTS
 #undef INDICES
+
+#undef VERTEX_PREPROCESS_PARTIAL_STATIC
+#undef VERTEX_PREPROCESS_PARTIAL_MOVABLE
+#undef VERTEX_PREPROCESS_PARTIAL_DYNAMIC
