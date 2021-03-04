@@ -284,6 +284,16 @@ uint32_t RTGL1::GeomInfoManager::GetCount() const
     return staticGeomCount + dynamicGeomCount;
 }
 
+uint32_t RTGL1::GeomInfoManager::GetStaticCount() const
+{
+    return staticGeomCount;
+}
+
+uint32_t RTGL1::GeomInfoManager::GetDynamicCount() const
+{
+    return dynamicGeomCount;
+}
+
 VkBuffer RTGL1::GeomInfoManager::GetBuffer() const
 {
     return buffer->GetDeviceLocal();

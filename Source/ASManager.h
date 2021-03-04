@@ -50,7 +50,7 @@ public:
 
     // Static geometry recording is frameIndex-agnostic
     void BeginStaticGeometry();
-    uint32_t AddStaticGeometry(const RgGeometryUploadInfo &info);
+    uint32_t AddStaticGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info);
     // Submitting static geometry to the building is a heavy operation
     // with waiting for it to complete.
     void SubmitStaticGeometry();
@@ -58,7 +58,7 @@ public:
     void ResetStaticGeometry();
 
     void BeginDynamicGeometry(uint32_t frameIndex);
-    uint32_t AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_t frameIndex);
+    uint32_t AddDynamicGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info);
     void SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex);
 
     // Update transform for static movable geometry
@@ -113,7 +113,7 @@ private:
 
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<TextureManager> textureMgr;
-    std::shared_ptr<GeomInfoManager> geomInfoManager;
+    std::shared_ptr<GeomInfoManager> geomInfoMgr;
 
     std::vector<std::unique_ptr<BLASComponent>> allStaticBlas;
     std::vector<std::unique_ptr<BLASComponent>> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];

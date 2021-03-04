@@ -62,8 +62,8 @@ public:
     VertexCollector& operator=(const VertexCollector& other) = delete;
     VertexCollector& operator=(VertexCollector&& other) noexcept = delete;
 
-    void BeginCollecting();
-    uint32_t AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT]);
+    void BeginCollecting(bool isStatic);
+    uint32_t AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT]);
     void EndCollecting();
 
     // Clear data that was generated while collecting.

@@ -41,7 +41,7 @@ ASManager::ASManager(
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
     textureMgr(std::move(_textureManager)),
-    geomInfoManager(std::move(_geomInfoManager)),
+    geomInfoMgr(std::move(_geomInfoManager)),
     properties(_properties)
 {
     typedef VertexCollectorFilterTypeFlags FL;
@@ -77,7 +77,7 @@ ASManager::ASManager(
 
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
-        device, allocator, _geomInfoManager,
+        device, allocator, geomInfoMgr,
         sizeof(ShVertexBufferStatic), properties,
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -91,7 +91,7 @@ ASManager::ASManager(
 
     // dynamic vertices
     collectorDynamic[0] = std::make_shared<VertexCollector>(
-        device, allocator, _geomInfoManager,
+        device, allocator, geomInfoMgr,
         sizeof(ShVertexBufferDynamic), properties,
         FT::CF_DYNAMIC | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -137,7 +137,7 @@ void ASManager::CreateDescriptors()
     VkResult r;
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 6> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 5> bindings{};
 
         // static vertex data
         bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
@@ -268,7 +268,7 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     dnIndexBufInfo.range = VK_WHOLE_SIZE;
 
     VkDescriptorBufferInfo &gsBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES];
-    gsBufInfo.buffer = geomInfoManager->GetBuffer();
+    gsBufInfo.buffer = geomInfoMgr->GetBuffer();
     gsBufInfo.offset = 0;
     gsBufInfo.range = VK_WHOLE_SIZE;
 
@@ -458,7 +458,7 @@ void ASManager::UpdateBLAS(BLASComponent &blas, const std::shared_ptr<VertexColl
 
 // separate functions to make adding between Begin..Geometry() and Submit..Geometry() a bit clearer
 
-uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
+uint32_t ASManager::AddStaticGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info)
 {
     if (info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
     {
@@ -469,14 +469,14 @@ uint32_t ASManager::AddStaticGeometry(const RgGeometryUploadInfo &info)
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
         };
 
-        return collectorStatic->AddGeometry(info, materials);
+        return collectorStatic->AddGeometry(frameIndex, info, materials);
     }
 
     assert(0);
     return UINT32_MAX;
 }
 
-uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_t frameIndex)
+uint32_t ASManager::AddDynamicGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info)
 {
     if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
@@ -487,7 +487,7 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
         };
 
-        return collectorDynamic[frameIndex]->AddGeometry(info, materials);
+        return collectorDynamic[frameIndex]->AddGeometry(frameIndex, info, materials);
     }
 
     assert(0);
@@ -497,16 +497,16 @@ uint32_t ASManager::AddDynamicGeometry(const RgGeometryUploadInfo &info, uint32_
 void ASManager::ResetStaticGeometry()
 {
     collectorStatic->Reset();
-    geomInfoManager->ResetWithStatic();
+    geomInfoMgr->ResetWithStatic();
 }
 
 void ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
     collectorStatic->Reset();
-    geomInfoManager->ResetWithStatic();
+    geomInfoMgr->ResetWithStatic();
 
-    collectorStatic->BeginCollecting();
+    collectorStatic->BeginCollecting(true);
 }
 
 void ASManager::SubmitStaticGeometry()
@@ -565,7 +565,7 @@ void ASManager::BeginDynamicGeometry(uint32_t frameIndex)
 {
     // dynamic AS must be recreated
     collectorDynamic[frameIndex]->Reset();
-    collectorDynamic[frameIndex]->BeginCollecting();
+    collectorDynamic[frameIndex]->BeginCollecting(false);
 }
 
 void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)

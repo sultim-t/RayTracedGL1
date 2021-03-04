@@ -60,6 +60,8 @@ public:
     void ResetWithStatic();
 
     uint32_t GetCount() const;
+    uint32_t GetStaticCount() const;
+    uint32_t GetDynamicCount() const;
     VkBuffer GetBuffer() const;
     uint32_t GetStaticGeomBaseVertexIndex(uint32_t globalGeomIndex);
 

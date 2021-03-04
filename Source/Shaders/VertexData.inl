@@ -62,20 +62,11 @@ layout(
 
 layout(
     set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_GEOMETRY_INSTANCES_STATIC)
+    binding = BINDING_GEOMETRY_INSTANCES)
     readonly 
-    buffer GeometryInstancesStatic_BT
+    buffer GeometryInstances_BT
 {
-    ShGeometryInstance geometryInstancesStatic[];
-};
-
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_GEOMETRY_INSTANCES_DYNAMIC)
-    readonly 
-    buffer GeometryInstancesDynamic_BT
-{
-    ShGeometryInstance geometryInstancesDynamic[];
+    ShGeometryInstance geometryInstances[];
 };
 
 vec3 getStaticVerticesPositions(uint index)
@@ -282,7 +273,7 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices)
     return tr;
 }
 
-// Get geometry index in "geometryInstances*" array by instanceID, localGeometryIndex.
+// Get geometry index in "geometryInstances" array by instanceID, localGeometryIndex.
 // instanceCustomIndex is used for determining if should use offsets for main or skybox.
 int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {
@@ -299,17 +290,17 @@ int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryI
 // primitiveId is index of a triangle
 ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
 {
-    bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-    
-    ShGeometryInstance inst;
     ShTriangle tr;
 
-    int geometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
+    // get info about geometry by the index in pGeometries in BLAS with index "instanceID"
+    const int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
+
+    const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
+
+    const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
 
     if (isDynamic)
     {
-        // get info about geometry from pGeometries in one of BLAS
-        inst = geometryInstancesDynamic[geometryIndex];
         uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr = getTriangleDynamic(vertIndices);
@@ -323,7 +314,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     }
     else
     {
-        inst = geometryInstancesStatic[geometryIndex];
         uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr = getTriangleStatic(vertIndices);
@@ -359,24 +349,10 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     return tr;
 }
 
-mat4 getModelMatrix(bool isDynamic, int geometryIndex)
-{
-    if (isDynamic)
-    {
-        return geometryInstancesDynamic[geometryIndex].model;
-    }
-    else
-    {
-        return geometryInstancesStatic[geometryIndex].model;
-    }
-}
-
 mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {
-    bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-    int geometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
-
-    return getModelMatrix(isDynamic, geometryIndex);
+    int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
+    return geometryInstances[globalGeometryIndex].model;
 }
 #endif // DESC_SET_VERTEX_DATA
 #endif // DESC_SET_GLOBAL_UNIFORM

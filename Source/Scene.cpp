@@ -84,7 +84,7 @@ uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadIn
 
     if (uploadInfo.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
-        return asManager->AddDynamicGeometry(uploadInfo, frameIndex);
+        return asManager->AddDynamicGeometry(frameIndex, uploadInfo);
     }
     else
     {
@@ -94,7 +94,7 @@ uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadIn
             isRecordingStatic = true;
         }
 
-        uint32_t geomId = asManager->AddStaticGeometry(uploadInfo);
+        uint32_t geomId = asManager->AddStaticGeometry(frameIndex, uploadInfo);
 
         allStaticGeomIds.push_back(geomId);
         if (uploadInfo.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)

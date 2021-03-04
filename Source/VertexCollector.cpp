@@ -178,13 +178,14 @@ static uint32_t GetMaterialsBlendFlags(const RgGeometryMaterialBlendType blendin
     return r;
 }
 
-void VertexCollector::BeginCollecting()
+void VertexCollector::BeginCollecting(bool isStatic)
 {
-    assert(curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 && geomInfoMgr->GetCount() == 0);
+    assert(curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 );
+    assert((isStatic && geomInfoMgr->GetStaticCount() == 0) || (!isStatic && geomInfoMgr->GetDynamicCount() == 0));
     assert(GetAllGeometryCount() == 0);
 }
 
-uint32_t VertexCollector::AddGeometry(const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
+uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
     const VertexCollectorFilterTypeFlags geomFlags = VertexCollectorFilterTypeFlags_GetForGeometry(info);
