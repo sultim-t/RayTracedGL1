@@ -24,7 +24,7 @@
 
 using namespace RTGL1;
 
-constexpr uint32_t INDEX_BUFFER_SIZE        = MAX_VERTEX_COLLECTOR_INDEX_COUNT * sizeof(uint32_t);
+constexpr uint32_t INDEX_BUFFER_SIZE        = MAX_INDEXED_PRIMITIVE_COUNT * 3 * sizeof(uint32_t);
 constexpr uint32_t TRANSFORM_BUFFER_SIZE    = MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(VkTransformMatrixKHR);
 
 constexpr uint64_t OFFSET_TEX_COORDS_STATIC[] =
@@ -211,7 +211,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     // check bounds
     if (curVertexCount >= maxVertexCount ||
-        curIndexCount >= MAX_VERTEX_COLLECTOR_INDEX_COUNT ||
+        curIndexCount >= MAX_INDEXED_PRIMITIVE_COUNT * 3 ||
         (geomInfoMgr->GetCount() + 1) >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT)
     {
         assert(0);

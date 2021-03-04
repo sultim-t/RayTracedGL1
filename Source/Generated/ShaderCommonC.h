@@ -9,7 +9,7 @@ namespace RTGL1
 
 #define MAX_STATIC_VERTEX_COUNT (1048576)
 #define MAX_DYNAMIC_VERTEX_COUNT (2097152)
-#define MAX_VERTEX_COLLECTOR_INDEX_COUNT (4194304)
+#define MAX_INDEXED_PRIMITIVE_COUNT (1048576)
 #define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT (8192)
 #define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW (13)
 #define MAX_GEOMETRY_PRIMITIVE_COUNT (524288)
@@ -82,6 +82,7 @@ struct ShVertexBufferStatic
 {
     float positions[3145728];
     float normals[3145728];
+    float tangents[3145728];
     float texCoords[2097152];
     float texCoordsLayer1[2097152];
     float texCoordsLayer2[2097152];
@@ -91,6 +92,7 @@ struct ShVertexBufferDynamic
 {
     float positions[6291456];
     float normals[6291456];
+    float tangents[3145728];
     float texCoords[4194304];
 };
 

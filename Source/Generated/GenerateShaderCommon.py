@@ -179,7 +179,7 @@ CONST_TO_EVALUATE = "CONST VALUE MUST BE EVALUATED"
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 20,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
-    "MAX_VERTEX_COLLECTOR_INDEX_COUNT"      : 1 << 22,
+    "MAX_INDEXED_PRIMITIVE_COUNT"           : 1 << 20,
    
     "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"     : 1 << 13,
     "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" : CONST_TO_EVALUATE,
@@ -300,19 +300,17 @@ def evalConst():
 STATIC_BUFFER_STRUCT = [
     (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_STATIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      3,     "tangents",              CONST["MAX_INDEXED_PRIMITIVE_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoordsLayer1",       CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoordsLayer2",       CONST["MAX_STATIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "colors",                CONST["MAX_STATIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "materialIds",           CONST["MAX_STATIC_VERTEX_COUNT"] // 3),
 ]
 
 DYNAMIC_BUFFER_STRUCT = [
     (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+    (TYPE_FLOAT32,      3,     "tangents",              CONST["MAX_INDEXED_PRIMITIVE_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "colors",                CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    #(TYPE_UINT32,      1,     "materialIds",           CONST["MAX_DYNAMIC_VERTEX_COUNT"] // 3),
 ]
 
 # Must be careful with std140 offsets! They are set manually.
