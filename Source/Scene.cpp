@@ -87,13 +87,16 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     // try to build top level
     bool built = asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox, 
                                          &maxGeomCountInInstance, &maxGeomCountInSkyboxInstance, &push);
+    
+    // update uniform data
+    uniform->Upload(cmd, frameIndex);
 
     // preprocess vertices, but only after building AS,
     // as AS building relies on relative vertex positions
     // and preprocessing transforms all vertices to world space
     if (built)
     {
-        bool onlyDynamic = !submittedStaticInCurrentFrame;
+        bool onlyDynamic = true;
 
         asManager->OnVertexPreprocessingBegin(cmd, frameIndex, onlyDynamic);
 

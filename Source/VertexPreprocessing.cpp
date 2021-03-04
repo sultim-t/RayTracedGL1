@@ -77,8 +77,7 @@ void RTGL1::VertexPreprocessing::Preprocess(
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShVertPreprocessing), &push);
 
 
-    uint32_t wgCountX = (maxGeomCountInInstance + COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X - 1) / COMPUTE_VERT_PREPROCESS_GROUP_SIZE_X;
-    vkCmdDispatch(cmd, wgCountX, 1, 1);
+    vkCmdDispatch(cmd, 1, 1, 1);
 }
 
 void RTGL1::VertexPreprocessing::CreatePipeline(

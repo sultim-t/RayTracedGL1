@@ -285,11 +285,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
 
-    // submit geometry
+    // submit geometry and uniform
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
-
-    // update uniform data
-    uniform->Upload(cmd, frameIndex);
 
     if (sceneNotEmpty)
     {
