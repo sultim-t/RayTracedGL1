@@ -51,6 +51,8 @@ Scene::~Scene()
 
 void Scene::PrepareForFrame(uint32_t frameIndex)
 {
+    geomInfoMgr->PrepareForFrame(frameIndex);
+
     // dynamic geomtry
     asManager->BeginDynamicGeometry(frameIndex);
 }
@@ -143,7 +145,7 @@ uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadIn
     }
 }
 
-bool Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
+bool Scene::UpdateTransform(uint32_t geomId, const RgUpdateTransformInfo &updateInfo)
 {
     // check if it's actually movable
     if (std::find(movableGeomIds.begin(), movableGeomIds.end(), geomId) == movableGeomIds.end())
@@ -152,7 +154,7 @@ bool Scene::UpdateTransform(uint32_t geomId, const RgTransform &transform)
         return false;
     }
 
-    asManager->UpdateStaticMovableTransform(geomId, transform);
+    asManager->UpdateStaticMovableTransform(geomId, updateInfo);
 
     // if not recording, then static geometries were already submitted,
     // as some movable transform was changed AS must be rebuilt

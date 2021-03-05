@@ -74,7 +74,7 @@ public:
 
 
     // Update transform for static movable geometry
-    void UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform);
+    void UpdateStaticMovableTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo);
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 

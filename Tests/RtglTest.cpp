@@ -358,7 +358,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
-    bool        toMove      = false;
+    bool        toMove      = true;
     RgMaterial  material    = RG_NO_MATERIAL;
     RgGeometry  movableGeom = UINT32_MAX;
 
@@ -412,9 +412,11 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             r = rgStartNewScene(instance);
             RG_CHECKERROR(r);
 
+            stInfo.uniqueID = 0;
             r = rgUploadGeometry(instance, &stInfo, nullptr);
             RG_CHECKERROR(r);
 
+            mvInfo.uniqueID = 1;
             mvInfo.geomMaterial.layerMaterials[0] = material;
             r = rgUploadGeometry(instance, &mvInfo, &movableGeom);
             RG_CHECKERROR(r);
@@ -427,6 +429,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         // update transform of movable geometry
         RgUpdateTransformInfo updateInfo = {};
+        updateInfo.geomUniqueID = 1;
         updateInfo.movableStaticGeom = movableGeom;
         updateInfo.transform = {
             0.3f, 0, 0, toMove ? 5.0f - 0.05f * (frameCount % 200) : -2.5f,
@@ -455,6 +458,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             0, 4, 0, 0,
             0, 0, 0.3f, 0
         };
+        dnInfo.uniqueID = 2;
         rgUploadGeometry(instance, &dnInfo, nullptr);
 
         dnInfo.transform = {
@@ -462,6 +466,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             0, 4, 0, 0,
             0, 0, 0.3f, 0
         };
+        dnInfo.uniqueID = 3;
         rgUploadGeometry(instance, &dnInfo, nullptr);
 
         // upload rasterized geometry

@@ -334,7 +334,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    uint32_t globalGeomIndex = geomInfoMgr->WriteGeomInfo(frameIndex, localIndex, geomFlags, geomInfo);
+    uint32_t globalGeomIndex = geomInfoMgr->WriteGeomInfo(frameIndex, info.uniqueID, localIndex, geomFlags, geomInfo);
 
 
     // add material dependency but only for static geometry,
@@ -689,15 +689,20 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::vector<VkBuffer
     return true;
 }
 
-void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgTransform &transform)
+void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo)
 {
-    assert(geomIndex < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
+    if (geomIndex >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT)
+    {
+        assert(0);
+        return;
+    }
+
     assert(mappedTransformData != nullptr);
 
     static_assert(sizeof(RgTransform) == sizeof(VkTransformMatrixKHR), "RgTransform and VkTransformMatrixKHR must have the same structure to be used in AS building");
-    memcpy(mappedTransformData + geomIndex, &transform, sizeof(VkTransformMatrixKHR));
+    memcpy(mappedTransformData + geomIndex, &updateInfo.transform, sizeof(VkTransformMatrixKHR));
 
-    geomInfoMgr->WriteStaticGeomInfoTransform(geomIndex, transform);
+    geomInfoMgr->WriteStaticGeomInfoTransform(geomIndex, updateInfo.geomUniqueID, updateInfo.transform);
 }
 
 void RTGL1::VertexCollector::UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)

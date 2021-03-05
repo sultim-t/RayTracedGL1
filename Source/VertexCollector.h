@@ -81,7 +81,7 @@ public:
 
     // Update transform, only for movable static geometry as dynamic geometry
     // will be updated every frame and thus their transforms.
-    void UpdateTransform(uint32_t geomIndex, const RgTransform &transform);
+    void UpdateTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo);
     // Update texture coordinates 
     void UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
 

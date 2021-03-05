@@ -187,6 +187,8 @@ typedef struct RgFloat4D
 
 typedef struct RgGeometryUploadInfo
 {
+    uint64_t                        uniqueID;
+
     RgGeometryType                  geomType;
     RgGeometryPassThroughType       passThroughType;
     RgGeometryPrimaryVisibilityType visibilityType;
@@ -224,6 +226,7 @@ typedef struct RgGeometryUploadInfo
 typedef struct RgUpdateTransformInfo
 {
     RgGeometry      movableStaticGeom;
+    uint64_t        geomUniqueID;
     RgTransform     transform;
 } RgUpdateTransformInfo;
 

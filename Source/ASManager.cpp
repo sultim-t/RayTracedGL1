@@ -650,9 +650,9 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform)
+void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo)
 {
-    collectorStatic->UpdateTransform(geomIndex, transform);
+    collectorStatic->UpdateTransform(geomIndex, updateInfo);
 }
 
 void RTGL1::ASManager::UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)

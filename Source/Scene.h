@@ -52,7 +52,7 @@ public:
     bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
 
     uint32_t Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
-    bool UpdateTransform(uint32_t geomId, const RgTransform &transform);
+    bool UpdateTransform(uint32_t geomId, const RgUpdateTransformInfo &updateInfo);
     bool UpdateTexCoords(uint32_t geomId, const RgUpdateTexCoordsInfo &texCoordsInfo);
 
     void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);

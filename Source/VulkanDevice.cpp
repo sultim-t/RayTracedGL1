@@ -400,7 +400,7 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
 
     uint32_t geomId = static_cast<uint32_t>(updateInfo->movableStaticGeom);
 
-    bool b = scene->UpdateTransform(geomId, updateInfo->transform);
+    bool b = scene->UpdateTransform(geomId, *updateInfo);
 
     return b ? RG_SUCCESS : RG_UPDATING_TRANSFORM_FOR_NON_MOVABLE;
 }

@@ -46,24 +46,43 @@ public:
     GeomInfoManager & operator=(const GeomInfoManager &other) = delete;
     GeomInfoManager & operator=(GeomInfoManager &&other) noexcept = delete;
 
+
+    void PrepareForFrame(uint32_t frameIndex);
+
+
+    // Save instance for copying into buffer and fill previous frame's data
     uint32_t WriteGeomInfo(
-        uint32_t frameIndex, 
+        uint32_t frameIndex,
+        uint64_t geomUniqueID, 
         uint32_t localGeomIndex, 
         VertexCollectorFilterTypeFlags flags,
-        const ShGeometryInstance &src);
+        ShGeometryInstance &src);
+
 
     void WriteStaticGeomInfoMaterials(uint32_t globalGeomIndex, uint32_t layer, const MaterialTextures &src);
-    void WriteStaticGeomInfoTransform(uint32_t globalGeomIndex, const RgTransform &src);
+    void WriteStaticGeomInfoTransform(uint32_t globalGeomIndex, uint64_t geomUniqueID, const RgTransform &src);
+
 
     bool CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, bool insertBarrier = true);
     void ResetOnlyDynamic(uint32_t frameIndex);
     void ResetWithStatic();
+
 
     uint32_t GetCount() const;
     uint32_t GetStaticCount() const;
     uint32_t GetDynamicCount() const;
     VkBuffer GetBuffer() const;
     uint32_t GetStaticGeomBaseVertexIndex(uint32_t globalGeomIndex);
+    
+private:
+    struct GeomFrameInfo
+    {
+        float model[16];
+        uint32_t baseVertexIndex;
+        uint32_t baseIndexIndex;
+        uint32_t vertexCount;
+        uint32_t indexCount;
+    };
 
 private:
     ShGeometryInstance *GetGeomInfoAddress(uint32_t frameIndex, uint32_t globalGeomIndex);
@@ -71,6 +90,12 @@ private:
 
     // Mark memory to be copied to device local buffer
     void MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
+    
+    // Note: frameIndex is not used if geom is not dynamic
+    void FillWithPrevFrameData(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, ShGeometryInstance &dst, int32_t frameIndex = 0);
+    void MarkNoPrevInfo(ShGeometryInstance &dst);
+    // Note: frameIndex is not used if geom is not dynamic
+    void WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex = 0);
 
 private:
     VkDevice device;
@@ -94,6 +119,11 @@ private:
     // geometry index in its filter's space, i.e.
     // geomIndex = ToOffset(geomType) * MAX_BLAS_GEOMS + geomLocalIndex
     std::vector<uint32_t> globalToLocalIndex;
+
+    // geometry's uniqueID to geom frame info,
+    // used for getting info from previous frame
+    std::map<uint64_t, GeomFrameInfo> dynamicIDToGeomFrameInfo[MAX_FRAMES_IN_FLIGHT];
+    std::map<uint64_t, GeomFrameInfo> movableIDToGeomFrameInfo;
 };
 
 }

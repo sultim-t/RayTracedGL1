@@ -140,6 +140,8 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
 
 void RTGL1::GeomInfoManager::ResetWithStatic()
 {
+    movableIDToGeomFrameInfo.clear();
+
     staticGeomCount = 0;
     dynamicGeomCount = 0;
 
@@ -175,11 +177,17 @@ RTGL1::ShGeometryInstance *RTGL1::GeomInfoManager::GetGeomInfoAddress(uint32_t f
     return &mapped[offset * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT + localGeomIndex];
 }
 
+void RTGL1::GeomInfoManager::PrepareForFrame(uint32_t frameIndex)
+{
+    dynamicIDToGeomFrameInfo[frameIndex].clear();
+}
+
 uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
     uint32_t frameIndex,
+    uint64_t geomUniqueID,
     uint32_t localGeomIndex,
     VertexCollectorFilterTypeFlags flags,
-    const ShGeometryInstance &src)
+    ShGeometryInstance &src)
 {
     const uint32_t globalGeomIndex = GetCount();
 
@@ -219,11 +227,15 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
 
     for (uint32_t i = frameBegin; i < frameEnd; i++)
     {
+        FillWithPrevFrameData(flags, geomUniqueID, src, frameIndex);
+
         ShGeometryInstance *dst = GetGeomInfoAddress(i, localGeomIndex, flags);
         memcpy(dst, &src, sizeof(ShGeometryInstance));
 
         MarkGeomInfoIndexToCopy(i, localGeomIndex, flags);
     }
+
+    WriteInfoForNextUsage(flags, geomUniqueID, src, frameIndex);        
 
     return globalGeomIndex;
 }
@@ -237,9 +249,88 @@ void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32
     copyRegionUpperBound[frameIndex][offset] = std::max(localGeomIndex + 1, copyRegionUpperBound[frameIndex][offset]);
 }
 
+void RTGL1::GeomInfoManager::FillWithPrevFrameData(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, ShGeometryInstance &dst, int32_t frameIndex)
+{
+    const std::map<uint64_t, GeomFrameInfo> *prevIdToInfo = nullptr;
+
+    bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
+    bool isDynamic = flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
+
+    // fill prev info, but only for movable and dynamic geoms
+    if (isDynamic)
+    {
+        static_assert(MAX_FRAMES_IN_FLIGHT == 2, "Assuming MAX_FRAMES_IN_FLIGHT==2");
+        uint32_t prevFrame = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+
+        prevIdToInfo = &dynamicIDToGeomFrameInfo[prevFrame];    
+    }
+    else if (isMovable)
+    {
+        prevIdToInfo = &movableIDToGeomFrameInfo; 
+    }
+    else
+    {
+        MarkNoPrevInfo(dst);
+        return;
+    }
+
+    const auto prev = prevIdToInfo->find(geomUniqueID);
+
+    if (prev != prevIdToInfo->end())
+    {
+        dst.prevBaseVertexIndex = prev->second.baseVertexIndex;
+        dst.prevBaseIndexIndex = prev->second.baseIndexIndex;
+        memcpy(dst.prevModel, prev->second.model, sizeof(float) * 16);
+    }
+    else
+    {
+        MarkNoPrevInfo(dst);
+    }
+}
+
+void RTGL1::GeomInfoManager::MarkNoPrevInfo(ShGeometryInstance &dst)
+{
+    dst.prevBaseVertexIndex = UINT32_MAX;
+    dst.prevBaseIndexIndex = UINT32_MAX;
+}
+
+void RTGL1::GeomInfoManager::WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex)
+{
+    bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
+    bool isDynamic = flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
+
+    std::map<uint64_t, GeomFrameInfo> *idToInfo = nullptr;
+
+    if (isDynamic)
+    {
+        idToInfo = &dynamicIDToGeomFrameInfo[frameIndex];    
+    }
+    else if (isMovable)
+    {
+        idToInfo = &movableIDToGeomFrameInfo; 
+    }
+    else
+    {
+        return;
+    }
+
+    // IDs must be unique
+    assert(idToInfo->find(geomUniqueID) == idToInfo->end());
+
+    GeomFrameInfo f = {};
+    memcpy(f.model, src.model, sizeof(float) * 16);
+    f.baseVertexIndex = src.baseVertexIndex;
+    f.baseIndexIndex = src.baseIndexIndex;
+    f.vertexCount = src.vertexCount;
+    f.indexCount = src.indexCount;
+
+    (*idToInfo)[geomUniqueID] = f;
+}
+
 void RTGL1::GeomInfoManager::WriteStaticGeomInfoMaterials(uint32_t globalGeomIndex, uint32_t layer, const MaterialTextures &src)
 {
-    // only static geoms are allowed to rewrite material info
+    // only static
+    // geoms are allowed to rewrite material info
     assert(globalGeomIndex < geomType.size());
     assert(!(geomType[globalGeomIndex] & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC));
     assert(geomType.size() == globalToLocalIndex.size());
@@ -257,26 +348,55 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoMaterials(uint32_t globalGeomInd
     }
 }
 
-void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t globalGeomIndex, const RgTransform &src)
+void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t globalGeomIndex, uint64_t geomUniqueID, const RgTransform &src)
 {
-    // only static geoms are allowed to update transforms
-    assert(globalGeomIndex < geomType.size());
-    assert(!(geomType[globalGeomIndex] & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC));
+    if (globalGeomIndex >= geomType.size())
+    {
+        assert(0);
+        return;
+    }
+
+    // only static and movable
+    // geoms are allowed to update transforms
+    if (!(geomType[globalGeomIndex] & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE))
+    {
+        assert(0);
+        return;
+    }
+
     assert(geomType.size() == globalToLocalIndex.size());
+
+
+    float modelMatix[16];
+    Matrix::ToMat4Transposed(modelMatix, src);
+
+    auto prev = movableIDToGeomFrameInfo.find(geomUniqueID);
+
+    // if movable is updated, then it must be added previously
+    if (prev == movableIDToGeomFrameInfo.end())
+    {
+        assert(0);
+        return;
+    }
+
+    float *prevModelMatrix = prev->second.model;
+
 
     // need to write to both staging buffers for static geometry
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         ShGeometryInstance *dst = GetGeomInfoAddress(i, globalGeomIndex);
 
-        float modelMatix[16];
-        Matrix::ToMat4Transposed(modelMatix, src);
-
         memcpy(dst->model, modelMatix, 16 * sizeof(float));
+        memcpy(dst->prevModel, prevModelMatrix, 16 * sizeof(float));
 
         // mark to be copied
         MarkGeomInfoIndexToCopy(i, globalToLocalIndex[globalGeomIndex], geomType[globalGeomIndex]);
     }
+
+
+    // save new prev data
+    memcpy(prevModelMatrix, modelMatix, 16 * sizeof(float));
 }
 
 uint32_t RTGL1::GeomInfoManager::GetCount() const
