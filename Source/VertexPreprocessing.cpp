@@ -127,7 +127,7 @@ void RTGL1::VertexPreprocessing::CreatePipeline(
     VkComputePipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     plInfo.layout = pipelineLayout;
-    plInfo.stage = shaderManager->GetStageInfo("VertexPreprocess");
+    plInfo.stage = shaderManager->GetStageInfo("CVertexPreprocess");
     plInfo.stage.pSpecializationInfo = &specInfo;
     
     {

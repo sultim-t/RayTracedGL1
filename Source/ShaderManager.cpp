@@ -50,7 +50,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CLuminanceAvg",       "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceAvg.comp.spv"      , VK_SHADER_STAGE_ALL },
     {"RasterizerVert",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"          , VK_SHADER_STAGE_ALL },
     {"RasterizerFrag",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"          , VK_SHADER_STAGE_ALL },
-    {"VertexPreprocess",    "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/VertexPreprocess.comp.spv"    , VK_SHADER_STAGE_ALL },
+    {"CVertexPreprocess",   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmVertexPreprocess.comp.spv"  , VK_SHADER_STAGE_ALL },
 };
 
 
