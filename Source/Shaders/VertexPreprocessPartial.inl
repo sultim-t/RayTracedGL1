@@ -29,7 +29,7 @@
     #define SET_TANGENTS setDynamicVerticesTangents
     #define INDICES dynamicIndices
 
-#elif defined(VERTEX_PREPROCESS_PARTIAL_STATIC) || defined(VERTEX_PREPROCESS_PARTIAL_MOVABLE)
+#elif defined(VERTEX_PREPROCESS_PARTIAL_STATIC_ALL) || defined(VERTEX_PREPROCESS_PARTIAL_STATIC_MOVABLE)
 
     #define GET_POSITIONS getStaticVerticesPositions
     #define SET_POSITIONS setStaticVerticesPositions
@@ -54,9 +54,10 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 {
     const ShGeometryInstance inst = geometryInstances[geomIndexOffset + localGeomIndex];
 
-#ifdef VERTEX_PREPROCESS_PARTIAL_MOVABLE
+#if defined(VERTEX_PREPROCESS_PARTIAL_STATIC_MOVABLE)
     const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
     
+    // ignore non-movable if preprocess mode allows only movable
     if (!isMovable)
     {
         continue;
@@ -153,6 +154,6 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 #undef SET_TANGENTS
 #undef INDICES
 
-#undef VERTEX_PREPROCESS_PARTIAL_STATIC
-#undef VERTEX_PREPROCESS_PARTIAL_MOVABLE
+#undef VERTEX_PREPROCESS_PARTIAL_STATIC_ALL
+#undef VERTEX_PREPROCESS_PARTIAL_STATIC_MOVABLE
 #undef VERTEX_PREPROCESS_PARTIAL_DYNAMIC

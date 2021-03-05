@@ -275,6 +275,33 @@ uvec3 getVertIndicesDynamic(uint baseVertexIndex, uint baseIndexIndex, uint prim
     }
 }
 
+uvec3 getPrevVertIndices(uint prevBaseVertexIndex, uint prevBaseIndexIndex, uint primitiveId)
+{
+    // if to use indices
+    if (prevBaseIndexIndex != UINT32_MAX)
+    {
+        return uvec3(
+            prevBaseVertexIndex + prevDynamicIndices[prevBaseIndexIndex + primitiveId * 3 + 0],
+            prevBaseVertexIndex + prevDynamicIndices[prevBaseIndexIndex + primitiveId * 3 + 1],
+            prevBaseVertexIndex + prevDynamicIndices[prevBaseIndexIndex + primitiveId * 3 + 2]);
+    }
+    else
+    {
+        return uvec3(
+            prevBaseVertexIndex + primitiveId * 3 + 0,
+            prevBaseVertexIndex + primitiveId * 3 + 1,
+            prevBaseVertexIndex + primitiveId * 3 + 2);
+    }
+}
+
+vec3 getPrevDynamicVerticesPositions(uint index)
+{
+    return vec3(
+        prevDynamicPositions[index * globalUniform.positionsStride + 0],
+        prevDynamicPositions[index * globalUniform.positionsStride + 1],
+        prevDynamicPositions[index * globalUniform.positionsStride + 2]);
+}
+
 ShTriangle getTriangleStatic(uvec3 vertIndices)
 {
     ShTriangle tr;
@@ -355,7 +382,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
     if (isDynamic)
     {
-        uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+        const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr = getTriangleDynamic(vertIndices);
 
@@ -365,10 +392,41 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.materials[2] = uvec3(MATERIAL_NO_TEXTURE);
         
         tr.materialColors[0] = inst.materialColors[0];
+
+        // to world space
+        tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
+        tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
+        tr.positions[2] = (inst.model * vec4(tr.positions[2], 1.0)).xyz;
+        
+        // dynamic     -- use prev model matrix if exist
+        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
+
+        if (hasPrevInfo)
+        {
+            const mat4 prevModel = hasPrevInfo ? inst.prevModel : inst.model;
+            const uvec3 prevVertIndices = getPrevVertIndices(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
+
+            const vec4 prevLocalPos[] =
+            {
+                vec4(getPrevDynamicVerticesPositions(prevVertIndices[0]), 1.0),
+                vec4(getPrevDynamicVerticesPositions(prevVertIndices[1]), 1.0),
+                vec4(getPrevDynamicVerticesPositions(prevVertIndices[2]), 1.0)
+            };
+
+            tr.prevPositions[0] = (prevModel * prevLocalPos[0]).xyz;
+            tr.prevPositions[1] = (prevModel * prevLocalPos[1]).xyz;
+            tr.prevPositions[2] = (prevModel * prevLocalPos[2]).xyz;
+        }
+        else
+        {
+            tr.prevPositions[0] = tr.positions[0];
+            tr.prevPositions[1] = tr.positions[1];
+            tr.prevPositions[2] = tr.positions[2];
+        }
     }
     else
     {
-        uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+        const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr = getTriangleStatic(vertIndices);
 
@@ -379,6 +437,31 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.materialColors[0] = inst.materialColors[0];
         tr.materialColors[1] = inst.materialColors[1];
         tr.materialColors[2] = inst.materialColors[2];
+
+        // to world space
+        tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
+        tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
+        tr.positions[2] = (inst.model * vec4(tr.positions[2], 1.0)).xyz;
+        
+        const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
+        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
+
+        // movable     -- use prev model matrix if exist
+        // non-movable -- use current model matrix
+        if (isMovable && hasPrevInfo)
+        {
+            // static geoms' local positions are constant, 
+            // only model matrices are changing
+            tr.prevPositions[0] = (inst.prevModel * vec4(tr.positions[0], 1.0)).xyz;
+            tr.prevPositions[1] = (inst.prevModel * vec4(tr.positions[1], 1.0)).xyz;
+            tr.prevPositions[2] = (inst.prevModel * vec4(tr.positions[2], 1.0)).xyz;
+        }
+        else
+        {
+            tr.prevPositions[0] = tr.positions[0];
+            tr.prevPositions[1] = tr.positions[1];
+            tr.prevPositions[2] = tr.positions[2];
+        }
     }
     
     const mat3 model3 = mat3(inst.model);
@@ -387,10 +470,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.normals[0] = model3 * tr.normals[0];
     tr.normals[1] = model3 * tr.normals[1];
     tr.normals[2] = model3 * tr.normals[2];
-
-    tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
-    tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
-    tr.positions[2] = (inst.model * vec4(tr.positions[2], 1.0)).xyz;
 
     tr.materialsBlendFlags = inst.flags;
 

@@ -70,6 +70,7 @@ void main()
     } 
 
 
+    // always process dynamic
     if (isDynamic)
     {
         #define VERTEX_PREPROCESS_PARTIAL_DYNAMIC
@@ -77,12 +78,12 @@ void main()
     }
     /*else if (preprocessMode == VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE)
     {       
-        #define VERTEX_PREPROCESS_PARTIAL_MOVABLE
+        #define VERTEX_PREPROCESS_PARTIAL_STATIC_MOVABLE
         #include "VertexPreprocessPartial.inl"
     }*/
     else if (preprocessMode == VERT_PREPROC_MODE_ALL)
     {       
-        #define VERTEX_PREPROCESS_PARTIAL_STATIC
+        #define VERTEX_PREPROCESS_PARTIAL_STATIC_ALL
         #include "VertexPreprocessPartial.inl"
     }
 }

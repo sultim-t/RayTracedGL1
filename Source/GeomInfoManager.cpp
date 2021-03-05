@@ -276,22 +276,29 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData(VertexCollectorFilterTypeFlag
 
     const auto prev = prevIdToInfo->find(geomUniqueID);
 
-    if (prev != prevIdToInfo->end())
-    {
-        dst.prevBaseVertexIndex = prev->second.baseVertexIndex;
-        dst.prevBaseIndexIndex = prev->second.baseIndexIndex;
-        memcpy(dst.prevModel, prev->second.model, sizeof(float) * 16);
-    }
-    else
+    // if no previous info
+    if (prev == prevIdToInfo->end())
     {
         MarkNoPrevInfo(dst);
+        return;
     }
+
+    // if counts are not the same
+    if (prev->second.vertexCount != dst.vertexCount || 
+        prev->second.indexCount != dst.indexCount)
+    {
+        MarkNoPrevInfo(dst);
+        return;
+    }
+    
+    dst.prevBaseVertexIndex = prev->second.baseVertexIndex;
+    dst.prevBaseIndexIndex = prev->second.baseIndexIndex;
+    memcpy(dst.prevModel, prev->second.model, sizeof(float) * 16);
 }
 
 void RTGL1::GeomInfoManager::MarkNoPrevInfo(ShGeometryInstance &dst)
 {
     dst.prevBaseVertexIndex = UINT32_MAX;
-    dst.prevBaseIndexIndex = UINT32_MAX;
 }
 
 void RTGL1::GeomInfoManager::WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex)

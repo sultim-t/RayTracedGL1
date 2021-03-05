@@ -21,6 +21,7 @@
 struct ShTriangle
 {
     mat3    positions;
+    mat3    prevPositions;
     mat3    normals;
     mat3x2  layerTexCoord[3];
     vec4    materialColors[3];
