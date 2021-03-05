@@ -36,12 +36,16 @@ ASManager::ASManager(
     std::shared_ptr<TextureManager> _textureManager,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
     const VertexBufferProperties &_properties)
-    :
+:
     device(_device),
     allocator(std::move(_allocator)),
+    staticCopyFence(VK_NULL_HANDLE),
     cmdManager(std::move(_cmdManager)),
     textureMgr(std::move(_textureManager)),
     geomInfoMgr(std::move(_geomInfoManager)),
+    descPool(VK_NULL_HANDLE),
+    buffersDescSetLayout(VK_NULL_HANDLE),
+    asDescSetLayout(VK_NULL_HANDLE),
     properties(_properties)
 {
     typedef VertexCollectorFilterTypeFlags FL;
@@ -103,6 +107,15 @@ ASManager::ASManager(
         collectorDynamic[i] = std::make_shared<VertexCollector>(collectorDynamic[0], allocator);
     }
 
+    previousDynamicPositions.Init(
+        allocator, sizeof(ShVertexBufferDynamic::positions),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Previous frame's vertex data");
+    previousDynamicIndices.Init(
+        allocator, sizeof(ShVertexBufferDynamic::positions),
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 
+        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Previous frame's index data");
+
 
     // instance buffer for TLAS
     instanceBuffer = std::make_unique<AutoBuffer>(device, allocator, "TLAS instance buffer staging", "TLAS instance buffer");
@@ -137,7 +150,7 @@ void ASManager::CreateDescriptors()
     VkResult r;
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 5> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 7> bindings{};
 
         // static vertex data
         bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
@@ -165,6 +178,18 @@ void ASManager::CreateDescriptors()
         bindings[4].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[4].descriptorCount = 1;
         bindings[4].stageFlags = VK_SHADER_STAGE_ALL;
+
+        bindings[5].binding = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC;
+        bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[5].descriptorCount = 1;
+        bindings[5].stageFlags = VK_SHADER_STAGE_ALL;
+
+        bindings[6].binding = BINDING_PREV_INDEX_BUFFER_DYNAMIC;
+        bindings[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[6].descriptorCount = 1;
+        bindings[6].stageFlags = VK_SHADER_STAGE_ALL;
+
+        static_assert(sizeof(bindings) / sizeof(bindings[0]) == 7, "");
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -241,7 +266,7 @@ void ASManager::CreateDescriptors()
 
 void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 {
-    const uint32_t bindingCount = 5;
+    const uint32_t bindingCount = 7;
 
     std::array<VkDescriptorBufferInfo, bindingCount> bufferInfos{};
     std::array<VkWriteDescriptorSet, bindingCount> writes{};
@@ -271,6 +296,16 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     gsBufInfo.buffer = geomInfoMgr->GetBuffer();
     gsBufInfo.offset = 0;
     gsBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &ppBufInfo = bufferInfos[BINDING_PREV_POSITIONS_BUFFER_DYNAMIC];
+    ppBufInfo.buffer = previousDynamicPositions.GetBuffer();
+    ppBufInfo.offset = 0;
+    ppBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &piBufInfo = bufferInfos[BINDING_PREV_INDEX_BUFFER_DYNAMIC];
+    piBufInfo.buffer = previousDynamicIndices.GetBuffer();
+    piBufInfo.offset = 0;
+    piBufInfo.range = VK_WHOLE_SIZE;
 
 
     // writes
@@ -318,6 +353,24 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     gmWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     gmWrt.descriptorCount = 1;
     gmWrt.pBufferInfo = &gsBufInfo;
+    
+    VkWriteDescriptorSet &ppWrt = writes[BINDING_PREV_POSITIONS_BUFFER_DYNAMIC];
+    ppWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    ppWrt.dstSet = buffersDescSets[frameIndex];
+    ppWrt.dstBinding = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC;
+    ppWrt.dstArrayElement = 0;
+    ppWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    ppWrt.descriptorCount = 1;
+    ppWrt.pBufferInfo = &ppBufInfo;
+
+    VkWriteDescriptorSet &piWrt = writes[BINDING_PREV_INDEX_BUFFER_DYNAMIC];
+    piWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    piWrt.dstSet = buffersDescSets[frameIndex];
+    piWrt.dstBinding = BINDING_PREV_INDEX_BUFFER_DYNAMIC;
+    piWrt.dstArrayElement = 0;
+    piWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    piWrt.descriptorCount = 1;
+    piWrt.pBufferInfo = &piBufInfo;
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
 }
@@ -757,30 +810,33 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
     instanceGeomCount[index] = geomCount;
 }
 
-bool ASManager::TryBuildTLAS(
-    VkCommandBuffer cmd, uint32_t frameIndex, 
-    const std::shared_ptr<GlobalUniform> &uniform, 
-    bool ignoreSkyboxTLAS,
-    ShVertPreprocessing *outPush)
+bool ASManager::PrepareForBuildingTLAS(
+    uint32_t frameIndex,
+    const std::shared_ptr<GlobalUniform> &refUniform,
+    bool ignoreSkyboxTLAS, 
+    ShVertPreprocessing *outPush,
+    TLASPrepareResult *outResult)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    // BLAS instances
-    uint32_t instanceCount = 0;
-    VkAccelerationStructureInstanceKHR instances[MAX_TOP_LEVEL_INSTANCE_COUNT] = {};
+    static_assert(sizeof(TLASPrepareResult::instances) / sizeof(TLASPrepareResult::instances[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Change TLASPrepareResult sizes");
+    static_assert(sizeof(TLASPrepareResult::skyboxInstances) / sizeof(TLASPrepareResult::skyboxInstances[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Change TLASPrepareResult sizes");
 
-    uint32_t skyboxInstanceCount = 0;
-    VkAccelerationStructureInstanceKHR skyboxInstances[MAX_TOP_LEVEL_INSTANCE_COUNT] = {};
 
+    *outResult = {};
     *outPush = {};
+
+
+    auto &r = *outResult;
+
 
     // write geometry offsets to uniform to access geomInfos
     // with instance ID and local (in terms of BLAS) geometry index in shaders;
     // Note: std140 requires elements to be aligned by sizeof(vec4)
-    int32_t *instanceGeomInfoOffset = uniform->GetData()->instanceGeomInfoOffset;
+    int32_t *instanceGeomInfoOffset = refUniform->GetData()->instanceGeomInfoOffset;
 
     // write geometry counts of each BLAS for iterating in vertex preprocessing 
-    int32_t *instanceGeomCount = uniform->GetData()->instanceGeomCount;
+    int32_t *instanceGeomCount = refUniform->GetData()->instanceGeomCount;
 
     std::vector<std::unique_ptr<BLASComponent>> *blasArrays[] =
     {
@@ -798,23 +854,23 @@ bool ASManager::TryBuildTLAS(
             // add to appropriate TLAS instances array
             if (!isSkybox)
             {
-                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, instances[instanceCount]);
+                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, r.instances[r.instanceCount]);
 
                 if (isAdded)
                 {
                     // mark bit if dynamic
                     if (isDynamic)
                     {
-                        outPush->tlasInstanceIsDynamicBits[instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
+                        outPush->tlasInstanceIsDynamicBits[r.instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
                     }
 
-                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, instanceCount, *blas);
-                    instanceCount++;
+                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, r.instanceCount, *blas);
+                    r.instanceCount++;
                 }
             }
             else
             {
-                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, skyboxInstances[skyboxInstanceCount]);
+                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, r.skyboxInstances[r.skyboxInstanceCount]);
 
                 if (isAdded)
                 {
@@ -824,30 +880,34 @@ bool ASManager::TryBuildTLAS(
                     // mark bit if dynamic
                     if (isDynamic)
                     {
-                        outPush->skyboxTlasInstanceIsDynamicBits[skyboxInstanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (skyboxInstanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
+                        outPush->skyboxTlasInstanceIsDynamicBits[r.skyboxInstanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.skyboxInstanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
                     }
 
-                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, skyboxInstanceCount, *blas);
-                    skyboxInstanceCount++;
+                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, r.skyboxInstanceCount, *blas);
+                    r.skyboxInstanceCount++;
                 }
             }
         }
     }
 
-    if (instanceCount == 0 && skyboxInstanceCount == 0)
+    if (r.instanceCount == 0 && r.skyboxInstanceCount == 0)
     {
         return false;
     }
 
-    outPush->tlasInstanceCount = instanceCount;
-    outPush->skyboxTlasInstanceCount = skyboxInstanceCount;
+    outPush->tlasInstanceCount = r.instanceCount;
+    outPush->skyboxTlasInstanceCount = r.skyboxInstanceCount;
 
+    return true;
+}
 
+void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
+{
     // fill buffer
     auto *mapped = (VkAccelerationStructureInstanceKHR*)instanceBuffer->GetMapped(frameIndex);
 
-    memcpy(mapped, instances, instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
-    memcpy(mapped + MAX_TOP_LEVEL_INSTANCE_COUNT, skyboxInstances, skyboxInstanceCount * sizeof(VkAccelerationStructureInstanceKHR));
+    memcpy(mapped, r.instances, r.instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
+    memcpy(mapped + MAX_TOP_LEVEL_INSTANCE_COUNT, r.skyboxInstances, r.skyboxInstanceCount * sizeof(VkAccelerationStructureInstanceKHR));
 
     instanceBuffer->CopyFromStaging(cmd, frameIndex);
 
@@ -865,8 +925,8 @@ bool ASManager::TryBuildTLAS(
 
     uint32_t instanceCounts[allTLASCount] =
     {
-        instanceCount,
-        skyboxInstanceCount
+        r.instanceCount,
+        r.skyboxInstanceCount
     };
 
     for (uint32_t i = 0; i < allTLASCount; i++)
@@ -892,7 +952,7 @@ bool ASManager::TryBuildTLAS(
         ranges[i].primitiveCount = instanceCounts[i];
     }
 
-    uint32_t tlasToBuild = ignoreSkyboxTLAS ? 1 : allTLASCount;
+    uint32_t tlasToBuild = r.skyboxInstanceCount == 0 ? 1 : allTLASCount;
 
     for (uint32_t i = 0; i < tlasToBuild; i++)
     {
@@ -906,7 +966,34 @@ bool ASManager::TryBuildTLAS(
 
 
     UpdateASDescriptors(frameIndex);
-    return true;
+}
+
+void ASManager::CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    uint32_t vertCount = collectorDynamic[frameIndex]->GetCurrentVertexCount();
+    uint32_t indexCount = collectorDynamic[frameIndex]->GetCurrentIndexCount();
+
+    VkBufferCopy vertRegion = {};
+    vertRegion.srcOffset = 0;
+    vertRegion.dstOffset = 0;
+    vertRegion.size = (uint64_t)vertCount * properties.positionStride;
+
+    VkBufferCopy indexRegion = {};
+    indexRegion.srcOffset = 0;
+    indexRegion.dstOffset = 0;
+    indexRegion.size = (uint64_t)indexCount * sizeof(uint32_t);
+
+    vkCmdCopyBuffer(
+        cmd, 
+        collectorDynamic[frameIndex]->GetVertexBuffer(), 
+        previousDynamicPositions.GetBuffer(),
+        1, &vertRegion);
+
+    vkCmdCopyBuffer(
+        cmd, 
+        collectorDynamic[frameIndex]->GetIndexBuffer(), 
+        previousDynamicIndices.GetBuffer(),
+        1, &indexRegion);
 }
 
 void ASManager::OnVertexPreprocessingBegin(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic)

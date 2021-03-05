@@ -20,6 +20,8 @@ namespace RTGL1
 #define BINDING_INDEX_BUFFER_STATIC (2)
 #define BINDING_INDEX_BUFFER_DYNAMIC (3)
 #define BINDING_GEOMETRY_INSTANCES (4)
+#define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (5)
+#define BINDING_PREV_INDEX_BUFFER_DYNAMIC (6)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
 #define BINDING_ACCELERATION_STRUCTURE_SKYBOX (1)
@@ -134,16 +136,21 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     float model[16];
+    float prevModel[16];
     uint32_t materials[3][4];
     float materialColors[3][4];
     uint32_t flags;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
+    uint32_t prevBaseVertexIndex;
+    uint32_t prevBaseIndexIndex;
     uint32_t vertexCount;
     uint32_t indexCount;
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
+    uint32_t __pad0;
+    uint32_t __pad1;
 };
 
 struct ShTonemapping

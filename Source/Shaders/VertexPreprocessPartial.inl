@@ -77,17 +77,6 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
             v + 0,
             v + 1,
             v + 2);
-        
-        //const vec3 globalPos[] = 
-        //{
-        //    (model * vec4(localPos[0], 1.0)).xyz,
-        //    (model * vec4(localPos[1], 1.0)).xyz,
-        //    (model * vec4(localPos[2], 1.0)).xyz
-        //};
-
-        //SET_POSITIONS(vertexIndices[0], globalPos[0]);
-        //SET_POSITIONS(vertexIndices[1], globalPos[1]);
-        //SET_POSITIONS(vertexIndices[2], globalPos[2]);
 
         if (!useIndices)
         {

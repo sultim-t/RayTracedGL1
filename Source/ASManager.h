@@ -37,6 +37,15 @@ struct ShVertPreprocessing;
 class ASManager
 {
 public:
+    struct TLASPrepareResult
+    {
+        VkAccelerationStructureInstanceKHR instances[36];
+        VkAccelerationStructureInstanceKHR skyboxInstances[36];
+        uint32_t instanceCount;
+        uint32_t skyboxInstanceCount;
+    };
+
+public:
     ASManager(VkDevice device, 
               std::shared_ptr<MemoryAllocator> allocator,
               std::shared_ptr<CommandBufferManager> cmdManager,
@@ -50,6 +59,7 @@ public:
     ASManager& operator=(const ASManager& other) = delete;
     ASManager& operator=(ASManager&& other) noexcept = delete;
 
+
     void BeginStaticGeometry();
     uint32_t AddStaticGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info);
     // Submitting static geometry to the building is a heavy operation
@@ -62,6 +72,7 @@ public:
     uint32_t AddDynamicGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info);
     void SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex);
 
+
     // Update transform for static movable geometry
     void UpdateStaticMovableTransform(uint32_t geomIndex, const RgTransform &transform);
     // After updating transforms, acceleration structures should be rebuilt
@@ -72,14 +83,28 @@ public:
     void UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
     void ResubmitStaticTexCoords(VkCommandBuffer cmd);
 
-    bool TryBuildTLAS(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<GlobalUniform> &uniform, 
+
+    // Prepare data for building TLAS.
+    // Also fill uniform with current state.
+    bool PrepareForBuildingTLAS(
+        uint32_t frameIndex,
+        const std::shared_ptr<GlobalUniform> &refUniform,
         bool ignoreSkyboxTLAS,
-        ShVertPreprocessing *outPush);
+        ShVertPreprocessing *outPush,
+        TLASPrepareResult *outResult);
+    void BuildTLAS(
+        VkCommandBuffer cmd, uint32_t frameIndex, 
+        const TLASPrepareResult &info);
+
+
+    // Copy current dynamic vertex and index data to
+    // special buffers for using current frame's data in the next frame.
+    void CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frameIndex);
+
 
     void OnVertexPreprocessingBegin(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic);
     void OnVertexPreprocessingFinish(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic);
+
 
     VkDescriptorSet GetBuffersDescSet(uint32_t frameIndex) const;
     VkDescriptorSet GetTLASDescSet(uint32_t frameIndex) const;
@@ -115,6 +140,9 @@ private:
     // for filling buffers
     std::shared_ptr<VertexCollector> collectorStatic;
     std::shared_ptr<VertexCollector> collectorDynamic[MAX_FRAMES_IN_FLIGHT];
+    // device-local buffer for storing previous info
+    Buffer previousDynamicPositions;
+    Buffer previousDynamicIndices;
 
     // building
     std::shared_ptr<ScratchBuffer> scratchBuffer;

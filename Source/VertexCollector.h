@@ -71,7 +71,7 @@ public:
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
     virtual void Reset();
-    // Copy buffer from staging and set barrier
+    // Copy buffer from staging and set barrier for processing in compute shader
     // "isStaticVertexData" is required to determine what GLSL struct to use for copying
     bool CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData);
     // Returns false, if wasn't copied
@@ -92,6 +92,8 @@ public:
 
     VkBuffer GetVertexBuffer() const;
     VkBuffer GetIndexBuffer() const;
+    uint32_t GetCurrentVertexCount() const;
+    uint32_t GetCurrentIndexCount() const;
 
 
     // Get primitive counts from filters. Null if corresponding filter wasn't found.
@@ -110,9 +112,9 @@ public:
     bool AreGeometriesEmpty(VertexCollectorFilterTypeFlagBits type) const;
 
 
-    // Make sure that AS building was done
+    // Make sure that copying was done
     void InsertVertexPreprocessBeginBarrier(VkCommandBuffer cmd);
-    // Make sure that preprocessing is done
+    // Make sure that preprocessing is done, and prepare for use in AS build and in shaders
     void InsertVertexPreprocessFinishBarrier(VkCommandBuffer cmd);
 
 private:

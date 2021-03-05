@@ -193,6 +193,8 @@ CONST = {
     "BINDING_INDEX_BUFFER_STATIC"           : 2,
     "BINDING_INDEX_BUFFER_DYNAMIC"          : 3,
     "BINDING_GEOMETRY_INSTANCES"            : 4,
+    "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC" : 5,
+    "BINDING_PREV_INDEX_BUFFER_DYNAMIC"     : 6,
     "BINDING_GLOBAL_UNIFORM"                : 0,
     "BINDING_ACCELERATION_STRUCTURE_MAIN"   : 0,
     "BINDING_ACCELERATION_STRUCTURE_SKYBOX" : 1,
@@ -371,11 +373,14 @@ GLOBAL_UNIFORM_STRUCT = [
 
 GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,     44,      "model",                1),
+    (TYPE_FLOAT32,     44,      "prevModel",            1),
     (TYPE_UINT32,       4,      "materials",            3),
     (TYPE_FLOAT32,      4,      "materialColors",       3),
     (TYPE_UINT32,       1,      "flags",                1),
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
+    (TYPE_UINT32,       1,      "prevBaseVertexIndex",  1),
+    (TYPE_UINT32,       1,      "prevBaseIndexIndex",   1),
     (TYPE_UINT32,       1,      "vertexCount",          1),
     (TYPE_UINT32,       1,      "indexCount",           1),
     (TYPE_FLOAT32,      1,      "defaultRoughness",     1),

@@ -66,6 +66,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     lightManager->CopyFromStaging(cmd, frameIndex);
     lightManager->Clear();
 
+
     // copy to device-local, if there were any tex coords change for static geometry
     asManager->ResubmitStaticTexCoords(cmd);
 
@@ -79,27 +80,36 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     // always submit dynamic geomtetry on the frame ending
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
 
+
     // copy geom infos to device-local
     geomInfoMgr->CopyFromStaging(cmd, frameIndex);
     geomInfoMgr->ResetOnlyDynamic(frameIndex);
 
+
     ShVertPreprocessing push = {};
+    ASManager::TLASPrepareResult prepare = {};
 
-    // try to build top level
-    bool built = asManager->TryBuildTLAS(cmd, frameIndex, uniform, disableGeometrySkybox, &push);
-    
-    // update uniform data
+    // prepare for building and fill uniform data
+    bool shouldBeBuilt = asManager->PrepareForBuildingTLAS(frameIndex, uniform, disableGeometrySkybox, &push, &prepare);
+
+    // upload uniform data
     uniform->Upload(cmd, frameIndex);
+    
+    
+    vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
 
-    // preprocess vertices, but only after building AS,
-    // as AS building relies on relative vertex positions
-    // and preprocessing transforms all vertices to world space
-    if (built)
+
+    if (shouldBeBuilt)
     {
-        vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
+        asManager->BuildTLAS(cmd, frameIndex, prepare);
+
+        // store data of current frame to use it in the next one
+        asManager->CopyDynamicDataToPrevBuffers(cmd, frameIndex);
+
+        return true;
     }
 
-    return built;
+    return shouldBeBuilt;
 }
 
 uint32_t Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)

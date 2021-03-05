@@ -69,6 +69,28 @@ layout(
     ShGeometryInstance geometryInstances[];
 };
 
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC)
+    #ifndef VERTEX_BUFFER_WRITEABLE
+    readonly 
+    #endif
+    buffer PrevPositionsBufferStatic_BT
+{
+    float prevDynamicPositions[];
+};
+
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_PREV_INDEX_BUFFER_DYNAMIC)
+    #ifndef VERTEX_BUFFER_WRITEABLE
+    readonly 
+    #endif
+    buffer PrevIndexBufferDynamic_BT
+{
+    uint prevDynamicIndices[];
+};
+
 #define TANGENTS_STRIDE 3
 
 vec3 getStaticVerticesPositions(uint index)

@@ -13,6 +13,8 @@
 #define BINDING_INDEX_BUFFER_STATIC (2)
 #define BINDING_INDEX_BUFFER_DYNAMIC (3)
 #define BINDING_GEOMETRY_INSTANCES (4)
+#define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (5)
+#define BINDING_PREV_INDEX_BUFFER_DYNAMIC (6)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
 #define BINDING_ACCELERATION_STRUCTURE_SKYBOX (1)
@@ -129,16 +131,21 @@ struct ShGlobalUniform
 struct ShGeometryInstance
 {
     mat4 model;
+    mat4 prevModel;
     uvec4 materials[3];
     vec4 materialColors[3];
     uint flags;
     uint baseVertexIndex;
     uint baseIndexIndex;
+    uint prevBaseVertexIndex;
+    uint prevBaseIndexIndex;
     uint vertexCount;
     uint indexCount;
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
+    uint __pad0;
+    uint __pad1;
 };
 
 struct ShTonemapping
