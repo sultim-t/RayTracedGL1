@@ -141,7 +141,13 @@ ShHitInfo getHitInfo(const ShPayload pl)
     };
     
 #ifdef TEXTURE_GRADIENTS
-    motion = tr.positions * baryCoords - tr.prevPositions * baryCoords;
+    const vec4 pCur = vec4(tr.positions * baryCoords, 1.0);
+    const vec4 pPrev = vec4(tr.prevPositions * baryCoords, 1.0);
+
+    const vec3 ndcCur = (globalUniform.projection * globalUniform.view * pCur).xyz;
+    const vec3 ndcPrev = (globalUniform.projectionPrev * globalUniform.viewPrev * pPrev).xyz;
+
+    motion = ndcCur - ndcPrev;
 
     // Tracing Ray Differentials, Igehy
     // instead of casting new rays, check intersections on the same triangle
