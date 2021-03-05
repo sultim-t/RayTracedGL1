@@ -55,7 +55,7 @@ struct ShHitInfo
     vec3    normal;
     float   roughness;
     vec3    normalGeom;
-    float   hitDistance;
+    float   linearDepth;
     vec3    emission;
     uint    instCustomIndex;
 };

@@ -71,8 +71,10 @@ void main()
     {
         // get ray differentials for texture filtering
 
-        vec3 motion;
-        ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motion);
+        vec2 motion;
+        float motionDepthLinear;
+        vec2 gradDepth;
+        ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motion, motionDepthLinear, gradDepth);
 
         vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
 
@@ -80,9 +82,9 @@ void main()
         imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
         imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
         imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-        imageStore(framebufDepth,               pix, vec4(h.hitDistance));
+        imageStore(framebufDepth,               pix, vec4(h.linearDepth));
         imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
-        imageStore(framebufMotion,              pix, vec4(motion, 0.0));
+        imageStore(framebufMotion,              pix, vec4(motion, motionDepthLinear, uintBitsToFloat(packHalf2x16(gradDepth))));
     }
     else
     {

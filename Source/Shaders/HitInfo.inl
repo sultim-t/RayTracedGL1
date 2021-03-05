@@ -115,7 +115,10 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
     return vec3(1 - u - v, u, v);
 }
 
-ShHitInfo getHitInfoGrad(const ShPayload pl, const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, out vec3 motion)
+ShHitInfo getHitInfoGrad(
+    const ShPayload pl, 
+    const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
+    out vec2 motion, out float motionDepthLinear, out vec2 gradDepth)
 #else
 ShHitInfo getHitInfo(const ShPayload pl)
 #endif
@@ -141,35 +144,53 @@ ShHitInfo getHitInfo(const ShPayload pl)
     };
     
 #ifdef TEXTURE_GRADIENTS
-    const vec4 pCur = vec4(tr.positions * baryCoords, 1.0);
-    const vec4 pPrev = vec4(tr.prevPositions * baryCoords, 1.0);
-
-    const vec3 ndcCur = (globalUniform.projection * globalUniform.view * pCur).xyz;
-    const vec3 ndcPrev = (globalUniform.projectionPrev * globalUniform.viewPrev * pPrev).xyz;
-
-    motion = ndcCur - ndcPrev;
-
     // Tracing Ray Differentials, Igehy
+
     // instead of casting new rays, check intersections on the same triangle
     const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);
     const vec3 baryCoordsAY = intersectRayTriangle(tr.positions, rayOrig, rayDirAY);
 
+
+    const vec4 viewSpacePosCur  = globalUniform.view     * vec4(tr.positions     * baryCoords, 1.0);
+    const vec4 viewSpacePosPrev = globalUniform.viewPrev * vec4(tr.prevPositions * baryCoords, 1.0);
+    const vec4 viewSpacePosAX   = globalUniform.view     * vec4(tr.positions     * baryCoordsAX, 1.0);
+    const vec4 viewSpacePosAY   = globalUniform.view     * vec4(tr.positions     * baryCoordsAY, 1.0);
+
+    const vec4 clipSpacePosCur  = globalUniform.projection     * viewSpacePosCur;
+    const vec4 clipSpacePosPrev = globalUniform.projectionPrev * viewSpacePosPrev;
+
+    const float clipSpaceDepth   = clipSpacePosCur[2];
+    const float clipSpaceDepthAX = dot(globalUniform.projection[2], viewSpacePosAX);
+    const float clipSpaceDepthAY = dot(globalUniform.projection[2], viewSpacePosAY);
+
+    const vec3 ndcCur  = clipSpacePosCur.xyz  / clipSpacePosCur.w;
+    const vec3 ndcPrev = clipSpacePosPrev.xyz / clipSpacePosPrev.w;
+
+    h.linearDepth = length(viewSpacePosCur.xyz);
+
+    // to screen-space
+    motion = (ndcCur.xy - ndcPrev.xy) * 0.5 + 0.5;
+    motionDepthLinear = h.linearDepth - length(viewSpacePosPrev.xyz);
+    // gradient of clip-space depth with respect to clip-space coordinates
+    gradDepth = vec2(clipSpaceDepthAX - clipSpaceDepth, clipSpaceDepthAY - clipSpaceDepth);
+
+
     // pixel's footprint in texture space
-    const vec2 dPdx[] = 
+    const vec2 dTdx[] = 
     {
         tr.layerTexCoord[0] * baryCoordsAX - texCoords[0],
         tr.layerTexCoord[1] * baryCoordsAX - texCoords[1],
         tr.layerTexCoord[2] * baryCoordsAX - texCoords[2]
     };
 
-    const vec2 dPdy[] = 
+    const vec2 dTdy[] = 
     {
         tr.layerTexCoord[0] * baryCoordsAY - texCoords[0],
         tr.layerTexCoord[1] * baryCoordsAY - texCoords[1],
         tr.layerTexCoord[2] * baryCoordsAY - texCoords[2]
     };
 
-    h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dPdx, dPdy);
+    h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
 #else
     h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
 #endif
@@ -179,7 +200,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
     if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
     {
     #ifdef TEXTURE_GRADIENTS
-        vec4 nm = getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0], dPdx[0], dPdy[0]);
+        vec4 nm = getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0], dTdx[0], dTdy[0]);
     #else
         vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0]);
     #endif
@@ -199,7 +220,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
     if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
     {
     #ifdef TEXTURE_GRADIENTS
-        vec4 er = getTextureSampleGrad(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], dPdx[0], dPdy[0]);
+        vec4 er = getTextureSampleGrad(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], dTdx[0], dTdy[0]);
     #else
         vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0]);
     #endif
@@ -212,8 +233,6 @@ ShHitInfo getHitInfo(const ShPayload pl)
         h.emission = tr.geomEmission;
         h.roughness = tr.geomRoughness;
     }
-
-    h.hitDistance = pl.clsHitDistance;
 
     h.instCustomIndex = instCustomIndex;
 
