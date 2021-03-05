@@ -94,6 +94,7 @@ private:
     // Note: frameIndex is not used if geom is not dynamic
     void FillWithPrevFrameData(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, ShGeometryInstance &dst, int32_t frameIndex = 0);
     void MarkNoPrevInfo(ShGeometryInstance &dst);
+    void MarkMovableHasPrevInfo(ShGeometryInstance &dst);
     // Note: frameIndex is not used if geom is not dynamic
     void WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex = 0);
 

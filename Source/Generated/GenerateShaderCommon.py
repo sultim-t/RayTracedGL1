@@ -487,7 +487,7 @@ FRAMEBUFFERS = {
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    #"Debug"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "Motion"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 

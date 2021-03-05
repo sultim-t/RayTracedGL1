@@ -96,28 +96,28 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
 
 #ifdef TEXTURE_GRADIENTS
 // Fast, Minimum Storage Ray-Triangle Intersection, Moller, Trumbore
-vec3 intersectRayTriangle(mat3 positions, vec3 orig, vec3 dir)
+vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 {
-    vec3 edge1 = positions[1] - positions[0];
-    vec3 edge2 = positions[2] - positions[0];
+    const vec3 edge1 = positions[1] - positions[0];
+    const vec3 edge2 = positions[2] - positions[0];
 
-    vec3 pvec = cross(dir, edge2);
+    const vec3 pvec = cross(dir, edge2);
 
-    float det = dot(edge1, pvec);
-    float invDet = 1.0 / det;
+    const float det = dot(edge1, pvec);
+    const float invDet = 1.0 / det;
 
-    vec3 tvec = orig - positions[0];
-    vec3 qvec = cross(tvec, edge1);
+    const vec3 tvec = orig - positions[0];
+    const vec3 qvec = cross(tvec, edge1);
 
-    float u = dot(tvec, pvec) * invDet;
-    float v = dot(dir, qvec) * invDet;
+    const float u = dot(tvec, pvec) * invDet;
+    const float v = dot(dir, qvec) * invDet;
 
     return vec3(1 - u - v, u, v);
 }
 
-ShHitInfo getHitInfoGrad(ShPayload pl, vec3 rayOrig, vec3 rayDirAX, vec3 rayDirAY)
+ShHitInfo getHitInfoGrad(const ShPayload pl, const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, out vec3 motion)
 #else
-ShHitInfo getHitInfo(ShPayload pl)
+ShHitInfo getHitInfo(const ShPayload pl)
 #endif
 {
     ShHitInfo h;
@@ -141,6 +141,8 @@ ShHitInfo getHitInfo(ShPayload pl)
     };
     
 #ifdef TEXTURE_GRADIENTS
+    motion = tr.positions * baryCoords - tr.prevPositions * baryCoords;
+
     // Tracing Ray Differentials, Igehy
     // instead of casting new rays, check intersections on the same triangle
     const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);

@@ -301,6 +301,11 @@ void RTGL1::GeomInfoManager::MarkNoPrevInfo(ShGeometryInstance &dst)
     dst.prevBaseVertexIndex = UINT32_MAX;
 }
 
+void RTGL1::GeomInfoManager::MarkMovableHasPrevInfo(ShGeometryInstance &dst)
+{
+    dst.prevBaseVertexIndex = dst.baseVertexIndex;
+}
+
 void RTGL1::GeomInfoManager::WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex)
 {
     bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
@@ -396,6 +401,9 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t globalGeomInd
 
         memcpy(dst->model, modelMatix, 16 * sizeof(float));
         memcpy(dst->prevModel, prevModelMatrix, 16 * sizeof(float));
+
+        // mark that movable has a previous info now
+        MarkMovableHasPrevInfo(*dst);
 
         // mark to be copied
         MarkGeomInfoIndexToCopy(i, globalToLocalIndex[globalGeomIndex], geomType[globalGeomIndex]);

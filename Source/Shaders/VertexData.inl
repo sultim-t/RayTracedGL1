@@ -403,7 +403,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
         if (hasPrevInfo)
         {
-            const mat4 prevModel = hasPrevInfo ? inst.prevModel : inst.model;
             const uvec3 prevVertIndices = getPrevVertIndices(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
 
             const vec4 prevLocalPos[] =
@@ -413,9 +412,9 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
                 vec4(getPrevDynamicVerticesPositions(prevVertIndices[2]), 1.0)
             };
 
-            tr.prevPositions[0] = (prevModel * prevLocalPos[0]).xyz;
-            tr.prevPositions[1] = (prevModel * prevLocalPos[1]).xyz;
-            tr.prevPositions[2] = (prevModel * prevLocalPos[2]).xyz;
+            tr.prevPositions[0] = (inst.prevModel * prevLocalPos[0]).xyz;
+            tr.prevPositions[1] = (inst.prevModel * prevLocalPos[1]).xyz;
+            tr.prevPositions[2] = (inst.prevModel * prevLocalPos[2]).xyz;
         }
         else
         {
@@ -438,10 +437,17 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.materialColors[1] = inst.materialColors[1];
         tr.materialColors[2] = inst.materialColors[2];
 
+        const vec4 prevLocalPos[] =
+        {
+            vec4(tr.positions[0], 1.0),
+            vec4(tr.positions[1], 1.0),
+            vec4(tr.positions[2], 1.0),
+        };
+
         // to world space
-        tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
-        tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
-        tr.positions[2] = (inst.model * vec4(tr.positions[2], 1.0)).xyz;
+        tr.positions[0] = (inst.model * prevLocalPos[0]).xyz;
+        tr.positions[1] = (inst.model * prevLocalPos[1]).xyz;
+        tr.positions[2] = (inst.model * prevLocalPos[2]).xyz;
         
         const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
         const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
@@ -452,9 +458,9 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         {
             // static geoms' local positions are constant, 
             // only model matrices are changing
-            tr.prevPositions[0] = (inst.prevModel * vec4(tr.positions[0], 1.0)).xyz;
-            tr.prevPositions[1] = (inst.prevModel * vec4(tr.positions[1], 1.0)).xyz;
-            tr.prevPositions[2] = (inst.prevModel * vec4(tr.positions[2], 1.0)).xyz;
+            tr.prevPositions[0] = (inst.prevModel * prevLocalPos[0]).xyz;
+            tr.prevPositions[1] = (inst.prevModel * prevLocalPos[1]).xyz;
+            tr.prevPositions[2] = (inst.prevModel * prevLocalPos[2]).xyz;
         }
         else
         {
