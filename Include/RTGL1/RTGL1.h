@@ -36,7 +36,6 @@ extern "C" {
 typedef uint32_t RgBool32;
 typedef uint32_t RgFlags;
 RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
-typedef uint32_t RgGeometry;
 typedef uint32_t RgMaterial;
 typedef uint32_t RgCubemap;
 
@@ -59,6 +58,7 @@ typedef enum RgResult
     RG_UPDATING_TEXCOORDS_FOR_NON_STATIC,
     RG_CANT_UPDATE_DYNAMIC_MATERIAL,
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
+    RG_ID_ISNT_UNIQUE,
 } RgResult;
 
 //typedef enum RgStructureType
@@ -225,15 +225,14 @@ typedef struct RgGeometryUploadInfo
 
 typedef struct RgUpdateTransformInfo
 {
-    RgGeometry      movableStaticGeom;
-    uint64_t        geomUniqueID;
+    uint64_t        movableStaticUniqueID;
     RgTransform     transform;
 } RgUpdateTransformInfo;
 
 typedef struct RgUpdateTexCoordsInfo
 {
-    // movable or non-movable static geometry index
-    RgGeometry      staticGeom;
+    // movable or non-movable static unique geom ID
+    uint64_t        staticUniqueID;
     uint32_t        vertexOffset;
     uint32_t        vertexCount;
     // If an array member is null, then texture coordinates
@@ -247,8 +246,7 @@ typedef struct RgUpdateTexCoordsInfo
 // "result" may be null, if its transform won't be changed
 RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
-    const RgGeometryUploadInfo              *uploadInfo,
-    RgGeometry                              *result);
+    const RgGeometryUploadInfo              *uploadInfo);
 
 // Updating transform is available only for movable static geometry.
 // Other geometry types don't need it because they are either fully static

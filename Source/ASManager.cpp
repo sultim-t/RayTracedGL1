@@ -973,27 +973,33 @@ void ASManager::CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frame
     uint32_t vertCount = collectorDynamic[frameIndex]->GetCurrentVertexCount();
     uint32_t indexCount = collectorDynamic[frameIndex]->GetCurrentIndexCount();
 
-    VkBufferCopy vertRegion = {};
-    vertRegion.srcOffset = 0;
-    vertRegion.dstOffset = 0;
-    vertRegion.size = (uint64_t)vertCount * properties.positionStride;
+    if (vertCount > 0)
+    {
+        VkBufferCopy vertRegion = {};
+        vertRegion.srcOffset = 0;
+        vertRegion.dstOffset = 0;
+        vertRegion.size = (uint64_t)vertCount * properties.positionStride;
 
-    VkBufferCopy indexRegion = {};
-    indexRegion.srcOffset = 0;
-    indexRegion.dstOffset = 0;
-    indexRegion.size = (uint64_t)indexCount * sizeof(uint32_t);
+        vkCmdCopyBuffer(
+            cmd, 
+            collectorDynamic[frameIndex]->GetVertexBuffer(), 
+            previousDynamicPositions.GetBuffer(),
+            1, &vertRegion);
+    }
 
-    vkCmdCopyBuffer(
-        cmd, 
-        collectorDynamic[frameIndex]->GetVertexBuffer(), 
-        previousDynamicPositions.GetBuffer(),
-        1, &vertRegion);
+    if (indexCount > 0)
+    {
+        VkBufferCopy indexRegion = {};
+        indexRegion.srcOffset = 0;
+        indexRegion.dstOffset = 0;
+        indexRegion.size = (uint64_t)indexCount * sizeof(uint32_t);
 
-    vkCmdCopyBuffer(
-        cmd, 
-        collectorDynamic[frameIndex]->GetIndexBuffer(), 
-        previousDynamicIndices.GetBuffer(),
-        1, &indexRegion);
+        vkCmdCopyBuffer(
+            cmd, 
+            collectorDynamic[frameIndex]->GetIndexBuffer(), 
+            previousDynamicIndices.GetBuffer(),
+            1, &indexRegion);
+    }
 }
 
 void ASManager::OnVertexPreprocessingBegin(VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic)

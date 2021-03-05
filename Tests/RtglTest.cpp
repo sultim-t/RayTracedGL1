@@ -360,7 +360,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     uint64_t    frameCount  = 0;
     bool        toMove      = true;
     RgMaterial  material    = RG_NO_MATERIAL;
-    RgGeometry  movableGeom = UINT32_MAX;
 
     std::vector<RgCubemap> skyboxes(cubemapNames.size());
 
@@ -413,12 +412,12 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             RG_CHECKERROR(r);
 
             stInfo.uniqueID = 0;
-            r = rgUploadGeometry(instance, &stInfo, nullptr);
+            r = rgUploadGeometry(instance, &stInfo);
             RG_CHECKERROR(r);
 
             mvInfo.uniqueID = 1;
             mvInfo.geomMaterial.layerMaterials[0] = material;
-            r = rgUploadGeometry(instance, &mvInfo, &movableGeom);
+            r = rgUploadGeometry(instance, &mvInfo);
             RG_CHECKERROR(r);
 
             // upload static geometry
@@ -429,8 +428,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         // update transform of movable geometry
         RgUpdateTransformInfo updateInfo = {};
-        updateInfo.geomUniqueID = 1;
-        updateInfo.movableStaticGeom = movableGeom;
+        updateInfo.movableStaticUniqueID = 1;
         updateInfo.transform = {
             0.3f, 0, 0, toMove ? 5.0f - 0.05f * (frameCount % 200) : -2.5f,
             0, 4, 0, 4,
@@ -441,7 +439,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
         RgUpdateTexCoordsInfo texCoordsInfo = {};
-        texCoordsInfo.staticGeom = movableGeom;
+        texCoordsInfo.staticUniqueID = 1;
         texCoordsInfo.texCoordLayerData[0] = (frameCount % 120) > 60 ? cubeTexCoords.data() : cubeTexCoordsModif.data();
         texCoordsInfo.vertexOffset = 0;
         texCoordsInfo.vertexCount = cubeInfo.vertexCount;
@@ -459,7 +457,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             0, 0, 0.3f, 0
         };
         dnInfo.uniqueID = 2;
-        rgUploadGeometry(instance, &dnInfo, nullptr);
+        rgUploadGeometry(instance, &dnInfo);
 
         dnInfo.transform = {
             0.3f, 0, 0, toMove ? 5.0f - 0.05f * ((frameCount + 60) % 200) : 2.5f,
@@ -467,7 +465,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             0, 0, 0.3f, 0
         };
         dnInfo.uniqueID = 3;
-        rgUploadGeometry(instance, &dnInfo, nullptr);
+        rgUploadGeometry(instance, &dnInfo);
 
         // upload rasterized geometry
         r = rgUploadRasterizedGeometry(instance, &raster);

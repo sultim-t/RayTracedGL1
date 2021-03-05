@@ -67,9 +67,9 @@ RgResult rgDestroyInstance(RgInstance rgInstance)
     return RG_SUCCESS;
 }
 
-RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *uploadInfo, RgGeometry *result)
+RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *uploadInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadGeometry(uploadInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadGeometry(uploadInfo);
 }
 
 RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* updateInfo)

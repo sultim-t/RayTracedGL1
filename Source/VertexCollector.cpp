@@ -702,7 +702,7 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgUpdateTransfor
     static_assert(sizeof(RgTransform) == sizeof(VkTransformMatrixKHR), "RgTransform and VkTransformMatrixKHR must have the same structure to be used in AS building");
     memcpy(mappedTransformData + geomIndex, &updateInfo.transform, sizeof(VkTransformMatrixKHR));
 
-    geomInfoMgr->WriteStaticGeomInfoTransform(geomIndex, updateInfo.geomUniqueID, updateInfo.transform);
+    geomInfoMgr->WriteStaticGeomInfoTransform(geomIndex, updateInfo.movableStaticUniqueID, updateInfo.transform);
 }
 
 void RTGL1::VertexCollector::UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)

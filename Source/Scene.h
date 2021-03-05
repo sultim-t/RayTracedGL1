@@ -51,9 +51,9 @@ public:
     // Return true if TLAS was built
     bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
 
-    uint32_t Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
-    bool UpdateTransform(uint32_t geomId, const RgUpdateTransformInfo &updateInfo);
-    bool UpdateTexCoords(uint32_t geomId, const RgUpdateTexCoordsInfo &texCoordsInfo);
+    bool Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
+    bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
+    bool UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo);
 
     void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo);
@@ -64,15 +64,23 @@ public:
     const std::shared_ptr<ASManager> &GetASManager();
     const std::shared_ptr<LightManager> &GetLightManager();
 
+    bool DoesUniqueIDExist(uint64_t uniqueID) const;
+
+private:
+    bool TryGetStaticGeomIndex(uint64_t uniqueID, uint32_t *result) const;
+
 private:
     std::shared_ptr<ASManager> asManager;
     std::shared_ptr<LightManager> lightManager;
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
     std::shared_ptr<VertexPreprocessing> vertPreproc;
 
-    // Non-movable and movable geometry IDs
-    std::vector<uint32_t> allStaticGeomIds;
-    std::vector<uint32_t> movableGeomIds;
+    // Dynamic indices are cleared every frame
+    std::map<uint64_t, uint32_t> dynamicUniqueIDToGeomIndex;
+    std::map<uint64_t, uint32_t> staticUniqueIDToGeomIndex;
+
+    // Movable geometry IDs
+    std::vector<uint32_t> movableGeomIndices;
     bool toResubmitMovable;
 
     bool isRecordingStatic;

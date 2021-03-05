@@ -56,7 +56,7 @@ public:
     VulkanDevice& operator=(const VulkanDevice& other) = delete;
     VulkanDevice& operator=(VulkanDevice&& other) noexcept = delete;
 
-    RgResult UploadGeometry(const RgGeometryUploadInfo *uploadInfo, RgGeometry *result);
+    RgResult UploadGeometry(const RgGeometryUploadInfo *uploadInfo);
     RgResult UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
     RgResult UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo);
 

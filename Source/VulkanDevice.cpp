@@ -369,26 +369,21 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
 }
 
 
-RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo, RgGeometry *result)
+RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 {
     if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
     {
         return RG_WRONG_ARGUMENT;
     }
 
-    uint32_t geomId = scene->Upload(currentFrameIndex, *uploadInfo);
-
-    if (result!= nullptr)
+    if (scene->DoesUniqueIDExist(uploadInfo->uniqueID))
     {
-        *result = static_cast<RgGeometry>(geomId);
+        return RG_ID_ISNT_UNIQUE;
     }
 
-    if (geomId == UINT32_MAX)
-    {
-        return RG_ERROR;
-    }
+    uint32_t uploaded = scene->Upload(currentFrameIndex, *uploadInfo);
 
-    return RG_SUCCESS;
+    return uploaded ? RG_SUCCESS : RG_ERROR;
 }
 
 RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
@@ -398,9 +393,7 @@ RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *upda
         return RG_WRONG_ARGUMENT;
     }
 
-    uint32_t geomId = static_cast<uint32_t>(updateInfo->movableStaticGeom);
-
-    bool b = scene->UpdateTransform(geomId, *updateInfo);
+    bool b = scene->UpdateTransform(*updateInfo);
 
     return b ? RG_SUCCESS : RG_UPDATING_TRANSFORM_FOR_NON_MOVABLE;
 }
@@ -412,9 +405,7 @@ RgResult RTGL1::VulkanDevice::UpdateGeometryTexCoords(const RgUpdateTexCoordsInf
         return RG_WRONG_ARGUMENT;
     }
 
-    uint32_t geomId = static_cast<uint32_t>(updateInfo->staticGeom);
-
-    bool b = scene->UpdateTexCoords(geomId, *updateInfo);
+    bool b = scene->UpdateTexCoords(*updateInfo);
 
     return b ? RG_SUCCESS : RG_UPDATING_TEXCOORDS_FOR_NON_STATIC;
 }
