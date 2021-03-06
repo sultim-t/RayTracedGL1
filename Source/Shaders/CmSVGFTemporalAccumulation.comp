@@ -73,7 +73,7 @@ bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
-    const ivec2 size = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {
@@ -81,15 +81,15 @@ void main()
     }
 
     const vec2 motion = texelFetch(framebufMotion_Sampler, pix, 0).rg;
-    const vec2 posPrev = vec2(pix) + motion * vec2(size);
+    const vec2 posPrev = vec2(pix) + motion * vec2(screenSize);
 
     const ivec2 pixPrev = ivec2(posPrev - 0.5);
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
 
-    const vec2 bilinearWeights[] = 
+    const float bilinearWeights[2][2] = 
     {
-        vec2((1.0 - subPix.x) * (1.0 - subPix.y), subPix.x * (1.0 - subPix.y) ),
-        vec2((1.0 - subPix.x) * subPix.y,         subPix.x * subPix.y),
+        { (1.0 - subPix.x) * (1.0 - subPix.y), subPix.x * (1.0 - subPix.y) },
+        { (1.0 - subPix.x) * subPix.y,         subPix.x * subPix.y         },
     };
 
     const vec3 depthFB = texelFetch(framebufDepth_Sampler,              pix, 0).rgb;
@@ -117,7 +117,7 @@ void main()
             const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, xy, 0).rgb;
 
             bool isConsistent = 
-                testInside(xy, size) &&
+                testInside(xy, screenSize) &&
                 testReprojectedDepth(depth, depthPrev, dz) &&
                 testReprojectedNormal(normal, normalPrev);
 

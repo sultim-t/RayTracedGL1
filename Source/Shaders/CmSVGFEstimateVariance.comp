@@ -66,10 +66,10 @@ void main()
         return;
     }
 
-    const vec3  color = texelFetch(framebufAccumColor_Sampler, pix, 0).rgb;
-    const vec3  depthFB = texelFetch(framebufDepth_Sampler,      pix, 0).rgb;
-    const float depth = depthFB.r;
-    const vec2 gradDepth = depthFB.gb;
+    const vec3  color     = texelFetch(framebufAccumColor_Sampler, pix, 0).rgb;
+    const vec3  dg        = texelFetch(framebufDepth_Sampler,      pix, 0).rgb;
+    const float depth     = dg.r;
+    const vec2  gradDepth = dg.gb;
 
     if (depth < 0.0)
     {
