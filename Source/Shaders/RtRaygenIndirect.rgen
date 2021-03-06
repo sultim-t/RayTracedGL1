@@ -146,7 +146,7 @@ void main()
 
     float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
-    if (depth > MAX_RAY_LENGTH - 1.0f)
+    if (depth > MAX_RAY_LENGTH)
     {
         return;
     }

@@ -145,6 +145,7 @@ static void ProcessInput(GLFWwindow *window)
     SUN_INTENSITY   = std::max(SUN_INTENSITY, 0.0f);
     SKY_INTENSITY   = std::max(SKY_INTENSITY, 0.0f);
     LIGHT_COLOR     = SUN_INTENSITY * glm::vec3(1, 1, 1);
+    LIGHT_DIR       = glm::normalize(LIGHT_DIR);
 
 
     // switches
@@ -358,7 +359,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
-    bool        toMove      = true;
+    bool        toMove      = false;
     RgMaterial  material    = RG_NO_MATERIAL;
 
     std::vector<RgCubemap> skyboxes(cubemapNames.size());

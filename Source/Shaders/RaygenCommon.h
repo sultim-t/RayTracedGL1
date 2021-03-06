@@ -242,7 +242,7 @@ void processDirectionalLight(
     }
 
     float d = getBlueNoiseSample(seed).x;
-    uint dirLightIndex = uint(d * dirLightCount);
+    uint dirLightIndex = clamp(uint(d * dirLightCount), 0, dirLightCount - 1);
 
     float oneOverPdf = dirLightCount;
 
@@ -252,11 +252,8 @@ void processDirectionalLight(
 
     vec3 dir;
     {
-        /*mat3 basis = getONB(dirLight.direction);
-        dir = normalize(dirLight.direction + basis[0] * disk.x + basis[1] * disk.y);*/
-        vec3 r = normalize(cross(dirLight.direction, vec3(0, 1, 0)));
-        vec3 u = cross(r, dirLight.direction);
-        dir = normalize(dirLight.direction + r * disk.x + u * disk.y);
+        mat3 basis = getONB(dirLight.direction);
+        dir = normalize(dirLight.direction + basis[0] * disk.x + basis[1] * disk.y);
     }
 
     float nl = dot(surfNormal, dir);

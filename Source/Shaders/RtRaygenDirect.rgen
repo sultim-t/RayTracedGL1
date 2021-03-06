@@ -37,7 +37,7 @@ void main()
 
     float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
-    if (depth > MAX_RAY_LENGTH - 1.0f)
+    if (depth > MAX_RAY_LENGTH)
     {
         imageStore(framebufUnfilteredDirect, pix, vec4(0.0));
         imageStore(framebufUnfilteredSpecular, pix, vec4(0.0));
