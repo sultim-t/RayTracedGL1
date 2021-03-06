@@ -81,9 +81,11 @@ void main()
     }
 
     const vec2 motion = texelFetch(framebufMotion_Sampler, pix, 0).rg;
-    const vec2 posPrev = vec2(pix) + motion * vec2(screenSize);
 
-    const ivec2 pixPrev = ivec2(posPrev - 0.5);
+    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
+    const vec2 posPrev = ((vec2(pix) + vec2(0.5)) * invScreenSize + motion) * vec2(screenSize);
+
+    const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
 
     const float bilinearWeights[2][2] = 
@@ -129,7 +131,7 @@ void main()
                 momentsPrev   += texelFetch(framebufAccumMoments_Prev_Sampler,       xy, 0).rg  * weight;
                 historyLength += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).r   * weight;
 
-                weightSum + weight;
+                weightSum += weight;
 			}
         }
     }
