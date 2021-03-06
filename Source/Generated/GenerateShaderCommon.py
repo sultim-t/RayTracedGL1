@@ -511,24 +511,6 @@ FRAMEBUFFERS = {
 
 
 
-def main():
-    generateGetSet = False
-    if len(sys.argv) > 0:
-        if "--getset" in sys.argv:
-            generateGetSet = True
-        if "--help" in sys.argv:
-            print("--getset   : generate getters and setters for non-trivial members")
-            return
-
-    evalConst()
-    # with open('ShaderConfig.csv', newline='') as csvfile:
-    with open("ShaderCommonC.h", "w") as commonHeaderFile:
-        with open("ShaderCommonCFramebuf.h", "w") as fbHeaderFile:
-            with open("ShaderCommonCFramebuf.cpp", "w") as fbSourceFile:
-                writeToC(commonHeaderFile, fbHeaderFile, fbSourceFile)
-    with open("ShaderCommonGLSL.h", "w") as f:
-        writeToGLSL(f, generateGetSet)
-
 
 def getAllConstDefs(constDict):
     return "\n".join([
@@ -946,6 +928,36 @@ def writeToGLSL(f, generateGetSet):
         f.write(getAllGLSLSetters())
     f.write(getAllGLSLFramebufDeclarations())
 
+
+def main():
+    generateGetSet = False
+    basePath = ""
+
+    for i in range(len(sys.argv)):
+        if "--help" == sys.argv[i] or "-help" == sys.argv[i]:
+            print("--getset   : generate getters and setters for non-trivial members")
+            print("--path     : specify path to target folder in the next argument")
+            return
+        if "--getset" == sys.argv[i]:
+            generateGetSet = True
+        if "--path" == sys.argv[i]:
+            if i + 1 < len(sys.argv):
+                basePath = sys.argv[i + 1]
+                if not os.path.exists(basePath):
+                    print("Folder with path \"" + basePath + "\" doesn't exist.")
+                    return
+            else:
+                print("--path expects folder path in the next argument.")
+                return
+
+    evalConst()
+    # with open('ShaderConfig.csv', newline='') as csvfile:
+    with open(basePath + "ShaderCommonC.h", "w") as commonHeaderFile:
+        with open(basePath + "ShaderCommonCFramebuf.h", "w") as fbHeaderFile:
+            with open(basePath + "ShaderCommonCFramebuf.cpp", "w") as fbSourceFile:
+                writeToC(commonHeaderFile, fbHeaderFile, fbSourceFile)
+    with open(basePath + "ShaderCommonGLSL.h", "w") as f:
+        writeToGLSL(f, generateGetSet)
 
 # main
 if __name__ == "__main__":
