@@ -35,9 +35,9 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-    vec4 depth = texelFetch(framebufDepth_Sampler, pix, 0);
+    float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
-    if (depth.x > MAX_RAY_LENGTH - 1.0f)
+    if (depth > MAX_RAY_LENGTH - 1.0f)
     {
         imageStore(framebufUnfilteredDirect, pix, vec4(0.0));
         imageStore(framebufUnfilteredSpecular, pix, vec4(0.0));

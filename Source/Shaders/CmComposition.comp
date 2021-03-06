@@ -36,18 +36,18 @@ void main()
         return;
     }
 
-    vec3 albedo             = texelFetch(framebufAlbedo_Sampler, pix, 0).xyz;
-    vec4 depth              = texelFetch(framebufDepth_Sampler, pix, 0);
+    vec3 albedo             = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
+    float depth             = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
-    if (depth.x > MAX_RAY_LENGTH - 1.0f)
+    if (depth > MAX_RAY_LENGTH - 1.0f)
     {
         imageStore(framebufFinal, pix, vec4(albedo, 0));
         return;
     }
 
-    vec3 diffuse            = texelFetch(framebufUnfilteredDirect_Sampler, pix, 0).xyz;
-    vec3 specular           = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).xyz;
-    vec3 indirect           = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).xyz;
+    vec3 diffuse            = texelFetch(framebufUnfilteredDirect_Sampler, pix, 0).rgb;
+    vec3 specular           = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
+    vec3 indirect           = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
     vec4 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
 
     float surfMetallic = metallicRoughness.r;

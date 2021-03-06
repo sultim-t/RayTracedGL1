@@ -479,7 +479,7 @@ FRAMEBUFFERS = {
     "Normal"                : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"        : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"     : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "Depth"                 : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "Depth"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "UnfilteredDirect"      : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "UnfilteredSpecular"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),

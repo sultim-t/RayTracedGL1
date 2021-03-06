@@ -188,8 +188,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 3, rgba32f) uniform image2D frameb
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 4, rgba32f) uniform image2D framebufNormalGeometry_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba8) uniform image2D framebufMetallicRoughness;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba8) uniform image2D framebufMetallicRoughness_Prev;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 7, r32f) uniform image2D framebufDepth;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 8, r32f) uniform image2D framebufDepth_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 7, rgba32f) uniform image2D framebufDepth;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 8, rgba32f) uniform image2D framebufDepth_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 9, r32ui) uniform uimage2D framebufRandomSeed;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 10, r32ui) uniform uimage2D framebufRandomSeed_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 11, rgba32f) uniform image2D framebufUnfilteredDirect;

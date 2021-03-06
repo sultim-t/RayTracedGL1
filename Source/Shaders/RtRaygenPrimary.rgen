@@ -82,9 +82,9 @@ void main()
         imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
         imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
         imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-        imageStore(framebufDepth,               pix, vec4(h.linearDepth));
+        imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
         imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
-        imageStore(framebufMotion,              pix, vec4(motion, motionDepthLinear, uintBitsToFloat(packHalf2x16(gradDepth))));
+        imageStore(framebufMotion,              pix, vec4(motion, motionDepthLinear, 0.0));
     }
     else
     {
@@ -94,7 +94,7 @@ void main()
         imageStore(framebufNormal,              pix, vec4(0.0));
         imageStore(framebufNormalGeometry,      pix, vec4(0.0));
         imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-        imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH));
+        imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH, 0.0, 0.0, 0.0));
         imageStore(framebufMotion,              pix, vec4(0.0));
         // imageStore(framebufSurfacePosition,      pix, vec4(0.0));
     }
