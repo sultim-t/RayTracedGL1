@@ -145,7 +145,7 @@ void atrous(sampler2D samplerColor, out vec3 outColor, out float outVariance)
             const float variance_q = cv_q.a;
             const float l_q        = getLuminance(color_q);
 
-            const float w_z = abs(depth - depth_q) / (dot(gradDepth, vec2(offset)) + 0.01);
+            const float w_z = abs(depth - depth_q) / max(dot(gradDepth, vec2(offset)), 0.01);
             const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
             const float w_l = abs(l - l_q) * wLumMultiplier;
 
@@ -212,7 +212,7 @@ void main()
         const vec3 indirect      = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
         const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler,  pix, 0).r;
         
-        const vec3 light = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
+        const vec3 light = diffuse; /*(diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic*/;
         const vec3 color = albedo * light;
 
         imageStore(framebufFinal, pix, vec4(color, 0));
