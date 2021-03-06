@@ -39,8 +39,8 @@ void main()
 
     if (depth.x > MAX_RAY_LENGTH - 1.0f)
     {
-        imageStore(framebufLightDirectDiffuse, pix, vec4(0.0));
-        imageStore(framebufLightSpecular, pix, vec4(0.0));
+        imageStore(framebufUnfilteredDirect, pix, vec4(0.0));
+        imageStore(framebufUnfilteredSpecular, pix, vec4(0.0));
         return;
     }
     
@@ -55,6 +55,6 @@ void main()
     vec3 diffuse, specular;
     processDirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, diffuse, specular);
 
-    imageStore(framebufLightDirectDiffuse, pix, vec4(diffuse, 0.0));
-    imageStore(framebufLightSpecular, pix, vec4(specular, 0.0));
+    imageStore(framebufUnfilteredDirect, pix, vec4(diffuse, 0.0));
+    imageStore(framebufUnfilteredSpecular, pix, vec4(specular, 0.0));
 }

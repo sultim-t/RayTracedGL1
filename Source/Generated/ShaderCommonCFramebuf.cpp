@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 21;
+const uint32_t RTGL1::ShFramebuffers_Count = 27;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -26,11 +26,23 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R16G16_SFLOAT,
+    VK_FORMAT_R16G16_SFLOAT,
+    VK_FORMAT_R32_SFLOAT,
+    VK_FORMAT_R32_SFLOAT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
 };
 
 const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = 
 {
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
     0,
     0,
     0,
@@ -77,6 +89,12 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     18,
     19,
     20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -92,26 +110,26 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     7,
     10,
     9,
-    12,
     11,
-    14,
+    12,
     13,
-    16,
+    14,
     15,
+    16,
     17,
-    18,
     19,
+    18,
+    21,
     20,
+    23,
+    22,
+    24,
+    25,
+    26,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
-    21,
-    22,
-    23,
-    24,
-    25,
-    26,
     27,
     28,
     29,
@@ -127,17 +145,23 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     39,
     40,
     41,
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48,
+    49,
+    50,
+    51,
+    52,
+    53,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
-    21,
-    23,
-    22,
-    25,
-    24,
     27,
-    26,
     29,
     28,
     31,
@@ -152,6 +176,18 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] =
     39,
     40,
     41,
+    42,
+    43,
+    44,
+    46,
+    45,
+    48,
+    47,
+    50,
+    49,
+    51,
+    52,
+    53,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -167,15 +203,21 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf Depth_Prev",
     "Framebuf RandomSeed",
     "Framebuf RandomSeed_Prev",
-    "Framebuf LightDirectDiffuse",
-    "Framebuf LightDirectDiffuse_Prev",
-    "Framebuf LightSpecular",
-    "Framebuf LightSpecular_Prev",
-    "Framebuf LightIndirect",
-    "Framebuf LightIndirect_Prev",
+    "Framebuf UnfilteredDirect",
+    "Framebuf UnfilteredSpecular",
+    "Framebuf UnfilteredIndirect",
     "Framebuf SurfacePosition",
     "Framebuf ViewDirection",
     "Framebuf Final",
     "Framebuf Motion",
+    "Framebuf AccumColor",
+    "Framebuf AccumColor_Prev",
+    "Framebuf AccumMoments",
+    "Framebuf AccumMoments_Prev",
+    "Framebuf AccumHistoryLength",
+    "Framebuf AccumHistoryLength_Prev",
+    "Framebuf ColorHistory",
+    "Framebuf PingColorAndVariance",
+    "Framebuf PongColorAndVariance",
 };
 

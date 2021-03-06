@@ -126,17 +126,17 @@ void processIndirectIllumination(
 
     if (isSpecular)
     {
-        vec3 spec = imageLoad(framebufLightSpecular, pix).rgb;
+        vec3 spec = imageLoad(framebufUnfilteredSpecular, pix).rgb;
         spec += contribution;
 
-        imageStore(framebufLightSpecular, pix, vec4(spec, 0.0));
+        imageStore(framebufUnfilteredSpecular, pix, vec4(spec, 0.0));
     }
     else
     {
-        vec3 diff = imageLoad(framebufLightIndirect, pix).rgb;
+        vec3 diff = imageLoad(framebufUnfilteredIndirect, pix).rgb;
         diff += contribution;
 
-        imageStore(framebufLightIndirect, pix, vec4(diff, 0.0));
+        imageStore(framebufUnfilteredIndirect, pix, vec4(diff, 0.0));
     }
 }
 

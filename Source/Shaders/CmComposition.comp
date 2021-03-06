@@ -45,9 +45,9 @@ void main()
         return;
     }
 
-    vec3 diffuse            = texelFetch(framebufLightDirectDiffuse_Sampler, pix, 0).xyz;
-    vec3 specular           = texelFetch(framebufLightSpecular_Sampler, pix, 0).xyz;
-    vec3 indirect           = texelFetch(framebufLightIndirect_Sampler, pix, 0).xyz;
+    vec3 diffuse            = texelFetch(framebufUnfilteredDirect_Sampler, pix, 0).xyz;
+    vec3 specular           = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).xyz;
+    vec3 indirect           = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).xyz;
     vec4 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
 
     float surfMetallic = metallicRoughness.r;

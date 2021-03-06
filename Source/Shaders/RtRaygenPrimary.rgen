@@ -57,7 +57,7 @@ void main()
     vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
 
     imageStore(framebufViewDirection, pix, vec4(rayDir, 0.0));
-    imageStore(framebufLightIndirect, pix, vec4(0.0));
+    imageStore(framebufUnfilteredIndirect, pix, vec4(0.0));
 
     uint randomSeed = getRandomSeed(pix, globalUniform.frameId, globalUniform.renderWidth, globalUniform.renderHeight);
     imageStore(framebufRandomSeed, pix, uvec4(randomSeed));

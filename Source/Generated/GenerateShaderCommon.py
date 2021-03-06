@@ -481,13 +481,19 @@ FRAMEBUFFERS = {
     "MetallicRoughness"     : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                 : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
-    "LightDirectDiffuse"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "LightSpecular"         : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "LightIndirect"         : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "UnfilteredDirect"      : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "UnfilteredSpecular"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "UnfilteredIndirect"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Motion"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "AccumColor"            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "AccumMoments"          : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
+    "AccumHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "ColorHistory"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "PingColorAndVariance"  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "PongColorAndVariance"  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 
