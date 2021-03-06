@@ -57,12 +57,7 @@ void RTGL1::ImageComposition::Compose(
     const std::shared_ptr<const Tonemapping> &tonemapping)
 {
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_DIRECT_DIFFUSE);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_SPECULAR);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_INDIRECT);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
 
     // bind pipeline
@@ -84,8 +79,8 @@ void RTGL1::ImageComposition::Compose(
                             0, nullptr);
 
     // start compute shader
-    uint32_t wgCountX = std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_GROUP_SIZE_X);
-    uint32_t wgCountY = std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_GROUP_SIZE_Y);
+    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_GROUP_SIZE_X);
+    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_GROUP_SIZE_Y);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }

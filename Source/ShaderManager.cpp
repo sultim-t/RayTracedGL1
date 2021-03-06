@@ -51,6 +51,9 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"RasterizerVert",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"          , VK_SHADER_STAGE_ALL },
     {"RasterizerFrag",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"          , VK_SHADER_STAGE_ALL },
     {"CVertexPreprocess",   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmVertexPreprocess.comp.spv"  , VK_SHADER_STAGE_ALL },
+    {"CSVGFTemporalAccum",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFTemporalAccumulation.comp.spv", VK_SHADER_STAGE_ALL },
+    {"CSVGFVarianceEstim",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFEstimateVariance.comp.spv",     VK_SHADER_STAGE_ALL },
+    {"CSVGFAtrous",         "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFAtrous.comp.spv",               VK_SHADER_STAGE_ALL },
 };
 
 

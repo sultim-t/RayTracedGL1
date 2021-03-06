@@ -98,7 +98,7 @@ void PathTracer::Trace(
 
     
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_SPECULAR);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
 
     // indirect illumination
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);

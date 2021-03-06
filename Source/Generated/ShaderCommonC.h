@@ -86,6 +86,7 @@ namespace RTGL1
 #define VERT_PREPROC_MODE_ALL (2)
 #define COMPUTE_SVGF_GROUP_SIZE_X (16)
 #define COMPUTE_SVGF_GROUP_SIZE_Y (16)
+#define COMPUTE_SVGF_ATROUS_ITERATION_COUNT (4)
 
 struct ShVertexBufferStatic
 {

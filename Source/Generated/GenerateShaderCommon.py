@@ -271,6 +271,7 @@ CONST = {
 
     "COMPUTE_SVGF_GROUP_SIZE_X"             : 16,
     "COMPUTE_SVGF_GROUP_SIZE_Y"             : 16,
+    "COMPUTE_SVGF_ATROUS_ITERATION_COUNT"   : 4,
 }
 
 CONST_GLSL_ONLY = {

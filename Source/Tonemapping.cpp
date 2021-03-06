@@ -82,10 +82,7 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
 
 
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_DIRECT_DIFFUSE);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_SPECULAR);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_LIGHT_INDIRECT);
+    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
 
     // bind desc sets
@@ -108,8 +105,8 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, histogramPipeline);
 
     // cover full render size
-    uint32_t wgCountX = std::ceil(uniform->GetData()->renderWidth / COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X);
-    uint32_t wgCountY = std::ceil(uniform->GetData()->renderHeight / COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y);
+    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X);
+    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 
