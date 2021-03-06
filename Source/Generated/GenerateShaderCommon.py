@@ -268,6 +268,9 @@ CONST = {
     "VERT_PREPROC_MODE_ONLY_DYNAMIC"        : 0,
     "VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE" : 1,
     "VERT_PREPROC_MODE_ALL"                 : 2,
+
+    "COMPUTE_SVGF_GROUP_SIZE_X"             : 16,
+    "COMPUTE_SVGF_GROUP_SIZE_Y"             : 16,
 }
 
 CONST_GLSL_ONLY = {

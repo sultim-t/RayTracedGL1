@@ -1,0 +1,135 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+// 
+// Copyright (c) 2018, Christoph Schied
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are met:
+//     * Redistributions of source code must retain the above copyright
+//       notice, this list of conditions and the following disclaimer.
+//     * Redistributions in binary form must reproduce the above copyright
+//       notice, this list of conditions and the following disclaimer in the
+//       documentation and/or other materials provided with the distribution.
+//     * Neither the name of the Karlsruhe Institute of Technology nor the
+//       names of its contributors may be used to endorse or promote products
+//       derived from this software without specific prior written permission.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+// DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY
+// DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+// (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+// LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+// ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+// (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#version 460
+
+// "Spatiotemporal Variance-Guided Filtering: Real-Time Reconstruction for Path-Traced Global Illumination", C.Schied et al.
+// 4.2 Variance estimation
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_X, local_size_z = 1) in;
+
+const float HistoryLengthThreshold = 4.0;
+const int SpatialFilterSize = 1;
+
+void main()
+{    
+    const ivec2 pix = ivec2(gl_GlobalInvocationID);
+
+    const vec3  color = texelFetch(framebufAccumColor_Sampler, pix, 0).rgb;
+    const vec3  depthFB = texelFetch(framebufDepth_Sampler,      pix, 0).rgb;
+    const float depth = depthFB.r;
+    const vec2 gradDepth = depthFB.gb;
+
+    if (depth < 0.0)
+    {
+        imageStore(framebufPingColorAndVariance, pix, vec4(color, 0.0));
+        return;
+    }
+
+    const float historyLength   = texelFetch(framebufAccumHistoryLength_Sampler, pix, 0).r;
+    const vec2  temporalMoments = texelFetch(framebufAccumMoments_Sampler,       pix, 0).rg;
+
+    // rely on temporal variance, if collected enough data with temporal acculumation
+    if (historyLength > HistoryLengthThreshold)
+    {
+        float temporalVariance = max(0.0, temporalMoments.y - temporalMoments.x * temporalMoments.x);
+
+        imageStore(framebufPingColorAndVariance, pix, vec4(color, temporalVariance));
+        return;
+    }
+
+    const vec3 normal = texelFetch(framebufNormalGeometry_Sampler, pix, 0).rgb;
+
+    const float l = getLuminance(color);
+
+    vec2 spatialMoments = vec2(l, l * l) + temporalMoments;
+    vec3 spatialColor = color;
+    float weightSum = 1.0;
+
+    for (int yy = -SpatialFilterSize; yy <= SpatialFilterSize; yy++)
+    {
+        for (int xx = -SpatialFilterSize; xx <= SpatialFilterSize; xx++)
+        {
+            if (xx == 0 && yy == 0)
+            {
+                continue;
+            }
+
+            const ivec2 q = pix + ivec2(xx, yy);
+            
+            const vec3  color_q  = texelFetch(framebufAccumColor_Sampler,     q, 0).rgb;
+            const float depth_q  = texelFetch(framebufDepth_Sampler,          q, 0).r;
+            const vec3  normal_q = texelFetch(framebufNormalGeometry_Sampler, q, 0).rgb;
+
+            const float l_q = getLuminance(color_q);
+
+            const float w_z = exp(-abs(depth - depth_q) / (dot(gradDepth, vec2(xx, yy)) + 0.01));
+            const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
+
+            const float w = w_z * w_n;
+
+            if (!isnan(w))
+            {
+                spatialMoments += vec2(l_q, l_q * l_q) * w;
+                spatialColor += color_q * w;
+
+                weightSum += w;
+            }
+        }
+    }
+
+    const float invWeightSum = 1.0 / weightSum;
+    spatialMoments *= invWeightSum;
+    spatialColor *= invWeightSum;
+
+    const float spatialVariance = max(0.0, spatialMoments.y - spatialMoments.x * spatialMoments.x) 
+                                  * (1.0 + 2.0 * (1.0 - historyLength / HistoryLengthThreshold));
+                                  
+    imageStore(framebufPingColorAndVariance, pix, vec4(spatialColor, spatialVariance));
+}
