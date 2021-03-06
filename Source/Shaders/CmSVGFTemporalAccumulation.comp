@@ -52,7 +52,7 @@
 #define DESC_SET_GLOBAL_UNIFORM 1
 #include "ShaderCommonGLSLFunc.h"
 
-layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_X, local_size_z = 1) in;
+layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
 bool testInside(const ivec2 pix, const ivec2 size)
 {
@@ -74,6 +74,11 @@ void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec2 size = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+
+    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
+    {
+        return;
+    }
 
     const vec2 motion = texelFetch(framebufMotion_Sampler, pix, 0).rg;
     const vec2 posPrev = vec2(pix) + motion * vec2(size);

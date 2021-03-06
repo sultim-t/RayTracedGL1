@@ -61,25 +61,19 @@ uint getColorBin(vec3 c, float minLogLuminance, float maxLogLuminance)
 void main()
 {
     // init all work group's bins as 0
-    uint wgBinIndex = gl_LocalInvocationIndex;
+    const uint wgBinIndex = gl_LocalInvocationIndex;
     histogramWorkGroup[wgBinIndex] = 0;
 
     groupMemoryBarrier();
 
 
-    ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
     if (pix.x < uint(globalUniform.renderWidth) && pix.y < uint(globalUniform.renderHeight))
     {
-        // TODO: use illumination buffer
-        vec3 diffuse            = texelFetch(framebufUnfilteredDirect_Sampler, pix, 0).xyz;
-        vec3 specular           = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).xyz;
-        vec3 indirect           = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).xyz;
-        vec4 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
-        float surfMetallic      = metallicRoughness.r;
-        vec3 lightHdrColor      = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
+        const vec3 hdrColor = texelFetch(framebufFinal_Sampler, pix, 0).rgb;
 
-        uint colorBin = getColorBin(lightHdrColor, globalUniform.minLogLuminance, globalUniform.maxLogLuminance);
+        const uint colorBin = getColorBin(hdrColor, globalUniform.minLogLuminance, globalUniform.maxLogLuminance);
         atomicAdd(histogramWorkGroup[colorBin], 1);
     }
 
@@ -88,6 +82,6 @@ void main()
 
     // add the results of each bin in the current work group to global histogram;
     // assuming that the amount of bins == amount of invocations in work group
-    uint globalBinIndex = gl_LocalInvocationIndex;
+    const uint globalBinIndex = gl_LocalInvocationIndex;
     atomicAdd(tonemapping.histogram[globalBinIndex], histogramWorkGroup[wgBinIndex]);
 }

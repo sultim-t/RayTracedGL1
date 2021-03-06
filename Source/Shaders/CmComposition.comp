@@ -36,33 +36,12 @@ void main()
         return;
     }
 
-    vec3 albedo             = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
-    float depth             = texelFetch(framebufDepth_Sampler, pix, 0).r;
+    vec3 color = texelFetch(framebufFinal_Sampler, pix, 0).rgb;
 
-    if (depth > MAX_RAY_LENGTH - 1.0f)
-    {
-        imageStore(framebufFinal, pix, vec4(albedo, 0));
-        return;
-    }
-
-    vec3 diffuse            = texelFetch(framebufUnfilteredDirect_Sampler, pix, 0).rgb;
-    vec3 specular           = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
-    vec3 indirect           = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
-    vec4 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
-
-    float surfMetallic = metallicRoughness.r;
-    
-    vec3 light = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
-    vec3 color = albedo * light;
-
-    float avgLuminance = tonemapping.avgLuminance;
-
-    float lIn = getLuminance(color);
-    lIn = max(lIn, exp2(globalUniform.minLogLuminance));
-
-    float lInAdj = lIn / avgLuminance;
+    const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
+    const float lInAdj = lIn / tonemapping.avgLuminance;
     // Reinhard
-    float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
+    const float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
     
     color = color * lOut / lIn;
 
