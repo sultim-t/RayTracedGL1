@@ -47,11 +47,6 @@ layout(
 {
     ShGlobalUniform globalUniform;
 };
-
-#ifdef DESC_SET_VERTEX_DATA
-    #include "VertexData.inl"
-#endif
-
 #endif // DESC_SET_GLOBAL_UNIFORM
 
 
@@ -132,6 +127,14 @@ void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryInde
     primitiveIndex = int(geomAndPrimIndex >> MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW);
     geometryIndex = int(geomAndPrimIndex & (MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT - 1));
 }
+
+
+
+#ifdef DESC_SET_GLOBAL_UNIFORM
+#ifdef DESC_SET_VERTEX_DATA
+    #include "VertexData.inl"
+#endif
+#endif
 
 
 

@@ -193,8 +193,9 @@ CONST = {
     "BINDING_INDEX_BUFFER_STATIC"           : 2,
     "BINDING_INDEX_BUFFER_DYNAMIC"          : 3,
     "BINDING_GEOMETRY_INSTANCES"            : 4,
-    "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC" : 5,
-    "BINDING_PREV_INDEX_BUFFER_DYNAMIC"     : 6,
+    "BINDING_GEOMETRY_INSTANCES_MATCH_PREV" : 5,
+    "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC" : 6,
+    "BINDING_PREV_INDEX_BUFFER_DYNAMIC"     : 7,
     "BINDING_GLOBAL_UNIFORM"                : 0,
     "BINDING_ACCELERATION_STRUCTURE_MAIN"   : 0,
     "BINDING_ACCELERATION_STRUCTURE_SKYBOX" : 1,
@@ -364,6 +365,8 @@ GLOBAL_UNIFORM_STRUCT = [
     
     (TYPE_FLOAT32,      4,      "skyViewerPosition",            1),
 
+    (TYPE_FLOAT32,      4,      "cameraPosition",               1),
+
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
     #(TYPE_FLOAT32,      1,      "_pad2",                        1),
@@ -372,6 +375,7 @@ GLOBAL_UNIFORM_STRUCT = [
     # for std140
     # TODO: separate to 2 different main/skybox arrays (and remove multiplication by 2)
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",       2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
+    (TYPE_INT32,        4,      "instanceGeomInfoOffsetPrev",   2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
     (TYPE_INT32,        4,      "instanceGeomCount",            2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
 ]
 
@@ -489,7 +493,7 @@ FRAMEBUFFERS = {
     "UnfilteredSpecular"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "UnfilteredIndirect"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    # "VisibilityBuffer"      : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "VisibilityBuffer"      : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Motion"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),

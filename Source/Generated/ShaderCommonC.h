@@ -20,8 +20,9 @@ namespace RTGL1
 #define BINDING_INDEX_BUFFER_STATIC (2)
 #define BINDING_INDEX_BUFFER_DYNAMIC (3)
 #define BINDING_GEOMETRY_INSTANCES (4)
-#define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (5)
-#define BINDING_PREV_INDEX_BUFFER_DYNAMIC (6)
+#define BINDING_GEOMETRY_INSTANCES_MATCH_PREV (5)
+#define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (6)
+#define BINDING_PREV_INDEX_BUFFER_DYNAMIC (7)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
 #define BINDING_ACCELERATION_STRUCTURE_SKYBOX (1)
@@ -132,7 +133,9 @@ struct ShGlobalUniform
     uint32_t skyCubemapIndex;
     float skyColorDefault[4];
     float skyViewerPosition[4];
+    float cameraPosition[4];
     int32_t instanceGeomInfoOffset[72];
+    int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];
 };
 

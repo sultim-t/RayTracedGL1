@@ -29,19 +29,18 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
-const uint StrataSize = 3;
+const int StrataSize = 3;
 
 void main()
 {
-    const ivec2 pix = ivec2(gl_GlobalInvocationID);
-    const ivec2 gradPix = pix / StrataSize;
+    const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
 
-    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
+    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+
+    if (gradPix.x * StrataSize >= screenSize.x || gradPix.y * StrataSize >= screenSize.y)
     {
         return;
     }
-
-    sampler2D prevUnfiltered = framebufUnfilteredDirect_Sampler;
 
     // (c) was done in primary rays shader
     // (a) instead of choosing random sample in strata, choose the brightest
@@ -49,18 +48,19 @@ void main()
     float lastLuminance = 0;
     bool found = false;
 
+    // for each pixel in strata
     for (int yy = 0; yy < StrataSize; yy++)
     {
         for (int xx = 0; xx < StrataSize; xx++)
         {
-            const ivec2 prevPix = pix + ivec2(xx, yy);
+            const ivec2 prevPix = gradPix * StrataSize + ivec2(xx, yy);
 
-            const vec3 prevColor = texelFetch(prevUnfiltered, prevPix, 0).rgb;
+            const vec3 prevColor = texelFetch(framebufUnfilteredDirect_Sampler, prevPix, 0).rgb;
             const float prevLuminance = getLuminance(prevColor);
 
             if (lastLuminance > prevLuminance)
             {
-                lastStrataPos = ivec(xx, yy);
+                lastStrataPos = ivec2(xx, yy);
                 lastLuminance = prevLuminance;
                 found = true;
             }
@@ -73,23 +73,23 @@ void main()
         return;
     }
 
-    const ivec2 gradientSamplePrevPix = pix + lastStrataPos;
+    const ivec2 samplePrevPix = gradPix * StrataSize + lastStrataPos;
 
-    // (b) forward-project choosed sample
-    const vec2 motion     = texelFetch(framebufMotion_Sampler,              gradientSamplePrevPix, 0).rg;
-    const vec2 gradientSamplePix = getPrevScreenPos(gradientSamplePrevPix, motion);
+    // (b) forward-project choosen sample
+    const vec2 motion     = texelFetch(framebufMotion_Sampler,              samplePrevPix, 0).rg;
+    const ivec2 samplePix = ivec2(floor(getPrevScreenPos(samplePrevPix, motion)));
 
-    const vec3 depthFB    = texelFetch(framebufDepth_Sampler,               gradientSamplePix,     0).rgb;
+    const vec3 depthFB    = texelFetch(framebufDepth_Sampler,               samplePix,     0).rgb;
     const float dz        = 1.0 / max(0.01, length(depthFB.gb));
 
     const float depth     = depthFB.r;
-    const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          gradientSamplePrevPix, 0).r;
+    const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          samplePrevPix, 0).r;
 
-    const vec3 normal     = texelFetch(framebufNormalGeometry_Sampler,      gradientSamplePix,     0).rgb;
-    const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, gradientSamplePrevPix, 0).rgb;
+    const vec3 normal     = texelFetch(framebufNormalGeometry_Sampler,      samplePix,     0).rgb;
+    const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, samplePrevPix, 0).rgb;
 
     const bool isConsistent = 
-        testInside(xy, screenSize) &&
+        testInside(samplePix, screenSize) &&
         testReprojectedDepth(depth, depthPrev, dz) &&
         testReprojectedNormal(normal, normalPrev);
 
@@ -106,18 +106,23 @@ void main()
     // from previous frame before tracing illumination
     
     // seeds
-    uint oldSeed = texelFetch(framebufRandomSeed_Prev_Sampler, gradientSamplePrevPix, 0).r;
-    imageStore(framebufRandomSeed, pix, uvec4(oldSeed));
+    uint oldSeed = texelFetch(framebufRandomSeed_Prev_Sampler, samplePrevPix, 0).r;
+    imageStore(framebufRandomSeed,        samplePix, uvec4(oldSeed));
     
-    // surface samples
+    // surface shading samples
+    imageStore(framebufNormalGeometry,    samplePix, vec4(normalPrev, 0));
+    imageStore(framebufNormal,            samplePix, texelFetch(framebufNormal_Prev_Sampler,            samplePrevPix, 0));
+    imageStore(framebufMetallicRoughness, samplePix, texelFetch(framebufMetallicRoughness_Prev_Sampler, samplePrevPix, 0));
 
-    // TODO: visibility buffer
-    /*const vec4 v = texelFetch(framebufVisibilityBuffer_Prev_Sampler, , 0);
-    vec2 baryCoords;
-    const ShTriangle tr = unpackVisibilityBuffer(gradientSamplePrevPix, baryCoords);*/
+    vec3 prevPos;
+    const vec4 v = texelFetch(framebufVisibilityBuffer_Prev_Sampler, samplePrevPix, 0);
+    const bool matchedSurface = unpackPrevVisibilityBuffer(v, prevPos);
     
+    if (matchedSurface)
+    {
+        const vec3 viewDir = normalize(prevPos - globalUniform.cameraPosition.xyz);
 
-    
-
-
+        imageStore(framebufSurfacePosition, samplePix, vec4(prevPos, 0.0));
+        imageStore(framebufViewDirection,   samplePix, vec4(viewDir, 0.0));
+    }
 }

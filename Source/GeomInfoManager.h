@@ -38,7 +38,7 @@ class GeomInfoManager
 public:
     explicit GeomInfoManager(
         VkDevice device,
-        std::shared_ptr<MemoryAllocator> allocator);
+        std::shared_ptr<MemoryAllocator> &allocator);
     ~GeomInfoManager();
 
     GeomInfoManager(const GeomInfoManager &other) = delete;
@@ -50,7 +50,9 @@ public:
     void PrepareForFrame(uint32_t frameIndex);
 
 
-    // Save instance for copying into buffer and fill previous frame's data
+    // Save instance for copying into buffer and fill previous frame's data.
+    // For dynamic geometry it should be called every frame,
+    // and for static geometry -- only when whole static scene was changed.
     uint32_t WriteGeomInfo(
         uint32_t frameIndex,
         uint64_t geomUniqueID, 
@@ -72,6 +74,7 @@ public:
     uint32_t GetStaticCount() const;
     uint32_t GetDynamicCount() const;
     VkBuffer GetBuffer() const;
+    VkBuffer GetMatchPrevBuffer() const;
     uint32_t GetStaticGeomBaseVertexIndex(uint32_t globalGeomIndex);
     
 private:
@@ -82,6 +85,7 @@ private:
         uint32_t baseIndexIndex;
         uint32_t vertexCount;
         uint32_t indexCount;
+        uint32_t prevGlobalGeomIndex;
     };
 
 private:
@@ -90,13 +94,20 @@ private:
 
     // Mark memory to be copied to device local buffer
     void MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
-    
+
+    // Fill ShGeometryInstance with the data from previous frame
     // Note: frameIndex is not used if geom is not dynamic
-    void FillWithPrevFrameData(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, ShGeometryInstance &dst, int32_t frameIndex = 0);
+    void FillWithPrevFrameData(
+        VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, 
+        uint32_t currentGlobalGeomIndex, ShGeometryInstance &dst, int32_t frameIndex = 0);
+
     void MarkNoPrevInfo(ShGeometryInstance &dst);
     void MarkMovableHasPrevInfo(ShGeometryInstance &dst);
+    // Save data for the next frame
     // Note: frameIndex is not used if geom is not dynamic
-    void WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex = 0);
+    void WriteInfoForNextUsage(
+        VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, 
+        uint32_t currentGlobalGeomIndex, const ShGeometryInstance &src, int32_t frameIndex = 0);
 
 private:
     VkDevice device;
@@ -110,6 +121,7 @@ private:
 
     // buffer for getting info for geometry in BLAS
     std::shared_ptr<AutoBuffer> buffer;
+    std::shared_ptr<AutoBuffer> matchPrev;
 
     uint32_t copyRegionLowerBound[MAX_FRAMES_IN_FLIGHT][36];
     uint32_t copyRegionUpperBound[MAX_FRAMES_IN_FLIGHT][36];

@@ -43,7 +43,7 @@ vec3 getRayDir(vec2 inUV)
 
 void main() 
 {
-    const vec3 origin = (globalUniform.invView * vec4(0, 0, 0, 1)).xyz;
+    const vec3 origin = globalUniform.cameraPosition.xyz;
 
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
     const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
@@ -85,7 +85,7 @@ void main()
         imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
         imageStore(framebufMotion,              pix, vec4(motion, motionDepthLinear, 0.0));
         imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
-        //imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
+        imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
     }
     else
     {
@@ -97,7 +97,7 @@ void main()
         imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
         imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, 0.0));
         imageStore(framebufMotion,              pix, vec4(0.0));
-        //imageStore(framebufSurfacePosition,     pix, vec4(0.0));
-        //imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
+        imageStore(framebufSurfacePosition,     pix, vec4(0.0));
+        imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     }
 }

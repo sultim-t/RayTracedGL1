@@ -25,10 +25,11 @@
 #include "Generated/ShaderCommonC.h"
 
 constexpr uint32_t GEOM_INFO_BUFFER_SIZE = MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(RTGL1::ShGeometryInstance);
+constexpr uint32_t GEOM_INFO_MATCH_PREV_BUFFER_SIZE = MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(int32_t);
 
 static_assert(sizeof(RTGL1::ShGeometryInstance) % 16 == 0, "Std430 structs must be aligned by 16 bytes");
 
-RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocator)
+RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<MemoryAllocator> &_allocator)
 :
     device(_device),
     staticGeomCount(0),
@@ -36,11 +37,16 @@ RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<Memory
     copyRegionLowerBound{},
     copyRegionUpperBound{}
 {
-    buffer = std::make_shared<AutoBuffer>(device, std::move(_allocator), "Geometry info staging buffer", "Geometry info buffer");
+    buffer = std::make_shared<AutoBuffer>(device, _allocator, "Geometry info staging buffer", "Geometry info buffer");
+    matchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Geometry info Match previous infos staging buffer", "Geometry info Match previous infos buffer");
 
     buffer->Create(
         GEOM_INFO_BUFFER_SIZE,
-        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    matchPrev->Create(
+        GEOM_INFO_MATCH_PREV_BUFFER_SIZE,
+        VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     static_assert(
         sizeof(copyRegionLowerBound[0]) / sizeof(copyRegionLowerBound[0][0]) == MAX_TOP_LEVEL_INSTANCE_COUNT &&
@@ -56,6 +62,31 @@ RTGL1::GeomInfoManager::~GeomInfoManager()
 
 bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, bool insertBarrier)
 {
+    // always copy matchPrev
+    matchPrev->CopyFromStaging(cmd, frameIndex, VK_WHOLE_SIZE);
+
+    if (insertBarrier)
+    {
+        VkBufferMemoryBarrier mtpBr = {};
+
+        mtpBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+        mtpBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        mtpBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        mtpBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+        mtpBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+        mtpBr.buffer = matchPrev->GetDeviceLocal();
+        mtpBr.size = VK_WHOLE_SIZE;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+            0,
+            0, nullptr,
+            1, &mtpBr,
+            0, nullptr);
+    }
+
+
     VkBufferCopy infos[MAX_TOP_LEVEL_INSTANCE_COUNT];
     uint32_t infoCount = 0;
 
@@ -127,6 +158,14 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
             globalToLocalIndex.clear();
         }
 
+        int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(frameIndex);
+        // dynamic data is placed after static
+        int32_t *dynamicPrevIndexToCurIndex = prevIndexToCurIndex + staticGeomCount;
+
+        // reset matchPrev data for dynamic
+        memset(dynamicPrevIndexToCurIndex, 0xFF, dynamicGeomCount * sizeof(int32_t));
+
+
         // reset only dynamic count
         dynamicGeomCount = 0;
     }
@@ -141,6 +180,14 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
 void RTGL1::GeomInfoManager::ResetWithStatic()
 {
     movableIDToGeomFrameInfo.clear();
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(i);
+
+        // reset all matchPrev data
+        memset(prevIndexToCurIndex, 0xFF, ((uint64_t)staticGeomCount + dynamicGeomCount) * sizeof(int32_t));
+    }
 
     staticGeomCount = 0;
     dynamicGeomCount = 0;
@@ -227,7 +274,7 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
 
     for (uint32_t i = frameBegin; i < frameEnd; i++)
     {
-        FillWithPrevFrameData(flags, geomUniqueID, src, frameIndex);
+        FillWithPrevFrameData(flags, geomUniqueID, globalGeomIndex, src, frameIndex);
 
         ShGeometryInstance *dst = GetGeomInfoAddress(i, localGeomIndex, flags);
         memcpy(dst, &src, sizeof(ShGeometryInstance));
@@ -235,7 +282,7 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
         MarkGeomInfoIndexToCopy(i, localGeomIndex, flags);
     }
 
-    WriteInfoForNextUsage(flags, geomUniqueID, src, frameIndex);        
+    WriteInfoForNextUsage(flags, geomUniqueID, globalGeomIndex, src, frameIndex);        
 
     return globalGeomIndex;
 }
@@ -249,8 +296,12 @@ void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32
     copyRegionUpperBound[frameIndex][offset] = std::max(localGeomIndex + 1, copyRegionUpperBound[frameIndex][offset]);
 }
 
-void RTGL1::GeomInfoManager::FillWithPrevFrameData(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, ShGeometryInstance &dst, int32_t frameIndex)
+void RTGL1::GeomInfoManager::FillWithPrevFrameData(
+    VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, 
+    uint32_t currentGlobalGeomIndex, ShGeometryInstance &dst, int32_t frameIndex)
 {
+    int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(frameIndex);
+
     const std::map<uint64_t, GeomFrameInfo> *prevIdToInfo = nullptr;
 
     bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
@@ -262,16 +313,22 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData(VertexCollectorFilterTypeFlag
         static_assert(MAX_FRAMES_IN_FLIGHT == 2, "Assuming MAX_FRAMES_IN_FLIGHT==2");
         uint32_t prevFrame = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
-        prevIdToInfo = &dynamicIDToGeomFrameInfo[prevFrame];    
+        prevIdToInfo = &dynamicIDToGeomFrameInfo[prevFrame];
     }
-    else if (isMovable)
+    else 
     {
-        prevIdToInfo = &movableIDToGeomFrameInfo; 
-    }
-    else
-    {
-        MarkNoPrevInfo(dst);
-        return;
+        // global geom indices are not changing for static geometry
+        prevIndexToCurIndex[currentGlobalGeomIndex] = (int32_t)currentGlobalGeomIndex;
+
+        if (isMovable)
+        {
+            prevIdToInfo = &movableIDToGeomFrameInfo; 
+        }
+        else
+        {
+            MarkNoPrevInfo(dst);
+            return;
+        }
     }
 
     const auto prev = prevIdToInfo->find(geomUniqueID);
@@ -290,10 +347,14 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData(VertexCollectorFilterTypeFlag
         MarkNoPrevInfo(dst);
         return;
     }
-    
+
+    // copy data from previous frame to current ShGeometryInstance
     dst.prevBaseVertexIndex = prev->second.baseVertexIndex;
     dst.prevBaseIndexIndex = prev->second.baseIndexIndex;
     memcpy(dst.prevModel, prev->second.model, sizeof(float) * 16);
+
+    // save index to access ShGeometryInfo using previous frame's global geom index
+    prevIndexToCurIndex[prev->second.prevGlobalGeomIndex] = currentGlobalGeomIndex;
 }
 
 void RTGL1::GeomInfoManager::MarkNoPrevInfo(ShGeometryInstance &dst)
@@ -306,7 +367,9 @@ void RTGL1::GeomInfoManager::MarkMovableHasPrevInfo(ShGeometryInstance &dst)
     dst.prevBaseVertexIndex = dst.baseVertexIndex;
 }
 
-void RTGL1::GeomInfoManager::WriteInfoForNextUsage(VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, const ShGeometryInstance &src, int32_t frameIndex)
+void RTGL1::GeomInfoManager::WriteInfoForNextUsage(
+    VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, 
+    uint32_t currentGlobalGeomIndex, const ShGeometryInstance &src, int32_t frameIndex)
 {
     bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
     bool isDynamic = flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
@@ -335,6 +398,7 @@ void RTGL1::GeomInfoManager::WriteInfoForNextUsage(VertexCollectorFilterTypeFlag
     f.baseIndexIndex = src.baseIndexIndex;
     f.vertexCount = src.vertexCount;
     f.indexCount = src.indexCount;
+    f.prevGlobalGeomIndex = currentGlobalGeomIndex;
 
     (*idToInfo)[geomUniqueID] = f;
 }
@@ -393,6 +457,9 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t globalGeomInd
 
     float *prevModelMatrix = prev->second.model;
 
+    // additional check that global geom indices for static geoms weren't changed
+    assert(prev->second.prevGlobalGeomIndex == globalGeomIndex);
+
 
     // need to write to both staging buffers for static geometry
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -432,6 +499,11 @@ uint32_t RTGL1::GeomInfoManager::GetDynamicCount() const
 VkBuffer RTGL1::GeomInfoManager::GetBuffer() const
 {
     return buffer->GetDeviceLocal();
+}
+
+VkBuffer RTGL1::GeomInfoManager::GetMatchPrevBuffer() const
+{
+    return matchPrev->GetDeviceLocal();
 }
 
 uint32_t RTGL1::GeomInfoManager::GetStaticGeomBaseVertexIndex(uint32_t globalGeomIndex)

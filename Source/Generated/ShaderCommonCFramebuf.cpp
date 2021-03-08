@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 30;
+const uint32_t RTGL1::ShFramebuffers_Count = 32;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -26,6 +26,8 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R16G16_SFLOAT,
     VK_FORMAT_R16G16_SFLOAT,
     VK_FORMAT_R32_SFLOAT,
@@ -40,6 +42,8 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
 
 const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = 
 {
+    0,
+    0,
     0,
     0,
     0,
@@ -104,6 +108,8 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     27,
     28,
     29,
+    30,
+    31,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -123,27 +129,27 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     12,
     13,
     14,
-    15,
     16,
+    15,
     17,
-    19,
     18,
+    19,
     21,
     20,
     23,
     22,
-    24,
     25,
+    24,
     26,
     27,
     28,
     29,
+    30,
+    31,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
-    30,
-    31,
     32,
     33,
     34,
@@ -172,13 +178,15 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     57,
     58,
     59,
+    60,
+    61,
+    62,
+    63,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
-    30,
     32,
-    31,
     34,
     33,
     36,
@@ -187,25 +195,29 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] =
     37,
     40,
     39,
-    41,
     42,
+    41,
     43,
     44,
     45,
     46,
+    48,
     47,
     49,
-    48,
-    51,
     50,
+    51,
     53,
     52,
-    54,
     55,
-    56,
+    54,
     57,
+    56,
     58,
     59,
+    60,
+    61,
+    62,
+    63,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -225,6 +237,8 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf UnfilteredSpecular",
     "Framebuf UnfilteredIndirect",
     "Framebuf SurfacePosition",
+    "Framebuf VisibilityBuffer",
+    "Framebuf VisibilityBuffer_Prev",
     "Framebuf ViewDirection",
     "Framebuf Final",
     "Framebuf Motion",

@@ -150,7 +150,7 @@ void ASManager::CreateDescriptors()
     VkResult r;
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 7> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 8> bindings{};
 
         // static vertex data
         bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
@@ -179,17 +179,22 @@ void ASManager::CreateDescriptors()
         bindings[4].descriptorCount = 1;
         bindings[4].stageFlags = VK_SHADER_STAGE_ALL;
 
-        bindings[5].binding = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC;
+        bindings[5].binding = BINDING_GEOMETRY_INSTANCES_MATCH_PREV;
         bindings[5].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[5].descriptorCount = 1;
         bindings[5].stageFlags = VK_SHADER_STAGE_ALL;
 
-        bindings[6].binding = BINDING_PREV_INDEX_BUFFER_DYNAMIC;
+        bindings[6].binding = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC;
         bindings[6].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         bindings[6].descriptorCount = 1;
         bindings[6].stageFlags = VK_SHADER_STAGE_ALL;
 
-        static_assert(sizeof(bindings) / sizeof(bindings[0]) == 7, "");
+        bindings[7].binding = BINDING_PREV_INDEX_BUFFER_DYNAMIC;
+        bindings[7].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[7].descriptorCount = 1;
+        bindings[7].stageFlags = VK_SHADER_STAGE_ALL;
+
+        static_assert(sizeof(bindings) / sizeof(bindings[0]) == 8, "");
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -266,7 +271,7 @@ void ASManager::CreateDescriptors()
 
 void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 {
-    const uint32_t bindingCount = 7;
+    const uint32_t bindingCount = 8;
 
     std::array<VkDescriptorBufferInfo, bindingCount> bufferInfos{};
     std::array<VkWriteDescriptorSet, bindingCount> writes{};
@@ -296,6 +301,11 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     gsBufInfo.buffer = geomInfoMgr->GetBuffer();
     gsBufInfo.offset = 0;
     gsBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &gpBufInfo = bufferInfos[BINDING_GEOMETRY_INSTANCES_MATCH_PREV];
+    gpBufInfo.buffer = geomInfoMgr->GetMatchPrevBuffer();
+    gpBufInfo.offset = 0;
+    gpBufInfo.range = VK_WHOLE_SIZE;
 
     VkDescriptorBufferInfo &ppBufInfo = bufferInfos[BINDING_PREV_POSITIONS_BUFFER_DYNAMIC];
     ppBufInfo.buffer = previousDynamicPositions.GetBuffer();
@@ -353,6 +363,15 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     gmWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     gmWrt.descriptorCount = 1;
     gmWrt.pBufferInfo = &gsBufInfo;
+
+    VkWriteDescriptorSet &gpWrt = writes[BINDING_GEOMETRY_INSTANCES_MATCH_PREV];
+    gpWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    gpWrt.dstSet = buffersDescSets[frameIndex];
+    gpWrt.dstBinding = BINDING_GEOMETRY_INSTANCES_MATCH_PREV;
+    gpWrt.dstArrayElement = 0;
+    gpWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    gpWrt.descriptorCount = 1;
+    gpWrt.pBufferInfo = &gpBufInfo;
     
     VkWriteDescriptorSet &ppWrt = writes[BINDING_PREV_POSITIONS_BUFFER_DYNAMIC];
     ppWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;

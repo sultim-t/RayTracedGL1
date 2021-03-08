@@ -60,12 +60,6 @@ const int StepSize = 1 << atrousIteration;
 
 const float SigmaLuminance = 4.0;
 
-float testInside(const ivec2 pix, const ivec2 size)
-{
-    return float(all(greaterThanEqual(pix, ivec2(0))) &&
-                 all(lessThan(pix, size)));
-}
-
 float prefilterLuminanceVariance(sampler2D samplerColor, const ivec2 pix, const float pixVariance)
 {
     const int GaussianFilterSize = 1;
@@ -151,7 +145,7 @@ void atrous(sampler2D samplerColor, out vec3 outColor, out float outVariance)
 
             const float w = exp(-w_z - w_l) * w_n * 
                             waveletKernel[abs(xx)][abs(yy)] *
-                            testInside(pix_q, screenSize);
+                            float(testInside(pix_q, screenSize));
 
             outColor += color_q * w;
             outVariance += variance_q * w * w;

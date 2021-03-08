@@ -71,6 +71,15 @@ layout(
 
 layout(
     set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_GEOMETRY_INSTANCES_MATCH_PREV)
+    readonly 
+    buffer GeometryIndicesPrevToCur_BT
+{
+    int geomIndexPrevToCur[];
+};
+
+layout(
+    set = DESC_SET_VERTEX_DATA,
     binding = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC)
     #ifndef VERTEX_BUFFER_WRITEABLE
     readonly 
@@ -367,6 +376,24 @@ int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryI
     return globalUniform.instanceGeomInfoOffset[instanceID / 4][instanceID % 4] + localGeometryIndex;
 }
 
+bool getCurrentGeometryIndexByPrev(int prevInstanceID, int prevInstanceCustomIndex, int prevLocalGeometryIndex, out int curFrameGlobalGeomIndex)
+{
+    // offset if skybox
+    if ((prevInstanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) != 0)
+    {
+        prevInstanceID += MAX_TOP_LEVEL_INSTANCE_COUNT;
+    }
+    
+    // get previous frame's global geom index
+    const int prevFrameGeomIndex = globalUniform.instanceGeomInfoOffsetPrev[prevInstanceID / 4][prevInstanceID % 4] + prevLocalGeometryIndex;
+    
+    // try to find global geom index in current frame by it
+    curFrameGlobalGeomIndex = geomIndexPrevToCur[prevFrameGeomIndex];
+
+    // UINT32_MAX -- no prev to cur exist
+    return curFrameGlobalGeomIndex != UINT32_MAX;
+}
+
 // localGeometryIndex is index of geometry in pGeometries in BLAS
 // primitiveId is index of a triangle
 ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
@@ -487,11 +514,10 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     return tr;
 }
 
-mat3 getOnlyPrevPositions(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
+mat3 getOnlyPrevPositions(int globalGeometryIndex, int instanceCustomIndex, int primitiveId)
 {
     mat3 prevPositions;
 
-    const int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
     const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
 
     const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
@@ -567,37 +593,38 @@ mat3 getOnlyPrevPositions(int instanceID, int instanceCustomIndex, int localGeom
     return prevPositions;
 }
 
-/*vec4 packVisibilityBuffer(const ShPayload p)
+vec4 packVisibilityBuffer(const ShPayload p)
 {
     return vec4(uintBitsToFloat(p.instIdAndIndex), uintBitsToFloat(p.geomAndPrimIndex), p.baryCoords);
 }
 
 // v must be fetched from framebufVisibilityBuffer_Prev_Sampler
-bool unpackPrevVisibilityBuffer(const vec4 v, out mat3 prevPositions, out vec2 baryCoords)
+bool unpackPrevVisibilityBuffer(const vec4 v, out vec3 prevPos)
 {
-    int prevInstanceId, prevInstCustomIndex;
-    int prevGeomIndex, prevPrimIndex;
+    int prevInstanceID, prevInstCustomIndex;
+    int prevLocalGeomIndex, prevPrimIndex;
 
-    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), prevInstanceId, prevInstCustomIndex);
-    unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), prevGeomIndex, prevPrimIndex);
+    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), prevInstanceID, prevInstCustomIndex);
+    unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), prevLocalGeomIndex, prevPrimIndex);
 
-    // TODO: match prev ids with current ones
-    //       + store previous "globalUniform.instanceGeomInfoOffset"
-    const int instanceID = ;
-    const int instanceCustomIndex = ;
-    const int localGeometryIndex = ;
-    const int primitiveId = prevPrimitiveId;
+    int curFrameGlobalGeomIndex;
+    const bool matched = getCurrentGeometryIndexByPrev(prevInstanceID, prevInstCustomIndex, prevLocalGeomIndex, curFrameGlobalGeomIndex);
 
-    if (couldn't match)
+    if (!matched)
     {
         return false;
     }
 
-    prevPositions = getOnlyPrevPositions(prevInstanceId, prevInstCustomIndex, prevGeomIndex, prevPrimIndex);
-    baryCoords = vec3(1.0 - v[2] - v[3], v[2], v[3]);
+    // primitive index is the same, other
+    const int primIndex = prevPrimIndex;
+
+    const mat3 prevVerts = getOnlyPrevPositions(curFrameGlobalGeomIndex, prevInstCustomIndex, primIndex);
+    const vec3 baryCoords = vec3(1.0 - v[2] - v[3], v[2], v[3]);
+
+    prevPos = prevVerts * baryCoords;
 
     return true;
-}*/
+}
 
 mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {

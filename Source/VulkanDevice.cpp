@@ -238,6 +238,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
     Matrix::Inverse(gu->invView, frameInfo.view);
     Matrix::Inverse(gu->invProjection, frameInfo.projection);
 
+    gu->cameraPosition[0] = gu->invView[12];
+    gu->cameraPosition[1] = gu->invView[13];
+    gu->cameraPosition[2] = gu->invView[14];
+
+    static_assert(sizeof(gu->instanceGeomInfoOffset) == sizeof(gu->instanceGeomInfoOffsetPrev), "");
+    memcpy(gu->instanceGeomInfoOffsetPrev, gu->instanceGeomInfoOffset, sizeof(gu->instanceGeomInfoOffset));
+
     // to remove additional division by 4 bytes in shaders
     gu->positionsStride = vbProperties.positionStride / 4;
     gu->normalsStride = vbProperties.normalStride / 4;
