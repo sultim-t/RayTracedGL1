@@ -21,6 +21,10 @@
 
 #define M_PI        3.14159265358979323846
 
+#define RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX 1
+#define RANDOM_SALT_DIRECTIONAL_LIGHT_DISK 2
+#define RANDOM_SALT_BOUNCE(bounceIndex) (RANDOM_SALT_DIRECTIONAL_LIGHT_DISK + bounceIndex)
+
 
 // Sample disk uniformly
 // u1, u2 -- uniform random numbers
@@ -158,21 +162,8 @@ void unpackRandomSeed(uint seed, out uint textureIndex, out uvec2 offset)
     offset.x     = seed                                  & (BLUE_NOISE_TEXTURE_SIZE - 1);
 }
 
-vec4 getBlueNoiseSample(uint x, uint y, uint index)
-{
-    return texelFetch(blueNoiseTextures, ivec3(x, y, index), 0);
-}
-
-vec4 getBlueNoiseSample(uint seed)
-{
-    uint texIndex;
-    uvec2 offset;
-    unpackRandomSeed(seed, texIndex, offset);
-
-    return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
-}
-
-uint makeSeed(uint seed, uint salt)
+// get blue noise sample
+vec4 getRandomSample(uint seed, uint salt)
 {
     uint texIndex;
     uvec2 offset;
@@ -180,7 +171,7 @@ uint makeSeed(uint seed, uint salt)
 
     texIndex = (texIndex + salt) % BLUE_NOISE_TEXTURE_COUNT;
 
-    return packRandomSeed(texIndex, offset);
+    return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
 uint getCurrentRandomSeed(ivec2 pix)
@@ -193,19 +184,6 @@ uint getPreviousRandomSeed(ivec2 pix)
 {
     uvec4 seed = texelFetch(framebufRandomSeed_Prev_Sampler, pix, 0);
     return seed.x;
-}
-
-vec2 sampleDisk(uint seed, float radius)
-{
-    // uniform distribution
-    vec4 u = getBlueNoiseSample(seed);
-    return sampleDisk(radius, u[0], u[1]);
-}
-
-vec3 sampleHemisphere(uint seed)
-{
-    vec4 u = getBlueNoiseSample(seed);
-    return sampleHemisphere(u[0], u[1]);
 }
 
 uint getRandomSeed(ivec2 pix, uint frameIndex, float screenWidth, float screenHeight)

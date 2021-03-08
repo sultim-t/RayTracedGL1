@@ -241,14 +241,15 @@ void processDirectionalLight(
         return;
     }
 
-    float d = getBlueNoiseSample(seed).x;
+    float d = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
     uint dirLightIndex = clamp(uint(d * dirLightCount), 0, dirLightCount - 1);
 
     float oneOverPdf = dirLightCount;
 
     ShLightDirectional dirLight = lightSourcesDirecitional[dirLightIndex];
 
-    vec2 disk = sampleDisk(seed, dirLight.tanAngularRadius);
+    vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
+    vec2 disk = sampleDisk(dirLight.tanAngularRadius, u[0], u[1]);
 
     vec3 dir;
     {

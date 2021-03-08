@@ -38,7 +38,7 @@ void getBounce(
     uint seed, vec3 n, float roughness, 
     vec3 v, out vec3 bounceDirection, inout vec3 throughput, out bool isSpecular)
 {
-    vec4 u = getBlueNoiseSample(seed);
+    vec4 u = getRandomSample(seed, RANDOM_SALT_BOUNCE(0));
 
     // trace either specular or diffuse ray
     float specPr = 0.5;
