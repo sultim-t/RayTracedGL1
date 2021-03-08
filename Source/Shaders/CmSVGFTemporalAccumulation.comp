@@ -54,22 +54,6 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
-bool testInside(const ivec2 pix, const ivec2 size)
-{
-    return all(greaterThanEqual(pix, ivec2(0))) &&
-           all(lessThan(pix, size));
-}
-
-bool testReprojectedDepth(float z, float zPrev, float dz)
-{
-    return abs(z - zPrev) < 2.0 * (dz + 0.001);
-}
-
-bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
-{
-    return dot(n, nPrev) > 0.95;
-}
-
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
@@ -81,9 +65,7 @@ void main()
     }
 
     const vec2 motion = texelFetch(framebufMotion_Sampler, pix, 0).rg;
-
-    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
-    const vec2 posPrev = ((vec2(pix) + vec2(0.5)) * invScreenSize + motion) * vec2(screenSize);
+    const vec2 posPrev = getPrevScreenPos(pix, motion);
 
     const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
@@ -118,14 +100,14 @@ void main()
             const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          xy, 0).r;
             const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, xy, 0).rgb;
 
-            bool isConsistent = 
+            const bool isConsistent = 
                 testInside(xy, screenSize) &&
                 testReprojectedDepth(depth, depthPrev, dz) &&
                 testReprojectedNormal(normal, normalPrev);
 
             if (isConsistent)
             {
-                float weight = bilinearWeights[yy][xx];
+                const float weight = bilinearWeights[yy][xx];
 
                 colorPrev     += texelFetch(framebufColorHistory_Sampler,            xy, 0).rgb * weight;
                 momentsPrev   += texelFetch(framebufAccumMoments_Prev_Sampler,       xy, 0).rg  * weight;
@@ -149,9 +131,9 @@ void main()
         momentsPrev   *= invWeightSum;
         historyLength *= invWeightSum;
 
-        const float temporalAlpha = 0.25;
+        const float temporalAlpha = 0.05;
         const float alphaColor = max(temporalAlpha, 1.0 / (historyLength + 1.0));
-        const float alphaMoments = max(0.6, 1.0 / (historyLength + 1.0));
+        const float alphaMoments = max(0.05, 1.0 / (historyLength + 1.0));
 
         colorAccum = mix(colorPrev, color, alphaColor);
         momentsAccum = mix(momentsPrev, moments, alphaMoments);

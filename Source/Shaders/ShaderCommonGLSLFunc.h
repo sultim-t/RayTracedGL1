@@ -175,3 +175,30 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIRECTIONAL
     ShLightDirectional lightSourcesDirecitional[];
 };
 #endif
+
+
+
+#ifdef DESC_SET_GLOBAL_UNIFORM
+bool testInside(const ivec2 pix, const ivec2 size)
+{
+    return all(greaterThanEqual(pix, ivec2(0))) &&
+           all(lessThan(pix, size));
+}
+
+vec2 getPrevScreenPos(const ivec2 pix, const vec2 motion)
+{
+    const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
+    return ((vec2(pix) + vec2(0.5)) * invScreenSize + motion) * screenSize;
+}
+
+bool testReprojectedDepth(float z, float zPrev, float dz)
+{
+    return abs(z - zPrev) < 2.0 * (dz + 0.001);
+}
+
+bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
+{
+    return dot(n, nPrev) > 0.95;
+}
+#endif

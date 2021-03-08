@@ -375,7 +375,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
     // get info about geometry by the index in pGeometries in BLAS with index "instanceID"
     const int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
-
     const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
 
     const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
@@ -398,7 +397,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
         tr.positions[2] = (inst.model * vec4(tr.positions[2], 1.0)).xyz;
         
-        // dynamic     -- use prev model matrix if exist
+        // dynamic     -- use prev model matrix and prev positions if exist
         const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
 
         if (hasPrevInfo)
@@ -487,6 +486,118 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
     return tr;
 }
+
+mat3 getOnlyPrevPositions(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
+{
+    mat3 prevPositions;
+
+    const int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
+    const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
+
+    const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
+
+    if (isDynamic)
+    {
+        // dynamic     -- use prev model matrix and prev positions if exist
+        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
+
+        if (hasPrevInfo)
+        {
+            const uvec3 prevVertIndices = getPrevVertIndices(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
+
+            const vec4 prevLocalPos[] =
+            {
+                vec4(getPrevDynamicVerticesPositions(prevVertIndices[0]), 1.0),
+                vec4(getPrevDynamicVerticesPositions(prevVertIndices[1]), 1.0),
+                vec4(getPrevDynamicVerticesPositions(prevVertIndices[2]), 1.0)
+            };
+
+            prevPositions[0] = (inst.prevModel * prevLocalPos[0]).xyz;
+            prevPositions[1] = (inst.prevModel * prevLocalPos[1]).xyz;
+            prevPositions[2] = (inst.prevModel * prevLocalPos[2]).xyz;
+        }
+        else
+        {
+            const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+            
+            const vec4 localPos[] =
+            {
+                vec4(getDynamicVerticesPositions(vertIndices[0]), 1.0),
+                vec4(getDynamicVerticesPositions(vertIndices[1]), 1.0),
+                vec4(getDynamicVerticesPositions(vertIndices[2]), 1.0)
+            };
+
+            prevPositions[0] = (inst.model * localPos[0]).xyz;
+            prevPositions[1] = (inst.model * localPos[1]).xyz;
+            prevPositions[2] = (inst.model * localPos[2]).xyz;
+        }
+    }
+    else
+    {
+        const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+        
+        const vec4 localPos[] =
+        {
+            vec4(getStaticVerticesPositions(vertIndices[0]), 1.0),
+            vec4(getStaticVerticesPositions(vertIndices[1]), 1.0),
+            vec4(getStaticVerticesPositions(vertIndices[2]), 1.0),
+        };
+
+        const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
+        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
+
+        // movable     -- use prev model matrix if exist
+        // non-movable -- use current model matrix
+        if (isMovable && hasPrevInfo)
+        {
+            // static geoms' local positions are constant, 
+            // only model matrices are changing
+            prevPositions[0] = (inst.prevModel * localPos[0]).xyz;
+            prevPositions[1] = (inst.prevModel * localPos[1]).xyz;
+            prevPositions[2] = (inst.prevModel * localPos[2]).xyz;
+        }
+        else
+        {
+            prevPositions[0] = (inst.model * localPos[0]).xyz;
+            prevPositions[1] = (inst.model * localPos[1]).xyz;
+            prevPositions[2] = (inst.model * localPos[2]).xyz;
+        }
+    }
+
+    return prevPositions;
+}
+
+/*vec4 packVisibilityBuffer(const ShPayload p)
+{
+    return vec4(uintBitsToFloat(p.instIdAndIndex), uintBitsToFloat(p.geomAndPrimIndex), p.baryCoords);
+}
+
+// v must be fetched from framebufVisibilityBuffer_Prev_Sampler
+bool unpackPrevVisibilityBuffer(const vec4 v, out mat3 prevPositions, out vec2 baryCoords)
+{
+    int prevInstanceId, prevInstCustomIndex;
+    int prevGeomIndex, prevPrimIndex;
+
+    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), prevInstanceId, prevInstCustomIndex);
+    unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), prevGeomIndex, prevPrimIndex);
+
+    // TODO: match prev ids with current ones
+    //       + store previous "globalUniform.instanceGeomInfoOffset"
+    const int instanceID = ;
+    const int instanceCustomIndex = ;
+    const int localGeometryIndex = ;
+    const int primitiveId = prevPrimitiveId;
+
+    if (couldn't match)
+    {
+        return false;
+    }
+
+    prevPositions = getOnlyPrevPositions(prevInstanceId, prevInstCustomIndex, prevGeomIndex, prevPrimIndex);
+    baryCoords = vec3(1.0 - v[2] - v[3], v[2], v[3]);
+
+    return true;
+}*/
 
 mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
 {

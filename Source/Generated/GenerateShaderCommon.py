@@ -489,6 +489,7 @@ FRAMEBUFFERS = {
     "UnfilteredSpecular"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "UnfilteredIndirect"    : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "SurfacePosition"       : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    # "VisibilityBuffer"      : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"         : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Final"                 : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "Motion"                : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
@@ -498,6 +499,9 @@ FRAMEBUFFERS = {
     "ColorHistory"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "PingColorAndVariance"  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "PongColorAndVariance"  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "GradientSamples"       : (TYPE_UINT32,     COMPONENT_RGBA, 0),
+    "PingGradient"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "PongGradient"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }
 
 

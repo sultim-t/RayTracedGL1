@@ -1,0 +1,123 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+// "Gradient Estimation for Real-Time Adaptive Temporal Filtering", C.Schied et al.
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_VERTEX_DATA 2
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
+
+const uint StrataSize = 3;
+
+void main()
+{
+    const ivec2 pix = ivec2(gl_GlobalInvocationID);
+    const ivec2 gradPix = pix / StrataSize;
+
+    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
+    {
+        return;
+    }
+
+    sampler2D prevUnfiltered = framebufUnfilteredDirect_Sampler;
+
+    // (c) was done in primary rays shader
+    // (a) instead of choosing random sample in strata, choose the brightest
+    ivec2 lastStrataPos = ivec2(0);
+    float lastLuminance = 0;
+    bool found = false;
+
+    for (int yy = 0; yy < StrataSize; yy++)
+    {
+        for (int xx = 0; xx < StrataSize; xx++)
+        {
+            const ivec2 prevPix = pix + ivec2(xx, yy);
+
+            const vec3 prevColor = texelFetch(prevUnfiltered, prevPix, 0).rgb;
+            const float prevLuminance = getLuminance(prevColor);
+
+            if (lastLuminance > prevLuminance)
+            {
+                lastStrataPos = ivec(xx, yy);
+                lastLuminance = prevLuminance;
+                found = true;
+            }
+        }
+    }
+
+    if (!found)
+    {
+        imageStore(framebufGradientSamples, gradPix, uvec4(0));
+        return;
+    }
+
+    const ivec2 gradientSamplePrevPix = pix + lastStrataPos;
+
+    // (b) forward-project choosed sample
+    const vec2 motion     = texelFetch(framebufMotion_Sampler,              gradientSamplePrevPix, 0).rg;
+    const vec2 gradientSamplePix = getPrevScreenPos(gradientSamplePrevPix, motion);
+
+    const vec3 depthFB    = texelFetch(framebufDepth_Sampler,               gradientSamplePix,     0).rgb;
+    const float dz        = 1.0 / max(0.01, length(depthFB.gb));
+
+    const float depth     = depthFB.r;
+    const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          gradientSamplePrevPix, 0).r;
+
+    const vec3 normal     = texelFetch(framebufNormalGeometry_Sampler,      gradientSamplePix,     0).rgb;
+    const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, gradientSamplePrevPix, 0).rgb;
+
+    const bool isConsistent = 
+        testInside(xy, screenSize) &&
+        testReprojectedDepth(depth, depthPrev, dz) &&
+        testReprojectedNormal(normal, normalPrev);
+
+    if (!isConsistent)
+    {
+        imageStore(framebufGradientSamples, gradPix, uvec4(0));
+        return;
+    }
+
+    // save position in strata and mark that strata has gradient sample
+    imageStore(framebufGradientSamples, gradPix, uvec4(lastStrataPos, 1, 0));
+    
+    // (d) merge new samples with chosen forward-projected sample 
+    // from previous frame before tracing illumination
+    
+    // seeds
+    uint oldSeed = texelFetch(framebufRandomSeed_Prev_Sampler, gradientSamplePrevPix, 0).r;
+    imageStore(framebufRandomSeed, pix, uvec4(oldSeed));
+    
+    // surface samples
+
+    // TODO: visibility buffer
+    /*const vec4 v = texelFetch(framebufVisibilityBuffer_Prev_Sampler, , 0);
+    vec2 baryCoords;
+    const ShTriangle tr = unpackVisibilityBuffer(gradientSamplePrevPix, baryCoords);*/
+    
+
+    
+
+
+}
