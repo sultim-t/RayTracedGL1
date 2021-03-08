@@ -170,10 +170,6 @@ void main()
     vec3 filteredColor;
     float updatedVariance;
 
-#if COMPUTE_SVGF_ATROUS_ITERATION_COUNT != 4
-    #error Atrous is implemented for 4 iterations 
-#endif
-
     switch (atrousIteration)
     {
         case 0: atrous(framebufPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
@@ -211,5 +207,9 @@ void main()
 
         imageStore(framebufFinal, pix, vec4(color, 0));
     }
-    
 }
+
+
+#if COMPUTE_SVGF_ATROUS_ITERATION_COUNT != 4
+    #error Atrous is implemented for 4 iterations 
+#endif

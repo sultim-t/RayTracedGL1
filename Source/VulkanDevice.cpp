@@ -305,7 +305,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
 
     if (sceneNotEmpty)
     {
-        denoiser->ConstructGradientSamples(cmd, frameIndex, uniform, scene->GetASManager());
+        denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
         pathTracer->Trace(
             cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,

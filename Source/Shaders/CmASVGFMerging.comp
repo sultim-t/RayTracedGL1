@@ -32,7 +32,6 @@ layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GRO
 void main()
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
-
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
     if (gradPix.x * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.x || gradPix.y * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.y)

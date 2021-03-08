@@ -54,6 +54,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CSVGFTemporalAccum",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFTemporalAccumulation.comp.spv"  },
     {"CSVGFVarianceEstim",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFEstimateVariance.comp.spv"      },
     {"CSVGFAtrous",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFAtrous.comp.spv"                },
+    {"CASVGFMerging",           "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFMerging.comp.spv"              },
     {"CASVGFGradientSamples",   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFGradientSamples.comp.spv"      },
     {"CASVGFGradientAtrous",    "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFGradientAtrous.comp.spv",      },
 };

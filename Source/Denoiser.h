@@ -44,7 +44,7 @@ public:
     Denoiser & operator=(const Denoiser &other) = delete;
     Denoiser & operator=(Denoiser &&other) noexcept = delete;
 
-    void ConstructGradientSamples(
+    void MergeSamples(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<const ASManager> &asManager);
@@ -54,7 +54,7 @@ public:
         const std::shared_ptr<const GlobalUniform> &uniform);
 
 private:
-    void CreateGradientSamplesPipeline(
+    void CreateMergingPipeline(
         VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
         const std::shared_ptr<const ShaderManager> &shaderManager);
 
@@ -70,6 +70,7 @@ private:
     VkPipelineLayout pipelineLayout;
     VkPipelineLayout pipelineVerticesLayout;
 
+    VkPipeline merging;
     VkPipeline gradientSamples;
     VkPipeline gradientAtrous[4];
 
