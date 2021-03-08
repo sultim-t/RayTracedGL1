@@ -1,0 +1,118 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+// "Gradient Estimation for Real-Time Adaptive Temporal Filtering", C.Schied et al.
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
+
+layout (constant_id = 0) const uint atrousIteration = 0;
+
+const int StepSize = 1 << atrousIteration;
+
+// Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
+// samplerGradient[0] -- temporal gradient (eq. 2)
+// samplerGradient[1] -- normalization factor (eq. 13)
+// samplerGradient[2] -- need to store prevShadingSampleLuminance
+void atrous(sampler2D samplerGradient, out vec3 outGradient)
+{
+    const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
+    const ivec2 gradSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight) / COMPUTE_ASVGF_STRATA_SIZE;
+
+    /*if (depth > MAX_RAY_LENGTH)
+    {
+        return;
+    }*/
+    
+    outGradient = texelFetch(samplerGradient, gradPix, 0).rgb;
+
+    vec2 sum = outGradient.rg;
+    float weightSum = 1.0;
+
+    const int FilterSize = 1;
+    const float waveletKernel[2][2] = 
+    {
+        { 1.0, 0.5  },
+        { 0.5, 0.25 }
+    };
+
+    for (int yy = -FilterSize; yy <= FilterSize; yy++)
+    {
+        for (int xx = -FilterSize; xx <= FilterSize; xx++)
+        {
+            if (xx == 0 && yy == 0)
+            {
+                continue;
+            }
+
+            const ivec2 offset = ivec2(xx * StepSize, yy * StepSize);
+            const ivec2 gradPix_q = gradPix + offset;
+
+            const vec2 grad_q = texelFetch(samplerGradient, gradPix_q, 0).rg;
+
+            const float w = waveletKernel[abs(xx)][abs(yy)] *
+                            float(testInside(gradPix_q, gradSize));
+
+            sum += grad_q * w;
+            weightSum += w;
+        }
+    }
+
+    outGradient.rg = sum / weightSum;
+}
+
+void main()
+{
+    const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
+    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+
+    if (gradPix.x * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.x || gradPix.y * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.y)
+    {
+        return;
+    }
+
+    vec3 filtered;
+
+    switch (atrousIteration)
+    {
+         case 0: atrous(framebufPingGradient_Sampler, filtered); break;
+         case 1: atrous(framebufPongGradient_Sampler, filtered); break;
+         case 2: atrous(framebufPingGradient_Sampler, filtered); break;
+         case 3: atrous(framebufPongGradient_Sampler, filtered); break;
+    }
+    
+    switch (atrousIteration)
+    {
+         case 0: imageStore(framebufPongGradient, gradPix, vec4(filtered, 0.0)); break;
+         case 1: imageStore(framebufPingGradient, gradPix, vec4(filtered, 0.0)); break;
+         case 2: imageStore(framebufPongGradient, gradPix, vec4(filtered, 0.0)); break;
+         case 3: imageStore(framebufPingGradient, gradPix, vec4(filtered, 0.0)); break;
+    }
+}
+
+
+#if COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT != 4
+    #error Gradient atrous is implemented for 4 iterations 
+#endif

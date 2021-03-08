@@ -1,0 +1,65 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+// "Gradient Estimation for Real-Time Adaptive Temporal Filtering", C.Schied et al.
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
+
+void main()
+{
+    const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
+    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+
+    if (gradPix.x * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.x || gradPix.y * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.y)
+    {
+        return;
+    }
+
+    // surface samples were shaded, prepare gradient samples
+    const uvec3 grFB = texelFetch(framebufGradientSamples_Sampler, gradPix, 0).rgb;
+    const bool hasSample = grFB.z != 0;
+
+    if (!hasSample)
+    {
+        imageStore(framebufPingGradient, gradPix, vec4(0.0));
+        return;
+    }
+
+    // (e) get luminance of shading sample from previous frame
+    const float prevShadingSampleLuminance = imageLoad(framebufPingGradient, gradPix).b;
+
+    // (f) get shading sample from current frame
+    const ivec2 posInStrata = ivec2(grFB.x, grFB.y);
+    const ivec2 shadingSamplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + posInStrata;
+
+    const vec3 color = texelFetch(framebufUnfilteredDirect_Sampler, shadingSamplePix, 0).rgb;
+    const float shadingSampleLuminance = getLuminance(color);
+
+    const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
+    const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminance);
+
+    imageStore(framebufPingGradient, gradPix, vec4(gradSample, normFactor, shadingSampleLuminance, 0.0));
+}
