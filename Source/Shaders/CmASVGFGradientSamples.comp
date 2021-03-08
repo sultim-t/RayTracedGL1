@@ -29,15 +29,13 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
-const int StrataSize = 3;
-
 void main()
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
 
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
-    if (gradPix.x * StrataSize >= screenSize.x || gradPix.y * StrataSize >= screenSize.y)
+    if (gradPix.x * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.x || gradPix.y * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.y)
     {
         return;
     }
@@ -49,11 +47,11 @@ void main()
     bool found = false;
 
     // for each pixel in strata
-    for (int yy = 0; yy < StrataSize; yy++)
+    for (int yy = 0; yy < COMPUTE_ASVGF_STRATA_SIZE; yy++)
     {
-        for (int xx = 0; xx < StrataSize; xx++)
+        for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
         {
-            const ivec2 prevPix = gradPix * StrataSize + ivec2(xx, yy);
+            const ivec2 prevPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
 
             const vec3 prevColor = texelFetch(framebufUnfilteredDirect_Sampler, prevPix, 0).rgb;
             const float prevLuminance = getLuminance(prevColor);
@@ -73,7 +71,7 @@ void main()
         return;
     }
 
-    const ivec2 samplePrevPix = gradPix * StrataSize + lastStrataPos;
+    const ivec2 samplePrevPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
 
     // (b) forward-project choosen sample
     const vec2 motion     = texelFetch(framebufMotion_Sampler,              samplePrevPix, 0).rg;

@@ -23,6 +23,7 @@
 #include "ShaderManager.h"
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
+#include "ASManager.h"
 
 namespace RTGL1
 {
@@ -34,7 +35,8 @@ public:
         VkDevice device,
         std::shared_ptr<Framebuffers> framebuffers,
         const std::shared_ptr<const ShaderManager> &shaderManager,
-        const std::shared_ptr<const GlobalUniform> &uniform);
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const ASManager> &asManager);
     ~Denoiser();
 
     Denoiser(const Denoiser &other) = delete;
@@ -42,11 +44,20 @@ public:
     Denoiser & operator=(const Denoiser &other) = delete;
     Denoiser & operator=(Denoiser &&other) noexcept = delete;
 
+    void ConstructGradientSamples(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const ASManager> &asManager);
+
     void Denoise(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
 
 private:
+    void CreateGradientSamplesPipeline(
+        VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
+        const std::shared_ptr<const ShaderManager> &shaderManager);
+
     void CreatePipelines(
         VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
         const std::shared_ptr<const ShaderManager> &shaderManager);
@@ -57,6 +68,11 @@ private:
     std::shared_ptr<Framebuffers> framebuffers;
 
     VkPipelineLayout pipelineLayout;
+    VkPipelineLayout pipelineVerticesLayout;
+
+    VkPipeline gradientSamples;
+    VkPipeline gradientAtrous[4];
+
     VkPipeline temporalAccumulation;
     VkPipeline varianceEstimation;
     VkPipeline atrous[4];

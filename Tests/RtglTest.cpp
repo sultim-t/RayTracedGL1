@@ -359,7 +359,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
-    bool        toMove      = false;
+    bool        toMove      = true;
     RgMaterial  material    = RG_NO_MATERIAL;
 
     std::vector<RgCubemap> skyboxes(cubemapNames.size());
@@ -507,8 +507,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         frameCount++;
     }
-
-    rgDestroyMaterial(instance, material);
 }
 
 int main()

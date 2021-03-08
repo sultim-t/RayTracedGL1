@@ -163,7 +163,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device,
         framebuffers,
         shaderManager,
-        uniform);
+        uniform,
+        scene->GetASManager());
 
 
     swapchain->Subscribe(framebuffers);
@@ -304,6 +305,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
 
     if (sceneNotEmpty)
     {
+        denoiser->ConstructGradientSamples(cmd, frameIndex, uniform, scene->GetASManager());
+
         pathTracer->Trace(
             cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
             scene, uniform, textureManager, framebuffers, blueNoise, cubemapManager);

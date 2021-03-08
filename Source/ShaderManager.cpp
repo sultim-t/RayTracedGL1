@@ -27,33 +27,35 @@ using namespace RTGL1;
 
 struct ShaderModuleDefinition
 {
-    const char *name;
-    const char *path;
-    VkShaderStageFlagBits stage;
+    const char *name = nullptr;
+    const char *path = nullptr;
+    VkShaderStageFlagBits stage = VK_SHADER_STAGE_ALL;
 };
 
 // TODO: move this to separate file
 // Note: set shader stage to VK_SHADER_STAGE_ALL, to identify stage by the file extension
 static ShaderModuleDefinition G_SHADERS[] =
 {
-    {"RGenPrimary",         "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenPrimary.rgen.spv"     , VK_SHADER_STAGE_ALL },
-    {"RGenDirect",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenDirect.rgen.spv"      , VK_SHADER_STAGE_ALL },
-    {"RGenIndirect",        "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenIndirect.rgen.spv"    , VK_SHADER_STAGE_ALL },
-    {"RMiss",               "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMiss.rmiss.spv"             , VK_SHADER_STAGE_ALL },
-    {"RMissShadow",         "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMissShadowCheck.rmiss.spv"  , VK_SHADER_STAGE_ALL },
-    {"RClsOpaque",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtClsOpaque.rchit.spv"        , VK_SHADER_STAGE_ALL },
-    {"RAlphaTest",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtAlphaTest.rahit.spv"        , VK_SHADER_STAGE_ALL },
-    {"RBlendAdditive",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendAdditive.rahit.spv"    , VK_SHADER_STAGE_ALL },
-    {"RBlendUnder",         "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendUnder.rahit.spv"       , VK_SHADER_STAGE_ALL },
-    {"CComposition",        "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmComposition.comp.spv"       , VK_SHADER_STAGE_ALL },
-    {"CLuminanceHistogram", "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceHistogram.comp.spv", VK_SHADER_STAGE_ALL },
-    {"CLuminanceAvg",       "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceAvg.comp.spv"      , VK_SHADER_STAGE_ALL },
-    {"RasterizerVert",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"          , VK_SHADER_STAGE_ALL },
-    {"RasterizerFrag",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"          , VK_SHADER_STAGE_ALL },
-    {"CVertexPreprocess",   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmVertexPreprocess.comp.spv"  , VK_SHADER_STAGE_ALL },
-    {"CSVGFTemporalAccum",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFTemporalAccumulation.comp.spv", VK_SHADER_STAGE_ALL },
-    {"CSVGFVarianceEstim",  "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFEstimateVariance.comp.spv",     VK_SHADER_STAGE_ALL },
-    {"CSVGFAtrous",         "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFAtrous.comp.spv",               VK_SHADER_STAGE_ALL },
+    {"RGenPrimary",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenPrimary.rgen.spv"             },
+    {"RGenDirect",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenDirect.rgen.spv"              },
+    {"RGenIndirect",            "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenIndirect.rgen.spv"            },
+    {"RMiss",                   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMiss.rmiss.spv"                     },
+    {"RMissShadow",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMissShadowCheck.rmiss.spv"          },
+    {"RClsOpaque",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtClsOpaque.rchit.spv"                },
+    {"RAlphaTest",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtAlphaTest.rahit.spv"                },
+    {"RBlendAdditive",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendAdditive.rahit.spv"            },
+    {"RBlendUnder",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendUnder.rahit.spv"               },
+    {"CComposition",            "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmComposition.comp.spv"               },
+    {"CLuminanceHistogram",     "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceHistogram.comp.spv"        },
+    {"CLuminanceAvg",           "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceAvg.comp.spv"              },
+    {"RasterizerVert",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"                  },
+    {"RasterizerFrag",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"                  },
+    {"CVertexPreprocess",       "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmVertexPreprocess.comp.spv"          },
+    {"CSVGFTemporalAccum",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFTemporalAccumulation.comp.spv"  },
+    {"CSVGFVarianceEstim",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFEstimateVariance.comp.spv"      },
+    {"CSVGFAtrous",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFAtrous.comp.spv"                },
+    {"CASVGFGradientSamples",   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFGradientSamples.comp.spv"      },
+    {"CASVGFGradientAtrous",    "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFGradientAtrous.comp.spv",      },
 };
 
 
@@ -78,6 +80,9 @@ void ShaderManager::LoadShaderModules()
 {
     for (auto &s : G_SHADERS)
     {
+        assert(s.path != nullptr);
+        assert(s.name != nullptr);
+
         if (s.stage == VK_SHADER_STAGE_ALL)
         {
             // parse stage if needed, it's done only once, as paths won't be changing
