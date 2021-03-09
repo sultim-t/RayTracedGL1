@@ -35,7 +35,6 @@ const int StepSize = 1 << atrousIteration;
 // Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
 // samplerGradient[0] -- temporal gradient (eq. 2)
 // samplerGradient[1] -- normalization factor (eq. 13)
-// samplerGradient[2] -- need to store prevShadingSampleLuminance
 void atrous(sampler2D samplerGradient, out vec3 outGradient)
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);

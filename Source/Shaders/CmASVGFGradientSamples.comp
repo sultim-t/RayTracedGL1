@@ -39,7 +39,7 @@ void main()
     }
 
     // surface samples were shaded, prepare gradient samples
-    const uvec3 grFB = texelFetch(framebufGradientSamples_Sampler, gradPix, 0).rgb;
+    const uvec4 grFB = texelFetch(framebufGradientSamples_Sampler, gradPix, 0);
     const bool hasSample = grFB.z != 0;
 
     if (!hasSample)
@@ -49,7 +49,7 @@ void main()
     }
 
     // (e) get luminance of shading sample from previous frame
-    const float prevShadingSampleLuminance = imageLoad(framebufPingGradient, gradPix).b;
+    const float prevShadingSampleLuminance = uintBitsToFloat(grFB.a);
 
     // (f) get shading sample from current frame
     const ivec2 posInStrata = ivec2(grFB.x, grFB.y);
@@ -61,5 +61,5 @@ void main()
     const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
     const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminance);
 
-    imageStore(framebufPingGradient, gradPix, vec4(gradSample, normFactor, shadingSampleLuminance, 0.0));
+    imageStore(framebufPingGradient, gradPix, vec4(abs(gradSample), normFactor, 0.0, 0.0));
 }

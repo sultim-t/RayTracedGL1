@@ -130,41 +130,31 @@ void main()
         colorPrev     *= invWeightSum;
         momentsPrev   *= invWeightSum;
         historyLength *= invWeightSum;
+
+        const vec2 gradGB = texelFetch(framebufPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).rg;
         
-        float antilagAlpha = 0.0;
-        const int AlphaFilterSize = 1;
-        for (int yy = -AlphaFilterSize; yy <= AlphaFilterSize; yy++)
-        {
-            for (int xx = -AlphaFilterSize; xx <= AlphaFilterSize; xx++)
-            {
-                const vec2 gradGB = texelFetch(framebufPingGradient_Sampler, 
-                                               pix / COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy), 0).rg;
-                
-                const float gradSample = gradGB.r;
-                const float normFactor = gradGB.g;
+        const float gradSample = gradGB.r;
+        const float normFactor = gradGB.g;
 
-                const float lambda = normFactor > 0.0001 ? 
-                    clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
-                    0.0;
+        const float lambda = normFactor > 0.0001 ? 
+            clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
+            0.0;
 
-                antilagAlpha = max(antilagAlpha, lambda);
-            }
-        }
+        const float antilagAlpha = clamp(lambda, 0.0, 1.0);
 
-        antilagAlpha = clamp(antilagAlpha, 0.0, 1.0);
+        historyLength *= pow(1.0 - antilagAlpha, 10);
+        historyLength = clamp(historyLength + 1.0, 1.0, 256.0);
 
         const float minAlpha = 0.01;
-        const float minAlphaMoments = 0.01;
-
-        float alphaColor   = max(minAlpha,        1.0 / (historyLength + 1.0));
-        float alphaMoments = max(minAlphaMoments, 1.0 / (historyLength + 1.0));
+        float alphaColor   = max(minAlpha, 1.0 / historyLength);
+        float alphaMoments = max(minAlpha, 1.0 / historyLength);
 
         alphaColor   = mix(alphaColor,   1.0, antilagAlpha);
         alphaMoments = mix(alphaMoments, 1.0, antilagAlpha);
 
-        colorAccum = mix(colorPrev, color, alphaColor);
+        colorAccum   = mix(colorPrev, color, alphaColor);
         momentsAccum = mix(momentsPrev, moments, alphaMoments);
-        historyLengthAccum = min(64, historyLength + 1.0);
+        historyLengthAccum = historyLength;
     }
     else
     {

@@ -291,6 +291,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
     }
 
     gu->skyCubemapIndex = cubemapManager->IsCubemapValid(frameInfo.skyCubemap) ? frameInfo.skyCubemap : RG_EMPTY_CUBEMAP;
+
+    gu->dbgShowGradients = !!frameInfo.dbgShowGradients;
+    gu->dbgShowMotionVectors = !!frameInfo.dbgShowMotionVectors;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)

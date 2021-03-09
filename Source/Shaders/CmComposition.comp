@@ -45,5 +45,21 @@ void main()
     
     color = color * lOut / lIn;
 
+    if (globalUniform.dbgShowGradients != 0)
+    {
+        const vec2 gradGB = texelFetch(framebufPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).rg;
+        const float gradSample = gradGB.r;
+        const float normFactor = gradGB.g;
+        const float lambda = clamp(abs(gradSample) / normFactor, 0.0, 1.0);
+        color.rgb = vec3(lambda);
+    }
+
+    if (globalUniform.dbgShowMotionVectors != 0)
+    {
+        const vec2 m = texelFetch(framebufMotion_Sampler, pix, 0).rg;
+        color.rg = m;
+        color.b = 0;
+    }
+        
     imageStore(framebufFinal, pix, vec4(pow(color, vec3(1 / 2.2)), 0));
 }

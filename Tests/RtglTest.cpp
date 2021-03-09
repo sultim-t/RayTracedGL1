@@ -98,6 +98,8 @@ static float METALLICITY        = 0.5f;
 static float SUN_INTENSITY      = 1.0f;
 static float SKY_INTENSITY      = 1.0f;
 static uint32_t SKYBOX_CURRENT  = 0;
+static bool TO_MOVE             = false;
+static bool SHOW_GRAD           = false;
 
 static void ProcessInput(GLFWwindow *window)
 {
@@ -162,6 +164,18 @@ static void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS)
     {
         SKYBOX_CURRENT = ((uint64_t)SKYBOX_CURRENT + 1) % cubemapNames.size();
+        lastTimePressed = now;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
+    {
+        TO_MOVE = !TO_MOVE;
+        lastTimePressed = now;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
+    {
+        SHOW_GRAD = !SHOW_GRAD;
         lastTimePressed = now;
     }
 }
@@ -359,7 +373,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
-    bool        toMove      = true;
     RgMaterial  material    = RG_NO_MATERIAL;
 
     std::vector<RgCubemap> skyboxes(cubemapNames.size());
@@ -431,7 +444,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RgUpdateTransformInfo updateInfo = {};
         updateInfo.movableStaticUniqueID = 1;
         updateInfo.transform = {
-            0.3f, 0, 0, toMove ? 5.0f - 0.05f * (frameCount % 200) : -2.5f,
+            0.3f, 0, 0, TO_MOVE ? 5.0f - 0.05f * (frameCount % 200) : -2.5f,
             0, 4, 0, 4,
             0, 0, 0.3f, 0
         };
@@ -453,7 +466,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         dnInfo.defaultRoughness = ROUGHNESS;
 
         dnInfo.transform = {
-            0.3f, 0, 0, toMove ? 5.0f - 0.05f * ((frameCount + 30) % 200) : 0,
+            0.3f, 0, 0, TO_MOVE ? 5.0f - 0.05f * ((frameCount + 30) % 200) : 0,
             0, 4, 0, 0,
             0, 0, 0.3f, 0
         };
@@ -461,7 +474,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         rgUploadGeometry(instance, &dnInfo);
 
         dnInfo.transform = {
-            0.3f, 0, 0, toMove ? 5.0f - 0.05f * ((frameCount + 60) % 200) : 2.5f,
+            0.3f, 0, 0, TO_MOVE ? 5.0f - 0.05f * ((frameCount + 60) % 200) : 2.5f,
             0, 4, 0, 0,
             0, 0, 0.3f, 0
         };
@@ -501,6 +514,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         frameInfo.skyCubemap = skyboxes[SKYBOX_CURRENT];
         frameInfo.skyColorMultiplier = SKY_INTENSITY;
         frameInfo.skyViewerPosition = { CAMERA_POS.x / 50, CAMERA_POS.y / 50, CAMERA_POS.z / 50 };
+
+        frameInfo.dbgShowGradients = SHOW_GRAD;
 
         r = rgDrawFrame(instance, &frameInfo);
         RG_CHECKERROR(r);

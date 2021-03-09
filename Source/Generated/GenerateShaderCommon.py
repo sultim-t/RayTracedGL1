@@ -370,6 +370,11 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "cameraPosition",               1),
 
+    (TYPE_UINT32,       1,       "dbgShowMotionVectors",        1),
+    (TYPE_UINT32,       1,       "dbgShowGradients",            1),
+    (TYPE_FLOAT32,      1,       "_pad2",                       1),
+    (TYPE_FLOAT32,      1,       "_pad3",                       1),
+
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
     #(TYPE_FLOAT32,      1,      "_pad2",                        1),
@@ -506,7 +511,7 @@ FRAMEBUFFERS = {
     "ColorHistory"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "PingColorAndVariance"  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "PongColorAndVariance"  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "GradientSamples"       : (TYPE_UINT32,     COMPONENT_RGBA, 0),
+    "GradientSamples"       : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "PingGradient"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "PongGradient"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 }

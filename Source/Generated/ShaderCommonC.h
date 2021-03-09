@@ -136,6 +136,10 @@ struct ShGlobalUniform
     float skyColorDefault[4];
     float skyViewerPosition[4];
     float cameraPosition[4];
+    uint32_t dbgShowMotionVectors;
+    uint32_t dbgShowGradients;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[72];
     int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];

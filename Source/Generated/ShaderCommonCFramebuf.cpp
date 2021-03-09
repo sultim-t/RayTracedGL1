@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 32;
+const uint32_t RTGL1::ShFramebuffers_Count = 33;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -36,12 +36,14 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_UINT,
+    VK_FORMAT_R32G32B32A32_UINT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
 };
 
 const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = 
 {
+    0,
     0,
     0,
     0,
@@ -110,6 +112,7 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     29,
     30,
     31,
+    32,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -143,14 +146,14 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     26,
     27,
     28,
-    29,
     30,
+    29,
     31,
+    32,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
-    32,
     33,
     34,
     35,
@@ -182,42 +185,45 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     61,
     62,
     63,
+    64,
+    65,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
-    32,
-    34,
     33,
-    36,
     35,
-    38,
+    34,
     37,
-    40,
+    36,
     39,
-    42,
+    38,
     41,
+    40,
     43,
+    42,
     44,
     45,
     46,
-    48,
     47,
     49,
+    48,
     50,
     51,
-    53,
     52,
-    55,
     54,
-    57,
+    53,
     56,
+    55,
     58,
+    57,
     59,
     60,
     61,
-    62,
     63,
+    62,
+    64,
+    65,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -252,6 +258,7 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf PingColorAndVariance",
     "Framebuf PongColorAndVariance",
     "Framebuf GradientSamples",
+    "Framebuf GradientSamples_Prev",
     "Framebuf PingGradient",
     "Framebuf PongGradient",
 };

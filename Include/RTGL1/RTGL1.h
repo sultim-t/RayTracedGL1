@@ -615,6 +615,8 @@ typedef struct RgDrawFrameInfo
     RgFloat3D           skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
     RgCubemap           skyCubemap;
+    RgBool32            dbgShowMotionVectors;
+    RgBool32            dbgShowGradients;
     
 } RgDrawFrameInfo;
 
