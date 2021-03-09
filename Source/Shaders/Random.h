@@ -23,7 +23,10 @@
 
 #define RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX 1
 #define RANDOM_SALT_DIRECTIONAL_LIGHT_DISK 2
-#define RANDOM_SALT_BOUNCE(bounceIndex) (RANDOM_SALT_DIRECTIONAL_LIGHT_DISK + bounceIndex)
+#define RANDOM_SALT_SPHERICAL_LIGHT_INDEX 3
+#define RANDOM_SALT_SPHERICAL_LIGHT_DISK 4
+#define RANDOM_BOUNCE_BASE_INDEX 8
+#define RANDOM_SALT_BOUNCE(bounceIndex) (RANDOM_BOUNCE_BASE_INDEX + bounceIndex)
 
 
 // Sample disk uniformly
@@ -31,8 +34,8 @@
 vec2 sampleDisk(float radius, float u1, float u2)
 {
     // polar mapping
-    float r = radius * sqrt(u1);
-    float phi = 2 * M_PI * u2;
+    const float r = radius * sqrt(u1);
+    const float phi = 2 * M_PI * u2;
     
     return vec2(
         r * cos(phi), 
@@ -46,8 +49,8 @@ vec2 sampleDisk(float radius, float u1, float u2)
 // u1, u2 -- uniform random numbers
 vec3 sampleHemisphere(float u1, float u2)
 {
-    float r = sqrt(u1);
-    float phi = 2 * M_PI * u2;
+    const float r = sqrt(u1);
+    const float phi = 2 * M_PI * u2;
 
     return vec3( 
         r * cos(phi),
@@ -56,6 +59,29 @@ vec3 sampleHemisphere(float u1, float u2)
     );
 
     // pdf = z / M_PI;
+}
+
+// Sample a surface point on a unit sphere with given radius
+// u1, u2 -- uniform random numbers
+// "Ray Tracing Gems", Chapter 16: Sampling Transformations Zoo,
+// Octathedral concentric uniform map
+vec3 sampleSphere(float u1, float u2)
+{
+    u1 = 2 * u1 - 1;
+    u2 = 2 * u2 - 1;
+
+    const float d = 1 - (abs(u1) + abs(u2));
+    const float r = 1 - abs(d);
+
+    const float phi = r == 0 ? 0 : M_PI / 4 * ((abs(u2) - abs(u1)) / r + 1);
+    const float f = r * sqrt(2 - r * r);
+
+    return vec3(
+        f * sign(u1) * cos(phi),
+        f * sign(u2) * sin(phi),
+        sign(d) * (1 - r * r));
+
+    // pdf = 1 / (4 * M_PI)
 }
 
 // "Building an Orthonormal Basis, Revisited"

@@ -204,8 +204,8 @@ vec3 getSky(vec3 direction)
 #endif
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
-// lightDirection is pointed to the light
-bool traceShadowRay(uint primaryInstCustomIndex, vec3 origin, vec3 lightDirection)
+// l is pointed to the light
+bool traceShadowRay(uint primaryInstCustomIndex, vec3 o, vec3 l, float maxDistance)
 {
     // prepare shadow payload
     payloadShadow.isShadowed = 1;  
@@ -218,10 +218,15 @@ bool traceShadowRay(uint primaryInstCustomIndex, vec3 origin, vec3 lightDirectio
         cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
-        origin, 0.001, lightDirection, 10000.0, 
+        o, 0.001, l, maxDistance, 
         PAYLOAD_INDEX_SHADOW);
 
     return payloadShadow.isShadowed == 1;
+}
+
+bool traceShadowRay(uint primaryInstCustomIndex, vec3 o, vec3 l)
+{
+    return traceShadowRay(primaryInstCustomIndex, o, l, MAX_RAY_LENGTH);
 }
 
 // viewDirection -- is direction to viewer
@@ -232,7 +237,7 @@ void processDirectionalLight(
     float surfRoughness, vec3 viewDirection, 
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    uint dirLightCount = globalUniform.lightSourceCountDirectional;
+    const uint dirLightCount = globalUniform.lightSourceCountDirectional;
 
     if (dirLightCount == 0)
     {
@@ -241,24 +246,21 @@ void processDirectionalLight(
         return;
     }
 
-    float d = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
-    uint dirLightIndex = clamp(uint(d * dirLightCount), 0, dirLightCount - 1);
+    const float randomIndex = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
+    const uint dirLightIndex = clamp(uint(randomIndex * dirLightCount), 0, dirLightCount - 1);
 
-    float oneOverPdf = dirLightCount;
+    const float oneOverPdf = dirLightCount;
 
-    ShLightDirectional dirLight = lightSourcesDirecitional[dirLightIndex];
+    const ShLightDirectional dirLight = lightSourcesDirecitional[dirLightIndex];
 
-    vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
-    vec2 disk = sampleDisk(dirLight.tanAngularRadius, u[0], u[1]);
+    const vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
+    const vec2 disk = sampleDisk(dirLight.tanAngularRadius, u[0], u[1]);
 
-    vec3 dir;
-    {
-        mat3 basis = getONB(dirLight.direction);
-        dir = normalize(dirLight.direction + basis[0] * disk.x + basis[1] * disk.y);
-    }
+    const mat3 basis = getONB(dirLight.direction);
+    const vec3 dir = normalize(dirLight.direction + basis[0] * disk.x + basis[1] * disk.y);
 
-    float nl = dot(surfNormal, dir);
-    float ngl = dot(surfNormalGeom,dir);
+    const float nl = dot(surfNormal, dir);
+    const float ngl = dot(surfNormalGeom, dir);
 
     if (nl <= 0 || ngl <= 0)
     {
@@ -267,7 +269,7 @@ void processDirectionalLight(
         return;
     }
 
-    bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition, dir);
+    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition, dir);
 
     if (isShadowed)
     {
@@ -283,6 +285,62 @@ void processDirectionalLight(
     outSpecular *= oneOverPdf;
 }
 
+void processSphericalLight(
+    uint seed, uint primaryInstCustomIndex,
+    vec3 surfPosition, 
+    vec3 surfNormal, vec3 surfNormalGeom,
+    float surfRoughness, vec3 viewDirection, 
+    out vec3 outDiffuse, out vec3 outSpecular)
+{
+    const uint sphLightCount = globalUniform.lightSourceCountSpherical;
+
+    if (sphLightCount == 0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    const float randomIndex = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
+    const uint sphLightIndex = clamp(uint(randomIndex * sphLightCount), 0, sphLightCount - 1);
+    
+    const float oneOverPdf = sphLightCount;
+
+    const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
+
+    const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
+
+    const vec3 posOnSphere = sphLight.position + sampleSphere(u[0], u[1]) * sphLight.radius;
+    vec3 dir = posOnSphere - surfPosition;
+    float distance = max(length(dir), 0.0001);
+    dir = dir / distance;
+
+    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition, dir, distance);
+
+    if (isShadowed)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    const float r = max(sphLight.radius, 0.1);
+    
+    const vec3 l = sphLight.position - surfPosition;
+    const float d = max(length(l), r);
+    
+    const vec3 c = pow(max(0, 1 - pow(r / d, 2)), 2) * sphLight.color;
+
+    const vec3 irradiance = M_PI * c * max(dot(surfNormal, l / d), 0.0);
+    const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
+
+    outDiffuse = radiance;
+    outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
+
+    outDiffuse *= oneOverPdf;
+    outSpecular *= oneOverPdf;
+}
+
 // viewDirection -- is direction to viewer
 void processDirectIllumination(
     ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
@@ -292,6 +350,13 @@ void processDirectIllumination(
 {
     uint seed = getCurrentRandomSeed(pix);
 
-    processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, outDiffuse, outSpecular);
+    vec3 dirDiff, dirSpec;
+    processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, dirDiff, dirSpec);
+    
+    vec3 sphDiff, sphSpec;
+    processSphericalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, sphDiff, sphSpec);
+    
+    outDiffuse = dirDiff + sphDiff;
+    outSpecular = dirSpec + sphSpec;
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
