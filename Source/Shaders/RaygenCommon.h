@@ -248,8 +248,8 @@ void processDirectionalLight(
         return;
     }
 
-    const float randomIndex = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
-    const uint dirLightIndex = clamp(uint(randomIndex * dirLightCount), 0, dirLightCount - 1);
+    const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
+    const uint dirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);
 
     const float oneOverPdf = dirLightCount;
 
@@ -303,42 +303,53 @@ void processSphericalLight(
         return;
     }
 
-    const float randomIndex = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
-    const uint sphLightIndex = clamp(uint(randomIndex * sphLightCount), 0, sphLightCount - 1);
+    const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
+    const uint sphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
     
     const float oneOverPdf = sphLightCount;
 
     const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
-
     const vec3 posOnSphere = sphLight.position + sampleSphere(u[0], u[1]) * sphLight.radius;
+
     vec3 dir = posOnSphere - surfPosition;
-    float distance = max(length(dir), 0.0001);
-    dir = dir / distance;
+    const float distance = length(dir);
 
-    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + viewDirection * SHADOW_RAY_EPS, dir, distance);
-
-    if (isShadowed)
+    if (distance > sphLight.radius)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
-        return;
+        dir = dir / distance;
+
+        const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + viewDirection * SHADOW_RAY_EPS, dir, distance);
+
+        if (isShadowed)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+
+        vec3 dirToCenter = sphLight.position - surfPosition;
+
+        const float r = sphLight.radius;
+        const float z = sphLight.falloff;
+        const float d = max(length(dirToCenter), 0.0001);
+        dirToCenter /= d;
+        
+        const float i = pow(clamp((z - d) / max(z - r, 1), 0, 1), 3);
+        const vec3 c = i * sphLight.color;
+
+        const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
+        const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
+
+        outDiffuse = radiance;
+        outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
     }
-
-    const float r = max(sphLight.radius, 0.1);
-    vec3 dirToCenter = sphLight.position - surfPosition;
-
-    const float d = max(length(dirToCenter), 0.0001);
-    dirToCenter /= d;
-    
-    const vec3 c = min(1, r * r / (d * d)) * sphLight.color;
-
-    const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
-    const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
-
-    outDiffuse = radiance;
-    outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
+    else
+    {
+        outDiffuse = sphLight.color;
+        outSpecular = sphLight.color;
+    }
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;

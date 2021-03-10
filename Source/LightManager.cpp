@@ -80,7 +80,8 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
     ShLightSpherical light = {};
     memcpy(light.color, info.color.data, sizeof(float) * 3);
     memcpy(light.position, info.position.data, sizeof(float) * 3);
-    light.radius = info.radius;
+    light.radius = std::max(0.0f, info.radius);
+    light.falloff = std::max(light.radius, std::max(0.0f, info.falloffDistance));
 
     if (sphericalLightCount + 1 >= maxSphericalLightCount)
     {
@@ -120,7 +121,7 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
     light.direction[0] = -info.direction.data[0];
     light.direction[1] = -info.direction.data[1];
     light.direction[2] = -info.direction.data[2];
-    light.tanAngularRadius = tanf((info.angularDiameterDegrees * 0.5) * RG_PI / 180.0);
+    light.tanAngularRadius = tanf(std::max(0.0, info.angularDiameterDegrees * 0.5) * RG_PI / 180.0);
 
     if (directionalLightCount + 1 >= maxDirectionalLightCount)
     {

@@ -367,7 +367,10 @@ typedef struct RgSphericalLightUploadInfo
     RgLightType     type;
     RgFloat3D       color;
     RgFloat3D       position;
+    // Sphere radius
     float           radius;
+    // There will be no light after this distance
+    float           falloffDistance;
 } RgSphericalLightUploadInfo;
 
 RgResult rgUploadDirectionalLight(

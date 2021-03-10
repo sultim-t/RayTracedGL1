@@ -92,10 +92,12 @@ static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, -8);
 static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
 static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
+static glm::vec3 LIGHT_POS      = glm::vec3(0, 4, -2);
 static glm::vec3 LIGHT_COLOR    = glm::vec3(1, 1, 1);
 static float ROUGHNESS          = 0.5f;
 static float METALLICITY        = 0.5f;
 static float SUN_INTENSITY      = 1.0f;
+static float LIGHT_FALLOFF      = 12.0f;
 static float SKY_INTENSITY      = 1.0f;
 static uint32_t SKYBOX_CURRENT  = 0;
 static bool TO_MOVE             = false;
@@ -107,7 +109,6 @@ static void ProcessInput(GLFWwindow *window)
 
     float cameraSpeed = 5 * delta;
     float cameraRotationSpeed = 2 * delta;
-    float lightColorChangeSpeed = 30 * delta;
 
     glm::vec3 r = glm::cross(CAMERA_DIR, glm::vec3(0, 1, 0));
 
@@ -123,6 +124,13 @@ static void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_UP)    == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, cameraRotationSpeed, r);
     if (glfwGetKey(window, GLFW_KEY_DOWN)  == GLFW_PRESS)   CAMERA_DIR  = glm::rotate(CAMERA_DIR, -cameraRotationSpeed, r);
 
+    if (glfwGetKey(window, GLFW_KEY_KP_4)  == GLFW_PRESS)   LIGHT_POS[0] -= delta * 5;
+    if (glfwGetKey(window, GLFW_KEY_KP_6)  == GLFW_PRESS)   LIGHT_POS[0] += delta * 5;
+    if (glfwGetKey(window, GLFW_KEY_KP_7)  == GLFW_PRESS)   LIGHT_POS[1] -= delta * 5;
+    if (glfwGetKey(window, GLFW_KEY_KP_9)  == GLFW_PRESS)   LIGHT_POS[1] += delta * 5;
+    if (glfwGetKey(window, GLFW_KEY_KP_5)  == GLFW_PRESS)   LIGHT_POS[2] -= delta * 5;
+    if (glfwGetKey(window, GLFW_KEY_KP_8)  == GLFW_PRESS)   LIGHT_POS[2] += delta * 5;
+    
     CAMERA_UP = glm::cross(-r, CAMERA_DIR);
 
     if (glfwGetKey(window, GLFW_KEY_1)     == GLFW_PRESS)   LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
@@ -140,11 +148,13 @@ static void ProcessInput(GLFWwindow *window)
     controlFloat(GLFW_KEY_R, ROUGHNESS, delta);
     controlFloat(GLFW_KEY_M, METALLICITY, delta);
     controlFloat(GLFW_KEY_I, SUN_INTENSITY, delta);
+    controlFloat(GLFW_KEY_O, LIGHT_FALLOFF, delta * 10);
     controlFloat(GLFW_KEY_O, SKY_INTENSITY, delta);
 
     ROUGHNESS       = std::max(std::min(ROUGHNESS, 1.0f), 0.0f);
     METALLICITY     = std::max(std::min(METALLICITY, 1.0f), 0.0f);
     SUN_INTENSITY   = std::max(SUN_INTENSITY, 0.0f);
+    LIGHT_FALLOFF   = std::max(LIGHT_FALLOFF, 0.0f);
     SKY_INTENSITY   = std::max(SKY_INTENSITY, 0.0f);
     LIGHT_COLOR     = SUN_INTENSITY * glm::vec3(1, 1, 1);
     LIGHT_DIR       = glm::normalize(LIGHT_DIR);
@@ -487,12 +497,19 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
         // upload light
-        RgDirectionalLightUploadInfo dirLight = {};
+        /*RgDirectionalLightUploadInfo dirLight = {};
         dirLight.color = { LIGHT_COLOR[0], LIGHT_COLOR[1], LIGHT_COLOR[2] };
         dirLight.direction = { LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2] };
         dirLight.angularDiameterDegrees = 0.5f;
-        r = rgUploadDirectionalLight(instance, &dirLight);
+        r = rgUploadDirectionalLight(instance, &dirLight);*/
 
+        RgSphericalLightUploadInfo l = {};
+        l.color =  { 1.0f, 1.0f, 1.0f };
+        l.position = { LIGHT_POS[0], LIGHT_POS[1], LIGHT_POS[2] };
+        l.radius = 0.2f;
+        l.falloffDistance = LIGHT_FALLOFF;
+        r = rgUploadSphericalLight(instance, &l);
+        
 
         // submit frame to be rendered
         RgDrawFrameInfo frameInfo = {};
