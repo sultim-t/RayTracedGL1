@@ -79,9 +79,9 @@ void main()
         const vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
 
         imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
-        imageStore(framebufNormal,              pix, vec4(h.normal, 0));
+        imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
         imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
-        imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, uintBitsToFloat(h.instCustomIndex)));
+        imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
         imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
         imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
         imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));

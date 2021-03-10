@@ -111,6 +111,7 @@ void main()
     
     // surface shading samples
     imageStore(framebufNormalGeometry,    samplePix, vec4(normalPrev, 0));
+    // don't forget instCustomIndex in alpha-channel
     imageStore(framebufNormal,            samplePix, texelFetch(framebufNormal_Prev_Sampler,            samplePrevPix, 0));
     imageStore(framebufMetallicRoughness, samplePix, texelFetch(framebufMetallicRoughness_Prev_Sampler, samplePrevPix, 0));
 
