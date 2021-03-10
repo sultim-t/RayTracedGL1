@@ -44,6 +44,7 @@ void main()
     // (c) was done in primary rays shader
     // (a) instead of choosing random sample in strata, choose the brightest
     ivec2 lastStrataPos = ivec2(0);
+    ivec2 lastPrevPix = ivec2(0);
     float lastLuminance = 0;
     bool found = false;
 
@@ -52,7 +53,8 @@ void main()
     {
         for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
         {
-            const ivec2 prevPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
+            const ivec2 curPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
+            const ivec2 prevPix = getPrevFramePix(curPix);
 
             const vec3 prevColor = texelFetch(framebufUnfilteredDirect_Sampler, prevPix, 0).rgb;
             const float prevLuminance = getLuminance(prevColor);
@@ -60,6 +62,7 @@ void main()
             if (lastLuminance < prevLuminance && !(prevStrataPos.x == xx && prevStrataPos.y == yy))
             {
                 lastStrataPos = ivec2(xx, yy);
+                lastPrevPix = prevPix;
                 lastLuminance = prevLuminance;
                 found = true;
             }
@@ -72,11 +75,9 @@ void main()
         return;
     }
 
-    const ivec2 samplePrevPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
-
-    // (b) forward-project choosen sample
-    const vec2 motion     = texelFetch(framebufMotion_Sampler,              samplePrevPix, 0).rg;
-    const ivec2 samplePix = ivec2(floor(getPrevScreenPos(samplePrevPix, motion)));
+    // (b) forward-projected sample
+    const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
+    const ivec2 samplePrevPix = lastPrevPix;
 
     const vec3 depthFB    = texelFetch(framebufDepth_Sampler,               samplePix,     0).rgb;
     const float dz        = 1.0 / max(0.01, length(depthFB.gb));

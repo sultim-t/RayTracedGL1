@@ -173,7 +173,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
 
     // difference in screen-space
     motion = (screenSpacePrev - screenSpaceCur);
-    motionDepthLinear = h.linearDepth - length(viewSpacePosPrev.xyz);
+    motionDepthLinear = length(viewSpacePosPrev.xyz) - h.linearDepth;
     // gradient of clip-space depth with respect to clip-space coordinates
     gradDepth = vec2(clipSpaceDepthAX - clipSpaceDepth, clipSpaceDepthAY - clipSpaceDepth);
 

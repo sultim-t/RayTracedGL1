@@ -71,19 +71,19 @@ void main()
     {
         // get ray differentials for texture filtering
 
-        vec2 motion;
-        float motionDepthLinear;
+        vec2 motionCurToPrev;
+        float motionDepthLinearCurToPrev;
         vec2 gradDepth;
-        const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motion, motionDepthLinear, gradDepth);
+        const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth);
 
         const vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
 
         imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
-        imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
+        imageStore(framebufNormal,              pix, vec4(h.normal, 0));
         imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
-        imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
+        imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, uintBitsToFloat(h.instCustomIndex)));
         imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
-        imageStore(framebufMotion,              pix, vec4(motion, motionDepthLinear, 0.0));
+        imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
         imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
         imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
     }

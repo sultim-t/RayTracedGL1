@@ -308,11 +308,19 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
 
     if (sceneNotEmpty)
     {
+        pathTracer->Bind(
+            cmd, frameIndex, 
+            scene, uniform, textureManager, framebuffers, blueNoise, cubemapManager);
+
+        pathTracer->TracePrimaryRays(
+            cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
+            framebuffers);
+
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
-        pathTracer->Trace(
+        pathTracer->TraceIllumination(
             cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
-            scene, uniform, textureManager, framebuffers, blueNoise, cubemapManager);
+            framebuffers);
 
         denoiser->Denoise(cmd, frameIndex, uniform);
     }

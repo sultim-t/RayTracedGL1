@@ -38,23 +38,23 @@ void getBounce(
     uint seed, vec3 n, float roughness, 
     vec3 v, out vec3 bounceDirection, inout vec3 throughput, out bool isSpecular)
 {
-    vec4 u = getRandomSample(seed, RANDOM_SALT_BOUNCE(0));
+    const vec4 u = getRandomSample(seed, RANDOM_SALT_BOUNCE(0));
 
     // trace either specular or diffuse ray
-    float specPr = 0.5;
-    float nonSpecPr = 1 - specPr;
+    const float specPr = 0.5;
+    const float nonSpecPr = 1 - specPr;
     isSpecular = u[0] < specPr;
 
     if (isSpecular)
     {
         // sample microfacet normal
-        vec3 m = sampleSmithGGX(n, v, roughness, u[0], u[1]);
+        const vec3 m = sampleSmithGGX(n, v, roughness, u[0], u[1]);
 
         // light sample; incident vector must point to surface
-        vec3 l = reflect(-v, m);
+        const vec3 l = normalize(reflect(-v, m));
 
-        float nl = max(dot(n, l), 0.0);
-        float nv = max(dot(n, v), 0.0);
+        const float nl = max(dot(n, l), 0.0);
+        const float nv = max(dot(n, v), 0.0);
 
         if (nl > 0 && nv > 0)
         {
@@ -65,8 +65,8 @@ void getBounce(
             // let G2 be the simplest: G2(v,l) = G1(v) * G1(l)
             // => F * G1(l)
             
-            float F = 1.0f; // getFresnelSchlick(nl, n1, n2);
-            float G1 = G1GGX(l, n, roughness);
+            const float F = 1.0f; // getFresnelSchlick(nl, n1, n2);
+            const float G1 = G1GGX(l, n, roughness);
 
             throughput *= G1;
             throughput *= 1 / specPr;
@@ -87,7 +87,7 @@ void processIndirectIllumination(
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 v)
 {
-    uint seed = getCurrentRandomSeed(pix);
+    const uint seed = getCurrentRandomSeed(pix);
     
     vec3 throughput = vec3(1.0);
     
@@ -96,14 +96,14 @@ void processIndirectIllumination(
     getBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput, isSpecular);
 
     // got the bounce direction, trace ray
-    ShPayload p = traceIndirectRay(primaryInstCustomIndex, surfPosition, bounceDirection); 
+    const ShPayload p = traceIndirectRay(primaryInstCustomIndex, surfPosition, bounceDirection); 
 
     vec3 contribution;
 
     if (p.clsHitDistance > 0)
     {
-        ShHitInfo h = getHitInfo(p);
-        vec3 hitPos = surfPosition + p.clsHitDistance * bounceDirection;
+        const ShHitInfo h = getHitInfo(p);
+        const vec3 hitPos = surfPosition + p.clsHitDistance * bounceDirection;
         
         // TODO: emmision
 
@@ -120,7 +120,7 @@ void processIndirectIllumination(
     }
     else
     {
-        vec3 skyColor = getSky(bounceDirection);
+        const vec3 skyColor = getSky(bounceDirection);
         contribution = throughput * skyColor;
     }
 
@@ -157,7 +157,7 @@ void main()
     vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     float surfRoughness         = surfMetallicRoughness.g;
-    uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    uint instCustomIndex        = floatBitsToUint(surfMetallicRoughness.a);
 
     processIndirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz);        
 }

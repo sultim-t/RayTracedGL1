@@ -110,9 +110,9 @@ void RTGL1::Denoiser::MergeSamples(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_RANDOM_SEED);
 
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_RANDOM_SEED);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SURFACE_POSITION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_VIEW_DIRECTION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES);

@@ -39,15 +39,24 @@ public:
     PathTracer& operator=(const PathTracer& other) = delete;
     PathTracer& operator=(PathTracer&& other) noexcept = delete;
 
-    void Trace(
+    void Bind(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
         const std::shared_ptr<Scene> &scene,
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<TextureManager> &textureManager,
         const std::shared_ptr<Framebuffers> &framebuffers, 
         const std::shared_ptr<BlueNoise> &blueNoise,
-        const std::shared_ptr<CubemapManager> &_cubemapManager);
+        const std::shared_ptr<CubemapManager> &cubemapManager);
+    
+    void TracePrimaryRays(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        uint32_t width, uint32_t height,
+        const std::shared_ptr<Framebuffers> &framebuffers);
+
+    void TraceIllumination(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        uint32_t width, uint32_t height,
+        const std::shared_ptr<Framebuffers> &framebuffers);
 
 private:
     VkDevice device;

@@ -181,18 +181,39 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIRECTIONAL
 
 
 
+
 #ifdef DESC_SET_GLOBAL_UNIFORM
+#ifdef DESC_SET_FRAMEBUFFERS
+vec2 getPrevScreenPos(const ivec2 pix)
+{
+    const vec2 motionCurToPrev = texelFetch(framebufMotion_Sampler, pix, 0).rg;
+
+    const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
+   
+    return ((vec2(pix) + vec2(0.5)) * invScreenSize + motionCurToPrev) * screenSize;
+}
+
+vec2 getCurScreenPos(const ivec2 prevPix)
+{
+    const vec2 motionCurToPrev = texelFetch(framebufMotion_Sampler, prevPix, 0).rg;
+
+    const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
+    
+    return ((vec2(prevPix) + vec2(0.5)) * invScreenSize - motionCurToPrev) * screenSize;
+}
+ivec2 getPrevFramePix(const ivec2 curFramePix)
+{
+    return ivec2(floor(getPrevScreenPos(curFramePix)));
+}
+#endif // DESC_SET_FRAMEBUFFERS
+#endif // DESC_SET_GLOBAL_UNIFORM
+
 bool testInside(const ivec2 pix, const ivec2 size)
 {
     return all(greaterThanEqual(pix, ivec2(0))) &&
            all(lessThan(pix, size));
-}
-
-vec2 getPrevScreenPos(const ivec2 pix, const vec2 motion)
-{
-    const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
-    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
-    return ((vec2(pix) + vec2(0.5)) * invScreenSize + motion) * screenSize;
 }
 
 bool testReprojectedDepth(float z, float zPrev, float dz)
@@ -204,4 +225,3 @@ bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
 {
     return dot(n, nPrev) > 0.95;
 }
-#endif

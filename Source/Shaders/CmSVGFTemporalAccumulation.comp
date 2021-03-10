@@ -64,8 +64,7 @@ void main()
         return;
     }
 
-    const vec2 motion = texelFetch(framebufMotion_Sampler, pix, 0).rg;
-    const vec2 posPrev = getPrevScreenPos(pix, motion);
+    const vec2 posPrev = getPrevScreenPos(pix);
 
     const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);

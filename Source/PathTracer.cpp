@@ -30,17 +30,11 @@ PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rt
 PathTracer::~PathTracer()
 {}
 
-void PathTracer::Trace(
-    VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height,
-    const std::shared_ptr<Scene> &scene,
-    const std::shared_ptr<GlobalUniform> &uniform,
-    const std::shared_ptr<TextureManager> &textureMgr,
-    const std::shared_ptr<Framebuffers> &framebuffers,
-    const std::shared_ptr<BlueNoise> &blueNoise,
-    const std::shared_ptr<CubemapManager> &cubemapMgr)
+void PathTracer::Bind(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Scene> &scene, const std::shared_ptr<GlobalUniform> &uniform,
+    const std::shared_ptr<TextureManager> &textureMgr, const std::shared_ptr<Framebuffers> &framebuffers,
+    const std::shared_ptr<BlueNoise> &blueNoise, const std::shared_ptr<CubemapManager> &cubemapMgr)
 {
     rtPipeline->Bind(cmd);
-
 
     VkDescriptorSet sets[] = {
         // ray tracing acceleration structures
@@ -66,17 +60,30 @@ void PathTracer::Trace(
                             rtPipeline->GetLayout(),
                             0, setCount, sets,
                             0, nullptr);
+}
 
+void PathTracer::TracePrimaryRays(
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    uint32_t width, uint32_t height,
+    const std::shared_ptr<Framebuffers> &framebuffers)
+{
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
     // primary
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_PRIMARY, raygenEntry, missEntry, hitEntry, callableEntry);
 
     svkCmdTraceRaysKHR(
         cmd,
         &raygenEntry, &missEntry, &hitEntry, &callableEntry,
         width, height, 1);
+}
 
+void PathTracer::TraceIllumination(
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    uint32_t width, uint32_t height,
+    const std::shared_ptr<Framebuffers> &framebuffers)
+{
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
     // sync access
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
