@@ -204,6 +204,8 @@ vec3 getSky(vec3 direction)
 #endif
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
+#define SHADOW_RAY_EPS 0.005
+
 // l is pointed to the light
 bool traceShadowRay(uint primaryInstCustomIndex, vec3 o, vec3 l, float maxDistance)
 {
@@ -269,7 +271,7 @@ void processDirectionalLight(
         return;
     }
 
-    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition, dir);
+    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + surfNormalGeom * SHADOW_RAY_EPS, dir);
 
     if (isShadowed)
     {
@@ -315,7 +317,7 @@ void processSphericalLight(
     float distance = max(length(dir), 0.0001);
     dir = dir / distance;
 
-    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition, dir, distance);
+    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + surfNormalGeom * SHADOW_RAY_EPS, dir, distance);
 
     if (isShadowed)
     {
@@ -325,13 +327,14 @@ void processSphericalLight(
     }
 
     const float r = max(sphLight.radius, 0.1);
-    
-    const vec3 l = sphLight.position - surfPosition;
-    const float d = max(length(l), r);
-    
-    const vec3 c = pow(max(0, 1 - pow(r / d, 2)), 2) * sphLight.color;
+    vec3 dirToCenter = sphLight.position - surfPosition;
 
-    const vec3 irradiance = M_PI * c * max(dot(surfNormal, l / d), 0.0);
+    const float d = max(length(dirToCenter), 0.0001);
+    dirToCenter /= d;
+    
+    const vec3 c = min(1, r * r / (d * d)) * sphLight.color;
+
+    const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
     const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
     outDiffuse = radiance;
