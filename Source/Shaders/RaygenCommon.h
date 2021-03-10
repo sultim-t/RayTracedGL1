@@ -271,7 +271,7 @@ void processDirectionalLight(
         return;
     }
 
-    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + surfNormalGeom * SHADOW_RAY_EPS, dir);
+    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + viewDirection * SHADOW_RAY_EPS, dir);
 
     if (isShadowed)
     {
@@ -317,7 +317,7 @@ void processSphericalLight(
     float distance = max(length(dir), 0.0001);
     dir = dir / distance;
 
-    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + surfNormalGeom * SHADOW_RAY_EPS, dir, distance);
+    const bool isShadowed = traceShadowRay(primaryInstCustomIndex, surfPosition + viewDirection * SHADOW_RAY_EPS, dir, distance);
 
     if (isShadowed)
     {
