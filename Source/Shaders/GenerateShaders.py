@@ -152,7 +152,7 @@ def main():
 
                 with open(filename, "r") as dpd:
                     for line in dpd:
-                        if line.startswith("#include"):
+                        if "#include" in line:
                             dpdFile = line.split("\"")[1]
                             for dpdFolder in DEPENDENCY_FOLDERS:
                                 dpd = dpdFolder + dpdFile
@@ -181,7 +181,7 @@ def main():
 
             with open(filename, "r") as dpd:
                 for line in dpd:
-                    if line.startswith("#include"):
+                    if "#include" in line:
                         dpdFile = line.split("\"")[1]
                         for dpdFolder in DEPENDENCY_FOLDERS:
                             dpd = dpdFolder + dpdFile
