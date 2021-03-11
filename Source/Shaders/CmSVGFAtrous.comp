@@ -172,18 +172,18 @@ void main()
 
     switch (atrousIteration)
     {
-        case 0: atrous(framebufPingDiffColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 0: atrous(framebufDiffPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
         case 1: atrous(framebufDiffColorHistory_Sampler,         filteredColor, updatedVariance); break;
-        case 2: atrous(framebufPingDiffColorAndVariance_Sampler, filteredColor, updatedVariance); break;
-        case 3: atrous(framebufPongDiffColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 2: atrous(framebufDiffPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 3: atrous(framebufDiffPongColorAndVariance_Sampler, filteredColor, updatedVariance); break;
     }
 
     // for the first iteration, save to color history buffer for temporal accumulation
     switch (atrousIteration)
     {
-        case 0: imageStore(framebufDiffColorHistory,     pix, vec4(filteredColor, updatedVariance)); break;
-        case 1: imageStore(framebufPingDiffColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
-        case 2: imageStore(framebufPongDiffColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
+        case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredColor, updatedVariance)); break;
+        case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
+        case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
     }
 
     if (atrousIteration == 3)
@@ -198,11 +198,11 @@ void main()
         }
 
         const vec3 diffuse       = filteredColor;
-        const vec3 specular      = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
-        const vec3 indirect      = texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
+        const vec3 specular      = texelFetch(framebufSpecAccumColorAndHistoryLength_Sampler, pix, 0).rgb;
+        const vec3 indirect      = vec3(0.0); // texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
         const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler,  pix, 0).r;
         
-        const vec3 light = diffuse; /*(diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic*/;
+        const vec3 light = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
         const vec3 color = albedo * light;
 
         imageStore(framebufFinal, pix, vec4(color, 0));

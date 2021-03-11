@@ -73,7 +73,7 @@ void main()
 
     if (depth < 0.0)
     {
-        imageStore(framebufPingDiffColorAndVariance, pix, vec4(color, 0.0));
+        imageStore(framebufDiffPingColorAndVariance, pix, vec4(color, 0.0));
         return;
     }
 
@@ -85,7 +85,7 @@ void main()
     {
         float temporalVariance = max(0.0, temporalMoments.y - temporalMoments.x * temporalMoments.x);
 
-        imageStore(framebufPingDiffColorAndVariance, pix, vec4(color, temporalVariance));
+        imageStore(framebufDiffPingColorAndVariance, pix, vec4(color, temporalVariance));
         return;
     }
 
@@ -136,5 +136,5 @@ void main()
     const float spatialVariance = max(0.0, spatialMoments.y - spatialMoments.x * spatialMoments.x) 
                                   * (1.0 + 2.0 * (1.0 - historyLength / HistoryLengthThreshold));
                                   
-    imageStore(framebufPingDiffColorAndVariance, pix, vec4(spatialColor, spatialVariance));
+    imageStore(framebufDiffPingColorAndVariance, pix, vec4(spatialColor, spatialVariance));
 }

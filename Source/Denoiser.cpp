@@ -111,7 +111,8 @@ void RTGL1::Denoiser::MergeSamples(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_RANDOM_SEED);
-
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SURFACE_POSITION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_VIEW_DIRECTION);
@@ -120,8 +121,6 @@ void RTGL1::Denoiser::MergeSamples(
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, merging);
     vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
 }
-
-// TODO: remove unnecessary barriers after debugging
 
 void RTGL1::Denoiser::Denoise(
     VkCommandBuffer cmd, uint32_t frameIndex,
@@ -152,8 +151,10 @@ void RTGL1::Denoiser::Denoise(
 
     // gradient samples
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
+
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientSamples);
     vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
@@ -165,12 +166,10 @@ void RTGL1::Denoiser::Denoise(
         if (i % 2 == 0)
         {
             framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
-            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PONG_GRADIENT);
         }
         else
         {
             framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PONG_GRADIENT);
-            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
         }
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientAtrous[i]);
@@ -182,62 +181,43 @@ void RTGL1::Denoiser::Denoise(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_MOTION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_COLOR_HISTORY);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
-
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_COLOR);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_MOMENTS);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_HISTORY_LENGTH);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, temporalAccumulation);
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 
 
     // variance estimation
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_COLOR);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_MOMENTS);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_HISTORY_LENGTH);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
-
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_COLOR_AND_VARIANCE);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_MOMENTS);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_HISTORY_LENGTH);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, varianceEstimation);
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 
 
     // atrous
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
-
     for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
     {
         switch (i)
         {
             case 0:
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_COLOR_AND_VARIANCE);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_COLOR_HISTORY);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);
                 break;
             case 1:  
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_COLOR_HISTORY);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_COLOR_AND_VARIANCE);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
                 break;
             case 2:  
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_COLOR_AND_VARIANCE);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PONG_COLOR_AND_VARIANCE);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);
                 break;
             case 3:  
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PONG_COLOR_AND_VARIANCE);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ALBEDO);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PONG_COLOR_AND_VARIANCE);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_ACCUM_COLOR_AND_HISTORY_LENGTH);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_FINAL);
                 break;
             default: 
                 assert(0);

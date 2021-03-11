@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 37;
+const uint32_t RTGL1::ShFramebuffers_Count = 35;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -35,8 +35,6 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
-    VK_FORMAT_R32_SFLOAT,
-    VK_FORMAT_R32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_UINT,
@@ -47,8 +45,6 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
 
 const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = 
 {
-    0,
-    0,
     0,
     0,
     0,
@@ -123,8 +119,6 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     32,
     33,
     34,
-    35,
-    36,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -158,18 +152,18 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     26,
     28,
     27,
-    30,
     29,
-    31,
+    30,
     32,
-    34,
+    31,
     33,
-    35,
-    36,
+    34,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
+    35,
+    36,
     37,
     38,
     39,
@@ -203,15 +197,13 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     67,
     68,
     69,
-    70,
-    71,
-    72,
-    73,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
+    35,
     37,
+    36,
     39,
     38,
     41,
@@ -220,34 +212,30 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] =
     42,
     45,
     44,
-    47,
     46,
+    47,
     48,
     49,
-    50,
     51,
-    53,
+    50,
     52,
+    53,
     54,
-    55,
     56,
+    55,
     58,
     57,
     60,
     59,
-    62,
     61,
     63,
-    65,
+    62,
     64,
+    65,
     67,
     66,
     68,
     69,
-    71,
-    70,
-    72,
-    73,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -279,12 +267,10 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf DiffAccumHistoryLength",
     "Framebuf DiffAccumHistoryLength_Prev",
     "Framebuf DiffColorHistory",
-    "Framebuf SpecAccumColor",
-    "Framebuf SpecAccumColor_Prev",
-    "Framebuf SpecAccumHistoryLength",
-    "Framebuf SpecAccumHistoryLength_Prev",
-    "Framebuf PingDiffColorAndVariance",
-    "Framebuf PongDiffColorAndVariance",
+    "Framebuf SpecAccumColorAndHistoryLength",
+    "Framebuf SpecAccumColorAndHistoryLength_Prev",
+    "Framebuf DiffPingColorAndVariance",
+    "Framebuf DiffPongColorAndVariance",
     "Framebuf GradientSamples",
     "Framebuf GradientSamples_Prev",
     "Framebuf PingGradient",

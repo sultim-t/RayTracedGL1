@@ -54,6 +54,15 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
+float getAntilagAlpha(const float gradSample, const float normFactor)
+{
+    const float lambda = normFactor > 0.0001 ? 
+        clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
+        0.0;
+
+    return clamp(lambda, 0.0, 1.0);
+}
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
@@ -75,19 +84,24 @@ void main()
         { (1.0 - subPix.x) * subPix.y,         subPix.x * subPix.y         },
     };
 
+    const vec3 unfilteredDiff = texelFetch(framebufUnfilteredDirect_Sampler,   pix, 0).rgb;
+    const vec3 unfilteredSpec = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
+
     const vec3 depthFB = texelFetch(framebufDepth_Sampler,              pix, 0).rgb;
-    const vec3 color   = texelFetch(framebufUnfilteredDirect_Sampler,   pix, 0).rgb;
     const vec3 normal  = texelFetch(framebufNormalGeometry_Sampler,     pix, 0).rgb;
     const float depth  = depthFB.r;
     const float dz = 1.0 / max(0.01, length(depthFB.gb));
 
-    const float l = getLuminance(color);
+    const float l = getLuminance(unfilteredDiff);
     const vec2 moments = vec2(l, l * l);
 
-    vec3 colorPrev = vec3(0.0);
+    vec3 diffPrev = vec3(0.0);
     vec2 momentsPrev = vec2(0.0);
     float weightSum = 0.0;
     float historyLength = 0.0;
+
+    vec3 specPrev = vec3(0.0);
+    float specHistoryLength = 0.0;
 
     // 2x2 tap bilinear interpolation
     for (int yy = 0; yy <= 1; yy++)
@@ -108,9 +122,13 @@ void main()
             {
                 const float weight = bilinearWeights[yy][xx];
 
-                colorPrev     += texelFetch(framebufDiffColorHistory_Sampler,            xy, 0).rgb * weight;
+                diffPrev      += texelFetch(framebufDiffColorHistory_Sampler,            xy, 0).rgb * weight;
                 momentsPrev   += texelFetch(framebufDiffAccumMoments_Prev_Sampler,       xy, 0).rg  * weight;
                 historyLength += texelFetch(framebufDiffAccumHistoryLength_Prev_Sampler, xy, 0).r   * weight;
+
+                vec4 specFB = texelFetch(framebufSpecAccumColorAndHistoryLength_Prev_Sampler, xy, 0);
+                specPrev          += specFB.rgb * weight;
+                specHistoryLength += specFB.a   * weight;
 
                 weightSum += weight;
 			}
@@ -123,46 +141,69 @@ void main()
     vec2 diffMomentsAccum;
     float diffHistoryLengthAccum;
 
+    vec3 specColorAccum;
+    float specHistoryLengthAccum;
+
     // found consistent info
     if (weightSum > 0.01)
     {
         const float invWeightSum = 1.0 / weightSum;
 
-        colorPrev     *= invWeightSum;
-        momentsPrev   *= invWeightSum;
-        historyLength *= invWeightSum;
+        diffPrev          *= invWeightSum;
+        momentsPrev       *= invWeightSum;
+        historyLength     *= invWeightSum;
+
+        specPrev          *= invWeightSum;
+        specHistoryLength *= invWeightSum; 
         
-        const float gradSample = gradFB.r;
-        const float normFactor = gradFB.g;
+        // direct diffuse
+        {
+            const float antilagAlpha = getAntilagAlpha(gradFB.r, gradFB.g);
 
-        const float lambda = normFactor > 0.0001 ? 
-            clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
-            0.0;
+            historyLength *= pow(1.0 - antilagAlpha, 10);
+            historyLength = clamp(historyLength + 1.0, 1.0, 256.0);
 
-        const float antilagAlpha = clamp(lambda, 0.0, 1.0);
+            const float minAlpha = 0.01;
+            float alphaColor   = max(minAlpha, 1.0 / historyLength);
+            float alphaMoments = max(minAlpha, 1.0 / historyLength);
 
-        historyLength *= pow(1.0 - antilagAlpha, 10);
-        historyLength = clamp(historyLength + 1.0, 1.0, 256.0);
+            alphaColor   = mix(alphaColor,   1.0, antilagAlpha);
+            alphaMoments = mix(alphaMoments, 1.0, antilagAlpha);
 
-        const float minAlpha = 0.01;
-        float alphaColor   = max(minAlpha, 1.0 / historyLength);
-        float alphaMoments = max(minAlpha, 1.0 / historyLength);
+            diffColorAccum   = mix(diffPrev, unfilteredDiff, alphaColor);
+            diffMomentsAccum = mix(momentsPrev, moments, alphaMoments);
+            diffHistoryLengthAccum = historyLength;
+        }
 
-        alphaColor   = mix(alphaColor,   1.0, antilagAlpha);
-        alphaMoments = mix(alphaMoments, 1.0, antilagAlpha);
+        // specular
+        {
+            const float antilagAlpha = getAntilagAlpha(gradFB.b, gradFB.a);
 
-        diffColorAccum   = mix(colorPrev, color, alphaColor);
-        diffMomentsAccum = mix(momentsPrev, moments, alphaMoments);
-        diffHistoryLengthAccum = historyLength;
+            specHistoryLength *= pow(1.0 - antilagAlpha, 10);
+            specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, 256.0);
+
+            const float minAlpha = 0.01;
+            float alphaColor = max(minAlpha, 1.0 / specHistoryLength);
+
+            alphaColor = mix(alphaColor, 1.0, antilagAlpha);
+
+            specColorAccum = mix(specPrev, unfilteredSpec, alphaColor);
+            specHistoryLengthAccum = specHistoryLength;
+        }
     }
     else
     {
-        diffColorAccum = color;
+        diffColorAccum = unfilteredDiff;
         diffMomentsAccum = moments;
         diffHistoryLengthAccum = 1.0;
+
+        specColorAccum = unfilteredSpec;
+        specHistoryLengthAccum = 1.0;
     }
 
-    imageStore(framebufDiffAccumColor, pix, vec4(diffColorAccum, 0.0));
-    imageStore(framebufDiffAccumMoments, pix, vec4(diffMomentsAccum, 0.0, 0.0));
+    imageStore(framebufDiffAccumColor,         pix, vec4(diffColorAccum, 0.0));
+    imageStore(framebufDiffAccumMoments,       pix, vec4(diffMomentsAccum, 0.0, 0.0));
     imageStore(framebufDiffAccumHistoryLength, pix, vec4(diffHistoryLengthAccum));
+
+    imageStore(framebufSpecAccumColorAndHistoryLength, pix, vec4(specColorAccum, specHistoryLengthAccum));
 }
