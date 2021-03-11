@@ -26,28 +26,6 @@
 typedef RTGL1::VertexCollectorFilterTypeFlagBits FT;
 typedef RTGL1::VertexCollectorFilterTypeFlags FL;
 
-constexpr FT VertexCollectorFilterGroup_ChangeFrequency[] =
-{
-    FT::CF_STATIC_NON_MOVABLE,
-    FT::CF_STATIC_MOVABLE,
-    FT::CF_DYNAMIC,
-};
-
-constexpr FT VertexCollectorFilterGroup_PassThrough[] =
-{
-    FT::PT_OPAQUE,
-    FT::PT_ALPHA_TESTED,
-    FT::PT_BLEND_UNDER,
-};
-
-constexpr FT VertexCollectorFilterGroup_PrimaryVisibility[] =
-{
-    FT::PV_WORLD,
-    FT::PV_FIRST_PERSON,
-    FT::PV_FIRST_PERSON_VIEWER,
-    FT::PV_SKYBOX,
-};
-
 void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(FL)> f)
 {
     for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)

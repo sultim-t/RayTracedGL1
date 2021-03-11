@@ -50,6 +50,30 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
 
+
+constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_ChangeFrequency[] =
+{
+    VertexCollectorFilterTypeFlagBits::CF_STATIC_NON_MOVABLE,
+    VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE,
+    VertexCollectorFilterTypeFlagBits::CF_DYNAMIC,
+};
+
+constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrough[] =
+{
+    VertexCollectorFilterTypeFlagBits::PT_OPAQUE,
+    VertexCollectorFilterTypeFlagBits::PT_ALPHA_TESTED,
+    VertexCollectorFilterTypeFlagBits::PT_BLEND_UNDER,
+};
+
+constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PrimaryVisibility[] =
+{
+    VertexCollectorFilterTypeFlagBits::PV_WORLD,
+    VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON,
+    VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON_VIEWER,
+    VertexCollectorFilterTypeFlagBits::PV_SKYBOX,
+};
+
+
 inline VertexCollectorFilterTypeFlags operator|(VertexCollectorFilterTypeFlagBits a, VertexCollectorFilterTypeFlagBits b)
 {
     typedef VertexCollectorFilterTypeFlags FL;

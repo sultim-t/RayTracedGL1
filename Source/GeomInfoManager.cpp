@@ -138,6 +138,9 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
 
 void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
 {
+    typedef VertexCollectorFilterTypeFlags FL;
+    typedef VertexCollectorFilterTypeFlagBits FT;
+
     // do nothing, if there were no dynamic indices
     if (dynamicGeomCount > 0)
     {
@@ -154,12 +157,20 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
         }
 
         int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(frameIndex);
-        // dynamic data is placed after static
-        int32_t *dynamicPrevIndexToCurIndex = prevIndexToCurIndex + staticGeomCount;
 
-        // reset matchPrev data for dynamic
-        memset(dynamicPrevIndexToCurIndex, 0xFF, dynamicGeomCount * sizeof(int32_t));
+        for (auto pt : VertexCollectorFilterGroup_PassThrough)
+        {
+            for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
+            {
+                uint32_t dynamicOffset = VertexCollectorFilterTypeFlags_ToOffset(FT::CF_DYNAMIC | pt | pm) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+                int32_t *dynamicPrevIndexToCurIndex = prevIndexToCurIndex + dynamicOffset;
 
+                uint32_t resetCount = std::min(dynamicGeomCount, (uint32_t)MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
+
+                // reset matchPrev data for dynamic
+                memset(dynamicPrevIndexToCurIndex, 0xFF, resetCount * sizeof(int32_t));
+            }
+        }
 
         // reset only dynamic count
         dynamicGeomCount = 0;
@@ -180,8 +191,22 @@ void RTGL1::GeomInfoManager::ResetWithStatic()
     {
         int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(i);
 
-        // reset all matchPrev data
-        memset(prevIndexToCurIndex, 0xFF, ((uint64_t)staticGeomCount + dynamicGeomCount) * sizeof(int32_t));
+        for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
+        {
+            for (auto pt : VertexCollectorFilterGroup_PassThrough)
+            {
+                for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
+                {
+                    uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(cf | pt | pm) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+                    int32_t *toReset = prevIndexToCurIndex + offset;
+
+                    uint32_t resetCount = std::min(dynamicGeomCount + staticGeomCount, (uint32_t)MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
+
+                    // reset matchPrev data for dynamic
+                    memset(toReset, 0xFF, resetCount * sizeof(int32_t));
+                }
+            }
+        }
     }
 
     staticGeomCount = 0;
@@ -281,7 +306,7 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
 
     for (uint32_t i = frameBegin; i < frameEnd; i++)
     {
-        FillWithPrevFrameData(flags, geomUniqueID, globalGeomIndex, src, frameIndex);
+        FillWithPrevFrameData(flags, geomUniqueID, globalGeomIndex, src, i);
 
         ShGeometryInstance *dst = GetGeomInfoAddressByGlobalIndex(i, globalGeomIndex);
         memcpy(dst, &src, sizeof(ShGeometryInstance));
@@ -360,8 +385,11 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData(
     dst.prevBaseIndexIndex = prev->second.baseIndexIndex;
     memcpy(dst.prevModel, prev->second.model, sizeof(float) * 16);
 
-    // save index to access ShGeometryInfo using previous frame's global geom index
-    prevIndexToCurIndex[prev->second.prevGlobalGeomIndex] = currentGlobalGeomIndex;
+    if (isDynamic)
+    {
+        // save index to access ShGeometryInfo using previous frame's global geom index
+        prevIndexToCurIndex[prev->second.prevGlobalGeomIndex] = currentGlobalGeomIndex;
+    }
 }
 
 void RTGL1::GeomInfoManager::MarkNoPrevInfo(ShGeometryInstance &dst)
