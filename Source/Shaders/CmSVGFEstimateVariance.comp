@@ -66,26 +66,26 @@ void main()
         return;
     }
 
-    const vec3  color     = texelFetch(framebufAccumColor_Sampler, pix, 0).rgb;
+    const vec3  color     = texelFetch(framebufDiffAccumColor_Sampler, pix, 0).rgb;
     const vec3  dg        = texelFetch(framebufDepth_Sampler,      pix, 0).rgb;
     const float depth     = dg.r;
     const vec2  gradDepth = dg.gb;
 
     if (depth < 0.0)
     {
-        imageStore(framebufPingColorAndVariance, pix, vec4(color, 0.0));
+        imageStore(framebufPingDiffColorAndVariance, pix, vec4(color, 0.0));
         return;
     }
 
-    const float historyLength   = texelFetch(framebufAccumHistoryLength_Sampler, pix, 0).r;
-    const vec2  temporalMoments = texelFetch(framebufAccumMoments_Sampler,       pix, 0).rg;
+    const float historyLength   = texelFetch(framebufDiffAccumHistoryLength_Sampler, pix, 0).r;
+    const vec2  temporalMoments = texelFetch(framebufDiffAccumMoments_Sampler,       pix, 0).rg;
 
     // rely on temporal variance, if collected enough data with temporal acculumation
     if (historyLength > HistoryLengthThreshold)
     {
         float temporalVariance = max(0.0, temporalMoments.y - temporalMoments.x * temporalMoments.x);
 
-        imageStore(framebufPingColorAndVariance, pix, vec4(color, temporalVariance));
+        imageStore(framebufPingDiffColorAndVariance, pix, vec4(color, temporalVariance));
         return;
     }
 
@@ -108,7 +108,7 @@ void main()
 
             const ivec2 q = pix + ivec2(xx, yy);
             
-            const vec3  color_q  = texelFetch(framebufAccumColor_Sampler,     q, 0).rgb;
+            const vec3  color_q  = texelFetch(framebufDiffAccumColor_Sampler,     q, 0).rgb;
             const float depth_q  = texelFetch(framebufDepth_Sampler,          q, 0).r;
             const vec3  normal_q = texelFetch(framebufNormalGeometry_Sampler, q, 0).rgb;
 
@@ -136,5 +136,5 @@ void main()
     const float spatialVariance = max(0.0, spatialMoments.y - spatialMoments.x * spatialMoments.x) 
                                   * (1.0 + 2.0 * (1.0 - historyLength / HistoryLengthThreshold));
                                   
-    imageStore(framebufPingColorAndVariance, pix, vec4(spatialColor, spatialVariance));
+    imageStore(framebufPingDiffColorAndVariance, pix, vec4(spatialColor, spatialVariance));
 }

@@ -35,20 +35,13 @@ const int StepSize = 1 << atrousIteration;
 // Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
 // samplerGradient[0] -- temporal gradient (eq. 2)
 // samplerGradient[1] -- normalization factor (eq. 13)
-void atrous(sampler2D samplerGradient, out vec3 outGradient)
+void atrous(sampler2D samplerGradient, out vec4 outGradient)
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
     const ivec2 gradSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight) / COMPUTE_ASVGF_STRATA_SIZE;
-
-    /*if (depth > MAX_RAY_LENGTH)
-    {
-        return;
-    }*/
     
-    outGradient = texelFetch(samplerGradient, gradPix, 0).rgb;
-
-    vec2 sum = outGradient.rg;
-    float weightSum = 1.0;
+    vec4 sum = vec4(0.0);
+    float weightSum = 0.0;
 
     const int FilterSize = 1;
     const float waveletKernel[2][2] = 
@@ -61,15 +54,10 @@ void atrous(sampler2D samplerGradient, out vec3 outGradient)
     {
         for (int xx = -FilterSize; xx <= FilterSize; xx++)
         {
-            if (xx == 0 && yy == 0)
-            {
-                continue;
-            }
-
             const ivec2 offset = ivec2(xx * StepSize, yy * StepSize);
             const ivec2 gradPix_q = gradPix + offset;
 
-            const vec2 grad_q = texelFetch(samplerGradient, gradPix_q, 0).rg;
+            const vec4 grad_q = texelFetch(samplerGradient, gradPix_q, 0);
 
             const float w = waveletKernel[abs(xx)][abs(yy)] *
                             float(testInside(gradPix_q, gradSize));
@@ -79,7 +67,7 @@ void atrous(sampler2D samplerGradient, out vec3 outGradient)
         }
     }
 
-    outGradient.rg = sum / weightSum;
+    outGradient = sum / weightSum;
 }
 
 void main()
@@ -92,7 +80,7 @@ void main()
         return;
     }
 
-    vec3 filtered;
+    vec4 filtered;
 
     switch (atrousIteration)
     {
@@ -104,10 +92,10 @@ void main()
     
     switch (atrousIteration)
     {
-         case 0: imageStore(framebufPongGradient, gradPix, vec4(filtered, 0.0)); break;
-         case 1: imageStore(framebufPingGradient, gradPix, vec4(filtered, 0.0)); break;
-         case 2: imageStore(framebufPongGradient, gradPix, vec4(filtered, 0.0)); break;
-         case 3: imageStore(framebufPingGradient, gradPix, vec4(filtered, 0.0)); break;
+         case 0: imageStore(framebufPongGradient, gradPix, filtered); break;
+         case 1: imageStore(framebufPingGradient, gradPix, filtered); break;
+         case 2: imageStore(framebufPongGradient, gradPix, filtered); break;
+         case 3: imageStore(framebufPingGradient, gradPix, filtered); break;
     }
 }
 

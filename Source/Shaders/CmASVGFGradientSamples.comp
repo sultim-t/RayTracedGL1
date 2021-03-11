@@ -40,7 +40,7 @@ void main()
 
     // surface samples were shaded, prepare gradient samples
     const uvec4 grFB = texelFetch(framebufGradientSamples_Sampler, gradPix, 0);
-    const bool hasSample = grFB.z != 0;
+    const bool hasSample = grFB.y != 0;
 
     if (!hasSample)
     {
@@ -49,17 +49,37 @@ void main()
     }
 
     // (e) get luminance of shading sample from previous frame
-    const float prevShadingSampleLuminance = uintBitsToFloat(grFB.a);
+    const float prevShadingSampleLuminance = uintBitsToFloat(grFB.z);
+    const float prevShadingSampleLuminanceSpec = uintBitsToFloat(grFB.w);
 
     // (f) get shading sample from current frame
-    const ivec2 posInStrata = ivec2(grFB.x, grFB.y);
+    const uint posInStrataPacked = grFB.x;
+    const ivec2 posInStrata = ivec2(posInStrataPacked % COMPUTE_ASVGF_STRATA_SIZE, posInStrataPacked / COMPUTE_ASVGF_STRATA_SIZE);
     const ivec2 shadingSamplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + posInStrata;
 
-    const vec3 color = texelFetch(framebufUnfilteredDirect_Sampler, shadingSamplePix, 0).rgb;
-    const float shadingSampleLuminance = getLuminance(color);
+    vec4 directAndSpec = vec4(0.0);
 
-    const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
-    const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminance);
+    {
+        const vec3 color = texelFetch(framebufUnfilteredDirect_Sampler, shadingSamplePix, 0).rgb;
+        const float shadingSampleLuminance = getLuminance(color);
 
-    imageStore(framebufPingGradient, gradPix, vec4(abs(gradSample), normFactor, 0.0, 0.0));
+        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
+        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminance);
+
+        directAndSpec.x = gradSample;
+        directAndSpec.y = normFactor;
+    }
+
+    {
+        const vec3 color = texelFetch(framebufUnfilteredSpecular_Sampler, shadingSamplePix, 0).rgb;
+        const float shadingSampleLuminance = getLuminance(color);
+
+        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;
+        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceSpec);
+
+        directAndSpec.z = gradSample;
+        directAndSpec.w = normFactor;
+    }
+
+    imageStore(framebufPingGradient, gradPix, directAndSpec);
 }

@@ -172,24 +172,24 @@ void main()
 
     switch (atrousIteration)
     {
-        case 0: atrous(framebufPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
-        case 1: atrous(framebufColorHistory_Sampler,         filteredColor, updatedVariance); break;
-        case 2: atrous(framebufPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
-        case 3: atrous(framebufPongColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 0: atrous(framebufPingDiffColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 1: atrous(framebufDiffColorHistory_Sampler,         filteredColor, updatedVariance); break;
+        case 2: atrous(framebufPingDiffColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 3: atrous(framebufPongDiffColorAndVariance_Sampler, filteredColor, updatedVariance); break;
     }
 
     // for the first iteration, save to color history buffer for temporal accumulation
     switch (atrousIteration)
     {
-        case 0: imageStore(framebufColorHistory,         pix, vec4(filteredColor, updatedVariance)); break;
-        case 1: imageStore(framebufPingColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
-        case 2: imageStore(framebufPongColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
+        case 0: imageStore(framebufDiffColorHistory,     pix, vec4(filteredColor, updatedVariance)); break;
+        case 1: imageStore(framebufPingDiffColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
+        case 2: imageStore(framebufPongDiffColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
     }
 
     if (atrousIteration == 3)
     {
         const vec3 albedo        = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
-        const float depth        = texelFetch(framebufDepth_Sampler, pix, 0).r;
+        const float depth        = texelFetch(framebufDepth_Sampler,  pix, 0).r;
         
         if (depth > MAX_RAY_LENGTH)
         {

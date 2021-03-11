@@ -39,13 +39,15 @@ void main()
         return;
     }
 
-    const uvec2 prevStrataPos = texelFetch(framebufGradientSamples_Prev_Sampler, gradPix, 0).xy;
+    const uint prevStrataPosPacked = texelFetch(framebufGradientSamples_Prev_Sampler, gradPix, 0).x;
+    const uvec2 prevStrataPos = uvec2(prevStrataPosPacked % COMPUTE_ASVGF_STRATA_SIZE, prevStrataPosPacked / COMPUTE_ASVGF_STRATA_SIZE);
 
     // (c) was done in primary rays shader
     // (a) instead of choosing random sample in strata, choose the brightest
     ivec2 lastStrataPos = ivec2(0);
     ivec2 lastPrevPix = ivec2(0);
     float lastLuminance = 0;
+    float lastLuminanceSpec = 0;
     bool found = false;
 
     // for each pixel in strata
@@ -59,11 +61,17 @@ void main()
             const vec3 prevColor = texelFetch(framebufUnfilteredDirect_Sampler, prevPix, 0).rgb;
             const float prevLuminance = getLuminance(prevColor);
 
-            if (lastLuminance < prevLuminance && !(prevStrataPos.x == xx && prevStrataPos.y == yy))
+            const vec3 prevSpec = texelFetch(framebufUnfilteredSpecular_Sampler, prevPix, 0).rgb;
+            const float prevLuminanceSpec = getLuminance(prevSpec);
+
+            if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec && !(prevStrataPos.x == xx && prevStrataPos.y == yy))
             {
                 lastStrataPos = ivec2(xx, yy);
                 lastPrevPix = prevPix;
+                
                 lastLuminance = prevLuminance;
+                lastLuminanceSpec = prevLuminanceSpec;
+
                 found = true;
             }
         }
@@ -100,7 +108,8 @@ void main()
     }
 
     // save position in strata and mark that strata has gradient sample
-    imageStore(framebufGradientSamples, gradPix, uvec4(lastStrataPos, 1, floatBitsToUint(lastLuminance)));
+    const uint lastStrataPosPacked = lastStrataPos.x + lastStrataPos.y * COMPUTE_ASVGF_STRATA_SIZE;
+    imageStore(framebufGradientSamples, gradPix, uvec4(lastStrataPosPacked, 1, floatBitsToUint(lastLuminance), floatBitsToUint(lastLuminanceSpec)));
     
     // (d) merge new samples with chosen forward-projected sample 
     // from previous frame before tracing illumination

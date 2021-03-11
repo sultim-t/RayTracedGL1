@@ -108,18 +108,20 @@ void main()
             {
                 const float weight = bilinearWeights[yy][xx];
 
-                colorPrev     += texelFetch(framebufColorHistory_Sampler,            xy, 0).rgb * weight;
-                momentsPrev   += texelFetch(framebufAccumMoments_Prev_Sampler,       xy, 0).rg  * weight;
-                historyLength += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).r   * weight;
+                colorPrev     += texelFetch(framebufDiffColorHistory_Sampler,            xy, 0).rgb * weight;
+                momentsPrev   += texelFetch(framebufDiffAccumMoments_Prev_Sampler,       xy, 0).rg  * weight;
+                historyLength += texelFetch(framebufDiffAccumHistoryLength_Prev_Sampler, xy, 0).r   * weight;
 
                 weightSum += weight;
 			}
         }
     }
+    
+    const vec4 gradFB = texelFetch(framebufPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
 
-    vec3 colorAccum;
-    vec2 momentsAccum;
-    float historyLengthAccum;
+    vec3 diffColorAccum;
+    vec2 diffMomentsAccum;
+    float diffHistoryLengthAccum;
 
     // found consistent info
     if (weightSum > 0.01)
@@ -129,11 +131,9 @@ void main()
         colorPrev     *= invWeightSum;
         momentsPrev   *= invWeightSum;
         historyLength *= invWeightSum;
-
-        const vec2 gradGB = texelFetch(framebufPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).rg;
         
-        const float gradSample = gradGB.r;
-        const float normFactor = gradGB.g;
+        const float gradSample = gradFB.r;
+        const float normFactor = gradFB.g;
 
         const float lambda = normFactor > 0.0001 ? 
             clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
@@ -151,18 +151,18 @@ void main()
         alphaColor   = mix(alphaColor,   1.0, antilagAlpha);
         alphaMoments = mix(alphaMoments, 1.0, antilagAlpha);
 
-        colorAccum   = mix(colorPrev, color, alphaColor);
-        momentsAccum = mix(momentsPrev, moments, alphaMoments);
-        historyLengthAccum = historyLength;
+        diffColorAccum   = mix(colorPrev, color, alphaColor);
+        diffMomentsAccum = mix(momentsPrev, moments, alphaMoments);
+        diffHistoryLengthAccum = historyLength;
     }
     else
     {
-        colorAccum = color;
-        momentsAccum = moments;
-        historyLengthAccum = 1.0;
+        diffColorAccum = color;
+        diffMomentsAccum = moments;
+        diffHistoryLengthAccum = 1.0;
     }
 
-    imageStore(framebufAccumColor, pix, vec4(colorAccum, 0.0));
-    imageStore(framebufAccumMoments, pix, vec4(momentsAccum, 0.0, 0.0));
-    imageStore(framebufAccumHistoryLength, pix, vec4(historyLengthAccum));
+    imageStore(framebufDiffAccumColor, pix, vec4(diffColorAccum, 0.0));
+    imageStore(framebufDiffAccumMoments, pix, vec4(diffMomentsAccum, 0.0, 0.0));
+    imageStore(framebufDiffAccumHistoryLength, pix, vec4(diffHistoryLengthAccum));
 }
