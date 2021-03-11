@@ -126,7 +126,7 @@ void main()
                 momentsPrev   += texelFetch(framebufDiffAccumMoments_Prev_Sampler,       xy, 0).rg  * weight;
                 historyLength += texelFetch(framebufDiffAccumHistoryLength_Prev_Sampler, xy, 0).r   * weight;
 
-                vec4 specFB = texelFetch(framebufSpecAccumColorAndHistoryLength_Prev_Sampler, xy, 0);
+                const vec4 specFB = texelFetch(framebufSpecAccumColorAndHistoryLength_Prev_Sampler, xy, 0);
                 specPrev          += specFB.rgb * weight;
                 specHistoryLength += specFB.a   * weight;
 
@@ -206,4 +206,5 @@ void main()
     imageStore(framebufDiffAccumHistoryLength, pix, vec4(diffHistoryLengthAccum));
 
     imageStore(framebufSpecAccumColorAndHistoryLength, pix, vec4(specColorAccum, specHistoryLengthAccum));
+    imageStore(framebufSpecPingColor, pix, vec4(specColorAccum, 0.0));
 }

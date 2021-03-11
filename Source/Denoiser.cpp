@@ -201,22 +201,27 @@ void RTGL1::Denoiser::Denoise(
 
 
     // atrous
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
+
     for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
     {
         switch (i)
         {
             case 0:
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PING_COLOR);
                 break;
             case 1:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR);
                 break;
             case 2:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PING_COLOR);
                 break;
             case 3:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PONG_COLOR_AND_VARIANCE);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_ACCUM_COLOR_AND_HISTORY_LENGTH);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT);
                 break;
             default: 

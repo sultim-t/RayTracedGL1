@@ -88,17 +88,18 @@ float prefilterLuminanceVariance(sampler2D samplerColor, const ivec2 pix, const 
     return sqrt(max(r, 0.0));
 }
 
-void atrous(sampler2D samplerColor, out vec3 outColor, out float outVariance)
+void atrous(sampler2D samplerDiff, sampler2D samplerSpec, out vec3 outDiff, out float outVariance, out vec3 outSpec)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
-    const vec4 cv = texelFetch(samplerColor,          pix, 0);
+    const vec4 cv = texelFetch(samplerDiff, pix, 0);
+    outDiff       = cv.rgb;
+    outVariance   = cv.a;
+
+    outSpec       = texelFetch(samplerSpec, pix, 0).rgb;
+
     const vec3 dg = texelFetch(framebufDepth_Sampler, pix, 0).rgb;
-
-    outColor    = cv.rgb;
-    outVariance = cv.a;
-
     const float depth     = dg.r;
     const vec2  gradDepth = dg.gb;
 
@@ -108,10 +109,16 @@ void atrous(sampler2D samplerColor, out vec3 outColor, out float outVariance)
     }
     
     const vec3 normal = texelFetch(framebufNormalGeometry_Sampler, pix, 0).rgb;
-    const float l = getLuminance(outColor);
-    const float wLumMultiplier = 1.0 / (SigmaLuminance * prefilterLuminanceVariance(samplerColor, pix, outVariance) + 0.00001);
+
+    const float l = getLuminance(outDiff);
+    const float wLumMultiplier = 1.0 / (SigmaLuminance * prefilterLuminanceVariance(samplerDiff, pix, outVariance) + 0.00001);
+   
+    // the rougher the surface, the more blur to apply
+    const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
+    const float wRoughMultiplier = pow(roughness, StepSize);
 
     float weightSum = 1.0;
+    float weightSumSpec = 1.0;
 
     const int FilterSize = 1;
     const float waveletKernel[2][2] = 
@@ -132,30 +139,43 @@ void atrous(sampler2D samplerColor, out vec3 outColor, out float outVariance)
             const ivec2 offset = ivec2(xx * StepSize, yy * StepSize);
             const ivec2 pix_q = pix + offset;
 
-            const vec3  normal_q   = texelFetch(framebufNormalGeometry_Sampler, pix_q, 0).rgb;
-            const float depth_q    = texelFetch(framebufDepth_Sampler,          pix_q, 0).r;
-            const vec4  cv_q       = texelFetch(samplerColor,                   pix_q, 0);
-            const vec3  color_q    = cv_q.rgb;
-            const float variance_q = cv_q.a;
-            const float l_q        = getLuminance(color_q);
+            const float roughness_q = texelFetch(framebufMetallicRoughness_Sampler, pix_q, 0).g;
+            const vec3  normal_q    = texelFetch(framebufNormalGeometry_Sampler,    pix_q, 0).rgb;
+            const float depth_q     = texelFetch(framebufDepth_Sampler,             pix_q, 0).r;
+
+            const vec3  specColor_q = texelFetch(samplerSpec,                       pix_q, 0).rgb;
+            
+            const vec4  cv_q        = texelFetch(samplerDiff,                       pix_q, 0);
+            const vec3  diffColor_q = cv_q.rgb;
+            const float variance_q  = cv_q.a;
+            const float l_q         = getLuminance(diffColor_q);
 
             const float w_z = abs(depth - depth_q) / max(dot(gradDepth, vec2(offset)), 0.01);
             const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
             const float w_l = abs(l - l_q) * wLumMultiplier;
 
-            const float w = exp(-w_z - w_l) * w_n * 
-                            waveletKernel[abs(xx)][abs(yy)] *
-                            float(testInside(pix_q, screenSize));
+            // larger weight if roughness difference is small
+            const float w_r = min(pow(1.025 - abs(roughness - roughness_q), 32), 1.0) * wRoughMultiplier;
 
-            outColor += color_q * w;
-            outVariance += variance_q * w * w;
+            const float waveletW = waveletKernel[abs(yy)][abs(xx)];
+            const float isInside = float(testInside(pix_q, screenSize));
 
-            weightSum += w;
+            const float wDiff = exp(-w_z - w_l) * w_n * waveletW * isInside;
+            const float wSpec = w_r * exp(-w_z);// * w_n * waveletW * isInside;
+
+            outDiff += diffColor_q * wDiff;
+            outSpec += specColor_q * wSpec;
+
+            outVariance += variance_q * wDiff * wDiff;
+
+            weightSum += wDiff;
+            weightSumSpec += wSpec;
         }
     }
 
-    outColor    /= weightSum;
+    outDiff     /= weightSum;
     outVariance /= weightSum * weightSum;
+    outSpec     /= weightSumSpec;
 }
 
 void main()
@@ -167,23 +187,30 @@ void main()
         return;
     }
 
-    vec3 filteredColor;
+    vec3 filteredDiff;
+    vec3 filteredSpec;
     float updatedVariance;
 
     switch (atrousIteration)
     {
-        case 0: atrous(framebufDiffPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
-        case 1: atrous(framebufDiffColorHistory_Sampler,         filteredColor, updatedVariance); break;
-        case 2: atrous(framebufDiffPingColorAndVariance_Sampler, filteredColor, updatedVariance); break;
-        case 3: atrous(framebufDiffPongColorAndVariance_Sampler, filteredColor, updatedVariance); break;
+        case 0: atrous(framebufDiffPingColorAndVariance_Sampler, framebufSpecPingColor_Sampler, filteredDiff, updatedVariance, filteredSpec); break;
+        case 1: atrous(framebufDiffColorHistory_Sampler,         framebufSpecPongColor_Sampler, filteredDiff, updatedVariance, filteredSpec); break;
+        case 2: atrous(framebufDiffPingColorAndVariance_Sampler, framebufSpecPingColor_Sampler, filteredDiff, updatedVariance, filteredSpec); break;
+        case 3: atrous(framebufDiffPongColorAndVariance_Sampler, framebufSpecPongColor_Sampler, filteredDiff, updatedVariance, filteredSpec); break;
     }
 
     // for the first iteration, save to color history buffer for temporal accumulation
     switch (atrousIteration)
     {
-        case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredColor, updatedVariance)); break;
-        case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
-        case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredColor, updatedVariance)); break;
+        case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
+                imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
+                break;
+        case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
+                imageStore(framebufSpecPingColor,            pix, vec4(filteredSpec, 0.0)); 
+                break;
+        case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
+                imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
+                break;
     }
 
     if (atrousIteration == 3)
@@ -197,8 +224,8 @@ void main()
             return;
         }
 
-        const vec3 diffuse       = filteredColor;
-        const vec3 specular      = texelFetch(framebufSpecAccumColorAndHistoryLength_Sampler, pix, 0).rgb;
+        const vec3 diffuse       = filteredDiff;
+        const vec3 specular      = filteredSpec;
         const vec3 indirect      = vec3(0.0); // texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
         const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler,  pix, 0).r;
         

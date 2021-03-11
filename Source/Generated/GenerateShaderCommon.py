@@ -511,11 +511,12 @@ FRAMEBUFFERS = {
     "DiffAccumMoments"                  : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAccumHistoryLength"            : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "DiffColorHistory"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    
-    "SpecAccumColorAndHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-
     "DiffPingColorAndVariance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "DiffPongColorAndVariance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    
+    "SpecAccumColorAndHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "SpecPingColor"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "SpecPongColor"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     
     "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "PingGradient"                      : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),

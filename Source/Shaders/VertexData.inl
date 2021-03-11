@@ -601,24 +601,21 @@ vec4 packVisibilityBuffer(const ShPayload p)
 // v must be fetched from framebufVisibilityBuffer_Prev_Sampler
 bool unpackPrevVisibilityBuffer(const vec4 v, out vec3 prevPos)
 {
-    int prevInstanceID, prevInstCustomIndex;
-    int prevLocalGeomIndex, prevPrimIndex;
+    int prevInstanceID, instCustomIndex;
+    int prevLocalGeomIndex, primIndex;
 
-    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), prevInstanceID, prevInstCustomIndex);
-    unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), prevLocalGeomIndex, prevPrimIndex);
+    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), prevInstanceID, instCustomIndex);
+    unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), prevLocalGeomIndex, primIndex);
 
     int curFrameGlobalGeomIndex;
-    const bool matched = getCurrentGeometryIndexByPrev(prevInstanceID, prevInstCustomIndex, prevLocalGeomIndex, curFrameGlobalGeomIndex);
+    const bool matched = getCurrentGeometryIndexByPrev(prevInstanceID, instCustomIndex, prevLocalGeomIndex, curFrameGlobalGeomIndex);
 
     if (!matched)
     {
         return false;
     }
 
-    // primitive index is the same, other
-    const int primIndex = prevPrimIndex;
-
-    const mat3 prevVerts = getOnlyPrevPositions(curFrameGlobalGeomIndex, prevInstCustomIndex, primIndex);
+    const mat3 prevVerts = getOnlyPrevPositions(curFrameGlobalGeomIndex, instCustomIndex, primIndex);
     const vec3 baryCoords = vec3(1.0 - v[2] - v[3], v[2], v[3]);
 
     prevPos = prevVerts * baryCoords;
