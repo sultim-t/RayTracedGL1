@@ -74,13 +74,13 @@ public:
 
 
     // Update transform for static movable geometry
-    void UpdateStaticMovableTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo);
+    void UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo);
     // After updating transforms, acceleration structures should be rebuilt
     void ResubmitStaticMovable(VkCommandBuffer cmd);
 
     // Update texture coordinates for static geometry, it 
     // doesn't require AS rebuilding, but only copying from staging to device-local 
-    void UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
+    void UpdateStaticTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
     void ResubmitStaticTexCoords(VkCommandBuffer cmd);
 
 

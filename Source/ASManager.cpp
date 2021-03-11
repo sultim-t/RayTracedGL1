@@ -669,14 +669,14 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-void ASManager::UpdateStaticMovableTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo)
+void ASManager::UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo)
 {
-    collectorStatic->UpdateTransform(geomIndex, updateInfo);
+    collectorStatic->UpdateTransform(simpleIndex, updateInfo);
 }
 
-void RTGL1::ASManager::UpdateStaticTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
+void RTGL1::ASManager::UpdateStaticTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
 {
-    collectorStatic->UpdateTexCoords(geomIndex, texCoordsInfo);
+    collectorStatic->UpdateTexCoords(simpleIndex, texCoordsInfo);
 }
 
 void RTGL1::ASManager::ResubmitStaticTexCoords(VkCommandBuffer cmd)
@@ -809,8 +809,8 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
 {
     assert(index < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
-    uint32_t arrayOffset = VertexCollectorFilterTypeFlags_ToOffset(blas.GetFilter()) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
-    uint32_t geomCount = blas.GetGeomCount();
+    int32_t arrayOffset = VertexCollectorFilterTypeFlags_ToOffset(blas.GetFilter()) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+    int32_t geomCount = blas.GetGeomCount();
 
     // BLAS must not be empty, if it's added to TLAS
     assert(geomCount > 0);

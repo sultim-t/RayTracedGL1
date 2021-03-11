@@ -81,9 +81,9 @@ public:
 
     // Update transform, only for movable static geometry as dynamic geometry
     // will be updated every frame and thus their transforms.
-    void UpdateTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo);
+    void UpdateTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo);
     // Update texture coordinates 
-    void UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
+    void UpdateTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
 
 
     // When material data is changed, this function is called
@@ -131,7 +131,7 @@ private:
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
     bool CopyTransformsFromStaging(VkCommandBuffer cmd, bool insertMemBarrier);
 
-    void AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex);
+    void AddMaterialDependency(uint32_t simpleIndex, uint32_t layer, uint32_t materialIndex);
 
     // Parse flags to flag bit pairs and create instances of
     // VertexCollectorFilter. Flag bit pair contains one bit from
@@ -147,7 +147,7 @@ private:
 private:
     struct MaterialRef
     {
-        uint32_t geomIndex;
+        uint32_t simpleIndex;
         uint32_t layer;
     };
 
@@ -186,6 +186,8 @@ private:
     std::vector<VkBufferCopy> texCoordsToCopy;
     VkDeviceSize texCoordsToCopyLowerBound;
     VkDeviceSize texCoordsToCopyUpperBound;
+
+    std::map<uint32_t, uint32_t> simpleIndexToTransformIndex;
 };
 
 }

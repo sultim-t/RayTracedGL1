@@ -332,15 +332,15 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     }
 
 
+    // simple index -- calculated as (global cur static count + global cur dynamic count)
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    uint32_t globalGeomIndex = geomInfoMgr->WriteGeomInfo(frameIndex, info.uniqueID, localIndex, geomFlags, geomInfo);
+    uint32_t simpleIndex = geomInfoMgr->WriteGeomInfo(frameIndex, info.uniqueID, localIndex, geomFlags, geomInfo);
 
-
-    // add material dependency but only for static geometry,
-    // dynamic is updated each frame, so their materials will be updated anyway
     if (collectStatic)
     {
+        // add material dependency but only for static geometry,
+        // dynamic is updated each frame, so their materials will be updated anyway
         for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
         {
             const uint32_t materialIndex = info.geomMaterial.layerMaterials[layer];
@@ -350,15 +350,18 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
                 // if at least one texture is not empty on this layer, add dependency 
                 if (geomInfo.materials[layer][t] != EMPTY_TEXTURE_INDEX)
                 {
-                    AddMaterialDependency(globalGeomIndex, layer, materialIndex);
+                    AddMaterialDependency(simpleIndex, layer, materialIndex);
 
                     break;
                 }               
             }
         }
+
+        // also, save transform index for updating static movable's transforms
+        simpleIndexToTransformIndex[simpleIndex] = transformIndex;
     }
 
-    return globalGeomIndex;
+    return simpleIndex;
 }
 
 void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic)
@@ -454,6 +457,8 @@ void VertexCollector::Reset()
     curIndexCount = 0;
     curPrimitiveCount = 0;
     curTransformCount = 0;
+
+    simpleIndexToTransformIndex.clear();
 
     materialDependencies.clear();
 
@@ -689,9 +694,9 @@ bool VertexCollector::GetVertBufferCopyInfos(bool isStatic, std::vector<VkBuffer
     return true;
 }
 
-void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgUpdateTransformInfo &updateInfo)
+void VertexCollector::UpdateTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo)
 {
-    if (geomIndex >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT)
+    if (simpleIndex >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT)
     {
         assert(0);
         return;
@@ -700,30 +705,18 @@ void VertexCollector::UpdateTransform(uint32_t geomIndex, const RgUpdateTransfor
     assert(mappedTransformData != nullptr);
 
     static_assert(sizeof(RgTransform) == sizeof(VkTransformMatrixKHR), "RgTransform and VkTransformMatrixKHR must have the same structure to be used in AS building");
-    memcpy(mappedTransformData + geomIndex, &updateInfo.transform, sizeof(VkTransformMatrixKHR));
+    memcpy(mappedTransformData + simpleIndexToTransformIndex[simpleIndex], &updateInfo.transform, sizeof(VkTransformMatrixKHR));
 
-    geomInfoMgr->WriteStaticGeomInfoTransform(geomIndex, updateInfo.movableStaticUniqueID, updateInfo.transform);
+    geomInfoMgr->WriteStaticGeomInfoTransform(simpleIndex, updateInfo.movableStaticUniqueID, updateInfo.transform);
 }
 
-void RTGL1::VertexCollector::UpdateTexCoords(uint32_t geomIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
+void RTGL1::VertexCollector::UpdateTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
 {
-    // check if exist 
-    /*auto f = geomT ype.find(geomIndex);
-
-    if (f == geomT ype.end())
-    {
-        assert(0);
-        return;
-    }
-
-    // must be static
-    assert((f->second & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC) == 0);*/
-
     const bool isStatic = true;
     const uint32_t maxVertexCount = isStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
 
     // base vertex index is saved in geometry instance info
-    uint32_t globalVertIndex = geomInfoMgr->GetStaticGeomBaseVertexIndex(geomIndex);
+    uint32_t globalVertIndex = geomInfoMgr->GetStaticGeomBaseVertexIndex(simpleIndex);
     uint32_t dstVertIndex = globalVertIndex + texCoordsInfo.vertexOffset;
 
     if (dstVertIndex + texCoordsInfo.vertexCount >= maxVertexCount)
@@ -735,7 +728,7 @@ void RTGL1::VertexCollector::UpdateTexCoords(uint32_t geomIndex, const RgUpdateT
     CopyTexCoordsToStaging(isStatic, dstVertIndex, texCoordsInfo.vertexCount, texCoordsInfo.texCoordLayerData, true);
 }
 
-void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, uint32_t materialIndex)
+void VertexCollector::AddMaterialDependency(uint32_t simpleIndex, uint32_t layer, uint32_t materialIndex)
 {
     // ignore empty materials
     if (materialIndex != RG_NO_MATERIAL)
@@ -748,7 +741,7 @@ void VertexCollector::AddMaterialDependency(uint32_t geomIndex, uint32_t layer, 
             it = materialDependencies.find(materialIndex);
         }
 
-        it->second.push_back({ geomIndex, layer });
+        it->second.push_back({ simpleIndex, layer });
     }
 }
 void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTextures &newInfo)
@@ -756,9 +749,7 @@ void VertexCollector::OnMaterialChange(uint32_t materialIndex, const MaterialTex
     // for each geom index that has this material, update geometry instance infos
     for (const auto &p : materialDependencies[materialIndex])
     {    
-        assert(p.geomIndex < curTransformCount);
-
-        geomInfoMgr->WriteStaticGeomInfoMaterials(p.geomIndex, p.layer, newInfo);
+        geomInfoMgr->WriteStaticGeomInfoMaterials(p.simpleIndex, p.layer, newInfo);
     }
 }
 

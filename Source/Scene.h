@@ -67,7 +67,7 @@ public:
     bool DoesUniqueIDExist(uint64_t uniqueID) const;
 
 private:
-    bool TryGetStaticGeomIndex(uint64_t uniqueID, uint32_t *result) const;
+    bool TryGetStaticSimpleIndex(uint64_t uniqueID, uint32_t *result) const;
 
 private:
     std::shared_ptr<ASManager> asManager;
@@ -76,8 +76,8 @@ private:
     std::shared_ptr<VertexPreprocessing> vertPreproc;
 
     // Dynamic indices are cleared every frame
-    std::map<uint64_t, uint32_t> dynamicUniqueIDToGeomIndex;
-    std::map<uint64_t, uint32_t> staticUniqueIDToGeomIndex;
+    std::map<uint64_t, uint32_t> dynamicUniqueIDToSimpleIndex;
+    std::map<uint64_t, uint32_t> staticUniqueIDToSimpleIndex;
 
     // Movable geometry IDs
     std::vector<uint32_t> movableGeomIndices;

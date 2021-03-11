@@ -51,7 +51,7 @@ Scene::~Scene()
 
 void Scene::PrepareForFrame(uint32_t frameIndex)
 {
-    dynamicUniqueIDToGeomIndex.clear();
+    dynamicUniqueIDToSimpleIndex.clear();
 
     geomInfoMgr->PrepareForFrame(frameIndex);
 
@@ -87,7 +87,6 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
     // copy geom infos to device-local
     geomInfoMgr->CopyFromStaging(cmd, frameIndex);
-    geomInfoMgr->ResetOnlyDynamic(frameIndex);
 
 
     ShVertPreprocessing push = {};
@@ -127,11 +126,11 @@ bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
 
     if (uploadInfo.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
-        uint32_t geomIndex = asManager->AddDynamicGeometry(frameIndex, uploadInfo);
+        uint32_t simpleIndex = asManager->AddDynamicGeometry(frameIndex, uploadInfo);
 
-        if (geomIndex != UINT32_MAX)
+        if (simpleIndex != UINT32_MAX)
         {
-            dynamicUniqueIDToGeomIndex[uploadInfo.uniqueID] = geomIndex;
+            dynamicUniqueIDToSimpleIndex[uploadInfo.uniqueID] = simpleIndex;
             return true;
         }
     }
@@ -143,15 +142,15 @@ bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
             isRecordingStatic = true;
         }
 
-        uint32_t geomIndex = asManager->AddStaticGeometry(frameIndex, uploadInfo);
+        uint32_t simpleIndex = asManager->AddStaticGeometry(frameIndex, uploadInfo);
 
-        if (geomIndex != UINT32_MAX)
+        if (simpleIndex != UINT32_MAX)
         {
-            staticUniqueIDToGeomIndex[uploadInfo.uniqueID] = geomIndex;
+            staticUniqueIDToSimpleIndex[uploadInfo.uniqueID] = simpleIndex;
 
             if (uploadInfo.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
             {
-                movableGeomIndices.push_back(geomIndex);
+                movableGeomIndices.push_back(simpleIndex);
             }
 
             return true;
@@ -163,20 +162,20 @@ bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
 
 bool Scene::UpdateTransform(const RgUpdateTransformInfo &updateInfo)
 {
-    uint32_t geomIndex;
-    if (!TryGetStaticGeomIndex(updateInfo.movableStaticUniqueID, &geomIndex))
+    uint32_t simpleIndex;
+    if (!TryGetStaticSimpleIndex(updateInfo.movableStaticUniqueID, &simpleIndex))
     {
         return false;
     }
 
     // check if it's actually movable
-    if (std::find(movableGeomIndices.begin(), movableGeomIndices.end(), geomIndex) == movableGeomIndices.end())
+    if (std::find(movableGeomIndices.begin(), movableGeomIndices.end(), simpleIndex) == movableGeomIndices.end())
     {
         // do nothing, if it's not
         return false;
     }
 
-    asManager->UpdateStaticMovableTransform(geomIndex, updateInfo);
+    asManager->UpdateStaticMovableTransform(simpleIndex, updateInfo);
 
     // if not recording, then static geometries were already submitted,
     // as some movable transform was changed AS must be rebuilt
@@ -190,13 +189,13 @@ bool Scene::UpdateTransform(const RgUpdateTransformInfo &updateInfo)
 
 bool RTGL1::Scene::UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo)
 {
-    uint32_t geomIndex;
-    if (!TryGetStaticGeomIndex(texCoordsInfo.staticUniqueID, &geomIndex))
+    uint32_t simpleIndex;
+    if (!TryGetStaticSimpleIndex(texCoordsInfo.staticUniqueID, &simpleIndex))
     {
         return false;
     }
 
-    asManager->UpdateStaticTexCoords(geomIndex, texCoordsInfo);
+    asManager->UpdateStaticTexCoords(simpleIndex, texCoordsInfo);
     return true;
 }
 
@@ -223,7 +222,7 @@ void Scene::StartNewStatic()
         asManager->ResetStaticGeometry();
     }
 
-    staticUniqueIDToGeomIndex.clear();
+    staticUniqueIDToSimpleIndex.clear();
     movableGeomIndices.clear();
 }
 
@@ -240,15 +239,15 @@ const std::shared_ptr<LightManager> &RTGL1::Scene::GetLightManager()
 bool Scene::DoesUniqueIDExist(uint64_t uniqueID) const
 {
     return
-        staticUniqueIDToGeomIndex.find(uniqueID) != staticUniqueIDToGeomIndex.end() ||
-        dynamicUniqueIDToGeomIndex.find(uniqueID) != dynamicUniqueIDToGeomIndex.end();
+        staticUniqueIDToSimpleIndex.find(uniqueID) != staticUniqueIDToSimpleIndex.end() ||
+        dynamicUniqueIDToSimpleIndex.find(uniqueID) != dynamicUniqueIDToSimpleIndex.end();
 }
 
-bool Scene::TryGetStaticGeomIndex(uint64_t uniqueID, uint32_t *result) const
+bool Scene::TryGetStaticSimpleIndex(uint64_t uniqueID, uint32_t *result) const
 {
-    auto f = staticUniqueIDToGeomIndex.find(uniqueID);
+    auto f = staticUniqueIDToSimpleIndex.find(uniqueID);
 
-    if (f != staticUniqueIDToGeomIndex.end())
+    if (f != staticUniqueIDToSimpleIndex.end())
     {
         *result = f->second;
         return true;
