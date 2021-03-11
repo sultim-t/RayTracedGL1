@@ -37,23 +37,17 @@ CACHE_FILE_DEPENDENCY_MAP_SEPARATOR_LINE = "DEPENDENCY\n"
 
 
 MARKED_FILES = []
-def wereDependentModified(dependencyMap, cache, baseFile, firstTime=True):
+def wereDependentModified(dependencyMap, modifiedDependent, cache, baseFile, firstTime=True):
     global MARKED_FILES
     if firstTime:
         MARKED_FILES = []
 
     for dpd in dependencyMap[baseFile]:
-        if dpd not in MARKED_FILES and os.path.exists(dpd):
-            if dpd not in cache:
-                return True
-                
-            dpdLastModifTime = int(pathlib.Path(dpd).stat().st_mtime)
-            dpdIsOutdated = dpd in cache and dpdLastModifTime != cache[dpd]
-            if dpdIsOutdated:
-                return True
-
+        if dpd in modifiedDependent or dpd not in cache:
+            return True
+        else:
             MARKED_FILES.append(dpd)
-            if wereDependentModified(dependencyMap, cache, dpd, firstTime=False):
+            if wereDependentModified(dependencyMap, modifiedDependent, cache, dpd, firstTime=False):
                 return True
 
     return False
@@ -108,9 +102,14 @@ def main():
                         if parsingDpdncy:
                             if len(words) >= 2:
                                 # filename + (list of files it dependent on)
-                                dependencyMap[words[0]] = words[1:]
+                                checkedDpds = set()
+                                dpds = set(words[1:])
+                                for dpd in dpds:
+                                    if os.path.exists(dpd):
+                                        checkedDpds.add(dpd)
+                                dependencyMap[words[0]] = checkedDpds
                             else:
-                                dependencyMap[words[0]] = []
+                                dependencyMap[words[0]] = set()
             except:
                 cache = {}
                 dependencyMap = {}
@@ -149,13 +148,16 @@ def main():
             cache[filename] = lastModifTime
 
             if filename not in dependencyMap or isOutdated:
-                dependencyMap[filename] = []
+                dependencyMap[filename] = set()
 
                 with open(filename, "r") as dpd:
                     for line in dpd:
                         if line.startswith("#include"):
-                            dpdOnFile = line.split("\"")[1]
-                            dependencyMap[filename] += [dpdFolder + dpdOnFile for dpdFolder in DEPENDENCY_FOLDERS]
+                            dpdFile = line.split("\"")[1]
+                            for dpdFolder in DEPENDENCY_FOLDERS:
+                                dpd = dpdFolder + dpdFile
+                                if os.path.exists(dpd):
+                                    dependencyMap[filename].add(dpd)
 
     #if wereDependentModified and not forceRebuild:
     #    print("> Dependency files were modified. Rebuilding all...")
@@ -175,15 +177,18 @@ def main():
         isOutdated = filename in cache and lastModifTime != cache[filename]
 
         if filename not in dependencyMap or isOutdated:
-            dependencyMap[filename] = []
+            dependencyMap[filename] = set()
 
             with open(filename, "r") as dpd:
                 for line in dpd:
                     if line.startswith("#include"):
-                        dpdOnFile = line.split("\"")[1]
-                        dependencyMap[filename] += [dpdFolder + dpdOnFile for dpdFolder in DEPENDENCY_FOLDERS]
+                        dpdFile = line.split("\"")[1]
+                        for dpdFolder in DEPENDENCY_FOLDERS:
+                            dpd = dpdFolder + dpdFile
+                            if os.path.exists(dpd):
+                                dependencyMap[filename].add(dpd)
 
-        if filename not in cache or isOutdated or wereDependentModified(dependencyMap, cache, filename):
+        if filename not in cache or isOutdated or wereDependentModified(dependencyMap, modifiedDependent, cache, filename):
             print("> Building " + filename)
 
             r = subprocess.run([
