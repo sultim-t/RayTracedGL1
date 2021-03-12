@@ -150,7 +150,7 @@ void atrous(sampler2D samplerDiff, sampler2D samplerSpec, out vec3 outDiff, out 
             const float variance_q  = cv_q.a;
             const float l_q         = getLuminance(diffColor_q);
 
-            const float w_z = abs(depth - depth_q) / max(dot(gradDepth, vec2(offset)), 0.01);
+            const float w_z = abs(depth - depth_q) / max(abs(dot(gradDepth, vec2(offset))), 0.01);
             const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
             const float w_l = abs(l - l_q) * wLumMultiplier;
 
