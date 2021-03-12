@@ -247,6 +247,9 @@ def main():
     elif not msgWasAnyShaderRebuilt:
         msg = "> Everything is up-to-date."
         color = "Green"
+    else:
+        msg = "> Done."
+        color = "Green"
 
     if powerShellOutput:
         printInPowerShell(msg, color)

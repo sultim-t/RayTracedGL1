@@ -161,7 +161,7 @@ void atrous(sampler2D samplerDiff, sampler2D samplerSpec, out vec3 outDiff, out 
             const float isInside = float(testInside(pix_q, screenSize));
 
             const float wDiff = exp(-w_z - w_l) * w_n * waveletW * isInside;
-            const float wSpec = w_r * exp(-w_z);// * w_n * waveletW * isInside;
+            const float wSpec = w_r * exp(-w_z) * w_n * waveletW * isInside;
 
             outDiff += diffColor_q * wDiff;
             outSpec += specColor_q * wSpec;
