@@ -113,6 +113,9 @@ void RTGL1::Denoiser::MergeSamples(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_RANDOM_SEED);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SURFACE_POSITION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_VIEW_DIRECTION);
@@ -153,9 +156,9 @@ void RTGL1::Denoiser::Denoise(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
-
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientSamples);
     vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
@@ -183,11 +186,10 @@ void RTGL1::Denoiser::Denoise(
     // temporal accumulation
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_MOTION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, temporalAccumulation);
@@ -213,21 +215,30 @@ void RTGL1::Denoiser::Denoise(
             case 0:
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PING_COLOR);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_S_H_R);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_S_H_G);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_S_H_B);
                 break;
             case 1:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_R);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_G);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B);
                 break;
             case 2:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PING_COLOR);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_S_H_R);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_S_H_G);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_S_H_B);
                 break;
             case 3:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PONG_COLOR_AND_VARIANCE);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_R);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_G);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B);
                 break;
             default: 
                 assert(0);
