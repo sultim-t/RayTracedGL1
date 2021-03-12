@@ -47,10 +47,12 @@ void main()
 
     if (globalUniform.dbgShowGradients != 0)
     {
-        const vec4 gradGB = texelFetch(framebufPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const float lambda = clamp(abs(gradGB.r) / gradGB.g, 0.0, 1.0);
-        const float lambdaSpec = clamp(abs(gradGB.b) / gradGB.a, 0.0, 1.0);
-        color.rgb = vec3(lambda, lambdaSpec, 0);
+        const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        const float lambda = clamp(abs(gradDS.r) / gradDS.g, 0.0, 1.0);
+        const float lambdaSpec = clamp(abs(gradDS.b) / gradDS.a, 0.0, 1.0);
+        const float lambdaIndir = clamp(abs(gradI.r) / gradI.g, 0.0, 1.0);
+        color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
     }
 
     if (globalUniform.dbgShowMotionVectors != 0)

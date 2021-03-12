@@ -48,6 +48,7 @@ void main()
     ivec2 lastPrevPix = ivec2(0);
     float lastLuminance = 0;
     float lastLuminanceSpec = 0;
+    float allIndirLuminance = 0;
     bool found = false;
 
     // for each pixel in strata
@@ -55,8 +56,13 @@ void main()
     {
         for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
         {
+            if (prevStrataPos.x == xx && prevStrataPos.y == yy)
+            {
+                continue;
+            }
+
             const ivec2 curPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
-            const ivec2 prevPix = getPrevFramePix(curPix);
+            const ivec2 prevPix = getPrevFramePix(framebufMotion_Sampler, curPix);
 
             const vec3 prevColor = texelFetch(framebufUnfilteredDirect_Sampler, prevPix, 0).rgb;
             const float prevLuminance = getLuminance(prevColor);
@@ -64,7 +70,10 @@ void main()
             const vec3 prevSpec = texelFetch(framebufUnfilteredSpecular_Sampler, prevPix, 0).rgb;
             const float prevLuminanceSpec = getLuminance(prevSpec);
 
-            if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec && !(prevStrataPos.x == xx && prevStrataPos.y == yy))
+            const vec3 prevIndir = getSHColor(texelFetchUnfilteredIndirectSH(prevPix));
+            const float prevLuminanceIndir = getLuminance(prevIndir);
+
+            if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec)
             {
                 lastStrataPos = ivec2(xx, yy);
                 lastPrevPix = prevPix;
@@ -74,6 +83,8 @@ void main()
 
                 found = true;
             }
+
+            allIndirLuminance += prevLuminanceIndir;
         }
     }
 
@@ -112,7 +123,7 @@ void main()
     imageStore(framebufGradientSamples, gradPix, uvec4(packedStrataPos, 
                                                        floatBitsToUint(lastLuminance), 
                                                        floatBitsToUint(lastLuminanceSpec), 
-                                                       0 /*floatBitsToUint(lastLuminanceIndir)*/));
+                                                       floatBitsToUint(allIndirLuminance)));
     
     // (d) merge new samples with chosen forward-projected sample 
     // from previous frame before tracing illumination

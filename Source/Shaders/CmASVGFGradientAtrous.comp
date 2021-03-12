@@ -35,12 +35,13 @@ const int StepSize = 1 << atrousIteration;
 // Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
 // samplerGradient[0] -- temporal gradient (eq. 2)
 // samplerGradient[1] -- normalization factor (eq. 13)
-void atrous(sampler2D samplerGradient, out vec4 outGradient)
+void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 outGradient, out vec2 outGradientIndir)
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
     const ivec2 gradSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight) / COMPUTE_ASVGF_STRATA_SIZE;
     
     vec4 sum = vec4(0.0);
+    vec2 sumIndir = vec2(0.0);
     float weightSum = 0.0;
 
     const int FilterSize = 1;
@@ -58,16 +59,19 @@ void atrous(sampler2D samplerGradient, out vec4 outGradient)
             const ivec2 gradPix_q = gradPix + offset;
 
             const vec4 grad_q = texelFetch(samplerGradient, gradPix_q, 0);
+            const vec2 gradIndir_q = texelFetch(samplerGradientIndir, gradPix_q, 0).xy;
 
             const float w = waveletKernel[abs(xx)][abs(yy)] *
                             float(testInside(gradPix_q, gradSize));
 
             sum += grad_q * w;
+            sumIndir += gradIndir_q * w;
             weightSum += w;
         }
     }
 
     outGradient = sum / weightSum;
+    outGradientIndir = sumIndir / weightSum;
 }
 
 void main()
@@ -79,23 +83,32 @@ void main()
     {
         return;
     }
-
-    vec4 filtered;
+    
+    vec4 filteredDiffSpec;
+    vec2 filteredIndir;
 
     switch (atrousIteration)
     {
-         case 0: atrous(framebufPingGradient_Sampler, filtered); break;
-         case 1: atrous(framebufPongGradient_Sampler, filtered); break;
-         case 2: atrous(framebufPingGradient_Sampler, filtered); break;
-         case 3: atrous(framebufPongGradient_Sampler, filtered); break;
+         case 0: atrous(framebufDiffAndSpecPingGradient_Sampler, framebufIndirPingGradient_Sampler, filteredDiffSpec, filteredIndir); break;
+         case 1: atrous(framebufDiffAndSpecPongGradient_Sampler, framebufIndirPongGradient_Sampler, filteredDiffSpec, filteredIndir); break;
+         case 2: atrous(framebufDiffAndSpecPingGradient_Sampler, framebufIndirPingGradient_Sampler, filteredDiffSpec, filteredIndir); break;
+         case 3: atrous(framebufDiffAndSpecPongGradient_Sampler, framebufIndirPongGradient_Sampler, filteredDiffSpec, filteredIndir); break;
     }
     
     switch (atrousIteration)
     {
-         case 0: imageStore(framebufPongGradient, gradPix, filtered); break;
-         case 1: imageStore(framebufPingGradient, gradPix, filtered); break;
-         case 2: imageStore(framebufPongGradient, gradPix, filtered); break;
-         case 3: imageStore(framebufPingGradient, gradPix, filtered); break;
+         case 0: imageStore(framebufDiffAndSpecPongGradient, gradPix, filteredDiffSpec); 
+                 imageStore(framebufIndirPongGradient,       gradPix, vec4(filteredIndir, 0, 0)); 
+                 break;
+         case 1: imageStore(framebufDiffAndSpecPingGradient, gradPix, filteredDiffSpec);
+                 imageStore(framebufIndirPingGradient,       gradPix, vec4(filteredIndir, 0, 0)); 
+                 break;
+         case 2: imageStore(framebufDiffAndSpecPongGradient, gradPix, filteredDiffSpec); 
+                 imageStore(framebufIndirPongGradient,       gradPix, vec4(filteredIndir, 0, 0)); 
+                 break;
+         case 3: imageStore(framebufDiffAndSpecPingGradient, gradPix, filteredDiffSpec);
+                 imageStore(framebufIndirPingGradient,       gradPix, vec4(filteredIndir, 0, 0)); 
+                 break;
     }
 }
 

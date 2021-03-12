@@ -135,10 +135,10 @@ void processIndirectIllumination(
     {
         const SH bounceSh = irradianceToSH(contribution, bounceDirection);
 
-        SH sh = unpackUnfilteredIndirectSH(pix);
+        SH sh = imageLoadUnfilteredIndirectSH(pix);
         accumulateSH(sh, bounceSh, 1.0);
 
-        packUnfilteredIndirectSH(pix, sh);
+        imageStoreUnfilteredIndirectSH(pix, sh);
     }
 }
 

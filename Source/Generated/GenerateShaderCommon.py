@@ -513,7 +513,7 @@ FRAMEBUFFERS = {
 
     "DiffAccumColor"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAccumMoments"                  : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
-    "DiffAccumHistoryLength"            : (TYPE_FLOAT32,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "DiffAndIndirAccumHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
     "DiffColorHistory"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "DiffPingColorAndVariance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "DiffPongColorAndVariance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
@@ -522,9 +522,9 @@ FRAMEBUFFERS = {
     "SpecPingColor"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "SpecPongColor"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     
-    "IndirAccumSH_RAndHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "IndirAccumSH_GAndHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "IndirAccumSH_BAndHistoryLength"    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "IndirAccumSH_R"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "IndirAccumSH_G"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "IndirAccumSH_B"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "IndirPingSH_R"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "IndirPingSH_G"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "IndirPingSH_B"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
@@ -533,8 +533,10 @@ FRAMEBUFFERS = {
     "IndirPongSH_B"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     
     "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "PingGradient"                      : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "PongGradient"                      : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "DiffAndSpecPingGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "DiffAndSpecPongGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "IndirPingGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG, 0),
+    "IndirPongGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG, 0),
 }
 
 

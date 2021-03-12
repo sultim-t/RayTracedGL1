@@ -44,7 +44,7 @@ void main()
 
     if (!hasSample)
     {
-        imageStore(framebufPingGradient, gradPix, vec4(0.0));
+        imageStore(framebufDiffAndSpecPingGradient, gradPix, vec4(0.0));
         return;
     }
 
@@ -81,5 +81,25 @@ void main()
         directAndSpec.w = normFactor;
     }
 
-    imageStore(framebufPingGradient, gradPix, directAndSpec);
+    imageStore(framebufDiffAndSpecPingGradient, gradPix, directAndSpec);
+
+    {
+        float shadingSampleLuminance = 0.0;
+
+        for (int yy = 0; yy < COMPUTE_ASVGF_STRATA_SIZE; yy++)
+        {
+            for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
+            {
+                const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
+
+                const vec3 color = getSHColor(texelFetchUnfilteredIndirectSH(samplePix));
+                shadingSampleLuminance += getLuminance(color);
+            }
+        }
+
+        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceIndir;
+        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceIndir);
+
+        imageStore(framebufIndirPingGradient, gradPix, vec4(gradSample, normFactor, 0.0, 0.0));
+    }
 }

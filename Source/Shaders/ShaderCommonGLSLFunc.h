@@ -194,9 +194,9 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIR_MATCH_P
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_FRAMEBUFFERS
-vec2 getPrevScreenPos(const ivec2 pix)
+vec2 getPrevScreenPos(sampler2D motionSampler, const ivec2 pix)
 {
-    const vec2 motionCurToPrev = texelFetch(framebufMotion_Sampler, pix, 0).rg;
+    const vec2 motionCurToPrev = texelFetch(motionSampler, pix, 0).rg;
 
     const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
     const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
@@ -204,18 +204,19 @@ vec2 getPrevScreenPos(const ivec2 pix)
     return ((vec2(pix) + vec2(0.5)) * invScreenSize + motionCurToPrev) * screenSize;
 }
 
-vec2 getCurScreenPos(const ivec2 prevPix)
+vec2 getCurScreenPos(sampler2D motionSampler, const ivec2 prevPix)
 {
-    const vec2 motionCurToPrev = texelFetch(framebufMotion_Sampler, prevPix, 0).rg;
+    const vec2 motionCurToPrev = texelFetch(motionSampler, prevPix, 0).rg;
 
     const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
     const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
     
     return ((vec2(prevPix) + vec2(0.5)) * invScreenSize - motionCurToPrev) * screenSize;
 }
-ivec2 getPrevFramePix(const ivec2 curFramePix)
+
+ivec2 getPrevFramePix(sampler2D motionSampler, const ivec2 curFramePix)
 {
-    return ivec2(floor(getPrevScreenPos(curFramePix)));
+    return ivec2(floor(getPrevScreenPos(motionSampler, curFramePix)));
 }
 #endif // DESC_SET_FRAMEBUFFERS
 #endif // DESC_SET_GLOBAL_UNIFORM
@@ -241,7 +242,47 @@ bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
 #ifdef DESC_SET_FRAMEBUFFERS
     #include "SphericalHarmonics.h"
 
-SH unpackUnfilteredIndirectSH(ivec2 pix)
+SH texelFetchUnfilteredIndirectSH(ivec2 pix)
+{
+    SH sh;
+    sh.r = texelFetch(framebufUnfilteredIndirectSH_R_Sampler, pix, 0);
+    sh.g = texelFetch(framebufUnfilteredIndirectSH_G_Sampler, pix, 0);
+    sh.b = texelFetch(framebufUnfilteredIndirectSH_B_Sampler, pix, 0);
+
+    return sh;
+}
+
+SH texelFetchSH(sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB, ivec2 pix)
+{
+    SH sh;
+    sh.r = texelFetch(samplerIndirR, pix, 0);
+    sh.g = texelFetch(samplerIndirG, pix, 0);
+    sh.b = texelFetch(samplerIndirB, pix, 0);
+
+    return sh;
+}
+
+SH texelFetchIndirAccumSH(ivec2 pix)
+{
+    SH sh;
+    sh.r = texelFetch(framebufIndirAccumSH_R_Sampler, pix, 0);
+    sh.g = texelFetch(framebufIndirAccumSH_G_Sampler, pix, 0);
+    sh.b = texelFetch(framebufIndirAccumSH_B_Sampler, pix, 0);
+
+    return sh;
+}
+
+SH texelFetchIndirAccumSH_Prev(ivec2 pix)
+{
+    SH sh;
+    sh.r = texelFetch(framebufIndirAccumSH_R_Prev_Sampler, pix, 0);
+    sh.g = texelFetch(framebufIndirAccumSH_G_Prev_Sampler, pix, 0);
+    sh.b = texelFetch(framebufIndirAccumSH_B_Prev_Sampler, pix, 0);
+
+    return sh;
+}
+
+SH imageLoadUnfilteredIndirectSH(ivec2 pix)
 {
     SH sh;
     sh.r = imageLoad(framebufUnfilteredIndirectSH_R, pix);
@@ -251,7 +292,7 @@ SH unpackUnfilteredIndirectSH(ivec2 pix)
     return sh;
 }
 
-void packUnfilteredIndirectSH(ivec2 pix, const SH sh)
+void imageStoreUnfilteredIndirectSH(ivec2 pix, const SH sh)
 {
     imageStore(framebufUnfilteredIndirectSH_R, pix, sh.r);
     imageStore(framebufUnfilteredIndirectSH_G, pix, sh.g);

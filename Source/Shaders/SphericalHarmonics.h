@@ -32,6 +32,14 @@ struct SH
     vec4 b;
 };
 
+SH newSH()
+{
+    SH sh;
+    sh.r = sh.g = sh.b = vec4(0.0);
+
+    return sh;
+}
+
 // Find SH coeffictients L00, L1-1, L10, L11 for each color channel.
 // SH is a orthonormal basis, so inner product is used.
 SH irradianceToSH(const vec3 color, const vec3 dir)
@@ -96,9 +104,26 @@ vec3 getSHColor(const SH sh)
     );
 }
 
-void accumulateSH(inout SH x, const SH y, float a)
+void accumulateSH(inout SH x, const SH y, const float a)
 {
     x.r += y.r * a;
     x.g += y.g * a;
     x.b += y.b * a;
+}
+
+SH mixSH(const SH x, const SH y, const float a)
+{
+    SH sh;
+    sh.r = mix(x.r, y.r, a);
+    sh.g = mix(x.g, y.g, a);
+    sh.b = mix(x.b, y.b, a);
+
+    return sh;
+}
+
+void multiplySH(inout SH x, float a)
+{
+    x.r *= a;
+    x.g *= a;
+    x.b *= a;
 }

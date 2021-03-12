@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 51;
+const uint32_t RTGL1::ShFramebuffers_Count = 53;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -32,8 +32,8 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R16G16_SFLOAT,
     VK_FORMAT_R16G16_SFLOAT,
-    VK_FORMAT_R32_SFLOAT,
-    VK_FORMAT_R32_SFLOAT,
+    VK_FORMAT_R32G32_SFLOAT,
+    VK_FORMAT_R32G32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
@@ -57,10 +57,14 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R32G32B32A32_UINT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
     VK_FORMAT_R32G32B32A32_SFLOAT,
+    VK_FORMAT_R32G32_SFLOAT,
+    VK_FORMAT_R32G32_SFLOAT,
 };
 
 const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = 
 {
+    0,
+    0,
     0,
     0,
     0,
@@ -167,6 +171,8 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     48,
     49,
     50,
+    51,
+    52,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -222,12 +228,12 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     47,
     49,
     50,
+    51,
+    52,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
-    51,
-    52,
     53,
     54,
     55,
@@ -277,13 +283,15 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     99,
     100,
     101,
+    102,
+    103,
+    104,
+    105,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
-    51,
     53,
-    52,
     55,
     54,
     57,
@@ -292,46 +300,50 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] =
     58,
     61,
     60,
-    62,
     63,
+    62,
     64,
     65,
     66,
     67,
-    69,
     68,
-    70,
+    69,
     71,
+    70,
     72,
-    74,
     73,
+    74,
     76,
     75,
     78,
     77,
-    79,
     80,
+    79,
     81,
-    83,
     82,
-    84,
+    83,
     85,
-    87,
+    84,
     86,
+    87,
     89,
     88,
     91,
     90,
-    92,
     93,
+    92,
     94,
     95,
     96,
     97,
-    99,
     98,
-    100,
+    99,
     101,
+    100,
+    102,
+    103,
+    104,
+    105,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -362,8 +374,8 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf DiffAccumColor_Prev",
     "Framebuf DiffAccumMoments",
     "Framebuf DiffAccumMoments_Prev",
-    "Framebuf DiffAccumHistoryLength",
-    "Framebuf DiffAccumHistoryLength_Prev",
+    "Framebuf DiffAndIndirAccumHistoryLength",
+    "Framebuf DiffAndIndirAccumHistoryLength_Prev",
     "Framebuf DiffColorHistory",
     "Framebuf DiffPingColorAndVariance",
     "Framebuf DiffPongColorAndVariance",
@@ -371,12 +383,12 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf SpecAccumColorAndHistoryLength_Prev",
     "Framebuf SpecPingColor",
     "Framebuf SpecPongColor",
-    "Framebuf IndirAccumSH_RAndHistoryLength",
-    "Framebuf IndirAccumSH_RAndHistoryLength_Prev",
-    "Framebuf IndirAccumSH_GAndHistoryLength",
-    "Framebuf IndirAccumSH_GAndHistoryLength_Prev",
-    "Framebuf IndirAccumSH_BAndHistoryLength",
-    "Framebuf IndirAccumSH_BAndHistoryLength_Prev",
+    "Framebuf IndirAccumSH_R",
+    "Framebuf IndirAccumSH_R_Prev",
+    "Framebuf IndirAccumSH_G",
+    "Framebuf IndirAccumSH_G_Prev",
+    "Framebuf IndirAccumSH_B",
+    "Framebuf IndirAccumSH_B_Prev",
     "Framebuf IndirPingSH_R",
     "Framebuf IndirPingSH_G",
     "Framebuf IndirPingSH_B",
@@ -385,7 +397,9 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf IndirPongSH_B",
     "Framebuf GradientSamples",
     "Framebuf GradientSamples_Prev",
-    "Framebuf PingGradient",
-    "Framebuf PongGradient",
+    "Framebuf DiffAndSpecPingGradient",
+    "Framebuf DiffAndSpecPongGradient",
+    "Framebuf IndirPingGradient",
+    "Framebuf IndirPongGradient",
 };
 

@@ -154,7 +154,8 @@ void RTGL1::Denoiser::Denoise(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
 
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientSamples);
     vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
@@ -165,11 +166,13 @@ void RTGL1::Denoiser::Denoise(
     {
         if (i % 2 == 0)
         {
-            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
+            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
+            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
         }
         else
         {
-            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PONG_GRADIENT);
+            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PONG_GRADIENT);
+            framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_GRADIENT);
         }
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientAtrous[i]);
@@ -185,7 +188,7 @@ void RTGL1::Denoiser::Denoise(
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_PING_GRADIENT);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, temporalAccumulation);
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
@@ -194,7 +197,7 @@ void RTGL1::Denoiser::Denoise(
     // variance estimation
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_MOMENTS);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_HISTORY_LENGTH);
+    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_INDIR_ACCUM_HISTORY_LENGTH);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, varianceEstimation);
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
