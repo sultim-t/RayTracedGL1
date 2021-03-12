@@ -49,11 +49,12 @@ void main()
     }
 
     // (e) get luminance of shading sample from previous frame
-    const float prevShadingSampleLuminance = uintBitsToFloat(grFB.z);
-    const float prevShadingSampleLuminanceSpec = uintBitsToFloat(grFB.w);
+    const float prevShadingSampleLuminance = uintBitsToFloat(grFB.y);
+    const float prevShadingSampleLuminanceSpec = uintBitsToFloat(grFB.z);
+    const float prevShadingSampleLuminanceIndir = uintBitsToFloat(grFB.w);
 
     // (f) get shading sample from current frame
-    const ivec2 posInStrata = ivec2(grFB.xy);
+    const ivec2 posInStrata = ivec2(grFB.x % COMPUTE_ASVGF_STRATA_SIZE, grFB.x / COMPUTE_ASVGF_STRATA_SIZE);
     const ivec2 shadingSamplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + posInStrata;
 
     vec4 directAndSpec = vec4(0.0);

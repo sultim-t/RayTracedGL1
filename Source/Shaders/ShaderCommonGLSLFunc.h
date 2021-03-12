@@ -235,3 +235,27 @@ bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
 {
     return dot(n, nPrev) > 0.95;
 }
+
+
+
+#ifdef DESC_SET_FRAMEBUFFERS
+    #include "SphericalHarmonics.h"
+
+SH unpackUnfilteredIndirectSH(ivec2 pix)
+{
+    SH sh;
+    sh.r = imageLoad(framebufUnfilteredIndirectSH_R, pix);
+    sh.g = imageLoad(framebufUnfilteredIndirectSH_G, pix);
+    sh.b = imageLoad(framebufUnfilteredIndirectSH_B, pix);
+
+    return sh;
+}
+
+void packUnfilteredIndirectSH(ivec2 pix, const SH sh)
+{
+    imageStore(framebufUnfilteredIndirectSH_R, pix, sh.r);
+    imageStore(framebufUnfilteredIndirectSH_G, pix, sh.g);
+    imageStore(framebufUnfilteredIndirectSH_B, pix, sh.b);
+}
+
+#endif // DESC_SET_FRAMEBUFFERS

@@ -222,7 +222,9 @@ void RTGL1::Denoiser::Denoise(
             case 3:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PONG_COLOR_AND_VARIANCE);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR);
-                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G);
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B);
                 break;
             default: 
                 assert(0);

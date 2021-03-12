@@ -30,13 +30,13 @@ struct SH
     vec4 r;
     vec4 g;
     vec4 b;
-}
+};
 
 // Find SH coeffictients L00, L1-1, L10, L11 for each color channel.
 // SH is a orthonormal basis, so inner product is used.
-SH irradianceToSH(vec3 color, vec3 dir)
+SH irradianceToSH(const vec3 color, const vec3 dir)
 {
-    vec4 shBasis = vec4(
+    const vec4 shBasis = vec4(
         // Y00
         0.282095,
         // Y1-1
@@ -61,7 +61,7 @@ SH irradianceToSH(vec3 color, vec3 dir)
 // To find irradiance over hemisphere the integral Li(w)*dot(n,w)dw should be calculated.
 // Spherical harmonics representation can be used to estimate it, but in frequency domain, 
 // as it's less cpomplex to compute. After that, it's transformed back to space domain. 
-vec3 SHToIrradiance(SH sh, vec3 normal)
+vec3 SHToIrradiance(const SH sh, const vec3 normal)
 {
     // A-hat includes inverse transorm and dot(n,w)
     float A_hat_0 = 3.141593;
@@ -87,11 +87,18 @@ vec3 SHToIrradiance(SH sh, vec3 normal)
            A_hat_1 * L_1_1 * Y_1_1;
 }
 
-vec3 getSHColor(SH sh)
+vec3 getSHColor(const SH sh)
 {
     return vec3(
         sh.r[0] / 0.282095,
         sh.g[0] / 0.282095,
-        sh.b[0] / 0.282095,
+        sh.b[0] / 0.282095
     );
+}
+
+void accumulateSH(inout SH x, const SH y, float a)
+{
+    x.r += y.r * a;
+    x.g += y.g * a;
+    x.b += y.b * a;
 }

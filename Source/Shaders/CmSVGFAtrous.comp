@@ -226,7 +226,7 @@ void main()
 
         const vec3 diffuse       = filteredDiff;
         const vec3 specular      = filteredSpec;
-        const vec3 indirect      = vec3(0.0); // texelFetch(framebufUnfilteredIndirect_Sampler, pix, 0).rgb;
+        const vec3 indirect      = vec3(0);//filteredIndir;
         const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler,  pix, 0).r;
         
         const vec3 light = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
