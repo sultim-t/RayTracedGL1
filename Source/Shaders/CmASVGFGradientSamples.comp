@@ -40,7 +40,7 @@ void main()
 
     // surface samples were shaded, prepare gradient samples
     const uvec4 grFB = texelFetch(framebufGradientSamples_Sampler, gradPix, 0);
-    const bool hasSample = grFB.y != 0;
+    const bool hasSample = grFB.x != UINT32_MAX;
 
     if (!hasSample)
     {
@@ -53,8 +53,7 @@ void main()
     const float prevShadingSampleLuminanceSpec = uintBitsToFloat(grFB.w);
 
     // (f) get shading sample from current frame
-    const uint posInStrataPacked = grFB.x;
-    const ivec2 posInStrata = ivec2(posInStrataPacked % COMPUTE_ASVGF_STRATA_SIZE, posInStrataPacked / COMPUTE_ASVGF_STRATA_SIZE);
+    const ivec2 posInStrata = ivec2(grFB.xy);
     const ivec2 shadingSamplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + posInStrata;
 
     vec4 directAndSpec = vec4(0.0);

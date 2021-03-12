@@ -95,6 +95,7 @@ static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
 static glm::vec3 LIGHT_POS      = glm::vec3(0, 4, -2);
 static glm::vec3 LIGHT_COLOR    = glm::vec3(1, 1, 1);
 static float LIGHT_RADIUS       = 0.2f;
+static float LIGHT_SPH_COUNT    = 1.0f;
 static float ROUGHNESS          = 0.5f;
 static float METALLICITY        = 0.5f;
 static float SUN_INTENSITY      = 1.0f;
@@ -152,11 +153,13 @@ static void ProcessInput(GLFWwindow *window)
     controlFloat(GLFW_KEY_F, LIGHT_FALLOFF, delta * 10);
     controlFloat(GLFW_KEY_O, SKY_INTENSITY, delta);
     controlFloat(GLFW_KEY_T, LIGHT_RADIUS, delta);
+    controlFloat(GLFW_KEY_Y, LIGHT_SPH_COUNT, delta * 5);
 
     ROUGHNESS       = std::max(std::min(ROUGHNESS, 1.0f), 0.0f);
     METALLICITY     = std::max(std::min(METALLICITY, 1.0f), 0.0f);
     SUN_INTENSITY   = std::max(SUN_INTENSITY, 0.0f);
     LIGHT_RADIUS    = std::max(LIGHT_RADIUS, 0.0f);
+    LIGHT_SPH_COUNT = std::max(LIGHT_SPH_COUNT, 0.0f);
     LIGHT_FALLOFF   = std::max(LIGHT_FALLOFF, 0.0f);
     SKY_INTENSITY   = std::max(SKY_INTENSITY, 0.0f);
     LIGHT_COLOR     = SUN_INTENSITY * glm::vec3(1, 1, 1);
@@ -500,19 +503,26 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
         // upload light
-        /*RgDirectionalLightUploadInfo dirLight = {};
+        RgDirectionalLightUploadInfo dirLight = {};
         dirLight.color = { LIGHT_COLOR[0], LIGHT_COLOR[1], LIGHT_COLOR[2] };
         dirLight.direction = { LIGHT_DIR[0], LIGHT_DIR[1], LIGHT_DIR[2] };
         dirLight.angularDiameterDegrees = 0.5f;
-        r = rgUploadDirectionalLight(instance, &dirLight);*/
+        r = rgUploadDirectionalLight(instance, &dirLight);
 
         RgSphericalLightUploadInfo l = {};
         l.color =  { LIGHT_COLOR[0], LIGHT_COLOR[1], LIGHT_COLOR[2] };
-        l.position = { LIGHT_POS[0], LIGHT_POS[1], LIGHT_POS[2] };
-        l.radius = LIGHT_RADIUS;
+        l.radius = LIGHT_FALLOFF / 10.0f;
         l.falloffDistance = LIGHT_FALLOFF;
-        r = rgUploadSphericalLight(instance, &l);
-        
+
+        uint32_t count = (uint32_t)LIGHT_SPH_COUNT;
+        float distance = LIGHT_RADIUS;
+
+        for (uint64_t i = 0; i < count * count; i++)
+        {
+            l.uniqueID = i;
+            l.position = { LIGHT_POS[0] + distance * (i / count), LIGHT_POS[1], LIGHT_POS[2] + distance * (i % count) };
+            r = rgUploadSphericalLight(instance, &l);            
+        }
 
         // submit frame to be rendered
         RgDrawFrameInfo frameInfo = {};

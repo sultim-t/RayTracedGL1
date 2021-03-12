@@ -60,6 +60,7 @@ public:
 private:
     void FillMatchPrev(
         const std::map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+        const std::shared_ptr<AutoBuffer> &matchPrev,
         uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID);
 
     void FillInfo(const RgSphericalLightUploadInfo &info, ShLightSpherical *dst);

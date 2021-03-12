@@ -136,7 +136,7 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
     auto *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
     FillInfo(info, &dst[index]);
 
-    FillMatchPrev(sphUniqueIDToPrevIndex, frameIndex, index, info.uniqueID);
+    FillMatchPrev(sphUniqueIDToPrevIndex, sphericalLightMatchPrev, frameIndex, index, info.uniqueID);
 
     // must be unique
     assert(sphUniqueIDToPrevIndex[frameIndex].find(info.uniqueID) == sphUniqueIDToPrevIndex[frameIndex].end());
@@ -159,7 +159,7 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
     auto *dst = (ShLightDirectional*)directionalLights->GetMapped(frameIndex);
     FillInfo(info, &dst[index]);
 
-    FillMatchPrev(dirUniqueIDToPrevIndex, frameIndex, index, info.uniqueID);
+    FillMatchPrev(dirUniqueIDToPrevIndex, directionalLightMatchPrev, frameIndex, index, info.uniqueID);
     
     // must be unique
     assert(dirUniqueIDToPrevIndex[frameIndex].find(info.uniqueID) == dirUniqueIDToPrevIndex[frameIndex].end());
@@ -195,6 +195,7 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
 
 void RTGL1::LightManager::FillMatchPrev(
     const std::map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+    const std::shared_ptr<AutoBuffer> &matchPrev,
     uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
@@ -207,7 +208,7 @@ void RTGL1::LightManager::FillMatchPrev(
     {        
         uint32_t prevLightIndex = found->second;
 
-        uint32_t *dst = (uint32_t*)sphericalLightMatchPrev->GetMapped(curFrameIndex);
+        uint32_t *dst = (uint32_t*)matchPrev->GetMapped(curFrameIndex);
         dst[prevLightIndex] = curLightIndex;
     }
 }

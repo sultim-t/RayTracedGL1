@@ -49,9 +49,12 @@ void main()
     const vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
     const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
+    const uvec2 grFB                  = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).xy;
     const float surfRoughness         = surfMetallicRoughness.g;
     const uint instCustomIndex        = floatBitsToUint(surfNormal.a);
-    const bool isGradientSample       = texelFetch(framebufGradientSamples_Sampler, pix, 0).y != 0;
+
+    const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == grFB.x &&
+                                        (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == grFB.y;
     
     vec3 diffuse, specular;
     processDirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample, diffuse, specular);

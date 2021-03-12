@@ -39,8 +39,7 @@ void main()
         return;
     }
 
-    const uint prevStrataPosPacked = texelFetch(framebufGradientSamples_Prev_Sampler, gradPix, 0).x;
-    const uvec2 prevStrataPos = uvec2(prevStrataPosPacked % COMPUTE_ASVGF_STRATA_SIZE, prevStrataPosPacked / COMPUTE_ASVGF_STRATA_SIZE);
+    const uvec2 prevStrataPos = texelFetch(framebufGradientSamples_Prev_Sampler, gradPix, 0).xy;
 
     // (c) was done in primary rays shader
     // (a) instead of choosing random sample in strata, choose the brightest
@@ -79,7 +78,7 @@ void main()
 
     if (!found)
     {
-        imageStore(framebufGradientSamples, gradPix, uvec4(0));
+        imageStore(framebufGradientSamples, gradPix, uvec4(UINT32_MAX));
         return;
     }
 
@@ -103,13 +102,12 @@ void main()
 
     if (!isConsistent)
     {
-        imageStore(framebufGradientSamples, gradPix, uvec4(0));
+        imageStore(framebufGradientSamples, gradPix, uvec4(UINT32_MAX));
         return;
     }
 
     // save position in strata and mark that strata has gradient sample
-    const uint lastStrataPosPacked = lastStrataPos.x + lastStrataPos.y * COMPUTE_ASVGF_STRATA_SIZE;
-    imageStore(framebufGradientSamples, gradPix, uvec4(lastStrataPosPacked, 1, floatBitsToUint(lastLuminance), floatBitsToUint(lastLuminanceSpec)));
+    imageStore(framebufGradientSamples, gradPix, uvec4(lastStrataPos.x, lastStrataPos.y, floatBitsToUint(lastLuminance), floatBitsToUint(lastLuminanceSpec)));
     
     // (d) merge new samples with chosen forward-projected sample 
     // from previous frame before tracing illumination
