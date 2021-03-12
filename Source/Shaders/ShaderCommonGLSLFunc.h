@@ -177,6 +177,16 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIRECTIONAL
 {
     ShLightDirectional lightSourcesDirecitional[];
 };
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV) readonly buffer LightSourcesSphMatchPrev_BT
+{
+    uint lightSourcesSphMatchPrev[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIR_MATCH_PREV) readonly buffer LightSourcesDirMatchPrev_BT
+{
+    uint lightSourcesDirMatchPrev[];
+};
 #endif
 
 

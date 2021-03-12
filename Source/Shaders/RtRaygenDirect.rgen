@@ -35,7 +35,7 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-    float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
+    const float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
     if (depth > MAX_RAY_LENGTH)
     {
@@ -44,16 +44,17 @@ void main()
         return;
     }
     
-    vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
-    vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
-    vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
-    vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
-    vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
-    float surfRoughness         = surfMetallicRoughness.g;
-    uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    const vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
+    const vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
+    const vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
+    const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
+    const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
+    const float surfRoughness         = surfMetallicRoughness.g;
+    const uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    const bool isGradientSample       = texelFetch(framebufGradientSamples_Sampler, pix, 0).y != 0;
     
     vec3 diffuse, specular;
-    processDirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, diffuse, specular);
+    processDirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample, diffuse, specular);
 
     imageStore(framebufUnfilteredDirect, pix, vec4(diffuse, 0.0));
     imageStore(framebufUnfilteredSpecular, pix, vec4(specular, 0.0));

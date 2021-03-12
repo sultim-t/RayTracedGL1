@@ -85,7 +85,7 @@ void getBounce(
 void processIndirectIllumination(
     ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
-    float surfRoughness, vec3 v)
+    float surfRoughness, vec3 v, bool isGradientSample)
 {
     const uint seed = getCurrentRandomSeed(pix);
     
@@ -109,7 +109,7 @@ void processIndirectIllumination(
 
         // calculate direct illumination in hit position
         vec3 diffuse, specular;
-        processDirectIllumination(pix, primaryInstCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, diffuse, specular);
+        processDirectIllumination(pix, primaryInstCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, isGradientSample, diffuse, specular);
 
         // TODO: Ray Tracing Gems, ch. 20.3.2-20.3.3: 
         // calculate texture lod with ray differentials using G-buffer for the first bounce
@@ -144,20 +144,21 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-    float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
+    const float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
     if (depth > MAX_RAY_LENGTH)
     {
         return;
     }
     
-    vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
-    vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
-    vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
-    vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
-    vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
-    float surfRoughness         = surfMetallicRoughness.g;
-    uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    const vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
+    const vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
+    const vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
+    const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
+    const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
+    const float surfRoughness         = surfMetallicRoughness.g;
+    const uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    const bool isGradientSample       = texelFetch(framebufGradientSamples_Sampler, pix, 0).y != 0;;
 
-    processIndirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz);        
+    processIndirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample);        
 }

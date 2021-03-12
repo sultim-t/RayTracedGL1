@@ -41,12 +41,16 @@ public:
     LightManager &operator=(const LightManager &other) = delete;
     LightManager &operator=(LightManager &&other) noexcept = delete;
 
+    void PrepareForFrame(uint32_t frameIndex);
+    void Reset();
+
     uint32_t GetSphericalLightCount() const;
     uint32_t GetDirectionalLightCount() const;
+    uint32_t GetSphericalLightCountPrev() const;
+    uint32_t GetDirectionalLightCountPrev() const;
 
     void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info);
-    void Clear();
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
@@ -54,6 +58,13 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex);
 
 private:
+    void FillMatchPrev(
+        const std::map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+        uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID);
+
+    void FillInfo(const RgSphericalLightUploadInfo &info, ShLightSpherical *dst);
+    void FillInfo(const RgDirectionalLightUploadInfo &info, ShLightDirectional *dst);
+
     void CreateDescriptors();
     void UpdateDescriptors(uint32_t frameIndex);
 
@@ -63,8 +74,16 @@ private:
     std::shared_ptr<AutoBuffer> sphericalLights;
     std::shared_ptr<AutoBuffer> directionalLights;
 
-    uint32_t sphericalLightCount;
-    uint32_t directionalLightCount;
+    std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
+    std::shared_ptr<AutoBuffer> directionalLightMatchPrev;
+
+    std::map<uint64_t, uint32_t> sphUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::map<uint64_t, uint32_t> dirUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+
+    uint32_t sphLightCount;
+    uint32_t dirLightCount;
+    uint32_t sphLightCountPrev;
+    uint32_t dirLightCountPrev;
 
     uint32_t maxSphericalLightCount;
     uint32_t maxDirectionalLightCount;

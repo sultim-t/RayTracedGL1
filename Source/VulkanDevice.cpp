@@ -272,8 +272,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
 
     gu->stopEyeAdaptation = frameInfo.disableEyeAdaptation;
 
-    gu->lightSourceCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
-    gu->lightSourceCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
+    gu->lightCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
+    gu->lightCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
+    gu->lightCountSphericalPrev = scene->GetLightManager()->GetSphericalLightCountPrev();
+    gu->lightCountDirectionalPrev = scene->GetLightManager()->GetDirectionalLightCountPrev();
 
     memcpy(gu->skyColorDefault, frameInfo.skyColorDefault.data, sizeof(float) * 3);
     gu->skyColorMultiplier = frameInfo.skyColorMultiplier;

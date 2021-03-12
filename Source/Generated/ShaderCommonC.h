@@ -32,6 +32,8 @@ namespace RTGL1
 #define BINDING_LUM_HISTOGRAM (0)
 #define BINDING_LIGHT_SOURCES_SPHERICAL (0)
 #define BINDING_LIGHT_SOURCES_DIRECTIONAL (1)
+#define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (2)
+#define BINDING_LIGHT_SOURCES_DIR_MATCH_PREV (3)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -128,8 +130,8 @@ struct ShGlobalUniform
     float maxLogLuminance;
     float luminanceWhitePoint;
     uint32_t stopEyeAdaptation;
-    uint32_t lightSourceCountSpherical;
-    uint32_t lightSourceCountDirectional;
+    uint32_t lightCountSpherical;
+    uint32_t lightCountDirectional;
     uint32_t skyType;
     float skyColorMultiplier;
     uint32_t skyCubemapIndex;
@@ -138,8 +140,8 @@ struct ShGlobalUniform
     float cameraPosition[4];
     uint32_t dbgShowMotionVectors;
     uint32_t dbgShowGradients;
-    float _pad2;
-    float _pad3;
+    uint32_t lightCountSphericalPrev;
+    uint32_t lightCountDirectionalPrev;
     int32_t instanceGeomInfoOffset[72];
     int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];

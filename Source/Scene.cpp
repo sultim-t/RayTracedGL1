@@ -54,6 +54,7 @@ void Scene::PrepareForFrame(uint32_t frameIndex)
     dynamicUniqueIDToSimpleIndex.clear();
 
     geomInfoMgr->PrepareForFrame(frameIndex);
+    lightManager->PrepareForFrame(frameIndex);
 
     // dynamic geomtry
     asManager->BeginDynamicGeometry(frameIndex);
@@ -68,7 +69,6 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
 
     lightManager->CopyFromStaging(cmd, frameIndex);
-    lightManager->Clear();
 
 
     // copy to device-local, if there were any tex coords change for static geometry
@@ -220,6 +220,7 @@ void Scene::StartNewStatic()
     {
         // then just reset it
         asManager->ResetStaticGeometry();
+        lightManager->Reset();
     }
 
     staticUniqueIDToSimpleIndex.clear();

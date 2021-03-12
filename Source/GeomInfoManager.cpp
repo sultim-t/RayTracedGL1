@@ -38,7 +38,7 @@ RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<Memory
     copyRegionUpperBound{}
 {
     buffer = std::make_shared<AutoBuffer>(device, _allocator, "Geometry info staging buffer", "Geometry info buffer");
-    matchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Geometry info Match previous infos staging buffer", "Geometry info Match previous infos buffer");
+    matchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Geometry infos staging buffer", "Match previous Geometry infos buffer");
 
     buffer->Create(GEOM_INFO_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     matchPrev->Create(GEOM_INFO_MATCH_PREV_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);

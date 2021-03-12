@@ -204,7 +204,7 @@ vec3 getSky(vec3 direction)
 #endif
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
-#define SHADOW_RAY_EPS 0.005
+#define SHADOW_RAY_EPS 0.00
 
 // l is pointed to the light
 bool traceShadowRay(uint primaryInstCustomIndex, vec3 o, vec3 l, float maxDistance)
@@ -237,19 +237,52 @@ void processDirectionalLight(
     vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, 
+    bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    const uint dirLightCount = globalUniform.lightSourceCountDirectional;
+    uint dirLightCount;
+    uint dirLightIndex;
 
-    if (dirLightCount == 0)
+    if (!isGradientSample)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
-        return;
+        dirLightCount = globalUniform.lightCountDirectional;
+ 
+        if (dirLightCount == 0)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+        
+        const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
+        dirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);
     }
+    else
+    {
+        dirLightCount = globalUniform.lightCountDirectionalPrev;
 
-    const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
-    const uint dirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);
+        if (dirLightCount == 0)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+
+        // choose light using prev frame's info
+        const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
+        const uint prevFrameDirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);
+
+        // get cur frame match for the chosen light
+        dirLightIndex = lightSourcesDirMatchPrev[prevFrameDirLightIndex];
+
+        // if light disappeared
+        if (dirLightIndex == UINT32_MAX)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+    }
 
     const float oneOverPdf = dirLightCount;
 
@@ -292,19 +325,52 @@ void processSphericalLight(
     vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, 
+    bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    const uint sphLightCount = globalUniform.lightSourceCountSpherical;
+    uint sphLightCount;
+    uint sphLightIndex;
 
-    if (sphLightCount == 0)
+    if (!isGradientSample)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
-        return;
+        sphLightCount = globalUniform.lightCountSpherical;
+ 
+        if (sphLightCount == 0)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+        
+        const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
+        sphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
     }
+    else
+    {
+        sphLightCount = globalUniform.lightCountSphericalPrev;
 
-    const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
-    const uint sphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
+        if (sphLightCount == 0)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+
+        // choose light using prev frame's info
+        const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
+        const uint prevFrameSphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
+
+        // get cur frame match for the chosen light
+        sphLightIndex = lightSourcesSphMatchPrev[prevFrameSphLightIndex];
+
+        // if light disappeared
+        if (sphLightIndex == UINT32_MAX)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+    }
     
     const float oneOverPdf = sphLightCount;
 
@@ -337,6 +403,7 @@ void processSphericalLight(
         dirToCenter /= d;
         
         const float i = pow(clamp((z - d) / max(z - r, 1), 0, 1), 3);
+        //const float i = pow(clamp(1 - (r * r) / (d * d), 0, 1), 2);
         const vec3 c = i * sphLight.color;
 
         const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
@@ -359,16 +426,16 @@ void processSphericalLight(
 void processDirectIllumination(
     ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
-    float surfRoughness, vec3 viewDirection, 
+    float surfRoughness, vec3 viewDirection, bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint seed = getCurrentRandomSeed(pix);
 
     vec3 dirDiff, dirSpec;
-    processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, dirDiff, dirSpec);
+    processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, isGradientSample, dirDiff, dirSpec);
     
     vec3 sphDiff, sphSpec;
-    processSphericalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, sphDiff, sphSpec);
+    processSphericalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, isGradientSample, sphDiff, sphSpec);
     
     outDiffuse = dirDiff + sphDiff;
     outSpecular = dirSpec + sphSpec;

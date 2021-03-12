@@ -41,8 +41,10 @@ RTGL1::LightManager::LightManager(
     std::shared_ptr<MemoryAllocator> &_allocator)
 :
     device(_device),
-    sphericalLightCount(0),
-    directionalLightCount(0),
+    sphLightCount(0),
+    dirLightCount(0),
+    sphLightCountPrev(0),
+    dirLightCountPrev(0),
     maxSphericalLightCount(START_MAX_LIGHT_COUNT_SPHERICAL),
     maxDirectionalLightCount(START_MAX_LIGHT_COUNT_DIRECTIONAL),
     descSetLayout(VK_NULL_HANDLE),
@@ -50,11 +52,16 @@ RTGL1::LightManager::LightManager(
     descSets{},
     needDescSetUpdate{}
 {
-    sphericalLights = std::make_shared<AutoBuffer>(device, _allocator, "Lights spherical staging", "Lights spherical");
-    directionalLights = std::make_shared<AutoBuffer>(device, _allocator, "Lights directional staging", "Lights directional");
+    sphericalLights           = std::make_shared<AutoBuffer>(device, _allocator, "Lights spherical staging", "Lights spherical");
+    directionalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights directional staging", "Lights directional");
+    sphericalLightMatchPrev   = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights spherical staging", "Match previous Lights spherical");
+    directionalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights directional staging", "Match previous Lights directional");
 
     sphericalLights->Create(sizeof(ShLightSpherical) * maxSphericalLightCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     directionalLights->Create(sizeof(ShLightDirectional) * maxDirectionalLightCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
+    sphericalLightMatchPrev->Create(sizeof(uint32_t) * maxSphericalLightCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    directionalLightMatchPrev->Create(sizeof(uint32_t) * maxDirectionalLightCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
     CreateDescriptors();
 }
@@ -65,105 +72,109 @@ RTGL1::LightManager::~LightManager()
     vkDestroyDescriptorPool(device, descPool, nullptr);
 }
 
+void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
+{
+    sphLightCountPrev = sphLightCount;
+    dirLightCountPrev = dirLightCount;
+
+    sphLightCount = 0;
+    dirLightCount = 0;
+
+    memset(sphericalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * sphLightCountPrev);
+    memset(directionalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) *  dirLightCountPrev);
+
+    sphUniqueIDToPrevIndex[frameIndex].clear();
+    dirUniqueIDToPrevIndex[frameIndex].clear();
+}
+
+void RTGL1::LightManager::Reset()
+{
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        memset(sphericalLightMatchPrev->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(sphLightCount, dirLightCountPrev));
+        memset(directionalLightMatchPrev->GetMapped(i), 0xFF, sizeof(uint32_t) *  std::max(sphLightCount, dirLightCountPrev));
+
+        sphUniqueIDToPrevIndex[i].clear();
+        dirUniqueIDToPrevIndex[i].clear();
+    }
+
+    sphLightCount = sphLightCountPrev = 0;
+    dirLightCount = dirLightCountPrev = 0;
+}
+
 uint32_t RTGL1::LightManager::GetSphericalLightCount() const
 {
-    return sphericalLightCount;
+    return sphLightCount;
 }
 
 uint32_t RTGL1::LightManager::GetDirectionalLightCount() const
 {
-    return directionalLightCount;
+    return dirLightCount;
+}
+
+uint32_t RTGL1::LightManager::GetSphericalLightCountPrev() const
+{
+    return sphLightCountPrev;
+}
+
+uint32_t RTGL1::LightManager::GetDirectionalLightCountPrev() const
+{
+    return dirLightCountPrev;
 }
 
 void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info)
 {
-    ShLightSpherical light = {};
-    memcpy(light.color, info.color.data, sizeof(float) * 3);
-    memcpy(light.position, info.position.data, sizeof(float) * 3);
-    light.radius = std::max(0.0f, info.radius);
-    light.falloff = std::max(light.radius, std::max(0.0f, info.falloffDistance));
+    uint32_t index = sphLightCount;
+    sphLightCount++;
 
-    if (sphericalLightCount + 1 >= maxSphericalLightCount)
+    if (sphLightCount >= maxSphericalLightCount)
     {
         // TODO: schedule buffer to be destroyed in the next frame
         return;
-
-        /*uint32_t oldCount = maxSphericalLightCount;
-        maxSphericalLightCount += STEP_LIGHT_COUNT_SPHERICAL;
-
-        ShLightSpherical *copy = new ShLightSpherical[oldCount];
-
-        sphericalLights->Destroy();
-        sphericalLights->Create(sizeof(ShLightSpherical) * maxSphericalLightCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-        memcpy(sphericalLights->GetMapped(frameIndex), copy, sizeof(ShLightSpherical) * oldCount);
-        delete[] copy;
-
-        // mark descriptors to be updated, in all frames
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            needDescSetUpdate[i] = true;
-        }*/
     }
 
-    ShLightSpherical *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
-    dst += sphericalLightCount;
+    auto *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
+    FillInfo(info, &dst[index]);
 
-    memcpy(dst, &light, sizeof(ShLightSpherical));
+    FillMatchPrev(sphUniqueIDToPrevIndex, frameIndex, index, info.uniqueID);
 
-    sphericalLightCount++;
+    // must be unique
+    assert(sphUniqueIDToPrevIndex[frameIndex].find(info.uniqueID) == sphUniqueIDToPrevIndex[frameIndex].end());
+
+    // save index for the next frame
+    sphUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 }
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info)
 {
-    ShLightDirectional light = {};
-    memcpy(light.color, info.color.data, sizeof(float) * 3);
-    light.direction[0] = -info.direction.data[0];
-    light.direction[1] = -info.direction.data[1];
-    light.direction[2] = -info.direction.data[2];
-    light.tanAngularRadius = tanf(std::max(0.0, info.angularDiameterDegrees * 0.5) * RG_PI / 180.0);
+    uint32_t index = dirLightCount;
+    dirLightCount++;
 
-    if (directionalLightCount + 1 >= maxDirectionalLightCount)
+    if (dirLightCount >= maxDirectionalLightCount)
     {
         // TODO: schedule buffer to be destroyed in the next frame
         return;
-
-        /*uint32_t oldCount = maxDirectionalLightCount;
-        maxDirectionalLightCount += STEP_LIGHT_COUNT_DIRECTIONAL;
-
-        ShLightDirectional *copy = new ShLightDirectional[oldCount];
-
-        directionalLights->Destroy();
-        directionalLights->Create(sizeof(ShLightDirectional) * maxDirectionalLightCount, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-
-        memcpy(directionalLights->GetMapped(frameIndex), copy, sizeof(ShLightDirectional) * oldCount);
-        delete[] copy;
-
-        // mark descriptors to be updated, in all frames
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-        {
-            needDescSetUpdate[i] = true;
-        }*/
     }
 
-    ShLightDirectional *dst = (ShLightDirectional*)directionalLights->GetMapped(frameIndex);
-    dst += directionalLightCount;
+    auto *dst = (ShLightDirectional*)directionalLights->GetMapped(frameIndex);
+    FillInfo(info, &dst[index]);
 
-    memcpy(dst, &light, sizeof(ShLightDirectional));
+    FillMatchPrev(dirUniqueIDToPrevIndex, frameIndex, index, info.uniqueID);
+    
+    // must be unique
+    assert(dirUniqueIDToPrevIndex[frameIndex].find(info.uniqueID) == dirUniqueIDToPrevIndex[frameIndex].end());
 
-    directionalLightCount++;
-}
-
-void RTGL1::LightManager::Clear()
-{
-    sphericalLightCount = 0;
-    directionalLightCount = 0;
+    // save index for the next frame
+    dirUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 }
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    sphericalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightSpherical) * sphericalLightCount);
-    directionalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightDirectional) * directionalLightCount);
+    sphericalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightSpherical) * sphLightCount);
+    directionalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightDirectional) * dirLightCount);
+
+    sphericalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * sphLightCountPrev);
+    directionalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * dirLightCountPrev);
 
     if (needDescSetUpdate[frameIndex])
     {
@@ -182,11 +193,53 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
     return descSets[frameIndex];
 }
 
+void RTGL1::LightManager::FillMatchPrev(
+    const std::map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+    uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID)
+{
+    uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    const std::map<uint64_t, uint32_t> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
+
+    auto found = uniqueToPrevIndex.find(uniqueID);
+
+    if (found != uniqueToPrevIndex.end())
+    {        
+        uint32_t prevLightIndex = found->second;
+
+        uint32_t *dst = (uint32_t*)sphericalLightMatchPrev->GetMapped(curFrameIndex);
+        dst[prevLightIndex] = curLightIndex;
+    }
+}
+
+void RTGL1::LightManager::FillInfo(const RgSphericalLightUploadInfo &info, ShLightSpherical *dst)
+{
+    ShLightSpherical lt = {};
+    memcpy(lt.color, info.color.data, sizeof(float) * 3);
+    memcpy(lt.position, info.position.data, sizeof(float) * 3);
+    lt.radius = std::max(0.0f, info.radius);
+    lt.falloff = std::max(lt.radius, std::max(0.0f, info.falloffDistance));
+
+    memcpy(dst, &lt, sizeof(ShLightSpherical));  
+}
+
+void RTGL1::LightManager::FillInfo(const RgDirectionalLightUploadInfo &info, ShLightDirectional *dst)
+{
+    ShLightDirectional lt = {};
+    memcpy(lt.color, info.color.data, sizeof(float) * 3);
+    lt.direction[0] = -info.direction.data[0];
+    lt.direction[1] = -info.direction.data[1];
+    lt.direction[2] = -info.direction.data[2];
+    lt.tanAngularRadius = (float)tan(std::max(0.0, 0.5 * (double)info.angularDiameterDegrees) * RG_PI / 180.0);
+
+    memcpy(dst, &lt, sizeof(ShLightDirectional));  
+}
+
 void RTGL1::LightManager::CreateDescriptors()
 {
     VkResult r;
 
-    std::array<VkDescriptorSetLayoutBinding, 2> bindings = {};
+    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {};
 
     auto &bndSph = bindings[0];
     bndSph.binding = BINDING_LIGHT_SOURCES_SPHERICAL;
@@ -200,6 +253,18 @@ void RTGL1::LightManager::CreateDescriptors()
     bndDir.descriptorCount = 1;
     bndDir.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
+    auto &bndMsp = bindings[2];
+    bndMsp.binding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV;
+    bndMsp.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bndMsp.descriptorCount = 1;
+    bndMsp.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
+    auto &bndMdr = bindings[3];
+    bndMdr.binding = BINDING_LIGHT_SOURCES_DIR_MATCH_PREV;
+    bndMdr.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    bndMdr.descriptorCount = 1;
+    bndMdr.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
     layoutInfo.bindingCount = bindings.size();
@@ -212,7 +277,7 @@ void RTGL1::LightManager::CreateDescriptors()
 
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSize.descriptorCount = bindings.size();
+    poolSize.descriptorCount = bindings.size() * MAX_FRAMES_IN_FLIGHT;
 
     VkDescriptorPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -257,7 +322,17 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
     bfDirInfo.offset = 0;
     bfDirInfo.range = VK_WHOLE_SIZE;
 
-    std::array<VkWriteDescriptorSet, 2> wrts = {};
+    VkDescriptorBufferInfo bfMpSInfo = {};
+    bfMpSInfo.buffer = sphericalLightMatchPrev->GetDeviceLocal();
+    bfMpSInfo.offset = 0;
+    bfMpSInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo bfMpDInfo = {};
+    bfMpDInfo.buffer = directionalLightMatchPrev->GetDeviceLocal();
+    bfMpDInfo.offset = 0;
+    bfMpDInfo.range = VK_WHOLE_SIZE;
+
+    std::array<VkWriteDescriptorSet, 4> wrts = {};
 
     auto &wrtSph = wrts[0];
     wrtSph.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -277,5 +352,25 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
     wrtDir.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     wrtDir.pBufferInfo = &bfDirInfo;
 
+    auto &wrtMpS = wrts[2];
+    wrtMpS.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wrtMpS.dstSet = descSets[frameIndex];
+    wrtMpS.dstBinding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV;
+    wrtMpS.dstArrayElement = 0;
+    wrtMpS.descriptorCount = 1;
+    wrtMpS.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    wrtMpS.pBufferInfo = &bfMpSInfo;
+
+    auto &wrtMpD = wrts[3];
+    wrtMpD.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wrtMpD.dstSet = descSets[frameIndex];
+    wrtMpD.dstBinding = BINDING_LIGHT_SOURCES_DIR_MATCH_PREV;
+    wrtMpD.dstArrayElement = 0;
+    wrtMpD.descriptorCount = 1;
+    wrtMpD.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    wrtMpD.pBufferInfo = &bfMpDInfo;
+
     vkUpdateDescriptorSets(device, wrts.size(), wrts.data(), 0, nullptr);
 }
+
+static_assert(RTGL1::MAX_FRAMES_IN_FLIGHT == 2, "");

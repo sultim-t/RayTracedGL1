@@ -356,6 +356,7 @@ typedef enum RgLightType
 
 typedef struct RgDirectionalLightUploadInfo
 {
+    uint64_t        uniqueID;
     RgLightType     type;
     RgFloat3D       color;
     RgFloat3D       direction;
@@ -364,6 +365,7 @@ typedef struct RgDirectionalLightUploadInfo
 
 typedef struct RgSphericalLightUploadInfo
 {
+    uint64_t        uniqueID;
     RgLightType     type;
     RgFloat3D       color;
     RgFloat3D       position;
