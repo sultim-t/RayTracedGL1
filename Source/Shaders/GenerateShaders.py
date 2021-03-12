@@ -53,22 +53,36 @@ def wereDependentModified(dependencyMap, modifiedDependent, cache, baseFile, fir
     return False
 
 
+def printInPowerShell(msg, color):
+    p = subprocess.run([
+        "PowerShell",
+        "Write-Host",
+        "\"" + msg + "\"",
+        "-ForegroundColor", color
+    ])
+
+
 def main():
     if "--help" in sys.argv or "-help" in sys.argv or "-h" in sys.argv or "--h" in sys.argv:
         print("-rebuild  : clear cache and rebuild all shaders")
         print("-gencomm  : invoke GenerateShaderCommon.py script")
-        print("-r        : same as \'-rebuild\"")
-        print("-g        : same as \'-gencomm\"")
+        print("-psout    : use PowerShell for printing colored output")
+        print("-r        : same as \"-rebuild\"")
+        print("-g        : same as \"-gencomm\"")
+        print("-ps       : same as \"-psout\"")
         return
 
     forceRebuild = False
+    powerShellOutput = False
     if "-rebuild" in sys.argv or "--rebuild" in sys.argv or "-r" in sys.argv or "--r" in sys.argv:
         forceRebuild = True
-    elif "-gencomm" in sys.argv or "--gencomm" in sys.argv or "-g" in sys.argv or "--g" in sys.argv:
+    if "-gencomm" in sys.argv or "--gencomm" in sys.argv or "-g" in sys.argv or "--g" in sys.argv:
         subprocess.run(["python", "../Generated/GenerateShaderCommon.py", "--path", "../Generated/"])
-    elif len(sys.argv) > 1:
-        print("> Couldn't parse arguments")
-        return
+    if "-psout" in sys.argv or "--psout" in sys.argv or "-ps" in sys.argv or "--ps" in sys.argv:
+        powerShellOutput = True
+    #elif len(sys.argv) > 1:
+    #    print("> Couldn't parse arguments")
+    #    return
 
     if not os.path.exists(CACHE_FOLDER_PATH):
         try:
@@ -200,7 +214,11 @@ def main():
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
             if len(r.stdout) > 0:
-                print(r.stdout)
+                if powerShellOutput:
+                    printInPowerShell(r.stdout, "Red")
+                else:
+                    print(r.stdout)
+
                 msgErrorCount += 1
                 if filename in cache:
                     del cache[filename]
@@ -220,10 +238,20 @@ def main():
     #if wereDependentModified:
     #    print()
 
+    msg = ""
+    color = ""
+
     if msgErrorCount > 0:
-        print("> " + str(msgErrorCount) + (" shader build failed." if msgErrorCount == 1 else " shader builds failed."))
+        msg = "> " + str(msgErrorCount) + (" shader build failed." if msgErrorCount == 1 else " shader builds failed.")
+        color = "DarkRed"
     elif not msgWasAnyShaderRebuilt:
-        print("> Everything is up-to-date.")
+        msg = "> Everything is up-to-date."
+        color = "Green"
+
+    if powerShellOutput:
+        printInPowerShell(msg, color)
+    else:
+        print(msg)
 
 
 # main
