@@ -585,6 +585,9 @@ void ASManager::SubmitStaticGeometry()
 {
     collectorStatic->EndCollecting();
 
+    // static geometry submission happens very infrequently, e.g. on level load
+    vkDeviceWaitIdle(device);
+
     typedef VertexCollectorFilterTypeFlagBits FT;
 
     auto staticFlags = FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE;

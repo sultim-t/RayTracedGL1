@@ -25,7 +25,7 @@
 #ifdef TEXTURE_GRADIENTS
 vec3 processAlbedoGrad(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3], vec2 dPdx[3], vec2 dPdy[3])
 #else
-vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3])
+vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3], float lod)
 #endif
 {
     uint blendsFlags[] = 
@@ -44,7 +44,7 @@ vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[
         #ifdef TEXTURE_GRADIENTS
             vec4 src = materialColors[i] * getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
         #else
-            vec4 src = materialColors[i] * getTextureSample(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i]);
+            vec4 src = materialColors[i] * getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
         #endif
 
             if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0)
@@ -90,7 +90,7 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
         tr.layerTexCoord[2] * baryCoords
     };
     
-    return processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
+    return processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, 0);
 }
 #endif
 
@@ -195,7 +195,9 @@ ShHitInfo getHitInfo(const ShPayload pl)
 
     h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
 #else
-    h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors);
+    const float lod = 2;
+
+    h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
 
     h.normalGeom = normalize(tr.normals * baryCoords);
@@ -205,7 +207,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
     #ifdef TEXTURE_GRADIENTS
         vec4 nm = getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0], dTdx[0], dTdy[0]);
     #else
-        vec4 nm = getTextureSample(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0]);
+        vec4 nm = getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0], lod);
     #endif
 
         h.metallic = nm.a;
@@ -225,7 +227,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
     #ifdef TEXTURE_GRADIENTS
         vec4 er = getTextureSampleGrad(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], dTdx[0], dTdy[0]);
     #else
-        vec4 er = getTextureSample(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0]);
+        vec4 er = getTextureSampleLod(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], lod);
     #endif
 
         h.emission = er.rgb;

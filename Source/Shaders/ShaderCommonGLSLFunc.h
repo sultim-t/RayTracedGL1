@@ -67,6 +67,11 @@ vec4 getTextureSample(uint textureIndex, vec2 texCoord)
     return texture(globalTextures[nonuniformEXT(textureIndex)], texCoord);
 }
 
+vec4 getTextureSampleLod(uint textureIndex, vec2 texCoord, float lod)
+{
+    return textureLod(globalTextures[nonuniformEXT(textureIndex)], texCoord, lod);
+}
+
 vec4 getTextureSampleGrad(uint textureIndex, vec2 texCoord, vec2 dPdx, vec2 dPdy)
 {
     return textureGrad(globalTextures[nonuniformEXT(textureIndex)], texCoord, dPdx, dPdy);
