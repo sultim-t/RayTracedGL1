@@ -124,7 +124,7 @@ void main()
 
                 diffPrev        += texelFetch(framebufDiffColorHistory_Sampler,                    xy, 0).rgb * weight;
                 momentsPrev     += texelFetch(framebufDiffAccumMoments_Prev_Sampler,               xy, 0).rg  * weight;
-                historyLengthFB += texelFetch(framebufDiffAndIndirAccumHistoryLength_Prev_Sampler, xy, 0).r   * weight;
+                historyLengthFB += texelFetch(framebufDiffAndIndirAccumHistoryLength_Prev_Sampler, xy, 0).rg  * weight;
                 specFBPrev      += texelFetch(framebufSpecAccumColorAndHistoryLength_Prev_Sampler, xy, 0)     * weight;
                 
                 accumulateSH(indirPrev, texelFetchIndirAccumSH_Prev(xy), weight);
@@ -204,7 +204,7 @@ void main()
             const float antilagAlpha = getAntilagAlpha(gradIndir.r, gradIndir.g);
 
             indirHistoryLength *= pow(1.0 - antilagAlpha, 10);
-            indirHistoryLength = clamp( + 1.0, 1.0, 256.0);
+            indirHistoryLength = clamp(indirHistoryLength + 1.0, 1.0, 256.0);
 
             const float minAlpha = 0.01;
             float alphaColor = max(minAlpha, 1.0 / indirHistoryLength);

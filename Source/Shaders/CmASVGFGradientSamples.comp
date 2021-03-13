@@ -84,18 +84,8 @@ void main()
     imageStore(framebufDiffAndSpecPingGradient, gradPix, directAndSpec);
 
     {
-        float shadingSampleLuminance = 0.0;
-
-        for (int yy = 0; yy < COMPUTE_ASVGF_STRATA_SIZE; yy++)
-        {
-            for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
-            {
-                const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
-
-                const vec3 color = getSHColor(texelFetchUnfilteredIndirectSH(samplePix));
-                shadingSampleLuminance += getLuminance(color);
-            }
-        }
+        const vec3 color = getSHColor(texelFetchUnfilteredIndirectSH(shadingSamplePix));
+        const float shadingSampleLuminance = getLuminance(color);
 
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceIndir;
         const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceIndir);

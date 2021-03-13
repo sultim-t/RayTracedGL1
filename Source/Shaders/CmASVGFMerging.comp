@@ -48,7 +48,7 @@ void main()
     ivec2 lastPrevPix = ivec2(0);
     float lastLuminance = 0;
     float lastLuminanceSpec = 0;
-    float allIndirLuminance = 0;
+    float lastIndirLuminance = 0;
     bool found = false;
 
     // for each pixel in strata
@@ -80,11 +80,10 @@ void main()
                 
                 lastLuminance = prevLuminance;
                 lastLuminanceSpec = prevLuminanceSpec;
+                lastIndirLuminance = prevLuminanceIndir;
 
                 found = true;
             }
-
-            allIndirLuminance += prevLuminanceIndir;
         }
     }
 
@@ -123,7 +122,7 @@ void main()
     imageStore(framebufGradientSamples, gradPix, uvec4(packedStrataPos, 
                                                        floatBitsToUint(lastLuminance), 
                                                        floatBitsToUint(lastLuminanceSpec), 
-                                                       floatBitsToUint(allIndirLuminance)));
+                                                       floatBitsToUint(lastIndirLuminance)));
     
     // (d) merge new samples with chosen forward-projected sample 
     // from previous frame before tracing illumination

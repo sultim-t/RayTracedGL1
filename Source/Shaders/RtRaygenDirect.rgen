@@ -35,6 +35,9 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
+    // reset unfiltered only after forward-projecting and merging samples
+    imageStoreUnfilteredIndirectSH(pix, newSH());
+
     const float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
     if (depth > MAX_RAY_LENGTH)
