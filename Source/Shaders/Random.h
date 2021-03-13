@@ -135,13 +135,11 @@ mat3 getONB(vec3 n)
 }
 
 // Sample direction in a hemisphere oriented to a normal n
-vec3 sampleOrientedHemisphere(vec3 n, float u1, float u2, out float pdf)
+vec3 sampleOrientedHemisphere(vec3 n, float u1, float u2)
 {
     vec3 a = sampleHemisphere(u1, u2);
-    pdf = a.z / M_PI;
 
     mat3 basis = getONB(n);
-
     return normalize(basis * a);
 
     /*

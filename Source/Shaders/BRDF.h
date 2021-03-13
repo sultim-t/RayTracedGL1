@@ -35,9 +35,9 @@ float evalBRDFLambertian(float subsurfaceAlbedo)
 }
 
 // u1, u2   -- uniform random numbers
-vec3 sampleLambertian(vec3 n, float u1, float u2, out float pdf)
+vec3 sampleLambertian(vec3 n, float u1, float u2)
 {
-    return sampleOrientedHemisphere(n, u1, u2, pdf);
+    return sampleOrientedHemisphere(n, u1, u2);
 }
 
 
@@ -146,28 +146,4 @@ vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2/*, out float
 
     // m to world space
     return basis * me; 
-
-    /*vec3 m = basis * me;
-
-    float nm = dot(n, m);
-
-    if (nm <= 0)
-    {
-        pdf = 0;
-        return vec3(0.0);
-    }
-
-    float G1 = G1GGX(ve, n, alpha);
-
-    float alphaSq = alpha * alpha;
-
-    // D for microfacet normal
-    // D(me)
-    float c = (me.x * me.x + me.y * me.y) / alphaSq + me.z * me.z;
-    float D = 1.0 / (M_PI * alphaSq * c * c);
-    
-    // VNDF PDF
-    pdf = G1 * max(0, dot(ve, me)) * D / ve.z;
-
-    return m;*/
 }
