@@ -304,4 +304,11 @@ void imageStoreUnfilteredIndirectSH(ivec2 pix, const SH sh)
     imageStore(framebufUnfilteredIndirectSH_B, pix, sh.b);
 }
 
+void imageStoreIndirAccumSH(ivec2 pix, const SH sh)
+{
+    imageStore(framebufIndirAccumSH_R, pix, sh.r);
+    imageStore(framebufIndirAccumSH_G, pix, sh.g);
+    imageStore(framebufIndirAccumSH_B, pix, sh.b);
+}
+
 #endif // DESC_SET_FRAMEBUFFERS

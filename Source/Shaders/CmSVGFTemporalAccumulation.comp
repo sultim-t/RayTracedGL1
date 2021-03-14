@@ -201,7 +201,8 @@ void main()
 
         // indirect diffuse
         {
-            const float antilagAlpha = getAntilagAlpha(gradIndir.r, gradIndir.g);
+            float antilagAlpha = getAntilagAlpha(gradIndir.r, gradIndir.g);
+            antilagAlpha *= antilagAlpha;
 
             indirHistoryLength *= pow(1.0 - antilagAlpha, 10);
             indirHistoryLength = clamp(indirHistoryLength + 1.0, 1.0, 256.0);
@@ -235,6 +236,7 @@ void main()
     imageStore(framebufSpecAccumColorAndHistoryLength, pix, vec4(specColorAccum, specHistoryLengthAccum));
     imageStore(framebufSpecPingColor, pix, vec4(specColorAccum, 0.0));
 
+    imageStoreIndirAccumSH(pix, indirSHAccum);
     imageStore(framebufIndirPingSH_R, pix, indirSHAccum.r);
     imageStore(framebufIndirPingSH_G, pix, indirSHAccum.g);
     imageStore(framebufIndirPingSH_B, pix, indirSHAccum.b);
