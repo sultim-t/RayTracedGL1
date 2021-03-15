@@ -78,6 +78,8 @@ void ShaderManager::ReloadShaders()
     LoadShaderModules();
 
     NotifySubscribersAboutReload();
+
+    vkDeviceWaitIdle(device);
 }
 
 void ShaderManager::LoadShaderModules()

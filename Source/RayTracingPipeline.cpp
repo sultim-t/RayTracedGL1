@@ -27,8 +27,8 @@ using namespace RTGL1;
 
 RayTracingPipeline::RayTracingPipeline(
     VkDevice _device,
-    const std::shared_ptr<PhysicalDevice> &_physDevice,
-    const std::shared_ptr<MemoryAllocator> &_allocator,
+    std::shared_ptr<PhysicalDevice> _physDevice,
+    std::shared_ptr<MemoryAllocator> _allocator,
     const std::shared_ptr<ShaderManager> &_shaderMgr,
     const std::shared_ptr<Scene> &_scene,
     const std::shared_ptr<GlobalUniform> &_uniform,
@@ -38,8 +38,10 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<CubemapManager> &_cubemapMgr)
 :
     device(_device),
+    physDevice(std::move(_physDevice)),
     rtPipelineLayout(VK_NULL_HANDLE),
     rtPipeline(VK_NULL_HANDLE),
+    copySBTFromStaging(false),
     groupBaseAlignment(0),
     handleSize(0),
     alignedHandleSize(0),
@@ -47,7 +49,33 @@ RayTracingPipeline::RayTracingPipeline(
     hitGroupCount(0),
     missShaderCount(0)
 {
-    std::vector<const char *> stageNames =
+    shaderBindingTable = std::make_shared<AutoBuffer>(device, std::move(_allocator), "SBT staging", "SBT");
+
+    // all set layouts to be used
+    std::vector<VkDescriptorSetLayout> setLayouts =
+    {
+        // ray tracing acceleration structures
+        _scene->GetASManager()->GetTLASDescSetLayout(),
+        // storage images
+        _framebuffers->GetDescSetLayout(),
+        // uniform
+        _uniform->GetDescSetLayout(),
+        // vertex data
+        _scene->GetASManager()->GetBuffersDescSetLayout(),
+        // textures
+        _textureMgr->GetDescSetLayout(),
+        // uniform random
+        _blueNoise->GetDescSetLayout(),
+        // light sources
+        _scene->GetLightManager()->GetDescSetLayout(),
+        // cubemaps, for a cubemap type of skyboxes
+        _cubemapMgr->GetDescSetLayout()
+    };
+
+    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+
+    // shader modules in the pipeline will have the exact order
+    shaderStageNames =
     {
         "RGenPrimary",
         "RGenDirect",
@@ -61,20 +89,12 @@ RayTracingPipeline::RayTracingPipeline(
     };
 
 #pragma region Utilities
-    // get stage infos by names 
-    std::vector<VkPipelineShaderStageCreateInfo> stages(stageNames.size());
-
-    for (uint32_t i = 0; i < stageNames.size(); i++)
-    {
-        stages[i] = _shaderMgr->GetStageInfo(stageNames[i]);
-    }
-
     // simple lambda to get index in "stages" by name
-    auto toIndex = [&stageNames] (const char *shaderName)
+    auto toIndex = [this] (const char *shaderName)
     {
-        for (uint32_t i = 0; i < stageNames.size(); i++)
+        for (uint32_t i = 0; i < shaderStageNames.size(); i++)
         {
-            if (std::strcmp(shaderName, stageNames[i]) == 0)
+            if (std::strcmp(shaderName, shaderStageNames[i]) == 0)
             {
                 return i;
             }
@@ -104,42 +124,17 @@ RayTracingPipeline::RayTracingPipeline(
     // blend under and then opaque
     AddHitGroup(toIndex("RClsOpaque"), toIndex("RBlendUnder"));     assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_BLEND_UNDER);
 
-
-    // all set layouts to be used
-    std::vector<VkDescriptorSetLayout> setLayouts =
-    {
-        // ray tracing acceleration structures
-        _scene->GetASManager()->GetTLASDescSetLayout(),
-        // storage images
-        _framebuffers->GetDescSetLayout(),
-        // uniform
-        _uniform->GetDescSetLayout(),
-        // vertex data
-        _scene->GetASManager()->GetBuffersDescSetLayout(),
-        // textures
-        _textureMgr->GetDescSetLayout(),
-        // uniform random
-        _blueNoise->GetDescSetLayout(),
-        // light sources
-        _scene->GetLightManager()->GetDescSetLayout(),
-        // cubemaps, for a cubemap type of skyboxes
-        _cubemapMgr->GetDescSetLayout()
-    };
-
-    CreatePipeline(setLayouts.data(), setLayouts.size(),
-                   stages.data(), stages.size());
-
-    CreateSBT(_physDevice, _allocator);
+    CreatePipeline(_shaderMgr.get());
+    CreateSBT();
 }
 
 RayTracingPipeline::~RayTracingPipeline()
 {
-    vkDestroyPipeline(device, rtPipeline, nullptr);
+    DestroyPipeline();
     vkDestroyPipelineLayout(device, rtPipelineLayout, nullptr);
 }
 
-void RayTracingPipeline::CreatePipeline(const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
-                                        const VkPipelineShaderStageCreateInfo *pStages, uint32_t stageCount)
+void RayTracingPipeline::CreatePipelineLayout(const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount)
 {
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -149,29 +144,44 @@ void RayTracingPipeline::CreatePipeline(const VkDescriptorSetLayout *pSetLayouts
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &rtPipelineLayout);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, rtPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Ray tracing pipeline Layout");
+}
+
+void RayTracingPipeline::CreatePipeline(const ShaderManager *shaderManager)
+{
+    std::vector<VkPipelineShaderStageCreateInfo> stages(shaderStageNames.size());
+
+    for (uint32_t i = 0; i < shaderStageNames.size(); i++)
+    {
+        stages[i] = shaderManager->GetStageInfo(shaderStageNames[i]);
+    }
+
     VkPipelineLibraryCreateInfoKHR libInfo = {};
     libInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LIBRARY_CREATE_INFO_KHR;
 
     VkRayTracingPipelineCreateInfoKHR pipelineInfo = {};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_RAY_TRACING_PIPELINE_CREATE_INFO_KHR;
-    pipelineInfo.stageCount = stageCount;
-    pipelineInfo.pStages = pStages;
+    pipelineInfo.stageCount = stages.size();
+    pipelineInfo.pStages = stages.data();
     pipelineInfo.groupCount = shaderGroups.size();
     pipelineInfo.pGroups = shaderGroups.data();
     pipelineInfo.maxPipelineRayRecursionDepth = 2;
     pipelineInfo.layout = rtPipelineLayout;
     pipelineInfo.pLibraryInfo = &libInfo;
 
-    r = svkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &rtPipeline);
+    VkResult r = svkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &rtPipeline);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, rtPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Ray tracing pipeline Layout");
     SET_DEBUG_NAME(device, rtPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Ray tracing pipeline");
 }
 
-void RayTracingPipeline::CreateSBT(
-    const std::shared_ptr<PhysicalDevice> &physDevice, 
-    const std::shared_ptr<MemoryAllocator> &allocator)
+void RayTracingPipeline::DestroyPipeline()
+{
+    vkDestroyPipeline(device, rtPipeline, nullptr);
+    rtPipeline = VK_NULL_HANDLE;
+}
+
+void RayTracingPipeline::CreateSBT()
 {
     VkResult r;
 
@@ -183,18 +193,16 @@ void RayTracingPipeline::CreateSBT(
 
     uint32_t sbtSize = alignedHandleSize * groupCount;
 
-    shaderBindingTable = std::make_shared<Buffer>();
-    shaderBindingTable->Init(
-        allocator, sbtSize,
-        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-        "Shader binding table buffer");
+    shaderBindingTable->Create(
+        sbtSize,
+        VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        1);
 
     std::vector<uint8_t> shaderHandles(handleSize * groupCount);
     r = svkGetRayTracingShaderGroupHandlesKHR(device, rtPipeline, 0, groupCount, shaderHandles.size(), shaderHandles.data());
     VK_CHECKERROR(r);
 
-    uint8_t *mapped = (uint8_t *) shaderBindingTable->Map();
+    uint8_t *mapped = (uint8_t *) shaderBindingTable->GetMapped(0);
 
     for (uint32_t i = 0; i < groupCount; i++)
     {
@@ -204,11 +212,22 @@ void RayTracingPipeline::CreateSBT(
             handleSize);
     }
 
-    shaderBindingTable->Unmap();
+    copySBTFromStaging = true;
+}
+
+void RayTracingPipeline::DestroySBT()
+{
+    shaderBindingTable->Destroy();
 }
 
 void RayTracingPipeline::Bind(VkCommandBuffer cmd)
 {
+    if (copySBTFromStaging)
+    {
+        shaderBindingTable->CopyFromStaging(cmd, 0);
+        copySBTFromStaging= false;
+    }
+
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline);
 }
 
@@ -223,7 +242,7 @@ void RayTracingPipeline::GetEntries(
            sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT  ||
            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT);
 
-    VkDeviceAddress bufferAddress = shaderBindingTable->GetAddress();
+    VkDeviceAddress bufferAddress = shaderBindingTable->GetDeviceAddress();
 
     uint64_t offset = 0;
 
@@ -260,6 +279,15 @@ void RayTracingPipeline::GetEntries(
 VkPipelineLayout RayTracingPipeline::GetLayout() const
 {
     return rtPipelineLayout;
+}
+
+void RayTracingPipeline::OnShaderReload(const ShaderManager *shaderManager)
+{
+    DestroySBT();
+    DestroyPipeline();
+
+    CreatePipeline(shaderManager);
+    CreateSBT();
 }
 
 void RayTracingPipeline::AddGeneralGroup(uint32_t generalIndex)

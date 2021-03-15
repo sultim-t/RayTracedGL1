@@ -45,9 +45,9 @@ RTGL1::Tonemapping::Tonemapping(
         tmDescSetLayout
     };
 
-    CreatePipeline(setLayouts.data(), setLayouts.size(), _shaderManager);
+    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+    CreatePipelines(_shaderManager.get());
 }
-
 
 RTGL1::Tonemapping::~Tonemapping()
 {
@@ -56,8 +56,7 @@ RTGL1::Tonemapping::~Tonemapping()
     vkDestroyDescriptorPool(device, tmDescPool, nullptr);
     vkDestroyDescriptorSetLayout(device, tmDescSetLayout, nullptr);
 
-    vkDestroyPipeline(device, histogramPipeline, nullptr);
-    vkDestroyPipeline(device, avgLuminancePipeline, nullptr);
+    DestroyPipelines();
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
@@ -151,6 +150,12 @@ VkDescriptorSet RTGL1::Tonemapping::GetDescSet() const
     return tmDescSet;
 }
 
+void RTGL1::Tonemapping::OnShaderReload(const ShaderManager *shaderManager)
+{
+    DestroyPipelines();
+    CreatePipelines(shaderManager);
+}
+
 void RTGL1::Tonemapping::CreateTonemappingBuffer(const std::shared_ptr<MemoryAllocator> &allocator)
 {
     tmBuffer.Init(
@@ -224,20 +229,22 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     vkUpdateDescriptorSets(device, 1, &wrt, 0, nullptr);
 }
 
-void RTGL1::Tonemapping::CreatePipeline(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, const std::shared_ptr<const ShaderManager> &shaderManager)
+void RTGL1::Tonemapping::CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount)
 {
-    VkResult r;
-
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
 
-    r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
+    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Tonemapping pipeline layout");
+}
 
+void RTGL1::Tonemapping::CreatePipelines(const ShaderManager *shaderManager)
+{
+    VkResult r;
 
     VkComputePipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -260,4 +267,13 @@ void RTGL1::Tonemapping::CreatePipeline(VkDescriptorSetLayout *pSetLayouts, uint
 
         SET_DEBUG_NAME(device, avgLuminancePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Tonemapping LuminanceAvg pipeline");
     }
+}
+
+void RTGL1::Tonemapping::DestroyPipelines()
+{
+    vkDestroyPipeline(device, histogramPipeline, nullptr);
+    vkDestroyPipeline(device, avgLuminancePipeline, nullptr);
+
+    histogramPipeline = VK_NULL_HANDLE;
+    avgLuminancePipeline = VK_NULL_HANDLE;
 }

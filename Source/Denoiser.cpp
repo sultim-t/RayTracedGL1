@@ -51,14 +51,15 @@ RTGL1::Denoiser::Denoiser(
         _uniform->GetDescSetLayout(),
     };
 
-    CreatePipelines(setLayouts.data(), setLayouts.size(), _shaderManager);
-
+    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
 
     setLayouts.push_back(
         _asManager->GetBuffersDescSetLayout()
     );
 
-    CreateMergingPipeline(setLayouts.data(), setLayouts.size(), _shaderManager);
+    CreateMergingPipelineLayout(setLayouts.data(), setLayouts.size());
+
+    CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::Denoiser::~Denoiser()
@@ -66,20 +67,7 @@ RTGL1::Denoiser::~Denoiser()
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyPipelineLayout(device, pipelineVerticesLayout, nullptr);
 
-    vkDestroyPipeline(device, merging, nullptr);
-    vkDestroyPipeline(device, gradientSamples, nullptr);
-    vkDestroyPipeline(device, temporalAccumulation, nullptr);
-    vkDestroyPipeline(device, varianceEstimation, nullptr);
-    
-    for (VkPipeline p : gradientAtrous)
-    {
-        vkDestroyPipeline(device, p, nullptr);
-    }
-
-    for (VkPipeline p : atrous)
-    {
-        vkDestroyPipeline(device, p, nullptr);
-    }
+    DestroyPipelines();
 }
 
 void RTGL1::Denoiser::MergeSamples(
@@ -250,49 +238,66 @@ void RTGL1::Denoiser::Denoise(
     }
 }
 
-void RTGL1::Denoiser::CreateMergingPipeline(
-    VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
-    const std::shared_ptr<const ShaderManager> &shaderManager)
+void RTGL1::Denoiser::OnShaderReload(const ShaderManager *shaderManager)
 {
-    VkResult r;
+    DestroyPipelines();
+    CreatePipelines(shaderManager);
+}
 
+void RTGL1::Denoiser::CreateMergingPipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount)
+{
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
 
-    r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineVerticesLayout);
+    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineVerticesLayout);
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Denoiser with vertices pipeline layout");
-
-    VkComputePipelineCreateInfo plInfo = {};
-    plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    plInfo.layout = pipelineVerticesLayout;
-    plInfo.stage = shaderManager->GetStageInfo("CASVGFMerging");
-
-    r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &merging);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, merging, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "ASVGF Merging pipeline");
 }
 
-void RTGL1::Denoiser::CreatePipelines(
-    VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
-    const std::shared_ptr<const ShaderManager> &shaderManager)
+void RTGL1::Denoiser::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount)
 {
-    VkResult r;
-
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
 
-    r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
+    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
     
     SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Denoiser pipeline layout");
+}
+
+void RTGL1::Denoiser::DestroyPipelines()
+{
+    vkDestroyPipeline(device, merging, nullptr);
+    vkDestroyPipeline(device, gradientSamples, nullptr);
+    vkDestroyPipeline(device, temporalAccumulation, nullptr);
+    vkDestroyPipeline(device, varianceEstimation, nullptr);
     
+    for (VkPipeline &p : gradientAtrous)
+    {
+        vkDestroyPipeline(device, p, nullptr);
+        p = VK_NULL_HANDLE;
+    }
+
+    for (VkPipeline &p : atrous)
+    {
+        vkDestroyPipeline(device, p, nullptr);
+        p = VK_NULL_HANDLE;
+    }
+
+    merging = VK_NULL_HANDLE;
+    gradientSamples = VK_NULL_HANDLE;
+    temporalAccumulation = VK_NULL_HANDLE;
+    varianceEstimation = VK_NULL_HANDLE;
+}
+
+void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
+{
+    VkResult r;   
 
     uint32_t atrousIteration = 0;
     
@@ -307,7 +312,18 @@ void RTGL1::Denoiser::CreatePipelines(
     specInfo.dataSize = sizeof(uint32_t);
     specInfo.pData = &atrousIteration;
 
+    {  
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = pipelineVerticesLayout;
+        plInfo.stage = shaderManager->GetStageInfo("CASVGFMerging");
 
+        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &merging);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, merging, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "ASVGF Merging pipeline");
+    }
+    
     VkComputePipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     plInfo.layout = pipelineLayout;

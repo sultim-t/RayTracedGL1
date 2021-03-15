@@ -54,7 +54,7 @@ Rasterizer::Rasterizer(
     CreateRenderPass(_surfaceFormat);
     CreatePipelineLayout(_textureMgr->GetDescSetLayout());
     CreatePipelineCache();
-    CreatePipeline(_shaderManager);
+    CreatePipelines(_shaderManager.get());
 }
 
 Rasterizer::~Rasterizer()
@@ -62,7 +62,7 @@ Rasterizer::~Rasterizer()
     vkDestroyRenderPass(device, renderPass, nullptr);
     vkDestroyPipelineCache(device, pipelineCache, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyPipeline(device, pipeline, nullptr);
+    DestroyPipelines();
     DestroyFramebuffers();
 }
 
@@ -163,6 +163,12 @@ void Rasterizer::OnSwapchainDestroy()
     DestroyFramebuffers();
 }
 
+void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
+{
+    DestroyPipelines();
+    CreatePipelines(shaderManager);
+}
+
 void Rasterizer::CreatePipelineCache()
 {
     VkPipelineCacheCreateInfo cacheInfo = {};
@@ -192,7 +198,7 @@ void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
     SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Rasterizer draw pipeline layout");
 }
 
-void Rasterizer::CreatePipeline(const std::shared_ptr<ShaderManager> &shaderManager)
+void Rasterizer::CreatePipelines(const ShaderManager *shaderManager)
 {
     VkDynamicState dynamicStates[2] =
     {
@@ -301,6 +307,12 @@ void Rasterizer::CreatePipeline(const std::shared_ptr<ShaderManager> &shaderMana
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer draw pipeline");
+}
+
+void Rasterizer::DestroyPipelines()
+{
+    vkDestroyPipeline(device, pipeline, nullptr);
+    pipeline = VK_NULL_HANDLE;
 }
 
 void Rasterizer::CreateFramebuffers(uint32_t width, uint32_t height, const VkImageView *pFrameAttchs, uint32_t count)

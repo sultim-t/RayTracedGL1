@@ -38,9 +38,11 @@ RTGL1::AutoBuffer::~AutoBuffer()
     Destroy();
 }
 
-void RTGL1::AutoBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage)
+void RTGL1::AutoBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, uint32_t frameCount)
 {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    assert(frameCount <= MAX_FRAMES_IN_FLIGHT);
+
+    for (uint32_t i = 0; i < frameCount; i++)
     {
         assert(!staging[i].IsInitted());
 
@@ -66,7 +68,7 @@ void RTGL1::AutoBuffer::Destroy()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        if (staging[i].IsInitted());
+        if (staging[i].IsInitted())
         {
             staging[i].Unmap();
             staging[i].Destroy();

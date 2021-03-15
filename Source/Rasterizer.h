@@ -32,7 +32,7 @@ namespace RTGL1
 {
 
 // This class provides rasterization functionality
-class Rasterizer : public ISwapchainDependency
+class Rasterizer : public ISwapchainDependency, public IShaderDependency
 {
 public:
     explicit Rasterizer(
@@ -54,12 +54,17 @@ public:
 
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
+    
+    void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
     void CreateRenderPass(VkFormat surfaceFormat);
+
     void CreatePipelineCache();
     void CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout);
-    void CreatePipeline(const std::shared_ptr<ShaderManager> &shaderManager);
+    void CreatePipelines(const ShaderManager *shaderManager);
+    void DestroyPipelines();
+
     void CreateFramebuffers(uint32_t width, uint32_t height, const VkImageView *pFrameAttchs, uint32_t count);
     void DestroyFramebuffers();
 

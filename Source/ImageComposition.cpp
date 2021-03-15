@@ -42,13 +42,14 @@ RTGL1::ImageComposition::ImageComposition(
         _tonemapping->GetDescSetLayout()
     };
 
-    CreatePipeline(setLayouts.data(), setLayouts.size(), _shaderManager);
+    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+    CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::ImageComposition::~ImageComposition()
 {
     vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
-    vkDestroyPipeline(device, computePipeline, nullptr);
+    DestroyPipelines();
 }
 
 void RTGL1::ImageComposition::Compose(
@@ -85,28 +86,40 @@ void RTGL1::ImageComposition::Compose(
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }
 
-void RTGL1::ImageComposition::CreatePipeline(
-    VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount,
-    const std::shared_ptr<const ShaderManager> &shaderManager)
+void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
 {
-    VkResult r;
+    DestroyPipelines();
+    CreatePipelines(shaderManager);
+}
 
+void RTGL1::ImageComposition::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount)
+{
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
     
-    r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &computePipelineLayout);
+    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &computePipelineLayout);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, computePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Composition pipeline layout");
+}
+
+void RTGL1::ImageComposition::CreatePipelines(const ShaderManager *shaderManager)
+{
     VkComputePipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     plInfo.layout = computePipelineLayout;
     plInfo.stage = shaderManager->GetStageInfo("CComposition");
 
-    r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &computePipeline);
+    VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &computePipeline);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, computePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Composition pipeline layout");
     SET_DEBUG_NAME(device, computePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Composition pipeline");
+}
+
+void RTGL1::ImageComposition::DestroyPipelines()
+{
+    vkDestroyPipeline(device, computePipeline, nullptr);
+    computePipeline = VK_NULL_HANDLE;
 }

@@ -30,13 +30,13 @@
 namespace RTGL1
 {
 
-class RayTracingPipeline
+class RayTracingPipeline : public IShaderDependency
 {
 public:
     explicit RayTracingPipeline(
         VkDevice device,
-        const std::shared_ptr<PhysicalDevice> &physDevice,
-        const std::shared_ptr<MemoryAllocator> &allocator,
+        std::shared_ptr<PhysicalDevice> physDevice,
+        std::shared_ptr<MemoryAllocator> allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<Scene> &scene,
         const std::shared_ptr<GlobalUniform> &uniform,
@@ -60,12 +60,16 @@ public:
                     VkStridedDeviceAddressRegionKHR &hitEntry,
                     VkStridedDeviceAddressRegionKHR &callableEntry) const;
     VkPipelineLayout GetLayout() const;
+    
+    void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void CreatePipeline(
-        const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
-        const VkPipelineShaderStageCreateInfo *pStages, uint32_t stageCount);
-    void CreateSBT(const std::shared_ptr<PhysicalDevice> &physDevice, const std::shared_ptr<MemoryAllocator> &allocator);
+    void CreatePipelineLayout(const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
+
+    void CreatePipeline(const ShaderManager *shaderManager);
+    void DestroyPipeline();
+    void CreateSBT();
+    void DestroySBT();
 
     void AddGeneralGroup(uint32_t generalIndex);
 
@@ -78,12 +82,16 @@ private:
 
 private:
     VkDevice device;
+    std::shared_ptr<PhysicalDevice> physDevice;
+
+    std::vector<const char *> shaderStageNames;
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
     VkPipelineLayout rtPipelineLayout;
     VkPipeline rtPipeline;
 
-    std::shared_ptr<Buffer> shaderBindingTable;
+    std::shared_ptr<AutoBuffer> shaderBindingTable;
+    bool copySBTFromStaging;
 
     uint32_t groupBaseAlignment;
     uint32_t handleSize;

@@ -38,15 +38,14 @@ RTGL1::VertexPreprocessing::VertexPreprocessing(
         _asManager->GetBuffersDescSetLayout()
     };
 
-    CreatePipeline(setLayouts.data(), setLayouts.size(), _shaderManager);
+    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+    CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::VertexPreprocessing::~VertexPreprocessing()
 {
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyPipeline(device, pipelineOnlyDynamic, nullptr);
-    vkDestroyPipeline(device, pipelineDynamicAndMovable, nullptr);
-    vkDestroyPipeline(device, pipelineAll, nullptr);
+    DestroyPipelines();
 }
 
 void RTGL1::VertexPreprocessing::Preprocess(
@@ -88,12 +87,14 @@ void RTGL1::VertexPreprocessing::Preprocess(
     asManager->OnVertexPreprocessingFinish(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);
 }
 
-void RTGL1::VertexPreprocessing::CreatePipeline(
-    VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount,
-    const std::shared_ptr<const ShaderManager> &shaderManager)
+void RTGL1::VertexPreprocessing::OnShaderReload(const ShaderManager *shaderManager)
 {
-    VkResult r;
+    DestroyPipelines();
+    CreatePipelines(shaderManager);
+}
 
+void RTGL1::VertexPreprocessing::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount)
+{
     VkPushConstantRange pc = {};
     pc.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
     pc.offset = 0;
@@ -106,10 +107,15 @@ void RTGL1::VertexPreprocessing::CreatePipeline(
     plLayoutInfo.pushConstantRangeCount = 1;
     plLayoutInfo.pPushConstantRanges = &pc;
 
-    r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
+    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Vertex preprocessing pipeline layout");
+}
+
+void RTGL1::VertexPreprocessing::CreatePipelines(const ShaderManager *shaderManager)
+{
+    VkResult r;
 
     uint32_t specInfoDataOnlyDynamic = 0;
 
@@ -156,4 +162,15 @@ void RTGL1::VertexPreprocessing::CreatePipeline(
 
         SET_DEBUG_NAME(device, pipelineAll, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex static/movable/dynamic preprocessing pipeline");
     }
+}
+
+void RTGL1::VertexPreprocessing::DestroyPipelines()
+{
+    vkDestroyPipeline(device, pipelineOnlyDynamic, nullptr);
+    vkDestroyPipeline(device, pipelineDynamicAndMovable, nullptr);
+    vkDestroyPipeline(device, pipelineAll, nullptr);
+
+    pipelineOnlyDynamic = VK_NULL_HANDLE;
+    pipelineDynamicAndMovable = VK_NULL_HANDLE;
+    pipelineAll = VK_NULL_HANDLE;
 }

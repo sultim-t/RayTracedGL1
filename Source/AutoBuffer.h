@@ -43,7 +43,7 @@ public:
     AutoBuffer &operator=(const AutoBuffer &other) = delete;
     AutoBuffer &operator=(AutoBuffer &&other) noexcept = delete;
 
-    void Create(VkDeviceSize size, VkBufferUsageFlags usage);
+    void Create(VkDeviceSize size, VkBufferUsageFlags usage, uint32_t frameCount = MAX_FRAMES_IN_FLIGHT);
     void Destroy();
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);

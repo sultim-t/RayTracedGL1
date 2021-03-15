@@ -29,7 +29,7 @@
 namespace RTGL1
 {
 
-class ImageComposition
+class ImageComposition : public IShaderDependency
 {
 public:
     ImageComposition(
@@ -49,11 +49,13 @@ public:
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<const Tonemapping> &tonemapping);
+    
+    void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void CreatePipeline(
-        VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
-        const std::shared_ptr<const ShaderManager> &shaderManager);
+    void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
+    void CreatePipelines(const ShaderManager *shaderManager);
+    void DestroyPipelines();
 
 private:
     VkDevice device;

@@ -63,6 +63,7 @@ set(PrivateHeaders
     "Source/GeomInfoManager.h"
     "Source/VertexPreprocessing.h"
     "Source/Denoiser.h"
+    "Source/IShaderDependency.h"
 )
 
 set(Sources
