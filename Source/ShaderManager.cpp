@@ -60,9 +60,8 @@ static ShaderModuleDefinition G_SHADERS[] =
 };
 
 
-ShaderManager::ShaderManager(VkDevice device)
+ShaderManager::ShaderManager(VkDevice _device) : device(_device)
 {
-    this->device = device;
     LoadShaderModules();
 }
 
@@ -73,8 +72,12 @@ ShaderManager::~ShaderManager()
 
 void ShaderManager::ReloadShaders()
 {
+    vkDeviceWaitIdle(device);
+
     UnloadShaderModules();
     LoadShaderModules();
+
+    NotifySubscribersAboutReload();
 }
 
 void ShaderManager::LoadShaderModules()
@@ -217,4 +220,33 @@ VkShaderStageFlagBits ShaderManager::GetStageByExtension(const char *name)
 
     assert(0);
     return VK_SHADER_STAGE_ALL;
+}
+
+void ShaderManager::Subscribe(std::shared_ptr<IShaderDependency> subscriber)
+{
+    subscribers.emplace_back(subscriber);
+}
+
+void ShaderManager::Unsubscribe(const IShaderDependency *subscriber)
+{
+    subscribers.remove_if([subscriber] (const std::weak_ptr<IShaderDependency> &ws)
+    {
+        if (const auto s = ws.lock())
+        {
+            return s.get() == subscriber;
+        }
+
+        return true;
+    });
+}
+
+void ShaderManager::NotifySubscribersAboutReload()
+{
+    for (auto &ws : subscribers)
+    {
+        if (auto s = ws.lock())
+        {
+            s->OnShaderReload(this);
+        }
+    }
 }

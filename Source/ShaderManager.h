@@ -20,10 +20,12 @@
 
 #pragma once
 
+#include <list>
 #include <map>
 #include <string>
 
 #include "Common.h"
+#include "IShaderDependency.h"
 
 namespace RTGL1
 {
@@ -46,6 +48,11 @@ public:
     VkShaderStageFlagBits GetModuleStage(const char *name) const;
     VkPipelineShaderStageCreateInfo GetStageInfo(const char *name) const;
 
+    // Subscribe to shader reload event.
+    // shared_ptr will be transformed to weak_ptr
+    void Subscribe(std::shared_ptr<IShaderDependency> subscriber);
+    void Unsubscribe(const IShaderDependency *subscriber);
+
 private:
     struct ShaderModule
     {
@@ -60,10 +67,14 @@ private:
     void LoadShaderModules();
     void UnloadShaderModules();
 
+    void NotifySubscribersAboutReload();
+
 private:
     VkDevice device;
 
     std::map<std::string, ShaderModule> modules;
+
+    std::list<std::weak_ptr<IShaderDependency>> subscribers;
 };
 
 }
