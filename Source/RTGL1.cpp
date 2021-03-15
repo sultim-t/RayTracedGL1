@@ -150,9 +150,9 @@ RgResult rgDestroyCubemap(RgInstance rgInstance, RgCubemap cubemap)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyCubemap(cubemap);
 }
 
-RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t surfaceHeight, RgBool32 vsync)
+RgResult rgStartFrame(RgInstance rgInstance, uint32_t surfaceWidth, uint32_t surfaceHeight, RgBool32 vsync, RgBool32 reloadShaders)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight, vsync);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(surfaceWidth, surfaceHeight, vsync, reloadShaders);
 }
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *frameInfo)

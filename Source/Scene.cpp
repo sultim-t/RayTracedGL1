@@ -237,6 +237,11 @@ const std::shared_ptr<LightManager> &RTGL1::Scene::GetLightManager()
     return lightManager;
 }
 
+const std::shared_ptr<VertexPreprocessing> &RTGL1::Scene::GetVertexPreprocessing()
+{
+    return vertPreproc;
+}
+
 bool Scene::DoesUniqueIDExist(uint64_t uniqueID) const
 {
     return

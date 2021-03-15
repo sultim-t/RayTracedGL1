@@ -63,6 +63,7 @@ public:
 
     const std::shared_ptr<ASManager> &GetASManager();
     const std::shared_ptr<LightManager> &GetLightManager();
+    const std::shared_ptr<VertexPreprocessing> &GetVertexPreprocessing();
 
     bool DoesUniqueIDExist(uint64_t uniqueID) const;
 

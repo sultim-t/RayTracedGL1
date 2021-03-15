@@ -80,7 +80,7 @@ public:
     RgResult DestroyCubemap(RgCubemap cubemap);
 
 
-    RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
+    RgResult StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync, bool reloadShaders);
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
 
 private:
@@ -95,7 +95,7 @@ private:
 
     void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frameInfo) const;
 
-    VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync);
+    VkCommandBuffer BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync, bool reloadShaders);
     void Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo);
     void EndFrame(VkCommandBuffer cmd);
 

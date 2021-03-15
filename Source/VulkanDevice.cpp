@@ -169,6 +169,13 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     swapchain->Subscribe(framebuffers);
     swapchain->Subscribe(rasterizer);
+
+    shaderManager->Subscribe(denoiser);
+    shaderManager->Subscribe(imageComposition);
+    shaderManager->Subscribe(rasterizer);
+    shaderManager->Subscribe(rtPipeline);
+    shaderManager->Subscribe(tonemapping);
+    shaderManager->Subscribe(scene->GetVertexPreprocessing());
 }
 
 VulkanDevice::~VulkanDevice()
@@ -202,7 +209,7 @@ VulkanDevice::~VulkanDevice()
     DestroyInstance();
 }
 
-VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync)
+VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync, bool reloadShaders)
 {
     currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -214,6 +221,11 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     swapchain->RequestNewSize(surfaceWidth, surfaceHeight);
     swapchain->RequestVsync(vsync);
     swapchain->AcquireImage(imageAvailableSemaphores[frameIndex]);
+
+    if (reloadShaders)
+    {
+        shaderManager->ReloadShaders();
+    }
 
     // reset cmds for current frame index
     cmdManager->PrepareForFrame(frameIndex);
@@ -366,14 +378,14 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 #pragma region RTGL1 interface implementation
 
-RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync)
+RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync, bool reloadShaders)
 {
     if (currentFrameCmd != VK_NULL_HANDLE)
     {
         return RG_FRAME_WASNT_ENDED;
     }
 
-    currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight, vsync);
+    currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight, vsync, reloadShaders);
     return RG_SUCCESS;
 }
 

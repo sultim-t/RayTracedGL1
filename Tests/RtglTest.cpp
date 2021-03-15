@@ -104,6 +104,7 @@ static float SKY_INTENSITY      = 1.0f;
 static uint32_t SKYBOX_CURRENT  = 0;
 static bool TO_MOVE             = false;
 static bool SHOW_GRAD           = false;
+static bool RELOAD_SHADERS      = false;
 
 static void ProcessInput(GLFWwindow *window)
 {
@@ -164,6 +165,7 @@ static void ProcessInput(GLFWwindow *window)
     SKY_INTENSITY   = std::max(SKY_INTENSITY, 0.0f);
     LIGHT_COLOR     = SUN_INTENSITY * glm::vec3(1, 1, 1);
     LIGHT_DIR       = glm::normalize(LIGHT_DIR);
+    RELOAD_SHADERS  = false;
 
 
     // switches
@@ -192,6 +194,12 @@ static void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_G) == GLFW_PRESS)
     {
         SHOW_GRAD = !SHOW_GRAD;
+        lastTimePressed = now;
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_H) == GLFW_PRESS)
+    {
+        RELOAD_SHADERS = true;
         lastTimePressed = now;
     }
 }
@@ -400,7 +408,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         pWindow->UpdateSize();
         ProcessInput(pWindow->glfwHandle);
 
-        r = rgStartFrame(instance, (uint32_t)pWindow->width, (uint32_t)pWindow->height, true);
+        r = rgStartFrame(instance, (uint32_t)pWindow->width, (uint32_t)pWindow->height, true, RELOAD_SHADERS);
         RG_CHECKERROR(r);
 
         if (frameCount == 0)

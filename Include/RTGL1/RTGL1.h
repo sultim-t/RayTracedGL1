@@ -571,7 +571,8 @@ RgResult rgStartFrame(
     RgInstance                          rgInstance,
     uint32_t                            surfaceWidth, 
     uint32_t                            surfaceHeight, 
-    RgBool32                            vsync);
+    RgBool32                            vsync, 
+    RgBool32                            reloadShaders);
 
 typedef enum RgDrawFrameFlagBits
 {
