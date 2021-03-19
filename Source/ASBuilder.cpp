@@ -85,28 +85,31 @@ void ASBuilder::AddBLAS(
     const VkAccelerationStructureGeometryKHR* pGeometries,
     const VkAccelerationStructureBuildRangeInfoKHR *pRangeInfos,
     const VkAccelerationStructureBuildSizesInfoKHR &buildSizes,
-    bool fastTrace, bool update)
+    bool fastTrace, bool update, bool isBLASUpdateable)
 {
     // while building bottom level, top level must be not
     assert(topLBuildInfo.geomInfos.empty() && topLBuildInfo.rangeInfos.empty());
 
     assert(geometryCount > 0);
 
-    VkDeviceSize scratchSize = buildSizes.buildScratchSize;
+    VkDeviceSize scratchSize = std::max(buildSizes.updateScratchSize, buildSizes.buildScratchSize);
 
-    // use bigger scratch size, if need to update
-    if (update && scratchSize < buildSizes.updateScratchSize)
+    VkBuildAccelerationStructureFlagsKHR flags = fastTrace ?
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR :
+        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
+
+    if (isBLASUpdateable || update)
     {
-        scratchSize = buildSizes.updateScratchSize;
+        flags |= VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_UPDATE_BIT_KHR;
     }
 
     VkAccelerationStructureBuildGeometryInfoKHR buildInfo = {};
     buildInfo.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR;
     buildInfo.type = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR;
-    buildInfo.flags = fastTrace ?
-        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR :
-        VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_BUILD_BIT_KHR;
-    buildInfo.mode = (VkBuildAccelerationStructureModeKHR)0;
+    buildInfo.flags = flags;
+    buildInfo.mode = update ? 
+        VK_BUILD_ACCELERATION_STRUCTURE_MODE_UPDATE_KHR :
+        VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR;
     buildInfo.srcAccelerationStructure = update ? as : VK_NULL_HANDLE;
     buildInfo.dstAccelerationStructure = as;
     buildInfo.scratchData.deviceAddress = scratchBuffer->GetScratchAddress(scratchSize);

@@ -492,7 +492,7 @@ void ASManager::SetupBLAS(BLASComponent &blas, const std::shared_ptr<VertexColle
     asBuilder->AddBLAS(blas.GetAS(), geoms.size(),
                        geoms.data(), ranges.data(),
                        buildSizes,
-                       fastTrace, update);
+                       fastTrace, update, blas.GetFilter() & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE);
 }
 
 void ASManager::UpdateBLAS(BLASComponent &blas, const std::shared_ptr<VertexCollector> &vertCollector)
@@ -525,7 +525,7 @@ void ASManager::UpdateBLAS(BLASComponent &blas, const std::shared_ptr<VertexColl
     asBuilder->AddBLAS(blas.GetAS(), geoms.size(),
                        geoms.data(), ranges.data(),
                        buildSizes,
-                       fastTrace, update);
+                       fastTrace, update, blas.GetFilter() & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE);
 }
 
 // separate functions to make adding between Begin..Geometry() and Submit..Geometry() a bit clearer
@@ -710,11 +710,8 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     {
         assert(!(blas->GetFilter() & FT::CF_DYNAMIC));
 
-        // if flags have any of static bits
         if (blas->GetFilter() & FT::CF_STATIC_MOVABLE)
         {
-            auto &movableBlas = blas;
-
             UpdateBLAS(*blas, collectorStatic);
         }
     }
