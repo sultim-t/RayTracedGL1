@@ -22,6 +22,14 @@
 
 #include <cassert>
 
+#include "Generated/ShaderCommonC.h"
+
+typedef uint8_t FlagToIndexType;
+// 8 bits per byte
+constexpr uint32_t FlagToIndexTypeMaxValue = 1 << (8 * sizeof(FlagToIndexType));
+
+static_assert(MAX_TOP_LEVEL_INSTANCE_COUNT < FlagToIndexTypeMaxValue, "");
+
 // file scope typedefs
 typedef RTGL1::VertexCollectorFilterTypeFlagBits FT;
 typedef RTGL1::VertexCollectorFilterTypeFlags FL;
@@ -40,27 +48,54 @@ void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(F
     }
 }
 
-uint32_t RTGL1::VertexCollectorFilterTypeFlags_ToOffset(FL flags)
+// max flag value in a group
+constexpr uint32_t MAX_FLAG_VALUE = 8;
+static FlagToIndexType FlagToIndex[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
+
+void RTGL1::VertexCollectorFilterTypeFlags_Init()
 {
-    uint32_t result = 0;
+    memset(FlagToIndex, 0xFF, sizeof(FlagToIndex));
 
-    for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
+    uint32_t index = 0;
+
+    for (auto flcf : VertexCollectorFilterGroup_ChangeFrequency)
     {
-        for (auto pt : VertexCollectorFilterGroup_PassThrough)
+        for (auto flpt : VertexCollectorFilterGroup_PassThrough)
         {
-            for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
+            for (auto flpv : VertexCollectorFilterGroup_PrimaryVisibility)
             {
-                if ((cf | pt | pm) == flags)
-                {
-                    return result;
-                }
+                const uint32_t cf = (uint32_t)flcf >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF;
+                const uint32_t pt = (uint32_t)flpt >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
+                const uint32_t pv = (uint32_t)flpv >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
 
-                result++;
+                assert(cf > 0 && cf <= MAX_FLAG_VALUE);
+                assert(pt > 0 && pt <= MAX_FLAG_VALUE);
+                assert(pv > 0 && pv <= MAX_FLAG_VALUE);
+
+                assert(index < MAX_TOP_LEVEL_INSTANCE_COUNT);
+                assert(index < FlagToIndexTypeMaxValue);
+
+                FlagToIndex[cf - 1][pt - 1][pv - 1] = (FlagToIndexType)index;
+
+                index++;
             }
         }
     }
+}
 
-    return UINT32_MAX;
+uint32_t RTGL1::VertexCollectorFilterTypeFlags_ToOffset(FL flags)
+{
+    const uint32_t cf = (flags & FT::MASK_CHANGE_FREQUENCY_GROUP)   >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF;
+    const uint32_t pt = (flags & FT::MASK_PASS_THROUGH_GROUP)       >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
+    const uint32_t pv = (flags & FT::MASK_PRIMARY_VISIBILITY_GROUP) >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
+
+    assert(cf > 0 && cf <= MAX_FLAG_VALUE);
+    assert(pt > 0 && pt <= MAX_FLAG_VALUE);
+    assert(pv > 0 && pv <= MAX_FLAG_VALUE);
+
+    assert(FlagToIndex[cf - 1][pt - 1][pv - 1] < MAX_TOP_LEVEL_INSTANCE_COUNT);
+
+    return FlagToIndex[cf - 1][pt - 1][pv - 1];
 }
 
 struct FLName
@@ -73,18 +108,21 @@ const static FLName FL_NAMES[] =
 {
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE,                "BLAS static opaque"                    },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_ALPHA_TESTED,          "BLAS static alpha tested"              },
-    //{ FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_ADDITIVE,        "BLAS static blended additive"          },
-    { FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_UNDER,           "BLAS static blended under"             },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_REFLECT,               "BLAS static reflect"                   },
+    //{ FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_ADDITIVE,        "BLAS static blended additive"        },
+    //{ FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_UNDER,           "BLAS static blended under"           },
 
     { FT::CF_STATIC_MOVABLE     | FT::PT_OPAQUE,                "BLAS movable opaque"                   },
     { FT::CF_STATIC_MOVABLE     | FT::PT_ALPHA_TESTED,          "BLAS movable alpha tested"             },
-    //{ FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_ADDITIVE,        "BLAS movable blended additive"         },
-    { FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_UNDER,           "BLAS movable blended under"            },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_REFLECT,               "BLAS movable reflect"                  },
+    //{ FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_ADDITIVE,        "BLAS movable blended additive"       },
+    //{ FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_UNDER,           "BLAS movable blended under"          },
 
     { FT::CF_DYNAMIC            | FT::PT_OPAQUE,                "BLAS dynamic opaque"                   },
     { FT::CF_DYNAMIC            | FT::PT_ALPHA_TESTED,          "BLAS dynamic alpha tested"             },
-    //{ FT::CF_DYNAMIC            | FT::PT_BLEND_ADDITIVE,        "BLAS dynamic blended additive"         },
-    { FT::CF_DYNAMIC            | FT::PT_BLEND_UNDER,           "BLAS dynamic blended under"            },
+    { FT::CF_DYNAMIC            | FT::PT_REFLECT,               "BLAS dynamic reflect"                  },
+    //{ FT::CF_DYNAMIC            | FT::PT_BLEND_ADDITIVE,        "BLAS dynamic blended additive"       },
+    //{ FT::CF_DYNAMIC            | FT::PT_BLEND_UNDER,           "BLAS dynamic blended under"          },
 };
 
 const char *RTGL1::VertexCollectorFilterTypeFlags_GetNameForBLAS(FL flags)
@@ -138,14 +176,19 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
             flags |= (FL)FT::PT_ALPHA_TESTED;
             break;
         }
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_ADDITIVE:
-        /*{
+        /*case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_ADDITIVE:
+        {
             flags |= (FL)FT::PT_BLEND_ADDITIVE;
             break;
-        }*/
+        }
         case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_UNDER:
         {
             flags |= (FL)FT::PT_BLEND_UNDER;
+            break;
+        }*/
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT:
+        {
+            flags |= (FL)FT::PT_REFLECT;
             break;
         }
         default: assert(0);

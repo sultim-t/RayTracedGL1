@@ -38,6 +38,8 @@ Scene::Scene(
     submittedStaticInCurrentFrame(false),
     disableGeometrySkybox(_disableGeometrySkybox)
 {
+    VertexCollectorFilterTypeFlags_Init();
+
     lightManager = std::make_shared<LightManager>(_device, _allocator);
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
 

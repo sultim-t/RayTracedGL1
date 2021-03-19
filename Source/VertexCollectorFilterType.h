@@ -27,25 +27,29 @@
 namespace RTGL1
 {
 
+constexpr uint32_t VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF = 0;
+constexpr uint32_t VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT = 3;
+constexpr uint32_t VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV = 6;
+
 enum class VertexCollectorFilterTypeFlagBits : uint32_t
 {
     NONE                        = 0,
 
-    CF_STATIC_NON_MOVABLE       = 1 << 0,
-    CF_STATIC_MOVABLE           = 2 << 0,
-    CF_DYNAMIC                  = 4 << 0,
+    CF_STATIC_NON_MOVABLE       = 1 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF,
+    CF_STATIC_MOVABLE           = 2 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF,
+    CF_DYNAMIC                  = 4 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF,
     MASK_CHANGE_FREQUENCY_GROUP = CF_STATIC_NON_MOVABLE | CF_STATIC_MOVABLE | CF_DYNAMIC,
 
-    PT_OPAQUE                   = 1 << 3,
-    PT_ALPHA_TESTED             = 2 << 3,
+    PT_OPAQUE                   = 1 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
+    PT_ALPHA_TESTED             = 2 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
     /*PT_BLEND_ADDITIVE           = 4 << 3,*/
     PT_BLEND_UNDER              = 4 << 3,
     MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | /*PT_BLEND_ADDITIVE |*/ PT_BLEND_UNDER,
 
-    PV_WORLD                    = 1 << 6,
-    PV_FIRST_PERSON             = 2 << 6,
-    PV_FIRST_PERSON_VIEWER      = 4 << 6,
-    PV_SKYBOX                   = 8 << 6,
+    PV_WORLD                    = 1 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_FIRST_PERSON             = 2 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_FIRST_PERSON_VIEWER      = 4 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_SKYBOX                   = 8 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
     MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER | PV_SKYBOX,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
@@ -110,6 +114,7 @@ inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBit
     return static_cast<FL>(static_cast<FL>(a) & b);
 }
 
+void                            VertexCollectorFilterTypeFlags_Init();
 uint32_t                        VertexCollectorFilterTypeFlags_ToOffset(VertexCollectorFilterTypeFlags flags);
 const char*                     VertexCollectorFilterTypeFlags_GetNameForBLAS(VertexCollectorFilterTypeFlags flags);
 VertexCollectorFilterTypeFlags  VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadInfo &info);
