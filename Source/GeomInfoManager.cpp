@@ -236,21 +236,16 @@ RTGL1::ShGeometryInstance * RTGL1::GeomInfoManager::GetGeomInfoAddressByGlobalIn
     return &mapped[globalGeomIndex];
 }
 
-RTGL1::ShGeometryInstance *RTGL1::GeomInfoManager::GetGeomInfoAddress(uint32_t frameIndex, uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags)
-{
-    return GetGeomInfoAddressByGlobalIndex(frameIndex, GetGlobalGeomIndex(localGeomIndex, flags));
-}
-
-RTGL1::ShGeometryInstance *RTGL1::GeomInfoManager::GetGeomInfoAddress(uint32_t frameIndex, uint32_t simpleIndex)
+uint32_t RTGL1::GeomInfoManager::ConvertSimpleIndexToGlobal(uint32_t simpleIndex) const
 {
     // must exist
     assert(simpleIndex < geomType.size());
     assert(geomType.size() == simpleToLocalIndex.size());
 
-    VertexCollectorFilterTypeFlags flags = geomType[simpleIndex];
-    uint32_t localGeomIndex = simpleToLocalIndex[simpleIndex];
+    const VertexCollectorFilterTypeFlags flags = geomType[simpleIndex];
+    const uint32_t localGeomIndex = simpleToLocalIndex[simpleIndex];
 
-    return GetGeomInfoAddress(frameIndex, localGeomIndex, flags);
+    return GetGlobalGeomIndex(localGeomIndex, flags);
 }
 
 void RTGL1::GeomInfoManager::PrepareForFrame(uint32_t frameIndex)
@@ -304,6 +299,8 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
 
     uint32_t globalGeomIndex = GetGlobalGeomIndex(localGeomIndex, flags);
 
+    uint32_t flagsOffset = VertexCollectorFilterTypeFlags_ToOffset(flags);
+
     for (uint32_t i = frameBegin; i < frameEnd; i++)
     {
         FillWithPrevFrameData(flags, geomUniqueID, globalGeomIndex, src, i);
@@ -311,7 +308,7 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
         ShGeometryInstance *dst = GetGeomInfoAddressByGlobalIndex(i, globalGeomIndex);
         memcpy(dst, &src, sizeof(ShGeometryInstance));
 
-        MarkGeomInfoIndexToCopy(i, localGeomIndex, flags);
+        MarkGeomInfoIndexToCopy(i, localGeomIndex, flagsOffset);
     }
 
     WriteInfoForNextUsage(flags, geomUniqueID, globalGeomIndex, src, frameIndex);        
@@ -319,9 +316,8 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
     return simpleIndex;
 }
 
-void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags)
+void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32_t localGeomIndex, uint32_t offset)
 {
-    uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(flags);
     assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
     copyRegionLowerBound[frameIndex][offset] = std::min(localGeomIndex,     copyRegionLowerBound[frameIndex][offset]);
@@ -446,16 +442,19 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoMaterials(uint32_t simpleIndex, 
     assert(!(geomType[simpleIndex] & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC));
     assert(geomType.size() == simpleToLocalIndex.size());
 
+    const uint32_t flagsOffset = VertexCollectorFilterTypeFlags_ToOffset(geomType[simpleIndex]);
+    const uint32_t globalIndex = ConvertSimpleIndexToGlobal(simpleIndex);
+
     // need to write to both staging buffers for static geometry
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        ShGeometryInstance *dst = GetGeomInfoAddress(i, simpleIndex);
+        ShGeometryInstance *dst = GetGeomInfoAddressByGlobalIndex(i, globalIndex);
 
         // copy new material info
         memcpy(dst->materials[layer], src.indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
 
         // mark to be copied
-        MarkGeomInfoIndexToCopy(i, simpleToLocalIndex[simpleIndex], geomType[simpleIndex]);
+        MarkGeomInfoIndexToCopy(i, simpleToLocalIndex[simpleIndex], flagsOffset);
     }
 }
 
@@ -467,15 +466,19 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t simpleIndex, 
         return;
     }
 
+    assert(geomType.size() == simpleToLocalIndex.size());
+
+
+    const auto flags = geomType[simpleIndex];
+    const uint32_t flagsOffset = VertexCollectorFilterTypeFlags_ToOffset(flags);
+
     // only static and movable
     // geoms are allowed to update transforms
-    if (!(geomType[simpleIndex] & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE))
+    if (!(flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE))
     {
         assert(0);
         return;
     }
-
-    assert(geomType.size() == simpleToLocalIndex.size());
 
 
     float modelMatix[16];
@@ -492,10 +495,13 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t simpleIndex, 
 
     float *prevModelMatrix = prev->second.model;
 
+    const uint32_t localGeomIndex = simpleToLocalIndex[simpleIndex];
+    const uint32_t globalIndex = GetGlobalGeomIndex(localGeomIndex, flags);
+
     // need to write to both staging buffers for static geometry
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        ShGeometryInstance *dst = GetGeomInfoAddress(i, simpleIndex);
+        ShGeometryInstance *dst = GetGeomInfoAddressByGlobalIndex(i, globalIndex);
 
         memcpy(dst->model, modelMatix, 16 * sizeof(float));
         memcpy(dst->prevModel, prevModelMatrix, 16 * sizeof(float));
@@ -504,7 +510,7 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform(uint32_t simpleIndex, 
         MarkMovableHasPrevInfo(*dst);
 
         // mark to be copied
-        MarkGeomInfoIndexToCopy(i, simpleToLocalIndex[simpleIndex], geomType[simpleIndex]);
+        MarkGeomInfoIndexToCopy(i, localGeomIndex, flagsOffset);
     }
 
 
@@ -540,5 +546,5 @@ VkBuffer RTGL1::GeomInfoManager::GetMatchPrevBuffer() const
 uint32_t RTGL1::GeomInfoManager::GetStaticGeomBaseVertexIndex(uint32_t simpleIndex)
 {
     // just use frame 0, as infos have same values in both staging buffers
-    return GetGeomInfoAddress(0, simpleIndex)->baseVertexIndex;
+    return GetGeomInfoAddressByGlobalIndex(0, ConvertSimpleIndexToGlobal(simpleIndex))->baseVertexIndex;
 }

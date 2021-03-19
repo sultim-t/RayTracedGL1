@@ -94,13 +94,13 @@ private:
 private:
     void ResetOnlyDynamic(uint32_t frameIndex);
 
-    uint32_t GetGlobalGeomIndex(uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
+    static uint32_t GetGlobalGeomIndex(uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
     ShGeometryInstance *GetGeomInfoAddressByGlobalIndex(uint32_t frameIndex, uint32_t globalGeomIndex);
-    ShGeometryInstance *GetGeomInfoAddress(uint32_t frameIndex, uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
-    ShGeometryInstance *GetGeomInfoAddress(uint32_t frameIndex, uint32_t simpleIndex);
+    
+    uint32_t ConvertSimpleIndexToGlobal(uint32_t simpleIndex) const;
 
     // Mark memory to be copied to device local buffer
-    void MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
+    void MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32_t localGeomIndex, uint32_t flagsOffset);
 
     // Fill ShGeometryInstance with the data from previous frame
     // Note: frameIndex is not used if geom is not dynamic
