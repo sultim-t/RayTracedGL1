@@ -462,7 +462,7 @@ ASManager::~ASManager()
     vkDestroyFence(device, staticCopyFence, nullptr);
 }
 
-void ASManager::SetupBLAS(BLASComponent &blas, const std::shared_ptr<VertexCollector> &vertCollector)
+bool ASManager::SetupBLAS(BLASComponent &blas, const std::shared_ptr<VertexCollector> &vertCollector)
 {
     auto filter = blas.GetFilter();
     const std::vector<VkAccelerationStructureGeometryKHR> &geoms = vertCollector->GetASGeometries(filter);
@@ -471,7 +471,7 @@ void ASManager::SetupBLAS(BLASComponent &blas, const std::shared_ptr<VertexColle
 
     if (blas.IsEmpty())
     {
-        return;
+        return false;
     }
 
     const std::vector<VkAccelerationStructureBuildRangeInfoKHR> &ranges = vertCollector->GetASBuildRangeInfos(filter);
@@ -493,6 +493,8 @@ void ASManager::SetupBLAS(BLASComponent &blas, const std::shared_ptr<VertexColle
                        geoms.data(), ranges.data(),
                        buildSizes,
                        fastTrace, update, blas.GetFilter() & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE);
+
+    return true;
 }
 
 void ASManager::UpdateBLAS(BLASComponent &blas, const std::shared_ptr<VertexCollector> &vertCollector)
@@ -654,10 +656,7 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 
     assert(asBuilder->IsEmpty());
 
-    if (colDyn->AreGeometriesEmpty(FT::CF_DYNAMIC))
-    {
-        return;
-    }
+    bool toBuild = false;
 
     // recreate dynamic blas
     for (auto &dynamicBlas : allDynamicBlas[frameIndex])
@@ -665,7 +664,12 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
         // must be dynamic
         assert(dynamicBlas->GetFilter() & FT::CF_DYNAMIC);
 
-        SetupBLAS(*dynamicBlas, colDyn);
+        toBuild |= SetupBLAS(*dynamicBlas, colDyn);
+    }
+    
+    if (!toBuild)
+    {
+        return;
     }
 
     // build BLAS

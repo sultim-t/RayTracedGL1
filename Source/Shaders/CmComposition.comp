@@ -71,7 +71,8 @@ void main()
     if (globalUniform.dbgShowMotionVectors != 0)
     {
         const vec2 m = texelFetch(framebufMotion_Sampler, pix, 0).rg;
-        color.rg = m;
+        color.r = abs(m.r);
+        color.g = abs(m.g);
         color.b = 0;
     }
         

@@ -117,7 +117,7 @@ private:
     void UpdateBufferDescriptors(uint32_t frameIndex);
     void UpdateASDescriptors(uint32_t frameIndex);
 
-    void SetupBLAS(
+    bool SetupBLAS(
         BLASComponent &as,
         const std::shared_ptr<VertexCollector> &vertCollector);
 
