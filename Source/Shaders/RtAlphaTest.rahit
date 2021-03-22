@@ -34,13 +34,13 @@ hitAttributeEXT vec2 inBaryCoords;
 
 void main()
 {
-	ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
+	const ShTriangle tr = getTriangle(gl_InstanceID, gl_InstanceCustomIndexEXT, gl_GeometryIndexEXT, gl_PrimitiveID);
 
-	vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    vec2 texCoord = tr.layerTexCoord[0] * baryCoords;
+	const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+    const vec2 texCoord = tr.layerTexCoord[0] * baryCoords;
  
 	// check only first material
- 	vec4 color = getTextureSample(tr.materials[0][0], texCoord);
+ 	const vec4 color = getTextureSample(tr.materials[0][0], texCoord);
 
 	// if must be discarded
 	if (color.a < ALPHA_THRESHOLD)

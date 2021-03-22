@@ -84,8 +84,6 @@ RayTracingPipeline::RayTracingPipeline(
         "RMissShadow",
         "RClsOpaque",
         "RAlphaTest",
-        "RBlendAdditive",
-        "RBlendUnder",
     };
 
 #pragma region Utilities
@@ -119,10 +117,6 @@ RayTracingPipeline::RayTracingPipeline(
     AddHitGroup(toIndex("RClsOpaque"));                             assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_FULLY_OPAQUE);
     // alpha tested and then opaque
     AddHitGroup(toIndex("RClsOpaque"), toIndex("RAlphaTest"));      assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_ALPHA_TESTED);
-    // blend additive and then opaque
-    AddHitGroup(toIndex("RClsOpaque"), toIndex("RBlendAdditive"));  assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_BLEND_ADDITIVE);
-    // blend under and then opaque
-    AddHitGroup(toIndex("RClsOpaque"), toIndex("RBlendUnder"));     assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_BLEND_UNDER);
 
     CreatePipeline(_shaderMgr.get());
     CreateSBT();

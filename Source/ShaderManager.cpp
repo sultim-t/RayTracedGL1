@@ -43,8 +43,6 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"RMissShadow",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMissShadowCheck.rmiss.spv"          },
     {"RClsOpaque",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtClsOpaque.rchit.spv"                },
     {"RAlphaTest",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtAlphaTest.rahit.spv"                },
-    {"RBlendAdditive",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendAdditive.rahit.spv"            },
-    {"RBlendUnder",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtBlendUnder.rahit.spv"               },
     {"CComposition",            "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmComposition.comp.spv"               },
     {"CLuminanceHistogram",     "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceHistogram.comp.spv"        },
     {"CLuminanceAvg",           "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceAvg.comp.spv"              },

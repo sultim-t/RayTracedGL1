@@ -35,12 +35,10 @@ struct ShTriangle
 
 struct ShPayload
 {
-    vec4    color;
-    vec2    baryCoords;
+    uint    baryCoordsPacked;
     uint    instIdAndIndex;
     uint    geomAndPrimIndex;
     float   clsHitDistance;
-    float   maxTransparDistance;
 };
 
 struct ShPayloadShadow

@@ -595,7 +595,7 @@ mat3 getOnlyPrevPositions(int globalGeometryIndex, int instanceCustomIndex, int 
 
 vec4 packVisibilityBuffer(const ShPayload p)
 {
-    return vec4(uintBitsToFloat(p.instIdAndIndex), uintBitsToFloat(p.geomAndPrimIndex), p.baryCoords);
+    return vec4(uintBitsToFloat(p.instIdAndIndex), uintBitsToFloat(p.geomAndPrimIndex), unpackHalf2x16(p.baryCoordsPacked));
 }
 
 // v must be fetched from framebufVisibilityBuffer_Prev_Sampler

@@ -95,12 +95,10 @@ uint getIndirectIlluminationCullMask(uint primaryInstCustomIndex)
 
 void resetPayload()
 {
-    payload.color = vec4(0.0);
-    payload.baryCoords = vec2(0.0);
+    payload.baryCoordsPacked = 0;
     payload.instIdAndIndex = 0;
     payload.geomAndPrimIndex = 0;
     payload.clsHitDistance = -1;
-    payload.maxTransparDistance = -1;
 }
 
 ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
