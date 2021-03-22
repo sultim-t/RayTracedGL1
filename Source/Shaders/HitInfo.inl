@@ -200,7 +200,16 @@ ShHitInfo getHitInfo(const ShPayload pl)
     h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
 
-    h.normalGeom = normalize(tr.normals * baryCoords);
+    h.normalGeom = tr.normals * baryCoords;
+    const float nLength = length(h.normalGeom);
+    if (nLength > 0.001)
+    {
+        h.normalGeom /= nLength;
+    }
+    else
+    {
+        h.normalGeom = vec3(0, 1, 0);
+    }
 
     if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
     {

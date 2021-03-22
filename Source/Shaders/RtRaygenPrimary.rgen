@@ -52,9 +52,9 @@ void main()
     const float AX = 1.0 / globalUniform.renderWidth;
     const float AY = 1.0 / globalUniform.renderHeight;
 
-    const vec3 rayDir   = getRayDir(inUV);
-    const vec3 rayDirAX = getRayDir(inUV + vec2(AX, 0.0));
-    const vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
+    vec3 rayDir   = getRayDir(inUV);
+    vec3 rayDirAX = getRayDir(inUV + vec2(AX, 0.0));
+    vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
 
     imageStore(framebufViewDirection, pix, vec4(rayDir, 0.0));
 
@@ -62,41 +62,70 @@ void main()
     imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
     
     
-    const ShPayload p = tracePrimaryRay(origin, rayDir);
+    ShPayload p = tracePrimaryRay(origin, rayDir);
 
 
     // was hit
     if (p.clsHitDistance > 0)
     {
-        // get ray differentials for texture filtering
+        int instanceId, instCustomIndex;
+        unpackInstanceIdAndCustomIndex(p.instIdAndIndex, instanceId, instCustomIndex);
 
-        vec2 motionCurToPrev;
-        float motionDepthLinearCurToPrev;
-        vec2 gradDepth;
-        const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth);
+        if ((instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT) != 0)
+        {
+            int geomIndex, primIndex;
 
-        const vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
+            unpackGeometryAndPrimitiveIndex(p.geomAndPrimIndex, geomIndex, primIndex);
 
-        imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
-        imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
-        imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
-        imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-        imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
-        imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
-        imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
-        imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
+            const ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
+
+            const vec2 inBaryCoords = p.baryCoords;
+            const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+            const vec3 normal = normalize(tr.normals * baryCoords);
+
+            vec3 hitPoint = origin + rayDir * p.clsHitDistance;
+            
+            rayDir = reflect(rayDir, normal);
+            mat3 basis = getONB(rayDir);
+
+            rayDirAX = normalize(rayDir + basis[0] * 0.01);
+            rayDirAY = normalize(rayDir + basis[1] * 0.01);
+
+            p = tracePrimaryRay(hitPoint, rayDir);
+        }
+
+
+
+        if (p.clsHitDistance > 0)
+        {
+            vec2 motionCurToPrev;
+            float motionDepthLinearCurToPrev;
+            vec2 gradDepth;
+            const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth);
+
+            const vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
+
+            imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
+            imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
+            imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
+            imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
+            imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
+            imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
+            imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
+            imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
+
+            return;
+        }
     }
-    else
-    {
-        vec3 color = getSkyPrimary(rayDir);
 
-        imageStore(framebufAlbedo,              pix, vec4(color, 0.0));
-        imageStore(framebufNormal,              pix, vec4(0.0));
-        imageStore(framebufNormalGeometry,      pix, vec4(0.0));
-        imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-        imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, 0.0));
-        imageStore(framebufMotion,              pix, vec4(0.0));
-        imageStore(framebufSurfacePosition,     pix, vec4(0.0));
-        imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
-    }
+    vec3 color = getSkyPrimary(rayDir);
+
+    imageStore(framebufAlbedo,              pix, vec4(color, 0.0));
+    imageStore(framebufNormal,              pix, vec4(0.0));
+    imageStore(framebufNormalGeometry,      pix, vec4(0.0));
+    imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
+    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, 0.0));
+    imageStore(framebufMotion,              pix, vec4(0.0));
+    imageStore(framebufSurfacePosition,     pix, vec4(0.0));
+    imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
 }

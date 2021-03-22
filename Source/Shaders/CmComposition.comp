@@ -44,17 +44,19 @@ void main()
     if (depth < MAX_RAY_LENGTH)
     {
         const vec3 light = imageLoad(framebufFinal, pix).rgb;
-        color = light;
-    }
-    
-    color *= albedo;
+        color = light * pow(albedo, vec3(1 / 2.2));
+            
+        const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
+        const float lInAdj = lIn / tonemapping.avgLuminance;
+        // Reinhard
+        const float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
         
-    const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
-    const float lInAdj = lIn / tonemapping.avgLuminance;
-    // Reinhard
-    const float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
-    
-    color = color * lOut / lIn;
+        color = color * lOut / lIn;
+    }
+    else
+    {
+        color = albedo;
+    }
 
     if (globalUniform.dbgShowGradients != 0)
     {
@@ -73,5 +75,5 @@ void main()
         color.b = 0;
     }
         
-    imageStore(framebufFinal, pix, vec4(pow(color, vec3(1 / 2.2)), 0));
+    imageStore(framebufFinal, pix, vec4(color, 0));
 }
