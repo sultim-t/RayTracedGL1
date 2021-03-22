@@ -751,11 +751,16 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
     }
     // blended geometry doesn't have indirect illumination
 
-    if (filter & (/*FT::PT_BLEND_ADDITIVE |*/ FT::PT_BLEND_UNDER))
+    /*if (filter & FT::PT_BLEND_)
     {
         instance.mask = INSTANCE_MASK_BLENDED;
+    }*/
+    if (filter & FT::PT_REFLECT)
+    {
+        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_REFLECT;
     }
-    else if (filter & FT::PV_FIRST_PERSON)
+    
+    if (filter & FT::PV_FIRST_PERSON)
     {
         instance.mask = INSTANCE_MASK_FIRST_PERSON;
         instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON;
@@ -791,11 +796,11 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
         /*else if (filter &FT::PT_BLEND_ADDITIVE)
         {
             instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_ADDITIVE;
-        }*/
+        }
         else if (filter & FT::PT_BLEND_UNDER)
         {
             instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_UNDER;
-        }
+        }*/
         
         instance.flags =
             VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |

@@ -503,6 +503,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             0, 0, 0.3f, 0
         };
         dnInfo.uniqueID = 3;
+        dnInfo.passThroughType = RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT;
         rgUploadGeometry(instance, &dnInfo);
 
         // upload rasterized geometry

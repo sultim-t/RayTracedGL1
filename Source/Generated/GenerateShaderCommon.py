@@ -212,6 +212,7 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
     "INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX"                 : "1 << 3",
+    "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT"                : "1 << 4",
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_WORLD"                   : "1 << 0",
