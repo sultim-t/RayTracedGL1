@@ -30,6 +30,7 @@ class Matrix
 public:
     static void Inverse(float *inversed, const float *m);
     static void Transpose(float *transposed, const float *m);
+    static void Multiply(float *result, const float *a, const float *b);
     static void ToMat4(float *result, const RgTransform &m);
     static void ToMat4Transposed(float *result, const RgTransform &m);
 };

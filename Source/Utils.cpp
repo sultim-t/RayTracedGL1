@@ -151,15 +151,3 @@ bool Utils::AreViewportsSame(const VkViewport &a, const VkViewport &b)
         std::abs(a.minDepth - b.minDepth)   < depthEps &&
         std::abs(a.maxDepth - b.maxDepth)   < depthEps;
 }
-
-bool Utils::IsDefaultViewport(const RgViewport &viewport)
-{
-    constexpr float eps = 0.01f;
-
-    return
-        std::abs(viewport.width)    < eps &&
-        std::abs(viewport.height)   < eps &&
-        std::abs(viewport.x)        < eps &&
-        std::abs(viewport.y)        < eps;
-}
-

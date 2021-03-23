@@ -61,7 +61,8 @@ public:
     RgResult UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
     RgResult UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo);
 
-    RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo);
+    RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo, 
+                                      const float *viewProjection, const RgViewport *viewport);
 
     RgResult SubmitStaticGeometries();
     RgResult StartNewStaticScene();

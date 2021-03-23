@@ -289,10 +289,10 @@ static float quadTexCoords[] =
 
 static uint32_t quadColorsABGR[] =
 {
-    0xFFFF0000,
-    0xFFFFFFFF,
-    0xFFFFFFFF,
-    0xFFFFFFFF,
+    0xF0FF0000,
+    0xF0FFFFFF,
+    0xF0FFFFFF,
+    0xF0FFFFFF,
     0xFFFFFFFF,
     0xFF00FF00,
 };
@@ -374,25 +374,31 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
     // rasterized geometry for HUD
+    RgRasterizedGeometryVertexArrays hudVertData = {};
+    hudVertData.vertexData = quadPositions;
+    hudVertData.texCoordData = quadTexCoords;
+    hudVertData.colorData = quadColorsABGR;
+    hudVertData.vertexStride = 3 * sizeof(float);
+    hudVertData.texCoordStride = 2 * sizeof(float);
+    hudVertData.colorStride = sizeof(uint32_t);
+
     RgRasterizedGeometryUploadInfo raster = {};
-    raster.vertexData = quadPositions;
     raster.vertexCount = 6;
-    raster.vertexStride = 3 * sizeof(float);
-    raster.texCoordData = quadTexCoords;
-    raster.texCoordStride = 2 * sizeof(float);
-    raster.colorData = quadColorsABGR;
-    raster.colorStride = sizeof(uint32_t);
-    raster.textures =
-    {
-        RG_NO_MATERIAL,
-        RG_NO_MATERIAL,
-        RG_NO_MATERIAL
+    raster.arrays = &hudVertData;
+    raster.material = RG_NO_MATERIAL;
+    raster.transform = {
+        1, 0, 0, 0,
+        0, 1, 0, 0,
+        0, 0, 1, 0
     };
-    memcpy(raster.viewProjection, identityMatrix44, 16 * sizeof(float));
-    raster.viewport.x = -800;
-    raster.viewport.y = -450;
-    raster.viewport.width = 100;
-    raster.viewport.height = 100;
+    raster.color = { 1, 1, 1, 1 };
+    raster.blendEnable = RG_TRUE;
+
+    RgViewport hudViewport = {};
+    hudViewport.x = 0;
+    hudViewport.y = 0;
+    hudViewport.width = 1600;
+    hudViewport.height = 900;
 
 
     RgResult    r           = RG_SUCCESS;
@@ -507,7 +513,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         rgUploadGeometry(instance, &dnInfo);
 
         // upload rasterized geometry
-        r = rgUploadRasterizedGeometry(instance, &raster);
+        r = rgUploadRasterizedGeometry(instance, &raster, nullptr, &hudViewport);
         RG_CHECKERROR(r);
 
 

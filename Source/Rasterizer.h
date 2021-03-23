@@ -49,8 +49,10 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
-    void Upload(const RgRasterizedGeometryUploadInfo &uploadInfo, uint32_t frameIndex);
-    void Draw(VkCommandBuffer cmd, uint32_t frameIndex);
+    void Upload(uint32_t frameIndex, 
+                const RgRasterizedGeometryUploadInfo &uploadInfo, 
+                const float *viewProjection, const RgViewport *viewport);
+    void Draw(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
 
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;

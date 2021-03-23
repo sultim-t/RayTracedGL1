@@ -23,6 +23,7 @@
 #include <array>
 
 #include "Swapchain.h"
+#include "Matrix.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -66,12 +67,14 @@ Rasterizer::~Rasterizer()
     DestroyFramebuffers();
 }
 
-void Rasterizer::Upload(const RgRasterizedGeometryUploadInfo &uploadInfo, uint32_t frameIndex)
+void Rasterizer::Upload(uint32_t frameIndex, 
+                        const RgRasterizedGeometryUploadInfo &uploadInfo, 
+                        const float *viewProjection, const RgViewport *viewport)
 {
-    collectors[frameIndex]->AddGeometry(uploadInfo);
+    collectors[frameIndex]->AddGeometry(uploadInfo, viewProjection, viewport);
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
+void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
 {
     VkDescriptorSet texturesDescSet;
 
@@ -115,15 +118,36 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
     vkCmdSetViewport(cmd, 0, 1, &fbViewport);
     VkViewport curViewport = fbViewport;
 
+    float defaultViewProj[16];
+    Matrix::Multiply(defaultViewProj, view, proj);
+
     for (const auto &info : drawInfos)
     {
         TrySetViewport(cmd, info, curViewport);
 
+        struct
+        {
+            float vp[16];
+            uint32_t t;
+        } push;
+        static_assert(sizeof(push) == 16 * sizeof(float) + sizeof(uint32_t), "");
+
+        if (!info.isDefaultViewProjMatrix)
+        {
+            memcpy(push.vp, info.viewProj, sizeof(float) * 16);
+        }
+        else
+        {
+            memcpy(push.vp, defaultViewProj, sizeof(float) * 16);
+        }
+
+        push.t = info.textureIndex;
+
         vkCmdPushConstants(
             cmd, pipelineLayout,
             VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0, 16 * sizeof(float) + 3 * sizeof(uint32_t),
-            info.viewProj);
+            0, sizeof(push),
+            &push);
 
         if (info.indexCount > 0)
         {
@@ -183,7 +207,7 @@ void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
     VkPushConstantRange pushConst = {};
     pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConst.offset = 0;
-    pushConst.size = 16 * sizeof(float) + 3 * sizeof(uint32_t);
+    pushConst.size = 16 * sizeof(float) + sizeof(uint32_t);
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
@@ -283,8 +307,8 @@ void Rasterizer::CreatePipelines(const ShaderManager *shaderManager)
     dynamicInfo.pDynamicStates = dynamicStates;
 
     VkPipelineShaderStageCreateInfo shaderStages[2];
-    shaderStages[0] = shaderManager->GetStageInfo("RasterizerVert");
-    shaderStages[1] = shaderManager->GetStageInfo("RasterizerFrag");
+    shaderStages[0] = shaderManager->GetStageInfo("VertRasterizer");
+    shaderStages[1] = shaderManager->GetStageInfo("FragRasterizer");
 
     VkGraphicsPipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;

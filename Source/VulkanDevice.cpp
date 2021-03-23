@@ -353,7 +353,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
         frameInfo.renderWidth, frameInfo.renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
     // draw rasterized geometry in swapchain's framebuffer
-    rasterizer->Draw(cmd, frameIndex);
+    rasterizer->Draw(cmd, frameIndex, uniform->GetData()->view, uniform->GetData()->projection);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
@@ -454,7 +454,8 @@ RgResult RTGL1::VulkanDevice::UpdateGeometryTexCoords(const RgUpdateTexCoordsInf
     return b ? RG_SUCCESS : RG_UPDATING_TEXCOORDS_FOR_NON_STATIC;
 }
 
-RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo)
+RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo,
+                                                const float *viewProjection, const RgViewport *viewport)
 {
     // move checks to to RTGL.cpp
     if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
@@ -467,7 +468,7 @@ RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUpload
         return RG_FRAME_WASNT_STARTED;
     }
 
-    rasterizer->Upload(*uploadInfo, currentFrameIndex);
+    rasterizer->Upload(currentFrameIndex, *uploadInfo, viewProjection, viewport);
     return RG_SUCCESS;
 }
 

@@ -150,8 +150,6 @@ typedef enum RgGeometryPassThroughType
 {
     RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
     RG_GEOMETRY_PASS_THROUGH_TYPE_ALPHA_TESTED,
-    RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_ADDITIVE,
-    RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_UNDER,
     RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT
 } RgGeometryPassThroughType;
 
@@ -175,6 +173,11 @@ typedef struct RgTransform
 {
     float       matrix[3][4];
 } RgTransform;
+
+typedef struct RgMatrix
+{
+    float       matrix[4][4];
+} RgMatrix;
 
 typedef struct RgFloat3D
 {
@@ -262,6 +265,68 @@ RgResult rgUpdateGeometryTexCoords(
 
 
 
+typedef enum RgBlendFactor
+{
+    RG_BLEND_FACTOR_ONE,
+    RG_BLEND_FACTOR_ZERO,
+    RG_BLEND_FACTOR_SRC_COLOR,
+    RG_BLEND_FACTOR_INV_SRC_COLOR,
+    RG_BLEND_FACTOR_DST_COLOR,
+    RG_BLEND_FACTOR_INV_DST_COLOR,
+    RG_BLEND_FACTOR_SRC_ALPHA,
+    RG_BLEND_FACTOR_INV_SRC_ALPHA,
+} RgBlendFactor;
+
+typedef struct RgRasterizedGeometryVertexArrays
+{
+    // 3 first floats are used.
+    void                *vertexData;
+    // 2 first floats are used.
+    void                *texCoordData;
+    // RGBA packed into 32-bit uint. Little-endian. Can be null.
+    void                *colorData;
+    uint32_t            vertexStride;
+    uint32_t            texCoordStride;
+    uint32_t            colorStride;
+} RgRasterizedGeometryVertexArrays;
+
+typedef struct RgRasterizedGeometryVertexStruct
+{
+    float               position[3];
+    // RGBA packed into 32-bit uint. Little-endian.
+    uint32_t            packedColor;
+    float               texCoord[2];
+} RgRasterizedGeometryVertexStruct;
+
+typedef struct RgRasterizedGeometryUploadInfo
+{
+    uint32_t            vertexCount;
+    // Exactly one must be not null.
+    // "arrays"  -- pointer to a struct that defines separate arrays
+    //              for position and texCoord data.
+    // "structs" -- is an array of packed vertices.
+    RgRasterizedGeometryVertexArrays   *arrays;
+    RgRasterizedGeometryVertexStruct   *structs;
+    
+    // Can be 0/null.
+    // indexData is an array of uint32_t of size indexCount.
+    uint32_t            indexCount;
+    void                *indexData;
+
+    RgTransform         transform;
+
+    RgFloat4D           color;
+    // Only the albedo-alpha texture is used for rasterized geometry.
+    RgMaterial          material;
+    RgBool32            blendEnable;
+    RgBlendFactor       blendFuncSrc;
+    RgBlendFactor       blendFuncDst;
+    RgBool32            depthTest;
+    RgBool32            depthWrite;
+} RgRasterizedGeometryUploadInfo;
+
+
+
 typedef struct RgExtent2D
 {
     uint32_t    width;
@@ -276,7 +341,7 @@ typedef struct RgExtent3D
 } RgExtent3D;
 
 // Struct is used to transform from NDC to window coordinates.
-// All members are in pixels.
+// All members are in pixels. (x,y) defines top-left corner.
 typedef struct RgViewport
 {
     float       x;
@@ -285,67 +350,18 @@ typedef struct RgViewport
     float       height;
 } RgViewport;
 
-typedef enum RgBlendFactor
-{
-    RG_BLEND_FACTOR_ONE,
-    RG_BLEND_FACTOR_ZERO,
-    RG_BLEND_FACTOR_SRC_COLOR,
-    RG_BLEND_FACTOR_INV_SRC_COLOR,
-    RG_BLEND_FACTOR_DST_COLOR,
-    RG_BLEND_FACTOR_INV_DST_COLOR,
-    RG_BLEND_FACTOR_SRC_ALPHA,
-    RG_BLEND_FACTOR_INV_SRC_ALPHA,
-} RgBlendFactor;
-
-typedef struct RgRasterizedGeometryUploadInfo
-{
-    // Doesn't need it.
-    //RgBool32            depthTest;
-    //RgBool32            depthWrite;
-
-    // Hardcoded for the first versions
-    /*RgBool32            alphaTest;
-    RgBool32            blendEnable;
-    RgBlendFactor       blendFuncSrc;
-    RgBlendFactor       blendFuncDst;*/
-
-    // Only the albedo-alpha textures from the materials
-    // are used for rasterized geometry.
-    RgLayeredMaterial   textures;
-
-    uint32_t            vertexCount;
-    // Position data, 3 floats
-    void                *vertexData;
-    uint32_t            vertexStride;
-    // 3 floats
-    //void                *normalData;
-    //uint32_t            normalStride;
-    // 2 floats, can be null
-    void                *texCoordData;
-    uint32_t            texCoordStride;
-    // RGBA packed into 32-bit uint, can be null
-    void                *colorData;
-    uint32_t            colorStride;
-
-    // Can be 0 and null.
-    // indexData is an array of uint32_t of size indexCount.
-    uint32_t            indexCount;
-    void                *indexData;
-
-    // Viewport to draw in. If every member is about 0,
-    // then full screen is used. 
-    RgViewport          viewport;
-
-    // View-projection matrix to apply to this rasterized geometry.
-    // Matrix is column major.
-    float               viewProjection[16];
-} RgRasterizedGeometryUploadInfo;
-
-// Upload geometry that will be drawn using rasterization,
-// whole buffer for such geometry be discarded after frame finish
+// Upload geometry that will be drawn using rasterization.
+// Whole buffer for such geometry be discarded after frame finish.
+// "viewProjection" -- 4x4 view-projection matrix to apply to the rasterized
+//                     geometry. Matrix is column major. If it's null,
+//                     then the matrices from RgDrawFrameInfo are used.
+// "viewport"       -- pointer to a viewport to draw in. If it's null,
+//                     then the default one is used.
 RgResult rgUploadRasterizedGeometry(
     RgInstance                              rgInstance,
-    const RgRasterizedGeometryUploadInfo    *uploadInfo);
+    const RgRasterizedGeometryUploadInfo    *uploadInfo,
+    const float                             *viewProjection,
+    const RgViewport                        *viewport);
 
 
 

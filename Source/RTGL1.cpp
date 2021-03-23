@@ -82,9 +82,10 @@ RgResult rgUpdateGeometryTexCoords(RgInstance rgInstance, const RgUpdateTexCoord
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTexCoords(updateInfo);
 }
 
-RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *uploadInfo)
+RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *uploadInfo, 
+                                    const float *viewProjection, const RgViewport *viewport)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo, viewProjection, viewport);
 }
 
 RgResult rgSubmitStaticGeometries(RgInstance rgInstance)

@@ -64,7 +64,6 @@ public:
     static uint32_t Align(uint32_t value, uint32_t alignment);
 
     static bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
-    static bool IsDefaultViewport(const RgViewport &viewport);
 };
 
 }

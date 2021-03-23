@@ -30,21 +30,20 @@
 namespace RTGL1
 {
 
-#define RASTERIZER_TEXTURE_COUNT 3
-
 class RasterizedDataCollector
 {
 public:
     struct DrawInfo
     {
         float       viewProj[16];
-        uint32_t    textureIndices[RASTERIZER_TEXTURE_COUNT];
+        bool        isDefaultViewProjMatrix;
+        VkViewport  viewport;
+        bool        isDefaultViewport;
         uint32_t    vertexCount;
         uint32_t    firstVertex;
         uint32_t    indexCount;
         uint32_t    firstIndex;
-        bool        isDefaultViewport;
-        VkViewport  viewport;
+        uint32_t    textureIndex;
     };
 
 public:
@@ -60,7 +59,8 @@ public:
     RasterizedDataCollector& operator=(const RasterizedDataCollector& other) = delete;
     RasterizedDataCollector& operator=(RasterizedDataCollector&& other) noexcept = delete;
 
-    void AddGeometry(const RgRasterizedGeometryUploadInfo &info);
+    void AddGeometry(const RgRasterizedGeometryUploadInfo &info, 
+                     const float *viewProjection, const RgViewport *viewport);
     void Clear();
 
     VkBuffer GetVertexBuffer() const;
@@ -72,6 +72,10 @@ public:
 
 private:
     struct RasterizerVertex;
+
+private:
+    static void CopyFromSeparateArrays(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts);
+    static void CopyFromArrayOfStructs(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts);
 
 private:
     VkDevice device;

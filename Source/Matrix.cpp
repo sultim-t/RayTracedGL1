@@ -167,7 +167,7 @@ void Matrix::Inverse(float *inversed, const float *m)
 
     float det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
 
-    det = 1.0 / det;
+    det = 1.0f / det;
 
     for (int i = 0; i < 16; i++)
     {
@@ -185,6 +185,21 @@ void Matrix::Transpose(float *transposed, const float *m)
         for (int j = 0; j < 4; j++)
         {
             dst[i][j] = src[j][i];
+        }
+    }
+}
+
+void Matrix::Multiply(float *result, const float *a, const float *b)
+{
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            result[i * 4 + j] =
+                a[i * 4 + 0] * b[0 * 4 + j] +
+                a[i * 4 + 1] * b[1 * 4 + j] +
+                a[i * 4 + 2] * b[2 * 4 + j] +
+                a[i * 4 + 3] * b[3 * 4 + j];
         }
     }
 }

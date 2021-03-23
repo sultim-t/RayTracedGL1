@@ -30,18 +30,10 @@ layout (location = 0) out vec4 outColor;
 
 layout(push_constant) uniform RasterizerFrag_BT 
 {
-    layout(offset = 64) uvec3 textureIndices;
+    layout(offset = 64) uint textureIndex;
 } rasterizerFragInfo;
 
 void main()
 {
-    outColor = color;
-
-    for (uint i = 0; i < 3; i++)
-    {
-        if (rasterizerFragInfo.textureIndices[i] > 0)
-        {
-            outColor *= getTextureSample(rasterizerFragInfo.textureIndices[i], texCoord);
-        }
-    }
+    outColor = color * getTextureSample(rasterizerFragInfo.textureIndex, texCoord);
 }
