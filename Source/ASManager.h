@@ -68,7 +68,7 @@ public:
     // If all the added geometries must be removed, call this function before submitting
     void ResetStaticGeometry();
 
-    void BeginDynamicGeometry(uint32_t frameIndex);
+    void BeginDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex);
     uint32_t AddDynamicGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info);
     void SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex);
 

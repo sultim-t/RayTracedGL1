@@ -638,8 +638,14 @@ void ASManager::SubmitStaticGeometry()
     Utils::WaitAndResetFence(device, staticCopyFence);
 }
 
-void ASManager::BeginDynamicGeometry(uint32_t frameIndex)
+void ASManager::BeginDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    static_assert(MAX_FRAMES_IN_FLIGHT == 2, "");
+    uint32_t prevFrameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
+
+    // store data of current frame to use it in the next one
+    CopyDynamicDataToPrevBuffers(cmd, prevFrameIndex);
+
     // dynamic AS must be recreated
     collectorDynamic[frameIndex]->Reset();
     collectorDynamic[frameIndex]->BeginCollecting(false);

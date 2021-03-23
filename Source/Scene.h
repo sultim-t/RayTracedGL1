@@ -47,7 +47,7 @@ public:
     Scene& operator=(const Scene& other) = delete;
     Scene& operator=(Scene&& other) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex);
+    void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     // Return true if TLAS was built
     bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform);
 

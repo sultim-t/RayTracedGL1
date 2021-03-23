@@ -234,10 +234,12 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
 
-    // start dynamic geometry recording to current frame
-    scene->PrepareForFrame(frameIndex);
+    VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
-    return cmdManager->StartGraphicsCmd();
+    // start dynamic geometry recording to current frame
+    scene->PrepareForFrame(cmd, frameIndex);
+
+    return cmd;
 }
 
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frameInfo) const

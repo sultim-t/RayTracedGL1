@@ -51,7 +51,7 @@ Scene::Scene(
 Scene::~Scene()
 {}
 
-void Scene::PrepareForFrame(uint32_t frameIndex)
+void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     dynamicUniqueIDToSimpleIndex.clear();
 
@@ -59,7 +59,7 @@ void Scene::PrepareForFrame(uint32_t frameIndex)
     lightManager->PrepareForFrame(frameIndex);
 
     // dynamic geomtry
-    asManager->BeginDynamicGeometry(frameIndex);
+    asManager->BeginDynamicGeometry(cmd, frameIndex);
 }
 
 bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
@@ -107,9 +107,6 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     if (shouldBeBuilt)
     {
         asManager->BuildTLAS(cmd, frameIndex, prepare);
-
-        // store data of current frame to use it in the next one
-        asManager->CopyDynamicDataToPrevBuffers(cmd, frameIndex);
 
         return true;
     }
