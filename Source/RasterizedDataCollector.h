@@ -65,7 +65,8 @@ public:
 
     VkBuffer GetVertexBuffer() const;
     VkBuffer GetIndexBuffer() const;
-    const std::vector<DrawInfo> &GetDrawInfos() const;
+    const std::vector<DrawInfo> &GetRasterDrawInfos() const;
+    const std::vector<DrawInfo> &GetSwapchainDrawInfos() const;
 
     static uint32_t GetVertexStride();
     static void GetVertexLayout(VkVertexInputAttributeDescription *outAttrs, uint32_t *outAttrsCount);
@@ -90,7 +91,8 @@ private:
     uint32_t curVertexCount;
     uint32_t curIndexCount;
 
-    std::vector<DrawInfo> drawInfos;
+    std::vector<DrawInfo> rasterDrawInfos;
+    std::vector<DrawInfo> swapchainDrawInfos;
 };
 
 }

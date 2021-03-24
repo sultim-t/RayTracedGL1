@@ -407,6 +407,11 @@ uint32_t Swapchain::GetHeight() const
     return surfaceExtent.height;
 }
 
+uint32_t Swapchain::GetCurrentImageIndex() const
+{
+    return currentSwapchainIndex;
+}
+
 uint32_t Swapchain::GetImageCount() const
 {
     assert(swapchainViews.size() == swapchainImages.size());

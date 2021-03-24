@@ -26,6 +26,7 @@
 #include "Matrix.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
+#include "Generated/ShaderCommonCFramebuf.h"
 
 using namespace RTGL1;
 
@@ -34,17 +35,19 @@ Rasterizer::Rasterizer(
     const std::shared_ptr<MemoryAllocator> &_allocator,
     const std::shared_ptr<ShaderManager> &_shaderManager,
     std::shared_ptr<TextureManager> _textureMgr,
+    std::shared_ptr<Framebuffers> _storageFramebuffers,
     VkFormat _surfaceFormat,
     uint32_t _maxVertexCount, uint32_t _maxIndexCount)
 :
     device(_device),
     textureMgr(_textureMgr),
-    renderPass(VK_NULL_HANDLE),
+    storageFramebuffers(std::move(_storageFramebuffers)),
+    rasterRenderPass(VK_NULL_HANDLE),
+    swapchainRenderPass(VK_NULL_HANDLE),
     pipelineLayout(VK_NULL_HANDLE),
-    pipelineCache(VK_NULL_HANDLE),
-    pipeline(VK_NULL_HANDLE),
-    fbRenderArea{},
-    fbViewport{}
+    rasterPipeline(VK_NULL_HANDLE),
+    swapchainPipeline(VK_NULL_HANDLE),
+    rasterFramebuffers{}
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -52,19 +55,33 @@ Rasterizer::Rasterizer(
             device, _allocator, _textureMgr, _maxVertexCount, _maxIndexCount);
     }
 
-    CreateRenderPass(_surfaceFormat);
-    CreatePipelineLayout(_textureMgr->GetDescSetLayout());
+    CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_DEPTH]);
+    CreateSwapchainRenderPass(_surfaceFormat);
+
+    std::vector<VkDescriptorSetLayout> setLayouts = 
+    {
+        _textureMgr->GetDescSetLayout(),
+        storageFramebuffers->GetDescSetLayout()
+    };
+
+    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
     CreatePipelineCache();
     CreatePipelines(_shaderManager.get());
 }
 
 Rasterizer::~Rasterizer()
 {
-    vkDestroyRenderPass(device, renderPass, nullptr);
-    vkDestroyPipelineCache(device, pipelineCache, nullptr);
+    vkDestroyRenderPass(device, rasterRenderPass, nullptr);
+    vkDestroyRenderPass(device, swapchainRenderPass, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     DestroyPipelines();
-    DestroyFramebuffers();
+    DestroyRenderFramebuffers();
+    DestroySwapchainFramebuffers();
+}
+
+void Rasterizer::PrepareForFrame(uint32_t frameIndex)
+{  
+    collectors[frameIndex]->Clear();
 }
 
 void Rasterizer::Upload(uint32_t frameIndex, 
@@ -74,57 +91,109 @@ void Rasterizer::Upload(uint32_t frameIndex,
     collectors[frameIndex]->AddGeometry(uploadInfo, viewProjection, viewport);
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
+void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
 {
-    VkDescriptorSet texturesDescSet;
+    VkFramebuffer framebuffer = rasterFramebuffers[frameIndex];
+
+    if (framebuffer == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_DEPTH);
+    storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_FINAL);
+    // TODO: clear depth attachment if no rays were traced?
+
+    float defaultViewProj[16];
+    Matrix::Multiply(defaultViewProj, view, proj);
+
+    Draw(cmd, frameIndex,
+         collectors[frameIndex]->GetRasterDrawInfos(),
+         rasterRenderPass, rasterPipeline, 
+         framebuffer, rasterFramebufferState, defaultViewProj);
+}
+
+void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj)
+{
+    if (swapchainIndex >= swapchainFramebuffers.size())
+    {
+        return;
+    }
+
+    VkFramebuffer framebuffer = swapchainFramebuffers[swapchainIndex];
+
+    if (framebuffer == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    float defaultViewProj[16];
+    Matrix::Multiply(defaultViewProj, view, proj);
+
+    Draw(cmd, frameIndex,
+         collectors[frameIndex]->GetSwapchainDrawInfos(),
+         swapchainRenderPass, swapchainPipeline, 
+         framebuffer, swapchainFramebufferState, defaultViewProj);
+}
+
+void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
+                      const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
+                      VkRenderPass renderPass, VkPipeline pipeline,
+                      VkFramebuffer framebuffer, const RasterAreaState &raState, float *defaultViewProj)
+{
+    assert(framebuffer != VK_NULL_HANDLE);
+
+    VkDescriptorSet descSets[2] = {};
+    const int descSetCount = sizeof(descSets) / sizeof(VkDescriptorSet);
+
+    descSets[1] = storageFramebuffers->GetDescSet(frameIndex);
 
     if (auto tm = textureMgr.lock())
     {
-        texturesDescSet = tm->GetDescSet(frameIndex);
+        descSets[0] = tm->GetDescSet(frameIndex);
     }
     else
     {
         return;
     }
 
-    VkDeviceSize offset = 0;
-    VkBuffer vrtBuffer = collectors[frameIndex]->GetVertexBuffer();
-    VkBuffer indBuffer = collectors[frameIndex]->GetIndexBuffer();
 
-    const auto &drawInfos = collectors[frameIndex]->GetDrawInfos();
-
-    VkClearValue clearValue = {};
+    const VkViewport &defaultViewport = raState.viewport;
+    const VkRect2D &defaultRenderArea = raState.renderArea;
 
     VkRenderPassBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.renderPass = renderPass;
-    beginInfo.framebuffer = framebuffers[frameIndex];
-    beginInfo.renderArea = fbRenderArea;
-    beginInfo.clearValueCount = 1;
-    beginInfo.pClearValues = &clearValue;
+    beginInfo.framebuffer = framebuffer;
+    beginInfo.renderArea = defaultRenderArea;
+    beginInfo.clearValueCount = 0;
+    beginInfo.pClearValues = nullptr;
 
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
 
+    VkDeviceSize offset = 0;
+    VkBuffer vrtBuffer = collectors[frameIndex]->GetVertexBuffer();
+    VkBuffer indBuffer = collectors[frameIndex]->GetIndexBuffer();
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0,
-        1, &texturesDescSet,
+        descSetCount, descSets,
         0, nullptr);
     vkCmdBindVertexBuffers(cmd, 0, 1, &vrtBuffer, &offset);
     vkCmdBindIndexBuffer(cmd, indBuffer, offset, VK_INDEX_TYPE_UINT32);
 
-    vkCmdSetScissor(cmd, 0, 1, &fbRenderArea);
-    vkCmdSetViewport(cmd, 0, 1, &fbViewport);
-    VkViewport curViewport = fbViewport;
 
-    float defaultViewProj[16];
-    Matrix::Multiply(defaultViewProj, view, proj);
+    vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
+    vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
+    VkViewport curViewport = defaultViewport;
 
     for (const auto &info : drawInfos)
     {
-        TrySetViewport(cmd, info, curViewport);
+        SetViewportIfNew(cmd, info, defaultViewport, curViewport);
 
+        // TODO: less memory usage
         struct
         {
             float vp[16];
@@ -160,13 +229,12 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, float *view, flo
     }
 
     vkCmdEndRenderPass(cmd);
-   
-    collectors[frameIndex]->Clear();
 }
 
-void Rasterizer::TrySetViewport(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkViewport &curViewport)
+void Rasterizer::SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, 
+                                  const VkViewport &defaultViewport, VkViewport &curViewport) const
 {
-    const VkViewport &newViewport = info.isDefaultViewport ? fbViewport : info.viewport;
+    const VkViewport &newViewport = info.isDefaultViewport ? defaultViewport : info.viewport;
 
     if (!Utils::AreViewportsSame(curViewport, newViewport))
     {
@@ -177,14 +245,14 @@ void Rasterizer::TrySetViewport(VkCommandBuffer cmd, const RasterizedDataCollect
 
 void Rasterizer::OnSwapchainCreate(const Swapchain *pSwapchain)
 {
-    CreateFramebuffers(
+    CreateSwapchainFramebuffers(
         pSwapchain->GetWidth(), pSwapchain->GetHeight(),
         pSwapchain->GetImageViews(), pSwapchain->GetImageCount());
 }
 
 void Rasterizer::OnSwapchainDestroy()
 {
-    DestroyFramebuffers();
+    DestroySwapchainFramebuffers();
 }
 
 void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
@@ -193,16 +261,17 @@ void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
     CreatePipelines(shaderManager);
 }
 
-void Rasterizer::CreatePipelineCache()
+void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
 {
-    VkPipelineCacheCreateInfo cacheInfo = {};
-    cacheInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
-
-    VkResult r = vkCreatePipelineCache(device, &cacheInfo, nullptr, &pipelineCache);
-    VK_CHECKERROR(r);
+    DestroyRenderFramebuffers();
+    CreateRenderFramebuffers(width, height);
 }
 
-void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
+void Rasterizer::CreatePipelineCache()
+{
+}
+
+void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t count)
 {
     VkPushConstantRange pushConst = {};
     pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
@@ -211,8 +280,8 @@ void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout)
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = &texturesDescLayout;
+    layoutInfo.setLayoutCount = count;
+    layoutInfo.pSetLayouts = pSetLayouts;
     layoutInfo.pushConstantRangeCount = 1;
     layoutInfo.pPushConstantRanges = &pushConst;
 
@@ -306,9 +375,7 @@ void Rasterizer::CreatePipelines(const ShaderManager *shaderManager)
     dynamicInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
     dynamicInfo.pDynamicStates = dynamicStates;
 
-    VkPipelineShaderStageCreateInfo shaderStages[2];
-    shaderStages[0] = shaderManager->GetStageInfo("VertRasterizer");
-    shaderStages[1] = shaderManager->GetStageInfo("FragRasterizer");
+    VkPipelineShaderStageCreateInfo shaderStages[2] = {};
 
     VkGraphicsPipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -323,85 +390,185 @@ void Rasterizer::CreatePipelines(const ShaderManager *shaderManager)
     plInfo.pColorBlendState = &colorBlendState;
     plInfo.pDynamicState = &dynamicInfo;
     plInfo.layout = pipelineLayout;
-    plInfo.renderPass = renderPass;
     plInfo.subpass = 0;
     plInfo.basePipelineHandle = VK_NULL_HANDLE;
 
-    VkResult r = vkCreateGraphicsPipelines(device, pipelineCache, 1, &plInfo, nullptr, &pipeline);
-    VK_CHECKERROR(r);
+    {
+        shaderStages[0] = shaderManager->GetStageInfo("VertRasterizer");
+        shaderStages[1] = shaderManager->GetStageInfo("FragRasterizerDepth");
+        plInfo.renderPass = rasterRenderPass;
 
-    SET_DEBUG_NAME(device, pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer draw pipeline");
+        VkResult r = vkCreateGraphicsPipelines(device, nullptr, 1, &plInfo, nullptr, &rasterPipeline);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, rasterPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer raster draw pipeline");
+    }
+
+    {
+        shaderStages[0] = shaderManager->GetStageInfo("VertRasterizer");
+        shaderStages[1] = shaderManager->GetStageInfo("FragRasterizer");
+        plInfo.renderPass = swapchainRenderPass;
+
+        VkResult r = vkCreateGraphicsPipelines(device, nullptr, 1, &plInfo, nullptr, &swapchainPipeline);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, swapchainPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer swapchain draw pipeline");
+    }
 }
 
 void Rasterizer::DestroyPipelines()
 {
-    vkDestroyPipeline(device, pipeline, nullptr);
-    pipeline = VK_NULL_HANDLE;
+    vkDestroyPipeline(device, rasterPipeline, nullptr);
+    rasterPipeline = VK_NULL_HANDLE;
+
+    vkDestroyPipeline(device, swapchainPipeline, nullptr);
+    swapchainPipeline = VK_NULL_HANDLE;
 }
 
-void Rasterizer::CreateFramebuffers(uint32_t width, uint32_t height, const VkImageView *pFrameAttchs, uint32_t count)
+void Rasterizer::CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderHeight)
 {
-    assert(framebuffers.empty());
-    framebuffers.resize(count);
-
-    for (uint32_t i = 0; i < count; i++)
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
+        assert(rasterFramebuffers[i] == VK_NULL_HANDLE);
+
+        const int attchCount = 1;
+        VkImageView attchs[attchCount] = {
+            storageFramebuffers->GetImageView(FB_IMAGE_INDEX_FINAL, i),
+            //storageFramebuffers->GetImageView(FB_IMAGE_INDEX_DEPTH, i)
+        };
+
         VkFramebufferCreateInfo fbInfo = {};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbInfo.renderPass = renderPass;
-        fbInfo.attachmentCount = 1;
-        fbInfo.pAttachments = &pFrameAttchs[i];
-        fbInfo.width = width;
-        fbInfo.height = height;
+        fbInfo.renderPass = rasterRenderPass;
+        fbInfo.attachmentCount = attchCount;
+        fbInfo.pAttachments = attchs;
+        fbInfo.width = renderWidth;
+        fbInfo.height = renderHeight;
         fbInfo.layers = 1;
 
-        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]);
+        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterFramebuffers[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, framebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer framebuffer");
+        SET_DEBUG_NAME(device, rasterFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer raster framebuffer");
     }
 
-    fbViewport.x = 0;
-    fbViewport.y = 0;
-    fbViewport.minDepth = 0;
-    fbViewport.maxDepth = 1;
-    fbViewport.width = width;
-    fbViewport.height = height;
+    auto &rnvp = rasterFramebufferState.viewport;
+    auto &rnra = rasterFramebufferState.renderArea;
 
-    fbRenderArea.offset = { 0, 0 };
-    fbRenderArea.extent = { width, height };
+    rnvp.x = 0.0f;
+    rnvp.y = 0.0f;
+    rnvp.minDepth = 0.0f;
+    rnvp.maxDepth = 1.0f;
+    rnvp.width = (float)renderWidth;
+    rnvp.height = (float)renderHeight;
+
+    rnra.offset = { 0, 0 };
+    rnra.extent = { renderWidth, renderHeight };
 }
 
-void Rasterizer::DestroyFramebuffers()
+void Rasterizer::CreateSwapchainFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight,
+    const VkImageView *pSwapchainAttchs, uint32_t swapchainAttchCount)
 {
-    for (VkFramebuffer fb : framebuffers)
+    // prepare framebuffers for drawing right into swapchain images
+    swapchainFramebuffers.resize(swapchainAttchCount, VK_NULL_HANDLE);
+
+    for (uint32_t i = 0; i < swapchainAttchCount; i++)
     {
-        vkDestroyFramebuffer(device, fb, nullptr);
+        assert(swapchainFramebuffers[i] == VK_NULL_HANDLE);
+
+        VkFramebufferCreateInfo fbInfo = {};
+        fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+        fbInfo.renderPass = swapchainRenderPass;
+        fbInfo.attachmentCount = 1;
+        fbInfo.pAttachments = &pSwapchainAttchs[i];
+        fbInfo.width = swapchainWidth;
+        fbInfo.height = swapchainHeight;
+        fbInfo.layers = 1;
+
+        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &swapchainFramebuffers[i]);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, swapchainFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer swapchain framebuffer");
     }
 
-    framebuffers.clear();
+    auto &swvp = swapchainFramebufferState.viewport;
+    auto &swra = swapchainFramebufferState.renderArea;
+
+    swvp.x = 0.0f;
+    swvp.y = 0.0f;
+    swvp.minDepth = 0.0f;
+    swvp.maxDepth = 1.0f;
+    swvp.width = (float)swapchainWidth;
+    swvp.height = (float)swapchainHeight;
+
+    swra.offset = { 0, 0 };
+    swra.extent = { swapchainWidth, swapchainHeight };
 }
 
-void Rasterizer::CreateRenderPass(VkFormat surfaceFormat)
+void Rasterizer::DestroyRenderFramebuffers()
 {
-    VkAttachmentDescription colorAttch = {};
-    colorAttch.format = surfaceFormat;
+    for (VkFramebuffer &fb : rasterFramebuffers)
+    {
+        if (fb != VK_NULL_HANDLE)
+        {
+            vkDestroyFramebuffer(device, fb, nullptr);
+            fb = VK_NULL_HANDLE;
+        }
+    }
+}
+
+void Rasterizer::DestroySwapchainFramebuffers()
+{
+    for (VkFramebuffer &fb : swapchainFramebuffers)
+    {
+        if (fb != VK_NULL_HANDLE)
+        {
+            vkDestroyFramebuffer(device, fb, nullptr);
+            fb = VK_NULL_HANDLE;
+        }
+    }
+}
+
+void Rasterizer::CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat)
+{
+    const int attchCount = 1;
+    VkAttachmentDescription attchs[attchCount] = {};
+
+    auto &colorAttch = attchs[0];
+    colorAttch.format = finalImageFormat;
     colorAttch.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
-    colorAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttch.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    colorAttch.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttch.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+    colorAttch.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+    /*auto &depthAttch = attchs[1];
+    depthAttch.format = depthImageFormat; 
+    depthAttch.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttch.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+    depthAttch.finalLayout = VK_IMAGE_LAYOUT_GENERAL;*/
+
 
     VkAttachmentReference colorRef = {};
     colorRef.attachment = 0;
     colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
 
+    VkAttachmentReference depthRef = {};
+    depthRef.attachment = 1;
+    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorRef;
+    //subpass.pDepthStencilAttachment = &depthRef;
+
 
     VkSubpassDependency dependency = {};
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
@@ -413,6 +580,57 @@ void Rasterizer::CreateRenderPass(VkFormat surfaceFormat)
         VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
         VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
+
+    VkRenderPassCreateInfo passInfo = {};
+    passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    passInfo.attachmentCount = attchCount;
+    passInfo.pAttachments = attchs;
+    passInfo.subpassCount = 1;
+    passInfo.pSubpasses = &subpass;
+    passInfo.dependencyCount = 1;
+    passInfo.pDependencies = &dependency;
+
+    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterRenderPass);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, rasterRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer raster render pass");
+}
+
+void Rasterizer::CreateSwapchainRenderPass(VkFormat surfaceFormat)
+{
+    VkAttachmentDescription colorAttch = {};
+    colorAttch.format = surfaceFormat;
+    colorAttch.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttch.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttch.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+
+
+    VkAttachmentReference colorRef = {};
+    colorRef.attachment = 0;
+    colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorRef;
+    subpass.pDepthStencilAttachment = nullptr;
+
+
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstAccessMask =
+        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+
+
     VkRenderPassCreateInfo passInfo = {};
     passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
     passInfo.attachmentCount = 1;
@@ -422,8 +640,8 @@ void Rasterizer::CreateRenderPass(VkFormat surfaceFormat)
     passInfo.dependencyCount = 1;
     passInfo.pDependencies = &dependency;
 
-    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &renderPass);
+    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &swapchainRenderPass);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, renderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer render pass");
+    SET_DEBUG_NAME(device, swapchainRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer swapchain render pass");
 }

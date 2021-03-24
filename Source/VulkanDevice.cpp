@@ -140,7 +140,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device,
         memAllocator,
         shaderManager,
-        textureManager, 
+        textureManager,
+        framebuffers,
         swapchain->GetSurfaceFormat(),
         info->rasterizedMaxVertexCount, 
         info->rasterizedMaxIndexCount);
@@ -176,6 +177,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(rtPipeline);
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
+
+    framebuffers->Subscribe(rasterizer);
 }
 
 VulkanDevice::~VulkanDevice()
@@ -230,9 +233,10 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     // reset cmds for current frame index
     cmdManager->PrepareForFrame(frameIndex);
 
-    // destroy staging buffers that were created MAX_FRAMES_IN_FLIGHT ago
+    // clear the data that were created MAX_FRAMES_IN_FLIGHT ago
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
+    rasterizer->PrepareForFrame(frameIndex);
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
@@ -314,10 +318,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
 {
-    uint32_t frameIndex = currentFrameIndex;
+    const uint32_t frameIndex = currentFrameIndex;
 
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
+
+    const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, frameInfo.renderWidth));
+    const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, frameInfo.renderHeight));
 
     // submit geometry and uniform
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
@@ -329,13 +336,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
             scene, uniform, textureManager, framebuffers, blueNoise, cubemapManager);
 
         pathTracer->TracePrimaryRays(
-            cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
+            cmd, frameIndex, renderWidth, renderHeight,
             framebuffers);
 
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
         pathTracer->TraceIllumination(
-            cmd, frameIndex, frameInfo.renderWidth, frameInfo.renderHeight,
+            cmd, frameIndex, renderWidth, renderHeight,
             framebuffers);
 
         denoiser->Denoise(cmd, frameIndex, uniform);
@@ -349,13 +356,17 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
 
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
+    // draw rasterized geometry into the final image
+    rasterizer->DrawToFinalImage(cmd, frameIndex, 
+                                 uniform->GetData()->view, uniform->GetData()->projection);
+
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL,
-        frameInfo.renderWidth, frameInfo.renderHeight, VK_IMAGE_LAYOUT_GENERAL);
+        renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
-    // draw rasterized geometry in swapchain's framebuffer
-    rasterizer->Draw(cmd, frameIndex, uniform->GetData()->view, uniform->GetData()->projection);
+    rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), 
+                                uniform->GetData()->view, uniform->GetData()->projection);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)

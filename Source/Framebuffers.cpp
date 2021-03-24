@@ -27,6 +27,21 @@ using namespace RTGL1;
 
 static_assert(MAX_FRAMES_IN_FLIGHT == FRAMEBUFFERS_HISTORY_LENGTH, "Framebuffers class logic must be changed if history length is not equal to max frames in flight");
 
+FramebufferImageIndex Framebuffers::FrameIndexToFBIndex(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex)
+{
+    assert(frameIndex < FRAMEBUFFERS_HISTORY_LENGTH);
+    assert(framebufferImageIndex >= 0 && framebufferImageIndex < ShFramebuffers_Count);
+
+    // if framubuffer with given index can be swapped,
+    // use one that is currently in use
+    if (ShFramebuffers_Bindings[framebufferImageIndex] != ShFramebuffers_BindingsSwapped[framebufferImageIndex])
+    {
+        return (FramebufferImageIndex)(framebufferImageIndex + frameIndex);
+    }
+
+    return framebufferImageIndex;
+}
+
 Framebuffers::Framebuffers(
     VkDevice _device, 
     std::shared_ptr<MemoryAllocator> _allocator, 
@@ -94,7 +109,7 @@ void Framebuffers::CreateDescriptors()
         bnd.binding = ShFramebuffers_Sampler_Bindings[i];
         bnd.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         bnd.descriptorCount = 1;
-        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
+        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         bndCount++;
     }
@@ -152,15 +167,7 @@ void Framebuffers::OnSwapchainDestroy()
 void Framebuffers::Barrier(
     VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufferImageIndex)
 {
-    assert(framebufferImageIndex < images.size());
-    assert(frameIndex < FRAMEBUFFERS_HISTORY_LENGTH);
-
-    // if framubuffer with given index can be swapped,
-    // use one that is currently in use
-    if (ShFramebuffers_Bindings[framebufferImageIndex] != ShFramebuffers_BindingsSwapped[framebufferImageIndex])
-    {
-        framebufferImageIndex = (FramebufferImageIndex)(framebufferImageIndex + frameIndex);
-    }
+    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
 
     Utils::BarrierImage(
         cmd, images[framebufferImageIndex],
@@ -174,6 +181,8 @@ void Framebuffers::PresentToSwapchain(
     FramebufferImageIndex framebufferImageIndex, 
     uint32_t srcWidth, uint32_t srcHeight, VkImageLayout srcLayout)
 {
+    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
+
     swapchain->BlitForPresent(
         cmd, images[framebufferImageIndex],
         srcWidth, srcHeight, srcLayout);
@@ -187,6 +196,12 @@ VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const
 VkDescriptorSetLayout Framebuffers::GetDescSetLayout() const
 {
     return descSetLayout;
+}
+
+VkImageView Framebuffers::GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const
+{
+    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
+    return imageViews[framebufferImageIndex];
 }
 
 void Framebuffers::CreateImages(uint32_t width, uint32_t height)
@@ -238,7 +253,9 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
         imageInfo.usage = 
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
             VK_IMAGE_USAGE_STORAGE_BIT |
-            VK_IMAGE_USAGE_SAMPLED_BIT;
+            VK_IMAGE_USAGE_SAMPLED_BIT |
+            // TODO: separate flag for frambuf being a color attch 
+            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; 
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
         r = vkCreateImage(device, &imageInfo, nullptr, &images[i]);
@@ -283,6 +300,8 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
     cmdManager->WaitGraphicsIdle();
 
     UpdateDescriptors();
+
+    NotifySubscribersAboutResize(width, height);
 }
 
 void Framebuffers::UpdateDescriptors()
@@ -390,4 +409,33 @@ void Framebuffers::DestroyImages()
             v = VK_NULL_HANDLE;
         }
     }
+}
+
+void Framebuffers::NotifySubscribersAboutResize(uint32_t width, uint32_t height)
+{
+    for (auto &ws : subscribers)
+    {
+        if (auto s = ws.lock())
+        {
+            s->OnFramebuffersSizeChange(width, height);
+        }
+    }
+}
+
+void Framebuffers::Subscribe(std::shared_ptr<IFramebuffersDependency> subscriber)
+{
+    subscribers.emplace_back(subscriber);
+}
+
+void Framebuffers::Unsubscribe(const IFramebuffersDependency *subscriber)
+{
+    subscribers.remove_if([subscriber] (const std::weak_ptr<IFramebuffersDependency> &ws)
+    {
+        if (const auto s = ws.lock())
+        {
+            return s.get() == subscriber;
+        }
+
+        return true;
+    });
 }

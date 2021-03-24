@@ -323,6 +323,13 @@ typedef struct RgRasterizedGeometryUploadInfo
     RgBlendFactor       blendFuncDst;
     RgBool32            depthTest;
     RgBool32            depthWrite;
+    // If false, the rendering will be done with the resolution
+    // (renderWidth, renderHeight) that is set in RgDrawFrameInfo.
+    // Otherwise, swapchain's resolution will be used.
+    // Note: if true, "depthTest" and "depthWrite" must be false.
+    // Examples for "true": particles, semitransparent world objects
+    // Examples for "false": HUD
+    RgBool32            renderToSwapchain;
 } RgRasterizedGeometryUploadInfo;
 
 
@@ -341,13 +348,15 @@ typedef struct RgExtent3D
 } RgExtent3D;
 
 // Struct is used to transform from NDC to window coordinates.
-// All members are in pixels. (x,y) defines top-left corner.
+// x, y, width, height are specified in pixels. (x,y) defines top-left corner.
 typedef struct RgViewport
 {
     float       x;
     float       y;
     float       width;
     float       height;
+    float       minDepth;
+    float       maxDepth;
 } RgViewport;
 
 // Upload geometry that will be drawn using rasterization.
@@ -356,7 +365,8 @@ typedef struct RgViewport
 //                     geometry. Matrix is column major. If it's null,
 //                     then the matrices from RgDrawFrameInfo are used.
 // "viewport"       -- pointer to a viewport to draw in. If it's null,
-//                     then the default one is used.
+//                     then the fullscreen one is used with minDepth 0.0
+//                     and maxDepth 1.0.
 RgResult rgUploadRasterizedGeometry(
     RgInstance                              rgInstance,
     const RgRasterizedGeometryUploadInfo    *uploadInfo,

@@ -64,6 +64,7 @@ public:
     VkFormat GetSurfaceFormat() const;
     uint32_t GetWidth() const;
     uint32_t GetHeight() const;
+    uint32_t GetCurrentImageIndex() const;
     uint32_t GetImageCount() const;
     VkImageView GetImageView(uint32_t index) const;
     const VkImageView *GetImageViews() const;

@@ -64,6 +64,7 @@ set(PrivateHeaders
     "Source/VertexPreprocessing.h"
     "Source/Denoiser.h"
     "Source/IShaderDependency.h"
+    "Source/IFramebuffersDependency.h"
 )
 
 set(Sources

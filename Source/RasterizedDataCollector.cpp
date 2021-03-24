@@ -111,6 +111,12 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         return;
     }
 
+    if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer.GetSize() / sizeof(uint32_t))
+    {
+        assert(0 && "Increase the size of \"rasterizedMaxIndexCount\". Index buffer size reached the limit.");
+        return;
+    }
+
     DrawInfo drawInfo = {};
 
     drawInfo.isDefaultViewport = pViewport == nullptr;
@@ -122,8 +128,8 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         drawInfo.viewport.y = pViewport->y;
         drawInfo.viewport.width = pViewport->width;
         drawInfo.viewport.height = pViewport->height;
-        drawInfo.viewport.minDepth = 0.0f;
-        drawInfo.viewport.maxDepth = 1.0f;
+        drawInfo.viewport.minDepth = pViewport->minDepth;
+        drawInfo.viewport.maxDepth = pViewport->maxDepth;
     }
 
     if (pViewProjection != nullptr)
@@ -177,7 +183,14 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         curIndexCount += info.indexCount;
     }
 
-    drawInfos.push_back(drawInfo);
+    if (info.renderToSwapchain)
+    {
+        swapchainDrawInfos.push_back(drawInfo);
+    }
+    else
+    {
+        rasterDrawInfos.push_back(drawInfo);
+    }
 }
 
 void RasterizedDataCollector::CopyFromSeparateArrays(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts)
@@ -222,7 +235,8 @@ void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryU
 
 void RasterizedDataCollector::Clear()
 {
-    drawInfos.clear();
+    rasterDrawInfos.clear();
+    swapchainDrawInfos.clear();
     curVertexCount = 0;
     curIndexCount = 0;
 }
@@ -237,8 +251,12 @@ VkBuffer RasterizedDataCollector::GetIndexBuffer() const
     return indexBuffer.GetBuffer();
 }
 
-const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollector::GetDrawInfos() const
+const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollector::GetRasterDrawInfos() const
 {
-    return drawInfos;
+    return rasterDrawInfos;
 }
 
+const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollector::GetSwapchainDrawInfos() const
+{
+    return swapchainDrawInfos;
+}

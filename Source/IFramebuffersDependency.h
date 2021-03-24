@@ -18,24 +18,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#version 460
+#pragma once
 
-layout (location = 0) in vec4 color;
-layout (location = 1) in vec2 texCoord;
+#include "Common.h"
 
-layout (location = 0) out vec4 outColor;
-
-#define DESC_SET_TEXTURES 0
-// TODO: remove redundant dest set
-#define DESC_SET_FRAMEBUFFERS 1
-#include "ShaderCommonGLSLFunc.h"
-
-layout(push_constant) uniform RasterizerFrag_BT 
+namespace RTGL1
 {
-    layout(offset = 64) uint textureIndex;
-} rasterizerFragInfo;
 
-void main()
+class Framebuffers;
+
+class IFramebuffersDependency
 {
-    outColor = color * getTextureSample(rasterizerFragInfo.textureIndex, texCoord);
+public:
+    virtual ~IFramebuffersDependency() = default;
+    virtual void OnFramebuffersSizeChange(uint32_t width, uint32_t height) = 0;
+};
+
 }

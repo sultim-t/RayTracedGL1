@@ -95,7 +95,7 @@ static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
 static glm::vec3 LIGHT_POS      = glm::vec3(0, 4, -2);
 static glm::vec3 LIGHT_COLOR    = glm::vec3(1, 1, 1);
 static float LIGHT_RADIUS       = 0.2f;
-static float LIGHT_SPH_COUNT    = 1.0f;
+static float LIGHT_SPH_COUNT    = 0.0f;
 static float ROUGHNESS          = 0.5f;
 static float METALLICITY        = 0.5f;
 static float SUN_INTENSITY      = 1.0f;
@@ -394,12 +394,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     raster.color = { 1, 1, 1, 1 };
     raster.blendEnable = RG_TRUE;
 
-    RgViewport hudViewport = {};
-    hudViewport.x = 0;
-    hudViewport.y = 0;
-    hudViewport.width = 1600;
-    hudViewport.height = 900;
-
 
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameCount  = 0;
@@ -513,7 +507,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         rgUploadGeometry(instance, &dnInfo);
 
         // upload rasterized geometry
-        r = rgUploadRasterizedGeometry(instance, &raster, nullptr, &hudViewport);
+        r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
         RG_CHECKERROR(r);
 
 

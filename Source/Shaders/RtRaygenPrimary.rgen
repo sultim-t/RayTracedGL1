@@ -71,7 +71,8 @@ void main()
         vec2 motionCurToPrev;
         float motionDepthLinearCurToPrev;
         vec2 gradDepth;
-        const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth);
+        float depthNDC;
+        const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC);
 
         const vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
 
@@ -79,7 +80,7 @@ void main()
         imageStore(framebufNormal,              pix, vec4(h.normal, uintBitsToFloat(h.instCustomIndex)));
         imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
         imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-        imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, 0.0));
+        imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
         imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
         imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
         imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
@@ -93,7 +94,7 @@ void main()
     imageStore(framebufNormal,              pix, vec4(0.0));
     imageStore(framebufNormalGeometry,      pix, vec4(0.0));
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, 0.0));
+    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, MAX_RAY_LENGTH * 2.0));
     imageStore(framebufMotion,              pix, vec4(0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(0.0));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));

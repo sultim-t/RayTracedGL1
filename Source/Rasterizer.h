@@ -26,13 +26,15 @@
 #include "RTGL1/RTGL1.h"
 #include "ShaderManager.h"
 #include "ISwapchainDependency.h"
+#include "IFramebuffersDependency.h"
 #include "RasterizedDataCollector.h"
+#include "Framebuffers.h"
 
 namespace RTGL1
 {
 
 // This class provides rasterization functionality
-class Rasterizer : public ISwapchainDependency, public IShaderDependency
+class Rasterizer : public ISwapchainDependency, public IShaderDependency, public IFramebuffersDependency
 {
 public:
     explicit Rasterizer(
@@ -40,6 +42,7 @@ public:
         const std::shared_ptr<MemoryAllocator> &allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
         std::shared_ptr<TextureManager> textureMgr,
+        std::shared_ptr<Framebuffers> storageFramebuffers,
         VkFormat surfaceFormat,
         uint32_t maxVertexCount, uint32_t maxIndexCount);
     ~Rasterizer() override;
@@ -49,42 +52,70 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
+    void PrepareForFrame(uint32_t frameIndex);
     void Upload(uint32_t frameIndex, 
                 const RgRasterizedGeometryUploadInfo &uploadInfo, 
                 const float *viewProjection, const RgViewport *viewport);
-    void Draw(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
+    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
+    void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj);
 
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
+    void OnFramebuffersSizeChange(uint32_t width, uint32_t height) override;
 
 private:
-    void CreateRenderPass(VkFormat surfaceFormat);
+    struct RasterAreaState
+    {
+        VkRect2D renderArea = {};
+        VkViewport viewport = {};
+    };
+
+private:
+    void Draw(VkCommandBuffer cmd, uint32_t frameIndex, 
+              const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
+              VkRenderPass renderPass, VkPipeline pipeline,
+              VkFramebuffer framebuffer, const RasterAreaState &raState, float *defaultViewProj);
+
+    void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
+    void CreateSwapchainRenderPass(VkFormat surfaceFormat);
 
     void CreatePipelineCache();
-    void CreatePipelineLayout(VkDescriptorSetLayout texturesDescLayout);
+    void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t count);
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
 
-    void CreateFramebuffers(uint32_t width, uint32_t height, const VkImageView *pFrameAttchs, uint32_t count);
-    void DestroyFramebuffers();
+    void CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderHeight);
+    void DestroyRenderFramebuffers();
+
+    void CreateSwapchainFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight,
+                                     const VkImageView *pSwapchainAttchs, uint32_t swapchainAttchCount);
+    void DestroySwapchainFramebuffers();
 
     // If info's viewport is not the same as current one, new VkViewport will be set.
-    void TrySetViewport(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkViewport &curViewport);
+    void SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,  
+                          const VkViewport &defaultViewport, VkViewport &curViewport) const;
 
 private:
     VkDevice device;
     std::weak_ptr<TextureManager> textureMgr;
+    std::shared_ptr<Framebuffers> storageFramebuffers;
 
-    VkRenderPass        renderPass;
+    VkRenderPass        rasterRenderPass;
+    VkRenderPass        swapchainRenderPass;
+
     VkPipelineLayout    pipelineLayout;
-    VkPipelineCache     pipelineCache;
-    VkPipeline          pipeline;
 
-    VkRect2D  fbRenderArea;
-    VkViewport fbViewport;
-    std::vector<VkFramebuffer> framebuffers;
+    // TODO: separate class for handling different pipeline settings
+    VkPipeline          rasterPipeline;
+    VkPipeline          swapchainPipeline;
+
+    RasterAreaState rasterFramebufferState;
+    VkFramebuffer rasterFramebuffers[MAX_FRAMES_IN_FLIGHT];
+
+    RasterAreaState swapchainFramebufferState;
+    std::vector<VkFramebuffer> swapchainFramebuffers;
 
     std::shared_ptr<RasterizedDataCollector> collectors[MAX_FRAMES_IN_FLIGHT];
 };

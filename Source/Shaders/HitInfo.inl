@@ -118,7 +118,7 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 ShHitInfo getHitInfoGrad(
     const ShPayload pl, 
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
-    out vec2 motion, out float motionDepthLinear, out vec2 gradDepth)
+    out vec2 motion, out float motionDepthLinear, out vec2 gradDepth, out float depthNDC)
 #else
 ShHitInfo getHitInfo(const ShPayload pl)
 #endif
@@ -169,6 +169,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
     const vec2 screenSpaceCur  = ndcCur.xy * 0.5 + 0.5;
     const vec2 screenSpacePrev = ndcPrev.xy * 0.5 + 0.5;
 
+    depthNDC = ndcCur.z;
     h.linearDepth = length(viewSpacePosCur.xyz);
 
     // difference in screen-space

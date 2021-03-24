@@ -20,11 +20,13 @@
 
 #pragma once
 
+#include <list>
 #include <vector>
 
 #include "Common.h"
 #include "CommandBufferManager.h"
 #include "ISwapchainDependency.h"
+#include "IFramebuffersDependency.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 #include "Generated/ShaderCommonCFramebuf.h"
@@ -42,7 +44,7 @@ public:
                           std::shared_ptr<MemoryAllocator> allocator,
                           std::shared_ptr<CommandBufferManager> cmdManager,
                           std::shared_ptr<SamplerManager> samplerManager);
-    ~Framebuffers();
+    ~Framebuffers() override;
 
     Framebuffers(const Framebuffers &other) = delete;
     Framebuffers(Framebuffers &&other) noexcept = delete;
@@ -68,13 +70,24 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
 
+    VkImageView GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const;
+
+    // Subscribe to framebuffers' size change event.
+    // shared_ptr will be transformed to weak_ptr
+    void Subscribe(std::shared_ptr<IFramebuffersDependency> subscriber);
+    void Unsubscribe(const IFramebuffersDependency *subscriber);
+
 private:
+    static FramebufferImageIndex FrameIndexToFBIndex(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex);
+
     void CreateDescriptors();
 
     void CreateImages(uint32_t width, uint32_t height);
     void UpdateDescriptors();
 
     void DestroyImages();
+
+    void NotifySubscribersAboutResize(uint32_t width, uint32_t height);
 
 private:
     VkDevice device;
@@ -92,6 +105,8 @@ private:
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;
     VkDescriptorSet descSets[FRAMEBUFFERS_HISTORY_LENGTH];
+
+    std::list<std::weak_ptr<IFramebuffersDependency>> subscribers;
 };
 
 }

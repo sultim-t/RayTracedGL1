@@ -20,13 +20,14 @@
 
 #version 460
 
+layout(origin_upper_left) in vec4 gl_FragCoord;
+
 layout (location = 0) in vec4 color;
 layout (location = 1) in vec2 texCoord;
 
 layout (location = 0) out vec4 outColor;
 
 #define DESC_SET_TEXTURES 0
-// TODO: remove redundant dest set
 #define DESC_SET_FRAMEBUFFERS 1
 #include "ShaderCommonGLSLFunc.h"
 
@@ -37,5 +38,15 @@ layout(push_constant) uniform RasterizerFrag_BT
 
 void main()
 {
+    const ivec2 pix = ivec2(gl_FragCoord.xy);
+
+    const float depth = gl_FragCoord.z;
+    const float sceneDepth = texelFetch(framebufDepth_Sampler, pix, 0).w;
+
+    if (sceneDepth <= depth)
+    {
+        discard;
+    }
+
     outColor = color * getTextureSample(rasterizerFragInfo.textureIndex, texCoord);
 }
