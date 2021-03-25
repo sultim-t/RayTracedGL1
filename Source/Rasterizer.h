@@ -23,12 +23,13 @@
 #include <vector>
 
 #include "Common.h"
-#include "RTGL1/RTGL1.h"
-#include "ShaderManager.h"
-#include "ISwapchainDependency.h"
-#include "IFramebuffersDependency.h"
-#include "RasterizedDataCollector.h"
 #include "Framebuffers.h"
+#include "IFramebuffersDependency.h"
+#include "ISwapchainDependency.h"
+#include "RasterizedDataCollector.h"
+#include "RasterizerPipelines.h"
+#include "ShaderManager.h"
+#include "RTGL1/RTGL1.h"
 
 namespace RTGL1
 {
@@ -75,16 +76,13 @@ private:
 private:
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex, 
               const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
-              VkRenderPass renderPass, VkPipeline pipeline,
+              VkRenderPass renderPass, const std::shared_ptr<RasterizerPipelines> &pipelines,
               VkFramebuffer framebuffer, const RasterAreaState &raState, float *defaultViewProj);
 
     void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
     void CreateSwapchainRenderPass(VkFormat surfaceFormat);
 
-    void CreatePipelineCache();
-    void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t count);
-    void CreatePipelines(const ShaderManager *shaderManager);
-    void DestroyPipelines();
+    void CreatePipelineLayouts(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout fbSetLayout);
 
     void CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderHeight);
     void DestroyRenderFramebuffers();
@@ -95,7 +93,10 @@ private:
 
     // If info's viewport is not the same as current one, new VkViewport will be set.
     void SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,  
-                          const VkViewport &defaultViewport, VkViewport &curViewport) const;
+                          const VkViewport &defaultViewport, VkViewport &curViewport);
+
+    void BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, 
+                           const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline);
 
 private:
     VkDevice device;
@@ -105,11 +106,11 @@ private:
     VkRenderPass        rasterRenderPass;
     VkRenderPass        swapchainRenderPass;
 
-    VkPipelineLayout    pipelineLayout;
+    VkPipelineLayout    rasterPipelineLayout;
+    VkPipelineLayout    swapchainPipelineLayout;
 
-    // TODO: separate class for handling different pipeline settings
-    VkPipeline          rasterPipeline;
-    VkPipeline          swapchainPipeline;
+    std::shared_ptr<RasterizerPipelines> rasterPipelines;
+    std::shared_ptr<RasterizerPipelines> swapchainPipelines;
 
     RasterAreaState rasterFramebufferState;
     VkFramebuffer rasterFramebuffers[MAX_FRAMES_IN_FLIGHT];

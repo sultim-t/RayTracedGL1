@@ -97,6 +97,9 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     assert((info.structs != nullptr && info.arrays == nullptr) ||
            (info.structs == nullptr && info.arrays != nullptr));
 
+    // if renderToSwapchain, depthTest and depthWrite must be false
+    assert(!info.renderToSwapchain || (info.renderToSwapchain && !(info.depthTest || info.depthWrite)));
+
 
     if (info.arrays != nullptr)
     {
@@ -122,6 +125,11 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     drawInfo.isDefaultViewport = pViewport == nullptr;
     drawInfo.isDefaultViewProjMatrix = pViewProjection == nullptr;
     drawInfo.transform = info.transform;
+    drawInfo.blendEnable = info.blendEnable;
+    drawInfo.blendFuncSrc = info.blendFuncSrc;
+    drawInfo.blendFuncDst = info.blendFuncDst;
+    drawInfo.depthTest = info.depthTest;
+    drawInfo.depthWrite = info.depthWrite;
 
     if (pViewport != nullptr)
     {

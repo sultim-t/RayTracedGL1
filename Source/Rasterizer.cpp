@@ -44,9 +44,8 @@ Rasterizer::Rasterizer(
     storageFramebuffers(std::move(_storageFramebuffers)),
     rasterRenderPass(VK_NULL_HANDLE),
     swapchainRenderPass(VK_NULL_HANDLE),
-    pipelineLayout(VK_NULL_HANDLE),
-    rasterPipeline(VK_NULL_HANDLE),
-    swapchainPipeline(VK_NULL_HANDLE),
+    rasterPipelineLayout(VK_NULL_HANDLE),
+    swapchainPipelineLayout(VK_NULL_HANDLE),
     rasterFramebuffers{}
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
@@ -58,23 +57,21 @@ Rasterizer::Rasterizer(
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_DEPTH]);
     CreateSwapchainRenderPass(_surfaceFormat);
 
-    std::vector<VkDescriptorSetLayout> setLayouts = 
-    {
-        _textureMgr->GetDescSetLayout(),
-        storageFramebuffers->GetDescSetLayout()
-    };
+    CreatePipelineLayouts(_textureMgr->GetDescSetLayout(), storageFramebuffers->GetDescSetLayout());
 
-    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
-    CreatePipelineCache();
-    CreatePipelines(_shaderManager.get());
+    rasterPipelines = std::make_shared<RasterizerPipelines>(device, rasterPipelineLayout, rasterRenderPass);
+    swapchainPipelines = std::make_shared<RasterizerPipelines>(device, swapchainPipelineLayout, swapchainRenderPass);
+
+    rasterPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizerDepth");
+    swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
 }
 
 Rasterizer::~Rasterizer()
 {
     vkDestroyRenderPass(device, rasterRenderPass, nullptr);
     vkDestroyRenderPass(device, swapchainRenderPass, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    DestroyPipelines();
+    vkDestroyPipelineLayout(device, rasterPipelineLayout, nullptr);
+    vkDestroyPipelineLayout(device, swapchainPipelineLayout, nullptr);
     DestroyRenderFramebuffers();
     DestroySwapchainFramebuffers();
 }
@@ -109,7 +106,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, floa
 
     Draw(cmd, frameIndex,
          collectors[frameIndex]->GetRasterDrawInfos(),
-         rasterRenderPass, rasterPipeline, 
+         rasterRenderPass, rasterPipelines, 
          framebuffer, rasterFramebufferState, defaultViewProj);
 }
 
@@ -132,16 +129,21 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
 
     Draw(cmd, frameIndex,
          collectors[frameIndex]->GetSwapchainDrawInfos(),
-         swapchainRenderPass, swapchainPipeline, 
+         swapchainRenderPass, swapchainPipelines, 
          framebuffer, swapchainFramebufferState, defaultViewProj);
 }
 
 void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
                       const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
-                      VkRenderPass renderPass, VkPipeline pipeline,
+                      VkRenderPass renderPass, const std::shared_ptr<RasterizerPipelines> &pipelines,
                       VkFramebuffer framebuffer, const RasterAreaState &raState, float *defaultViewProj)
 {
     assert(framebuffer != VK_NULL_HANDLE);
+
+    if (drawInfos.size() == 0)
+    {
+        return;
+    }
 
     VkDescriptorSet descSets[2] = {};
     const int descSetCount = sizeof(descSets) / sizeof(VkDescriptorSet);
@@ -172,13 +174,16 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 
+    VkPipeline curPipeline = VK_NULL_HANDLE;
+    BindPipelineIfNew(cmd, drawInfos[0], pipelines, curPipeline);
+
+
     VkDeviceSize offset = 0;
     VkBuffer vrtBuffer = collectors[frameIndex]->GetVertexBuffer();
     VkBuffer indBuffer = collectors[frameIndex]->GetIndexBuffer();
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
     vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0,
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines->GetPipelineLayout(), 0,
         descSetCount, descSets,
         0, nullptr);
     vkCmdBindVertexBuffers(cmd, 0, 1, &vrtBuffer, &offset);
@@ -187,40 +192,46 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
     vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
     vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
+
     VkViewport curViewport = defaultViewport;
 
     for (const auto &info : drawInfos)
     {
         SetViewportIfNew(cmd, info, defaultViewport, curViewport);
-        
-        float model[16];
-        Matrix::ToMat4Transposed(model, info.transform);
+        BindPipelineIfNew(cmd, info, pipelines, curPipeline);
 
-        // TODO: less memory usage
-        struct
+        // push const
         {
-            float vp[16];
-            uint32_t t;
-        } push;
-        static_assert(sizeof(push) == 16 * sizeof(float) + sizeof(uint32_t), "");
+            float model[16];
+            Matrix::ToMat4Transposed(model, info.transform);
 
-        if (!info.isDefaultViewProjMatrix)
-        {
-            Matrix::Multiply(push.vp, model, info.viewProj);
+            // TODO: less memory usage
+            struct
+            {
+                float vp[16];
+                uint32_t t;
+            } push;
+            static_assert(sizeof(push) == 16 * sizeof(float) + sizeof(uint32_t), "");
+
+            if (!info.isDefaultViewProjMatrix)
+            {
+                Matrix::Multiply(push.vp, model, info.viewProj);
+            }
+            else
+            {
+                Matrix::Multiply(push.vp, model, defaultViewProj);
+            }
+
+            push.t = info.textureIndex;
+
+            vkCmdPushConstants(
+                cmd, pipelines->GetPipelineLayout(),
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                0, sizeof(push),
+                &push);
         }
-        else
-        {
-            Matrix::Multiply(push.vp, model, defaultViewProj);
-        }
 
-        push.t = info.textureIndex;
-
-        vkCmdPushConstants(
-            cmd, pipelineLayout,
-            VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-            0, sizeof(push),
-            &push);
-
+        // draw
         if (info.indexCount > 0)
         {
             vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
@@ -235,7 +246,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 }
 
 void Rasterizer::SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, 
-                                  const VkViewport &defaultViewport, VkViewport &curViewport) const
+                                  const VkViewport &defaultViewport, VkViewport &curViewport)
 {
     const VkViewport &newViewport = info.isDefaultViewport ? defaultViewport : info.viewport;
 
@@ -243,6 +254,21 @@ void Rasterizer::SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataColle
     {
         vkCmdSetViewport(cmd, 0, 1, &newViewport);
         curViewport = newViewport;
+    }
+}
+
+void Rasterizer::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,
+    const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
+{
+    // TODO: depth test / depth write, if there is a separate depth buffer,
+    // blitting depth buffers is not allowed, so need to create full-quad pass that will fill target depth buffer,
+    // which then will be used for depth test/write
+    VkPipeline p = pipelines->GetPipeline(info.blendEnable, info.blendFuncSrc, info.blendFuncDst, false, false);
+
+    if (p != curPipeline)
+    {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+        curPipeline = p;
     }
 }
 
@@ -260,8 +286,12 @@ void Rasterizer::OnSwapchainDestroy()
 
 void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
 {
-    DestroyPipelines();
-    CreatePipelines(shaderManager);
+    rasterPipelines->Clear();
+    swapchainPipelines->Clear();
+
+    // set reloaded shaders
+    rasterPipelines->SetShaders(shaderManager, "VertRasterizer", "FragRasterizerDepth");
+    swapchainPipelines->SetShaders(shaderManager, "VertRasterizer", "FragRasterizer");
 }
 
 void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
@@ -270,12 +300,14 @@ void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
     CreateRenderFramebuffers(width, height);
 }
 
-void Rasterizer::CreatePipelineCache()
+void Rasterizer::CreatePipelineLayouts(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout fbSetLayout)
 {
-}
+    VkDescriptorSetLayout setLayouts[] =
+    {
+        texturesSetLayout,
+        fbSetLayout
+    };
 
-void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t count)
-{
     VkPushConstantRange pushConst = {};
     pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConst.offset = 0;
@@ -283,149 +315,28 @@ void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = count;
-    layoutInfo.pSetLayouts = pSetLayouts;
     layoutInfo.pushConstantRangeCount = 1;
     layoutInfo.pPushConstantRanges = &pushConst;
 
-    VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Rasterizer draw pipeline layout");
-}
-
-void Rasterizer::CreatePipelines(const ShaderManager *shaderManager)
-{
-    VkDynamicState dynamicStates[2] =
     {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR,
-    };
+        layoutInfo.setLayoutCount = 2;
+        layoutInfo.pSetLayouts = setLayouts;
 
-    VkVertexInputBindingDescription vertBinding = {};
-    vertBinding.binding = 0;
-    vertBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertBinding.stride = RasterizedDataCollector::GetVertexStride();
-
-    std::array<VkVertexInputAttributeDescription, 8> attrs = {};
-    uint32_t attrsCount;
-
-    RasterizedDataCollector::GetVertexLayout(attrs.data(), &attrsCount);
-    assert(attrsCount <= attrs.size());
-
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 1;
-    vertexInputInfo.pVertexBindingDescriptions = &vertBinding;
-    vertexInputInfo.vertexAttributeDescriptionCount = attrsCount;
-    vertexInputInfo.pVertexAttributeDescriptions = attrs.data();
-
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
-
-    VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = nullptr; // will be set dynamically
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = nullptr; // will be set dynamically
-
-    VkPipelineRasterizationStateCreateInfo raster = {};
-    raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    raster.polygonMode = VK_POLYGON_MODE_FILL;
-    raster.cullMode = VK_CULL_MODE_NONE;
-    raster.depthClampEnable = VK_FALSE;
-    raster.rasterizerDiscardEnable = VK_FALSE;
-    raster.lineWidth = 1.0f;
-    raster.depthBiasEnable = VK_FALSE;
-
-    VkPipelineMultisampleStateCreateInfo multisampling = {};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.sampleShadingEnable = VK_FALSE;
-
-    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthTestEnable = VK_FALSE;
-    depthStencil.depthWriteEnable = VK_FALSE;
-    depthStencil.stencilTestEnable = VK_FALSE;
-
-    VkPipelineColorBlendAttachmentState colorBlendAttch = {};
-    colorBlendAttch.blendEnable = true;
-    colorBlendAttch.colorBlendOp = colorBlendAttch.alphaBlendOp
-        = VK_BLEND_OP_ADD;
-    colorBlendAttch.srcColorBlendFactor = colorBlendAttch.srcAlphaBlendFactor
-        = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttch.dstColorBlendFactor = colorBlendAttch.dstAlphaBlendFactor
-        = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttch.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT |
-        VK_COLOR_COMPONENT_G_BIT |
-        VK_COLOR_COMPONENT_B_BIT |
-        VK_COLOR_COMPONENT_A_BIT;
-
-    VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-    colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendState.logicOpEnable = VK_FALSE;
-    colorBlendState.attachmentCount = 1;
-    colorBlendState.pAttachments = &colorBlendAttch;
-
-    VkPipelineDynamicStateCreateInfo dynamicInfo = {};
-    dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
-    dynamicInfo.pDynamicStates = dynamicStates;
-
-    VkPipelineShaderStageCreateInfo shaderStages[2] = {};
-
-    VkGraphicsPipelineCreateInfo plInfo = {};
-    plInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    plInfo.stageCount = 2;
-    plInfo.pStages = shaderStages;
-    plInfo.pVertexInputState = &vertexInputInfo;
-    plInfo.pInputAssemblyState = &inputAssembly;
-    plInfo.pViewportState = &viewportState;
-    plInfo.pRasterizationState = &raster;
-    plInfo.pMultisampleState = &multisampling;
-    plInfo.pDepthStencilState = &depthStencil;
-    plInfo.pColorBlendState = &colorBlendState;
-    plInfo.pDynamicState = &dynamicInfo;
-    plInfo.layout = pipelineLayout;
-    plInfo.subpass = 0;
-    plInfo.basePipelineHandle = VK_NULL_HANDLE;
-
-    {
-        shaderStages[0] = shaderManager->GetStageInfo("VertRasterizer");
-        shaderStages[1] = shaderManager->GetStageInfo("FragRasterizerDepth");
-        plInfo.renderPass = rasterRenderPass;
-
-        VkResult r = vkCreateGraphicsPipelines(device, nullptr, 1, &plInfo, nullptr, &rasterPipeline);
+        VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &rasterPipelineLayout);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, rasterPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer raster draw pipeline");
+        SET_DEBUG_NAME(device, rasterPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Rasterizer raster pipeline layout");
     }
 
     {
-        shaderStages[0] = shaderManager->GetStageInfo("VertRasterizer");
-        shaderStages[1] = shaderManager->GetStageInfo("FragRasterizer");
-        plInfo.renderPass = swapchainRenderPass;
+        layoutInfo.setLayoutCount = 1;
+        layoutInfo.pSetLayouts = setLayouts;
 
-        VkResult r = vkCreateGraphicsPipelines(device, nullptr, 1, &plInfo, nullptr, &swapchainPipeline);
+        VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &swapchainPipelineLayout);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, swapchainPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer swapchain draw pipeline");
+        SET_DEBUG_NAME(device, swapchainPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Rasterizer swapchain pipeline layout");
     }
-}
-
-void Rasterizer::DestroyPipelines()
-{
-    vkDestroyPipeline(device, rasterPipeline, nullptr);
-    rasterPipeline = VK_NULL_HANDLE;
-
-    vkDestroyPipeline(device, swapchainPipeline, nullptr);
-    swapchainPipeline = VK_NULL_HANDLE;
 }
 
 void Rasterizer::CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderHeight)

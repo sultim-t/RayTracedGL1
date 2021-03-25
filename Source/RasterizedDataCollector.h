@@ -38,13 +38,21 @@ public:
         float       viewProj[16];
         RgTransform transform;
         bool        isDefaultViewProjMatrix;
+
         VkViewport  viewport;
         bool        isDefaultViewport;
+
         uint32_t    vertexCount;
         uint32_t    firstVertex;
         uint32_t    indexCount;
         uint32_t    firstIndex;
         uint32_t    textureIndex;
+
+        bool            blendEnable;
+        RgBlendFactor   blendFuncSrc;
+        RgBlendFactor   blendFuncDst;
+        bool            depthTest;
+        bool            depthWrite;
     };
 
 public:

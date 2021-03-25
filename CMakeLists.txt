@@ -65,6 +65,7 @@ set(PrivateHeaders
     "Source/Denoiser.h"
     "Source/IShaderDependency.h"
     "Source/IFramebuffersDependency.h"
+    "Source/RasterizerPipelines.h"
 )
 
 set(Sources
@@ -114,6 +115,7 @@ set(Sources
     "Source/GeomInfoManager.cpp"
     "Source/VertexPreprocessing.cpp"
     "Source/Denoiser.cpp"
+    "Source/RasterizerPipelines.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

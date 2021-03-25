@@ -169,6 +169,7 @@ typedef enum RgGeometryMaterialBlendType
     RG_GEOMETRY_MATERIAL_BLEND_TYPE_SHADE
 } RgGeometryMaterialBlendType;
 
+// Row-major transformation matrix.
 typedef struct RgTransform
 {
     float       matrix[3][4];

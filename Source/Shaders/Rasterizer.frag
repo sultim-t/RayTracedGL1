@@ -26,8 +26,6 @@ layout (location = 1) in vec2 texCoord;
 layout (location = 0) out vec4 outColor;
 
 #define DESC_SET_TEXTURES 0
-// TODO: remove redundant dest set
-#define DESC_SET_FRAMEBUFFERS 1
 #include "ShaderCommonGLSLFunc.h"
 
 layout(push_constant) uniform RasterizerFrag_BT 
