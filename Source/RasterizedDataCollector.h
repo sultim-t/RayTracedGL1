@@ -36,6 +36,7 @@ public:
     struct DrawInfo
     {
         float       viewProj[16];
+        RgTransform transform;
         bool        isDefaultViewProjMatrix;
         VkViewport  viewport;
         bool        isDefaultViewport;

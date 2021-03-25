@@ -192,6 +192,9 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
     for (const auto &info : drawInfos)
     {
         SetViewportIfNew(cmd, info, defaultViewport, curViewport);
+        
+        float model[16];
+        Matrix::ToMat4Transposed(model, info.transform);
 
         // TODO: less memory usage
         struct
@@ -203,11 +206,11 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
         if (!info.isDefaultViewProjMatrix)
         {
-            memcpy(push.vp, info.viewProj, sizeof(float) * 16);
+            Matrix::Multiply(push.vp, model, info.viewProj);
         }
         else
         {
-            memcpy(push.vp, defaultViewProj, sizeof(float) * 16);
+            Matrix::Multiply(push.vp, model, defaultViewProj);
         }
 
         push.t = info.textureIndex;

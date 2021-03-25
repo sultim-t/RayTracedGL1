@@ -121,6 +121,7 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
 
     drawInfo.isDefaultViewport = pViewport == nullptr;
     drawInfo.isDefaultViewProjMatrix = pViewProjection == nullptr;
+    drawInfo.transform = info.transform;
 
     if (pViewport != nullptr)
     {
