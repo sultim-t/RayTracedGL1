@@ -107,7 +107,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, floa
     Draw(cmd, frameIndex,
          collectors[frameIndex]->GetRasterDrawInfos(),
          rasterRenderPass, rasterPipelines, 
-         framebuffer, rasterFramebufferState, defaultViewProj);
+         framebuffer, rasterFramebufferState, true, defaultViewProj);
 }
 
 void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj)
@@ -130,13 +130,13 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
     Draw(cmd, frameIndex,
          collectors[frameIndex]->GetSwapchainDrawInfos(),
          swapchainRenderPass, swapchainPipelines, 
-         framebuffer, swapchainFramebufferState, defaultViewProj);
+         framebuffer, swapchainFramebufferState, false, defaultViewProj);
 }
 
 void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
                       const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
                       VkRenderPass renderPass, const std::shared_ptr<RasterizerPipelines> &pipelines,
-                      VkFramebuffer framebuffer, const RasterAreaState &raState, float *defaultViewProj)
+                      VkFramebuffer framebuffer, const RasterAreaState &raState, bool bindStorageFb, float *defaultViewProj)
 {
     assert(framebuffer != VK_NULL_HANDLE);
 
@@ -146,9 +146,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
     }
 
     VkDescriptorSet descSets[2] = {};
-    const int descSetCount = sizeof(descSets) / sizeof(VkDescriptorSet);
-
-    descSets[1] = storageFramebuffers->GetDescSet(frameIndex);
+    int descSetCount = bindStorageFb ? 2 : 1;
 
     if (auto tm = textureMgr.lock())
     {
@@ -157,6 +155,11 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
     else
     {
         return;
+    }
+
+    if (bindStorageFb)
+    {
+        descSets[1] = storageFramebuffers->GetDescSet(frameIndex);
     }
 
 

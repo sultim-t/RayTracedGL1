@@ -77,7 +77,7 @@ private:
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex, 
               const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
               VkRenderPass renderPass, const std::shared_ptr<RasterizerPipelines> &pipelines,
-              VkFramebuffer framebuffer, const RasterAreaState &raState, float *defaultViewProj);
+              VkFramebuffer framebuffer, const RasterAreaState &raState, bool bindStorageFb, float *defaultViewProj);
 
     void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
     void CreateSwapchainRenderPass(VkFormat surfaceFormat);
