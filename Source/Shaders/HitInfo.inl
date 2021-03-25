@@ -80,7 +80,7 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
 
     const ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
 
-    const vec2 inBaryCoords = unpackHalf2x16(pl.baryCoordsPacked);
+    const vec2 inBaryCoords = pl.baryCoords;
     const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
 
     const vec2 texCoords[] = 
@@ -133,7 +133,7 @@ ShHitInfo getHitInfo(const ShPayload pl)
 
     const ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
 
-    const vec2 inBaryCoords = unpackHalf2x16(pl.baryCoordsPacked);
+    const vec2 inBaryCoords = pl.baryCoords;
     const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
     
     const vec2 texCoords[] = 

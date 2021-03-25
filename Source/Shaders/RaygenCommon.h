@@ -95,7 +95,7 @@ uint getIndirectIlluminationCullMask(uint primaryInstCustomIndex)
 
 void resetPayload()
 {
-    payload.baryCoordsPacked = 0;
+    payload.baryCoords = vec2(0.0);
     payload.instIdAndIndex = 0;
     payload.geomAndPrimIndex = 0;
     payload.clsHitDistance = -1;

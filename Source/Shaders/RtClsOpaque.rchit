@@ -28,7 +28,7 @@ hitAttributeEXT vec2 inBaryCoords;
 
 void main()
 {
-    payload.baryCoordsPacked = packHalf2x16(inBaryCoords);
+    payload.baryCoords = inBaryCoords;
     payload.instIdAndIndex = packInstanceIdAndCustomIndex(gl_InstanceID, gl_InstanceCustomIndexEXT);
     payload.geomAndPrimIndex = packGeometryAndPrimitiveIndex(gl_GeometryIndexEXT, gl_PrimitiveID);
     payload.clsHitDistance = gl_HitTEXT;

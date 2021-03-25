@@ -35,7 +35,7 @@ struct ShTriangle
 
 struct ShPayload
 {
-    uint    baryCoordsPacked;
+    vec2    baryCoords;
     uint    instIdAndIndex;
     uint    geomAndPrimIndex;
     float   clsHitDistance;
