@@ -22,8 +22,8 @@
 
 layout(origin_upper_left) in vec4 gl_FragCoord;
 
-layout (location = 0) in vec4 color;
-layout (location = 1) in vec2 texCoord;
+layout (location = 0) in vec4 vertColor;
+layout (location = 1) in vec2 vertTexCoord;
 
 layout (location = 0) out vec4 outColor;
 
@@ -33,7 +33,8 @@ layout (location = 0) out vec4 outColor;
 
 layout(push_constant) uniform RasterizerFrag_BT 
 {
-    layout(offset = 64) uint textureIndex;
+    layout(offset = 64) vec4 color;
+    layout(offset = 80) uint textureIndex;
 } rasterizerFragInfo;
 
 void main()
@@ -48,5 +49,5 @@ void main()
         discard;
     }
 
-    outColor = color * getTextureSample(rasterizerFragInfo.textureIndex, texCoord);
+    outColor = rasterizerFragInfo.color * vertColor * getTextureSample(rasterizerFragInfo.textureIndex, vertTexCoord);
 }

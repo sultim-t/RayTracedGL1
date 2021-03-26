@@ -146,6 +146,8 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         memcpy(drawInfo.viewProj, pViewProjection, 16 * sizeof(float));
     }
 
+    memcpy(drawInfo.color, info.color.data, 4 * sizeof(float));
+
     // copy texture indices
     if (const auto mgr = textureMgr.lock())
     {

@@ -140,7 +140,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 {
     assert(framebuffer != VK_NULL_HANDLE);
 
-    if (drawInfos.size() == 0)
+    if (drawInfos.empty())
     {
         return;
     }
@@ -212,9 +212,10 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
             struct
             {
                 float vp[16];
+                float c[4];
                 uint32_t t;
             } push;
-            static_assert(sizeof(push) == 16 * sizeof(float) + sizeof(uint32_t), "");
+            static_assert(sizeof(push) == 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t), "");
 
             if (!info.isDefaultViewProjMatrix)
             {
@@ -225,6 +226,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
                 Matrix::Multiply(push.vp, model, defaultViewProj);
             }
 
+            memcpy(push.c, info.color, 4 * sizeof(float));
             push.t = info.textureIndex;
 
             vkCmdPushConstants(
@@ -314,7 +316,7 @@ void Rasterizer::CreatePipelineLayouts(VkDescriptorSetLayout texturesSetLayout, 
     VkPushConstantRange pushConst = {};
     pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConst.offset = 0;
-    pushConst.size = 16 * sizeof(float) + sizeof(uint32_t);
+    pushConst.size = 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t);
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

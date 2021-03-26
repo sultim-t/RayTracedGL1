@@ -46,6 +46,8 @@ public:
         uint32_t    firstVertex;
         uint32_t    indexCount;
         uint32_t    firstIndex;
+
+        float       color[4];
         uint32_t    textureIndex;
 
         bool            blendEnable;
