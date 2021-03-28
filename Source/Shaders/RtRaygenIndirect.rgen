@@ -79,75 +79,113 @@ void getDiffuseBounce(
     // throughput *= 1 / nonSpecPr;
 }
 
-// v -- direction to viewer
-void processIndirectIllumination(
-    const ivec2 pix, const uint primaryInstCustomIndex, const vec3 surfPosition, 
+// Traces bounce ray, computes direct illumination in hit point and returns contribution
+vec3 processBounce(
+    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
+    const vec3 surfNormal, const vec3 surfNormalGeom,
+    const float surfRoughness, const vec3 v, const bool isGradientSample,
+    const vec3 bounceDirection, vec3 throughput)
+{
+    // got the bounce direction, trace ray
+    const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition, bounceDirection); 
+
+    if (p.clsHitDistance > 0)
+    {
+        const ShHitInfo h = getHitInfo(p);
+        const vec3 hitPos = surfPosition + p.clsHitDistance * bounceDirection;
+        
+        // TODO: emmision
+
+        // calculate direct illumination in hit position
+        vec3 diffuse, specular;
+        processDirectIllumination(seed, h.instCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, isGradientSample, diffuse, specular);
+
+        // TODO: Ray Tracing Gems, ch. 20.3.2-20.3.3: 
+        // calculate texture lod with ray differentials using G-buffer for the first bounce
+        throughput *= h.albedo;
+
+        //contribution = throughput * (diffuse * (1 - metallic) + specular * metallic);
+        const vec3 contribution = throughput * diffuse;
+
+        return contribution;
+    }
+    else
+    {
+        const vec3 skyColor = getSky(bounceDirection);
+        const vec3 contribution = throughput * skyColor;
+
+        return contribution;
+    }
+}
+
+vec3 processSpecular(
+    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
     const vec3 surfNormal, const vec3 surfNormalGeom,
     const float surfRoughness, const vec3 v, const bool isGradientSample)
 {
-    const uint seed = getCurrentRandomSeed(pix);
-    
-    for (int i = 0; i < 2; i++)
-    {
-        const bool isSpecular = i == 0;
+    vec3 throughput = vec3(1.0);
+    vec3 bounceDirection;
 
-        vec3 throughput = vec3(1.0);
+    getSpecularBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput);
+
+    return processBounce(
+        seed, surfInstCustomIndex, surfPosition, 
+        surfNormal, surfNormalGeom, surfRoughness, 
+        v, isGradientSample,
+        bounceDirection, throughput);
+}
+
+vec3 processIndirectDiffuse(
+    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
+    const vec3 surfNormal, const vec3 surfNormalGeom,
+    const float surfRoughness, const vec3 v, const bool isGradientSample,
+    out vec3 bounceDirection)
+{
+    vec3 throughput = vec3(1.0);
+
+    getDiffuseBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput);
+
+    return processBounce(
+        seed, surfInstCustomIndex, surfPosition, 
+        surfNormal, surfNormalGeom, surfRoughness, 
+        v, isGradientSample,
+        bounceDirection, throughput);
+}
+
+// v -- direction to viewer
+void processIndirectIllumination(
+    const ivec2 pix, const uint seed, 
+    const uint surfInstCustomIndex, const vec3 surfPosition, 
+    const vec3 surfNormal, const vec3 surfNormalGeom,
+    const float surfRoughness, const vec3 v, const bool isGradientSample)
+{
+    {
+        const vec3 contribution = processSpecular(
+            seed, surfInstCustomIndex, surfPosition, 
+            surfNormal, surfNormalGeom, surfRoughness, 
+            v, isGradientSample);
+
+        vec3 spec = imageLoad(framebufUnfilteredSpecular, pix).rgb;
+        spec += contribution;
+
+        imageStore(framebufUnfilteredSpecular, pix, vec4(spec, 0.0));
+    }
+
+    {
         vec3 bounceDirection;
 
-        if (isSpecular)
-        {
-            getSpecularBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput);
-        }
-        else
-        {
-            getDiffuseBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput);
-        }
+        const vec3 contribution = processIndirectDiffuse(
+            seed, surfInstCustomIndex, surfPosition, 
+            surfNormal, surfNormalGeom, surfRoughness, 
+            v, isGradientSample,
+            bounceDirection);
 
-        // got the bounce direction, trace ray
-        const ShPayload p = traceIndirectRay(primaryInstCustomIndex, surfPosition, bounceDirection); 
+        const SH bounceSh = irradianceToSH(contribution, bounceDirection);
 
-        vec3 contribution;
+        // SH sh = imageLoadUnfilteredIndirectSH(pix);
+        // accumulateSH(sh, bounceSh, 1.0);
 
-        if (p.clsHitDistance > 0)
-        {
-            const ShHitInfo h = getHitInfo(p);
-            const vec3 hitPos = surfPosition + p.clsHitDistance * bounceDirection;
-            
-            // TODO: emmision
-
-            // calculate direct illumination in hit position
-            vec3 diffuse, specular;
-            processDirectIllumination(pix, primaryInstCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, bounceDirection, isGradientSample, diffuse, specular);
-
-            // TODO: Ray Tracing Gems, ch. 20.3.2-20.3.3: 
-            // calculate texture lod with ray differentials using G-buffer for the first bounce
-            throughput *= h.albedo;
-
-            //contribution = throughput * (diffuse * (1 - metallic) + specular * metallic);
-            contribution = throughput * diffuse;
-        }
-        else
-        {
-            const vec3 skyColor = getSky(bounceDirection);
-            contribution = throughput * skyColor;
-        }
-
-        if (isSpecular)
-        {
-            vec3 spec = imageLoad(framebufUnfilteredSpecular, pix).rgb;
-            spec += contribution;
-
-            imageStore(framebufUnfilteredSpecular, pix, vec4(spec, 0.0));
-        }
-        else
-        {
-            const SH bounceSh = irradianceToSH(contribution, bounceDirection);
-
-            SH sh = imageLoadUnfilteredIndirectSH(pix);
-            accumulateSH(sh, bounceSh, 1.0);
-
-            imageStoreUnfilteredIndirectSH(pix, sh);
-        }
+        imageStoreUnfilteredIndirectSH(pix, bounceSh);
     }
 }
 
@@ -162,6 +200,8 @@ void main()
         return;
     }
     
+    const uint seed = getCurrentRandomSeed(pix);
+
     const vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
     const vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
     const vec4 surfNormalGeom         = texelFetch(framebufNormalGeometry_Sampler, pix, 0);
@@ -169,10 +209,10 @@ void main()
     const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
     const float surfRoughness         = surfMetallicRoughness.g;
-    const uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    const uint surfInstCustomIndex    = floatBitsToUint(surfNormal.a);
   
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
 
-    processIndirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample);        
+    processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample);        
 }

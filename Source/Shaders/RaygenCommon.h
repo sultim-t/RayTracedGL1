@@ -180,24 +180,7 @@ vec3 getSkyPrimary(vec3 direction)
 
 vec3 getSky(vec3 direction)
 {
-    uint skyType = globalUniform.skyType;
-
-    if (skyType == SKY_TYPE_TLAS)
-    {
-        ShPayload p = traceSkyRay(globalUniform.skyViewerPosition.xyz, direction);
-
-        if (p.clsHitDistance > 0)
-        {
-            return getHitInfoAlbedoOnly(p) * globalUniform.skyColorMultiplier;
-        }
-    }
-    else if (skyType == SKY_TYPE_CUBEMAP)
-    {
-        return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb
-            * globalUniform.skyColorMultiplier;
-    }
-    
-    return globalUniform.skyColorDefault.xyz * globalUniform.skyColorMultiplier;
+    return pow(getSkyPrimary(direction) * globalUniform.skyColorMultiplier, vec3(0.5));
 }
 #endif
 
@@ -422,13 +405,11 @@ void processSphericalLight(
 
 // viewDirection -- is direction to viewer
 void processDirectIllumination(
-    ivec2 pix, uint primaryInstCustomIndex, vec3 surfPosition, 
+    uint seed, uint primaryInstCustomIndex, vec3 surfPosition, 
     vec3 surfNormal, vec3 surfNormalGeom,
     float surfRoughness, vec3 viewDirection, bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    uint seed = getCurrentRandomSeed(pix);
-
     vec3 dirDiff, dirSpec;
     processDirectionalLight(seed, primaryInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, viewDirection, isGradientSample, dirDiff, dirSpec);
     

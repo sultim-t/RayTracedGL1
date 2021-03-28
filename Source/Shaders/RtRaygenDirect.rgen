@@ -46,6 +46,8 @@ void main()
         imageStore(framebufUnfilteredSpecular, pix, vec4(0.0));
         return;
     }
+
+    const uint seed = getCurrentRandomSeed(pix);
     
     const vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
     const vec4 surfNormal             = texelFetch(framebufNormal_Sampler, pix, 0);
@@ -60,7 +62,7 @@ void main()
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
     
     vec3 diffuse, specular;
-    processDirectIllumination(pix, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample, diffuse, specular);
+    processDirectIllumination(seed, instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, -viewDirection.xyz, isGradientSample, diffuse, specular);
 
     imageStore(framebufUnfilteredDirect, pix, vec4(diffuse, 0.0));
     imageStore(framebufUnfilteredSpecular, pix, vec4(specular, 0.0));
