@@ -54,14 +54,6 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
-float getAntilagAlpha(const float gradSample, const float normFactor)
-{
-    const float lambda = normFactor > 0.0001 ? 
-        clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
-        0.0;
-
-    return clamp(lambda, 0.0, 1.0);
-}
 
 void main()
 {
@@ -91,7 +83,7 @@ void main()
     const vec3 depthFB = texelFetch(framebufDepth_Sampler,              pix, 0).rgb;
     const vec3 normal  = texelFetch(framebufNormalGeometry_Sampler,     pix, 0).rgb;
     const float depth  = depthFB.r;
-    const float dz = 1.0 / max(0.01, length(depthFB.gb));
+    const float dz = length(depthFB.gb);
 
     const float l = getLuminance(unfilteredDiff);
     const vec2 moments = vec2(l, l * l);
@@ -148,7 +140,7 @@ void main()
     float indirHistoryLengthAccum;
 
     // found consistent info
-    if (weightSum > 0.01)
+    if (weightSum > 0.0001)
     {
         const float invWeightSum = 1.0 / weightSum;
 
@@ -185,7 +177,7 @@ void main()
 
         // specular
         {
-            const float antilagAlpha = getAntilagAlpha(gradDiffSpec.b, gradDiffSpec.a);
+            float antilagAlpha = getAntilagAlpha(gradDiffSpec.b, gradDiffSpec.a);
 
             specHistoryLength *= pow(1.0 - antilagAlpha, 10);
             specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, 256.0);
@@ -201,8 +193,7 @@ void main()
 
         // indirect diffuse
         {
-            float antilagAlpha = getAntilagAlpha(gradIndir.r, gradIndir.g);
-            antilagAlpha *= antilagAlpha;
+            float antilagAlpha = gradIndir.r;
 
             indirHistoryLength *= pow(1.0 - antilagAlpha, 10);
             indirHistoryLength = clamp(indirHistoryLength + 1.0, 1.0, 256.0);

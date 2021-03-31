@@ -97,8 +97,8 @@ void main()
     const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
     const ivec2 samplePrevPix = lastPrevPix;
 
-    const vec3 depthFB    = texelFetch(framebufDepth_Sampler,               samplePix,     0).rgb;
-    const float dz        = 1.0 / max(0.01, length(depthFB.gb));
+    const vec4 depthFB    = texelFetch(framebufDepth_Sampler,               samplePix,     0);
+    const float dz        = length(depthFB.gb);
 
     const float depth     = depthFB.r;
     const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          samplePrevPix, 0).r;
@@ -145,6 +145,7 @@ void main()
     {
         const vec3 viewDir = normalize(prevPos - globalUniform.cameraPosition.xyz);
 
+        // TODO: make sure that prevPos is not under(!) the current surface
         imageStore(framebufSurfacePosition, samplePix, vec4(prevPos, 0.0));
         imageStore(framebufViewDirection,   samplePix, vec4(viewDir, 0.0));
     }

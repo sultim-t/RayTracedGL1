@@ -45,6 +45,7 @@ void main()
     if (!hasSample)
     {
         imageStore(framebufDiffAndSpecPingGradient, gradPix, vec4(0.0));
+        imageStore(framebufIndirPingGradient, gradPix, vec4(0.0));
         return;
     }
 
@@ -90,6 +91,9 @@ void main()
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceIndir;
         const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceIndir);
 
-        imageStore(framebufIndirPingGradient, gradPix, vec4(gradSample, normFactor, 0.0, 0.0));
+        // blurring antilag alpha directly gives better results
+        const float a = getAntilagAlpha(gradSample, normFactor);
+
+        imageStore(framebufIndirPingGradient, gradPix, vec4(a));
     }
 }

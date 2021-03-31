@@ -110,9 +110,9 @@ void atrous(sampler2D samplerDiff,
 
     const vec3 dg = texelFetch(framebufDepth_Sampler, pix, 0).rgb;
     const float depth     = dg.r;
-    const vec2  gradDepth = dg.gb;
+    const float gradDepth = length(dg.gb); // changed dot to length, to remove vertical/horizontal artifacts
 
-    if (depth < 0.0)
+    if (depth < 0.0 || depth > MAX_RAY_LENGTH)
     {
         return;
     }
@@ -163,7 +163,7 @@ void atrous(sampler2D samplerDiff,
             const SH indirSH_q      = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix_q);
 
 
-            const float w_z = abs(depth - depth_q) / max(abs(dot(gradDepth, vec2(offset))), 0.01);
+            const float w_z = abs(depth - depth_q) / max(gradDepth * (abs(xx) + abs(yy)), 0.01);
             const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
             const float w_l = abs(l - l_q) * wLumMultiplier;
 
@@ -173,8 +173,8 @@ void atrous(sampler2D samplerDiff,
             const float waveletW = waveletKernel[abs(yy)][abs(xx)];
             const float isInside = float(testInside(pix_q, screenSize));
 
-            const float wDiff = exp(-w_z - w_l) * w_n * waveletW * isInside;
-            const float wSpec = w_r * exp(-w_z) * w_n * waveletW * isInside;
+            const float wDiff = exp(-w_z * w_z - w_l) * w_n * waveletW * isInside;
+            const float wSpec = w_r * exp(-w_z * w_z) * w_n * waveletW * isInside;
 
 
             outDiff += diffColor_q * wDiff;

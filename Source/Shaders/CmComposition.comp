@@ -36,17 +36,21 @@ void main()
         return;
     }
 
-    vec3 color = vec3(1.0);
+    vec3 color;
 
     const vec3 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
     const float depth = texelFetch(framebufDepth_Sampler,  pix, 0).r;
     
     if (depth < MAX_RAY_LENGTH)
     {
+        /*const vec3 unfilteredDiff = texelFetch(framebufUnfilteredDirect_Sampler,   pix, 0).rgb;
+        const vec3 unfilteredSpec = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
+        const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);*/
+
         const vec3 light = imageLoad(framebufFinal, pix).rgb;
-        color = light * pow(albedo, vec3(1 / 2.2));
+        color = light * pow(albedo, vec3(0.75));
             
-        const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
+        const float lIn = max(getLuminance(light), exp2(globalUniform.minLogLuminance));
         const float lInAdj = lIn / tonemapping.avgLuminance;
         // Reinhard
         const float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
@@ -62,9 +66,9 @@ void main()
     {
         const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
         const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const float lambda = clamp(abs(gradDS.r) / gradDS.g, 0.0, 1.0);
-        const float lambdaSpec = clamp(abs(gradDS.b) / gradDS.a, 0.0, 1.0);
-        const float lambdaIndir = clamp(abs(gradI.r) / gradI.g, 0.0, 1.0);
+        const float lambda = getAntilagAlpha(gradDS.r, gradDS.g);
+        const float lambdaSpec = getAntilagAlpha(gradDS.b, gradDS.a);
+        const float lambdaIndir = clamp(gradI.r, 0.0, 1.0);
         color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
     }
 

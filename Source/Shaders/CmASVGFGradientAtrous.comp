@@ -61,7 +61,7 @@ void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 
             const vec4 grad_q = texelFetch(samplerGradient, gradPix_q, 0);
             const vec2 gradIndir_q = texelFetch(samplerGradientIndir, gradPix_q, 0).xy;
 
-            const float w = waveletKernel[abs(xx)][abs(yy)] *
+            const float w = waveletKernel[abs(yy)][abs(xx)] *
                             float(testInside(gradPix_q, gradSize));
 
             sum += grad_q * w;

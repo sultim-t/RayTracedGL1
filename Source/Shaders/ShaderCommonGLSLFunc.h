@@ -242,6 +242,15 @@ bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
     return dot(n, nPrev) > 0.95;
 }
 
+float getAntilagAlpha(const float gradSample, const float normFactor)
+{
+    const float lambda = normFactor > 0.0001 ? 
+        clamp(abs(gradSample) / normFactor, 0.0, 1.0) :
+        0.0;
+
+    return clamp(lambda, 0.0, 1.0);
+}
+
 
 
 #ifdef DESC_SET_FRAMEBUFFERS
