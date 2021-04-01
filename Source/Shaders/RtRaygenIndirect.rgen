@@ -87,7 +87,7 @@ vec3 processBounce(
     const vec3 bounceDirection, vec3 throughput)
 {
     // got the bounce direction, trace ray
-    const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition, bounceDirection); 
+    const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDirection); 
 
     if (p.clsHitDistance > 0)
     {

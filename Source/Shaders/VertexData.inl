@@ -514,6 +514,36 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     return tr;
 }
 
+mat3 getOnlyCurPositions(int globalGeometryIndex, int instanceCustomIndex, int primitiveId)
+{
+    mat3 positions;
+
+    const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
+
+    const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
+
+    if (isDynamic)
+    {
+        const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+
+        // to world space
+        positions[0] = (inst.model * vec4(getDynamicVerticesPositions(vertIndices[0]), 1.0)).xyz;
+        positions[1] = (inst.model * vec4(getDynamicVerticesPositions(vertIndices[1]), 1.0)).xyz;
+        positions[2] = (inst.model * vec4(getDynamicVerticesPositions(vertIndices[2]), 1.0)).xyz;
+    }
+    else
+    {
+        const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+
+        // to world space
+        positions[0] = (inst.model * vec4(getStaticVerticesPositions(vertIndices[0]), 1.0)).xyz;
+        positions[1] = (inst.model * vec4(getStaticVerticesPositions(vertIndices[1]), 1.0)).xyz;
+        positions[2] = (inst.model * vec4(getStaticVerticesPositions(vertIndices[2]), 1.0)).xyz;
+    }
+    
+    return positions;
+}
+
 mat3 getOnlyPrevPositions(int globalGeometryIndex, int instanceCustomIndex, int primitiveId)
 {
     mat3 prevPositions;
@@ -598,6 +628,14 @@ vec4 packVisibilityBuffer(const ShPayload p)
     return vec4(uintBitsToFloat(p.instIdAndIndex), uintBitsToFloat(p.geomAndPrimIndex), p.baryCoords);
 }
 
+int unpackInstCustomIndexFromVisibilityBuffer(const vec4 v)
+{
+    int instanceID, instCustomIndex;
+    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), instanceID, instCustomIndex);
+
+    return instCustomIndex;
+}
+
 // v must be fetched from framebufVisibilityBuffer_Prev_Sampler
 bool unpackPrevVisibilityBuffer(const vec4 v, out vec3 prevPos)
 {
@@ -615,7 +653,7 @@ bool unpackPrevVisibilityBuffer(const vec4 v, out vec3 prevPos)
         return false;
     }
 
-    const mat3 prevVerts = getOnlyPrevPositions(curFrameGlobalGeomIndex, instCustomIndex, primIndex);
+    const mat3 prevVerts = getOnlyCurPositions(curFrameGlobalGeomIndex, instCustomIndex, primIndex);
     const vec3 baryCoords = vec3(1.0 - v[2] - v[3], v[2], v[3]);
 
     prevPos = prevVerts * baryCoords;

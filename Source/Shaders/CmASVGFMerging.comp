@@ -97,19 +97,26 @@ void main()
     const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
     const ivec2 samplePrevPix = lastPrevPix;
 
-    const vec4 depthFB    = texelFetch(framebufDepth_Sampler,               samplePix,     0);
+    const vec4 depthFB    = texelFetch(framebufDepth_Sampler,                 samplePix,     0);
     const float dz        = length(depthFB.gb);
 
     const float depth     = depthFB.r;
-    const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          samplePrevPix, 0).r;
+    const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,            samplePrevPix, 0).r;
 
-    const vec3 normal     = texelFetch(framebufNormalGeometry_Sampler,      samplePix,     0).rgb;
-    const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, samplePrevPix, 0).rgb;
+    const vec3 normal     = texelFetch(framebufNormalGeometry_Sampler,        samplePix,     0).rgb;
+    const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler,   samplePrevPix, 0).rgb;
+
+    const vec4 visBuf     = texelFetch(framebufVisibilityBuffer_Sampler,      samplePix,     0);
+    const vec4 visBufPrev = texelFetch(framebufVisibilityBuffer_Prev_Sampler, samplePrevPix, 0);
+
+    const int instCustomIndex = unpackInstCustomIndexFromVisibilityBuffer(visBuf);
+    const int instCustomIndexPrev = unpackInstCustomIndexFromVisibilityBuffer(visBufPrev);
 
     const bool isConsistent = 
         testInside(samplePix, screenSize) &&
         testReprojectedDepth(depth, depthPrev, dz) &&
-        testReprojectedNormal(normal, normalPrev);
+        testReprojectedNormal(normal, normalPrev) &&
+        instCustomIndex == instCustomIndexPrev;
 
     if (!isConsistent)
     {
@@ -137,16 +144,14 @@ void main()
     imageStore(framebufNormal,            samplePix, texelFetch(framebufNormal_Prev_Sampler,            samplePrevPix, 0));
     imageStore(framebufMetallicRoughness, samplePix, texelFetch(framebufMetallicRoughness_Prev_Sampler, samplePrevPix, 0));
 
-    vec3 prevPos;
-    const vec4 v = texelFetch(framebufVisibilityBuffer_Prev_Sampler, samplePrevPix, 0);
-    const bool matchedSurface = unpackPrevVisibilityBuffer(v, prevPos);
+    vec3 pos;
+    const bool matchedSurface = unpackPrevVisibilityBuffer(visBufPrev, pos);
     
     if (matchedSurface)
     {
-        const vec3 viewDir = normalize(prevPos - globalUniform.cameraPosition.xyz);
+        const vec3 viewDir = normalize(pos - globalUniform.cameraPosition.xyz);
 
-        // TODO: make sure that prevPos is not under(!) the current surface
-        imageStore(framebufSurfacePosition, samplePix, vec4(prevPos, 0.0));
+        imageStore(framebufSurfacePosition, samplePix, vec4(pos, 0.0));
         imageStore(framebufViewDirection,   samplePix, vec4(viewDir, 0.0));
     }
 }
