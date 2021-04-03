@@ -82,7 +82,7 @@ void main()
         imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
         imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
         imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
-        imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, 0.0));
+        imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, p.clsHitDistance));
         imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
 
         return;

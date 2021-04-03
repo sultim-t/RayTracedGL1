@@ -48,7 +48,7 @@ void main()
         const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);*/
 
         const vec3 light = imageLoad(framebufFinal, pix).rgb;
-        color = light * pow(albedo, vec3(0.75));
+        color = light * albedo;
             
         const float lIn = max(getLuminance(light), exp2(globalUniform.minLogLuminance));
         const float lInAdj = lIn / tonemapping.avgLuminance;

@@ -67,11 +67,11 @@ void main()
     }
 
     const vec3  color     = texelFetch(framebufDiffAccumColor_Sampler, pix, 0).rgb;
-    const vec3  dg        = texelFetch(framebufDepth_Sampler,      pix, 0).rgb;
+    const vec3  dg        = texelFetch(framebufDepth_Sampler,          pix, 0).rgb;
     const float depth     = dg.r;
-    const vec2  gradDepth = dg.gb;
+    const vec2  gradDepth = abs(dg.gb);
 
-    if (depth < 0.0)
+    if (depth < 0.0 || depth > MAX_RAY_LENGTH)
     {
         imageStore(framebufDiffPingColorAndVariance, pix, vec4(color, 0.0));
         return;
@@ -108,13 +108,13 @@ void main()
 
             const ivec2 q = pix + ivec2(xx, yy);
             
-            const vec3  color_q  = texelFetch(framebufDiffAccumColor_Sampler,     q, 0).rgb;
+            const vec3  color_q  = texelFetch(framebufDiffAccumColor_Sampler, q, 0).rgb;
             const float depth_q  = texelFetch(framebufDepth_Sampler,          q, 0).r;
             const vec3  normal_q = texelFetch(framebufNormalGeometry_Sampler, q, 0).rgb;
 
             const float l_q = getLuminance(color_q);
 
-            const float w_z = exp(-abs(depth - depth_q) / max(abs(dot(gradDepth, vec2(xx, yy))), 0.01));
+            const float w_z = exp(-abs(depth - depth_q) / max(dot(gradDepth, abs(vec2(xx, yy))), 0.01));
             const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
 
             const float w = w_z * w_n;

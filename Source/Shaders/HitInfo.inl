@@ -59,7 +59,7 @@ vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[
             {
                 dst += src.rgb;
             }
-            else // if (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)
+            else // if (blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)
             {
                 dst = 2 * dst * src.rgb;
             }
