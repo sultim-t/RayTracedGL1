@@ -603,12 +603,17 @@ RgResult rgDestroyCubemap(
 
 
 
+typedef struct RgStartFrameInfo
+{
+    uint32_t        surfaceWidth;
+    uint32_t        surfaceHeight; 
+    RgBool32        requestVSync;
+    RgBool32        requestShaderReload;
+} RgStartFrameInfo;
+
 RgResult rgStartFrame(
     RgInstance                          rgInstance,
-    uint32_t                            surfaceWidth, 
-    uint32_t                            surfaceHeight, 
-    RgBool32                            vsync, 
-    RgBool32                            reloadShaders);
+    const RgStartFrameInfo              *startInfo);
 
 typedef enum RgDrawFrameFlagBits
 {
@@ -664,7 +669,7 @@ typedef struct RgDrawFrameInfo
 
 RgResult rgDrawFrame(
     RgInstance                          rgInstance,
-    const RgDrawFrameInfo               *frameInfo);
+    const RgDrawFrameInfo               *drawInfo);
 
 #ifdef __cplusplus
 }
