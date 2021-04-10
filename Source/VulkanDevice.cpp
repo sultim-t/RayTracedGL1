@@ -97,10 +97,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator,
         samplerManager, 
         cmdManager,
-        info->overridenTexturesFolderPath,
-        info->overrideAlbedoAlphaTexturePostfix, 
-        info->overrideNormalMetallicTexturePostfix, 
-        info->overrideEmissionRoughnessTexturePostfix);
+        *info);
 
     cubemapManager      = std::make_shared<CubemapManager>(
         device,

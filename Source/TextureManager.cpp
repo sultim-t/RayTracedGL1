@@ -36,18 +36,20 @@ TextureManager::TextureManager(
     std::shared_ptr<MemoryAllocator> _memAllocator,
     std::shared_ptr<SamplerManager> _samplerMgr,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
-    const char *_defaultTexturesPath,
-    const char *_albedoAlphaPostfix,
-    const char *_normalMetallicPostfix,
-    const char *_emissionRoughnessPostfix)
+    const RgInstanceCreateInfo &_info)
 :
     device(_device),
-    samplerMgr(_samplerMgr)
+    samplerMgr(std::move(_samplerMgr))
 {
-    this->defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
-    this->albedoAlphaPostfix = _albedoAlphaPostfix != nullptr ? _albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
-    this->normalMetallicPostfix = _normalMetallicPostfix != nullptr ? _normalMetallicPostfix : DEFAULT_NORMAL_METALLIC_POSTFIX;
-    this->emissionRoughnessPostfix = _emissionRoughnessPostfix != nullptr ? _emissionRoughnessPostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
+    this->defaultTexturesPath = _info.overridenTexturesFolderPath != nullptr ? _info.overridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
+
+    this->albedoAlphaPostfix       = _info.overrideAlbedoAlphaTexturePostfix       != nullptr ? _info.overrideAlbedoAlphaTexturePostfix       : DEFAULT_ALBEDO_ALPHA_POSTFIX;
+    this->normalMetallicPostfix    = _info.overrideNormalMetallicTexturePostfix    != nullptr ? _info.overrideNormalMetallicTexturePostfix    : DEFAULT_NORMAL_METALLIC_POSTFIX;
+    this->emissionRoughnessPostfix = _info.overrideEmissionRoughnessTexturePostfix != nullptr ? _info.overrideEmissionRoughnessTexturePostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
+
+    this->overridenAAIsSRGB = _info.overrideAlbedoAlphaTextureIsSRGB;
+    this->overridenNMIsSRGB = _info.overrideNormalMetallicTextureIsSRGB;
+    this->overridenERIsSRGB = _info.overrideEmissionRoughnessTextureIsSRGB;
 
     imageLoader = std::make_shared<ImageLoader>();
     textureDesc = std::make_shared<TextureDescriptors>(device, MAX_TEXTURE_COUNT, BINDING_TEXTURES);
@@ -70,7 +72,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     RgExtent2D size = { 1,1 };
     VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, false, "Empty texture");
+    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, false, false, "Empty texture");
 
     // must have specific index
     assert(textureIndex == EMPTY_TEXTURE_INDEX);
@@ -145,24 +147,31 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 
     if (!createInfo.disableOverride)
     {
-        ParseInfo parseInfo = {};
+        TextureOverrides::OverrideInfo parseInfo = {};
         parseInfo.texturesPath = defaultTexturesPath.c_str();
         parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
         parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
         parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
+        parseInfo.aaIsSRGBDefault = overridenAAIsSRGB;
+        parseInfo.nmIsSRGBDefault = overridenNMIsSRGB;
+        parseInfo.erIsSRGBDefault = overridenERIsSRGB;
 
         // load additional textures, they'll be freed after leaving the scope
-        TextureOverrides ovrd(createInfo.relativePath, createInfo.textureData, createInfo.size, parseInfo, imageLoader);
+        TextureOverrides ovrd(createInfo.relativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
 
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
-        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
-        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, true, createInfo.useMipmaps, ovrd.debugName);
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.aaIsSRGB, createInfo.useMipmaps, ovrd.debugName);
+        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.nmIsSRGB, createInfo.useMipmaps, ovrd.debugName);
+        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.erIsSRGB, createInfo.useMipmaps, ovrd.debugName);
     }
     else
     {
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, createInfo.textureData.albedoAlphaData,        createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
-        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, createInfo.textureData.normalsMetallicityData, createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
-        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, createInfo.textureData.emissionRoughnessData,  createInfo.size, sampler, createInfo.isSRGB, createInfo.relativePath);
+        const auto &aa = createInfo.textures.albedoAlpha;
+        const auto &nm = createInfo.textures.normalsMetallicity;
+        const auto &er = createInfo.textures.emissionRoughness;
+
+        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, aa.pData, createInfo.size, sampler, aa.isSRGB, createInfo.useMipmaps, createInfo.relativePath);
+        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, nm.pData, createInfo.size, sampler, nm.isSRGB, createInfo.useMipmaps, createInfo.relativePath);
+        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, er.pData, createInfo.size, sampler, er.isSRGB, createInfo.useMipmaps, createInfo.relativePath);
     }
 
     return InsertMaterial(textures, false);
@@ -172,15 +181,17 @@ uint32_t TextureManager::PrepareStaticTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
     VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
 {
-    return PrepareTexture(false, cmd, frameIndex, data, size, sampler,  generateMipmaps, debugName);
+    return PrepareTexture(false, cmd, frameIndex, data, size, sampler, isSRGB, generateMipmaps, debugName);
 }
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
+    const auto &aa = createInfo.textures.albedoAlpha;
+
     MaterialTextures textures = {};
-    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, createInfo.textureData.albedoAlphaData, createInfo.size, sampler, createInfo.isSRGB, createInfo.useMipmaps);
+    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, aa.pData, createInfo.size, sampler, aa.isSRGB, createInfo.useMipmaps, nullptr);
     textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
     textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
 
@@ -196,9 +207,9 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
     {
         const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
         {
-            updateInfo.textureData.albedoAlphaData,
-            updateInfo.textureData.normalsMetallicityData,
-            updateInfo.textureData.emissionRoughnessData,
+            updateInfo.textures.albedoAlpha.pData,
+            updateInfo.textures.normalsMetallicity.pData,
+            updateInfo.textures.emissionRoughness.pData,
         };
 
         auto &textureIndices = it->second.textures.indices;
@@ -236,7 +247,7 @@ uint32_t TextureManager::PrepareDynamicTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, 
     VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
 {
-    return PrepareTexture(true, cmd, frameIndex, data, size, sampler, generateMipmaps, debugName);
+    return PrepareTexture(true, cmd, frameIndex, data, size, sampler, isSRGB, generateMipmaps, debugName);
 }
 
 uint32_t TextureManager::PrepareTexture(

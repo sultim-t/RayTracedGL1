@@ -26,26 +26,27 @@ using namespace RTGL1;
 
 TextureOverrides::TextureOverrides(
     const char *_relativePath,
-    const void *_defaultData,
+    const void *_defaultData,     
+    bool _isSRGB,
     const RgExtent2D &_defaultSize,
-    const ParseInfo &_parseInfo,
+    const OverrideInfo &_overrideInfo,
     std::shared_ptr<ImageLoader> _imageLoader)
 :
     TextureOverrides(_relativePath, 
-                     RgTextureData{ _defaultData, nullptr, nullptr }, _defaultSize, 
-                     _parseInfo, std::move(_imageLoader))
+                     RgTextureSet{ { _defaultData, _isSRGB }, {}, {} }, _defaultSize, 
+                     _overrideInfo, std::move(_imageLoader))
 {}
 
 TextureOverrides::TextureOverrides(
     const char *_relativePath, 
-    const RgTextureData &_defaultData,
+    const RgTextureSet &_defaultTextures,
     const RgExtent2D &_defaultSize,
-    const ParseInfo &_parseInfo, 
+    const OverrideInfo &_overrideInfo, 
     std::shared_ptr<ImageLoader> _imageLoader) 
 :
-    aa(nullptr), aaSize({}), 
-    nm(nullptr), nmSize({}), 
-    er(nullptr), erSize({}), 
+    aa(nullptr), aaSize({}), aaIsSRGB(false),
+    nm(nullptr), nmSize({}), nmIsSRGB(false),
+    er(nullptr), erSize({}), erIsSRGB(false),
     debugName{},
     imageLoader(_imageLoader)
 {
@@ -55,32 +56,39 @@ TextureOverrides::TextureOverrides(
 
     const bool hasOverrides = ParseOverrideTexturePaths(
         albedoAlphaPath, normalMetallic, emissionRoughness,
-        _relativePath, _parseInfo);
+        _relativePath, _overrideInfo);
 
     if (hasOverrides)
     {
         aa = _imageLoader->LoadRGBA8(albedoAlphaPath,   &aaSize.width, &aaSize.height);
         nm = _imageLoader->LoadRGBA8(normalMetallic,    &nmSize.width, &nmSize.height);
         er = _imageLoader->LoadRGBA8(emissionRoughness, &erSize.width, &erSize.height);
+
+        aaIsSRGB = _overrideInfo.aaIsSRGBDefault;
+        nmIsSRGB = _overrideInfo.nmIsSRGBDefault;
+        erIsSRGB = _overrideInfo.erIsSRGBDefault;
     }
 
     // if file wasn't found, use default data instead
-    if (_defaultData.albedoAlphaData != nullptr && aa == nullptr)
+    if (_defaultTextures.albedoAlpha.pData != nullptr && aa == nullptr)
     {
-        aa = (uint32_t*)_defaultData.albedoAlphaData;
+        aa = (const uint32_t*)_defaultTextures.albedoAlpha.pData;
         aaSize = _defaultSize;
+        aaIsSRGB = _defaultTextures.albedoAlpha.isSRGB;
     }
 
-    if (_defaultData.normalsMetallicityData != nullptr && nm == nullptr)
+    if (_defaultTextures.normalsMetallicity.pData != nullptr && nm == nullptr)
     {
-        nm = (uint32_t *)_defaultData.normalsMetallicityData;
+        nm = (const uint32_t *)_defaultTextures.normalsMetallicity.pData;
         nmSize = _defaultSize;
+        nmIsSRGB = _defaultTextures.normalsMetallicity.isSRGB;
     }
 
-    if (_defaultData.emissionRoughnessData != nullptr && er == nullptr)
+    if (_defaultTextures.emissionRoughness.pData != nullptr && er == nullptr)
     {
-        er = (uint32_t *)_defaultData.emissionRoughnessData;
+        er = (const uint32_t *)_defaultTextures.emissionRoughness.pData;
         erSize = _defaultSize;
+        erIsSRGB = _defaultTextures.emissionRoughness.isSRGB;
     }
 }
 
@@ -175,7 +183,7 @@ bool TextureOverrides::ParseOverrideTexturePaths(
     char *normalMetallicPath,
     char *emissionRoughnessPath,
     const char *relativePath,
-    const ParseInfo &parseInfo)
+    const OverrideInfo &overrideInfo)
 {
     char folderPath[TEXTURE_FILE_PATH_MAX_LENGTH];
     char name[TEXTURE_FILE_NAME_MAX_LENGTH];
@@ -190,9 +198,9 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    SPrintfIfNotNull(&albedoAlphaPath,       parseInfo.albedoAlphaPostfix,       parseInfo.texturesPath, folderPath, name, extension);
-    SPrintfIfNotNull(&normalMetallicPath,    parseInfo.normalMetallicPostfix,    parseInfo.texturesPath, folderPath, name, extension);
-    SPrintfIfNotNull(&emissionRoughnessPath, parseInfo.emissionRoughnessPostfix, parseInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(&albedoAlphaPath,       overrideInfo.albedoAlphaPostfix,       overrideInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(&normalMetallicPath,    overrideInfo.normalMetallicPostfix,    overrideInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(&emissionRoughnessPath, overrideInfo.emissionRoughnessPostfix, overrideInfo.texturesPath, folderPath, name, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 

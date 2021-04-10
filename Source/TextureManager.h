@@ -44,10 +44,7 @@ public:
         std::shared_ptr<MemoryAllocator> memAllocator,
         std::shared_ptr<SamplerManager> samplerManager,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
-        const char *defaultTexturesPath,
-        const char *albedoAlphaPostfix,
-        const char *normalMetallicPostfix,
-        const char *emissionRoughnessPostfix);
+        const RgInstanceCreateInfo &info);
     ~TextureManager();
 
     TextureManager(const TextureManager &other) = delete;
@@ -85,16 +82,16 @@ private:
 
     uint32_t PrepareStaticTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName = nullptr);
+        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName);
 
     uint32_t PrepareDynamicTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName = nullptr);
+        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName);
 
     uint32_t PrepareTexture(
         bool isDynamic,
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName = nullptr);
+        VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName);
 
     uint32_t InsertTexture(VkImage image, VkImageView view, VkSampler sampler);
     void DestroyTexture(const Texture &texture);
@@ -130,6 +127,10 @@ private:
     std::string albedoAlphaPostfix;
     std::string normalMetallicPostfix;
     std::string emissionRoughnessPostfix;
+
+    bool overridenAAIsSRGB;
+    bool overridenNMIsSRGB;
+    bool overridenERIsSRGB;
 
     std::list<std::weak_ptr<IMaterialDependency>> subscribers;
 };

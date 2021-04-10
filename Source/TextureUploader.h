@@ -63,7 +63,7 @@ public:
 
 public:
     TextureUploader(VkDevice device, std::shared_ptr<MemoryAllocator> memAllocator);
-    ~TextureUploader();
+    virtual ~TextureUploader();
 
     TextureUploader(const TextureUploader &other) = delete;
     TextureUploader(TextureUploader &&other) noexcept = delete;

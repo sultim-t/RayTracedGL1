@@ -29,29 +29,36 @@ namespace RTGL1
 
 #define TEXTURE_DEBUG_NAME_MAX_LENGTH 32
 
-struct ParseInfo
-{
-    const char *texturesPath;
-    const char *albedoAlphaPostfix;
-    const char *normalMetallicPostfix;
-    const char *emissionRoughnessPostfix;
-};
-
 // Struct for loading overriding texture files. Should be created on stack.
 struct TextureOverrides
 {
 public:
+    struct OverrideInfo
+    {
+        const char *texturesPath             = nullptr;
+        const char *albedoAlphaPostfix       = nullptr;
+        const char *normalMetallicPostfix    = nullptr;
+        const char *emissionRoughnessPostfix = nullptr;
+        // Default params for overriden textures. If texture isn't overriden,
+        // RgTextureData::isSRGB value is used
+        bool aaIsSRGBDefault = false;
+        bool nmIsSRGBDefault = false;
+        bool erIsSRGBDefault = false;
+    };
+
+public:
     explicit TextureOverrides(
         const char *relativePath,
-        const RgTextureData &defaultData,
+        const RgTextureSet &defaultTextures,
         const RgExtent2D &defaultSize,
-        const ParseInfo &parseInfo,
+        const OverrideInfo &overrideInfo,
         std::shared_ptr<ImageLoader> imageLoader);
     explicit TextureOverrides(
         const char *relativePath,
         const void *defaultData,
+        bool isSRGB,
         const RgExtent2D &defaultSize,
-        const ParseInfo &parseInfo,
+        const OverrideInfo &overrideInfo,
         std::shared_ptr<ImageLoader> imageLoader);
     ~TextureOverrides();
 
@@ -66,20 +73,23 @@ private:
         char *normalMetallicPath,
         char *emissionRoughnessPath,
         const char *relativePath,
-        const ParseInfo &parseInfo);
+        const OverrideInfo &overrideInfo);
 
 public:
     // Albedo-Alpha
     const uint32_t      *aa;
     RgExtent2D          aaSize;
+    bool                aaIsSRGB;
 
     // Normal-Metallic
     const uint32_t      *nm;
     RgExtent2D          nmSize;
+    bool                nmIsSRGB;
 
     // Emission-Roughness
     const uint32_t      *er;
     RgExtent2D          erSize;
+    bool                erIsSRGB;
 
     char                debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
 

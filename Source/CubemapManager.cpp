@@ -121,19 +121,20 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     upload.isDynamic = false;
     upload.debugName = nullptr;
 
-    ParseInfo parseInfo = {};
+    TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();
     parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
+    parseInfo.aaIsSRGBDefault = true;
 
     RgExtent2D size = { info.sideSize, info.sideSize };
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd0(info.relativePaths[0], info.data[0], size, parseInfo, imageLoader);
-    TextureOverrides ovrd1(info.relativePaths[1], info.data[1], size, parseInfo, imageLoader);
-    TextureOverrides ovrd2(info.relativePaths[2], info.data[2], size, parseInfo, imageLoader);
-    TextureOverrides ovrd3(info.relativePaths[3], info.data[3], size, parseInfo, imageLoader);
-    TextureOverrides ovrd4(info.relativePaths[4], info.data[4], size, parseInfo, imageLoader);
-    TextureOverrides ovrd5(info.relativePaths[5], info.data[5], size, parseInfo, imageLoader);
+    TextureOverrides ovrd0(info.relativePaths[0], info.data[0], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd1(info.relativePaths[1], info.data[1], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd2(info.relativePaths[2], info.data[2], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd3(info.relativePaths[3], info.data[3], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd4(info.relativePaths[4], info.data[4], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd5(info.relativePaths[5], info.data[5], info.isSRGB, size, parseInfo, imageLoader);
 
     TextureOverrides *ovrd[] =
     {
@@ -194,7 +195,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
         }
     }
 
-    auto &i = cubemapUploader->UploadImage(upload);
+    auto i = cubemapUploader->UploadImage(upload);
 
     if (!i.wasUploaded)
     {
