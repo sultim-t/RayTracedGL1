@@ -48,11 +48,7 @@ Rasterizer::Rasterizer(
     swapchainPipelineLayout(VK_NULL_HANDLE),
     rasterFramebuffers{}
 {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
-    {
-        collectors[i] = std::make_shared<RasterizedDataCollector>(
-            device, _allocator, _textureMgr, _maxVertexCount, _maxIndexCount);
-    }
+    collectors = std::make_shared<RasterizedDataCollector>(device, _allocator, _textureMgr, _maxVertexCount, _maxIndexCount);
 
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_DEPTH]);
     CreateSwapchainRenderPass(_surfaceFormat);
@@ -78,14 +74,19 @@ Rasterizer::~Rasterizer()
 
 void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyFree)
 {  
-    collectors[frameIndex]->Clear(requestRasterizedSkyFree);
+    collectors->Clear(frameIndex, requestRasterizedSkyFree);
 }
 
 void Rasterizer::Upload(uint32_t frameIndex, 
                         const RgRasterizedGeometryUploadInfo &uploadInfo, 
                         const float *viewProjection, const RgViewport *viewport)
 {
-    collectors[frameIndex]->AddGeometry(uploadInfo, viewProjection, viewport);
+    collectors->AddGeometry(frameIndex, uploadInfo, viewProjection, viewport);
+}
+
+void Rasterizer::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    collectors->CopyFromStaging(cmd, frameIndex);
 }
 
 void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
@@ -105,7 +106,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, floa
     Matrix::Multiply(defaultViewProj, view, proj);
 
     Draw(cmd, frameIndex,
-         collectors[frameIndex]->GetRasterDrawInfos(),
+         collectors->GetRasterDrawInfos(),
          rasterRenderPass, rasterPipelines, 
          framebuffer, rasterFramebufferState, true, defaultViewProj);
 }
@@ -128,7 +129,7 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
     Matrix::Multiply(defaultViewProj, view, proj);
 
     Draw(cmd, frameIndex,
-         collectors[frameIndex]->GetSwapchainDrawInfos(),
+         collectors->GetSwapchainDrawInfos(),
          swapchainRenderPass, swapchainPipelines, 
          framebuffer, swapchainFramebufferState, false, defaultViewProj);
 }
@@ -182,8 +183,8 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
 
     VkDeviceSize offset = 0;
-    VkBuffer vrtBuffer = collectors[frameIndex]->GetVertexBuffer();
-    VkBuffer indBuffer = collectors[frameIndex]->GetIndexBuffer();
+    VkBuffer vrtBuffer = collectors->GetVertexBuffer();
+    VkBuffer indBuffer = collectors->GetIndexBuffer();
 
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines->GetPipelineLayout(), 0,

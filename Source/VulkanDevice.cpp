@@ -355,6 +355,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (!drawInfo.disableRasterization)
     {
+        rasterizer->SubmitForFrame(cmd, frameIndex);
+
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, 
                                      uniform->GetData()->view, uniform->GetData()->projection);        
