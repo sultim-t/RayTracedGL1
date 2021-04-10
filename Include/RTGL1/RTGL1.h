@@ -270,6 +270,7 @@ RgResult rgUpdateGeometryTexCoords(
 
 
 
+// TODO: rename inv to one_minus
 typedef enum RgBlendFactor
 {
     RG_BLEND_FACTOR_ONE,
@@ -281,6 +282,23 @@ typedef enum RgBlendFactor
     RG_BLEND_FACTOR_SRC_ALPHA,
     RG_BLEND_FACTOR_INV_SRC_ALPHA,
 } RgBlendFactor;
+
+// DEFAULT:     The rendering will be done with the resolution
+//              (renderWidth, renderHeight) that is set in RgDrawFrameInfo.
+//              Examples: particles, semitransparent world objects.
+// SWAPCHAIN:   Swapchain's resolution will be used.
+//              Note: "depthTest" and "depthWrite" must be false.
+//              Examples: HUD
+// SKY:         Geometry will be drawn to the background of ray-traced image
+//              if skyType is RG_SKY_TYPE_RASTERIZED_GEOMETRY.
+//              Also, the cubemap for this kind of geometry will be created
+//              for specular and indirect bounces.
+typedef enum RgRaterizedGeometryRenderType
+{
+    RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
+    RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN,
+    RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY
+} RgRaterizedGeometryRenderType;
 
 typedef struct RgRasterizedGeometryVertexArrays
 {
@@ -305,6 +323,8 @@ typedef struct RgRasterizedGeometryVertexStruct
 
 typedef struct RgRasterizedGeometryUploadInfo
 {
+    RgRaterizedGeometryRenderType renderType;
+
     uint32_t            vertexCount;
     // Exactly one must be not null.
     // "arrays"  -- pointer to a struct that defines separate arrays
@@ -328,13 +348,6 @@ typedef struct RgRasterizedGeometryUploadInfo
     RgBlendFactor       blendFuncDst;
     RgBool32            depthTest;
     RgBool32            depthWrite;
-    // If false, the rendering will be done with the resolution
-    // (renderWidth, renderHeight) that is set in RgDrawFrameInfo.
-    // Otherwise, swapchain's resolution will be used.
-    // Note: if true, "depthTest" and "depthWrite" must be false.
-    // Examples for "true": particles, semitransparent world objects
-    // Examples for "false": HUD
-    RgBool32            renderToSwapchain;
 } RgRasterizedGeometryUploadInfo;
 
 
@@ -605,36 +618,24 @@ RgResult rgDestroyCubemap(
 
 typedef struct RgStartFrameInfo
 {
-    uint32_t        surfaceWidth;
-    uint32_t        surfaceHeight; 
+    RgExtent2D      surfaceSize;
     RgBool32        requestVSync;
     RgBool32        requestShaderReload;
+    RgBool32        requestRasterizedSkyFree;
+    // Size of a cubemap side to render rasterized sky in.
+    uint32_t        rasterizedSkyCubemapSize;  
 } RgStartFrameInfo;
 
 RgResult rgStartFrame(
     RgInstance                          rgInstance,
     const RgStartFrameInfo              *startInfo);
 
-typedef enum RgDrawFrameFlagBits
-{
-    RG_DRAW_FRAME_DISABLE_ALBEDO_MAPS       = 1 << 0,
-    RG_DRAW_FRAME_DISABLE_NORMAL_MAPS       = 1 << 1,
-    RG_DRAW_FRAME_DISABLE_RASTERIZATION     = 1 << 2,
-    RG_DRAW_FRAME_FORCE_ROUGHNESS_ONE       = 1 << 3,
-    RG_DRAW_FRAME_FORCE_ROUGHNESS_ZERO      = 1 << 4,
-    RG_DRAW_FRAME_FORCE_METALLICITY_ONE     = 1 << 5,
-    RG_DRAW_FRAME_FORCE_METALLICITY_ZERO    = 1 << 6,
-
-    RG_DRAW_FRAME_FORCE_ROUGHNESS_MASK = RG_DRAW_FRAME_FORCE_ROUGHNESS_ONE | RG_DRAW_FRAME_FORCE_ROUGHNESS_ZERO,
-    RG_DRAW_FRAME_FORCE_METALLICITY_MASK = RG_DRAW_FRAME_FORCE_METALLICITY_ONE | RG_DRAW_FRAME_FORCE_METALLICITY_ZERO,
-} RgDrawFrameFlagBits;
-typedef RgFlags RgDrawFrameFlags;
-
 typedef enum RgSkyType
 {
     RG_SKY_TYPE_COLOR,
     RG_SKY_TYPE_CUBEMAP,
-    RG_SKY_TYPE_GEOMETRY
+    RG_SKY_TYPE_RASTERIZED_GEOMETRY,
+    RG_SKY_TYPE_RAY_TRACED_GEOMETRY
 } RgSkyType;
 
 typedef struct RgDrawFrameInfo
@@ -642,9 +643,9 @@ typedef struct RgDrawFrameInfo
     // View and projection matrices are column major.
     float               view[16];
     float               projection[16];
-    RgDrawFrameFlags    flags;
-    uint32_t            renderWidth;
-    uint32_t            renderHeight;
+    RgBool32            disableRayTracing;
+    RgBool32            disableRasterization;
+    RgExtent2D          renderSize;
     double              currentTime;
     RgBool32            disableEyeAdaptation;
     // True, if default values for minLogLuminance, maxLogLuminance

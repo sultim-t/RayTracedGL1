@@ -76,9 +76,9 @@ Rasterizer::~Rasterizer()
     DestroySwapchainFramebuffers();
 }
 
-void Rasterizer::PrepareForFrame(uint32_t frameIndex)
+void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyFree)
 {  
-    collectors[frameIndex]->Clear();
+    collectors[frameIndex]->Clear(requestRasterizedSkyFree);
 }
 
 void Rasterizer::Upload(uint32_t frameIndex, 

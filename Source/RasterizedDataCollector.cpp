@@ -97,9 +97,23 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     assert((info.structs != nullptr && info.arrays == nullptr) ||
            (info.structs == nullptr && info.arrays != nullptr));
 
-    // if renderToSwapchain, depthTest and depthWrite must be false
-    assert(!info.renderToSwapchain || (info.renderToSwapchain && !(info.depthTest || info.depthWrite)));
+    const bool renderToSwapchain = info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN;
+    const bool renderToSky = info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
 
+    // if renderToSwapchain, depth data is not available
+    if (renderToSwapchain)
+    {
+        assert(!info.depthTest && !info.depthWrite);
+    }
+
+    // if renderToSky, default pViewProjection and pViewport should be used,
+    // as sky geometry can be updated not in each frame
+    if (renderToSky)
+    {
+        assert(pViewProjection == nullptr && pViewport == nullptr);
+        pViewProjection = nullptr;
+        pViewport = nullptr;
+    }
 
     if (info.arrays != nullptr)
     {
@@ -194,9 +208,13 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         curIndexCount += info.indexCount;
     }
 
-    if (info.renderToSwapchain)
+    if (renderToSwapchain)
     {
         swapchainDrawInfos.push_back(drawInfo);
+    }
+    else if (renderToSky)
+    {
+        // TODO
     }
     else
     {
@@ -244,7 +262,7 @@ void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryU
     memcpy(dstVerts, info.structs, sizeof(RasterizerVertex) * info.vertexCount);
 }
 
-void RasterizedDataCollector::Clear()
+void RasterizedDataCollector::Clear(bool requestRasterizedSkyFree)
 {
     rasterDrawInfos.clear();
     swapchainDrawInfos.clear();

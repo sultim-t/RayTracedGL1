@@ -72,7 +72,7 @@ public:
 
     void AddGeometry(const RgRasterizedGeometryUploadInfo &info, 
                      const float *viewProjection, const RgViewport *viewport);
-    void Clear();
+    void Clear(bool requestRasterizedSkyFree);
 
     VkBuffer GetVertexBuffer() const;
     VkBuffer GetIndexBuffer() const;
