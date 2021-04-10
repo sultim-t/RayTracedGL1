@@ -23,7 +23,7 @@
 #include <vector>
 
 #include <RTGL1/RTGL1.h>
-#include "Buffer.h"
+#include "AutoBuffer.h"
 #include "Common.h"
 #include "TextureManager.h"
 
@@ -70,9 +70,12 @@ public:
     RasterizedDataCollector& operator=(const RasterizedDataCollector& other) = delete;
     RasterizedDataCollector& operator=(RasterizedDataCollector&& other) noexcept = delete;
 
-    void AddGeometry(const RgRasterizedGeometryUploadInfo &info, 
+    void AddGeometry(uint32_t frameIndex,
+                     const RgRasterizedGeometryUploadInfo &info, 
                      const float *viewProjection, const RgViewport *viewport);
-    void Clear(bool requestRasterizedSkyFree);
+    void Clear(uint32_t frameIndex, bool requestRasterizedSkyFree);
+
+    void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
     VkBuffer GetVertexBuffer() const;
     VkBuffer GetIndexBuffer() const;
@@ -93,11 +96,8 @@ private:
     VkDevice device;
     std::weak_ptr<TextureManager> textureMgr;
 
-    Buffer vertexBuffer;
-    Buffer indexBuffer;
-
-    RasterizerVertex *mappedVertexData;
-    uint32_t *mappedIndexData;
+    std::shared_ptr<AutoBuffer> vertexBuffer;
+    std::shared_ptr<AutoBuffer> indexBuffer;
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

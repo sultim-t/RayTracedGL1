@@ -57,6 +57,8 @@ public:
     void Upload(uint32_t frameIndex, 
                 const RgRasterizedGeometryUploadInfo &uploadInfo, 
                 const float *viewProjection, const RgViewport *viewport);
+
+    void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
     void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj);
 
@@ -118,7 +120,7 @@ private:
     RasterAreaState swapchainFramebufferState;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
-    std::shared_ptr<RasterizedDataCollector> collectors[MAX_FRAMES_IN_FLIGHT];
+    std::shared_ptr<RasterizedDataCollector> collectors;
 };
 
 }

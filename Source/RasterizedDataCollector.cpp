@@ -67,29 +67,18 @@ RasterizedDataCollector::RasterizedDataCollector(
     curVertexCount(0),
     curIndexCount(0)
 {
-    vertexBuffer.Init(
-        _allocator,
-        _maxVertexCount * sizeof(RasterizerVertex),
-        VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    vertexBuffer = std::make_shared<AutoBuffer>(_device, _allocator, "Rasterizer vertex buffer staging", "Rasterizer vertex buffer");
+    indexBuffer = std::make_shared<AutoBuffer>(_device, _allocator, "Rasterizer index buffer staging", "Rasterizer index buffer");
 
-    indexBuffer.Init(
-        _allocator,
-        _maxIndexCount * sizeof(uint32_t),
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
-        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-
-    mappedVertexData = static_cast<RasterizerVertex *>(vertexBuffer.Map());
-    mappedIndexData = static_cast<uint32_t *>(indexBuffer.Map());
+    vertexBuffer->Create(_maxVertexCount * sizeof(RasterizerVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
+    indexBuffer->Create(_maxIndexCount * sizeof(RasterizerVertex), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
 }
 
 RasterizedDataCollector::~RasterizedDataCollector()
-{
-    vertexBuffer.Unmap();
-    indexBuffer.Unmap();
-}
+{}
 
-void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &info, 
+void RasterizedDataCollector::AddGeometry(uint32_t frameIndex, 
+                                          const RgRasterizedGeometryUploadInfo &info, 
                                           const float *pViewProjection, const RgViewport *pViewport)
 {
     assert(info.vertexCount > 0);
@@ -122,13 +111,13 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
         assert(info.arrays->texCoordData == nullptr || info.arrays->texCoordStride >= 2 * sizeof(float));
     }
 
-    if ((uint64_t)curVertexCount + info.vertexCount >= vertexBuffer.GetSize() / sizeof(RasterizerVertex))
+    if ((uint64_t)curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof(RasterizerVertex))
     {
         assert(0 && "Increase the size of \"rasterizedMaxVertexCount\". Vertex buffer size reached the limit.");
         return;
     }
 
-    if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer.GetSize() / sizeof(uint32_t))
+    if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
     {
         assert(0 && "Increase the size of \"rasterizedMaxIndexCount\". Index buffer size reached the limit.");
         return;
@@ -174,7 +163,7 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     }
 
     // copy vertex data
-    RasterizerVertex *dstVerts = mappedVertexData + curVertexCount;
+    RasterizerVertex *dstVerts = (RasterizerVertex*)vertexBuffer->GetMapped(frameIndex) + curVertexCount;
 
     if (info.arrays != nullptr)
     {
@@ -193,13 +182,13 @@ void RasterizedDataCollector::AddGeometry(const RgRasterizedGeometryUploadInfo &
     bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
     if (useIndices)
     {
-        if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer.GetSize() / sizeof(uint32_t))
+        if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
         {
             assert(0);
             return;
         }
 
-        uint32_t *dstIndices = mappedIndexData + curIndexCount;
+        uint32_t *dstIndices = (uint32_t*)indexBuffer->GetMapped(frameIndex) + curIndexCount;
         memcpy(dstIndices, info.indexData, info.indexCount * sizeof(uint32_t));
 
         drawInfo.indexCount = info.indexCount;
@@ -262,7 +251,7 @@ void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryU
     memcpy(dstVerts, info.structs, sizeof(RasterizerVertex) * info.vertexCount);
 }
 
-void RasterizedDataCollector::Clear(bool requestRasterizedSkyFree)
+void RasterizedDataCollector::Clear(uint32_t frameIndex, bool requestRasterizedSkyFree)
 {
     rasterDrawInfos.clear();
     swapchainDrawInfos.clear();
@@ -270,14 +259,20 @@ void RasterizedDataCollector::Clear(bool requestRasterizedSkyFree)
     curIndexCount = 0;
 }
 
+void RasterizedDataCollector::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    vertexBuffer->CopyFromStaging(cmd, frameIndex, sizeof(RasterizerVertex) * curVertexCount);
+    indexBuffer->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * curIndexCount);
+}
+
 VkBuffer RasterizedDataCollector::GetVertexBuffer() const
 {
-    return vertexBuffer.GetBuffer();
+    return vertexBuffer->GetDeviceLocal();
 }
 
 VkBuffer RasterizedDataCollector::GetIndexBuffer() const
 {
-    return indexBuffer.GetBuffer();
+    return indexBuffer->GetDeviceLocal();
 }
 
 const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollector::GetRasterDrawInfos() const
