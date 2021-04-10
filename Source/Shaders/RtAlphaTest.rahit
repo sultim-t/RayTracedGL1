@@ -40,7 +40,7 @@ void main()
     const vec2 texCoord = tr.layerTexCoord[0] * baryCoords;
  
 	// check only first material
- 	const vec4 color = getTextureSample(tr.materials[0][0], texCoord);
+ 	const vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.materialColors[0];
 
 	// if must be discarded
 	if (color.a < ALPHA_THRESHOLD)

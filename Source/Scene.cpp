@@ -95,7 +95,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     ASManager::TLASPrepareResult prepare = {};
 
     // prepare for building and fill uniform data
-    bool shouldBeBuilt = asManager->PrepareForBuildingTLAS(frameIndex, uniform, disableGeometrySkybox, &push, &prepare);
+    asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), disableGeometrySkybox, &push, &prepare);
 
     // upload uniform data
     uniform->Upload(cmd, frameIndex);
@@ -104,14 +104,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
 
 
-    if (shouldBeBuilt)
-    {
-        asManager->BuildTLAS(cmd, frameIndex, prepare);
-
-        return true;
-    }
-
-    return shouldBeBuilt;
+    return asManager->TryBuildTLAS(cmd, frameIndex, prepare);;
 }
 
 bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)

@@ -60,6 +60,8 @@ private:
 
     VkDescriptorPool        descPool;
     VkDescriptorSetLayout   descSetLayout;
+    // uniform device local buffer won't be changing (only its contents),
+    // so desc set need to be updated once, so there can be only one desc set
     VkDescriptorSet         descSet;
 };
 

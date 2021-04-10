@@ -844,12 +844,12 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
     instanceGeomCount[index] = geomCount;
 }
 
-bool ASManager::PrepareForBuildingTLAS(
+void ASManager::PrepareForBuildingTLAS(
     uint32_t frameIndex,
-    const std::shared_ptr<GlobalUniform> &refUniform,
+    ShGlobalUniform &uniformData,
     bool ignoreSkyboxTLAS, 
     ShVertPreprocessing *outPush,
-    TLASPrepareResult *outResult)
+    TLASPrepareResult *outResult) const
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -867,20 +867,20 @@ bool ASManager::PrepareForBuildingTLAS(
     // write geometry offsets to uniform to access geomInfos
     // with instance ID and local (in terms of BLAS) geometry index in shaders;
     // Note: std140 requires elements to be aligned by sizeof(vec4)
-    int32_t *instanceGeomInfoOffset = refUniform->GetData()->instanceGeomInfoOffset;
+    int32_t *instanceGeomInfoOffset = uniformData.instanceGeomInfoOffset;
 
     // write geometry counts of each BLAS for iterating in vertex preprocessing 
-    int32_t *instanceGeomCount = refUniform->GetData()->instanceGeomCount;
+    int32_t *instanceGeomCount = uniformData.instanceGeomCount;
 
-    std::vector<std::unique_ptr<BLASComponent>> *blasArrays[] =
+    const std::vector<std::unique_ptr<BLASComponent>> *blasArrays[] =
     {
         &allStaticBlas,
         &allDynamicBlas[frameIndex],
     };
 
-    for (auto *blasArr : blasArrays)
+    for (const auto *blasArr : blasArrays)
     {
-        for (auto &blas : *blasArr)
+        for (const auto &blas : *blasArr)
         {
             bool isSkybox = blas->GetFilter() & FT::PV_SKYBOX;
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
@@ -924,19 +924,18 @@ bool ASManager::PrepareForBuildingTLAS(
         }
     }
 
+    outPush->tlasInstanceCount = r.instanceCount;
+    outPush->skyboxTlasInstanceCount = r.skyboxInstanceCount;
+}
+
+bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
+{
     if (r.instanceCount == 0 && r.skyboxInstanceCount == 0)
     {
         return false;
     }
 
-    outPush->tlasInstanceCount = r.instanceCount;
-    outPush->skyboxTlasInstanceCount = r.skyboxInstanceCount;
 
-    return true;
-}
-
-void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
-{
     // fill buffer
     auto *mapped = (VkAccelerationStructureInstanceKHR*)instanceBuffer->GetMapped(frameIndex);
 
@@ -1000,6 +999,9 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPr
 
 
     UpdateASDescriptors(frameIndex);
+
+
+    return true;
 }
 
 void ASManager::CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frameIndex)

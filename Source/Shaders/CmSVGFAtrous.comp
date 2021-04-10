@@ -128,6 +128,7 @@ void atrous(sampler2D samplerDiff,
 
     float weightSum = 1.0;
     float weightSumSpec = 1.0;
+    float weightSumIndir = 1.0;
 
     const int FilterSize = 1;
     const float waveletKernel[2][2] = 
@@ -173,28 +174,33 @@ void atrous(sampler2D samplerDiff,
             const float waveletW = waveletKernel[abs(yy)][abs(xx)];
             const float isInside = float(testInside(pix_q, screenSize));
 
-            const float wDiff = exp(-w_z * w_z - w_l) * w_n * waveletW * isInside;
-            const float wSpec = w_r * exp(-w_z * w_z) * w_n * waveletW * isInside;
+            const float wBase = exp(-w_z * w_z) * w_n * waveletW * isInside;
+
+            const float wDiff      = wBase * exp(-w_l);
+            const float wSpec      = wBase * w_r;
+            const float wDiffIndir = wBase;
 
 
             outDiff += diffColor_q * wDiff;
             outSpec += specColor_q * wSpec;
-            accumulateSH(outIndirSH, indirSH_q, wDiff);
+            accumulateSH(outIndirSH, indirSH_q, wDiffIndir);
 
             outVariance += variance_q * wDiff * wDiff;
 
             weightSum += wDiff;
             weightSumSpec += wSpec;
+            weightSumIndir += wDiffIndir;
         }
     }
 
     const float invWeightSum = 1.0 / weightSum;
     const float invWeightSumSpec = 1.0 / weightSumSpec;
+    const float invWeightSumIdir = 1.0 / weightSumIndir;
 
     outDiff     *= invWeightSum;
     outVariance *= invWeightSum * invWeightSum;
     outSpec     *= invWeightSumSpec;
-    multiplySH(outIndirSH, invWeightSum);
+    multiplySH(outIndirSH, invWeightSumIdir);
 }
 
 void main()

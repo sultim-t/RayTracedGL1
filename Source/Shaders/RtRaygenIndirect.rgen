@@ -97,6 +97,8 @@ vec3 processBounce(
         
         // TODO: emmision
 
+        // TODO: separate "getBounceHitInfo(..)"
+
         // calculate direct illumination in hit position
         vec3 diffuse, specular;
         processDirectIllumination(

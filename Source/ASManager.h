@@ -86,13 +86,13 @@ public:
 
     // Prepare data for building TLAS.
     // Also fill uniform with current state.
-    bool PrepareForBuildingTLAS(
+    void PrepareForBuildingTLAS(
         uint32_t frameIndex,
-        const std::shared_ptr<GlobalUniform> &refUniform,
+        ShGlobalUniform &uniformData,
         bool ignoreSkyboxTLAS,
         ShVertPreprocessing *outPush,
-        TLASPrepareResult *outResult);
-    void BuildTLAS(
+        TLASPrepareResult *outResult) const;
+    bool TryBuildTLAS(
         VkCommandBuffer cmd, uint32_t frameIndex, 
         const TLASPrepareResult &info);
 
