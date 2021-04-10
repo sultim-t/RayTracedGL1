@@ -53,7 +53,7 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex);
+    void PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyFree);
     void Upload(uint32_t frameIndex, 
                 const RgRasterizedGeometryUploadInfo &uploadInfo, 
                 const float *viewProjection, const RgViewport *viewport);

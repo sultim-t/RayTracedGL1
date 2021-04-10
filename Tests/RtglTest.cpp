@@ -410,8 +410,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         {
             RgStartFrameInfo startInfo = {};
-            startInfo.surfaceWidth = (uint32_t)pWindow->width;
-            startInfo.surfaceHeight = (uint32_t)pWindow->height;
+            startInfo.surfaceSize = { (uint32_t)pWindow->width, (uint32_t)pWindow->height };
             startInfo.requestVSync = true;
             startInfo.requestShaderReload = RELOAD_SHADERS;
 
@@ -543,8 +542,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         // submit frame to be rendered
         RgDrawFrameInfo frameInfo = {};
-        frameInfo.renderWidth = pWindow->width;
-        frameInfo.renderHeight = pWindow->height;
+        frameInfo.renderSize = { (uint32_t)pWindow->width, (uint32_t)pWindow->height };
 
         auto tm = std::chrono::system_clock::now() - timeStart;
         frameInfo.currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(tm).count() / 1000.0f;

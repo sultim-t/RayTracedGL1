@@ -218,7 +218,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     // wait for previous cmd with the same frame index
     Utils::WaitAndResetFence(device, frameFences[frameIndex]);
 
-    swapchain->RequestNewSize(startInfo.surfaceWidth, startInfo.surfaceHeight);
+    swapchain->RequestNewSize(startInfo.surfaceSize.width, startInfo.surfaceSize.height);
     swapchain->RequestVsync(startInfo.requestVSync);
     swapchain->AcquireImage(imageAvailableSemaphores[frameIndex]);
 
@@ -233,7 +233,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     // clear the data that were created MAX_FRAMES_IN_FLIGHT ago
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
-    rasterizer->PrepareForFrame(frameIndex);
+    rasterizer->PrepareForFrame(frameIndex, startInfo.requestRasterizedSkyFree);
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
@@ -266,8 +266,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->normalsStride = vbProperties.normalStride / 4;
     gu->texCoordsStride = vbProperties.texCoordStride / 4;
 
-    gu->renderWidth = (float)drawInfo.renderWidth;
-    gu->renderHeight = (float)drawInfo.renderHeight;
+    gu->renderWidth = (float)drawInfo.renderSize.width;
+    gu->renderHeight = (float)drawInfo.renderSize.height;
     gu->frameId = frameId;
 
     gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
@@ -299,7 +299,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->skyType =
         drawInfo.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
-        drawInfo.skyType == RG_SKY_TYPE_GEOMETRY ? SKY_TYPE_TLAS : 
+        drawInfo.skyType == RG_SKY_TYPE_RAY_TRACED_GEOMETRY ? SKY_TYPE_TLAS : 
         SKY_TYPE_COLOR;
 
     if (disableGeometrySkybox && gu->skyType == SKY_TYPE_TLAS)
@@ -320,13 +320,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
 
-    const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, drawInfo.renderWidth));
-    const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, drawInfo.renderHeight));
+    const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, drawInfo.renderSize.width));
+    const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, drawInfo.renderSize.height));
 
     // submit geometry and uniform
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
 
-    if (sceneNotEmpty)
+    if (sceneNotEmpty && !drawInfo.disableRayTracing)
     {
         pathTracer->Bind(
             cmd, frameIndex, 
@@ -343,27 +343,33 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             framebuffers);
 
         denoiser->Denoise(cmd, frameIndex, uniform);
-    }
 
-    // tonemapping
-    tonemapping->Tonemap(cmd, frameIndex, uniform);
+        // tonemapping
+        tonemapping->Tonemap(cmd, frameIndex, uniform);
+    }
 
     // final image composition
     imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
 
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
-    // draw rasterized geometry into the final image
-    rasterizer->DrawToFinalImage(cmd, frameIndex, 
-                                 uniform->GetData()->view, uniform->GetData()->projection);
+    if (!drawInfo.disableRasterization)
+    {
+        // draw rasterized geometry into the final image
+        rasterizer->DrawToFinalImage(cmd, frameIndex, 
+                                     uniform->GetData()->view, uniform->GetData()->projection);        
+    }
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL,
         renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
 
-    rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), 
-                                uniform->GetData()->view, uniform->GetData()->projection);
+    if (!drawInfo.disableRasterization)
+    {
+        rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), 
+                                    uniform->GetData()->view, uniform->GetData()->projection);
+    }
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
@@ -409,7 +415,7 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     previousFrameTime = currentFrameTime;
     currentFrameTime = drawInfo->currentTime;
 
-    if (drawInfo->renderWidth > 0 && drawInfo->renderHeight > 0)
+    if (drawInfo->renderSize.width > 0 && drawInfo->renderSize.height > 0)
     {
         FillUniform(uniform->GetData(), *drawInfo);
         Render(currentFrameCmd, *drawInfo);
