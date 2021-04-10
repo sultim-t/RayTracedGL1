@@ -209,7 +209,7 @@ VulkanDevice::~VulkanDevice()
     DestroyInstance();
 }
 
-VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync, bool reloadShaders)
+VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
 {
     currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -218,11 +218,11 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     // wait for previous cmd with the same frame index
     Utils::WaitAndResetFence(device, frameFences[frameIndex]);
 
-    swapchain->RequestNewSize(surfaceWidth, surfaceHeight);
-    swapchain->RequestVsync(vsync);
+    swapchain->RequestNewSize(startInfo.surfaceWidth, startInfo.surfaceHeight);
+    swapchain->RequestVsync(startInfo.requestVSync);
     swapchain->AcquireImage(imageAvailableSemaphores[frameIndex]);
 
-    if (reloadShaders)
+    if (startInfo.requestShaderReload)
     {
         shaderManager->ReloadShaders();
     }
@@ -243,16 +243,16 @@ VkCommandBuffer VulkanDevice::BeginFrame(uint32_t surfaceWidth, uint32_t surface
     return cmd;
 }
 
-void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frameInfo) const
+void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const
 {
     memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
     memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
 
-    memcpy(gu->view, frameInfo.view, 16 * sizeof(float));
-    memcpy(gu->projection, frameInfo.projection, 16 * sizeof(float));
+    memcpy(gu->view, drawInfo.view, 16 * sizeof(float));
+    memcpy(gu->projection, drawInfo.projection, 16 * sizeof(float));
 
-    Matrix::Inverse(gu->invView, frameInfo.view);
-    Matrix::Inverse(gu->invProjection, frameInfo.projection);
+    Matrix::Inverse(gu->invView, drawInfo.view);
+    Matrix::Inverse(gu->invProjection, drawInfo.projection);
 
     gu->cameraPosition[0] = gu->invView[12];
     gu->cameraPosition[1] = gu->invView[13];
@@ -266,17 +266,17 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
     gu->normalsStride = vbProperties.normalStride / 4;
     gu->texCoordsStride = vbProperties.texCoordStride / 4;
 
-    gu->renderWidth = frameInfo.renderWidth;
-    gu->renderHeight = frameInfo.renderHeight;
+    gu->renderWidth = (float)drawInfo.renderWidth;
+    gu->renderHeight = (float)drawInfo.renderHeight;
     gu->frameId = frameId;
 
-    gu->timeDelta = std::max<double>(currentFrameTime - previousFrameTime, 0.001);
+    gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
     
-    if (frameInfo.overrideTonemappingParams)
+    if (drawInfo.overrideTonemappingParams)
     {
-        gu->minLogLuminance = frameInfo.minLogLuminance;
-        gu->maxLogLuminance = frameInfo.maxLogLuminance;
-        gu->luminanceWhitePoint = frameInfo.luminanceWhitePoint;
+        gu->minLogLuminance = drawInfo.minLogLuminance;
+        gu->maxLogLuminance = drawInfo.maxLogLuminance;
+        gu->luminanceWhitePoint = drawInfo.luminanceWhitePoint;
     }
     else
     {
@@ -285,21 +285,21 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
         gu->luminanceWhitePoint = 1.5f;
     }
 
-    gu->stopEyeAdaptation = frameInfo.disableEyeAdaptation;
+    gu->stopEyeAdaptation = drawInfo.disableEyeAdaptation;
 
     gu->lightCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
     gu->lightCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
     gu->lightCountSphericalPrev = scene->GetLightManager()->GetSphericalLightCountPrev();
     gu->lightCountDirectionalPrev = scene->GetLightManager()->GetDirectionalLightCountPrev();
 
-    memcpy(gu->skyColorDefault, frameInfo.skyColorDefault.data, sizeof(float) * 3);
-    gu->skyColorMultiplier = frameInfo.skyColorMultiplier;
+    memcpy(gu->skyColorDefault, drawInfo.skyColorDefault.data, sizeof(float) * 3);
+    gu->skyColorMultiplier = drawInfo.skyColorMultiplier;
 
-    memcpy(gu->skyViewerPosition, frameInfo.skyViewerPosition.data, sizeof(float) * 3);
+    memcpy(gu->skyViewerPosition, drawInfo.skyViewerPosition.data, sizeof(float) * 3);
 
     gu->skyType =
-        frameInfo.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
-        frameInfo.skyType == RG_SKY_TYPE_GEOMETRY ? SKY_TYPE_TLAS : 
+        drawInfo.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
+        drawInfo.skyType == RG_SKY_TYPE_GEOMETRY ? SKY_TYPE_TLAS : 
         SKY_TYPE_COLOR;
 
     if (disableGeometrySkybox && gu->skyType == SKY_TYPE_TLAS)
@@ -307,21 +307,21 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &frame
         gu->skyType = SKY_TYPE_COLOR;
     }
 
-    gu->skyCubemapIndex = cubemapManager->IsCubemapValid(frameInfo.skyCubemap) ? frameInfo.skyCubemap : RG_EMPTY_CUBEMAP;
+    gu->skyCubemapIndex = cubemapManager->IsCubemapValid(drawInfo.skyCubemap) ? drawInfo.skyCubemap : RG_EMPTY_CUBEMAP;
 
-    gu->dbgShowGradients = !!frameInfo.dbgShowGradients;
-    gu->dbgShowMotionVectors = !!frameInfo.dbgShowMotionVectors;
+    gu->dbgShowGradients = !!drawInfo.dbgShowGradients;
+    gu->dbgShowMotionVectors = !!drawInfo.dbgShowMotionVectors;
 }
 
-void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &frameInfo)
+void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 {
     const uint32_t frameIndex = currentFrameIndex;
 
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
 
-    const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, frameInfo.renderWidth));
-    const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, frameInfo.renderHeight));
+    const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, drawInfo.renderWidth));
+    const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, drawInfo.renderHeight));
 
     // submit geometry and uniform
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
@@ -388,18 +388,18 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 #pragma region RTGL1 interface implementation
 
-RgResult VulkanDevice::StartFrame(uint32_t surfaceWidth, uint32_t surfaceHeight, bool vsync, bool reloadShaders)
+RgResult VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
 {
     if (currentFrameCmd != VK_NULL_HANDLE)
     {
         return RG_FRAME_WASNT_ENDED;
     }
 
-    currentFrameCmd = BeginFrame(surfaceWidth, surfaceHeight, vsync, reloadShaders);
+    currentFrameCmd = BeginFrame(*startInfo);
     return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
+RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
@@ -407,12 +407,12 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *frameInfo)
     }
 
     previousFrameTime = currentFrameTime;
-    currentFrameTime = frameInfo->currentTime;
+    currentFrameTime = drawInfo->currentTime;
 
-    if (frameInfo->renderWidth > 0 && frameInfo->renderHeight > 0)
+    if (drawInfo->renderWidth > 0 && drawInfo->renderHeight > 0)
     {
-        FillUniform(uniform->GetData(), *frameInfo);
-        Render(currentFrameCmd, *frameInfo);
+        FillUniform(uniform->GetData(), *drawInfo);
+        Render(currentFrameCmd, *drawInfo);
     }
 
     EndFrame(currentFrameCmd);

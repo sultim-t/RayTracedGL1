@@ -408,8 +408,16 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         pWindow->UpdateSize();
         ProcessInput(pWindow->glfwHandle);
 
-        r = rgStartFrame(instance, (uint32_t)pWindow->width, (uint32_t)pWindow->height, true, RELOAD_SHADERS);
-        RG_CHECKERROR(r);
+        {
+            RgStartFrameInfo startInfo = {};
+            startInfo.surfaceWidth = (uint32_t)pWindow->width;
+            startInfo.surfaceHeight = (uint32_t)pWindow->height;
+            startInfo.requestVSync = true;
+            startInfo.requestShaderReload = RELOAD_SHADERS;
+
+            r = rgStartFrame(instance, &startInfo);
+            RG_CHECKERROR(r);
+        }
 
         if (frameCount == 0)
         {
