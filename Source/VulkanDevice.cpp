@@ -140,8 +140,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         textureManager,
         framebuffers,
         swapchain->GetSurfaceFormat(),
-        info->rasterizedMaxVertexCount, 
-        info->rasterizedMaxIndexCount);
+        *info);
 
     tonemapping         = std::make_shared<Tonemapping>(
         device,
@@ -324,8 +323,19 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, drawInfo.renderSize.width));
     const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, drawInfo.renderSize.height));
 
-    // submit geometry and uniform
+    // submit geometry and upload uniform after getting data from a scene
     bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
+
+    if (!drawInfo.disableRasterization)
+    {
+        rasterizer->SubmitForFrame(cmd, frameIndex);
+
+        // draw rasterized sky to albedo before tracing primary rays
+        if (drawInfo.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
+        {
+            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, uniform->GetData()->view, uniform->GetData()->projection);
+        }
+    }
 
     if (sceneNotEmpty && !drawInfo.disableRayTracing)
     {
@@ -337,8 +347,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             cmd, frameIndex, renderWidth, renderHeight,
             framebuffers);
 
+        // save and merge samples from previous illumination results
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
+        // update the illumination
         pathTracer->TraceIllumination(
             cmd, frameIndex, renderWidth, renderHeight,
             framebuffers);
@@ -356,8 +368,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (!drawInfo.disableRasterization)
     {
-        rasterizer->SubmitForFrame(cmd, frameIndex);
-
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, 
                                      uniform->GetData()->view, uniform->GetData()->projection);        

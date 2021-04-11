@@ -37,7 +37,7 @@ Rasterizer::Rasterizer(
     std::shared_ptr<TextureManager> _textureMgr,
     std::shared_ptr<Framebuffers> _storageFramebuffers,
     VkFormat _surfaceFormat,
-    uint32_t _maxVertexCount, uint32_t _maxIndexCount)
+    const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
     textureMgr(std::move(_textureMgr)),
@@ -49,8 +49,8 @@ Rasterizer::Rasterizer(
     rasterFramebuffers{},
     rasterSkyFramebuffers{}
 {
-    collectorGeneral = std::make_shared<RasterizedDataCollectorGeneral>(device, _allocator, textureMgr, _maxVertexCount, _maxIndexCount);
-    collectorSky = std::make_shared<RasterizedDataCollectorSky>(device, _allocator, textureMgr, _maxVertexCount, _maxIndexCount);
+    collectorGeneral = std::make_shared<RasterizedDataCollectorGeneral>(device, _allocator, textureMgr, _instanceInfo.rasterizedMaxVertexCount, _instanceInfo.rasterizedMaxIndexCount);
+    collectorSky = std::make_shared<RasterizedDataCollectorSky>(device, _allocator, textureMgr, _instanceInfo.rasterizedSkyMaxVertexCount, _instanceInfo.rasterizedSkyMaxIndexCount);
 
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_DEPTH]);
     CreateSwapchainRenderPass(_surfaceFormat);
@@ -101,7 +101,6 @@ void Rasterizer::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
 {
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_ALBEDO);
-    // TODO: clear depth attachment if no rays were traced?
 
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
@@ -112,7 +111,7 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, float
         rasterPipelines,
         collectorSky->GetSkyDrawInfos(),
         rasterRenderPass,
-        rasterFramebuffers[frameIndex],
+        rasterSkyFramebuffers[frameIndex],
         rasterFramebufferState,
         collectorSky->GetVertexBuffer(),
         collectorSky->GetIndexBuffer(),
@@ -223,6 +222,7 @@ void Rasterizer::Draw(const DrawParams &drawParams)
     {
         return;
     }
+
 
     VkCommandBuffer cmd = drawParams.cmd;
 

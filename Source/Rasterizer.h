@@ -45,7 +45,7 @@ public:
         std::shared_ptr<TextureManager> textureMgr,
         std::shared_ptr<Framebuffers> storageFramebuffers,
         VkFormat surfaceFormat,
-        uint32_t maxVertexCount, uint32_t maxIndexCount);
+        const RgInstanceCreateInfo &instanceInfo);
     ~Rasterizer() override;
 
     Rasterizer(const Rasterizer& other) = delete;

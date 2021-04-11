@@ -383,6 +383,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     hudVertData.colorStride = sizeof(uint32_t);
 
     RgRasterizedGeometryUploadInfo raster = {};
+    raster.renderType = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
     raster.vertexCount = 6;
     raster.arrays = &hudVertData;
     raster.material = RG_NO_MATERIAL;
@@ -392,7 +393,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         0, 0, 1, 0
     };
     raster.color = { 1, 1, 1, 1 };
-    raster.blendEnable = RG_TRUE;
+    raster.blendEnable = RG_FALSE;
 
 
     RgResult    r           = RG_SUCCESS;
@@ -555,7 +556,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
         frameInfo.skyColorDefault = { 0.71f, 0.88f, 1.0f };
-        frameInfo.skyType = RG_SKY_TYPE_CUBEMAP;
+        frameInfo.skyType = RG_SKY_TYPE_RASTERIZED_GEOMETRY;
         frameInfo.skyCubemap = skyboxes[SKYBOX_CURRENT];
         frameInfo.skyColorMultiplier = SKY_INTENSITY;
         frameInfo.skyViewerPosition = { CAMERA_POS.x / 50, CAMERA_POS.y / 50, CAMERA_POS.z / 50 };
@@ -591,8 +592,9 @@ int main()
         info.vertexNormalStride         = 3 * sizeof(float);
         info.vertexTexCoordStride       = 2 * sizeof(float);
         info.vertexColorStride          = sizeof(uint32_t);
-        info.rasterizedMaxVertexCount   = 4096;
-        info.rasterizedMaxIndexCount    = 2048;
+
+        info.rasterizedMaxVertexCount = info.rasterizedSkyMaxVertexCount = 4096;
+        info.rasterizedMaxIndexCount  = info.rasterizedSkyMaxIndexCount  = 2048;
 
         info.ppWindowExtensions         = window.extensions;
         info.windowExtensionCount       = window.extensionCount;
