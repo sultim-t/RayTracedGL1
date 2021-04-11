@@ -145,6 +145,7 @@ struct ShGlobalUniform
     int32_t instanceGeomInfoOffset[72];
     int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];
+    float viewProjCubemap[264];
 };
 
 struct ShGeometryInstance

@@ -33,6 +33,7 @@ public:
     static void Multiply(float *result, const float *a, const float *b);
     static void ToMat4(float *result, const RgTransform &m);
     static void ToMat4Transposed(float *result, const RgTransform &m);
+    static void GetCubemapViewMat(float *result, uint32_t sideIndex);
 };
 
 }

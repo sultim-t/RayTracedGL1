@@ -34,7 +34,7 @@ layout (location = 1) out vec2 outTexCoord;
 
 void main()
 {
-    const mat4 viewProj = mat4(1);//globalUniform.viewProjCubemap[gl_ViewIndex];
+    const mat4 viewProj = globalUniform.viewProjCubemap[gl_ViewIndex];
     
     outColor = unpackLittleEndianUintColor(color);
     outTexCoord = texCoord;

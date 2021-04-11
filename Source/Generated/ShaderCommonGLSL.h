@@ -140,6 +140,7 @@ struct ShGlobalUniform
     ivec4 instanceGeomInfoOffset[18];
     ivec4 instanceGeomInfoOffsetPrev[18];
     ivec4 instanceGeomCount[18];
+    mat4 viewProjCubemap[6];
 };
 
 struct ShGeometryInstance

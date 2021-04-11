@@ -256,7 +256,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     for (uint32_t i = 0; i < 6; i++)
     {
-        //Matrix::GetCubemapViewMat(&gu->viewProjCubemap[16 * i], i);
+        Matrix::GetCubemapViewMat(&gu->viewProjCubemap[16 * i], i);
     }
 
     gu->cameraPosition[0] = gu->invView[12];
@@ -807,7 +807,7 @@ void VulkanDevice::CreateDevice()
         VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
         VK_KHR_MAINTENANCE3_EXTENSION_NAME,
         VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-        //VK_KHR_MULTIVIEW_EXTENSION_NAME
+        VK_KHR_MULTIVIEW_EXTENSION_NAME
     };
 
     if (enableValidationLayer)
