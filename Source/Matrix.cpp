@@ -44,6 +44,9 @@
 
 #include "Matrix.h"
 
+#include <cstring>
+#include <cmath>
+
 using namespace RTGL1;
 
 void Matrix::Inverse(float *inversed, const float *m)
@@ -250,4 +253,108 @@ void Matrix::ToMat4Transposed(float *result, const RgTransform &m)
     result[7] = 0.0f;
     result[11] = 0.0f;
     result[15] = 1.0f;
+}
+
+void Matrix::GetCubemapViewMat(float *result, uint32_t sideIndex)
+{
+    // TODO
+    float m[4][4] = {};
+
+    m[3][3] = 1;
+
+    switch (sideIndex)
+    {
+    // POSITIVE_X
+    case 0:
+        m[0][2] = -1;
+        m[2][0] = -1;
+        m[1][1] = -1;
+        break;
+
+    // NEGATIVE_X
+    case 1:
+        m[0][2] = 1;
+        m[2][0] = 1;
+        m[1][1] = -1;
+        break;
+
+    // POSITIVE_Y
+    case 2:
+        m[1][2] = -1;
+        m[2][1] = 1;
+        m[0][0] = 1;
+        break;
+
+    // NEGATIVE_Y
+    case 3:
+        m[1][2] = 1;
+        m[2][1] = -1;
+        m[0][0] = 1;
+        break;
+
+    // POSITIVE_Z
+    case 4:
+        m[1][1] = -1;
+        m[2][2] = -1;
+        m[0][0] = 1;
+        break;
+
+    // NEGATIVE_Z
+    case 5:
+        m[0][0] = -1;
+        m[1][1] = -1;
+        m[2][2] = 1;
+        break;
+    }
+
+    memcpy(result, m, sizeof(float) * 16);
+}
+
+static float Dot3(const float *a, const float *b)
+{
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+
+static void GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll)
+{
+    float fSinH = sinf(yaw); 
+    float fCosH = cosf(yaw);
+    float fSinP = sinf(pitch); 
+    float fCosP = cosf(pitch);
+    float fSinB = sinf(roll); 
+    float fCosB = cosf(roll);
+
+    // inverse transform, i.e. (T * R)^-1 = R^(-1) * T^(-1) = R^(-1) * T^(-1)
+    float m[4][4];
+
+    // rotation matrix inverse
+    m[0][0] = fCosH*fCosB+fSinP*fSinH*fSinB;
+    m[1][0] = fSinP*fSinH*fCosB-fCosH*fSinB;
+    m[2][0] = fCosP*fSinH;
+    m[0][1] = fCosP*fSinB;
+    m[1][1] = fCosP*fCosB;
+    m[2][1] = -fSinP;
+    m[0][2] = fSinP*fCosH*fSinB-fSinH*fCosB;
+    m[1][2] = fSinP*fCosH*fCosB+fSinH*fSinB;
+    m[2][2] = fCosP*fCosH;
+
+    // flip Y axis for Vulkan
+    m[1][0] = -m[1][0];
+    m[1][1] = -m[1][1];
+    m[1][2] = -m[1][2];
+
+    float invT[] = { -pos[0], -pos[1], -pos[2] };
+
+    // 4th column
+    m[0][3] = Dot3(m[0], invT);
+    m[1][3] = Dot3(m[1], invT);
+    m[2][3] = Dot3(m[2], invT);
+
+    m[3][0] = 0;
+    m[3][1] = 0;
+    m[3][2] = 0;
+    m[3][3] = 1;
+
+    // to column-major
+    Matrix::Transpose(result, (float*)m);
 }
