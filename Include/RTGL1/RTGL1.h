@@ -89,6 +89,8 @@ typedef struct RgInstanceCreateInfo
     // If buffer is full, rasterized data will be ignored
     uint32_t                    rasterizedMaxVertexCount;
     uint32_t                    rasterizedMaxIndexCount;
+    uint32_t                    rasterizedSkyMaxVertexCount;
+    uint32_t                    rasterizedSkyMaxIndexCount;
 
     // The folder to find overriding textures in.
     const char                  *overridenTexturesFolderPath;
