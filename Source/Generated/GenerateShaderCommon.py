@@ -253,7 +253,8 @@ CONST = {
 
     "SKY_TYPE_COLOR"                        : 0,
     "SKY_TYPE_CUBEMAP"                      : 1,
-    "SKY_TYPE_TLAS"                         : 2,
+    "SKY_TYPE_RASTERIZED_GEOMETRY"          : 2,
+    "SKY_TYPE_RAY_TRACED_GEOMETRY"          : 3,
     
     "BLUE_NOISE_TEXTURE_COUNT"              : 64,
     "BLUE_NOISE_TEXTURE_SIZE"               : 64,

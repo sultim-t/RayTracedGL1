@@ -40,20 +40,22 @@ Rasterizer::Rasterizer(
     uint32_t _maxVertexCount, uint32_t _maxIndexCount)
 :
     device(_device),
-    textureMgr(_textureMgr),
+    textureMgr(std::move(_textureMgr)),
     storageFramebuffers(std::move(_storageFramebuffers)),
     rasterRenderPass(VK_NULL_HANDLE),
     swapchainRenderPass(VK_NULL_HANDLE),
     rasterPipelineLayout(VK_NULL_HANDLE),
     swapchainPipelineLayout(VK_NULL_HANDLE),
-    rasterFramebuffers{}
+    rasterFramebuffers{},
+    rasterSkyFramebuffers{}
 {
-    collectors = std::make_shared<RasterizedDataCollector>(device, _allocator, _textureMgr, _maxVertexCount, _maxIndexCount);
+    collectorGeneral = std::make_shared<RasterizedDataCollectorGeneral>(device, _allocator, textureMgr, _maxVertexCount, _maxIndexCount);
+    collectorSky = std::make_shared<RasterizedDataCollectorSky>(device, _allocator, textureMgr, _maxVertexCount, _maxIndexCount);
 
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_DEPTH]);
     CreateSwapchainRenderPass(_surfaceFormat);
 
-    CreatePipelineLayouts(_textureMgr->GetDescSetLayout(), storageFramebuffers->GetDescSetLayout());
+    CreatePipelineLayouts(textureMgr->GetDescSetLayout(), storageFramebuffers->GetDescSetLayout());
 
     rasterPipelines = std::make_shared<RasterizerPipelines>(device, rasterPipelineLayout, rasterRenderPass);
     swapchainPipelines = std::make_shared<RasterizerPipelines>(device, swapchainPipelineLayout, swapchainRenderPass);
@@ -72,32 +74,61 @@ Rasterizer::~Rasterizer()
     DestroySwapchainFramebuffers();
 }
 
-void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyFree)
-{  
-    collectors->Clear(frameIndex, requestRasterizedSkyFree);
+void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyGeometryReuse)
+{
+    collectorGeneral->Clear(frameIndex);
+
+    if (!requestRasterizedSkyGeometryReuse)
+    {
+        collectorSky->Clear(frameIndex);
+    }
 }
 
 void Rasterizer::Upload(uint32_t frameIndex, 
                         const RgRasterizedGeometryUploadInfo &uploadInfo, 
                         const float *viewProjection, const RgViewport *viewport)
 {
-    collectors->AddGeometry(frameIndex, uploadInfo, viewProjection, viewport);
+    collectorGeneral->TryAddGeometry(frameIndex, uploadInfo, viewProjection, viewport);
+    collectorSky->TryAddGeometry(frameIndex, uploadInfo, viewProjection, viewport);
 }
 
 void Rasterizer::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    collectors->CopyFromStaging(cmd, frameIndex);
+    collectorGeneral->CopyFromStaging(cmd, frameIndex);
+    collectorSky->CopyFromStaging(cmd, frameIndex);
+}
+
+void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
+{
+    storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_ALBEDO);
+    // TODO: clear depth attachment if no rays were traced?
+
+    float defaultViewProj[16];
+    Matrix::Multiply(defaultViewProj, view, proj);
+
+    DrawParams params = 
+    {
+        cmd, frameIndex,
+        rasterPipelines,
+        collectorSky->GetSkyDrawInfos(),
+        rasterRenderPass,
+        rasterFramebuffers[frameIndex],
+        rasterFramebufferState,
+        collectorSky->GetVertexBuffer(),
+        collectorSky->GetIndexBuffer(),
+        2,
+        {
+            textureMgr->GetDescSet(frameIndex),
+            storageFramebuffers->GetDescSet(frameIndex)
+        },
+        defaultViewProj
+    };
+
+    Draw(params);
 }
 
 void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj)
 {
-    VkFramebuffer framebuffer = rasterFramebuffers[frameIndex];
-
-    if (framebuffer == VK_NULL_HANDLE)
-    {
-        return;
-    }
-
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_DEPTH);
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_FINAL);
     // TODO: clear depth attachment if no rays were traced?
@@ -105,10 +136,25 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, floa
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
 
-    Draw(cmd, frameIndex,
-         collectors->GetRasterDrawInfos(),
-         rasterRenderPass, rasterPipelines, 
-         framebuffer, rasterFramebufferState, true, defaultViewProj);
+    DrawParams params = 
+    {
+        cmd, frameIndex,
+        rasterPipelines,
+        collectorGeneral->GetRasterDrawInfos(),
+        rasterRenderPass,
+        rasterFramebuffers[frameIndex],
+        rasterFramebufferState,
+        collectorGeneral->GetVertexBuffer(),
+        collectorGeneral->GetIndexBuffer(),
+        2,
+        {
+            textureMgr->GetDescSet(frameIndex),
+            storageFramebuffers->GetDescSet(frameIndex)
+        },
+        defaultViewProj
+    };
+
+    Draw(params);
 }
 
 void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj)
@@ -118,59 +164,75 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
         return;
     }
 
-    VkFramebuffer framebuffer = swapchainFramebuffers[swapchainIndex];
-
-    if (framebuffer == VK_NULL_HANDLE)
-    {
-        return;
-    }
-
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
 
-    Draw(cmd, frameIndex,
-         collectors->GetSwapchainDrawInfos(),
-         swapchainRenderPass, swapchainPipelines, 
-         framebuffer, swapchainFramebufferState, false, defaultViewProj);
+    DrawParams params = 
+    {
+        cmd, frameIndex,
+        swapchainPipelines,
+        collectorGeneral->GetSwapchainDrawInfos(),
+        swapchainRenderPass,
+        swapchainFramebuffers[swapchainIndex],
+        swapchainFramebufferState,
+        collectorGeneral->GetVertexBuffer(),
+        collectorGeneral->GetIndexBuffer(),
+        1,
+        { 
+            textureMgr->GetDescSet(frameIndex),
+            VK_NULL_HANDLE
+        },
+        defaultViewProj
+    };
+
+    Draw(params);
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
-                      const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
-                      VkRenderPass renderPass, const std::shared_ptr<RasterizerPipelines> &pipelines,
-                      VkFramebuffer framebuffer, const RasterAreaState &raState, bool bindStorageFb, float *defaultViewProj)
+struct RasterizedPushConst
 {
-    assert(framebuffer != VK_NULL_HANDLE);
+    float vp[16];
+    float c[4];
+    uint32_t t;
+};
 
-    if (drawInfos.empty())
+static void FillPushConst(RasterizedPushConst &push, const RasterizedDataCollector::DrawInfo &info, const float *defaultViewProj)
+{
+    float model[16];
+    Matrix::ToMat4Transposed(model, info.transform);
+
+    static_assert(sizeof(push) == 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t), "");
+
+    if (!info.isDefaultViewProjMatrix)
     {
-        return;
-    }
-
-    VkDescriptorSet descSets[2] = {};
-    int descSetCount = bindStorageFb ? 2 : 1;
-
-    if (auto tm = textureMgr.lock())
-    {
-        descSets[0] = tm->GetDescSet(frameIndex);
+        Matrix::Multiply(push.vp, model, info.viewProj);
     }
     else
     {
+        Matrix::Multiply(push.vp, model, defaultViewProj);
+    }
+
+    memcpy(push.c, info.color, 4 * sizeof(float));
+    push.t = info.textureIndex;
+}
+
+void Rasterizer::Draw(const DrawParams &drawParams)
+{
+    assert(drawParams.framebuffer != VK_NULL_HANDLE);
+
+    if (drawParams.drawInfos.empty())
+    {
         return;
     }
 
-    if (bindStorageFb)
-    {
-        descSets[1] = storageFramebuffers->GetDescSet(frameIndex);
-    }
+    VkCommandBuffer cmd = drawParams.cmd;
 
-
-    const VkViewport &defaultViewport = raState.viewport;
-    const VkRect2D &defaultRenderArea = raState.renderArea;
+    const VkViewport &defaultViewport = drawParams.rasterAreaState.viewport;
+    const VkRect2D &defaultRenderArea = drawParams.rasterAreaState.renderArea;
 
     VkRenderPassBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    beginInfo.renderPass = renderPass;
-    beginInfo.framebuffer = framebuffer;
+    beginInfo.renderPass = drawParams.renderPass;
+    beginInfo.framebuffer = drawParams.framebuffer;
     beginInfo.renderArea = defaultRenderArea;
     beginInfo.clearValueCount = 0;
     beginInfo.pClearValues = nullptr;
@@ -179,19 +241,17 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
 
     VkPipeline curPipeline = VK_NULL_HANDLE;
-    BindPipelineIfNew(cmd, drawInfos[0], pipelines, curPipeline);
+    BindPipelineIfNew(cmd, drawParams.drawInfos[0], drawParams.pipelines, curPipeline);
 
 
     VkDeviceSize offset = 0;
-    VkBuffer vrtBuffer = collectors->GetVertexBuffer();
-    VkBuffer indBuffer = collectors->GetIndexBuffer();
 
     vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines->GetPipelineLayout(), 0,
-        descSetCount, descSets,
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawParams.pipelines->GetPipelineLayout(), 0,
+        drawParams.descSetCount, drawParams.descSets,
         0, nullptr);
-    vkCmdBindVertexBuffers(cmd, 0, 1, &vrtBuffer, &offset);
-    vkCmdBindIndexBuffer(cmd, indBuffer, offset, VK_INDEX_TYPE_UINT32);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &drawParams.vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32);
 
 
     vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
@@ -199,39 +259,18 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
     VkViewport curViewport = defaultViewport;
 
-    for (const auto &info : drawInfos)
+    for (const auto &info : drawParams.drawInfos)
     {
         SetViewportIfNew(cmd, info, defaultViewport, curViewport);
-        BindPipelineIfNew(cmd, info, pipelines, curPipeline);
+        BindPipelineIfNew(cmd, info, drawParams.pipelines, curPipeline);
 
         // push const
         {
-            float model[16];
-            Matrix::ToMat4Transposed(model, info.transform);
-
-            // TODO: less memory usage
-            struct
-            {
-                float vp[16];
-                float c[4];
-                uint32_t t;
-            } push;
-            static_assert(sizeof(push) == 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t), "");
-
-            if (!info.isDefaultViewProjMatrix)
-            {
-                Matrix::Multiply(push.vp, model, info.viewProj);
-            }
-            else
-            {
-                Matrix::Multiply(push.vp, model, defaultViewProj);
-            }
-
-            memcpy(push.c, info.color, 4 * sizeof(float));
-            push.t = info.textureIndex;
+            RasterizedPushConst push;
+            FillPushConst(push, info, drawParams.defaultViewProj);
 
             vkCmdPushConstants(
-                cmd, pipelines->GetPipelineLayout(),
+                cmd, drawParams.pipelines->GetPipelineLayout(),
                 VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(push),
                 &push);
@@ -350,26 +389,37 @@ void Rasterizer::CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderH
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         assert(rasterFramebuffers[i] == VK_NULL_HANDLE);
-
-        const int attchCount = 1;
-        VkImageView attchs[attchCount] = {
-            storageFramebuffers->GetImageView(FB_IMAGE_INDEX_FINAL, i),
-            //storageFramebuffers->GetImageView(FB_IMAGE_INDEX_DEPTH, i)
-        };
+        assert(rasterSkyFramebuffers[i] == VK_NULL_HANDLE);
 
         VkFramebufferCreateInfo fbInfo = {};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fbInfo.renderPass = rasterRenderPass;
-        fbInfo.attachmentCount = attchCount;
-        fbInfo.pAttachments = attchs;
         fbInfo.width = renderWidth;
         fbInfo.height = renderHeight;
         fbInfo.layers = 1;
 
-        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterFramebuffers[i]);
-        VK_CHECKERROR(r);
+        const int attchCount = 1;
+        VkImageView attchs[attchCount] = {};
+        fbInfo.attachmentCount = attchCount;
+        fbInfo.pAttachments = attchs;
 
-        SET_DEBUG_NAME(device, rasterFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer raster framebuffer");
+        {
+            attchs[0] = storageFramebuffers->GetImageView(FB_IMAGE_INDEX_FINAL, i);
+
+            VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterFramebuffers[i]);
+            VK_CHECKERROR(r);
+
+            SET_DEBUG_NAME(device, rasterFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer raster framebuffer");
+        }
+
+        {
+            attchs[0] = storageFramebuffers->GetImageView(FB_IMAGE_INDEX_ALBEDO, i);
+
+            VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterSkyFramebuffers[i]);
+            VK_CHECKERROR(r);
+
+            SET_DEBUG_NAME(device, rasterSkyFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer raster sky framebuffer");
+        }
     }
 
     auto &rnvp = rasterFramebufferState.viewport;
@@ -428,6 +478,15 @@ void Rasterizer::CreateSwapchainFramebuffers(uint32_t swapchainWidth, uint32_t s
 void Rasterizer::DestroyRenderFramebuffers()
 {
     for (VkFramebuffer &fb : rasterFramebuffers)
+    {
+        if (fb != VK_NULL_HANDLE)
+        {
+            vkDestroyFramebuffer(device, fb, nullptr);
+            fb = VK_NULL_HANDLE;
+        }
+    }
+
+    for (VkFramebuffer &fb : rasterSkyFramebuffers)
     {
         if (fb != VK_NULL_HANDLE)
         {

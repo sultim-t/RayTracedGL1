@@ -31,12 +31,12 @@ Scene::Scene(
     const std::shared_ptr<const GlobalUniform> &_uniform,
     const std::shared_ptr<const ShaderManager> &_shaderManager,
     const VertexBufferProperties &_properties,
-    bool _disableGeometrySkybox)
+    bool _disableRayTracedSkybox)
 :
     toResubmitMovable(false),
     isRecordingStatic(false),
     submittedStaticInCurrentFrame(false),
-    disableGeometrySkybox(_disableGeometrySkybox)
+    disableRayTracedSkybox(_disableRayTracedSkybox)
 {
     VertexCollectorFilterTypeFlags_Init();
 
@@ -95,7 +95,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     ASManager::TLASPrepareResult prepare = {};
 
     // prepare for building and fill uniform data
-    asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), disableGeometrySkybox, &push, &prepare);
+    asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), disableRayTracedSkybox, &push, &prepare);
 
     // upload uniform data
     uniform->Upload(cmd, frameIndex);
@@ -104,14 +104,14 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
 
 
-    return asManager->TryBuildTLAS(cmd, frameIndex, prepare);;
+    return asManager->TryBuildTLAS(cmd, frameIndex, prepare);
 }
 
 bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
 {
     assert(!DoesUniqueIDExist(uploadInfo.uniqueID));
 
-    if (disableGeometrySkybox && uploadInfo.visibilityType == RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX)
+    if (disableRayTracedSkybox && uploadInfo.visibilityType == RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX)
     {
         return false;
     }

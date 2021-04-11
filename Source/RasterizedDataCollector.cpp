@@ -123,7 +123,15 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
         return;
     }
 
-    DrawInfo drawInfo = {};
+
+    DrawInfo *pDrawInfo = PushInfo(info.renderType);
+
+    if (pDrawInfo == nullptr)
+    {
+        return;
+    }
+
+    DrawInfo &drawInfo = *pDrawInfo;
 
     drawInfo.isDefaultViewport = pViewport == nullptr;
     drawInfo.isDefaultViewProjMatrix = pViewProjection == nullptr;
@@ -151,6 +159,7 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
 
     memcpy(drawInfo.color, info.color.data, 4 * sizeof(float));
 
+
     // copy texture indices
     if (const auto mgr = textureMgr.lock())
     {
@@ -161,6 +170,7 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     {
         drawInfo.textureIndex = EMPTY_TEXTURE_INDEX;
     }
+
 
     // copy vertex data
     RasterizerVertex *dstVerts = (RasterizerVertex*)vertexBuffer->GetMapped(frameIndex) + curVertexCount;
@@ -173,10 +183,11 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     {
         CopyFromArrayOfStructs(info, dstVerts);
     }
-    
+
     drawInfo.vertexCount = info.vertexCount;
     drawInfo.firstVertex = curVertexCount;
     curVertexCount += info.vertexCount;
+
 
     // copy index data
     bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
@@ -195,19 +206,6 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
         drawInfo.firstIndex = curIndexCount;
 
         curIndexCount += info.indexCount;
-    }
-
-    if (renderToSwapchain)
-    {
-        swapchainDrawInfos.push_back(drawInfo);
-    }
-    else if (renderToSky)
-    {
-        // TODO
-    }
-    else
-    {
-        rasterDrawInfos.push_back(drawInfo);
     }
 }
 
@@ -251,10 +249,8 @@ void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryU
     memcpy(dstVerts, info.structs, sizeof(RasterizerVertex) * info.vertexCount);
 }
 
-void RasterizedDataCollector::Clear(uint32_t frameIndex, bool requestRasterizedSkyFree)
+void RasterizedDataCollector::Clear(uint32_t frameIndex)
 {
-    rasterDrawInfos.clear();
-    swapchainDrawInfos.clear();
     curVertexCount = 0;
     curIndexCount = 0;
 }
@@ -275,12 +271,105 @@ VkBuffer RasterizedDataCollector::GetIndexBuffer() const
     return indexBuffer->GetDeviceLocal();
 }
 
-const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollector::GetRasterDrawInfos() const
+
+
+RasterizedDataCollectorGeneral::RasterizedDataCollectorGeneral(
+    VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator, 
+    const std::shared_ptr<TextureManager> &textureMgr, uint32_t maxVertexCount, uint32_t maxIndexCount)
+:
+    RasterizedDataCollector(device, allocator, textureMgr, maxVertexCount, maxIndexCount) {}
+
+bool RasterizedDataCollectorGeneral::TryAddGeometry(uint32_t frameIndex, const RgRasterizedGeometryUploadInfo &info,
+    const float *viewProjection, const RgViewport *viewport)
+{
+    if (info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT ||
+        info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN)
+    {
+        AddGeometry(frameIndex, info, viewProjection, viewport);
+        return true;
+    }
+
+    return false;
+}
+
+void RasterizedDataCollectorGeneral::Clear(uint32_t frameIndex)
+{
+    rasterDrawInfos.clear();
+    swapchainDrawInfos.clear();
+
+    RasterizedDataCollector::Clear(frameIndex);
+}
+
+const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollectorGeneral::GetRasterDrawInfos() const
 {
     return rasterDrawInfos;
 }
 
-const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollector::GetSwapchainDrawInfos() const
+const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollectorGeneral::GetSwapchainDrawInfos() const
 {
     return swapchainDrawInfos;
+}
+
+RasterizedDataCollector::DrawInfo *RasterizedDataCollectorGeneral::PushInfo(RgRaterizedGeometryRenderType renderType)
+{
+    if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT)
+    {
+        rasterDrawInfos.emplace_back();
+        return &rasterDrawInfos.back();
+    }
+    else if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN)
+    {
+        swapchainDrawInfos.emplace_back();
+        return &swapchainDrawInfos.back();
+    }
+
+    assert(0);
+    return nullptr;
+}
+
+
+
+RasterizedDataCollectorSky::RasterizedDataCollectorSky(
+    VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator, 
+    const std::shared_ptr<TextureManager> &textureMgr, uint32_t maxVertexCount, uint32_t maxIndexCount)
+:
+    RasterizedDataCollector(device, allocator, textureMgr, maxVertexCount, maxIndexCount) {}
+
+bool RasterizedDataCollectorSky::TryAddGeometry(uint32_t frameIndex, const RgRasterizedGeometryUploadInfo &info,
+    const float *viewProjection, const RgViewport *viewport)
+{
+    if (info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
+    {
+        AddGeometry(frameIndex, info, viewProjection, viewport);
+        return true;
+    }
+
+    return false;
+}
+
+void RasterizedDataCollectorSky::Clear(uint32_t frameIndex)
+{
+    skyDrawInfos.clear();
+
+    RasterizedDataCollector::Clear(frameIndex);
+}
+
+const std::vector<RasterizedDataCollector::DrawInfo> & RasterizedDataCollectorSky::GetSkyDrawInfos() const
+{
+    return skyDrawInfos;
+}
+
+RasterizedDataCollector::DrawInfo *RasterizedDataCollectorSky::PushInfo(RgRaterizedGeometryRenderType renderType)
+{
+    if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
+    {
+        // if renderToSky, default pViewProjection and pViewport should be used,
+        // as sky geometry can be updated not in each frame
+
+        skyDrawInfos.emplace_back();
+        return &skyDrawInfos.back();
+    }
+
+    assert(0);
+    return nullptr;
 }
