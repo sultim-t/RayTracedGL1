@@ -1,0 +1,382 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#include "RenderCubemap.h"
+
+#include "RasterizedDataCollector.h"
+
+
+constexpr VkFormat CUBEMAP_FORMAT = VK_FORMAT_R8G8B8A8_UNORM; 
+
+
+namespace RTGL1
+{
+
+struct RasterizedMultiviewPushConst
+{
+    float color[4];
+    uint32_t textureIndex;
+
+    explicit RasterizedMultiviewPushConst(const RasterizedDataCollector::DrawInfo &info)
+    {
+        memcpy(color, info.color, 4 * sizeof(float));
+        textureIndex = info.textureIndex;
+    }
+};
+
+}
+
+
+
+RTGL1::RenderCubemap::RenderCubemap(
+    VkDevice _device, 
+    const std::shared_ptr<MemoryAllocator> &_allocator,
+    const std::shared_ptr<ShaderManager> &_shaderManager,
+    const std::shared_ptr<TextureManager> &_textureManager,
+    const std::shared_ptr<GlobalUniform> &_uniform,
+    uint32_t _rasterizedSkyCubemapSize)
+:
+    device(_device),
+    pipelineLayout(VK_NULL_HANDLE),
+    multiviewRenderPass(VK_NULL_HANDLE),
+    cubemapImage(VK_NULL_HANDLE),
+    cubemapImageView(VK_NULL_HANDLE),
+    cubemapImageMemory(VK_NULL_HANDLE),
+    cubemapSize(std::max(_rasterizedSkyCubemapSize, 16u))
+{
+    CreatePipelineLayout(_textureManager->GetDescSetLayout(), _uniform->GetDescSetLayout());
+    CreateRenderPass();
+    InitPipelines(_shaderManager, cubemapSize);
+    CreateImages(_allocator, cubemapSize);
+    CreateFramebuffer(cubemapSize);
+}
+
+RTGL1::RenderCubemap::~RenderCubemap()
+{
+    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass(device, multiviewRenderPass, nullptr);
+    vkDestroyImage(device, cubemapImage, nullptr);
+    vkDestroyImageView(device, cubemapImageView, nullptr);
+    vkDestroyFramebuffer(device, cubemapFramebuffer, nullptr);
+    vkFreeMemory(device, cubemapImageMemory, nullptr);
+}
+
+void RTGL1::RenderCubemap::OnShaderReload(const ShaderManager *shaderManager)
+{
+    pipelines->Clear();
+
+    // set reloaded shaders
+    pipelines->SetShaders(shaderManager, "VertRasterizerMultiview", "FragRasterizerMultiview");
+}
+
+void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
+                                const std::shared_ptr<RasterizedDataCollectorSky> &skyDataCollector,
+                                const std::shared_ptr<TextureManager> &textureManager,
+                                const std::shared_ptr<GlobalUniform> &uniform)
+{
+    const auto &drawInfos = skyDataCollector->GetSkyDrawInfos();
+
+    if (drawInfos.empty())
+    {
+        return;
+    }
+
+    VkBuffer vertexBuffer = skyDataCollector->GetVertexBuffer();
+    VkBuffer indexBuffer = skyDataCollector->GetIndexBuffer();
+
+    VkDescriptorSet descSets[] =
+    {
+        textureManager->GetDescSet(frameIndex),
+        uniform->GetDescSet(frameIndex),
+    };
+    const uint32_t descSetCount = sizeof(descSets) / sizeof(descSets[0]);
+
+
+    VkRenderPassBeginInfo beginInfo = {};
+    beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
+    beginInfo.renderPass = multiviewRenderPass;
+    beginInfo.framebuffer = cubemapFramebuffer;
+    beginInfo.renderArea.offset = { 0, 0 };
+    beginInfo.renderArea.extent = { cubemapSize, cubemapSize };
+    beginInfo.clearValueCount = 0;
+    beginInfo.pClearValues = nullptr;
+
+    vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+
+
+    VkPipeline curPipeline = VK_NULL_HANDLE;
+    BindPipelineIfNew(cmd, drawInfos[0], pipelines, curPipeline);
+
+
+    VkDeviceSize offset = 0;
+
+    vkCmdBindDescriptorSets(
+        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines->GetPipelineLayout(), 0,
+        descSetCount, descSets,
+        0, nullptr);
+    vkCmdBindVertexBuffers(cmd, 0, 1, &vertexBuffer, &offset);
+    vkCmdBindIndexBuffer(cmd, indexBuffer, offset, VK_INDEX_TYPE_UINT32);
+
+
+    for (const auto &info : drawInfos)
+    {
+        BindPipelineIfNew(cmd, info, pipelines, curPipeline);
+
+        // push const
+        {
+            RasterizedMultiviewPushConst push(info);
+
+            vkCmdPushConstants(
+                cmd, pipelines->GetPipelineLayout(),
+                VK_SHADER_STAGE_FRAGMENT_BIT,
+                0, sizeof(push),
+                &push);
+        }
+
+        // draw
+        if (info.indexCount > 0)
+        {
+            vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
+        }
+        else
+        {
+            vkCmdDraw(cmd, info.vertexCount, 1, info.firstVertex, 0);
+        }
+    }
+
+    vkCmdEndRenderPass(cmd);
+}
+
+void RTGL1::RenderCubemap::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,
+    const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
+{
+    // TODO: depth test / depth write, if there is a separate depth buffer,
+    // blitting depth buffers is not allowed, so need to create full-quad pass that will fill target depth buffer,
+    // which then will be used for depth test/write
+    pipelines->BindPipelineIfNew(cmd, curPipeline, info.blendEnable, info.blendFuncSrc, info.blendFuncDst, false, false);
+}
+
+
+void RTGL1::RenderCubemap::CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout uniformSetLayout)
+{
+    VkDescriptorSetLayout setLayouts[] =
+    {
+        texturesSetLayout,
+        uniformSetLayout
+    };
+    const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(setLayouts[0]);
+
+    static_assert(sizeof(RasterizedMultiviewPushConst) == 4 * sizeof(float) + sizeof(uint32_t), "");
+
+    VkPushConstantRange pushConst = {};
+    pushConst.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConst.offset = 0;
+    pushConst.size = sizeof(RasterizedMultiviewPushConst);
+
+    VkPipelineLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &pushConst;
+    layoutInfo.setLayoutCount = setLayoutCount;
+    layoutInfo.pSetLayouts = setLayouts;
+
+    VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Render cubemap pipeline layout");
+}
+
+void RTGL1::RenderCubemap::CreateRenderPass()
+{
+    const int attchCount = 1;
+    VkAttachmentDescription attchs[attchCount] = {};
+
+    auto &colorAttch = attchs[0];
+    colorAttch.format = CUBEMAP_FORMAT;
+    colorAttch.samples = VK_SAMPLE_COUNT_1_BIT;
+    colorAttch.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    colorAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    colorAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    colorAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttch.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    /*auto &depthAttch = attchs[1];
+    depthAttch.format = depthImageFormat; 
+    depthAttch.samples = VK_SAMPLE_COUNT_1_BIT;
+    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+    depthAttch.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;*/
+
+
+    VkAttachmentReference colorRef = {};
+    colorRef.attachment = 0;
+    colorRef.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+
+    VkAttachmentReference depthRef = {};
+    depthRef.attachment = 1;
+    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+
+    VkSubpassDescription subpass = {};
+    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
+    subpass.colorAttachmentCount = 1;
+    subpass.pColorAttachments = &colorRef;
+    //subpass.pDepthStencilAttachment = &depthRef;
+
+
+    VkSubpassDependency dependency = {};
+    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
+    dependency.dstSubpass = 0;
+    dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    dependency.srcAccessMask = 0;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+
+
+    // cubemap, 6 faces
+    uint32_t viewMask = 0b00111111;
+    int32_t viewOffset = 0;
+
+    VkRenderPassMultiviewCreateInfo multiview = {};
+    multiview.sType = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO;
+    multiview.subpassCount = 1;
+    multiview.pViewMasks = &viewMask;
+    multiview.dependencyCount = 1;
+    multiview.pViewOffsets = &viewOffset;
+    // no correlation between cubemap faces
+    multiview.correlationMaskCount = 0;
+    multiview.pCorrelationMasks = nullptr;
+
+
+    VkRenderPassCreateInfo passInfo = {};
+    passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
+    passInfo.pNext = &multiview;
+    passInfo.attachmentCount = attchCount;
+    passInfo.pAttachments = attchs;
+    passInfo.subpassCount = 1;
+    passInfo.pSubpasses = &subpass;
+    passInfo.dependencyCount = 1;
+    passInfo.pDependencies = &dependency;
+
+    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &multiviewRenderPass);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, multiviewRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Render cubemap multiview render pass");
+}
+
+void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize)
+{
+    VkViewport viewport = {};
+    viewport.x = viewport.y = 0;
+    viewport.width = viewport.height = (float)sideSize;
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissors = {};
+    scissors.offset = { 0, 0 };
+    scissors.extent = { sideSize, sideSize };
+
+
+    pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass);
+    pipelines->SetShaders(shaderManager.get(), "VertRasterizerMultiview", "FragRasterizerMultiview");
+    pipelines->DisableDynamicState(viewport, scissors);
+}
+
+void RTGL1::RenderCubemap::CreateImages(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize)
+{
+    VkImageCreateInfo imageInfo = {};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+    imageInfo.format = CUBEMAP_FORMAT;
+    imageInfo.extent = { sideSize, sideSize, 1 };
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 6;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+    VkResult r = vkCreateImage(device, &imageInfo, nullptr, &cubemapImage);
+    VK_CHECKERROR(r);
+    SET_DEBUG_NAME(device, cubemapImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Render cubemap image");
+
+
+    // allocate dedicated memory
+    VkMemoryRequirements memReqs;
+    vkGetImageMemoryRequirements(device, cubemapImage, &memReqs);
+
+    cubemapImageMemory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    SET_DEBUG_NAME(device, cubemapImageMemory, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, "Render cubemap image memory");
+
+    if (cubemapImageMemory == VK_NULL_HANDLE)
+    {
+        vkDestroyImage(device, cubemapImage, nullptr);
+        cubemapImage = VK_NULL_HANDLE;
+
+        return;
+    }
+
+    r = vkBindImageMemory(device, cubemapImage, cubemapImageMemory, 0);
+    VK_CHECKERROR(r);
+
+
+    // create image view
+    VkImageViewCreateInfo viewInfo = {};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = CUBEMAP_FORMAT;
+    viewInfo.subresourceRange = {};
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.baseMipLevel = 0;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.baseArrayLayer = 0;
+    viewInfo.subresourceRange.layerCount = 6;
+    viewInfo.image = cubemapImage;
+
+    r = vkCreateImageView(device, &viewInfo, nullptr, &cubemapImageView);
+    VK_CHECKERROR(r);
+    SET_DEBUG_NAME(device, cubemapImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Render cubemap image view");
+}
+
+void RTGL1::RenderCubemap::CreateFramebuffer(uint32_t sideSize)
+{
+    if (cubemapImage == VK_NULL_HANDLE || cubemapImageView == VK_NULL_HANDLE)
+    {
+        return;
+    }
+
+    VkFramebufferCreateInfo fbInfo = {};
+    fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
+    fbInfo.renderPass = multiviewRenderPass;
+    fbInfo.attachmentCount = 1;
+    fbInfo.pAttachments = &cubemapImageView;
+    fbInfo.width = sideSize;
+    fbInfo.height = sideSize;
+    fbInfo.layers = 1;
+
+    VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &cubemapFramebuffer);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, cubemapFramebuffer, VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Render cubemap framebuffer");
+}

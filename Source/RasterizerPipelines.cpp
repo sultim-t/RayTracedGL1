@@ -219,6 +219,16 @@ void RTGL1::RasterizerPipelines::SetShaders(const ShaderManager *shaderManager, 
     shaderStages[1] = shaderManager->GetStageInfo(fragmentShaderName);
 }
 
+void RTGL1::RasterizerPipelines::DisableDynamicState(const VkViewport &viewport, const VkRect2D &scissors)
+{
+    assert(pipelines.empty());
+
+    dynamicState.isEnabled = false;
+
+    dynamicState.viewport = viewport;
+    dynamicState.scissors = scissors;
+}
+
 VkPipeline RTGL1::RasterizerPipelines::GetPipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
 {
     uint32_t flags = ConvertToStateFlags(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite);
@@ -280,9 +290,9 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
     VkPipelineViewportStateCreateInfo viewportState = {};
     viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
     viewportState.viewportCount = 1;
-    viewportState.pViewports = nullptr; // will be set dynamically
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = nullptr; // will be set dynamically
+    viewportState.pViewports = dynamicState.isEnabled ? nullptr : &dynamicState.viewport; 
+    viewportState.scissorCount = 1; 
+    viewportState.pScissors = dynamicState.isEnabled ? nullptr : &dynamicState.scissors; 
 
     VkPipelineRasterizationStateCreateInfo raster = {};
     raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
@@ -325,7 +335,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
 
     VkPipelineDynamicStateCreateInfo dynamicInfo = {};
     dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
+    dynamicInfo.dynamicStateCount = dynamicState.isEnabled ? sizeof(dynamicStates) / sizeof(dynamicStates[0]) : 0;
     dynamicInfo.pDynamicStates = dynamicStates;
 
     VkGraphicsPipelineCreateInfo plInfo = {};
@@ -353,4 +363,17 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
     SET_DEBUG_NAME(device, pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer raster draw pipeline");
 
     return pipeline;
+}
+
+void RTGL1::RasterizerPipelines::BindPipelineIfNew(
+    VkCommandBuffer cmd, VkPipeline &curPipeline,
+    bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
+{
+    VkPipeline p = GetPipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite);
+
+    if (p != curPipeline)
+    {
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+        curPipeline = p;
+    }
 }

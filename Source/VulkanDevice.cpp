@@ -138,6 +138,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator,
         shaderManager,
         textureManager,
+        uniform,
         framebuffers,
         swapchain->GetSurfaceFormat(),
         *info);
@@ -253,6 +254,11 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     Matrix::Inverse(gu->invView, drawInfo.view);
     Matrix::Inverse(gu->invProjection, drawInfo.projection);
 
+    for (uint32_t i = 0; i < 6; i++)
+    {
+        //Matrix::GetCubemapViewMat(&gu->viewProjCubemap[16 * i], i);
+    }
+
     gu->cameraPosition[0] = gu->invView[12];
     gu->cameraPosition[1] = gu->invView[13];
     gu->cameraPosition[2] = gu->invView[14];
@@ -333,7 +339,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         // draw rasterized sky to albedo before tracing primary rays
         if (drawInfo.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
         {
-            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, uniform->GetData()->view, uniform->GetData()->projection);
+            rasterizer->DrawSkyToCubemap(cmd, frameIndex, textureManager, uniform);
+            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, uniform->GetData()->projection);
         }
     }
 
@@ -369,7 +376,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     if (!drawInfo.disableRasterization)
     {
         // draw rasterized geometry into the final image
-        rasterizer->DrawToFinalImage(cmd, frameIndex, 
+        rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection);        
     }
 
@@ -380,7 +387,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (!drawInfo.disableRasterization)
     {
-        rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), 
+        rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), textureManager, 
                                     uniform->GetData()->view, uniform->GetData()->projection);
     }
 }
@@ -711,7 +718,7 @@ void VulkanDevice::CreateDevice()
     features.fullDrawIndexUint32 = 1;
     features.imageCubeArray = 1;
     features.independentBlend = 1;
-    features.geometryShader = 1;
+    features.geometryShader = 0;
     features.tessellationShader = 1;
     features.sampleRateShading = 0;
     features.dualSrcBlend = 1;
@@ -789,17 +796,19 @@ void VulkanDevice::CreateDevice()
     physicalDeviceFeatures2.pNext = &asFeatures;
     physicalDeviceFeatures2.features = features;
 
-    std::vector<const char *> deviceExtensions;
-    deviceExtensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_KHR_MAINTENANCE3_EXTENSION_NAME);
-    deviceExtensions.push_back(VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME);
+    std::vector<const char *> deviceExtensions = {
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+        VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+        VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
+        VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+        VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+        VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
+        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
+        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
+        VK_KHR_MAINTENANCE3_EXTENSION_NAME,
+        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
+        //VK_KHR_MULTIVIEW_EXTENSION_NAME
+    };
 
     if (enableValidationLayer)
     {

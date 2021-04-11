@@ -595,6 +595,7 @@ int main()
 
         info.rasterizedMaxVertexCount = info.rasterizedSkyMaxVertexCount = 4096;
         info.rasterizedMaxIndexCount  = info.rasterizedSkyMaxIndexCount  = 2048;
+        info.rasterizedSkyCubemapSize = 256;
 
         info.ppWindowExtensions         = window.extensions;
         info.windowExtensionCount       = window.extensionCount;

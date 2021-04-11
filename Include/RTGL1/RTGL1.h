@@ -92,6 +92,9 @@ typedef struct RgInstanceCreateInfo
     uint32_t                    rasterizedSkyMaxVertexCount;
     uint32_t                    rasterizedSkyMaxIndexCount;
 
+    // Size of a cubemap side to render rasterized sky in.
+    uint32_t                    rasterizedSkyCubemapSize;  
+
     // The folder to find overriding textures in.
     const char                  *overridenTexturesFolderPath;
     // Postfixes will be used to determine textures that should be 
@@ -626,8 +629,6 @@ typedef struct RgStartFrameInfo
     // Reuse sky geometry from the previous frames.
     // The rasterized skybox cubemap won't be rerendered.
     RgBool32        requestRasterizedSkyGeometryReuse;
-    // Size of a cubemap side to render rasterized sky in.
-    uint32_t        rasterizedSkyCubemapSize;  
 } RgStartFrameInfo;
 
 RgResult rgStartFrame(
