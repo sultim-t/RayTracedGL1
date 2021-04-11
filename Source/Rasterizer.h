@@ -28,6 +28,7 @@
 #include "ISwapchainDependency.h"
 #include "RasterizedDataCollector.h"
 #include "RasterizerPipelines.h"
+#include "RenderCubemap.h"
 #include "ShaderManager.h"
 #include "RTGL1/RTGL1.h"
 
@@ -42,7 +43,8 @@ public:
         VkDevice device,
         const std::shared_ptr<MemoryAllocator> &allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
-        std::shared_ptr<TextureManager> textureMgr,
+        const std::shared_ptr<TextureManager> &textureManager,    
+        const std::shared_ptr<GlobalUniform> &uniform,
         std::shared_ptr<Framebuffers> storageFramebuffers,
         VkFormat surfaceFormat,
         const RgInstanceCreateInfo &instanceInfo);
@@ -59,9 +61,10 @@ public:
                 const float *viewProjection, const RgViewport *viewport);
 
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
-    void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
-    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
-    void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj);
+    void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
+    void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
+    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
+    void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
 
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
@@ -116,7 +119,6 @@ private:
 
 private:
     VkDevice device;
-    std::shared_ptr<TextureManager> textureMgr;
     std::shared_ptr<Framebuffers> storageFramebuffers;
 
     VkRenderPass        rasterRenderPass;
@@ -138,6 +140,9 @@ private:
 
     std::shared_ptr<RasterizedDataCollectorGeneral> collectorGeneral;
     std::shared_ptr<RasterizedDataCollectorSky> collectorSky;
+
+    bool isCubemapOutdated;
+    std::shared_ptr<RenderCubemap> renderCubemap;
 };
 
 }

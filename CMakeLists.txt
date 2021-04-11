@@ -66,6 +66,7 @@ set(PrivateHeaders
     "Source/IShaderDependency.h"
     "Source/IFramebuffersDependency.h"
     "Source/RasterizerPipelines.h"
+    "Source/RenderCubemap.h"
 )
 
 set(Sources
@@ -116,6 +117,7 @@ set(Sources
     "Source/VertexPreprocessing.cpp"
     "Source/Denoiser.cpp"
     "Source/RasterizerPipelines.cpp"
+    "Source/RenderCubemap.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

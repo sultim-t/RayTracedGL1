@@ -44,9 +44,14 @@ public:
 
     void Clear();
     void SetShaders(const ShaderManager *shaderManager, const char *vertexShaderName, const char *fragmentShaderName);
+    void DisableDynamicState(const VkViewport &viewport, const VkRect2D &scissors);
 
     VkPipeline GetPipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite);
     VkPipelineLayout GetPipelineLayout();
+
+    void BindPipelineIfNew(VkCommandBuffer cmd, VkPipeline &curPipeline,
+                           bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite);
+
 
 private:
     VkPipeline CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite);
@@ -60,6 +65,15 @@ private:
 
     std::map<uint32_t, VkPipeline> pipelines;
     VkPipelineCache pipelineCache;
+
+    struct
+    {
+        VkViewport viewport = {};
+        VkRect2D scissors = {};
+
+        // if true, viewport/scissors must be set dynamically
+        bool isEnabled = true;
+    } dynamicState;
 };
 
 }

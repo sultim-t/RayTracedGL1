@@ -49,6 +49,8 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"VertRasterizer",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"                  },
     {"FragRasterizer",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"                  },
     {"FragRasterizerDepth",     "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RasterizerDepthTested.frag.spv"       },
+    {"VertRasterizerMultiview", "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RasterizerMultiview.vert.spv"         },
+    {"FragRasterizerMultiview", "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RasterizerMultiview.frag.spv"         },
     {"CVertexPreprocess",       "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmVertexPreprocess.comp.spv"          },
     {"CSVGFTemporalAccum",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFTemporalAccumulation.comp.spv"  },
     {"CSVGFVarianceEstim",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFEstimateVariance.comp.spv"      },
