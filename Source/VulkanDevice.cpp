@@ -40,7 +40,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     debugPrint(info->pfnDebugPrint),
     previousFrameTime(-1.0 / 60.0),
     currentFrameTime(0),
-    disableGeometrySkybox(info->disableGeometrySkybox)
+    disableRayTracedSkybox(info->disableRayTracedSkybox)
 {
     vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
     vbProperties.positionStride = info->vertexPositionStride;
@@ -117,7 +117,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         shaderManager,
         vbProperties, 
-        disableGeometrySkybox);
+        disableRayTracedSkybox);
    
     rtPipeline          = std::make_shared<RayTracingPipeline>(
         device, 
@@ -233,7 +233,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     // clear the data that were created MAX_FRAMES_IN_FLIGHT ago
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
-    rasterizer->PrepareForFrame(frameIndex, startInfo.requestRasterizedSkyFree);
+    rasterizer->PrepareForFrame(frameIndex, startInfo.requestRasterizedSkyGeometryReuse);
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
@@ -299,10 +299,11 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->skyType =
         drawInfo.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
-        drawInfo.skyType == RG_SKY_TYPE_RAY_TRACED_GEOMETRY ? SKY_TYPE_TLAS : 
+        drawInfo.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY : 
+        drawInfo.skyType == RG_SKY_TYPE_RAY_TRACED_GEOMETRY ? SKY_TYPE_RAY_TRACED_GEOMETRY : 
         SKY_TYPE_COLOR;
 
-    if (disableGeometrySkybox && gu->skyType == SKY_TYPE_TLAS)
+    if (disableRayTracedSkybox && gu->skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
     {
         gu->skyType = SKY_TYPE_COLOR;
     }

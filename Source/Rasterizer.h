@@ -53,12 +53,13 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyFree);
+    void PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyGeometryReuse);
     void Upload(uint32_t frameIndex, 
                 const RgRasterizedGeometryUploadInfo &uploadInfo, 
                 const float *viewProjection, const RgViewport *viewport);
 
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
+    void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
     void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, float *view, float *proj);
     void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, float *view, float *proj);
 
@@ -75,11 +76,24 @@ private:
         VkViewport viewport = {};
     };
 
+    struct DrawParams
+    {
+        VkCommandBuffer cmd;
+        uint32_t frameIndex;
+        const std::shared_ptr<RasterizerPipelines> &pipelines;
+        const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos;
+        VkRenderPass renderPass;
+        VkFramebuffer framebuffer;
+        const RasterAreaState &rasterAreaState;
+        VkBuffer vertexBuffer;
+        VkBuffer indexBuffer;
+        uint32_t descSetCount;
+        VkDescriptorSet descSets[2];
+        float *defaultViewProj;
+    };
+
 private:
-    void Draw(VkCommandBuffer cmd, uint32_t frameIndex, 
-              const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos,
-              VkRenderPass renderPass, const std::shared_ptr<RasterizerPipelines> &pipelines,
-              VkFramebuffer framebuffer, const RasterAreaState &raState, bool bindStorageFb, float *defaultViewProj);
+    void Draw(const DrawParams &drawParams);
 
     void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
     void CreateSwapchainRenderPass(VkFormat surfaceFormat);
@@ -102,7 +116,7 @@ private:
 
 private:
     VkDevice device;
-    std::weak_ptr<TextureManager> textureMgr;
+    std::shared_ptr<TextureManager> textureMgr;
     std::shared_ptr<Framebuffers> storageFramebuffers;
 
     VkRenderPass        rasterRenderPass;
@@ -117,10 +131,13 @@ private:
     RasterAreaState rasterFramebufferState;
     VkFramebuffer rasterFramebuffers[MAX_FRAMES_IN_FLIGHT];
 
+    VkFramebuffer rasterSkyFramebuffers[MAX_FRAMES_IN_FLIGHT];
+
     RasterAreaState swapchainFramebufferState;
     std::vector<VkFramebuffer> swapchainFramebuffers;
 
-    std::shared_ptr<RasterizedDataCollector> collectors;
+    std::shared_ptr<RasterizedDataCollectorGeneral> collectorGeneral;
+    std::shared_ptr<RasterizedDataCollectorSky> collectorSky;
 };
 
 }

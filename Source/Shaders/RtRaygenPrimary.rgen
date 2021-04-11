@@ -88,9 +88,13 @@ void main()
         return;
     }
 
-    vec3 color = getSkyPrimary(rayDir);
+    // if sky is a rasterized geometry, it was rendered to albedo framebuf 
+    if (globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY)
+    {
+        vec3 color = getSkyPrimary(rayDir);
+        imageStore(framebufAlbedo,          pix, vec4(color, 0.0));
+    }
 
-    imageStore(framebufAlbedo,              pix, vec4(color, 0.0));
     imageStore(framebufNormal,              pix, vec4(0.0));
     imageStore(framebufNormalGeometry,      pix, vec4(0.0));
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));

@@ -161,7 +161,7 @@ vec3 getSkyPrimary(vec3 direction)
 {
     uint skyType = globalUniform.skyType;
 
-    if (skyType == SKY_TYPE_TLAS)
+    if (skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
     {
         ShPayload p = traceSkyRay(globalUniform.skyViewerPosition.xyz, direction);
 

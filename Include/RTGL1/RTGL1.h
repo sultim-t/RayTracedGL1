@@ -123,8 +123,8 @@ typedef struct RgInstanceCreateInfo
     RgBool32                    vertexArrayOfStructs;
 
     // If true, acceleration structures related to skybox won't be built,
-    // sky type RG_SKY_TYPE_GEOMETRY will be reset to RG_SKY_TYPE_COLOR.
-    RgBool32                    disableGeometrySkybox;
+    // sky type RG_SKY_TYPE_RAY_TRACED_GEOMETRY will be reset to RG_SKY_TYPE_RAY_TRACED_GEOMETRY.
+    RgBool32                    disableRayTracedSkybox;
 
 } RgInstanceCreateInfo;
 
@@ -621,7 +621,9 @@ typedef struct RgStartFrameInfo
     RgExtent2D      surfaceSize;
     RgBool32        requestVSync;
     RgBool32        requestShaderReload;
-    RgBool32        requestRasterizedSkyFree;
+    // Reuse sky geometry from the previous frames.
+    // The rasterized skybox cubemap won't be rerendered.
+    RgBool32        requestRasterizedSkyGeometryReuse;
     // Size of a cubemap side to render rasterized sky in.
     uint32_t        rasterizedSkyCubemapSize;  
 } RgStartFrameInfo;

@@ -150,7 +150,7 @@ private:
     double                                  previousFrameTime;
     double                                  currentFrameTime;
 
-    bool                                    disableGeometrySkybox;
+    bool                                    disableRayTracedSkybox;
 };
 
 }
