@@ -44,7 +44,7 @@
 
 #include "Matrix.h"
 
-#include <cstring>
+#include <algorithm>
 #include <cmath>
 
 using namespace RTGL1;
@@ -180,18 +180,27 @@ void Matrix::Inverse(float *inversed, const float *m)
     }
 }
 
-void Matrix::Transpose(float *transposed, const float *m)
+void Matrix::Transpose(float *dst, const float *src)
 {
-    const float(&src)[4][4] = *reinterpret_cast<const float(*)[4][4]>(m);
-    float(&dst)[4][4] = *reinterpret_cast<float(*)[4][4]>(transposed);
-
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)
         {
-            dst[i][j] = src[j][i];
+            dst[i * 4 + j] = src[j * 4 + i];
         }
     }
+}
+
+void Matrix::Transpose(float t[4][4])
+{
+    std::swap(t[0][1], t[1][0]);
+    std::swap(t[0][2], t[2][0]);
+    std::swap(t[0][3], t[3][0]);
+
+    std::swap(t[1][2], t[2][1]);
+    std::swap(t[1][3], t[3][1]);
+
+    std::swap(t[2][3], t[3][2]);
 }
 
 void Matrix::Multiply(float *result, const float *a, const float *b)
@@ -262,7 +271,7 @@ static float Dot3(const float *a, const float *b)
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-static void GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll)
+void Matrix::GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll)
 {
     float fSinH = std::sin(yaw); 
     float fCosH = std::cos(yaw);
@@ -285,11 +294,6 @@ static void GetViewMatrix(float *result, const float *pos, float pitch, float ya
     m[1][2] = fSinP*fCosH*fCosB+fSinH*fSinB;
     m[2][2] = fCosP*fCosH;
 
-    // flip Y axis for Vulkan
-    m[1][0] = -m[1][0];
-    m[1][1] = -m[1][1];
-    m[1][2] = -m[1][2];
-
     float invT[] = { -pos[0], -pos[1], -pos[2] };
 
     // 4th column
@@ -306,7 +310,7 @@ static void GetViewMatrix(float *result, const float *pos, float pitch, float ya
     Matrix::Transpose(result, (float*)m);
 }
 
-void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position, const float *proj)
+void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position)
 {
     float view[16];
 
@@ -343,5 +347,24 @@ void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const floa
         break;
     }
 
-    Multiply(result, view, proj);
+    // tan(90/2)
+    const float tanHalfFovy = 1.0f;
+    const float aspect = 1.0f;
+
+    const float zNear = 0.01f;
+    const float zFar = 1000.0f;
+
+    // perspective matrix, depth [0..1],
+    // column-major 
+	float proj[4][4] = {};
+	proj[0][0] = 1.0f / (aspect * tanHalfFovy);
+	proj[1][1] = 1.0f / tanHalfFovy;
+	proj[2][2] = zFar / (zFar - zNear);
+	proj[2][3] = 1.0f;
+	proj[3][2] = -(zFar * zNear) / (zFar - zNear);
+
+    // inverted Y-axis
+    proj[1][1] *= -1;
+
+    Multiply(result, view, (float*)proj);
 }
