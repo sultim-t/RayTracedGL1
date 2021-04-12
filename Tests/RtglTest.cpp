@@ -8,7 +8,6 @@
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
-#define GLM_FORCE_LEFT_HANDED
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -134,7 +133,7 @@ static void ProcessInput(GLFWwindow *window)
     if (glfwGetKey(window, GLFW_KEY_KP_5)  == GLFW_PRESS)   LIGHT_POS[2] -= delta * 5;
     if (glfwGetKey(window, GLFW_KEY_KP_8)  == GLFW_PRESS)   LIGHT_POS[2] += delta * 5;
     
-    CAMERA_UP = glm::cross(-r, CAMERA_DIR);
+    CAMERA_UP = glm::cross(r, CAMERA_DIR);
 
     if (glfwGetKey(window, GLFW_KEY_1)     == GLFW_PRESS)   LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(0, 1, 0));
     if (glfwGetKey(window, GLFW_KEY_2)     == GLFW_PRESS)   LIGHT_DIR   = glm::rotate(LIGHT_DIR, cameraRotationSpeed, glm::vec3(1, 0, 0));
@@ -550,6 +549,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         // GLM is column major, copy matrix data directly
         glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
+        // invert Y in view*proj
+        persp[1][1] *= -1;
         memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
 
         glm::mat4 view = glm::lookAt(CAMERA_POS, CAMERA_POS + CAMERA_DIR, CAMERA_UP);
