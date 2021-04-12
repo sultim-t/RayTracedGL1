@@ -49,6 +49,8 @@
 
 using namespace RTGL1;
 
+constexpr float M_PI = 3.141592653589793238462643383279f;
+
 void Matrix::Inverse(float *inversed, const float *m)
 {
     // Copied from "Mesa - The 3D Graphics Library" (MIT license)
@@ -255,61 +257,6 @@ void Matrix::ToMat4Transposed(float *result, const RgTransform &m)
     result[15] = 1.0f;
 }
 
-void Matrix::GetCubemapViewMat(float *result, uint32_t sideIndex)
-{
-    // TODO
-    float m[4][4] = {};
-
-    m[3][3] = 1;
-
-    switch (sideIndex)
-    {
-    // POSITIVE_X
-    case 0:
-        m[0][2] = -1;
-        m[2][0] = -1;
-        m[1][1] = -1;
-        break;
-
-    // NEGATIVE_X
-    case 1:
-        m[0][2] = 1;
-        m[2][0] = 1;
-        m[1][1] = -1;
-        break;
-
-    // POSITIVE_Y
-    case 2:
-        m[1][2] = -1;
-        m[2][1] = 1;
-        m[0][0] = 1;
-        break;
-
-    // NEGATIVE_Y
-    case 3:
-        m[1][2] = 1;
-        m[2][1] = -1;
-        m[0][0] = 1;
-        break;
-
-    // POSITIVE_Z
-    case 4:
-        m[1][1] = -1;
-        m[2][2] = -1;
-        m[0][0] = 1;
-        break;
-
-    // NEGATIVE_Z
-    case 5:
-        m[0][0] = -1;
-        m[1][1] = -1;
-        m[2][2] = 1;
-        break;
-    }
-
-    memcpy(result, m, sizeof(float) * 16);
-}
-
 static float Dot3(const float *a, const float *b)
 {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -317,12 +264,12 @@ static float Dot3(const float *a, const float *b)
 
 static void GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll)
 {
-    float fSinH = sinf(yaw); 
-    float fCosH = cosf(yaw);
-    float fSinP = sinf(pitch); 
-    float fCosP = cosf(pitch);
-    float fSinB = sinf(roll); 
-    float fCosB = cosf(roll);
+    float fSinH = std::sin(yaw); 
+    float fCosH = std::cos(yaw);
+    float fSinP = std::sin(pitch); 
+    float fCosP = std::cos(pitch);
+    float fSinB = std::sin(roll); 
+    float fCosB = std::cos(roll);
 
     // inverse transform, i.e. (T * R)^-1 = R^(-1) * T^(-1) = R^(-1) * T^(-1)
     float m[4][4];
@@ -357,4 +304,44 @@ static void GetViewMatrix(float *result, const float *pos, float pitch, float ya
 
     // to column-major
     Matrix::Transpose(result, (float*)m);
+}
+
+void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position, const float *proj)
+{
+    float view[16];
+
+    switch (sideIndex)
+    {
+    // POSITIVE_X
+    case 0:
+        GetViewMatrix(view, position, 0, M_PI / 2, 0);
+        break;
+
+    // NEGATIVE_X
+    case 1:
+        GetViewMatrix(view, position, 0, -M_PI / 2, 0);
+        break;
+
+    // POSITIVE_Y
+    case 2:
+        GetViewMatrix(view, position, -M_PI / 2, 0, 0);
+        break;
+
+    // NEGATIVE_Y
+    case 3:
+        GetViewMatrix(view, position, M_PI / 2, 0, 0);
+        break;
+
+    // POSITIVE_Z
+    case 4:
+        GetViewMatrix(view, position, 0, 0, 0);
+        break;
+
+    // NEGATIVE_Z
+    case 5:
+        GetViewMatrix(view, position, 0, M_PI, 0);
+        break;
+    }
+
+    Multiply(result, view, proj);
 }
