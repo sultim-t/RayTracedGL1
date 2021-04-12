@@ -45,6 +45,7 @@ public:
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<TextureManager> &textureManager,    
         const std::shared_ptr<GlobalUniform> &uniform,
+        const std::shared_ptr<SamplerManager> &samplerManager,
         std::shared_ptr<Framebuffers> storageFramebuffers,
         VkFormat surfaceFormat,
         const RgInstanceCreateInfo &instanceInfo);
@@ -71,6 +72,8 @@ public:
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
     void OnFramebuffersSizeChange(uint32_t width, uint32_t height) override;
+
+    const std::shared_ptr<RenderCubemap> &GetRenderCubemap() const;
 
 private:
     struct RasterAreaState

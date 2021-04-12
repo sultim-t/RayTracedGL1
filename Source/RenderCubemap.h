@@ -38,6 +38,7 @@ public:
                   const std::shared_ptr<ShaderManager> &shaderManager,
                   const std::shared_ptr<TextureManager> &textureManager,
                   const std::shared_ptr<GlobalUniform> &uniform,
+                  const std::shared_ptr<SamplerManager> &samplerManager,
                   uint32_t rasterizedSkyCubemapSize);
     ~RenderCubemap();
 
@@ -46,10 +47,14 @@ public:
     RenderCubemap &operator=(const RenderCubemap &other) = delete;
     RenderCubemap &operator=(RenderCubemap &&other) noexcept = delete;
 
+    // Draw to a cubemap
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex,
               const std::shared_ptr<RasterizedDataCollectorSky> &skyDataCollector,
               const std::shared_ptr<TextureManager> &textureManager,
               const std::shared_ptr<GlobalUniform> &uniform);
+
+    VkDescriptorSetLayout GetDescSetLayout() const;
+    VkDescriptorSet GetDescSet() const;
 
     void OnShaderReload(const ShaderManager *shaderManager);
 
@@ -59,6 +64,7 @@ private:
     void InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize);
     void CreateImages(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize);
     void CreateFramebuffer(uint32_t sideSize);
+    void CreateDescriptors(const std::shared_ptr<SamplerManager> &samplerManager);
 
     void BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, 
                            const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline);
@@ -77,6 +83,10 @@ private:
     VkFramebuffer cubemapFramebuffer;
 
     uint32_t cubemapSize;
+
+    VkDescriptorSetLayout descSetLayout;
+    VkDescriptorPool descPool;
+    VkDescriptorSet descSet;
 };
 
 }

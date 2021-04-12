@@ -35,7 +35,8 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<TextureManager> &_textureMgr,
     const std::shared_ptr<Framebuffers> &_framebuffers,
     const std::shared_ptr<BlueNoise> &_blueNoise,
-    const std::shared_ptr<CubemapManager> &_cubemapMgr)
+    const std::shared_ptr<CubemapManager> &_cubemapMgr,
+    const std::shared_ptr<RenderCubemap> &_renderCubemap)
 :
     device(_device),
     physDevice(std::move(_physDevice)),
@@ -69,7 +70,9 @@ RayTracingPipeline::RayTracingPipeline(
         // light sources
         _scene->GetLightManager()->GetDescSetLayout(),
         // cubemaps, for a cubemap type of skyboxes
-        _cubemapMgr->GetDescSetLayout()
+        _cubemapMgr->GetDescSetLayout(),
+        // dynamic cubemaps
+        _renderCubemap->GetDescSetLayout()
     };
 
     CreatePipelineLayout(setLayouts.data(), setLayouts.size());

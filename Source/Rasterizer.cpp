@@ -69,6 +69,7 @@ Rasterizer::Rasterizer(
     const std::shared_ptr<ShaderManager> &_shaderManager,
     const std::shared_ptr<TextureManager> &_textureManager,
     const std::shared_ptr<GlobalUniform> &_uniform,
+    const std::shared_ptr<SamplerManager> &_samplerManager,
     std::shared_ptr<Framebuffers> _storageFramebuffers,
     VkFormat _surfaceFormat,
     const RgInstanceCreateInfo &_instanceInfo)
@@ -96,7 +97,7 @@ Rasterizer::Rasterizer(
     rasterPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizerDepth");
     swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
 
-    renderCubemap = std::make_shared<RenderCubemap>(device, _allocator, _shaderManager, _textureManager, _uniform, _instanceInfo.rasterizedSkyCubemapSize);
+    renderCubemap = std::make_shared<RenderCubemap>(device, _allocator, _shaderManager, _textureManager, _uniform, _samplerManager, _instanceInfo.rasterizedSkyCubemapSize);
 }
 
 Rasterizer::~Rasterizer()
@@ -146,8 +147,11 @@ void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex,
                                   const std::shared_ptr<TextureManager> &textureManager, 
                                   const std::shared_ptr<GlobalUniform> &uniform)
 {
-    renderCubemap->Draw(cmd, frameIndex, collectorSky, textureManager, uniform);
-    isCubemapOutdated = false;
+    if (isCubemapOutdated)
+    {
+        renderCubemap->Draw(cmd, frameIndex, collectorSky, textureManager, uniform);
+        isCubemapOutdated = false;        
+    }
 }
 
 void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj)
@@ -333,6 +337,11 @@ void Rasterizer::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataColl
     // blitting depth buffers is not allowed, so need to create full-quad pass that will fill target depth buffer,
     // which then will be used for depth test/write
     pipelines->BindPipelineIfNew(cmd, curPipeline, info.blendEnable, info.blendFuncSrc, info.blendFuncDst, false, false);
+}
+
+const std::shared_ptr<RenderCubemap> &Rasterizer::GetRenderCubemap() const
+{
+    return renderCubemap;
 }
 
 void Rasterizer::OnSwapchainCreate(const Swapchain *pSwapchain)

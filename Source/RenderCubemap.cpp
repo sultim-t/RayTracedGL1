@@ -21,6 +21,7 @@
 #include "RenderCubemap.h"
 
 #include "RasterizedDataCollector.h"
+#include "Generated/ShaderCommonC.h"
 
 
 constexpr VkFormat CUBEMAP_FORMAT = VK_FORMAT_R8G8B8A8_UNORM; 
@@ -51,6 +52,7 @@ RTGL1::RenderCubemap::RenderCubemap(
     const std::shared_ptr<ShaderManager> &_shaderManager,
     const std::shared_ptr<TextureManager> &_textureManager,
     const std::shared_ptr<GlobalUniform> &_uniform,
+    const std::shared_ptr<SamplerManager> &_samplerManager,
     uint32_t _rasterizedSkyCubemapSize)
 :
     device(_device),
@@ -59,17 +61,24 @@ RTGL1::RenderCubemap::RenderCubemap(
     cubemapImage(VK_NULL_HANDLE),
     cubemapImageView(VK_NULL_HANDLE),
     cubemapImageMemory(VK_NULL_HANDLE),
-    cubemapSize(std::max(_rasterizedSkyCubemapSize, 16u))
+    cubemapFramebuffer(VK_NULL_HANDLE),
+    cubemapSize(std::max(_rasterizedSkyCubemapSize, 16u)),
+    descSetLayout(VK_NULL_HANDLE),
+    descPool(VK_NULL_HANDLE),
+    descSet(VK_NULL_HANDLE)
 {
     CreatePipelineLayout(_textureManager->GetDescSetLayout(), _uniform->GetDescSetLayout());
     CreateRenderPass();
     InitPipelines(_shaderManager, cubemapSize);
     CreateImages(_allocator, cubemapSize);
     CreateFramebuffer(cubemapSize);
+    CreateDescriptors(_samplerManager);
 }
 
 RTGL1::RenderCubemap::~RenderCubemap()
 {
+    vkDestroyDescriptorPool(device, descPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, multiviewRenderPass, nullptr);
     vkDestroyImage(device, cubemapImage, nullptr);
@@ -164,8 +173,18 @@ void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
     vkCmdEndRenderPass(cmd);
 }
 
+VkDescriptorSetLayout RTGL1::RenderCubemap::GetDescSetLayout() const
+{
+    return descSetLayout;
+}
+
+VkDescriptorSet RTGL1::RenderCubemap::GetDescSet() const
+{
+    return descSet;
+}
+
 void RTGL1::RenderCubemap::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,
-    const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
+                                             const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
 {
     // TODO: depth test / depth write, if there is a separate depth buffer,
     // blitting depth buffers is not allowed, so need to create full-quad pass that will fill target depth buffer,
@@ -344,7 +363,7 @@ void RTGL1::RenderCubemap::CreateImages(const std::shared_ptr<MemoryAllocator> &
     // create image view
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
     viewInfo.format = CUBEMAP_FORMAT;
     viewInfo.subresourceRange = {};
     viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -379,4 +398,69 @@ void RTGL1::RenderCubemap::CreateFramebuffer(uint32_t sideSize)
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, cubemapFramebuffer, VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Render cubemap framebuffer");
+}
+
+void RTGL1::RenderCubemap::CreateDescriptors(const std::shared_ptr<SamplerManager> &samplerManager)
+{
+    VkDescriptorSetLayoutBinding binding = {};
+
+    binding.binding = BINDING_RENDER_CUBEMAP;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.descriptorCount = 1;
+    binding.stageFlags = VK_SHADER_STAGE_ALL;
+
+    VkDescriptorSetLayoutCreateInfo layoutInfo = {};
+    layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+    layoutInfo.bindingCount = 1;
+    layoutInfo.pBindings = &binding;
+
+    VkResult r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Render cubemap Desc set layout");
+
+
+    VkDescriptorPoolSize poolSize = {};
+    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize.descriptorCount = 1;
+
+    VkDescriptorPoolCreateInfo poolInfo = {};
+    poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+    poolInfo.maxSets = 1;
+    poolInfo.poolSizeCount = 1;
+    poolInfo.pPoolSizes = &poolSize;
+
+    r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Render cubemap Desc pool");
+
+
+    VkDescriptorSetAllocateInfo setInfo = {};
+    setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    setInfo.descriptorPool = descPool;
+    setInfo.descriptorSetCount = 1;
+    setInfo.pSetLayouts = &descSetLayout;
+
+    r = vkAllocateDescriptorSets(device, &setInfo, &descSet);
+    VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, descSet, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Render cubemap desc set");
+
+
+    VkDescriptorImageInfo img = {};
+    img.sampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+    img.imageView = cubemapImageView;
+    img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+
+    VkWriteDescriptorSet wrt = {};
+    wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wrt.dstSet = descSet;
+    wrt.dstBinding = BINDING_RENDER_CUBEMAP;
+    wrt.dstArrayElement = 0;
+    wrt.descriptorCount = 1;
+    wrt.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    wrt.pImageInfo = &img;
+
+    vkUpdateDescriptorSets(device, 1, &wrt, 0, nullptr);
 }
