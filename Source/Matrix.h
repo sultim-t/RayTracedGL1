@@ -30,10 +30,12 @@ class Matrix
 public:
     static void Inverse(float *inversed, const float *m);
     static void Transpose(float *transposed, const float *m);
+    static void Transpose(float t[4][4]);
     static void Multiply(float *result, const float *a, const float *b);
     static void ToMat4(float *result, const RgTransform &m);
     static void ToMat4Transposed(float *result, const RgTransform &m);
-    static void GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position, const float *proj);
+    static void GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll);
+    static void GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position);
 };
 
 }

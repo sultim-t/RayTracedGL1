@@ -319,7 +319,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         float *viewProjDst = &gu->viewProjCubemap[16 * i];
 
-        Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition, gu->projection);
+        Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition);
     }
 }
 
