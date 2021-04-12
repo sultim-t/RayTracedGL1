@@ -119,6 +119,17 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         vbProperties, 
         disableRayTracedSkybox);
    
+    rasterizer          = std::make_shared<Rasterizer>(
+        device,
+        memAllocator,
+        shaderManager,
+        textureManager,
+        uniform,
+        samplerManager,
+        framebuffers,
+        swapchain->GetSurfaceFormat(),
+        *info);
+
     rtPipeline          = std::make_shared<RayTracingPipeline>(
         device, 
         physDevice, 
@@ -129,19 +140,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         textureManager,
         framebuffers, 
         blueNoise, 
-        cubemapManager);
+        cubemapManager,
+        rasterizer->GetRenderCubemap());
 
     pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
-
-    rasterizer          = std::make_shared<Rasterizer>(
-        device,
-        memAllocator,
-        shaderManager,
-        textureManager,
-        uniform,
-        framebuffers,
-        swapchain->GetSurfaceFormat(),
-        *info);
 
     tonemapping         = std::make_shared<Tonemapping>(
         device,
@@ -350,7 +352,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         pathTracer->Bind(
             cmd, frameIndex, 
-            scene, uniform, textureManager, framebuffers, blueNoise, cubemapManager);
+            scene, uniform, textureManager, 
+            framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
 
         pathTracer->TracePrimaryRays(
             cmd, frameIndex, renderWidth, renderHeight,

@@ -201,6 +201,7 @@ CONST = {
     "BINDING_ACCELERATION_STRUCTURE_SKYBOX" : 1,
     "BINDING_TEXTURES"                      : 0,
     "BINDING_CUBEMAPS"                      : 0,
+    "BINDING_RENDER_CUBEMAP"                : 0,
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
     "BINDING_LIGHT_SOURCES_SPHERICAL"       : 0,

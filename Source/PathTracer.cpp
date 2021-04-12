@@ -24,15 +24,21 @@
 using namespace RTGL1;
 
 PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rtPipeline)
-    : device(_device), rtPipeline(_rtPipeline)
+    : device(_device), rtPipeline(std::move(_rtPipeline))
 {}
 
 PathTracer::~PathTracer()
 {}
 
-void PathTracer::Bind(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Scene> &scene, const std::shared_ptr<GlobalUniform> &uniform,
-    const std::shared_ptr<TextureManager> &textureMgr, const std::shared_ptr<Framebuffers> &framebuffers,
-    const std::shared_ptr<BlueNoise> &blueNoise, const std::shared_ptr<CubemapManager> &cubemapMgr)
+void PathTracer::Bind(
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    const std::shared_ptr<Scene> &scene, 
+    const std::shared_ptr<GlobalUniform> &uniform,
+    const std::shared_ptr<TextureManager> &textureMgr,
+    const std::shared_ptr<Framebuffers> &framebuffers,
+    const std::shared_ptr<BlueNoise> &blueNoise,
+    const std::shared_ptr<CubemapManager> &cubemapMgr,
+    const std::shared_ptr<RenderCubemap> &renderCubemap)
 {
     rtPipeline->Bind(cmd);
 
@@ -52,7 +58,9 @@ void PathTracer::Bind(VkCommandBuffer cmd, uint32_t frameIndex, const std::share
         // light sources
         scene->GetLightManager()->GetDescSet(frameIndex),
         // cubemaps
-        cubemapMgr->GetDescSet(frameIndex)
+        cubemapMgr->GetDescSet(frameIndex),
+        // dynamic cubemaps
+        renderCubemap->GetDescSet()
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 

@@ -24,6 +24,7 @@
 #include "RayTracingPipeline.h"
 #include "GlobalUniform.h"
 #include "Framebuffers.h"
+#include "RenderCubemap.h"
 
 namespace RTGL1
 {
@@ -46,7 +47,8 @@ public:
         const std::shared_ptr<TextureManager> &textureManager,
         const std::shared_ptr<Framebuffers> &framebuffers, 
         const std::shared_ptr<BlueNoise> &blueNoise,
-        const std::shared_ptr<CubemapManager> &cubemapManager);
+        const std::shared_ptr<CubemapManager> &cubemapManager,
+        const std::shared_ptr<RenderCubemap> &renderCubemap);
     
     void TracePrimaryRays(
         VkCommandBuffer cmd, uint32_t frameIndex,

@@ -20,7 +20,9 @@
 
 #extension GL_EXT_ray_tracing : require
 
+
 #include "ShaderCommonGLSLFunc.h"
+
 
 #if !defined(DESC_SET_TLAS) || \
     !defined(DESC_SET_GLOBAL_UNIFORM) || \
@@ -31,12 +33,17 @@
         #error Descriptor set indices must be set!
 #endif
 
+
 layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uniform accelerationStructureEXT topLevelAS;
 layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_SKYBOX) uniform accelerationStructureEXT skyboxTopLevelAS;
 
 #ifdef DESC_SET_CUBEMAPS
 layout(set = DESC_SET_CUBEMAPS, binding = BINDING_CUBEMAPS) uniform samplerCube globalCubemaps[];
 #endif
+#ifdef DESC_SET_RENDER_CUBEMAP
+layout(set = DESC_SET_RENDER_CUBEMAP, binding = BINDING_RENDER_CUBEMAP) uniform samplerCube renderCubemap;
+#endif
+
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
 
@@ -174,7 +181,13 @@ vec3 getSkyPrimary(vec3 direction)
     {
         return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
     }
-    
+#ifdef DESC_SET_RENDER_CUBEMAP
+    else if (skyType == SKY_TYPE_RASTERIZED_GEOMETRY)
+    {
+        return texture(renderCubemap, direction).rgb;
+    }
+#endif
+
     return globalUniform.skyColorDefault.xyz;
 }
 
