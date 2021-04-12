@@ -254,11 +254,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     Matrix::Inverse(gu->invView, drawInfo.view);
     Matrix::Inverse(gu->invProjection, drawInfo.projection);
 
-    for (uint32_t i = 0; i < 6; i++)
-    {
-        Matrix::GetCubemapViewMat(&gu->viewProjCubemap[16 * i], i);
-    }
-
     gu->cameraPosition[0] = gu->invView[12];
     gu->cameraPosition[1] = gu->invView[13];
     gu->cameraPosition[2] = gu->invView[14];
@@ -317,6 +312,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->dbgShowGradients = !!drawInfo.dbgShowGradients;
     gu->dbgShowMotionVectors = !!drawInfo.dbgShowMotionVectors;
+    
+    for (uint32_t i = 0; i < 6; i++)
+    {
+        float *viewProjDst = &gu->viewProjCubemap[16 * i];
+
+        Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition, gu->projection);
+    }
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
