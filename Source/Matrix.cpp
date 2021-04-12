@@ -368,3 +368,19 @@ void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const floa
 
     Multiply(result, view, (float*)proj);
 }
+
+void Matrix::SetNewViewerPosition(float *result, const float *viewMatrix, const float *newPosition)
+{
+    memcpy(result, viewMatrix, sizeof(float) * 16);
+
+    float invT[] = { -newPosition[0], -newPosition[1], -newPosition[2] };
+
+    float columnI[] = { viewMatrix[0 * 4 + 0], viewMatrix[1 * 4 + 0], viewMatrix[2 * 4 + 0] };
+    float columnJ[] = { viewMatrix[0 * 4 + 1], viewMatrix[1 * 4 + 1], viewMatrix[2 * 4 + 1] };
+    float columnK[] = { viewMatrix[0 * 4 + 2], viewMatrix[1 * 4 + 2], viewMatrix[2 * 4 + 2] };
+
+    // set new values for translation (4th row, viewMatrix and result are column-major)
+    result[3 * 4 + 0] = Dot3(columnI, invT);
+    result[3 * 4 + 1] = Dot3(columnJ, invT);
+    result[3 * 4 + 2] = Dot3(columnK, invT);
+}

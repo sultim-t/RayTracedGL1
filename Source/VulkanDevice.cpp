@@ -344,7 +344,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         if (drawInfo.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
         {
             rasterizer->DrawSkyToCubemap(cmd, frameIndex, textureManager, uniform);
-            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, uniform->GetData()->projection);
+            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, drawInfo.skyViewerPosition, uniform->GetData()->projection);
         }
     }
 

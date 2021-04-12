@@ -36,6 +36,8 @@ public:
     static void ToMat4Transposed(float *result, const RgTransform &m);
     static void GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll);
     static void GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position);
+    // Set new position for viewer in (column-major) view matrix.
+    static void SetNewViewerPosition(float *result, const float *viewMatrix, const float *newPosition);
 };
 
 }
