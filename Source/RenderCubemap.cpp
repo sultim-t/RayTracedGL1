@@ -27,6 +27,7 @@
 
 
 constexpr VkFormat CUBEMAP_FORMAT = VK_FORMAT_R8G8B8A8_UNORM; 
+constexpr VkFormat CUBEMAP_DEPTH_FORMAT = VK_FORMAT_D16_UNORM; 
 
 
 namespace RTGL1
@@ -62,10 +63,8 @@ RTGL1::RenderCubemap::RenderCubemap(
     device(_device),
     pipelineLayout(VK_NULL_HANDLE),
     multiviewRenderPass(VK_NULL_HANDLE),
-    cubemapImage(VK_NULL_HANDLE),
-    cubemapImageView(VK_NULL_HANDLE),
-    cubemapImageMemory(VK_NULL_HANDLE),
-    cubemapFramebuffer(VK_NULL_HANDLE),
+    cubemap{},
+    cubemapDepth{},
     cubemapSize(std::max(_rasterizedSkyCubemapSize, 16u)),
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
@@ -74,7 +73,8 @@ RTGL1::RenderCubemap::RenderCubemap(
     CreatePipelineLayout(_textureManager->GetDescSetLayout(), _uniform->GetDescSetLayout());
     CreateRenderPass();
     InitPipelines(_shaderManager, cubemapSize);
-    CreateImages(_allocator, cubemapSize);
+    CreateAttch(_allocator, cubemapSize, cubemap, false);
+    CreateAttch(_allocator, cubemapSize, cubemapDepth, true);
     CreateFramebuffer(cubemapSize);
     CreateDescriptors(_samplerManager);
 }
@@ -85,10 +85,16 @@ RTGL1::RenderCubemap::~RenderCubemap()
     vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     vkDestroyRenderPass(device, multiviewRenderPass, nullptr);
-    vkDestroyImage(device, cubemapImage, nullptr);
-    vkDestroyImageView(device, cubemapImageView, nullptr);
+
+    vkDestroyImage(device, cubemap.image, nullptr);
+    vkDestroyImageView(device, cubemap.view, nullptr);
+    vkFreeMemory(device, cubemap.memory, nullptr);
+
+    vkDestroyImage(device, cubemapDepth.image, nullptr);
+    vkDestroyImageView(device, cubemapDepth.view, nullptr);
+    vkFreeMemory(device, cubemapDepth.memory, nullptr);
+
     vkDestroyFramebuffer(device, cubemapFramebuffer, nullptr);
-    vkFreeMemory(device, cubemapImageMemory, nullptr);
 }
 
 void RTGL1::RenderCubemap::OnShaderReload(const ShaderManager *shaderManager)
@@ -122,20 +128,25 @@ void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
     const uint32_t descSetCount = sizeof(descSets) / sizeof(descSets[0]);
 
 
+    VkClearValue clearValues[2] = {};
+    clearValues[0].color = {};
+    clearValues[1].depthStencil.depth = 1.0f;
+
+
     VkRenderPassBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.renderPass = multiviewRenderPass;
     beginInfo.framebuffer = cubemapFramebuffer;
     beginInfo.renderArea.offset = { 0, 0 };
     beginInfo.renderArea.extent = { cubemapSize, cubemapSize };
-    beginInfo.clearValueCount = 0;
-    beginInfo.pClearValues = nullptr;
+    beginInfo.clearValueCount = 2;
+    beginInfo.pClearValues = clearValues;
 
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 
     VkPipeline curPipeline = VK_NULL_HANDLE;
-    BindPipelineIfNew(cmd, drawInfos[0], pipelines, curPipeline);
+    BindPipelineIfNew(cmd, drawInfos[0], curPipeline);
 
 
     VkDeviceSize offset = 0;
@@ -150,7 +161,7 @@ void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
     for (const auto &info : drawInfos)
     {
-        BindPipelineIfNew(cmd, info, pipelines, curPipeline);
+        BindPipelineIfNew(cmd, info, curPipeline);
 
         // push const
         {
@@ -187,13 +198,9 @@ VkDescriptorSet RTGL1::RenderCubemap::GetDescSet() const
     return descSet;
 }
 
-void RTGL1::RenderCubemap::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,
-                                             const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
+void RTGL1::RenderCubemap::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkPipeline &curPipeline)
 {
-    // TODO: depth test / depth write, if there is a separate depth buffer,
-    // blitting depth buffers is not allowed, so need to create full-quad pass that will fill target depth buffer,
-    // which then will be used for depth test/write
-    pipelines->BindPipelineIfNew(cmd, curPipeline, info.blendEnable, info.blendFuncSrc, info.blendFuncDst, false, false);
+    pipelines->BindPipelineIfNew(cmd, curPipeline, info.blendEnable, info.blendFuncSrc, info.blendFuncDst, info.depthTest, info.depthWrite);
 }
 
 
@@ -228,7 +235,7 @@ void RTGL1::RenderCubemap::CreatePipelineLayout(VkDescriptorSetLayout texturesSe
 
 void RTGL1::RenderCubemap::CreateRenderPass()
 {
-    const int attchCount = 1;
+    const int attchCount = 2;
     VkAttachmentDescription attchs[attchCount] = {};
 
     auto &colorAttch = attchs[0];
@@ -241,15 +248,15 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     colorAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     colorAttch.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
-    /*auto &depthAttch = attchs[1];
-    depthAttch.format = depthImageFormat; 
+    auto &depthAttch = attchs[1];
+    depthAttch.format = CUBEMAP_DEPTH_FORMAT; 
     depthAttch.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
-    depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttch.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;*/
+    depthAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 
     VkAttachmentReference colorRef = {};
@@ -258,13 +265,13 @@ void RTGL1::RenderCubemap::CreateRenderPass()
 
     VkAttachmentReference depthRef = {};
     depthRef.attachment = 1;
-    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
     subpass.colorAttachmentCount = 1;
     subpass.pColorAttachments = &colorRef;
-    //subpass.pDepthStencilAttachment = &depthRef;
+    subpass.pDepthStencilAttachment = &depthRef;
 
 
     VkSubpassDependency dependency = {};
@@ -325,42 +332,44 @@ void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &s
     pipelines->DisableDynamicState(viewport, scissors);
 }
 
-void RTGL1::RenderCubemap::CreateImages(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize)
+void RTGL1::RenderCubemap::CreateAttch(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize, Attachment &result, bool isDepth)
 {
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
     imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
-    imageInfo.format = CUBEMAP_FORMAT;
+    imageInfo.format = isDepth ? CUBEMAP_DEPTH_FORMAT : CUBEMAP_FORMAT;
     imageInfo.extent = { sideSize, sideSize, 1 };
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 6;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
-    imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    imageInfo.usage = isDepth ?
+        VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT :
+        VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    VkResult r = vkCreateImage(device, &imageInfo, nullptr, &cubemapImage);
+    VkResult r = vkCreateImage(device, &imageInfo, nullptr, &result.image);
     VK_CHECKERROR(r);
-    SET_DEBUG_NAME(device, cubemapImage, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Render cubemap image");
+    SET_DEBUG_NAME(device, result.image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, isDepth ? "Render cubemap depth image" : "Render cubemap image");
 
 
     // allocate dedicated memory
     VkMemoryRequirements memReqs;
-    vkGetImageMemoryRequirements(device, cubemapImage, &memReqs);
+    vkGetImageMemoryRequirements(device, result.image, &memReqs);
 
-    cubemapImageMemory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    SET_DEBUG_NAME(device, cubemapImageMemory, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, "Render cubemap image memory");
+    result.memory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    SET_DEBUG_NAME(device, result.memory, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, isDepth ? "Render cubemap depth memory" : "Render cubemap image memory");
 
-    if (cubemapImageMemory == VK_NULL_HANDLE)
+    if (result.memory == VK_NULL_HANDLE)
     {
-        vkDestroyImage(device, cubemapImage, nullptr);
-        cubemapImage = VK_NULL_HANDLE;
+        vkDestroyImage(device, result.image, nullptr);
+        result.image = VK_NULL_HANDLE;
 
         return;
     }
 
-    r = vkBindImageMemory(device, cubemapImage, cubemapImageMemory, 0);
+    r = vkBindImageMemory(device, result.image, result.memory, 0);
     VK_CHECKERROR(r);
 
 
@@ -368,32 +377,39 @@ void RTGL1::RenderCubemap::CreateImages(const std::shared_ptr<MemoryAllocator> &
     VkImageViewCreateInfo viewInfo = {};
     viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
     viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
-    viewInfo.format = CUBEMAP_FORMAT;
+    viewInfo.format = isDepth ? CUBEMAP_DEPTH_FORMAT : CUBEMAP_FORMAT;
     viewInfo.subresourceRange = {};
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    viewInfo.subresourceRange.aspectMask = isDepth ? VK_IMAGE_ASPECT_DEPTH_BIT : VK_IMAGE_ASPECT_COLOR_BIT;
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
     viewInfo.subresourceRange.layerCount = 6;
-    viewInfo.image = cubemapImage;
+    viewInfo.image = result.image;
 
-    r = vkCreateImageView(device, &viewInfo, nullptr, &cubemapImageView);
+    r = vkCreateImageView(device, &viewInfo, nullptr, &result.view);
     VK_CHECKERROR(r);
-    SET_DEBUG_NAME(device, cubemapImageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Render cubemap image view");
+    SET_DEBUG_NAME(device, result.view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, isDepth ? "Render cubemap depth image view" : "Render cubemap image view");
 }
 
 void RTGL1::RenderCubemap::CreateFramebuffer(uint32_t sideSize)
 {
-    if (cubemapImage == VK_NULL_HANDLE || cubemapImageView == VK_NULL_HANDLE)
+    if (cubemap.image == VK_NULL_HANDLE || cubemap.view == VK_NULL_HANDLE ||
+        cubemapDepth.image == VK_NULL_HANDLE || cubemapDepth.view == VK_NULL_HANDLE)
     {
         return;
     }
 
+    VkImageView attchs[] =
+    {
+        cubemap.view,
+        cubemapDepth.view,
+    };
+
     VkFramebufferCreateInfo fbInfo = {};
     fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
     fbInfo.renderPass = multiviewRenderPass;
-    fbInfo.attachmentCount = 1;
-    fbInfo.pAttachments = &cubemapImageView;
+    fbInfo.attachmentCount = 2;
+    fbInfo.pAttachments = attchs;
     fbInfo.width = sideSize;
     fbInfo.height = sideSize;
     fbInfo.layers = 1;
@@ -454,7 +470,7 @@ void RTGL1::RenderCubemap::CreateDescriptors(const std::shared_ptr<SamplerManage
 
     VkDescriptorImageInfo img = {};
     img.sampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
-    img.imageView = cubemapImageView;
+    img.imageView = cubemap.view;
     img.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     VkWriteDescriptorSet wrt = {};

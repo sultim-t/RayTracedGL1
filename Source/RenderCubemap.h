@@ -57,17 +57,25 @@ public:
     VkDescriptorSet GetDescSet() const;
 
     void OnShaderReload(const ShaderManager *shaderManager);
+    
+
+private:
+    struct Attachment
+    {
+        VkImage image;
+        VkImageView view;
+        VkDeviceMemory memory;
+    };
 
 private:
     void CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout uniformSetLayout);
     void CreateRenderPass();
     void InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize);
-    void CreateImages(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize);
+    void CreateAttch(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize, Attachment &result, bool isDepth);
     void CreateFramebuffer(uint32_t sideSize);
     void CreateDescriptors(const std::shared_ptr<SamplerManager> &samplerManager);
 
-    void BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, 
-                           const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline);
+    void BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkPipeline &curPipeline);
 
 private:
     VkDevice device;
@@ -77,9 +85,9 @@ private:
 
     VkRenderPass multiviewRenderPass;
 
-    VkImage cubemapImage;
-    VkImageView cubemapImageView;
-    VkDeviceMemory cubemapImageMemory;
+    Attachment cubemap;
+    Attachment cubemapDepth;
+
     VkFramebuffer cubemapFramebuffer;
 
     uint32_t cubemapSize;

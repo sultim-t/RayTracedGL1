@@ -316,9 +316,11 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
 
     VkPipelineDepthStencilStateCreateInfo depthStencil = {};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
     depthStencil.depthTestEnable = depthTest;
     depthStencil.depthWriteEnable = depthWrite;
     depthStencil.stencilTestEnable = VK_FALSE;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
 
     VkPipelineColorBlendAttachmentState colorBlendAttch = {};
     colorBlendAttch.blendEnable = blendEnable;
