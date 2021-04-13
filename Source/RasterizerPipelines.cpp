@@ -210,6 +210,11 @@ RTGL1::RasterizerPipelines::~RasterizerPipelines()
 
 void RTGL1::RasterizerPipelines::Clear()
 {
+    for (auto &p : pipelines)
+    {
+        vkDestroyPipeline(device, p.second, nullptr);
+    }
+
     pipelines.clear();
 }
 

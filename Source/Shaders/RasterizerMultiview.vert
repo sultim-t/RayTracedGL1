@@ -32,11 +32,16 @@ layout (location = 2) in vec2 texCoord;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outTexCoord;
 
+layout(push_constant) uniform RasterizerVert_BT 
+{
+    layout(offset = 0) mat4 model;
+} rasterizerVertInfo;
+
 void main()
 {
     const mat4 viewProj = globalUniform.viewProjCubemap[gl_ViewIndex];
     
     outColor = unpackLittleEndianUintColor(color);
     outTexCoord = texCoord;
-    gl_Position = viewProj * vec4(position, 1.0);
+    gl_Position = viewProj * rasterizerVertInfo.model * vec4(position, 1.0);
 }

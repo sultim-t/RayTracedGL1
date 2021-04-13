@@ -20,6 +20,8 @@
 
 #include "RenderCubemap.h"
 
+
+#include "Matrix.h"
 #include "RasterizedDataCollector.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -32,11 +34,13 @@ namespace RTGL1
 
 struct RasterizedMultiviewPushConst
 {
+    float model[16];
     float color[4];
     uint32_t textureIndex;
 
     explicit RasterizedMultiviewPushConst(const RasterizedDataCollector::DrawInfo &info)
     {
+        Matrix::ToMat4Transposed(model, info.transform);
         memcpy(color, info.color, 4 * sizeof(float));
         textureIndex = info.textureIndex;
     }
@@ -92,7 +96,7 @@ void RTGL1::RenderCubemap::OnShaderReload(const ShaderManager *shaderManager)
     pipelines->Clear();
 
     // set reloaded shaders
-    pipelines->SetShaders(shaderManager, "VertRasterizerMultiview", "FragRasterizerMultiview");
+    pipelines->SetShaders(shaderManager, "VertRasterizerMultiview", "FragRasterizer");
 }
 
 void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
@@ -154,7 +158,7 @@ void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
 
             vkCmdPushConstants(
                 cmd, pipelines->GetPipelineLayout(),
-                VK_SHADER_STAGE_FRAGMENT_BIT,
+                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
                 0, sizeof(push),
                 &push);
         }
@@ -202,10 +206,10 @@ void RTGL1::RenderCubemap::CreatePipelineLayout(VkDescriptorSetLayout texturesSe
     };
     const uint32_t setLayoutCount = sizeof(setLayouts) / sizeof(setLayouts[0]);
 
-    static_assert(sizeof(RasterizedMultiviewPushConst) == 4 * sizeof(float) + sizeof(uint32_t), "");
+    static_assert(sizeof(RasterizedMultiviewPushConst) == 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t), "");
 
     VkPushConstantRange pushConst = {};
-    pushConst.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConst.offset = 0;
     pushConst.size = sizeof(RasterizedMultiviewPushConst);
 
@@ -317,7 +321,7 @@ void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &s
 
 
     pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass);
-    pipelines->SetShaders(shaderManager.get(), "VertRasterizerMultiview", "FragRasterizerMultiview");
+    pipelines->SetShaders(shaderManager.get(), "VertRasterizerMultiview", "FragRasterizer");
     pipelines->DisableDynamicState(viewport, scissors);
 }
 
