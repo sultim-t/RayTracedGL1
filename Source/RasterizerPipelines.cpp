@@ -25,29 +25,29 @@
 
 #include "RasterizedDataCollector.h"
 
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_ENABLE               = 1 << 0;
-constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_TEST_ENABLE          = 1 << 1;
-constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE         = 1 << 2;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_ENABLE                     = 1 << 0;
+constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_TEST_ENABLE                = 1 << 1;
+constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE               = 1 << 2;
 
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE             = 1 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ZERO            = 2 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR       = 3 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_INV_SRC_COLOR   = 4 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR       = 5 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_INV_DST_COLOR   = 6 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA       = 7 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_INV_SRC_ALPHA   = 8 << 3;
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_SRC                  = 15 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE                   = 1 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ZERO                  = 2 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR             = 3 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_COLOR   = 4 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR             = 5 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_DST_COLOR   = 6 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA             = 7 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_ALPHA   = 8 << 3;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_SRC                        = 15 << 3;
 
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE             = 1 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ZERO            = 2 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR       = 3 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_INV_SRC_COLOR   = 4 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR       = 5 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_INV_DST_COLOR   = 6 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA       = 7 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_INV_SRC_ALPHA   = 8 << 7;
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_DST                  = 15 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE                   = 1 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ZERO                  = 2 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR             = 3 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_COLOR   = 4 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR             = 5 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_DST_COLOR   = 6 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA             = 7 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_ALPHA   = 8 << 7;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_DST                        = 15 << 7;
 
 static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
 {
@@ -59,27 +59,27 @@ static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc
 
         switch (blendFuncSrc)
         {
-            case RG_BLEND_FACTOR_ONE:           r |= PIPELINE_STATE_VALUE_BLEND_SRC_ONE;            break;
-            case RG_BLEND_FACTOR_ZERO:          r |= PIPELINE_STATE_VALUE_BLEND_SRC_ZERO;           break;
-            case RG_BLEND_FACTOR_SRC_COLOR:     r |= PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR;      break;
-            case RG_BLEND_FACTOR_INV_SRC_COLOR: r |= PIPELINE_STATE_VALUE_BLEND_SRC_INV_SRC_COLOR;  break;
-            case RG_BLEND_FACTOR_DST_COLOR:     r |= PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR;      break;
-            case RG_BLEND_FACTOR_INV_DST_COLOR: r |= PIPELINE_STATE_VALUE_BLEND_SRC_INV_DST_COLOR;  break;
-            case RG_BLEND_FACTOR_SRC_ALPHA:     r |= PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA;      break;
-            case RG_BLEND_FACTOR_INV_SRC_ALPHA: r |= PIPELINE_STATE_VALUE_BLEND_SRC_INV_SRC_ALPHA;  break;
+            case RG_BLEND_FACTOR_ONE:                   r |= PIPELINE_STATE_VALUE_BLEND_SRC_ONE;            break;
+            case RG_BLEND_FACTOR_ZERO:                  r |= PIPELINE_STATE_VALUE_BLEND_SRC_ZERO;           break;
+            case RG_BLEND_FACTOR_SRC_COLOR:             r |= PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR;      break;
+            case RG_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:   r |= PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_COLOR;  break;
+            case RG_BLEND_FACTOR_DST_COLOR:             r |= PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR;      break;
+            case RG_BLEND_FACTOR_ONE_MINUS_DST_COLOR:   r |= PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_DST_COLOR;  break;
+            case RG_BLEND_FACTOR_SRC_ALPHA:             r |= PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA;      break;
+            case RG_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:   r |= PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_ALPHA;  break;
             default: assert(0); r = 0;
         }
 
         switch (blendFuncDst)
         {
-            case RG_BLEND_FACTOR_ONE:           r |= PIPELINE_STATE_VALUE_BLEND_DST_ONE;            break;
-            case RG_BLEND_FACTOR_ZERO:          r |= PIPELINE_STATE_VALUE_BLEND_DST_ZERO;           break;
-            case RG_BLEND_FACTOR_SRC_COLOR:     r |= PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR;      break;
-            case RG_BLEND_FACTOR_INV_SRC_COLOR: r |= PIPELINE_STATE_VALUE_BLEND_DST_INV_SRC_COLOR;  break;
-            case RG_BLEND_FACTOR_DST_COLOR:     r |= PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR;      break;
-            case RG_BLEND_FACTOR_INV_DST_COLOR: r |= PIPELINE_STATE_VALUE_BLEND_DST_INV_DST_COLOR;  break;
-            case RG_BLEND_FACTOR_SRC_ALPHA:     r |= PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA;      break;
-            case RG_BLEND_FACTOR_INV_SRC_ALPHA: r |= PIPELINE_STATE_VALUE_BLEND_DST_INV_SRC_ALPHA;  break;
+            case RG_BLEND_FACTOR_ONE:                   r |= PIPELINE_STATE_VALUE_BLEND_DST_ONE;            break;
+            case RG_BLEND_FACTOR_ZERO:                  r |= PIPELINE_STATE_VALUE_BLEND_DST_ZERO;           break;
+            case RG_BLEND_FACTOR_SRC_COLOR:             r |= PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR;      break;
+            case RG_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:   r |= PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_COLOR;  break;
+            case RG_BLEND_FACTOR_DST_COLOR:             r |= PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR;      break;
+            case RG_BLEND_FACTOR_ONE_MINUS_DST_COLOR:   r |= PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_DST_COLOR;  break;
+            case RG_BLEND_FACTOR_SRC_ALPHA:             r |= PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA;      break;
+            case RG_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:   r |= PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_ALPHA;  break;
             default: assert(0); r = 0;
         }
     }
@@ -110,11 +110,11 @@ static bool TestFlags()
         RG_BLEND_FACTOR_ONE,
         RG_BLEND_FACTOR_ZERO,
         RG_BLEND_FACTOR_SRC_COLOR,
-        RG_BLEND_FACTOR_INV_SRC_COLOR,
+        RG_BLEND_FACTOR_ONE_MINUS_SRC_COLOR,
         RG_BLEND_FACTOR_DST_COLOR,
-        RG_BLEND_FACTOR_INV_DST_COLOR,
+        RG_BLEND_FACTOR_ONE_MINUS_DST_COLOR,
         RG_BLEND_FACTOR_SRC_ALPHA,
-        RG_BLEND_FACTOR_INV_SRC_ALPHA
+        RG_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA
     };
 
     std::set<uint32_t> un;
@@ -166,14 +166,14 @@ static VkBlendFactor ConvertBlendFactorToVk(RgBlendFactor f)
 {
     switch (f)
     {
-        case RG_BLEND_FACTOR_ONE:           return VK_BLEND_FACTOR_ONE;
-        case RG_BLEND_FACTOR_ZERO:          return VK_BLEND_FACTOR_ZERO;
-        case RG_BLEND_FACTOR_SRC_COLOR:     return VK_BLEND_FACTOR_SRC_COLOR;
-        case RG_BLEND_FACTOR_INV_SRC_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
-        case RG_BLEND_FACTOR_DST_COLOR:     return VK_BLEND_FACTOR_DST_COLOR;
-        case RG_BLEND_FACTOR_INV_DST_COLOR: return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
-        case RG_BLEND_FACTOR_SRC_ALPHA:     return VK_BLEND_FACTOR_SRC_ALPHA;
-        case RG_BLEND_FACTOR_INV_SRC_ALPHA: return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        case RG_BLEND_FACTOR_ONE:                   return VK_BLEND_FACTOR_ONE;
+        case RG_BLEND_FACTOR_ZERO:                  return VK_BLEND_FACTOR_ZERO;
+        case RG_BLEND_FACTOR_SRC_COLOR:             return VK_BLEND_FACTOR_SRC_COLOR;
+        case RG_BLEND_FACTOR_ONE_MINUS_SRC_COLOR:   return VK_BLEND_FACTOR_ONE_MINUS_SRC_COLOR;
+        case RG_BLEND_FACTOR_DST_COLOR:             return VK_BLEND_FACTOR_DST_COLOR;
+        case RG_BLEND_FACTOR_ONE_MINUS_DST_COLOR:   return VK_BLEND_FACTOR_ONE_MINUS_DST_COLOR;
+        case RG_BLEND_FACTOR_SRC_ALPHA:             return VK_BLEND_FACTOR_SRC_ALPHA;
+        case RG_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA:   return VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         default: assert(0); return VK_BLEND_FACTOR_ONE;
     }
 }
