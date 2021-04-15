@@ -216,29 +216,23 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
         FramebufferImageFlags flags = ShFramebuffers_Flags[i];
 
         VkExtent3D extent;
-        
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_1X1_SIZE)
-        {
-            extent = { 1, 1, 1 };
-        }
-        else
-        {
-            extent = { width, height, 1 };
+    
+        extent = { width, height, 1 };
 
-            if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE)
-            {
-                extent.width /= 2;
-            }
-            
-            if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE)
-            {
-                extent.height /= 2;
-            }
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_HALF)
+        {
+            extent.width = (width + 1) / 2;
+            extent.height = (height + 1) / 2;
+        }
+                
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_THIRD)
+        {
+            extent.width = (width + 2) / 3;
+            extent.height = (height + 2) / 3;
         }
 
-        extent.width  = extent.width  < 1 ? 0 : extent.width;
-        extent.height = extent.height < 1 ? 0 : extent.height;
-        extent.depth  = extent.depth  < 1 ? 0 : extent.depth;
+        extent.width  = std::max(1u, extent.width); 
+        extent.height = std::max(1u, extent.height);
 
         // create image
         VkImageCreateInfo imageInfo = {};
@@ -253,10 +247,13 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
         imageInfo.usage = 
             VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
             VK_IMAGE_USAGE_STORAGE_BIT |
-            VK_IMAGE_USAGE_SAMPLED_BIT |
-            // TODO: separate flag for frambuf being a color attch 
-            VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT; 
+            VK_IMAGE_USAGE_SAMPLED_BIT; 
         imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_IS_ATTACHMENT)
+        {
+            imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+        }
 
         r = vkCreateImage(device, &imageInfo, nullptr, &images[i]);
         VK_CHECKERROR(r);

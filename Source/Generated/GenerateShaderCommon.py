@@ -484,19 +484,19 @@ FRAMEBUF_SAMPLER_INVALID_BINDING    = "FB_SAMPLER_INVALID_BINDING"
 # only info for 2 frames are used: current and previous
 FRAMEBUF_FLAGS_STORE_PREV           = 1
 FRAMEBUF_FLAGS_NO_SAMPLER           = 2
-FRAMEBUF_FLAGS_FORCE_1X1_SIZE       = 4
-FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE    = 8
-FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE    = 16
+FRAMEBUF_FLAGS_IS_ATTACHMENT        = 4
+FRAMEBUF_FLAGS_FORCE_SIZE_HALF      = 8
+FRAMEBUF_FLAGS_FORCE_SIZE_THIRD     = 16
 
 FRAMEBUF_FLAGS_ENUM = {
-    "FRAMEBUF_FLAGS_FORCE_1X1_SIZE"     : FRAMEBUF_FLAGS_FORCE_1X1_SIZE,
-    "FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE"  : FRAMEBUF_FLAGS_FORCE_HALF_X_SIZE,
-    "FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE"  : FRAMEBUF_FLAGS_FORCE_HALF_Y_SIZE,
+    "FRAMEBUF_FLAGS_IS_ATTACHMENT"      : FRAMEBUF_FLAGS_IS_ATTACHMENT,
+    "FRAMEBUF_FLAGS_FORCE_SIZE_HALF"    : FRAMEBUF_FLAGS_FORCE_SIZE_HALF,
+    "FRAMEBUF_FLAGS_FORCE_SIZE_THIRD"   : FRAMEBUF_FLAGS_FORCE_SIZE_THIRD,
 }
 
 FRAMEBUFFERS = {
     # (image name)                      : (base format type, components,    flags)
-    "Albedo"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "Albedo"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_IS_ATTACHMENT),
     "Normal"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
@@ -510,7 +510,7 @@ FRAMEBUFFERS = {
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "Final"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "Final"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_IS_ATTACHMENT),
     "Motion"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
 
     "DiffAccumColor"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
@@ -534,11 +534,11 @@ FRAMEBUFFERS = {
     "IndirPongSH_G"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "IndirPongSH_B"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     
-    "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "DiffAndSpecPingGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "DiffAndSpecPongGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "IndirPingGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG, 0),
-    "IndirPongGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG, 0),
+    "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD | FRAMEBUF_FLAGS_STORE_PREV),
+    "DiffAndSpecPingGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "DiffAndSpecPongGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "IndirPingGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG,   FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "IndirPongGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG,   FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
 }
 
 
