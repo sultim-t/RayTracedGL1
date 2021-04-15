@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "Common.h"
+#include "DepthCopying.h"
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
 #include "IFramebuffersDependency.h"
@@ -65,7 +66,7 @@ public:
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
     void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const RgFloat3D &skyViewerPos, float *proj);
-    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
+    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj, bool werePrimaryTraced);
     void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
 
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
@@ -147,6 +148,8 @@ private:
 
     bool isCubemapOutdated;
     std::shared_ptr<RenderCubemap> renderCubemap;
+
+    std::shared_ptr<DepthCopying> depthCopying;
 };
 
 }

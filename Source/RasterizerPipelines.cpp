@@ -261,7 +261,7 @@ VkPipelineLayout RTGL1::RasterizerPipelines::GetPipelineLayout()
 
 VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
 {
-    assert(shaderStages[0].sType != 0 && shaderStages[1].sType);
+    assert(shaderStages[0].sType != 0 && shaderStages[1].sType != 0);
 
     VkDynamicState dynamicStates[2] =
     {

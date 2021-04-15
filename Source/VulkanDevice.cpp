@@ -334,7 +334,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, drawInfo.renderSize.height));
 
     // submit geometry and upload uniform after getting data from a scene
-    bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
+    const bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
+
+    bool werePrimaryTraced = false;
 
     if (!drawInfo.disableRasterization)
     {
@@ -359,6 +361,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             cmd, frameIndex, renderWidth, renderHeight,
             framebuffers);
 
+        werePrimaryTraced = true;
+
         // save and merge samples from previous illumination results
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
@@ -382,7 +386,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
-                                     uniform->GetData()->view, uniform->GetData()->projection);        
+                                     uniform->GetData()->view, uniform->GetData()->projection,
+                                     werePrimaryTraced);
     }
 
     // blit result image to present on a surface

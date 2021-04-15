@@ -98,6 +98,8 @@ Rasterizer::Rasterizer(
     swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
 
     renderCubemap = std::make_shared<RenderCubemap>(device, _allocator, _shaderManager, _textureManager, _uniform, _samplerManager, _instanceInfo.rasterizedSkyCubemapSize);
+
+    depthCopying = std::make_shared<DepthCopying>(device, _shaderManager, storageFramebuffers);
 }
 
 Rasterizer::~Rasterizer()
@@ -185,11 +187,13 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
     Draw(params);
 }
 
-void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj)
+void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, 
+                                  const std::shared_ptr<TextureManager> &textureManager, 
+                                  float *view, float *proj,
+                                  bool werePrimaryTraced)
 {
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_DEPTH);
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_FINAL);
-    // TODO: clear depth attachment if no rays were traced?
 
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
@@ -212,6 +216,14 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, cons
         defaultViewProj
     };
 
+    uint32_t w = params.rasterAreaState.renderArea.extent.width;
+    uint32_t h = params.rasterAreaState.renderArea.extent.height;
+
+    // firstly, copy data from storage buffer to depth buffer;
+    // if no primary rays were traced, then just clear depth buffer without copying
+    depthCopying->Process(cmd, frameIndex, storageFramebuffers, w, h, !werePrimaryTraced);
+
+    // and after getting correct depth buffer, draw the geometry
     Draw(params);
 }
 
@@ -369,6 +381,8 @@ void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
     swapchainPipelines->SetShaders(shaderManager, "VertRasterizer", "FragRasterizer");
 
     renderCubemap->OnShaderReload(shaderManager);
+
+    depthCopying->OnShaderReload(shaderManager);
 }
 
 void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
@@ -466,6 +480,8 @@ void Rasterizer::CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderH
 
     rnra.offset = { 0, 0 };
     rnra.extent = { renderWidth, renderHeight };
+
+    depthCopying->CreateFramebuffer(, renderWidth, renderHeight);
 }
 
 void Rasterizer::CreateSwapchainFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight,
@@ -526,6 +542,8 @@ void Rasterizer::DestroyRenderFramebuffers()
             fb = VK_NULL_HANDLE;
         }
     }
+
+    depthCopying->DestroyFramebuffer();
 }
 
 void Rasterizer::DestroySwapchainFramebuffers()
