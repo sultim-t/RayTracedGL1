@@ -68,6 +68,8 @@ set(PrivateHeaders
     "Source/RasterizerPipelines.h"
     "Source/RenderCubemap.h"
     "Source/DepthCopying.h"
+    "Source/RasterPass.h"
+    "Source/SwapchainPass.h"
 )
 
 set(Sources
@@ -120,6 +122,8 @@ set(Sources
     "Source/RasterizerPipelines.cpp"
     "Source/RenderCubemap.cpp"
     "Source/DepthCopying.cpp"
+    "Source/RasterPass.cpp"
+    "Source/SwapchainPass.cpp"
 )
 
 add_library(RayTracedGL1 STATIC  

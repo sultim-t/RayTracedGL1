@@ -121,11 +121,11 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
    
     rasterizer          = std::make_shared<Rasterizer>(
         device,
-        memAllocator,
         shaderManager,
         textureManager,
         uniform,
         samplerManager,
+        memAllocator,
         framebuffers,
         swapchain->GetSurfaceFormat(),
         *info);

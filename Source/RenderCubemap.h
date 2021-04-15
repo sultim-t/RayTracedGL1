@@ -30,7 +30,7 @@
 namespace RTGL1
 {
 
-class RenderCubemap
+class RenderCubemap : public IShaderDependency
 {
 public:
     RenderCubemap(VkDevice device,
@@ -40,7 +40,7 @@ public:
                   const std::shared_ptr<GlobalUniform> &uniform,
                   const std::shared_ptr<SamplerManager> &samplerManager,
                   uint32_t rasterizedSkyCubemapSize);
-    ~RenderCubemap();
+    ~RenderCubemap() override;
 
     RenderCubemap(const RenderCubemap &other) = delete;
     RenderCubemap(RenderCubemap &&other) noexcept = delete;
@@ -56,7 +56,7 @@ public:
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet GetDescSet() const;
 
-    void OnShaderReload(const ShaderManager *shaderManager);
+    void OnShaderReload(const ShaderManager *shaderManager) override;
     
 
 private:

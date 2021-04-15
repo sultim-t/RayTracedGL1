@@ -23,15 +23,16 @@
 #include <vector>
 
 #include "Common.h"
-#include "DepthCopying.h"
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
 #include "IFramebuffersDependency.h"
 #include "ISwapchainDependency.h"
 #include "RasterizedDataCollector.h"
 #include "RasterizerPipelines.h"
+#include "RasterPass.h"
 #include "RenderCubemap.h"
 #include "ShaderManager.h"
+#include "SwapchainPass.h"
 #include "RTGL1/RTGL1.h"
 
 namespace RTGL1
@@ -43,11 +44,11 @@ class Rasterizer : public ISwapchainDependency, public IShaderDependency, public
 public:
     explicit Rasterizer(
         VkDevice device,
-        const std::shared_ptr<MemoryAllocator> &allocator,
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<TextureManager> &textureManager,    
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<SamplerManager> &samplerManager,
+        std::shared_ptr<MemoryAllocator> allocator,
         std::shared_ptr<Framebuffers> storageFramebuffers,
         VkFormat surfaceFormat,
         const RgInstanceCreateInfo &instanceInfo);
@@ -78,42 +79,24 @@ public:
     const std::shared_ptr<RenderCubemap> &GetRenderCubemap() const;
 
 private:
-    struct RasterAreaState
-    {
-        VkRect2D renderArea = {};
-        VkViewport viewport = {};
-    };
-
     struct DrawParams
     {
-        VkCommandBuffer cmd;
-        uint32_t frameIndex;
         const std::shared_ptr<RasterizerPipelines> &pipelines;
         const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos;
         VkRenderPass renderPass;
         VkFramebuffer framebuffer;
-        const RasterAreaState &rasterAreaState;
+        uint32_t width;
+        uint32_t height;
         VkBuffer vertexBuffer;
         VkBuffer indexBuffer;
-        uint32_t descSetCount;
-        VkDescriptorSet descSets[2];
+        VkDescriptorSet descSet;
         float *defaultViewProj;
     };
 
 private:
-    void Draw(const DrawParams &drawParams);
+    void Draw(VkCommandBuffer cmd, const DrawParams &drawParams);
 
-    void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
-    void CreateSwapchainRenderPass(VkFormat surfaceFormat);
-
-    void CreatePipelineLayouts(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout fbSetLayout);
-
-    void CreateRenderFramebuffers(uint32_t renderWidth, uint32_t renderHeight);
-    void DestroyRenderFramebuffers();
-
-    void CreateSwapchainFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight,
-                                     const VkImageView *pSwapchainAttchs, uint32_t swapchainAttchCount);
-    void DestroySwapchainFramebuffers();
+    void CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout);
 
     // If info's viewport is not the same as current one, new VkViewport will be set.
     void SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,  
@@ -124,32 +107,20 @@ private:
 
 private:
     VkDevice device;
+    VkPipelineLayout commonPipelineLayout;
+
+    std::shared_ptr<MemoryAllocator> allocator;
+
     std::shared_ptr<Framebuffers> storageFramebuffers;
 
-    VkRenderPass        rasterRenderPass;
-    VkRenderPass        swapchainRenderPass;
-
-    VkPipelineLayout    rasterPipelineLayout;
-    VkPipelineLayout    swapchainPipelineLayout;
-
-    std::shared_ptr<RasterizerPipelines> rasterPipelines;
-    std::shared_ptr<RasterizerPipelines> swapchainPipelines;
-
-    RasterAreaState rasterFramebufferState;
-    VkFramebuffer rasterFramebuffers[MAX_FRAMES_IN_FLIGHT];
-
-    VkFramebuffer rasterSkyFramebuffers[MAX_FRAMES_IN_FLIGHT];
-
-    RasterAreaState swapchainFramebufferState;
-    std::vector<VkFramebuffer> swapchainFramebuffers;
+    std::shared_ptr<RasterPass> rasterPass;
+    std::shared_ptr<SwapchainPass> swapchainPass;
 
     std::shared_ptr<RasterizedDataCollectorGeneral> collectorGeneral;
     std::shared_ptr<RasterizedDataCollectorSky> collectorSky;
 
     bool isCubemapOutdated;
     std::shared_ptr<RenderCubemap> renderCubemap;
-
-    std::shared_ptr<DepthCopying> depthCopying;
 };
 
 }

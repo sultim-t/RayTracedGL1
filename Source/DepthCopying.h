@@ -32,6 +32,7 @@ class DepthCopying
 {
 public:
     DepthCopying(VkDevice device,
+                 VkFormat depthFormat,
                  const std::shared_ptr<ShaderManager> &shaderManager,
                  const std::shared_ptr<Framebuffers> &storageFramebuffers);
     ~DepthCopying();
@@ -48,13 +49,13 @@ public:
                  uint32_t width, uint32_t height,
                  bool justClear);
 
-    void CreateFramebuffer(VkImageView depthAttchView, uint32_t width, uint32_t height);
-    void DestroyFramebuffer();
+    void CreateFramebuffers(VkImageView pDepthAttchViews[MAX_FRAMES_IN_FLIGHT], uint32_t width, uint32_t height);
+    void DestroyFramebuffers();
 
     void OnShaderReload(const ShaderManager *shaderManager);
 
 private:
-    void CreateRenderPass();
+    void CreateRenderPass(VkFormat depthFormat);
     void CreatePipelineLayout(VkDescriptorSetLayout fbSetLayout);
     void CreatePipeline(const ShaderManager *shaderManager);
 
@@ -62,7 +63,7 @@ private:
     VkDevice device;
 
     VkRenderPass renderPass;
-    VkFramebuffer framebuffer;
+    VkFramebuffer framebuffers[MAX_FRAMES_IN_FLIGHT];
 
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
