@@ -107,9 +107,9 @@ typedef struct RgInstanceCreateInfo
     const char                  *overrideNormalMetallicTexturePostfix;
     // If null, then "_e" will be used.
     const char                  *overrideEmissionRoughnessTexturePostfix;
-    bool                        overrideAlbedoAlphaTextureIsSRGB;
-    bool                        overrideNormalMetallicTextureIsSRGB;
-    bool                        overrideEmissionRoughnessTextureIsSRGB;
+    RgBool32                    overrideAlbedoAlphaTextureIsSRGB;
+    RgBool32                    overrideNormalMetallicTextureIsSRGB;
+    RgBool32                    overrideEmissionRoughnessTextureIsSRGB;
 
     // If a texture doesn't have overriden data, these default values are used.
     float                       defaultRoughness;

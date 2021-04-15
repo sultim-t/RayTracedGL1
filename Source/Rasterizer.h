@@ -24,6 +24,7 @@
 
 #include "Common.h"
 #include "Framebuffers.h"
+#include "GlobalUniform.h"
 #include "IFramebuffersDependency.h"
 #include "ISwapchainDependency.h"
 #include "RasterizedDataCollector.h"
