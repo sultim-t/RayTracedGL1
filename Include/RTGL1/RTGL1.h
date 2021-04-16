@@ -210,18 +210,18 @@ typedef struct RgGeometryUploadInfo
     uint32_t                        vertexCount;
     // Strides are set in RgInstanceUploadInfo.
     // 3 first floats will be used
-    void                            *vertexData;
+    const void                      *vertexData;
     // 3 first floats will be used
-    void                            *normalData;
+    const void                      *normalData;
     // Up to 3 texture coordinated per vertex for static geometry.
     // Dynamic geometry uses only 1 layer.
     // 2 first floats will be used
-    void                            *texCoordLayerData[3];
-
+    const void                      *texCoordLayerData[3];
+    
     // Can be null, if indices are not used.
     // indexData is an array of uint32_t of size indexCount.
     uint32_t                        indexCount;
-    void                            *indexData;
+    const void                      *indexData;
 
     // RGBA color for each material layer.
     RgFloat4D                       layerColors[3];
@@ -251,7 +251,7 @@ typedef struct RgUpdateTexCoordsInfo
     uint32_t        vertexCount;
     // If an array member is null, then texture coordinates
     // won't be updated for that layer.
-    void            *texCoordLayerData[3];
+    const void      *texCoordLayerData[3];
 } RgUpdateTexCoordsInfo;
 
 
@@ -308,11 +308,11 @@ typedef enum RgRaterizedGeometryRenderType
 typedef struct RgRasterizedGeometryVertexArrays
 {
     // 3 first floats are used.
-    void                *vertexData;
+    const void          *vertexData;
     // 2 first floats are used.
-    void                *texCoordData;
+    const void          *texCoordData;
     // RGBA packed into 32-bit uint. Little-endian. Can be null.
-    void                *colorData;
+    const void          *colorData;
     uint32_t            vertexStride;
     uint32_t            texCoordStride;
     uint32_t            colorStride;
@@ -335,13 +335,13 @@ typedef struct RgRasterizedGeometryUploadInfo
     // "arrays"  -- pointer to a struct that defines separate arrays
     //              for position and texCoord data.
     // "structs" -- is an array of packed vertices.
-    RgRasterizedGeometryVertexArrays   *arrays;
-    RgRasterizedGeometryVertexStruct   *structs;
+    const RgRasterizedGeometryVertexArrays *arrays;
+    const RgRasterizedGeometryVertexStruct *structs;
     
     // Can be 0/null.
     // indexData is an array of uint32_t of size indexCount.
     uint32_t            indexCount;
-    void                *indexData;
+    const void          *indexData;
 
     RgTransform         transform;
 
