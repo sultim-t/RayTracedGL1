@@ -47,13 +47,16 @@ public:
 
     void CreateFramebuffers(uint32_t renderWidth, uint32_t renderHeight, 
                             const std::shared_ptr<Framebuffers> &storageFramebuffers,
-                            const std::shared_ptr<MemoryAllocator> &allocator);
+                            const std::shared_ptr<MemoryAllocator> &allocator,
+                            const std::shared_ptr<CommandBufferManager> &cmdManager);
     void DestroyFramebuffers();
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
     VkRenderPass GetRasterRenderPass() const;
+    VkRenderPass GetSkyRasterRenderPass() const;
     const std::shared_ptr<RasterizerPipelines> &GetRasterPipelines() const;
+    const std::shared_ptr<RasterizerPipelines> &GetSkyRasterPipelines() const;
     uint32_t GetRasterWidth() const;
     uint32_t GetRasterHeight() const;
     VkFramebuffer GetFramebuffer(uint32_t frameIndex) const;
@@ -62,14 +65,19 @@ public:
 private:
     void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
 
-    void CreateDepthBuffers(uint32_t width, uint32_t height, const std::shared_ptr<MemoryAllocator> &allocator);
+    void CreateDepthBuffers(uint32_t width, uint32_t height, 
+                            const std::shared_ptr<MemoryAllocator> &allocator,
+                            const std::shared_ptr<CommandBufferManager> &cmdManager);
     void DestroyDepthBuffers();
 
 private:
     VkDevice device;
 
     VkRenderPass rasterRenderPass;
+    VkRenderPass rasterSkyRenderPass;
+
     std::shared_ptr<RasterizerPipelines> rasterPipelines;
+    std::shared_ptr<RasterizerPipelines> rasterSkyPipelines;
 
     uint32_t rasterWidth;
     uint32_t rasterHeight;

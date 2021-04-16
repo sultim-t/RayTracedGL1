@@ -127,6 +127,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         samplerManager,
         memAllocator,
         framebuffers,
+        cmdManager,
         swapchain->GetSurfaceFormat(),
         *info);
 

@@ -69,12 +69,14 @@ Rasterizer::Rasterizer(
     const std::shared_ptr<SamplerManager> &_samplerManager,
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<Framebuffers> _storageFramebuffers,
+    std::shared_ptr<CommandBufferManager> _cmdManager,
     VkFormat _surfaceFormat,
     const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
     commonPipelineLayout(VK_NULL_HANDLE),
     allocator(std::move(_allocator)),
+    cmdManager(std::move(_cmdManager)),
     storageFramebuffers(std::move(_storageFramebuffers)),
     isCubemapOutdated(true)
 {
@@ -89,7 +91,9 @@ Rasterizer::Rasterizer(
 }
 
 Rasterizer::~Rasterizer()
-{}
+{
+    vkDestroyPipelineLayout(device, commonPipelineLayout, nullptr);
+}
 
 void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyGeometryReuse)
 {
@@ -147,10 +151,10 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
 
     const DrawParams params
     {
-        rasterPass->GetRasterPipelines(),
+        rasterPass->GetSkyRasterPipelines(),
         // sky infos
         collectorSky->GetSkyDrawInfos(),
-        rasterPass->GetRasterRenderPass(),
+        rasterPass->GetSkyRasterRenderPass(),
         // sky FB
         rasterPass->GetSkyFramebuffer(frameIndex),
         rasterPass->GetRasterWidth(),
@@ -172,6 +176,9 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
 {
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_DEPTH);
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_FINAL);
+
+    // copy depth buffer
+    rasterPass->PrepareForFinal(cmd, frameIndex, storageFramebuffers, werePrimaryTraced);
 
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
@@ -230,13 +237,16 @@ void Rasterizer::Draw(VkCommandBuffer cmd, const DrawParams &drawParams)
     const VkViewport defaultViewport = { 0, 0, (float)drawParams.width, (float)drawParams.height, 0.0f, 1.0f };
     const VkRect2D defaultRenderArea = { { 0, 0 }, { drawParams.width, drawParams.height }};
 
+    VkClearValue clear[2] = {};
+    clear[1].depthStencil.depth = 1.0f;
+
     VkRenderPassBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.renderPass = drawParams.renderPass;
     beginInfo.framebuffer = drawParams.framebuffer;
     beginInfo.renderArea = defaultRenderArea;
-    beginInfo.clearValueCount = 0;
-    beginInfo.pClearValues = nullptr;
+    beginInfo.clearValueCount = 2;
+    beginInfo.pClearValues = clear;
 
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -335,7 +345,7 @@ void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
 void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
 {
     rasterPass->DestroyFramebuffers();
-    rasterPass->CreateFramebuffers(width, height, storageFramebuffers, allocator);
+    rasterPass->CreateFramebuffers(width, height, storageFramebuffers, allocator, cmdManager);
 }
 
 void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout)

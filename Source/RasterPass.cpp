@@ -24,6 +24,8 @@
 #include "Rasterizer.h"
 
 
+constexpr char *VERT_SHADER = "VertRasterizer";
+constexpr char *FRAG_SHADER = "FragRasterizer";
 constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
 
 
@@ -35,6 +37,7 @@ RTGL1::RasterPass::RasterPass(
 :
     device(_device),
     rasterRenderPass(VK_NULL_HANDLE),
+    rasterSkyRenderPass(VK_NULL_HANDLE),
     rasterWidth(0),
     rasterHeight(0),
     rasterFramebuffers{},
@@ -46,7 +49,10 @@ RTGL1::RasterPass::RasterPass(
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], DEPTH_FORMAT);
 
     rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass);
-    rasterPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizerDepth");
+    rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
+
+    rasterSkyPipelines= std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterSkyRenderPass);
+    rasterSkyPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
 
     depthCopying = std::make_shared<DepthCopying>(device, DEPTH_FORMAT, _shaderManager, _storageFramebuffers);
 }
@@ -54,6 +60,7 @@ RTGL1::RasterPass::RasterPass(
 RTGL1::RasterPass::~RasterPass()
 {
     vkDestroyRenderPass(device, rasterRenderPass, nullptr);
+    vkDestroyRenderPass(device, rasterSkyRenderPass, nullptr);
     DestroyFramebuffers();
 }
 
@@ -72,9 +79,10 @@ void RTGL1::RasterPass::PrepareForFinal(
 
 void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t renderHeight,
                                            const std::shared_ptr<Framebuffers> &storageFramebuffers,
-                                           const std::shared_ptr<MemoryAllocator> &allocator)
+                                           const std::shared_ptr<MemoryAllocator> &allocator,
+                                           const std::shared_ptr<CommandBufferManager> &cmdManager)
 {
-    CreateDepthBuffers(renderWidth, renderHeight, allocator);
+    CreateDepthBuffers(renderWidth, renderHeight, allocator, cmdManager);
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -83,7 +91,6 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
 
         VkFramebufferCreateInfo fbInfo = {};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbInfo.renderPass = rasterRenderPass;
         fbInfo.width = renderWidth;
         fbInfo.height = renderHeight;
         fbInfo.layers = 1;
@@ -98,6 +105,8 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
         fbInfo.pAttachments = attchs;
 
         {
+            fbInfo.renderPass = rasterRenderPass;
+
             attchs[0] = storageFramebuffers->GetImageView(FB_IMAGE_INDEX_FINAL, i);
 
             VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterFramebuffers[i]);
@@ -107,6 +116,8 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
         }
 
         {
+            fbInfo.renderPass = rasterSkyRenderPass;
+
             attchs[0] = storageFramebuffers->GetImageView(FB_IMAGE_INDEX_ALBEDO, i);
 
             VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterSkyFramebuffers[i]);
@@ -152,9 +163,19 @@ VkRenderPass RTGL1::RasterPass::GetRasterRenderPass() const
     return rasterRenderPass;
 }
 
+VkRenderPass RTGL1::RasterPass::GetSkyRasterRenderPass() const
+{
+    return rasterSkyRenderPass;
+}
+
 const std::shared_ptr<RTGL1::RasterizerPipelines> &RTGL1::RasterPass::GetRasterPipelines() const
 {
     return rasterPipelines;
+}
+
+const std::shared_ptr<RTGL1::RasterizerPipelines> &RTGL1::RasterPass::GetSkyRasterPipelines() const
+{
+    return rasterSkyPipelines;
 }
 
 uint32_t RTGL1::RasterPass::GetRasterWidth() const
@@ -180,7 +201,10 @@ VkFramebuffer RTGL1::RasterPass::GetSkyFramebuffer(uint32_t frameIndex) const
 void RTGL1::RasterPass::OnShaderReload(const ShaderManager *shaderManager)
 {
     rasterPipelines->Clear();
-    rasterPipelines->SetShaders(shaderManager, "VertRasterizer", "FragRasterizerDepth");
+    rasterSkyPipelines->Clear();
+
+    rasterPipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER);
+    rasterSkyPipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER);
 
     depthCopying->OnShaderReload(shaderManager);
 }
@@ -203,12 +227,16 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
     auto &depthAttch = attchs[1];
     depthAttch.format = depthImageFormat;
     depthAttch.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
+    // will be overwritten
+    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_MAX_ENUM;
     depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    // depth image was already transitioned
+    // by depthCopying for rasterRenderPass
+    // and manually for rasterSkyRenderPass
+    depthAttch.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 
     VkAttachmentReference colorRef = {};
@@ -217,7 +245,7 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
 
     VkAttachmentReference depthRef = {};
     depthRef.attachment = 1;
-    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_READ_ONLY_OPTIMAL;
+    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -231,10 +259,9 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
     dependency.dstSubpass = 0;
     dependency.srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     dependency.dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = 0;
-    dependency.dstAccessMask =
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
-        VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    dependency.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                               VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 
 
     VkRenderPassCreateInfo passInfo = {};
@@ -246,13 +273,29 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
     passInfo.dependencyCount = 1;
     passInfo.pDependencies = &dependency;
 
-    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterRenderPass);
-    VK_CHECKERROR(r);
+    {
+        // load depth data from depthCopying
+        depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 
-    SET_DEBUG_NAME(device, rasterRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer raster render pass");
+        VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterRenderPass);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, rasterRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer raster render pass");
+    }
+
+    {
+        depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+
+        VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterSkyRenderPass);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, rasterSkyRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer raster sky render pass");
+    }
 }
 
-void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height, const std::shared_ptr<MemoryAllocator> &allocator)
+void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height,
+                                           const std::shared_ptr<MemoryAllocator> &allocator, 
+                                           const std::shared_ptr<CommandBufferManager> &cmdManager)
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -263,7 +306,7 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height, cons
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
-        imageInfo.flags = VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+        imageInfo.flags = 0;
         imageInfo.format = DEPTH_FORMAT;
         imageInfo.extent = { width, height, 1 };
         imageInfo.mipLevels = 1;
@@ -300,7 +343,7 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height, cons
         // create image view
         VkImageViewCreateInfo viewInfo = {};
         viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_CUBE;
+        viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.format = DEPTH_FORMAT;
         viewInfo.subresourceRange = {};
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
@@ -313,6 +356,36 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height, cons
         r = vkCreateImageView(device, &viewInfo, nullptr, &depthViews[i]);
         VK_CHECKERROR(r);
         SET_DEBUG_NAME(device, depthViews[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Rasterizer raster pass depth image view");
+
+
+        // make transition from undefined manually,
+        // so depthAttch.initialLayout can be specified as DEPTH_STENCIL_ATTACHMENT_OPTIMAL
+        VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
+
+        VkImageMemoryBarrier imageBarrier = {};
+        imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        imageBarrier.image = depthImages[i];
+        imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        imageBarrier.srcAccessMask = 0;
+        imageBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        imageBarrier.subresourceRange.baseMipLevel = 0;
+        imageBarrier.subresourceRange.levelCount = 1;
+        imageBarrier.subresourceRange.baseArrayLayer = 0;
+        imageBarrier.subresourceRange.layerCount = 1;
+
+        vkCmdPipelineBarrier(
+            cmd,
+            VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
+            0, nullptr,
+            0, nullptr,
+            1, &imageBarrier);
+
+        cmdManager->Submit(cmd);
+        cmdManager->WaitGraphicsIdle();
     }
 }
 
@@ -320,16 +393,18 @@ void RTGL1::RasterPass::DestroyDepthBuffers()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        assert(depthImages[i] != VK_NULL_HANDLE);
-        assert(depthViews[i] != VK_NULL_HANDLE);
-        assert(depthMemory[i] != VK_NULL_HANDLE);
+        assert((depthImages[i] && depthViews[i] && depthMemory[i]) 
+               || (!depthImages[i] && !depthViews[i] && !depthMemory[i]));
 
-        vkDestroyImage(device, depthImages[i], nullptr);
-        vkDestroyImageView(device, depthViews[i], nullptr);
-        vkFreeMemory(device, depthMemory[i], nullptr);
+        if (depthImages[i] != VK_NULL_HANDLE)
+        {
+            vkDestroyImage(device, depthImages[i], nullptr);
+            vkDestroyImageView(device, depthViews[i], nullptr);
+            vkFreeMemory(device, depthMemory[i], nullptr);
 
-        depthImages[i] = VK_NULL_HANDLE;
-        depthViews[i] = VK_NULL_HANDLE;
-        depthMemory[i] = VK_NULL_HANDLE;
+            depthImages[i] = VK_NULL_HANDLE;
+            depthViews[i] = VK_NULL_HANDLE;
+            depthMemory[i] = VK_NULL_HANDLE;
+        }
     }
 }

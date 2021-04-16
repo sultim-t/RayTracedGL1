@@ -50,6 +50,7 @@ public:
         const std::shared_ptr<SamplerManager> &samplerManager,
         std::shared_ptr<MemoryAllocator> allocator,
         std::shared_ptr<Framebuffers> storageFramebuffers,
+        std::shared_ptr<CommandBufferManager> cmdManager,
         VkFormat surfaceFormat,
         const RgInstanceCreateInfo &instanceInfo);
     ~Rasterizer() override;
@@ -110,7 +111,7 @@ private:
     VkPipelineLayout commonPipelineLayout;
 
     std::shared_ptr<MemoryAllocator> allocator;
-
+    std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<Framebuffers> storageFramebuffers;
 
     std::shared_ptr<RasterPass> rasterPass;

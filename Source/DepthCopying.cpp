@@ -67,7 +67,7 @@ void RTGL1::DepthCopying::Process(VkCommandBuffer cmd, uint32_t frameIndex,
     viewport.width = (float)width;
     viewport.height = (float)height;
     viewport.minDepth = 0.0f;
-    viewport.maxDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
 
     VkClearValue clear = {};
     clear.depthStencil.depth = 1.0f;
@@ -117,12 +117,12 @@ void RTGL1::DepthCopying::CreateRenderPass(VkFormat depthFormat)
     depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 
     VkAttachmentReference depthRef = {};
     depthRef.attachment = 0;
-    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
     VkSubpassDescription subpass = {};
     subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
@@ -134,10 +134,9 @@ void RTGL1::DepthCopying::CreateRenderPass(VkFormat depthFormat)
     dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
     dependency.dstSubpass = 0;
     dependency.srcStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT;
+    dependency.dstStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
     dependency.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
     dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
-
 
     VkRenderPassCreateInfo passInfo = {};
     passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
