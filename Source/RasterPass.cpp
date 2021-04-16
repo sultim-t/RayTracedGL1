@@ -22,10 +22,11 @@
 
 #include "Generated/ShaderCommonCFramebuf.h"
 #include "Rasterizer.h"
+#include "Utils.h"
 
 
-constexpr char *VERT_SHADER = "VertRasterizer";
-constexpr char *FRAG_SHADER = "FragRasterizer";
+constexpr const char *VERT_SHADER = "VertRasterizer";
+constexpr const char *FRAG_SHADER = "FragRasterizer";
 constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
 
 
@@ -71,9 +72,9 @@ void RTGL1::RasterPass::PrepareForFinal(
 {
     assert(rasterWidth > 0 && rasterHeight > 0);
 
-    // Firstly, copy data from storage buffer to depth buffer,
-    // and only after getting correct depth buffer, draw the geometry.
-    // If no primary rays were traced, then just clear depth buffer without copying.
+    // firstly, copy data from storage buffer to depth buffer,
+    // and only after getting correct depth buffer, draw the geometry
+    // if no primary rays were traced, just clear depth buffer without copying
     depthCopying->Process(cmd, frameIndex, storageFramebuffers, rasterWidth, rasterHeight, !werePrimaryTraced);
 }
 

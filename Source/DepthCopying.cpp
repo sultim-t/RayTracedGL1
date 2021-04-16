@@ -69,16 +69,12 @@ void RTGL1::DepthCopying::Process(VkCommandBuffer cmd, uint32_t frameIndex,
     viewport.minDepth = 0.0f;
     viewport.maxDepth = 1.0f;
 
-    VkClearValue clear = {};
-    clear.depthStencil.depth = 1.0f;
-
     VkRenderPassBeginInfo beginInfo = {};
     beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
     beginInfo.renderPass = renderPass;
     beginInfo.framebuffer = framebuffers[frameIndex];
     beginInfo.renderArea = renderArea;
-    beginInfo.clearValueCount = 1;
-    beginInfo.pClearValues = &clear;
+    beginInfo.clearValueCount = 0;
 
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
@@ -94,6 +90,20 @@ void RTGL1::DepthCopying::Process(VkCommandBuffer cmd, uint32_t frameIndex,
                                 0, nullptr);
 
         vkCmdDraw(cmd, 6, 1, 0, 0);
+    }
+    else
+    {
+        VkClearRect rect = {};
+        rect.rect.extent = { width, height };
+        rect.baseArrayLayer = 0;
+        rect.layerCount = 1;
+
+        VkClearAttachment clear = {};
+        clear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+        clear.colorAttachment = 0;
+        clear.clearValue.depthStencil.depth = 1.0f;
+
+        vkCmdClearAttachments(cmd, 1, &clear, 1, &rect);
     }
 
     vkCmdEndRenderPass(cmd);
@@ -112,7 +122,7 @@ void RTGL1::DepthCopying::CreateRenderPass(VkFormat depthFormat)
     VkAttachmentDescription depthAttch = {};
     depthAttch.format = depthFormat;
     depthAttch.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -257,8 +267,9 @@ void RTGL1::DepthCopying::CreatePipeline(const ShaderManager *shaderManager)
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
     // write to depth buffer through gl_FragDepth
     depthStencil.depthWriteEnable = VK_TRUE;
-    depthStencil.depthTestEnable = VK_FALSE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL;
+    // enable for depthWriteEnable
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
     depthStencil.stencilTestEnable = VK_FALSE;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
 
