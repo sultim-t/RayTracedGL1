@@ -23,12 +23,12 @@
 #ifdef DESC_SET_TEXTURES
 
 #ifdef TEXTURE_GRADIENTS
-vec3 processAlbedoGrad(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3], vec2 dPdx[3], vec2 dPdy[3])
+vec3 processAlbedoGrad(uint materialsBlendFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
 #else
-vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[3], vec4 materialColors[3], float lod)
+vec3 processAlbedo(uint materialsBlendFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], float lod)
 #endif
 {
-    uint blendsFlags[] = 
+    const uint blendsFlags[] = 
     {
         (materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
         (materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
@@ -42,27 +42,22 @@ vec3 processAlbedo(uint materialsBlendFlags, vec2 texCoords[3], uvec3 materials[
         if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {
         #ifdef TEXTURE_GRADIENTS
-            vec4 src = materialColors[i] * getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
+            const vec4 src = materialColors[i] * getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
         #else
-            vec4 src = materialColors[i] * getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
+            const vec4 src = materialColors[i] * getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
         #endif
 
-            if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0)
-            {
-                dst = src.rgb;
-            }
-            else if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA) != 0)
-            {
-                dst = src.rgb * src.a + dst * (1 - src.a);
-            }
-            else if ((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD) != 0)
-            {
-                dst += src.rgb;
-            }
-            else // if (blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)
-            {
-                dst = 2 * dst * src.rgb;
-            }
+            const float opq = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0);
+            const float alp = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)  != 0);
+            const float add = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD)    != 0);
+            const float shd = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)  != 0);
+
+            // TODO: test this instead of branching
+
+            dst = opq * (src.rgb) +
+                  alp * (src.rgb * src.a + dst * (1 - src.a)) + 
+                  add * (src.rgb + dst) +
+                  shd * (src.rgb * dst * 2);
         }
     }
 
@@ -120,7 +115,7 @@ ShHitInfo getHitInfoGrad(
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
     out vec2 motion, out float motionDepthLinear, out vec2 gradDepth, out float depthNDC)
 #else
-ShHitInfo getHitInfo(const ShPayload pl)
+ShHitInfo getHitInfo(const ShPayload pl, const float lod)
 #endif
 {
     ShHitInfo h;
@@ -196,8 +191,6 @@ ShHitInfo getHitInfo(const ShPayload pl)
 
     h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
 #else
-    const float lod = 2;
-
     h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
 
