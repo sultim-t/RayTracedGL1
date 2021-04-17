@@ -140,7 +140,6 @@ void main()
     
     // surface shading samples
     imageStore(framebufNormalGeometry,    samplePix, vec4(normalPrev, 0));
-    // don't forget instCustomIndex in alpha-channel
     imageStore(framebufNormal,            samplePix, texelFetch(framebufNormal_Prev_Sampler,            samplePrevPix, 0));
     imageStore(framebufMetallicRoughness, samplePix, texelFetch(framebufMetallicRoughness_Prev_Sampler, samplePrevPix, 0));
 
@@ -149,10 +148,10 @@ void main()
     
     if (matchedSurface)
     {
-        const vec3 viewRay = pos - globalUniform.cameraPosition.xyz;
-        const float length = max(0.001, length(viewRay));
+        const vec3 viewDir = normalize(pos - globalUniform.cameraPosition.xyz);
 
-        imageStore(framebufSurfacePosition, samplePix, vec4(pos, length));
-        imageStore(framebufViewDirection,   samplePix, vec4(viewRay / length, 0.0));
+        // don't forget instCustomIndex in alpha-channel
+        imageStore(framebufSurfacePosition, samplePix, vec4(pos, uintBitsToFloat(instCustomIndexPrev)));
+        imageStore(framebufViewDirection,   samplePix, vec4(viewDir, 0.0));
     }
 }

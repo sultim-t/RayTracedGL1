@@ -424,10 +424,12 @@ void processSphericalLight(
 void processDirectIllumination(
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness,
-    vec3 viewDirection, float distanceToViewer,
+    vec3 viewDirection,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
+    const float distanceToViewer = length(surfPosition - globalUniform.cameraPosition.xyz);
+
     vec3 dirDiff, dirSpec;
     processDirectionalLight(
         seed, 

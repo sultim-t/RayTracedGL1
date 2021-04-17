@@ -56,9 +56,8 @@ void main()
     const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
 
-    const float distanceToViewer      = surfPosition.a;
     const float surfRoughness         = surfMetallicRoughness.g;
-    const uint instCustomIndex        = floatBitsToUint(surfNormal.a);
+    const uint instCustomIndex        = floatBitsToUint(surfPosition.a);
 
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
@@ -67,7 +66,7 @@ void main()
     processDirectIllumination(
         seed, 
         instCustomIndex, surfPosition.xyz, surfNormal.xyz, surfNormalGeom.xyz, surfRoughness, 
-        -viewDirection.xyz, distanceToViewer, 
+        -viewDirection.xyz,
         isGradientSample, 
         diffuse, specular);
 

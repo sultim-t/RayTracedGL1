@@ -241,7 +241,7 @@ void main()
     const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
     const float surfRoughness         = surfMetallicRoughness.g;
-    const uint surfInstCustomIndex    = floatBitsToUint(surfNormal.a);
+    const uint surfInstCustomIndex    = floatBitsToUint(surfPosition.a);
   
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
