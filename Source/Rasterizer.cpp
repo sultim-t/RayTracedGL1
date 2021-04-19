@@ -87,7 +87,7 @@ Rasterizer::Rasterizer(
 
     rasterPass = std::make_shared<RasterPass>(device, commonPipelineLayout, _shaderManager, storageFramebuffers);
     swapchainPass = std::make_shared<SwapchainPass>(device, commonPipelineLayout, _surfaceFormat, _shaderManager);
-    renderCubemap = std::make_shared<RenderCubemap>(device, allocator, _shaderManager, _textureManager, _uniform, _samplerManager, _instanceInfo.rasterizedSkyCubemapSize);
+    renderCubemap = std::make_shared<RenderCubemap>(device, allocator, _shaderManager, _textureManager, _uniform, _samplerManager, cmdManager, _instanceInfo.rasterizedSkyCubemapSize);
 }
 
 Rasterizer::~Rasterizer()

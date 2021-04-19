@@ -58,6 +58,7 @@ RTGL1::RenderCubemap::RenderCubemap(
     const std::shared_ptr<TextureManager> &_textureManager,
     const std::shared_ptr<GlobalUniform> &_uniform,
     const std::shared_ptr<SamplerManager> &_samplerManager,
+    const std::shared_ptr<CommandBufferManager> &_cmdManager,
     uint32_t _rasterizedSkyCubemapSize)
 :
     device(_device),
@@ -65,6 +66,7 @@ RTGL1::RenderCubemap::RenderCubemap(
     multiviewRenderPass(VK_NULL_HANDLE),
     cubemap{},
     cubemapDepth{},
+    cubemapFramebuffer(VK_NULL_HANDLE),
     cubemapSize(std::max(_rasterizedSkyCubemapSize, 16u)),
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
@@ -73,8 +75,13 @@ RTGL1::RenderCubemap::RenderCubemap(
     CreatePipelineLayout(_textureManager->GetDescSetLayout(), _uniform->GetDescSetLayout());
     CreateRenderPass();
     InitPipelines(_shaderManager, cubemapSize);
-    CreateAttch(_allocator, cubemapSize, cubemap, false);
-    CreateAttch(_allocator, cubemapSize, cubemapDepth, true);
+
+    VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
+    CreateAttch(_allocator, cmd, cubemapSize, cubemap, false);
+    CreateAttch(_allocator, cmd, cubemapSize, cubemapDepth, true);
+    _cmdManager->Submit(cmd);
+    _cmdManager->WaitGraphicsIdle();
+
     CreateFramebuffer(cubemapSize);
     CreateDescriptors(_samplerManager);
 }
@@ -245,7 +252,7 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    colorAttch.initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     colorAttch.finalLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
     auto &depthAttch = attchs[1];
@@ -255,7 +262,7 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    depthAttch.initialLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
     depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
 
 
@@ -332,7 +339,10 @@ void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &s
     pipelines->DisableDynamicState(viewport, scissors);
 }
 
-void RTGL1::RenderCubemap::CreateAttch(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize, Attachment &result, bool isDepth)
+void RTGL1::RenderCubemap::CreateAttch(
+    const std::shared_ptr<MemoryAllocator> &allocator,
+    VkCommandBuffer cmd,
+    uint32_t sideSize, Attachment &result, bool isDepth)
 {
     VkImageCreateInfo imageInfo = {};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
@@ -389,6 +399,40 @@ void RTGL1::RenderCubemap::CreateAttch(const std::shared_ptr<MemoryAllocator> &a
     r = vkCreateImageView(device, &viewInfo, nullptr, &result.view);
     VK_CHECKERROR(r);
     SET_DEBUG_NAME(device, result.view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, isDepth ? "Render cubemap depth image view" : "Render cubemap image view");
+
+
+    // make transition from undefined manually, so initialLayout can be specified
+    VkImageMemoryBarrier imageBarrier = {};
+    imageBarrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    imageBarrier.image = result.image;
+    imageBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    imageBarrier.srcAccessMask = 0;
+    if (isDepth)
+    {
+        imageBarrier.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_READ_BIT;
+        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    }
+    else
+    {
+        imageBarrier.dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_COLOR_ATTACHMENT_READ_BIT;
+        imageBarrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+        imageBarrier.newLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+        imageBarrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    }
+    imageBarrier.subresourceRange.baseMipLevel = 0;
+    imageBarrier.subresourceRange.levelCount = 1;
+    imageBarrier.subresourceRange.baseArrayLayer = 0;
+    imageBarrier.subresourceRange.layerCount = 6;
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
+        0, nullptr,
+        0, nullptr,
+        1, &imageBarrier);
 }
 
 void RTGL1::RenderCubemap::CreateFramebuffer(uint32_t sideSize)

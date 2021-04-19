@@ -39,6 +39,7 @@ public:
                   const std::shared_ptr<TextureManager> &textureManager,
                   const std::shared_ptr<GlobalUniform> &uniform,
                   const std::shared_ptr<SamplerManager> &samplerManager,
+                  const std::shared_ptr<CommandBufferManager> &cmdManager,
                   uint32_t rasterizedSkyCubemapSize);
     ~RenderCubemap() override;
 
@@ -71,7 +72,7 @@ private:
     void CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout uniformSetLayout);
     void CreateRenderPass();
     void InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize);
-    void CreateAttch(const std::shared_ptr<MemoryAllocator> &allocator, uint32_t sideSize, Attachment &result, bool isDepth);
+    void CreateAttch(const std::shared_ptr<MemoryAllocator> &allocator, VkCommandBuffer cmd, uint32_t sideSize, Attachment &result, bool isDepth);
     void CreateFramebuffer(uint32_t sideSize);
     void CreateDescriptors(const std::shared_ptr<SamplerManager> &samplerManager);
 
