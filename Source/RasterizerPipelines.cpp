@@ -181,13 +181,15 @@ static VkBlendFactor ConvertBlendFactorToVk(RgBlendFactor f)
 RTGL1::RasterizerPipelines::RasterizerPipelines(
     VkDevice _device,
     VkPipelineLayout _pipelineLayout, 
-    VkRenderPass _renderPass)
+    VkRenderPass _renderPass,
+    bool _applyVertexColorGamma)
 :
     device(_device),
     pipelineLayout(_pipelineLayout),
     renderPass(_renderPass),
     shaderStages{},
-    pipelineCache(VK_NULL_HANDLE)
+    pipelineCache(VK_NULL_HANDLE),
+    applyVertexColorGamma(_applyVertexColorGamma)
 {
     assert(TestFlags());
 
@@ -262,6 +264,21 @@ VkPipelineLayout RTGL1::RasterizerPipelines::GetPipelineLayout()
 VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
 {
     assert(shaderStages[0].sType != 0 && shaderStages[1].sType != 0);
+
+
+    VkSpecializationMapEntry mapEntry = {};
+    mapEntry.constantID = 0;
+    mapEntry.offset = 0;
+    mapEntry.size = sizeof(uint32_t);
+
+    VkSpecializationInfo vertSpecInfo = {};
+    vertSpecInfo.mapEntryCount = 1;
+    vertSpecInfo.pMapEntries = &mapEntry;
+    vertSpecInfo.dataSize = sizeof(uint32_t);
+    vertSpecInfo.pData = &applyVertexColorGamma;
+
+    shaderStages[0].pSpecializationInfo = &vertSpecInfo;
+
 
     VkDynamicState dynamicStates[2] =
     {

@@ -34,7 +34,8 @@ RTGL1::RasterPass::RasterPass(
     VkDevice _device, 
     VkPipelineLayout _pipelineLayout,
     const std::shared_ptr<ShaderManager> &_shaderManager,
-    const std::shared_ptr<Framebuffers> &_storageFramebuffers)
+    const std::shared_ptr<Framebuffers> &_storageFramebuffers,
+    const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
     rasterRenderPass(VK_NULL_HANDLE),
@@ -49,10 +50,10 @@ RTGL1::RasterPass::RasterPass(
 {
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], DEPTH_FORMAT);
 
-    rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass);
+    rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass, _instanceInfo.rasterizedVertexColorGamma);
     rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
 
-    rasterSkyPipelines= std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterSkyRenderPass);
+    rasterSkyPipelines= std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterSkyRenderPass, _instanceInfo.rasterizedVertexColorGamma);
     rasterSkyPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
 
     depthCopying = std::make_shared<DepthCopying>(device, DEPTH_FORMAT, _shaderManager, _storageFramebuffers);

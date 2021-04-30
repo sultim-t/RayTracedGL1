@@ -59,7 +59,7 @@ RTGL1::RenderCubemap::RenderCubemap(
     const std::shared_ptr<GlobalUniform> &_uniform,
     const std::shared_ptr<SamplerManager> &_samplerManager,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
-    uint32_t _rasterizedSkyCubemapSize)
+    const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
     pipelineLayout(VK_NULL_HANDLE),
@@ -67,14 +67,14 @@ RTGL1::RenderCubemap::RenderCubemap(
     cubemap{},
     cubemapDepth{},
     cubemapFramebuffer(VK_NULL_HANDLE),
-    cubemapSize(std::max(_rasterizedSkyCubemapSize, 16u)),
+    cubemapSize(std::max(_instanceInfo.rasterizedSkyCubemapSize, 16u)),
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSet(VK_NULL_HANDLE)
 {
     CreatePipelineLayout(_textureManager->GetDescSetLayout(), _uniform->GetDescSetLayout());
     CreateRenderPass();
-    InitPipelines(_shaderManager, cubemapSize);
+    InitPipelines(_shaderManager, cubemapSize, _instanceInfo.rasterizedVertexColorGamma);
 
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
     CreateAttch(_allocator, cmd, cubemapSize, cubemap, false);
@@ -321,7 +321,7 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     SET_DEBUG_NAME(device, multiviewRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Render cubemap multiview render pass");
 }
 
-void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize)
+void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize, bool applyVertexColorGamma)
 {
     VkViewport viewport = {};
     viewport.x = viewport.y = 0;
@@ -334,7 +334,7 @@ void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &s
     scissors.extent = { sideSize, sideSize };
 
 
-    pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass);
+    pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass, applyVertexColorGamma);
     pipelines->SetShaders(shaderManager.get(), "VertRasterizerMultiview", "FragRasterizer");
     pipelines->DisableDynamicState(viewport, scissors);
 }

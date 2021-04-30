@@ -24,7 +24,8 @@ RTGL1::SwapchainPass::SwapchainPass(
     VkDevice _device, 
     VkPipelineLayout _pipelineLayout,
     VkFormat _surfaceFormat,
-    const std::shared_ptr<ShaderManager> &_shaderManager)
+    const std::shared_ptr<ShaderManager> &_shaderManager,
+    const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
     swapchainRenderPass(VK_NULL_HANDLE),
@@ -33,7 +34,7 @@ RTGL1::SwapchainPass::SwapchainPass(
 {
     CreateSwapchainRenderPass(_surfaceFormat);
 
-    swapchainPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, swapchainRenderPass);
+    swapchainPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, swapchainRenderPass, _instanceInfo.rasterizedVertexColorGamma);
     swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
 }
 

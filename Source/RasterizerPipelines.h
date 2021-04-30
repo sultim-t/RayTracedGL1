@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "Common.h"
 #include "ShaderManager.h"
 #include "RTGL1/RTGL1.h"
@@ -33,7 +35,8 @@ public:
     explicit RasterizerPipelines(
         VkDevice device,
         VkPipelineLayout pipelineLayout, 
-        VkRenderPass renderPass);
+        VkRenderPass renderPass,
+        bool applyVertexColorGamma);
 
     ~RasterizerPipelines();
 
@@ -74,6 +77,8 @@ private:
         // if true, viewport/scissors must be set dynamically
         bool isEnabled = true;
     } dynamicState;
+
+    uint32_t applyVertexColorGamma;
 };
 
 }

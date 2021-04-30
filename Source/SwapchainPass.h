@@ -31,8 +31,11 @@ namespace RTGL1
 class SwapchainPass : public IShaderDependency
 {
 public:
-    SwapchainPass(VkDevice device, VkPipelineLayout pipelineLayout, VkFormat surfaceFormat,
-                  const std::shared_ptr<ShaderManager> &shaderManager);
+    SwapchainPass(VkDevice device, 
+                  VkPipelineLayout pipelineLayout, 
+                  VkFormat surfaceFormat,
+                  const std::shared_ptr<ShaderManager> &shaderManager,
+                  const RgInstanceCreateInfo &instanceInfo);
     ~SwapchainPass() override;
 
     SwapchainPass(const SwapchainPass &other) = delete;

@@ -31,9 +31,11 @@ namespace RTGL1
 class RasterPass : public IShaderDependency
 {
 public:
-    RasterPass(VkDevice device, VkPipelineLayout pipelineLayout, 
+    RasterPass(VkDevice device, 
+               VkPipelineLayout pipelineLayout,
                const std::shared_ptr<ShaderManager> &shaderManager,
-               const std::shared_ptr<Framebuffers> &storageFramebuffers);
+               const std::shared_ptr<Framebuffers> &storageFramebuffers,
+               const RgInstanceCreateInfo &instanceInfo);
     ~RasterPass() override;
 
     RasterPass(const RasterPass &other) = delete;

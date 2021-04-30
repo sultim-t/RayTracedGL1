@@ -34,9 +34,16 @@ layout(push_constant) uniform RasterizerVert_BT
     layout(offset = 0) mat4 viewProj;
 } rasterizerVertInfo;
 
+layout (constant_id = 0) const uint applyVertexColorGamma = 0;
+
 void main()
 {
     outColor = unpackLittleEndianUintColor(color);
+    if (applyVertexColorGamma != 0)
+    {
+        outColor.rgb = pow(outColor.rgb, vec3(2.2));
+    }
+
     outTexCoord = texCoord;
     gl_Position = rasterizerVertInfo.viewProj * vec4(position, 1.0);
 }
