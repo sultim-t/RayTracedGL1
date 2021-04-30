@@ -24,6 +24,9 @@
 
 #include "Stb/stb_image.h"
 
+#include <ktx.h>
+#include <ktxvulkan.h>
+
 using namespace RTGL1;
 
 ImageLoader::~ImageLoader()
@@ -31,36 +34,50 @@ ImageLoader::~ImageLoader()
     assert(loadedImages.empty());
 }
 
-const uint32_t *ImageLoader::LoadRGBA8(const char *path, uint32_t *outWidth, uint32_t *outHeight)
+ImageLoader::ResultInfo ImageLoader::Load(const char *pFilePath)
 {
-    if (path == nullptr)
+    if (pFilePath == nullptr)
     {
-        return nullptr;
+        return {};
     }
 
-    int width, height, channels;
-    uint8_t *img = stbi_load(path, &width, &height, &channels, 4);
+    ktxTexture *pTexture = nullptr;
 
-    if (img == nullptr)
+    KTX_error_code r = ktxTexture_CreateFromNamedFile(
+        pFilePath,
+        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+        &pTexture);
+
+    if (r != KTX_SUCCESS)
     {
-        *outWidth = 0;
-        *outHeight = 0;
-        return nullptr;
+        return {};
     }
 
-    *outWidth = width;
-    *outHeight = height;
+    // TODO: KTX 
+    assert(pTexture->numDimensions == 2);
+    assert(pTexture->numLevels == 1);
+    assert(pTexture->numLayers == 1);
+    assert(pTexture->numFaces == 1);
 
-    loadedImages.push_back(static_cast<void*>(img));
+    ResultInfo result = {};
+    result.isLoaded = true;
+    result.width = pTexture->baseWidth;
+    result.height = pTexture->baseHeight;
+    result.format = ktxTexture_GetVkFormat(pTexture);
+    result.pData = ktxTexture_GetData(pTexture);
+    result.dataSize = ktxTexture_GetDataSize(pTexture);
 
-    return reinterpret_cast<const uint32_t*>(img);
+    loadedImages.push_back(static_cast<void*>(pTexture));
+    return result;
 }
 
 void ImageLoader::FreeLoaded()
 {
-    for (auto *p : loadedImages)
+    for (void *pp : loadedImages)
     {
-        stbi_image_free(p);
+        ktxTexture *p = static_cast<ktxTexture*>(pp);
+
+        ktxTexture_Destroy(p);
     }
 
     loadedImages.clear();

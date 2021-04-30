@@ -60,9 +60,23 @@ TextureOverrides::TextureOverrides(
 
     if (hasOverrides)
     {
-        aa = _imageLoader->LoadRGBA8(albedoAlphaPath,   &aaSize.width, &aaSize.height);
-        nm = _imageLoader->LoadRGBA8(normalMetallic,    &nmSize.width, &nmSize.height);
-        er = _imageLoader->LoadRGBA8(emissionRoughness, &erSize.width, &erSize.height);
+        const auto aaImg = _imageLoader->Load(albedoAlphaPath);
+        const auto nmImg = _imageLoader->Load(normalMetallic);
+        const auto erImg = _imageLoader->Load(emissionRoughness);
+
+        // don't check if wasn't loaded from file, pData might be provided by a user
+
+        aa = aaImg.pData;
+        aaSize.width = aaImg.width;
+        aaSize.height = aaImg.height;
+
+        nm = nmImg.pData;
+        nmSize.width = nmImg.width;
+        nmSize.height = nmImg.height;
+
+        er = erImg.pData;
+        erSize.width = erImg.width;
+        erSize.height = erImg.height;
 
         aaIsSRGB = _overrideInfo.aaIsSRGBDefault;
         nmIsSRGB = _overrideInfo.nmIsSRGBDefault;
@@ -72,21 +86,21 @@ TextureOverrides::TextureOverrides(
     // if file wasn't found, use default data instead
     if (_defaultTextures.albedoAlpha.pData != nullptr && aa == nullptr)
     {
-        aa = (const uint32_t*)_defaultTextures.albedoAlpha.pData;
+        aa = static_cast<const uint8_t*>(_defaultTextures.albedoAlpha.pData);
         aaSize = _defaultSize;
         aaIsSRGB = _defaultTextures.albedoAlpha.isSRGB;
     }
 
     if (_defaultTextures.normalsMetallicity.pData != nullptr && nm == nullptr)
     {
-        nm = (const uint32_t *)_defaultTextures.normalsMetallicity.pData;
+        nm = static_cast<const uint8_t*>(_defaultTextures.normalsMetallicity.pData);
         nmSize = _defaultSize;
         nmIsSRGB = _defaultTextures.normalsMetallicity.isSRGB;
     }
 
     if (_defaultTextures.emissionRoughness.pData != nullptr && er == nullptr)
     {
-        er = (const uint32_t *)_defaultTextures.emissionRoughness.pData;
+        er = static_cast<const uint8_t*>(_defaultTextures.emissionRoughness.pData);
         erSize = _defaultSize;
         erIsSRGB = _defaultTextures.emissionRoughness.isSRGB;
     }

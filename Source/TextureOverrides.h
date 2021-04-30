@@ -77,17 +77,17 @@ private:
 
 public:
     // Albedo-Alpha
-    const uint32_t      *aa;
+    const uint8_t       *aa;
     RgExtent2D          aaSize;
     bool                aaIsSRGB;
 
     // Normal-Metallic
-    const uint32_t      *nm;
+    const uint8_t       *nm;
     RgExtent2D          nmSize;
     bool                nmIsSRGB;
 
     // Emission-Roughness
-    const uint32_t      *er;
+    const uint8_t       *er;
     RgExtent2D          erSize;
     bool                erIsSRGB;
 

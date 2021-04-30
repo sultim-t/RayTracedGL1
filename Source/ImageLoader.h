@@ -20,8 +20,9 @@
 
 #pragma once
 
-#include <cstdint>
 #include <vector>
+
+#include "Common.h"
 
 namespace RTGL1
 {
@@ -38,9 +39,18 @@ public:
     ImageLoader &operator=(const ImageLoader &other) = delete;
     ImageLoader &operator=(ImageLoader &&other) noexcept = delete;
 
-    // Read the file and get array of R8G8B8A8 values.
-    // Returns null if image wasn't loaded.
-    const uint32_t *LoadRGBA8(const char *path, uint32_t *outWidth, uint32_t *outHeight);
+    struct ResultInfo
+    {
+        bool isLoaded;
+        uint32_t width;
+        uint32_t height;
+        VkFormat format;
+        uint8_t *pData;
+        uint64_t dataSize;
+    };
+
+    ResultInfo Load(const char *pFilePath);
+
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();
 

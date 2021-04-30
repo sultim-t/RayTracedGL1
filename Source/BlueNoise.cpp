@@ -20,6 +20,8 @@
 
 #include "BlueNoise.h"
 
+
+#include <stdexcept>
 #include <string>
 
 #include "Generated/ShaderCommonC.h"
@@ -41,6 +43,12 @@ BlueNoise::BlueNoise(
     device(_device),
     allocator(std::move(_allocator))
 {
+    using namespace std::string_literals;
+
+    const VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
+    const uint32_t bytesPerPixel = 4;
+
+
     assert(BlueNoiseFileNamesCount > 0);
 
     ImageLoader imageLoader;
@@ -49,12 +57,18 @@ BlueNoise::BlueNoise(
     const std::string folderPath = _textureFolder;
     std::string curFileName = folderPath + BlueNoiseFileNames[0];
 
-    uint32_t w, h;
-    const uint32_t *data = imageLoader.LoadRGBA8(curFileName.c_str(), &w, &h);
-    assert(w == BLUE_NOISE_TEXTURE_SIZE && h == BLUE_NOISE_TEXTURE_SIZE);
+    const auto img = imageLoader.Load(curFileName.c_str());
 
-    const VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
-    const uint32_t bytesPerPixel = 4;
+    if (!img.isLoaded)
+    {
+        throw std::runtime_error("Can't find blue noise file: "s + curFileName);
+    }
+
+    assert(img.width == BLUE_NOISE_TEXTURE_SIZE && img.height == BLUE_NOISE_TEXTURE_SIZE);
+
+    // must not have compression
+    assert(img.format == imageFormat);
+
 
     // allocate buffer for all textures
     const VkDeviceSize oneTextureSize = bytesPerPixel * BLUE_NOISE_TEXTURE_SIZE * BLUE_NOISE_TEXTURE_SIZE;
@@ -71,19 +85,26 @@ BlueNoise::BlueNoise(
     assert(stagingBuffer != VK_NULL_HANDLE);
 
     // load each texture and place it in staging buffer
-    memcpy(mappedData, data, oneTextureSize);
+    memcpy(mappedData, img.pData, oneTextureSize);
     imageLoader.FreeLoaded();
 
     for (uint32_t i = 1; i < BlueNoiseFileNamesCount; i++)
     {
         curFileName = folderPath + BlueNoiseFileNames[i];
 
-        const uint32_t *src = imageLoader.LoadRGBA8(curFileName.c_str(), &w, &h);
-        assert(w == BLUE_NOISE_TEXTURE_SIZE && h == BLUE_NOISE_TEXTURE_SIZE);
+        const auto imgOther = imageLoader.Load(curFileName.c_str());
+
+        if (!imgOther.isLoaded)
+        {
+            throw std::runtime_error("Can't find blue noise file: "s + curFileName);
+        }
+
+        assert(imgOther.width == BLUE_NOISE_TEXTURE_SIZE && imgOther.height == BLUE_NOISE_TEXTURE_SIZE);
+        assert(imgOther.format == imageFormat);
 
         void *dst = (uint8_t *)mappedData + oneTextureSize * i;
         
-        memcpy(dst, src, oneTextureSize);
+        memcpy(dst, imgOther.pData, oneTextureSize);
         imageLoader.FreeLoaded();
     }
 
