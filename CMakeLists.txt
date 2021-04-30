@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(RayTracedGL1 CXX)
+project(RayTracedGL1 CXX C)
 
 set(CMAKE_CXX_STANDARD 11)
 
@@ -126,13 +126,46 @@ set(Sources
     "Source/SwapchainPass.cpp"
 )
 
+
+
+set(KTXSourceFolder Source/KTX/lib)
+
+set(KTXSources
+    ${KTXSourceFolder}"/texture.c"
+    ${KTXSourceFolder}"/texture1.c"
+    ${KTXSourceFolder}"/texture2.c"
+    ${KTXSourceFolder}"/hashlist.c"
+    ${KTXSourceFolder}"/checkheader.c"
+    ${KTXSourceFolder}"/swap.c"
+    ${KTXSourceFolder}"/memstream.c"
+    ${KTXSourceFolder}"/filestream.c"
+    ${KTXSourceFolder}"/vkloader.c"
+    ${KTXSourceFolder}"/vk_funcs.c"
+    ${KTXSourceFolder}"/basisu/zstd/zstd.c"
+    ${KTXSourceFolder}"/dfdutils/createdfd.c"
+    ${KTXSourceFolder}"/dfdutils/interpretdfd.c"
+    ${KTXSourceFolder}"/dfdutils/queries.c"
+    ${KTXSourceFolder}"/dfdutils/vk2dfd.c"
+)
+
+add_definitions(-DKHRONOS_STATIC -DLIBKTX)
+add_library(KTXLoader STATIC ${KTXSources})
+target_include_directories(KTXLoader PRIVATE "Source/KTX/include" "Source/KTX/other_include" "Source/KTX/lib/basisu/zstd")
+target_include_directories(KTXLoader PRIVATE ${Vulkan_INCLUDE_DIRS})
+
+
+
 add_library(RayTracedGL1 STATIC  
     ${Sources}
     ${PublicHeaders}
 )
+target_include_directories(RayTracedGL1 PUBLIC "Include")
 
-target_include_directories(RayTracedGL1 PUBLIC Include)
 target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
+
+target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include")
+target_link_libraries(RayTracedGL1 PRIVATE KTXLoader)
+
 
 # optional tests
 option(RAYTRACEDGL1_TESTS "Add tests and examples for library" ON)
