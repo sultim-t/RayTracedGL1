@@ -193,7 +193,12 @@ vec3 getSkyPrimary(vec3 direction)
 
 vec3 getSky(vec3 direction)
 {
-    return pow(getSkyPrimary(direction), vec3(0.5)) * globalUniform.skyColorMultiplier;
+    vec3 col = getSkyPrimary(direction);
+    float l = getLuminance(col);
+    
+    const float saturation = 0.5;
+
+    return mix(vec3(l), col, saturation) * globalUniform.skyColorMultiplier;
 }
 #endif
 

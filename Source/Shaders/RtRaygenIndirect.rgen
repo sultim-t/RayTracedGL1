@@ -80,7 +80,7 @@ void getDiffuseBounce(
     // throughput *= 1 / nonSpecPr;
 }
 
-#define BOUNCE_MIP_BIAS 1
+#define BOUNCE_MIP_BIAS 0
 
 // "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
 float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth)
