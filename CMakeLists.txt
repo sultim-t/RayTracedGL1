@@ -149,22 +149,18 @@ set(KTXSources
 )
 
 add_definitions(-DKHRONOS_STATIC -DLIBKTX)
-add_library(KTXLoader STATIC ${KTXSources})
-target_include_directories(KTXLoader PRIVATE "Source/KTX/include" "Source/KTX/other_include" "Source/KTX/lib/basisu/zstd")
-target_include_directories(KTXLoader PRIVATE ${Vulkan_INCLUDE_DIRS})
-
-
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}
+    ${KTXSources}
     ${PublicHeaders}
 )
-target_include_directories(RayTracedGL1 PUBLIC "Include")
+target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include")
+target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include" "Source/KTX/other_include" "Source/KTX/lib/basisu/zstd")
 
 target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
+target_include_directories(RayTracedGL1 PUBLIC "Include")
 
-target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include")
-target_link_libraries(RayTracedGL1 PRIVATE KTXLoader)
 
 
 # optional tests
