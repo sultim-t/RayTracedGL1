@@ -19,6 +19,8 @@
 // SOFTWARE.
 
 #include "TextureUploader.h"
+
+#include "Const.h"
 #include "Utils.h"
 
 using namespace RTGL1;
@@ -52,13 +54,30 @@ void TextureUploader::ClearStaging(uint32_t frameIndex)
     }
 
     stagingToFree[frameIndex].clear();
+
 }
 
-uint32_t TextureUploader::GetMipmapCount(const RgExtent2D &size, bool generateMipmaps)
+bool TextureUploader::DoesFormatSupportBlit(VkFormat format) const
 {
-    if (!generateMipmaps)
+    // very simple test
+    return format == VK_FORMAT_R8G8B8A8_SRGB || format == VK_FORMAT_R8G8B8A8_UNORM;
+}
+
+bool TextureUploader::AreMipmapsPregenerated(const UploadInfo &info) const
+{
+    return info.pregeneratedLevelCount > 1;
+}
+
+uint32_t TextureUploader::GetMipmapCount(const RgExtent2D &size, const UploadInfo &info) const
+{
+    if (!info.useMipmaps)
     {
         return 1;
+    }
+
+    if (AreMipmapsPregenerated(info))
+    {
+        return std::min(info.pregeneratedLevelCount, MAX_PREGENERATED_MIPMAP_LEVELS);
     }
 
     auto widthCount = static_cast<uint32_t>(log2(size.width));
@@ -155,9 +174,43 @@ void TextureUploader::CopyStagingToImage(VkCommandBuffer cmd, VkBuffer staging, 
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copyRegion);
 }
 
+void TextureUploader::CopyStagingToImageMipmaps(VkCommandBuffer cmd, VkBuffer staging, VkImage image, uint32_t layerIndex, const UploadInfo &info)
+{
+    uint32_t mipWidth = info.baseSize.width;
+    uint32_t mipHeight = info.baseSize.height;
+
+    uint32_t levelCount = GetMipmapCount(info.baseSize, info);
+
+    VkBufferImageCopy copyRegions[MAX_PREGENERATED_MIPMAP_LEVELS];
+
+    for (uint32_t mipLevel = 0; mipLevel < levelCount; mipLevel++)
+    {
+        auto &cr = copyRegions[mipLevel];
+
+        cr = {};
+        cr.bufferOffset = info.pLevelDataOffsets[mipLevel];
+        cr.bufferRowLength = 0;
+        cr.bufferImageHeight = 0;
+        cr.imageExtent = { mipWidth, mipHeight, 1 };
+        cr.imageOffset = { 0,0,0 };
+        cr.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        cr.imageSubresource.mipLevel = mipLevel;
+        cr.imageSubresource.baseArrayLayer = layerIndex;
+        cr.imageSubresource.layerCount = 1;
+
+        mipWidth >>= 1;
+        mipHeight >>= 1;
+    }
+
+    vkCmdCopyBufferToImage(
+        cmd, staging, image,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, levelCount, copyRegions);
+}
+
+
 bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
 {
-    const RgExtent2D &size = info.size;
+    const RgExtent2D &size = info.baseSize;
  
     // 1. Create image and allocate its memory
 
@@ -167,7 +220,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
     imageInfo.flags = info.isCubemap ? VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT : 0;
     imageInfo.format = info.format;
     imageInfo.extent = { size.width, size.height, 1 };
-    imageInfo.mipLevels = GetMipmapCount(size, info.generateMipmaps);
+    imageInfo.mipLevels = GetMipmapCount(size, info);
     imageInfo.arrayLayers = info.isCubemap ? 6 : 1;
     imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
@@ -179,7 +232,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
         return false;
     }
 
-    SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, info.debugName);
+    SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, info.pDebugName);
 
     *result = image;
     return true;
@@ -188,13 +241,9 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
 void TextureUploader::PrepareImage(VkImage image, VkBuffer staging[], const UploadInfo &info, ImagePrepareType prepareType)
 {
     VkCommandBuffer     cmd             = info.cmd;
-    const RgExtent2D    &size           = info.size;
-    bool                generateMipmaps = info.generateMipmaps;
+    const RgExtent2D    &size           = info.baseSize;
     uint32_t            layerCount      = info.isCubemap ? 6 : 1;
-
-    uint32_t mipmapCount = GetMipmapCount(size, generateMipmaps);
-
-    // 2. Copy buffer data to the first mipmap
+    uint32_t            mipmapCount     = GetMipmapCount(size, info);
 
     VkImageSubresourceRange firstMipmap = {};
     firstMipmap.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -202,6 +251,16 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging[], const Uplo
     firstMipmap.levelCount = 1;
     firstMipmap.baseArrayLayer = 0;
     firstMipmap.layerCount = layerCount;
+
+    VkImageSubresourceRange allMipmaps = {};
+    allMipmaps.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    allMipmaps.baseMipLevel = 0;
+    allMipmaps.levelCount = mipmapCount;
+    allMipmaps.baseArrayLayer = 0;
+    allMipmaps.layerCount = layerCount;
+
+
+    // 2. Copy buffer data to the first mipmap
 
     VkAccessFlags curAccessMask;
     VkImageLayout curLayout;
@@ -224,58 +283,91 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging[], const Uplo
     // if need to copy from staging
     if (prepareType != ImagePrepareType::INIT_WITHOUT_COPYING)
     {
-        for (uint32_t i = 0; i < layerCount; i++)
+        if (AreMipmapsPregenerated(info))
         {
+            // copy all mip levels from memory
+
+            assert(layerCount == 1);
+
+            const uint32_t layerIndex = 0;
+
             // set layout for copying
             Utils::BarrierImage(
                 cmd, image,
                 curAccessMask, VK_ACCESS_TRANSFER_WRITE_BIT,
                 curLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                firstMipmap);
+                allMipmaps);
 
             // update params
             curAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
             curLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
             curStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
 
-            CopyStagingToImage(cmd, staging[i], image, size, i, 1);
+            CopyStagingToImageMipmaps(cmd, staging[layerIndex], image, layerIndex, info);
+        }
+        else
+        {
+            // copy only first mip level, others will be generated, if needed
+
+            for (uint32_t layer = 0; layer < layerCount; layer++)
+            {
+                // set layout for copying
+                Utils::BarrierImage(
+                    cmd, image,
+                    curAccessMask, VK_ACCESS_TRANSFER_WRITE_BIT,
+                    curLayout, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                    firstMipmap);
+
+                // update params
+                curAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                curLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+                curStageMask = VK_PIPELINE_STAGE_TRANSFER_BIT;
+
+                // copy only first mipmap
+                CopyStagingToImage(cmd, staging[layer], image, size, layer, 1);
+            }
         }
     }
 
     if (mipmapCount > 1)
     {
-        // 3A. 1. Create mipmaps
+        if (!AreMipmapsPregenerated(info) && DoesFormatSupportBlit(info.format))
+        {
+            // 3A. 1. Generate mipmaps
 
-        // first mipmap to TRANSFER_SRC to create mipmaps using blit
-        Utils::BarrierImage(
-            cmd, image,
-            curAccessMask, VK_ACCESS_TRANSFER_READ_BIT,
-            curLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-            curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
-            firstMipmap);
+            // first mipmap to TRANSFER_SRC to create mipmaps using blit
+            Utils::BarrierImage(
+                cmd, image,
+                curAccessMask, VK_ACCESS_TRANSFER_READ_BIT,
+                curLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                curStageMask, VK_PIPELINE_STAGE_TRANSFER_BIT,
+                firstMipmap);
 
-        PrepareMipmaps(cmd, image, size.width, size.height, mipmapCount, layerCount);
 
-        // 3A. 2. Prepare all mipmaps for reading in ray tracing and fragment shaders
+            PrepareMipmaps(cmd, image, size.width, size.height, mipmapCount, layerCount);
 
-        VkImageSubresourceRange allMipmaps = {};
-        allMipmaps.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-        allMipmaps.baseMipLevel = 0;
-        allMipmaps.levelCount = mipmapCount;
-        allMipmaps.baseArrayLayer = 0;
-        allMipmaps.layerCount = layerCount;
+            curLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+        }
+        else
+        {
+            // 3B. 1. Mipmaps are already copied
+        }
+
+
+        // 3A, 3B. 2. Prepare all mipmaps for reading in ray tracing and fragment shaders
 
         Utils::BarrierImage(
             cmd, image,
             VK_ACCESS_TRANSFER_WRITE_BIT | VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_READ_BIT,
-            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            curLayout, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
             allMipmaps);
     }
     else
     {
-        // 3B. Prepare only the first mipmap for reading in ray tracing and fragment shaders
+        // 3C. Prepare only the first mipmap for reading in ray tracing and fragment shaders
 
         Utils::BarrierImage(
             cmd, image,
@@ -313,8 +405,9 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     // cubemaps are processed in other class
     assert(!info.isCubemap);
 
-    const void          *data   = info.data;
-    const RgExtent2D    &size   = info.size;
+    const void          *data    = info.pData;
+    VkDeviceSize        dataSize = info.dataSize;
+    const RgExtent2D    &size    = info.baseSize;
 
     // static textures must not have null data
     assert(info.isDynamic || data != nullptr);
@@ -327,7 +420,6 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     VkImage image;
 
     // 1. Allocate and fill buffer
-    VkDeviceSize dataSize = (VkDeviceSize)info.bytesPerPixel * size.width * size.height;
 
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -340,7 +432,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         return result;
     }
 
-    SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.debugName);
+    SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.pDebugName);
 
     bool wasCreated = CreateImage(info, &image);
     if (!wasCreated)
@@ -366,9 +458,9 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     }
 
     // create image view
-    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info.generateMipmaps));
+    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
 
-    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.debugName);
+    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.pDebugName);
 
     // save info about created image
     if (info.isDynamic)
@@ -380,7 +472,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         updateInfo.mappedData = mappedData;
         updateInfo.dataSize = (uint32_t)dataSize;
         updateInfo.imageSize = size;
-        updateInfo.generateMipmaps = info.generateMipmaps;
+        updateInfo.generateMipmaps = info.useMipmaps;
 
         dynamicImageInfos[image] = updateInfo;
     }
@@ -413,8 +505,8 @@ void TextureUploader::UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicIma
 
         UploadInfo info = {};
         info.cmd = cmd;
-        info.size = updateInfo.imageSize;
-        info.generateMipmaps = updateInfo.generateMipmaps;
+        info.baseSize = updateInfo.imageSize;
+        info.useMipmaps = updateInfo.generateMipmaps;
 
         // copy from staging
         PrepareImage(dynamicImage, &updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);

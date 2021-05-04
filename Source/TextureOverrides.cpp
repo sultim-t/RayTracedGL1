@@ -44,65 +44,66 @@ TextureOverrides::TextureOverrides(
     const OverrideInfo &_overrideInfo, 
     std::shared_ptr<ImageLoader> _imageLoader) 
 :
-    aa(nullptr), aaSize({}), aaIsSRGB(false),
-    nm(nullptr), nmSize({}), nmIsSRGB(false),
-    er(nullptr), erSize({}), erIsSRGB(false),
+    aa{}, nm{}, er{},
     debugName{},
     imageLoader(_imageLoader)
 {
-    char albedoAlphaPath[TEXTURE_FILE_PATH_MAX_LENGTH];
-    char normalMetallic[TEXTURE_FILE_PATH_MAX_LENGTH];
-    char emissionRoughness[TEXTURE_FILE_PATH_MAX_LENGTH];
-
-    const bool hasOverrides = ParseOverrideTexturePaths(
-        albedoAlphaPath, normalMetallic, emissionRoughness,
-        _relativePath, _overrideInfo);
-
-    if (hasOverrides)
+    if (!_overrideInfo.disableOverride)
     {
-        const auto aaImg = _imageLoader->Load(albedoAlphaPath);
-        const auto nmImg = _imageLoader->Load(normalMetallic);
-        const auto erImg = _imageLoader->Load(emissionRoughness);
+        char paths[3][TEXTURE_FILE_PATH_MAX_LENGTH];
 
-        // don't check if wasn't loaded from file, pData might be provided by a user
+        const bool hasOverrides = ParseOverrideTexturePaths(
+            paths[0], paths[1], paths[2],
+            _relativePath, _overrideInfo);
 
-        aa = aaImg.pData;
-        aaSize.width = aaImg.width;
-        aaSize.height = aaImg.height;
+        if (hasOverrides)
+        {
+            _imageLoader->Load(paths[0], &aa);
+            _imageLoader->Load(paths[1], &nm);
+            _imageLoader->Load(paths[2], &er);
 
-        nm = nmImg.pData;
-        nmSize.width = nmImg.width;
-        nmSize.height = nmImg.height;
-
-        er = erImg.pData;
-        erSize.width = erImg.width;
-        erSize.height = erImg.height;
-
-        aaIsSRGB = _overrideInfo.aaIsSRGBDefault;
-        nmIsSRGB = _overrideInfo.nmIsSRGBDefault;
-        erIsSRGB = _overrideInfo.erIsSRGBDefault;
+            // don't check if wasn't loaded from file, pData might be provided by a user
+        }
     }
+
+    const VkFormat defaultSRGBFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    const VkFormat defaultLinearFormat = VK_FORMAT_R8G8B8A8_UNORM;
+    const uint32_t defaultBytesPerPixel = 4;
+
+    const uint32_t defaultDataSize = defaultBytesPerPixel * _defaultSize.width * _defaultSize.height;
 
     // if file wasn't found, use default data instead
-    if (_defaultTextures.albedoAlpha.pData != nullptr && aa == nullptr)
+    if (_defaultTextures.albedoAlpha.pData != nullptr && aa.pData == nullptr)
     {
-        aa = static_cast<const uint8_t*>(_defaultTextures.albedoAlpha.pData);
-        aaSize = _defaultSize;
-        aaIsSRGB = _defaultTextures.albedoAlpha.isSRGB;
+        aa.pData = static_cast<const uint8_t*>(_defaultTextures.albedoAlpha.pData);
+        aa.dataSize = defaultDataSize;
+        aa.levelCount = 1;
+        aa.levelOffsets[0] = 0;
+        aa.levelSizes[0] = defaultDataSize;
+        aa.baseSize = _defaultSize;
+        aa.format = _defaultTextures.albedoAlpha.isSRGB ? defaultSRGBFormat : defaultLinearFormat;
     }
 
-    if (_defaultTextures.normalsMetallicity.pData != nullptr && nm == nullptr)
+    if (_defaultTextures.normalsMetallicity.pData != nullptr && nm.pData == nullptr)
     {
-        nm = static_cast<const uint8_t*>(_defaultTextures.normalsMetallicity.pData);
-        nmSize = _defaultSize;
-        nmIsSRGB = _defaultTextures.normalsMetallicity.isSRGB;
+        nm.pData = static_cast<const uint8_t*>(_defaultTextures.normalsMetallicity.pData);
+        nm.dataSize = defaultDataSize;
+        nm.levelCount = 1;
+        nm.levelOffsets[0] = 0;
+        nm.levelSizes[0] = defaultDataSize;
+        nm.baseSize = _defaultSize;
+        nm.format = _defaultTextures.normalsMetallicity.isSRGB ? defaultSRGBFormat : defaultLinearFormat;
     }
 
-    if (_defaultTextures.emissionRoughness.pData != nullptr && er == nullptr)
+    if (_defaultTextures.emissionRoughness.pData != nullptr && er.pData == nullptr)
     {
-        er = static_cast<const uint8_t*>(_defaultTextures.emissionRoughness.pData);
-        erSize = _defaultSize;
-        erIsSRGB = _defaultTextures.emissionRoughness.isSRGB;
+        er.pData = static_cast<const uint8_t*>(_defaultTextures.emissionRoughness.pData);
+        er.dataSize = defaultDataSize;
+        er.levelCount = 1;
+        er.levelOffsets[0] = 0;
+        er.levelSizes[0] = defaultDataSize;
+        er.baseSize = _defaultSize;
+        er.format = _defaultTextures.emissionRoughness.isSRGB ? defaultSRGBFormat : defaultLinearFormat;
     }
 }
 

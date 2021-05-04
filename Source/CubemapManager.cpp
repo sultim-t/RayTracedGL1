@@ -114,12 +114,10 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     TextureUploader::UploadInfo upload = {};
     upload.cmd = cmd;
     upload.frameIndex = frameIndex;
-    upload.format = info.isSRGB ? TEXTURE_IMAGE_FORMAT_SRGB : TEXTURE_IMAGE_FORMAT_UNORM;
-    upload.bytesPerPixel = TEXTURE_IMAGE_BYTES_PER_PIXEL;
-    upload.generateMipmaps = info.useMipmaps;
+    upload.useMipmaps = info.useMipmaps;
     upload.isCubemap = true;
     upload.isDynamic = false;
-    upload.debugName = nullptr;
+    upload.pDebugName = nullptr;
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();
@@ -149,13 +147,22 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     // all overrides must have albedo data and the same and square size
     bool useOvrd = true;
 
-    const RgExtent2D ovrdSize = { ovrd[0]->aaSize.width, ovrd[0]->aaSize.height };
+    RgExtent2D commonSize = { ovrd[0]->aa.baseSize.width, ovrd[0]->aa.baseSize.height };
+    VkFormat commonFormat = ovrd0.aa.format;
 
     for (auto &o : ovrd)
     {
-        if (o->aa == nullptr ||
-            o->aaSize.width != o->aaSize.height ||
-            o->aaSize.width != ovrdSize.width || o->aaSize.height != ovrdSize.height)
+        const auto &faceSize = o->aa.baseSize;
+
+        if (
+            // same format on each face
+            o->aa.format != commonFormat ||
+            // albedo data exist
+            o->aa.pData == nullptr ||
+            // square size
+            faceSize.width != faceSize.height ||
+            // same size on each face
+            faceSize.width != commonSize.width || faceSize.height != commonSize.height)
         {
             useOvrd = false;
             break;
@@ -164,36 +171,49 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
     if (useOvrd)
     {
-        upload.size.width = upload.size.height = ovrdSize.width;
-        upload.debugName = ovrd[0]->debugName;
+        upload.pDebugName = ovrd[0]->debugName;
 
         for (uint32_t i = 0; i < 6; i++)
         {
-            upload.cubemap.faces[i] = ovrd[i]->aa;
+            upload.cubemap.pFaces[i] = ovrd[i]->aa.pData;
         }
     }
     else
     {
-        bool isValid = info.sideSize > 0;
+        // use data provided by user
+        commonSize = { info.sideSize, info.sideSize };
+        commonFormat = VK_FORMAT_R8G8B8A8_SRGB;
 
-        upload.size.width = upload.size.height = info.sideSize;
 
-        for (uint32_t i = 0; i < 6 && isValid; i++)
-        {
-            upload.cubemap.faces[i] = info.data[i];
-
-            if (info.data[i] == nullptr)
-            {
-                isValid = false;
-            }
-        }
-
-        // if original data is not valid
-        if (!isValid)
+        if (info.sideSize == 0)
         {
             return RG_EMPTY_CUBEMAP;
         }
+
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            // if original data is not valid
+            if (info.data[i] == nullptr)
+            {
+                return RG_EMPTY_CUBEMAP;
+            }
+
+            upload.cubemap.pFaces[i] = info.data[i];
+        }
     }
+
+
+
+    // TODO: KTX cubemap image uploading with proper formats
+    upload.format = commonFormat;
+    if (commonFormat != VK_FORMAT_R8G8B8A8_SRGB && commonFormat != VK_FORMAT_R8G8B8A8_UNORM)
+    {
+        return RG_EMPTY_CUBEMAP;
+    }
+    upload.baseSize = commonSize;
+    upload.dataSize = 4 * commonSize.width * commonSize.height;
+    // 
+
 
     auto i = cubemapUploader->UploadImage(upload);
 

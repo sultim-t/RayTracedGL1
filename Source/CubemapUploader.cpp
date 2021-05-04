@@ -31,12 +31,11 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
     // cubemaps can't be dynamic
     assert(!info.isDynamic);
 
-    const RgExtent2D &size = info.size;
+    const RgExtent2D &size = info.baseSize;
 
     UploadResult result = {};
     result.wasUploaded = false;
 
-    VkResult r;
     VkImage image;
 
     VkBuffer stagingBuffers[6] = {};
@@ -44,7 +43,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
 
     // 1. Allocate and fill buffer
     const uint32_t faceNumber = 6;
-    VkDeviceSize faceSize = (VkDeviceSize)info.bytesPerPixel * size.width * size.height;
+    VkDeviceSize faceSize = (VkDeviceSize)info.dataSize;
 
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -67,7 +66,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
             return result;
         }
 
-        SET_DEBUG_NAME(device, stagingBuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.debugName);
+        SET_DEBUG_NAME(device, stagingBuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.pDebugName);
     }
 
 
@@ -86,7 +85,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
     // copy image data to buffer
     for (uint32_t i = 0; i < 6; i++)
     {
-        memcpy(mappedData[i], info.cubemap.faces[i], faceSize);
+        memcpy(mappedData[i], info.cubemap.pFaces[i], faceSize);
     }
 
 
@@ -94,9 +93,9 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
     PrepareImage(image, stagingBuffers, info, ImagePrepareType::INIT);
 
     // create image view
-    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info.generateMipmaps));
+    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
 
-    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.debugName);
+    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.pDebugName);
 
 
     // push staging buffer to be deleted when it won't be in use

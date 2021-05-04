@@ -68,11 +68,20 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
 {
     assert(textures[0].image == VK_NULL_HANDLE && textures[0].view == VK_NULL_HANDLE);
 
-    uint32_t data[] = { 0xFFFFFFFF };
-    RgExtent2D size = { 1,1 };
+    const uint32_t data[] = { 0xFFFFFFFF };
+    const RgExtent2D size = { 1,1 };
+
+    ImageLoader::ResultInfo info = {};
+    info.pData = reinterpret_cast<const uint8_t*>(data);
+    info.dataSize = sizeof(data);
+    info.baseSize = size;
+    info.format = VK_FORMAT_R8G8B8A8_UNORM;
+    info.levelCount = 1;
+    info.levelSizes[0] = sizeof(data);
+
     VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, data, size, sampler, false, false, "Empty texture");
+    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, info, sampler, false, "Empty texture");
 
     // must have specific index
     assert(textureIndex == EMPTY_TEXTURE_INDEX);
@@ -145,43 +154,24 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     MaterialTextures textures = {};
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
-    if (!createInfo.disableOverride)
-    {
-        TextureOverrides::OverrideInfo parseInfo = {};
-        parseInfo.texturesPath = defaultTexturesPath.c_str();
-        parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
-        parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
-        parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
-        parseInfo.aaIsSRGBDefault = overridenAAIsSRGB;
-        parseInfo.nmIsSRGBDefault = overridenNMIsSRGB;
-        parseInfo.erIsSRGBDefault = overridenERIsSRGB;
+    TextureOverrides::OverrideInfo parseInfo = {};
+    parseInfo.disableOverride = createInfo.disableOverride;
+    parseInfo.texturesPath = defaultTexturesPath.c_str();
+    parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
+    parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
+    parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
+    parseInfo.aaIsSRGBDefault = overridenAAIsSRGB;
+    parseInfo.nmIsSRGBDefault = overridenNMIsSRGB;
+    parseInfo.erIsSRGBDefault = overridenERIsSRGB;
 
-        // load additional textures, they'll be freed after leaving the scope
-        TextureOverrides ovrd(createInfo.relativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
+    // load additional textures, they'll be freed after leaving the scope
+    TextureOverrides ovrd(createInfo.relativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
 
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, ovrd.aaSize, sampler, ovrd.aaIsSRGB, createInfo.useMipmaps, ovrd.debugName);
-        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, ovrd.nmSize, sampler, ovrd.nmIsSRGB, createInfo.useMipmaps, ovrd.debugName);
-        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, ovrd.erSize, sampler, ovrd.erIsSRGB, createInfo.useMipmaps, ovrd.debugName);
-    }
-    else
-    {
-        const auto &aa = createInfo.textures.albedoAlpha;
-        const auto &nm = createInfo.textures.normalsMetallicity;
-        const auto &er = createInfo.textures.emissionRoughness;
-
-        textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, aa.pData, createInfo.size, sampler, aa.isSRGB, createInfo.useMipmaps, createInfo.relativePath);
-        textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, nm.pData, createInfo.size, sampler, nm.isSRGB, createInfo.useMipmaps, createInfo.relativePath);
-        textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, er.pData, createInfo.size, sampler, er.isSRGB, createInfo.useMipmaps, createInfo.relativePath);
-    }
+    textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, sampler, createInfo.useMipmaps, ovrd.debugName);
+    textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, sampler, createInfo.useMipmaps, ovrd.debugName);
+    textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, sampler, createInfo.useMipmaps, ovrd.debugName);
 
     return InsertMaterial(textures, false);
-}
-
-uint32_t TextureManager::PrepareStaticTexture(
-    VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size,
-    VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
-{
-    return PrepareTexture(false, cmd, frameIndex, data, size, sampler, isSRGB, generateMipmaps, debugName);
 }
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
@@ -190,8 +180,13 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
 
     const auto &aa = createInfo.textures.albedoAlpha;
 
+    const VkFormat dynamicMatFormat = aa.isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT;
+    const uint32_t bytesPerPixel = 4;
+
+    const uint32_t dataSize = createInfo.size.width * createInfo.size.height * bytesPerPixel;
+
     MaterialTextures textures = {};
-    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, aa.pData, createInfo.size, sampler, aa.isSRGB, createInfo.useMipmaps, nullptr);
+    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, aa.pData, dataSize, createInfo.size, sampler, dynamicMatFormat, createInfo.useMipmaps, nullptr);
     textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
     textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
 
@@ -243,35 +238,65 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
     return false;
 }
 
-uint32_t TextureManager::PrepareDynamicTexture(
-    VkCommandBuffer cmd, uint32_t frameIndex, const void *data, const RgExtent2D &size, 
-    VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
-{
-    return PrepareTexture(true, cmd, frameIndex, data, size, sampler, isSRGB, generateMipmaps, debugName);
-}
-
-uint32_t TextureManager::PrepareTexture(
-    bool isDynamic, VkCommandBuffer cmd, uint32_t frameIndex, const void *data,
-    const RgExtent2D &size, VkSampler sampler, bool isSRGB, bool generateMipmaps, const char *debugName)
+uint32_t TextureManager::PrepareStaticTexture(
+    VkCommandBuffer cmd, uint32_t frameIndex, 
+    const ImageLoader::ResultInfo &imageInfo,
+    VkSampler sampler, bool useMipmaps, 
+    const char *debugName)
 {
     // only dynamic textures can have null data
-    if (!isDynamic && data == nullptr)
+    if (imageInfo.pData == nullptr)
     {
         return EMPTY_TEXTURE_INDEX;
     }
 
+    assert(imageInfo.baseSize.width > 0 && imageInfo.baseSize.height > 0);
+    assert(imageInfo.dataSize > 0);
+    assert(imageInfo.levelCount > 0 && imageInfo.levelSizes[0] > 0);
+
+    TextureUploader::UploadInfo info = {};
+    info.cmd = cmd;
+    info.frameIndex = frameIndex;
+    info.pData = imageInfo.pData;
+    info.dataSize = imageInfo.dataSize;
+    info.baseSize = imageInfo.baseSize;
+    info.format = imageInfo.format;
+    info.isDynamic = false;
+    info.useMipmaps = useMipmaps;
+    info.pDebugName = debugName;
+    info.isCubemap = false;
+    info.pregeneratedLevelCount = imageInfo.levelCount;
+    info.pLevelDataOffsets = imageInfo.levelOffsets;
+    info.pLevelDataSizes = imageInfo.levelSizes;
+
+    auto result = textureUploader->UploadImage(info);
+
+    if (!result.wasUploaded)
+    {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
+    return InsertTexture(result.image, result.view, sampler);
+}
+
+uint32_t TextureManager::PrepareDynamicTexture(
+    VkCommandBuffer cmd, uint32_t frameIndex,
+    const void *data, uint32_t dataSize, const RgExtent2D &size,
+    VkSampler sampler, VkFormat format, bool generateMipmaps, 
+    const char *debugName)
+{
     assert(size.width > 0 && size.height > 0);
 
     TextureUploader::UploadInfo info = {};
     info.cmd = cmd;
     info.frameIndex = frameIndex;
-    info.data = data;
-    info.size = size;
-    info.format = isSRGB ? TEXTURE_IMAGE_FORMAT_SRGB : TEXTURE_IMAGE_FORMAT_UNORM;
-    info.bytesPerPixel = TEXTURE_IMAGE_BYTES_PER_PIXEL;
-    info.isDynamic = isDynamic;
-    info.generateMipmaps = generateMipmaps;
-    info.debugName = debugName;
+    info.pData = data;
+    info.dataSize = dataSize;
+    info.baseSize = size;
+    info.format = format;
+    info.isDynamic = true;
+    info.useMipmaps = generateMipmaps;
+    info.pDebugName = debugName;
     info.isCubemap = false;
 
     auto result = textureUploader->UploadImage(info);

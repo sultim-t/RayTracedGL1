@@ -22,8 +22,6 @@
 
 #include <cassert>
 
-#include "Stb/stb_image.h"
-
 #include <ktx.h>
 #include <ktxvulkan.h>
 
@@ -34,11 +32,14 @@ ImageLoader::~ImageLoader()
     assert(loadedImages.empty());
 }
 
-ImageLoader::ResultInfo ImageLoader::Load(const char *pFilePath)
+bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
 {
+    assert(pResultInfo != nullptr);
+    *pResultInfo = {};
+
     if (pFilePath == nullptr)
     {
-        return {};
+        return false;
     }
 
     ktxTexture *pTexture = nullptr;
@@ -50,25 +51,45 @@ ImageLoader::ResultInfo ImageLoader::Load(const char *pFilePath)
 
     if (r != KTX_SUCCESS)
     {
-        return {};
+        return false;
     }
 
     // TODO: KTX 
     assert(pTexture->numDimensions == 2);
-    assert(pTexture->numLevels == 1);
+    assert(pTexture->numLevels <= MAX_PREGENERATED_MIPMAP_LEVELS);
     assert(pTexture->numLayers == 1);
     assert(pTexture->numFaces == 1);
 
-    ResultInfo result = {};
-    result.isLoaded = true;
-    result.width = pTexture->baseWidth;
-    result.height = pTexture->baseHeight;
-    result.format = ktxTexture_GetVkFormat(pTexture);
-    result.pData = ktxTexture_GetData(pTexture);
-    result.dataSize = ktxTexture_GetDataSize(pTexture);
+
+    pResultInfo->baseSize = { pTexture->baseWidth, pTexture->baseHeight };
+    pResultInfo->format = ktxTexture_GetVkFormat(pTexture);
+    pResultInfo->pData = ktxTexture_GetData(pTexture);
+    pResultInfo->dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture));
+
+    
+    // get mipmap offsets
+    pResultInfo->levelCount = std::min(pTexture->numLevels, MAX_PREGENERATED_MIPMAP_LEVELS);
+
+    for (uint32_t level = 0; level < pResultInfo->levelCount; level++)
+    {
+        ktx_size_t offset = 0;
+        r = ktxTexture_GetImageOffset(pTexture, level, 0, 0, &offset);
+
+        ktx_size_t size = ktxTexture_GetImageSize(pTexture, level);
+
+        if (r != KTX_SUCCESS || size == 0)
+        {
+            pResultInfo->levelCount = level + 1;
+            break;
+        }
+
+        pResultInfo->levelOffsets[level] = static_cast<uint32_t>(offset);
+        pResultInfo->levelSizes[level] = static_cast<uint32_t>(size);
+    }
+
 
     loadedImages.push_back(static_cast<void*>(pTexture));
-    return result;
+    return true;
 }
 
 void ImageLoader::FreeLoaded()

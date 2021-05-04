@@ -23,6 +23,8 @@
 #include <vector>
 
 #include "Common.h"
+#include "Const.h"
+#include "RTGL1/RTGL1.h"
 
 namespace RTGL1
 {
@@ -41,15 +43,16 @@ public:
 
     struct ResultInfo
     {
-        bool isLoaded;
-        uint32_t width;
-        uint32_t height;
-        VkFormat format;
-        uint8_t *pData;
-        uint64_t dataSize;
+        uint32_t        levelCount;
+        uint32_t        levelOffsets[MAX_PREGENERATED_MIPMAP_LEVELS];
+        uint32_t        levelSizes[MAX_PREGENERATED_MIPMAP_LEVELS];
+        const uint8_t   *pData;
+        uint32_t        dataSize;
+        RgExtent2D      baseSize;
+        VkFormat        format;
     };
 
-    ResultInfo Load(const char *pFilePath);
+    bool Load(const char *pFilePath, ResultInfo *pResultInfo);
 
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();

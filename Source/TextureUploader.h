@@ -44,20 +44,22 @@ public:
     {
         VkCommandBuffer     cmd;
         uint32_t            frameIndex;
-        union
+        const void          *pData;
+        uint32_t            dataSize;
+        struct
         {
-            const void *data;
-            struct
-            {
-                const void *faces[6];
-            } cubemap;
-        };
-        RgExtent2D          size;
+            const void *pFaces[6];
+        } cubemap;
+        RgExtent2D          baseSize;
         VkFormat            format;
-        uint32_t            bytesPerPixel;
-        bool                generateMipmaps;
+        bool                useMipmaps;
+        // if count is 0, useMipmaps is true and format supports blit,
+        // then the mipmaps will be generated
+        uint32_t            pregeneratedLevelCount;
+        const uint32_t      *pLevelDataOffsets;
+        const uint32_t      *pLevelDataSizes;
         bool                isDynamic;
-        const char          *debugName;
+        const char          *pDebugName;
         bool                isCubemap;
     };
 
@@ -86,7 +88,9 @@ protected:
     };
 
 protected:
-    static uint32_t GetMipmapCount(const RgExtent2D &size, bool generateMipmaps);
+    bool DoesFormatSupportBlit(VkFormat format) const;
+    bool AreMipmapsPregenerated(const UploadInfo &info) const;
+    uint32_t GetMipmapCount(const RgExtent2D &size, const UploadInfo &info) const;
 
     // Generate mipmaps for VkImage. First mipmap's layout must be TRANSFER_SRC
     // and others must have UNDEFINED
@@ -97,6 +101,8 @@ protected:
     // Image must have TRANSFER_DST layout
     static void CopyStagingToImage(
         VkCommandBuffer cmd, VkBuffer staging, VkImage image, const RgExtent2D &size, uint32_t baseLayer, uint32_t layerCount);
+    void CopyStagingToImageMipmaps(
+        VkCommandBuffer cmd, VkBuffer staging, VkImage image, uint32_t layerIndex, const UploadInfo &info);
 
     bool CreateImage(const UploadInfo &info, VkImage *result);
     // Create mipmaps and prepare image for usage in shaders

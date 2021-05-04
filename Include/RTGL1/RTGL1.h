@@ -277,7 +277,6 @@ RgResult rgUpdateGeometryTexCoords(
 
 
 
-// TODO: rename inv to one_minus
 typedef enum RgBlendFactor
 {
     RG_BLEND_FACTOR_ONE,

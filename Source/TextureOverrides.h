@@ -35,6 +35,8 @@ struct TextureOverrides
 public:
     struct OverrideInfo
     {
+        bool disableOverride = false;
+
         const char *texturesPath             = nullptr;
         const char *albedoAlphaPostfix       = nullptr;
         const char *normalMetallicPostfix    = nullptr;
@@ -77,21 +79,15 @@ private:
 
 public:
     // Albedo-Alpha
-    const uint8_t       *aa;
-    RgExtent2D          aaSize;
-    bool                aaIsSRGB;
+    ImageLoader::ResultInfo aa;
 
     // Normal-Metallic
-    const uint8_t       *nm;
-    RgExtent2D          nmSize;
-    bool                nmIsSRGB;
+    ImageLoader::ResultInfo nm;
 
     // Emission-Roughness
-    const uint8_t       *er;
-    RgExtent2D          erSize;
-    bool                erIsSRGB;
+    ImageLoader::ResultInfo er;
 
-    char                debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
+    char    debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
 
 private:
     std::weak_ptr<ImageLoader> imageLoader;

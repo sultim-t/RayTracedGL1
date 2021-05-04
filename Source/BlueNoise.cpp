@@ -39,7 +39,7 @@ BlueNoise::BlueNoise(
     std::shared_ptr<MemoryAllocator> _allocator,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     const std::shared_ptr<SamplerManager> &_samplerManager)
-:
+    :
     device(_device),
     allocator(std::move(_allocator))
 {
@@ -52,22 +52,22 @@ BlueNoise::BlueNoise(
     assert(BlueNoiseFileNamesCount > 0);
 
     ImageLoader imageLoader;
+    ImageLoader::ResultInfo resultInfo = {};
 
     // load first file to get size info
     const std::string folderPath = _textureFolder;
     std::string curFileName = folderPath + BlueNoiseFileNames[0];
 
-    const auto img = imageLoader.Load(curFileName.c_str());
 
-    if (!img.isLoaded)
+    if (!imageLoader.Load(curFileName.c_str(), &resultInfo))
     {
         throw std::runtime_error("Can't find blue noise file: "s + curFileName);
     }
 
-    assert(img.width == BLUE_NOISE_TEXTURE_SIZE && img.height == BLUE_NOISE_TEXTURE_SIZE);
+    assert(resultInfo.baseSize.width == BLUE_NOISE_TEXTURE_SIZE && resultInfo.baseSize.height == BLUE_NOISE_TEXTURE_SIZE);
 
     // must not have compression
-    assert(img.format == imageFormat);
+    assert(resultInfo.format == imageFormat);
 
 
     // allocate buffer for all textures
@@ -79,34 +79,36 @@ BlueNoise::BlueNoise(
     stagingInfo.size = dataSize;
     stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
+
     void *mappedData = nullptr;
     VkBuffer stagingBuffer = allocator->CreateStagingSrcTextureBuffer(&stagingInfo, &mappedData);
 
     assert(stagingBuffer != VK_NULL_HANDLE);
 
     // load each texture and place it in staging buffer
-    memcpy(mappedData, img.pData, oneTextureSize);
+    memcpy(mappedData, resultInfo.pData, oneTextureSize);
     imageLoader.FreeLoaded();
+
 
     for (uint32_t i = 1; i < BlueNoiseFileNamesCount; i++)
     {
         curFileName = folderPath + BlueNoiseFileNames[i];
 
-        const auto imgOther = imageLoader.Load(curFileName.c_str());
-
-        if (!imgOther.isLoaded)
+        if (!imageLoader.Load(curFileName.c_str(), &resultInfo))
         {
             throw std::runtime_error("Can't find blue noise file: "s + curFileName);
         }
 
-        assert(imgOther.width == BLUE_NOISE_TEXTURE_SIZE && imgOther.height == BLUE_NOISE_TEXTURE_SIZE);
-        assert(imgOther.format == imageFormat);
+        assert(resultInfo.baseSize.width == BLUE_NOISE_TEXTURE_SIZE && resultInfo.baseSize.height == BLUE_NOISE_TEXTURE_SIZE);
+        assert(resultInfo.format == imageFormat);
 
-        void *dst = (uint8_t *)mappedData + oneTextureSize * i;
+
+        void *dst = static_cast<uint8_t*>(mappedData) + oneTextureSize * i;
         
-        memcpy(dst, imgOther.pData, oneTextureSize);
+        memcpy(dst, resultInfo.pData, oneTextureSize);
         imageLoader.FreeLoaded();
     }
+
 
     // create image that contains all blue noise textures as layers
     VkImageCreateInfo info = {};
