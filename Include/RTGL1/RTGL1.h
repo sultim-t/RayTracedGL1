@@ -101,17 +101,18 @@ typedef struct RgInstanceCreateInfo
     const char                  *overridenTexturesFolderPath;
     // Postfixes will be used to determine textures that should be 
     // loaded from files if the texture should be overridden
-    // i.e. if postfix="_n" then "Floor_01" => "Floor_01_n.*", 
+    // i.e. if postfix="_n" then "Floor_01.*" => "Floor_01_n.*", 
     // where "*" is some image extension
     // If null, then empty string will be used.
-    const char                  *overrideAlbedoAlphaTexturePostfix;
+    const char                  *overridenAlbedoAlphaTexturePostfix;
     // If null, then "_n" will be used.
-    const char                  *overrideNormalMetallicTexturePostfix;
+    const char                  *overridenNormalMetallicTexturePostfix;
     // If null, then "_e" will be used.
-    const char                  *overrideEmissionRoughnessTexturePostfix;
-    RgBool32                    overrideAlbedoAlphaTextureIsSRGB;
-    RgBool32                    overrideNormalMetallicTextureIsSRGB;
-    RgBool32                    overrideEmissionRoughnessTextureIsSRGB;
+    const char                  *overridenEmissionRoughnessTexturePostfix;
+    // Overriden textures 
+    RgBool32                    overridenAlbedoAlphaTextureIsSRGB;
+    RgBool32                    overridenNormalMetallicTextureIsSRGB;
+    RgBool32                    overridenEmissionRoughnessTextureIsSRGB;
 
     // If a texture doesn't have overriden data, these default values are used.
     float                       defaultRoughness;

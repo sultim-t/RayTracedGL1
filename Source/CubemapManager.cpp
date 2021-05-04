@@ -122,7 +122,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();
     parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
-    parseInfo.aaIsSRGBDefault = true;
+    parseInfo.overridenIsSRGB[0] = true;
 
     RgExtent2D size = { info.sideSize, info.sideSize };
 

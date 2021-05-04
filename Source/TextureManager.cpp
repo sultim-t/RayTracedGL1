@@ -43,13 +43,13 @@ TextureManager::TextureManager(
 {
     this->defaultTexturesPath = _info.overridenTexturesFolderPath != nullptr ? _info.overridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
 
-    this->albedoAlphaPostfix       = _info.overrideAlbedoAlphaTexturePostfix       != nullptr ? _info.overrideAlbedoAlphaTexturePostfix       : DEFAULT_ALBEDO_ALPHA_POSTFIX;
-    this->normalMetallicPostfix    = _info.overrideNormalMetallicTexturePostfix    != nullptr ? _info.overrideNormalMetallicTexturePostfix    : DEFAULT_NORMAL_METALLIC_POSTFIX;
-    this->emissionRoughnessPostfix = _info.overrideEmissionRoughnessTexturePostfix != nullptr ? _info.overrideEmissionRoughnessTexturePostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
+    this->albedoAlphaPostfix       = _info.overridenAlbedoAlphaTexturePostfix       != nullptr ? _info.overridenAlbedoAlphaTexturePostfix       : DEFAULT_ALBEDO_ALPHA_POSTFIX;
+    this->normalMetallicPostfix    = _info.overridenNormalMetallicTexturePostfix    != nullptr ? _info.overridenNormalMetallicTexturePostfix    : DEFAULT_NORMAL_METALLIC_POSTFIX;
+    this->emissionRoughnessPostfix = _info.overridenEmissionRoughnessTexturePostfix != nullptr ? _info.overridenEmissionRoughnessTexturePostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
 
-    this->overridenAAIsSRGB = _info.overrideAlbedoAlphaTextureIsSRGB;
-    this->overridenNMIsSRGB = _info.overrideNormalMetallicTextureIsSRGB;
-    this->overridenERIsSRGB = _info.overrideEmissionRoughnessTextureIsSRGB;
+    this->overridenAAIsSRGB = _info.overridenAlbedoAlphaTextureIsSRGB;
+    this->overridenNMIsSRGB = _info.overridenNormalMetallicTextureIsSRGB;
+    this->overridenERIsSRGB = _info.overridenEmissionRoughnessTextureIsSRGB;
 
     imageLoader = std::make_shared<ImageLoader>();
     textureDesc = std::make_shared<TextureDescriptors>(device, MAX_TEXTURE_COUNT, BINDING_TEXTURES);
@@ -160,9 +160,9 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
     parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
     parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
-    parseInfo.aaIsSRGBDefault = overridenAAIsSRGB;
-    parseInfo.nmIsSRGBDefault = overridenNMIsSRGB;
-    parseInfo.erIsSRGBDefault = overridenERIsSRGB;
+    parseInfo.overridenIsSRGB[0] = overridenAAIsSRGB;
+    parseInfo.overridenIsSRGB[1] = overridenNMIsSRGB;
+    parseInfo.overridenIsSRGB[2] = overridenERIsSRGB;
 
     // load additional textures, they'll be freed after leaving the scope
     TextureOverrides ovrd(createInfo.relativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);

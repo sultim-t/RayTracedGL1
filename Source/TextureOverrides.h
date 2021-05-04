@@ -41,11 +41,10 @@ public:
         const char *albedoAlphaPostfix       = nullptr;
         const char *normalMetallicPostfix    = nullptr;
         const char *emissionRoughnessPostfix = nullptr;
-        // Default params for overriden textures. If texture isn't overriden,
-        // RgTextureData::isSRGB value is used
-        bool aaIsSRGBDefault = false;
-        bool nmIsSRGBDefault = false;
-        bool erIsSRGBDefault = false;
+        // Params for overriden textures. If texture
+        // isn't overriden, RgTextureData::isSRGB value is used
+        // instead of one of these params.
+        bool overridenIsSRGB[3] = {};
     };
 
 public:

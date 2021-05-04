@@ -24,6 +24,47 @@
 using namespace RTGL1;
 
 
+static VkFormat ConvertToUnorm(VkFormat f)
+{
+    switch (f)
+    {
+        case VK_FORMAT_R8_SRGB: return VK_FORMAT_R8_UNORM;
+        case VK_FORMAT_R8G8_SRGB: return VK_FORMAT_R8G8_UNORM;
+        case VK_FORMAT_R8G8B8_SRGB: return VK_FORMAT_R8G8B8_UNORM;
+        case VK_FORMAT_B8G8R8_SRGB: return VK_FORMAT_B8G8R8_UNORM;
+        case VK_FORMAT_R8G8B8A8_SRGB: return VK_FORMAT_R8G8B8A8_UNORM;
+        case VK_FORMAT_B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_UNORM;
+        case VK_FORMAT_A8B8G8R8_SRGB_PACK32: return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+        case VK_FORMAT_BC1_RGB_SRGB_BLOCK: return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        case VK_FORMAT_BC2_SRGB_BLOCK: return VK_FORMAT_BC2_UNORM_BLOCK;
+        case VK_FORMAT_BC3_SRGB_BLOCK: return VK_FORMAT_BC3_UNORM_BLOCK;
+        case VK_FORMAT_BC7_SRGB_BLOCK: return VK_FORMAT_BC7_UNORM_BLOCK;
+        default: return f;
+    }
+}
+
+static VkFormat ConvertToSRGB(VkFormat f)
+{
+    switch (f)
+    {
+    case VK_FORMAT_R8_UNORM: return VK_FORMAT_R8_SRGB;
+    case VK_FORMAT_R8G8_UNORM: return VK_FORMAT_R8G8_SRGB;
+    case VK_FORMAT_R8G8B8_UNORM: return VK_FORMAT_R8G8B8_SRGB;
+    case VK_FORMAT_B8G8R8_UNORM: return VK_FORMAT_B8G8R8_SRGB;
+    case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SRGB;
+    case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SRGB;
+    case VK_FORMAT_A8B8G8R8_UNORM_PACK32: return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+    case VK_FORMAT_BC1_RGB_UNORM_BLOCK: return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+    case VK_FORMAT_BC1_RGBA_UNORM_BLOCK: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+    case VK_FORMAT_BC2_UNORM_BLOCK: return VK_FORMAT_BC2_SRGB_BLOCK;
+    case VK_FORMAT_BC3_UNORM_BLOCK: return VK_FORMAT_BC3_SRGB_BLOCK;
+    case VK_FORMAT_BC7_UNORM_BLOCK: return VK_FORMAT_BC7_SRGB_BLOCK;
+    default: return f;
+    }
+}
+
+
 TextureOverrides::TextureOverrides(
     const char *_relativePath,
     const void *_defaultData,     
@@ -48,62 +89,63 @@ TextureOverrides::TextureOverrides(
     debugName{},
     imageLoader(_imageLoader)
 {
-    if (!_overrideInfo.disableOverride)
+    const RgTextureData *defaultData[3] =
     {
-        char paths[3][TEXTURE_FILE_PATH_MAX_LENGTH];
+        &_defaultTextures.albedoAlpha,
+        &_defaultTextures.normalsMetallicity,
+        &_defaultTextures.emissionRoughness,
+    };
 
-        const bool hasOverrides = ParseOverrideTexturePaths(
-            paths[0], paths[1], paths[2],
-            _relativePath, _overrideInfo);
-
-        if (hasOverrides)
-        {
-            _imageLoader->Load(paths[0], &aa);
-            _imageLoader->Load(paths[1], &nm);
-            _imageLoader->Load(paths[2], &er);
-
-            // don't check if wasn't loaded from file, pData might be provided by a user
-        }
-    }
+    ImageLoader::ResultInfo *infos[] =
+    {
+        &aa,
+        &nm,
+        &er
+    };
 
     const VkFormat defaultSRGBFormat = VK_FORMAT_R8G8B8A8_SRGB;
     const VkFormat defaultLinearFormat = VK_FORMAT_R8G8B8A8_UNORM;
     const uint32_t defaultBytesPerPixel = 4;
 
+
+    if (!_overrideInfo.disableOverride)
+    {
+        char paths[3][TEXTURE_FILE_PATH_MAX_LENGTH];
+
+        const bool hasOverrides = ParseOverrideTexturePaths(paths[0], paths[1], paths[2],
+                                                            _relativePath, _overrideInfo);
+        if (hasOverrides)
+        {
+            for (uint32_t i = 0; i < 3; i++)
+            {
+                _imageLoader->Load(paths[i], infos[i]);
+
+                // fix format, if needed
+                infos[i]->format = _overrideInfo.overridenIsSRGB[i] ?
+                    ConvertToSRGB(infos[i]->format) :
+                    ConvertToUnorm(infos[i]->format);
+            }
+
+            // don't check if wasn't loaded from file, pData might be provided by a user
+        }
+    }
+
+
     const uint32_t defaultDataSize = defaultBytesPerPixel * _defaultSize.width * _defaultSize.height;
 
-    // if file wasn't found, use default data instead
-    if (_defaultTextures.albedoAlpha.pData != nullptr && aa.pData == nullptr)
+    for (uint32_t i = 0; i < 3; i++)
     {
-        aa.pData = static_cast<const uint8_t*>(_defaultTextures.albedoAlpha.pData);
-        aa.dataSize = defaultDataSize;
-        aa.levelCount = 1;
-        aa.levelOffsets[0] = 0;
-        aa.levelSizes[0] = defaultDataSize;
-        aa.baseSize = _defaultSize;
-        aa.format = _defaultTextures.albedoAlpha.isSRGB ? defaultSRGBFormat : defaultLinearFormat;
-    }
-
-    if (_defaultTextures.normalsMetallicity.pData != nullptr && nm.pData == nullptr)
-    {
-        nm.pData = static_cast<const uint8_t*>(_defaultTextures.normalsMetallicity.pData);
-        nm.dataSize = defaultDataSize;
-        nm.levelCount = 1;
-        nm.levelOffsets[0] = 0;
-        nm.levelSizes[0] = defaultDataSize;
-        nm.baseSize = _defaultSize;
-        nm.format = _defaultTextures.normalsMetallicity.isSRGB ? defaultSRGBFormat : defaultLinearFormat;
-    }
-
-    if (_defaultTextures.emissionRoughness.pData != nullptr && er.pData == nullptr)
-    {
-        er.pData = static_cast<const uint8_t*>(_defaultTextures.emissionRoughness.pData);
-        er.dataSize = defaultDataSize;
-        er.levelCount = 1;
-        er.levelOffsets[0] = 0;
-        er.levelSizes[0] = defaultDataSize;
-        er.baseSize = _defaultSize;
-        er.format = _defaultTextures.emissionRoughness.isSRGB ? defaultSRGBFormat : defaultLinearFormat;
+        // if file wasn't found, use default data instead
+        if (defaultData[i]->pData != nullptr && infos[i]->pData == nullptr)
+        {
+            infos[i]->pData = static_cast<const uint8_t *>(defaultData[i]->pData);
+            infos[i]->dataSize = defaultDataSize;
+            infos[i]->levelCount = 1;
+            infos[i]->levelOffsets[0] = 0;
+            infos[i]->levelSizes[0] = defaultDataSize;
+            infos[i]->baseSize = _defaultSize;
+            infos[i]->format = defaultData[i]->isSRGB ? defaultSRGBFormat : defaultLinearFormat;
+        }
     }
 }
 
