@@ -42,7 +42,7 @@ void RasterizedDataCollector::GetVertexLayout(VkVertexInputAttributeDescription 
 
     outAttrs[1].binding = 0;
     outAttrs[1].location = 1;
-    outAttrs[1].format = VK_FORMAT_R32_UINT;
+    outAttrs[1].format = VK_FORMAT_R8G8B8A8_UNORM;
     outAttrs[1].offset = offsetof(RasterizerVertex, color);
 
     outAttrs[2].binding = 0;

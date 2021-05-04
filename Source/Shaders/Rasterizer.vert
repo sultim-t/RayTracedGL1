@@ -20,10 +20,8 @@
 
 #version 460
 
-#include "ShaderCommonGLSLFunc.h"
-
 layout (location = 0) in vec3 position;
-layout (location = 1) in uint color;
+layout (location = 1) in vec4 color;
 layout (location = 2) in vec2 texCoord;
 
 layout (location = 0) out vec4 outColor;
@@ -38,10 +36,13 @@ layout (constant_id = 0) const uint applyVertexColorGamma = 0;
 
 void main()
 {
-    outColor = unpackLittleEndianUintColor(color);
     if (applyVertexColorGamma != 0)
     {
-        outColor.rgb = pow(outColor.rgb, vec3(2.2));
+        outColor = vec4(pow(color.rgb, vec3(2.2)), color.a);
+    }
+    else
+    {
+        outColor = color;
     }
 
     outTexCoord = texCoord;
