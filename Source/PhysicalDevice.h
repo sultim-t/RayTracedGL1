@@ -28,7 +28,7 @@ namespace RTGL1
 class PhysicalDevice
 {
 public:
-    explicit PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice);
+    explicit PhysicalDevice(VkInstance instance);
     ~PhysicalDevice() = default;
 
     PhysicalDevice(const PhysicalDevice& other) = delete;

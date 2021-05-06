@@ -57,7 +57,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
 
     // create selected physical device
-    physDevice          = std::make_shared<PhysicalDevice>(instance, info->physicalDeviceIndex);
+    physDevice          = std::make_shared<PhysicalDevice>(instance);
     queues              = std::make_shared<Queues>(physDevice->Get(), surface);
 
     // create vulkan device and set extension function pointers

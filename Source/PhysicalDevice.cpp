@@ -19,36 +19,59 @@
 // SOFTWARE.
 
 #include "PhysicalDevice.h"
+
+#include <stdexcept>
 #include <vector>
 
 using namespace RTGL1;
 
-PhysicalDevice::PhysicalDevice(VkInstance instance, uint32_t selectedPhysDevice)
+PhysicalDevice::PhysicalDevice(VkInstance instance)
+    : physDevice(VK_NULL_HANDLE), memoryProperties{}, rtPipelineProperties{}
 {
     VkResult r;
 
     uint32_t physCount = 0;
     r = vkEnumeratePhysicalDevices(instance, &physCount, nullptr);
-    assert(physCount > 0);
-    assert(selectedPhysDevice < physCount);
+
+    if (physCount == 0)
+    {
+        throw std::runtime_error("No physical devices found");
+    }
 
     std::vector<VkPhysicalDevice> physicalDevices;
     physicalDevices.resize(physCount);
     r = vkEnumeratePhysicalDevices(instance, &physCount, physicalDevices.data());
     VK_CHECKERROR(r);
 
-    physDevice = physicalDevices[selectedPhysDevice];
+    for (VkPhysicalDevice p : physicalDevices)
+    {
+        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = {};
+        rtProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
 
-    vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtFeatures = {};
+        rtFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+        rtFeatures.pNext = &rtProperties;
 
-    rtPipelineProperties = {};
-    rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+        VkPhysicalDeviceProperties2 deviceProp2 = {};
+        deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+        deviceProp2.pNext = &rtFeatures;
 
-    VkPhysicalDeviceProperties2 deviceProp2 = {};
-    deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-    deviceProp2.pNext = &rtPipelineProperties;
+        vkGetPhysicalDeviceProperties2(p, &deviceProp2);
 
-    vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
+        if (rtFeatures.rayTracingPipeline)
+        {
+            physDevice = p;
+            rtPipelineProperties = rtProperties;
+            vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
+
+            break;
+        }
+    }
+
+    if (physDevice == VK_NULL_HANDLE)
+    {
+        throw std::runtime_error("No physical device with ray tracing support found");
+    }
 }
 
 VkPhysicalDevice PhysicalDevice::Get() const
