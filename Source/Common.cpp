@@ -63,6 +63,11 @@ void RTGL1::InitDeviceExtensionFunctions_DebugUtils(VkDevice device)
 
 void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name)
 {
+    if (svkDebugMarkerSetObjectNameEXT == nullptr)
+    {
+        return;
+    }
+
     if (name == nullptr)
     {
         return;

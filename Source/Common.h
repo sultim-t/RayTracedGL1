@@ -66,10 +66,14 @@ void InitDeviceExtensionFunctions_DebugUtils(VkDevice device);
 #pragma endregion
 
 
-#define VK_CHECKERROR(x) assert(x == VK_SUCCESS)
+constexpr void VK_CHECKERROR(const VkResult r)
+{
+    assert(r == VK_SUCCESS);
+}
 
 
-#define SET_DEBUG_NAME(device, obj, type, name) if (svkDebugMarkerSetObjectNameEXT != nullptr) AddDebugName(device, reinterpret_cast<uint64_t>(obj), type, name)
+#define SET_DEBUG_NAME(device, obj, type, name) AddDebugName((device), reinterpret_cast<uint64_t>(obj), (type), (name))
+
 
 // If name is null, debug name won't be set
 void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name);
