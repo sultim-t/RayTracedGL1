@@ -96,7 +96,6 @@ set(Sources
     "Source/Matrix.cpp"
     "Source/Rasterizer.cpp"
     "Source/RasterizedDataCollector.cpp"
-    "Source/Stb/stb_image_impl.cpp"
     "Source/Vma/vk_mem_alloc_imp.cpp"
     "Source/ImageLoader.cpp" 
     "Source/TextureManager.cpp" 
