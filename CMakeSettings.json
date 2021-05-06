@@ -10,7 +10,18 @@
       "cmakeCommandArgs": "",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
-      "variables": []
+      "variables": [
+        {
+          "name": "RG_WITH_STATIC_LIBS",
+          "value": "true",
+          "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_SURFACE_WIN32",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
     },
     {
       "name": "x64-Release",
@@ -22,7 +33,18 @@
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64" ],
-      "variables": []
+      "variables": [
+        {
+          "name": "RG_WITH_SURFACE_WIN32",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_STATIC_LIBS",
+          "value": "true",
+          "type": "BOOL"
+        }
+      ]
     },
     {
       "name": "x64-Debug-Light",
@@ -30,11 +52,22 @@
       "configurationType": "Debug",
       "buildRoot": "${projectDir}\\Build\\Debug\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DRAYTRACEDGL1_TESTS=OFF",
+      "cmakeCommandArgs": "",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64" ],
-      "variables": []
+      "variables": [
+        {
+          "name": "RG_WITH_EXAMPLES",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_SURFACE_WIN32",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
     },
     {
       "name": "x64-Release-Light",
@@ -42,11 +75,22 @@
       "configurationType": "Release",
       "buildRoot": "${projectDir}\\Build\\Release\\${name}",
       "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "-DRAYTRACEDGL1_TESTS=OFF",
+      "cmakeCommandArgs": "",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
       "inheritEnvironments": [ "msvc_x64" ],
-      "variables": []
+      "variables": [
+        {
+          "name": "RG_WITH_SURFACE_WIN32",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_EXAMPLES",
+          "value": "True",
+          "type": "BOOL"
+        }
+      ]
     }
   ]
 }

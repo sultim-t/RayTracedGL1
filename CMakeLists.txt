@@ -70,6 +70,7 @@ set(PrivateHeaders
     "Source/DepthCopying.h"
     "Source/RasterPass.h"
     "Source/SwapchainPass.h"
+    "Source/UserPrint.h"
 )
 
 set(Sources
@@ -123,6 +124,7 @@ set(Sources
     "Source/DepthCopying.cpp"
     "Source/RasterPass.cpp"
     "Source/SwapchainPass.cpp"
+    "Source/UserPrint.cpp"
 )
 
 
@@ -147,7 +149,48 @@ set(KTXSources
     ${KTXSourceFolder}"/dfdutils/vk2dfd.c"
 )
 
+
+option(RG_WITH_SURFACE_WIN32    "Build with ability to create Win32 VkSurfaceKHR"   OFF)
+option(RG_WITH_SURFACE_METAL    "Build with ability to create Metal VkSurfaceKHR"   OFF)
+option(RG_WITH_SURFACE_WAYLAND  "Build with ability to create Wayland VkSurfaceKHR" OFF)
+option(RG_WITH_SURFACE_XCB      "Build with ability to create Xcb VkSurfaceKHR"     OFF)
+option(RG_WITH_SURFACE_XLIB     "Build with ability to create Xlib VkSurfaceKHR"    OFF)
+
+option(RG_WITH_STATIC_LIBS      "Build RTGL1's static library files"    ON)
+option(RG_WITH_EXAMPLES         "Add examples for the library"          OFF)
+
+
+# for KTX-Software
 add_definitions(-DKHRONOS_STATIC -DLIBKTX)
+
+
+# options to definitions
+if (RG_WITH_SURFACE_WIN32)
+    message(STATUS "RG_WITH_SURFACE_WIN32 enabled")
+    add_definitions(-DRG_USE_SURFACE_WIN32)
+    add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
+endif()
+if (RG_WITH_SURFACE_METAL)
+    message(STATUS "RG_WITH_SURFACE_METAL enabled")
+    add_definitions(-DRG_USE_SURFACE_METAL)
+    add_definitions(-DVK_USE_PLATFORM_METAL_EXT)
+endif()
+if (RG_WITH_SURFACE_WAYLAND)
+    message(STATUS "RG_WITH_SURFACE_WAYLAND enabled")
+    add_definitions(-DRG_USE_SURFACE_WAYLAND)
+    add_definitions(-DVK_USE_PLATFORM_WAYLAND_KHR)
+endif()
+if (RG_WITH_SURFACE_XCB)
+    message(STATUS "RG_WITH_SURFACE_XCB enabled")
+    add_definitions(-DRG_USE_SURFACE_XCB)
+    add_definitions(-DVK_USE_PLATFORM_XCB_KHR)
+endif()
+if (RG_WITH_SURFACE_XLIB)
+    message(STATUS "RG_WITH_SURFACE_XLIB enabled")
+    add_definitions(-DRG_USE_SURFACE_XLIB)
+    add_definitions(-DVK_USE_PLATFORM_XLIB_KHR)
+endif()
+
 
 add_library(RayTracedGL1 STATIC  
     ${Sources}
@@ -161,10 +204,13 @@ target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 
 
+if (RG_BUILD_STATIC_LIBS)
+    message(STATUS "Adding empty executable to build static library files")
+    add_subdirectory(Compile)
+endif()
 
-# optional tests
-option(RAYTRACEDGL1_TESTS "Add tests and examples for library" ON)
-if (RAYTRACEDGL1_TESTS)
-    message(STATUS "Adding tests.")
+
+if (RG_ADD_EXAMPLES)
+    message(STATUS "Adding examples")
     add_subdirectory(Tests)
 endif()
