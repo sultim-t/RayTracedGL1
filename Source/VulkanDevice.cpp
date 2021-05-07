@@ -107,8 +107,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator,
         samplerManager,
         cmdManager,
-        info->overridenTexturesFolderPath,
-        info->overridenAlbedoAlphaTexturePostfix);
+        info->pOverridenTexturesFolderPath,
+        info->pOverridenAlbedoAlphaTexturePostfix);
 
     shaderManager       = std::make_shared<ShaderManager>(device);
 

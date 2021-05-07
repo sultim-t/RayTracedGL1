@@ -41,11 +41,11 @@ TextureManager::TextureManager(
     device(_device),
     samplerMgr(std::move(_samplerMgr))
 {
-    this->defaultTexturesPath = _info.overridenTexturesFolderPath != nullptr ? _info.overridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
+    this->defaultTexturesPath = _info.pOverridenTexturesFolderPath != nullptr ? _info.pOverridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
 
-    this->albedoAlphaPostfix       = _info.overridenAlbedoAlphaTexturePostfix       != nullptr ? _info.overridenAlbedoAlphaTexturePostfix       : DEFAULT_ALBEDO_ALPHA_POSTFIX;
-    this->normalMetallicPostfix    = _info.overridenNormalMetallicTexturePostfix    != nullptr ? _info.overridenNormalMetallicTexturePostfix    : DEFAULT_NORMAL_METALLIC_POSTFIX;
-    this->emissionRoughnessPostfix = _info.overridenEmissionRoughnessTexturePostfix != nullptr ? _info.overridenEmissionRoughnessTexturePostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
+    this->albedoAlphaPostfix       = _info.pOverridenAlbedoAlphaTexturePostfix       != nullptr ? _info.pOverridenAlbedoAlphaTexturePostfix       : DEFAULT_ALBEDO_ALPHA_POSTFIX;
+    this->normalMetallicPostfix    = _info.pOverridenNormalMetallicTexturePostfix    != nullptr ? _info.pOverridenNormalMetallicTexturePostfix    : DEFAULT_NORMAL_METALLIC_POSTFIX;
+    this->emissionRoughnessPostfix = _info.pOverridenEmissionRoughnessTexturePostfix != nullptr ? _info.pOverridenEmissionRoughnessTexturePostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
 
     this->overridenAAIsSRGB = _info.overridenAlbedoAlphaTextureIsSRGB;
     this->overridenNMIsSRGB = _info.overridenNormalMetallicTextureIsSRGB;
@@ -165,7 +165,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     parseInfo.overridenIsSRGB[2] = overridenERIsSRGB;
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd(createInfo.relativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
+    TextureOverrides ovrd(createInfo.pRelativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
 
     textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, sampler, createInfo.useMipmaps, ovrd.debugName);
     textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, sampler, createInfo.useMipmaps, ovrd.debugName);
@@ -321,7 +321,7 @@ uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t fr
     // animated material is a series of static materials
     for (uint32_t i = 0; i < createInfo.frameCount; i++)
     {
-        materialIndices[i] = CreateStaticMaterial(cmd, frameIndex, createInfo.frames[i]);
+        materialIndices[i] = CreateStaticMaterial(cmd, frameIndex, createInfo.pFrames[i]);
     }
 
     return InsertAnimatedMaterial(materialIndices);

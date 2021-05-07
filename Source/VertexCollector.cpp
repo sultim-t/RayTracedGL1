@@ -206,7 +206,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     const uint32_t indIndex = curIndexCount;
     const uint32_t transformIndex = curTransformCount;
 
-    const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
+    const bool useIndices = info.indexCount != 0 && info.pIndexData != nullptr;
     const uint32_t primitiveCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 
 
@@ -232,7 +232,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     if (useIndices)
     {
         assert(stagingIndexBuffer.IsMapped());
-        memcpy(mappedIndexData + indIndex, info.indexData, info.indexCount * sizeof(uint32_t));
+        memcpy(mappedIndexData + indIndex, info.pIndexData, info.indexCount * sizeof(uint32_t));
     }
 
     static_assert(sizeof(RgTransform) == sizeof(VkTransformMatrixKHR), "RgTransform and VkTransformMatrixKHR must have the same structure to be used in AS building");
@@ -308,7 +308,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     geomInfo.flags = GetMaterialsBlendFlags(info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT);
 
-    if (info.normalData == nullptr)
+    if (info.pNormalData == nullptr)
     {
         geomInfo.flags |= GEOM_INST_FLAG_GENERATE_NORMALS;
     }
@@ -384,21 +384,21 @@ void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32
     void *positionsDst = mappedVertexData + offsetPositions + vertIndex * positionStride;
     assert(offsetPositions + (vertIndex + info.vertexCount) * positionStride < wholeBufferSize);
 
-    memcpy(positionsDst, info.vertexData, info.vertexCount * positionStride);
+    memcpy(positionsDst, info.pVertexData, info.vertexCount * positionStride);
 
     // normals
     void *normalsDst = mappedVertexData + offsetNormals + vertIndex * normalStride;
     assert(offsetNormals + (vertIndex + info.vertexCount) * normalStride < wholeBufferSize);
 
-    if (info.normalData != nullptr)
+    if (info.pNormalData != nullptr)
     {
-        memcpy(normalsDst, info.normalData, info.vertexCount * normalStride);
+        memcpy(normalsDst, info.pNormalData, info.vertexCount * normalStride);
     }
 
     //const bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
     //const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 
-    CopyTexCoordsToStaging(isStatic, vertIndex, info.vertexCount, info.texCoordLayerData);
+    CopyTexCoordsToStaging(isStatic, vertIndex, info.vertexCount, info.pTexCoordLayerData);
 }
 
 void RTGL1::VertexCollector::CopyTexCoordsToStaging(bool isStatic, uint32_t globalVertIndex, uint32_t vertexCount, const void *const texCoordLayerData[3], bool addToCopy)
@@ -725,7 +725,7 @@ void RTGL1::VertexCollector::UpdateTexCoords(uint32_t simpleIndex, const RgUpdat
         return;
     }
 
-    CopyTexCoordsToStaging(isStatic, dstVertIndex, texCoordsInfo.vertexCount, texCoordsInfo.texCoordLayerData, true);
+    CopyTexCoordsToStaging(isStatic, dstVertIndex, texCoordsInfo.vertexCount, texCoordsInfo.pTexCoordLayerData, true);
 }
 
 void VertexCollector::AddMaterialDependency(uint32_t simpleIndex, uint32_t layer, uint32_t materialIndex)

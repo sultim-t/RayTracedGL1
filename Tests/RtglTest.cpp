@@ -324,11 +324,11 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     // geometry infos
     RgGeometryUploadInfo cubeInfo = {};
     cubeInfo.vertexCount = cubePositions.size() / 3;
-    cubeInfo.vertexData = cubePositions.data();
-    cubeInfo.normalData = cubeNormals.data();
-    cubeInfo.texCoordLayerData[0] = cubeTexCoords.data();
+    cubeInfo.pVertexData = cubePositions.data();
+    cubeInfo.pNormalData = cubeNormals.data();
+    cubeInfo.pTexCoordLayerData[0] = cubeTexCoords.data();
     cubeInfo.indexCount = cubeIndices.size();
-    cubeInfo.indexData = cubeIndices.data();
+    cubeInfo.pIndexData = cubeIndices.data();
     cubeInfo.layerColors[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
     cubeInfo.layerColors[1] = { 1.0f, 1.0f, 1.0f, 1.0f };
     cubeInfo.layerColors[2] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -347,15 +347,15 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     // texture info
     RgStaticMaterialCreateInfo textureInfo = {};
-    textureInfo.relativePath = "../../../TopMap01.ktx2";
+    textureInfo.pRelativePath = "../../../TopMap01.ktx2";
     textureInfo.useMipmaps = RG_FALSE;
 
 
     // rasterized geometry for HUD
     RgRasterizedGeometryVertexArrays hudVertData = {};
-    hudVertData.vertexData = quadPositions;
-    hudVertData.texCoordData = quadTexCoords;
-    hudVertData.colorData = quadColorsABGR;
+    hudVertData.pVertexData = quadPositions;
+    hudVertData.pTexCoordData = quadTexCoords;
+    hudVertData.pColorData = quadColorsABGR;
     hudVertData.vertexStride = 3 * sizeof(float);
     hudVertData.texCoordStride = 2 * sizeof(float);
     hudVertData.colorStride = sizeof(uint32_t);
@@ -510,7 +510,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         RgUpdateTexCoordsInfo texCoordsInfo = {};
         texCoordsInfo.staticUniqueID = 1;
-        texCoordsInfo.texCoordLayerData[0] = (frameCount % 360) < 180 ? cubeTexCoords.data() : cubeTexCoordsModif.data();
+        texCoordsInfo.pTexCoordLayerData[0] = (frameCount % 360) < 180 ? cubeTexCoords.data() : cubeTexCoordsModif.data();
         texCoordsInfo.vertexOffset = 0;
         texCoordsInfo.vertexCount = cubeInfo.vertexCount;
         r = rgUpdateGeometryTexCoords(instance, &texCoordsInfo);
@@ -538,7 +538,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         // upload rasterized geometry
         RgRasterizedGeometryUploadInfo raster = {};
         raster.vertexCount = 6;
-        raster.arrays = &hudVertData;
+        raster.pArrays = &hudVertData;
         raster.material = RG_NO_MATERIAL;
         raster.color = { 1, 1, 1, 1 };
         raster.blendEnable = RG_FALSE;

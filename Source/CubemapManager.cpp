@@ -66,7 +66,7 @@ void RTGL1::CubemapManager::CreateEmptyCubemap(VkCommandBuffer cmd)
 
     for (uint32_t i = 0; i < 6; i++)
     {
-        info.data[i] = &whitePixel;
+        info.pData[i] = &whitePixel;
     }
 
     uint32_t index = CreateCubemap(cmd, 0, info);
@@ -127,12 +127,12 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     RgExtent2D size = { info.sideSize, info.sideSize };
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd0(info.relativePaths[0], info.data[0], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd1(info.relativePaths[1], info.data[1], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd2(info.relativePaths[2], info.data[2], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd3(info.relativePaths[3], info.data[3], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd4(info.relativePaths[4], info.data[4], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd5(info.relativePaths[5], info.data[5], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd0(info.pRelativePaths[0], info.pData[0], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd1(info.pRelativePaths[1], info.pData[1], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd2(info.pRelativePaths[2], info.pData[2], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd3(info.pRelativePaths[3], info.pData[3], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd4(info.pRelativePaths[4], info.pData[4], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd5(info.pRelativePaths[5], info.pData[5], info.isSRGB, size, parseInfo, imageLoader);
 
     TextureOverrides *ovrd[] =
     {
@@ -193,12 +193,12 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
         for (uint32_t i = 0; i < 6; i++)
         {
             // if original data is not valid
-            if (info.data[i] == nullptr)
+            if (info.pData[i] == nullptr)
             {
                 return RG_EMPTY_CUBEMAP;
             }
 
-            upload.cubemap.pFaces[i] = info.data[i];
+            upload.cubemap.pFaces[i] = info.pData[i];
         }
     }
 

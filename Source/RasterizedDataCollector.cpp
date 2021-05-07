@@ -86,8 +86,8 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
 {
     assert(info.vertexCount > 0);
 
-    assert((info.structs != nullptr && info.arrays == nullptr) ||
-           (info.structs == nullptr && info.arrays != nullptr));
+    assert((info.pStructs != nullptr && info.pArrays == nullptr) ||
+           (info.pStructs == nullptr && info.pArrays != nullptr));
 
     const bool renderToSwapchain = info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN;
     const bool renderToSky = info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
@@ -107,11 +107,11 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
         pViewport = nullptr;
     }
 
-    if (info.arrays != nullptr)
+    if (info.pArrays != nullptr)
     {
-        assert(info.arrays->vertexStride >= 3 * sizeof(float));
-        assert(info.arrays->colorData == nullptr || info.arrays->colorStride >= sizeof(uint32_t));
-        assert(info.arrays->texCoordData == nullptr || info.arrays->texCoordStride >= 2 * sizeof(float));
+        assert(info.pArrays->vertexStride >= 3 * sizeof(float));
+        assert(info.pArrays->pColorData == nullptr || info.pArrays->colorStride >= sizeof(uint32_t));
+        assert(info.pArrays->pTexCoordData == nullptr || info.pArrays->texCoordStride >= 2 * sizeof(float));
     }
 
     if ((uint64_t)curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof(RasterizerVertex))
@@ -178,7 +178,7 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     // copy vertex data
     RasterizerVertex *dstVerts = (RasterizerVertex*)vertexBuffer->GetMapped(frameIndex) + curVertexCount;
 
-    if (info.arrays != nullptr)
+    if (info.pArrays != nullptr)
     {
         CopyFromSeparateArrays(info, dstVerts);
     }
@@ -193,7 +193,7 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
 
 
     // copy index data
-    bool useIndices = info.indexCount != 0 && info.indexData != nullptr;
+    bool useIndices = info.indexCount != 0 && info.pIndexData != nullptr;
     if (useIndices)
     {
         if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
@@ -203,7 +203,7 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
         }
 
         uint32_t *dstIndices = (uint32_t*)indexBuffer->GetMapped(frameIndex) + curIndexCount;
-        memcpy(dstIndices, info.indexData, info.indexCount * sizeof(uint32_t));
+        memcpy(dstIndices, info.pIndexData, info.indexCount * sizeof(uint32_t));
 
         drawInfo.indexCount = info.indexCount;
         drawInfo.firstIndex = curIndexCount;
@@ -214,15 +214,15 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
 
 void RasterizedDataCollector::CopyFromSeparateArrays(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts)
 {
-    assert(info.arrays != nullptr);
+    assert(info.pArrays != nullptr);
 
-    const auto &src = *info.arrays;
+    const auto &src = *info.pArrays;
 
     for (uint32_t i = 0; i < info.vertexCount; i++)
     {
-        auto *srcPos        = (float*)      ((uint8_t*)src.vertexData      + (uint64_t)i * src.vertexStride);
-        auto *srcColor      = (uint32_t*)   ((uint8_t*)src.colorData       + (uint64_t)i * src.colorStride);
-        auto *srcTexCoord   = (float*)      ((uint8_t*)src.texCoordData    + (uint64_t)i * src.texCoordStride);
+        auto *srcPos        = (float*)      ((uint8_t*)src.pVertexData      + (uint64_t)i * src.vertexStride);
+        auto *srcColor      = (uint32_t*)   ((uint8_t*)src.pColorData       + (uint64_t)i * src.colorStride);
+        auto *srcTexCoord   = (float*)      ((uint8_t*)src.pTexCoordData    + (uint64_t)i * src.texCoordStride);
 
         RasterizerVertex vert = {};
 
@@ -230,10 +230,10 @@ void RasterizedDataCollector::CopyFromSeparateArrays(const RgRasterizedGeometryU
         vert.position[1] = srcPos[1];
         vert.position[2] = srcPos[2];
 
-        vert.color = src.colorData ? *srcColor : UINT32_MAX;
+        vert.color = src.pColorData ? *srcColor : UINT32_MAX;
 
-        vert.texCoord[0] = src.texCoordData ? srcTexCoord[0] : 0;
-        vert.texCoord[1] = src.texCoordData ? srcTexCoord[1] : 0;
+        vert.texCoord[0] = src.pTexCoordData ? srcTexCoord[0] : 0;
+        vert.texCoord[1] = src.pTexCoordData ? srcTexCoord[1] : 0;
 
         // write to mapped memory
         memcpy(dstVerts + i, &vert, sizeof(RasterizerVertex));
@@ -242,14 +242,14 @@ void RasterizedDataCollector::CopyFromSeparateArrays(const RgRasterizedGeometryU
 
 void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts)
 {
-    assert(info.structs != nullptr);
+    assert(info.pStructs != nullptr);
 
     static_assert(sizeof(RgRasterizedGeometryVertexStruct) == sizeof(RasterizerVertex), "");
     static_assert(offsetof(RgRasterizedGeometryVertexStruct, position) == offsetof(RasterizerVertex, position), "");
     static_assert(offsetof(RgRasterizedGeometryVertexStruct, packedColor) == offsetof(RasterizerVertex, color), "");
     static_assert(offsetof(RgRasterizedGeometryVertexStruct, texCoord) == offsetof(RasterizerVertex, texCoord), "");
 
-    memcpy(dstVerts, info.structs, sizeof(RasterizerVertex) * info.vertexCount);
+    memcpy(dstVerts, info.pStructs, sizeof(RasterizerVertex) * info.vertexCount);
 }
 
 void RasterizedDataCollector::Clear(uint32_t frameIndex)
