@@ -6,7 +6,7 @@
       "configurationType": "Debug",
       "inheritEnvironments": [ "msvc_x64" ],
       "buildRoot": "${projectDir}\\Build\\Debug\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "installRoot": "${projectDir}\\Build\\Install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
@@ -18,6 +18,11 @@
         },
         {
           "name": "RG_WITH_SURFACE_WIN32",
+          "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_EXAMPLES",
           "value": "True",
           "type": "BOOL"
         }
@@ -28,7 +33,7 @@
       "generator": "Ninja",
       "configurationType": "RelWithDebInfo",
       "buildRoot": "${projectDir}\\Build\\Release\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
+      "installRoot": "${projectDir}\\Build\\Install\\${name}",
       "cmakeCommandArgs": "",
       "buildCommandArgs": "-v",
       "ctestCommandArgs": "",
@@ -42,47 +47,6 @@
         {
           "name": "RG_WITH_STATIC_LIBS",
           "value": "true",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x64-Debug-Light",
-      "generator": "Ninja",
-      "configurationType": "Debug",
-      "buildRoot": "${projectDir}\\Build\\Debug\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "-v",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64" ],
-      "variables": [
-        {
-          "name": "RG_WITH_EXAMPLES",
-          "value": "True",
-          "type": "BOOL"
-        },
-        {
-          "name": "RG_WITH_SURFACE_WIN32",
-          "value": "True",
-          "type": "BOOL"
-        }
-      ]
-    },
-    {
-      "name": "x64-Release-Light",
-      "generator": "Ninja",
-      "configurationType": "Release",
-      "buildRoot": "${projectDir}\\Build\\Release\\${name}",
-      "installRoot": "${projectDir}\\out\\install\\${name}",
-      "cmakeCommandArgs": "",
-      "buildCommandArgs": "-v",
-      "ctestCommandArgs": "",
-      "inheritEnvironments": [ "msvc_x64" ],
-      "variables": [
-        {
-          "name": "RG_WITH_SURFACE_WIN32",
-          "value": "True",
           "type": "BOOL"
         },
         {

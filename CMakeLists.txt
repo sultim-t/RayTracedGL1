@@ -205,13 +205,13 @@ target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 
 
-if (RG_BUILD_STATIC_LIBS)
+if (RG_WITH_STATIC_LIBS)
     message(STATUS "Adding empty executable to build static library files")
     add_subdirectory(Compile)
 endif()
 
 
-if (RG_ADD_EXAMPLES)
+if (RG_WITH_EXAMPLES)
     message(STATUS "Adding examples")
     add_subdirectory(Tests)
 endif()
