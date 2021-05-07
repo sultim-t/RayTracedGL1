@@ -3,8 +3,9 @@
 
 #include <RTGL1/RTGL1.h>
 
-#include <vulkan/vulkan.h>
 #include <GLFW/glfw3.h>
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
 
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -23,7 +24,7 @@
 
 struct Window
 {
-    Window() : width(1600), height(900), extensionCount(0)
+    Window() : width(1600), height(900)
     {
         glfwInit();
         glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
@@ -32,23 +33,14 @@ struct Window
         glfwHandle = glfwCreateWindow(width, height, "RTGL1 Test", nullptr, nullptr);
         UpdateSize();
 
-        extensions = glfwGetRequiredInstanceExtensions(&extensionCount);
+        hinstance = GetModuleHandle(NULL);
+        hwnd = glfwGetWin32Window(glfwHandle);
     }
 
     ~Window()
     {
         glfwDestroyWindow(glfwHandle);
         glfwTerminate();
-    }
-
-    void CreateVkSurface(uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR)
-    {
-        VkInstance instance = reinterpret_cast<VkInstance>(vkInstance);
-
-        VkSurfaceKHR surface;
-        glfwCreateWindowSurface(instance, glfwHandle, nullptr, &surface);
-
-        *pResultVkSurfaceKHR = reinterpret_cast<uint64_t>(surface);
     }
 
     void UpdateSize()
@@ -58,13 +50,14 @@ struct Window
 
     GLFWwindow      *glfwHandle;
     int             width, height;
-    const char      **extensions;
-    uint32_t        extensionCount;
+
+    HINSTANCE hinstance;
+    HWND hwnd;
 };
 
 static std::ofstream logFile;
 
-static void DebugPrint(const char *msg)
+static void DebugPrint(const char *msg, void *pUserData)
 {
     std::cout << msg;
     logFile << msg;
@@ -87,8 +80,8 @@ static std::vector<const char *> cubemapNames = {
 };
 
 
-static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, -8);
-static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, 1);
+static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, 8);
+static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, -1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
 static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);
 static glm::vec3 LIGHT_POS      = glm::vec3(0, 4, -2);
@@ -337,6 +330,8 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.indexData = cubeIndices.data();
     cubeInfo.layerColors[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    cubeInfo.layerColors[1] = { 1.0f, 1.0f, 1.0f, 1.0f };
+    cubeInfo.layerColors[2] = { 1.0f, 1.0f, 1.0f, 1.0f };
     cubeInfo.defaultRoughness = 1;
     cubeInfo.defaultMetallicity = 0;
     cubeInfo.geomMaterial = {
@@ -350,26 +345,10 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         0, 0, 1, 0
     };
 
-    RgGeometryUploadInfo stInfo = cubeInfo;
-    stInfo.geomType = RG_GEOMETRY_TYPE_STATIC;
-    stInfo.transform = {
-        30, 0, 0, 0,
-        0, 1, 0, -1,
-        0, 0, 30, 0
-    };
-
-    RgGeometryUploadInfo mvInfo = cubeInfo;
-    mvInfo.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
-
-    RgGeometryUploadInfo dnInfo = cubeInfo;
-    dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
-    dnInfo.layerColors[0] = { 1.0f, 0.0f, 0.0f, 0.0f };
-
-
     // texture info
     RgStaticMaterialCreateInfo textureInfo = {};
-    textureInfo.relativePath = "../../../TestImage.png";
-    textureInfo.useMipmaps = RG_TRUE;
+    textureInfo.relativePath = "../../../TopMap01.ktx2";
+    textureInfo.useMipmaps = RG_FALSE;
 
 
     // rasterized geometry for HUD
@@ -380,19 +359,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     hudVertData.vertexStride = 3 * sizeof(float);
     hudVertData.texCoordStride = 2 * sizeof(float);
     hudVertData.colorStride = sizeof(uint32_t);
-
-    RgRasterizedGeometryUploadInfo raster = {};
-    raster.renderType = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
-    raster.vertexCount = 6;
-    raster.arrays = &hudVertData;
-    raster.material = RG_NO_MATERIAL;
-    raster.transform = {
-        1, 0, 0, 0,
-        0, 1, 0, 0,
-        0, 0, 1, 0
-    };
-    raster.color = { 1, 1, 1, 1 };
-    raster.blendEnable = RG_FALSE;
 
 
     RgResult    r           = RG_SUCCESS;
@@ -426,7 +392,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
             // create skyboxes
-            for (uint32_t i = 0; i < cubemapNames.size(); i++)
+            /*for (uint32_t i = 0; i < cubemapNames.size(); i++)
             {
                 std::string skyboxFolderPath = std::string("../../../") + cubemapNames[i] + "/";
 
@@ -449,21 +415,80 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
                 r = rgCreateCubemap(instance, &skyboxInfo, &skyboxes[i]);
                 RG_CHECKERROR(r);    
-            }
+            }*/
 
 
             // start static scene upload
             r = rgStartNewScene(instance);
             RG_CHECKERROR(r);
 
-            stInfo.uniqueID = 0;
+            RgGeometryUploadInfo stInfo = cubeInfo;
+            stInfo.geomType = RG_GEOMETRY_TYPE_STATIC;
+
+            // bottom
+            stInfo.transform = {
+                5 * 0.5, 0, 0, 0,
+                0, 1 * 0.5, 0, -4,
+                0, 0, 5 * 0.5, 0
+            };
+            stInfo.layerColors[0] = { 1, 1, 1, 1 };
+            stInfo.uniqueID = 9;
             r = rgUploadGeometry(instance, &stInfo);
             RG_CHECKERROR(r);
 
+            // up
+            stInfo.transform = {
+                5 * 0.5, 0, 0, 0,
+                0, 1 * 0.5, 0, +4,
+                0, 0, 5 * 0.5, 0
+            };
+            stInfo.layerColors[0] = { 1, 1, 1, 1 };
+            stInfo.uniqueID = 99;
+            r = rgUploadGeometry(instance, &stInfo);
+            RG_CHECKERROR(r);
+
+            // left, red
+            stInfo.transform = {
+                1 * 0.5, 0, 0, -3,
+                0, 9 * 0.5, 0, 0,
+                0, 0, 5 * 0.5, 0
+            };
+            stInfo.layerColors[0] = { 1, 0, 0, 1 };
+            stInfo.uniqueID = 999;
+            r = rgUploadGeometry(instance, &stInfo);
+            RG_CHECKERROR(r);
+
+            // right, green
+            stInfo.transform = {
+                1 * 0.5, 0, 0, +3,
+                0, 9 * 0.5, 0, 0,
+                0, 0, 5 * 0.5, 0
+            };
+            stInfo.layerColors[0] = { 0, 1, 0, 1 };
+            stInfo.uniqueID = 9999;
+            r = rgUploadGeometry(instance, &stInfo);
+            RG_CHECKERROR(r);
+
+            // back
+            stInfo.transform = {
+                7 * 0.5, 0, 0, 0,
+                0, 9 * 0.5, 0, 0,
+                0, 0, 1 * 0.5, -3
+            };
+            stInfo.layerColors[0] = { 1, 1, 1, 1 };
+            stInfo.uniqueID = 99999;
+            r = rgUploadGeometry(instance, &stInfo);
+            RG_CHECKERROR(r);
+
+
+            // tall left box
+            RgGeometryUploadInfo mvInfo = cubeInfo;
+            mvInfo.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
             mvInfo.uniqueID = 1;
             mvInfo.geomMaterial.layerMaterials[0] = material;
             r = rgUploadGeometry(instance, &mvInfo);
             RG_CHECKERROR(r);
+
 
             // upload static geometry
             r = rgSubmitStaticGeometries(instance);
@@ -475,9 +500,9 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RgUpdateTransformInfo updateInfo = {};
         updateInfo.movableStaticUniqueID = 1;
         updateInfo.transform = {
-            0.3f, 0, 0, TO_MOVE ? 5.0f - 0.05f * (frameCount % 200) : -2.5f,
-            0, 4, 0, 4,
-            0, 0, 0.3f, 0
+            0.5, 0, 0, TO_MOVE ? 5.0f - 0.05f * (frameCount % 200) : -1.0f,
+            0, 1, 0, -3.5 + 1,
+            0, 0, 0.5, -0.5
         };
         r = rgUpdateGeometryTransform(instance, &updateInfo);
         RG_CHECKERROR(r);
@@ -485,7 +510,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         RgUpdateTexCoordsInfo texCoordsInfo = {};
         texCoordsInfo.staticUniqueID = 1;
-        texCoordsInfo.texCoordLayerData[0] = (frameCount % 120) > 60 ? cubeTexCoords.data() : cubeTexCoordsModif.data();
+        texCoordsInfo.texCoordLayerData[0] = (frameCount % 360) < 180 ? cubeTexCoords.data() : cubeTexCoordsModif.data();
         texCoordsInfo.vertexOffset = 0;
         texCoordsInfo.vertexCount = cubeInfo.vertexCount;
         r = rgUpdateGeometryTexCoords(instance, &texCoordsInfo);
@@ -493,28 +518,59 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
         // dynamic geometry must be uploaded each frame
+        RgGeometryUploadInfo dnInfo = cubeInfo;
+        dnInfo.geomType = RG_GEOMETRY_TYPE_DYNAMIC;
+        dnInfo.layerColors[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
         dnInfo.defaultMetallicity = METALLICITY;
         dnInfo.defaultRoughness = ROUGHNESS;
-
         dnInfo.transform = {
-            0.3f, 0, 0, TO_MOVE ? 5.0f - 0.05f * ((frameCount + 30) % 200) : 0,
-            0, 4, 0, 0,
-            0, 0, 0.3f, 0
+            0.5, 0, 0, TO_MOVE ? 5.0f - 0.05f * ((frameCount + 30) % 200) : 1.0f,
+            0, 0.5, 0, -3.5 + 0.5,
+            0, 0, 0.5, 0
         };
         dnInfo.uniqueID = 2;
         rgUploadGeometry(instance, &dnInfo);
+        RG_CHECKERROR(r);
 
-        dnInfo.transform = {
-            0.3f, 0, 0, TO_MOVE ? 5.0f - 0.05f * ((frameCount + 60) % 200) : 2.5f,
-            0, 4, 0, 0,
-            0, 0, 0.3f, 0
-        };
-        dnInfo.uniqueID = 3;
-        dnInfo.passThroughType = RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT;
-        rgUploadGeometry(instance, &dnInfo);
+
+        float OFFSET = 0;
 
         // upload rasterized geometry
+        RgRasterizedGeometryUploadInfo raster = {};
+        raster.vertexCount = 6;
+        raster.arrays = &hudVertData;
+        raster.material = RG_NO_MATERIAL;
+        raster.color = { 1, 1, 1, 1 };
+        raster.blendEnable = RG_FALSE;
+        raster.depthTest = true;
+        raster.depthWrite = true;
+
+        raster.renderType = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
+
+        raster.transform = {
+            1, 0, 0, OFFSET,
+            0, 1, 0, 0,
+            0, 0, 1, 0
+        };
         r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
+        RG_CHECKERROR(r);
+
+        raster.transform = {
+            1, 0, 0, OFFSET,
+            0, 1, 0, 0,
+            0, 0, 1, 2
+        };
+        r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
+        RG_CHECKERROR(r);
+
+        raster.renderType = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT;
+
+        raster.transform = {
+            1, 0, 0, OFFSET,
+            0, 1, 0, 0.5f,
+            0, 0, 1, 6
+        };
+        //r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
         RG_CHECKERROR(r);
 
 
@@ -527,17 +583,16 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         RgSphericalLightUploadInfo l = {};
         l.color =  { LIGHT_COLOR[0], LIGHT_COLOR[1], LIGHT_COLOR[2] };
-        l.radius = LIGHT_FALLOFF / 10.0f;
+        l.radius = LIGHT_RADIUS;
         l.falloffDistance = LIGHT_FALLOFF;
 
-        uint32_t count = (uint32_t)LIGHT_SPH_COUNT;
-        float distance = LIGHT_RADIUS;
+        uint32_t count = (frameCount % 2) * 64 + 128;
 
-        for (uint64_t i = 0; i < count * count; i++)
+        for (uint64_t i = 0; i < count; i++)
         {
             l.uniqueID = i;
-            l.position = { LIGHT_POS[0] + distance * (i / count), LIGHT_POS[1], LIGHT_POS[2] + distance * (i % count) };
-            r = rgUploadSphericalLight(instance, &l);            
+            l.position = { LIGHT_POS[0] + i * 3, LIGHT_POS[1], LIGHT_POS[2] };
+            //r = rgUploadSphericalLight(instance, &l);            
         }
 
         // submit frame to be rendered
@@ -557,10 +612,10 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
         frameInfo.skyColorDefault = { 0.71f, 0.88f, 1.0f };
-        frameInfo.skyType = RG_SKY_TYPE_RASTERIZED_GEOMETRY;
+        frameInfo.skyType = RG_SKY_TYPE_CUBEMAP;
         frameInfo.skyCubemap = skyboxes[SKYBOX_CURRENT];
         frameInfo.skyColorMultiplier = SKY_INTENSITY;
-        frameInfo.skyViewerPosition = { CAMERA_POS.x / 50, CAMERA_POS.y / 50, CAMERA_POS.z / 50 };
+        frameInfo.skyViewerPosition = { CAMERA_POS.x / 2  +OFFSET, CAMERA_POS.y / 2, CAMERA_POS.z / 2 };
 
         frameInfo.dbgShowGradients = SHOW_GRAD;
 
@@ -582,11 +637,13 @@ int main()
 
     try
     {
+        RgWin32SurfaceCreateInfo win32Info = {};
+        win32Info.hinstance = window.hinstance;
+        win32Info.hwnd = window.hwnd;
+
 
         RgInstanceCreateInfo info = {};
-
-        info.name                       = "RTGL1 Test";
-        info.physicalDeviceIndex        = 0;
+        info.pName                      = "RTGL1 Test";
         info.enableValidationLayer      = RG_TRUE;
 
         info.vertexPositionStride       = 3 * sizeof(float);
@@ -594,19 +651,15 @@ int main()
         info.vertexTexCoordStride       = 2 * sizeof(float);
         info.vertexColorStride          = sizeof(uint32_t);
 
-        info.rasterizedMaxVertexCount = info.rasterizedSkyMaxVertexCount = 4096;
-        info.rasterizedMaxIndexCount  = info.rasterizedSkyMaxIndexCount  = 2048;
-        info.rasterizedSkyCubemapSize = 256;
+        info.rasterizedMaxVertexCount   = info.rasterizedSkyMaxVertexCount = 4096;
+        info.rasterizedMaxIndexCount    = info.rasterizedSkyMaxIndexCount  = 2048;
+        info.rasterizedSkyCubemapSize   = 256;
 
-        info.ppWindowExtensions         = window.extensions;
-        info.windowExtensionCount       = window.extensionCount;
+        info.overridenAlbedoAlphaTextureIsSRGB = RG_TRUE;
 
-        info.pfnCreateSurface = [](uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR)
-        {
-            window.CreateVkSurface(vkInstance, pResultVkSurfaceKHR);
-        };
+        info.pWin32SurfaceInfo          = &win32Info;
 
-        info.pfnDebugPrint = DebugPrint;
+        info.pfnUserPrint               = DebugPrint;
 
         r = rgCreateInstance(&info, &instance);
         RG_CHECKERROR(r);

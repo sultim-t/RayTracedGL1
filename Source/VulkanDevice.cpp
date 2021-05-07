@@ -21,6 +21,7 @@
 #include "VulkanDevice.h"
 
 #include <algorithm>
+#include <stdexcept>
 
 #include "Matrix.h"
 #include "Utils.h"
@@ -37,7 +38,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     frameId(1),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
-    debugPrint(info->pfnDebugPrint),
+    userPrint{ std::make_unique<UserPrint>(info->pfnUserPrint, info->pUserPrintData) },
     previousFrameTime(-1.0 / 60.0),
     currentFrameTime(0),
     disableRayTracedSkybox(info->disableRayTracedSkybox)
@@ -48,8 +49,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     vbProperties.texCoordStride = info->vertexTexCoordStride;
     vbProperties.colorStride = info->vertexColorStride;
 
+
+
     // init vulkan instance 
-    CreateInstance(info->ppWindowExtensions, info->windowExtensionCount);
+    CreateInstance(*info);
 
 
     // create VkSurfaceKHR using user's function
@@ -659,19 +662,50 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
     }
 
     char buf[1024];
-    auto fnPrint = static_cast<PFN_rgPrint>(pUserData);
+    snprintf(buf, sizeof(buf) / sizeof(buf[0]), msg, pCallbackData->messageIdNumber, pCallbackData->pMessageIdName, pCallbackData->pMessage);
 
-    snprintf(buf, 1024, msg, pCallbackData->messageIdNumber, pCallbackData->pMessageIdName, pCallbackData->pMessage);
-    fnPrint(buf);
+    auto *userPrint = static_cast<UserPrint*>(pUserData);
+    userPrint->Print(buf);
 
     return VK_FALSE;
 }
 
-void VulkanDevice::CreateInstance(const char **ppWindowExtensions, uint32_t extensionCount)
+void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
 {
-    std::vector<const char *> extensions;
+    std::vector<const char *> layerNames;
 
-    extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    if (enableValidationLayer)
+    {
+        layerNames.push_back("VK_LAYER_KHRONOS_validation");
+        layerNames.push_back("VK_LAYER_LUNARG_monitor");
+    }
+
+
+    std::vector<const char *> extensions =
+    {
+        VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME,
+        VK_KHR_SURFACE_EXTENSION_NAME,
+
+    #ifdef RG_USE_SURFACE_WIN32
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+    #endif // RG_USE_SURFACE_WIN32
+
+    #ifdef RG_USE_SURFACE_METAL
+        VK_EXT_METAL_SURFACE_EXTENSION_NAME,
+    #endif // RG_USE_SURFACE_METAL
+
+    #ifdef RG_USE_SURFACE_WAYLAND
+        VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+    #endif // RG_USE_SURFACE_WAYLAND
+
+    #ifdef RG_USE_SURFACE_XCB
+        VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+    #endif // RG_USE_SURFACE_XCB
+
+    #ifdef RG_USE_SURFACE_XLIB
+        VK_KHR_XLIB_SURFACE_EXTENSION_NAME,
+    #endif // RG_USE_SURFACE_XLIB
+    };
 
     if (enableValidationLayer)
     {
@@ -679,46 +713,40 @@ void VulkanDevice::CreateInstance(const char **ppWindowExtensions, uint32_t exte
         extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
 
-    for (uint32_t i = 0; i < extensionCount; i++)
-    {
-        extensions.push_back(ppWindowExtensions[i]);
-    }
 
     VkApplicationInfo appInfo = {};
     appInfo.apiVersion = VK_API_VERSION_1_2;
-    appInfo.pApplicationName = "Raytracing test";
+    appInfo.pApplicationName = info.pName;
 
     VkInstanceCreateInfo instanceInfo = {};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
     instanceInfo.pApplicationInfo = &appInfo;
+    instanceInfo.ppEnabledLayerNames = layerNames.data();
+    instanceInfo.enabledLayerCount = layerNames.size();
     instanceInfo.ppEnabledExtensionNames = extensions.data();
     instanceInfo.enabledExtensionCount = extensions.size();
-
-    const char *layerNames[2] =
-    {
-        "VK_LAYER_KHRONOS_validation",
-        "VK_LAYER_LUNARG_monitor"
-    };
-    instanceInfo.ppEnabledLayerNames = layerNames;
-    instanceInfo.enabledLayerCount = enableValidationLayer ? 2 : 0;
 
     VkResult r = vkCreateInstance(&instanceInfo, nullptr, &instance);
     VK_CHECKERROR(r);
 
-    if (enableValidationLayer && debugPrint != nullptr)
+
+    if (enableValidationLayer)
     {
         InitInstanceExtensionFunctions_DebugUtils(instance);
 
-        // init debug utils
-        VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {};
-        debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-        debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
-        debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
-        debugMessengerInfo.pfnUserCallback = DebugMessengerCallback;
-        debugMessengerInfo.pUserData = static_cast<void *>(debugPrint);
+        if (userPrint)
+        {
+            // init debug utilsdebugMessenger
+            VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {};
+            debugMessengerInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+            debugMessengerInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+            debugMessengerInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT;
+            debugMessengerInfo.pfnUserCallback = DebugMessengerCallback;
+            debugMessengerInfo.pUserData = static_cast<void *>(userPrint.get());
 
-        r = svkCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
-        VK_CHECKERROR(r);
+            r = svkCreateDebugUtilsMessengerEXT(instance, &debugMessengerInfo, nullptr, &debugMessenger);
+            VK_CHECKERROR(r);
+        }
     }
 }
 
@@ -878,11 +906,90 @@ void VulkanDevice::CreateSyncPrimitives()
 
 VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInstanceCreateInfo &info)
 {
-    uint64_t instanceHandle = reinterpret_cast<uint64_t>(instance);
-    uint64_t surfaceHandle = 0;
-    info.pfnCreateSurface(instanceHandle, &surfaceHandle);
+    VkSurfaceKHR surface;
+    VkResult r;
 
-    return reinterpret_cast<VkSurfaceKHR>(surfaceHandle);
+
+#ifdef RG_USE_SURFACE_WIN32
+    if (info.pWin32SurfaceInfo != nullptr)
+    {
+        VkWin32SurfaceCreateInfoKHR win32Info = {};
+        win32Info.sType = VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR;
+        win32Info.hinstance = info.pWin32SurfaceInfo->hinstance;
+        win32Info.hwnd = info.pWin32SurfaceInfo->hwnd;
+
+        r = vkCreateWin32SurfaceKHR(instance, &win32Info, nullptr, &surface);
+        VK_CHECKERROR(r);
+
+        return surface;
+    }
+#endif // RG_USE_SURFACE_WIN32
+
+
+#ifdef RG_USE_SURFACE_METAL
+    if (info.pMetalSurfaceCreateInfo != nullptr)
+    {
+        VkMetalSurfaceCreateInfoEXT metalInfo = {};
+        metalInfo.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
+        metalInfo.pLayer = info.pMetalSurfaceCreateInfo->pLayer;
+
+        r = vkCreateMetalSurfaceEXT(instance, &metalInfo, nullptr, &surface);
+        VK_CHECKERROR(r);
+
+        return surface;
+    }
+#endif // RG_USE_SURFACE_METAL
+
+
+#ifdef RG_USE_SURFACE_WAYLAND
+    if (info.pWaylandSurfaceCreateInfo != nullptr)
+    {
+        VkWaylandSurfaceCreateInfoKHR wlInfo = {};
+        wlInfo.sType = VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR;
+        wlInfo.display = info.pWaylandSurfaceCreateInfo->display;
+        wlInfo.surface = info.pWaylandSurfaceCreateInfo->surface;
+
+        r = (instance, &wlInfo, nullptr, &surface);
+        VK_CHECKERROR(r);
+
+        return surface;
+    }
+#endif // RG_USE_SURFACE_WAYLAND
+
+
+#ifdef RG_USE_SURFACE_XCB
+    if (info.pXcbSurfaceCreateInfo != nullptr)
+    {
+        VkXcbSurfaceCreateInfoKHR xcbInfo = {};
+        xcbInfo.sType = VK_STRUCTURE_TYPE_XCB_SURFACE_CREATE_INFO_KHR;
+        xcbInfo.connection = info.pXcbSurfaceCreateInfo->connection;
+        xcbInfo.window = info.pXcbSurfaceCreateInfo->window;
+
+        r = (instance, &, nullptr, &surface);
+        VK_CHECKERROR(r);
+
+        return surface;
+    }
+#endif // RG_USE_SURFACE_XCB
+
+
+#ifdef RG_USE_SURFACE_XLIB
+    if (info.pXlibSurfaceCreateInfo != nullptr)
+    {
+        VkXlibSurfaceCreateInfoKHR xlibInfo = {};
+        xlibInfo.sType = VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR;
+        xlibInfo.dpy = info.pXlibSurfaceCreateInfo->dpy;
+        xlibInfo.window = info.pXlibSurfaceCreateInfo->window;
+
+        r = (instance, &, nullptr, &surface);
+        VK_CHECKERROR(r);
+
+        return surface;
+    }
+#endif // RG_USE_SURFACE_XLIB
+
+
+    throw std::runtime_error("Surface info wasn't specified");
 }
 
 void VulkanDevice::DestroyInstance()

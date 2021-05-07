@@ -167,6 +167,7 @@ add_definitions(-DKHRONOS_STATIC -DLIBKTX)
 # options to definitions
 if (RG_WITH_SURFACE_WIN32)
     message(STATUS "RG_WITH_SURFACE_WIN32 enabled")
+    add_definitions(-DNOMINMAX)
     add_definitions(-DRG_USE_SURFACE_WIN32)
     add_definitions(-DVK_USE_PLATFORM_WIN32_KHR)
 endif()

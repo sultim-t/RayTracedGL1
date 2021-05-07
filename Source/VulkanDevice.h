@@ -42,6 +42,7 @@
 #include "Tonemapping.h"
 #include "CubemapManager.h"
 #include "Denoiser.h"
+#include "UserPrint.h"
 
 namespace RTGL1
 {
@@ -85,7 +86,7 @@ public:
     RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
 
 private:
-    void CreateInstance(const char **ppWindowExtensions, uint32_t extensionCount);
+    void CreateInstance(const RgInstanceCreateInfo &info);
     void CreateDevice();
     void CreateSyncPrimitives();
     static VkSurfaceKHR GetSurfaceFromUser(VkInstance instance, const RgInstanceCreateInfo &info);
@@ -143,7 +144,7 @@ private:
 
     bool                                    enableValidationLayer;
     VkDebugUtilsMessengerEXT                debugMessenger;
-    PFN_rgPrint                             debugPrint;
+    std::unique_ptr<UserPrint>              userPrint;
 
     VertexBufferProperties                  vbProperties;
 

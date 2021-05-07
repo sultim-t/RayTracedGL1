@@ -18,6 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <stdexcept>
+
 #include "VulkanDevice.h"
 
 using namespace RTGL1;
@@ -43,19 +45,35 @@ static std::map<RgInstance, std::shared_ptr<VulkanDevice>> g_Devices;
     return iterDevice->second
 
 
-RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *result)
+RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *pResult)
 {
     if (g_Devices.size() >= MAX_DEVICE_COUNT)
     {
-        *result = nullptr;
+        *pResult = nullptr;
         return RG_TOO_MANY_INSTANCES;
     }
+
+
+    {
+        int count = 
+            !!info->pWin32SurfaceInfo +
+            !!info->pMetalSurfaceCreateInfo +
+            !!info->pWaylandSurfaceCreateInfo +
+            !!info->pXcbSurfaceCreateInfo +
+            !!info->pXlibSurfaceCreateInfo;
+
+        if (count != 1)
+        {
+            throw std::runtime_error("Exactly one of the surface infos must be specified");
+        }
+    }
+
 
     // insert new
     const RgInstance id = reinterpret_cast<RgInstance>(g_Devices.size() + 1);
     g_Devices[id] = std::make_shared<VulkanDevice>(info);
 
-    *result = id;
+    *pResult = id;
 
     return RG_SUCCESS;
 }
@@ -67,25 +85,25 @@ RgResult rgDestroyInstance(RgInstance rgInstance)
     return RG_SUCCESS;
 }
 
-RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *uploadInfo)
+RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *pUploadInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadGeometry(uploadInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadGeometry(pUploadInfo);
 }
 
-RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* updateInfo)
+RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* pUpdateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTransform(updateInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTransform(pUpdateInfo);
 }
 
-RgResult rgUpdateGeometryTexCoords(RgInstance rgInstance, const RgUpdateTexCoordsInfo *updateInfo)
+RgResult rgUpdateGeometryTexCoords(RgInstance rgInstance, const RgUpdateTexCoordsInfo *pUpdateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTexCoords(updateInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTexCoords(pUpdateInfo);
 }
 
-RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *uploadInfo, 
-                                    const float *viewProjection, const RgViewport *viewport)
+RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *pUploadInfo, 
+                                    const float *pViewProjection, const RgViewport *pViewport)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(uploadInfo, viewProjection, viewport);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(pUploadInfo, pViewProjection, pViewport);
 }
 
 RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
@@ -98,26 +116,26 @@ RgResult rgStartNewScene(RgInstance rgInstance)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartNewStaticScene();
 }
 
-RgResult rgUploadDirectionalLight(RgInstance rgInstance, RgDirectionalLightUploadInfo *lightInfo)
+RgResult rgUploadDirectionalLight(RgInstance rgInstance, RgDirectionalLightUploadInfo *pLightInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(lightInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(pLightInfo);
 }
 
-RgResult rgUploadSphericalLight(RgInstance rgInstance, RgSphericalLightUploadInfo *lightInfo)
+RgResult rgUploadSphericalLight(RgInstance rgInstance, RgSphericalLightUploadInfo *pLightInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(lightInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(pLightInfo);
 }
 
-RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *createInfo,
-                               RgMaterial *result)
+RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *pCreateInfo,
+                               RgMaterial *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateStaticMaterial(createInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateStaticMaterial(pCreateInfo, pResult);
 }
 
-RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *createInfo,
-                                 RgMaterial *result)
+RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *pCreateInfo,
+                                 RgMaterial *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateAnimatedMaterial(createInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateAnimatedMaterial(pCreateInfo, pResult);
 }
 
 RgResult rgChangeAnimatedMaterialFrame(RgInstance rgInstance, RgMaterial animatedMaterial, uint32_t frameIndex)
@@ -125,15 +143,15 @@ RgResult rgChangeAnimatedMaterialFrame(RgInstance rgInstance, RgMaterial animate
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
 }
 
-RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialCreateInfo *createInfo,
-                                RgMaterial *result)
+RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialCreateInfo *pCreateInfo,
+                                RgMaterial *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateDynamicMaterial(createInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateDynamicMaterial(pCreateInfo, pResult);
 }
 
-RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialUpdateInfo *updateInfo)
+RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialUpdateInfo *pUpdateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateDynamicMaterial(updateInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateDynamicMaterial(pUpdateInfo);
 }
 
 RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
@@ -141,9 +159,9 @@ RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyMaterial(material);
 }
 
-RgResult rgCreateCubemap(RgInstance rgInstance, const RgCubemapCreateInfo *createInfo, RgCubemap *result)
+RgResult rgCreateCubemap(RgInstance rgInstance, const RgCubemapCreateInfo *pCreateInfo, RgCubemap *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateSkyboxCubemap(createInfo, result);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateSkyboxCubemap(pCreateInfo, pResult);
 }
 
 RgResult rgDestroyCubemap(RgInstance rgInstance, RgCubemap cubemap)
@@ -151,12 +169,12 @@ RgResult rgDestroyCubemap(RgInstance rgInstance, RgCubemap cubemap)
     CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyCubemap(cubemap);
 }
 
-RgResult rgStartFrame(RgInstance rgInstance, const RgStartFrameInfo *startInfo)
+RgResult rgStartFrame(RgInstance rgInstance, const RgStartFrameInfo *pStartInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(startInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(pStartInfo);
 }
 
-RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *drawInfo)
+RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *pDrawInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DrawFrame(drawInfo);
+    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DrawFrame(pDrawInfo);
 }

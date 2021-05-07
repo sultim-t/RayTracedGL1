@@ -45,23 +45,24 @@ PhysicalDevice::PhysicalDevice(VkInstance instance)
 
     for (VkPhysicalDevice p : physicalDevices)
     {
-        VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtProperties = {};
-        rtProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
-
         VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtFeatures = {};
         rtFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-        rtFeatures.pNext = &rtProperties;
 
-        VkPhysicalDeviceProperties2 deviceProp2 = {};
-        deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-        deviceProp2.pNext = &rtFeatures;
-
-        vkGetPhysicalDeviceProperties2(p, &deviceProp2);
+        VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
+        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+        deviceFeatures2.pNext = &rtFeatures;
+        vkGetPhysicalDeviceFeatures2(p, &deviceFeatures2);
 
         if (rtFeatures.rayTracingPipeline)
         {
             physDevice = p;
-            rtPipelineProperties = rtProperties;
+
+            rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+            VkPhysicalDeviceProperties2 deviceProp2 = {};
+            deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+            deviceProp2.pNext = &rtPipelineProperties;
+
+            vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
             vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
 
             break;

@@ -18,8 +18,30 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma once
+#ifndef RTGL1_H_
+#define RTGL1_H_
+
 #include <stdint.h>
+
+#ifdef RG_USE_SURFACE_WIN32
+    #include <windows.h>
+#endif // RG_USE_SURFACE_WIN32
+#ifdef RG_USE_SURFACE_METAL
+    #ifdef __OBJC__
+    @class CAMetalLayer;
+    #else
+    typedef void CAMetalLayer;
+    #endif
+#endif // RG_USE_SURFACE_METAL
+#ifdef RG_USE_SURFACE_WAYLAND
+    #include <wayland-client.h>
+#endif // RG_USE_SURFACE_WAYLAND
+#ifdef RG_USE_SURFACE_XCB
+    #include <xcb/xcb.h>
+#endif // RG_USE_SURFACE_XCB
+#ifdef RG_USE_SURFACE_XLIB
+    #include <X11/Xlib.h>
+#endif // RG_USE_SURFACE_XLIB
 
 #ifdef __cplusplus
 extern "C" {
@@ -61,28 +83,67 @@ typedef enum RgResult
     RG_ID_ISNT_UNIQUE,
 } RgResult;
 
-//typedef enum RgStructureType
-//{
-//    RG_STRUCTURE_TYPE_INSTANCE_CREATE_INFO
-//} RgStructureType;
+typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
 
-typedef void (*PFN_rgCreateVkSurfaceKHR)(uint64_t vkInstance, uint64_t *pResultVkSurfaceKHR);
-typedef void (*PFN_rgPrint)(const char *msg);
+typedef struct RgWin32SurfaceCreateInfo RgWin32SurfaceCreateInfo;
+typedef struct RgMetalSurfaceCreateInfo RgMetalSurfaceCreateInfo;
+typedef struct RgWaylandSurfaceCreateInfo RgWaylandSurfaceCreateInfo;
+typedef struct RgXcbSurfaceCreateInfo RgXcbSurfaceCreateInfo;
+typedef struct RgXlibSurfaceCreateInfo RgXlibSurfaceCreateInfo;
+
+#ifdef RG_USE_SURFACE_WIN32
+typedef struct RgWin32SurfaceCreateInfo
+{
+    HINSTANCE           hinstance;
+    HWND                hwnd;
+} RgWin32SurfaceCreateInfo;
+#endif // RG_USE_SURFACE_WIN32
+
+#ifdef RG_USE_SURFACE_METAL
+typedef struct RgMetalSurfaceCreateInfo
+{
+    const CAMetalLayer  *pLayer;
+} RgMetalSurfaceCreateInfo;
+#endif // RG_USE_SURFACE_METAL
+
+#ifdef RG_USE_SURFACE_WAYLAND
+typedef struct RgWaylandSurfaceCreateInfo
+{
+    struct wl_display   *display;
+    struct wl_surface   *surface;
+} RgWaylandSurfaceCreateInfo;
+#endif // RG_USE_SURFACE_WAYLAND
+
+#ifdef RG_USE_SURFACE_XCB
+typedef struct RgXcbSurfaceCreateInfo
+{
+    xcb_connection_t    *connection;
+    xcb_window_t        window;
+} RgXcbSurfaceCreateInfo;
+#endif // RG_USE_SURFACE_XCB
+
+#ifdef RG_USE_SURFACE_XLIB
+typedef struct RgXlibSurfaceCreateInfo
+{
+    Display             *dpy;
+    Window              window;
+} RgXlibSurfaceCreateInfo;
+#endif // RG_USE_SURFACE_XLIB
 
 typedef struct RgInstanceCreateInfo
 {
-    const char                  *name;
-    uint32_t                    physicalDeviceIndex;
+    const char                  *pName;
 
-    // Vulkan OS-specific window extensions
-    const char                  **ppWindowExtensions;
-    uint32_t                    windowExtensionCount;
-
-    // Pointer to the function for creating VkSurfaceKHR
-    PFN_rgCreateVkSurfaceKHR    pfnCreateSurface;
+    // Exactly one of these surface create infos must be not null.
+    RgWin32SurfaceCreateInfo    *pWin32SurfaceInfo;
+    RgMetalSurfaceCreateInfo    *pMetalSurfaceCreateInfo;
+    RgWaylandSurfaceCreateInfo  *pWaylandSurfaceCreateInfo;
+    RgXcbSurfaceCreateInfo      *pXcbSurfaceCreateInfo;
+    RgXlibSurfaceCreateInfo     *pXlibSurfaceCreateInfo;
 
     RgBool32                    enableValidationLayer;
-    PFN_rgPrint                 pfnDebugPrint;
+    PFN_rgPrint                 pfnUserPrint;
+    void                        *pUserPrintData;
 
     // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.
@@ -137,8 +198,8 @@ typedef struct RgInstanceCreateInfo
 } RgInstanceCreateInfo;
 
 RgResult rgCreateInstance(
-    const RgInstanceCreateInfo          *info,
-    RgInstance                          *result);
+    const RgInstanceCreateInfo          *pInfo,
+    RgInstance                          *pResult);
 
 RgResult rgDestroyInstance(
     RgInstance                          rgInstance);
@@ -263,18 +324,18 @@ typedef struct RgUpdateTexCoordsInfo
 // "result" may be null, if its transform won't be changed
 RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
-    const RgGeometryUploadInfo              *uploadInfo);
+    const RgGeometryUploadInfo              *pUploadInfo);
 
 // Updating transform is available only for movable static geometry.
 // Other geometry types don't need it because they are either fully static
 // or uploaded every frame, so transforms are always as they are intended.
 RgResult rgUpdateGeometryTransform(
     RgInstance                              rgInstance,
-    const RgUpdateTransformInfo             *updateInfo);
+    const RgUpdateTransformInfo             *pUpdateInfo);
 
 RgResult rgUpdateGeometryTexCoords(
     RgInstance                              rgInstance,
-    const RgUpdateTexCoordsInfo             *updateInfo);
+    const RgUpdateTexCoordsInfo             *pUpdateInfo);
 
 
 
@@ -394,9 +455,9 @@ typedef struct RgViewport
 //                     and maxDepth 1.0.
 RgResult rgUploadRasterizedGeometry(
     RgInstance                              rgInstance,
-    const RgRasterizedGeometryUploadInfo    *uploadInfo,
-    const float                             *viewProjection,
-    const RgViewport                        *viewport);
+    const RgRasterizedGeometryUploadInfo    *pUploadInfo,
+    const float                             *pViewProjection,
+    const RgViewport                        *pViewport);
 
 
 
@@ -429,11 +490,11 @@ typedef struct RgSphericalLightUploadInfo
 
 RgResult rgUploadDirectionalLight(
     RgInstance                          rgInstance,
-    RgDirectionalLightUploadInfo        *lightInfo);
+    RgDirectionalLightUploadInfo        *pLightInfo);
 
 RgResult rgUploadSphericalLight(
     RgInstance                          rgInstance,
-    RgSphericalLightUploadInfo          *lightInfo);
+    RgSphericalLightUploadInfo          *pLightInfo);
 
 
 
@@ -540,13 +601,13 @@ typedef struct RgAnimatedMaterialCreateInfo
 
 RgResult rgCreateStaticMaterial(
     RgInstance                          rgInstance,
-    const RgStaticMaterialCreateInfo    *createInfo,
-    RgMaterial                          *result);
+    const RgStaticMaterialCreateInfo    *pCreateInfo,
+    RgMaterial                          *pResult);
 
 RgResult rgCreateAnimatedMaterial(
     RgInstance                          rgInstance,
-    const RgAnimatedMaterialCreateInfo  *createInfo,
-    RgMaterial                          *result);
+    const RgAnimatedMaterialCreateInfo  *pCreateInfo,
+    RgMaterial                          *pResult);
 
 RgResult rgChangeAnimatedMaterialFrame(
     RgInstance                          rgInstance,
@@ -555,12 +616,12 @@ RgResult rgChangeAnimatedMaterialFrame(
     
 RgResult rgCreateDynamicMaterial(
     RgInstance                          rgInstance,
-    const RgDynamicMaterialCreateInfo   *createInfo,
-    RgMaterial                          *result);
+    const RgDynamicMaterialCreateInfo   *pCreateInfo,
+    RgMaterial                          *pResult);
 
 RgResult rgUpdateDynamicMaterial(
     RgInstance                          rgInstance,
-    const RgDynamicMaterialUpdateInfo   *updateInfo);
+    const RgDynamicMaterialUpdateInfo   *pUpdateInfo);
 
 // Destroying RG_NO_MATERIAL has no effect.
 RgResult rgDestroyMaterial(
@@ -614,8 +675,8 @@ typedef struct RgCubemapCreateInfo
 
 RgResult rgCreateCubemap(
     RgInstance                          rgInstance,
-    const RgCubemapCreateInfo           *createInfo,
-    RgCubemap                           *result);
+    const RgCubemapCreateInfo           *pCreateInfo,
+    RgCubemap                           *pResult);
 
 RgResult rgDestroyCubemap(
     RgInstance                          rgInstance,
@@ -635,7 +696,7 @@ typedef struct RgStartFrameInfo
 
 RgResult rgStartFrame(
     RgInstance                          rgInstance,
-    const RgStartFrameInfo              *startInfo);
+    const RgStartFrameInfo              *pStartInfo);
 
 typedef enum RgSkyType
 {
@@ -677,8 +738,10 @@ typedef struct RgDrawFrameInfo
 
 RgResult rgDrawFrame(
     RgInstance                          rgInstance,
-    const RgDrawFrameInfo               *drawInfo);
+    const RgDrawFrameInfo               *pDrawInfo);
 
 #ifdef __cplusplus
 }
 #endif
+
+#endif // RTGL1_H_
