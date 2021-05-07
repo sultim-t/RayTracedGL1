@@ -314,7 +314,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     std::vector<uint32_t>    cubeIndices;
 
     // cube with extents: (-1,-1,-1) (1,1,1)
-    LoadObj("../../../Cube.obj", cubePositions, cubeNormals, cubeTexCoords, cubeIndices);
+    LoadObj("../../Cube.obj", cubePositions, cubeNormals, cubeTexCoords, cubeIndices);
 
     for (auto f : cubeTexCoords)
     {
@@ -347,7 +347,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     // texture info
     RgStaticMaterialCreateInfo textureInfo = {};
-    textureInfo.pRelativePath = "../../../TopMap01.ktx2";
+    textureInfo.pRelativePath = "../../TopMap01.ktx2";
     textureInfo.useMipmaps = RG_FALSE;
 
 
@@ -394,7 +394,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             // create skyboxes
             /*for (uint32_t i = 0; i < cubemapNames.size(); i++)
             {
-                std::string skyboxFolderPath = std::string("../../../") + cubemapNames[i] + "/";
+                std::string skyboxFolderPath = std::string("../../") + cubemapNames[i] + "/";
 
                 std::string px = skyboxFolderPath + "px.png";
                 std::string py = skyboxFolderPath + "py.png";
