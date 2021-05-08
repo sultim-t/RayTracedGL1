@@ -198,10 +198,10 @@ struct ShVertPreprocessing
 
 // framebuffers
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba32f) uniform image2D framebufAlbedo;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 1, rgba32f) uniform image2D framebufNormal;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 2, rgba32f) uniform image2D framebufNormal_Prev;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 3, rgba32f) uniform image2D framebufNormalGeometry;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 4, rgba32f) uniform image2D framebufNormalGeometry_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 1, r32ui) uniform uimage2D framebufNormal;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 2, r32ui) uniform uimage2D framebufNormal_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 3, r32ui) uniform uimage2D framebufNormalGeometry;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 4, r32ui) uniform uimage2D framebufNormalGeometry_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 5, rgba8) uniform image2D framebufMetallicRoughness;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba8) uniform image2D framebufMetallicRoughness_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 7, rgba32f) uniform image2D framebufDepth;
@@ -253,10 +253,10 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 52, rg32f) uniform image2D framebu
 
 // samplers
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 53) uniform sampler2D framebufAlbedo_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 54) uniform sampler2D framebufNormal_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 55) uniform sampler2D framebufNormal_Prev_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 56) uniform sampler2D framebufNormalGeometry_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 57) uniform sampler2D framebufNormalGeometry_Prev_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 54) uniform usampler2D framebufNormal_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 55) uniform usampler2D framebufNormal_Prev_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 56) uniform usampler2D framebufNormalGeometry_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 57) uniform usampler2D framebufNormalGeometry_Prev_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 58) uniform sampler2D framebufMetallicRoughness_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 59) uniform sampler2D framebufMetallicRoughness_Prev_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 60) uniform sampler2D framebufDepth_Sampler;

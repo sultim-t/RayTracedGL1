@@ -497,8 +497,8 @@ FRAMEBUF_FLAGS_ENUM = {
 FRAMEBUFFERS = {
     # (image name)                      : (base format type, components,    flags)
     "Albedo"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_IS_ATTACHMENT),
-    "Normal"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "NormalGeometry"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "Normal"                            : (TYPE_UINT32,     COMPONENT_R, FRAMEBUF_FLAGS_STORE_PREV),
+    "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R, FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),

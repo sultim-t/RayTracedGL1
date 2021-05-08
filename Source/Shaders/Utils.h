@@ -35,14 +35,33 @@ float getLuminance(vec3 c)
     return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
 }
 
-vec4 blendUnder(vec4 src, vec4 dst)
+const uint N_phi = 1 << 16;
+const uint N_theta = 1 << 16;
+
+uint encodeNormal(vec3 n)
 {
-    // dst is under src
-    return dst * (vec4(1.0) - src);
-    //return src * src.a + dst * (vec4(1.0) - src);
+    float phi = acos(n.z);
+    // atan -> [-pi, pi], need [0, 2pi]
+	float theta = atan(n.y, n.x);
+    theta = theta < 0 ? theta + 2 * M_PI : theta;
+
+    uint j = uint(round(phi * (N_phi - 1) / M_PI));
+    uint k = uint(round(theta * N_theta / (2 * M_PI))) % N_theta;
+
+    return (j << 16) | k;
 }
 
-vec4 blendAdditive(vec4 src, vec4 dst)
+vec3 decodeNormal(uint packed)
 {
-    return src * src.a + dst;
+    uint j = packed >> 16;
+    uint k = packed & 0xFFFF;
+
+    float phi = j * M_PI / (N_phi - 1);
+    float theta = k * 2 * M_PI / N_theta;
+
+    return vec3(
+        sin(phi) * cos(theta),
+        sin(phi) * sin(theta),
+        cos(phi)
+    );
 }
