@@ -66,7 +66,7 @@ void main()
 
 
     // was hit
-    if (p.clsHitDistance > 0)
+    if (isPayloadConsistent(p))
     {
         vec2 motionCurToPrev;
         float motionDepthLinearCurToPrev;
@@ -74,15 +74,13 @@ void main()
         float depthNDC;
         const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC);
 
-        const vec3 clsHitPoint = origin + rayDir * p.clsHitDistance;
-
         imageStore(framebufAlbedo,              pix, vec4(h.albedo, 0));
         imageStore(framebufNormal,              pix, vec4(h.normal, 0));
         imageStore(framebufNormalGeometry,      pix, vec4(h.normalGeom, 0));
         imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
         imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
         imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
-        imageStore(framebufSurfacePosition,     pix, vec4(clsHitPoint, uintBitsToFloat(h.instCustomIndex)));
+        imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
         imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
 
         return;

@@ -80,25 +80,6 @@ void getDiffuseBounce(
     // throughput *= 1 / nonSpecPr;
 }
 
-#define BOUNCE_MIP_BIAS 0
-
-// "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
-float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth)
-{    
-    const float range = 300.0 * pow((1.0 - roughness) * 0.9 + 0.1, 4.0);
-
-    vec2 f = vec2(viewDist, hitDist);
-    f = clamp(f / range, vec2(0.0), vec2(1.0));
-    f = sqrt(f);
-
-    float mip = max(log2(3840.0 / screenWidth), 0.0);
-
-    mip += f.x * 10.0;
-    mip += f.y * 10.0;
-
-    return mip + BOUNCE_MIP_BIAS;
-}
-
 // Traces bounce ray, computes direct illumination in hit point and returns contribution
 vec3 processBounce(
     const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
@@ -108,27 +89,20 @@ vec3 processBounce(
 {
     // got the bounce direction, trace ray
     const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDirection); 
-    const float hitDistance = p.clsHitDistance;
 
-    if (hitDistance > 0)
+    if (isPayloadConsistent(p))
     {
         // TODO: emmision
 
-        // TODO: separate "getBounceHitInfo(..)"
-
-        const vec3 hitPos = surfPosition + hitDistance * bounceDirection;
-        const float viewDist = length(hitPos - globalUniform.cameraPosition.xyz);
-
-        const float lod = getBounceLOD(surfRoughness, viewDist, hitDistance, globalUniform.renderWidth);
-
-        const ShHitInfo h = getHitInfo(p, lod);
+        float hitDistance;
+        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, hitDistance);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
         vec3 dirDiff, dirSpec;
         processDirectionalLight(
             seed, 
-            h.instCustomIndex, hitPos, h.normal, h.normalGeom, h.roughness, 
+            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, 
             -bounceDirection, hitDistance,
             isGradientSample, 
             diffuse, specular);

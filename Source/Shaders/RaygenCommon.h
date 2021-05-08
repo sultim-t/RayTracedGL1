@@ -100,12 +100,16 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
 }
 
 
+bool isPayloadConsistent(const ShPayload p)
+{
+    return p.instIdAndIndex != UINT32_MAX && p.geomAndPrimIndex != UINT32_MAX;
+}
+
 void resetPayload()
 {
     payload.baryCoords = vec2(0.0);
-    payload.instIdAndIndex = 0;
-    payload.geomAndPrimIndex = 0;
-    payload.clsHitDistance = -1;
+    payload.instIdAndIndex = UINT32_MAX;
+    payload.geomAndPrimIndex = UINT32_MAX;
 }
 
 ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
@@ -168,25 +172,26 @@ vec3 getSkyPrimary(vec3 direction)
 {
     uint skyType = globalUniform.skyType;
 
-    if (skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
+#ifdef DESC_SET_RENDER_CUBEMAP
+    if (skyType == SKY_TYPE_RASTERIZED_GEOMETRY)
+    {
+        return texture(renderCubemap, direction).rgb;
+    }
+    else 
+#endif
+    if (skyType == SKY_TYPE_CUBEMAP)
+    {
+        return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
+    }
+    else if (skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
     {
         ShPayload p = traceSkyRay(globalUniform.skyViewerPosition.xyz, direction);
 
-        if (p.clsHitDistance > 0)
+        if (isPayloadConsistent(p))
         {
             return getHitInfoAlbedoOnly(p);
         }
     }
-    else if (skyType == SKY_TYPE_CUBEMAP)
-    {
-        return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
-    }
-#ifdef DESC_SET_RENDER_CUBEMAP
-    else if (skyType == SKY_TYPE_RASTERIZED_GEOMETRY)
-    {
-        return texture(renderCubemap, direction).rgb;
-    }
-#endif
 
     return globalUniform.skyColorDefault.xyz;
 }
@@ -233,12 +238,12 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 #define SHADOW_RAY_EPS_MAX      0.1
 #define SHADOW_RAY_EPS_MAX_DIST 25
 
-// viewDirection -- is direction to viewer
-// distanceToViewer -- used for 
+// toViewerDir -- is direction to viewer
+// distanceToViewer -- used for shadow ray origin fix, so it can't be under the surface
 void processDirectionalLight(
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness, 
-    vec3 viewDirection, float distanceToViewer,
+    vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
@@ -308,7 +313,7 @@ void processDirectionalLight(
 
     const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + viewDirection * shadowRayEps, dir);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir);
 
     if (isShadowed)
     {
@@ -318,7 +323,7 @@ void processDirectionalLight(
     }
 
     outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl * M_PI;
-    outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dirLight.direction, surfRoughness) * dirLight.color * nl;
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirLight.direction, surfRoughness) * dirLight.color * nl;
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
@@ -327,7 +332,7 @@ void processDirectionalLight(
 void processSphericalLight(
     uint seed,
     uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness, 
-    vec3 viewDirection, 
+    vec3 toViewerDir, 
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
@@ -385,11 +390,13 @@ void processSphericalLight(
     vec3 dir = posOnSphere - surfPosition;
     const float distance = length(dir);
 
+    surfPosition += (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MAX;
+
     if (distance > sphLight.radius)
     {
         dir = dir / distance;
 
-        const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + surfNormal * SHADOW_RAY_EPS_MIN, dir, distance);
+        const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, distance);
 
         if (isShadowed)
         {
@@ -413,7 +420,7 @@ void processSphericalLight(
         const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
         outDiffuse = radiance;
-        outSpecular = evalBRDFSmithGGX(surfNormal, viewDirection, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
+        outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
     }
     else
     {
@@ -425,11 +432,10 @@ void processSphericalLight(
     outSpecular *= oneOverPdf;
 }
 
-// viewDirection -- is direction to viewer
 void processDirectIllumination(
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness,
-    vec3 viewDirection,
+    vec3 toViewerDir,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
@@ -439,7 +445,7 @@ void processDirectIllumination(
     processDirectionalLight(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, 
-        viewDirection, distanceToViewer,
+        toViewerDir, distanceToViewer,
         isGradientSample, 
         dirDiff, dirSpec);
     
@@ -447,7 +453,7 @@ void processDirectIllumination(
     processSphericalLight(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, 
-        viewDirection, 
+        toViewerDir, 
         isGradientSample, 
         sphDiff, sphSpec);
     

@@ -38,7 +38,6 @@ struct ShPayload
     vec2    baryCoords;
     uint    instIdAndIndex;
     uint    geomAndPrimIndex;
-    float   clsHitDistance;
 };
 
 struct ShPayloadShadow
@@ -56,4 +55,5 @@ struct ShHitInfo
     float   linearDepth;
     vec3    emission;
     uint    instCustomIndex;
+    vec3    hitPosition;
 };

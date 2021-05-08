@@ -87,6 +87,28 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
     
     return processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, 0);
 }
+
+
+
+#define BOUNCE_MIP_BIAS 0
+
+// "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
+float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth)
+{    
+    const float range = 300.0 * pow((1.0 - roughness) * 0.9 + 0.1, 4.0);
+
+    vec2 f = vec2(viewDist, hitDist);
+    f = clamp(f / range, vec2(0.0), vec2(1.0));
+    f = sqrt(f);
+
+    float mip = max(log2(3840.0 / screenWidth), 0.0);
+
+    mip += f.x * 10.0;
+    mip += f.y * 10.0;
+
+    return mip + BOUNCE_MIP_BIAS;
+}
+
 #endif
 
 #ifdef TEXTURE_GRADIENTS
@@ -115,7 +137,9 @@ ShHitInfo getHitInfoGrad(
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
     out vec2 motion, out float motionDepthLinear, out vec2 gradDepth, out float depthNDC)
 #else
-ShHitInfo getHitInfo(const ShPayload pl, const float lod)
+ShHitInfo getHitInfoBounce(
+    const ShPayload pl, const vec3 originPosition, const float originRoughness, 
+    out float hitDistance)
 #endif
 {
     ShHitInfo h;
@@ -138,6 +162,8 @@ ShHitInfo getHitInfo(const ShPayload pl, const float lod)
         tr.layerTexCoord[2] * baryCoords
     };
     
+    h.hitPosition = tr.positions * baryCoords;
+
 #ifdef TEXTURE_GRADIENTS
     // Tracing Ray Differentials, Igehy
 
@@ -146,7 +172,7 @@ ShHitInfo getHitInfo(const ShPayload pl, const float lod)
     const vec3 baryCoordsAY = intersectRayTriangle(tr.positions, rayOrig, rayDirAY);
 
 
-    const vec4 viewSpacePosCur  = globalUniform.view     * vec4(tr.positions     * baryCoords, 1.0);
+    const vec4 viewSpacePosCur  = globalUniform.view     * vec4(h.hitPosition, 1.0);
     const vec4 viewSpacePosPrev = globalUniform.viewPrev * vec4(tr.prevPositions * baryCoords, 1.0);
     const vec4 viewSpacePosAX   = globalUniform.view     * vec4(tr.positions     * baryCoordsAX, 1.0);
     const vec4 viewSpacePosAY   = globalUniform.view     * vec4(tr.positions     * baryCoordsAY, 1.0);
@@ -191,6 +217,12 @@ ShHitInfo getHitInfo(const ShPayload pl, const float lod)
 
     h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
 #else
+
+    const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
+    hitDistance = length(h.hitPosition - originPosition);
+
+    const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth);
+
     h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
 
