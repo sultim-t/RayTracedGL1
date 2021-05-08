@@ -81,7 +81,7 @@ void main()
     const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);
 
     const vec3 depthFB = texelFetch(framebufDepth_Sampler,              pix, 0).rgb;
-    const vec3 normal  = texelFetch(framebufNormalGeometry_Sampler,     pix, 0).rgb;
+    const vec3 normal  = texelFetchNormalGeometry(                      pix);
     const float depth  = depthFB.r;
     const float dz = length(depthFB.gb);
 
@@ -102,8 +102,8 @@ void main()
         {
             const ivec2 xy = pixPrev + ivec2(xx, yy);
 
-            const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,          xy, 0).r;
-            const vec3 normalPrev = texelFetch(framebufNormalGeometry_Prev_Sampler, xy, 0).rgb;
+            const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
+            const vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
 
             const bool isConsistent = 
                 testInside(xy, screenSize) &&

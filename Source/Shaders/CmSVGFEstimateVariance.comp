@@ -89,7 +89,7 @@ void main()
         return;
     }
 
-    const vec3 normal = texelFetch(framebufNormalGeometry_Sampler, pix, 0).rgb;
+    const vec3 normal = texelFetchNormalGeometry(pix);
 
     const float l = getLuminance(color);
 
@@ -110,7 +110,7 @@ void main()
             
             const vec3  color_q  = texelFetch(framebufDiffAccumColor_Sampler, q, 0).rgb;
             const float depth_q  = texelFetch(framebufDepth_Sampler,          q, 0).r;
-            const vec3  normal_q = texelFetch(framebufNormalGeometry_Sampler, q, 0).rgb;
+            const vec3  normal_q = texelFetchNormalGeometry(                  q);
 
             const float l_q = getLuminance(color_q);
 

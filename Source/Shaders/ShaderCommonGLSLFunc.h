@@ -320,4 +320,34 @@ void imageStoreIndirAccumSH(ivec2 pix, const SH sh)
     imageStore(framebufIndirAccumSH_B, pix, sh.b);
 }
 
+vec3 texelFetchNormal(ivec2 pix)
+{
+    return texelFetch(framebufNormal_Sampler, pix, 0).rgb;
+} 
+
+vec3 texelFetchNormal_Prev(ivec2 pix)
+{
+    return texelFetch(framebufNormal_Prev_Sampler, pix, 0).rgb;
+}
+
+vec3 texelFetchNormalGeometry(ivec2 pix)
+{
+    return texelFetch(framebufNormalGeometry_Sampler, pix, 0).rgb;
+}
+
+vec3 texelFetchNormalGeometry_Prev(ivec2 pix)
+{
+    return texelFetch(framebufNormalGeometry_Prev_Sampler, pix, 0).rgb;
+}
+
+void imageStoreNormal(ivec2 pix, vec3 normal)
+{
+    imageStore(framebufNormal, pix, vec4(normal, 0));
+}
+
+void imageStoreNormalGeometry(ivec2 pix, vec3 normal)
+{
+    imageStore(framebufNormalGeometry, pix, vec4(normal, 0));
+}
+
 #endif // DESC_SET_FRAMEBUFFERS
