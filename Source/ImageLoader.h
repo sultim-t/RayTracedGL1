@@ -43,9 +43,9 @@ public:
 
     struct ResultInfo
     {
-        uint32_t        levelCount;
         uint32_t        levelOffsets[MAX_PREGENERATED_MIPMAP_LEVELS];
         uint32_t        levelSizes[MAX_PREGENERATED_MIPMAP_LEVELS];
+        uint32_t        levelCount;
         const uint8_t   *pData;
         uint32_t        dataSize;
         RgExtent2D      baseSize;
@@ -53,6 +53,17 @@ public:
     };
 
     bool Load(const char *pFilePath, ResultInfo *pResultInfo);
+
+
+    struct LayeredResultInfo
+    {
+        std::vector<const uint8_t *> layerData;
+        uint32_t        dataSize;
+        RgExtent2D      baseSize;
+        VkFormat        format;
+    };
+
+    bool LoadLayered(const char *pFilePath, LayeredResultInfo *pResultInfo);
 
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();

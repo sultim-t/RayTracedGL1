@@ -145,6 +145,9 @@ typedef struct RgInstanceCreateInfo
     PFN_rgPrint                 pfnUserPrint;
     void                        *pUserPrintData;
 
+    // Path to the file with 128 layers of uncompressed 128x128 blue noise images.
+    const char                  *pBlueNoiseFilePath;
+
     // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.
     // If buffer is full, rasterized data will be ignored

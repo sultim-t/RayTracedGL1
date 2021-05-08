@@ -90,7 +90,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     blueNoise           = std::make_shared<BlueNoise>(
         device,
-        "../../BlueNoise/Data/64_64/",
+        info->pBlueNoiseFilePath,
         memAllocator,
         cmdManager, 
         samplerManager);

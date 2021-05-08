@@ -661,6 +661,8 @@ int main()
 
         info.pfnUserPrint               = DebugPrint;
 
+        info.pBlueNoiseFilePath         = "../../BlueNoise_LDR_RGBA_128.ktx2";
+
         r = rgCreateInstance(&info, &instance);
         RG_CHECKERROR(r);
 

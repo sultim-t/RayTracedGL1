@@ -25,55 +25,61 @@
 #include <string>
 
 #include "Generated/ShaderCommonC.h"
-#include "Generated/BlueNoiseFileNames.h"
 #include "ImageLoader.h"
 #include "Utils.h"
 
 using namespace RTGL1;
 
-static_assert(BLUE_NOISE_TEXTURE_COUNT == BlueNoiseFileNamesCount, "");
-
 BlueNoise::BlueNoise(
     VkDevice _device,
-    const char *_textureFolder,
+    const char *_blueNoiseFilePath,
     std::shared_ptr<MemoryAllocator> _allocator,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     const std::shared_ptr<SamplerManager> &_samplerManager)
     :
     device(_device),
-    allocator(std::move(_allocator))
+    allocator(std::move(_allocator)),
+    blueNoiseImages(VK_NULL_HANDLE),
+    blueNoiseImagesView(VK_NULL_HANDLE),
+    descSetLayout(VK_NULL_HANDLE),
+    descPool(VK_NULL_HANDLE),
+    descSet(VK_NULL_HANDLE)
 {
     using namespace std::string_literals;
 
+    // no compression
     const VkFormat imageFormat = VK_FORMAT_R8G8B8A8_UNORM;
     const uint32_t bytesPerPixel = 4;
 
+    const VkDeviceSize oneLayerSize = bytesPerPixel * BLUE_NOISE_TEXTURE_SIZE * BLUE_NOISE_TEXTURE_SIZE;
+    const VkDeviceSize dataSize = oneLayerSize * BLUE_NOISE_TEXTURE_COUNT;
 
-    assert(BlueNoiseFileNamesCount > 0);
 
     ImageLoader imageLoader;
-    ImageLoader::ResultInfo resultInfo = {};
+    ImageLoader::LayeredResultInfo resultInfo = {};
+    bool loaded = imageLoader.LoadLayered(_blueNoiseFilePath, &resultInfo);
 
-    // load first file to get size info
-    const std::string folderPath = _textureFolder;
-    std::string curFileName = folderPath + BlueNoiseFileNames[0];
-
-
-    if (!imageLoader.Load(curFileName.c_str(), &resultInfo))
+    if (!loaded)
     {
-        throw std::runtime_error("Can't find blue noise file: "s + curFileName);
+        throw std::runtime_error("Can't find blue noise file: "s + _blueNoiseFilePath);
     }
 
-    assert(resultInfo.baseSize.width == BLUE_NOISE_TEXTURE_SIZE && resultInfo.baseSize.height == BLUE_NOISE_TEXTURE_SIZE);
+    if (resultInfo.baseSize.width != BLUE_NOISE_TEXTURE_SIZE || resultInfo.baseSize.height != BLUE_NOISE_TEXTURE_SIZE)
+    {
+        throw std::runtime_error("Blue noise image size must be " + std::to_string(BLUE_NOISE_TEXTURE_SIZE));
+    }
 
-    // must not have compression
-    assert(resultInfo.format == imageFormat);
+    if (resultInfo.layerData.size() != BLUE_NOISE_TEXTURE_COUNT)
+    {
+        throw std::runtime_error("Blue noise image must have " + std::to_string(BLUE_NOISE_TEXTURE_COUNT) + " layers");
+    }
 
+    if (resultInfo.format != imageFormat)
+    {
+        throw std::runtime_error("Blue noise image must have R8G8B8A8_UNORM format");
+    }
 
     // allocate buffer for all textures
-    const VkDeviceSize oneTextureSize = bytesPerPixel * BLUE_NOISE_TEXTURE_SIZE * BLUE_NOISE_TEXTURE_SIZE;
-    const VkDeviceSize dataSize = oneTextureSize * BlueNoiseFileNamesCount;
-
     VkBufferCreateInfo stagingInfo = {};
     stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     stagingInfo.size = dataSize;
@@ -86,28 +92,14 @@ BlueNoise::BlueNoise(
     assert(stagingBuffer != VK_NULL_HANDLE);
 
     // load each texture and place it in staging buffer
-    memcpy(mappedData, resultInfo.pData, oneTextureSize);
-    imageLoader.FreeLoaded();
-
-
-    for (uint32_t i = 1; i < BlueNoiseFileNamesCount; i++)
+    for (uint32_t i = 0; i < BLUE_NOISE_TEXTURE_COUNT; i++)
     {
-        curFileName = folderPath + BlueNoiseFileNames[i];
-
-        if (!imageLoader.Load(curFileName.c_str(), &resultInfo))
-        {
-            throw std::runtime_error("Can't find blue noise file: "s + curFileName);
-        }
-
-        assert(resultInfo.baseSize.width == BLUE_NOISE_TEXTURE_SIZE && resultInfo.baseSize.height == BLUE_NOISE_TEXTURE_SIZE);
-        assert(resultInfo.format == imageFormat);
-
-
-        void *dst = static_cast<uint8_t*>(mappedData) + oneTextureSize * i;
+        void *dst = static_cast<uint8_t*>(mappedData) + oneLayerSize * i;
         
-        memcpy(dst, resultInfo.pData, oneTextureSize);
-        imageLoader.FreeLoaded();
+        memcpy(dst, resultInfo.layerData[i], oneLayerSize);
     }
+
+    imageLoader.FreeLoaded();
 
 
     // create image that contains all blue noise textures as layers
@@ -117,7 +109,7 @@ BlueNoise::BlueNoise(
     info.format = imageFormat;
     info.extent = { BLUE_NOISE_TEXTURE_SIZE, BLUE_NOISE_TEXTURE_SIZE, 1 };
     info.mipLevels = 1;
-    info.arrayLayers = BlueNoiseFileNamesCount;
+    info.arrayLayers = BLUE_NOISE_TEXTURE_COUNT;
     info.samples = VK_SAMPLE_COUNT_1_BIT;
     info.tiling = VK_IMAGE_TILING_OPTIMAL;
     info.usage =
@@ -137,7 +129,7 @@ BlueNoise::BlueNoise(
     allLayersRange.baseMipLevel = 0;
     allLayersRange.levelCount = 1;
     allLayersRange.baseArrayLayer = 0;
-    allLayersRange.layerCount = BlueNoiseFileNamesCount;
+    allLayersRange.layerCount = BLUE_NOISE_TEXTURE_COUNT;
 
     // to dst layout
     Utils::BarrierImage(
@@ -156,7 +148,7 @@ BlueNoise::BlueNoise(
     copyInfo.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
     copyInfo.imageSubresource.mipLevel = 0;
     copyInfo.imageSubresource.baseArrayLayer = 0;
-    copyInfo.imageSubresource.layerCount = BlueNoiseFileNamesCount;
+    copyInfo.imageSubresource.layerCount = BLUE_NOISE_TEXTURE_COUNT;
 
     vkCmdCopyBufferToImage(
         cmd, stagingBuffer, blueNoiseImages, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
@@ -185,7 +177,7 @@ BlueNoise::BlueNoise(
     viewInfo.subresourceRange.baseMipLevel = 0;
     viewInfo.subresourceRange.levelCount = 1;
     viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = BlueNoiseFileNamesCount;
+    viewInfo.subresourceRange.layerCount = BLUE_NOISE_TEXTURE_COUNT;
 
     VkResult r = vkCreateImageView(device, &viewInfo, nullptr, &blueNoiseImagesView);
     VK_CHECKERROR(r);

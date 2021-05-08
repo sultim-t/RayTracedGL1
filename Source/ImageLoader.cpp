@@ -54,7 +54,6 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
         return false;
     }
 
-    // TODO: KTX 
     assert(pTexture->numDimensions == 2);
     assert(pTexture->numLevels <= MAX_PREGENERATED_MIPMAP_LEVELS);
     assert(pTexture->numLayers == 1);
@@ -89,6 +88,57 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
 
 
     loadedImages.push_back(static_cast<void*>(pTexture));
+    return true;
+}
+
+bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultInfo)
+{
+    assert(pResultInfo != nullptr);
+
+    if (pFilePath == nullptr)
+    {
+        return false;
+    }
+
+    ktxTexture *pTexture = nullptr;
+
+    KTX_error_code r = ktxTexture_CreateFromNamedFile(
+        pFilePath,
+        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+        &pTexture);
+
+    if (r != KTX_SUCCESS)
+    {
+        return false;
+    }
+
+    assert(pTexture->numDimensions == 2);
+    assert(pTexture->numLevels == 1);
+    assert(pTexture->numFaces == 1);
+
+
+    pResultInfo->baseSize = { pTexture->baseWidth, pTexture->baseHeight };
+    pResultInfo->format = ktxTexture_GetVkFormat(pTexture);
+    pResultInfo->dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture));
+
+    pResultInfo->layerData.clear();
+
+    uint8_t *pData = ktxTexture_GetData(pTexture);
+
+    for (uint32_t i = 0; i < pTexture->numLayers; i++)
+    {
+        ktx_size_t offset;
+        r = ktxTexture_GetImageOffset(pTexture, 0, i, 0, &offset);
+
+        if (r != KTX_SUCCESS)
+        {
+            continue;
+        }
+
+        pResultInfo->layerData.push_back(pData + offset);
+    }
+
+    loadedImages.push_back(static_cast<void *>(pTexture));
     return true;
 }
 

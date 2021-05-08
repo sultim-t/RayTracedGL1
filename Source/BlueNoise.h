@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <vector>
-
 #include "Common.h"
 #include "CommandBufferManager.h"
 #include "MemoryAllocator.h"
@@ -34,7 +32,8 @@ class BlueNoise
 {
 public:
     explicit BlueNoise(
-        VkDevice device, const char *textureFolder,
+        VkDevice device, 
+        const char *blueNoiseFilePath,
         std::shared_ptr<MemoryAllocator> allocator,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
         const std::shared_ptr<SamplerManager> &samplerManager);
