@@ -34,7 +34,7 @@ namespace RTGL1
 class ShaderManager
 {
 public:
-    explicit ShaderManager(VkDevice device);
+    explicit ShaderManager(VkDevice device, const char *pShaderFolderPath);
     ~ShaderManager();
 
     ShaderManager(const ShaderManager& other) = delete;
@@ -71,6 +71,7 @@ private:
 
 private:
     VkDevice device;
+    std::string shaderFolderPath;
 
     std::map<std::string, ShaderModule> modules;
 

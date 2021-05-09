@@ -110,7 +110,9 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->pOverridenTexturesFolderPath,
         info->pOverridenAlbedoAlphaTexturePostfix);
 
-    shaderManager       = std::make_shared<ShaderManager>(device);
+    shaderManager       = std::make_shared<ShaderManager>(
+        device,
+        info->pShaderFolderPath);
 
     scene               = std::make_shared<Scene>(
         device,

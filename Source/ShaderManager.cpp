@@ -28,40 +28,41 @@ using namespace RTGL1;
 struct ShaderModuleDefinition
 {
     const char *name = nullptr;
-    const char *path = nullptr;
+    const char *filename = nullptr;
+    // will be parsed from filename once
     VkShaderStageFlagBits stage = VK_SHADER_STAGE_ALL;
 };
 
-// TODO: move this to separate file
 // Note: set shader stage to VK_SHADER_STAGE_ALL, to identify stage by the file extension
 static ShaderModuleDefinition G_SHADERS[] =
 {
-    {"RGenPrimary",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenPrimary.rgen.spv"             },
-    {"RGenDirect",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenDirect.rgen.spv"              },
-    {"RGenIndirect",            "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtRaygenIndirect.rgen.spv"            },
-    {"RMiss",                   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMiss.rmiss.spv"                     },
-    {"RMissShadow",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtMissShadowCheck.rmiss.spv"          },
-    {"RClsOpaque",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtClsOpaque.rchit.spv"                },
-    {"RAlphaTest",              "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RtAlphaTest.rahit.spv"                },
-    {"CComposition",            "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmComposition.comp.spv"               },
-    {"CLuminanceHistogram",     "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceHistogram.comp.spv"        },
-    {"CLuminanceAvg",           "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmLuminanceAvg.comp.spv"              },
-    {"VertRasterizer",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.vert.spv"                  },
-    {"FragRasterizer",          "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/Rasterizer.frag.spv"                  },
-    {"VertRasterizerMultiview", "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/RasterizerMultiview.vert.spv"         },
-    {"VertFullscreenQuad",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/FullscreenQuad.vert.spv"              },
-    {"FragDepthCopying",        "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/DepthCopying.frag.spv"                },
-    {"CVertexPreprocess",       "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmVertexPreprocess.comp.spv"          },
-    {"CSVGFTemporalAccum",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFTemporalAccumulation.comp.spv"  },
-    {"CSVGFVarianceEstim",      "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFEstimateVariance.comp.spv"      },
-    {"CSVGFAtrous",             "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmSVGFAtrous.comp.spv"                },
-    {"CASVGFMerging",           "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFMerging.comp.spv"              },
-    {"CASVGFGradientSamples",   "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFGradientSamples.comp.spv"      },
-    {"CASVGFGradientAtrous",    "C:/Git/Serious-Engine-RT/Sources/RTGL1/Build/CmASVGFGradientAtrous.comp.spv",      },
+    {"RGenPrimary",             "RtRaygenPrimary.rgen.spv"             },
+    {"RGenDirect",              "RtRaygenDirect.rgen.spv"              },
+    {"RGenIndirect",            "RtRaygenIndirect.rgen.spv"            },
+    {"RMiss",                   "RtMiss.rmiss.spv"                     },
+    {"RMissShadow",             "RtMissShadowCheck.rmiss.spv"          },
+    {"RClsOpaque",              "RtClsOpaque.rchit.spv"                },
+    {"RAlphaTest",              "RtAlphaTest.rahit.spv"                },
+    {"CComposition",            "CmComposition.comp.spv"               },
+    {"CLuminanceHistogram",     "CmLuminanceHistogram.comp.spv"        },
+    {"CLuminanceAvg",           "CmLuminanceAvg.comp.spv"              },
+    {"VertRasterizer",          "Rasterizer.vert.spv"                  },
+    {"FragRasterizer",          "Rasterizer.frag.spv"                  },
+    {"VertRasterizerMultiview", "RasterizerMultiview.vert.spv"         },
+    {"VertFullscreenQuad",      "FullscreenQuad.vert.spv"              },
+    {"FragDepthCopying",        "DepthCopying.frag.spv"                },
+    {"CVertexPreprocess",       "CmVertexPreprocess.comp.spv"          },
+    {"CSVGFTemporalAccum",      "CmSVGFTemporalAccumulation.comp.spv"  },
+    {"CSVGFVarianceEstim",      "CmSVGFEstimateVariance.comp.spv"      },
+    {"CSVGFAtrous",             "CmSVGFAtrous.comp.spv"                },
+    {"CASVGFMerging",           "CmASVGFMerging.comp.spv"              },
+    {"CASVGFGradientSamples",   "CmASVGFGradientSamples.comp.spv"      },
+    {"CASVGFGradientAtrous",    "CmASVGFGradientAtrous.comp.spv",      },
 };
 
 
-ShaderManager::ShaderManager(VkDevice _device) : device(_device)
+ShaderManager::ShaderManager(VkDevice _device, const char *pShaderFolderPath)
+    : device(_device), shaderFolderPath(pShaderFolderPath)
 {
     LoadShaderModules();
 }
@@ -87,16 +88,18 @@ void ShaderManager::LoadShaderModules()
 {
     for (auto &s : G_SHADERS)
     {
-        assert(s.path != nullptr);
+        assert(s.filename != nullptr);
         assert(s.name != nullptr);
 
         if (s.stage == VK_SHADER_STAGE_ALL)
         {
-            // parse stage if needed, it's done only once, as paths won't be changing
-            s.stage = GetStageByExtension(s.path);
+            // parse stage if needed, it's done only once, as names won't be changing
+            s.stage = GetStageByExtension(s.filename);
         }
 
-        VkShaderModule m = LoadModuleFromFile(s.path);
+        auto path = shaderFolderPath + s.filename;
+
+        VkShaderModule m = LoadModuleFromFile(path.c_str());
         SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, s.name);
 
         modules[s.name] = { m, s.stage };
@@ -149,7 +152,11 @@ VkShaderModule ShaderManager::LoadModuleFromFile(const char* path)
     std::ifstream shaderFile(path, std::ios::binary);
     std::vector<uint8_t> shaderSource(std::istreambuf_iterator<char>(shaderFile), {});
 
-    assert(!shaderSource.empty() && "Can't find shader file");
+    if (shaderSource.empty())
+    {
+        using namespace std::string_literals;
+        throw std::runtime_error("Can't find shader file"s + path);
+    }
 
     VkShaderModule shaderModule;
 

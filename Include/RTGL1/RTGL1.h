@@ -145,6 +145,8 @@ typedef struct RgInstanceCreateInfo
     PFN_rgPrint                 pfnUserPrint;
     void                        *pUserPrintData;
 
+    const char                  *pShaderFolderPath;
+
     // Path to the file with 128 layers of uncompressed 128x128 blue noise images.
     const char                  *pBlueNoiseFilePath;
 

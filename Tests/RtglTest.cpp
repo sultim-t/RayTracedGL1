@@ -658,10 +658,9 @@ int main()
         info.overridenAlbedoAlphaTextureIsSRGB = RG_TRUE;
 
         info.pWin32SurfaceInfo          = &win32Info;
-
         info.pfnUserPrint               = DebugPrint;
-
         info.pBlueNoiseFilePath         = "../../BlueNoise_LDR_RGBA_128.ktx2";
+        info.pShaderFolderPath          = "../../";
 
         r = rgCreateInstance(&info, &instance);
         RG_CHECKERROR(r);
