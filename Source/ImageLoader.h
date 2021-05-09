@@ -24,7 +24,9 @@
 
 #include "Common.h"
 #include "Const.h"
-#include "RTGL1/RTGL1.h"
+#include "UserFunction.h"
+
+struct ktxTexture;
 
 namespace RTGL1
 {
@@ -33,27 +35,16 @@ namespace RTGL1
 class ImageLoader
 {
 public:
-    ImageLoader() = default;
-    ~ImageLoader();
-
-    ImageLoader(const ImageLoader &other) = delete;
-    ImageLoader(ImageLoader &&other) noexcept = delete;
-    ImageLoader &operator=(const ImageLoader &other) = delete;
-    ImageLoader &operator=(ImageLoader &&other) noexcept = delete;
-
     struct ResultInfo
     {
         uint32_t        levelOffsets[MAX_PREGENERATED_MIPMAP_LEVELS];
         uint32_t        levelSizes[MAX_PREGENERATED_MIPMAP_LEVELS];
         uint32_t        levelCount;
-        const uint8_t   *pData;
+        const uint8_t *pData;
         uint32_t        dataSize;
         RgExtent2D      baseSize;
         VkFormat        format;
     };
-
-    bool Load(const char *pFilePath, ResultInfo *pResultInfo);
-
 
     struct LayeredResultInfo
     {
@@ -63,13 +54,27 @@ public:
         VkFormat        format;
     };
 
+public:
+    explicit ImageLoader(std::shared_ptr<UserFileLoad> userFileLoad);
+    ~ImageLoader();
+
+    ImageLoader(const ImageLoader &other) = delete;
+    ImageLoader(ImageLoader &&other) noexcept = delete;
+    ImageLoader &operator=(const ImageLoader &other) = delete;
+    ImageLoader &operator=(ImageLoader &&other) noexcept = delete;
+
+    bool Load(const char *pFilePath, ResultInfo *pResultInfo);
     bool LoadLayered(const char *pFilePath, LayeredResultInfo *pResultInfo);
 
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();
 
 private:
-    std::vector<void*> loadedImages;
+    bool LoadTextureFile(const char *pFilePath, ktxTexture **ppTexture);
+
+private:
+    std::shared_ptr<UserFileLoad> userFileLoad;
+    std::vector<void *> loadedImages;
 };
 
 }

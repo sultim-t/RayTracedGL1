@@ -61,8 +61,8 @@ static ShaderModuleDefinition G_SHADERS[] =
 };
 
 
-ShaderManager::ShaderManager(VkDevice _device, const char *pShaderFolderPath)
-    : device(_device), shaderFolderPath(pShaderFolderPath)
+ShaderManager::ShaderManager(VkDevice _device, const char *_pShaderFolderPath, std::shared_ptr<UserFileLoad> _userFileLoad)
+    : device(_device), userFileLoad(std::move(_userFileLoad)), shaderFolderPath(_pShaderFolderPath)
 {
     LoadShaderModules();
 }
@@ -99,7 +99,7 @@ void ShaderManager::LoadShaderModules()
 
         auto path = shaderFolderPath + s.filename;
 
-        VkShaderModule m = LoadModuleFromFile(path.c_str());
+        VkShaderModule m = LoadModule(path.c_str());
         SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, s.name);
 
         modules[s.name] = { m, s.stage };
@@ -147,7 +147,27 @@ VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo(const char* name) co
     return info;
 }
 
-VkShaderModule ShaderManager::LoadModuleFromFile(const char* path)
+VkShaderModule RTGL1::ShaderManager::LoadModule(const char *path)
+{
+    if (userFileLoad->Exists())
+    {
+        auto fileHandle = userFileLoad->Open(path);
+
+        if (!fileHandle.Contains())
+        {
+            using namespace std::string_literals;
+            throw std::runtime_error("Can't load shader file "s + path + " using user's file load function"s);
+        }
+
+        return LoadModuleFromMemory(static_cast<const uint32_t*>(fileHandle.pData), fileHandle.dataSize);
+    }
+    else
+    {
+        return LoadModuleFromFile(path);
+    }
+}
+
+VkShaderModule ShaderManager::LoadModuleFromFile(const char *path)
 {
     std::ifstream shaderFile(path, std::ios::binary);
     std::vector<uint8_t> shaderSource(std::istreambuf_iterator<char>(shaderFile), {});
@@ -158,12 +178,17 @@ VkShaderModule ShaderManager::LoadModuleFromFile(const char* path)
         throw std::runtime_error("Can't find shader file"s + path);
     }
 
+    return LoadModuleFromMemory(reinterpret_cast<const uint32_t*>(shaderSource.data()), shaderSource.size());
+}
+
+VkShaderModule ShaderManager::LoadModuleFromMemory(const uint32_t *pCode, uint32_t codeSize)
+{
     VkShaderModule shaderModule;
 
     VkShaderModuleCreateInfo moduleInfo = {};
     moduleInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleInfo.codeSize = shaderSource.size();
-    moduleInfo.pCode = (uint32_t *) shaderSource.data();
+    moduleInfo.codeSize = codeSize;
+    moduleInfo.pCode = pCode;
 
     VkResult r = vkCreateShaderModule(device, &moduleInfo, nullptr, &shaderModule);
     VK_CHECKERROR(r);

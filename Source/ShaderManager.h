@@ -26,6 +26,7 @@
 
 #include "Common.h"
 #include "IShaderDependency.h"
+#include "UserFunction.h"
 
 namespace RTGL1
 {
@@ -34,7 +35,7 @@ namespace RTGL1
 class ShaderManager
 {
 public:
-    explicit ShaderManager(VkDevice device, const char *pShaderFolderPath);
+    explicit ShaderManager(VkDevice device, const char *pShaderFolderPath, std::shared_ptr<UserFileLoad> userFileLoad);
     ~ShaderManager();
 
     ShaderManager(const ShaderManager& other) = delete;
@@ -63,7 +64,9 @@ private:
 private:
     static VkShaderStageFlagBits GetStageByExtension(const char *name);
 
+    VkShaderModule LoadModule(const char *path);
     VkShaderModule LoadModuleFromFile(const char *path);
+    VkShaderModule LoadModuleFromMemory(const uint32_t *pCode, uint32_t codeSize);
     void LoadShaderModules();
     void UnloadShaderModules();
 
@@ -71,6 +74,7 @@ private:
 
 private:
     VkDevice device;
+    std::shared_ptr<UserFileLoad> userFileLoad;
     std::string shaderFolderPath;
 
     std::map<std::string, ShaderModule> modules;

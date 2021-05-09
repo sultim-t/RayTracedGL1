@@ -35,8 +35,9 @@ BlueNoise::BlueNoise(
     const char *_blueNoiseFilePath,
     std::shared_ptr<MemoryAllocator> _allocator,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
-    const std::shared_ptr<SamplerManager> &_samplerManager)
-    :
+    const std::shared_ptr<SamplerManager> &_samplerManager,
+    std::shared_ptr<UserFileLoad> _userFileLoad)
+:
     device(_device),
     allocator(std::move(_allocator)),
     blueNoiseImages(VK_NULL_HANDLE),
@@ -55,7 +56,7 @@ BlueNoise::BlueNoise(
     const VkDeviceSize dataSize = oneLayerSize * BLUE_NOISE_TEXTURE_COUNT;
 
 
-    ImageLoader imageLoader;
+    ImageLoader imageLoader(std::move(_userFileLoad));
     ImageLoader::LayeredResultInfo resultInfo = {};
     bool loaded = imageLoader.LoadLayered(_blueNoiseFilePath, &resultInfo);
 

@@ -44,6 +44,7 @@ public:
         std::shared_ptr<MemoryAllocator> allocator,
         std::shared_ptr<SamplerManager> samplerManager,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
+        std::shared_ptr<UserFileLoad> userFileLoad,
         const char *defaultTexturesPath,
         const char *albedoAlphaPostfix);
     ~CubemapManager();

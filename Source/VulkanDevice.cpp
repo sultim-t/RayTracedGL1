@@ -38,7 +38,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     frameId(1),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
-    userPrint{ std::make_unique<UserPrint>(info->pfnUserPrint, info->pUserPrintData) },
+    userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
+    userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
     previousFrameTime(-1.0 / 60.0),
     currentFrameTime(0),
     disableRayTracedSkybox(info->disableRayTracedSkybox)
@@ -93,13 +94,15 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         info->pBlueNoiseFilePath,
         memAllocator,
         cmdManager, 
-        samplerManager);
+        samplerManager,
+        userFileLoad);
 
     textureManager      = std::make_shared<TextureManager>(
         device, 
         memAllocator,
         samplerManager, 
         cmdManager,
+        userFileLoad,
         *info);
 
     cubemapManager      = std::make_shared<CubemapManager>(
@@ -107,12 +110,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator,
         samplerManager,
         cmdManager,
+        userFileLoad,
         info->pOverridenTexturesFolderPath,
         info->pOverridenAlbedoAlphaTexturePostfix);
 
     shaderManager       = std::make_shared<ShaderManager>(
         device,
-        info->pShaderFolderPath);
+        info->pShaderFolderPath,
+        userFileLoad);
 
     scene               = std::make_shared<Scene>(
         device,
@@ -462,6 +467,11 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     currentFrameCmd = VK_NULL_HANDLE;
 
     return RG_SUCCESS;
+}
+
+void VulkanDevice::Print(const char *pMessage) const
+{
+    userPrint->Print(pMessage);
 }
 
 

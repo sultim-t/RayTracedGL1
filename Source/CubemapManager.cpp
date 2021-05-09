@@ -31,6 +31,7 @@ RTGL1::CubemapManager::CubemapManager(
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<SamplerManager> _samplerManager,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
+    std::shared_ptr<UserFileLoad> _userFileLoad,
     const char *_defaultTexturesPath,
     const char *_albedoAlphaPostfix)
 :
@@ -43,7 +44,7 @@ RTGL1::CubemapManager::CubemapManager(
     defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
     albedoAlphaPostfix = _albedoAlphaPostfix != nullptr ? _albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
 
-    imageLoader = std::make_shared<ImageLoader>();
+    imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     cubemapDesc = std::make_shared<TextureDescriptors>(device, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
     cubemapUploader = std::make_shared<CubemapUploader>(device, allocator);
 

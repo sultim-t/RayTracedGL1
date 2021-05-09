@@ -27,9 +27,43 @@
 
 using namespace RTGL1;
 
+ImageLoader::ImageLoader(std::shared_ptr<UserFileLoad> _userFileLoad) : userFileLoad(std::move( _userFileLoad))
+{}
+
 ImageLoader::~ImageLoader()
 {
     assert(loadedImages.empty());
+}
+
+bool ImageLoader::LoadTextureFile(const char *pFilePath, ktxTexture **ppTexture)
+{
+    KTX_error_code r;
+
+    if (userFileLoad->Exists())
+    {
+        auto fileHandle = userFileLoad->Open(pFilePath);
+
+        if (!fileHandle.Contains())
+        {
+            return false;
+        }
+
+        r = ktxTexture_CreateFromMemory(
+            static_cast<const uint8_t *>(fileHandle.pData), fileHandle.dataSize,
+            KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+            ppTexture
+        );
+    }
+    else
+    {
+        r = ktxTexture_CreateFromNamedFile(
+            pFilePath,
+            KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+            ppTexture);
+       
+    }
+
+    return r == KTX_SUCCESS;
 }
 
 bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
@@ -43,13 +77,9 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
     }
 
     ktxTexture *pTexture = nullptr;
+    bool loaded = LoadTextureFile(pFilePath, &pTexture);
 
-    KTX_error_code r = ktxTexture_CreateFromNamedFile(
-        pFilePath,
-        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-        &pTexture);
-
-    if (r != KTX_SUCCESS)
+    if (!loaded)
     {
         return false;
     }
@@ -72,7 +102,7 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
     for (uint32_t level = 0; level < pResultInfo->levelCount; level++)
     {
         ktx_size_t offset = 0;
-        r = ktxTexture_GetImageOffset(pTexture, level, 0, 0, &offset);
+        auto r = ktxTexture_GetImageOffset(pTexture, level, 0, 0, &offset);
 
         ktx_size_t size = ktxTexture_GetImageSize(pTexture, level);
 
@@ -101,13 +131,9 @@ bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultI
     }
 
     ktxTexture *pTexture = nullptr;
+    bool loaded = LoadTextureFile(pFilePath, &pTexture);
 
-    KTX_error_code r = ktxTexture_CreateFromNamedFile(
-        pFilePath,
-        KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-        &pTexture);
-
-    if (r != KTX_SUCCESS)
+    if (!loaded)
     {
         return false;
     }
@@ -128,7 +154,7 @@ bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultI
     for (uint32_t i = 0; i < pTexture->numLayers; i++)
     {
         ktx_size_t offset;
-        r = ktxTexture_GetImageOffset(pTexture, 0, i, 0, &offset);
+        ktx_error_code_e r = ktxTexture_GetImageOffset(pTexture, 0, i, 0, &offset);
 
         if (r != KTX_SUCCESS)
         {

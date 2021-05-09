@@ -36,6 +36,7 @@ TextureManager::TextureManager(
     std::shared_ptr<MemoryAllocator> _memAllocator,
     std::shared_ptr<SamplerManager> _samplerMgr,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
+    std::shared_ptr<UserFileLoad> _userFileLoad,
     const RgInstanceCreateInfo &_info)
 :
     device(_device),
@@ -51,7 +52,7 @@ TextureManager::TextureManager(
     this->overridenNMIsSRGB = _info.overridenNormalMetallicTextureIsSRGB;
     this->overridenERIsSRGB = _info.overridenEmissionRoughnessTextureIsSRGB;
 
-    imageLoader = std::make_shared<ImageLoader>();
+    imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     textureDesc = std::make_shared<TextureDescriptors>(device, MAX_TEXTURE_COUNT, BINDING_TEXTURES);
     textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
