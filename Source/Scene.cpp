@@ -20,6 +20,7 @@
 
 #include "Scene.h"
 #include "Generated/ShaderCommonC.h"
+#include "RgException.h"
 
 using namespace RTGL1;
 
@@ -157,14 +158,13 @@ bool Scene::UpdateTransform(const RgUpdateTransformInfo &updateInfo)
     uint32_t simpleIndex;
     if (!TryGetStaticSimpleIndex(updateInfo.movableStaticUniqueID, &simpleIndex))
     {
-        return false;
+        throw RgException(RG_CANT_UPDATE_TRANSFORM, "Can't find static geometry with unique ID=" + std::to_string(updateInfo.movableStaticUniqueID));
     }
 
     // check if it's actually movable
     if (std::find(movableGeomIndices.begin(), movableGeomIndices.end(), simpleIndex) == movableGeomIndices.end())
     {
-        // do nothing, if it's not
-        return false;
+        throw RgException(RG_CANT_UPDATE_TRANSFORM, "Static geometry with unique ID=" + std::to_string(updateInfo.movableStaticUniqueID) + " isn't movable");
     }
 
     asManager->UpdateStaticMovableTransform(simpleIndex, updateInfo);
@@ -184,7 +184,7 @@ bool RTGL1::Scene::UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo)
     uint32_t simpleIndex;
     if (!TryGetStaticSimpleIndex(texCoordsInfo.staticUniqueID, &simpleIndex))
     {
-        return false;
+        throw RgException(RG_CANT_UPDATE_TEXCOORDS, "Can't find static geometry with unique ID=" + std::to_string(texCoordsInfo.staticUniqueID));
     }
 
     asManager->UpdateStaticTexCoords(simpleIndex, texCoordsInfo);

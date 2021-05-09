@@ -26,6 +26,7 @@
 #include "Utils.h"
 #include "TextureOverrides.h"
 #include "Generated/ShaderCommonC.h"
+#include "RgException.h"
 
 using namespace RTGL1;
 
@@ -152,6 +153,14 @@ void TextureManager::SubmitDescriptors(uint32_t frameIndex)
 
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
 {
+    if (createInfo.pRelativePath == nullptr && 
+        createInfo.textures.albedoAlpha.pData == nullptr &&
+        createInfo.textures.normalsMetallicity.pData == nullptr &&
+        createInfo.textures.emissionRoughness.pData == nullptr)
+    {
+        throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
+    }
+
     MaterialTextures textures = {};
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
@@ -179,17 +188,27 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
 {
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
-    const auto &aa = createInfo.textures.albedoAlpha;
+    const RgTextureData *tds[3] =
+    { 
+        &createInfo.textures.albedoAlpha,
+        &createInfo.textures.normalsMetallicity,
+        &createInfo.textures.emissionRoughness,
+    };
 
-    const VkFormat dynamicMatFormat = aa.isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT;
+    const VkFormat formats[3] =
+    {
+        tds[0]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT,
+        tds[1]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT,
+        tds[2]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT,
+    };
     const uint32_t bytesPerPixel = 4;
-
     const uint32_t dataSize = createInfo.size.width * createInfo.size.height * bytesPerPixel;
+    assert(dataSize > 0);
 
     MaterialTextures textures = {};
-    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, aa.pData, dataSize, createInfo.size, sampler, dynamicMatFormat, createInfo.useMipmaps, nullptr);
-    textures.normalMetallic     = EMPTY_TEXTURE_INDEX;
-    textures.emissionRoughness  = EMPTY_TEXTURE_INDEX;
+    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, tds[0]->pData, dataSize, createInfo.size, sampler, formats[0], createInfo.useMipmaps, nullptr);
+    textures.normalMetallic     = PrepareDynamicTexture(cmd, frameIndex, tds[1]->pData, dataSize, createInfo.size, sampler, formats[1], createInfo.useMipmaps, nullptr);;
+    textures.emissionRoughness  = PrepareDynamicTexture(cmd, frameIndex, tds[2]->pData, dataSize, createInfo.size, sampler, formats[2], createInfo.useMipmaps, nullptr);;
 
     return InsertMaterial(textures, true);
 }
@@ -199,8 +218,14 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
     const auto it = materials.find(updateInfo.dynamicMaterial);
 
     // if exist and dynamic
-    if (it != materials.end() && it->second.isDynamic)
+    if (it != materials.end())
     {
+        if (!it->second.isDynamic)
+        {
+            throw RgException(RG_CANT_UPDATE_DYNAMIC_MATERIAL,
+                              "Material with ID=" + std::to_string(updateInfo.dynamicMaterial) + " is not dynamic");
+        }
+
         const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
         {
             updateInfo.textures.albedoAlpha.pData,
@@ -235,6 +260,11 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 
         return wasUpdated;
     }
+    else
+    {
+        throw RgException(RG_CANT_UPDATE_DYNAMIC_MATERIAL, 
+                          "Material with ID=" + std::to_string(updateInfo.dynamicMaterial) +  " was not created");
+    }
 
     return false;
 }
@@ -251,7 +281,16 @@ uint32_t TextureManager::PrepareStaticTexture(
         return EMPTY_TEXTURE_INDEX;
     }
 
-    assert(imageInfo.baseSize.width > 0 && imageInfo.baseSize.height > 0);
+    if (imageInfo.baseSize.width == 0 || imageInfo.baseSize.height == 0)
+    {
+        using namespace std::string_literals;
+
+        throw RgException(RG_WRONG_MATERIAL_PARAMETER, "Incorrect size (" + 
+                          std::to_string(imageInfo.baseSize.width) + ", " + 
+                          std::to_string(imageInfo.baseSize.height) + ") of one of images in a material" +
+                          (debugName != nullptr ? " with name: "s + debugName : ""s));
+    }
+
     assert(imageInfo.dataSize > 0);
     assert(imageInfo.levelCount > 0 && imageInfo.levelSizes[0] > 0);
 
@@ -286,6 +325,11 @@ uint32_t TextureManager::PrepareDynamicTexture(
     VkSampler sampler, VkFormat format, bool generateMipmaps, 
     const char *debugName)
 {
+    if (data == nullptr)
+    {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
     assert(size.width > 0 && size.height > 0);
 
     TextureUploader::UploadInfo info = {};
@@ -336,7 +380,15 @@ bool TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t
     {
         AnimatedMaterial &anim = animIt->second;
 
-        materialFrame = std::min(materialFrame, (uint32_t)anim.materialIndices.size());
+        uint32_t maxFrameCount = (uint32_t)anim.materialIndices.size();
+        if (materialFrame >= maxFrameCount)
+        {
+            throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL, 
+                              "Animated material with ID=" + std::to_string(animMaterial) + " has only " +
+                              std::to_string(maxFrameCount) + " frames, but frame with index " 
+                              + std::to_string(materialFrame) + " was requested");
+        }
+
         anim.currentFrame = materialFrame;
 
         // notify subscribers
@@ -358,6 +410,10 @@ bool TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t
         }
 
         return true;
+    }
+    else
+    {
+        throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL, "Material with ID=" + std::to_string(animMaterial) + " is not animated");
     }
 
     return false;
@@ -475,6 +531,11 @@ void TextureManager::DestroyMaterialTextures(uint32_t frameIndex, const Material
 
 void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex)
 {
+    if (materialIndex == RG_NO_MATERIAL)
+    {
+        return;
+    }
+
     const auto animIt = animatedMaterials.find(materialIndex);
 
     // if it's an animated material

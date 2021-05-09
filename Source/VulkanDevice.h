@@ -58,32 +58,32 @@ public:
     VulkanDevice& operator=(const VulkanDevice& other) = delete;
     VulkanDevice& operator=(VulkanDevice&& other) noexcept = delete;
 
-    RgResult UploadGeometry(const RgGeometryUploadInfo *uploadInfo);
-    RgResult UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
-    RgResult UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo);
+    void UploadGeometry(const RgGeometryUploadInfo *uploadInfo);
+    void UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
+    void UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo);
 
-    RgResult UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo, 
+    void UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo, 
                                       const float *viewProjection, const RgViewport *viewport);
 
-    RgResult SubmitStaticGeometries();
-    RgResult StartNewStaticScene();
+    void SubmitStaticGeometries();
+    void StartNewStaticScene();
 
-    RgResult UploadLight(const RgDirectionalLightUploadInfo *lightInfo);
-    RgResult UploadLight(const RgSphericalLightUploadInfo *lightInfo);
+    void UploadLight(const RgDirectionalLightUploadInfo *lightInfo);
+    void UploadLight(const RgSphericalLightUploadInfo *lightInfo);
 
-    RgResult CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result);
-    RgResult CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
-    RgResult ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
-    RgResult CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result);
-    RgResult UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo);
-    RgResult DestroyMaterial(RgMaterial material);
+    void CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result);
+    void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
+    void ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
+    void CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result);
+    void UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo);
+    void DestroyMaterial(RgMaterial material);
 
-    RgResult CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result);
-    RgResult DestroyCubemap(RgCubemap cubemap);
+    void CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result);
+    void DestroyCubemap(RgCubemap cubemap);
 
 
-    RgResult StartFrame(const RgStartFrameInfo *startInfo);
-    RgResult DrawFrame(const RgDrawFrameInfo *frameInfo);
+    void StartFrame(const RgStartFrameInfo *startInfo);
+    void DrawFrame(const RgDrawFrameInfo *frameInfo);
 
 
     void Print(const char *pMessage) const;
@@ -93,6 +93,7 @@ private:
     void CreateDevice();
     void CreateSyncPrimitives();
     static VkSurfaceKHR GetSurfaceFromUser(VkInstance instance, const RgInstanceCreateInfo &info);
+    void ValidateCreateInfo(const RgInstanceCreateInfo *pInfo);
 
     void DestroyInstance();
     void DestroyDevice();

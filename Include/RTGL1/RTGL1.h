@@ -56,7 +56,6 @@ extern "C" {
 #endif
 
 typedef uint32_t RgBool32;
-typedef uint32_t RgFlags;
 RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
 typedef uint32_t RgMaterial;
 typedef uint32_t RgCubemap;
@@ -76,11 +75,13 @@ typedef enum RgResult
     RG_WRONG_INSTANCE,
     RG_FRAME_WASNT_STARTED,
     RG_FRAME_WASNT_ENDED,
-    RG_UPDATING_TRANSFORM_FOR_NON_MOVABLE,
-    RG_UPDATING_TEXCOORDS_FOR_NON_STATIC,
+    RG_CANT_UPDATE_TRANSFORM,
+    RG_CANT_UPDATE_TEXCOORDS,
     RG_CANT_UPDATE_DYNAMIC_MATERIAL,
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
     RG_ID_ISNT_UNIQUE,
+    RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
+    RG_WRONG_MATERIAL_PARAMETER,
 } RgResult;
 
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
@@ -389,7 +390,7 @@ typedef struct RgRasterizedGeometryVertexArrays
 {
     // 3 first floats are used.
     const void          *pVertexData;
-    // 2 first floats are used.
+    // 2 first floats are used. Can be null.
     const void          *pTexCoordData;
     // RGBA packed into 32-bit uint. Little-endian. Can be null.
     const void          *pColorData;

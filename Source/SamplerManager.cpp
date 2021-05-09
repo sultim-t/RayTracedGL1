@@ -19,6 +19,8 @@
 // SOFTWARE.
 
 #include "SamplerManager.h"
+#include "RgException.h"
+#include <string>
 
 using namespace RTGL1;
 
@@ -99,6 +101,10 @@ VkSampler SamplerManager::GetSampler(
     }
     else
     {
+        throw RgException(RG_WRONG_MATERIAL_PARAMETER, 
+                          "Wrong RgSamplerFilter(" + std::to_string(filter) + 
+                          ") or RgSamplerAddressMode (U: " + std::to_string(addressModeU) +
+                          ", V: " + std::to_string(addressModeV) + ") value");
         return VK_NULL_HANDLE;
     }
 }

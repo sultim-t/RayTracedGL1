@@ -23,6 +23,7 @@
 #include "Generated/ShaderCommonC.h"
 #include "Const.h"
 #include "TextureOverrides.h"
+#include "RgException.h"
 
 constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
@@ -188,7 +189,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
         if (info.sideSize == 0)
         {
-            return RG_EMPTY_CUBEMAP;
+            throw RgException(RG_WRONG_ARGUMENT, "Cubemap's side size must be non-zero");
         }
 
         for (uint32_t i = 0; i < 6; i++)
@@ -232,9 +233,12 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
 void RTGL1::CubemapManager::DestroyCubemap(uint32_t frameIndex, uint32_t cubemapIndex)
 {
-    assert(cubemapIndex < MAX_CUBEMAP_COUNT);
+    if (cubemapIndex >= MAX_CUBEMAP_COUNT)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Wrong cubemap ID=" + std::to_string(cubemapIndex));
+    }
 
-    if (cubemapIndex >= MAX_CUBEMAP_COUNT || cubemaps[cubemapIndex].image == VK_NULL_HANDLE)
+    if (cubemaps[cubemapIndex].image == VK_NULL_HANDLE)
     {
         return;
     }

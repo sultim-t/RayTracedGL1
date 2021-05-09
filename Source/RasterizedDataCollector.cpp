@@ -21,6 +21,7 @@
 #include "RasterizedDataCollector.h"
 
 #include "Utils.h"
+#include "RgException.h"
 
 using namespace RTGL1;
 
@@ -98,20 +99,26 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
         assert(!info.depthTest && !info.depthWrite);
     }
 
-    // if renderToSky, default pViewProjection and pViewport should be used,
+    // if renderToSky, default pViewProjection and pViewport are used,
     // as sky geometry can be updated not in each frame
-    if (renderToSky)
+    if (renderToSky && (pViewProjection != nullptr || pViewport != nullptr))
     {
-        assert(pViewProjection == nullptr && pViewport == nullptr);
-        pViewProjection = nullptr;
-        pViewport = nullptr;
+        throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "pViewProjection and pViewport must be null if renderType is RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY");
     }
 
     if (info.pArrays != nullptr)
     {
-        assert(info.pArrays->vertexStride >= 3 * sizeof(float));
-        assert(info.pArrays->pColorData == nullptr || info.pArrays->colorStride >= sizeof(uint32_t));
-        assert(info.pArrays->pTexCoordData == nullptr || info.pArrays->texCoordStride >= 2 * sizeof(float));
+        if (info.pArrays->pVertexData == nullptr)
+        {
+            throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "Vertex data is null in pArrays");
+        }
+
+        if (info.pArrays->vertexStride < 3 * sizeof(float) || 
+            info.pArrays->colorStride < sizeof(uint32_t) || 
+            info.pArrays->texCoordStride < 2 * sizeof(float))
+        {
+            throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "Strides are too small in pArrays");
+        }
     }
 
     if ((uint64_t)curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof(RasterizerVertex))
@@ -224,7 +231,7 @@ void RasterizedDataCollector::CopyFromSeparateArrays(const RgRasterizedGeometryU
         auto *srcColor      = (uint32_t*)   ((uint8_t*)src.pColorData       + (uint64_t)i * src.colorStride);
         auto *srcTexCoord   = (float*)      ((uint8_t*)src.pTexCoordData    + (uint64_t)i * src.texCoordStride);
 
-        RasterizerVertex vert = {};
+        RasterizerVertex vert;
 
         vert.position[0] = srcPos[0];
         vert.position[1] = srcPos[1];

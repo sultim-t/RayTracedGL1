@@ -24,6 +24,7 @@
 #include <stdexcept>
 
 #include "Matrix.h"
+#include "RgException.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -44,6 +45,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     currentFrameTime(0),
     disableRayTracedSkybox(info->disableRayTracedSkybox)
 {
+    ValidateCreateInfo(info);
+
+
+
     vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
     vbProperties.positionStride = info->vertexPositionStride;
     vbProperties.normalStride = info->vertexNormalStride;
@@ -435,22 +440,21 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 #pragma region RTGL1 interface implementation
 
-RgResult VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
+void VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
 {
     if (currentFrameCmd != VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_ENDED;
+        throw RgException(RG_FRAME_WASNT_ENDED);
     }
 
     currentFrameCmd = BeginFrame(*startInfo);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
+void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_FRAME_WASNT_STARTED);
     }
 
     previousFrameTime = currentFrameTime;
@@ -465,8 +469,6 @@ RgResult VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     EndFrame(currentFrameCmd);
 
     currentFrameCmd = VK_NULL_HANDLE;
-
-    return RG_SUCCESS;
 }
 
 void VulkanDevice::Print(const char *pMessage) const
@@ -475,163 +477,222 @@ void VulkanDevice::Print(const char *pMessage) const
 }
 
 
-RgResult VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
+void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 {
-    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
+    using namespace std::string_literals;
+
+    if (uploadInfo == nullptr)
     {
-        return RG_WRONG_ARGUMENT;
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    if (uploadInfo->pVertexData == nullptr || uploadInfo->vertexCount == 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Incorrect vertex data");
+    }
+
+    if ((uploadInfo->pIndexData == nullptr && uploadInfo->indexCount != 0) ||
+        (uploadInfo->pIndexData != nullptr && uploadInfo->indexCount == 0))
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Incorrect index data");
+    }
+
+    if (uploadInfo->geomType != RG_GEOMETRY_TYPE_STATIC &&
+        uploadInfo->geomType != RG_GEOMETRY_TYPE_STATIC_MOVABLE &&
+        uploadInfo->geomType != RG_GEOMETRY_TYPE_DYNAMIC &&
+
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_ALPHA_TESTED &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT &&
+
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD &&
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON &&
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER &&
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Incorrect type of ray traced geometry");
     }
 
     if (scene->DoesUniqueIDExist(uploadInfo->uniqueID))
     {
-        return RG_ID_ISNT_UNIQUE;
+        throw RgException(RG_ID_ISNT_UNIQUE, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
     }
 
-    uint32_t uploaded = scene->Upload(currentFrameIndex, *uploadInfo);
-
-    return uploaded ? RG_SUCCESS : RG_ERROR;
+    scene->Upload(currentFrameIndex, *uploadInfo);
 }
 
-RgResult VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
+void VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
 {
     if (updateInfo == nullptr)
     {
-        return RG_WRONG_ARGUMENT;
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    bool b = scene->UpdateTransform(*updateInfo);
-
-    return b ? RG_SUCCESS : RG_UPDATING_TRANSFORM_FOR_NON_MOVABLE;
+    scene->UpdateTransform(*updateInfo);
 }
 
-RgResult RTGL1::VulkanDevice::UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo)
+void RTGL1::VulkanDevice::UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo)
 {
     if (updateInfo == nullptr)
     {
-        return RG_WRONG_ARGUMENT;
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    bool b = scene->UpdateTexCoords(*updateInfo);
-
-    return b ? RG_SUCCESS : RG_UPDATING_TEXCOORDS_FOR_NON_STATIC;
+    scene->UpdateTexCoords(*updateInfo);
 }
 
-RgResult VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo,
+void VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo,
                                                 const float *viewProjection, const RgViewport *viewport)
 {
-    // move checks to to RTGL.cpp
-    if (uploadInfo == nullptr || uploadInfo->vertexCount == 0)
+    if (uploadInfo == nullptr)
     {
-        return RG_WRONG_ARGUMENT;
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    if (currentFrameCmd == VK_NULL_HANDLE)
+    if (uploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT &&
+        uploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN &&
+        uploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_WRONG_ARGUMENT, "Incorrect render type of rasterized geometry");
+    }
+
+    if ((uploadInfo->pArrays != nullptr && uploadInfo->pStructs != nullptr) || 
+        (uploadInfo->pArrays == nullptr && uploadInfo->pStructs == nullptr))
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Exactly one of pArrays and pStructs must be not null");
+    }
+
+    if ((uploadInfo->pIndexData == nullptr && uploadInfo->indexCount != 0) ||
+        (uploadInfo->pIndexData != nullptr && uploadInfo->indexCount == 0))
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Incorrect index data");
     }
 
     rasterizer->Upload(currentFrameIndex, *uploadInfo, viewProjection, viewport);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::SubmitStaticGeometries()
+void VulkanDevice::SubmitStaticGeometries()
 {
     scene->SubmitStatic();
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::StartNewStaticScene()
+void VulkanDevice::StartNewStaticScene()
 {
     scene->StartNewStatic();
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *lightInfo)
+void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *lightInfo)
 {
+    if (lightInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
     scene->UploadLight(currentFrameIndex, *lightInfo);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *lightInfo)
+void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *lightInfo)
 {
+    if (lightInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
     scene->UploadLight(currentFrameIndex, *lightInfo);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
+void VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_FRAME_WASNT_STARTED);
+    }
+
+    if (createInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
     *result = textureManager->CreateStaticMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result)
+void VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_FRAME_WASNT_STARTED);
+    }
+
+    if (createInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    if (createInfo->frameCount == 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Animated materials must have non-zero amount of frames");
     }
 
     *result = textureManager->CreateAnimatedMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)
+void VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)
 {
     bool wasChanged = textureManager->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
-    return wasChanged ? RG_SUCCESS : RG_CANT_UPDATE_ANIMATED_MATERIAL;
 }
 
-RgResult VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result)
+void VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_FRAME_WASNT_STARTED);
     }
 
+    if (createInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    if (createInfo->size.width == 0 || createInfo->size.height == 0)
+    {
+        throw RgException(RG_WRONG_MATERIAL_PARAMETER, "Dynamic materials must have non-zero width and height, but given size is (" +
+                          std::to_string(createInfo->size.width) + ", " + std::to_string(createInfo->size.height) + ")");
+    }
+    
     *result = textureManager->CreateDynamicMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
-    return RG_SUCCESS;
 }
 
-RgResult VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo)
+void VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_FRAME_WASNT_STARTED);
+    }
+
+    if (updateInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
     bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameCmd, *updateInfo);
-    return wasUpdated ? RG_SUCCESS : RG_CANT_UPDATE_DYNAMIC_MATERIAL;
 }
 
-RgResult VulkanDevice::DestroyMaterial(RgMaterial material)
+void VulkanDevice::DestroyMaterial(RgMaterial material)
 {
-    if (material == RG_NO_MATERIAL)
-    {
-        return RG_SUCCESS;
-    }
-
     textureManager->DestroyMaterial(currentFrameIndex, material);
-    return RG_SUCCESS;
 }
-RgResult VulkanDevice::CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result)
+void VulkanDevice::CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result)
 {
     if (currentFrameCmd == VK_NULL_HANDLE)
     {
-        return RG_FRAME_WASNT_STARTED;
+        throw RgException(RG_FRAME_WASNT_STARTED);
     }
 
     *result = cubemapManager->CreateCubemap(currentFrameCmd, currentFrameIndex, *createInfo);
-    return RG_SUCCESS;
 }
-RgResult VulkanDevice::DestroyCubemap(RgCubemap cubemap)
+void VulkanDevice::DestroyCubemap(RgCubemap cubemap)
 {
     cubemapManager->DestroyCubemap(currentFrameIndex, cubemap);
-    return RG_SUCCESS;
 }
 #pragma endregion 
 
@@ -1027,6 +1088,33 @@ void VulkanDevice::DestroySyncPrimitives()
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
 
         vkDestroyFence(device, frameFences[i], nullptr);
+    }
+}
+
+void RTGL1::VulkanDevice::ValidateCreateInfo(const RgInstanceCreateInfo *pInfo)
+{
+    if (pInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    {
+        int count =
+            !!pInfo->pWin32SurfaceInfo +
+            !!pInfo->pMetalSurfaceCreateInfo +
+            !!pInfo->pWaylandSurfaceCreateInfo +
+            !!pInfo->pXcbSurfaceCreateInfo +
+            !!pInfo->pXlibSurfaceCreateInfo;
+
+        if (count != 1)
+        {
+            throw RgException(RG_WRONG_ARGUMENT, "Exactly one of the surface infos must be not null");
+        }
+    }
+
+    if (pInfo->rasterizedSkyCubemapSize == 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "rasterizedSkyCubemapSize must be non-zero");
     }
 }
 

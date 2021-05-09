@@ -18,163 +18,261 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <stdexcept>
+#include <unordered_map>
 
 #include "VulkanDevice.h"
+#include "RgException.h"
 
 using namespace RTGL1;
 
 
-// TODO: check all members of input structs in RTGL1.CPP
+
+#define CATCH_OR_RETURN \
+    catch (RTGL1::RgException &e) \
+    { \
+        TryPrintError(rgInstance, e.what()); \
+        return e.GetErrorCode(); \
+    } \
+    return RG_SUCCESS \
 
 
 
-#define MAX_DEVICE_COUNT 8
-static std::map<RgInstance, std::shared_ptr<VulkanDevice>> g_Devices;
 
+constexpr uint32_t MAX_DEVICE_COUNT = 8;
+static std::unordered_map<RgInstance, std::unique_ptr<VulkanDevice>> G_DEVICES;
 
-#define CHECK_WRONG_INSTANCE_AND_GET \
-    auto &iterDevice = g_Devices.find(rgInstance); \
-    if (iterDevice == g_Devices.end()) { return RG_WRONG_INSTANCE; } \
-    iterDevice->second
+static RgInstance GetNextID()
+{
+    return reinterpret_cast<RgInstance>(G_DEVICES.size() + 1024);
+}
 
+static const std::unique_ptr<VulkanDevice> &GetDevice(RgInstance rgInstance)
+{
+    auto it = G_DEVICES.find(rgInstance); 
 
-#define CHECK_WRONG_INSTANCE_AND_RETURN_GET \
-    auto &iterDevice = g_Devices.find(rgInstance); \
-    if (iterDevice == g_Devices.end()) { return RG_WRONG_INSTANCE; } \
-    return iterDevice->second
+    if (it == G_DEVICES.end())
+    {
+        throw RTGL1::RgException(RG_WRONG_INSTANCE);
+    }
+
+    return it->second;
+}
+
+static void TryPrintError(RgInstance rgInstance, const char *pMessage)
+{
+    auto it = G_DEVICES.find(rgInstance);
+
+    if (it != G_DEVICES.end())
+    {
+        it->second->Print(pMessage);
+    }
+}
+
 
 
 RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *pResult)
 {
-    if (g_Devices.size() >= MAX_DEVICE_COUNT)
+    *pResult = nullptr;
+
+    if (G_DEVICES.size() >= MAX_DEVICE_COUNT)
     {
-        *pResult = nullptr;
         return RG_TOO_MANY_INSTANCES;
     }
 
-
+    try
     {
-        int count = 
-            !!info->pWin32SurfaceInfo +
-            !!info->pMetalSurfaceCreateInfo +
-            !!info->pWaylandSurfaceCreateInfo +
-            !!info->pXcbSurfaceCreateInfo +
-            !!info->pXlibSurfaceCreateInfo;
+        // insert new
+        const RgInstance id = GetNextID();
+        assert(G_DEVICES.find(id) == G_DEVICES.end());
 
-        if (count != 1)
-        {
-            throw std::runtime_error("Exactly one of the surface infos must be specified");
-        }
+        G_DEVICES[id] = std::make_unique<VulkanDevice>(info);
+        *pResult = id;
     }
-
-
-    // insert new
-    const RgInstance id = reinterpret_cast<RgInstance>(g_Devices.size() + 1);
-    g_Devices[id] = std::make_shared<VulkanDevice>(info);
-
-    *pResult = id;
+    catch (RTGL1::RgException &e)
+    {
+        // must not happen
+        assert(false);
+    }
 
     return RG_SUCCESS;
 }
 
-
 RgResult rgDestroyInstance(RgInstance rgInstance)
 {
-    CHECK_WRONG_INSTANCE_AND_GET.reset();
-    return RG_SUCCESS;
+    if (G_DEVICES.find(rgInstance) == G_DEVICES.end())
+    {
+        return RG_WRONG_INSTANCE;
+    }
+
+    try
+    {
+        G_DEVICES.erase(rgInstance);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *pUploadInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadGeometry(pUploadInfo);
+    try
+    {
+        GetDevice(rgInstance)->UploadGeometry(pUploadInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* pUpdateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTransform(pUpdateInfo);
+    try
+    {
+        GetDevice(rgInstance)->UpdateGeometryTransform(pUpdateInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUpdateGeometryTexCoords(RgInstance rgInstance, const RgUpdateTexCoordsInfo *pUpdateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateGeometryTexCoords(pUpdateInfo);
+    try
+    {
+        GetDevice(rgInstance)->UpdateGeometryTexCoords(pUpdateInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *pUploadInfo, 
                                     const float *pViewProjection, const RgViewport *pViewport)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadRasterizedGeometry(pUploadInfo, pViewProjection, pViewport);
+    try
+    {
+        GetDevice(rgInstance)->UploadRasterizedGeometry(pUploadInfo, pViewProjection, pViewport);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->SubmitStaticGeometries();
+    try
+    {
+        GetDevice(rgInstance)->SubmitStaticGeometries();
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgStartNewScene(RgInstance rgInstance)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartNewStaticScene();
+    try
+    {
+        GetDevice(rgInstance)->StartNewStaticScene();
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUploadDirectionalLight(RgInstance rgInstance, RgDirectionalLightUploadInfo *pLightInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(pLightInfo);
+    try
+    {
+        GetDevice(rgInstance)->UploadLight(pLightInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUploadSphericalLight(RgInstance rgInstance, RgSphericalLightUploadInfo *pLightInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UploadLight(pLightInfo);
+    try
+    {
+        GetDevice(rgInstance)->UploadLight(pLightInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *pCreateInfo,
                                RgMaterial *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateStaticMaterial(pCreateInfo, pResult);
+    try
+    {
+        GetDevice(rgInstance)->CreateStaticMaterial(pCreateInfo, pResult);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *pCreateInfo,
                                  RgMaterial *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateAnimatedMaterial(pCreateInfo, pResult);
+    try
+    {
+        GetDevice(rgInstance)->CreateAnimatedMaterial(pCreateInfo, pResult);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgChangeAnimatedMaterialFrame(RgInstance rgInstance, RgMaterial animatedMaterial, uint32_t frameIndex)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
+    try
+    {
+        GetDevice(rgInstance)->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialCreateInfo *pCreateInfo,
                                 RgMaterial *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateDynamicMaterial(pCreateInfo, pResult);
+    try
+    {
+        GetDevice(rgInstance)->CreateDynamicMaterial(pCreateInfo, pResult);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialUpdateInfo *pUpdateInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->UpdateDynamicMaterial(pUpdateInfo);
+    try
+    {
+        GetDevice(rgInstance)->UpdateDynamicMaterial(pUpdateInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyMaterial(material);
+    try
+    {
+        GetDevice(rgInstance)->DestroyMaterial(material);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgCreateCubemap(RgInstance rgInstance, const RgCubemapCreateInfo *pCreateInfo, RgCubemap *pResult)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->CreateSkyboxCubemap(pCreateInfo, pResult);
+    try
+    {
+        GetDevice(rgInstance)->CreateSkyboxCubemap(pCreateInfo, pResult);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgDestroyCubemap(RgInstance rgInstance, RgCubemap cubemap)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DestroyCubemap(cubemap);
+    try
+    {
+        GetDevice(rgInstance)->DestroyCubemap(cubemap);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgStartFrame(RgInstance rgInstance, const RgStartFrameInfo *pStartInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->StartFrame(pStartInfo);
+    try
+    {
+        GetDevice(rgInstance)->StartFrame(pStartInfo);
+    }
+    CATCH_OR_RETURN;
 }
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *pDrawInfo)
 {
-    CHECK_WRONG_INSTANCE_AND_RETURN_GET->DrawFrame(pDrawInfo);
+    try
+    {
+        GetDevice(rgInstance)->DrawFrame(pDrawInfo);
+    }
+    CATCH_OR_RETURN;
 }

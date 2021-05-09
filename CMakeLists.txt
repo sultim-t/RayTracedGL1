@@ -71,6 +71,7 @@ set(PrivateHeaders
     "Source/RasterPass.h"
     "Source/SwapchainPass.h"
     "Source/UserFunction.h"
+    "Source/RgException.h"
 )
 
 set(Sources
@@ -124,7 +125,8 @@ set(Sources
     "Source/DepthCopying.cpp"
     "Source/RasterPass.cpp"
     "Source/SwapchainPass.cpp"
-    "Source/UserFunction.cpp"
+    "Source/UserFunction.cpp"    
+    "Source/RgException.cpp"
 )
 
 
