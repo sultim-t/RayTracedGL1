@@ -515,7 +515,7 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 
     if (scene->DoesUniqueIDExist(uploadInfo->uniqueID))
     {
-        throw RgException(RG_ID_ISNT_UNIQUE, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
+        throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
     }
 
     scene->Upload(currentFrameIndex, *uploadInfo);
@@ -996,6 +996,11 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
 
         return surface;
     }
+#else
+    if (info.pWin32SurfaceInfo != nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "pWin32SurfaceInfo is specified, but the library wasn't built with RG_USE_SURFACE_WIN32 option");
+    }
 #endif // RG_USE_SURFACE_WIN32
 
 
@@ -1010,6 +1015,11 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
         VK_CHECKERROR(r);
 
         return surface;
+    }
+#else
+    if (info.pMetalSurfaceCreateInfo != nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "pMetalSurfaceCreateInfo is specified, but the library wasn't built with RG_USE_SURFACE_METAL option");
     }
 #endif // RG_USE_SURFACE_METAL
 
@@ -1027,6 +1037,11 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
 
         return surface;
     }
+#else
+    if (info.pWaylandSurfaceCreateInfo != nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "pWaylandSurfaceCreateInfo is specified, but the library wasn't built with RG_USE_SURFACE_WAYLAND option");
+    }
 #endif // RG_USE_SURFACE_WAYLAND
 
 
@@ -1042,6 +1057,11 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
         VK_CHECKERROR(r);
 
         return surface;
+    }
+#else
+    if (info.pXcbSurfaceCreateInfo != nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "pXcbSurfaceCreateInfo is specified, but the library wasn't built with RG_USE_SURFACE_XCB option");
     }
 #endif // RG_USE_SURFACE_XCB
 
@@ -1059,10 +1079,15 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
 
         return surface;
     }
+#else
+    if (info.pXlibSurfaceCreateInfo != nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "pXlibSurfaceCreateInfo is specified, but the library wasn't built with RG_USE_SURFACE_XLIB option");
+    }
 #endif // RG_USE_SURFACE_XLIB
 
 
-    throw std::runtime_error("Surface info wasn't specified");
+    throw RgException(RG_WRONG_ARGUMENT, "Surface info wasn't specified");
 }
 
 void VulkanDevice::DestroyInstance()

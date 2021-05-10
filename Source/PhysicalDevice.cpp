@@ -20,8 +20,9 @@
 
 #include "PhysicalDevice.h"
 
-#include <stdexcept>
 #include <vector>
+
+#include "RgException.h"
 
 using namespace RTGL1;
 
@@ -35,7 +36,7 @@ PhysicalDevice::PhysicalDevice(VkInstance instance)
 
     if (physCount == 0)
     {
-        throw std::runtime_error("No physical devices found");
+        throw RgException(RG_CANT_FIND_PHYSICAL_DEVICE, "Can't find physical devices");
     }
 
     std::vector<VkPhysicalDevice> physicalDevices;
@@ -71,7 +72,7 @@ PhysicalDevice::PhysicalDevice(VkInstance instance)
 
     if (physDevice == VK_NULL_HANDLE)
     {
-        throw std::runtime_error("No physical device with ray tracing support found");
+        throw RgException(RG_CANT_FIND_PHYSICAL_DEVICE, "Can't find physical device with ray tracing support");
     }
 }
 

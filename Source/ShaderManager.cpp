@@ -22,6 +22,7 @@
 
 #include <fstream>
 #include <vector>
+#include "RgException.h"
 
 using namespace RTGL1;
 
@@ -156,7 +157,7 @@ VkShaderModule RTGL1::ShaderManager::LoadModule(const char *path)
         if (!fileHandle.Contains())
         {
             using namespace std::string_literals;
-            throw std::runtime_error("Can't load shader file "s + path + " using user's file load function"s);
+            throw RgException(RG_WRONG_ARGUMENT, "Can't load shader file \""s + path + "\" using user's file load function"s);
         }
 
         return LoadModuleFromMemory(static_cast<const uint32_t*>(fileHandle.pData), fileHandle.dataSize);
@@ -175,7 +176,7 @@ VkShaderModule ShaderManager::LoadModuleFromFile(const char *path)
     if (shaderSource.empty())
     {
         using namespace std::string_literals;
-        throw std::runtime_error("Can't find shader file"s + path);
+        throw RgException(RG_WRONG_ARGUMENT, "Can't find shader file: \""s + path + "\"");
     }
 
     return LoadModuleFromMemory(reinterpret_cast<const uint32_t*>(shaderSource.data()), shaderSource.size());
