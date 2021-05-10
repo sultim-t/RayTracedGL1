@@ -79,22 +79,16 @@ RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *pResult)
         return RG_TOO_MANY_INSTANCES;
     }
 
+    // insert new
+    const RgInstance rgInstance = GetNextID();
+    assert(G_DEVICES.find(rgInstance) == G_DEVICES.end());
+
     try
     {
-        // insert new
-        const RgInstance id = GetNextID();
-        assert(G_DEVICES.find(id) == G_DEVICES.end());
-
-        G_DEVICES[id] = std::make_unique<VulkanDevice>(info);
-        *pResult = id;
+        G_DEVICES[rgInstance] = std::make_unique<VulkanDevice>(info);
+        *pResult = rgInstance;
     }
-    catch (RTGL1::RgException &e)
-    {
-        // must not happen
-        assert(false);
-    }
-
-    return RG_SUCCESS;
+    CATCH_OR_RETURN;
 }
 
 RgResult rgDestroyInstance(RgInstance rgInstance)
