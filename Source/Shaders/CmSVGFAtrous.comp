@@ -246,21 +246,15 @@ void main()
     {
         case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
                 imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
-                imageStore(framebufIndirPongSH_R,            pix, filteredIndir.r); 
-                imageStore(framebufIndirPongSH_G,            pix, filteredIndir.g); 
-                imageStore(framebufIndirPongSH_B,            pix, filteredIndir.b); 
+                imageStoreIndirPongSH(                       pix, filteredIndir); 
                 break;
         case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
                 imageStore(framebufSpecPingColor,            pix, vec4(filteredSpec, 0.0)); 
-                imageStore(framebufIndirPingSH_R,            pix, filteredIndir.r); 
-                imageStore(framebufIndirPingSH_G,            pix, filteredIndir.g); 
-                imageStore(framebufIndirPingSH_B,            pix, filteredIndir.b); 
+                imageStoreIndirPingSH(                       pix, filteredIndir); 
                 break;
         case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
                 imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
-                imageStore(framebufIndirPongSH_R,            pix, filteredIndir.r); 
-                imageStore(framebufIndirPongSH_G,            pix, filteredIndir.g); 
-                imageStore(framebufIndirPongSH_B,            pix, filteredIndir.b); 
+                imageStoreIndirPongSH(                       pix, filteredIndir); 
                 break;
     }
 

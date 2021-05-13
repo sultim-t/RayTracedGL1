@@ -278,22 +278,20 @@ SH texelFetchSH(sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samp
 
 SH texelFetchIndirAccumSH(ivec2 pix)
 {
-    SH sh;
-    sh.r = texelFetch(framebufIndirAccumSH_R_Sampler, pix, 0);
-    sh.g = texelFetch(framebufIndirAccumSH_G_Sampler, pix, 0);
-    sh.b = texelFetch(framebufIndirAccumSH_B_Sampler, pix, 0);
-
-    return sh;
+    return texelFetchSH(
+        framebufIndirAccumSH_R_Sampler,
+        framebufIndirAccumSH_G_Sampler, 
+        framebufIndirAccumSH_B_Sampler, 
+        pix);
 }
 
 SH texelFetchIndirAccumSH_Prev(ivec2 pix)
 {
-    SH sh;
-    sh.r = texelFetch(framebufIndirAccumSH_R_Prev_Sampler, pix, 0);
-    sh.g = texelFetch(framebufIndirAccumSH_G_Prev_Sampler, pix, 0);
-    sh.b = texelFetch(framebufIndirAccumSH_B_Prev_Sampler, pix, 0);
-
-    return sh;
+    return texelFetchSH(
+        framebufIndirAccumSH_R_Prev_Sampler,
+        framebufIndirAccumSH_G_Prev_Sampler,
+        framebufIndirAccumSH_B_Prev_Sampler,
+        pix);
 }
 
 SH imageLoadUnfilteredIndirectSH(ivec2 pix)
@@ -318,6 +316,20 @@ void imageStoreIndirAccumSH(ivec2 pix, const SH sh)
     imageStore(framebufIndirAccumSH_R, pix, sh.r);
     imageStore(framebufIndirAccumSH_G, pix, sh.g);
     imageStore(framebufIndirAccumSH_B, pix, sh.b);
+}
+
+void imageStoreIndirPingSH(ivec2 pix, const SH sh)
+{
+    imageStore(framebufIndirPingSH_R, pix, sh.r);
+    imageStore(framebufIndirPingSH_G, pix, sh.g);
+    imageStore(framebufIndirPingSH_B, pix, sh.b);
+}
+
+void imageStoreIndirPongSH(ivec2 pix, const SH sh)
+{
+    imageStore(framebufIndirPongSH_R, pix, sh.r);
+    imageStore(framebufIndirPongSH_G, pix, sh.g);
+    imageStore(framebufIndirPongSH_B, pix, sh.b);
 }
 
 vec3 texelFetchNormal(ivec2 pix)
