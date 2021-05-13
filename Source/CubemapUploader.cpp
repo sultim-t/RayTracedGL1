@@ -66,7 +66,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
             return result;
         }
 
-        SET_DEBUG_NAME(device, stagingBuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.pDebugName);
+        SET_DEBUG_NAME(device, stagingBuffers[i], VK_OBJECT_TYPE_BUFFER, info.pDebugName);
     }
 
 
@@ -95,7 +95,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
     // create image view
     VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
 
-    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.pDebugName);
+    SET_DEBUG_NAME(device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName);
 
 
     // push staging buffer to be deleted when it won't be in use

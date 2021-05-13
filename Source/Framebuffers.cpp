@@ -122,7 +122,7 @@ void Framebuffers::CreateDescriptors()
     r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Framebuffers Desc set layout");
+    SET_DEBUG_NAME(device, descSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Framebuffers Desc set layout");
 
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
@@ -137,7 +137,7 @@ void Framebuffers::CreateDescriptors()
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Framebuffers Desc pool");
+    SET_DEBUG_NAME(device, descPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Framebuffers Desc pool");
 
     for (uint32_t i = 0; i < FRAMEBUFFERS_HISTORY_LENGTH; i++)
     {
@@ -150,7 +150,7 @@ void Framebuffers::CreateDescriptors()
         r = vkAllocateDescriptorSets(device, &allocInfo, &descSets[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Framebuffers Desc set");
+        SET_DEBUG_NAME(device, descSets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET, "Framebuffers Desc set");
     }
 }
 
@@ -282,8 +282,8 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
         r = vkCreateImageView(device, &viewInfo, nullptr, &imageViews[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, images[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, ShFramebuffers_DebugNames[i]);
-        SET_DEBUG_NAME(device, imageViews[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, ShFramebuffers_DebugNames[i]);
+        SET_DEBUG_NAME(device, images[i], VK_OBJECT_TYPE_IMAGE, ShFramebuffers_DebugNames[i]);
+        SET_DEBUG_NAME(device, imageViews[i], VK_OBJECT_TYPE_IMAGE_VIEW, ShFramebuffers_DebugNames[i]);
 
         // to general layout
         Utils::BarrierImage(

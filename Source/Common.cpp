@@ -61,9 +61,9 @@ void RTGL1::InitDeviceExtensionFunctions_DebugUtils(VkDevice device)
     #undef VK_EXTENSION_FUNCTION
 }
 
-void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name)
+void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const char *name)
 {
-    if (svkDebugMarkerSetObjectNameEXT == nullptr)
+    if (svkSetDebugUtilsObjectNameEXT == nullptr)
     {
         return;
     }
@@ -73,12 +73,12 @@ void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeE
         return;
     }
 
-    VkDebugMarkerObjectNameInfoEXT nameInfo = {};
-    nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_MARKER_OBJECT_NAME_INFO_EXT;
-    nameInfo.object = obj;
+    VkDebugUtilsObjectNameInfoEXT nameInfo = {};
+    nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
+    nameInfo.objectHandle = obj;
     nameInfo.objectType = type;
     nameInfo.pObjectName = name;
 
-    VkResult r = svkDebugMarkerSetObjectNameEXT(device, &nameInfo);
+    VkResult r = svkSetDebugUtilsObjectNameEXT(device, &nameInfo);
     VK_CHECKERROR(r);
 }

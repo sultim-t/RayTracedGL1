@@ -49,7 +49,7 @@ constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 	VK_EXTENSION_FUNCTION(vkCmdTraceRaysKHR)
 
 #define VK_DEVICE_DEBUG_UTILS_FUNCTION_LIST \
-	VK_EXTENSION_FUNCTION(vkDebugMarkerSetObjectNameEXT)
+	VK_EXTENSION_FUNCTION(vkSetDebugUtilsObjectNameEXT)
 
 
 // extension functions' declarations
@@ -76,6 +76,6 @@ constexpr void VK_CHECKERROR(const VkResult r)
 
 
 // If name is null, debug name won't be set
-void AddDebugName(VkDevice device, uint64_t obj, VkDebugReportObjectTypeEXT type, const char *name);
+void AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const char *name);
 
 }

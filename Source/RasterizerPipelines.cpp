@@ -385,7 +385,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
     VkResult r = vkCreateGraphicsPipelines(device, pipelineCache, 1, &plInfo, nullptr, &pipeline);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer raster draw pipeline");
+    SET_DEBUG_NAME(device, pipeline, VK_OBJECT_TYPE_PIPELINE, "Rasterizer raster draw pipeline");
 
     return pipeline;
 }

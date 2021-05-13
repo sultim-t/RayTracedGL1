@@ -184,7 +184,7 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &tmDescSetLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, tmDescSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Tonemapping Desc set layout");
+    SET_DEBUG_NAME(device, tmDescSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Tonemapping Desc set layout");
 
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -199,7 +199,7 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &tmDescPool);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, tmDescPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Tonemapping Desc pool");
+    SET_DEBUG_NAME(device, tmDescPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Tonemapping Desc pool");
 
     VkDescriptorSetAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -210,7 +210,7 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     r = vkAllocateDescriptorSets(device, &allocInfo, &tmDescSet);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, tmDescSet, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Tonemapping Desc set");
+    SET_DEBUG_NAME(device, tmDescSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "Tonemapping Desc set");
 
     VkDescriptorBufferInfo bfInfo = {};
     bfInfo.buffer = tmBuffer.GetBuffer();
@@ -239,7 +239,7 @@ void RTGL1::Tonemapping::CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Tonemapping pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Tonemapping pipeline layout");
 }
 
 void RTGL1::Tonemapping::CreatePipelines(const ShaderManager *shaderManager)
@@ -256,7 +256,7 @@ void RTGL1::Tonemapping::CreatePipelines(const ShaderManager *shaderManager)
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &histogramPipeline);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, histogramPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Tonemapping LuminanceHistogram pipeline");
+        SET_DEBUG_NAME(device, histogramPipeline, VK_OBJECT_TYPE_PIPELINE, "Tonemapping LuminanceHistogram pipeline");
     }
 
     {
@@ -265,7 +265,7 @@ void RTGL1::Tonemapping::CreatePipelines(const ShaderManager *shaderManager)
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &avgLuminancePipeline);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, avgLuminancePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Tonemapping LuminanceAvg pipeline");
+        SET_DEBUG_NAME(device, avgLuminancePipeline, VK_OBJECT_TYPE_PIPELINE, "Tonemapping LuminanceAvg pipeline");
     }
 }
 

@@ -66,7 +66,7 @@ void RTGL1::SwapchainPass::CreateFramebuffers(uint32_t newSwapchainWidth, uint32
         VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &swapchainFramebuffers[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, swapchainFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer swapchain framebuffer");
+        SET_DEBUG_NAME(device, swapchainFramebuffers[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer swapchain framebuffer");
     }
 
     this->swapchainWidth = newSwapchainWidth;
@@ -168,5 +168,5 @@ void RTGL1::SwapchainPass::CreateSwapchainRenderPass(VkFormat surfaceFormat)
     VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &swapchainRenderPass);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, swapchainRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer swapchain render pass");
+    SET_DEBUG_NAME(device, swapchainRenderPass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer swapchain render pass");
 }

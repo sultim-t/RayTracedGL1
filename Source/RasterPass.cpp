@@ -114,7 +114,7 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
             VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterFramebuffers[i]);
             VK_CHECKERROR(r);
 
-            SET_DEBUG_NAME(device, rasterFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer raster framebuffer");
+            SET_DEBUG_NAME(device, rasterFramebuffers[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer raster framebuffer");
         }
 
         {
@@ -125,7 +125,7 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
             VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterSkyFramebuffers[i]);
             VK_CHECKERROR(r);
 
-            SET_DEBUG_NAME(device, rasterSkyFramebuffers[i], VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Rasterizer raster sky framebuffer");
+            SET_DEBUG_NAME(device, rasterSkyFramebuffers[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer raster sky framebuffer");
         }
     }
 
@@ -282,7 +282,7 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
         VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterRenderPass);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, rasterRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer raster render pass");
+        SET_DEBUG_NAME(device, rasterRenderPass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer raster render pass");
     }
 
     {
@@ -291,7 +291,7 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
         VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterSkyRenderPass);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, rasterSkyRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Rasterizer raster sky render pass");
+        SET_DEBUG_NAME(device, rasterSkyRenderPass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer raster sky render pass");
     }
 }
 
@@ -320,7 +320,7 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height,
 
         VkResult r = vkCreateImage(device, &imageInfo, nullptr, &depthImages[i]);
         VK_CHECKERROR(r);
-        SET_DEBUG_NAME(device, depthImages[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, "Rasterizer raster pass depth image" );
+        SET_DEBUG_NAME(device, depthImages[i], VK_OBJECT_TYPE_IMAGE, "Rasterizer raster pass depth image" );
 
 
         // allocate dedicated memory
@@ -328,7 +328,7 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height,
         vkGetImageMemoryRequirements(device, depthImages[i], &memReqs);
 
         depthMemory[i] = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        SET_DEBUG_NAME(device, depthMemory[i], VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, "Rasterizer raster pass depth memory");
+        SET_DEBUG_NAME(device, depthMemory[i], VK_OBJECT_TYPE_DEVICE_MEMORY, "Rasterizer raster pass depth memory");
 
         if (depthMemory[i] == VK_NULL_HANDLE)
         {
@@ -357,7 +357,7 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height,
 
         r = vkCreateImageView(device, &viewInfo, nullptr, &depthViews[i]);
         VK_CHECKERROR(r);
-        SET_DEBUG_NAME(device, depthViews[i], VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, "Rasterizer raster pass depth image view");
+        SET_DEBUG_NAME(device, depthViews[i], VK_OBJECT_TYPE_IMAGE_VIEW, "Rasterizer raster pass depth image view");
 
 
         // make transition from undefined manually,

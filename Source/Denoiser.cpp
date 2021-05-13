@@ -254,7 +254,7 @@ void RTGL1::Denoiser::CreateMergingPipelineLayout(VkDescriptorSetLayout *pSetLay
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineVerticesLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Denoiser with vertices pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Denoiser with vertices pipeline layout");
 }
 
 void RTGL1::Denoiser::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount)
@@ -267,7 +267,7 @@ void RTGL1::Denoiser::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, ui
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
     
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Denoiser pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Denoiser pipeline layout");
 }
 
 void RTGL1::Denoiser::DestroyPipelines()
@@ -321,7 +321,7 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &merging);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, merging, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "ASVGF Merging pipeline");
+        SET_DEBUG_NAME(device, merging, VK_OBJECT_TYPE_PIPELINE, "ASVGF Merging pipeline");
     }
     
     VkComputePipelineCreateInfo plInfo = {};
@@ -334,7 +334,7 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &gradientSamples);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, gradientSamples, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "ASVGF Create gradient samples pipeline");
+        SET_DEBUG_NAME(device, gradientSamples, VK_OBJECT_TYPE_PIPELINE, "ASVGF Create gradient samples pipeline");
     }
 
     {
@@ -356,7 +356,7 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
             r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &gradientAtrous[i]);
             VK_CHECKERROR(r);
 
-            SET_DEBUG_NAME(device, gradientAtrous[i], VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, debugNames[i]);
+            SET_DEBUG_NAME(device, gradientAtrous[i], VK_OBJECT_TYPE_PIPELINE, debugNames[i]);
         }
     }
 
@@ -366,7 +366,7 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &temporalAccumulation);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, temporalAccumulation, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "SVGF Temporal accumulation pipeline");
+        SET_DEBUG_NAME(device, temporalAccumulation, VK_OBJECT_TYPE_PIPELINE, "SVGF Temporal accumulation pipeline");
     }
 
     {
@@ -375,7 +375,7 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &varianceEstimation);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, varianceEstimation, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "SVGF Variance estimation pipeline");
+        SET_DEBUG_NAME(device, varianceEstimation, VK_OBJECT_TYPE_PIPELINE, "SVGF Variance estimation pipeline");
     }
 
     {
@@ -397,7 +397,7 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
             r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &atrous[i]);
             VK_CHECKERROR(r);
 
-            SET_DEBUG_NAME(device, atrous[i], VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, debugNames[i]);
+            SET_DEBUG_NAME(device, atrous[i], VK_OBJECT_TYPE_PIPELINE, debugNames[i]);
         }
     }
 }

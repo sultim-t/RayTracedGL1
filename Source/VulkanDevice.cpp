@@ -922,11 +922,6 @@ void VulkanDevice::CreateDevice()
         VK_KHR_MULTIVIEW_EXTENSION_NAME
     };
 
-    if (enableValidationLayer)
-    {
-        deviceExtensions.push_back(VK_EXT_DEBUG_MARKER_EXTENSION_NAME);
-    }
-
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     queues->GetDeviceQueueCreateInfos(queueCreateInfos);
 
@@ -971,9 +966,9 @@ void VulkanDevice::CreateSyncPrimitives()
         r = vkCreateFence(device, &fenceInfo, nullptr, &frameFences[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, imageAvailableSemaphores[i], VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, "Image available semaphore");
-        SET_DEBUG_NAME(device, renderFinishedSemaphores[i], VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT, "Render finished semaphore");
-        SET_DEBUG_NAME(device, frameFences[i], VK_DEBUG_REPORT_OBJECT_TYPE_FENCE_EXT, "Frame fence");
+        SET_DEBUG_NAME(device, imageAvailableSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "Image available semaphore");
+        SET_DEBUG_NAME(device, renderFinishedSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "Render finished semaphore");
+        SET_DEBUG_NAME(device, frameFences[i], VK_OBJECT_TYPE_FENCE, "Frame fence");
     }
 }
 

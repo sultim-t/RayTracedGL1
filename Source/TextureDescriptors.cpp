@@ -83,7 +83,7 @@ void TextureDescriptors::CreateDescriptors(uint32_t maxTextureCount)
     VkResult r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Textures Desc set layout");
+    SET_DEBUG_NAME(device, descLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Textures Desc set layout");
 
     VkDescriptorPoolSize poolSize = {};
     poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -98,7 +98,7 @@ void TextureDescriptors::CreateDescriptors(uint32_t maxTextureCount)
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Textures Desc pool");
+    SET_DEBUG_NAME(device, descPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Textures Desc pool");
 
     VkDescriptorSetAllocateInfo setInfo = {};
     setInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -111,7 +111,7 @@ void TextureDescriptors::CreateDescriptors(uint32_t maxTextureCount)
         r = vkAllocateDescriptorSets(device, &setInfo, &descSets[i]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, descSets[i], VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Textures desc set");
+        SET_DEBUG_NAME(device, descSets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET, "Textures desc set");
     }
 }
 

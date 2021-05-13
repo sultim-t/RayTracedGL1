@@ -141,7 +141,7 @@ void RayTracingPipeline::CreatePipelineLayout(const VkDescriptorSetLayout *pSetL
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &rtPipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, rtPipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Ray tracing pipeline Layout");
+    SET_DEBUG_NAME(device, rtPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Ray tracing pipeline Layout");
 }
 
 void RayTracingPipeline::CreatePipeline(const ShaderManager *shaderManager)
@@ -169,7 +169,7 @@ void RayTracingPipeline::CreatePipeline(const ShaderManager *shaderManager)
     VkResult r = svkCreateRayTracingPipelinesKHR(device, VK_NULL_HANDLE, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &rtPipeline);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, rtPipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Ray tracing pipeline");
+    SET_DEBUG_NAME(device, rtPipeline, VK_OBJECT_TYPE_PIPELINE, "Ray tracing pipeline");
 }
 
 void RayTracingPipeline::DestroyPipeline()

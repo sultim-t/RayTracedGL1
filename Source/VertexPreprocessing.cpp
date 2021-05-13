@@ -110,7 +110,7 @@ void RTGL1::VertexPreprocessing::CreatePipelineLayout(VkDescriptorSetLayout*pSet
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Vertex preprocessing pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Vertex preprocessing pipeline layout");
 }
 
 void RTGL1::VertexPreprocessing::CreatePipelines(const ShaderManager *shaderManager)
@@ -142,7 +142,7 @@ void RTGL1::VertexPreprocessing::CreatePipelines(const ShaderManager *shaderMana
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineOnlyDynamic);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, pipelineOnlyDynamic, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex only dynamic preprocessing pipeline");
+        SET_DEBUG_NAME(device, pipelineOnlyDynamic, VK_OBJECT_TYPE_PIPELINE, "Vertex only dynamic preprocessing pipeline");
     }
     
     {
@@ -151,7 +151,7 @@ void RTGL1::VertexPreprocessing::CreatePipelines(const ShaderManager *shaderMana
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineDynamicAndMovable);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, pipelineDynamicAndMovable, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex movable/dynamic preprocessing pipeline");
+        SET_DEBUG_NAME(device, pipelineDynamicAndMovable, VK_OBJECT_TYPE_PIPELINE, "Vertex movable/dynamic preprocessing pipeline");
     }
 
     {
@@ -160,7 +160,7 @@ void RTGL1::VertexPreprocessing::CreatePipelines(const ShaderManager *shaderMana
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineAll);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, pipelineAll, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Vertex static/movable/dynamic preprocessing pipeline");
+        SET_DEBUG_NAME(device, pipelineAll, VK_OBJECT_TYPE_PIPELINE, "Vertex static/movable/dynamic preprocessing pipeline");
     }
 }
 

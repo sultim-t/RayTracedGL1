@@ -205,7 +205,7 @@ void RTGL1::DepthCopying::CreatePipelineLayout(VkDescriptorSetLayout fbSetLayout
     VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Depth copying raster pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Depth copying raster pipeline layout");
 }
 
 void RTGL1::DepthCopying::CreatePipeline(const ShaderManager *shaderManager)
@@ -313,5 +313,5 @@ void RTGL1::DepthCopying::CreatePipeline(const ShaderManager *shaderManager)
     VkResult r = vkCreateGraphicsPipelines(device, nullptr, 1, &plInfo, nullptr, &pipeline);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Rasterizer raster draw pipeline");
+    SET_DEBUG_NAME(device, pipeline, VK_OBJECT_TYPE_PIPELINE, "Rasterizer raster draw pipeline");
 }

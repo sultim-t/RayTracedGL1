@@ -101,7 +101,7 @@ void ShaderManager::LoadShaderModules()
         auto path = shaderFolderPath + s.filename;
 
         VkShaderModule m = LoadModule(path.c_str());
-        SET_DEBUG_NAME(device, m, VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT, s.name);
+        SET_DEBUG_NAME(device, m, VK_OBJECT_TYPE_SHADER_MODULE, s.name);
 
         modules[s.name] = { m, s.stage };
     }

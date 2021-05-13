@@ -237,7 +237,7 @@ void RTGL1::RenderCubemap::CreatePipelineLayout(VkDescriptorSetLayout texturesSe
     VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipelineLayout, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Render cubemap pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Render cubemap pipeline layout");
 }
 
 void RTGL1::RenderCubemap::CreateRenderPass()
@@ -318,7 +318,7 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &multiviewRenderPass);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, multiviewRenderPass, VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT, "Render cubemap multiview render pass");
+    SET_DEBUG_NAME(device, multiviewRenderPass, VK_OBJECT_TYPE_RENDER_PASS, "Render cubemap multiview render pass");
 }
 
 void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize, bool applyVertexColorGamma)
@@ -361,7 +361,7 @@ void RTGL1::RenderCubemap::CreateAttch(
 
     VkResult r = vkCreateImage(device, &imageInfo, nullptr, &result.image);
     VK_CHECKERROR(r);
-    SET_DEBUG_NAME(device, result.image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, isDepth ? "Render cubemap depth image" : "Render cubemap image");
+    SET_DEBUG_NAME(device, result.image, VK_OBJECT_TYPE_IMAGE, isDepth ? "Render cubemap depth image" : "Render cubemap image");
 
 
     // allocate dedicated memory
@@ -369,7 +369,7 @@ void RTGL1::RenderCubemap::CreateAttch(
     vkGetImageMemoryRequirements(device, result.image, &memReqs);
 
     result.memory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    SET_DEBUG_NAME(device, result.memory, VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT, isDepth ? "Render cubemap depth memory" : "Render cubemap image memory");
+    SET_DEBUG_NAME(device, result.memory, VK_OBJECT_TYPE_DEVICE_MEMORY, isDepth ? "Render cubemap depth memory" : "Render cubemap image memory");
 
     if (result.memory == VK_NULL_HANDLE)
     {
@@ -398,7 +398,7 @@ void RTGL1::RenderCubemap::CreateAttch(
 
     r = vkCreateImageView(device, &viewInfo, nullptr, &result.view);
     VK_CHECKERROR(r);
-    SET_DEBUG_NAME(device, result.view, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, isDepth ? "Render cubemap depth image view" : "Render cubemap image view");
+    SET_DEBUG_NAME(device, result.view, VK_OBJECT_TYPE_IMAGE_VIEW, isDepth ? "Render cubemap depth image view" : "Render cubemap image view");
 
 
     // make transition from undefined manually, so initialLayout can be specified
@@ -461,7 +461,7 @@ void RTGL1::RenderCubemap::CreateFramebuffer(uint32_t sideSize)
     VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &cubemapFramebuffer);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, cubemapFramebuffer, VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT, "Render cubemap framebuffer");
+    SET_DEBUG_NAME(device, cubemapFramebuffer, VK_OBJECT_TYPE_FRAMEBUFFER, "Render cubemap framebuffer");
 }
 
 void RTGL1::RenderCubemap::CreateDescriptors(const std::shared_ptr<SamplerManager> &samplerManager)
@@ -481,7 +481,7 @@ void RTGL1::RenderCubemap::CreateDescriptors(const std::shared_ptr<SamplerManage
     VkResult r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &descSetLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descSetLayout, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT, "Render cubemap Desc set layout");
+    SET_DEBUG_NAME(device, descSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Render cubemap Desc set layout");
 
 
     VkDescriptorPoolSize poolSize = {};
@@ -497,7 +497,7 @@ void RTGL1::RenderCubemap::CreateDescriptors(const std::shared_ptr<SamplerManage
     r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descPool, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT, "Render cubemap Desc pool");
+    SET_DEBUG_NAME(device, descPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Render cubemap Desc pool");
 
 
     VkDescriptorSetAllocateInfo setInfo = {};
@@ -509,7 +509,7 @@ void RTGL1::RenderCubemap::CreateDescriptors(const std::shared_ptr<SamplerManage
     r = vkAllocateDescriptorSets(device, &setInfo, &descSet);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, descSet, VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT, "Render cubemap desc set");
+    SET_DEBUG_NAME(device, descSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "Render cubemap desc set");
 
 
     VkDescriptorImageInfo img = {};

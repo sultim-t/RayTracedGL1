@@ -102,7 +102,7 @@ void RTGL1::ImageComposition::CreatePipelineLayout(VkDescriptorSetLayout*pSetLay
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &computePipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, computePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT, "Composition pipeline layout");
+    SET_DEBUG_NAME(device, computePipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Composition pipeline layout");
 }
 
 void RTGL1::ImageComposition::CreatePipelines(const ShaderManager *shaderManager)
@@ -115,7 +115,7 @@ void RTGL1::ImageComposition::CreatePipelines(const ShaderManager *shaderManager
     VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &computePipeline);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, computePipeline, VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT, "Composition pipeline");
+    SET_DEBUG_NAME(device, computePipeline, VK_OBJECT_TYPE_PIPELINE, "Composition pipeline");
 }
 
 void RTGL1::ImageComposition::DestroyPipelines()

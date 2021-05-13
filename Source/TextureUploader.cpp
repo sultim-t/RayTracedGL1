@@ -232,7 +232,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
         return false;
     }
 
-    SET_DEBUG_NAME(device, image, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT, info.pDebugName);
+    SET_DEBUG_NAME(device, image, VK_OBJECT_TYPE_IMAGE, info.pDebugName);
 
     *result = image;
     return true;
@@ -432,7 +432,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         return result;
     }
 
-    SET_DEBUG_NAME(device, stagingBuffer, VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT, info.pDebugName);
+    SET_DEBUG_NAME(device, stagingBuffer, VK_OBJECT_TYPE_BUFFER, info.pDebugName);
 
     bool wasCreated = CreateImage(info, &image);
     if (!wasCreated)
@@ -460,7 +460,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     // create image view
     VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
 
-    SET_DEBUG_NAME(device, imageView, VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT, info.pDebugName);
+    SET_DEBUG_NAME(device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName);
 
     // save info about created image
     if (info.isDynamic)
