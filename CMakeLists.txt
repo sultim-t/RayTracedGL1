@@ -72,6 +72,7 @@ set(PrivateHeaders
     "Source/SwapchainPass.h"
     "Source/UserFunction.h"
     "Source/RgException.h"
+    "Source/CmdLabel.h"
 )
 
 set(Sources

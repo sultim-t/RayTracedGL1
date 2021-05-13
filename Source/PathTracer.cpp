@@ -20,6 +20,7 @@
 
 #include "PathTracer.h"
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 using namespace RTGL1;
 
@@ -75,6 +76,8 @@ void PathTracer::TracePrimaryRays(
     uint32_t width, uint32_t height,
     const std::shared_ptr<Framebuffers> &framebuffers)
 {
+    CmdLabel label(cmd, "Primary rays");
+
     VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
     // primary
@@ -90,37 +93,44 @@ void PathTracer::TraceIllumination(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     uint32_t width, uint32_t height,
     const std::shared_ptr<Framebuffers> &framebuffers)
-{
+{    
     VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
-    // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_NORMAL);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_RANDOM_SEED);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_SURFACE_POSITION);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_VIEW_DIRECTION);
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
+    {
+        CmdLabel label(cmd, "Direct illumination");
 
-    // direct illumination
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
+        // sync access
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_ALBEDO);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_NORMAL);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_METALLIC_ROUGHNESS);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_DEPTH);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_RANDOM_SEED);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_SURFACE_POSITION);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_VIEW_DIRECTION);
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
 
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        width, height, 1);
+        // direct illumination
+        rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
 
+        svkCmdTraceRaysKHR(
+            cmd,
+            &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+            width, height, 1);
+    }
     
-    // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
+    {
+        CmdLabel label(cmd, "Indirect illumination");
 
-    // indirect illumination
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
+        // sync access
+        framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
 
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        width, height, 1);
+        // indirect illumination
+        rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
+
+        svkCmdTraceRaysKHR(
+            cmd,
+            &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+            width, height, 1);
+    }
 }

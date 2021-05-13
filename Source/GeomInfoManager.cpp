@@ -23,6 +23,7 @@
 #include "Matrix.h"
 #include "VertexCollectorFilterType.h"
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 constexpr uint32_t GEOM_INFO_BUFFER_SIZE = MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(RTGL1::ShGeometryInstance);
 constexpr uint32_t GEOM_INFO_MATCH_PREV_BUFFER_SIZE = MAX_TOP_LEVEL_INSTANCE_COUNT * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(int32_t);
@@ -57,6 +58,8 @@ RTGL1::GeomInfoManager::~GeomInfoManager()
 
 bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, bool insertBarrier)
 {
+    CmdLabel label(cmd, "Copying geom infos");
+
     // always copy matchPrev
     matchPrev->CopyFromStaging(cmd, frameIndex, VK_WHOLE_SIZE);
 

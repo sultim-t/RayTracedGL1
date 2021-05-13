@@ -24,6 +24,7 @@
 
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 constexpr bool ONLY_MAIN_TLAS = false;
 
@@ -655,6 +656,8 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
+    CmdLabel label(cmd, "Building dynamic BLAS");
+
     const auto &colDyn = collectorDynamic[frameIndex];
 
     colDyn->EndCollecting();
@@ -701,6 +704,8 @@ void RTGL1::ASManager::ResubmitStaticTexCoords(VkCommandBuffer cmd)
         return;
     }
 
+    CmdLabel label(cmd, "Recopying static tex coords");
+
     collectorStatic->RecopyTexCoordsFromStaging(cmd);
 }
 
@@ -725,6 +730,8 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
             UpdateBLAS(*blas, collectorStatic);
         }
     }
+
+    CmdLabel label(cmd, "Building static movable BLAS");
 
     // copy transforms to device-local memory
     collectorStatic->RecopyTransformsFromStaging(cmd);
@@ -934,6 +941,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLA
     {
         return false;
     }
+
+
+    CmdLabel label(cmd, "Building TLAS");
 
 
     // fill buffer

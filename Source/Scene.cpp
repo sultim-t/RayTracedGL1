@@ -21,6 +21,7 @@
 #include "Scene.h"
 #include "Generated/ShaderCommonC.h"
 #include "RgException.h"
+#include "CmdLabel.h"
 
 using namespace RTGL1;
 

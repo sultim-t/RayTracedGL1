@@ -24,6 +24,7 @@ using namespace RTGL1;
 
 #include "Swapchain.h"
 #include "Utils.h"
+#include "CmdLabel.h"
 
 static_assert(MAX_FRAMES_IN_FLIGHT == FRAMEBUFFERS_HISTORY_LENGTH, "Framebuffers class logic must be changed if history length is not equal to max frames in flight");
 
@@ -181,6 +182,9 @@ void Framebuffers::PresentToSwapchain(
     FramebufferImageIndex framebufferImageIndex, 
     uint32_t srcWidth, uint32_t srcHeight, VkImageLayout srcLayout)
 {
+    CmdLabel label(cmd, "Present to swapchain");
+
+
     framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
 
     swapchain->BlitForPresent(

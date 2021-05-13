@@ -23,6 +23,7 @@
 #include <vector>
 #include <cmath>
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 RTGL1::VertexPreprocessing::VertexPreprocessing(
     VkDevice _device,
@@ -54,6 +55,9 @@ void RTGL1::VertexPreprocessing::Preprocess(
     const std::shared_ptr<ASManager> &asManager,
     const ShVertPreprocessing &push)
 {
+    CmdLabel label(cmd, "Vertex preprocessing");
+
+
     asManager->OnVertexPreprocessingBegin(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);
 
 

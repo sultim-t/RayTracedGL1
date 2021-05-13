@@ -61,14 +61,9 @@ void RTGL1::InitDeviceExtensionFunctions_DebugUtils(VkDevice device)
     #undef VK_EXTENSION_FUNCTION
 }
 
-void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const char *name)
+void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const char *pName)
 {
-    if (svkSetDebugUtilsObjectNameEXT == nullptr)
-    {
-        return;
-    }
-
-    if (name == nullptr)
+    if (svkSetDebugUtilsObjectNameEXT == nullptr || pName == nullptr)
     {
         return;
     }
@@ -77,8 +72,37 @@ void RTGL1::AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const
     nameInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT;
     nameInfo.objectHandle = obj;
     nameInfo.objectType = type;
-    nameInfo.pObjectName = name;
+    nameInfo.pObjectName = pName;
 
     VkResult r = svkSetDebugUtilsObjectNameEXT(device, &nameInfo);
     VK_CHECKERROR(r);
+}
+
+void RTGL1::BeginCmdLabel(VkCommandBuffer cmd, const char *pName, const float pColor[4])
+{
+    if (svkCmdBeginDebugUtilsLabelEXT == nullptr || pName == nullptr)
+    {
+        return;
+    }
+
+    VkDebugUtilsLabelEXT labelInfo = {};
+    labelInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT;
+    labelInfo.pLabelName = pName;
+
+    if (pColor != nullptr)
+    {
+        memcpy(labelInfo.color, pColor, sizeof(float) * 4);
+    }
+
+    svkCmdBeginDebugUtilsLabelEXT(cmd, &labelInfo);
+}
+
+void RTGL1::EndCmdLabel(VkCommandBuffer cmd)
+{
+    if (svkCmdEndDebugUtilsLabelEXT == nullptr)
+    {
+        return;
+    }
+
+    svkCmdEndDebugUtilsLabelEXT(cmd);
 }

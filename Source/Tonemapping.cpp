@@ -24,6 +24,7 @@
 #include <cmath>
 
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 RTGL1::Tonemapping::Tonemapping(
     VkDevice _device,
@@ -62,6 +63,8 @@ RTGL1::Tonemapping::~Tonemapping()
 
 void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
 {
+    CmdLabel label(cmd, "Tonemapping");
+
     VkBufferMemoryBarrier br = {};
     br.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     br.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;

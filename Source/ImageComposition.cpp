@@ -24,6 +24,7 @@
 #include <cmath>
 
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 RTGL1::ImageComposition::ImageComposition(
     VkDevice _device,
@@ -57,6 +58,9 @@ void RTGL1::ImageComposition::Compose(
     const std::shared_ptr<const GlobalUniform> &uniform,
     const std::shared_ptr<const Tonemapping> &tonemapping)
 {
+    CmdLabel label(cmd, "Final framebuf compose");
+
+
     // sync access
     framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 

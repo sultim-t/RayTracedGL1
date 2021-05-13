@@ -21,6 +21,7 @@
 #include "GlobalUniform.h"
 
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 using namespace RTGL1;
 
@@ -111,8 +112,9 @@ GlobalUniform::~GlobalUniform()
 
 void GlobalUniform::Upload(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    CmdLabel label(cmd, "Copying uniform");
+
     SetData(frameIndex, uniformData.get(), sizeof(ShGlobalUniform));
-    
     uniformBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShGlobalUniform));
 }
 

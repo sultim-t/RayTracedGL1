@@ -22,6 +22,7 @@
 
 #include <cmath>
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 RTGL1::Denoiser::Denoiser(
     VkDevice _device, 
@@ -76,6 +77,9 @@ void RTGL1::Denoiser::MergeSamples(
     const std::shared_ptr<const ASManager> &asManager)
 {
     typedef FramebufferImageIndex FI;
+ 
+    CmdLabel label(cmd, "Gradient Merging");
+
 
     // bind desc sets
     VkDescriptorSet sets[] =
@@ -141,20 +145,26 @@ void RTGL1::Denoiser::Denoise(
 
 
     // gradient samples
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B);
+    {
+        CmdLabel label(cmd, "Gradient Samples");
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientSamples);
-    vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientSamples);
+        vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
+    }
     
     // gradient atrous
 
     for (uint32_t i = 0; i < COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT; i++)
     {
+        CmdLabel label(cmd, "Gradient Atrous");
+
         if (i % 2 == 0)
         {
             framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
@@ -172,25 +182,33 @@ void RTGL1::Denoiser::Denoise(
 
 
     // temporal accumulation
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_MOTION);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
+    {
+        CmdLabel label(cmd, "SVGF Temporal accumulation");
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, temporalAccumulation);
-    vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_MOTION);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, temporalAccumulation);
+        vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+    }
 
 
     // variance estimation
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_MOMENTS);
-    framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_INDIR_ACCUM_HISTORY_LENGTH);
+    {
+        CmdLabel label(cmd, "SVGF Variance estimation");
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, varianceEstimation);
-    vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_MOMENTS);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_INDIR_ACCUM_HISTORY_LENGTH);
+
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, varianceEstimation);
+        vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+    }
 
 
     // atrous
@@ -198,6 +216,8 @@ void RTGL1::Denoiser::Denoise(
 
     for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
     {
+        CmdLabel label(cmd, "SVGF Atrous");
+
         switch (i)
         {
             case 0:

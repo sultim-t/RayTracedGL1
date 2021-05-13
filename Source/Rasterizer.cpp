@@ -25,6 +25,7 @@
 #include "Swapchain.h"
 #include "Matrix.h"
 #include "Utils.h"
+#include "CmdLabel.h"
 
 
 namespace RTGL1
@@ -124,6 +125,8 @@ void Rasterizer::Upload(uint32_t frameIndex,
 
 void Rasterizer::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    CmdLabel label(cmd, "Copying rasterizer data");
+
     collectorGeneral->CopyFromStaging(cmd, frameIndex);
     collectorSky->CopyFromStaging(cmd, frameIndex);
 }
@@ -134,6 +137,8 @@ void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex,
 {
     if (isCubemapOutdated)
     {
+        CmdLabel label(cmd, "Rasterized sky to cubemap");
+
         renderCubemap->Draw(cmd, frameIndex, collectorSky, textureManager, uniform);
         isCubemapOutdated = false;        
     }
@@ -141,6 +146,8 @@ void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex,
 
 void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const RgFloat3D &skyViewerPos, float *proj)
 {
+    CmdLabel label(cmd, "Rasterized sky to albedo framebuf");
+
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_ALBEDO);
 
     float skyView[16];
@@ -174,6 +181,8 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
                                   float *view, float *proj,
                                   bool werePrimaryTraced)
 {
+    CmdLabel label(cmd, "Rasterized to final framebuf");
+
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_DEPTH);
     storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_FINAL);
 
@@ -205,6 +214,8 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
 
 void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj)
 {
+    CmdLabel label(cmd, "Rasterized to swapchain");
+
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
 

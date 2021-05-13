@@ -24,6 +24,7 @@
 #include <array>
 
 #include "Generated/ShaderCommonC.h"
+#include "CmdLabel.h"
 
 namespace RTGL1
 {
@@ -170,6 +171,8 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    CmdLabel label(cmd, "Copying lights");
+
     sphericalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightSpherical) * sphLightCount);
     directionalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightDirectional) * dirLightCount);
 

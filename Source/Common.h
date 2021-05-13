@@ -33,8 +33,6 @@ constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 // extension functions' lists
 #define VK_INSTANCE_DEBUG_UTILS_FUNCTION_LIST \
-	VK_EXTENSION_FUNCTION(vkCmdBeginDebugUtilsLabelEXT) \
-	VK_EXTENSION_FUNCTION(vkCmdEndDebugUtilsLabelEXT) \
 	VK_EXTENSION_FUNCTION(vkCreateDebugUtilsMessengerEXT) \
 	VK_EXTENSION_FUNCTION(vkDestroyDebugUtilsMessengerEXT)
 
@@ -49,7 +47,9 @@ constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 	VK_EXTENSION_FUNCTION(vkCmdTraceRaysKHR)
 
 #define VK_DEVICE_DEBUG_UTILS_FUNCTION_LIST \
-	VK_EXTENSION_FUNCTION(vkSetDebugUtilsObjectNameEXT)
+	VK_EXTENSION_FUNCTION(vkSetDebugUtilsObjectNameEXT) \
+	VK_EXTENSION_FUNCTION(vkCmdBeginDebugUtilsLabelEXT) \
+	VK_EXTENSION_FUNCTION(vkCmdEndDebugUtilsLabelEXT) 
 
 
 // extension functions' declarations
@@ -72,10 +72,12 @@ constexpr void VK_CHECKERROR(const VkResult r)
 }
 
 
-#define SET_DEBUG_NAME(device, obj, type, name) AddDebugName((device), reinterpret_cast<uint64_t>(obj), (type), (name))
+#define SET_DEBUG_NAME(device, obj, type, pName) AddDebugName((device), reinterpret_cast<uint64_t>(obj), (type), (pName))
 
 
 // If name is null, debug name won't be set
-void AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const char *name);
+void AddDebugName(VkDevice device, uint64_t obj, VkObjectType type, const char *pName);
+void BeginCmdLabel(VkCommandBuffer cmd, const char *pName, const float pColor[4] = nullptr);
+void EndCmdLabel(VkCommandBuffer cmd);
 
 }
