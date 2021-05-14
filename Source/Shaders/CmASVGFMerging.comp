@@ -48,7 +48,6 @@ void main()
     ivec2 lastPrevPix = ivec2(0);
     float lastLuminance = 0;
     float lastLuminanceSpec = 0;
-    float lastIndirLuminance = 0;
     bool found = false;
 
     // for each pixel in strata
@@ -70,9 +69,6 @@ void main()
             const vec3 prevSpec = texelFetch(framebufUnfilteredSpecular_Sampler, prevPix, 0).rgb;
             const float prevLuminanceSpec = getLuminance(prevSpec);
 
-            const vec3 prevIndir = getSHColor(texelFetchUnfilteredIndirectSH(prevPix));
-            const float prevLuminanceIndir = getLuminance(prevIndir);
-
             if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec)
             {
                 lastStrataPos = ivec2(xx, yy);
@@ -80,7 +76,6 @@ void main()
                 
                 lastLuminance = prevLuminance;
                 lastLuminanceSpec = prevLuminanceSpec;
-                lastIndirLuminance = prevLuminanceIndir;
 
                 found = true;
             }
@@ -92,6 +87,9 @@ void main()
         imageStore(framebufGradientSamples, gradPix, uvec4(UINT32_MAX));
         return;
     }
+
+    const float lastIndirLuminance = getLuminance(getSHColor(texelFetchUnfilteredIndirectSH(lastPrevPix)));
+
 
     // (b) forward-projected sample
     const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
