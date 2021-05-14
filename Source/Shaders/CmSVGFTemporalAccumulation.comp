@@ -54,6 +54,7 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
@@ -65,8 +66,6 @@ void main()
     }
 
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
-
-    const vec2 uvScreenPrev = vec2(posPrev - 0.5) / vec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
     const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
@@ -97,21 +96,20 @@ void main()
     SH indirPrev = newSH();
     float weightSum = 0.0;
 
-    const vec4 depthPrev = textureGather(framebufDepth_Prev_Sampler, uvScreenPrev, 0);
-    const uvec4 encNormalPrev = textureGatherEncNormalGeometry_Prev(uvScreenPrev);
-
     // 2x2 tap bilinear interpolation
     for (int yy = 0; yy <= 1; yy++)
     {
         for(int xx = 0; xx <= 1; xx++)
         {
             const ivec2 xy = pixPrev + ivec2(xx, yy);
-            const int xyLin = yy * 2 + xx;
+
+            const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
+            const vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
 
             const bool isConsistent = 
                 testInside(xy, screenSize) &&
-                testReprojectedDepth(depth, depthPrev[xyLin], dz) &&
-                testReprojectedNormalEnc(normal, encNormalPrev[xyLin]);
+                testReprojectedDepth(depth, depthPrev, dz) &&
+                testReprojectedNormal(normal, normalPrev);
 
             if (isConsistent)
             {
