@@ -207,7 +207,6 @@ def main():
 
             r = subprocess.run([
                 "glslc", "--target-env=vulkan1.2", 
-                "-O", 
                 "-I", "../Generated",
                 filename, 
                 "-o", "../../Build/" + filename + ".spv"], 

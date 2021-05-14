@@ -204,7 +204,7 @@ void RTGL1::Denoiser::Denoise(
 
         framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR);
         framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_MOMENTS);
-        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_AND_INDIR_ACCUM_HISTORY_LENGTH);
+        framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ACCUM_HISTORY_LENGTH);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, varianceEstimation);
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);

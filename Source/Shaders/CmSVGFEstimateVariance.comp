@@ -77,8 +77,8 @@ void main()
         return;
     }
 
-    const float historyLength   = texelFetch(framebufDiffAndIndirAccumHistoryLength_Sampler, pix, 0).r;
-    const vec2  temporalMoments = texelFetch(framebufDiffAccumMoments_Sampler,               pix, 0).rg;
+    const float historyLength   = texelFetch(framebufAccumHistoryLength_Sampler, pix, 0).r;
+    const vec2  temporalMoments = texelFetch(framebufDiffAccumMoments_Sampler,   pix, 0).rg;
 
     // rely on temporal variance, if collected enough data with temporal acculumation
     if (historyLength > HistoryLengthThreshold)

@@ -242,6 +242,11 @@ bool testReprojectedNormal(const vec3 n, const vec3 nPrev)
     return dot(n, nPrev) > 0.95;
 }
 
+bool testReprojectedNormalEnc(const vec3 n, const uint encodedNPrev)
+{
+    return testReprojectedNormal(n, decodeNormal(encodedNPrev));
+}
+
 float getAntilagAlpha(const float gradSample, const float normFactor)
 {
     const float lambda = normFactor > 0.0001 ? 
@@ -350,6 +355,12 @@ vec3 texelFetchNormalGeometry(ivec2 pix)
 vec3 texelFetchNormalGeometry_Prev(ivec2 pix)
 {
     return decodeNormal(texelFetch(framebufNormalGeometry_Prev_Sampler, pix, 0).r);
+}
+
+uvec4 textureGatherNormalGeometry_Prev(vec2 uv)
+{
+    // get R components of 4 texels 
+    return textureGather(framebufNormalGeometry_Prev_Sampler, uv, 0);
 }
 
 void imageStoreNormal(ivec2 pix, vec3 normal)
