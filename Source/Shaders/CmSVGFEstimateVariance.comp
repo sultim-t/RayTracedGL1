@@ -52,28 +52,97 @@
 #define DESC_SET_GLOBAL_UNIFORM 1
 #include "ShaderCommonGLSLFunc.h"
 
-layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
+layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_X, local_size_z = 1) in;
 
-const float HistoryLengthThreshold = 4.0;
-const int SpatialFilterSize = 1;
+const float HISTORY_LENGTH_THRESHOLD = 4.0;
+// 3x3 box filter
+const int FILTER_RADIUS = 1;
+
+struct FilterData
+{
+    vec3 color;
+    uint encNormalGeometry;
+    vec2 gradDepth;
+    float depth;
+};
+
+// Preloaded data for filter pixel data. Additional FILTER_RADIUS pixels at both ends for each dimension
+const int SHARED_WIDTH = FILTER_RADIUS + COMPUTE_SVGF_GROUP_SIZE_X + FILTER_RADIUS;
+shared FilterData filterData[SHARED_WIDTH][SHARED_WIDTH];
+
+
+void fillFilterData(const ivec2 globalBasePix, const int sharedOffset)
+{
+    const ivec2 sharedPix = ivec2(sharedOffset % SHARED_WIDTH, sharedOffset / SHARED_WIDTH);
+    const ivec2 globalPix = globalBasePix + sharedPix;
+
+    FilterData data;
+    data.color              = texelFetch(framebufDiffAccumColor_Sampler, globalPix, 0).rgb;
+    data.encNormalGeometry  = texelFetchEncNormalGeometry(               globalPix);
+    const vec3 depthFB      = texelFetch(framebufDepth_Sampler,          globalPix, 0).rgb;
+    data.gradDepth          = abs(depthFB.gb);
+    data.depth              = depthFB.r;
+
+    filterData[sharedPix.y][sharedPix.x] = data;
+}
+
+
+void preloadForCurrentPix()
+{
+    const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
+    const int threadIndex = int(gl_LocalInvocationIndex);
+
+    const int sharedCount = SHARED_WIDTH * SHARED_WIDTH;
+    const int threadCount = COMPUTE_SVGF_GROUP_SIZE_X * COMPUTE_SVGF_GROUP_SIZE_X;
+   
+    // how many threads should load only one pixel
+    const int oneLoadCount = 2 * threadCount - sharedCount;
+    // how many threads should load two pixels
+    // const int twoLoadCount = sharedCount - threadCount;
+
+    if (threadIndex < oneLoadCount)
+    {
+        // first threads need to preload only 1 pixel
+        fillFilterData(globalBasePix, threadIndex);
+    }
+    else
+    {
+        // now threads are loading 2 neighboring pixels
+        const int neighborsIndex = threadIndex - oneLoadCount;
+
+        fillFilterData(globalBasePix, oneLoadCount + neighborsIndex * 2 + 0);
+        fillFilterData(globalBasePix, oneLoadCount + neighborsIndex * 2 + 1);
+    }
+}
+
+
+ivec2 getSharedID(const int offsetX, const int offsetY)
+{
+    return ivec2(gl_LocalInvocationID) + ivec2(FILTER_RADIUS) + ivec2(offsetX, offsetY);
+}
+
+
+float dotEnc(uint n1, uint n2)
+{
+    return dot(decodeNormal(n1), decodeNormal(n2));
+}
+
 
 void main()
 {    
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
-    
-    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
-    {
-        return;
-    }
 
-    const vec3  color     = texelFetch(framebufDiffAccumColor_Sampler, pix, 0).rgb;
-    const vec3  dg        = texelFetch(framebufDepth_Sampler,          pix, 0).rgb;
-    const float depth     = dg.r;
-    const vec2  gradDepth = abs(dg.gb);
 
-    if (depth < 0.0 || depth > MAX_RAY_LENGTH)
+    preloadForCurrentPix();
+    barrier();
+
+
+    const ivec2 pixShared = getSharedID(0, 0);
+    const FilterData pixData = filterData[pixShared.y][pixShared.x];
+
+    if (pixData.depth < 0.0 || pixData.depth > MAX_RAY_LENGTH)
     {
-        imageStore(framebufDiffPingColorAndVariance, pix, vec4(color, 0.0));
+        imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixData.color, 0.0));
         return;
     }
 
@@ -81,48 +150,43 @@ void main()
     const vec2  temporalMoments = texelFetch(framebufDiffAccumMoments_Sampler,   pix, 0).rg;
 
     // rely on temporal variance, if collected enough data with temporal acculumation
-    if (historyLength > HistoryLengthThreshold)
+    if (historyLength > HISTORY_LENGTH_THRESHOLD)
     {
         float temporalVariance = max(0.0, temporalMoments.y - temporalMoments.x * temporalMoments.x);
 
-        imageStore(framebufDiffPingColorAndVariance, pix, vec4(color, temporalVariance));
+        imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixData.color, temporalVariance));
         return;
     }
 
-    const vec3 normal = texelFetchNormalGeometry(pix);
-
-    const float l = getLuminance(color);
+    const float l = getLuminance(pixData.color);
 
     vec2 spatialMoments = vec2(l, l * l) + temporalMoments;
-    vec3 spatialColor = color;
+    vec3 spatialColor = pixData.color;
     float weightSum = 1.0;
 
-    for (int yy = -SpatialFilterSize; yy <= SpatialFilterSize; yy++)
+    for (int yy = -FILTER_RADIUS; yy <= FILTER_RADIUS; yy++)
     {
-        for (int xx = -SpatialFilterSize; xx <= SpatialFilterSize; xx++)
+        for (int xx = -FILTER_RADIUS; xx <= FILTER_RADIUS; xx++)
         {
             if (xx == 0 && yy == 0)
             {
                 continue;
             }
 
-            const ivec2 q = pix + ivec2(xx, yy);
+            const ivec2 qShared = getSharedID(xx, yy);
+            const FilterData qData = filterData[qShared.y][qShared.x];
             
-            const vec3  color_q  = texelFetch(framebufDiffAccumColor_Sampler, q, 0).rgb;
-            const float depth_q  = texelFetch(framebufDepth_Sampler,          q, 0).r;
-            const vec3  normal_q = texelFetchNormalGeometry(                  q);
+            const float l_q = getLuminance(qData.color);
 
-            const float l_q = getLuminance(color_q);
-
-            const float w_z = exp(-abs(depth - depth_q) / max(dot(gradDepth, abs(vec2(xx, yy))), 0.01));
-            const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
+            const float w_z = exp(-abs(pixData.depth - qData.depth) / max(dot(pixData.gradDepth, abs(vec2(xx, yy))), 0.01));
+            const float w_n = pow(max(0.0, dotEnc(pixData.encNormalGeometry, qData.encNormalGeometry)), 128.0);
 
             const float w = w_z * w_n;
 
             if (!isnan(w))
             {
                 spatialMoments += vec2(l_q, l_q * l_q) * w;
-                spatialColor += color_q * w;
+                spatialColor += qData.color * w;
 
                 weightSum += w;
             }
@@ -134,7 +198,16 @@ void main()
     spatialColor *= invWeightSum;
 
     const float spatialVariance = max(0.0, spatialMoments.y - spatialMoments.x * spatialMoments.x) 
-                                  * (1.0 + 2.0 * (1.0 - historyLength / HistoryLengthThreshold));
+                                  * (1.0 + 2.0 * (1.0 - historyLength / HISTORY_LENGTH_THRESHOLD));
                                   
     imageStore(framebufDiffPingColorAndVariance, pix, vec4(spatialColor, spatialVariance));
 }
+
+
+#if COMPUTE_SVGF_GROUP_SIZE_X != COMPUTE_SVGF_GROUP_SIZE_Y
+    #error COMPUTE_SVGF_GROUP_SIZE_X != COMPUTE_SVGF_GROUP_SIZE_Y
+#endif
+
+#if SHARED_WIDTH * SHARED_WIDTH >= COMPUTE_SVGF_GROUP_SIZE_X * COMPUTE_SVGF_GROUP_SIZE_X * 2
+    #error if false, preloadForCurrentPix must be changed
+#endif

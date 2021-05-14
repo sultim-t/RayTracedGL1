@@ -54,21 +54,6 @@
 
 layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
 
-
-/*struct BilinearData
-{
-    SH indirAccumSH_Prev;
-    vec3 diffColorHistory;
-    vec2 diffAccumMoments_Prev;
-    vec2 diffAndIndirAccumHistoryLength_Prev;
-    vec4 specAccumColorAnd HistoryLength_Prev;
-    float depth_Prev_Sampler;
-    uint encNormalGeometry_Prev;
-}
-
-// Bilinear filter size is 2x2, so need +1 for each dimension
-shared BilinearData bilienearData[COMPUTE_SVGF_GROUP_SIZE_X + 1][COMPUTE_SVGF_GROUP_SIZE_Y + 1];*/
-
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
@@ -113,7 +98,7 @@ void main()
     float weightSum = 0.0;
 
     const vec4 depthPrev = textureGather(framebufDepth_Prev_Sampler, uvScreenPrev, 0);
-    const uvec4 encNormalPrev = textureGatherNormalGeometry_Prev(uvScreenPrev);
+    const uvec4 encNormalPrev = textureGatherEncNormalGeometry_Prev(uvScreenPrev);
 
     // 2x2 tap bilinear interpolation
     for (int yy = 0; yy <= 1; yy++)

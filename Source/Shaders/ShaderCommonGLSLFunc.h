@@ -357,10 +357,16 @@ vec3 texelFetchNormalGeometry_Prev(ivec2 pix)
     return decodeNormal(texelFetch(framebufNormalGeometry_Prev_Sampler, pix, 0).r);
 }
 
-uvec4 textureGatherNormalGeometry_Prev(vec2 uv)
+uvec4 textureGatherEncNormalGeometry_Prev(vec2 uv)
 {
     // get R components of 4 texels 
     return textureGather(framebufNormalGeometry_Prev_Sampler, uv, 0);
+}
+
+uint texelFetchEncNormalGeometry(ivec2 pix)
+{
+    // fetch encoded normal
+    return texelFetch(framebufNormalGeometry_Sampler, pix, 0).r;
 }
 
 void imageStoreNormal(ivec2 pix, vec3 normal)
