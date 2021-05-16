@@ -645,6 +645,9 @@ int main()
         RgInstanceCreateInfo info = {};
         info.pName                      = "RTGL1 Test";
         info.enableValidationLayer      = RG_TRUE;
+        
+        info.primaryRaysMaxAlbedoLayers = 3;
+        info.indirectIlluminationMaxAlbedoLayers = 2;
 
         info.vertexPositionStride       = 3 * sizeof(float);
         info.vertexNormalStride         = 3 * sizeof(float);

@@ -37,7 +37,7 @@ vec3 processAlbedo(uint materialsBlendFlags, const vec2 texCoords[3], const uvec
 
     vec3 dst = vec3(1.0);
 
-    for (uint i = 0; i < 3; i++)
+    for (uint i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
     {
         if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {

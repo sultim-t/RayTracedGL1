@@ -162,6 +162,10 @@ typedef struct RgInstanceCreateInfo
     // Custom user data that is passed to pfnUserLoadFile.
     void                        *pUserLoadFileData;
 
+    // How many texture layers should be used to get albedo color for primary rays / indrect illumination.
+    uint32_t                    primaryRaysMaxAlbedoLayers;
+    uint32_t                    indirectIlluminationMaxAlbedoLayers;
+
     // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.
     // If buffer is full, rasterized data will be ignored

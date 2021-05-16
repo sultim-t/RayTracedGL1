@@ -36,7 +36,8 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<Framebuffers> &_framebuffers,
     const std::shared_ptr<BlueNoise> &_blueNoise,
     const std::shared_ptr<CubemapManager> &_cubemapMgr,
-    const std::shared_ptr<RenderCubemap> &_renderCubemap)
+    const std::shared_ptr<RenderCubemap> &_renderCubemap,
+    const RgInstanceCreateInfo &_rgInfo)
 :
     device(_device),
     physDevice(std::move(_physDevice)),
@@ -48,7 +49,9 @@ RayTracingPipeline::RayTracingPipeline(
     alignedHandleSize(0),
     raygenShaderCount(0),
     hitGroupCount(0),
-    missShaderCount(0)
+    missShaderCount(0),
+    primaryRaysMaxAlbedoLayers(_rgInfo.primaryRaysMaxAlbedoLayers),
+    indirectIlluminationMaxAlbedoLayers(_rgInfo.indirectIlluminationMaxAlbedoLayers)
 {
     shaderBindingTable = std::make_shared<AutoBuffer>(device, std::move(_allocator), "SBT staging", "SBT");
 
@@ -77,25 +80,28 @@ RayTracingPipeline::RayTracingPipeline(
 
     CreatePipelineLayout(setLayouts.data(), setLayouts.size());
 
+    assert(primaryRaysMaxAlbedoLayers <= MATERIALS_MAX_LAYER_COUNT);
+    assert(indirectIlluminationMaxAlbedoLayers <= MATERIALS_MAX_LAYER_COUNT);
+
     // shader modules in the pipeline will have the exact order
-    shaderStageNames =
+    shaderStageInfos =
     {
-        "RGenPrimary",
-        "RGenDirect",
-        "RGenIndirect",
-        "RMiss",
-        "RMissShadow",
-        "RClsOpaque",
-        "RAlphaTest",
+        { "RGenPrimary",    &primaryRaysMaxAlbedoLayers },
+        { "RGenDirect",     nullptr },
+        { "RGenIndirect",   &indirectIlluminationMaxAlbedoLayers },
+        { "RMiss",          nullptr },
+        { "RMissShadow",    nullptr },
+        { "RClsOpaque",     nullptr },
+        { "RAlphaTest",     nullptr },
     };
 
 #pragma region Utilities
     // simple lambda to get index in "stages" by name
     auto toIndex = [this] (const char *shaderName)
     {
-        for (uint32_t i = 0; i < shaderStageNames.size(); i++)
+        for (uint32_t i = 0; i < shaderStageInfos.size(); i++)
         {
-            if (std::strcmp(shaderName, shaderStageNames[i]) == 0)
+            if (std::strcmp(shaderName, shaderStageInfos[i].pName) == 0)
             {
                 return i;
             }
@@ -146,11 +152,32 @@ void RayTracingPipeline::CreatePipelineLayout(const VkDescriptorSetLayout *pSetL
 
 void RayTracingPipeline::CreatePipeline(const ShaderManager *shaderManager)
 {
-    std::vector<VkPipelineShaderStageCreateInfo> stages(shaderStageNames.size());
+    std::vector<VkPipelineShaderStageCreateInfo> stages(shaderStageInfos.size());
 
-    for (uint32_t i = 0; i < shaderStageNames.size(); i++)
+    // for optional specialization constants,
+    // pre-allocate whole vector to prevent wrong pointers in pSpecializationInfo
+    std::vector<VkSpecializationMapEntry> specEntries(shaderStageInfos.size());
+    std::vector<VkSpecializationInfo> specInfos(shaderStageInfos.size());
+
+    for (uint32_t i = 0; i < shaderStageInfos.size(); i++)
     {
-        stages[i] = shaderManager->GetStageInfo(shaderStageNames[i]);
+        stages[i] = shaderManager->GetStageInfo(shaderStageInfos[i].pName);
+
+        if (shaderStageInfos[i].pSpecConst != nullptr)
+        {
+            VkSpecializationMapEntry &specEntry = specEntries[i];
+            specEntry.constantID = 0;
+            specEntry.offset = 0;
+            specEntry.size = sizeof(uint32_t);
+
+            VkSpecializationInfo &specInfo = specInfos[i];
+            specInfo.mapEntryCount = 1;
+            specInfo.pMapEntries = &specEntry;
+            specInfo.dataSize = sizeof(*shaderStageInfos[i].pSpecConst);
+            specInfo.pData = shaderStageInfos[i].pSpecConst;
+
+            stages[i].pSpecializationInfo = &specInfo;
+        }
     }
 
     VkPipelineLibraryCreateInfoKHR libInfo = {};
@@ -222,7 +249,7 @@ void RayTracingPipeline::Bind(VkCommandBuffer cmd)
     if (copySBTFromStaging)
     {
         shaderBindingTable->CopyFromStaging(cmd, 0);
-        copySBTFromStaging= false;
+        copySBTFromStaging = false;
     }
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline);

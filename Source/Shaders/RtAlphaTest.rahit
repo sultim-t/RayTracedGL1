@@ -21,6 +21,9 @@
 #version 460
 #extension GL_EXT_ray_tracing : require
 
+// don't need albedo for alpha test
+#define MATERIAL_MAX_ALBEDO_LAYERS 0
+
 #define DESC_SET_GLOBAL_UNIFORM 2
 #define DESC_SET_VERTEX_DATA 3
 #define DESC_SET_TEXTURES 4

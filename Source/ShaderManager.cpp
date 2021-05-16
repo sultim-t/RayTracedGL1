@@ -129,13 +129,15 @@ VkShaderStageFlagBits ShaderManager::GetModuleStage(const char* name) const
     return m != modules.end() ? m->second.shaderStage : static_cast<VkShaderStageFlagBits>(0);
 }
 
-VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo(const char* name) const
+VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo(const char *name) const
 {
     const auto &m = modules.find(name);
 
     if (m == modules.end())
     {
-        assert(0);
+        using namespace std::string_literals;
+
+        throw RgException(RG_WRONG_ARGUMENT, "Can't find loaded shader with name \""s + name + "\"");
         return {};
     }
 

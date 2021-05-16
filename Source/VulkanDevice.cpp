@@ -157,7 +157,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers, 
         blueNoise, 
         cubemapManager,
-        rasterizer->GetRenderCubemap());
+        rasterizer->GetRenderCubemap(),
+        *info);
 
     pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -1119,6 +1120,8 @@ void VulkanDevice::DestroySyncPrimitives()
 
 void RTGL1::VulkanDevice::ValidateCreateInfo(const RgInstanceCreateInfo *pInfo)
 {
+    using namespace std::string_literals;
+
     if (pInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
@@ -1141,6 +1144,16 @@ void RTGL1::VulkanDevice::ValidateCreateInfo(const RgInstanceCreateInfo *pInfo)
     if (pInfo->rasterizedSkyCubemapSize == 0)
     {
         throw RgException(RG_WRONG_ARGUMENT, "rasterizedSkyCubemapSize must be non-zero");
+    }
+
+    if (pInfo->primaryRaysMaxAlbedoLayers > MATERIALS_MAX_LAYER_COUNT)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "primaryRaysMaxAlbedoLayers must be <="s + std::to_string(MATERIALS_MAX_LAYER_COUNT));
+    }
+
+    if (pInfo->indirectIlluminationMaxAlbedoLayers > MATERIALS_MAX_LAYER_COUNT)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "indirectIlluminationMaxAlbedoLayers must be <="s + std::to_string(MATERIALS_MAX_LAYER_COUNT));
     }
 }
 

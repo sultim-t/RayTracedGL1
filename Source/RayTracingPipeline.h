@@ -45,7 +45,8 @@ public:
         const std::shared_ptr<Framebuffers> &framebuffers,
         const std::shared_ptr<BlueNoise> &blueNoise,
         const std::shared_ptr<CubemapManager> &cubemapManager,
-        const std::shared_ptr<RenderCubemap> &renderCubemap);
+        const std::shared_ptr<RenderCubemap> &renderCubemap,
+        const RgInstanceCreateInfo &rgInfo);
     ~RayTracingPipeline();
 
     RayTracingPipeline(const RayTracingPipeline& other) = delete;
@@ -82,10 +83,19 @@ private:
     void AddHitGroup(uint32_t closestHitIndex, uint32_t anyHitIndex, uint32_t intersectionIndex);
 
 private:
+    struct ShaderStageInfo
+    {
+        const char *pName;
+        // One uint specialization const to use in the shader. Can be null.
+        // Otherwise, must exist throughout class lifetime.
+        uint32_t *pSpecConst;
+    };
+
+private:
     VkDevice device;
     std::shared_ptr<PhysicalDevice> physDevice;
 
-    std::vector<const char *> shaderStageNames;
+    std::vector<ShaderStageInfo> shaderStageInfos;
 
     std::vector<VkRayTracingShaderGroupCreateInfoKHR> shaderGroups;
     VkPipelineLayout rtPipelineLayout;
@@ -101,6 +111,9 @@ private:
     uint32_t raygenShaderCount;
     uint32_t hitGroupCount;
     uint32_t missShaderCount;
+
+    uint32_t primaryRaysMaxAlbedoLayers;
+    uint32_t indirectIlluminationMaxAlbedoLayers;
 };
 
 }
