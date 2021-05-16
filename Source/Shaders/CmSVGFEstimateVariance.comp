@@ -87,7 +87,7 @@ void fillFilterData(const ivec2 globalBasePix, const int sharedOffset)
 }
 
 
-void preloadForCurrentPix()
+void preload()
 {
     const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
     const int threadIndex = int(gl_LocalInvocationIndex);
@@ -133,7 +133,7 @@ void main()
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
 
 
-    preloadForCurrentPix();
+    preload();
     barrier();
 
 
@@ -205,5 +205,5 @@ void main()
 
 
 #if SHARED_WIDTH * SHARED_WIDTH >= COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * 2
-    #error if false, preloadForCurrentPix must be changed
+    #error if false, preload must be changed
 #endif

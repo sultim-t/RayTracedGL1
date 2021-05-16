@@ -48,6 +48,9 @@
 // "Spatiotemporal Variance-Guided Filtering: Real-Time Reconstruction for Path-Traced Global Illumination", C.Schied et al.
 // 4.3 Edge-avoiding a-trous wavelet transform
 
+// This file is a copy of CmSVGFAtrous.comp
+// It contains an optimized implementation for specific iteration.
+
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
 #include "ShaderCommonGLSLFunc.h"
@@ -58,30 +61,121 @@ layout (constant_id = 0) const uint atrousIteration = 0;
 
 const int STEP_SIZE = 1 << atrousIteration;
 const float SIGMA_LUMINANCE = 4.0;
-
-
-float prefilterLuminanceVariance(sampler2D samplerColor, const ivec2 pix, const float pixVariance)
+// 3x3 box filter
+const int FILTER_RADIUS = 1;
+const float WAVELET_KERNEL[2][2] = 
 {
-    const int GaussianFilterSize = 1;
+    { 1.0, 0.5  },
+    { 0.5, 0.25 }
+};
+
+
+// TODO: pack color values
+struct AtrousData
+{
+    vec3    directDiffuseColor;
+    vec3    specularColor;
+    float   roughness;
+    uint    encNormalGeometry;
+    float   depth;
+    float   gradDepth;
+};
+
+// Preloaded data for filter pixel data. Additional FILTER_RADIUS pixels at both ends for each dimension
+const int SHARED_WIDTH = FILTER_RADIUS + COMPUTE_SVGF_ATROUS_GROUP_SIZE_X + FILTER_RADIUS;
+shared AtrousData atrousData[SHARED_WIDTH][SHARED_WIDTH];
+shared float directDiffuseVariance[SHARED_WIDTH][SHARED_WIDTH];
+
+
+void fillFilterData(
+    sampler2D samplerDiff, 
+    sampler2D samplerSpec, 
+    sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB, 
+    const ivec2 globalBasePix, const int sharedOffset)
+{
+    const ivec2 sharedPix = ivec2(sharedOffset % SHARED_WIDTH, sharedOffset / SHARED_WIDTH);
+    const ivec2 globalPix = globalBasePix + sharedPix;
+
+    AtrousData data;
+    
+    const vec3 dg = texelFetch(framebufDepth_Sampler, globalPix, 0).rgb;
+    data.depth = dg.r;
+    data.gradDepth = length(dg.gb); // changed dot to length, to remove vertical/horizontal artifacts
+
+    const vec4 cv           = texelFetch(samplerDiff,                       globalPix, 0);
+    data.directDiffuseColor = cv.rgb;
+    directDiffuseVariance[sharedPix.y][sharedPix.x] = cv.a;
+    
+    //data.indirectDiffuseSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, globalPix);
+    data.roughness          = texelFetch(framebufMetallicRoughness_Sampler, globalPix, 0).g;
+    data.specularColor      = texelFetch(samplerSpec,                       globalPix, 0).rgb;
+    data.encNormalGeometry  = texelFetchEncNormalGeometry(                  globalPix);     
+
+    atrousData[sharedPix.y][sharedPix.x] = data;
+}
+
+
+void preload(
+    sampler2D samplerDiff, 
+    sampler2D samplerSpec, 
+    sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB)
+{
+    const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
+    const int threadIndex = int(gl_LocalInvocationIndex);
+
+    const int sharedCount = SHARED_WIDTH * SHARED_WIDTH;
+    const int threadCount = COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X;
+   
+    // how many threads should load only one pixel
+    const int oneLoadCount = 2 * threadCount - sharedCount;
+    // how many threads should load two pixels
+    // const int twoLoadCount = sharedCount - threadCount;
+
+    if (threadIndex < oneLoadCount)
+    {
+        // first threads need to preload only 1 pixel
+        fillFilterData(
+            samplerDiff, samplerSpec, samplerIndirR, samplerIndirG, samplerIndirB,
+            globalBasePix, threadIndex);
+    }
+    else
+    {
+        // now threads are loading 2 neighboring pixels
+        const int neighborsIndex = threadIndex - oneLoadCount;
+
+        fillFilterData(
+            samplerDiff, samplerSpec, samplerIndirR, samplerIndirG, samplerIndirB,
+            globalBasePix, oneLoadCount + neighborsIndex * 2 + 0);
+       
+        fillFilterData(
+            samplerDiff, samplerSpec, samplerIndirR, samplerIndirG, samplerIndirB,
+            globalBasePix, oneLoadCount + neighborsIndex * 2 + 1);
+    }
+}
+
+#define GET_ATROUS_DATA(offsetX, offsetY) (atrousData[gl_LocalInvocationID.y + FILTER_RADIUS + offsetY][gl_LocalInvocationID.x + FILTER_RADIUS + offsetX])
+#define GET_DIR_DIFF_VARIANCE(offsetX, offsetY) (directDiffuseVariance[gl_LocalInvocationID.y + FILTER_RADIUS + offsetY][gl_LocalInvocationID.x + FILTER_RADIUS + offsetX])
+
+
+float prefilterLuminanceVariance()
+{
+    const int GaussianFilterRadius = 1;
     const float gaussianKernel[2][2] = 
     {
         { 1.0 / 4.0, 1.0 / 8.0  },
         { 1.0 / 8.0, 1.0 / 16.0 }
     };
 
-    float r = pixVariance * gaussianKernel[0][0];
+    float r = 0;
 
-    for (int yy = -GaussianFilterSize; yy <= GaussianFilterSize; yy++)
+    for (int yy = -GaussianFilterRadius; yy <= GaussianFilterRadius; yy++)
     {
-        for (int xx = -GaussianFilterSize; xx <= GaussianFilterSize; xx++)
+        for (int xx = -GaussianFilterRadius; xx <= GaussianFilterRadius; xx++)
         {
-            if (xx != 0 || yy != 0)
-            {
-                const float variance = texelFetch(samplerColor, pix + ivec2(xx, yy), 0).a;
-                const float w = gaussianKernel[abs(xx)][abs(yy)];
+            const float variance = GET_DIR_DIFF_VARIANCE(xx, yy);
+            const float w = gaussianKernel[abs(xx)][abs(yy)];
 
-                r += variance * w;
-            }
+            r += variance * w;
         }
     }
 
@@ -89,58 +183,52 @@ float prefilterLuminanceVariance(sampler2D samplerColor, const ivec2 pix, const 
 }
 
 
-void atrous(sampler2D samplerDiff, 
-            sampler2D samplerSpec, 
-            sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
-            out vec3 outDiff, out float outVariance, 
-            out vec3 outSpec,
-            out SH outIndirSH)
+float dotEnc(uint n1, uint n2)
+{
+    return dot(decodeNormal(n1), decodeNormal(n2));
+}
+
+
+void atrous0(
+    sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
+    out vec3 outDiff, out float outVariance, 
+    out vec3 outSpec,
+    out SH outIndirSH)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
 
-    const vec4 cv = texelFetch(samplerDiff, pix, 0);
-    outDiff       = cv.rgb;
-    outVariance   = cv.a;
-
-    outSpec       = texelFetch(samplerSpec, pix, 0).rgb;
-
-    outIndirSH    = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
+    const AtrousData center = GET_ATROUS_DATA(0, 0);
 
 
-    const vec3 dg = texelFetch(framebufDepth_Sampler, pix, 0).rgb;
-    const float depth     = dg.r;
-    const float gradDepth = length(dg.gb); // changed dot to length, to remove vertical/horizontal artifacts
-
-    if (depth < 0.0 || depth > MAX_RAY_LENGTH)
+    if (center.depth < 0.0 || center.depth > MAX_RAY_LENGTH)
     {
         return;
     }
-    
-    const vec3 normal = texelFetchNormalGeometry(pix);
+
+    outVariance = GET_DIR_DIFF_VARIANCE(0, 0);
+    outDiff     = center.directDiffuseColor;
+    outSpec     = center.specularColor;
+    outIndirSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
 
     const float l = getLuminance(outDiff);
-    const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * prefilterLuminanceVariance(samplerDiff, pix, outVariance) + 0.00001);
+    const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * prefilterLuminanceVariance() + 0.00001);
    
     // the rougher the surface, the more blur to apply
-    const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
-    const float wRoughMultiplier = pow(roughness, STEP_SIZE);
+    const float wRoughMultiplier = pow(center.roughness, STEP_SIZE);
+
+    const float gradDepth = center.gradDepth;
+
 
     float weightSum = 1.0;
     float weightSumSpec = 1.0;
     float weightSumIndir = 1.0;
 
-    const int FilterSize = 1;
-    const float waveletKernel[2][2] = 
+    [[unroll]]
+    for (int yy = -FILTER_RADIUS; yy <= FILTER_RADIUS; yy++)
     {
-        { 1.0, 0.5  },
-        { 0.5, 0.25 }
-    };
-
-    for (int yy = -FilterSize; yy <= FilterSize; yy++)
-    {
-        for (int xx = -FilterSize; xx <= FilterSize; xx++)
+        for (int xx = -FILTER_RADIUS; xx <= FILTER_RADIUS; xx++)
         {
             if (xx == 0 && yy == 0)
             {
@@ -151,28 +239,19 @@ void atrous(sampler2D samplerDiff,
             const ivec2 pix_q = pix + offset;
 
 
-            const float roughness_q = texelFetch(framebufMetallicRoughness_Sampler, pix_q, 0).g;
-            const vec3  normal_q    = texelFetchNormalGeometry(                     pix_q);
-            const float depth_q     = texelFetch(framebufDepth_Sampler,             pix_q, 0).r;
-
-            const vec3  specColor_q = texelFetch(samplerSpec,                       pix_q, 0).rgb;
-            
-            const vec4  cv_q        = texelFetch(samplerDiff,                       pix_q, 0);
-            const vec3  diffColor_q = cv_q.rgb;
-            const float variance_q  = cv_q.a;
-            const float l_q         = getLuminance(diffColor_q);
-
-            const SH indirSH_q      = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix_q);
+            const AtrousData other = GET_ATROUS_DATA(offset.x, offset.y);
 
 
-            const float w_z = abs(depth - depth_q) / max(gradDepth * (abs(xx) + abs(yy)), 0.01);
-            const float w_n = pow(max(0.0, dot(normal, normal_q)), 128.0);
+            const float l_q = getLuminance(other.directDiffuseColor);
+
+            const float w_z = abs(center.depth - other.depth) / max(gradDepth * (abs(xx) + abs(yy)), 0.01);
+            const float w_n = pow(max(0.0, dotEnc(center.encNormalGeometry, other.encNormalGeometry)), 128.0);
             const float w_l = abs(l - l_q) * wLumMultiplier;
 
             // larger weight if roughness difference is small
-            const float w_r = min(pow(1.025 - abs(roughness - roughness_q), 32), 1.0) * wRoughMultiplier;
+            const float w_r = min(pow(1.025 - abs(center.roughness - other.roughness), 32), 1.0) * wRoughMultiplier;
 
-            const float waveletW = waveletKernel[abs(yy)][abs(xx)];
+            const float waveletW = WAVELET_KERNEL[abs(yy)][abs(xx)];
             const float isInside = float(testInside(pix_q, screenSize));
 
             const float wBase = exp(-w_z * w_z) * w_n * waveletW * isInside;
@@ -182,11 +261,12 @@ void atrous(sampler2D samplerDiff,
             const float wDiffIndir = wBase;
 
 
-            outDiff += diffColor_q * wDiff;
-            outSpec += specColor_q * wSpec;
-            accumulateSH(outIndirSH, indirSH_q, wDiffIndir);
+            outDiff += other.directDiffuseColor * wDiff;
+            outSpec += other.specularColor * wSpec;
+            // SH are fetched here, because storing it in shared memory causes short scoreboard stalls
+            accumulateSH(outIndirSH, texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix_q), wDiffIndir);
 
-            outVariance += variance_q * wDiff * wDiff;
+            outVariance += GET_DIR_DIFF_VARIANCE(offset.x, offset.y) * wDiff * wDiff;
 
             weightSum += wDiff;
             weightSumSpec += wSpec;
@@ -209,70 +289,35 @@ void main()
 {
     ivec2 pix = ivec2(gl_GlobalInvocationID);
 
+
+    preload(
+        framebufDiffPingColorAndVariance_Sampler, 
+        framebufSpecPingColor_Sampler,
+        framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler);
+    barrier();
+
+
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {
         return;
     }
 
-    vec3 filteredDiff;
-    vec3 filteredSpec;
-    SH filteredIndir;
-    float updatedVariance;
 
-    switch (atrousIteration)
-    {
-        case 0: atrous(framebufDiffPingColorAndVariance_Sampler, 
-                       framebufSpecPingColor_Sampler,
-                       framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler,
-                       filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
-                break;
-        case 1: atrous(framebufDiffColorHistory_Sampler,         
-                       framebufSpecPongColor_Sampler, 
-                       framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler,
-                       filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
-                break;
-        case 2: atrous(framebufDiffPingColorAndVariance_Sampler, 
-                       framebufSpecPingColor_Sampler, 
-                       framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler,
-                       filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
-                break;
-        case 3: atrous(framebufDiffPongColorAndVariance_Sampler, 
-                       framebufSpecPongColor_Sampler, 
-                       framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler,
-                       filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
-                break;
-    }
+    float updatedVariance = 0.0;
+    vec3 filteredDiff = vec3(0.0);
+    vec3 filteredSpec = vec3(0.0);
+    SH filteredIndir  = newSH();
+
+
+    atrous0(
+        framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler,
+        filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
+
 
     // for the first iteration, save to color history buffer for temporal accumulation
-    switch (atrousIteration)
-    {
-        case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
-                imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
-                imageStoreIndirPongSH(                       pix, filteredIndir); 
-                break;
-        case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
-                imageStore(framebufSpecPingColor,            pix, vec4(filteredSpec, 0.0)); 
-                imageStoreIndirPingSH(                       pix, filteredIndir); 
-                break;
-        case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
-                imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
-                imageStoreIndirPongSH(                       pix, filteredIndir); 
-                break;
-    }
-
-    if (atrousIteration == 3)
-    {
-        const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).r;
-        const vec3 normal        = texelFetchNormal(pix);
-
-        const vec3 diffuse       = filteredDiff;
-        const vec3 specular      = filteredSpec;
-        const vec3 indirect      = SHToIrradiance(filteredIndir, normal);
-        
-        const vec3 light = (diffuse + indirect) * (1 - surfMetallic) + specular * surfMetallic;
-
-        imageStore(framebufFinal, pix, vec4(light, 0));
-    }
+    imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
+    imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
+    imageStoreIndirPongSH(                       pix, filteredIndir); 
 }
 
 
