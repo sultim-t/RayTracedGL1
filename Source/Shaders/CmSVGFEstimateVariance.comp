@@ -52,7 +52,7 @@
 #define DESC_SET_GLOBAL_UNIFORM 1
 #include "ShaderCommonGLSLFunc.h"
 
-layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_X, local_size_z = 1) in;
+layout(local_size_x = COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X, local_size_z = 1) in;
 
 const float HISTORY_LENGTH_THRESHOLD = 4.0;
 // 3x3 box filter
@@ -67,7 +67,7 @@ struct FilterData
 };
 
 // Preloaded data for filter pixel data. Additional FILTER_RADIUS pixels at both ends for each dimension
-const int SHARED_WIDTH = FILTER_RADIUS + COMPUTE_SVGF_GROUP_SIZE_X + FILTER_RADIUS;
+const int SHARED_WIDTH = FILTER_RADIUS + COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X + FILTER_RADIUS;
 shared FilterData filterData[SHARED_WIDTH][SHARED_WIDTH];
 
 
@@ -89,11 +89,11 @@ void fillFilterData(const ivec2 globalBasePix, const int sharedOffset)
 
 void preloadForCurrentPix()
 {
-    const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
+    const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
     const int threadIndex = int(gl_LocalInvocationIndex);
 
     const int sharedCount = SHARED_WIDTH * SHARED_WIDTH;
-    const int threadCount = COMPUTE_SVGF_GROUP_SIZE_X * COMPUTE_SVGF_GROUP_SIZE_X;
+    const int threadCount = COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X;
    
     // how many threads should load only one pixel
     const int oneLoadCount = 2 * threadCount - sharedCount;
@@ -204,10 +204,6 @@ void main()
 }
 
 
-#if COMPUTE_SVGF_GROUP_SIZE_X != COMPUTE_SVGF_GROUP_SIZE_Y
-    #error COMPUTE_SVGF_GROUP_SIZE_X != COMPUTE_SVGF_GROUP_SIZE_Y
-#endif
-
-#if SHARED_WIDTH * SHARED_WIDTH >= COMPUTE_SVGF_GROUP_SIZE_X * COMPUTE_SVGF_GROUP_SIZE_X * 2
+#if SHARED_WIDTH * SHARED_WIDTH >= COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * 2
     #error if false, preloadForCurrentPix must be changed
 #endif

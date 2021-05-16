@@ -95,8 +95,8 @@ void RTGL1::Denoiser::MergeSamples(
                     0, setCount, sets,
                     0, nullptr);
 
-    uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_GROUP_SIZE_X / COMPUTE_ASVGF_STRATA_SIZE);
-    uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_GROUP_SIZE_Y / COMPUTE_ASVGF_STRATA_SIZE);
+    uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X / COMPUTE_ASVGF_STRATA_SIZE);
+    uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X / COMPUTE_ASVGF_STRATA_SIZE);
 
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_MOTION);
     framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DEPTH);
@@ -138,14 +138,11 @@ void RTGL1::Denoiser::Denoise(
                         0, nullptr);
 
 
-    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_GROUP_SIZE_X);
-    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_GROUP_SIZE_Y);
-    uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_GROUP_SIZE_X / COMPUTE_ASVGF_STRATA_SIZE);
-    uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_GROUP_SIZE_Y / COMPUTE_ASVGF_STRATA_SIZE);
-
-
     // gradient samples
     {
+        uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
+        uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
+
         CmdLabel label(cmd, "Gradient Samples");
 
         framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES);
@@ -163,6 +160,9 @@ void RTGL1::Denoiser::Denoise(
 
     for (uint32_t i = 0; i < COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT; i++)
     {
+        uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
+        uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
+
         CmdLabel label(cmd, "Gradient Atrous");
 
         if (i % 2 == 0)
@@ -183,6 +183,9 @@ void RTGL1::Denoiser::Denoise(
 
     // temporal accumulation
     {
+        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
+        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
+
         CmdLabel label(cmd, "SVGF Temporal accumulation");
 
         framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_MOTION);
@@ -200,6 +203,9 @@ void RTGL1::Denoiser::Denoise(
 
     // variance estimation
     {
+        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X);
+        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X);
+
         CmdLabel label(cmd, "SVGF Variance estimation");
 
         framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR);
@@ -216,6 +222,9 @@ void RTGL1::Denoiser::Denoise(
 
     for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
     {
+        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_ATROUS_GROUP_SIZE_X);
+        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_ATROUS_GROUP_SIZE_X);
+
         CmdLabel label(cmd, "SVGF Atrous");
 
         switch (i)

@@ -27,7 +27,7 @@
 #define DESC_SET_VERTEX_DATA 2
 #include "ShaderCommonGLSLFunc.h"
 
-layout(local_size_x = COMPUTE_SVGF_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_GROUP_SIZE_Y, local_size_z = 1) in;
+layout(local_size_x = COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, local_size_y = COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, local_size_z = 1) in;
 
 void main()
 {
