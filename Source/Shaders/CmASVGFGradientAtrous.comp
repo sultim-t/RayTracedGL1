@@ -30,7 +30,7 @@ layout(local_size_x = COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X, local_size_y = COMPU
 
 layout (constant_id = 0) const uint atrousIteration = 0;
 
-const int StepSize = 1 << atrousIteration;
+const int STEP_SIZE = 1 << atrousIteration;
 
 // Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
 // samplerGradient[0] -- temporal gradient (eq. 2)
@@ -55,7 +55,7 @@ void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 
     {
         for (int xx = -FilterSize; xx <= FilterSize; xx++)
         {
-            const ivec2 offset = ivec2(xx * StepSize, yy * StepSize);
+            const ivec2 offset = ivec2(xx * STEP_SIZE, yy * STEP_SIZE);
             const ivec2 gradPix_q = gradPix + offset;
 
             const vec4 grad_q = texelFetch(samplerGradient, gradPix_q, 0);
