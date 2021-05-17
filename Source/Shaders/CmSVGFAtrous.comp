@@ -54,38 +54,16 @@
 
 layout(local_size_x = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X, local_size_z = 1) in;
 
-layout (constant_id = 0) const uint atrousIteration = 0;
+// Must be > 0. Iteration 0 is implemented in a separate shader
+layout (constant_id = 0) const uint atrousIteration = 1;
 
 const int STEP_SIZE = 1 << atrousIteration;
 const float SIGMA_LUMINANCE = 4.0;
 
 
-float prefilterLuminanceVariance(sampler2D samplerColor, const ivec2 pix, const float pixVariance)
+float getPrefilteredLuminanceVariance(const ivec2 pix)
 {
-    const int GaussianFilterSize = 1;
-    const float gaussianKernel[2][2] = 
-    {
-        { 1.0 / 4.0, 1.0 / 8.0  },
-        { 1.0 / 8.0, 1.0 / 16.0 }
-    };
-
-    float r = pixVariance * gaussianKernel[0][0];
-
-    for (int yy = -GaussianFilterSize; yy <= GaussianFilterSize; yy++)
-    {
-        for (int xx = -GaussianFilterSize; xx <= GaussianFilterSize; xx++)
-        {
-            if (xx != 0 || yy != 0)
-            {
-                const float variance = texelFetch(samplerColor, pix + ivec2(xx, yy), 0).a;
-                const float w = gaussianKernel[abs(xx)][abs(yy)];
-
-                r += variance * w;
-            }
-        }
-    }
-
-    return sqrt(max(r, 0.0));
+    return texelFetch(framebufAtrousFilteredVariance_Sampler, pix, 0).r;
 }
 
 
@@ -121,7 +99,7 @@ void atrous(sampler2D samplerDiff,
     const vec3 normal = texelFetchNormalGeometry(pix);
 
     const float l = getLuminance(outDiff);
-    const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * prefilterLuminanceVariance(samplerDiff, pix, outVariance) + 0.00001);
+    const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * getPrefilteredLuminanceVariance(pix) + 0.00001);
    
     // the rougher the surface, the more blur to apply
     const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
@@ -131,21 +109,36 @@ void atrous(sampler2D samplerDiff,
     float weightSumSpec = 1.0;
     float weightSumIndir = 1.0;
 
-    const int FilterSize = 1;
     const float waveletKernel[2][2] = 
     {
         { 1.0, 0.5  },
         { 0.5, 0.25 }
     };
 
-    for (int yy = -FilterSize; yy <= FilterSize; yy++)
+#ifdef ATROUS_BOX3
+    // o o o
+    // o 0 o
+    // o o o
+
+    const int FilterRadius = 1;
+    for (int yy = -FilterRadius; yy <= FilterRadius; yy++)
     {
-        for (int xx = -FilterSize; xx <= FilterSize; xx++)
+        for (int xx = -FilterRadius; xx <= FilterRadius; xx++)
         {
             if (xx == 0 && yy == 0)
             {
                 continue;
             }
+#else
+    // x o x
+    // o 0 o
+    // x o x
+
+        for (int i = 0 ; i < 4; i++)
+        {
+            const int xx = (i % 2) * 2 - 1;
+            const int yy = (i / 2) * 2 - 1;
+#endif
 
             const ivec2 offset = ivec2(xx * STEP_SIZE, yy * STEP_SIZE);
             const ivec2 pix_q = pix + offset;
@@ -192,7 +185,9 @@ void atrous(sampler2D samplerDiff,
             weightSumSpec += wSpec;
             weightSumIndir += wDiffIndir;
         }
+#ifdef ATROUS_BOX3
     }
+#endif
 
     const float invWeightSum = 1.0 / weightSum;
     const float invWeightSumSpec = 1.0 / weightSumSpec;

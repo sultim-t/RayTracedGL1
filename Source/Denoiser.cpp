@@ -242,6 +242,8 @@ void RTGL1::Denoiser::Denoise(
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_R);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_G);
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B);
+                // on iteration 0 prefiltered variance was calculated
+                framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_ATROUS_FILTERED_VARIANCE);
                 break;
             case 2:  
                 framebuffers->Barrier(cmd, frameIndex, FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE);

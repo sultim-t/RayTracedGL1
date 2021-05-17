@@ -501,8 +501,8 @@ FRAMEBUF_FLAGS_ENUM = {
 FRAMEBUFFERS = {
     # (image name)                      : (base format type, components,    flags)
     "Albedo"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_IS_ATTACHMENT),
-    "Normal"                            : (TYPE_UINT32,     COMPONENT_R, FRAMEBUF_FLAGS_STORE_PREV),
-    "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R, FRAMEBUF_FLAGS_STORE_PREV),
+    "Normal"                            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
@@ -537,6 +537,8 @@ FRAMEBUFFERS = {
     "IndirPongSH_R"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "IndirPongSH_G"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "IndirPongSH_B"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+
+    "AtrousFilteredVariance"            : (TYPE_FLOAT32,    COMPONENT_R, 0),
     
     "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD | FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAndSpecPingGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),

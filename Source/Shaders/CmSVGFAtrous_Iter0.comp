@@ -177,7 +177,13 @@ float prefilterLuminanceVariance()
         }
     }
 
-    return sqrt(max(r, 0.0));
+    r = sqrt(max(r, 0.0));
+
+    // also save the value for other iterations
+    const ivec2 pix = ivec2(gl_GlobalInvocationID);
+    imageStore(framebufAtrousFilteredVariance, pix, vec4(r));
+
+    return r;
 }
 
 
@@ -189,9 +195,9 @@ float dotEnc(uint n1, uint n2)
 
 void atrous0(
     sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
-    inout vec3 outDiff, inout float outVariance, 
-    inout vec3 outSpec,
-    inout SH outIndirSH)
+    out vec3 outDiff, out float outVariance, 
+    out vec3 outSpec,
+    out SH outIndirSH)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
