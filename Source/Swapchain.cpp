@@ -96,11 +96,7 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
             if (p == VK_PRESENT_MODE_MAILBOX_KHR)
             {
                 presentModeImmediate = p;
-            }
-
-            if (p == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
-            {
-                presentModeVsync = p;
+                break;
             }
         }
     }

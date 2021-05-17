@@ -70,7 +70,7 @@ static void TryPrintError(RgInstance rgInstance, const char *pMessage)
 
 
 
-RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *pResult)
+RgResult rgCreateInstance(const RgInstanceCreateInfo *pInfo, RgInstance *pResult)
 {
     *pResult = nullptr;
 
@@ -85,10 +85,22 @@ RgResult rgCreateInstance(const RgInstanceCreateInfo *info, RgInstance *pResult)
 
     try
     {
-        G_DEVICES[rgInstance] = std::make_unique<VulkanDevice>(info);
+        G_DEVICES[rgInstance] = std::make_unique<VulkanDevice>(pInfo);
         *pResult = rgInstance;
     }
-    CATCH_OR_RETURN;
+    // TODO: VulkanDevice must clean all the resources if initialization failed!
+    // So for now exceptions should not happen. But if they did, target application must be closed.
+    catch (RTGL1::RgException &e) 
+    { 
+        // UserPrint class probably wasn't initialized, print manually
+        if (pInfo->pfnPrint != nullptr)
+        {
+            pInfo->pfnPrint(e.what(), pInfo->pUserPrintData);
+        }
+
+        return e.GetErrorCode(); 
+    } 
+    return RG_SUCCESS;
 }
 
 RgResult rgDestroyInstance(RgInstance rgInstance)

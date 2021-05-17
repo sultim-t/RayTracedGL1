@@ -136,6 +136,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
    
     rasterizer          = std::make_shared<Rasterizer>(
         device,
+        physDevice->Get(),
         shaderManager,
         textureManager,
         uniform,

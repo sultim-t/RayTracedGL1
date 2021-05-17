@@ -32,6 +32,7 @@ class RasterPass : public IShaderDependency
 {
 public:
     RasterPass(VkDevice device, 
+               VkPhysicalDevice physDevice,
                VkPipelineLayout pipelineLayout,
                const std::shared_ptr<ShaderManager> &shaderManager,
                const std::shared_ptr<Framebuffers> &storageFramebuffers,

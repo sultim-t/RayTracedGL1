@@ -64,6 +64,7 @@ struct RasterizedPushConst
 
 Rasterizer::Rasterizer(
     VkDevice _device,
+    VkPhysicalDevice _physDevice,
     const std::shared_ptr<ShaderManager> &_shaderManager,
     const std::shared_ptr<TextureManager> &_textureManager,
     const std::shared_ptr<GlobalUniform> &_uniform,
@@ -86,7 +87,7 @@ Rasterizer::Rasterizer(
 
     CreatePipelineLayout(_textureManager->GetDescSetLayout());
 
-    rasterPass = std::make_shared<RasterPass>(device, commonPipelineLayout, _shaderManager, storageFramebuffers, _instanceInfo);
+    rasterPass = std::make_shared<RasterPass>(device, _physDevice, commonPipelineLayout, _shaderManager, storageFramebuffers, _instanceInfo);
     swapchainPass = std::make_shared<SwapchainPass>(device, commonPipelineLayout, _surfaceFormat, _shaderManager, _instanceInfo);
     renderCubemap = std::make_shared<RenderCubemap>(device, allocator, _shaderManager, _textureManager, _uniform, _samplerManager, cmdManager, _instanceInfo);
 }

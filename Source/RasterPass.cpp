@@ -22,16 +22,19 @@
 
 #include "Generated/ShaderCommonCFramebuf.h"
 #include "Rasterizer.h"
+#include "RgException.h"
 #include "Utils.h"
 
 
 constexpr const char *VERT_SHADER = "VertRasterizer";
 constexpr const char *FRAG_SHADER = "FragRasterizer";
-constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
+constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_X8_D24_UNORM_PACK32;
+constexpr const char *DEPTH_FORMAT_NAME = "VK_FORMAT_X8_D24_UNORM_PACK32";
 
 
 RTGL1::RasterPass::RasterPass(
     VkDevice _device, 
+    VkPhysicalDevice _physDevice,
     VkPipelineLayout _pipelineLayout,
     const std::shared_ptr<ShaderManager> &_shaderManager,
     const std::shared_ptr<Framebuffers> &_storageFramebuffers,
@@ -48,6 +51,14 @@ RTGL1::RasterPass::RasterPass(
     depthViews{},
     depthMemory{}
 {
+    VkFormatProperties props = {};
+    vkGetPhysicalDeviceFormatProperties(_physDevice, DEPTH_FORMAT, &props);
+    if ((props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) == 0)
+    {
+        using namespace std::string_literals;
+        throw RgException(RG_GRAPHICS_API_ERROR, "Depth format is not supported: "s + DEPTH_FORMAT_NAME);
+    }
+
     CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], DEPTH_FORMAT);
 
     rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass, _instanceInfo.rasterizedVertexColorGamma);

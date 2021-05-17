@@ -69,6 +69,7 @@ typedef uint32_t RgCubemap;
 typedef enum RgResult
 {
     RG_SUCCESS,
+    RG_GRAPHICS_API_ERROR,
     RG_CANT_FIND_PHYSICAL_DEVICE,
     RG_WRONG_ARGUMENT,
     RG_TOO_MANY_INSTANCES,

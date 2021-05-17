@@ -44,6 +44,7 @@ class Rasterizer : public ISwapchainDependency, public IShaderDependency, public
 public:
     explicit Rasterizer(
         VkDevice device,
+        VkPhysicalDevice physDevice,
         const std::shared_ptr<ShaderManager> &shaderManager,
         const std::shared_ptr<TextureManager> &textureManager,    
         const std::shared_ptr<GlobalUniform> &uniform,
