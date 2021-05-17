@@ -403,7 +403,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     // final image composition
     imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
 
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
     if (!drawInfo.disableRasterization)
     {

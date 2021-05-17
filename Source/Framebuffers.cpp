@@ -165,15 +165,10 @@ void Framebuffers::OnSwapchainDestroy()
     DestroyImages();
 }
 
-void Framebuffers::Barrier(
-    VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufferImageIndex)
+void RTGL1::Framebuffers::BarrierOne(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufferImageIndex)
 {
-    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
-
-    Utils::BarrierImage(
-        cmd, images[framebufferImageIndex],
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
+    FramebufferImageIndex fs[] = { framebufferImageIndex };
+    BarrierMultiple(cmd, frameIndex, fs);
 }
 
 void Framebuffers::PresentToSwapchain(

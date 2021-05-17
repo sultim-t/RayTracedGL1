@@ -62,7 +62,7 @@ void RTGL1::ImageComposition::Compose(
 
 
     // sync access
-    framebuffers->Barrier(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
 
     // bind pipeline

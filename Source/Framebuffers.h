@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <array>
 #include <list>
 #include <vector>
 
@@ -54,11 +55,15 @@ public:
     void OnSwapchainCreate(const Swapchain *pSwapchain) override;
     void OnSwapchainDestroy() override;
 
-    // Barrier framebuffer image for given frameIndex 
-    void Barrier(
-        VkCommandBuffer cmd,
-        uint32_t frameIndex,
-        FramebufferImageIndex framebufferImageIndex);
+    void BarrierOne(VkCommandBuffer cmd,
+                    uint32_t frameIndex,
+                    FramebufferImageIndex framebufferImageIndex);
+
+    // Barrier framebuffer images for given frameIndex 
+    template <uint32_t BARRIER_COUNT>
+    void BarrierMultiple(VkCommandBuffer cmd,
+                         uint32_t frameIndex,
+                         const FramebufferImageIndex (&framebufferImageIndices)[BARRIER_COUNT]);
 
     void PresentToSwapchain(
         VkCommandBuffer cmd, uint32_t frameIndex,
@@ -108,5 +113,46 @@ private:
 
     std::list<std::weak_ptr<IFramebuffersDependency>> subscribers;
 };
+
+
+
+template<uint32_t BARRIER_COUNT>
+inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameIndex, const FramebufferImageIndex(&fbIndices)[BARRIER_COUNT])
+{
+    std::array<VkImageMemoryBarrier, BARRIER_COUNT> barriers;
+
+    for (uint32_t i = 0; i < BARRIER_COUNT; i++)
+    {
+        // correct framebuf index according to the frame index
+        FramebufferImageIndex fbIndex = FrameIndexToFBIndex(fbIndices[i], frameIndex);
+        VkImage img = images[fbIndex];
+
+        VkImageMemoryBarrier &b = barriers[i];
+        b = {};
+
+        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.image = img;
+        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+        b.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        b.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        b.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
+        b.newLayout = VK_IMAGE_LAYOUT_GENERAL;
+
+        VkImageSubresourceRange &sub = b.subresourceRange;
+        sub.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+        sub.baseMipLevel = 0;
+        sub.levelCount = 1;
+        sub.baseArrayLayer = 0;
+        sub.layerCount = 1;
+    }
+
+    vkCmdPipelineBarrier(
+        cmd,
+        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
+        0, nullptr,
+        0, nullptr,
+        barriers.size(), barriers.data());
+}
 
 }

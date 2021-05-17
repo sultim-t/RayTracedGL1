@@ -148,7 +148,8 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
 {
     CmdLabel label(cmd, "Rasterized sky to albedo framebuf");
 
-    storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_ALBEDO);
+    typedef FramebufferImageIndex FI;
+    storageFramebuffers->BarrierOne(cmd, frameIndex, FI::FB_IMAGE_INDEX_ALBEDO);
 
     float skyView[16];
     Matrix::SetNewViewerPosition(skyView, view, skyViewerPos.data);
@@ -183,8 +184,15 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
 {
     CmdLabel label(cmd, "Rasterized to final framebuf");
 
-    storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_DEPTH);
-    storageFramebuffers->Barrier(cmd, frameIndex, FB_IMAGE_INDEX_FINAL);
+
+    typedef FramebufferImageIndex FI;
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_FINAL
+    };
+    storageFramebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
 
     // copy depth buffer
     rasterPass->PrepareForFinal(cmd, frameIndex, storageFramebuffers, werePrimaryTraced);
