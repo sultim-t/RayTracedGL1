@@ -26,10 +26,14 @@ using namespace RTGL1;
 Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
                      std::shared_ptr<PhysicalDevice> physDevice,
                      std::shared_ptr<CommandBufferManager> cmdManager) :
-    surfCapabilities({}),
+    surfaceFormat{},
+    surfCapabilities{},
+    // default
+    presentModeVsync(VK_PRESENT_MODE_FIFO_KHR),
+    presentModeImmediate(VK_PRESENT_MODE_FIFO_KHR),
     requestedExtent({ 0, 0 }),
     requestedVsync(true),
-    surfaceExtent({ UINT32_MAX , UINT32_MAX }),
+    surfaceExtent{ UINT32_MAX, UINT32_MAX },
     isVsync(true),
     swapchain(VK_NULL_HANDLE),
     currentSwapchainIndex(UINT32_MAX)
@@ -41,38 +45,42 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
 
     VkResult r;
 
-    uint32_t formatCount = 0;
-    r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice->Get(), surface, &formatCount, nullptr);
-    VK_CHECKERROR(r);
-
-    std::vector<VkSurfaceFormatKHR> surfaceFormats;
-    surfaceFormats.resize(formatCount);
-
-    r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice->Get(), surface, &formatCount, surfaceFormats.data());
-    VK_CHECKERROR(r);
-
-    std::vector<VkFormat> acceptFormats;
-    acceptFormats.push_back(VK_FORMAT_R8G8B8A8_SRGB);
-    acceptFormats.push_back(VK_FORMAT_B8G8R8A8_SRGB);
-
-    surfaceFormat = {};
-
-    for (VkFormat f : acceptFormats)
+    // find surface format
     {
-        for (VkSurfaceFormatKHR sf : surfaceFormats)
-        {
-            if (sf.format == f)
-            {
-                surfaceFormat = sf;
-            }
-        }
+        uint32_t formatCount = 0;
+        r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice->Get(), surface, &formatCount, nullptr);
+        VK_CHECKERROR(r);
 
-        if (surfaceFormat.format != VK_FORMAT_UNDEFINED)
+        std::vector<VkSurfaceFormatKHR> surfaceFormats;
+        surfaceFormats.resize(formatCount);
+
+        r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice->Get(), surface, &formatCount, surfaceFormats.data());
+        VK_CHECKERROR(r);
+
+        std::vector<VkFormat> acceptFormats =
         {
-            break;
+            VK_FORMAT_R8G8B8A8_SRGB,
+            VK_FORMAT_B8G8R8A8_SRGB
+        };
+
+        for (VkFormat f : acceptFormats)
+        {
+            for (VkSurfaceFormatKHR sf : surfaceFormats)
+            {
+                if (sf.format == f)
+                {
+                    surfaceFormat = sf;
+                }
+            }
+
+            if (surfaceFormat.format != VK_FORMAT_UNDEFINED)
+            {
+                break;
+            }
         }
     }
 
+    // find present modes
     {
         uint32_t presentModeCount = 0;
         r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice->Get(), surface, &presentModeCount, nullptr);
@@ -82,19 +90,19 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
         r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice->Get(), surface, &presentModeCount, presentModes.data());
         VK_CHECKERROR(r);
 
-        bool foundImmediate = false;
-
         for (auto p : presentModes)
         {
-            if (p == VK_PRESENT_MODE_IMMEDIATE_KHR)
+            // try to find mailbox
+            if (p == VK_PRESENT_MODE_MAILBOX_KHR)
             {
-                foundImmediate = true;
-                break;
+                presentModeImmediate = p;
+            }
+
+            if (p == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            {
+                presentModeVsync = p;
             }
         }
-
-        presentModeImmediate = foundImmediate ? VK_PRESENT_MODE_IMMEDIATE_KHR : VK_PRESENT_MODE_MAILBOX_KHR;
-        presentModeVsync = VK_PRESENT_MODE_FIFO_KHR;
     }
 }
 
@@ -210,22 +218,26 @@ void Swapchain::Present(const std::shared_ptr<Queues> &queues, VkSemaphore rende
 
 bool Swapchain::Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
 {
-    if (surfaceExtent.width == newWidth && surfaceExtent.height == newHeight)
+    if (surfaceExtent.width == newWidth && surfaceExtent.height == newHeight && isVsync == vsync)
     {
         return false;
     }
 
     cmdManager->WaitDeviceIdle();
 
-    Destroy();
-    Create(newWidth, newHeight, vsync);
+    VkSwapchainKHR old = DestroyWithoutSwapchain();
+    Create(newWidth, newHeight, vsync, old);
 
     return true;
 }
 
-void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
+void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync, VkSwapchainKHR oldSwapchain)
 {
     this->isVsync = vsync;
+
+    assert(swapchain == VK_NULL_HANDLE);
+    assert(swapchainImages.empty());
+    assert(swapchainViews.empty());
 
     VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
     VK_CHECKERROR(r);
@@ -244,13 +256,11 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
         surfaceExtent.height = std::max(surfCapabilities.minImageExtent.height, surfaceExtent.height);
     }
 
-    uint32_t imageCount = 2;
+    uint32_t imageCount = std::max(3U, surfCapabilities.minImageCount);
     if (surfCapabilities.maxImageCount > 0)
     {
         imageCount = std::min(imageCount, surfCapabilities.maxImageCount);
     }
-
-    VkSwapchainKHR oldSwapchain = swapchain;
 
     VkSwapchainCreateInfoKHR swapchainInfo = {};
     swapchainInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -276,11 +286,6 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
 
     if (oldSwapchain != VK_NULL_HANDLE)
     {
-        for (VkImageView v : swapchainViews)
-        {
-            vkDestroyImageView(device, v, nullptr);
-        }
-
         vkDestroySwapchainKHR(device, oldSwapchain, nullptr);
     }
 
@@ -332,19 +337,31 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync)
 
 void Swapchain::Destroy()
 {
+    VkSwapchainKHR old = DestroyWithoutSwapchain();
+    vkDestroySwapchainKHR(device, old, nullptr);
+}
+
+VkSwapchainKHR RTGL1::Swapchain::DestroyWithoutSwapchain()
+{
     vkDeviceWaitIdle(device);
 
     if (swapchain != VK_NULL_HANDLE)
     {
         CallDestroySubscribers();
-
-        vkDestroySwapchainKHR(device, swapchain, nullptr);
     }
 
     for (VkImageView v : swapchainViews)
     {
         vkDestroyImageView(device, v, nullptr);
     }
+
+    swapchainViews.clear();
+    swapchainImages.clear();
+
+    VkSwapchainKHR old = swapchain;
+    swapchain = VK_NULL_HANDLE;
+
+    return old;
 }
 
 void Swapchain::CallCreateSubscribers()
