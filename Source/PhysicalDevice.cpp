@@ -20,6 +20,7 @@
 
 #include "PhysicalDevice.h"
 
+#include <string>
 #include <vector>
 
 #include "RgException.h"
@@ -83,13 +84,32 @@ VkPhysicalDevice PhysicalDevice::Get() const
 
 uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags requirementsMask) const
 {
+    VkMemoryPropertyFlags flagsToIgnore = 0;
+
+    if (requirementsMask & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
+    {        
+        // device-local memory must not be host visible
+        flagsToIgnore = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
+    }
+    else
+    {
+        // host visible memory must not be device-local
+        flagsToIgnore = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+    }
+    
+
     // for each memory type available for this device
     for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
     {
         // if type is available
         if ((memoryTypeBits & 1u) == 1)
         {
-            if ((memoryProperties.memoryTypes[i].propertyFlags & requirementsMask) == requirementsMask)
+            VkMemoryPropertyFlags flags = memoryProperties.memoryTypes[i].propertyFlags;
+
+            bool isSuitable = (flags & requirementsMask) == requirementsMask;
+            bool isIgnored = (flags & flagsToIgnore) == flagsToIgnore;
+            
+            if (isSuitable && !isIgnored)
             {
                 return i;
             }
@@ -98,7 +118,7 @@ uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags req
         memoryTypeBits >>= 1u;
     }
 
-    assert(0);
+    throw RgException(RG_GRAPHICS_API_ERROR, "Can't find memory type for given memory property flags (" + std::to_string(requirementsMask) + ")");
     return 0;
 }
 
