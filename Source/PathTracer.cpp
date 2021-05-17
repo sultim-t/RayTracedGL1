@@ -98,23 +98,23 @@ void PathTracer::TraceIllumination(
 
     VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
+    // sync access
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_ALBEDO,
+        FI::FB_IMAGE_INDEX_NORMAL,
+        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+        FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
+        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_RANDOM_SEED,
+        FI::FB_IMAGE_INDEX_SURFACE_POSITION,
+        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+        FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
     {
         CmdLabel label(cmd, "Direct illumination");
-
-        // sync access
-        FI fs[] =
-        {
-            FI::FB_IMAGE_INDEX_ALBEDO,
-            FI::FB_IMAGE_INDEX_NORMAL,
-            FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
-            FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
-            FI::FB_IMAGE_INDEX_DEPTH,
-            FI::FB_IMAGE_INDEX_RANDOM_SEED,
-            FI::FB_IMAGE_INDEX_SURFACE_POSITION,
-            FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
-            FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES
-        };
-        framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 
         // direct illumination
         rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
@@ -124,12 +124,9 @@ void PathTracer::TraceIllumination(
             &raygenEntry, &missEntry, &hitEntry, &callableEntry,
             width, height, 1);
     }
-    
+
     {
         CmdLabel label(cmd, "Indirect illumination");
-
-        // sync access
-        framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_UNFILTERED_SPECULAR);
 
         // indirect illumination
         rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);

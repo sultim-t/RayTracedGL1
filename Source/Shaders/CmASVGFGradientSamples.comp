@@ -72,7 +72,9 @@ void main()
     }
 
     {
-        const vec3 color = texelFetch(framebufUnfilteredSpecular_Sampler, shadingSamplePix, 0).rgb;
+        const vec3 color = 
+            texelFetch(framebufUnfilteredDirectSpecular_Sampler, shadingSamplePix, 0).rgb + 
+            texelFetch(framebufUnfilteredIndirectSpecular_Sampler, shadingSamplePix, 0).rgb;
         const float shadingSampleLuminance = getLuminance(color);
 
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;

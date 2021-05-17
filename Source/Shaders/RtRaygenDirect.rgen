@@ -38,15 +38,12 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-    // reset unfiltered only after forward-projecting and merging samples
-    imageStoreUnfilteredIndirectSH(pix, newSH());
-
     const float depth = texelFetch(framebufDepth_Sampler, pix, 0).r;
 
     if (depth > MAX_RAY_LENGTH)
     {
         imageStore(framebufUnfilteredDirect, pix, vec4(0.0));
-        imageStore(framebufUnfilteredSpecular, pix, vec4(0.0));
+        imageStore(framebufUnfilteredDirectSpecular, pix, vec4(0.0));
         return;
     }
 
@@ -74,5 +71,5 @@ void main()
         diffuse, specular);
 
     imageStore(framebufUnfilteredDirect, pix, vec4(diffuse, 0.0));
-    imageStore(framebufUnfilteredSpecular, pix, vec4(specular, 0.0));
+    imageStore(framebufUnfilteredDirectSpecular, pix, vec4(specular, 0.0));
 }

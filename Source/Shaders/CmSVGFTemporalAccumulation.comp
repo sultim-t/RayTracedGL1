@@ -77,8 +77,10 @@ void main()
     };
 
     const vec3 unfilteredDiff = texelFetch(framebufUnfilteredDirect_Sampler,   pix, 0).rgb;
-    const vec3 unfilteredSpec = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
     const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);
+    const vec3 unfilteredSpec = 
+        texelFetch(framebufUnfilteredDirectSpecular_Sampler, pix, 0).rgb + 
+        texelFetch(framebufUnfilteredIndirectSpecular_Sampler, pix, 0).rgb;
 
     const vec3 depthFB = texelFetch(framebufDepth_Sampler,              pix, 0).rgb;
     const vec3 normal  = texelFetchNormalGeometry(                      pix);
