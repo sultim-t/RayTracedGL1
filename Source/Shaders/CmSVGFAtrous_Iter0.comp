@@ -57,9 +57,7 @@
 
 layout(local_size_x = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X, local_size_z = 1) in;
 
-layout (constant_id = 0) const uint atrousIteration = 0;
-
-const int STEP_SIZE = 1 << atrousIteration;
+const int STEP_SIZE = 1;
 const float SIGMA_LUMINANCE = 4.0;
 // 3x3 box filter
 const int FILTER_RADIUS = 1;
@@ -120,11 +118,11 @@ void preload(
     sampler2D samplerSpec, 
     sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB)
 {
-    const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
+    const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_ATROUS_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
     const int threadIndex = int(gl_LocalInvocationIndex);
 
     const int sharedCount = SHARED_WIDTH * SHARED_WIDTH;
-    const int threadCount = COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X * COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X;
+    const int threadCount = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X * COMPUTE_SVGF_ATROUS_GROUP_SIZE_X;
    
     // how many threads should load only one pixel
     const int oneLoadCount = 2 * threadCount - sharedCount;
@@ -191,9 +189,9 @@ float dotEnc(uint n1, uint n2)
 
 void atrous0(
     sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
-    out vec3 outDiff, out float outVariance, 
-    out vec3 outSpec,
-    out SH outIndirSH)
+    inout vec3 outDiff, inout float outVariance, 
+    inout vec3 outSpec,
+    inout SH outIndirSH)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
@@ -204,8 +202,14 @@ void atrous0(
 
     if (center.depth < 0.0 || center.depth > MAX_RAY_LENGTH)
     {
+        outVariance = 0.0;
+        outDiff = vec3(0.0);
+        outSpec = vec3(0.0);
+        outIndirSH  = newSH();
+
         return;
     }
+    
 
     outVariance = GET_DIR_DIFF_VARIANCE(0, 0);
     outDiff     = center.directDiffuseColor;
@@ -225,7 +229,6 @@ void atrous0(
     float weightSumSpec = 1.0;
     float weightSumIndir = 1.0;
 
-    [[unroll]]
     for (int yy = -FILTER_RADIUS; yy <= FILTER_RADIUS; yy++)
     {
         for (int xx = -FILTER_RADIUS; xx <= FILTER_RADIUS; xx++)
@@ -303,10 +306,10 @@ void main()
     }
 
 
-    float updatedVariance = 0.0;
-    vec3 filteredDiff = vec3(0.0);
-    vec3 filteredSpec = vec3(0.0);
-    SH filteredIndir  = newSH();
+    float updatedVariance;
+    vec3 filteredDiff;
+    vec3 filteredSpec;
+    SH filteredIndir;
 
 
     atrous0(
@@ -319,8 +322,3 @@ void main()
     imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
     imageStoreIndirPongSH(                       pix, filteredIndir); 
 }
-
-
-#if COMPUTE_SVGF_ATROUS_ITERATION_COUNT != 4
-    #error Atrous is implemented for 4 iterations 
-#endif

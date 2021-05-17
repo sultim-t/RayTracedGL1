@@ -416,10 +416,19 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
             "SVGF Atrous iteration #3 pipeline",
         };
 
+        {
+            plInfo.stage = shaderManager->GetStageInfo("CSVGFAtrous_Iter0");
+
+            r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &atrous[0]);
+            VK_CHECKERROR(r);
+
+            SET_DEBUG_NAME(device, atrous[0], VK_OBJECT_TYPE_PIPELINE, debugNames[0]);
+        }
+
         plInfo.stage = shaderManager->GetStageInfo("CSVGFAtrous");
         plInfo.stage.pSpecializationInfo = &specInfo;
 
-        for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
+        for (uint32_t i = 1; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
         {
             atrousIteration = i;
 

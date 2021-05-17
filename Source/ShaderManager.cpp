@@ -56,6 +56,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CSVGFTemporalAccum",      "CmSVGFTemporalAccumulation.comp.spv"  },
     {"CSVGFVarianceEstim",      "CmSVGFEstimateVariance.comp.spv"      },
     {"CSVGFAtrous",             "CmSVGFAtrous.comp.spv"                },
+    {"CSVGFAtrous_Iter0",       "CmSVGFAtrous_Iter0.comp.spv"          },
     {"CASVGFMerging",           "CmASVGFMerging.comp.spv"              },
     {"CASVGFGradientSamples",   "CmASVGFGradientSamples.comp.spv"      },
     {"CASVGFGradientAtrous",    "CmASVGFGradientAtrous.comp.spv",      },
