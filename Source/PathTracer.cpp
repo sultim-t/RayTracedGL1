@@ -73,8 +73,7 @@ void PathTracer::Bind(
 
 void PathTracer::TracePrimaryRays(
     VkCommandBuffer cmd, uint32_t frameIndex, 
-    uint32_t width, uint32_t height,
-    const std::shared_ptr<Framebuffers> &framebuffers)
+    uint32_t width, uint32_t height)
 {
     CmdLabel label(cmd, "Primary rays");
 
@@ -89,16 +88,10 @@ void PathTracer::TracePrimaryRays(
         width, height, 1);
 }
 
-void PathTracer::TraceIllumination(
-    VkCommandBuffer cmd, uint32_t frameIndex, 
-    uint32_t width, uint32_t height,
-    const std::shared_ptr<Framebuffers> &framebuffers)
+void RTGL1::PathTracer::PrepareForTracingIllumination(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers)
 {
     typedef FramebufferImageIndex FI;
 
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
-
-    // sync access
     FI fs[] =
     {
         FI::FB_IMAGE_INDEX_ALBEDO,
@@ -111,29 +104,32 @@ void PathTracer::TraceIllumination(
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
         FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES
     };
+
     framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+}
 
-    {
-        CmdLabel label(cmd, "Direct illumination");
+void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
+{
+    CmdLabel label(cmd, "Direct illumination");
 
-        // direct illumination
-        rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
+    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
 
-        svkCmdTraceRaysKHR(
-            cmd,
-            &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-            width, height, 1);
-    }
+    svkCmdTraceRaysKHR(
+        cmd,
+        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+        width, height, 1);
+}
 
-    {
-        CmdLabel label(cmd, "Indirect illumination");
+void PathTracer::TraceIndirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
+{
+    CmdLabel label(cmd, "Indirect illumination");
+    
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
+    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
 
-        // indirect illumination
-        rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
-
-        svkCmdTraceRaysKHR(
-            cmd,
-            &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-            width, height, 1);
-    }
+    svkCmdTraceRaysKHR(
+        cmd,
+        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+        width, height, 1);
 }

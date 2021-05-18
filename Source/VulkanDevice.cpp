@@ -381,9 +381,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             scene, uniform, textureManager, 
             framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
 
-        pathTracer->TracePrimaryRays(
-            cmd, frameIndex, renderWidth, renderHeight,
-            framebuffers);
+        pathTracer->TracePrimaryRays(cmd, frameIndex, renderWidth, renderHeight);
 
         werePrimaryTraced = true;
 
@@ -391,9 +389,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
         // update the illumination
-        pathTracer->TraceIllumination(
-            cmd, frameIndex, renderWidth, renderHeight,
-            framebuffers);
+        pathTracer->PrepareForTracingIllumination(cmd, frameIndex, framebuffers);
+        pathTracer->TraceDirectllumination(cmd, frameIndex, renderWidth, renderHeight);
+        pathTracer->TraceIndirectllumination(cmd, frameIndex, renderWidth, renderHeight);
 
         denoiser->Denoise(cmd, frameIndex, uniform);
 

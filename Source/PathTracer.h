@@ -52,13 +52,19 @@ public:
     
     void TracePrimaryRays(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
+        uint32_t width, uint32_t height);
+
+    void PrepareForTracingIllumination(
+        VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<Framebuffers> &framebuffers);
 
-    void TraceIllumination(
+    void TraceDirectllumination(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Framebuffers> &framebuffers);
+        uint32_t width, uint32_t height);
+
+    void TraceIndirectllumination(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        uint32_t width, uint32_t height);
 
 private:
     VkDevice device;
