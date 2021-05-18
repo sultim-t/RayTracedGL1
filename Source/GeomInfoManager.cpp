@@ -41,6 +41,7 @@ RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<Memory
 
     buffer->Create(GEOM_INFO_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     matchPrev->Create(GEOM_INFO_MATCH_PREV_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    matchPrevShadow = std::make_unique<int32_t[]>(GEOM_INFO_MATCH_PREV_BUFFER_SIZE);
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
@@ -57,91 +58,96 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
 {
     CmdLabel label(cmd, "Copying geom infos");
 
-    // always copy matchPrev
-    matchPrev->CopyFromStaging(cmd, frameIndex, VK_WHOLE_SIZE);
-
-    if (insertBarrier)
     {
-        VkBufferMemoryBarrier mtpBr = {};
+        // always copy matchPrev
+        memcpy(matchPrev->GetMapped(frameIndex), matchPrevShadow.get(), matchPrev->GetSize());
+        matchPrev->CopyFromStaging(cmd, frameIndex, VK_WHOLE_SIZE);
 
-        mtpBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-        mtpBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        mtpBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        mtpBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        mtpBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        mtpBr.buffer = matchPrev->GetDeviceLocal();
-        mtpBr.size = VK_WHOLE_SIZE;
-
-        vkCmdPipelineBarrier(
-            cmd,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-            0,
-            0, nullptr,
-            1, &mtpBr,
-            0, nullptr);
-    }
-
-
-    VkBufferCopy copyInfos[MAX_TOP_LEVEL_INSTANCE_COUNT];
-    VkBufferMemoryBarrier barriers[MAX_TOP_LEVEL_INSTANCE_COUNT];
-
-    uint32_t infoCount = 0;
-
-    for (uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++)
-    {
-        const uint32_t lower = copyRegionLowerBounds[frameIndex][type];
-        const uint32_t upper = copyRegionUpperBounds[frameIndex][type];
-
-        if (lower < upper)
+        if (insertBarrier)
         {
-            const uint32_t typeOffset = MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * type;
+            VkBufferMemoryBarrier mtpBr = {};
 
-            const uint64_t offset = sizeof(ShGeometryInstance) * (typeOffset + lower);
-            const uint64_t size = sizeof(ShGeometryInstance) * (upper - lower);
+            mtpBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+            mtpBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            mtpBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            mtpBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            mtpBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+            mtpBr.buffer = matchPrev->GetDeviceLocal();
+            mtpBr.size = VK_WHOLE_SIZE;
 
-            {
-                VkBufferCopy &c = copyInfos[infoCount];
-
-                c = {};
-                c.srcOffset = offset;
-                c.dstOffset = offset;
-                c.size = size;
-            }
-
-            {
-                VkBufferMemoryBarrier &b = barriers[infoCount];
-
-                b = {};
-                b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-                b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-                b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-                b.buffer = buffer->GetDeviceLocal();
-                b.offset = offset;
-                b.size = size;
-            }
-
-            infoCount++;
+            vkCmdPipelineBarrier(
+                cmd,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                0,
+                0, nullptr,
+                1, &mtpBr,
+                0, nullptr);
         }
     }
 
-    if (infoCount == 0)
-    {
-        return false;
-    }
 
-    buffer->CopyFromStaging(cmd, frameIndex, copyInfos, infoCount);
-
-    if (insertBarrier)
     {
-        vkCmdPipelineBarrier(
-            cmd,
-            VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-            0,
-            0, nullptr,
-            infoCount, barriers,
-            0, nullptr);
+        VkBufferCopy copyInfos[MAX_TOP_LEVEL_INSTANCE_COUNT];
+        VkBufferMemoryBarrier barriers[MAX_TOP_LEVEL_INSTANCE_COUNT];
+
+        uint32_t infoCount = 0;
+
+        for (uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++)
+        {
+            const uint32_t lower = copyRegionLowerBounds[frameIndex][type];
+            const uint32_t upper = copyRegionUpperBounds[frameIndex][type];
+
+            if (lower < upper)
+            {
+                const uint32_t typeOffset = MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * type;
+
+                const uint64_t offset = sizeof(ShGeometryInstance) * (typeOffset + lower);
+                const uint64_t size = sizeof(ShGeometryInstance) * (upper - lower);
+
+                {
+                    VkBufferCopy &c = copyInfos[infoCount];
+
+                    c = {};
+                    c.srcOffset = offset;
+                    c.dstOffset = offset;
+                    c.size = size;
+                }
+
+                {
+                    VkBufferMemoryBarrier &b = barriers[infoCount];
+
+                    b = {};
+                    b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                    b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                    b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                    b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                    b.buffer = buffer->GetDeviceLocal();
+                    b.offset = offset;
+                    b.size = size;
+                }
+
+                infoCount++;
+            }
+        }
+
+        if (infoCount == 0)
+        {
+            return false;
+        }
+
+        buffer->CopyFromStaging(cmd, frameIndex, copyInfos, infoCount);
+
+        if (insertBarrier)
+        {
+            vkCmdPipelineBarrier(
+                cmd,
+                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                0,
+                0, nullptr,
+                infoCount, barriers,
+                0, nullptr);
+        }
     }
 
     return true;
@@ -149,7 +155,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
 
 void RTGL1::GeomInfoManager::ResetMatchPrevForGroup(uint32_t frameIndex, VertexCollectorFilterTypeFlags groupFlags)
 {
-    int32_t *prevIndexToCurIndex = (int32_t *)matchPrev->GetMapped(frameIndex);
+    int32_t *prevIndexToCurIndex = matchPrevShadow.get();
 
     uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(groupFlags) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
     int32_t *toReset = prevIndexToCurIndex + offset;
@@ -341,7 +347,7 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData(
     VertexCollectorFilterTypeFlags flags, uint64_t geomUniqueID, 
     uint32_t currentGlobalGeomIndex, ShGeometryInstance &dst, int32_t frameIndex)
 {
-    int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(frameIndex);
+    int32_t *prevIndexToCurIndex = matchPrevShadow.get();
 
     const std::map<uint64_t, GeomFrameInfo> *prevIdToInfo = nullptr;
 

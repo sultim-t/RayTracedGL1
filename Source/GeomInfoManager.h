@@ -131,6 +131,8 @@ private:
     // buffer for getting info for geometry in BLAS
     std::shared_ptr<AutoBuffer> buffer;
     std::shared_ptr<AutoBuffer> matchPrev;
+    // special CPU side buffer to reduce granular writes to staging
+    std::unique_ptr<int32_t[]> matchPrevShadow;
 
     std::vector<uint32_t> copyRegionLowerBounds[MAX_FRAMES_IN_FLIGHT];
     std::vector<uint32_t> copyRegionUpperBounds[MAX_FRAMES_IN_FLIGHT];
