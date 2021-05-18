@@ -168,34 +168,36 @@ void RTGL1::Denoiser::Denoise(
     
     // gradient atrous
 
-    for (uint32_t i = 0; i < COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT; i++)
     {
-        uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
-        uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
-
         CmdLabel label(cmd, "Gradient Atrous");
 
-        if (i % 2 == 0)
+        for (uint32_t i = 0; i < COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT; i++)
         {
-            FI fs[] =
-            {
-                FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT,
-                FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT
-            };
-            framebuffers->BarrierMultiple(cmd, frameIndex, fs);
-        }
-        else
-        {
-            FI fs[] =
-            {
-                FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PONG_GRADIENT,
-                FI::FB_IMAGE_INDEX_INDIR_PONG_GRADIENT
-            };
-            framebuffers->BarrierMultiple(cmd, frameIndex, fs);
-        }
+            uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
+            uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientAtrous[i]);
-        vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
+            if (i % 2 == 0)
+            {
+                FI fs[] =
+                {
+                    FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT,
+                    FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT
+                };
+                framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+            }
+            else
+            {
+                FI fs[] =
+                {
+                    FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PONG_GRADIENT,
+                    FI::FB_IMAGE_INDEX_INDIR_PONG_GRADIENT
+                };
+                framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+            }
+
+            vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientAtrous[i]);
+            vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
+        }
     }
 
 
