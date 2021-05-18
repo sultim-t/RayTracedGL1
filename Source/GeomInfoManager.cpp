@@ -34,9 +34,7 @@ RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<Memory
 :
     device(_device),
     staticGeomCount(0),
-    dynamicGeomCount(0),
-    copyRegionLowerBound{},
-    copyRegionUpperBound{}
+    dynamicGeomCount(0)
 {
     buffer = std::make_shared<AutoBuffer>(device, _allocator, "Geometry info staging buffer", "Geometry info buffer");
     matchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Geometry infos staging buffer", "Match previous Geometry infos buffer");
@@ -44,12 +42,11 @@ RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<Memory
     buffer->Create(GEOM_INFO_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     matchPrev->Create(GEOM_INFO_MATCH_PREV_BUFFER_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
-    static_assert(
-        sizeof(copyRegionLowerBound[0]) / sizeof(copyRegionLowerBound[0][0]) == MAX_TOP_LEVEL_INSTANCE_COUNT &&
-        sizeof(copyRegionUpperBound[0]) / sizeof(copyRegionUpperBound[0][0]) == MAX_TOP_LEVEL_INSTANCE_COUNT,
-        "Number of geomInfo copy regions must be MAX_TOP_LEVEL_INSTANCE_COUNT");
-
-    memset(copyRegionLowerBound, 0xFF, sizeof(copyRegionLowerBound));
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        copyRegionLowerBounds[i].resize(MAX_TOP_LEVEL_INSTANCE_COUNT, UINT32_MAX);
+        copyRegionUpperBounds[i].resize(MAX_TOP_LEVEL_INSTANCE_COUNT, 0);
+    }
 }
 
 RTGL1::GeomInfoManager::~GeomInfoManager()
@@ -85,13 +82,15 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
     }
 
 
-    VkBufferCopy infos[MAX_TOP_LEVEL_INSTANCE_COUNT];
+    VkBufferCopy copyInfos[MAX_TOP_LEVEL_INSTANCE_COUNT];
+    VkBufferMemoryBarrier barriers[MAX_TOP_LEVEL_INSTANCE_COUNT];
+
     uint32_t infoCount = 0;
 
     for (uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++)
     {
-        const uint32_t lower = copyRegionLowerBound[frameIndex][type];
-        const uint32_t upper = copyRegionUpperBound[frameIndex][type];
+        const uint32_t lower = copyRegionLowerBounds[frameIndex][type];
+        const uint32_t upper = copyRegionUpperBounds[frameIndex][type];
 
         if (lower < upper)
         {
@@ -100,9 +99,28 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
             const uint64_t offset = sizeof(ShGeometryInstance) * (typeOffset + lower);
             const uint64_t size = sizeof(ShGeometryInstance) * (upper - lower);
 
-            infos[infoCount].srcOffset = offset;
-            infos[infoCount].dstOffset = offset;
-            infos[infoCount].size = size;
+            {
+                VkBufferCopy &c = copyInfos[infoCount];
+
+                c = {};
+                c.srcOffset = offset;
+                c.dstOffset = offset;
+                c.size = size;
+            }
+
+            {
+                VkBufferMemoryBarrier &b = barriers[infoCount];
+
+                b = {};
+                b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+                b.buffer = buffer->GetDeviceLocal();
+                b.offset = offset;
+                b.size = size;
+            }
 
             infoCount++;
         }
@@ -113,26 +131,16 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
         return false;
     }
 
-    buffer->CopyFromStaging(cmd, frameIndex, infos, infoCount);
+    buffer->CopyFromStaging(cmd, frameIndex, copyInfos, infoCount);
 
     if (insertBarrier)
     {
-        VkBufferMemoryBarrier gmtBr = {};
-
-        gmtBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-        gmtBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        gmtBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        gmtBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        gmtBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-        gmtBr.buffer = buffer->GetDeviceLocal();
-        gmtBr.size = VK_WHOLE_SIZE;
-
         vkCmdPipelineBarrier(
             cmd,
             VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
             0,
             0, nullptr,
-            1, &gmtBr,
+            infoCount, barriers,
             0, nullptr);
     }
 
@@ -181,8 +189,8 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
 
     for (uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++)
     {
-        memset(copyRegionLowerBound[frameIndex], 0xFF,  sizeof(copyRegionLowerBound[frameIndex]));
-        memset(copyRegionUpperBound[frameIndex], 0,     sizeof(copyRegionUpperBound[frameIndex]));
+        std::fill(copyRegionLowerBounds[frameIndex].begin(), copyRegionLowerBounds[frameIndex].end(), UINT32_MAX);
+        std::fill(copyRegionUpperBounds[frameIndex].begin(), copyRegionUpperBounds[frameIndex].end(), 0);
     }
 }
 
@@ -323,8 +331,8 @@ void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy(uint32_t frameIndex, uint32
 {
     assert(offset < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
-    copyRegionLowerBound[frameIndex][offset] = std::min(localGeomIndex,     copyRegionLowerBound[frameIndex][offset]);
-    copyRegionUpperBound[frameIndex][offset] = std::max(localGeomIndex + 1, copyRegionUpperBound[frameIndex][offset]);
+    copyRegionLowerBounds[frameIndex][offset] = std::min(localGeomIndex,     copyRegionLowerBounds[frameIndex][offset]);
+    copyRegionUpperBounds[frameIndex][offset] = std::max(localGeomIndex + 1, copyRegionUpperBounds[frameIndex][offset]);
 }
 
 void RTGL1::GeomInfoManager::FillWithPrevFrameData(

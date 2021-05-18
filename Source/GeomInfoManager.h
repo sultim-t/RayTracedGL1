@@ -130,8 +130,8 @@ private:
     std::shared_ptr<AutoBuffer> buffer;
     std::shared_ptr<AutoBuffer> matchPrev;
 
-    uint32_t copyRegionLowerBound[MAX_FRAMES_IN_FLIGHT][36];
-    uint32_t copyRegionUpperBound[MAX_FRAMES_IN_FLIGHT][36];
+    std::vector<uint32_t> copyRegionLowerBounds[MAX_FRAMES_IN_FLIGHT];
+    std::vector<uint32_t> copyRegionUpperBounds[MAX_FRAMES_IN_FLIGHT];
 
     // each geometry has its type as they're can be in different filters
     std::vector<VertexCollectorFilterTypeFlags> geomType;
