@@ -59,29 +59,82 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
     CmdLabel label(cmd, "Copying geom infos");
 
     {
-        // always copy matchPrev
-        memcpy(matchPrev->GetMapped(frameIndex), matchPrevShadow.get(), matchPrev->GetSize());
-        matchPrev->CopyFromStaging(cmd, frameIndex, VK_WHOLE_SIZE);
+        VkBufferCopy copyInfos[MAX_TOP_LEVEL_INSTANCE_COUNT];
+        VkBufferMemoryBarrier barriers[MAX_TOP_LEVEL_INSTANCE_COUNT];
 
-        if (insertBarrier)
+        uint32_t infoCount = 0;
+
+        for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
         {
-            VkBufferMemoryBarrier mtpBr = {};
+            uint64_t size = cf & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ?
+                matchPrevCopyInfo.maxDynamicGeomCount * sizeof(int32_t) :
+                matchPrevCopyInfo.maxStaticGeomCount * sizeof(int32_t);
 
-            mtpBr.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-            mtpBr.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            mtpBr.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-            mtpBr.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-            mtpBr.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
-            mtpBr.buffer = matchPrev->GetDeviceLocal();
-            mtpBr.size = VK_WHOLE_SIZE;
+            if (size == 0)
+            {
+                continue;
+            }
 
-            vkCmdPipelineBarrier(
-                cmd,
-                VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-                0,
-                0, nullptr,
-                1, &mtpBr,
-                0, nullptr);
+            for (auto pt : VertexCollectorFilterGroup_PassThrough)
+            {
+                for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
+                {
+                    uint64_t offset = 
+                        VertexCollectorFilterTypeFlags_ToOffset(cf | pt | pm) * 
+                        MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof(int32_t);
+
+                    // copy to staging
+                    {
+                        uint8_t *pDst = (uint8_t*)matchPrev->GetMapped(frameIndex);
+                        uint8_t *pSrc = (uint8_t*)matchPrevShadow.get();
+
+                        memcpy(pDst + offset, pSrc + offset, size);
+                    }
+
+                    // copy from staging
+                    {
+                        VkBufferCopy &c = copyInfos[infoCount];
+
+                        c = {};
+                        c.srcOffset = offset;
+                        c.dstOffset = offset;
+                        c.size = size;
+                    }
+
+                    {
+                        VkBufferMemoryBarrier &b = barriers[infoCount];
+
+                        b = {};
+                        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
+                        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+                        b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+                        b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
+                        b.buffer = matchPrev->GetDeviceLocal();
+                        b.offset = offset;
+                        b.size = size;
+                    }
+
+                    infoCount++;
+                }
+            }
+        }
+
+        if (infoCount > 0)
+        {
+            matchPrev->CopyFromStaging(cmd, frameIndex, copyInfos, infoCount);
+
+            if (insertBarrier)
+            {
+                vkCmdPipelineBarrier(
+                    cmd,
+                    VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
+                    0,
+                    0, nullptr,
+                    infoCount, barriers,
+                    0, nullptr);
+            }
         }
     }
 
@@ -122,6 +175,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
                     b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
                     b.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
                     b.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+
                     b.buffer = buffer->GetDeviceLocal();
                     b.offset = offset;
                     b.size = size;
@@ -269,6 +323,10 @@ uint32_t RTGL1::GeomInfoManager::ConvertSimpleIndexToGlobal(uint32_t simpleIndex
 
 void RTGL1::GeomInfoManager::PrepareForFrame(uint32_t frameIndex)
 {
+    // save counts before resetting
+    matchPrevCopyInfo.maxDynamicGeomCount = dynamicGeomCount;
+    matchPrevCopyInfo.maxStaticGeomCount = staticGeomCount;
+
     dynamicIDToGeomFrameInfo[frameIndex].clear();
     ResetOnlyDynamic(frameIndex);
 }

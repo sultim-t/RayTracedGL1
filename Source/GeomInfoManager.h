@@ -91,6 +91,12 @@ private:
         uint32_t prevGlobalGeomIndex;
     };
 
+    struct MatchPrevCopyInfo
+    {
+        uint32_t maxStaticGeomCount = 0;
+        uint32_t maxDynamicGeomCount = 0;
+    };
+
 private:
     void ResetMatchPrevForGroup(uint32_t frameIndex, VertexCollectorFilterTypeFlags groupFlags);
 
@@ -133,6 +139,7 @@ private:
     std::shared_ptr<AutoBuffer> matchPrev;
     // special CPU side buffer to reduce granular writes to staging
     std::unique_ptr<int32_t[]> matchPrevShadow;
+    MatchPrevCopyInfo matchPrevCopyInfo;
 
     std::vector<uint32_t> copyRegionLowerBounds[MAX_FRAMES_IN_FLIGHT];
     std::vector<uint32_t> copyRegionUpperBounds[MAX_FRAMES_IN_FLIGHT];
