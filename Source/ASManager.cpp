@@ -1072,9 +1072,9 @@ bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    // fast trace for static
-    // fast build for dynamic
-    return filter & FT::CF_DYNAMIC;
+    // fast trace for static non-movable,
+    // fast build for dynamic and movable
+    return (filter & FT::CF_DYNAMIC) || (filter & FT::CF_STATIC_MOVABLE);
 }
 
 VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const
