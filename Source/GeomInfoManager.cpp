@@ -147,6 +147,22 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
     return true;
 }
 
+void RTGL1::GeomInfoManager::ResetMatchPrevForGroup(uint32_t frameIndex, VertexCollectorFilterTypeFlags groupFlags)
+{
+    int32_t *prevIndexToCurIndex = (int32_t *)matchPrev->GetMapped(frameIndex);
+
+    uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(groupFlags) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+    int32_t *toReset = prevIndexToCurIndex + offset;
+
+    uint32_t maxGeomCount = groupFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ? dynamicGeomCount : staticGeomCount;
+
+    // approximate exact size with dynamicGeomCount
+    uint32_t resetCount = std::min(maxGeomCount, (uint32_t)MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
+
+    // reset matchPrev data for dynamic
+    memset(toReset, 0xFF, resetCount * sizeof(int32_t));
+}
+
 void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
 {
     typedef VertexCollectorFilterTypeFlags FL;
@@ -167,19 +183,12 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic(uint32_t frameIndex)
             simpleToLocalIndex.clear();
         }
 
-        int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(frameIndex);
-
+        // reset each dynamic group
         for (auto pt : VertexCollectorFilterGroup_PassThrough)
         {
             for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
             {
-                uint32_t dynamicOffset = VertexCollectorFilterTypeFlags_ToOffset(FT::CF_DYNAMIC | pt | pm) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
-                int32_t *dynamicPrevIndexToCurIndex = prevIndexToCurIndex + dynamicOffset;
-
-                uint32_t resetCount = std::min(dynamicGeomCount, (uint32_t)MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
-
-                // reset matchPrev data for dynamic
-                memset(dynamicPrevIndexToCurIndex, 0xFF, resetCount * sizeof(int32_t));
+                ResetMatchPrevForGroup(frameIndex, FT::CF_DYNAMIC | pt | pm);
             }
         }
 
@@ -200,21 +209,14 @@ void RTGL1::GeomInfoManager::ResetWithStatic()
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        int32_t *prevIndexToCurIndex = (int32_t*)matchPrev->GetMapped(i);
-
+        // reset each group
         for (auto cf : VertexCollectorFilterGroup_ChangeFrequency)
         {
             for (auto pt : VertexCollectorFilterGroup_PassThrough)
             {
                 for (auto pm : VertexCollectorFilterGroup_PrimaryVisibility)
                 {
-                    uint32_t offset = VertexCollectorFilterTypeFlags_ToOffset(cf | pt | pm) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
-                    int32_t *toReset = prevIndexToCurIndex + offset;
-
-                    uint32_t resetCount = std::min(dynamicGeomCount + staticGeomCount, (uint32_t)MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
-
-                    // reset matchPrev data for dynamic
-                    memset(toReset, 0xFF, resetCount * sizeof(int32_t));
+                    ResetMatchPrevForGroup(i, cf | pt | pm);
                 }
             }
         }

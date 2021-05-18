@@ -92,6 +92,8 @@ private:
     };
 
 private:
+    void ResetMatchPrevForGroup(uint32_t frameIndex, VertexCollectorFilterTypeFlags groupFlags);
+
     void ResetOnlyDynamic(uint32_t frameIndex);
 
     static uint32_t GetGlobalGeomIndex(uint32_t localGeomIndex, VertexCollectorFilterTypeFlags flags);
