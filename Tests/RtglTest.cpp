@@ -80,7 +80,7 @@ static std::vector<const char *> cubemapNames = {
 };
 
 
-static glm::vec3 CAMERA_POS     = glm::vec3(0, 2, 8);
+static glm::vec3 CAMERA_POS     = glm::vec3(0, -1.5f, 4.5f);
 static glm::vec3 CAMERA_DIR     = glm::vec3(0, 0, -1);
 static glm::vec3 CAMERA_UP      = glm::vec3(0, 1, 0);
 static glm::vec3 LIGHT_DIR      = glm::vec3(-1, -1, -1);

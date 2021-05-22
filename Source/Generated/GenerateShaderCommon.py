@@ -109,10 +109,12 @@ GLSL_TYPE_SIZES_STD_430 = {
 TYPE_UNORM8     = 3
 TYPE_UINT16     = 4
 TYPE_FLOAT16    = 5
+TYPE_FLT_PACK32 = 6
 
 COMPONENT_R     = 0
 COMPONENT_RG    = 1
-COMPONENT_RGBA  = 2
+COMPONENT_RGB   = 2
+COMPONENT_RGBA  = 3
 
 
 VULKAN_IMAGE_FORMATS = {
@@ -135,6 +137,8 @@ VULKAN_IMAGE_FORMATS = {
     (TYPE_FLOAT32,  COMPONENT_R):       "VK_FORMAT_R32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RG):      "VK_FORMAT_R32G32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_SFLOAT",
+
+    (TYPE_FLT_PACK32, COMPONENT_RGB):   "VK_FORMAT_B10G11R11_UFLOAT_PACK32",
 }
 
 GLSL_IMAGE_FORMATS = {
@@ -157,6 +161,8 @@ GLSL_IMAGE_FORMATS = {
     (TYPE_FLOAT32,  COMPONENT_R):       "r32f",
     (TYPE_FLOAT32,  COMPONENT_RG):      "rg32f",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "rgba32f",
+
+    (TYPE_FLT_PACK32, COMPONENT_RGB):   "rgba32f",
 }
 
 
@@ -500,52 +506,52 @@ FRAMEBUF_FLAGS_ENUM = {
 
 FRAMEBUFFERS = {
     # (image name)                      : (base format type, components,    flags)
-    "Albedo"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "Albedo"                            : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
     "Normal"                            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
-    "UnfilteredDirect"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "UnfilteredDirectSpecular"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "UnfilteredIndirectSpecular"        : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "UnfilteredIndirectSH_R"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "UnfilteredIndirectSH_G"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "UnfilteredIndirectSH_B"            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "UnfilteredDirect"                  : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
+    "UnfilteredDirectSpecular"          : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
+    "UnfilteredIndirectSpecular"        : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
+    "UnfilteredIndirectSH_R"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "UnfilteredIndirectSH_G"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "UnfilteredIndirectSH_B"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "ViewDirection"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "Final"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_IS_ATTACHMENT),
-    "Motion"                            : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "Final"                             : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
 
-    "DiffAccumColor"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "DiffAccumColor"                    : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAccumMoments"                  : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
-    "AccumHistoryLength"                : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "DiffColorHistory"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "DiffPingColorAndVariance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "DiffPongColorAndVariance"          : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "AccumHistoryLength"                : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
+    "DiffColorHistory"                  : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "DiffPingColorAndVariance"          : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "DiffPongColorAndVariance"          : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     
-    "SpecAccumColor"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "SpecPingColor"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "SpecPongColor"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "SpecAccumColor"                    : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
+    "SpecPingColor"                     : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
+    "SpecPongColor"                     : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
     
-    "IndirAccumSH_R"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "IndirAccumSH_G"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "IndirAccumSH_B"                    : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "IndirPingSH_R"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "IndirPingSH_G"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "IndirPingSH_B"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "IndirPongSH_R"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "IndirPongSH_G"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
-    "IndirPongSH_B"                     : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "IndirAccumSH_R"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "IndirAccumSH_G"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "IndirAccumSH_B"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "IndirPingSH_R"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "IndirPingSH_G"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "IndirPingSH_B"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "IndirPongSH_R"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "IndirPongSH_G"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "IndirPongSH_B"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
 
-    "AtrousFilteredVariance"            : (TYPE_FLOAT32,    COMPONENT_R, 0),
+    "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R, 0),
     
     "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD | FRAMEBUF_FLAGS_STORE_PREV),
-    "DiffAndSpecPingGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
-    "DiffAndSpecPongGradient"           : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
-    "IndirPingGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG,   FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
-    "IndirPongGradient"                 : (TYPE_FLOAT32,    COMPONENT_RG,   FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "DiffAndSpecPingGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "DiffAndSpecPongGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "IndirPingGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
+    "IndirPongGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_THIRD),
 }
 
 
@@ -743,7 +749,7 @@ def getAllGLSLSetters():
 
 
 def getGLSLImage2DType(baseFormat):
-    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8:
+    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8 or baseFormat == TYPE_FLT_PACK32:
         return "image2D"
     elif baseFormat == TYPE_INT32:
         return "iimage2D"
@@ -752,7 +758,7 @@ def getGLSLImage2DType(baseFormat):
 
     
 def getGLSLSampler2DType(baseFormat):
-    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8:
+    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8 or baseFormat == TYPE_FLT_PACK32:
         return "sampler2D"
     elif baseFormat == TYPE_INT32:
         return "isampler2D"

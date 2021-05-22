@@ -131,7 +131,7 @@ void main()
     }
     
     const vec4 gradDiffSpec = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
-    const vec4 gradIndir = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
+    const float gradIndir = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).r;
 
     vec3 diffColorAccum;
     vec2 diffMomentsAccum;
