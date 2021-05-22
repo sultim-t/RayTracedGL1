@@ -42,8 +42,8 @@ void main()
 
     if (depth > MAX_RAY_LENGTH)
     {
-        imageStore(framebufUnfilteredDirect, pix, vec4(0.0));
-        imageStore(framebufUnfilteredDirectSpecular, pix, vec4(0.0));
+        imageStore(framebufUnfilteredDirect, pix, uvec4(0));
+        imageStore(framebufUnfilteredDirectSpecular, pix, uvec4(0));
         return;
     }
 
@@ -70,6 +70,6 @@ void main()
         isGradientSample, 
         diffuse, specular);
 
-    imageStore(framebufUnfilteredDirect, pix, vec4(diffuse, 0.0));
-    imageStore(framebufUnfilteredDirectSpecular, pix, vec4(specular, 0.0));
+    imageStoreUnfilteredDirect(         pix, diffuse);
+    imageStoreUnfilteredDirectSpecular( pix, specular);
 }

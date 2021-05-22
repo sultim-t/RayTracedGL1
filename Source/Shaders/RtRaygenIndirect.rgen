@@ -174,7 +174,7 @@ void processIndirectIllumination(
             surfNormal, surfNormalGeom, surfRoughness, 
             v, isGradientSample);
 
-        imageStore(framebufUnfilteredIndirectSpecular, pix, vec4(contribution, 0.0));
+        imageStoreUnfilteredIndirectSpecular(pix, contribution);
     }
 
     {

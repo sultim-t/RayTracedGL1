@@ -63,12 +63,12 @@ void main()
             const ivec2 curPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
             const ivec2 prevPix = getPrevFramePix(framebufMotion_Sampler, curPix);
 
-            const vec3 prevColor = texelFetch(framebufUnfilteredDirect_Sampler, prevPix, 0).rgb;
+            const vec3 prevColor = texelFetchUnfilteredDirect(prevPix);
             const float prevLuminance = getLuminance(prevColor);
 
             const vec3 prevSpec =
-                texelFetch(framebufUnfilteredDirectSpecular_Sampler, prevPix, 0).rgb + 
-                texelFetch(framebufUnfilteredIndirectSpecular_Sampler, prevPix, 0).rgb;
+                texelFetchUnfilteredDirectSpecular(prevPix) + 
+                texelFetchUnfilteredIndirectSpecular(prevPix);
             const float prevLuminanceSpec = getLuminance(prevSpec);
 
             if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec)

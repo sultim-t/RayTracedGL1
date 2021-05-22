@@ -60,10 +60,11 @@ const int FILTER_RADIUS = 1;
 
 struct FilterData
 {
-    vec3 color;
-    uint encNormalGeometry;
     vec2 gradDepth;
     float depth;
+    // E5B9G9R9
+    uint encColor;
+    uint encNormalGeometry;
 };
 
 // Preloaded data for filter pixel data. Additional FILTER_RADIUS pixels at both ends for each dimension
@@ -77,7 +78,7 @@ void fillFilterData(const ivec2 globalBasePix, const int sharedOffset)
     const ivec2 globalPix = globalBasePix + sharedPix;
 
     FilterData data;
-    data.color              = texelFetch(framebufDiffAccumColor_Sampler, globalPix, 0).rgb;
+    data.encColor           = texelFetch(framebufDiffAccumColor_Sampler, globalPix, 0).r;
     data.encNormalGeometry  = texelFetchEncNormalGeometry(               globalPix);
     const vec3 depthFB      = texelFetch(framebufDepth_Sampler,          globalPix, 0).rgb;
     data.gradDepth          = abs(depthFB.gb);
@@ -140,9 +141,11 @@ void main()
     const ivec2 pixShared = getSharedID(0, 0);
     const FilterData pixData = filterData[pixShared.y][pixShared.x];
 
+    vec3 pixDataColor = decodeE5B9G9R9(pixData.encColor);
+
     if (pixData.depth < 0.0 || pixData.depth > MAX_RAY_LENGTH)
     {
-        imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixData.color, 0.0));
+        imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixDataColor, 0.0));
         return;
     }
 
@@ -154,14 +157,13 @@ void main()
     {
         float temporalVariance = max(0.0, temporalMoments.y - temporalMoments.x * temporalMoments.x);
 
-        imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixData.color, temporalVariance));
+        imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixDataColor, temporalVariance));
         return;
     }
 
-    const float l = getLuminance(pixData.color);
+    const float l = getLuminance(pixDataColor);
 
     vec2 spatialMoments = vec2(l, l * l) + temporalMoments;
-    vec3 spatialColor = pixData.color;
     float weightSum = 1.0;
 
     for (int yy = -FILTER_RADIUS; yy <= FILTER_RADIUS; yy++)
@@ -176,7 +178,8 @@ void main()
             const ivec2 qShared = getSharedID(xx, yy);
             const FilterData qData = filterData[qShared.y][qShared.x];
             
-            const float l_q = getLuminance(qData.color);
+            const vec3 color_q = decodeE5B9G9R9(qData.encColor);
+            const float l_q = getLuminance(color_q);
 
             const float w_z = exp(-abs(pixData.depth - qData.depth) / max(dot(pixData.gradDepth, abs(vec2(xx, yy))), 0.01));
             const float w_n = pow(max(0.0, dotEnc(pixData.encNormalGeometry, qData.encNormalGeometry)), 128.0);
@@ -186,7 +189,7 @@ void main()
             if (!isnan(w))
             {
                 spatialMoments += vec2(l_q, l_q * l_q) * w;
-                spatialColor += qData.color * w;
+                pixDataColor += color_q * w;
 
                 weightSum += w;
             }
@@ -195,12 +198,12 @@ void main()
 
     const float invWeightSum = 1.0 / weightSum;
     spatialMoments *= invWeightSum;
-    spatialColor *= invWeightSum;
+    pixDataColor *= invWeightSum;
 
     const float spatialVariance = max(0.0, spatialMoments.y - spatialMoments.x * spatialMoments.x) 
                                   * (1.0 + 2.0 * (1.0 - historyLength / HISTORY_LENGTH_THRESHOLD));
                                   
-    imageStore(framebufDiffPingColorAndVariance, pix, vec4(spatialColor, spatialVariance));
+    imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixDataColor, spatialVariance));
 }
 
 

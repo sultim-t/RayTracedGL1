@@ -68,7 +68,9 @@ float getPrefilteredLuminanceVariance(const ivec2 pix)
 
 
 void atrous(sampler2D samplerDiff, 
-            sampler2D samplerSpec, 
+            // TODO: more generic handling of different formats for samplers
+            // now it's just hardcoded E5B9G9R9
+            usampler2D samplerSpec, 
             sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
             out vec3 outDiff, out float outVariance, 
             out vec3 outSpec,
@@ -82,7 +84,7 @@ void atrous(sampler2D samplerDiff,
     outDiff       = cv.rgb;
     outVariance   = cv.a;
 
-    outSpec       = texelFetch(samplerSpec, pix, 0).rgb;
+    outSpec       = decodeE5B9G9R9(texelFetch(samplerSpec, pix, 0).r);
 
     outIndirSH    = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
 
@@ -148,7 +150,7 @@ void atrous(sampler2D samplerDiff,
             const vec3  normal_q    = texelFetchNormalGeometry(                     pix_q);
             const float depth_q     = texelFetch(framebufDepth_Sampler,             pix_q, 0).r;
 
-            const vec3  specColor_q = texelFetch(samplerSpec,                       pix_q, 0).rgb;
+            const vec3  specColor_q = decodeE5B9G9R9(texelFetch(samplerSpec,        pix_q, 0).r);
             
             const vec4  cv_q        = texelFetch(samplerDiff,                       pix_q, 0);
             const vec3  diffColor_q = cv_q.rgb;
@@ -242,15 +244,15 @@ void main()
     switch (atrousIteration)
     {
         case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
-                imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
+                imageStoreSpecPongColor(                     pix, filteredSpec); 
                 imageStoreIndirPongSH(                       pix, filteredIndir); 
                 break;
         case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
-                imageStore(framebufSpecPingColor,            pix, vec4(filteredSpec, 0.0)); 
+                imageStoreSpecPingColor(                     pix, filteredSpec); 
                 imageStoreIndirPingSH(                       pix, filteredIndir); 
                 break;
         case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
-                imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
+                imageStoreSpecPongColor(                     pix, filteredSpec); 
                 imageStoreIndirPongSH(                       pix, filteredIndir); 
                 break;
     }

@@ -61,7 +61,7 @@ void main()
     vec4 directAndSpec = vec4(0.0);
 
     {
-        const vec3 color = texelFetch(framebufUnfilteredDirect_Sampler, shadingSamplePix, 0).rgb;
+        const vec3 color = texelFetchUnfilteredDirect(shadingSamplePix);
         const float shadingSampleLuminance = getLuminance(color);
 
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
@@ -73,8 +73,8 @@ void main()
 
     {
         const vec3 color = 
-            texelFetch(framebufUnfilteredDirectSpecular_Sampler, shadingSamplePix, 0).rgb + 
-            texelFetch(framebufUnfilteredIndirectSpecular_Sampler, shadingSamplePix, 0).rgb;
+            texelFetchUnfilteredDirectSpecular(shadingSamplePix) + 
+            texelFetchUnfilteredIndirectSpecular(shadingSamplePix);
         const float shadingSampleLuminance = getLuminance(color);
 
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;

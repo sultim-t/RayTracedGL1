@@ -43,9 +43,9 @@ void main()
     
     if (depth < MAX_RAY_LENGTH)
     {
-        /*const vec3 unfilteredDiff = texelFetch(framebufUnfilteredDirect_Sampler,   pix, 0).rgb;
-        const vec3 unfilteredSpec = texelFetch(framebufUnfilteredSpecular_Sampler, pix, 0).rgb;
-        const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);*/
+        /*const vec3 unfilteredDiff = ;
+        const vec3 unfilteredSpec = ;
+        const SH unfilteredIndirSH = ;*/
 
         const vec3 light = imageLoad(framebufFinal, pix).rgb;
         color = light * albedo;

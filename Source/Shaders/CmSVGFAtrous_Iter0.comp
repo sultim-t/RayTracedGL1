@@ -72,7 +72,8 @@ const float WAVELET_KERNEL[2][2] =
 struct AtrousData
 {
     vec3    directDiffuseColor;
-    vec3    specularColor;
+    // E5B9G9R9
+    uint    encSpecularColor;
     float   roughness;
     uint    encNormalGeometry;
     float   depth;
@@ -87,7 +88,7 @@ shared float directDiffuseVariance[SHARED_WIDTH][SHARED_WIDTH];
 
 void fillFilterData(
     sampler2D samplerDiff, 
-    sampler2D samplerSpec, 
+    usampler2D samplerSpec, 
     sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB, 
     const ivec2 globalBasePix, const int sharedOffset)
 {
@@ -106,7 +107,7 @@ void fillFilterData(
     
     //data.indirectDiffuseSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, globalPix);
     data.roughness          = texelFetch(framebufMetallicRoughness_Sampler, globalPix, 0).g;
-    data.specularColor      = texelFetch(samplerSpec,                       globalPix, 0).rgb;
+    data.encSpecularColor   = texelFetch(samplerSpec,                       globalPix, 0).r;
     data.encNormalGeometry  = texelFetchEncNormalGeometry(                  globalPix);     
 
     atrousData[sharedPix.y][sharedPix.x] = data;
@@ -115,7 +116,7 @@ void fillFilterData(
 
 void preload(
     sampler2D samplerDiff, 
-    sampler2D samplerSpec, 
+    usampler2D samplerSpec, 
     sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB)
 {
     const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_ATROUS_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
@@ -219,7 +220,7 @@ void atrous0(
 
     outVariance = GET_DIR_DIFF_VARIANCE(0, 0);
     outDiff     = center.directDiffuseColor;
-    outSpec     = center.specularColor;
+    outSpec     = decodeE5B9G9R9(center.encSpecularColor);
     outIndirSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
 
     const float l = getLuminance(outDiff);
@@ -271,7 +272,7 @@ void atrous0(
 
 
             outDiff += other.directDiffuseColor * wDiff;
-            outSpec += other.specularColor * wSpec;
+            outSpec += decodeE5B9G9R9(other.encSpecularColor) * wSpec;
             // SH are fetched here, because storing it in shared memory causes short scoreboard stalls
             accumulateSH(outIndirSH, texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix_q), wDiffIndir);
 
@@ -325,6 +326,6 @@ void main()
 
     // for the first iteration, save to color history buffer for temporal accumulation
     imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
-    imageStore(framebufSpecPongColor,            pix, vec4(filteredSpec, 0.0)); 
+    imageStoreSpecPongColor(                     pix, filteredSpec); 
     imageStoreIndirPongSH(                       pix, filteredIndir); 
 }
