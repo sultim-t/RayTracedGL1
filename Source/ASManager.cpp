@@ -641,6 +641,8 @@ void ASManager::SubmitStaticGeometry()
 
 void ASManager::BeginDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 {
+    scratchBuffer->Reset();
+
     static_assert(MAX_FRAMES_IN_FLIGHT == 2, "");
     uint32_t prevFrameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
@@ -683,6 +685,9 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
 
     // build BLAS
     asBuilder->BuildBottomLevel(cmd);
+
+    // sync AS access
+    Utils::ASBuildMemoryBarrier(cmd);
 }
 
 void ASManager::UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo)
@@ -1007,6 +1012,9 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLA
         asBuilder->BuildTopLevel(cmd);
     }
 
+    // sync AS access
+    Utils::ASBuildMemoryBarrier(cmd);
+
 
     UpdateASDescriptors(frameIndex);
 
@@ -1074,7 +1082,8 @@ bool ASManager::IsFastBuild(VertexCollectorFilterTypeFlags filter)
 
     // fast trace for static non-movable,
     // fast build for dynamic and movable
-    return (filter & FT::CF_DYNAMIC) || (filter & FT::CF_STATIC_MOVABLE);
+    // (TODO: fix: device lost occurs on heavy scenes if with movable)
+    return (filter & FT::CF_DYNAMIC)/* || (filter & FT::CF_STATIC_MOVABLE)*/;
 }
 
 VkDescriptorSet ASManager::GetBuffersDescSet(uint32_t frameIndex) const

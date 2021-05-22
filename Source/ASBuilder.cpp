@@ -130,10 +130,6 @@ void ASBuilder::BuildBottomLevel(VkCommandBuffer cmd)
     svkCmdBuildAccelerationStructuresKHR(cmd, bottomLBuildInfo.geomInfos.size(), 
                                         bottomLBuildInfo.geomInfos.data(), bottomLBuildInfo.rangeInfos.data());
 
-    // sync scratch buffer and AS access
-    Utils::ASBuildMemoryBarrier(cmd);
-    scratchBuffer->Reset();
-
     bottomLBuildInfo.geomInfos.clear();
     bottomLBuildInfo.rangeInfos.clear();
 }
@@ -178,10 +174,6 @@ void ASBuilder::BuildTopLevel(VkCommandBuffer cmd)
     // build bottom level
     svkCmdBuildAccelerationStructuresKHR(cmd, topLBuildInfo.geomInfos.size(),
                                         topLBuildInfo.geomInfos.data(), topLBuildInfo.rangeInfos.data());
-
-    // sync scratch buffer and AS access
-    Utils::ASBuildMemoryBarrier(cmd);
-    scratchBuffer->Reset();
 
     topLBuildInfo.geomInfos.clear();
     topLBuildInfo.rangeInfos.clear();
