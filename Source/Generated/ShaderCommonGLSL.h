@@ -326,9 +326,11 @@ vec3 texelFetchUnfilteredIndirectSpecular(const ivec2 pix){ return decodeE5B9G9R
 
 void imageStoreDiffAccumColor(const ivec2 pix, const vec3 unpacked) { imageStore(framebufDiffAccumColor, pix, uvec4(encodeE5B9G9R9(unpacked))); }
 vec3 texelFetchDiffAccumColor(const ivec2 pix){ return decodeE5B9G9R9(texelFetch(framebufDiffAccumColor_Sampler, pix, 0).r); }
+vec3 texelFetchDiffAccumColor_Prev(const ivec2 pix){ return decodeE5B9G9R9(texelFetch(framebufDiffAccumColor_Prev_Sampler, pix, 0).r); }
 
 void imageStoreSpecAccumColor(const ivec2 pix, const vec3 unpacked) { imageStore(framebufSpecAccumColor, pix, uvec4(encodeE5B9G9R9(unpacked))); }
 vec3 texelFetchSpecAccumColor(const ivec2 pix){ return decodeE5B9G9R9(texelFetch(framebufSpecAccumColor_Sampler, pix, 0).r); }
+vec3 texelFetchSpecAccumColor_Prev(const ivec2 pix){ return decodeE5B9G9R9(texelFetch(framebufSpecAccumColor_Prev_Sampler, pix, 0).r); }
 
 void imageStoreSpecPingColor(const ivec2 pix, const vec3 unpacked) { imageStore(framebufSpecPingColor, pix, uvec4(encodeE5B9G9R9(unpacked))); }
 vec3 texelFetchSpecPingColor(const ivec2 pix){ return decodeE5B9G9R9(texelFetch(framebufSpecPingColor_Sampler, pix, 0).r); }

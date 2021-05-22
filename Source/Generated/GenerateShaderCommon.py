@@ -820,13 +820,16 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
     return r
 
 
-def getGLSLFramebufPackUnpackE5(name):
+def getGLSLFramebufPackUnpackE5(name, withPrev):
     templateImgStore = ("void imageStore%s(const ivec2 pix, const vec3 unpacked) "
                         "{ imageStore(%s, pix, uvec4(encodeE5B9G9R9(unpacked))); }")
     templateTxlFetch = ("vec3 texelFetch%s(const ivec2 pix)"
                         "{ return decodeE5B9G9R9(texelFetch(%s, pix, 0).r); }")
-    return templateImgStore % (name, FRAMEBUF_PREFIX + name) + "\n" + \
-           templateTxlFetch % (name, FRAMEBUF_PREFIX + name + FRAMEBUF_SAMPLER_POSTFIX) + "\n"
+    r  = templateImgStore % (name, FRAMEBUF_PREFIX + name) + "\n"
+    r += templateTxlFetch % (name, FRAMEBUF_PREFIX + name + FRAMEBUF_SAMPLER_POSTFIX) + "\n"
+    if withPrev:
+        r += templateTxlFetch % (name + FRAMEBUF_STORE_PREV_POSTFIX, FRAMEBUF_PREFIX + name + FRAMEBUF_STORE_PREV_POSTFIX + FRAMEBUF_SAMPLER_POSTFIX) + "\n"
+    return r
     
 
 def getAllGLSLFramebufDeclarations():
@@ -848,9 +851,9 @@ def getAllGLSLFramebufDeclarations():
         \
         + "\n\n// pack/unpack formats\n" \
         + "\n".join(
-            getGLSLFramebufPackUnpackE5(name)
+            getGLSLFramebufPackUnpackE5(name, flags & FRAMEBUF_FLAGS_STORE_PREV)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
-            if baseFormat == TYPE_PACK_E5
+            if baseFormat == TYPE_PACK_E5 and not (flags & FRAMEBUF_FLAGS_NO_SAMPLER)
         ) \
         \
         + "\n\n#endif\n"
