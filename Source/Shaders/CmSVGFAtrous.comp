@@ -132,14 +132,21 @@ void atrous(sampler2D samplerDiff,
                 continue;
             }
 #else
-    // x o x
-    // o 0 o
-    // x o x
 
         for (int i = 0 ; i < 4; i++)
         {
-            const int xx = (i % 2) * 2 - 1;
-            const int yy = (i / 2) * 2 - 1;
+            // if iteration is even, the pattern is "X":
+            // x o x
+            // o 0 o
+            // x o x
+
+            // if it's odd, then "+":
+            // o x o
+            // x 0 x
+            // o x o
+
+            const int xx = atrousIteration % 2 == 0 ?   (i % 2) * 2 - 1 :   ((i % 2) * 2 - 1) *      (i / 2);
+            const int yy = atrousIteration % 2 == 0 ?   (i / 2) * 2 - 1 :   ((i % 2) * 2 - 1) * (1 - (i / 2));
 #endif
 
             const ivec2 offset = ivec2(xx * STEP_SIZE, yy * STEP_SIZE);
