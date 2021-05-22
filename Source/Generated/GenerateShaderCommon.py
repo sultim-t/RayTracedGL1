@@ -109,7 +109,8 @@ GLSL_TYPE_SIZES_STD_430 = {
 TYPE_UNORM8     = 3
 TYPE_UINT16     = 4
 TYPE_FLOAT16    = 5
-TYPE_FLT_PACK32 = 6
+TYPE_PACK_11    = 128   # R11G11B10
+TYPE_PACK_E5    = 129   # shared exponent, E5B9G9R9
 
 COMPONENT_R     = 0
 COMPONENT_RG    = 1
@@ -138,7 +139,11 @@ VULKAN_IMAGE_FORMATS = {
     (TYPE_FLOAT32,  COMPONENT_RG):      "VK_FORMAT_R32G32_SFLOAT",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "VK_FORMAT_R32G32B32A32_SFLOAT",
 
-    (TYPE_FLT_PACK32, COMPONENT_RGB):   "VK_FORMAT_B10G11R11_UFLOAT_PACK32",
+    (TYPE_PACK_11,  COMPONENT_RGB):    "VK_FORMAT_B10G11R11_UFLOAT_PACK32",
+    # Should've been VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, 
+    # but not enough devices support storage images with such format.
+    # So pack/unpack is done manually.
+    (TYPE_PACK_E5,  COMPONENT_RGB):    "VK_FORMAT_R32_UINT",
 }
 
 GLSL_IMAGE_FORMATS = {
@@ -162,11 +167,32 @@ GLSL_IMAGE_FORMATS = {
     (TYPE_FLOAT32,  COMPONENT_RG):      "rg32f",
     (TYPE_FLOAT32,  COMPONENT_RGBA):    "rgba32f",
 
-    (TYPE_FLT_PACK32, COMPONENT_RGB):   "rgba32f",
+    (TYPE_PACK_11,  COMPONENT_RGB):    "r11f_g11f_b10f",
+    (TYPE_PACK_E5,  COMPONENT_RGB):    "r32ui",
 }
 
+GLSL_IMAGE_2D_TYPE = { 
+    TYPE_FLOAT32    : "image2D",
+    TYPE_INT32      : "iimage2D",
+    TYPE_UINT32     : "uimage2D",
+    TYPE_UNORM8     : "image2D",
+    TYPE_UINT16     : "uimage2D",
+    TYPE_FLOAT16    : "image2D",
+    TYPE_PACK_11    : "image2D",
+    TYPE_PACK_E5    : "uimage2D",
+}
 
-TAB_STR = "    "
+GLSL_SAMPLER_2D_TYPE = { 
+    TYPE_FLOAT32    : "sampler2D",
+    TYPE_INT32      : "isampler2D",
+    TYPE_UINT32     : "usampler2D",
+    TYPE_UNORM8     : "sampler2D",
+    TYPE_UINT16     : "usampler2D",
+    TYPE_FLOAT16    : "sampler2D",
+    TYPE_PACK_11    : "sampler2D",
+    TYPE_PACK_E5    : "usampler2D",
+}
+
 
 USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE = False
 USE_MULTIDIMENSIONAL_ARRAYS_IN_C = False
@@ -506,34 +532,35 @@ FRAMEBUF_FLAGS_ENUM = {
 
 FRAMEBUFFERS = {
     # (image name)                      : (base format type, components,    flags)
-    "Albedo"                            : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "Albedo"                            : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
     "Normal"                            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
-    "UnfilteredDirect"                  : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
-    "UnfilteredDirectSpecular"          : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
-    "UnfilteredIndirectSpecular"        : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
+    "UnfilteredDirect"                  : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
+    "UnfilteredDirectSpecular"          : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
+    "UnfilteredIndirectSpecular"        : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredIndirectSH_R"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredIndirectSH_G"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredIndirectSH_B"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
-    "Final"                             : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
 
-    "DiffAccumColor"                    : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
+    "AccumHistoryLength"                : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
+    
+    "DiffAccumColor"                    : (TYPE_PACK_E5,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAccumMoments"                  : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
-    "AccumHistoryLength"                : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
     "DiffColorHistory"                  : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "DiffPingColorAndVariance"          : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "DiffPongColorAndVariance"          : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     
-    "SpecAccumColor"                    : (TYPE_FLT_PACK32, COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
-    "SpecPingColor"                     : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
-    "SpecPongColor"                     : (TYPE_FLT_PACK32, COMPONENT_RGB,  0),
+    "SpecAccumColor"                    : (TYPE_PACK_E5,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
+    "SpecPingColor"                     : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
+    "SpecPongColor"                     : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     
     "IndirAccumSH_R"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "IndirAccumSH_G"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
@@ -594,7 +621,7 @@ CURRENT_PAD_INDEX = 0
 def getPadsForStruct(typeNames, uint32ToAdd):
     global CURRENT_PAD_INDEX
     r = ""
-    padStr = TAB_STR + typeNames[TYPE_UINT32] + " __pad%d;\n"
+    padStr = "    " + typeNames[TYPE_UINT32] + " __pad%d;\n"
     for i in range(uint32ToAdd):
         r += padStr % (CURRENT_PAD_INDEX + i)
     CURRENT_PAD_INDEX += uint32ToAdd
@@ -616,7 +643,7 @@ def getStruct(name, definition, typeNames, alignmentType, breakType):
 
     for baseType, dim, mname, count in definition:
         assert(count > 0)
-        r += TAB_STR
+        r += "    "
 
         if count == 1:
             if dim == 1:
@@ -748,24 +775,6 @@ def getAllGLSLSetters():
     ) + "\n"
 
 
-def getGLSLImage2DType(baseFormat):
-    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8 or baseFormat == TYPE_FLT_PACK32:
-        return "image2D"
-    elif baseFormat == TYPE_INT32:
-        return "iimage2D"
-    else:
-        return "uimage2D"
-
-    
-def getGLSLSampler2DType(baseFormat):
-    if baseFormat == TYPE_FLOAT16 or baseFormat == TYPE_FLOAT32 or baseFormat == TYPE_UNORM8 or baseFormat == TYPE_FLT_PACK32:
-        return "sampler2D"
-    elif baseFormat == TYPE_INT32:
-        return "isampler2D"
-    else:
-        return "usampler2D"
-
-
 CURRENT_FRAMEBUF_BINDING_COUNT = 0
 
 def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
@@ -779,7 +788,7 @@ def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
 
     r = template % (FRAMEBUF_DESC_SET_NAME, binding, 
         GLSL_IMAGE_FORMATS[(baseFormat, components)], 
-        getGLSLImage2DType(baseFormat), name)
+        GLSL_IMAGE_2D_TYPE[baseFormat], name)
 
     if flags & FRAMEBUF_FLAGS_STORE_PREV:
         r += "\n"
@@ -800,7 +809,7 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
     templateSampler = ("layout(set = %s, binding = %d) uniform %s %s;")
 
     r = templateSampler % (FRAMEBUF_DESC_SET_NAME, bindingSampler,
-        getGLSLSampler2DType(baseFormat), name + FRAMEBUF_SAMPLER_POSTFIX)
+        GLSL_SAMPLER_2D_TYPE[baseFormat], name + FRAMEBUF_SAMPLER_POSTFIX)
 
     if flags & FRAMEBUF_FLAGS_STORE_PREV:
         r += "\n"
@@ -811,20 +820,39 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
     return r
 
 
+def getGLSLFramebufPackUnpackE5(name):
+    templateImgStore = ("void imageStore%s(const ivec2 pix, const vec3 unpacked) "
+                        "{ imageStore(%s, pix, uvec4(encodeE5B9G9R9(unpacked))); }")
+    templateTxlFetch = ("vec3 texelFetch%s(const ivec2 pix)"
+                        "{ return decodeE5B9G9R9(texelFetch(%s, pix, 0).r); }")
+    return templateImgStore % (name, FRAMEBUF_PREFIX + name) + "\n" + \
+           templateTxlFetch % (name, FRAMEBUF_PREFIX + name + FRAMEBUF_SAMPLER_POSTFIX) + "\n"
+    
+
 def getAllGLSLFramebufDeclarations():
     global CURRENT_FRAMEBUF_BINDING_COUNT
     CURRENT_FRAMEBUF_BINDING_COUNT = 0
-    return "#ifdef " + FRAMEBUF_DESC_SET_NAME + "\n\n// framebuffers\n" \
+    return "#ifdef " + FRAMEBUF_DESC_SET_NAME \
+        + "\n\n// framebuffers\n" \
         + "\n".join(
             getGLSLFramebufDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
         ) \
+        \
         + "\n\n// samplers\n" \
         + "\n".join(
             getGLSLFramebufSamplerDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
             if not (flags & FRAMEBUF_FLAGS_NO_SAMPLER)
         ) \
+        \
+        + "\n\n// pack/unpack formats\n" \
+        + "\n".join(
+            getGLSLFramebufPackUnpackE5(name)
+            for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
+            if baseFormat == TYPE_PACK_E5
+        ) \
+        \
         + "\n\n#endif\n"
 
 
@@ -896,6 +924,7 @@ def getAllVulkanFramebufDefinitions():
                 "const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = \n{\n%s};\n\n"
                 "const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = \n{\n%s};\n\n"
                 "const char *const RTGL1::ShFramebuffers_DebugNames[] = \n{\n%s};\n\n")
+    TAB_STR = "    "
     formats = ""
     count = 0
     publicFlags = ""
