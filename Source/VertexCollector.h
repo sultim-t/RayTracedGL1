@@ -127,7 +127,7 @@ private:
 
     bool GetVertBufferCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const;
     
-    bool CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
+    std::vector<VkBufferCopy> CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
     bool CopyTransformsFromStaging(VkCommandBuffer cmd, bool insertMemBarrier);
 
