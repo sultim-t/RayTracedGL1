@@ -18,6 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#define M_PI        3.14159265358979323846
 #define UINT32_MAX  0xFFFFFFFF
 
 vec4 unpackLittleEndianUintColor(uint c)
@@ -35,11 +36,14 @@ float getLuminance(vec3 c)
     return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
 }
 
-const uint N_phi = 1 << 16;
-const uint N_theta = 1 << 16;
+#define ENCODE_NORMAL_N_PHI 1 << 16
+#define ENCODE_NORMAL_N_THETA 1 << 16
 
 uint encodeNormal(vec3 n)
 {
+    const uint N_phi = ENCODE_NORMAL_N_PHI;
+    const uint N_theta = ENCODE_NORMAL_N_THETA;
+
     float phi = acos(n.z);
     // atan -> [-pi, pi], need [0, 2pi]
 	float theta = atan(n.y, n.x);
@@ -53,6 +57,9 @@ uint encodeNormal(vec3 n)
 
 vec3 decodeNormal(uint packed)
 {
+    const uint N_phi = ENCODE_NORMAL_N_PHI;
+    const uint N_theta = ENCODE_NORMAL_N_THETA;
+
     uint j = packed >> 16;
     uint k = packed & 0xFFFF;
 
@@ -63,5 +70,64 @@ vec3 decodeNormal(uint packed)
         sin(phi) * cos(theta),
         sin(phi) * sin(theta),
         cos(phi)
+    );
+}
+
+// https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_texture_shared_exponent.txt
+
+#define ENCODE_E5B9G9R9_EXPONENT_BITS 5
+#define ENCODE_E5B9G9R9_MANTISSA_BITS 9
+#define ENCODE_E5B9G9R9_MAX_VALID_BIASED_EXP 31
+#define ENCODE_E5B9G9R9_EXP_BIAS 15
+
+#define ENCODE_E5B9G9R9_MANTISSA_VALUES (1 << 9)
+#define ENCODE_E5B9G9R9_MANTISSA_MASK (ENCODE_E5B9G9R9_MANTISSA_VALUES - 1)
+// Equals to (((float)(MANTISSA_VALUES - 1))/MANTISSA_VALUES * (1<<(MAX_VALID_BIASED_EXP-EXP_BIAS)))
+#define ENCODE_E5B9G9R9_SHAREDEXP_MAX 65408
+
+uint encodeE5B9G9R9(vec3 unpacked)
+{
+    const int N = ENCODE_E5B9G9R9_MANTISSA_BITS;
+    const int Np2 = 1 << N;
+    const int B = ENCODE_E5B9G9R9_EXP_BIAS;
+
+    unpacked = clamp(unpacked, vec3(0.0), vec3(ENCODE_E5B9G9R9_SHAREDEXP_MAX));
+    float max_c = max(unpacked.r, max(unpacked.g, unpacked.b));
+
+    // for log2
+    if (max_c == 0.0)
+    {
+        return 0;
+    }
+
+    int exp_shared_p = max(-B-1, int(floor(log2(max_c)))) + 1 + B;
+    int max_s = int(round(max_c * pow(2, -(exp_shared_p - B - N))));
+
+    int exp_shared = max_s != Np2 ? 
+        exp_shared_p : 
+        exp_shared_p + 1;
+
+    float s = pow(2, -(exp_shared - B - N));
+    uvec3 rgb_s = uvec3(round(unpacked * s));
+
+    return 
+        exp_shared << (3 * ENCODE_E5B9G9R9_MANTISSA_BITS) |
+        rgb_s.b    << (2 * ENCODE_E5B9G9R9_MANTISSA_BITS) |
+        rgb_s.g    << (1 * ENCODE_E5B9G9R9_MANTISSA_BITS) |
+        rgb_s.r;
+}
+
+vec3 decodeE5B9G9R9(const uint packed)
+{
+    const int N = ENCODE_E5B9G9R9_MANTISSA_BITS;
+    const int B = ENCODE_E5B9G9R9_EXP_BIAS;
+
+    uint exp_shared = packed >> (3 * ENCODE_E5B9G9R9_MANTISSA_BITS);
+    float s = pow(2, exp_shared - B - N);
+
+    return s * vec3(
+        packed                                        & ENCODE_E5B9G9R9_MANTISSA_MASK, 
+        packed >> (1 * ENCODE_E5B9G9R9_MANTISSA_BITS) & ENCODE_E5B9G9R9_MANTISSA_MASK,
+        packed >> (2 * ENCODE_E5B9G9R9_MANTISSA_BITS) & ENCODE_E5B9G9R9_MANTISSA_MASK
     );
 }
