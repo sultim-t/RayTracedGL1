@@ -55,13 +55,13 @@ uint encodeNormal(vec3 n)
     return (j << 16) | k;
 }
 
-vec3 decodeNormal(uint packed)
+vec3 decodeNormal(uint _packed)
 {
     const uint N_phi = ENCODE_NORMAL_N_PHI;
     const uint N_theta = ENCODE_NORMAL_N_THETA;
 
-    uint j = packed >> 16;
-    uint k = packed & 0xFFFF;
+    uint j = _packed >> 16;
+    uint k = _packed & 0xFFFF;
 
     float phi = j * M_PI / (N_phi - 1);
     float theta = k * 2 * M_PI / N_theta;
@@ -101,33 +101,33 @@ uint encodeE5B9G9R9(vec3 unpacked)
     }
 
     int exp_shared_p = max(-B-1, int(floor(log2(max_c)))) + 1 + B;
-    int max_s = int(round(max_c * pow(2, -(exp_shared_p - B - N))));
+    int max_s = int(round(max_c * pow(2.0, -(exp_shared_p - B - N))));
 
     int exp_shared = max_s != Np2 ? 
         exp_shared_p : 
         exp_shared_p + 1;
 
-    float s = pow(2, -(exp_shared - B - N));
+    float s = pow(2.0, -(exp_shared - B - N));
     uvec3 rgb_s = uvec3(round(unpacked * s));
 
     return 
-        exp_shared << (3 * ENCODE_E5B9G9R9_MANTISSA_BITS) |
-        rgb_s.b    << (2 * ENCODE_E5B9G9R9_MANTISSA_BITS) |
-        rgb_s.g    << (1 * ENCODE_E5B9G9R9_MANTISSA_BITS) |
-        rgb_s.r;
+        (exp_shared << (3 * ENCODE_E5B9G9R9_MANTISSA_BITS)) |
+        (rgb_s.b    << (2 * ENCODE_E5B9G9R9_MANTISSA_BITS)) |
+        (rgb_s.g    << (1 * ENCODE_E5B9G9R9_MANTISSA_BITS)) |
+        (rgb_s.r);
 }
 
-vec3 decodeE5B9G9R9(const uint packed)
+vec3 decodeE5B9G9R9(const uint _packed)
 {
     const int N = ENCODE_E5B9G9R9_MANTISSA_BITS;
     const int B = ENCODE_E5B9G9R9_EXP_BIAS;
 
-    uint exp_shared = packed >> (3 * ENCODE_E5B9G9R9_MANTISSA_BITS);
-    float s = pow(2, exp_shared - B - N);
+    int exp_shared = int(_packed >> (3 * ENCODE_E5B9G9R9_MANTISSA_BITS));
+    float s = pow(2.0, exp_shared - B - N);
 
     return s * vec3(
-        packed                                        & ENCODE_E5B9G9R9_MANTISSA_MASK, 
-        packed >> (1 * ENCODE_E5B9G9R9_MANTISSA_BITS) & ENCODE_E5B9G9R9_MANTISSA_MASK,
-        packed >> (2 * ENCODE_E5B9G9R9_MANTISSA_BITS) & ENCODE_E5B9G9R9_MANTISSA_MASK
+        (_packed                                       ) & ENCODE_E5B9G9R9_MANTISSA_MASK, 
+        (_packed >> (1 * ENCODE_E5B9G9R9_MANTISSA_BITS)) & ENCODE_E5B9G9R9_MANTISSA_MASK,
+        (_packed >> (2 * ENCODE_E5B9G9R9_MANTISSA_BITS)) & ENCODE_E5B9G9R9_MANTISSA_MASK
     );
 }
