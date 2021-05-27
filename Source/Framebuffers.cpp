@@ -53,6 +53,7 @@ Framebuffers::Framebuffers(
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
     samplerManager(std::move(_samplerManager)),
+    currentSize{},
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSets{}
@@ -155,14 +156,20 @@ void Framebuffers::CreateDescriptors()
     }
 }
 
-void Framebuffers::OnSwapchainCreate(const Swapchain *pSwapchain)
+bool RTGL1::Framebuffers::PrepareForSize(uint32_t width, uint32_t height)
 {
-    CreateImages(pSwapchain->GetWidth(), pSwapchain->GetHeight());
-}
+    if (currentSize.width == width && currentSize.height == height)
+    {
+        return false;
+    }
 
-void Framebuffers::OnSwapchainDestroy()
-{
+    vkDeviceWaitIdle(device);
+
     DestroyImages();
+    CreateImages(width, height);
+
+    assert(currentSize.width == width && currentSize.height == height);
+    return true;
 }
 
 void RTGL1::Framebuffers::BarrierOne(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufferImageIndex)
@@ -294,6 +301,10 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
     // image creation happens rarely
     cmdManager->Submit(cmd);
     cmdManager->WaitGraphicsIdle();
+
+    currentSize.width = width;
+    currentSize.height = height;
+
 
     UpdateDescriptors();
 

@@ -185,7 +185,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         scene->GetASManager());
 
 
-    swapchain->Subscribe(framebuffers);
     swapchain->Subscribe(rasterizer);
 
     shaderManager->Subscribe(denoiser);
@@ -354,11 +353,14 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
 
-    const uint32_t renderWidth  = std::min(swapchain->GetWidth(),  std::max(8u, drawInfo.renderSize.width));
-    const uint32_t renderHeight = std::min(swapchain->GetHeight(), std::max(8u, drawInfo.renderSize.height));
+    const uint32_t renderWidth  = drawInfo.renderSize.width;
+    const uint32_t renderHeight = drawInfo.renderSize.height;
+    assert(renderWidth > 0 && renderHeight > 0);
 
     // submit geometry and upload uniform after getting data from a scene
     const bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
+
+    framebuffers->PrepareForSize(renderWidth, renderHeight);
 
     bool werePrimaryTraced = false;
 

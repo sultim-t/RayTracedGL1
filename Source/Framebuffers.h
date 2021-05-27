@@ -38,22 +38,21 @@ namespace RTGL1
 // Hold info for previous and current frames
 #define FRAMEBUFFERS_HISTORY_LENGTH 2
 
-class Framebuffers : public ISwapchainDependency
+class Framebuffers
 {
 public:
     explicit Framebuffers(VkDevice device,
                           std::shared_ptr<MemoryAllocator> allocator,
                           std::shared_ptr<CommandBufferManager> cmdManager,
                           std::shared_ptr<SamplerManager> samplerManager);
-    ~Framebuffers() override;
+    ~Framebuffers();
 
     Framebuffers(const Framebuffers &other) = delete;
     Framebuffers(Framebuffers &&other) noexcept = delete;
     Framebuffers &operator=(const Framebuffers &other) = delete;
     Framebuffers &operator=(Framebuffers &&other) noexcept = delete;
 
-    void OnSwapchainCreate(const Swapchain *pSwapchain) override;
-    void OnSwapchainDestroy() override;
+    bool PrepareForSize(uint32_t width, uint32_t height);
 
     void BarrierOne(VkCommandBuffer cmd,
                     uint32_t frameIndex,
@@ -100,6 +99,8 @@ private:
     std::shared_ptr<MemoryAllocator> allocator;
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<SamplerManager> samplerManager;
+
+    VkExtent2D currentSize;
 
     std::vector<VkImage> images;
     std::vector<VkDeviceMemory> imageMemories;
