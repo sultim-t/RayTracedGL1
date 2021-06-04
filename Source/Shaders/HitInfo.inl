@@ -256,6 +256,7 @@ ShHitInfo getHitInfoBounce(
         h.metallic = tr.geomMetallicity;
     }
     
+    h.emission = tr.geomEmission;
 
     if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
     {
@@ -265,12 +266,11 @@ ShHitInfo getHitInfoBounce(
         vec4 er = getTextureSampleLod(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], lod);
     #endif
 
-        h.emission = er.rgb;
+        h.emission += er.rgb;
         h.roughness = er.a;
     }
     else
     {
-        h.emission = tr.geomEmission;
         h.roughness = tr.geomRoughness;
     }
 

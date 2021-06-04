@@ -95,8 +95,6 @@ vec3 processSecondBounce(
 
     if (isPayloadConsistent(p))
     {
-        // TODO: emmision
-
         float hitDistance;
         const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, hitDistance);
 
@@ -110,7 +108,7 @@ vec3 processSecondBounce(
             diffuse, specular);
 
         throughput *= h.albedo;
-        return diffuse * throughput;
+        return (diffuse + h.emission) * throughput;
     }
     else
     {
@@ -133,8 +131,6 @@ vec3 processBounce(
 
     if (isPayloadConsistent(p))
     {
-        // TODO: emmision
-
         float hitDistance;
         const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, hitDistance);
 
@@ -148,7 +144,7 @@ vec3 processBounce(
             diffuse, specular);
 
         throughput_First *= h.albedo;
-        const vec3 contrib_First = diffuse * throughput_First;
+        const vec3 contrib_First = (diffuse + h.emission) * throughput_First;
 
 
         vec3 bounceDir_Second;
