@@ -89,7 +89,6 @@ shared float directDiffuseVariance[SHARED_WIDTH][SHARED_WIDTH];
 void fillFilterData(
     sampler2D samplerDiff, 
     usampler2D samplerSpec, 
-    sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB, 
     const ivec2 globalBasePix, const int sharedOffset)
 {
     const ivec2 sharedPix = ivec2(sharedOffset % SHARED_WIDTH, sharedOffset / SHARED_WIDTH);
@@ -116,8 +115,7 @@ void fillFilterData(
 
 void preload(
     sampler2D samplerDiff, 
-    usampler2D samplerSpec, 
-    sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB)
+    usampler2D samplerSpec)
 {
     const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_ATROUS_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
     const int threadIndex = int(gl_LocalInvocationIndex);
@@ -134,7 +132,7 @@ void preload(
     {
         // first threads need to preload only 1 pixel
         fillFilterData(
-            samplerDiff, samplerSpec, samplerIndirR, samplerIndirG, samplerIndirB,
+            samplerDiff, samplerSpec,
             globalBasePix, threadIndex);
     }
     else
@@ -143,11 +141,11 @@ void preload(
         const int neighborsIndex = threadIndex - oneLoadCount;
 
         fillFilterData(
-            samplerDiff, samplerSpec, samplerIndirR, samplerIndirG, samplerIndirB,
+            samplerDiff, samplerSpec,
             globalBasePix, oneLoadCount + neighborsIndex * 2 + 0);
        
         fillFilterData(
-            samplerDiff, samplerSpec, samplerIndirR, samplerIndirG, samplerIndirB,
+            samplerDiff, samplerSpec,
             globalBasePix, oneLoadCount + neighborsIndex * 2 + 1);
     }
 }
@@ -302,8 +300,7 @@ void main()
 
     preload(
         framebufDiffPingColorAndVariance_Sampler, 
-        framebufSpecPingColor_Sampler,
-        framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler);
+        framebufSpecPingColor_Sampler);
     barrier();
 
 

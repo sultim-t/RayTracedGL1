@@ -101,13 +101,13 @@ uint encodeE5B9G9R9(vec3 unpacked)
     }
 
     int exp_shared_p = max(-B-1, int(floor(log2(max_c)))) + 1 + B;
-    int max_s = int(round(max_c * pow(2.0, -(exp_shared_p - B - N))));
+    int max_s = int(round(max_c * exp2(-(exp_shared_p - B - N))));
 
     int exp_shared = max_s != Np2 ? 
         exp_shared_p : 
         exp_shared_p + 1;
 
-    float s = pow(2.0, -(exp_shared - B - N));
+    float s = exp2(-(exp_shared - B - N));
     uvec3 rgb_s = uvec3(round(unpacked * s));
 
     return 
@@ -123,7 +123,7 @@ vec3 decodeE5B9G9R9(const uint _packed)
     const int B = ENCODE_E5B9G9R9_EXP_BIAS;
 
     int exp_shared = int(_packed >> (3 * ENCODE_E5B9G9R9_MANTISSA_BITS));
-    float s = pow(2.0, exp_shared - B - N);
+    float s = exp2(exp_shared - B - N);
 
     return s * vec3(
         (_packed                                       ) & ENCODE_E5B9G9R9_MANTISSA_MASK, 

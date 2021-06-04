@@ -36,6 +36,28 @@ void main()
         return;
     }
 
+#ifdef DEBUG_SHOW_SH
+    ivec2 checkSHRange = ivec2(800, 400);
+
+    if (pix.x < checkSHRange.x && pix.y < checkSHRange.y)
+    {
+        vec2 uv = vec2(pix.x / float(checkSHRange.x), pix.y / float(checkSHRange.y));
+
+        float theta = uv.x * 2.0 * M_PI;
+        float phi = uv.y * M_PI;
+        vec3 normal = vec3(cos(theta) * sin(phi), sin(theta) * sin(phi), cos(phi));
+
+        ivec2 centerPix = ivec2(globalUniform.renderWidth * 0.5, globalUniform.renderHeight * 0.5);
+        SH indirSH = texelFetchSH(
+            //framebufUnfilteredIndirectSH_R_Sampler, framebufUnfilteredIndirectSH_G_Sampler, framebufUnfilteredIndirectSH_B_Sampler,
+            framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler, 
+            centerPix);
+
+        imageStore(framebufFinal, pix, vec4(SHToIrradiance(indirSH, normal), 0));
+        return;
+    }
+#endif
+
     vec3 color;
 
     const vec3 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;

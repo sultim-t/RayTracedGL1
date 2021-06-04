@@ -94,7 +94,7 @@ void main()
         const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceIndir);
 
         // blurring antilag alpha directly gives better results
-        const float a = getAntilagAlpha(gradSample, normFactor);
+        const float a = getAntilagAlpha(gradSample * 0.1, normFactor);
 
         imageStore(framebufIndirPingGradient, gradPix, vec4(a));
     }

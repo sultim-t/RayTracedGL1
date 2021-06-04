@@ -48,18 +48,21 @@ vec2 sampleDisk(float radius, float u1, float u2)
 
 // Sample direction from cosine-weighted unit hemisphere oriented to Z axis
 // u1, u2 -- uniform random numbers
-vec3 sampleHemisphere(float u1, float u2)
+vec3 sampleHemisphere(float u1, float u2, out float oneOverPdf)
 {
     const float r = sqrt(u1);
     const float phi = 2 * M_PI * u2;
 
+    const float z = sqrt(1 - u1);
+
+    // clamp z, so max oneOverPdf is finite (currenty, 10pi)
+    oneOverPdf = M_PI / max(z, 0.1);
+
     return vec3( 
         r * cos(phi),
         r * sin(phi),
-        sqrt(1 - u1)
+        z
     );
-
-    // pdf = z / M_PI;
 }
 
 // Sample a surface point on a unit sphere with given radius
@@ -86,7 +89,7 @@ vec3 sampleSphere(float u1, float u2)
 }
 
 // "Building an Orthonormal Basis, Revisited"
-void revisedONB(vec3 n, out vec3 b1, out vec3 b2)
+void revisedONB(const vec3 n, out vec3 b1, out vec3 b2)
 {
     if(n.z < 0.0)
     {
@@ -107,7 +110,7 @@ void revisedONB(vec3 n, out vec3 b1, out vec3 b2)
 }
 
 // "Building an Orthonormal Basis from a 3D Unit Vector Without Normalization", Frisvad
-void frisvadONB(vec3 n, out vec3 b1, out vec3 b2)
+void frisvadONB(const vec3 n, out vec3 b1, out vec3 b2)
 {
     if(n.z < -0.9999999)
     {
@@ -124,7 +127,7 @@ void frisvadONB(vec3 n, out vec3 b1, out vec3 b2)
     b2 = vec3(b, 1.0 - n.y * n.y * a, -n.y);
 }
 
-mat3 getONB(vec3 n)
+mat3 getONB(const vec3 n)
 {
     mat3 basis;
     basis[2] = n;
@@ -136,9 +139,9 @@ mat3 getONB(vec3 n)
 }
 
 // Sample direction in a hemisphere oriented to a normal n
-vec3 sampleOrientedHemisphere(vec3 n, float u1, float u2)
+vec3 sampleOrientedHemisphere(const vec3 n, float u1, float u2, out float oneOverPdf)
 {
-    vec3 a = sampleHemisphere(u1, u2);
+    vec3 a = sampleHemisphere(u1, u2, oneOverPdf);
 
     mat3 basis = getONB(n);
     return normalize(basis * a);
@@ -199,19 +202,19 @@ vec4 getRandomSample(uint seed, uint salt)
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
-uint getCurrentRandomSeed(ivec2 pix)
+uint getCurrentRandomSeed(const ivec2 pix)
 {
     uvec4 seed = texelFetch(framebufRandomSeed_Sampler, pix, 0);
     return seed.x;
 }
 
-uint getPreviousRandomSeed(ivec2 pix)
+uint getPreviousRandomSeed(const ivec2 pix)
 {
     uvec4 seed = texelFetch(framebufRandomSeed_Prev_Sampler, pix, 0);
     return seed.x;
 }
 
-uint getRandomSeed(ivec2 pix, uint frameIndex, float screenWidth, float screenHeight)
+uint getRandomSeed(const ivec2 pix, uint frameIndex, float screenWidth, float screenHeight)
 {
     uint idX = pix.x / BLUE_NOISE_TEXTURE_SIZE;
     uint idY = pix.y / BLUE_NOISE_TEXTURE_SIZE;

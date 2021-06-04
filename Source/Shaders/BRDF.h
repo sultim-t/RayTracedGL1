@@ -35,9 +35,9 @@ float evalBRDFLambertian(float subsurfaceAlbedo)
 }
 
 // u1, u2   -- uniform random numbers
-vec3 sampleLambertian(vec3 n, float u1, float u2)
+vec3 sampleLambertian(const vec3 n, float u1, float u2, out float oneOverPdf)
 {
-    return sampleOrientedHemisphere(n, u1, u2);
+    return sampleOrientedHemisphere(n, u1, u2, oneOverPdf);
 }
 
 
@@ -53,7 +53,7 @@ float getFresnelSchlick(float nl, float n1, float n2)
 
 // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
 // s -- is either l or v
-float G1GGX(vec3 s, vec3 n, float alpha)
+float G1GGX(const vec3 s, const vec3 n, float alpha)
 {
     return 2 * dot(n, s) / (dot(n, s) * (2 - alpha) + alpha);
 }
@@ -64,7 +64,7 @@ float G1GGX(vec3 s, vec3 n, float alpha)
 // v -- direction to viewer
 // l -- direction to light
 // alpha -- roughness
-float evalBRDFSmithGGX(vec3 n, vec3 v, vec3 l, float alpha)
+float evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha)
 {
     alpha = max(alpha, MIN_GGX_ROUGHNESS);
 
@@ -75,7 +75,7 @@ float evalBRDFSmithGGX(vec3 n, vec3 v, vec3 l, float alpha)
         return 0;
     }
 
-    vec3 h = normalize(v + l);
+    const vec3 h = normalize(v + l);
 
     nl = max(nl, 0);
     float nv = max(dot(n, v), 0);
@@ -94,20 +94,21 @@ float evalBRDFSmithGGX(vec3 n, vec3 v, vec3 l, float alpha)
 }
 
 
+
 // "Sampling the GGX Distribution of Visible Normals", Heitz
 // v        -- direction to viewer, normal's direction is (0,0,1)
 // alpha    -- roughness
 // u1, u2   -- uniform random numbers
 // output   -- normal sampled with PDF D_v(Ne) = G1(v) * max(0, dot(v, Ne)) * D(Ne) / v.z
-vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
+vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2)
 {
     // Section 3.2: transforming the view direction to the hemisphere configuration
     vec3 Vh = normalize(vec3(alpha * v.x, alpha * v.y, v.z));
     
     // Section 4.1: orthonormal basis (with special case if cross product is zero)
     float lensq = Vh.x * Vh.x + Vh.y * Vh.y;
-    vec3 T1 = lensq > 0 ? vec3(-Vh.y, Vh.x, 0) * inversesqrt(lensq) : vec3(1,0,0);
-    vec3 T2 = cross(Vh, T1);
+    const vec3 T1 = lensq > 0 ? vec3(-Vh.y, Vh.x, 0) * inversesqrt(lensq) : vec3(1,0,0);
+    const vec3 T2 = cross(Vh, T1);
 
     // Section 4.2: parameterization of the projected area
     float r = sqrt(u1);    
@@ -118,10 +119,10 @@ vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
     t2 = (1.0 - s) * sqrt(1.0 - t1 * t1) + s * t2;
 
     // Section 4.3: reprojection onto hemisphere
-    vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
+    const vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
     
     // Section 3.4: transforming the normal back to the ellipsoid configuration
-    vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));    
+    const vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));    
     
     return Ne;
 }
@@ -131,18 +132,18 @@ vec3 sampleGGXVNDF(vec3 v, float alpha, float u1, float u2)
 // v        -- direction to viewer, world space
 // alpha    -- roughness
 // u1, u2   -- uniform random numbers
-// pdf      -- PDF of sampled normal
-vec3 sampleSmithGGX(vec3 n, vec3 v, float alpha, float u1, float u2/*, out float pdf*/)
+// Check Heitz's paper for the special representation of rendering equation term 
+vec3 sampleSmithGGX(const vec3 n, const vec3 v, float alpha, float u1, float u2)
 {
     alpha = max(alpha, MIN_GGX_ROUGHNESS);
 
-    mat3 basis = getONB(n);
+    const mat3 basis = getONB(n);
 
     // get v in normal's space, basis is orthogonal
-    vec3 ve = transpose(basis) * v;
+    const vec3 ve = transpose(basis) * v;
 
     // microfacet normal
-    vec3 me = sampleGGXVNDF(ve, alpha, u1, u2);
+    const vec3 me = sampleGGXVNDF(ve, alpha, u1, u2);
 
     // m to world space
     return basis * me; 
