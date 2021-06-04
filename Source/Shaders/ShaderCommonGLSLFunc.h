@@ -259,26 +259,27 @@ float getAntilagAlpha(const float gradSample, const float normFactor)
 
 
 #ifdef DESC_SET_FRAMEBUFFERS
-    #include "SphericalHarmonics.h"
+#include "SphericalHarmonics.h"
 
-SH texelFetchUnfilteredIndirectSH(ivec2 pix)
-{
-    SH sh;
-    sh.r = texelFetch(framebufUnfilteredIndirectSH_R_Sampler, pix, 0);
-    sh.g = texelFetch(framebufUnfilteredIndirectSH_G_Sampler, pix, 0);
-    sh.b = texelFetch(framebufUnfilteredIndirectSH_B_Sampler, pix, 0);
-
-    return sh;
-}
+#define SH_COMPRESSION_MULTIPLIER 1000 
 
 SH texelFetchSH(sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB, ivec2 pix)
 {
     SH sh;
-    sh.r = texelFetch(samplerIndirR, pix, 0);
-    sh.g = texelFetch(samplerIndirG, pix, 0);
-    sh.b = texelFetch(samplerIndirB, pix, 0);
+    sh.r = texelFetch(samplerIndirR, pix, 0) / SH_COMPRESSION_MULTIPLIER;
+    sh.g = texelFetch(samplerIndirG, pix, 0) / SH_COMPRESSION_MULTIPLIER;
+    sh.b = texelFetch(samplerIndirB, pix, 0) / SH_COMPRESSION_MULTIPLIER;
 
     return sh;
+}
+
+SH texelFetchUnfilteredIndirectSH(ivec2 pix)
+{
+    return texelFetchSH(
+        framebufUnfilteredIndirectSH_R_Sampler,
+        framebufUnfilteredIndirectSH_G_Sampler,
+        framebufUnfilteredIndirectSH_B_Sampler,
+        pix);
 }
 
 SH texelFetchIndirAccumSH(ivec2 pix)
@@ -302,39 +303,39 @@ SH texelFetchIndirAccumSH_Prev(ivec2 pix)
 SH imageLoadUnfilteredIndirectSH(ivec2 pix)
 {
     SH sh;
-    sh.r = imageLoad(framebufUnfilteredIndirectSH_R, pix);
-    sh.g = imageLoad(framebufUnfilteredIndirectSH_G, pix);
-    sh.b = imageLoad(framebufUnfilteredIndirectSH_B, pix);
+    sh.r = imageLoad(framebufUnfilteredIndirectSH_R, pix) / SH_COMPRESSION_MULTIPLIER;
+    sh.g = imageLoad(framebufUnfilteredIndirectSH_G, pix) / SH_COMPRESSION_MULTIPLIER;
+    sh.b = imageLoad(framebufUnfilteredIndirectSH_B, pix) / SH_COMPRESSION_MULTIPLIER;
 
     return sh;
 }
 
 void imageStoreUnfilteredIndirectSH(ivec2 pix, const SH sh)
 {
-    imageStore(framebufUnfilteredIndirectSH_R, pix, sh.r);
-    imageStore(framebufUnfilteredIndirectSH_G, pix, sh.g);
-    imageStore(framebufUnfilteredIndirectSH_B, pix, sh.b);
+    imageStore(framebufUnfilteredIndirectSH_R, pix, sh.r * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufUnfilteredIndirectSH_G, pix, sh.g * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufUnfilteredIndirectSH_B, pix, sh.b * SH_COMPRESSION_MULTIPLIER);
 }
 
 void imageStoreIndirAccumSH(ivec2 pix, const SH sh)
 {
-    imageStore(framebufIndirAccumSH_R, pix, sh.r);
-    imageStore(framebufIndirAccumSH_G, pix, sh.g);
-    imageStore(framebufIndirAccumSH_B, pix, sh.b);
+    imageStore(framebufIndirAccumSH_R, pix, sh.r * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufIndirAccumSH_G, pix, sh.g * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufIndirAccumSH_B, pix, sh.b * SH_COMPRESSION_MULTIPLIER);
 }
 
 void imageStoreIndirPingSH(ivec2 pix, const SH sh)
 {
-    imageStore(framebufIndirPingSH_R, pix, sh.r);
-    imageStore(framebufIndirPingSH_G, pix, sh.g);
-    imageStore(framebufIndirPingSH_B, pix, sh.b);
+    imageStore(framebufIndirPingSH_R, pix, sh.r * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufIndirPingSH_G, pix, sh.g * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufIndirPingSH_B, pix, sh.b * SH_COMPRESSION_MULTIPLIER);
 }
 
 void imageStoreIndirPongSH(ivec2 pix, const SH sh)
 {
-    imageStore(framebufIndirPongSH_R, pix, sh.r);
-    imageStore(framebufIndirPongSH_G, pix, sh.g);
-    imageStore(framebufIndirPongSH_B, pix, sh.b);
+    imageStore(framebufIndirPongSH_R, pix, sh.r * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufIndirPongSH_G, pix, sh.g * SH_COMPRESSION_MULTIPLIER);
+    imageStore(framebufIndirPongSH_B, pix, sh.b * SH_COMPRESSION_MULTIPLIER);
 }
 
 vec3 texelFetchNormal(ivec2 pix)
