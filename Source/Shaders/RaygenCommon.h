@@ -435,12 +435,10 @@ void processSphericalLight(
 void processDirectIllumination(
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness,
-    vec3 toViewerDir,
+    const vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    const float distanceToViewer = length(surfPosition - globalUniform.cameraPosition.xyz);
-
     vec3 dirDiff, dirSpec;
     processDirectionalLight(
         seed, 
@@ -459,5 +457,20 @@ void processDirectIllumination(
     
     outDiffuse = dirDiff + sphDiff;
     outSpecular = dirSpec + sphSpec;
+}
+
+void processDirectIllumination(
+    uint seed, 
+    uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness,
+    vec3 toViewerDir,
+    bool isGradientSample,
+    out vec3 outDiffuse, out vec3 outSpecular)
+{
+    processDirectIllumination(
+        seed, 
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, 
+        toViewerDir, length(surfPosition - globalUniform.cameraPosition.xyz),
+        isGradientSample, 
+        outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
