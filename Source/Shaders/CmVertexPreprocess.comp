@@ -51,10 +51,7 @@ vec3 getTangent(vec3 localPos[3], vec2 texCoord[3])
 }
 
 void main()
-{
-    // disabled for now
-    return;
-
+{    
     uint tlasInstanceIndex = gl_WorkGroupID.x;
     
     bool isDynamic;

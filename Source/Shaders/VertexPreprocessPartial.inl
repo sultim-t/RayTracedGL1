@@ -66,6 +66,8 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 
     const bool useIndices = inst.baseIndexIndex != UINT32_MAX;
     const bool genNormals = (inst.flags & GEOM_INST_FLAG_GENERATE_NORMALS) != 0;
+    // -1 if normals should be inverted
+    const float normalSign = float((inst.flags & GEOM_INST_FLAG_INVERTED_NORMALS) == 0) * 2.0 - 1.0;
 
     const mat4 model = inst.model;
     const mat3 model3 = mat3(model);
@@ -90,7 +92,7 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 
             if (genNormals)
             {
-                const vec3 localNormal = normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
+                const vec3 localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
 
                 SET_NORMALS(vertexIndices[0], localNormal);
                 SET_NORMALS(vertexIndices[1], localNormal);
@@ -126,7 +128,7 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 
         if (genNormals)
         {
-            const vec3 localNormal = normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
+            const vec3 localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
             
             SET_NORMALS(vertexIndices[0], localNormal);
             SET_NORMALS(vertexIndices[1], localNormal);

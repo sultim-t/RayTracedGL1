@@ -59,6 +59,7 @@ typedef uint32_t RgBool32;
 RG_DEFINE_NON_DISPATCHABLE_HANDLE(RgInstance)
 typedef uint32_t RgMaterial;
 typedef uint32_t RgCubemap;
+typedef uint32_t RgFlags;
 
 #define RG_NULL_HANDLE      0
 #define RG_NO_MATERIAL      0
@@ -285,9 +286,16 @@ typedef struct RgFloat4D
     float       data[4];
 } RgFloat4D;
 
+typedef enum RgGeometryUploadFlagBits
+{
+    RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT = 0x00000001,
+} RgGeometryUploadFlagBits;
+typedef RgFlags RgGeometryUploadFlags;
+
 typedef struct RgGeometryUploadInfo
 {
     uint64_t                        uniqueID;
+    RgGeometryUploadFlags           flags;
 
     RgGeometryType                  geomType;
     RgGeometryPassThroughType       passThroughType;
@@ -298,6 +306,9 @@ typedef struct RgGeometryUploadInfo
     // 3 first floats will be used
     const void                      *pVertexData;
     // 3 first floats will be used
+    // If null, then the normals will be generated.
+    // If null and RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT is set,
+    // generated normals will be inverted.
     const void                      *pNormalData;
     // Up to 3 texture coordinated per vertex for static geometry.
     // Dynamic geometry uses only 1 layer.
