@@ -106,9 +106,9 @@ vec3 processSecondBounce(
             -bounceDirection, hitDistance,
             isGradientSample, 
             diffuse, specular);
-
         throughput *= h.albedo;
-        return (diffuse + h.emission) * throughput;
+
+        return h.emission + diffuse * throughput;
     }
     else
     {
@@ -142,14 +142,13 @@ vec3 processBounce(
             -bounceDir_First, hitDistance,
             isGradientSample, 
             diffuse, specular);
-
         throughput_First *= h.albedo;
-        const vec3 contrib_First = (diffuse + h.emission) * throughput_First;
 
 
         vec3 bounceDir_Second;
         vec3 throughput_Second = vec3(1.0);
         getDiffuseBounce(seed, h.normal, bounceDir_Second, throughput_Second);
+        //bounceDir_Second = h.normal; throughput_Second = vec3(M_PI);
 
         vec3 contrib_Second = processSecondBounce(
             seed, 
@@ -158,10 +157,8 @@ vec3 processBounce(
             bounceDir_Second,
             throughput_Second);
 
-        contrib_Second *= throughput_First;
 
-
-        return contrib_First + contrib_Second;
+        return h.emission + (diffuse + contrib_Second) * throughput_First;
     }
     else
     {

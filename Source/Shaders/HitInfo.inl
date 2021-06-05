@@ -61,7 +61,7 @@ vec3 processAlbedo(uint materialsBlendFlags, const vec2 texCoords[3], const uvec
         }
     }
 
-    return dst;
+    return clamp(dst, vec3(0), vec3(1));
 }
 
 #ifndef TEXTURE_GRADIENTS
