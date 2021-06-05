@@ -141,27 +141,32 @@ mat3 getONB(const vec3 n)
 // Sample direction in a hemisphere oriented to a normal n
 vec3 sampleOrientedHemisphere(const vec3 n, float u1, float u2, out float oneOverPdf)
 {
-    vec3 a = sampleHemisphere(u1, u2, oneOverPdf);
+    /*vec3 a = sampleHemisphere(u1, u2, oneOverPdf);
 
     mat3 basis = getONB(n);
-    return normalize(basis * a);
+    return normalize(basis * a);*/
 
-    /*
     // Ray Tracing Gems, Chapter 16 "Sampling Transformations Zoo"
     float a = 1 - 2 * u1;
     float b = sqrt(1 - a * a);
     float phi = 2 * M_PI * u2;
 
-    // ? may be negative
-    pdf = a / M_PI;
+    // avoid grazing angles (perpendicular to normal), 
+    // so r won't be close to zero
+    a *= 0.98;
+    b *= 0.98;
 
     vec3 r = vec3(
         n.x + b * cos(phi),
         n.y + b * sin(phi),
         n.z + a
     );
+    r = normalize(r);
 
-    return normalize(r);*/
+    float z = dot(r, n);
+    oneOverPdf = M_PI / max(z, 0.1);
+
+    return r;
 }
 
 
