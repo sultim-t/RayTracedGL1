@@ -52,6 +52,7 @@ layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadSha
 #endif // RAYGEN_SHADOW_PAYLOAD
 
 
+
 uint getPrimaryVisibilityCullMask()
 {
     return INSTANCE_MASK_ALL & (~INSTANCE_MASK_FIRST_PERSON_VIEWER);
@@ -98,6 +99,7 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
     
     // blended geometry doesn't have indirect illumination
 }
+
 
 
 bool isPayloadConsistent(const ShPayload p)
@@ -147,6 +149,8 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
 
     return payload;
 }
+
+
 
 #ifdef DESC_SET_CUBEMAPS
 ShPayload traceSkyRay(vec3 origin, vec3 direction)
@@ -207,6 +211,8 @@ vec3 getSky(vec3 direction)
 }
 #endif
 
+
+
 #ifdef RAYGEN_SHADOW_PAYLOAD
 
 // l is pointed to the light
@@ -234,9 +240,15 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
     return traceShadowRay(surfInstCustomIndex, o, l, MAX_RAY_LENGTH);
 }
 
+
+
 #define SHADOW_RAY_EPS_MIN      0.001
 #define SHADOW_RAY_EPS_MAX      0.1
 #define SHADOW_RAY_EPS_MAX_DIST 25
+
+#define SHADOW_CAST_LUMINANCE_THRESHOLD 0.01
+
+
 
 // toViewerDir -- is direction to viewer
 // distanceToViewer -- used for shadow ray origin fix, so it can't be under the surface
@@ -311,22 +323,24 @@ void processDirectionalLight(
         return;
     }
 
-    const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
-
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir);
-
-    if (isShadowed)
-    {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
-        return;
-    }
-
     outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl * M_PI;
     outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirLight.direction, surfRoughness) * dirLight.color * nl;
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
+
+    // if too dim, don't cast shadow ray
+    if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    {
+        return;
+    }
+
+    const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
+
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir);
+
+    outDiffuse *= float(!isShadowed);
+    outSpecular *= float(!isShadowed);
 }
 
 void processSphericalLight(
@@ -392,44 +406,43 @@ void processSphericalLight(
 
     surfPosition += (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MAX;
 
-    if (distance > sphLight.radius)
-    {
-        dir = dir / distance;
-
-        const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, distance);
-
-        if (isShadowed)
-        {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
-            return;
-        }
-
-        vec3 dirToCenter = sphLight.position - surfPosition;
-
-        const float r = sphLight.radius;
-        const float z = sphLight.falloff;
-        const float d = max(length(dirToCenter), 0.0001);
-        dirToCenter /= d;
-        
-        const float i = pow(clamp((z - d) / max(z - r, 1), 0, 1), 3);
-        //const float i = pow(clamp(1 - (r * r) / (d * d), 0, 1), 2);
-        const vec3 c = i * sphLight.color;
-
-        const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
-        const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
-
-        outDiffuse = radiance;
-        outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
-    }
-    else
+    if (distance < sphLight.radius)
     {
         outDiffuse = sphLight.color;
         outSpecular = sphLight.color;
+        return;
     }
+    
+    dir = dir / distance;
+
+    vec3 dirToCenter = sphLight.position - surfPosition;
+
+    const float r = sphLight.radius;
+    const float z = sphLight.falloff;
+    const float d = max(length(dirToCenter), 0.0001);
+    dirToCenter /= d;
+    
+    const float i = pow(clamp((z - d) / max(z - r, 1), 0, 1), 2);
+    const vec3 c = i * sphLight.color;
+
+    const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
+    const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
+
+    outDiffuse = radiance;
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
+    
+    if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    {
+        return;
+    }
+    
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, distance);
+
+    outDiffuse *= float(!isShadowed);
+    outSpecular *= float(!isShadowed);
 }
 
 void processDirectIllumination(
