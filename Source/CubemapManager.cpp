@@ -27,6 +27,10 @@
 
 constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
+// use albedo-alpha texture data
+constexpr uint32_t MATERIAL_COLOR_TEXTURE_INDEX = 0;
+static_assert(MATERIAL_COLOR_TEXTURE_INDEX < RTGL1::TEXTURES_PER_MATERIAL_COUNT, "");
+
 RTGL1::CubemapManager::CubemapManager(
     VkDevice _device,
     std::shared_ptr<MemoryAllocator> _allocator,
@@ -34,7 +38,7 @@ RTGL1::CubemapManager::CubemapManager(
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<UserFileLoad> _userFileLoad,
     const char *_defaultTexturesPath,
-    const char *_albedoAlphaPostfix)
+    const char *_overridenTexturePostfix)
 :
     device(_device),
     allocator(std::move(_allocator)),
@@ -43,7 +47,7 @@ RTGL1::CubemapManager::CubemapManager(
     emptyCubemapInfo{}
 {
     defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
-    albedoAlphaPostfix = _albedoAlphaPostfix != nullptr ? _albedoAlphaPostfix : DEFAULT_ALBEDO_ALPHA_POSTFIX;
+    overridenTexturePostfix = _overridenTexturePostfix != nullptr ? _overridenTexturePostfix : DEFAULT_TEXTURES_POSTFIXES[MATERIAL_COLOR_TEXTURE_INDEX];
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     cubemapDesc = std::make_shared<TextureDescriptors>(device, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
@@ -123,11 +127,13 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();
-    parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
-    parseInfo.overridenIsSRGB[0] = true;
+    parseInfo.postfixes[MATERIAL_COLOR_TEXTURE_INDEX] = overridenTexturePostfix.c_str();
+    parseInfo.overridenIsSRGB[MATERIAL_COLOR_TEXTURE_INDEX] = true;
 
     RgExtent2D size = { info.sideSize, info.sideSize };
 
+    // must be '0' to use special TextureOverrides constructor 
+    assert(MATERIAL_COLOR_TEXTURE_INDEX == 0);
     // load additional textures, they'll be freed after leaving the scope
     TextureOverrides ovrd0(info.pRelativePaths[0], info.pData[0], info.isSRGB, size, parseInfo, imageLoader);
     TextureOverrides ovrd1(info.pRelativePaths[1], info.pData[1], info.isSRGB, size, parseInfo, imageLoader);
@@ -149,18 +155,18 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     // all overrides must have albedo data and the same and square size
     bool useOvrd = true;
 
-    RgExtent2D commonSize = { ovrd[0]->aa.baseSize.width, ovrd[0]->aa.baseSize.height };
-    VkFormat commonFormat = ovrd0.aa.format;
+    RgExtent2D commonSize = { ovrd[0]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize.width, ovrd[0]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize.height };
+    VkFormat commonFormat = ovrd0.GetResult(MATERIAL_COLOR_TEXTURE_INDEX).format;
 
     for (auto &o : ovrd)
     {
-        const auto &faceSize = o->aa.baseSize;
+        const auto &faceSize = o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize;
 
         if (
             // same format on each face
-            o->aa.format != commonFormat ||
+            o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).format != commonFormat ||
             // albedo data exist
-            o->aa.pData == nullptr ||
+            o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).pData == nullptr ||
             // square size
             faceSize.width != faceSize.height ||
             // same size on each face
@@ -173,11 +179,11 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
     if (useOvrd)
     {
-        upload.pDebugName = ovrd[0]->debugName;
+        upload.pDebugName = ovrd[0]->GetDebugName();
 
         for (uint32_t i = 0; i < 6; i++)
         {
-            upload.cubemap.pFaces[i] = ovrd[i]->aa.pData;
+            upload.cubemap.pFaces[i] = ovrd[i]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).pData;
         }
     }
     else

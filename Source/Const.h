@@ -31,11 +31,12 @@ constexpr uint32_t      TEXTURE_FILE_NAME_MAX_LENGTH            = 256;
 constexpr uint32_t      TEXTURE_FILE_EXTENSION_MAX_LENGTH       = 16;
 
 constexpr uint32_t      MAX_TEXTURE_COUNT                       = 1024;
+constexpr uint32_t      EMPTY_TEXTURE_INDEX                     = 0;
+constexpr uint32_t      MATERIALS_MAX_LAYER_COUNT               = 3;
+constexpr uint32_t      TEXTURES_PER_MATERIAL_COUNT             = 3;
 
 constexpr const char    *DEFAULT_TEXTURES_PATH                  = "";
-constexpr const char    *DEFAULT_ALBEDO_ALPHA_POSTFIX           = "";
-constexpr const char    *DEFAULT_NORMAL_METALLIC_POSTFIX        = "_n";
-constexpr const char    *DEFAULT_EMISSION_ROUGHNESS_POSTFIX     = "_e";
+constexpr const char    *DEFAULT_TEXTURES_POSTFIXES[TEXTURES_PER_MATERIAL_COUNT] = { "", "_rme", "_n" };
 
 constexpr uint32_t      MAX_PREGENERATED_MIPMAP_LEVELS          = 20;
 

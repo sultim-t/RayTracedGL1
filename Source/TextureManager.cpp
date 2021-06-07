@@ -29,6 +29,7 @@
 #include "RgException.h"
 
 using namespace RTGL1;
+static_assert(TEXTURES_PER_MATERIAL_COUNT == sizeof(RgTextureSet) / sizeof(RgTextureData), "TEXTURES_PER_MATERIAL_COUNT must be same as in RgTextureSet");
 
 constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
 
@@ -45,13 +46,25 @@ TextureManager::TextureManager(
 {
     this->defaultTexturesPath = _info.pOverridenTexturesFolderPath != nullptr ? _info.pOverridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
 
-    this->albedoAlphaPostfix       = _info.pOverridenAlbedoAlphaTexturePostfix       != nullptr ? _info.pOverridenAlbedoAlphaTexturePostfix       : DEFAULT_ALBEDO_ALPHA_POSTFIX;
-    this->normalMetallicPostfix    = _info.pOverridenNormalMetallicTexturePostfix    != nullptr ? _info.pOverridenNormalMetallicTexturePostfix    : DEFAULT_NORMAL_METALLIC_POSTFIX;
-    this->emissionRoughnessPostfix = _info.pOverridenEmissionRoughnessTexturePostfix != nullptr ? _info.pOverridenEmissionRoughnessTexturePostfix : DEFAULT_EMISSION_ROUGHNESS_POSTFIX;
+    const char *userPostfixes[TEXTURES_PER_MATERIAL_COUNT] =
+    {
+        _info.pOverridenAlbedoAlphaTexturePostfix,
+        _info.pOverridenRoughnessMetallicEmissionTexturePostfix,
+        _info.pOverridenNormalTexturePostfix,
+    };
 
-    this->overridenAAIsSRGB = _info.overridenAlbedoAlphaTextureIsSRGB;
-    this->overridenNMIsSRGB = _info.overridenNormalMetallicTextureIsSRGB;
-    this->overridenERIsSRGB = _info.overridenEmissionRoughnessTextureIsSRGB;
+    bool userOverridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT] =
+    {
+         _info.overridenAlbedoAlphaTextureIsSRGB,
+         _info.overridenRoughnessMetallicEmissionTextureIsSRGB,
+         _info.overridenNormalTextureIsSRGB
+    };
+
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    {
+        this->postfixes[i] = userPostfixes[i] != nullptr ? userPostfixes[i] : DEFAULT_TEXTURES_POSTFIXES[i];
+        this->overridenIsSRGB[i] = userOverridenIsSRGB[i];
+    }
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     textureDesc = std::make_shared<TextureDescriptors>(device, MAX_TEXTURE_COUNT, BINDING_TEXTURES);
@@ -155,31 +168,34 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 {
     if (createInfo.pRelativePath == nullptr && 
         createInfo.textures.albedoAlpha.pData == nullptr &&
-        createInfo.textures.normalsMetallicity.pData == nullptr &&
-        createInfo.textures.emissionRoughness.pData == nullptr)
+        createInfo.textures.roughnessMetallicEmission.pData == nullptr &&
+        createInfo.textures.normal.pData == nullptr)
     {
         throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
     }
 
-    MaterialTextures textures = {};
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.disableOverride = createInfo.disableOverride;
     parseInfo.texturesPath = defaultTexturesPath.c_str();
-    parseInfo.albedoAlphaPostfix = albedoAlphaPostfix.c_str();
-    parseInfo.normalMetallicPostfix = normalMetallicPostfix.c_str();
-    parseInfo.emissionRoughnessPostfix = emissionRoughnessPostfix.c_str();
-    parseInfo.overridenIsSRGB[0] = overridenAAIsSRGB;
-    parseInfo.overridenIsSRGB[1] = overridenNMIsSRGB;
-    parseInfo.overridenIsSRGB[2] = overridenERIsSRGB;
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    {
+        parseInfo.postfixes[i] = postfixes[i].c_str();
+        parseInfo.overridenIsSRGB[i] = overridenIsSRGB[i];
+    }
 
     // load additional textures, they'll be freed after leaving the scope
     TextureOverrides ovrd(createInfo.pRelativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
 
-    textures.albedoAlpha        = PrepareStaticTexture(cmd, frameIndex, ovrd.aa, sampler, createInfo.useMipmaps, ovrd.debugName);
-    textures.normalMetallic     = PrepareStaticTexture(cmd, frameIndex, ovrd.nm, sampler, createInfo.useMipmaps, ovrd.debugName);
-    textures.emissionRoughness  = PrepareStaticTexture(cmd, frameIndex, ovrd.er, sampler, createInfo.useMipmaps, ovrd.debugName);
+
+    MaterialTextures textures = {};
+
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    {
+        textures.indices[i] = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(i), sampler, createInfo.useMipmaps, ovrd.GetDebugName());
+    }
+
 
     return InsertMaterial(textures, false);
 }
@@ -188,27 +204,26 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
 {
     VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
-    const RgTextureData *tds[3] =
+    const RgTextureData *tds[TEXTURES_PER_MATERIAL_COUNT] =
     { 
         &createInfo.textures.albedoAlpha,
-        &createInfo.textures.normalsMetallicity,
-        &createInfo.textures.emissionRoughness,
+        &createInfo.textures.roughnessMetallicEmission,
+        &createInfo.textures.normal,
     };
 
-    const VkFormat formats[3] =
-    {
-        tds[0]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT,
-        tds[1]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT,
-        tds[2]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT,
-    };
     const uint32_t bytesPerPixel = 4;
     const uint32_t dataSize = createInfo.size.width * createInfo.size.height * bytesPerPixel;
     assert(dataSize > 0);
 
+
     MaterialTextures textures = {};
-    textures.albedoAlpha        = PrepareDynamicTexture(cmd, frameIndex, tds[0]->pData, dataSize, createInfo.size, sampler, formats[0], createInfo.useMipmaps, nullptr);
-    textures.normalMetallic     = PrepareDynamicTexture(cmd, frameIndex, tds[1]->pData, dataSize, createInfo.size, sampler, formats[1], createInfo.useMipmaps, nullptr);;
-    textures.emissionRoughness  = PrepareDynamicTexture(cmd, frameIndex, tds[2]->pData, dataSize, createInfo.size, sampler, formats[2], createInfo.useMipmaps, nullptr);;
+
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    {
+        VkFormat format = tds[i]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UINT;
+        textures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, tds[i]->pData, dataSize, createInfo.size, sampler, format, createInfo.useMipmaps, nullptr);
+    }
+
 
     return InsertMaterial(textures, true);
 }
@@ -229,8 +244,8 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
         const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
         {
             updateInfo.textures.albedoAlpha.pData,
-            updateInfo.textures.normalsMetallicity.pData,
-            updateInfo.textures.emissionRoughness.pData,
+            updateInfo.textures.roughnessMetallicEmission.pData,
+            updateInfo.textures.normal.pData,
         };
 
         auto &textureIndices = it->second.textures.indices;

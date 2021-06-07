@@ -85,22 +85,15 @@ TextureOverrides::TextureOverrides(
     const OverrideInfo &_overrideInfo, 
     std::shared_ptr<ImageLoader> _imageLoader) 
 :
-    aa{}, nm{}, er{},
+    results{},
     debugName{},
     imageLoader(_imageLoader)
 {
-    const RgTextureData *defaultData[3] =
+    const RgTextureData *defaultData[TEXTURES_PER_MATERIAL_COUNT] =
     {
         &_defaultTextures.albedoAlpha,
-        &_defaultTextures.normalsMetallicity,
-        &_defaultTextures.emissionRoughness,
-    };
-
-    ImageLoader::ResultInfo *infos[] =
-    {
-        &aa,
-        &nm,
-        &er
+        &_defaultTextures.roughnessMetallicEmission,
+        &_defaultTextures.normal,
     };
 
     const VkFormat defaultSRGBFormat = VK_FORMAT_R8G8B8A8_SRGB;
@@ -110,20 +103,19 @@ TextureOverrides::TextureOverrides(
 
     if (!_overrideInfo.disableOverride)
     {
-        char paths[3][TEXTURE_FILE_PATH_MAX_LENGTH];
+        char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH];
+        const bool hasOverrides = ParseOverrideTexturePaths(paths, _relativePath, _overrideInfo);
 
-        const bool hasOverrides = ParseOverrideTexturePaths(paths[0], paths[1], paths[2],
-                                                            _relativePath, _overrideInfo);
         if (hasOverrides)
         {
-            for (uint32_t i = 0; i < 3; i++)
+            for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
             {
-                _imageLoader->Load(paths[i], infos[i]);
+                _imageLoader->Load(paths[i], &results[i]);
 
                 // fix format, if needed
-                infos[i]->format = _overrideInfo.overridenIsSRGB[i] ?
-                    ConvertToSRGB(infos[i]->format) :
-                    ConvertToUnorm(infos[i]->format);
+                results[i].format = _overrideInfo.overridenIsSRGB[i] ?
+                    ConvertToSRGB(results[i].format) :
+                    ConvertToUnorm(results[i].format);
             }
 
             // don't check if wasn't loaded from file, pData might be provided by a user
@@ -136,15 +128,15 @@ TextureOverrides::TextureOverrides(
     for (uint32_t i = 0; i < 3; i++)
     {
         // if file wasn't found, use default data instead
-        if (defaultData[i]->pData != nullptr && infos[i]->pData == nullptr)
+        if (defaultData[i]->pData != nullptr && results[i].pData == nullptr)
         {
-            infos[i]->pData = static_cast<const uint8_t *>(defaultData[i]->pData);
-            infos[i]->dataSize = defaultDataSize;
-            infos[i]->levelCount = 1;
-            infos[i]->levelOffsets[0] = 0;
-            infos[i]->levelSizes[0] = defaultDataSize;
-            infos[i]->baseSize = _defaultSize;
-            infos[i]->format = defaultData[i]->isSRGB ? defaultSRGBFormat : defaultLinearFormat;
+            results[i].pData = static_cast<const uint8_t *>(defaultData[i]->pData);
+            results[i].dataSize = defaultDataSize;
+            results[i].levelCount = 1;
+            results[i].levelOffsets[0] = 0;
+            results[i].levelSizes[0] = defaultDataSize;
+            results[i].baseSize = _defaultSize;
+            results[i].format = defaultData[i]->isSRGB ? defaultSRGBFormat : defaultLinearFormat;
         }
     }
 }
@@ -218,7 +210,7 @@ static void ParseFilePath(const char *filePath, char *folderPath, char *name, ch
 }
 
 static void SPrintfIfNotNull(
-    char **dst, 
+    char dst[TEXTURE_FILE_PATH_MAX_LENGTH],
     const char *postfix,
     const char *texturesPath,
     const char *folderPath,
@@ -227,18 +219,27 @@ static void SPrintfIfNotNull(
 {
     if (postfix != nullptr)
     {
-        sprintf_s(*dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
+        sprintf_s(dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
     }
     else
     {
-        *dst = nullptr;
+        dst[0] = '\0';
     }
 }
 
+const ImageLoader::ResultInfo &RTGL1::TextureOverrides::GetResult(uint32_t index) const
+{
+    assert(index < TEXTURES_PER_MATERIAL_COUNT);
+    return results[index];
+}
+
+const char *RTGL1::TextureOverrides::GetDebugName() const
+{
+    return debugName;
+}
+
 bool TextureOverrides::ParseOverrideTexturePaths(
-    char *albedoAlphaPath,
-    char *normalMetallicPath,
-    char *emissionRoughnessPath,
+    char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH],
     const char *relativePath,
     const OverrideInfo &overrideInfo)
 {
@@ -255,9 +256,9 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    SPrintfIfNotNull(&albedoAlphaPath,       overrideInfo.albedoAlphaPostfix,       overrideInfo.texturesPath, folderPath, name, extension);
-    SPrintfIfNotNull(&normalMetallicPath,    overrideInfo.normalMetallicPostfix,    overrideInfo.texturesPath, folderPath, name, extension);
-    SPrintfIfNotNull(&emissionRoughnessPath, overrideInfo.emissionRoughnessPostfix, overrideInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(paths[0], overrideInfo.postfixes[0], overrideInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(paths[1], overrideInfo.postfixes[1], overrideInfo.texturesPath, folderPath, name, extension);
+    SPrintfIfNotNull(paths[2], overrideInfo.postfixes[2], overrideInfo.texturesPath, folderPath, name, extension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 

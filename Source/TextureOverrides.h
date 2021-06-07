@@ -27,7 +27,7 @@
 namespace RTGL1
 {
 
-#define TEXTURE_DEBUG_NAME_MAX_LENGTH 32
+constexpr uint32_t TEXTURE_DEBUG_NAME_MAX_LENGTH = 32;
 
 // Struct for loading overriding texture files. Should be created on stack.
 struct TextureOverrides
@@ -37,14 +37,12 @@ public:
     {
         bool disableOverride = false;
 
-        const char *texturesPath             = nullptr;
-        const char *albedoAlphaPostfix       = nullptr;
-        const char *normalMetallicPostfix    = nullptr;
-        const char *emissionRoughnessPostfix = nullptr;
+        const char *texturesPath = nullptr;
+        const char *postfixes[TEXTURES_PER_MATERIAL_COUNT] = {};
         // Params for overriden textures. If texture
         // isn't overriden, RgTextureData::isSRGB value is used
         // instead of one of these params.
-        bool overridenIsSRGB[3] = {};
+        bool overridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT] = {};
     };
 
 public:
@@ -68,27 +66,19 @@ public:
     TextureOverrides &operator=(const TextureOverrides &other) = delete;
     TextureOverrides &operator=(TextureOverrides &&other) noexcept = delete;
 
+    const ImageLoader::ResultInfo &GetResult(uint32_t index) const;
+    const char *GetDebugName() const;
+
 private:
     bool ParseOverrideTexturePaths(
-        char *albedoAlphaPath,
-        char *normalMetallicPath,
-        char *emissionRoughnessPath,
+        char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH],
         const char *relativePath,
         const OverrideInfo &overrideInfo);
 
-public:
-    // Albedo-Alpha
-    ImageLoader::ResultInfo aa;
-
-    // Normal-Metallic
-    ImageLoader::ResultInfo nm;
-
-    // Emission-Roughness
-    ImageLoader::ResultInfo er;
-
-    char    debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
-
 private:
+    ImageLoader::ResultInfo results[TEXTURES_PER_MATERIAL_COUNT];
+    char debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
+
     std::weak_ptr<ImageLoader> imageLoader;
 };
 

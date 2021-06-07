@@ -189,14 +189,14 @@ typedef struct RgInstanceCreateInfo
     // where "*" is some image extension
     // If null, then empty string will be used.
     const char                  *pOverridenAlbedoAlphaTexturePostfix;
+    // If null, then "_rme" will be used.
+    const char                  *pOverridenRoughnessMetallicEmissionTexturePostfix;
     // If null, then "_n" will be used.
-    const char                  *pOverridenNormalMetallicTexturePostfix;
-    // If null, then "_e" will be used.
-    const char                  *pOverridenEmissionRoughnessTexturePostfix;
+    const char                  *pOverridenNormalTexturePostfix;
     // Overriden textures 
     RgBool32                    overridenAlbedoAlphaTextureIsSRGB;
-    RgBool32                    overridenNormalMetallicTextureIsSRGB;
-    RgBool32                    overridenEmissionRoughnessTextureIsSRGB;
+    RgBool32                    overridenRoughnessMetallicEmissionTextureIsSRGB;
+    RgBool32                    overridenNormalTextureIsSRGB;
 
     // If a texture doesn't have overriden data, these default values are used.
     float                       defaultRoughness;
@@ -570,8 +570,8 @@ typedef struct RgTextureData
 typedef struct RgTextureSet
 {
     RgTextureData albedoAlpha;
-    RgTextureData normalsMetallicity;
-    RgTextureData emissionRoughness;
+    RgTextureData roughnessMetallicEmission;
+    RgTextureData normal;
 } RgTextureSet;
 
 typedef struct RgStaticMaterialCreateInfo

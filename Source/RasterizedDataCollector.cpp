@@ -173,8 +173,9 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     // copy texture indices
     if (const auto mgr = textureMgr.lock())
     {
-        // get albedo-alpha texture index from texture manager
-        drawInfo.textureIndex = mgr->GetMaterialTextures(info.material).albedoAlpha;
+        // get only the first (albedo-alpha) texture index from texture manager
+        // and ignore roughness, metallic, etc
+        drawInfo.textureIndex = mgr->GetMaterialTextures(info.material).indices[0];
     }
     else
     {

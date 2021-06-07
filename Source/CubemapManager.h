@@ -83,7 +83,7 @@ private:
     VkDescriptorImageInfo   emptyCubemapInfo;    
 
     std::string defaultTexturesPath;
-    std::string albedoAlphaPostfix;
+    std::string overridenTexturePostfix;
 };
 
 }

@@ -71,7 +71,8 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
     assert(pResultInfo != nullptr);
     *pResultInfo = {};
 
-    if (pFilePath == nullptr)
+    // if null ptr or empty string
+    if (pFilePath == nullptr || pFilePath[0] == '\0')
     {
         return false;
     }

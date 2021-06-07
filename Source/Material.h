@@ -21,13 +21,10 @@
 #pragma once
 
 #include "Common.h"
+#include "Const.h"
 
 namespace RTGL1
 {
-
-constexpr uint32_t EMPTY_TEXTURE_INDEX          = 0;
-constexpr uint32_t MATERIALS_MAX_LAYER_COUNT    = 3;
-constexpr uint32_t TEXTURES_PER_MATERIAL_COUNT  = 3;
 
 struct Texture
 {
@@ -38,13 +35,8 @@ struct Texture
 
 union MaterialTextures
 {
+    // Indices to use in shaders, each index represents RgTextureData from RgTextureSet
     uint32_t            indices[TEXTURES_PER_MATERIAL_COUNT];
-    struct
-    {
-        uint32_t        albedoAlpha;
-        uint32_t        normalMetallic;
-        uint32_t        emissionRoughness;
-    };
 };
 
 struct Material
