@@ -237,41 +237,41 @@ ShHitInfo getHitInfoBounce(
         h.normalGeom = vec3(0, 1, 0);
     }
 
-    if (tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX] != MATERIAL_NO_TEXTURE)
+    if (tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
     {
     #ifdef TEXTURE_GRADIENTS
-        vec4 nm = getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0], dTdx[0], dTdy[0]);
+        const vec3 rme = getTextureSampleGrad(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
     #else
-        vec4 nm = getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_METALLIC_INDEX], texCoords[0], lod);
+        const vec3 rme = getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
     #endif
 
-        h.metallic = nm.a;
-
-        // TODO: normal maps, tangents
-        h.normal = h.normalGeom;
-    }
-    else
-    {
-        h.normal = h.normalGeom;
-        h.metallic = tr.geomMetallicity;
-    }
-    
-    h.emission = tr.geomEmission;
-
-    if (tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX] != MATERIAL_NO_TEXTURE)
-    {
-    #ifdef TEXTURE_GRADIENTS
-        vec4 er = getTextureSampleGrad(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], dTdx[0], dTdy[0]);
-    #else
-        vec4 er = getTextureSampleLod(tr.materials[0][MATERIAL_EMISSION_ROUGHNESS_INDEX], texCoords[0], lod);
-    #endif
-
-        h.emission += er.rgb;
-        h.roughness = er.a;
+        h.roughness = rme[0];
+        h.metallic  = rme[1];
+        h.emission  = rme[2] * h.albedo + tr.geomEmission;
     }
     else
     {
         h.roughness = tr.geomRoughness;
+        h.metallic  = tr.geomMetallicity;
+        h.emission  = tr.geomEmission;
+    }
+
+    if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
+    {
+    #ifdef TEXTURE_GRADIENTS
+        vec3 nrm = getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+    #else
+        vec3 nrm = getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod).xyz;
+    #endif
+    
+        nrm = nrm * 2.0 - vec3(1.0);
+
+        const vec3 bitangent = cross(h.normalGeom, tr.tangent);
+        h.normal = mat3(tr.tangent, bitangent, h.normalGeom) * nrm;
+    }
+    else
+    {
+        h.normal = h.normalGeom;
     }
 
     h.instCustomIndex = instCustomIndex;

@@ -268,9 +268,10 @@ CONST = {
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
     "SBT_INDEX_HITGROUP_ALPHA_TESTED"       : 1,
     
-    "MATERIAL_ALBEDO_ALPHA_INDEX"           : 0,
-    "MATERIAL_NORMAL_METALLIC_INDEX"        : 1,
-    "MATERIAL_EMISSION_ROUGHNESS_INDEX"     : 2,
+    "MATERIAL_ALBEDO_ALPHA_INDEX"                   : 0,
+    "MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX"    : 1,
+    "MATERIAL_NORMAL_INDEX"                         : 2,
+    
     "MATERIAL_NO_TEXTURE"                   : 0,
 
     "MATERIAL_BLENDING_FLAG_OPAQUE"         : "1 << 0",
