@@ -42,13 +42,16 @@ vec3 sampleLambertian(const vec3 n, float u1, float u2, out float oneOverPdf)
 
 
 
-// nl -- cos between surface normal and light direction
-// n1 -- refractive index of src media
-// n2 -- refractive index of dst media
-float getFresnelSchlick(float nl, float n1, float n2)
+vec3 getSpecularColor(const vec3 albedo, float metallic)
 {
-    float F0 = square((n1 - n2) / (n1 + n2));
-    return F0 + (1 - F0) * pow(1 - max(nl, 0), 5);
+    return mix(vec3(0.04), albedo, metallic);
+}
+
+// nl -- cos between surface normal and light direction
+// specularColor -- reflectance color at zero angle
+vec3 getFresnelSchlick(float nl, const vec3 specularColor)
+{
+    return specularColor + (vec3(1.0) - specularColor) * pow(1 - max(nl, 0), 5);
 }
 
 // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
@@ -64,7 +67,7 @@ float G1GGX(const vec3 s, const vec3 n, float alpha)
 // v -- direction to viewer
 // l -- direction to light
 // alpha -- roughness
-float evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha)
+vec3 evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha, const vec3 specularColor)
 {
     alpha = max(alpha, MIN_GGX_ROUGHNESS);
 
@@ -72,7 +75,7 @@ float evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha)
 
     if (nl <= 0)
     {
-        return 0;
+        return vec3(0.0);
     }
 
     const vec3 h = normalize(v + l);
@@ -83,7 +86,7 @@ float evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha)
 
     float alphaSq = alpha * alpha;
 
-    float F = 1; // getFresnelSchlick(nl, n1, n2);
+    const vec3 F = getFresnelSchlick(nl, specularColor);
     float D = nh * alphaSq / (M_PI * square(1 + nh * nh * (alphaSq - 1)));
 
     // approximation for SmithGGX, Hammon ("PBR Diffuse Lighting for GGX+Smith Microsurfaces")

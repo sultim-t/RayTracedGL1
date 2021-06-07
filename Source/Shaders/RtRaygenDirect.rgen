@@ -57,6 +57,9 @@ void main()
     const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
 
     const float surfRoughness         = surfMetallicRoughness.g;
+    const float surfMetallic          = surfMetallicRoughness.r;
+    const vec3 surfSpecularColor      = getSpecularColor(texelFetch(framebufAlbedo_Sampler, pix, 0).rgb, surfMetallic);
+
     const uint instCustomIndex        = floatBitsToUint(surfPosition.a);
 
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
@@ -65,7 +68,7 @@ void main()
     vec3 diffuse, specular;
     processDirectIllumination(
         seed, 
-        instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, 
+        instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         -viewDirection.xyz,
         isGradientSample, 
         diffuse, specular);

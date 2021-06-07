@@ -39,7 +39,7 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 // v -- direction to viewer
 // n -- surface normal
 void getSpecularBounce(
-    const uint seed, const vec3 n, const float roughness, 
+    const uint seed, const vec3 n, const float roughness, const vec3 surfSpecularColor,
     const vec3 v, out vec3 bounceDirection, inout vec3 throughput)
 {
     const vec4 u = getRandomSample(seed, RANDOM_SALT_SPEC_BOUNCE(0));
@@ -63,7 +63,7 @@ void getSpecularBounce(
         // Let G2 be the simplest: G2(v,l) = G1(v) * G1(l)
         // => F * G1(l)
         
-        const float F = 1.0f; // getFresnelSchlick(nl, n1, n2);
+        const vec3 F = getFresnelSchlick(nl, surfSpecularColor);
         const float G1 = G1GGX(l, n, roughness);
 
         throughput *= F * G1;
@@ -102,7 +102,7 @@ vec3 processSecondBounce(
         vec3 diffuse, specular;
         processDirectIllumination(
             seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, 
+            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic),
             -bounceDirection, hitDistance,
             isGradientSample, 
             diffuse, specular);
@@ -138,7 +138,7 @@ vec3 processBounce(
         vec3 diffuse, specular;
         processDirectIllumination(
             seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, 
+            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic),
             -bounceDir_First, hitDistance,
             isGradientSample, 
             diffuse, specular);
@@ -169,11 +169,12 @@ vec3 processBounce(
 vec3 processSpecular(
     const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
     const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 v, const bool isGradientSample)
+    const float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 v, const bool isGradientSample)
 {
     vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
-    getSpecularBounce(seed, surfNormal, surfRoughness, v, bounceDirection, throughput);
+    getSpecularBounce(seed, surfNormal, surfRoughness, surfSpecularColor, v, bounceDirection, throughput);
 
     return processBounce(
         seed, surfInstCustomIndex, surfPosition, 
@@ -207,13 +208,14 @@ void processIndirectIllumination(
     const ivec2 pix, const uint seed, 
     const uint surfInstCustomIndex, const vec3 surfPosition, 
     const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 v, const bool isGradientSample)
+    const float surfRoughness, const vec3 surfSpecularColor, 
+    const vec3 v, const bool isGradientSample)
 {
     if (surfRoughness < 0.95)
     {
         const vec3 contribution = processSpecular(
             seed, surfInstCustomIndex, surfPosition, 
-            surfNormal, surfNormalGeom, surfRoughness, 
+            surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
             v, isGradientSample);
 
         imageStoreUnfilteredIndirectSpecular(pix, contribution);
@@ -248,11 +250,15 @@ void main()
     const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     const vec4 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0);
     const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
+
     const float surfRoughness         = surfMetallicRoughness.g;
+    const float surfMetallic          = surfMetallicRoughness.r;
+    const vec3 surfSpecularColor      = getSpecularColor(texelFetch(framebufAlbedo_Sampler, pix, 0).rgb, surfMetallic);
+
     const uint surfInstCustomIndex    = floatBitsToUint(surfPosition.a);
   
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
 
-    processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, -viewDirection.xyz, isGradientSample);        
+    processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, -viewDirection.xyz, isGradientSample);        
 }

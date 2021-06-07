@@ -254,8 +254,8 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 // distanceToViewer -- used for shadow ray origin fix, so it can't be under the surface
 void processDirectionalLight(
     uint seed, 
-    uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness, 
-    vec3 toViewerDir, float distanceToViewer,
+    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
@@ -324,7 +324,7 @@ void processDirectionalLight(
     }
 
     outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl * M_PI;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirLight.direction, surfRoughness) * dirLight.color * nl;
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirLight.direction, surfRoughness, surfSpecularColor) * dirLight.color * nl;
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
@@ -345,8 +345,8 @@ void processDirectionalLight(
 
 void processSphericalLight(
     uint seed,
-    uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness, 
-    vec3 toViewerDir, 
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 toViewerDir, 
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
@@ -429,7 +429,7 @@ void processSphericalLight(
     const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
     outDiffuse = radiance;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness) * sphLight.color * dot(surfNormal, dir);
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * sphLight.color * dot(surfNormal, dir);
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
@@ -447,7 +447,7 @@ void processSphericalLight(
 
 void processDirectIllumination(
     uint seed, 
-    uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness,
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
@@ -455,7 +455,7 @@ void processDirectIllumination(
     vec3 dirDiff, dirSpec;
     processDirectionalLight(
         seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, 
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, distanceToViewer,
         isGradientSample, 
         dirDiff, dirSpec);
@@ -463,7 +463,7 @@ void processDirectIllumination(
     vec3 sphDiff, sphSpec;
     processSphericalLight(
         seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, 
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, 
         isGradientSample, 
         sphDiff, sphSpec);
@@ -474,14 +474,14 @@ void processDirectIllumination(
 
 void processDirectIllumination(
     uint seed, 
-    uint surfInstCustomIndex, vec3 surfPosition, vec3 surfNormal, vec3 surfNormalGeom, float surfRoughness,
-    vec3 toViewerDir,
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 toViewerDir,
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     processDirectIllumination(
         seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, 
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, length(surfPosition - globalUniform.cameraPosition.xyz),
         isGradientSample, 
         outDiffuse, outSpecular);
