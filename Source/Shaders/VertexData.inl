@@ -311,7 +311,7 @@ vec3 getPrevDynamicVerticesPositions(uint index)
         prevDynamicPositions[index * globalUniform.positionsStride + 2]);
 }
 
-ShTriangle getTriangleStatic(uvec3 vertIndices)
+ShTriangle getTriangleStatic(uvec3 vertIndices, uint baseVertexIndex, uint primitiveId)
 {
     ShTriangle tr;
 
@@ -335,13 +335,13 @@ ShTriangle getTriangleStatic(uvec3 vertIndices)
     tr.layerTexCoord[2][1] = getStaticVerticesTexCoordsLayer2(vertIndices[1]);
     tr.layerTexCoord[2][2] = getStaticVerticesTexCoordsLayer2(vertIndices[2]);
 
-    // TODO
-    //tr.tangent = getStaticVerticesTangent(vertIndices[0] / 3);
+    // baseVertexIndex is aligned by 3
+    tr.tangent = decodeTangent4(getStaticVerticesTangents(baseVertexIndex / 3 + primitiveId));
 
     return tr;
 }
 
-ShTriangle getTriangleDynamic(uvec3 vertIndices)
+ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint primitiveId)
 {
     ShTriangle tr;
 
@@ -357,8 +357,8 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices)
     tr.layerTexCoord[0][1] = getDynamicVerticesTexCoords(vertIndices[1]);
     tr.layerTexCoord[0][2] = getDynamicVerticesTexCoords(vertIndices[2]);
 
-    // TODO
-    //tr.tangent = getDynamicVerticesTangent(vertIndices[0] / 3);
+    // baseVertexIndex is aligned by 3
+    tr.tangent = decodeTangent4(getDynamicVerticesTangents(baseVertexIndex / 3 + primitiveId));
 
     return tr;
 }
@@ -410,7 +410,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     {
         const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        tr = getTriangleDynamic(vertIndices);
+        tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, primitiveId);
 
         // only one material for dynamic geometry
         tr.materials[0] = uvec3(inst.materials[0]);
@@ -453,7 +453,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     {
         const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        tr = getTriangleStatic(vertIndices);
+        tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, primitiveId);
 
         tr.materials[0] = uvec3(inst.materials[0]);
         tr.materials[1] = uvec3(inst.materials[1]);
@@ -502,6 +502,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.normals[0] = model3 * tr.normals[0];
     tr.normals[1] = model3 * tr.normals[1];
     tr.normals[2] = model3 * tr.normals[2];
+    tr.tangent.xyz = model3 * tr.tangent.xyz;
 
     tr.materialsBlendFlags = inst.flags;
 

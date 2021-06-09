@@ -192,6 +192,11 @@ void VertexCollector::BeginCollecting(bool isStatic)
     assert(GetAllGeometryCount() == 0);
 }
 
+static uint32_t AlignUpBy3(uint32_t x)
+{
+    return ((x + 2) / 3) * 3;
+}
+
 uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
@@ -202,16 +207,16 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     const uint32_t maxVertexCount = collectStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
 
 
-    const uint32_t vertIndex = curVertexCount;
-    const uint32_t indIndex = curIndexCount;
+    const uint32_t vertIndex = AlignUpBy3(curVertexCount);
+    const uint32_t indIndex = AlignUpBy3(curIndexCount);
     const uint32_t transformIndex = curTransformCount;
 
     const bool useIndices = info.indexCount != 0 && info.pIndexData != nullptr;
     const uint32_t primitiveCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 
 
-    curVertexCount += info.vertexCount;
-    curIndexCount += useIndices ? info.indexCount : 0;
+    curVertexCount = vertIndex + info.vertexCount;
+    curIndexCount = indIndex + (useIndices ? info.indexCount : 0);
     curPrimitiveCount += primitiveCount;
     curTransformCount += 1;
 

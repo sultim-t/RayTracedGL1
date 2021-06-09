@@ -263,11 +263,10 @@ ShHitInfo getHitInfoBounce(
     #else
         vec3 nrm = getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod).xyz;
     #endif
-    
         nrm = nrm * 2.0 - vec3(1.0);
 
-        const vec3 bitangent = cross(h.normalGeom, tr.tangent);
-        h.normal = mat3(tr.tangent, bitangent, h.normalGeom) * nrm;
+        const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
+        h.normal = normalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom * nrm.z);
     }
     else
     {

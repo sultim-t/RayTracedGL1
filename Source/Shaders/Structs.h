@@ -27,7 +27,7 @@ struct ShTriangle
     vec4    materialColors[3];
     uvec3   materials[3];
     uint    materialsBlendFlags;
-    vec3    tangent;
+    vec4    tangent;
     float   geomRoughness;
     vec3    geomEmission;
     float   geomMetallicity;

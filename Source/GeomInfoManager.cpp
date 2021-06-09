@@ -338,6 +338,10 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo(
     VertexCollectorFilterTypeFlags flags,
     ShGeometryInstance &src)
 {
+    // must be aligned for per-triangle vertex attributes
+    assert(src.baseVertexIndex % 3 == 0);
+    assert(src.baseIndexIndex % 3 == 0);
+
     const uint32_t simpleIndex = GetCount();
 
     // must not exist

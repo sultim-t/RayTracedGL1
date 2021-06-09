@@ -72,17 +72,18 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
     const mat4 model = inst.model;
     const mat3 model3 = mat3(model);
 
-    for (uint l = 0; l < inst.vertexCount; l += 3)
+
+    if (useIndices)
     {
-        const uint v = inst.baseVertexIndex + l;
-
-        const uvec3 vertexIndices = uvec3(
-            v + 0,
-            v + 1,
-            v + 2);
-
-        if (!useIndices)
+        for (uint tri = 0; tri < inst.indexCount / 3; tri++)
         {
+            const uint i = inst.baseIndexIndex + tri * 3;
+
+            const uvec3 vertexIndices = uvec3(
+                inst.baseVertexIndex + INDICES[i + 0],
+                inst.baseVertexIndex + INDICES[i + 1],
+                inst.baseVertexIndex + INDICES[i + 2]);
+
             const vec3 localPos[] = 
             {
                 GET_POSITIONS(vertexIndices[0]),
@@ -90,14 +91,71 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
                 GET_POSITIONS(vertexIndices[2])
             };
 
+            vec3 localNormal;
+            
             if (genNormals)
             {
                 const vec3 localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
+                
+                SET_NORMALS(vertexIndices[0], localNormal);
+                SET_NORMALS(vertexIndices[1], localNormal);
+                SET_NORMALS(vertexIndices[2], localNormal);
+            }
+            
+            // get very coarse normal for triangle to determine bitangent's handedness
+            localNormal = 
+                GET_NORMALS(vertexIndices[0]) +
+                GET_NORMALS(vertexIndices[1]) +
+                GET_NORMALS(vertexIndices[2]);
+            localNormal = localNormal / 3;
+     
+            const vec2 texCoord[] = 
+            {
+                GET_TEXCOORDS(vertexIndices[0]),
+                GET_TEXCOORDS(vertexIndices[1]),
+                GET_TEXCOORDS(vertexIndices[2])
+            };
+
+            // baseVertexIndex is aligned by 3
+            const uint globalPrimitiveId = inst.baseVertexIndex / 3 + tri;
+            SET_TANGENTS(globalPrimitiveId, getTangent(localPos, localNormal, texCoord));
+        }
+    }
+    else
+    {
+        for (uint tri = 0; tri < inst.vertexCount / 3; tri++)
+        {
+            const uint v = inst.baseVertexIndex + tri * 3;
+
+            const uvec3 vertexIndices = uvec3(
+                v + 0,
+                v + 1,
+                v + 2);
+
+            const vec3 localPos[] = 
+            {
+                GET_POSITIONS(vertexIndices[0]),
+                GET_POSITIONS(vertexIndices[1]),
+                GET_POSITIONS(vertexIndices[2])
+            };
+
+            vec3 localNormal;
+
+            if (genNormals)
+            {
+                localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
 
                 SET_NORMALS(vertexIndices[0], localNormal);
                 SET_NORMALS(vertexIndices[1], localNormal);
                 SET_NORMALS(vertexIndices[2], localNormal);
             }
+            
+            // get very coarse normal for triangle to determine bitangent's handedness
+            localNormal = 
+                GET_NORMALS(vertexIndices[0]) +
+                GET_NORMALS(vertexIndices[1]) +
+                GET_NORMALS(vertexIndices[2]);
+            localNormal = localNormal / 3;
 
             const vec2 texCoord[] = 
             {
@@ -106,44 +164,10 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
                 GET_TEXCOORDS(vertexIndices[2])
             };
 
-            const uint primitiveId = v / 3;
-            SET_TANGENTS(primitiveId, getTangent(localPos, texCoord));
-        }
-    }
-
-    // if not using indices, baseIndexIndex=UINT32_MAX, so loop will be skipped
-    for (uint i = inst.baseIndexIndex; i < inst.baseIndexIndex + inst.indexCount; i += 3)
-    {
-        const uvec3 vertexIndices = uvec3(
-            inst.baseVertexIndex + INDICES[i + 0],
-            inst.baseVertexIndex + INDICES[i + 1],
-            inst.baseVertexIndex + INDICES[i + 2]);
-
-        const vec3 localPos[] = 
-        {
-            GET_POSITIONS(vertexIndices[0]),
-            GET_POSITIONS(vertexIndices[1]),
-            GET_POSITIONS(vertexIndices[2])
-        };
-
-        if (genNormals)
-        {
-            const vec3 localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
-            
-            SET_NORMALS(vertexIndices[0], localNormal);
-            SET_NORMALS(vertexIndices[1], localNormal);
-            SET_NORMALS(vertexIndices[2], localNormal);
-        }
-        
-        const vec2 texCoord[] = 
-        {
-            GET_TEXCOORDS(vertexIndices[0]),
-            GET_TEXCOORDS(vertexIndices[1]),
-            GET_TEXCOORDS(vertexIndices[2])
-        };
-
-        const uint primitiveId = i / 3;
-        SET_TANGENTS(primitiveId, getTangent(localPos, texCoord));
+            // baseVertexIndex is aligned by 3
+            const uint globalPrimitiveId = inst.baseVertexIndex / 3 + tri;
+            SET_TANGENTS(globalPrimitiveId, getTangent(localPos, localNormal, texCoord));
+        } 
     }
 }
 

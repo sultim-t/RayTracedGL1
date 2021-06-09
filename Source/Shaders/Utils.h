@@ -21,6 +21,8 @@
 #define M_PI        3.14159265358979323846
 #define UINT32_MAX  0xFFFFFFFF
 
+
+
 vec4 unpackLittleEndianUintColor(uint c)
 {
     return vec4(
@@ -35,6 +37,8 @@ float getLuminance(vec3 c)
 {
     return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
 }
+
+
 
 #define ENCODE_NORMAL_N_PHI 1 << 16
 #define ENCODE_NORMAL_N_THETA 1 << 16
@@ -72,6 +76,8 @@ vec3 decodeNormal(uint _packed)
         cos(phi)
     );
 }
+
+
 
 // https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_texture_shared_exponent.txt
 
@@ -130,4 +136,31 @@ vec3 decodeE5B9G9R9(const uint _packed)
         (_packed >> (1 * ENCODE_E5B9G9R9_MANTISSA_BITS)) & ENCODE_E5B9G9R9_MANTISSA_MASK,
         (_packed >> (2 * ENCODE_E5B9G9R9_MANTISSA_BITS)) & ENCODE_E5B9G9R9_MANTISSA_MASK
     );
+}
+
+
+
+#define TANGENT_HANDEDNESS_ENCODING_CONST 19
+#define TANGENT_HANDEDNESS_ENCODING_THRESHOLD 3
+
+// Encode normalized tangent vector with handedness (-1 or 1) to vec3
+vec3 encodeTangent4(const vec3 tangent, float handedness)
+{
+    // handedness must be -1 or 1,
+    //          then h is  1 or 0
+    const float h = (-handedness + 1.0) * 0.5;
+
+    // if handedness is  1, then tangent is a unit vector
+    // if handedness is -1, then the length is (1.0 + TANGENT_HANDEDNESS_ENCODING_CONST)
+    return tangent.xyz * (1.0 + h * TANGENT_HANDEDNESS_ENCODING_CONST);
+}
+
+vec4 decodeTangent4(const vec3 _packed)
+{
+    const float isUnitLen = float(dot(_packed, _packed) < TANGENT_HANDEDNESS_ENCODING_THRESHOLD);
+    const float handedness = isUnitLen * 2.0 - 1.0;
+
+    const float h = (-handedness + 1.0) * 0.5;
+
+    return vec4(_packed / (1.0 + h * TANGENT_HANDEDNESS_ENCODING_CONST), handedness);
 }
