@@ -226,17 +226,6 @@ ShHitInfo getHitInfoBounce(
     h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
 
-    h.normalGeom = tr.normals * baryCoords;
-    const float nLength = length(h.normalGeom);
-    if (nLength > 0.001)
-    {
-        h.normalGeom /= nLength;
-    }
-    else
-    {
-        h.normalGeom = vec3(0, 1, 0);
-    }
-
     if (tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
     {
     #ifdef TEXTURE_GRADIENTS
@@ -256,6 +245,8 @@ ShHitInfo getHitInfoBounce(
         h.emission  = tr.geomEmission;
     }
 
+    h.normalGeom = safeNormalize(tr.normals * baryCoords);
+
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
     #ifdef TEXTURE_GRADIENTS
@@ -266,7 +257,7 @@ ShHitInfo getHitInfoBounce(
         nrm = nrm * 2.0 - vec3(1.0);
 
         const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
-        h.normal = normalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom * nrm.z);
+        h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom * nrm.z);
     }
     else
     {

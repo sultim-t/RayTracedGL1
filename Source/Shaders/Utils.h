@@ -77,6 +77,12 @@ vec3 decodeNormal(uint _packed)
     );
 }
 
+vec3 safeNormalize(const vec3 v)
+{
+    const float len = length(v);
+    return len > 0.001 ? v / len : vec3(0, 1, 0);
+}
+
 
 
 // https://www.khronos.org/registry/OpenGL/extensions/EXT/EXT_texture_shared_exponent.txt
