@@ -236,7 +236,7 @@ ShHitInfo getHitInfoBounce(
 
         h.roughness = rme[0];
         h.metallic  = rme[1];
-        h.emission  = rme[2] * h.albedo + tr.geomEmission;
+        h.emission  = rme[2] * 100 * h.albedo + tr.geomEmission;
     }
     else
     {

@@ -60,7 +60,6 @@ void main()
 
     vec3 color;
 
-    const vec3 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
     const float depth = texelFetch(framebufDepth_Sampler,  pix, 0).r;
     
     if (depth < MAX_RAY_LENGTH)
@@ -69,10 +68,9 @@ void main()
         const vec3 unfilteredSpec = ;
         const SH unfilteredIndirSH = ;*/
 
-        const vec3 light = imageLoad(framebufFinal, pix).rgb;
-        color = light * albedo;
+        color = imageLoad(framebufFinal, pix).rgb;
             
-        const float lIn = max(getLuminance(light), exp2(globalUniform.minLogLuminance));
+        const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
         const float lInAdj = lIn / tonemapping.avgLuminance;
         // Reinhard
         const float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
@@ -81,7 +79,8 @@ void main()
     }
     else
     {
-        color = albedo;
+        // sky
+        color = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
     }
 
     if (globalUniform.dbgShowGradients != 0)
