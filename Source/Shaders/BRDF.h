@@ -44,7 +44,8 @@ vec3 sampleLambertian(const vec3 n, float u1, float u2, out float oneOverPdf)
 
 vec3 getSpecularColor(const vec3 albedo, float metallic)
 {
-    return mix(vec3(0.04), albedo, metallic);
+    vec3 minSpec = vec3(0.0); // vec3(0.04);
+    return mix(minSpec, albedo, metallic);
 }
 
 // nl -- cos between surface normal and light direction

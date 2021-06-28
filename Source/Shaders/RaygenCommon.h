@@ -322,7 +322,6 @@ void processDirectionalLight(
     }
 
     const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
-
     const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir);
 
     outDiffuse *= float(!isShadowed);
@@ -345,9 +344,93 @@ void processSphericalLight(
         return;
     }
 
-    // if it's a gradient sample, then the seed is from previous frame
-    const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
-    uint sphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
+    // note: if it's a gradient sample, then the seed is from previous frame
+
+    float weightSum = 0.0; 
+
+    const int MAX_LIGHTS_PER_SAMPLE = 8;
+    float weights[MAX_LIGHTS_PER_SAMPLE];
+    vec4 rnds[MAX_LIGHTS_PER_SAMPLE / 4] = 
+    {
+        getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX(0)),
+        getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX(1))
+    };
+
+    // choose light 
+    for (int i = 0; i < MAX_LIGHTS_PER_SAMPLE; i++)
+    {
+        const float randomIndex = sphLightCount * rnds[i / 4][i % 4];
+        const uint lightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
+        
+        const ShLightSpherical light = lightSourcesSpherical[lightIndex];
+        
+
+
+        vec3 dir = light.position - surfPosition;
+
+        const float r = light.radius;
+        const float z = light.falloff;
+        const float d = length(dir);
+
+        if (d < max(r, 0.001))
+        {
+            outDiffuse = light.color;
+            outSpecular = light.color;
+            return;
+        }
+
+        dir /= max(d, 0.001);
+        
+        const float I = pow(clamp((z - d) / max(z - r, 1), 0, 1), 2);
+        const vec3 c = I * light.color;
+
+        const vec3 irradiance = M_PI * c * max(dot(surfNormal, dir/*ToCenter*/), 0.0);
+        const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
+
+        const vec3 diff = radiance;
+        const vec3 spec = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * light.color * dot(surfNormal, dir);
+
+
+
+        weights[i] = getLuminance(diff + spec);
+        weightSum += weights[i];
+    }
+
+    if (weightSum <= 0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+
+    uint sphLightIndex = UINT32_MAX;
+    float rand = weightSum * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x;
+    float pdf = 0;
+    
+    for (int i = 0; i < MAX_LIGHTS_PER_SAMPLE; i++)
+    {
+        pdf = weights[i];
+        rand -= pdf;
+
+        const float fIndex  = sphLightCount * rnds[i / 4][i % 4];
+        sphLightIndex = clamp(uint(fIndex), 0, sphLightCount - 1);
+
+        if (rand <= 0)
+        {
+            break;
+        }
+    }
+    
+    if (rand > 0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    pdf = max(pdf / weightSum, 0.001);
+
 
     if (isGradientSample)
     {        
@@ -365,8 +448,6 @@ void processSphericalLight(
             return;
         }
     }
-    
-    const float oneOverPdf = sphLightCount;
 
     const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
 
@@ -376,14 +457,15 @@ void processSphericalLight(
     vec3 dir = posOnSphere - surfPosition;
     const float distance = length(dir);
 
-    surfPosition += (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MAX;
+    surfPosition += (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN;
 
-    if (distance < sphLight.radius)
+    // processed previously
+    /*if (distance <= max(sphLight.radius, 0.001))
     {
         outDiffuse = sphLight.color * oneOverPdf;
         outSpecular = sphLight.color * oneOverPdf;
         return;
-    }
+    }*/
     
     dir = dir / distance;
 
@@ -403,8 +485,8 @@ void processSphericalLight(
     outDiffuse = radiance;
     outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * sphLight.color * dot(surfNormal, dir);
 
-    outDiffuse *= oneOverPdf;
-    outSpecular *= oneOverPdf;
+    outDiffuse /= pdf;
+    outSpecular /= pdf;
     
     if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
     {
