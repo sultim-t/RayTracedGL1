@@ -246,7 +246,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 #define SHADOW_RAY_EPS_MAX      0.1
 #define SHADOW_RAY_EPS_MAX_DIST 25
 
-#define SHADOW_CAST_LUMINANCE_THRESHOLD 0.01
+#define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
 
 
 
@@ -259,37 +259,23 @@ void processDirectionalLight(
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    uint dirLightCount;
-    uint dirLightIndex;
+    uint dirLightCount = isGradientSample ? globalUniform.lightCountDirectionalPrev : globalUniform.lightCountDirectional;
 
-    if (!isGradientSample)
+    if (dirLightCount == 0)
     {
-        dirLightCount = globalUniform.lightCountDirectional;
- 
-        if (dirLightCount == 0)
-        {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
-            return;
-        }
-        
-        const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
-        dirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
     }
-    else
+
+    // if it's a gradient sample, then the seed is from previous frame
+    const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
+    uint dirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);;
+
+    if (isGradientSample)
     {
-        dirLightCount = globalUniform.lightCountDirectionalPrev;
-
-        if (dirLightCount == 0)
-        {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
-            return;
-        }
-
         // choose light using prev frame's info
-        const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
-        const uint prevFrameDirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);
+        const uint prevFrameDirLightIndex = dirLightIndex;
 
         // get cur frame match for the chosen light
         dirLightIndex = lightSourcesDirMatchPrev[prevFrameDirLightIndex];
@@ -350,37 +336,23 @@ void processSphericalLight(
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    uint sphLightCount;
-    uint sphLightIndex;
+    uint sphLightCount = isGradientSample ? globalUniform.lightCountSphericalPrev : globalUniform.lightCountSpherical;
 
-    if (!isGradientSample)
+    if (sphLightCount == 0)
     {
-        sphLightCount = globalUniform.lightCountSpherical;
- 
-        if (sphLightCount == 0)
-        {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
-            return;
-        }
-        
-        const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
-        sphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
     }
-    else
-    {
-        sphLightCount = globalUniform.lightCountSphericalPrev;
 
-        if (sphLightCount == 0)
-        {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
-            return;
-        }
+    // if it's a gradient sample, then the seed is from previous frame
+    const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
+    uint sphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
 
+    if (isGradientSample)
+    {        
         // choose light using prev frame's info
-        const float randomIndex = sphLightCount * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX).x;
-        const uint prevFrameSphLightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
+        const uint prevFrameSphLightIndex = sphLightIndex;
 
         // get cur frame match for the chosen light
         sphLightIndex = lightSourcesSphMatchPrev[prevFrameSphLightIndex];
@@ -408,8 +380,8 @@ void processSphericalLight(
 
     if (distance < sphLight.radius)
     {
-        outDiffuse = sphLight.color;
-        outSpecular = sphLight.color;
+        outDiffuse = sphLight.color * oneOverPdf;
+        outSpecular = sphLight.color * oneOverPdf;
         return;
     }
     
