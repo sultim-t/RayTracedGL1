@@ -311,7 +311,29 @@ vec3 getPrevDynamicVerticesPositions(uint index)
         prevDynamicPositions[index * globalUniform.positionsStride + 2]);
 }
 
-ShTriangle getTriangleStatic(uvec3 vertIndices, uint baseVertexIndex, uint primitiveId)
+vec4 getTangent(const mat3 localPos, const vec3 normal, const mat3x2 texCoord)
+{
+    const vec3 e1 = localPos[1] - localPos[0];
+    const vec3 e2 = localPos[2] - localPos[0];
+
+    const vec2 u1 = texCoord[1] - texCoord[0];
+    const vec2 u2 = texCoord[2] - texCoord[0];
+
+    const float invDet = 1.0 / (u1.x * u2.y - u2.x * u1.y);
+
+    const vec3 tangent   = normalize((e1 * u2.y - e2 * u1.y) * invDet);
+    const vec3 bitangent = normalize((e2 * u1.x - e1 * u2.x) * invDet);
+
+    // Don't store bitangent, only store cross(normal, tangent) handedness.
+    // If that cross product and bitangent have the same sign,
+    // then handedness is 1, otherwise -1
+    float handedness = float(dot(cross(normal, tangent), bitangent) > 0.0);
+    handedness = handedness * 2.0 - 1.0;
+
+    return vec4(tangent, handedness);
+}
+
+ShTriangle getTriangleStatic(uvec3 vertIndices, uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
 {
     ShTriangle tr;
 
@@ -335,13 +357,13 @@ ShTriangle getTriangleStatic(uvec3 vertIndices, uint baseVertexIndex, uint primi
     tr.layerTexCoord[2][1] = getStaticVerticesTexCoordsLayer2(vertIndices[1]);
     tr.layerTexCoord[2][2] = getStaticVerticesTexCoordsLayer2(vertIndices[2]);
 
-    // baseVertexIndex is aligned by 3
-    tr.tangent = decodeTangent4(getStaticVerticesTangents(baseVertexIndex / 3 + primitiveId));
+    // get very coarse normal for triangle to determine bitangent's handedness
+    tr.tangent = getTangent(tr.positions, safeNormalize(tr.normals[0] + tr.normals[1] + tr.normals[2]), tr.layerTexCoord[0]);
 
     return tr;
 }
 
-ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint primitiveId)
+ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
 {
     ShTriangle tr;
 
@@ -357,8 +379,8 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint prim
     tr.layerTexCoord[0][1] = getDynamicVerticesTexCoords(vertIndices[1]);
     tr.layerTexCoord[0][2] = getDynamicVerticesTexCoords(vertIndices[2]);
 
-    // baseVertexIndex is aligned by 3
-    tr.tangent = decodeTangent4(getDynamicVerticesTangents(baseVertexIndex / 3 + primitiveId));
+    // get very coarse normal for triangle to determine bitangent's handedness
+    tr.tangent = getTangent(tr.positions, safeNormalize(tr.normals[0] + tr.normals[1] + tr.normals[2]), tr.layerTexCoord[0]);
 
     return tr;
 }
@@ -410,7 +432,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     {
         const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, primitiveId);
+        tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         // only one material for dynamic geometry
         tr.materials[0] = uvec3(inst.materials[0]);
@@ -453,7 +475,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     {
         const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, primitiveId);
+        tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr.materials[0] = uvec3(inst.materials[0]);
         tr.materials[1] = uvec3(inst.materials[1]);

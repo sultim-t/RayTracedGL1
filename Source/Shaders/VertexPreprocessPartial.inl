@@ -95,30 +95,12 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
             
             if (genNormals)
             {
-                const vec3 localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
+                localNormal = normalSign * normalize(cross(localPos[1] - localPos[0], localPos[2] - localPos[0]));
                 
                 SET_NORMALS(vertexIndices[0], localNormal);
                 SET_NORMALS(vertexIndices[1], localNormal);
                 SET_NORMALS(vertexIndices[2], localNormal);
             }
-            
-            // get very coarse normal for triangle to determine bitangent's handedness
-            localNormal = 
-                GET_NORMALS(vertexIndices[0]) +
-                GET_NORMALS(vertexIndices[1]) +
-                GET_NORMALS(vertexIndices[2]);
-            localNormal = localNormal / 3;
-     
-            const vec2 texCoord[] = 
-            {
-                GET_TEXCOORDS(vertexIndices[0]),
-                GET_TEXCOORDS(vertexIndices[1]),
-                GET_TEXCOORDS(vertexIndices[2])
-            };
-
-            // baseVertexIndex is aligned by 3
-            const uint globalPrimitiveId = inst.baseVertexIndex / 3 + tri;
-            SET_TANGENTS(globalPrimitiveId, getTangent(localPos, localNormal, texCoord));
         }
     }
     else
@@ -149,24 +131,6 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
                 SET_NORMALS(vertexIndices[1], localNormal);
                 SET_NORMALS(vertexIndices[2], localNormal);
             }
-            
-            // get very coarse normal for triangle to determine bitangent's handedness
-            localNormal = 
-                GET_NORMALS(vertexIndices[0]) +
-                GET_NORMALS(vertexIndices[1]) +
-                GET_NORMALS(vertexIndices[2]);
-            localNormal = localNormal / 3;
-
-            const vec2 texCoord[] = 
-            {
-                GET_TEXCOORDS(vertexIndices[0]),
-                GET_TEXCOORDS(vertexIndices[1]),
-                GET_TEXCOORDS(vertexIndices[2])
-            };
-
-            // baseVertexIndex is aligned by 3
-            const uint globalPrimitiveId = inst.baseVertexIndex / 3 + tri;
-            SET_TANGENTS(globalPrimitiveId, getTangent(localPos, localNormal, texCoord));
         } 
     }
 }

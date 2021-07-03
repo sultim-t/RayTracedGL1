@@ -34,28 +34,6 @@ layout(push_constant) uniform Push_BT
     ShVertPreprocessing push;
 };
 
-vec3 getTangent(const vec3 localPos[3], const vec3 normal, const vec2 texCoord[3])
-{
-    const vec3 e1 = localPos[1] - localPos[0];
-    const vec3 e2 = localPos[2] - localPos[0];
-
-    const vec2 u1 = texCoord[1] - texCoord[0];
-    const vec2 u2 = texCoord[2] - texCoord[0];
-
-    const float invDet = 1.0 / (u1.x * u2.y - u2.x * u1.y);
-
-    const vec3 tangent   = normalize((e1 * u2.y - e2 * u1.y) * invDet);
-    const vec3 bitangent = normalize((e2 * u1.x - e1 * u2.x) * invDet);
-
-    // Don't store bitangent, only store cross(normal, tangent) handedness.
-    // If that cross product and bitangent have the same sign,
-    // then handedness is 1, otherwise 0
-    float handedness = float(dot(cross(normal, tangent), bitangent) > 0.0);
-    handedness = handedness * 2.0 - 1.0;
-
-    return encodeTangent4(tangent, handedness);
-}
-
 void main()
 {    
     uint tlasInstanceIndex = gl_WorkGroupID.x;
