@@ -236,7 +236,7 @@ ShHitInfo getHitInfoBounce(
 
         h.roughness = rme[0];
         h.metallic  = rme[1];
-        h.emission  = rme[2] * 100 * h.albedo + tr.geomEmission;
+        h.emission  = rme[2] * globalUniform.emissionMapBoost * h.albedo + tr.geomEmission;
     }
     else
     {
@@ -259,8 +259,7 @@ ShHitInfo getHitInfoBounce(
         const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
         h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom * nrm.z);
 
-        const float normalStrength = 1.0;
-        h.normal = mix(h.normalGeom, h.normal, normalStrength);
+        h.normal = mix(h.normalGeom, h.normal, globalUniform.normalMapStrength);
     }
     else
     {

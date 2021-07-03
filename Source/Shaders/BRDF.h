@@ -42,9 +42,11 @@ vec3 sampleLambertian(const vec3 n, float u1, float u2, out float oneOverPdf)
 
 
 
+#define BRDF_MIN_SPECULAR_COLOR 0.0 // 0.04
+
 vec3 getSpecularColor(const vec3 albedo, float metallic)
 {
-    vec3 minSpec = vec3(0.0); // vec3(0.04);
+    vec3 minSpec = vec3(BRDF_MIN_SPECULAR_COLOR);
     return mix(minSpec, albedo, metallic);
 }
 

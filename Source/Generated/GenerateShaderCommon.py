@@ -398,9 +398,9 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "luminanceWhitePoint",          1),
     (TYPE_UINT32,       1,      "stopEyeAdaptation",            1),
-    (TYPE_UINT32,       1,      "lightCountSpherical",    1),
+    (TYPE_UINT32,       1,      "lightCountSpherical",          1),
     
-    (TYPE_UINT32,       1,      "lightCountDirectional",  1),
+    (TYPE_UINT32,       1,      "lightCountDirectional",        1),
     (TYPE_UINT32,       1,      "skyType",                      1),
     (TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),
     (TYPE_UINT32,       1,      "skyCubemapIndex",              1),
@@ -411,10 +411,15 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "cameraPosition",               1),
 
-    (TYPE_UINT32,       1,       "dbgShowMotionVectors",        1),
-    (TYPE_UINT32,       1,       "dbgShowGradients",            1),
-    (TYPE_UINT32,       1,       "lightCountSphericalPrev",     1),
-    (TYPE_UINT32,       1,       "lightCountDirectionalPrev",   1),
+    (TYPE_UINT32,       1,      "dbgShowMotionVectors",         1),
+    (TYPE_UINT32,       1,      "dbgShowGradients",             1),
+    (TYPE_UINT32,       1,      "lightCountSphericalPrev",      1),
+    (TYPE_UINT32,       1,      "lightCountDirectionalPrev",    1),
+
+    (TYPE_FLOAT32,      1,      "emissionMapBoost",             1),
+    (TYPE_FLOAT32,      1,      "emissionMaxScreenColor",       1),
+    (TYPE_FLOAT32,      1,      "normalMapStrength",            1),
+    (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),

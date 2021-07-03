@@ -143,6 +143,10 @@ struct ShGlobalUniform
     uint dbgShowGradients;
     uint lightCountSphericalPrev;
     uint lightCountDirectionalPrev;
+    float emissionMapBoost;
+    float emissionMaxScreenColor;
+    float normalMapStrength;
+    float skyColorSaturation;
     ivec4 instanceGeomInfoOffset[18];
     ivec4 instanceGeomInfoOffsetPrev[18];
     ivec4 instanceGeomCount[18];

@@ -148,6 +148,10 @@ struct ShGlobalUniform
     uint32_t dbgShowGradients;
     uint32_t lightCountSphericalPrev;
     uint32_t lightCountDirectionalPrev;
+    float emissionMapBoost;
+    float emissionMaxScreenColor;
+    float normalMapStrength;
+    float skyColorSaturation;
     int32_t instanceGeomInfoOffset[72];
     int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];

@@ -315,6 +315,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     memcpy(gu->skyColorDefault, drawInfo.skyColorDefault.data, sizeof(float) * 3);
     gu->skyColorMultiplier = drawInfo.skyColorMultiplier;
+    gu->skyColorSaturation = std::max(drawInfo.skyColorSaturation, 0.0f);
 
     memcpy(gu->skyViewerPosition, drawInfo.skyViewerPosition.data, sizeof(float) * 3);
 
@@ -340,6 +341,11 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition);
     }
+
+    gu->normalMapStrength = drawInfo.normalMapStrength;
+
+    gu->emissionMapBoost = std::max(drawInfo.emissionMapBoost, 0.0f);
+    gu->emissionMaxScreenColor = std::max(drawInfo.emissionMaxScreenColor, 0.0f);
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

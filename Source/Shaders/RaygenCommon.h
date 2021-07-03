@@ -204,10 +204,8 @@ vec3 getSky(vec3 direction)
 {
     vec3 col = getSkyPrimary(direction);
     float l = getLuminance(col);
-    
-    const float saturation = 0.5;
 
-    return mix(vec3(l), col, saturation) * globalUniform.skyColorMultiplier;
+    return mix(vec3(l), col, globalUniform.skyColorSaturation) * globalUniform.skyColorMultiplier;
 }
 #endif
 

@@ -760,10 +760,16 @@ typedef struct RgDrawFrameInfo
     RgFloat3D           skyColorDefault;
     // The result sky color is multiplied by this value.
     float               skyColorMultiplier;
+    float               skyColorSaturation;
     // A point from which rays are traced while using RG_SKY_TYPE_GEOMETRY.
     RgFloat3D           skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
     RgCubemap           skyCubemap;
+    float               normalMapStrength;
+    // Multiplier for emission map values.
+    float               emissionMapBoost;
+    // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
+    float               emissionMaxScreenColor;
     RgBool32            dbgShowMotionVectors;
     RgBool32            dbgShowGradients;
     
