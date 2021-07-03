@@ -100,8 +100,6 @@ layout(
     uint prevDynamicIndices[];
 };
 
-#define TANGENTS_STRIDE 3
-
 vec3 getStaticVerticesPositions(uint index)
 {
     return vec3(
@@ -116,14 +114,6 @@ vec3 getStaticVerticesNormals(uint index)
         staticVertices.normals[index * globalUniform.normalsStride + 0],
         staticVertices.normals[index * globalUniform.normalsStride + 1],
         staticVertices.normals[index * globalUniform.normalsStride + 2]);
-}
-
-vec3 getStaticVerticesTangents(uint index)
-{
-    return vec3(
-        staticVertices.tangents[index * TANGENTS_STRIDE + 0],
-        staticVertices.tangents[index * TANGENTS_STRIDE + 1],
-        staticVertices.tangents[index * TANGENTS_STRIDE + 2]);
 }
 
 vec2 getStaticVerticesTexCoords(uint index)
@@ -163,14 +153,6 @@ vec3 getDynamicVerticesNormals(uint index)
         dynamicVertices.normals[index * globalUniform.normalsStride + 2]);
 }
 
-vec3 getDynamicVerticesTangents(uint index)
-{
-    return vec3(
-        dynamicVertices.tangents[index * TANGENTS_STRIDE + 0],
-        dynamicVertices.tangents[index * TANGENTS_STRIDE + 1],
-        dynamicVertices.tangents[index * TANGENTS_STRIDE + 2]);
-}
-
 vec2 getDynamicVerticesTexCoords(uint index)
 {
     return vec2(
@@ -191,13 +173,6 @@ void setStaticVerticesNormals(uint index, vec3 value)
     staticVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
     staticVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
     staticVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
-}
-
-void setStaticVerticesTangents(uint index, vec3 value)
-{
-    staticVertices.tangents[index * TANGENTS_STRIDE + 0] = value[0];
-    staticVertices.tangents[index * TANGENTS_STRIDE + 1] = value[1];
-    staticVertices.tangents[index * TANGENTS_STRIDE + 2] = value[2];
 }
 
 void setStaticVerticesTexCoords(uint index, vec2 value)
@@ -230,13 +205,6 @@ void setDynamicVerticesNormals(uint index, vec3 value)
     dynamicVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
     dynamicVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
     dynamicVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
-}
-
-void setDynamicVerticesTangents(uint index, vec3 value)
-{
-    dynamicVertices.tangents[index * TANGENTS_STRIDE + 0] = value[0];
-    dynamicVertices.tangents[index * TANGENTS_STRIDE + 1] = value[1];
-    dynamicVertices.tangents[index * TANGENTS_STRIDE + 2] = value[2];
 }
 
 void setDynamicVerticesTexCoords(uint index, vec2 value)

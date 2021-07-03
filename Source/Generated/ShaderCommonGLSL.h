@@ -98,7 +98,6 @@ struct ShVertexBufferStatic
 {
     float positions[3145728];
     float normals[3145728];
-    float tangents[3145728];
     float texCoords[2097152];
     float texCoordsLayer1[2097152];
     float texCoordsLayer2[2097152];
@@ -108,7 +107,6 @@ struct ShVertexBufferDynamic
 {
     float positions[6291456];
     float normals[6291456];
-    float tangents[3145728];
     float texCoords[4194304];
 };
 

@@ -362,7 +362,6 @@ def evalConst():
 STATIC_BUFFER_STRUCT = [
     (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      3,     "tangents",              CONST["MAX_INDEXED_PRIMITIVE_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoordsLayer1",       CONST["MAX_STATIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoordsLayer2",       CONST["MAX_STATIC_VERTEX_COUNT"]),
@@ -371,7 +370,6 @@ STATIC_BUFFER_STRUCT = [
 DYNAMIC_BUFFER_STRUCT = [
     (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
     (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      3,     "tangents",              CONST["MAX_INDEXED_PRIMITIVE_COUNT"]),
     (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
 ]
 
