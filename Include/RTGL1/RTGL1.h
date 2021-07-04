@@ -521,6 +521,24 @@ typedef struct RgSphericalLightUploadInfo
     float           falloffDistance;
 } RgSphericalLightUploadInfo;
 
+// Only one spotlight is available in a scene.
+// That instance is specified throw RgDrawFrameInfo.
+typedef struct RgSpotlightInfo
+{
+    RgFloat3D position;
+    RgFloat3D direction;
+    RgFloat3D upVector;
+    RgFloat3D color;
+    // Light source disk radius.
+    float radius;
+    // Inner cone angle. In radians.
+    float angleOuter;
+    // Outer cone angle. In radians.
+    float angleInner;
+    // Distance at which light intensity is zero.
+    float falloffDistance;
+} RgSpotlightInfo;
+
 RgResult rgUploadDirectionalLight(
     RgInstance                          rgInstance,
     RgDirectionalLightUploadInfo        *pLightInfo);
@@ -772,7 +790,8 @@ typedef struct RgDrawFrameInfo
     float               emissionMaxScreenColor;
     RgBool32            dbgShowMotionVectors;
     RgBool32            dbgShowGradients;
-    
+    const RgSpotlightInfo   *pSpotlightInfo;
+
 } RgDrawFrameInfo;
 
 RgResult rgDrawFrame(

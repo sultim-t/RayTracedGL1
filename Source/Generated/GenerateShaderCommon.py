@@ -419,6 +419,16 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "normalMapStrength",            1),
     (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
+    (TYPE_FLOAT32,      4,      "spotlightPosition",            1),
+    (TYPE_FLOAT32,      4,      "spotlightDirection",           1),
+    (TYPE_FLOAT32,      4,      "spotlightUpVector",            1),
+    (TYPE_FLOAT32,      4,      "spotlightColor",               1),
+
+    (TYPE_FLOAT32,      1,      "spotlightRadius",              1),
+    (TYPE_FLOAT32,      1,      "spotlightCosAngleOuter",       1),
+    (TYPE_FLOAT32,      1,      "spotlightCosAngleInner",       1),
+    (TYPE_FLOAT32,      1,      "spotlightFalloffDistance",     1),
+
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
     #(TYPE_FLOAT32,      1,      "_pad2",                        1),

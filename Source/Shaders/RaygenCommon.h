@@ -505,38 +505,23 @@ void processSpotLight(
     bool isGradientSample,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    // TODO: change with uniform vars
-    const vec4 targetD = globalUniform.invProjection * vec4(0, 0, 1, 1);
-    const vec4 targetU = globalUniform.invProjection * vec4(0, 1, 0, 1);
-    const vec3 spotDir = (globalUniform.invView * vec4(normalize(targetD.xyz / targetD.w), 0)).xyz;
-    const vec3 spotUp  = (globalUniform.invView * vec4(normalize(targetU.xyz / targetU.w), 0)).xyz;
-    const vec3 spotPos = globalUniform.cameraPosition.xyz + spotDir * 0.5 + spotUp * 0.5 + cross(spotDir, spotUp) * 1.5;
-    const vec3 spotColor = vec3(2.5);
-    const float spotRadius = max(0.05, 0.001);
-    const float spotCosAngle = 0.97;
-    const float spotCosAngleEdgeSize = 0.03;
-    const float spotFalloff = 50;
-    //
-    // const vec3 spotPos = globalUniform.spotlightPosition.xyz; 
-    // const vec3 spotDir = globalUniform.spotlightDirection.xyz; 
-    // const vec3 spotUp = globalUniform.spotlightUpVector.xyz; 
-    // const vec3 spotColor = globalUniform.spotlightColor.xyz;
-    // const float spotRadius = max(globalUniform.spotlightRadius, 0.001);
-    // const float spotCosAngle = globalUniform.spotlightCosAngle;
-    // const float spotCosAngleEdgeSize = globalUniform.spotlightCosAngleEdgeSize;
-    // const float spotFalloff = globalUniform.spotlightFalloff;
-
-    // TODO: move up
-    if (spotCosAngle <= 0.0 || spotRadius <= 0.0)
+    if (globalUniform.spotlightCosAngleOuter <= 0.0 || 
+        globalUniform.spotlightRadius <= 0.0 ||
+        globalUniform.spotlightFalloffDistance <= 0.0)
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
         return;
     }
 
-    // TODO: add
-    #define RANDOM_SALT_SPOT_LIGHT_DISK RANDOM_SALT_DIRECTIONAL_LIGHT_DISK
-
+    const vec3 spotPos = globalUniform.spotlightPosition.xyz; 
+    const vec3 spotDir = globalUniform.spotlightDirection.xyz; 
+    const vec3 spotUp = globalUniform.spotlightUpVector.xyz; 
+    const vec3 spotColor = globalUniform.spotlightColor.xyz;
+    const float spotRadius = max(globalUniform.spotlightRadius, 0.001);
+    const float spotCosAngleOuter = globalUniform.spotlightCosAngleOuter;
+    const float spotCosAngleInner = globalUniform.spotlightCosAngleInner;
+    const float spotFalloff = globalUniform.spotlightFalloffDistance;
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_SPOT_LIGHT_DISK).xy;    
     const vec2 disk = sampleDisk(spotRadius, u[0], u[1]);
@@ -548,12 +533,12 @@ void processSpotLight(
     const vec3 toLight = posOnDisk - surfPosition;
     const float dist = length(toLight);
 
-    const vec3 dir = (posOnDisk - surfPosition) / max(dist, 0.01);
+    const vec3 dir = toLight / max(dist, 0.01);
     const float nl = dot(surfNormal, dir);
     const float ngl = dot(surfNormalGeom, dir);
     const float cosA = dot(-dir, spotDir);
 
-    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngle)
+    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngleOuter)
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
@@ -565,7 +550,7 @@ void processSpotLight(
     outDiffuse = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
     outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * spotColor * nl;
 
-    const float angleWeight = smoothstep(spotCosAngle, spotCosAngle + spotCosAngleEdgeSize, cosA);
+    const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
     outDiffuse *= angleWeight;
     outSpecular *= angleWeight;
 

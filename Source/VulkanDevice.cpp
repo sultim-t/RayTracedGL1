@@ -346,6 +346,38 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->emissionMapBoost = std::max(drawInfo.emissionMapBoost, 0.0f);
     gu->emissionMaxScreenColor = std::max(drawInfo.emissionMaxScreenColor, 0.0f);
+
+    if (drawInfo.pSpotlightInfo == nullptr || 
+        drawInfo.pSpotlightInfo->radius <= 0.0f || 
+        drawInfo.pSpotlightInfo->falloffDistance <= 0.0f ||
+        drawInfo.pSpotlightInfo->angleOuter <= 0.0f)
+    {
+        memset(gu->spotlightPosition,  0, 3 * sizeof(float));
+        memset(gu->spotlightDirection, 0, 3 * sizeof(float));
+        memset(gu->spotlightUpVector,  0, 3 * sizeof(float));
+        memset(gu->spotlightColor,     0, 3 * sizeof(float));
+
+        gu->spotlightRadius          = -1;
+        gu->spotlightCosAngleOuter   = -1;
+        gu->spotlightCosAngleInner   = -1;
+        gu->spotlightFalloffDistance = -1;
+    }
+    else
+    {
+        const auto &sp = *drawInfo.pSpotlightInfo;
+
+        memcpy(gu->spotlightPosition, sp.position.data, 3 * sizeof(float));
+        memcpy(gu->spotlightDirection, sp.direction.data, 3 * sizeof(float));
+        memcpy(gu->spotlightUpVector, sp.upVector.data, 3 * sizeof(float));
+        memcpy(gu->spotlightColor, sp.color.data, 3 * sizeof(float));
+
+        gu->spotlightRadius = sp.radius;
+        gu->spotlightCosAngleOuter = std::cos(sp.angleOuter);
+        gu->spotlightCosAngleInner = std::cos(sp.angleInner);
+        gu->spotlightFalloffDistance = sp.falloffDistance;
+
+        gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
+    }
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

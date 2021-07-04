@@ -150,6 +150,14 @@ struct ShGlobalUniform
     float emissionMaxScreenColor;
     float normalMapStrength;
     float skyColorSaturation;
+    float spotlightPosition[4];
+    float spotlightDirection[4];
+    float spotlightUpVector[4];
+    float spotlightColor[4];
+    float spotlightRadius;
+    float spotlightCosAngleOuter;
+    float spotlightCosAngleInner;
+    float spotlightFalloffDistance;
     int32_t instanceGeomInfoOffset[72];
     int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];

@@ -145,6 +145,14 @@ struct ShGlobalUniform
     float emissionMaxScreenColor;
     float normalMapStrength;
     float skyColorSaturation;
+    vec4 spotlightPosition;
+    vec4 spotlightDirection;
+    vec4 spotlightUpVector;
+    vec4 spotlightColor;
+    float spotlightRadius;
+    float spotlightCosAngleOuter;
+    float spotlightCosAngleInner;
+    float spotlightFalloffDistance;
     ivec4 instanceGeomInfoOffset[18];
     ivec4 instanceGeomInfoOffsetPrev[18];
     ivec4 instanceGeomCount[18];
