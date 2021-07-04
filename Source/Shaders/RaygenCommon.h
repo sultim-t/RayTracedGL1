@@ -402,6 +402,7 @@ void processSphericalLight(
     }
 
 
+    // choose a light source with its appropriate probability
     uint sphLightIndex = UINT32_MAX;
     float rand = weightSum * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x;
     float pdf = 0;
@@ -497,6 +498,92 @@ void processSphericalLight(
     outSpecular *= float(!isShadowed);
 }
 
+void processSpotLight(
+    uint seed,
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 toViewerDir, 
+    bool isGradientSample,
+    out vec3 outDiffuse, out vec3 outSpecular)
+{
+    // TODO: change with uniform vars
+    const vec4 targetD = globalUniform.invProjection * vec4(0, 0, 1, 1);
+    const vec4 targetU = globalUniform.invProjection * vec4(0, 1, 0, 1);
+    const vec3 spotDir = (globalUniform.invView * vec4(normalize(targetD.xyz / targetD.w), 0)).xyz;
+    const vec3 spotUp  = (globalUniform.invView * vec4(normalize(targetU.xyz / targetU.w), 0)).xyz;
+    const vec3 spotPos = globalUniform.cameraPosition.xyz + spotDir * 0.5 + spotUp * 0.5 + cross(spotDir, spotUp) * 1.5;
+    const vec3 spotColor = vec3(2.5);
+    const float spotRadius = max(0.05, 0.001);
+    const float spotCosAngle = 0.97;
+    const float spotCosAngleEdgeSize = 0.03;
+    const float spotFalloff = 50;
+    //
+    // const vec3 spotPos = globalUniform.spotlightPosition.xyz; 
+    // const vec3 spotDir = globalUniform.spotlightDirection.xyz; 
+    // const vec3 spotUp = globalUniform.spotlightUpVector.xyz; 
+    // const vec3 spotColor = globalUniform.spotlightColor.xyz;
+    // const float spotRadius = max(globalUniform.spotlightRadius, 0.001);
+    // const float spotCosAngle = globalUniform.spotlightCosAngle;
+    // const float spotCosAngleEdgeSize = globalUniform.spotlightCosAngleEdgeSize;
+    // const float spotFalloff = globalUniform.spotlightFalloff;
+
+    // TODO: move up
+    if (spotCosAngle <= 0.0 || spotRadius <= 0.0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    // TODO: add
+    #define RANDOM_SALT_SPOT_LIGHT_DISK RANDOM_SALT_DIRECTIONAL_LIGHT_DISK
+
+
+    const vec2 u = getRandomSample(seed, RANDOM_SALT_SPOT_LIGHT_DISK).xy;    
+    const vec2 disk = sampleDisk(spotRadius, u[0], u[1]);
+    const vec3 spotRight = cross(spotDir, spotUp);
+    const vec3 posOnDisk = spotPos + spotRight * disk.x + spotUp * disk.y;
+
+    const float oneOverPdf = 1.0 / (M_PI * spotRadius * spotRadius);
+
+    const vec3 toLight = posOnDisk - surfPosition;
+    const float dist = length(toLight);
+
+    const vec3 dir = (posOnDisk - surfPosition) / max(dist, 0.01);
+    const float nl = dot(surfNormal, dir);
+    const float ngl = dot(surfNormalGeom, dir);
+    const float cosA = dot(-dir, spotDir);
+
+    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngle)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    const float distWeight = pow(clamp((spotFalloff - dist) / max(spotFalloff, 1), 0, 1), 2);
+
+    outDiffuse = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * spotColor * nl;
+
+    const float angleWeight = smoothstep(spotCosAngle, spotCosAngle + spotCosAngleEdgeSize, cosA);
+    outDiffuse *= angleWeight;
+    outSpecular *= angleWeight;
+
+    // outDiffuse *= oneOverPdf;
+    // outSpecular *= oneOverPdf;
+
+    // if too dim, don't cast shadow ray
+    if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    {
+        return;
+    }
+
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, dist);
+
+    outDiffuse *= float(!isShadowed);
+    outSpecular *= float(!isShadowed);
+}
+
 void processDirectIllumination(
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
@@ -519,9 +606,17 @@ void processDirectIllumination(
         toViewerDir, 
         isGradientSample, 
         sphDiff, sphSpec);
+
+    vec3 spotDiff, spotSpec;
+    processSpotLight(
+        seed, 
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
+        toViewerDir, 
+        isGradientSample, 
+        spotDiff, spotSpec);
     
-    outDiffuse = dirDiff + sphDiff;
-    outSpecular = dirSpec + sphSpec;
+    outDiffuse = dirDiff + sphDiff + spotDiff;
+    outSpecular = dirSpec + sphSpec + spotSpec;
 }
 
 void processDirectIllumination(
