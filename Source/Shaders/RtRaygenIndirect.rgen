@@ -105,6 +105,7 @@ vec3 processSecondBounce(
             h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic),
             -bounceDirection, hitDistance,
             isGradientSample, 
+            2,
             diffuse, specular);
         throughput *= h.albedo;
 
@@ -141,6 +142,7 @@ vec3 processBounce(
             h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic),
             -bounceDir_First, hitDistance,
             isGradientSample, 
+            1,
             diffuse, specular);
         throughput_First *= h.albedo;
 

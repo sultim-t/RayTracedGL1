@@ -71,6 +71,7 @@ void main()
         instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         -viewDirection.xyz,
         isGradientSample, 
+        0,
         diffuse, specular);
 
     imageStoreUnfilteredDirect(         pix, diffuse);

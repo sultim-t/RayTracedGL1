@@ -255,6 +255,7 @@ void processDirectionalLight(
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
+    bool castShadowRay,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint dirLightCount = isGradientSample ? globalUniform.lightCountDirectionalPrev : globalUniform.lightCountDirectional;
@@ -314,7 +315,7 @@ void processDirectionalLight(
     outSpecular *= oneOverPdf;
 
     // if too dim, don't cast shadow ray
-    if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
     {
         return;
     }
@@ -331,6 +332,7 @@ void processSphericalLight(
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, 
     bool isGradientSample,
+    bool castShadowRay,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint sphLightCount = isGradientSample ? globalUniform.lightCountSphericalPrev : globalUniform.lightCountSpherical;
@@ -487,7 +489,7 @@ void processSphericalLight(
     outDiffuse /= pdf;
     outSpecular /= pdf;
     
-    if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
     {
         return;
     }
@@ -503,6 +505,7 @@ void processSpotLight(
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, 
     bool isGradientSample,
+    bool castShadowRay,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     if (globalUniform.spotlightCosAngleOuter <= 0.0 || 
@@ -558,7 +561,7 @@ void processSpotLight(
     // outSpecular *= oneOverPdf;
 
     // if too dim, don't cast shadow ray
-    if (getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
     {
         return;
     }
@@ -574,14 +577,17 @@ void processDirectIllumination(
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
+    int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
+    // always cast shadow ray for directional lights
     vec3 dirDiff, dirSpec;
     processDirectionalLight(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, distanceToViewer,
         isGradientSample, 
+        bounceIndex < globalUniform.maxBounceShadowsDirectionalLights,
         dirDiff, dirSpec);
     
     vec3 sphDiff, sphSpec;
@@ -589,7 +595,8 @@ void processDirectIllumination(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, 
-        isGradientSample, 
+        isGradientSample,  
+        bounceIndex < globalUniform.maxBounceShadowsSphereLights,
         sphDiff, sphSpec);
 
     vec3 spotDiff, spotSpec;
@@ -597,7 +604,8 @@ void processDirectIllumination(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, 
-        isGradientSample, 
+        isGradientSample,  
+        bounceIndex < globalUniform.maxBounceShadowsSpotlights,
         spotDiff, spotSpec);
     
     outDiffuse = dirDiff + sphDiff + spotDiff;
@@ -609,13 +617,15 @@ void processDirectIllumination(
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir,
     bool isGradientSample,
+    int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     processDirectIllumination(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, length(surfPosition - globalUniform.cameraPosition.xyz),
-        isGradientSample, 
+        isGradientSample,
+        bounceIndex,
         outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD

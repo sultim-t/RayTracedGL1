@@ -158,6 +158,10 @@ struct ShGlobalUniform
     float spotlightCosAngleOuter;
     float spotlightCosAngleInner;
     float spotlightFalloffDistance;
+    uint32_t maxBounceShadowsDirectionalLights;
+    uint32_t maxBounceShadowsSphereLights;
+    uint32_t maxBounceShadowsSpotlights;
+    uint32_t _pad3;
     int32_t instanceGeomInfoOffset[72];
     int32_t instanceGeomInfoOffsetPrev[72];
     int32_t instanceGeomCount[72];

@@ -791,6 +791,12 @@ typedef struct RgDrawFrameInfo
     RgBool32            dbgShowMotionVectors;
     RgBool32            dbgShowGradients;
     const RgSpotlightInfo   *pSpotlightInfo;
+    // Directional light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSphereLights).
+    uint32_t            maxBounceShadowsDirectionalLights;
+    // Sphere light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsDirectionalLights).
+    uint32_t            maxBounceShadowsSphereLights;
+    // Spotlight shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSpotlights).
+    uint32_t            maxBounceShadowsSpotlights;
 
 } RgDrawFrameInfo;
 

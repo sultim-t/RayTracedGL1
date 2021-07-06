@@ -378,6 +378,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
     }
+
+    gu->maxBounceShadowsDirectionalLights = drawInfo.maxBounceShadowsDirectionalLights;
+    gu->maxBounceShadowsSphereLights = drawInfo.maxBounceShadowsSphereLights;
+    gu->maxBounceShadowsSpotlights = drawInfo.maxBounceShadowsSpotlights;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

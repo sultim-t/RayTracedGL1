@@ -429,6 +429,11 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "spotlightCosAngleInner",       1),
     (TYPE_FLOAT32,      1,      "spotlightFalloffDistance",     1),
 
+    (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",    1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsSphereLights",         1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsSpotlights",           1),
+    (TYPE_UINT32,       1,      "_pad3",                                1),
+
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
     #(TYPE_FLOAT32,      1,      "_pad2",                        1),
