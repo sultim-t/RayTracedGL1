@@ -47,17 +47,23 @@ vec3 processAlbedo(uint materialsBlendFlags, const vec2 texCoords[3], const uvec
             const vec4 src = materialColors[i] * getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
         #endif
 
-            const float opq = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0);
-            const float alp = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)  != 0);
-            const float add = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD)    != 0);
-            const float shd = float((blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)  != 0);
+            bool opq = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0;
+            bool alp = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)  != 0;
+            bool add = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD)    != 0;
+            bool shd = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)  != 0;
+
+            // simple fix for materials that have alpha-tested blending for the first layer
+            // (just makes "opq" instead of "alp" for that partuicular case);
+            // without this fix, alpha-tested geometry will have white color around borders 
+            opq = opq || (alp && i == 0);
+            alp = alp && !opq;
 
             // TODO: test this instead of branching
 
-            dst = opq * (src.rgb) +
-                  alp * (src.rgb * src.a + dst * (1 - src.a)) + 
-                  add * (src.rgb + dst) +
-                  shd * (src.rgb * dst * 2);
+            dst = float(opq) * (src.rgb) +
+                  float(alp) * (src.rgb * src.a + dst * (1 - src.a)) + 
+                  float(add) * (src.rgb + dst) +
+                  float(shd) * (src.rgb * dst * 2);
         }
     }
 
