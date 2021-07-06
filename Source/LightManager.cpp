@@ -25,6 +25,7 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include "RgException.h"
 
 namespace RTGL1
 {
@@ -78,6 +79,7 @@ void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
     sphLightCountPrev = sphLightCount;
     dirLightCountPrev = dirLightCount;
 
+    spotLightCount = 0;
     sphLightCount = 0;
     dirLightCount = 0;
 
@@ -99,8 +101,14 @@ void RTGL1::LightManager::Reset()
         dirUniqueIDToPrevIndex[i].clear();
     }
 
+    spotLightCount = 0;
     sphLightCount = sphLightCountPrev = 0;
     dirLightCount = dirLightCountPrev = 0;
+}
+
+uint32_t RTGL1::LightManager::GetSpotlightCount() const
+{
+    return spotLightCount;
 }
 
 uint32_t RTGL1::LightManager::GetSphericalLightCount() const
@@ -144,6 +152,50 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
 
     // save index for the next frame
     sphUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
+}
+
+void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
+{
+    if (spotLightCount > 0)
+    {
+        // TODO: more spotlights
+        throw RgException(RG_WRONG_ARGUMENT, "Only one spotlight is available to be added");
+    }
+
+    // use global uniform buffer for one spotlight instance
+    auto *gu = uniform->GetData();
+
+    if (info.radius <= 0.0f ||
+        info.falloffDistance <= 0.0f ||
+        info.angleOuter <= 0.0f ||
+        info.angleInner <= 0.0f)
+    {
+        memset(gu->spotlightPosition, 0, 3 * sizeof(float));
+        memset(gu->spotlightDirection, 0, 3 * sizeof(float));
+        memset(gu->spotlightUpVector, 0, 3 * sizeof(float));
+        memset(gu->spotlightColor, 0, 3 * sizeof(float));
+
+        gu->spotlightRadius = -1;
+        gu->spotlightCosAngleOuter = -1;
+        gu->spotlightCosAngleInner = -1;
+        gu->spotlightFalloffDistance = -1;
+    }
+    else
+    {
+        memcpy(gu->spotlightPosition, info.position.data, 3 * sizeof(float));
+        memcpy(gu->spotlightDirection, info.direction.data, 3 * sizeof(float));
+        memcpy(gu->spotlightUpVector, info.upVector.data, 3 * sizeof(float));
+        memcpy(gu->spotlightColor, info.color.data, 3 * sizeof(float));
+
+        gu->spotlightRadius = info.radius;
+        gu->spotlightCosAngleOuter = std::cos(info.angleOuter);
+        gu->spotlightCosAngleInner = std::cos(info.angleInner);
+        gu->spotlightFalloffDistance = info.falloffDistance;
+
+        gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
+
+        spotLightCount++;
+    }
 }
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info)

@@ -23,6 +23,7 @@
 #include "RTGL1/RTGL1.h"
 #include "Common.h"
 #include "AutoBuffer.h"
+#include "GlobalUniform.h"
 
 namespace RTGL1
 {
@@ -44,13 +45,15 @@ public:
     void PrepareForFrame(uint32_t frameIndex);
     void Reset();
 
+    uint32_t GetSpotlightCount() const;
     uint32_t GetSphericalLightCount() const;
     uint32_t GetDirectionalLightCount() const;
     uint32_t GetSphericalLightCountPrev() const;
     uint32_t GetDirectionalLightCountPrev() const;
 
-    void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info);
+    void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
+    void AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info);
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
@@ -81,6 +84,7 @@ private:
     std::map<uint64_t, uint32_t> sphUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
     std::map<uint64_t, uint32_t> dirUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
+    uint32_t spotLightCount;
     uint32_t sphLightCount;
     uint32_t dirLightCount;
     uint32_t sphLightCountPrev;

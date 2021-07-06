@@ -190,6 +190,15 @@ RgResult rgUploadSphericalLight(RgInstance rgInstance, RgSphericalLightUploadInf
     CATCH_OR_RETURN;
 }
 
+RgResult rgUploadSpotlightLight(RgInstance rgInstance, RgSpotlightUploadInfo *pLightInfo)
+{
+    try
+    {
+        GetDevice(rgInstance)->UploadLight(pLightInfo);
+    }
+    CATCH_OR_RETURN;
+}
+
 RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *pCreateInfo,
                                RgMaterial *pResult)
 {

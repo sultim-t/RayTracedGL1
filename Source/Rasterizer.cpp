@@ -145,7 +145,7 @@ void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex,
     }
 }
 
-void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const RgFloat3D &skyViewerPos, float *proj)
+void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const float skyViewerPos[3], float *proj)
 {
     CmdLabel label(cmd, "Rasterized sky to albedo framebuf");
 
@@ -153,7 +153,7 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
     storageFramebuffers->BarrierOne(cmd, frameIndex, FI::FB_IMAGE_INDEX_ALBEDO);
 
     float skyView[16];
-    Matrix::SetNewViewerPosition(skyView, view, skyViewerPos.data);
+    Matrix::SetNewViewerPosition(skyView, view, skyViewerPos);
 
     float defaultSkyViewProj[16];
     Matrix::Multiply(defaultSkyViewProj, skyView, proj);

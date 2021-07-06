@@ -50,7 +50,7 @@ namespace RTGL1
 class VulkanDevice
 {
 public:
-    explicit VulkanDevice(const RgInstanceCreateInfo *info);
+    explicit VulkanDevice(const RgInstanceCreateInfo *pInfo);
     ~VulkanDevice();
 
     VulkanDevice(const VulkanDevice& other) = delete;
@@ -58,32 +58,33 @@ public:
     VulkanDevice& operator=(const VulkanDevice& other) = delete;
     VulkanDevice& operator=(VulkanDevice&& other) noexcept = delete;
 
-    void UploadGeometry(const RgGeometryUploadInfo *uploadInfo);
-    void UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo);
-    void UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *updateInfo);
+    void UploadGeometry(const RgGeometryUploadInfo *pUploadInfo);
+    void UpdateGeometryTransform(const RgUpdateTransformInfo *pUpdateInfo);
+    void UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *pUpdateInfo);
 
-    void UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo, 
-                                      const float *viewProjection, const RgViewport *viewport);
+    void UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *pUploadInfo,
+                                      const float *pViewProjection, const RgViewport *pViewport);
 
     void SubmitStaticGeometries();
     void StartNewStaticScene();
 
-    void UploadLight(const RgDirectionalLightUploadInfo *lightInfo);
-    void UploadLight(const RgSphericalLightUploadInfo *lightInfo);
+    void UploadLight(const RgDirectionalLightUploadInfo *pLightInfo);
+    void UploadLight(const RgSphericalLightUploadInfo *pLightInfo);
+    void UploadLight(const RgSpotlightUploadInfo *pLightInfo);
 
-    void CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result);
-    void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result);
+    void CreateStaticMaterial(const RgStaticMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
+    void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
-    void CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result);
-    void UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo);
+    void CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
+    void UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *pUpdateInfo);
     void DestroyMaterial(RgMaterial material);
 
-    void CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result);
+    void CreateSkyboxCubemap(const RgCubemapCreateInfo *pCreateInfo, RgCubemap *pResult);
     void DestroyCubemap(RgCubemap cubemap);
 
 
-    void StartFrame(const RgStartFrameInfo *startInfo);
-    void DrawFrame(const RgDrawFrameInfo *frameInfo);
+    void StartFrame(const RgStartFrameInfo *pStartInfo);
+    void DrawFrame(const RgDrawFrameInfo *pFrameInfo);
 
 
     void Print(const char *pMessage) const;

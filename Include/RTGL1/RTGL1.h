@@ -523,7 +523,7 @@ typedef struct RgSphericalLightUploadInfo
 
 // Only one spotlight is available in a scene.
 // That instance is specified throw RgDrawFrameInfo.
-typedef struct RgSpotlightInfo
+typedef struct RgSpotlightUploadInfo
 {
     RgFloat3D position;
     RgFloat3D direction;
@@ -537,7 +537,7 @@ typedef struct RgSpotlightInfo
     float angleInner;
     // Distance at which light intensity is zero.
     float falloffDistance;
-} RgSpotlightInfo;
+} RgSpotlightUploadInfo;
 
 RgResult rgUploadDirectionalLight(
     RgInstance                          rgInstance,
@@ -546,6 +546,10 @@ RgResult rgUploadDirectionalLight(
 RgResult rgUploadSphericalLight(
     RgInstance                          rgInstance,
     RgSphericalLightUploadInfo          *pLightInfo);
+
+RgResult rgUploadSpotlightLight(
+    RgInstance                          rgInstance,
+    RgSpotlightUploadInfo               *pLightInfo);
 
 
 
@@ -757,22 +761,15 @@ typedef enum RgSkyType
     RG_SKY_TYPE_RAY_TRACED_GEOMETRY
 } RgSkyType;
 
-typedef struct RgDrawFrameInfo
+typedef struct RgDrawFrameTonemappingParams
 {
-    // View and projection matrices are column major.
-    float               view[16];
-    float               projection[16];
-    RgBool32            disableRayTracing;
-    RgBool32            disableRasterization;
-    RgExtent2D          renderSize;
-    double              currentTime;
-    RgBool32            disableEyeAdaptation;
-    // True, if default values for minLogLuminance, maxLogLuminance
-    // and luminanceWhitePoint should be used.
-    RgBool32            overrideTonemappingParams;
     float               minLogLuminance;
     float               maxLogLuminance;
     float               luminanceWhitePoint;
+} RgDrawFrameTonemappingParams;
+
+typedef struct RgDrawFrameSkyParams
+{
     RgSkyType           skyType;
     // Used as a main color for RG_SKY_TYPE_COLOR and ray-miss color for RG_SKY_TYPE_GEOMETRY.
     RgFloat3D           skyColorDefault;
@@ -783,20 +780,50 @@ typedef struct RgDrawFrameInfo
     RgFloat3D           skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
     RgCubemap           skyCubemap;
+} RgDrawFrameSkyParams;
+
+typedef struct RgDrawFrameOverridenTexturesParams
+{
     float               normalMapStrength;
     // Multiplier for emission map values.
     float               emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float               emissionMaxScreenColor;
-    RgBool32            dbgShowMotionVectors;
-    RgBool32            dbgShowGradients;
-    const RgSpotlightInfo   *pSpotlightInfo;
+} RgDrawFrameOverridenTexturesParams;
+
+typedef struct RgDrawFrameDebugParams
+{
+    RgBool32            showMotionVectors;
+    RgBool32            showGradients;
+} RgDrawFrameDebugParams;
+
+typedef struct RgDrawFrameShadowParams
+{
     // Directional light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSphereLights).
     uint32_t            maxBounceShadowsDirectionalLights;
     // Sphere light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsDirectionalLights).
     uint32_t            maxBounceShadowsSphereLights;
     // Spotlight shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSpotlights).
     uint32_t            maxBounceShadowsSpotlights;
+} RgDrawFrameShadowParams;
+
+typedef struct RgDrawFrameInfo
+{
+    // View and projection matrices are column major.
+    float               view[16];
+    float               projection[16];
+    RgBool32            disableRayTracing;
+    RgBool32            disableRasterization;
+    RgExtent2D          renderSize;
+    double              currentTime;
+    RgBool32            disableEyeAdaptation;
+
+    // Null, if default values should be used.
+    const RgDrawFrameShadowParams               *pShadowParams;
+    const RgDrawFrameTonemappingParams          *pTonemappingParams;
+    const RgDrawFrameSkyParams                  *pSkyParams;
+    const RgDrawFrameOverridenTexturesParams    *pOverridenTexturesParams;
+    const RgDrawFrameDebugParams                *pDebugParams;
 
 } RgDrawFrameInfo;
 

@@ -266,122 +266,153 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
 
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const
 {
-    memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
-    memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
-
-    memcpy(gu->view, drawInfo.view, 16 * sizeof(float));
-    memcpy(gu->projection, drawInfo.projection, 16 * sizeof(float));
-
-    Matrix::Inverse(gu->invView, drawInfo.view);
-    Matrix::Inverse(gu->invProjection, drawInfo.projection);
-
-    gu->cameraPosition[0] = gu->invView[12];
-    gu->cameraPosition[1] = gu->invView[13];
-    gu->cameraPosition[2] = gu->invView[14];
-
-    static_assert(sizeof(gu->instanceGeomInfoOffset) == sizeof(gu->instanceGeomInfoOffsetPrev), "");
-    memcpy(gu->instanceGeomInfoOffsetPrev, gu->instanceGeomInfoOffset, sizeof(gu->instanceGeomInfoOffset));
-
-    // to remove additional division by 4 bytes in shaders
-    gu->positionsStride = vbProperties.positionStride / 4;
-    gu->normalsStride = vbProperties.normalStride / 4;
-    gu->texCoordsStride = vbProperties.texCoordStride / 4;
-
-    gu->renderWidth = (float)drawInfo.renderSize.width;
-    gu->renderHeight = (float)drawInfo.renderSize.height;
-    gu->frameId = frameId;
-
-    gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
-    
-    if (drawInfo.overrideTonemappingParams)
     {
-        gu->minLogLuminance = drawInfo.minLogLuminance;
-        gu->maxLogLuminance = drawInfo.maxLogLuminance;
-        gu->luminanceWhitePoint = drawInfo.luminanceWhitePoint;
+        memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
+        memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
+
+        memcpy(gu->view, drawInfo.view, 16 * sizeof(float));
+        memcpy(gu->projection, drawInfo.projection, 16 * sizeof(float));
+
+        Matrix::Inverse(gu->invView, drawInfo.view);
+        Matrix::Inverse(gu->invProjection, drawInfo.projection);
+
+        gu->cameraPosition[0] = gu->invView[12];
+        gu->cameraPosition[1] = gu->invView[13];
+        gu->cameraPosition[2] = gu->invView[14];
+    }
+
+    {
+        static_assert(sizeof(gu->instanceGeomInfoOffset) == sizeof(gu->instanceGeomInfoOffsetPrev), "");
+        memcpy(gu->instanceGeomInfoOffsetPrev, gu->instanceGeomInfoOffset, sizeof(gu->instanceGeomInfoOffset));
+    }
+
+    { 
+        // to remove additional division by 4 bytes in shaders
+        gu->positionsStride = vbProperties.positionStride / 4;
+        gu->normalsStride = vbProperties.normalStride / 4;
+        gu->texCoordsStride = vbProperties.texCoordStride / 4;
+    }
+
+    {
+        gu->renderWidth = (float)drawInfo.renderSize.width;
+        gu->renderHeight = (float)drawInfo.renderSize.height;
+        gu->frameId = frameId;
+        gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
+    }
+
+    {
+        gu->stopEyeAdaptation = drawInfo.disableEyeAdaptation;
+
+        if (drawInfo.pTonemappingParams != nullptr)
+        {
+            gu->minLogLuminance = drawInfo.pTonemappingParams->minLogLuminance;
+            gu->maxLogLuminance = drawInfo.pTonemappingParams->maxLogLuminance;
+            gu->luminanceWhitePoint = drawInfo.pTonemappingParams->luminanceWhitePoint;
+        }
+        else
+        {
+            gu->minLogLuminance = -2.0f;
+            gu->maxLogLuminance = 10.0f;
+            gu->luminanceWhitePoint = 1.5f;
+        }
+    }
+
+    {
+        gu->lightCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
+        gu->lightCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
+        gu->lightCountSphericalPrev = scene->GetLightManager()->GetSphericalLightCountPrev();
+        gu->lightCountDirectionalPrev = scene->GetLightManager()->GetDirectionalLightCountPrev();
+
+        // if there are no spotlights, set incorrect values
+        // TODO: add spotlight count to global uniform
+        if (scene->GetLightManager()->GetSpotlightCount() == 0)
+        {
+            gu->spotlightRadius = -1;
+            gu->spotlightCosAngleOuter = -1;
+            gu->spotlightCosAngleInner = -1;
+            gu->spotlightFalloffDistance = -1;
+        }
+    }
+
+    {
+        if (drawInfo.pSkyParams != nullptr)
+        {
+            const auto &sp = *drawInfo.pSkyParams;
+
+            memcpy(gu->skyColorDefault, sp.skyColorDefault.data, sizeof(float) * 3);
+            gu->skyColorMultiplier = sp.skyColorMultiplier;
+            gu->skyColorSaturation = std::max(sp.skyColorSaturation, 0.0f);
+
+            memcpy(gu->skyViewerPosition, sp.skyViewerPosition.data, sizeof(float) * 3);
+
+            gu->skyType =
+                sp.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
+                sp.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY :
+                sp.skyType == RG_SKY_TYPE_RAY_TRACED_GEOMETRY ? SKY_TYPE_RAY_TRACED_GEOMETRY :
+                SKY_TYPE_COLOR;
+
+            if (disableRayTracedSkybox && gu->skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
+            {
+                gu->skyType = SKY_TYPE_COLOR;
+            }
+
+            gu->skyCubemapIndex = cubemapManager->IsCubemapValid(sp.skyCubemap) ? sp.skyCubemap : RG_EMPTY_CUBEMAP;
+
+        }
+        else
+        {
+            gu->skyColorDefault[0] = gu->skyColorDefault[1] = gu->skyColorDefault[2] = gu->skyColorDefault[3] = 1.0f;
+            gu->skyColorMultiplier = 1.0f;
+            gu->skyColorSaturation = 1.0f;
+            memset(gu->skyViewerPosition, 0, sizeof(gu->skyViewerPosition));
+            gu->skyType = SKY_TYPE_COLOR;
+            gu->skyCubemapIndex = RG_EMPTY_CUBEMAP;
+        }
+
+        for (uint32_t i = 0; i < 6; i++)
+        {
+            float *viewProjDst = &gu->viewProjCubemap[16 * i];
+
+            Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition);
+        }
+    }
+
+    if (drawInfo.pDebugParams != nullptr)
+    {
+        gu->dbgShowGradients = !!drawInfo.pDebugParams->showGradients;
+        gu->dbgShowMotionVectors = !!drawInfo.pDebugParams->showMotionVectors;
     }
     else
     {
-        gu->minLogLuminance = -2.0f;
-        gu->maxLogLuminance = 10.0f;
-        gu->luminanceWhitePoint = 1.5f;
+        gu->dbgShowGradients = false;
+        gu->dbgShowMotionVectors = false;
     }
 
-    gu->stopEyeAdaptation = drawInfo.disableEyeAdaptation;
-
-    gu->lightCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
-    gu->lightCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
-    gu->lightCountSphericalPrev = scene->GetLightManager()->GetSphericalLightCountPrev();
-    gu->lightCountDirectionalPrev = scene->GetLightManager()->GetDirectionalLightCountPrev();
-
-    memcpy(gu->skyColorDefault, drawInfo.skyColorDefault.data, sizeof(float) * 3);
-    gu->skyColorMultiplier = drawInfo.skyColorMultiplier;
-    gu->skyColorSaturation = std::max(drawInfo.skyColorSaturation, 0.0f);
-
-    memcpy(gu->skyViewerPosition, drawInfo.skyViewerPosition.data, sizeof(float) * 3);
-
-    gu->skyType =
-        drawInfo.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
-        drawInfo.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY : 
-        drawInfo.skyType == RG_SKY_TYPE_RAY_TRACED_GEOMETRY ? SKY_TYPE_RAY_TRACED_GEOMETRY : 
-        SKY_TYPE_COLOR;
-
-    if (disableRayTracedSkybox && gu->skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
+    if (drawInfo.pOverridenTexturesParams != nullptr)
     {
-        gu->skyType = SKY_TYPE_COLOR;
-    }
-
-    gu->skyCubemapIndex = cubemapManager->IsCubemapValid(drawInfo.skyCubemap) ? drawInfo.skyCubemap : RG_EMPTY_CUBEMAP;
-
-    gu->dbgShowGradients = !!drawInfo.dbgShowGradients;
-    gu->dbgShowMotionVectors = !!drawInfo.dbgShowMotionVectors;
-    
-    for (uint32_t i = 0; i < 6; i++)
-    {
-        float *viewProjDst = &gu->viewProjCubemap[16 * i];
-
-        Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition);
-    }
-
-    gu->normalMapStrength = drawInfo.normalMapStrength;
-
-    gu->emissionMapBoost = std::max(drawInfo.emissionMapBoost, 0.0f);
-    gu->emissionMaxScreenColor = std::max(drawInfo.emissionMaxScreenColor, 0.0f);
-
-    if (drawInfo.pSpotlightInfo == nullptr || 
-        drawInfo.pSpotlightInfo->radius <= 0.0f || 
-        drawInfo.pSpotlightInfo->falloffDistance <= 0.0f ||
-        drawInfo.pSpotlightInfo->angleOuter <= 0.0f)
-    {
-        memset(gu->spotlightPosition,  0, 3 * sizeof(float));
-        memset(gu->spotlightDirection, 0, 3 * sizeof(float));
-        memset(gu->spotlightUpVector,  0, 3 * sizeof(float));
-        memset(gu->spotlightColor,     0, 3 * sizeof(float));
-
-        gu->spotlightRadius          = -1;
-        gu->spotlightCosAngleOuter   = -1;
-        gu->spotlightCosAngleInner   = -1;
-        gu->spotlightFalloffDistance = -1;
+        gu->normalMapStrength = drawInfo.pOverridenTexturesParams->normalMapStrength;
+        gu->emissionMapBoost = std::max(drawInfo.pOverridenTexturesParams->emissionMapBoost, 0.0f);
+        gu->emissionMaxScreenColor = std::max(drawInfo.pOverridenTexturesParams->emissionMaxScreenColor, 0.0f);
     }
     else
     {
-        const auto &sp = *drawInfo.pSpotlightInfo;
-
-        memcpy(gu->spotlightPosition, sp.position.data, 3 * sizeof(float));
-        memcpy(gu->spotlightDirection, sp.direction.data, 3 * sizeof(float));
-        memcpy(gu->spotlightUpVector, sp.upVector.data, 3 * sizeof(float));
-        memcpy(gu->spotlightColor, sp.color.data, 3 * sizeof(float));
-
-        gu->spotlightRadius = sp.radius;
-        gu->spotlightCosAngleOuter = std::cos(sp.angleOuter);
-        gu->spotlightCosAngleInner = std::cos(sp.angleInner);
-        gu->spotlightFalloffDistance = sp.falloffDistance;
-
-        gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
+        gu->normalMapStrength = 1.0f;
+        gu->emissionMapBoost = 100.0f;
+        gu->emissionMaxScreenColor = 1.5f;
     }
 
-    gu->maxBounceShadowsDirectionalLights = drawInfo.maxBounceShadowsDirectionalLights;
-    gu->maxBounceShadowsSphereLights = drawInfo.maxBounceShadowsSphereLights;
-    gu->maxBounceShadowsSpotlights = drawInfo.maxBounceShadowsSpotlights;
+    if (drawInfo.pShadowParams != nullptr)
+    {
+        gu->maxBounceShadowsDirectionalLights = drawInfo.pShadowParams->maxBounceShadowsDirectionalLights;
+        gu->maxBounceShadowsSphereLights = drawInfo.pShadowParams->maxBounceShadowsSphereLights;
+        gu->maxBounceShadowsSpotlights = drawInfo.pShadowParams->maxBounceShadowsSpotlights;
+    }
+    else
+    {
+        gu->maxBounceShadowsDirectionalLights = 8;
+        gu->maxBounceShadowsSphereLights = 2;
+        gu->maxBounceShadowsSpotlights = 1;
+    }
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
@@ -411,10 +442,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         rasterizer->SubmitForFrame(cmd, frameIndex);
 
         // draw rasterized sky to albedo before tracing primary rays
-        if (drawInfo.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
+        if (uniform->GetData()->skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
         {
             rasterizer->DrawSkyToCubemap(cmd, frameIndex, textureManager, uniform);
-            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, drawInfo.skyViewerPosition, uniform->GetData()->projection);
+            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, uniform->GetData()->skyViewerPosition, uniform->GetData()->projection);
         }
     }
 
@@ -631,24 +662,34 @@ void VulkanDevice::StartNewStaticScene()
     scene->StartNewStatic();
 }
 
-void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *lightInfo)
+void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *pLightInfo)
 {
-    if (lightInfo == nullptr)
+    if (pLightInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameIndex, *lightInfo);
+    scene->UploadLight(currentFrameIndex, *pLightInfo);
 }
 
-void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *lightInfo)
+void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
 {
-    if (lightInfo == nullptr)
+    if (pLightInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameIndex, *lightInfo);
+    scene->UploadLight(currentFrameIndex, *pLightInfo);
+}
+
+void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
+{
+    if (pLightInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    scene->UploadLight(currentFrameIndex, uniform, *pLightInfo);
 }
 
 void VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)

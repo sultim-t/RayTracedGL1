@@ -264,3 +264,8 @@ void Scene::UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &l
 {
     lightManager->AddSphericalLight(frameIndex, lightInfo);
 }
+
+void Scene::UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo)
+{
+    lightManager->AddSpotlight(frameIndex, uniform, lightInfo);
+}

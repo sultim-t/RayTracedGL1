@@ -59,6 +59,7 @@ public:
 
     void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo);
+    void UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo);
 
     void SubmitStatic();
     void StartNewStatic();
