@@ -46,7 +46,7 @@ void main()
  	const vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.materialColors[0];
 
 	// if must be discarded
-	if (color.a < ALPHA_THRESHOLD)
+	if ((color.r + color.g + color.b) / 3 * color.a + color.a < ALPHA_THRESHOLD)
 	{
 		// then ignore this intersection, so it won't be the closest hit
 		ignoreIntersectionEXT;
