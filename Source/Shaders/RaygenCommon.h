@@ -248,6 +248,16 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 
 
 
+#define AIR_TRANSMITTANCE_SIGMA 0.01
+
+float getAirTransmittance(const float distante)
+{
+    // very coarse air transmittance
+    return exp(-distante * AIR_TRANSMITTANCE_SIGMA);
+}
+
+
+
 // toViewerDir -- is direction to viewer
 // distanceToViewer -- used for shadow ray origin fix, so it can't be under the surface
 void processDirectionalLight(
@@ -388,8 +398,11 @@ void processSphericalLight(
         const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
         const vec3 diff = radiance;
-        const vec3 spec = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * light.color * dot(surfNormal, dir);
-
+        const vec3 spec = 
+            evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * 
+            light.color * 
+            dot(surfNormal, dir) * 
+            getAirTransmittance(d);
 
 
         weights[i] = getLuminance(diff + spec);
@@ -484,7 +497,11 @@ void processSphericalLight(
     const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
     outDiffuse = radiance;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * sphLight.color * dot(surfNormal, dir);
+    outSpecular = 
+        evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * 
+        sphLight.color * 
+        dot(surfNormal, dir) *
+        getAirTransmittance(d);
 
     outDiffuse /= pdf;
     outSpecular /= pdf;
@@ -556,6 +573,8 @@ void processSpotLight(
     const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
     outDiffuse *= angleWeight;
     outSpecular *= angleWeight;
+    
+    outSpecular *= getAirTransmittance(dist);
 
     // outDiffuse *= oneOverPdf;
     // outSpecular *= oneOverPdf;
