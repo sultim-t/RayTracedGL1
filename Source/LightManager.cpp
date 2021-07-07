@@ -167,8 +167,7 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_pt
 
     if (info.radius <= 0.0f ||
         info.falloffDistance <= 0.0f ||
-        info.angleOuter <= 0.0f ||
-        info.angleInner <= 0.0f)
+        info.angleOuter <= 0.0f)
     {
         memset(gu->spotlightPosition, 0, 3 * sizeof(float));
         memset(gu->spotlightDirection, 0, 3 * sizeof(float));

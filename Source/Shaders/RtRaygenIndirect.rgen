@@ -81,7 +81,8 @@ void getDiffuseBounce(const uint seed, const vec3 n, out vec3 bounceDirection, i
 }
 
 
-
+#define FIRST_BOUNCE_MIP_BIAS 0
+#define SECOND_BOUNCE_MIP_BIAS 32
 
 vec3 processSecondBounce(
     const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
@@ -96,7 +97,7 @@ vec3 processSecondBounce(
     if (isPayloadConsistent(p))
     {
         float hitDistance;
-        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, hitDistance);
+        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, SECOND_BOUNCE_MIP_BIAS, hitDistance);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
@@ -117,8 +118,6 @@ vec3 processSecondBounce(
     }
 }
 
-
-
 // Traces bounce ray, computes direct illumination in hit point
 vec3 processBounce(
     const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
@@ -133,7 +132,7 @@ vec3 processBounce(
     if (isPayloadConsistent(p))
     {
         float hitDistance;
-        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, hitDistance);
+        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, FIRST_BOUNCE_MIP_BIAS, hitDistance);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
@@ -167,6 +166,7 @@ vec3 processBounce(
         return getSky(bounceDir_First) * throughput_First;
     }
 }
+
 
 vec3 processSpecular(
     const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
@@ -205,6 +205,7 @@ SH processIndirectDiffuse(
     return irradianceToSH(contrib, bounceDirection);
 }
 
+
 // v -- direction to viewer
 void processIndirectIllumination(
     const ivec2 pix, const uint seed, 
@@ -232,6 +233,7 @@ void processIndirectIllumination(
         imageStoreUnfilteredIndirectSH(pix, bounceSH);
     }
 }
+
 
 void main()
 {

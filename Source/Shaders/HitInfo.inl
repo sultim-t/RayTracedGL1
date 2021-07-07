@@ -95,11 +95,8 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
 }
 
 
-
-#define BOUNCE_MIP_BIAS 0
-
 // "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
-float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth)
+float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth, float bounceMipBias)
 {    
     const float range = 300.0 * pow((1.0 - roughness) * 0.9 + 0.1, 4.0);
 
@@ -112,7 +109,7 @@ float getBounceLOD(float roughness, float viewDist, float hitDist, float screenW
     mip += f.x * 10.0;
     mip += f.y * 10.0;
 
-    return mip + BOUNCE_MIP_BIAS;
+    return mip + bounceMipBias;
 }
 
 #endif
@@ -144,7 +141,7 @@ ShHitInfo getHitInfoGrad(
     out vec2 motion, out float motionDepthLinear, out vec2 gradDepth, out float depthNDC)
 #else
 ShHitInfo getHitInfoBounce(
-    const ShPayload pl, const vec3 originPosition, const float originRoughness, 
+    const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias,
     out float hitDistance)
 #endif
 {
@@ -227,7 +224,7 @@ ShHitInfo getHitInfoBounce(
     const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
     hitDistance = length(h.hitPosition - originPosition);
 
-    const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth);
+    const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
     h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
