@@ -410,8 +410,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     else
     {
         gu->maxBounceShadowsDirectionalLights = 8;
-        gu->maxBounceShadowsSphereLights = 2;
-        gu->maxBounceShadowsSpotlights = 1;
+        gu->maxBounceShadowsSphereLights = 1;
+        gu->maxBounceShadowsSpotlights = 2;
     }
 }
 
