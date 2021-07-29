@@ -170,7 +170,7 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
 void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex)
 {
     assert(emptyTextureInfo.imageView != VK_NULL_HANDLE &&
-           emptyTextureInfo.imageLayout != VK_NULL_HANDLE &&
+           emptyTextureInfo.imageLayout != VK_IMAGE_LAYOUT_UNDEFINED &&
            emptyTextureInfo.sampler != VK_NULL_HANDLE);
 
     // try to update with empty data

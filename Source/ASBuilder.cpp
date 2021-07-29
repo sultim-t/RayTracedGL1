@@ -19,6 +19,8 @@
 // SOFTWARE.
 
 #include "ASBuilder.h"
+
+#include <algorithm>
 #include <utility>
 
 #include "Utils.h"

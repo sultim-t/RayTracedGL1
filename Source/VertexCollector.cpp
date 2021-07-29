@@ -19,6 +19,9 @@
 // SOFTWARE.
 
 #include "VertexCollector.h"
+
+#include <algorithm>
+
 #include "Generated/ShaderCommonC.h"
 #include "Matrix.h"
 

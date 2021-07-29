@@ -19,6 +19,9 @@
 // SOFTWARE.
 
 #include "Swapchain.h"
+
+#include <algorithm>
+
 #include "Utils.h"
 
 using namespace RTGL1;

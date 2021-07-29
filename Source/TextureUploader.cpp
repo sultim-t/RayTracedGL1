@@ -20,6 +20,8 @@
 
 #include "TextureUploader.h"
 
+#include <algorithm>
+
 #include "Const.h"
 #include "Utils.h"
 

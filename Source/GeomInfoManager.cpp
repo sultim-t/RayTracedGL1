@@ -20,6 +20,8 @@
 
 #include "GeomInfoManager.h"
 
+#include <algorithm>
+
 #include "Matrix.h"
 #include "VertexCollectorFilterType.h"
 #include "Generated/ShaderCommonC.h"

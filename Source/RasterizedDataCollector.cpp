@@ -20,6 +20,8 @@
 
 #include "RasterizedDataCollector.h"
 
+#include <algorithm>
+
 #include "Utils.h"
 #include "RgException.h"
 

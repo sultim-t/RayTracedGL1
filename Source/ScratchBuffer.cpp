@@ -20,6 +20,8 @@
 
 #include "ScratchBuffer.h"
 
+#include <algorithm>
+
 using namespace RTGL1;
 
 constexpr VkDeviceSize SCRATCH_CHUNK_BUFFER_SIZE = (1 << 24);

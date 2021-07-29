@@ -20,6 +20,7 @@
 
 #include "RenderCubemap.h"
 
+#include <algorithm>
 
 #include "Matrix.h"
 #include "RasterizedDataCollector.h"

@@ -20,6 +20,7 @@
 
 #include "ImageLoader.h"
 
+#include <algorithm>
 #include <cassert>
 
 #include <ktx.h>
