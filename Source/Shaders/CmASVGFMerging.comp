@@ -97,10 +97,9 @@ void main()
     const ivec2 samplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + lastStrataPos;
     const ivec2 samplePrevPix = lastPrevPix;
 
-    const vec4 depthFB    = texelFetch(framebufDepth_Sampler,                 samplePix,     0);
-    const float dz        = length(depthFB.gb);
-
-    const float depth     = depthFB.r;
+    const float motionZ   = texelFetch(framebufMotion_Sampler,                samplePix,     0).z;
+ 
+    const float depth     = texelFetch(framebufDepth_Sampler,                 samplePix,     0).r;
     const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,            samplePrevPix, 0).r;
 
     const vec3 normal     = texelFetchNormalGeometry(                         samplePix);
@@ -114,7 +113,7 @@ void main()
 
     const bool isConsistent = 
         testInside(samplePix, screenSize) &&
-        testReprojectedDepth(depth, depthPrev, dz) &&
+        testReprojectedDepth(depth, depthPrev, motionZ) &&
         testReprojectedNormal(normal, normalPrev) &&
         instCustomIndex == instCustomIndexPrev;
 

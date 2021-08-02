@@ -232,9 +232,9 @@ bool testInside(const ivec2 pix, const ivec2 size)
            all(lessThan(pix, size));
 }
 
-bool testReprojectedDepth(float z, float zPrev, float dz)
+bool testReprojectedDepth(float z, float zPrev, float zMotion)
 {
-    return abs(z - zPrev) < 2.0 * (dz + 0.001);
+    return abs(z - zPrev + zMotion) / abs(z) < 0.1;
 }
 
 bool testReprojectedNormal(const vec3 n, const vec3 nPrev)

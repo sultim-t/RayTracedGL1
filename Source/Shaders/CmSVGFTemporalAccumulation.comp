@@ -82,10 +82,10 @@ void main()
         texelFetchUnfilteredDirectSpecular(pix) + 
         texelFetchUnfilteredIndirectSpecular(pix);
 
-    const vec3 depthFB = texelFetch(framebufDepth_Sampler,              pix, 0).rgb;
-    const vec3 normal  = texelFetchNormalGeometry(                      pix);
-    const float depth  = depthFB.r;
-    const float dz = length(depthFB.gb);
+    const float motionZ = texelFetch(framebufMotion_Sampler,    pix,    0).z;
+
+    const float depth   = texelFetch(framebufDepth_Sampler,     pix,    0).r;
+    const vec3 normal   = texelFetchNormalGeometry(             pix);
 
     const float l = getLuminance(unfilteredDiff);
     const vec2 moments = vec2(l, l * l);
@@ -110,7 +110,7 @@ void main()
 
             const bool isConsistent = 
                 testInside(xy, screenSize) &&
-                testReprojectedDepth(depth, depthPrev, dz) &&
+                testReprojectedDepth(depth, depthPrev, motionZ) &&
                 testReprojectedNormal(normal, normalPrev);
 
             if (isConsistent)
