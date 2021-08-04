@@ -354,26 +354,13 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint base
 }
 
 // Get geometry index in "geometryInstances" array by instanceID, localGeometryIndex.
-// instanceCustomIndex is used for determining if should use offsets for main or skybox.
-int getGeometryIndex(int instanceID, int instanceCustomIndex, int localGeometryIndex)
+int getGeometryIndex(int instanceID, int localGeometryIndex)
 {
-    // offset if skybox
-    if ((instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) != 0)
-    {
-        instanceID += MAX_TOP_LEVEL_INSTANCE_COUNT;
-    }
-    
     return globalUniform.instanceGeomInfoOffset[instanceID / 4][instanceID % 4] + localGeometryIndex;
 }
 
-bool getCurrentGeometryIndexByPrev(int prevInstanceID, int prevInstanceCustomIndex, int prevLocalGeometryIndex, out int curFrameGlobalGeomIndex)
+bool getCurrentGeometryIndexByPrev(int prevInstanceID, int prevLocalGeometryIndex, out int curFrameGlobalGeomIndex)
 {
-    // offset if skybox
-    if ((prevInstanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX) != 0)
-    {
-        prevInstanceID += MAX_TOP_LEVEL_INSTANCE_COUNT;
-    }
-    
     // get previous frame's global geom index
     const int prevFrameGeomIndex = globalUniform.instanceGeomInfoOffsetPrev[prevInstanceID / 4][prevInstanceID % 4] + prevLocalGeometryIndex;
     
@@ -391,7 +378,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     ShTriangle tr;
 
     // get info about geometry by the index in pGeometries in BLAS with index "instanceID"
-    const int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
+    const int globalGeometryIndex = getGeometryIndex(instanceID, localGeometryIndex);
     const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
 
     const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
@@ -637,7 +624,7 @@ bool unpackPrevVisibilityBuffer(const vec4 v, out vec3 prevPos)
     unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), prevLocalGeomIndex, primIndex);
 
     int curFrameGlobalGeomIndex;
-    const bool matched = getCurrentGeometryIndexByPrev(prevInstanceID, instCustomIndex, prevLocalGeomIndex, curFrameGlobalGeomIndex);
+    const bool matched = getCurrentGeometryIndexByPrev(prevInstanceID, prevLocalGeomIndex, curFrameGlobalGeomIndex);
 
     if (!matched)
     {
@@ -652,9 +639,9 @@ bool unpackPrevVisibilityBuffer(const vec4 v, out vec3 prevPos)
     return true;
 }
 
-mat4 getModelMatrix(int instanceID, int instanceCustomIndex, int localGeometryIndex)
+mat4 getModelMatrix(int instanceID, int localGeometryIndex)
 {
-    int globalGeometryIndex = getGeometryIndex(instanceID, instanceCustomIndex, localGeometryIndex);
+    int globalGeometryIndex = getGeometryIndex(instanceID, localGeometryIndex);
     return geometryInstances[globalGeometryIndex].model;
 }
 #endif // DESC_SET_VERTEX_DATA

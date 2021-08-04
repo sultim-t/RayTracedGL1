@@ -18,7 +18,6 @@
 #define BINDING_PREV_INDEX_BUFFER_DYNAMIC (7)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
-#define BINDING_ACCELERATION_STRUCTURE_SKYBOX (1)
 #define BINDING_TEXTURES (0)
 #define BINDING_CUBEMAPS (0)
 #define BINDING_RENDER_CUBEMAP (0)
@@ -31,17 +30,18 @@
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
-#define INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX (1 << 3)
-#define INSTANCE_CUSTOM_INDEX_FLAG_REFLECT (1 << 4)
+#define INSTANCE_CUSTOM_INDEX_FLAG_REFLECT (1 << 3)
 #define INSTANCE_MASK_ALL (0xFF)
-#define INSTANCE_MASK_WORLD (1 << 0)
-#define INSTANCE_MASK_FIRST_PERSON (1 << 1)
-#define INSTANCE_MASK_FIRST_PERSON_VIEWER (1 << 2)
-#define INSTANCE_MASK_SKYBOX (1 << 3)
-#define INSTANCE_MASK_BLENDED (1 << 4)
-#define INSTANCE_MASK_EMPTY_5 (1 << 5)
-#define INSTANCE_MASK_EMPTY_6 (1 << 6)
-#define INSTANCE_MASK_EMPTY_7 (1 << 7)
+#define INSTANCE_MASK_WORLD_MIN (0)
+#define INSTANCE_MASK_WORLD_ALL (0x3F)
+#define INSTANCE_MASK_WORLD_0 (1 << 0)
+#define INSTANCE_MASK_WORLD_1 (1 << 1)
+#define INSTANCE_MASK_WORLD_2 (1 << 2)
+#define INSTANCE_MASK_WORLD_3 (1 << 3)
+#define INSTANCE_MASK_WORLD_4 (1 << 4)
+#define INSTANCE_MASK_WORLD_5 (1 << 5)
+#define INSTANCE_MASK_FIRST_PERSON (1 << 6)
+#define INSTANCE_MASK_FIRST_PERSON_VIEWER (1 << 7)
 #define PAYLOAD_INDEX_DEFAULT (0)
 #define PAYLOAD_INDEX_SHADOW (1)
 #define SBT_INDEX_RAYGEN_PRIMARY (0)
@@ -69,7 +69,6 @@
 #define SKY_TYPE_COLOR (0)
 #define SKY_TYPE_CUBEMAP (1)
 #define SKY_TYPE_RASTERIZED_GEOMETRY (2)
-#define SKY_TYPE_RAY_TRACED_GEOMETRY (3)
 #define BLUE_NOISE_TEXTURE_COUNT (128)
 #define BLUE_NOISE_TEXTURE_SIZE (128)
 #define BLUE_NOISE_TEXTURE_SIZE_POW (7)
@@ -156,10 +155,10 @@ struct ShGlobalUniform
     uint maxBounceShadowsDirectionalLights;
     uint maxBounceShadowsSphereLights;
     uint maxBounceShadowsSpotlights;
-    uint _pad3;
-    ivec4 instanceGeomInfoOffset[18];
-    ivec4 instanceGeomInfoOffsetPrev[18];
-    ivec4 instanceGeomCount[18];
+    uint rayCullMaskWorld;
+    ivec4 instanceGeomInfoOffset[9];
+    ivec4 instanceGeomInfoOffsetPrev[9];
+    ivec4 instanceGeomCount[9];
     mat4 viewProjCubemap[6];
 };
 
@@ -208,9 +207,7 @@ struct ShLightDirectional
 struct ShVertPreprocessing
 {
     uint tlasInstanceCount;
-    uint skyboxTlasInstanceCount;
     uint tlasInstanceIsDynamicBits[2];
-    uint skyboxTlasInstanceIsDynamicBits[2];
 };
 
 #ifdef DESC_SET_FRAMEBUFFERS

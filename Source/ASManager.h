@@ -40,9 +40,7 @@ public:
     struct TLASPrepareResult
     {
         VkAccelerationStructureInstanceKHR instances[36];
-        VkAccelerationStructureInstanceKHR skyboxInstances[36];
         uint32_t instanceCount;
-        uint32_t skyboxInstanceCount;
     };
 
 public:
@@ -89,7 +87,6 @@ public:
     void PrepareForBuildingTLAS(
         uint32_t frameIndex,
         ShGlobalUniform &uniformData,
-        bool ignoreSkyboxTLAS,
         ShVertPreprocessing *outPush,
         TLASPrepareResult *outResult) const;
     bool TryBuildTLAS(
@@ -158,8 +155,6 @@ private:
     // top level AS
     std::unique_ptr<AutoBuffer> instanceBuffer;
     std::unique_ptr<TLASComponent> tlas[MAX_FRAMES_IN_FLIGHT];
-
-    std::unique_ptr<TLASComponent> skyboxTlas[MAX_FRAMES_IN_FLIGHT];
 
     // TLAS and buffer descriptors
     VkDescriptorPool descPool;

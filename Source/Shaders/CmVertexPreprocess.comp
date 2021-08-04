@@ -37,21 +37,7 @@ layout(push_constant) uniform Push_BT
 void main()
 {    
     uint tlasInstanceIndex = gl_WorkGroupID.x;
-    
-    bool isDynamic;
-    
-    // if not skybox
-    if (tlasInstanceIndex < push.tlasInstanceCount)
-    {
-        isDynamic = (push.tlasInstanceIsDynamicBits[tlasInstanceIndex / 32] & (1 << tlasInstanceIndex)) != 0;
-    }
-    else
-    {
-        isDynamic = (push.skyboxTlasInstanceIsDynamicBits[tlasInstanceIndex / 32] & (1 << tlasInstanceIndex)) != 0;
-
-        // skybox offset
-        tlasInstanceIndex += MAX_TOP_LEVEL_INSTANCE_COUNT;
-    } 
+    bool isDynamic = (push.tlasInstanceIsDynamicBits[tlasInstanceIndex / 32] & (1 << tlasInstanceIndex)) != 0;
 
 
     // always process dynamic

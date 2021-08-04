@@ -211,11 +211,6 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
             flags |= (FL)FT::PV_FIRST_PERSON_VIEWER;
             break;
         }
-        case RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX:
-        {
-            flags |= (FL)FT::PV_SKYBOX;
-            break;
-        }
         default: assert(0);
     }
 

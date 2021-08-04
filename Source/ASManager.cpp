@@ -26,8 +26,6 @@
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
 
-constexpr bool ONLY_MAIN_TLAS = false;
-
 using namespace RTGL1;
 
 ASManager::ASManager(
@@ -72,7 +70,6 @@ ASManager::ASManager(
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         tlas[i] = std::make_unique<TLASComponent>(device, "TLAS main");
-        skyboxTlas[i] = std::make_unique<TLASComponent>(device, "TLAS skybox");
     }
 
 
@@ -121,8 +118,7 @@ ASManager::ASManager(
     // instance buffer for TLAS
     instanceBuffer = std::make_unique<AutoBuffer>(device, allocator, "TLAS instance buffer staging", "TLAS instance buffer");
 
-    // multiplying by 2 for main/skybox
-    VkDeviceSize instanceBufferSize = 2 * MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR);
+    VkDeviceSize instanceBufferSize = MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR);
     instanceBuffer->Create(instanceBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
 
 
@@ -207,22 +203,16 @@ void ASManager::CreateDescriptors()
     }
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings{};
-
-        bindings[0].binding = BINDING_ACCELERATION_STRUCTURE_MAIN;
-        bindings[0].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        bindings[0].descriptorCount = 1;
-        bindings[0].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-        bindings[1].binding = BINDING_ACCELERATION_STRUCTURE_SKYBOX;
-        bindings[1].descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        bindings[1].descriptorCount = 1;
-        bindings[1].stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        VkDescriptorSetLayoutBinding bnd = {};
+        bnd.binding = BINDING_ACCELERATION_STRUCTURE_MAIN;
+        bnd.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        bnd.descriptorCount = 1;
+        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = ONLY_MAIN_TLAS ? 1 : bindings.size();
-        layoutInfo.pBindings = bindings.data();
+        layoutInfo.bindingCount = 1;
+        layoutInfo.pBindings = &bnd;
 
         r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &asDescSetLayout);
         VK_CHECKERROR(r);
@@ -397,44 +387,24 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 
 void ASManager::UpdateASDescriptors(uint32_t frameIndex)
 {
-    uint32_t bindings[] =
-    {
-        BINDING_ACCELERATION_STRUCTURE_MAIN,
-        BINDING_ACCELERATION_STRUCTURE_SKYBOX,
-    };
+    VkAccelerationStructureKHR asHandle = tlas[frameIndex]->GetAS();
+    assert(asHandle != VK_NULL_HANDLE);
 
-    TLASComponent *allTLAS[] =
-    {
-        tlas[frameIndex].get(),
-        skyboxTlas[frameIndex].get(),
-    };
-    constexpr uint32_t allTLASCount = ONLY_MAIN_TLAS ? 1 : sizeof(allTLAS) / sizeof(allTLAS[0]);
+    VkWriteDescriptorSetAccelerationStructureKHR asInfo = {};
+    asInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
+    asInfo.accelerationStructureCount = 1;
+    asInfo.pAccelerationStructures = &asHandle;
 
-    VkAccelerationStructureKHR asHandles[allTLASCount] = {};
-    VkWriteDescriptorSetAccelerationStructureKHR asInfos[allTLASCount] = {};
-    VkWriteDescriptorSet writes[allTLASCount] = {};
+    VkWriteDescriptorSet wrt = {};
+    wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    wrt.pNext = &asInfo;
+    wrt.dstSet = asDescSets[frameIndex];
+    wrt.dstBinding = BINDING_ACCELERATION_STRUCTURE_MAIN;
+    wrt.dstArrayElement = 0;
+    wrt.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+    wrt.descriptorCount = 1;
 
-    for (uint32_t i = 0; i < allTLASCount; i++)
-    {
-        asHandles[i] = allTLAS[i]->GetAS();
-        assert(asHandles[i] != VK_NULL_HANDLE);
-
-        VkWriteDescriptorSetAccelerationStructureKHR &asInfo = asInfos[i];
-        asInfo.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR;
-        asInfo.accelerationStructureCount = 1;
-        asInfo.pAccelerationStructures = &asHandles[i];
-
-        VkWriteDescriptorSet &wrt = writes[i];
-        wrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        wrt.pNext = &asInfo;
-        wrt.dstSet = asDescSets[frameIndex];
-        wrt.dstBinding = bindings[i];
-        wrt.dstArrayElement = 0;
-        wrt.descriptorType = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        wrt.descriptorCount = 1;
-    }
-
-    vkUpdateDescriptorSets(device, allTLASCount, writes, 0, nullptr);
+    vkUpdateDescriptorSets(device, 1, &wrt, 0, nullptr);
 }
 
 #pragma endregion 
@@ -454,7 +424,6 @@ ASManager::~ASManager()
         }
 
         tlas[i]->Destroy();
-        skyboxTlas[i]->Destroy();
     }
 
     vkDestroyDescriptorPool(device, descPool, nullptr);
@@ -792,14 +761,9 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
         instance.mask = INSTANCE_MASK_FIRST_PERSON_VIEWER;
         instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER;
     }
-    else if (filter & FT::PV_SKYBOX)
-    {
-        instance.mask = INSTANCE_MASK_SKYBOX;
-        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX;
-    }
     else
     {
-        instance.mask = INSTANCE_MASK_WORLD;
+        instance.mask = INSTANCE_MASK_WORLD_0;
     }
 
     if (filter & FT::PT_OPAQUE)
@@ -842,16 +806,6 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
     // BLAS must not be empty, if it's added to TLAS
     assert(geomCount > 0);
 
-    bool isSkybox = blas.GetFilter() & VertexCollectorFilterTypeFlagBits::PV_SKYBOX;
-
-    if (isSkybox)
-    {
-        // special offset for skybox, as it's contained in other TLAS
-        const uint32_t skyboxStartIndex = MAX_TOP_LEVEL_INSTANCE_COUNT;
-
-        index += skyboxStartIndex;
-    }
-
     instanceGeomInfoOffset[index] = arrayOffset;
     instanceGeomCount[index] = geomCount;
 }
@@ -859,14 +813,12 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
 void ASManager::PrepareForBuildingTLAS(
     uint32_t frameIndex,
     ShGlobalUniform &uniformData,
-    bool ignoreSkyboxTLAS, 
     ShVertPreprocessing *outPush,
     TLASPrepareResult *outResult) const
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
     static_assert(sizeof(TLASPrepareResult::instances) / sizeof(TLASPrepareResult::instances[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Change TLASPrepareResult sizes");
-    static_assert(sizeof(TLASPrepareResult::skyboxInstances) / sizeof(TLASPrepareResult::skyboxInstances[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Change TLASPrepareResult sizes");
 
 
     *outResult = {};
@@ -894,55 +846,31 @@ void ASManager::PrepareForBuildingTLAS(
     {
         for (const auto &blas : *blasArr)
         {
-            bool isSkybox = blas->GetFilter() & FT::PV_SKYBOX;
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
 
-            // add to appropriate TLAS instances array
-            if (!isSkybox)
+            // add to TLAS instances array
+            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, r.instances[r.instanceCount]);
+
+            if (isAdded)
             {
-                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, r.instances[r.instanceCount]);
-
-                if (isAdded)
+                // mark bit if dynamic
+                if (isDynamic)
                 {
-                    // mark bit if dynamic
-                    if (isDynamic)
-                    {
-                        outPush->tlasInstanceIsDynamicBits[r.instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
-                    }
-
-                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, r.instanceCount, *blas);
-                    r.instanceCount++;
+                    outPush->tlasInstanceIsDynamicBits[r.instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
                 }
-            }
-            else
-            {
-                bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, r.skyboxInstances[r.skyboxInstanceCount]);
 
-                if (isAdded)
-                {
-                    // if skybox TLAS is ignored, skybox geometry must not be previously added
-                    assert(!ignoreSkyboxTLAS);
-                    
-                    // mark bit if dynamic
-                    if (isDynamic)
-                    {
-                        outPush->skyboxTlasInstanceIsDynamicBits[r.skyboxInstanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.skyboxInstanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
-                    }
-
-                    WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, r.skyboxInstanceCount, *blas);
-                    r.skyboxInstanceCount++;
-                }
+                WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, r.instanceCount, *blas);
+                r.instanceCount++;
             }
         }
     }
 
     outPush->tlasInstanceCount = r.instanceCount;
-    outPush->skyboxTlasInstanceCount = r.skyboxInstanceCount;
 }
 
 bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
 {
-    if (r.instanceCount == 0 && r.skyboxInstanceCount == 0)
+    if (r.instanceCount == 0)
     {
         return false;
     }
@@ -955,67 +883,47 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLA
     auto *mapped = (VkAccelerationStructureInstanceKHR*)instanceBuffer->GetMapped(frameIndex);
 
     memcpy(mapped, r.instances, r.instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
-    memcpy(mapped + MAX_TOP_LEVEL_INSTANCE_COUNT, r.skyboxInstances, r.skyboxInstanceCount * sizeof(VkAccelerationStructureInstanceKHR));
 
     instanceBuffer->CopyFromStaging(cmd, frameIndex);
 
 
-    TLASComponent *allTLAS[] =
-    {
-        tlas[frameIndex].get(),
-        skyboxTlas[frameIndex].get(),
-    };
-    constexpr uint32_t allTLASCount = ONLY_MAIN_TLAS ? 1 : sizeof(allTLAS) / sizeof(allTLAS[0]);
+    TLASComponent *pCurrentTLAS = tlas[frameIndex].get();
+    uint32_t instanceCount = r.instanceCount;
 
-    VkAccelerationStructureGeometryKHR instGeoms[allTLASCount] = {};
-    VkAccelerationStructureBuildSizesInfoKHR buildSizes[allTLASCount] = {};
-    VkAccelerationStructureBuildRangeInfoKHR ranges[allTLASCount] = {};
 
-    uint32_t instanceCounts[allTLASCount] =
-    {
-        r.instanceCount,
-        r.skyboxInstanceCount
-    };
+    VkAccelerationStructureGeometryKHR instGeom = {};
+    instGeom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
+    instGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
+    instGeom.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
+    auto &instData = instGeom.geometry.instances;
+    instData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
+    instData.arrayOfPointers = VK_FALSE;
+    instData.data.deviceAddress = instanceBuffer->GetDeviceAddress();
 
-    for (uint32_t i = 0; i < allTLASCount; i++)
-    {
-        VkAccelerationStructureGeometryKHR &instGeom = instGeoms[i];
+    // get AS size and create buffer for AS
+    VkAccelerationStructureBuildSizesInfoKHR buildSizes = asBuilder->GetTopBuildSizes(&instGeom, instanceCount, false);
 
-        instGeom.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-        instGeom.flags = VK_GEOMETRY_OPAQUE_BIT_KHR;
-        instGeom.geometryType = VK_GEOMETRY_TYPE_INSTANCES_KHR;
-        auto &instData = instGeom.geometry.instances;
-        instData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
-        instData.arrayOfPointers = VK_FALSE;
-        instData.data.deviceAddress = 
-            instanceBuffer->GetDeviceAddress()
-            + sizeof(VkAccelerationStructureInstanceKHR) * MAX_TOP_LEVEL_INSTANCE_COUNT * i;
+    // if previous buffer's size is not enough
+    pCurrentTLAS->RecreateIfNotValid(buildSizes, allocator);
 
-        // get AS size and create buffer for AS
-        buildSizes[i] = asBuilder->GetTopBuildSizes(&instGeom, instanceCounts[i], false);
+    VkAccelerationStructureBuildRangeInfoKHR range = {};
+    range.primitiveCount = instanceCount;
 
-        // if previous buffer's size is not enough
-        allTLAS[i]->RecreateIfNotValid(buildSizes[i], allocator);
 
-        ranges[i].primitiveCount = instanceCounts[i];
-    }
+    // build
+    assert(asBuilder->IsEmpty());
 
-    uint32_t tlasToBuild = r.skyboxInstanceCount == 0 ? 1 : allTLASCount;
+    assert(pCurrentTLAS->GetAS() != VK_NULL_HANDLE);
+    asBuilder->AddTLAS(pCurrentTLAS->GetAS(), &instGeom, &range, buildSizes, true, false);
 
-    for (uint32_t i = 0; i < tlasToBuild; i++)
-    {
-        assert(asBuilder->IsEmpty());
+    asBuilder->BuildTopLevel(cmd);
 
-        assert(allTLAS[i]->GetAS() != VK_NULL_HANDLE);
-        asBuilder->AddTLAS(allTLAS[i]->GetAS(), &instGeoms[i], &ranges[i], buildSizes[i], true, false);
-
-        asBuilder->BuildTopLevel(cmd);
-    }
 
     // sync AS access
     Utils::ASBuildMemoryBarrier(cmd);
 
 
+    // shader desc access
     UpdateASDescriptors(frameIndex);
 
 

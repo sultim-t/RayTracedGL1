@@ -230,7 +230,6 @@ CONST = {
     "BINDING_PREV_INDEX_BUFFER_DYNAMIC"     : 7,
     "BINDING_GLOBAL_UNIFORM"                : 0,
     "BINDING_ACCELERATION_STRUCTURE_MAIN"   : 0,
-    "BINDING_ACCELERATION_STRUCTURE_SKYBOX" : 1,
     "BINDING_TEXTURES"                      : 0,
     "BINDING_CUBEMAPS"                      : 0,
     "BINDING_RENDER_CUBEMAP"                : 0,
@@ -244,18 +243,19 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
-    "INSTANCE_CUSTOM_INDEX_FLAG_SKYBOX"                 : "1 << 3",
-    "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT"                : "1 << 4",
+    "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT"                : "1 << 3",
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
-    "INSTANCE_MASK_WORLD"                   : "1 << 0",
-    "INSTANCE_MASK_FIRST_PERSON"            : "1 << 1",
-    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 2",
-    "INSTANCE_MASK_SKYBOX"                  : "1 << 3",
-    "INSTANCE_MASK_BLENDED"                 : "1 << 4",
-    "INSTANCE_MASK_EMPTY_5"                 : "1 << 5",
-    "INSTANCE_MASK_EMPTY_6"                 : "1 << 6",
-    "INSTANCE_MASK_EMPTY_7"                 : "1 << 7",
+    "INSTANCE_MASK_WORLD_MIN"               : "0",
+    "INSTANCE_MASK_WORLD_ALL"               : "0x3F",
+    "INSTANCE_MASK_WORLD_0"                 : "1 << 0",
+    "INSTANCE_MASK_WORLD_1"                 : "1 << 1",
+    "INSTANCE_MASK_WORLD_2"                 : "1 << 2",
+    "INSTANCE_MASK_WORLD_3"                 : "1 << 3",
+    "INSTANCE_MASK_WORLD_4"                 : "1 << 4",
+    "INSTANCE_MASK_WORLD_5"                 : "1 << 5",
+    "INSTANCE_MASK_FIRST_PERSON"            : "1 << 6",
+    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 7",
     
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,
@@ -289,7 +289,6 @@ CONST = {
     "SKY_TYPE_COLOR"                        : 0,
     "SKY_TYPE_CUBEMAP"                      : 1,
     "SKY_TYPE_RASTERIZED_GEOMETRY"          : 2,
-    "SKY_TYPE_RAY_TRACED_GEOMETRY"          : 3,
     
     "BLUE_NOISE_TEXTURE_COUNT"              : 128,
     "BLUE_NOISE_TEXTURE_SIZE"               : 128,
@@ -432,7 +431,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",    1),
     (TYPE_UINT32,       1,      "maxBounceShadowsSphereLights",         1),
     (TYPE_UINT32,       1,      "maxBounceShadowsSpotlights",           1),
-    (TYPE_UINT32,       1,      "_pad3",                                1),
+    (TYPE_UINT32,       1,      "rayCullMaskWorld",                     1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
@@ -440,10 +439,9 @@ GLOBAL_UNIFORM_STRUCT = [
     #(TYPE_FLOAT32,      1,      "_pad3",                        1),
 
     # for std140
-    # TODO: separate to 2 different main/skybox arrays (and remove multiplication by 2)
-    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
-    (TYPE_INT32,        4,      "instanceGeomInfoOffsetPrev",   2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
-    (TYPE_INT32,        4,      "instanceGeomCount",            2 * align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
+    (TYPE_INT32,        4,      "instanceGeomInfoOffset",       align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
+    (TYPE_INT32,        4,      "instanceGeomInfoOffsetPrev",   align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
+    (TYPE_INT32,        4,      "instanceGeomCount",            align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
     (TYPE_FLOAT32,     44,      "viewProjCubemap",              6),
 ]
 
@@ -484,9 +482,7 @@ TONEMAPPING_STRUCT = [
 
 VERT_PREPROC_PUSH_STRUCT = [
     (TYPE_UINT32,       1,      "tlasInstanceCount",                1),
-    (TYPE_UINT32,       1,      "skyboxTlasInstanceCount",          1),
     (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",        align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
-    (TYPE_UINT32,       1,      "skyboxTlasInstanceIsDynamicBits",  align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
 ]
 
 

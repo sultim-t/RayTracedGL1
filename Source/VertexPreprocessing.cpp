@@ -85,7 +85,7 @@ void RTGL1::VertexPreprocessing::Preprocess(
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(ShVertPreprocessing), &push);
 
 
-    vkCmdDispatch(cmd, push.tlasInstanceCount + push.skyboxTlasInstanceCount, 1, 1);
+    vkCmdDispatch(cmd, push.tlasInstanceCount, 1, 1);
 
 
     asManager->OnVertexPreprocessingFinish(cmd, frameIndex, preprocMode == VERT_PREPROC_MODE_ONLY_DYNAMIC);

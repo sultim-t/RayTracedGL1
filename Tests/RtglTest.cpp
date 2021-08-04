@@ -318,7 +318,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     for (auto f : cubeTexCoords)
     {
-        cubeTexCoordsModif.push_back(f * 0.25f);
+        cubeTexCoordsModif.push_back(f * 4.0f);
     }
 
     // geometry infos
@@ -326,7 +326,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     cubeInfo.vertexCount = cubePositions.size() / 3;
     cubeInfo.pVertexData = cubePositions.data();
     cubeInfo.pNormalData = cubeNormals.data();
-    cubeInfo.pTexCoordLayerData[0] = cubeTexCoords.data();
+    cubeInfo.pTexCoordLayerData[0] = cubeTexCoordsModif.data();
     cubeInfo.indexCount = cubeIndices.size();
     cubeInfo.pIndexData = cubeIndices.data();
     cubeInfo.layerColors[0] = { 1.0f, 1.0f, 1.0f, 1.0f };
@@ -611,13 +611,20 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         glm::mat4 view = glm::lookAt(CAMERA_POS, CAMERA_POS + CAMERA_DIR, CAMERA_UP);
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
-        frameInfo.skyColorDefault = { 0.71f, 0.88f, 1.0f };
-        frameInfo.skyType = RG_SKY_TYPE_CUBEMAP;
-        frameInfo.skyCubemap = skyboxes[SKYBOX_CURRENT];
-        frameInfo.skyColorMultiplier = SKY_INTENSITY;
-        frameInfo.skyViewerPosition = { CAMERA_POS.x / 2  +OFFSET, CAMERA_POS.y / 2, CAMERA_POS.z / 2 };
+        frameInfo.rayCullMaskWorld = 0xFF;
 
-        frameInfo.dbgShowGradients = SHOW_GRAD;
+        RgDrawFrameSkyParams skyParams = {};
+        skyParams.skyColorDefault = { 0.71f, 0.88f, 1.0f };
+        skyParams.skyType = RG_SKY_TYPE_CUBEMAP;
+        skyParams.skyCubemap = skyboxes[SKYBOX_CURRENT];
+        skyParams.skyColorMultiplier = SKY_INTENSITY;
+        skyParams.skyViewerPosition = { CAMERA_POS.x / 2  +OFFSET, CAMERA_POS.y / 2, CAMERA_POS.z / 2 };
+
+        RgDrawFrameDebugParams debugParams = {};
+        debugParams.showGradients = SHOW_GRAD;
+
+        frameInfo.pSkyParams = &skyParams;
+        frameInfo.pDebugParams = &debugParams;
 
         r = rgDrawFrame(instance, &frameInfo);
         RG_CHECKERROR(r);

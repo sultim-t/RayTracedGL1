@@ -42,8 +42,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
     userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
     previousFrameTime(-1.0 / 60.0),
-    currentFrameTime(0),
-    disableRayTracedSkybox(info->disableRayTracedSkybox)
+    currentFrameTime(0)
 {
     ValidateCreateInfo(info);
 
@@ -131,8 +130,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         textureManager,
         uniform,
         shaderManager,
-        vbProperties, 
-        disableRayTracedSkybox);
+        vbProperties);
    
     rasterizer          = std::make_shared<Rasterizer>(
         device,
@@ -348,13 +346,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
             gu->skyType =
                 sp.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
                 sp.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY :
-                sp.skyType == RG_SKY_TYPE_RAY_TRACED_GEOMETRY ? SKY_TYPE_RAY_TRACED_GEOMETRY :
                 SKY_TYPE_COLOR;
-
-            if (disableRayTracedSkybox && gu->skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
-            {
-                gu->skyType = SKY_TYPE_COLOR;
-            }
 
             gu->skyCubemapIndex = cubemapManager->IsCubemapValid(sp.skyCubemap) ? sp.skyCubemap : RG_EMPTY_CUBEMAP;
 
@@ -413,6 +405,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->maxBounceShadowsSphereLights = 1;
         gu->maxBounceShadowsSpotlights = 2;
     }
+
+    gu->rayCullMaskWorld = std::min((uint32_t)INSTANCE_MASK_WORLD_ALL, std::max((uint32_t)INSTANCE_MASK_WORLD_MIN, drawInfo.rayCullMaskWorld));
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
@@ -588,8 +582,7 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON &&
-        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER &&
-        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX)
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect type of ray traced geometry");
     }

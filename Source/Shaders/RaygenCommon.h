@@ -35,7 +35,6 @@
 
 
 layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uniform accelerationStructureEXT topLevelAS;
-layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_SKYBOX) uniform accelerationStructureEXT skyboxTopLevelAS;
 
 #ifdef DESC_SET_CUBEMAPS
 layout(set = DESC_SET_CUBEMAPS, binding = BINDING_CUBEMAPS) uniform samplerCube globalCubemaps[];
@@ -63,17 +62,17 @@ uint getShadowCullMask(uint surfInstCustomIndex)
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {
         // no first-person viewer shadows -- on first-person
-        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON;
+        return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON;
     }
     else if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
     {
         // no first-person shadows -- on first-person viewer
-        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+        return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
     else
     {
         // no first-person shadows -- on world
-        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+        return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
     
     // blended geometry doesn't have shadows
@@ -84,17 +83,17 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {
         // no first-person viewer indirect illumination -- on first-person
-        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON;
+        return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON;
     }
     else if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER) != 0)
     {
         // no first-person indirect illumination -- on first-person viewer
-        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+        return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
     else
     {
         // no first-person indirect illumination -- on first-person viewer
-        return INSTANCE_MASK_WORLD | INSTANCE_MASK_FIRST_PERSON_VIEWER;
+        return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
     
     // blended geometry doesn't have indirect illumination
@@ -153,24 +152,6 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
 
 
 #ifdef DESC_SET_CUBEMAPS
-ShPayload traceSkyRay(vec3 origin, vec3 direction)
-{
-    resetPayload();
-
-    uint cullMask = INSTANCE_MASK_SKYBOX;
-
-    traceRayEXT(
-        skyboxTopLevelAS,
-        gl_RayFlagsNoneEXT, 
-        cullMask, 
-        0, 0,     // sbtRecordOffset, sbtRecordStride
-        SBT_INDEX_MISS_DEFAULT, 
-        origin, 0.001, direction, MAX_RAY_LENGTH, 
-        PAYLOAD_INDEX_DEFAULT); 
-
-    return payload;
-}
-
 // Get sky color for primary visibility, i.e. without skyColorMultiplier
 vec3 getSkyPrimary(vec3 direction)
 {
@@ -181,20 +162,11 @@ vec3 getSkyPrimary(vec3 direction)
     {
         return texture(renderCubemap, direction).rgb;
     }
-    else 
 #endif
+
     if (skyType == SKY_TYPE_CUBEMAP)
     {
         return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
-    }
-    else if (skyType == SKY_TYPE_RAY_TRACED_GEOMETRY)
-    {
-        ShPayload p = traceSkyRay(globalUniform.skyViewerPosition.xyz, direction);
-
-        if (isPayloadConsistent(p))
-        {
-            return getHitInfoAlbedoOnly(p);
-        }
     }
 
     return globalUniform.skyColorDefault.xyz;

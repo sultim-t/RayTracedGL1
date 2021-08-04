@@ -156,8 +156,6 @@ private:
 
     double                                  previousFrameTime;
     double                                  currentFrameTime;
-
-    bool                                    disableRayTracedSkybox;
 };
 
 }

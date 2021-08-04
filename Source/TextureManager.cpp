@@ -55,9 +55,9 @@ TextureManager::TextureManager(
 
     bool userOverridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT] =
     {
-         _info.overridenAlbedoAlphaTextureIsSRGB,
-         _info.overridenRoughnessMetallicEmissionTextureIsSRGB,
-         _info.overridenNormalTextureIsSRGB
+        !!_info.overridenAlbedoAlphaTextureIsSRGB,
+        !!_info.overridenRoughnessMetallicEmissionTextureIsSRGB,
+        !!_info.overridenNormalTextureIsSRGB
     };
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)

@@ -214,10 +214,6 @@ typedef struct RgInstanceCreateInfo
     // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
     RgBool32                    vertexArrayOfStructs;
 
-    // If true, acceleration structures related to skybox won't be built,
-    // sky type RG_SKY_TYPE_RAY_TRACED_GEOMETRY will be reset to RG_SKY_TYPE_RAY_TRACED_GEOMETRY.
-    RgBool32                    disableRayTracedSkybox;
-
 } RgInstanceCreateInfo;
 
 RgResult rgCreateInstance(
@@ -254,7 +250,6 @@ typedef enum RgGeometryPrimaryVisibilityType
     RG_GEOMETRY_VISIBILITY_TYPE_WORLD,
     RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON,
     RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER,
-    RG_GEOMETRY_VISIBILITY_TYPE_SKYBOX,
 } RgGeometryPrimaryVisibilityType;
 
 typedef enum RgGeometryMaterialBlendType
@@ -757,8 +752,7 @@ typedef enum RgSkyType
 {
     RG_SKY_TYPE_COLOR,
     RG_SKY_TYPE_CUBEMAP,
-    RG_SKY_TYPE_RASTERIZED_GEOMETRY,
-    RG_SKY_TYPE_RAY_TRACED_GEOMETRY
+    RG_SKY_TYPE_RASTERIZED_GEOMETRY
 } RgSkyType;
 
 typedef struct RgDrawFrameTonemappingParams
@@ -812,6 +806,9 @@ typedef struct RgDrawFrameInfo
     // View and projection matrices are column major.
     float               view[16];
     float               projection[16];
+    // What world parts to render. Mask bits are in [0..0x3F]
+    // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD
+    uint32_t            rayCullMaskWorld;
     RgBool32            disableRayTracing;
     RgBool32            disableRasterization;
     RgExtent2D          renderSize;

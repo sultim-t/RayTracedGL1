@@ -39,8 +39,7 @@ public:
         std::shared_ptr<TextureManager> &textureManager,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<const ShaderManager> &shaderManager,
-        const VertexBufferProperties &properties,
-        bool disableRayTracedSkybox);
+        const VertexBufferProperties &properties);
 
     ~Scene();
 
@@ -89,8 +88,6 @@ private:
 
     bool isRecordingStatic;
     bool submittedStaticInCurrentFrame;
-
-    bool disableRayTracedSkybox;
 };
 
 }
