@@ -245,9 +245,12 @@ typedef enum RgGeometryPassThroughType
     RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT
 } RgGeometryPassThroughType;
 
+// WORLD_0, WORLD_1, WORLD_2 may be specified for culling with RgDrawFrameInfo::rayCullMaskWorld
 typedef enum RgGeometryPrimaryVisibilityType
 {
-    RG_GEOMETRY_VISIBILITY_TYPE_WORLD,
+    RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0,
+    RG_GEOMETRY_VISIBILITY_TYPE_WORLD_1,
+    RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2,
     RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON,
     RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER,
 } RgGeometryPrimaryVisibilityType;
@@ -806,8 +809,8 @@ typedef struct RgDrawFrameInfo
     // View and projection matrices are column major.
     float               view[16];
     float               projection[16];
-    // What world parts to render. Mask bits are in [0..0x3F]
-    // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD
+    // What world parts to render. Mask bits are in [0..0x7]
+    // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD_*
     uint32_t            rayCullMaskWorld;
     RgBool32            disableRayTracing;
     RgBool32            disableRasterization;

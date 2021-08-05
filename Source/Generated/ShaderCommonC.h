@@ -10,12 +10,12 @@ namespace RTGL1
 #define MAX_STATIC_VERTEX_COUNT (1048576)
 #define MAX_DYNAMIC_VERTEX_COUNT (2097152)
 #define MAX_INDEXED_PRIMITIVE_COUNT (1048576)
-#define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT (8192)
-#define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW (13)
-#define MAX_GEOMETRY_PRIMITIVE_COUNT (524288)
-#define MAX_GEOMETRY_PRIMITIVE_COUNT_POW (19)
+#define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT (4096)
+#define MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW (12)
+#define MAX_GEOMETRY_PRIMITIVE_COUNT (1048576)
+#define MAX_GEOMETRY_PRIMITIVE_COUNT_POW (20)
 #define LOWER_BOTTOM_LEVEL_GEOMETRIES_COUNT (16)
-#define MAX_TOP_LEVEL_INSTANCE_COUNT (36)
+#define MAX_TOP_LEVEL_INSTANCE_COUNT (45)
 #define BINDING_VERTEX_BUFFER_STATIC (0)
 #define BINDING_VERTEX_BUFFER_DYNAMIC (1)
 #define BINDING_INDEX_BUFFER_STATIC (2)
@@ -162,9 +162,9 @@ struct ShGlobalUniform
     uint32_t maxBounceShadowsSphereLights;
     uint32_t maxBounceShadowsSpotlights;
     uint32_t rayCullMaskWorld;
-    int32_t instanceGeomInfoOffset[36];
-    int32_t instanceGeomInfoOffsetPrev[36];
-    int32_t instanceGeomCount[36];
+    int32_t instanceGeomInfoOffset[48];
+    int32_t instanceGeomInfoOffsetPrev[48];
+    int32_t instanceGeomCount[48];
     float viewProjCubemap[264];
 };
 

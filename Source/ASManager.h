@@ -39,7 +39,7 @@ class ASManager
 public:
     struct TLASPrepareResult
     {
-        VkAccelerationStructureInstanceKHR instances[36];
+        VkAccelerationStructureInstanceKHR instances[45];
         uint32_t instanceCount;
     };
 

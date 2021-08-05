@@ -580,7 +580,9 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_ALPHA_TESTED &&
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT &&
 
-        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD &&
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0 &&
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_1 &&
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2 &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER)
     {

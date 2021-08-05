@@ -763,7 +763,22 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
     }
     else
     {
-        instance.mask = INSTANCE_MASK_WORLD_0;
+        if (filter & FT::PV_WORLD_0)
+        {
+            instance.mask = INSTANCE_MASK_WORLD_0;
+        }
+        else if (filter & FT::PV_WORLD_1)
+        {
+            instance.mask = INSTANCE_MASK_WORLD_1;
+        }
+        else if (filter & FT::PV_WORLD_2)
+        {
+            instance.mask = INSTANCE_MASK_WORLD_2;
+        }
+        else
+        {
+            assert(0);
+        }
     }
 
     if (filter & FT::PT_OPAQUE)

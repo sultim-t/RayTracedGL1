@@ -46,10 +46,12 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
     PT_REFLECT                  = 0b00000100 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
     MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_REFLECT /*PT_BLEND_ADDITIVE | PT_BLEND_UNDER*/,
 
-    PV_WORLD                    = 0b00000001 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
-    PV_FIRST_PERSON             = 0b00000010 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
-    PV_FIRST_PERSON_VIEWER      = 0b00000100 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
-    MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER,
+    PV_WORLD_0                  = 0b00000001 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_WORLD_1                  = 0b00000010 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_WORLD_2                  = 0b00000100 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_FIRST_PERSON             = 0b00001000 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    PV_FIRST_PERSON_VIEWER      = 0b00010000 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
+    MASK_PRIMARY_VISIBILITY_GROUP = PV_WORLD_0 | PV_WORLD_1 | PV_WORLD_2 | PV_FIRST_PERSON | PV_FIRST_PERSON_VIEWER,
 };
 typedef uint32_t VertexCollectorFilterTypeFlags;
 
@@ -70,7 +72,9 @@ constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrou
 
 constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PrimaryVisibility[] =
 {
-    VertexCollectorFilterTypeFlagBits::PV_WORLD,
+    VertexCollectorFilterTypeFlagBits::PV_WORLD_0,
+    VertexCollectorFilterTypeFlagBits::PV_WORLD_1,
+    VertexCollectorFilterTypeFlagBits::PV_WORLD_2,
     VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON,
     VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON_VIEWER,
 };

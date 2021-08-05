@@ -24,6 +24,12 @@
 
 #include "Generated/ShaderCommonC.h"
 
+static_assert(
+    sizeof(RTGL1::VertexCollectorFilterGroup_ChangeFrequency)   / sizeof(RTGL1::VertexCollectorFilterGroup_ChangeFrequency[0]) * 
+    sizeof(RTGL1::VertexCollectorFilterGroup_PassThrough)       / sizeof(RTGL1::VertexCollectorFilterGroup_PassThrough[0]) *
+    sizeof(RTGL1::VertexCollectorFilterGroup_PrimaryVisibility) / sizeof(RTGL1::VertexCollectorFilterGroup_PrimaryVisibility[0])
+    == MAX_TOP_LEVEL_INSTANCE_COUNT, "It's recommended for MAX_TOP_LEVEL_INSTANCE_COUNT to be such value");
+
 typedef uint8_t FlagToIndexType;
 // 8 bits per byte
 constexpr uint32_t FlagToIndexTypeMaxValue = 1 << (8 * sizeof(FlagToIndexType));
@@ -49,13 +55,15 @@ void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(F
 }
 
 // max flag value in a group
-constexpr uint32_t MAX_FLAG_VALUE = 8;
+constexpr uint32_t MAX_FLAG_VALUE_CF = 4;
+constexpr uint32_t MAX_FLAG_VALUE_PT = 4;
+constexpr uint32_t MAX_FLAG_VALUE_PV = 16;
 
-static FlagToIndexType FlagToIndex[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
+static FlagToIndexType FlagToIndex[MAX_FLAG_VALUE_CF][MAX_FLAG_VALUE_PT][MAX_FLAG_VALUE_PV];
 
 static uint32_t AllBottomLevelGeomsCount = 0;
-static uint32_t OffsetInGlobalArray[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
-static uint32_t AmountInGlobalArray[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
+static uint32_t OffsetInGlobalArray[MAX_FLAG_VALUE_CF][MAX_FLAG_VALUE_PT][MAX_FLAG_VALUE_PV];
+static uint32_t AmountInGlobalArray[MAX_FLAG_VALUE_CF][MAX_FLAG_VALUE_PT][MAX_FLAG_VALUE_PV];
 
 void RTGL1::VertexCollectorFilterTypeFlags_Init()
 {
@@ -77,9 +85,9 @@ void RTGL1::VertexCollectorFilterTypeFlags_Init()
                 uint32_t pt = (uint32_t)flpt >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
                 uint32_t pv = (uint32_t)flpv >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
 
-                assert(cf > 0 && cf <= MAX_FLAG_VALUE);
-                assert(pt > 0 && pt <= MAX_FLAG_VALUE);
-                assert(pv > 0 && pv <= MAX_FLAG_VALUE);
+                assert(cf > 0 && cf <= MAX_FLAG_VALUE_CF);
+                assert(pt > 0 && pt <= MAX_FLAG_VALUE_PT);
+                assert(pv > 0 && pv <= MAX_FLAG_VALUE_PV);
 
                 assert(index < MAX_TOP_LEVEL_INSTANCE_COUNT);
                 assert(index < FlagToIndexTypeMaxValue);
@@ -117,9 +125,9 @@ static void GetIndices(RTGL1::VertexCollectorFilterTypeFlags flags, uint32_t &cf
     pt = (flags & FT::MASK_PASS_THROUGH_GROUP      ) >> RTGL1::VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
     pv = (flags & FT::MASK_PRIMARY_VISIBILITY_GROUP) >> RTGL1::VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
 
-    assert(cf > 0 && cf <= MAX_FLAG_VALUE);
-    assert(pt > 0 && pt <= MAX_FLAG_VALUE);
-    assert(pv > 0 && pv <= MAX_FLAG_VALUE);
+    assert(cf > 0 && cf <= MAX_FLAG_VALUE_CF);
+    assert(pt > 0 && pt <= MAX_FLAG_VALUE_PT);
+    assert(pv > 0 && pv <= MAX_FLAG_VALUE_PV);
 
     // flags bits start with 1, not 0
     cf--;
@@ -256,9 +264,19 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
 
     switch (info.visibilityType)
     {
-        case RG_GEOMETRY_VISIBILITY_TYPE_WORLD:
+        case RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0:
         {
-            flags |= (FL)FT::PV_WORLD;
+            flags |= (FL)FT::PV_WORLD_0;
+            break;
+        }
+        case RG_GEOMETRY_VISIBILITY_TYPE_WORLD_1:
+        {
+            flags |= (FL)FT::PV_WORLD_1;
+            break;
+        }
+        case RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2:
+        {
+            flags |= (FL)FT::PV_WORLD_2;
             break;
         }
         case RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON:
