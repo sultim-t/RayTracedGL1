@@ -142,6 +142,8 @@ private:
     uint32_t PushGeometry(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureGeometryKHR &geom);
     void PushPrimitiveCount(VertexCollectorFilterTypeFlags type, uint32_t primCount);
     void PushRangeInfo(VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR &rangeInfo);
+   
+    uint32_t GetGeometryCount(VertexCollectorFilterTypeFlags type);
     uint32_t GetAllGeometryCount() const;
 
 private:

@@ -20,6 +20,8 @@
 
 #include "VertexCollectorFilter.h"
 
+#include "RgException.h"
+
 using namespace RTGL1;
 
 VertexCollectorFilter::VertexCollectorFilter(VertexCollectorFilterTypeFlags _filter) : filter(_filter)
@@ -56,6 +58,8 @@ uint32_t VertexCollectorFilter::PushGeometry(VertexCollectorFilterTypeFlags type
 
     uint32_t localIndex = (uint32_t)asGeometries.size();
     asGeometries.push_back(geom);
+
+    assert(localIndex < VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(type));
 
     return localIndex;
 }

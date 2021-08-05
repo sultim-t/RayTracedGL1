@@ -800,7 +800,7 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
 {
     assert(index < MAX_TOP_LEVEL_INSTANCE_COUNT);
 
-    int32_t arrayOffset = VertexCollectorFilterTypeFlags_ToOffset(blas.GetFilter()) * MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+    int32_t arrayOffset = VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray(blas.GetFilter());
     int32_t geomCount = blas.GetGeomCount();
 
     // BLAS must not be empty, if it's added to TLAS

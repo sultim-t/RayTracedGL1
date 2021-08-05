@@ -113,7 +113,12 @@ inline VertexCollectorFilterTypeFlags operator&(VertexCollectorFilterTypeFlagBit
 }
 
 void                            VertexCollectorFilterTypeFlags_Init();
-uint32_t                        VertexCollectorFilterTypeFlags_ToOffset(VertexCollectorFilterTypeFlags flags);
+uint32_t                        VertexCollectorFilterTypeFlags_GetAllBottomLevelGeomsCount();
+uint32_t                        VertexCollectorFilterTypeFlags_GetID(VertexCollectorFilterTypeFlags flags);
+// Offset of the beginning of a group (which corresponds to the specified flags) in a global array of bottom level geometries
+uint32_t                        VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray(VertexCollectorFilterTypeFlags flags);
+// Amount of bottom level geometries in a group with specified flags
+uint32_t                        VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(VertexCollectorFilterTypeFlags flags);
 const char*                     VertexCollectorFilterTypeFlags_GetNameForBLAS(VertexCollectorFilterTypeFlags flags);
 VertexCollectorFilterTypeFlags  VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadInfo &info);
 void                            VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(VertexCollectorFilterTypeFlags)> f);

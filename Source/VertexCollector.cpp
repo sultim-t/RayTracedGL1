@@ -205,6 +205,14 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     typedef VertexCollectorFilterTypeFlagBits FT;
     const VertexCollectorFilterTypeFlags geomFlags = VertexCollectorFilterTypeFlags_GetForGeometry(info);
 
+
+    // if exceeds a limit of geometries in a group with specified geomFlags
+    if (GetGeometryCount(geomFlags) + 1 >= VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(geomFlags))
+    {
+        return UINT32_MAX;
+    }
+
+
     const bool collectStatic = geomFlags & (FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE);
 
     const uint32_t maxVertexCount = collectStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
@@ -916,6 +924,13 @@ void VertexCollector::PushRangeInfo(VertexCollectorFilterTypeFlags type,
     assert(filters.find(type) != filters.end());
 
     filters[type]->PushRangeInfo(type, rangeInfo);
+}
+
+uint32_t RTGL1::VertexCollector::GetGeometryCount(VertexCollectorFilterTypeFlags type)
+{
+    assert(filters.find(type) != filters.end());
+
+    return filters[type]->GetGeometryCount();
 }
 
 uint32_t VertexCollector::GetAllGeometryCount() const

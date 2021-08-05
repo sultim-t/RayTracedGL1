@@ -50,11 +50,20 @@ void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags(std::function<void(F
 
 // max flag value in a group
 constexpr uint32_t MAX_FLAG_VALUE = 8;
+
 static FlagToIndexType FlagToIndex[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
+
+static uint32_t AllBottomLevelGeomsCount = 0;
+static uint32_t OffsetInGlobalArray[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
+static uint32_t AmountInGlobalArray[MAX_FLAG_VALUE][MAX_FLAG_VALUE][MAX_FLAG_VALUE];
 
 void RTGL1::VertexCollectorFilterTypeFlags_Init()
 {
     memset(FlagToIndex, 0xFF, sizeof(FlagToIndex));
+
+    AllBottomLevelGeomsCount = 0;
+    memset(OffsetInGlobalArray, 0, sizeof(OffsetInGlobalArray));
+
 
     uint32_t index = 0;
 
@@ -64,9 +73,9 @@ void RTGL1::VertexCollectorFilterTypeFlags_Init()
         {
             for (auto flpv : VertexCollectorFilterGroup_PrimaryVisibility)
             {
-                const uint32_t cf = (uint32_t)flcf >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF;
-                const uint32_t pt = (uint32_t)flpt >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
-                const uint32_t pv = (uint32_t)flpv >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
+                uint32_t cf = (uint32_t)flcf >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF;
+                uint32_t pt = (uint32_t)flpt >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
+                uint32_t pv = (uint32_t)flpv >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
 
                 assert(cf > 0 && cf <= MAX_FLAG_VALUE);
                 assert(pt > 0 && pt <= MAX_FLAG_VALUE);
@@ -75,27 +84,79 @@ void RTGL1::VertexCollectorFilterTypeFlags_Init()
                 assert(index < MAX_TOP_LEVEL_INSTANCE_COUNT);
                 assert(index < FlagToIndexTypeMaxValue);
 
-                FlagToIndex[cf - 1][pt - 1][pv - 1] = (FlagToIndexType)index;
+                // flags bits start with 1, not 0
+                cf--;
+                pt--;
+                pv--;
+
+                FlagToIndex[cf][pt][pv] = (FlagToIndexType)index;
 
                 index++;
+
+
+                // amount of world objects is significantly larger than first-person ones
+                bool hasLowerAmount = 
+                    (flpv & VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON) || 
+                    (flpv & VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON_VIEWER);
+
+                constexpr uint32_t LOWER_GEOMETRIES_COUNT = 16;
+                assert(LOWER_GEOMETRIES_COUNT < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
+                
+                uint32_t count = hasLowerAmount ? LOWER_GEOMETRIES_COUNT : MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+
+                AmountInGlobalArray[cf][pt][pv] = count;
+                OffsetInGlobalArray[cf][pt][pv] = AllBottomLevelGeomsCount;
+                AllBottomLevelGeomsCount += count;
             }
         }
     }
 }
 
-uint32_t RTGL1::VertexCollectorFilterTypeFlags_ToOffset(FL flags)
+static void GetIndices(RTGL1::VertexCollectorFilterTypeFlags flags, uint32_t &cf, uint32_t &pt, uint32_t &pv)
 {
-    const uint32_t cf = (flags & FT::MASK_CHANGE_FREQUENCY_GROUP)   >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF;
-    const uint32_t pt = (flags & FT::MASK_PASS_THROUGH_GROUP)       >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
-    const uint32_t pv = (flags & FT::MASK_PRIMARY_VISIBILITY_GROUP) >> VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
+    cf = (flags & FT::MASK_CHANGE_FREQUENCY_GROUP  ) >> RTGL1::VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_CF;
+    pt = (flags & FT::MASK_PASS_THROUGH_GROUP      ) >> RTGL1::VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT;
+    pv = (flags & FT::MASK_PRIMARY_VISIBILITY_GROUP) >> RTGL1::VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV;
 
     assert(cf > 0 && cf <= MAX_FLAG_VALUE);
     assert(pt > 0 && pt <= MAX_FLAG_VALUE);
     assert(pv > 0 && pv <= MAX_FLAG_VALUE);
 
-    assert(FlagToIndex[cf - 1][pt - 1][pv - 1] < MAX_TOP_LEVEL_INSTANCE_COUNT);
+    // flags bits start with 1, not 0
+    cf--;
+    pt--;
+    pv--;
 
-    return FlagToIndex[cf - 1][pt - 1][pv - 1];
+    assert(FlagToIndex[cf][pt][pv] < MAX_TOP_LEVEL_INSTANCE_COUNT);
+}
+
+uint32_t RTGL1::VertexCollectorFilterTypeFlags_GetID(VertexCollectorFilterTypeFlags flags)
+{
+    uint32_t cf, pt, pv;
+    GetIndices(flags, cf, pt, pv);
+
+    return FlagToIndex[cf][pt][pv];
+}
+
+uint32_t RTGL1::VertexCollectorFilterTypeFlags_GetAllBottomLevelGeomsCount()
+{
+    return AllBottomLevelGeomsCount;
+}
+
+uint32_t RTGL1::VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray(VertexCollectorFilterTypeFlags flags)
+{
+    uint32_t cf, pt, pv;
+    GetIndices(flags, cf, pt, pv);
+
+    return OffsetInGlobalArray[cf][pt][pv];
+}
+
+uint32_t RTGL1::VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(VertexCollectorFilterTypeFlags flags)
+{
+    uint32_t cf, pt, pv;
+    GetIndices(flags, cf, pt, pv);
+
+    return AmountInGlobalArray[cf][pt][pv];
 }
 
 struct FLName
