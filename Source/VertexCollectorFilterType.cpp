@@ -99,10 +99,9 @@ void RTGL1::VertexCollectorFilterTypeFlags_Init()
                     (flpv & VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON) || 
                     (flpv & VertexCollectorFilterTypeFlagBits::PV_FIRST_PERSON_VIEWER);
 
-                constexpr uint32_t LOWER_GEOMETRIES_COUNT = 16;
-                assert(LOWER_GEOMETRIES_COUNT < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
+                assert(LOWER_BOTTOM_LEVEL_GEOMETRIES_COUNT < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
                 
-                uint32_t count = hasLowerAmount ? LOWER_GEOMETRIES_COUNT : MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
+                uint32_t count = hasLowerAmount ? LOWER_BOTTOM_LEVEL_GEOMETRIES_COUNT : MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT;
 
                 AmountInGlobalArray[cf][pt][pv] = count;
                 OffsetInGlobalArray[cf][pt][pv] = AllBottomLevelGeomsCount;
