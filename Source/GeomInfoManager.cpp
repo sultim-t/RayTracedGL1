@@ -540,7 +540,9 @@ void RTGL1::GeomInfoManager::WriteStaticGeomInfoMaterials(uint32_t simpleIndex, 
         ShGeometryInstance *dst = GetGeomInfoAddressByGlobalIndex(i, globalIndex);
 
         // copy new material info
-        memcpy(dst->materials[layer], src.indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+        uint32_t *pMatArr = &dst->materials0A;
+
+        memcpy(&pMatArr[layer * TEXTURES_PER_MATERIAL_COUNT], src.indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
 
         // mark to be copied
         MarkGeomInfoIndexToCopy(i, simpleToLocalIndex[simpleIndex], flagsId);

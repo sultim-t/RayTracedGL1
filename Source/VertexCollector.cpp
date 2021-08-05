@@ -341,7 +341,9 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
     {
-        memcpy(geomInfo.materials[layer], materials[layer].indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
+        uint32_t *pMatArr = &geomInfo.materials0A;
+
+        memcpy(&pMatArr[layer * TEXTURES_PER_MATERIAL_COUNT], materials[layer].indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
         memcpy(geomInfo.materialColors[layer], info.layerColors[layer].data, sizeof(info.layerColors[layer].data));
 
         // ignore lower level layers, if they won't be visible (i.e. current one is opaque) 
@@ -368,8 +370,10 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
             for (uint32_t t = 0; t < TEXTURES_PER_MATERIAL_COUNT; t++)
             {
+                uint32_t *pMatArr = &geomInfo.materials0A;
+
                 // if at least one texture is not empty on this layer, add dependency 
-                if (geomInfo.materials[layer][t] != EMPTY_TEXTURE_INDEX)
+                if (pMatArr[layer * TEXTURES_PER_MATERIAL_COUNT + t] != EMPTY_TEXTURE_INDEX)
                 {
                     AddMaterialDependency(simpleIndex, layer, materialIndex);
 

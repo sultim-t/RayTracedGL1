@@ -42,8 +42,8 @@ void main()
 	const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
     const vec2 texCoord = tr.layerTexCoord[0] * baryCoords;
  
-	// check only first material
- 	const vec4 color = getTextureSample(tr.materials[0][0], texCoord) * tr.materialColors[0];
+	// check only first material's albedo
+ 	const vec4 color = getTextureSample(tr.materials[0][MATERIAL_ALBEDO_ALPHA_INDEX], texCoord) * tr.materialColors[0];
 
 	// if must be discarded
 	if ((color.r + color.g + color.b) / 3 * color.a + color.a < ALPHA_THRESHOLD)

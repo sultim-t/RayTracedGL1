@@ -172,8 +172,16 @@ struct ShGeometryInstance
 {
     float model[16];
     float prevModel[16];
-    uint32_t materials[3][4];
     float materialColors[3][4];
+    uint32_t materials0A;
+    uint32_t materials0B;
+    uint32_t materials0C;
+    uint32_t materials1A;
+    uint32_t materials1B;
+    uint32_t materials1C;
+    uint32_t materials2A;
+    uint32_t materials2B;
+    uint32_t materials2C;
     uint32_t flags;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
@@ -185,7 +193,6 @@ struct ShGeometryInstance
     float defaultMetallicity;
     float defaultEmission;
     uint32_t __pad0;
-    uint32_t __pad1;
 };
 
 struct ShTonemapping

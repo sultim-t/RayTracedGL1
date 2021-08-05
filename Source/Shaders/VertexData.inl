@@ -371,6 +371,17 @@ bool getCurrentGeometryIndexByPrev(int prevInstanceID, int prevLocalGeometryInde
     return curFrameGlobalGeomIndex != UINT32_MAX;
 }
 
+/*#define GEOMETRY_INSTANCE_TEXTURE_SET_SIZE 3
+
+uvec3 getGeometryInstanceMaterialLayer(const ShGeometryInstance inst, int layer)
+{
+    return uvec3(
+        inst.materials[layer * GEOMETRY_INSTANCE_TEXTURE_SET_SIZE + MATERIAL_ALBEDO_ALPHA_INDEX], 
+        inst.materials[layer * GEOMETRY_INSTANCE_TEXTURE_SET_SIZE + MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], 
+        inst.materials[layer * GEOMETRY_INSTANCE_TEXTURE_SET_SIZE + MATERIAL_NORMAL_INDEX]
+    );
+}*/
+
 // localGeometryIndex is index of geometry in pGeometries in BLAS
 // primitiveId is index of a triangle
 ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId)
@@ -390,7 +401,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         // only one material for dynamic geometry
-        tr.materials[0] = uvec3(inst.materials[0]);
+        tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
         tr.materials[1] = uvec3(MATERIAL_NO_TEXTURE);
         tr.materials[2] = uvec3(MATERIAL_NO_TEXTURE);
         
@@ -432,9 +443,9 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
         tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        tr.materials[0] = uvec3(inst.materials[0]);
-        tr.materials[1] = uvec3(inst.materials[1]);
-        tr.materials[2] = uvec3(inst.materials[2]);
+        tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
+        tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, inst.materials1C);
+        tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, inst.materials2C);
 
         tr.materialColors[0] = inst.materialColors[0];
         tr.materialColors[1] = inst.materialColors[1];
