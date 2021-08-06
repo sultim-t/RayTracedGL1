@@ -54,7 +54,7 @@ layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadSha
 
 uint getPrimaryVisibilityCullMask()
 {
-    return INSTANCE_MASK_ALL & (~INSTANCE_MASK_FIRST_PERSON_VIEWER);
+    return globalUniform.rayCullMaskWorld | INSTANCE_MASK_FIRST_PERSON;
 }
 
 uint getShadowCullMask(uint surfInstCustomIndex)
