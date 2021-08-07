@@ -6,7 +6,7 @@ const uint32_t RTGL1::ShFramebuffers_Count = 55;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
-    VK_FORMAT_B10G11R11_UFLOAT_PACK32,
+    VK_FORMAT_R8G8B8A8_UNORM,
     VK_FORMAT_R32_UINT,
     VK_FORMAT_R32_UINT,
     VK_FORMAT_R32_UINT,

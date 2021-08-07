@@ -498,7 +498,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.geomMetallicity = inst.defaultMetallicity;
 
     // use the first layer's color
-    tr.geomEmission = tr.materialColors[0].rgb * inst.defaultEmission;
+    tr.geomEmission = inst.defaultEmission;
 
     return tr;
 }

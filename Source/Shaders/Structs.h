@@ -29,7 +29,7 @@ struct ShTriangle
     uint    materialsBlendFlags;
     vec4    tangent;
     float   geomRoughness;
-    vec3    geomEmission;
+    float   geomEmission;
     float   geomMetallicity;
 };
 
@@ -53,7 +53,7 @@ struct ShHitInfo
     float   roughness;
     vec3    normalGeom;
     float   linearDepth;
-    vec3    emission;
-    uint    instCustomIndex;
     vec3    hitPosition;
+    uint    instCustomIndex;
+    float   emission;
 };

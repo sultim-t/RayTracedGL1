@@ -59,7 +59,7 @@ RTGL1::RasterPass::RasterPass(
         throw RgException(RG_GRAPHICS_API_ERROR, "Depth format is not supported: "s + DEPTH_FORMAT_NAME);
     }
 
-    CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], DEPTH_FORMAT);
+    CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_ALBEDO], DEPTH_FORMAT);
 
     rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass, _instanceInfo.rasterizedVertexColorGamma);
     rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
@@ -222,13 +222,13 @@ void RTGL1::RasterPass::OnShaderReload(const ShaderManager *shaderManager)
     depthCopying->OnShaderReload(shaderManager);
 }
 
-void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat)
+void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat skyFinalImageFormat, VkFormat depthImageFormat)
 {
     const int attchCount = 2;
     VkAttachmentDescription attchs[attchCount] = {};
 
     auto &colorAttch = attchs[0];
-    colorAttch.format = finalImageFormat;
+    colorAttch.format = VK_FORMAT_UNDEFINED;
     colorAttch.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
@@ -287,6 +287,8 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
     passInfo.pDependencies = &dependency;
 
     {
+        colorAttch.format = finalImageFormat;
+
         // load depth data from depthCopying
         depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
 
@@ -297,6 +299,8 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
     }
 
     {
+        colorAttch.format = skyFinalImageFormat;
+
         depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
 
         VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterSkyRenderPass);

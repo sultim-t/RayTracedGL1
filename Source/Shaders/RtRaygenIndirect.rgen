@@ -110,7 +110,7 @@ vec3 processSecondBounce(
             diffuse, specular);
         throughput *= h.albedo;
 
-        return h.emission + diffuse * throughput;
+        return h.emission * h.albedo + diffuse * throughput;
     }
     else
     {
@@ -159,7 +159,7 @@ vec3 processBounce(
             throughput_Second);
 
 
-        return h.emission + (diffuse + contrib_Second) * throughput_First;
+        return h.emission * h.albedo + (diffuse + contrib_Second) * throughput_First;
     }
     else
     {

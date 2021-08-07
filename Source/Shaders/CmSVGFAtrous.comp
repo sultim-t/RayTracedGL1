@@ -266,7 +266,7 @@ void main()
 
     if (atrousIteration == 3)
     {
-        const vec3 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0).rgb;
+        const vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
         const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).r;
         const vec3 normal        = texelFetchNormal(pix);
 
@@ -275,12 +275,10 @@ void main()
         const vec3 indirect      = SHToIrradiance(filteredIndir, normal);
 
         const vec3 illuminated = 
-            (diffuse + indirect) * albedo * (1 - surfMetallic) + 
-            specular * getSpecularColor(albedo, surfMetallic);
+            (diffuse + indirect) * albedo.rgb * (1 - surfMetallic) + 
+            specular * getSpecularColor(albedo.rgb, surfMetallic);
 
-        const vec3 isEmission = smoothstep(1.0, 1.1, albedo);
-
-        imageStore(framebufFinal, pix, vec4(mix(illuminated, min(albedo, vec3(1.0)), isEmission), 0));
+        imageStore(framebufFinal, pix, vec4(illuminated, 0));
     }
 }
 
