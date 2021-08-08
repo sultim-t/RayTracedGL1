@@ -78,9 +78,7 @@ void main()
 
     const vec3 unfilteredDiff = texelFetchUnfilteredDirect(pix);
     const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);
-    const vec3 unfilteredSpec = 
-        texelFetchUnfilteredDirectSpecular(pix) + 
-        texelFetchUnfilteredIndirectSpecular(pix);
+    const vec3 unfilteredSpec = texelFetchUnfilteredSpecular(pix);
 
     const float motionZ = texelFetch(framebufMotion_Sampler,    pix,    0).z;
 

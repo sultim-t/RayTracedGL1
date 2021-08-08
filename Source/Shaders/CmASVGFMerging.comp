@@ -66,9 +66,7 @@ void main()
             const vec3 prevColor = texelFetchUnfilteredDirect(prevPix);
             const float prevLuminance = getLuminance(prevColor);
 
-            const vec3 prevSpec =
-                texelFetchUnfilteredDirectSpecular(prevPix) + 
-                texelFetchUnfilteredIndirectSpecular(prevPix);
+            const vec3 prevSpec = texelFetchUnfilteredSpecular(prevPix);
             const float prevLuminanceSpec = getLuminance(prevSpec);
 
             if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec)

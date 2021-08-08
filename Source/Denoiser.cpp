@@ -154,11 +154,10 @@ void RTGL1::Denoiser::Denoise(
         {
             FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES,
             FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT,
-            FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT_SPECULAR,
+            FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
             FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R,
             FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G,
             FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_SPECULAR
         };
         framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 

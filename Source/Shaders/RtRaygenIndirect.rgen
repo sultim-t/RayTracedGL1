@@ -216,12 +216,14 @@ void processIndirectIllumination(
 {
     if (surfRoughness < 0.95)
     {
+        const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
+
         const vec3 contribution = processSpecular(
             seed, surfInstCustomIndex, surfPosition, 
             surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
             v, isGradientSample);
 
-        imageStoreUnfilteredIndirectSpecular(pix, contribution);
+        imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
     }
 
     {

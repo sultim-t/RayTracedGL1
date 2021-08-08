@@ -72,9 +72,7 @@ void main()
     }
 
     {
-        const vec3 color = 
-            texelFetchUnfilteredDirectSpecular(shadingSamplePix) + 
-            texelFetchUnfilteredIndirectSpecular(shadingSamplePix);
+        const vec3 color = texelFetchUnfilteredSpecular(shadingSamplePix);
         const float shadingSampleLuminance = getLuminance(color);
 
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;

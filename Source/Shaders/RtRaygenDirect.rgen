@@ -43,7 +43,7 @@ void main()
     if (depth > MAX_RAY_LENGTH)
     {
         imageStore(framebufUnfilteredDirect, pix, uvec4(0));
-        imageStore(framebufUnfilteredDirectSpecular, pix, uvec4(0));
+        imageStore(framebufUnfilteredSpecular, pix, uvec4(0));
         return;
     }
 
@@ -74,6 +74,6 @@ void main()
         0,
         diffuse, specular);
 
-    imageStoreUnfilteredDirect(         pix, diffuse);
-    imageStoreUnfilteredDirectSpecular( pix, specular);
+    imageStoreUnfilteredDirect(pix, diffuse);
+    imageStoreUnfilteredSpecular(pix, specular);
 }
