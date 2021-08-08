@@ -75,9 +75,10 @@ void main()
         float motionDepthLinearCurToPrev;
         vec2 gradDepth;
         float depthNDC;
-        const ShHitInfo h = getHitInfoGrad(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC);
+        float screenEmission;
+        const ShHitInfo h = getHitInfoPrimaryRay(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
 
-        imageStore(framebufAlbedo,              pix, vec4(h.albedo, h.emission));
+        imageStore(framebufAlbedo,              pix, vec4(h.albedo, screenEmission));
         imageStoreNormal(                       pix, h.normal);
         imageStoreNormalGeometry(               pix, h.normalGeom);
         imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));

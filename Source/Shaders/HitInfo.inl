@@ -135,10 +135,12 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
     return vec3(1 - u - v, u, v);
 }
 
-ShHitInfo getHitInfoGrad(
+ShHitInfo getHitInfoPrimaryRay(
     const ShPayload pl, 
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
-    out vec2 motion, out float motionDepthLinear, out vec2 gradDepth, out float depthNDC)
+    out vec2 motion, out float motionDepthLinear, 
+    out vec2 gradDepth, out float depthNDC,
+    out float screenEmission)
 #else
 ShHitInfo getHitInfoBounce(
     const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias,
@@ -240,12 +242,20 @@ ShHitInfo getHitInfoBounce(
         h.roughness = rme[0];
         h.metallic  = rme[1];
         h.emission  = rme[2] * globalUniform.emissionMapBoost + tr.geomEmission;
+
+    #ifdef TEXTURE_GRADIENTS
+        screenEmission = clamp(rme[2] + tr.geomEmission, 0.0, 1.0);
+    #endif
     }
     else
     {
         h.roughness = tr.geomRoughness;
         h.metallic  = tr.geomMetallicity;
         h.emission  = tr.geomEmission;
+
+    #ifdef TEXTURE_GRADIENTS
+        screenEmission = clamp(h.emission, 0.0, 1.0);
+    #endif
     }
 
     h.normalGeom = safeNormalize(tr.normals * baryCoords);
