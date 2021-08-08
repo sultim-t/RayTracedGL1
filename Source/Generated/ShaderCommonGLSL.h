@@ -221,7 +221,7 @@ struct ShVertPreprocessing
 #ifdef DESC_SET_FRAMEBUFFERS
 
 // framebuffers
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba8) uniform image2D framebufAlbedo;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba16f) uniform image2D framebufAlbedo;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 1, r32ui) uniform uimage2D framebufNormal;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 2, r32ui) uniform uimage2D framebufNormal_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 3, r32ui) uniform uimage2D framebufNormalGeometry;
