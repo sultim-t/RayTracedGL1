@@ -133,3 +133,7 @@ void main()
         case 4: imageStore(framebufBloom_Mip5, downsampledPix, vec4(downsample13tap(framebufBloom_Mip4_Sampler, srcUV), 0.0)); break;
     }
 }
+
+#if COMPUTE_BLOOM_STEP_COUNT != 5
+    #error Recheck COMPUTE_BLOOM_STEP_COUNT
+#endif

@@ -101,3 +101,7 @@ void main()
         case 0: imageStore(framebufFinal,      upsampledPix, vec4(filterTent3x3(framebufBloom_Mip1_Sampler, srcUV), 0.0)); break;
     }
 }
+
+#if COMPUTE_BLOOM_STEP_COUNT != 5
+    #error Recheck COMPUTE_BLOOM_STEP_COUNT
+#endif
