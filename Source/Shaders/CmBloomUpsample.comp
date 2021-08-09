@@ -44,7 +44,7 @@ vec2 getInverseUpscampledSize()
 // get UV coords in [0..1] range
 vec2 getSrcUV(const ivec2 upsampledPix)
 {
-    return clamp((vec2(upsampledPix) + 0.5) * getInverseUpscampledSize(), 0, 1);
+    return (vec2(upsampledPix) + 0.5) * getInverseUpscampledSize();
 }
 
 vec3 getSample(sampler2D srcSampler, const vec2 uv)
@@ -86,6 +86,11 @@ void main()
     // each step upsamples source by 2
     const ivec2 upsampledPix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
     const vec2 srcUV = getSrcUV(upsampledPix);
+
+    if (srcUV.x > 1.0 || srcUV.y > 1.0)
+    {
+        return;
+    }
 
     switch (stepIndex)
     {

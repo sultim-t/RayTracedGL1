@@ -43,7 +43,7 @@ vec2 getInverseDownsampledSize()
 // get UV coords in [0..1] range
 vec2 getSrcUV(const ivec2 downsampledPix)
 {
-    return clamp((vec2(downsampledPix) + 0.5) * getInverseDownsampledSize(), 0, 1);
+    return (vec2(downsampledPix) + 0.5) * getInverseDownsampledSize();
 }
 
 vec3 getSample(sampler2D srcSampler, const vec2 uv)
@@ -51,6 +51,13 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
     if (stepIndex == 0)
     {
         const vec4 albedo = textureLod(framebufAlbedo_Sampler, uv, 0);
+        const float depth = textureLod(framebufDepth_Sampler,  uv, 0).r;
+        
+        if (depth > MAX_RAY_LENGTH)
+        {
+            return albedo.rgb * globalUniform.skyColorMultiplier * 0.05;
+        }
+        
         const vec3 emis = albedo.rgb * albedo.a * globalUniform.emissionMaxScreenColor;
 
         const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;
@@ -131,6 +138,11 @@ void main()
     const ivec2 downsampledPix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
     const vec2 srcUV = getSrcUV(downsampledPix);
 
+    if (srcUV.x > 1.0 || srcUV.y > 1.0)
+    {
+        return;
+    }
+    
     switch (stepIndex)
     {
         case 0: imageStore(framebufBloom_Mip1, downsampledPix, vec4(downsample13tap(framebufFinal_Sampler,      srcUV), 0.0)); break;
