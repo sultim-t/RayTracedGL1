@@ -75,10 +75,10 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
                             0, nullptr);
 
 
-    for (uint32_t i = 0; i < COMPUTE_BLOOM_STEP_COUNT; i++)
+    for (int i = 0; i < COMPUTE_BLOOM_STEP_COUNT; i++)
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X);
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y);
+        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X));
+        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y));
 
         CmdLabel label(cmd, "Bloom downsample iteration");
 
@@ -97,10 +97,10 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
 
 
     // start from the other side
-    for (uint32_t i = COMPUTE_BLOOM_STEP_COUNT - 1; i >= 0; i--)
+    for (int i = COMPUTE_BLOOM_STEP_COUNT - 1; i >= 0; i--)
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X);
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y);
+        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X));
+        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y));
 
         CmdLabel label(cmd, "Bloom upsample iteration");
 
@@ -182,10 +182,10 @@ void RTGL1::Bloom::CreatePipelines(const ShaderManager * shaderManager)
         VkComputePipelineCreateInfo plInfo = {};
         plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
         plInfo.layout = pipelineLayout;
-        plInfo.stage.pSpecializationInfo = &specInfo;
 
         {
             plInfo.stage = shaderManager->GetStageInfo("CBloomDownsample");
+            plInfo.stage.pSpecializationInfo = &specInfo;
 
             VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &downsamplePipelines[i]);
             VK_CHECKERROR(r);
@@ -195,6 +195,7 @@ void RTGL1::Bloom::CreatePipelines(const ShaderManager * shaderManager)
 
         {
             plInfo.stage = shaderManager->GetStageInfo("CBloomUpsample");
+            plInfo.stage.pSpecializationInfo = &specInfo;
 
             VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &upsamplePipelines[i]);
             VK_CHECKERROR(r);

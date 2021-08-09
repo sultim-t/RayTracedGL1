@@ -43,6 +43,7 @@
 #include "CubemapManager.h"
 #include "Denoiser.h"
 #include "UserFunction.h"
+#include "Bloom.h"
 
 namespace RTGL1
 {
@@ -141,6 +142,7 @@ private:
     std::shared_ptr<Denoiser>               denoiser;
     std::shared_ptr<Tonemapping>            tonemapping;
     std::shared_ptr<ImageComposition>       imageComposition;
+    std::shared_ptr<Bloom>                  bloom;
 
     std::shared_ptr<SamplerManager>         samplerManager;
     std::shared_ptr<BlueNoise>              blueNoise;

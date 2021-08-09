@@ -175,6 +175,12 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform, 
         tonemapping);
 
+    bloom               = std::make_shared<Bloom>(
+        device,
+        framebuffers,
+        shaderManager,
+        uniform);
+
     denoiser            = std::make_shared<Denoiser>(
         device,
         framebuffers,
@@ -191,6 +197,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(rtPipeline);
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
+    shaderManager->Subscribe(bloom);
 
     framebuffers->Subscribe(rasterizer);
 }
@@ -206,6 +213,7 @@ VulkanDevice::~VulkanDevice()
     framebuffers.reset();
     tonemapping.reset();
     imageComposition.reset();
+    bloom.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -468,6 +476,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         tonemapping->Tonemap(cmd, frameIndex, uniform);
     }
 
+
+    bloom->Apply(cmd, frameIndex, uniform);
     // final image composition
     imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
 
