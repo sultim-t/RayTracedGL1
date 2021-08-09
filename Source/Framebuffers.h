@@ -136,7 +136,7 @@ inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameInd
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        b.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
+        b.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
         b.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
         b.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 
