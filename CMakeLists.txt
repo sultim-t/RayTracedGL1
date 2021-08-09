@@ -73,6 +73,7 @@ set(PrivateHeaders
     "Source/UserFunction.h"
     "Source/RgException.h"
     "Source/CmdLabel.h"
+    "Source/Bloom.h"
 )
 
 set(Sources
@@ -128,6 +129,7 @@ set(Sources
     "Source/SwapchainPass.cpp"
     "Source/UserFunction.cpp"    
     "Source/RgException.cpp"
+    "Source/Bloom.cpp"
 )
 
 
