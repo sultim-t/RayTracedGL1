@@ -33,7 +33,7 @@ layout (constant_id = 0) const uint stepIndex = 0;
 
 vec2 getInverseSrcSize()
 {
-    return vec2(float(1 << (stepIndex + 1)) / globalUniform.renderWidth, float(1 << (1 + stepIndex)) / globalUniform.renderHeight);
+    return vec2(float(1 << (stepIndex + 1)) / globalUniform.renderWidth, float(1 << (stepIndex + 1)) / globalUniform.renderHeight);
 }
 
 vec2 getInverseUpscampledSize()
@@ -44,7 +44,7 @@ vec2 getInverseUpscampledSize()
 // get UV coords in [0..1] range
 vec2 getSrcUV(const ivec2 upsampledPix)
 {
-    return (vec2(upsampledPix) + 0.5) * getInverseUpscampledSize();
+    return clamp((vec2(upsampledPix) + 0.5) * getInverseUpscampledSize(), 0, 1);
 }
 
 vec3 getSample(sampler2D srcSampler, const vec2 uv)
@@ -87,18 +87,19 @@ void main()
     const ivec2 upsampledPix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
     const vec2 srcUV = getSrcUV(upsampledPix);
 
-    if (srcUV.x > 1.0 || srcUV.y > 1.0)
-    {
-        return;
-    }
-
     switch (stepIndex)
     {
         case 4: imageStore(framebufBloom_Mip4, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip5_Sampler, srcUV), 0.0)); break;
         case 3: imageStore(framebufBloom_Mip3, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip4_Sampler, srcUV), 0.0)); break;
         case 2: imageStore(framebufBloom_Mip2, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;
         case 1: imageStore(framebufBloom_Mip1, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip2_Sampler, srcUV), 0.0)); break;
-        case 0: imageStore(framebufFinal,      upsampledPix, vec4(filterTent3x3(framebufBloom_Mip1_Sampler, srcUV), 0.0)); break;
+        case 0: 
+            const vec3 bloom = filterTent3x3(framebufBloom_Mip1_Sampler, srcUV);
+            const vec3 src = texelFetch(framebufFinal_Sampler, upsampledPix, 0).rgb;
+
+            const float bloomIntensity = 1.0;
+            imageStore(framebufFinal, upsampledPix, vec4(src + bloom * bloomIntensity, 0.0));
+            break;
     }
 }
 

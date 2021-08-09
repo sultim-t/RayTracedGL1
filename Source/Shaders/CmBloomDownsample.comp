@@ -43,11 +43,23 @@ vec2 getInverseDownsampledSize()
 // get UV coords in [0..1] range
 vec2 getSrcUV(const ivec2 downsampledPix)
 {
-    return (vec2(downsampledPix) + 0.5) * getInverseDownsampledSize();
+    return clamp((vec2(downsampledPix) + 0.5) * getInverseDownsampledSize(), 0, 1);
 }
 
 vec3 getSample(sampler2D srcSampler, const vec2 uv)
 {
+    if (stepIndex == 0)
+    {
+        const vec4 albedo = textureLod(framebufAlbedo_Sampler, uv, 0);
+        const vec3 emis = albedo.rgb * albedo.a * globalUniform.emissionMaxScreenColor;
+
+        const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;
+
+        const float threshold = 0.5;
+        const float thresholdLen = 0.25;
+        return lt * smoothstep(threshold, threshold + thresholdLen, getLuminance(lt));
+    }
+
     return textureLod(srcSampler, uv, 0).rgb;
 }
 
@@ -87,11 +99,11 @@ vec3 downsample13tap(sampler2D srcSampler, const vec2 centerUV)
     {
         const vec3 box[] =
         {
-            taps[3] + taps[4] + taps[8] + taps[9], 
-            taps[0] + taps[1] + taps[5] + taps[6], 
-            taps[1] + taps[2] + taps[6] + taps[7], 
-            taps[5] + taps[6] + taps[10] + taps[11], 
-            taps[6] + taps[7] + taps[11] + taps[12], 
+            0.25 * (taps[3] + taps[4] + taps[8]  + taps[9]), 
+            0.25 * (taps[0] + taps[1] + taps[5]  + taps[6]), 
+            0.25 * (taps[1] + taps[2] + taps[6]  + taps[7]), 
+            0.25 * (taps[5] + taps[6] + taps[10] + taps[11]), 
+            0.25 * (taps[6] + taps[7] + taps[11] + taps[12]), 
         };
 
         // weight by partial Karis average to reduce fireflies
@@ -105,11 +117,11 @@ vec3 downsample13tap(sampler2D srcSampler, const vec2 centerUV)
     else
     {
         return 
-            0.5   * (taps[3] + taps[4] + taps[8] + taps[9]) + 
-            0.125 * (taps[0] + taps[1] + taps[5] + taps[6]) + 
-            0.125 * (taps[1] + taps[2] + taps[6] + taps[7]) + 
-            0.125 * (taps[5] + taps[6] + taps[10] + taps[11]) + 
-            0.125 * (taps[6] + taps[7] + taps[11] + taps[12]);
+            0.5   * (0.25 * (taps[3] + taps[4] + taps[8]  + taps[9]))  + 
+            0.125 * (0.25 * (taps[0] + taps[1] + taps[5]  + taps[6]))  + 
+            0.125 * (0.25 * (taps[1] + taps[2] + taps[6]  + taps[7]))  + 
+            0.125 * (0.25 * (taps[5] + taps[6] + taps[10] + taps[11])) + 
+            0.125 * (0.25 * (taps[6] + taps[7] + taps[11] + taps[12]));
     }
 }
 
@@ -118,11 +130,6 @@ void main()
     // each step downsamples source by 2
     const ivec2 downsampledPix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
     const vec2 srcUV = getSrcUV(downsampledPix);
-
-    if (srcUV.x > 1.0 || srcUV.y > 1.0)
-    {
-        return;
-    }
 
     switch (stepIndex)
     {
