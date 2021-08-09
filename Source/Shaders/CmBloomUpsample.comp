@@ -1,0 +1,103 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+// http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X, local_size_y = COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y, local_size_z = 1) in;
+
+// for upsampling, stepIndex is decreasing by 1 on each step
+layout (constant_id = 0) const uint stepIndex = 0;
+
+vec2 getInverseSrcSize()
+{
+    return vec2(float(1 << (stepIndex + 1)) / globalUniform.renderWidth, float(1 << (1 + stepIndex)) / globalUniform.renderHeight);
+}
+
+vec2 getInverseUpscampledSize()
+{
+    return vec2(float(1 << stepIndex) / globalUniform.renderWidth, float(1 << stepIndex) / globalUniform.renderHeight);
+}
+
+// get UV coords in [0..1] range
+vec2 getSrcUV(const ivec2 upsampledPix)
+{
+    return (vec2(upsampledPix) + 0.5) * getInverseUpscampledSize();
+}
+
+vec3 getSample(sampler2D srcSampler, const vec2 uv)
+{
+    return textureLod(srcSampler, uv, 0).rgb;
+}
+
+vec3 filterTent3x3(sampler2D srcSampler, const vec2 centerUV)
+{
+    const vec2 invSrcSize = getInverseSrcSize();
+    const float radius = 1.0;
+
+    const vec2 offsets[] = 
+    {
+        vec2(-1,-1), vec2(0,-1), vec2(1,-1),
+        vec2(-1, 0), vec2(0, 0), vec2(1, 0),
+        vec2(-1, 1), vec2(0, 1), vec2(1, 1),
+    };
+
+    const float weights[] = 
+    {
+        1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0,
+        2.0 / 16.0, 4.0 / 16.0, 2.0 / 16.0,
+        1.0 / 16.0, 2.0 / 16.0, 1.0 / 16.0,
+    };
+    
+    vec3 r = vec3(0.0);
+
+    for (int i = 0; i < 9; i++)
+    {
+        r += weights[i] * getSample(srcSampler, centerUV + offsets[i] * invSrcSize * radius);
+    }
+
+    return r;
+}
+
+void main()
+{
+    // each step upsamples source by 2
+    const ivec2 upsampledPix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    const vec2 srcUV = getSrcUV(upsampledPix);
+
+    if (srcUV.x > 1.0 || srcUV.y > 1.0)
+    {
+        return;
+    }
+
+    switch (stepIndex)
+    {
+        case 4: imageStore(framebufBloom_Mip4, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip5_Sampler, srcUV), 0.0)); break;
+        case 3: imageStore(framebufBloom_Mip3, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip4_Sampler, srcUV), 0.0)); break;
+        case 2: imageStore(framebufBloom_Mip2, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;
+        case 1: imageStore(framebufBloom_Mip1, upsampledPix, vec4(filterTent3x3(framebufBloom_Mip2_Sampler, srcUV), 0.0)); break;
+        case 0: imageStore(framebufFinal,      upsampledPix, vec4(filterTent3x3(framebufBloom_Mip1_Sampler, srcUV), 0.0)); break;
+    }
+}

@@ -1,0 +1,135 @@
+// Copyright (c) 2021 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+// http://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare
+
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout(local_size_x = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X, local_size_y = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y, local_size_z = 1) in;
+
+layout (constant_id = 0) const uint stepIndex = 0;
+
+vec2 getInverseSrcSize()
+{
+    return vec2(float(1 << stepIndex) / globalUniform.renderWidth, float(1 << stepIndex) / globalUniform.renderHeight);
+}
+
+vec2 getInverseDownsampledSize()
+{
+    return vec2(float(1 << (stepIndex + 1)) / globalUniform.renderWidth, float(1 << (stepIndex + 1)) / globalUniform.renderHeight);
+}
+
+// get UV coords in [0..1] range
+vec2 getSrcUV(const ivec2 downsampledPix)
+{
+    return (vec2(downsampledPix) + 0.5) * getInverseDownsampledSize();
+}
+
+vec3 getSample(sampler2D srcSampler, const vec2 uv)
+{
+    return textureLod(srcSampler, uv, 0).rgb;
+}
+
+float getKarisWeight(const vec3 box4x4)
+{
+    return 1.0 / (1.0 + getLuminance(box4x4));
+}
+
+vec3 downsample13tap(sampler2D srcSampler, const vec2 centerUV)
+{
+    const vec2 invSrcSize = getInverseSrcSize();
+
+    // line by line indexing, slide 153
+    const vec3 taps[] = 
+    {
+        getSample(srcSampler, centerUV + vec2(-2,-2) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 0,-2) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 2,-2) * invSrcSize),
+
+        getSample(srcSampler, centerUV + vec2(-1,-1) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 1,-1) * invSrcSize),
+
+        getSample(srcSampler, centerUV + vec2(-2, 0) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 0, 0) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 2, 0) * invSrcSize),
+
+        getSample(srcSampler, centerUV + vec2(-1, 1) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 1, 1) * invSrcSize),
+
+        getSample(srcSampler, centerUV + vec2(-2, 2) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 0, 2) * invSrcSize),
+        getSample(srcSampler, centerUV + vec2( 2, 2) * invSrcSize),
+    };
+
+    // on the first downsample use Karis average
+    if (stepIndex == 0)
+    {
+        const vec3 box[] =
+        {
+            taps[3] + taps[4] + taps[8] + taps[9], 
+            taps[0] + taps[1] + taps[5] + taps[6], 
+            taps[1] + taps[2] + taps[6] + taps[7], 
+            taps[5] + taps[6] + taps[10] + taps[11], 
+            taps[6] + taps[7] + taps[11] + taps[12], 
+        };
+
+        // weight by partial Karis average to reduce fireflies
+        return 
+            0.5   * getKarisWeight(box[0]) * box[0] + 
+            0.125 * getKarisWeight(box[1]) * box[1] + 
+            0.125 * getKarisWeight(box[2]) * box[2] + 
+            0.125 * getKarisWeight(box[3]) * box[3] + 
+            0.125 * getKarisWeight(box[4]) * box[4];
+    }
+    else
+    {
+        return 
+            0.5   * (taps[3] + taps[4] + taps[8] + taps[9]) + 
+            0.125 * (taps[0] + taps[1] + taps[5] + taps[6]) + 
+            0.125 * (taps[1] + taps[2] + taps[6] + taps[7]) + 
+            0.125 * (taps[5] + taps[6] + taps[10] + taps[11]) + 
+            0.125 * (taps[6] + taps[7] + taps[11] + taps[12]);
+    }
+}
+
+void main()
+{
+    // each step downsamples source by 2
+    const ivec2 downsampledPix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    const vec2 srcUV = getSrcUV(downsampledPix);
+
+    if (srcUV.x > 1.0 || srcUV.y > 1.0)
+    {
+        return;
+    }
+
+    switch (stepIndex)
+    {
+        case 0: imageStore(framebufBloom_Mip1, downsampledPix, vec4(downsample13tap(framebufFinal_Sampler,      srcUV), 0.0)); break;
+        case 1: imageStore(framebufBloom_Mip2, downsampledPix, vec4(downsample13tap(framebufBloom_Mip1_Sampler, srcUV), 0.0)); break;
+        case 2: imageStore(framebufBloom_Mip3, downsampledPix, vec4(downsample13tap(framebufBloom_Mip2_Sampler, srcUV), 0.0)); break;
+        case 3: imageStore(framebufBloom_Mip4, downsampledPix, vec4(downsample13tap(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;
+        case 4: imageStore(framebufBloom_Mip5, downsampledPix, vec4(downsample13tap(framebufBloom_Mip4_Sampler, srcUV), 0.0)); break;
+    }
+}
