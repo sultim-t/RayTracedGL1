@@ -225,17 +225,35 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
     
         extent = { width, height, 1 };
 
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_HALF)
+        int downscale = 1;
+
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_2)
         {
-            extent.width = (width + 1) / 2;
-            extent.height = (height + 1) / 2;
+            downscale = 2;
         }
-                
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_THIRD)
+        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3)
         {
-            extent.width = (width + 2) / 3;
-            extent.height = (height + 2) / 3;
+            downscale = 3;
         }
+        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_4)
+        {
+            downscale = 4;
+        }
+        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_8)
+        {
+            downscale = 8;
+        }
+        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_16)
+        {
+            downscale = 16;
+        }
+        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_32)
+        {
+            downscale = 32;
+        }
+
+        extent.width = (width + 1) / downscale;
+        extent.height = (height + 1) / downscale;
 
         extent.width  = std::max(1u, extent.width); 
         extent.height = std::max(1u, extent.height);
@@ -313,7 +331,9 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
 
 void Framebuffers::UpdateDescriptors()
 {
-    VkSampler nearestSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+    // texelFetch should be used to get a specific texel,
+    // and texture/textureLod for sampling with bilinear interpolation
+    VkSampler bilinearSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
     const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
@@ -331,7 +351,7 @@ void Framebuffers::UpdateDescriptors()
     // gsampler2D
     for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
     {
-        imageInfos[samplerBindingOffset + i].sampler = nearestSampler;
+        imageInfos[samplerBindingOffset + i].sampler = bilinearSampler;
         imageInfos[samplerBindingOffset + i].imageView = imageViews[i];
         imageInfos[samplerBindingOffset + i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     }
