@@ -334,6 +334,7 @@ void Framebuffers::UpdateDescriptors()
     // texelFetch should be used to get a specific texel,
     // and texture/textureLod for sampling with bilinear interpolation
     VkSampler bilinearSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    VkSampler nearestSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
     const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
@@ -351,7 +352,9 @@ void Framebuffers::UpdateDescriptors()
     // gsampler2D
     for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
     {
-        imageInfos[samplerBindingOffset + i].sampler = bilinearSampler;
+        bool useBilinear = ShFramebuffers_Flags[i] & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_BILINEAR_SAMPLER;
+
+        imageInfos[samplerBindingOffset + i].sampler = useBilinear ? bilinearSampler : nearestSampler;
         imageInfos[samplerBindingOffset + i].imageView = imageViews[i];
         imageInfos[samplerBindingOffset + i].imageLayout = VK_IMAGE_LAYOUT_GENERAL;
     }

@@ -558,6 +558,7 @@ FRAMEBUF_FLAGS_FORCE_SIZE_1_4       = 1 << 5
 FRAMEBUF_FLAGS_FORCE_SIZE_1_8       = 1 << 6
 FRAMEBUF_FLAGS_FORCE_SIZE_1_16      = 1 << 7
 FRAMEBUF_FLAGS_FORCE_SIZE_1_32      = 1 << 8
+FRAMEBUF_FLAGS_BILINEAR_SAMPLER     = 1 << 9
 
 # only these flags are shown for C++ side
 FRAMEBUF_FLAGS_ENUM = {
@@ -568,6 +569,7 @@ FRAMEBUF_FLAGS_ENUM = {
     "FRAMEBUF_FLAGS_FORCE_SIZE_1_8"     : FRAMEBUF_FLAGS_FORCE_SIZE_1_8,
     "FRAMEBUF_FLAGS_FORCE_SIZE_1_16"    : FRAMEBUF_FLAGS_FORCE_SIZE_1_16,
     "FRAMEBUF_FLAGS_FORCE_SIZE_1_32"    : FRAMEBUF_FLAGS_FORCE_SIZE_1_32,
+    "FRAMEBUF_FLAGS_BILINEAR_SAMPLER"   : FRAMEBUF_FLAGS_BILINEAR_SAMPLER,
 }
 
 FRAMEBUFFERS = {
@@ -586,7 +588,7 @@ FRAMEBUFFERS = {
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
-    "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
 
     "AccumHistoryLength"                : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
@@ -619,11 +621,11 @@ FRAMEBUFFERS = {
     "IndirPingGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
     "IndirPongGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
 
-    "Bloom_Mip1"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_2),
-    "Bloom_Mip2"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_4),
-    "Bloom_Mip3"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_8),
-    "Bloom_Mip4"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_16),
-    "Bloom_Mip5"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_32),
+    "Bloom_Mip1"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_2  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
+    "Bloom_Mip2"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_4  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
+    "Bloom_Mip3"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_8  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
+    "Bloom_Mip4"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_16 | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
+    "Bloom_Mip5"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_32 | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
 }
 
 
