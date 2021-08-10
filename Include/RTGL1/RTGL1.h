@@ -813,7 +813,7 @@ typedef struct RgDrawFrameBloomParams
     float upsampleRadius;
     float bloomEmissionMultiplier;
     float bloomSkyMultiplier;
-};
+} RgDrawFrameBloomParams;
 
 typedef struct RgDrawFrameInfo
 {
