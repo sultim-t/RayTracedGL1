@@ -241,10 +241,10 @@ ShHitInfo getHitInfoBounce(
 
         h.roughness = rme[0];
         h.metallic  = rme[1];
-        h.emission  = rme[2] * globalUniform.emissionMapBoost + tr.geomEmission;
+        h.emission  = rme[2] * globalUniform.emissionMapBoost /*+ tr.geomEmission*/;
 
     #ifdef TEXTURE_GRADIENTS
-        screenEmission = clamp(rme[2] + tr.geomEmission, 0.0, 1.0);
+        screenEmission = clamp(rme[2] /*+ tr.geomEmission*/, 0.0, 1.0);
     #endif
     }
     else
