@@ -162,6 +162,14 @@ struct ShGlobalUniform
     uint maxBounceShadowsSphereLights;
     uint maxBounceShadowsSpotlights;
     uint rayCullMaskWorld;
+    float bloomThreshold;
+    float bloomThresholdLength;
+    float bloomUpsampleRadius;
+    float bloomIntensity;
+    float bloomEmissionMultiplier;
+    float bloomSkyMultiplier;
+    float _pad2;
+    float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

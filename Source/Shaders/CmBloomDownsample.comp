@@ -51,20 +51,20 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
     if (stepIndex == 0)
     {
         const vec4 albedo = textureLod(framebufAlbedo_Sampler, uv, 0);
-        const float depth = textureLod(framebufDepth_Sampler,  uv, 0).r;
+        const bool isSky = textureLod(framebufDepth_Sampler,  uv, 0).r > MAX_RAY_LENGTH;
         
-        if (depth > MAX_RAY_LENGTH)
+        if (isSky)
         {
-            return albedo.rgb * globalUniform.skyColorMultiplier * 0.05;
+            return albedo.rgb * globalUniform.skyColorMultiplier * globalUniform.bloomSkyMultiplier;
         }
         
-        const vec3 emis = albedo.rgb * albedo.a * globalUniform.emissionMaxScreenColor;
+        const vec3 emis = albedo.rgb * albedo.a * globalUniform.bloomEmissionMultiplier;
 
         const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;
 
-        const float threshold = 0.5;
-        const float thresholdLen = 0.25;
-        return lt * smoothstep(threshold, threshold + thresholdLen, getLuminance(lt));
+        return lt * smoothstep(globalUniform.bloomThreshold, 
+                               globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
+                               (lt.x + lt.y + lt.z) / 3.0);
     }
 
     return textureLod(srcSampler, uv, 0).rgb;

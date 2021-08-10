@@ -55,7 +55,6 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
 vec3 filterTent3x3(sampler2D srcSampler, const vec2 centerUV)
 {
     const vec2 invSrcSize = getInverseSrcSize();
-    const float radius = 1.0;
 
     const vec2 offsets[] = 
     {
@@ -75,7 +74,7 @@ vec3 filterTent3x3(sampler2D srcSampler, const vec2 centerUV)
 
     for (int i = 0; i < 9; i++)
     {
-        r += weights[i] * getSample(srcSampler, centerUV + offsets[i] * invSrcSize * radius);
+        r += weights[i] * getSample(srcSampler, centerUV + offsets[i] * invSrcSize * globalUniform.bloomUpsampleRadius);
     }
 
     return r;
@@ -102,8 +101,7 @@ void main()
             const vec3 bloom = filterTent3x3(framebufBloom_Mip1_Sampler, srcUV);
             const vec3 src = texelFetch(framebufFinal_Sampler, upsampledPix, 0).rgb;
 
-            const float bloomIntensity = 1.0;
-            imageStore(framebufFinal, upsampledPix, vec4(src + bloom * bloomIntensity, 0.0));
+            imageStore(framebufFinal, upsampledPix, vec4(src + bloom * globalUniform.bloomIntensity, 0.0));
             break;
     }
 }

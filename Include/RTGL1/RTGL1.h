@@ -804,6 +804,17 @@ typedef struct RgDrawFrameShadowParams
     uint32_t            maxBounceShadowsSpotlights;
 } RgDrawFrameShadowParams;
 
+typedef struct RgDrawFrameBloomParams
+{
+    // Negative value disables bloom pass
+    float bloomIntensity;
+    float inputThreshold;
+    float inputThresholdLength;
+    float upsampleRadius;
+    float bloomEmissionMultiplier;
+    float bloomSkyMultiplier;
+};
+
 typedef struct RgDrawFrameInfo
 {
     // View and projection matrices are column major.
@@ -811,6 +822,7 @@ typedef struct RgDrawFrameInfo
     float               projection[16];
     // What world parts to render. Mask bits are in [0..0x7]
     // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD_*
+    // Default value: 0x7
     uint32_t            rayCullMaskWorld;
     RgBool32            disableRayTracing;
     RgBool32            disableRasterization;
@@ -821,6 +833,7 @@ typedef struct RgDrawFrameInfo
     // Null, if default values should be used.
     const RgDrawFrameShadowParams               *pShadowParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
+    const RgDrawFrameBloomParams                *pBloomParams;
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameOverridenTexturesParams    *pOverridenTexturesParams;
     const RgDrawFrameDebugParams                *pDebugParams;

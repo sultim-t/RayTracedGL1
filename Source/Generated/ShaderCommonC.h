@@ -167,6 +167,14 @@ struct ShGlobalUniform
     uint32_t maxBounceShadowsSphereLights;
     uint32_t maxBounceShadowsSpotlights;
     uint32_t rayCullMaskWorld;
+    float bloomThreshold;
+    float bloomThresholdLength;
+    float bloomUpsampleRadius;
+    float bloomIntensity;
+    float bloomEmissionMultiplier;
+    float bloomSkyMultiplier;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];
