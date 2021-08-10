@@ -58,16 +58,14 @@ void main()
     }
 #endif
 
-    vec3 color;
+    vec3 color = imageLoad(framebufFinal, pix).rgb;
 
     const vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
     const float depth = texelFetch(framebufDepth_Sampler,  pix, 0).r;
     
+    // if not sky
     if (depth < MAX_RAY_LENGTH)
     {
-        color = imageLoad(framebufFinal, pix).rgb;
-            
-            
         const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
         const float lInAdj = lIn / tonemapping.avgLuminance;
         // Reinhard
@@ -81,8 +79,18 @@ void main()
     }
     else
     {
-        // sky
-        color = albedo.rgb;
+        if (globalUniform.bloomIntensity > 0.0)
+        {
+            // if bloom is enabled, need to minimize the color difference between sky and scene
+            // this fixes it (a good way to avoid this is to bring HDR sky) 
+            color /= max(0.001, globalUniform.bloomSkyMultiplier * 2);
+
+            color += albedo.rgb;
+        }
+        else
+        {
+            color = albedo.rgb;
+        }
     }
 
     if (globalUniform.dbgShowGradients != 0)
