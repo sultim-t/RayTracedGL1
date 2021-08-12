@@ -214,7 +214,7 @@ void processIndirectIllumination(
     const float surfRoughness, const vec3 surfSpecularColor, 
     const vec3 v, const bool isGradientSample)
 {
-    if (surfRoughness <= FAKE_ROUGH_SPECULAR_THRESHOLD)
+    if (surfRoughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
     {
         const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
 
