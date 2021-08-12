@@ -38,26 +38,41 @@ vec3 getRayDir(vec2 inUV)
 {
     inUV = inUV * 2.0 - 1.0;
     
-    vec4 target = globalUniform.invProjection * vec4(inUV.x, inUV.y, 1, 1);
-    vec4 rayDir = globalUniform.invView * vec4(normalize(target.xyz / target.w), 0);
+    const vec4 target = globalUniform.invProjection * vec4(inUV.x, inUV.y, 1, 1);
+    const vec4 rayDir = globalUniform.invView * vec4(normalize(target.xyz / target.w), 0);
     
     return rayDir.xyz;
 }
 
+vec2 getPixelUV()
+{
+    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+    return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+}
+ivec2 getCheckerboardPix()
+{
+    const int x = int(gl_LaunchIDEXT.x);
+    const int y = int(gl_LaunchIDEXT.y);
+
+    const int isEven = (x + y % 2) % 2;
+
+    return ivec2(
+        isEven * getCheckerboardSeparatorX() + x / 2,
+        y
+    );
+}
+
 void main() 
 {
-    const vec3 origin = globalUniform.cameraPosition.xyz;
-
-    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
-    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
-    vec2 inUV = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+    const ivec2 pix = getCheckerboardPix();
+    const vec2 inUV = getPixelUV();
 
     const float AX = 1.0 / globalUniform.renderWidth;
     const float AY = 1.0 / globalUniform.renderHeight;
 
-    vec3 rayDir   = getRayDir(inUV);
-    vec3 rayDirAX = getRayDir(inUV + vec2(AX, 0.0));
-    vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
+    const vec3 rayDir   = getRayDir(inUV);
+    const vec3 rayDirAX = getRayDir(inUV + vec2(AX, 0.0));
+    const vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
 
     imageStore(framebufViewDirection, pix, vec4(rayDir, 0.0));
 
@@ -65,6 +80,7 @@ void main()
     imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
     
     
+    const vec3 origin = globalUniform.cameraPosition.xyz;
     const ShPayload p = tracePrimaryRay(origin, rayDir);
 
 

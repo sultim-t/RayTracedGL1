@@ -226,11 +226,19 @@ ivec2 getPrevFramePix(sampler2D motionSampler, const ivec2 curFramePix)
 #endif // DESC_SET_FRAMEBUFFERS
 #endif // DESC_SET_GLOBAL_UNIFORM
 
+
+#ifdef DESC_SET_GLOBAL_UNIFORM
+int getCheckerboardSeparatorX()
+{
+    return int(globalUniform.renderWidth) / 2;
+}
+
 bool testInside(const ivec2 pix, const ivec2 size)
 {
     return all(greaterThanEqual(pix, ivec2(0))) &&
            all(lessThan(pix, size));
 }
+#endif
 
 bool testReprojectedDepth(float z, float zPrev, float zMotion)
 {
