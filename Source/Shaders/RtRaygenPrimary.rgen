@@ -72,40 +72,41 @@ void main()
     const ShPayload p = tracePrimaryRay(origin, rayDir);
 
 
-    // was hit
-    if (isPayloadConsistent(p))
+    // was no hit
+    if (!isPayloadConsistent(p))
     {
-        vec2 motionCurToPrev;
-        float motionDepthLinearCurToPrev;
-        vec2 gradDepth;
-        float depthNDC;
-        float screenEmission;
-        const ShHitInfo h = getHitInfoPrimaryRay(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+        // if sky is a rasterized geometry, it was rendered to albedo framebuf 
+        if (globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY)
+        {
+            vec3 color = getSkyPrimary(rayDir);
+            imageStore(framebufAlbedo,          pix, vec4(color, 0.0));
+        }
 
-        imageStore(framebufAlbedo,              pix, vec4(h.albedo, screenEmission));
-        imageStoreNormal(                       pix, h.normal);
-        imageStoreNormalGeometry(               pix, h.normalGeom);
-        imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-        imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
-        imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
-        imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
-        imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
+        imageStoreNormal(                       pix, vec3(0.0));
+        imageStoreNormalGeometry(               pix, vec3(0.0));
+        imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
+        imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, MAX_RAY_LENGTH * 2.0));
+        imageStore(framebufMotion,              pix, vec4(0.0));
+        imageStore(framebufSurfacePosition,     pix, vec4(0.0));
+        imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
 
         return;
     }
 
-    // if sky is a rasterized geometry, it was rendered to albedo framebuf 
-    if (globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY)
-    {
-        vec3 color = getSkyPrimary(rayDir);
-        imageStore(framebufAlbedo,          pix, vec4(color, 0.0));
-    }
 
-    imageStoreNormal(                       pix, vec3(0.0));
-    imageStoreNormalGeometry(               pix, vec3(0.0));
-    imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, MAX_RAY_LENGTH * 2.0));
-    imageStore(framebufMotion,              pix, vec4(0.0));
-    imageStore(framebufSurfacePosition,     pix, vec4(0.0));
-    imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
+    vec2 motionCurToPrev;
+    float motionDepthLinearCurToPrev;
+    vec2 gradDepth;
+    float depthNDC;
+    float screenEmission;
+    const ShHitInfo h = getHitInfoPrimaryRay(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+
+    imageStore(framebufAlbedo,              pix, vec4(h.albedo, screenEmission));
+    imageStoreNormal(                       pix, h.normal);
+    imageStoreNormalGeometry(               pix, h.normalGeom);
+    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
+    imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
+    imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
+    imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
+    imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
 }
