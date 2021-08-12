@@ -267,16 +267,24 @@ void main()
     if (atrousIteration == 3)
     {
         const vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
-        const float surfMetallic = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).r;
-        const vec3 normal        = texelFetchNormal(pix);
+        const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
+        const vec3 normal = texelFetchNormal(pix);
 
-        const vec3 diffuse       = filteredDiff;
-        const vec3 specular      = filteredSpec;
-        const vec3 indirect      = SHToIrradiance(filteredIndir, normal);
+        const float metallic = mrFb.x;
+        const float roughness = mrFb.y;
+
+        const vec3 diffuse = filteredDiff;
+        const vec3 indirect = SHToIrradiance(filteredIndir, normal);
+
+        // to prevent noise, specular will be replaced with SH, if the surface is too rough
+        const vec3 specular = mix(
+            filteredSpec,
+            indirect,
+            smoothstep(FAKE_ROUGH_SPECULAR_THRESHOLD, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, roughness));
 
         const vec3 illuminated = 
-            (diffuse + indirect) * albedo.rgb * (1 - surfMetallic) + 
-            specular * getSpecularColor(albedo.rgb, surfMetallic);
+            (diffuse + indirect) * albedo.rgb * (1 - metallic) + 
+            specular * getSpecularColor(albedo.rgb, metallic);
 
         imageStore(framebufFinal, pix, vec4(illuminated, 0));
     }

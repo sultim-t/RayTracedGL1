@@ -381,3 +381,7 @@ void imageStoreNormalGeometry(ivec2 pix, vec3 normal)
 }
 
 #endif // DESC_SET_FRAMEBUFFERS
+
+
+#define FAKE_ROUGH_SPECULAR_THRESHOLD 0.5
+#define FAKE_ROUGH_SPECULAR_LENGTH 0.25
