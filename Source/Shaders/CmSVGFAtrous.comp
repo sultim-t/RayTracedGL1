@@ -77,7 +77,7 @@ void atrous(sampler2D samplerDiff,
             out SH outIndirSH)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
-    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
 
 
     const vec4 cv = texelFetch(samplerDiff, pix, 0);
@@ -175,7 +175,7 @@ void atrous(sampler2D samplerDiff,
             const float w_r = min(pow(1.025 - abs(roughness - roughness_q), 32), 1.0) * wRoughMultiplier;
 
             const float waveletW = waveletKernel[abs(yy)][abs(xx)];
-            const float isInside = float(testInside(pix_q, screenSize));
+            const float isInside = float(testPixInRenderArea(pix_q, chRenderArea));
 
             const float wBase = exp(-w_z * w_z) * w_n * waveletW * isInside;
 
@@ -286,7 +286,7 @@ void main()
             (diffuse + indirect) * albedo.rgb * (1 - metallic) + 
             specular * getSpecularColor(albedo.rgb, metallic);
 
-        imageStore(framebufFinal, pix, vec4(illuminated, 0));
+        imageStore(framebufFinal, getRegularPixFromCheckerboardPix(pix), vec4(illuminated, 0));
     }
 }
 

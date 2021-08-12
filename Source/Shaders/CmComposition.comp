@@ -29,7 +29,7 @@ layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPO
 
 void main()
 {
-    ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {
@@ -51,7 +51,7 @@ void main()
         SH indirSH = texelFetchSH(
             //framebufUnfilteredIndirectSH_R_Sampler, framebufUnfilteredIndirectSH_G_Sampler, framebufUnfilteredIndirectSH_B_Sampler,
             framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler, 
-            centerPix);
+            getCheckerboardPix(centerPix));
 
         imageStore(framebufFinal, pix, vec4(SHToIrradiance(indirSH, normal), 0));
         return;
@@ -60,8 +60,8 @@ void main()
 
     vec3 color = imageLoad(framebufFinal, pix).rgb;
 
-    const vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
-    const float depth = texelFetch(framebufDepth_Sampler,  pix, 0).r;
+    const vec4 albedo = texelFetch(framebufAlbedo_Sampler, getCheckerboardPix(pix), 0);
+    const float depth = texelFetch(framebufDepth_Sampler,  getCheckerboardPix(pix), 0).r;
     
     // if not sky
     if (depth < MAX_RAY_LENGTH)

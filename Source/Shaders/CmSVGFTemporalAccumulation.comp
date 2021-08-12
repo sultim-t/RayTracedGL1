@@ -58,12 +58,13 @@ layout(local_size_x = COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X, local_size_y = COMPUTE
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
-    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {
         return;
     }
+
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
 
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
 
@@ -107,7 +108,7 @@ void main()
             const vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
 
             const bool isConsistent = 
-                testInside(xy, screenSize) &&
+                testPixInRenderArea(xy, chRenderArea) &&
                 testReprojectedDepth(depth, depthPrev, motionZ) &&
                 testReprojectedNormal(normal, normalPrev);
 

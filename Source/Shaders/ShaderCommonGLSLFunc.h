@@ -233,12 +233,56 @@ int getCheckerboardSeparatorX()
     return int(globalUniform.renderWidth) / 2;
 }
 
-bool testInside(const ivec2 pix, const ivec2 size)
+int isRegularPixOdd(const ivec2 pix)
 {
-    return all(greaterThanEqual(pix, ivec2(0))) &&
-           all(lessThan(pix, size));
+    return (pix.x + pix.y % 2) % 2;
+}
+
+ivec2 getCheckerboardPix(const ivec2 pix)
+{
+    const int isOdd = isRegularPixOdd(pix);
+
+    return ivec2(
+        isOdd * getCheckerboardSeparatorX() + pix.x / 2,
+        pix.y
+    );
+}
+
+ivec2 getRegularPixFromCheckerboardPix(const ivec2 checkerboardPix)
+{
+    const int sep = getCheckerboardSeparatorX();
+    const int isOdd = int(checkerboardPix.x >= sep);
+
+    int x = checkerboardPix.x - isOdd * sep;
+
+    return ivec2(
+        x * 2 + (isOdd + checkerboardPix.y) % 2,
+        checkerboardPix.y 
+    );
+}
+
+// Render area for pixel, considering the checkerboard separator
+ivec3 getCheckerboardedRenderArea(const ivec2 checkerboardPix)
+{
+    const int sep = getCheckerboardSeparatorX();
+    const int isOdd = int(checkerboardPix.x >= sep);
+
+    return ivec3(
+        // left bound
+        (isOdd + 0) * sep,
+        // right bound
+        (isOdd + 1) * sep,
+        globalUniform.renderHeight
+    );
 }
 #endif
+
+bool testPixInRenderArea(const ivec2 pix, const ivec3 renderArea)
+{
+    return 
+        pix.y >= 0              && pix.y < renderArea[2] &&
+        pix.x >= renderArea[0]  && pix.x < renderArea[1];
+}
 
 bool testReprojectedDepth(float z, float zPrev, float zMotion)
 {

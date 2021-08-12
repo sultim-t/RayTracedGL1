@@ -110,7 +110,7 @@ void main()
     const int instCustomIndexPrev = unpackInstCustomIndexFromVisibilityBuffer(visBufPrev);
 
     const bool isConsistent = 
-        testInside(samplePix, screenSize) &&
+        testPixInRenderArea(samplePrevPix, getCheckerboardedRenderArea(samplePix)) &&
         testReprojectedDepth(depth, depthPrev, motionZ) &&
         testReprojectedNormal(normal, normalPrev) &&
         instCustomIndex == instCustomIndexPrev;

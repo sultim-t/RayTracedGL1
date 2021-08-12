@@ -49,22 +49,10 @@ vec2 getPixelUV()
     const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
     return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
 }
-ivec2 getCheckerboardPix()
-{
-    const int x = int(gl_LaunchIDEXT.x);
-    const int y = int(gl_LaunchIDEXT.y);
-
-    const int isEven = (x + y % 2) % 2;
-
-    return ivec2(
-        isEven * getCheckerboardSeparatorX() + x / 2,
-        y
-    );
-}
 
 void main() 
 {
-    const ivec2 pix = getCheckerboardPix();
+    const ivec2 pix = getCheckerboardPix(ivec2(gl_LaunchIDEXT.xy));
     const vec2 inUV = getPixelUV();
 
     const float AX = 1.0 / globalUniform.renderWidth;

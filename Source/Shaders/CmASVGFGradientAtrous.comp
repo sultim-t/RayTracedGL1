@@ -38,7 +38,7 @@ const int STEP_SIZE = 1 << atrousIteration;
 void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 outGradient, out float outGradientIndir)
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
-    const ivec2 gradSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight) / COMPUTE_ASVGF_STRATA_SIZE;
+    const ivec3 gradArea = getCheckerboardedRenderArea(gradPix * COMPUTE_ASVGF_STRATA_SIZE) / COMPUTE_ASVGF_STRATA_SIZE;
     
     vec4 sum = vec4(0.0);
     float sumIndir = 0.0;
@@ -62,7 +62,7 @@ void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 
             const float gradIndir_q = texelFetch(samplerGradientIndir, gradPix_q, 0).x;
 
             const float w = waveletKernel[abs(yy)][abs(xx)] *
-                            float(testInside(gradPix_q, gradSize));
+                            float(testPixInRenderArea(gradPix_q, gradArea));
 
             sum += grad_q * w;
             sumIndir += gradIndir_q * w;

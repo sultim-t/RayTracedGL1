@@ -199,7 +199,7 @@ void atrous0(
     out SH outIndirSH)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
-    const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
 
 
     const AtrousData center = GET_ATROUS_DATA(0, 0);
@@ -260,7 +260,7 @@ void atrous0(
             const float w_r = min(pow(1.025 - abs(center.roughness - other.roughness), 32), 1.0) * wRoughMultiplier;
 
             const float waveletW = WAVELET_KERNEL[abs(yy)][abs(xx)];
-            const float isInside = float(testInside(pix_q, screenSize));
+            const float isInside = float(testPixInRenderArea(pix_q, chRenderArea));
 
             const float wBase = exp(-w_z * w_z) * w_n * waveletW * isInside;
 
