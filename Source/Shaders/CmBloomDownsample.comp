@@ -50,14 +50,14 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
 {
     if (stepIndex == 0)
     {
-        const vec4 albedo = textureLod(framebufAlbedo_Sampler, uv, 0);
-        const bool isSky = textureLod(framebufDepth_Sampler,  uv, 0).r > MAX_RAY_LENGTH;
+        const vec4 albedo = textureLodAlbedo(uv);
         
-        if (isSky)
+        if (isSky(albedo))
         {
             return albedo.rgb * globalUniform.skyColorMultiplier * globalUniform.bloomSkyMultiplier;
         }
         
+        // alpha channel contains screenEmission
         const vec3 emis = albedo.rgb * albedo.a * globalUniform.bloomEmissionMultiplier;
 
         const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;

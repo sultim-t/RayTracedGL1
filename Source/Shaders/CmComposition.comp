@@ -60,11 +60,10 @@ void main()
 
     vec3 color = imageLoad(framebufFinal, pix).rgb;
 
-    const vec4 albedo = texelFetch(framebufAlbedo_Sampler, getCheckerboardPix(pix), 0);
-    const float depth = texelFetch(framebufDepth_Sampler,  getCheckerboardPix(pix), 0).r;
+    const vec4 albedo = texelFetchAlbedo(getCheckerboardPix(pix));
     
     // if not sky
-    if (depth < MAX_RAY_LENGTH)
+    if (!isSky(albedo))
     {
         const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
         const float lInAdj = lIn / tonemapping.avgLuminance;
@@ -74,6 +73,7 @@ void main()
         color = color * lOut / lIn;
 
         
+        // alpha channel of albedo contains screenEmission
         const vec3 e = albedo.rgb * albedo.a * globalUniform.emissionMaxScreenColor;
         color = mix(color, e, clamp((e.x + e.y + e.z) / 3.0, 0.0, 1.0));
     }

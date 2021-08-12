@@ -266,7 +266,7 @@ void main()
 
     if (atrousIteration == 3)
     {
-        const vec4 albedo = texelFetch(framebufAlbedo_Sampler, pix, 0);
+        const vec4 albedo = texelFetchAlbedo(pix);
         const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
         const vec3 normal = texelFetchNormal(pix);
 
@@ -286,7 +286,7 @@ void main()
             (diffuse + indirect) * albedo.rgb * (1 - metallic) + 
             specular * getSpecularColor(albedo.rgb, metallic);
 
-        imageStore(framebufFinal, getRegularPixFromCheckerboardPix(pix), vec4(illuminated, 0));
+        imageStore(framebufFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }
 }
 

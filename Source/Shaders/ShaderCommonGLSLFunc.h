@@ -232,14 +232,25 @@ ivec2 getPrevFramePix(sampler2D motionSampler, const ivec2 curFramePix)
 
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
+    #define CHECKERBOARD_FULL_WIDTH globalUniform.renderWidth
+    #define CHECKERBOARD_FULL_HEIGHT globalUniform.renderHeight
+#endif // DESC_SET_GLOBAL_UNIFORM
+
+#ifdef CHECKERBOARD_FULL_WIDTH
+#ifdef CHECKERBOARD_FULL_HEIGHT
 int getCheckerboardSeparatorX()
 {
-    return int(globalUniform.renderWidth) / CHECKERBOARD_SEPARATOR_DIVISOR;
+    return int(CHECKERBOARD_FULL_WIDTH) / CHECKERBOARD_SEPARATOR_DIVISOR;
 }
 
 int isRegularPixOdd(const ivec2 pix)
 {
     return (pix.x + pix.y % 2) % 2;
+}
+
+int isCheckerboardPixOdd(const ivec2 checkerboardPix)
+{
+    return int(checkerboardPix.x >= getCheckerboardSeparatorX());
 }
 
 ivec2 getCheckerboardPix(const ivec2 pix)
@@ -269,17 +280,18 @@ ivec2 getRegularPixFromCheckerboardPix(const ivec2 checkerboardPix)
 ivec3 getCheckerboardedRenderArea(const ivec2 checkerboardPix)
 {
     const int sep = getCheckerboardSeparatorX();
-    const int isOdd = int(checkerboardPix.x >= sep);
+    const int isOdd = isCheckerboardPixOdd(checkerboardPix);
 
     return ivec3(
         // left bound
         (isOdd + 0) * sep,
         // right bound
         (isOdd + 1) * sep,
-        globalUniform.renderHeight
+        CHECKERBOARD_FULL_HEIGHT
     );
 }
-#endif
+#endif // CHECKERBOARD_FULL_HEIGHT
+#endif // CHECKERBOARD_FULL_WIDTH
 
 bool testPixInRenderArea(const ivec2 pix, const ivec3 renderArea)
 {
@@ -394,46 +406,80 @@ void imageStoreIndirPongSH(ivec2 pix, const SH sh)
     imageStore(framebufIndirPongSH_B, pix, sh.b * SH_COMPRESSION_MULTIPLIER);
 }
 
-vec3 texelFetchNormal(ivec2 pix)
+vec3 texelFetchNormal(const ivec2 pix)
 {
     return decodeNormal(texelFetch(framebufNormal_Sampler, pix, 0).r);
 } 
 
-vec3 texelFetchNormal_Prev(ivec2 pix)
+vec3 texelFetchNormal_Prev(const ivec2 pix)
 {
     return decodeNormal(texelFetch(framebufNormal_Prev_Sampler, pix, 0).r);
 }
 
-vec3 texelFetchNormalGeometry(ivec2 pix)
+vec3 texelFetchNormalGeometry(const ivec2 pix)
 {
     return decodeNormal(texelFetch(framebufNormalGeometry_Sampler, pix, 0).r);
 }
 
-vec3 texelFetchNormalGeometry_Prev(ivec2 pix)
+vec3 texelFetchNormalGeometry_Prev(const ivec2 pix)
 {
     return decodeNormal(texelFetch(framebufNormalGeometry_Prev_Sampler, pix, 0).r);
 }
 
-uvec4 textureGatherEncNormalGeometry_Prev(vec2 uv)
+uvec4 textureGatherEncNormalGeometry_Prev(const vec2 uv)
 {
     // get R components of 4 texels 
     return textureGather(framebufNormalGeometry_Prev_Sampler, uv, 0);
 }
 
-uint texelFetchEncNormalGeometry(ivec2 pix)
+uint texelFetchEncNormalGeometry(const ivec2 pix)
 {
     // fetch encoded normal
     return texelFetch(framebufNormalGeometry_Sampler, pix, 0).r;
 }
 
-void imageStoreNormal(ivec2 pix, vec3 normal)
+void imageStoreNormal(const ivec2 pix, const vec3 normal)
 {
     imageStore(framebufNormal, pix, uvec4(encodeNormal(normal)));
 }
 
-void imageStoreNormalGeometry(ivec2 pix, vec3 normal)
+void imageStoreNormalGeometry(const ivec2 pix, const vec3 normal)
 {
     imageStore(framebufNormalGeometry, pix, uvec4(encodeNormal(normal)));
+}
+
+
+#ifdef CHECKERBOARD_FULL_WIDTH
+#ifdef CHECKERBOARD_FULL_HEIGHT
+
+// framebufAlbedo ALWAYS uses regular layout because of the sky rasterization pass  
+
+void imageStoreAlbedoSurface(const ivec2 pix, const vec3 surfaceAlbedo, float screenEmission)
+{
+    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(surfaceAlbedo, max(0.0, screenEmission)));
+}
+
+void imageStoreAlbedoSky(const ivec2 pix, const vec3 skyAlbedo)
+{
+    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(skyAlbedo, -1.0));
+}
+
+vec4 texelFetchAlbedo(const ivec2 pix)
+{
+    return texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0);
+}
+
+#endif // CHECKERBOARD_FULL_HEIGHT
+#endif // CHECKERBOARD_FULL_WIDTH
+
+vec4 textureLodAlbedo(const vec2 uv)
+{
+    return textureLod(framebufAlbedo_Sampler, uv, 0);
+}
+
+bool isSky(const vec4 albedo)
+{
+    return albedo.a < 0.0;
 }
 
 #endif // DESC_SET_FRAMEBUFFERS
