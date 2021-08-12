@@ -20,11 +20,20 @@
 
 #version 460
 
+layout(push_constant) uniform DepthCopyingFrag_BT 
+{
+    uint renderWidth;
+    uint renderHeight;
+} depthCopyingPush;
+
+#define CHECKERBOARD_FULL_WIDTH depthCopyingPush.renderWidth
+#define CHECKERBOARD_FULL_HEIGHT depthCopyingPush.renderHeight
+
 #define DESC_SET_FRAMEBUFFERS 0
 #include "ShaderCommonGLSLFunc.h"
 
 void main()
 {
     const ivec2 pix = ivec2(gl_FragCoord.xy);
-    gl_FragDepth = texelFetch(framebufDepth_Sampler, pix, 0).w;
+    gl_FragDepth = texelFetch(framebufDepth_Sampler, getCheckerboardPix(pix), 0).w;
 }

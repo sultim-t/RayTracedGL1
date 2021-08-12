@@ -89,6 +89,9 @@ void RTGL1::DepthCopying::Process(VkCommandBuffer cmd, uint32_t frameIndex,
                                 0, 1, &descSet,
                                 0, nullptr);
 
+        uint32_t push[] = { width, height };
+        vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), push);
+
         vkCmdDraw(cmd, 6, 1, 0, 0);
     }
     else
@@ -197,10 +200,17 @@ void RTGL1::DepthCopying::DestroyFramebuffers()
 
 void RTGL1::DepthCopying::CreatePipelineLayout(VkDescriptorSetLayout fbSetLayout)
 {
+    VkPushConstantRange push = {};
+    push.offset = 0;
+    push.size = sizeof(uint32_t) * 2;
+    push.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     layoutInfo.setLayoutCount = 1;
     layoutInfo.pSetLayouts = &fbSetLayout;
+    layoutInfo.pushConstantRangeCount = 1;
+    layoutInfo.pPushConstantRanges = &push;
 
     VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
