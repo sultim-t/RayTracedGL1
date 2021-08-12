@@ -95,8 +95,8 @@ void main()
 
     if (globalUniform.dbgShowGradients != 0)
     {
-        const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
         const float lambda = getAntilagAlpha(gradDS.r, gradDS.g);
         const float lambdaSpec = getAntilagAlpha(gradDS.b, gradDS.a);
         const float lambdaIndir = clamp(gradI.r, 0.0, 1.0);
@@ -105,7 +105,7 @@ void main()
 
     if (globalUniform.dbgShowMotionVectors != 0)
     {
-        const vec2 m = texelFetch(framebufMotion_Sampler, pix, 0).rg;
+        const vec2 m = texelFetch(framebufMotion_Sampler, getCheckerboardPix(pix), 0).rg;
         color.r = abs(m.r);
         color.g = abs(m.g);
         color.b = 0;

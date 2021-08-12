@@ -197,18 +197,21 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIR_MATCH_P
 
 
 
+#define CHECKERBOARD_SEPARATOR_DIVISOR 2
+
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_FRAMEBUFFERS
 vec2 getPrevScreenPos(sampler2D motionSampler, const ivec2 pix)
 {
     const vec2 motionCurToPrev = texelFetch(motionSampler, pix, 0).rg;
 
-    const vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
-    const vec2 invScreenSize = vec2(1.0 / float(globalUniform.renderWidth), 1.0 / float(globalUniform.renderHeight));
+    const vec2 screenSize = vec2(globalUniform.renderWidth / float(CHECKERBOARD_SEPARATOR_DIVISOR), globalUniform.renderHeight);
+    const vec2 invScreenSize = vec2(1.0 / screenSize.x, 1.0 / screenSize.y);
    
     return ((vec2(pix) + vec2(0.5)) * invScreenSize + motionCurToPrev) * screenSize;
 }
 
+/*
 vec2 getCurScreenPos(sampler2D motionSampler, const ivec2 prevPix)
 {
     const vec2 motionCurToPrev = texelFetch(motionSampler, prevPix, 0).rg;
@@ -218,6 +221,7 @@ vec2 getCurScreenPos(sampler2D motionSampler, const ivec2 prevPix)
     
     return ((vec2(prevPix) + vec2(0.5)) * invScreenSize - motionCurToPrev) * screenSize;
 }
+*/
 
 ivec2 getPrevFramePix(sampler2D motionSampler, const ivec2 curFramePix)
 {
@@ -230,7 +234,7 @@ ivec2 getPrevFramePix(sampler2D motionSampler, const ivec2 curFramePix)
 #ifdef DESC_SET_GLOBAL_UNIFORM
 int getCheckerboardSeparatorX()
 {
-    return int(globalUniform.renderWidth) / 2;
+    return int(globalUniform.renderWidth) / CHECKERBOARD_SEPARATOR_DIVISOR;
 }
 
 int isRegularPixOdd(const ivec2 pix)
