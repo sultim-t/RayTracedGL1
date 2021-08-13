@@ -124,6 +124,7 @@ private:
 
     static bool SetupTLASInstanceFromBLAS(
         const BLASComponent &as,
+        uint32_t rayCullMaskWorld,
         VkAccelerationStructureInstanceKHR &instance);
 
     static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);

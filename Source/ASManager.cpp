@@ -713,7 +713,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerationStructureInstanceKHR &instance)
+bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, VkAccelerationStructureInstanceKHR &instance)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -735,22 +735,14 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
 
     instance.instanceCustomIndex = 0;
 
+
     if (filter & FT::CF_DYNAMIC)
     {
         // for choosing buffers with dynamic data
         instance.instanceCustomIndex = INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
     }
-    // blended geometry doesn't have indirect illumination
 
-    /*if (filter & FT::PT_BLEND_)
-    {
-        instance.mask = INSTANCE_MASK_BLENDED;
-    }*/
-    if (filter & FT::PT_REFLECT)
-    {
-        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_REFLECT;
-    }
-    
+
     if (filter & FT::PV_FIRST_PERSON)
     {
         instance.mask = INSTANCE_MASK_FIRST_PERSON;
@@ -763,23 +755,52 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
     }
     else
     {
+        // also check rayCullMaskWorld, if world part is not included in the cull mask,
+        // then don't add it to BLAS at all, it helps culling PT_REFLECT if it was a world part
+
         if (filter & FT::PV_WORLD_0)
         {
             instance.mask = INSTANCE_MASK_WORLD_0;
+
+            if (!(rayCullMaskWorld & (1 << 0)))
+            {
+                instance = {};
+                return false;
+            }
         }
         else if (filter & FT::PV_WORLD_1)
         {
             instance.mask = INSTANCE_MASK_WORLD_1;
+
+            if (!(rayCullMaskWorld & (1 << 1)))
+            {
+                instance = {};
+                return false;
+            }
         }
         else if (filter & FT::PV_WORLD_2)
         {
             instance.mask = INSTANCE_MASK_WORLD_2;
+
+            if (!(rayCullMaskWorld & (1 << 2)))
+            {
+                instance = {};
+                return false;
+            }
         }
         else
         {
             assert(0);
         }
     }
+
+
+    if (filter & FT::PT_REFLECT)
+    {
+        instance.mask |= INSTANCE_MASK_REFLECT_REFRACT;
+        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_REFLECT;
+    }
+
 
     if (filter & FT::PT_OPAQUE)
     {
@@ -794,19 +815,12 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, VkAccelerat
         {
             instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
         }
-        /*else if (filter &FT::PT_BLEND_ADDITIVE)
-        {
-            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_ADDITIVE;
-        }
-        else if (filter & FT::PT_BLEND_UNDER)
-        {
-            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_BLEND_UNDER;
-        }*/
         
         instance.flags =
             VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |
             VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
     }
+
 
     return true;
 }
@@ -864,7 +878,7 @@ void ASManager::PrepareForBuildingTLAS(
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
 
             // add to TLAS instances array
-            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, r.instances[r.instanceCount]);
+            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData.rayCullMaskWorld, r.instances[r.instanceCount]);
 
             if (isAdded)
             {
