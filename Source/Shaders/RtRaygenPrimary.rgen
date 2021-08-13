@@ -32,6 +32,7 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define DESC_SET_RANDOM 5
 #define DESC_SET_LIGHT_SOURCES 6
 #define DESC_SET_CUBEMAPS 7
+#define DESC_SET_RENDER_CUBEMAP 8
 #include "RaygenCommon.h"
 
 vec3 getRayDir(vec2 inUV)
@@ -50,6 +51,28 @@ vec2 getPixelUV()
     return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
 }
 
+void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo)
+{
+    if (calculateSkyAndStoreToAlbedo)
+    {
+        imageStoreAlbedoSky(                pix, getSkyPrimary(rayDir));
+    }
+    else
+    {
+        // resave sky albedo in a special format
+        imageStoreAlbedoSky(                pix, texelFetchAlbedo(pix).rgb);
+    }
+
+    imageStoreNormal(                       pix, vec3(0.0));
+    imageStoreNormalGeometry(               pix, vec3(0.0));
+    imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
+    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, MAX_RAY_LENGTH * 2.0));
+    imageStore(framebufMotion,              pix, vec4(0.0));
+    imageStore(framebufSurfacePosition,     pix, vec4(0.0));
+    imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
+    imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
+}
+
 void main() 
 {
     const ivec2 pix = getCheckerboardPix(ivec2(gl_LaunchIDEXT.xy));
@@ -58,38 +81,23 @@ void main()
     const float AX = 1.0 / globalUniform.renderWidth;
     const float AY = 1.0 / globalUniform.renderHeight;
 
-    const vec3 rayDir   = getRayDir(inUV);
+    vec3 rayDir   = getRayDir(inUV);
     const vec3 rayDirAX = getRayDir(inUV + vec2(AX, 0.0));
     const vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
-
-    imageStore(framebufViewDirection, pix, vec4(rayDir, 0.0));
 
     const uint randomSeed = getRandomSeed(pix, globalUniform.frameId, globalUniform.renderWidth, globalUniform.renderHeight);
     imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
     
     
-    const vec3 origin = globalUniform.cameraPosition.xyz;
-    const ShPayload p = tracePrimaryRay(origin, rayDir);
+    const vec3 cameraOrigin = globalUniform.cameraPosition.xyz;
+    ShPayload payload = tracePrimaryRay(cameraOrigin, rayDir);
 
 
     // was no hit
-    if (!isPayloadConsistent(p))
+    if (!isPayloadConsistent(payload))
     {
-        // if sky is a rasterized geometry, it was rendered to albedo framebuf 
-        if (globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY)
-        {
-            vec3 color = getSkyPrimary(rayDir);
-            imageStore(framebufAlbedo,          pix, vec4(color, 0.0));
-        }
-
-        imageStoreNormal(                       pix, vec3(0.0));
-        imageStoreNormalGeometry(               pix, vec3(0.0));
-        imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-        imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, MAX_RAY_LENGTH * 2.0));
-        imageStore(framebufMotion,              pix, vec4(0.0));
-        imageStore(framebufSurfacePosition,     pix, vec4(0.0));
-        imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
-
+        // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
+        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY);
         return;
     }
 
@@ -99,14 +107,60 @@ void main()
     vec2 gradDepth;
     float depthNDC;
     float screenEmission;
-    const ShHitInfo h = getHitInfoPrimaryRay(p, origin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+    ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 1.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
 
-    imageStore(framebufAlbedo,              pix, vec4(h.albedo, screenEmission));
+
+    for (int i = 0; i < 2; i++)
+    {
+        if ((unpackInstanceIdAndCustomIndex(payload.instIdAndIndex).y & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT) != 0)
+        {
+            // water
+            const float refractionIndex = 1.0 / 1.1; // 1.0 / 1.33;
+            const bool isRefraction = isCheckerboardPixOdd(pix) != 0;
+
+            if (dot(h.normal, -rayDir) < 0.0)
+            {
+                h.normal *= -1;
+            }
+
+            h.normal = normalize(h.normal + 0.1 * vec3(h.albedo.r - 0.5, h.albedo.b - 0.5, h.albedo.g - 0.5));
+
+            if (isRefraction)
+            {
+                rayDir = refract(rayDir, h.normal, refractionIndex);
+            }
+            else
+            {
+                rayDir = reflect(rayDir, h.normal);
+            }
+
+            
+            payload = traceReflectionRefractionRay(h.hitPosition, rayDir, isRefraction);
+
+            
+            if (!isPayloadConsistent(payload))
+            {
+                storeSky(pix, rayDir, true);
+                return;  
+            }
+
+            
+            h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+        }
+        else
+        {
+            break;
+        }
+    }
+
+
+    imageStoreAlbedoSurface(                pix, h.albedo, screenEmission);
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
     imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
-    imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(p));
+    imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
+    imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
 }

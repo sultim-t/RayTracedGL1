@@ -255,7 +255,7 @@ CONST = {
     "INSTANCE_MASK_WORLD_2"                 : "1 << 2",
     "INSTANCE_MASK_WORLD_3"                 : "1 << 3",
     "INSTANCE_MASK_WORLD_4"                 : "1 << 4",
-    "INSTANCE_MASK_WORLD_5"                 : "1 << 5",
+    "INSTANCE_MASK_REFLECT_REFRACT"         : "1 << 5",
     "INSTANCE_MASK_FIRST_PERSON"            : "1 << 6",
     "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 7",
     

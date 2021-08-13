@@ -112,7 +112,7 @@ float getBounceLOD(float roughness, float viewDist, float hitDist, float screenW
     return mip + bounceMipBias;
 }
 
-#endif
+#endif // !TEXTURE_GRADIENTS
 
 #ifdef TEXTURE_GRADIENTS
 // Fast, Minimum Storage Ray-Triangle Intersection, Moller, Trumbore
@@ -134,10 +134,13 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 
     return vec3(1 - u - v, u, v);
 }
+#endif // TEXTURE_GRADIENTS
 
+#ifdef TEXTURE_GRADIENTS
 ShHitInfo getHitInfoPrimaryRay(
     const ShPayload pl, 
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
+    const float textureGrad_dTMultiplier,
     out vec2 motion, out float motionDepthLinear, 
     out vec2 gradDepth, out float depthNDC,
     out float screenEmission)
@@ -145,7 +148,7 @@ ShHitInfo getHitInfoPrimaryRay(
 ShHitInfo getHitInfoBounce(
     const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias,
     out float hitDistance)
-#endif
+#endif // TEXTURE_GRADIENTS
 {
     ShHitInfo h;
 
@@ -208,16 +211,16 @@ ShHitInfo getHitInfoBounce(
     // pixel's footprint in texture space
     const vec2 dTdx[] = 
     {
-        tr.layerTexCoord[0] * baryCoordsAX - texCoords[0],
-        tr.layerTexCoord[1] * baryCoordsAX - texCoords[1],
-        tr.layerTexCoord[2] * baryCoordsAX - texCoords[2]
+        (tr.layerTexCoord[0] * baryCoordsAX - texCoords[0]) * textureGrad_dTMultiplier,
+        (tr.layerTexCoord[1] * baryCoordsAX - texCoords[1]) * textureGrad_dTMultiplier,
+        (tr.layerTexCoord[2] * baryCoordsAX - texCoords[2]) * textureGrad_dTMultiplier
     };
 
     const vec2 dTdy[] = 
     {
-        tr.layerTexCoord[0] * baryCoordsAY - texCoords[0],
-        tr.layerTexCoord[1] * baryCoordsAY - texCoords[1],
-        tr.layerTexCoord[2] * baryCoordsAY - texCoords[2]
+        (tr.layerTexCoord[0] * baryCoordsAY - texCoords[0]) * textureGrad_dTMultiplier,
+        (tr.layerTexCoord[1] * baryCoordsAY - texCoords[1]) * textureGrad_dTMultiplier,
+        (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2]) * textureGrad_dTMultiplier
     };
 
     h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
