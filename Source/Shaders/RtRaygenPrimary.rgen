@@ -51,7 +51,7 @@ vec2 getPixelUV()
     return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
 }
 
-void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo)
+void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, float firstHitDepthNDC)
 {
     if (calculateSkyAndStoreToAlbedo)
     {
@@ -66,7 +66,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStoreNormal(                       pix, vec3(0.0));
     imageStoreNormalGeometry(               pix, vec3(0.0));
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, MAX_RAY_LENGTH * 2.0));
+    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, firstHitDepthNDC));
     imageStore(framebufMotion,              pix, vec4(0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(0.0));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
@@ -97,7 +97,7 @@ void main()
     if (!isPayloadConsistent(payload))
     {
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY);
+        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, MAX_RAY_LENGTH * 2.0);
         return;
     }
 
@@ -105,9 +105,9 @@ void main()
     vec2 motionCurToPrev;
     float motionDepthLinearCurToPrev;
     vec2 gradDepth;
-    float depthNDC;
+    float firstHitDepthNDC;
     float screenEmission;
-    ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 1.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+    ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 1.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, screenEmission);
 
 
     for (int i = 0; i < 2; i++)
@@ -140,11 +140,11 @@ void main()
             
             if (!isPayloadConsistent(payload))
             {
-                storeSky(pix, rayDir, true);
+                storeSky(pix, rayDir, true, firstHitDepthNDC);
                 return;  
             }
 
-            
+            float depthNDC;
             h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
         }
         else
@@ -158,7 +158,8 @@ void main()
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-    imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, depthNDC));
+    // save only the first hit's depth for rasterization, as reflections/refraction only may be losely represented via rasterization
+    imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, firstHitDepthNDC));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
