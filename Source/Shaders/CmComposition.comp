@@ -53,12 +53,12 @@ void main()
             framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler, 
             getCheckerboardPix(centerPix));
 
-        imageStore(framebufFinal, pix, vec4(SHToIrradiance(indirSH, normal), 0));
+        imageStore(framebufPreFinal, pix, vec4(SHToIrradiance(indirSH, normal), 0));
         return;
     }
 #endif
 
-    vec3 color = imageLoad(framebufFinal, pix).rgb;
+    vec3 color = imageLoad(framebufPreFinal, pix).rgb;
 
     const vec4 albedo = texelFetchAlbedo(getCheckerboardPix(pix));
     
@@ -111,5 +111,5 @@ void main()
         color.b = 0;
     }
         
-    imageStore(framebufFinal, pix, vec4(color, 0));
+    imageStore(framebufPreFinal, pix, vec4(color, 0));
 }

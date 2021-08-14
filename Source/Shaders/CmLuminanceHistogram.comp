@@ -71,7 +71,7 @@ void main()
 
     if (pix.x < uint(globalUniform.renderWidth) && pix.y < uint(globalUniform.renderHeight))
     {
-        const vec3 hdrColor = texelFetch(framebufFinal_Sampler, pix, 0).rgb;
+        const vec3 hdrColor = texelFetch(framebufPreFinal_Sampler, pix, 0).rgb;
 
         const uint colorBin = getColorBin(hdrColor, globalUniform.minLogLuminance, globalUniform.maxLogLuminance);
         atomicAdd(histogramWorkGroup[colorBin], 1);

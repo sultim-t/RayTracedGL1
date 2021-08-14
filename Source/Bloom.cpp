@@ -84,7 +84,7 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
 
         switch (i)
         {
-            case 0: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_FINAL); break;
+            case 0: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_PRE_FINAL); break;
             case 1: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP1); break;
             case 2: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP2); break;
             case 3: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP3); break;

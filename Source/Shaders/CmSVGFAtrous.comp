@@ -286,7 +286,7 @@ void main()
             (diffuse + indirect) * albedo.rgb * (1 - metallic) + 
             specular * getSpecularColor(albedo.rgb, metallic);
 
-        imageStore(framebufFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
+        imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }
 }
 

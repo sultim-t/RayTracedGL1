@@ -53,7 +53,20 @@ public:
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
+    void ProcessPrefinal(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const Tonemapping> &tonemapping);
+    void ProcessCheckerboard(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<const GlobalUniform> &uniform);
+
+    static void CreatePipelineLayout(
+        VkDevice device,
+        VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
+        VkPipelineLayout *pDstPipelineLayout,
+        const char *pDebugName);
+    
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
 
@@ -62,8 +75,11 @@ private:
 
     std::shared_ptr<Framebuffers> framebuffers;
 
-    VkPipelineLayout computePipelineLayout;
-    VkPipeline computePipeline;
+    VkPipelineLayout composePipelineLayout;
+    VkPipelineLayout checkerboardPipelineLayout;
+
+    VkPipeline composePipeline;
+    VkPipeline checkerboardPipeline;
 };
 
 }

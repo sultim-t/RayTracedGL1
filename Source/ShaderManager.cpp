@@ -62,6 +62,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CASVGFGradientAtrous",    "CmASVGFGradientAtrous.comp.spv"       },
     {"CBloomDownsample",        "CmBloomDownsample.comp.spv"           },
     {"CBloomUpsample",          "CmBloomUpsample.comp.spv"             },
+    {"CCheckerboard",           "CmCheckerboard.comp.spv"              },
 };
 
 

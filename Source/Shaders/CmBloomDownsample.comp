@@ -145,7 +145,7 @@ void main()
     
     switch (stepIndex)
     {
-        case 0: imageStore(framebufBloom_Mip1, downsampledPix, vec4(downsample13tap(framebufFinal_Sampler,      srcUV), 0.0)); break;
+        case 0: imageStore(framebufBloom_Mip1, downsampledPix, vec4(downsample13tap(framebufPreFinal_Sampler,   srcUV), 0.0)); break;
         case 1: imageStore(framebufBloom_Mip2, downsampledPix, vec4(downsample13tap(framebufBloom_Mip1_Sampler, srcUV), 0.0)); break;
         case 2: imageStore(framebufBloom_Mip3, downsampledPix, vec4(downsample13tap(framebufBloom_Mip2_Sampler, srcUV), 0.0)); break;
         case 3: imageStore(framebufBloom_Mip4, downsampledPix, vec4(downsample13tap(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;

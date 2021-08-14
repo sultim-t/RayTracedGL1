@@ -32,24 +32,44 @@ RTGL1::ImageComposition::ImageComposition(
     const std::shared_ptr<const ShaderManager> &_shaderManager,
     const std::shared_ptr<const GlobalUniform> &_uniform,
     const std::shared_ptr<const Tonemapping> &_tonemapping)
-:
+    :
     device(_device),
     framebuffers(std::move(_framebuffers))
 {
-    std::vector<VkDescriptorSetLayout> setLayouts =
-    {
-        framebuffers->GetDescSetLayout(),
-        _uniform->GetDescSetLayout(),
-        _tonemapping->GetDescSetLayout()
-    };
+    std::vector<VkDescriptorSetLayout> setLayouts;
 
-    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+    {
+        setLayouts =
+        {
+            framebuffers->GetDescSetLayout(),
+            _uniform->GetDescSetLayout(),
+            _tonemapping->GetDescSetLayout()
+        };
+
+        CreatePipelineLayout(device,
+                             setLayouts.data(), setLayouts.size(),
+                             &composePipelineLayout, "Composition pipeline layout");
+    }
+
+    {
+        setLayouts =
+        {
+            framebuffers->GetDescSetLayout(),
+            _uniform->GetDescSetLayout(),
+        };
+
+        CreatePipelineLayout(device,
+                             setLayouts.data(), setLayouts.size(),
+                             &checkerboardPipelineLayout, "Checkerboard pipeline layout");
+    }
+
     CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::ImageComposition::~ImageComposition()
 {
-    vkDestroyPipelineLayout(device, computePipelineLayout, nullptr);
+    vkDestroyPipelineLayout(device, composePipelineLayout, nullptr);
+    vkDestroyPipelineLayout(device, checkerboardPipelineLayout, nullptr);
     DestroyPipelines();
 }
 
@@ -58,15 +78,27 @@ void RTGL1::ImageComposition::Compose(
     const std::shared_ptr<const GlobalUniform> &uniform,
     const std::shared_ptr<const Tonemapping> &tonemapping)
 {
-    CmdLabel label(cmd, "Final framebuf compose");
+    ProcessPrefinal(cmd, frameIndex, uniform, tonemapping);
+    ProcessCheckerboard(cmd, frameIndex, uniform);
+}
+
+void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
+{
+    DestroyPipelines();
+    CreatePipelines(shaderManager);
+}
+
+void RTGL1::ImageComposition::ProcessPrefinal(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const Tonemapping> &tonemapping)
+{
+    CmdLabel label(cmd, "Prefinal framebuf compose");
 
 
     // sync access
-    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_PRE_FINAL);
 
 
     // bind pipeline
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, computePipeline);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, composePipeline);
 
 
     // bind desc sets
@@ -79,8 +111,8 @@ void RTGL1::ImageComposition::Compose(
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                            computePipelineLayout, 
-                            0, setCount, sets, 
+                            composePipelineLayout,
+                            0, setCount, sets,
                             0, nullptr);
 
     // start compute shader
@@ -90,40 +122,84 @@ void RTGL1::ImageComposition::Compose(
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }
 
-void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
+void RTGL1::ImageComposition::ProcessCheckerboard(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform>&uniform)
 {
-    DestroyPipelines();
-    CreatePipelines(shaderManager);
+    CmdLabel label(cmd, "Final framebuf checkerboard");
+
+
+    // sync access
+    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_PRE_FINAL);
+
+
+    // bind pipeline
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, checkerboardPipeline);
+
+
+    // bind desc sets
+    VkDescriptorSet sets[] =
+    {
+        framebuffers->GetDescSet(frameIndex),
+        uniform->GetDescSet(frameIndex)
+    };
+    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            checkerboardPipelineLayout,
+                            0, setCount, sets,
+                            0, nullptr);
+
+    // start compute shader
+    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_GROUP_SIZE_X);
+    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_GROUP_SIZE_Y);
+
+    vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }
 
-void RTGL1::ImageComposition::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount)
+void RTGL1::ImageComposition::CreatePipelineLayout(VkDevice device, VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, VkPipelineLayout *pDstPipelineLayout, const char *pDebugName)
 {
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
-    
-    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &computePipelineLayout);
+
+    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, pDstPipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, computePipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Composition pipeline layout");
+    SET_DEBUG_NAME(device, *pDstPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, pDebugName);
 }
 
 void RTGL1::ImageComposition::CreatePipelines(const ShaderManager *shaderManager)
 {
-    VkComputePipelineCreateInfo plInfo = {};
-    plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    plInfo.layout = computePipelineLayout;
-    plInfo.stage = shaderManager->GetStageInfo("CComposition");
+    {
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = composePipelineLayout;
+        plInfo.stage = shaderManager->GetStageInfo("CComposition");
 
-    VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &computePipeline);
-    VK_CHECKERROR(r);
+        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &composePipeline);
+        VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, computePipeline, VK_OBJECT_TYPE_PIPELINE, "Composition pipeline");
+        SET_DEBUG_NAME(device, composePipeline, VK_OBJECT_TYPE_PIPELINE, "Composition pipeline");
+    }
+
+    {
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = checkerboardPipelineLayout;
+        plInfo.stage = shaderManager->GetStageInfo("CCheckerboard");
+
+        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &checkerboardPipeline);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, checkerboardPipeline, VK_OBJECT_TYPE_PIPELINE, "Checkerboard pipeline");
+    }
 }
 
 void RTGL1::ImageComposition::DestroyPipelines()
 {
-    vkDestroyPipeline(device, computePipeline, nullptr);
-    computePipeline = VK_NULL_HANDLE;
+    vkDestroyPipeline(device, composePipeline, nullptr);
+    composePipeline = VK_NULL_HANDLE;
+
+    vkDestroyPipeline(device, checkerboardPipeline, nullptr);
+    checkerboardPipeline = VK_NULL_HANDLE;
 }
