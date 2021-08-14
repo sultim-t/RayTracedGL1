@@ -110,6 +110,9 @@ void main()
     ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 1.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, screenEmission);
 
 
+    float fullPathLength = h.linearDepth;
+
+
     for (int i = 0; i < 2; i++)
     {
         if ((unpackInstanceIdAndCustomIndex(payload.instIdAndIndex).y & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT) != 0)
@@ -146,6 +149,8 @@ void main()
 
             float depthNDC;
             h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+
+            fullPathLength += h.linearDepth;
         }
         else
         {
@@ -159,7 +164,7 @@ void main()
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
     // save only the first hit's depth for rasterization, as reflections/refraction only may be losely represented via rasterization
-    imageStore(framebufDepth,               pix, vec4(h.linearDepth, gradDepth, firstHitDepthNDC));
+    imageStore(framebufDepth,               pix, vec4(fullPathLength, gradDepth, firstHitDepthNDC));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));

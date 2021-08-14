@@ -645,6 +645,7 @@ void processDirectIllumination(
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
+    // TODO: length(..) if reflect/refract
     processDirectIllumination(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
