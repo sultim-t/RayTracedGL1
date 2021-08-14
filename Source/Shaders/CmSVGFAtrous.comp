@@ -266,7 +266,7 @@ void main()
 
     if (atrousIteration == 3)
     {
-        const vec4 albedo = texelFetchAlbedo(pix);
+        const vec3 albedo = texelFetchAlbedo(pix).rgb;
         const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
         const vec3 normal = texelFetchNormal(pix);
 
@@ -283,8 +283,8 @@ void main()
             smoothstep(FAKE_ROUGH_SPECULAR_THRESHOLD, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, roughness));
 
         const vec3 illuminated = 
-            (diffuse + indirect) * albedo.rgb * (1 - metallic) + 
-            specular * getSpecularColor(albedo.rgb, metallic);
+            (diffuse + indirect) * albedo * (1 - metallic) + 
+            specular * getSpecularColor(albedo, metallic);
 
         imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }

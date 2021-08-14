@@ -27,6 +27,11 @@
 
 layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
 
+layout(push_constant) uniform CompositionPush_BT
+{
+    uint forceIsSky;
+} push;
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
@@ -60,10 +65,10 @@ void main()
 
     vec3 color = imageLoad(framebufPreFinal, pix).rgb;
 
-    const vec4 albedo = texelFetchAlbedo(getCheckerboardPix(pix));
+    const vec4 albedo4 = texelFetchAlbedo(getCheckerboardPix(pix));
     
     // if not sky
-    if (!isSky(albedo))
+    if (push.forceIsSky == 0 && !isSky(albedo4))
     {
         const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
         const float lInAdj = lIn / tonemapping.avgLuminance;
@@ -73,8 +78,7 @@ void main()
         color = color * lOut / lIn;
 
         
-        // alpha channel of albedo contains screenEmission
-        const vec3 e = albedo.rgb * albedo.a * globalUniform.emissionMaxScreenColor;
+        const vec3 e = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
         color = mix(color, e, clamp((e.x + e.y + e.z) / 3.0, 0.0, 1.0));
     }
     else
@@ -85,11 +89,11 @@ void main()
             // this fixes it (a good way to avoid this is to bring HDR sky) 
             color /= max(0.001, globalUniform.bloomSkyMultiplier * 2);
 
-            color += albedo.rgb;
+            color += albedo4.rgb;
         }
         else
         {
-            color = albedo.rgb;
+            color = albedo4.rgb;
         }
     }
 

@@ -38,9 +38,9 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-    const vec4 albedo = texelFetchAlbedo(pix);
+    const vec4 albedo4 = texelFetchAlbedo(pix);
 
-    if (isSky(albedo))
+    if (isSky(albedo4))
     {
         imageStore(framebufUnfilteredDirect, pix, uvec4(0));
         imageStore(framebufUnfilteredSpecular, pix, uvec4(0));
@@ -58,7 +58,7 @@ void main()
 
     const float surfRoughness         = surfMetallicRoughness.g;
     const float surfMetallic          = surfMetallicRoughness.r;
-    const vec3 surfSpecularColor      = getSpecularColor(albedo.rgb, surfMetallic);
+    const vec3 surfSpecularColor      = getSpecularColor(albedo4.rgb, surfMetallic);
 
     const uint instCustomIndex        = floatBitsToUint(surfPosition.a);
 

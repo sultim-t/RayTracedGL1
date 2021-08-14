@@ -477,6 +477,11 @@ vec4 textureLodAlbedo(const vec2 uv)
     return textureLod(framebufAlbedo_Sampler, uv, 0);
 }
 
+float getScreenEmissionFromAlbedo4(const vec4 albedo)
+{
+    return max(0.0, albedo.a);
+}
+
 bool isSky(const vec4 albedo)
 {
     return albedo.a < 0.0;

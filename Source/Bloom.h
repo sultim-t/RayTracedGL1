@@ -45,7 +45,8 @@ public:
 
     void Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform);
+        const std::shared_ptr<const GlobalUniform> &uniform, 
+        bool wasNoRayTracing);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 

@@ -56,7 +56,7 @@ RTGL1::Bloom::~Bloom()
     DestroyPipelines();
 }
 
-void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
+void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform, bool wasNoRayTracing)
 {
     typedef FramebufferImageIndex FI;
 
@@ -74,6 +74,10 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
                             0, setCount, sets,
                             0, nullptr);
 
+    uint32_t forceIsSky = wasNoRayTracing;
+    vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
+                       0, sizeof(uint32_t), &forceIsSky);
+    
 
     for (int i = 0; i < COMPUTE_BLOOM_STEP_COUNT; i++)
     {
@@ -126,10 +130,17 @@ void RTGL1::Bloom::OnShaderReload(const ShaderManager * shaderManager)
 
 void RTGL1::Bloom::CreatePipelineLayout(VkDescriptorSetLayout * pSetLayouts, uint32_t setLayoutCount)
 {
+    VkPushConstantRange push = {};
+    push.offset = 0;
+    push.size = sizeof(uint32_t);
+    push.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
+    plLayoutInfo.pushConstantRangeCount = 1;
+    plLayoutInfo.pPushConstantRanges = &push;
 
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);

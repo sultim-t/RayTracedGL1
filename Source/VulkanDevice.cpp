@@ -470,7 +470,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
     }
 
-    if (sceneNotEmpty && !drawInfo.disableRayTracing)
+    bool traceRays = sceneNotEmpty && !drawInfo.disableRayTracing;
+
+    if (traceRays)
     {
         pathTracer->Bind(
             cmd, frameIndex, 
@@ -498,12 +500,12 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f))
     {
-        bloom->Apply(cmd, frameIndex, uniform);
+        bloom->Apply(cmd, frameIndex, uniform, !traceRays);
     }
 
 
     // final image composition
-    imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
+    imageComposition->Compose(cmd, frameIndex, uniform, tonemapping, !traceRays);
 
     framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 

@@ -28,7 +28,12 @@
 
 layout(local_size_x = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X, local_size_y = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y, local_size_z = 1) in;
 
-layout (constant_id = 0) const uint stepIndex = 0;
+layout(constant_id = 0) const uint stepIndex = 0;
+
+layout(push_constant) uniform BloomDownsamplePush_BT
+{
+    uint forceIsSky;
+} push;
 
 vec2 getInverseSrcSize()
 {
@@ -50,21 +55,22 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
 {
     if (stepIndex == 0)
     {
-        const vec4 albedo = textureLodAlbedo(uv);
+        const vec4 albedo4 = textureLodAlbedo(uv);
         
-        if (isSky(albedo))
+        if (push.forceIsSky == 0 && !isSky(albedo4))
         {
-            return albedo.rgb * globalUniform.skyColorMultiplier * globalUniform.bloomSkyMultiplier;
+            const vec3 emis = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4)  * globalUniform.bloomEmissionMultiplier;
+
+            const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;
+
+            return lt * smoothstep(globalUniform.bloomThreshold, 
+                                   globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
+                                   (lt.x + lt.y + lt.z) / 3.0);
         }
-        
-        // alpha channel contains screenEmission
-        const vec3 emis = albedo.rgb * albedo.a * globalUniform.bloomEmissionMultiplier;
-
-        const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;
-
-        return lt * smoothstep(globalUniform.bloomThreshold, 
-                               globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
-                               (lt.x + lt.y + lt.z) / 3.0);
+        else
+        {
+            return albedo4.rgb * globalUniform.skyColorMultiplier * globalUniform.bloomSkyMultiplier;
+        }
     }
 
     return textureLod(srcSampler, uv, 0).rgb;
