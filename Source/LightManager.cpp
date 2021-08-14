@@ -31,6 +31,8 @@ namespace RTGL1
 {
 constexpr double RG_PI = 3.141592653589793238462643383279502884197169399375105820974944592307816406;
 
+constexpr float MIN_COLOR_SUM = 0.0001f;
+
 constexpr uint32_t START_MAX_LIGHT_COUNT_SPHERICAL = 1024;
 constexpr uint32_t START_MAX_LIGHT_COUNT_DIRECTIONAL = 32;
 
@@ -131,8 +133,18 @@ uint32_t RTGL1::LightManager::GetDirectionalLightCountPrev() const
     return dirLightCountPrev;
 }
 
+static bool IsColorTooDim(const RgFloat3D &c)
+{
+    return c.data[0] + c.data[1] + c.data[2] < RTGL1::MIN_COLOR_SUM;
+}
+
 void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info)
 {
+    if (IsColorTooDim(info.color))
+    {
+        return;
+    }
+
     uint32_t index = sphLightCount;
     sphLightCount++;
 
