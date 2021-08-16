@@ -103,6 +103,7 @@ namespace RTGL1
 #define COMPUTE_SVGF_ATROUS_ITERATION_COUNT (4)
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
+#define MAX_RAY_LENGTH (10000.0)
 
 struct ShVertexBufferStatic
 {
@@ -173,7 +174,7 @@ struct ShGlobalUniform
     float bloomIntensity;
     float bloomEmissionMultiplier;
     float bloomSkyMultiplier;
-    float _pad2;
+    float rayLength;
     float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];

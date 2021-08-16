@@ -141,7 +141,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
-        origin, 0.001, direction, MAX_RAY_LENGTH, 
+        origin, 0.001, direction, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT);
 
     return payload; 
@@ -159,7 +159,7 @@ ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefra
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
-        origin, 0.001, direction, MAX_RAY_LENGTH, 
+        origin, 0.001, direction, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT);
 
     return payload; 
@@ -177,7 +177,7 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
-        surfPosition, 0.001, bounceDirection, MAX_RAY_LENGTH, 
+        surfPosition, 0.001, bounceDirection, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT); 
 
     return payload;

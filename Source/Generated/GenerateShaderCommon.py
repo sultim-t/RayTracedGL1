@@ -323,11 +323,12 @@ CONST = {
     "COMPUTE_SVGF_ATROUS_ITERATION_COUNT"   : 4,
 
     "COMPUTE_ASVGF_STRATA_SIZE"                         : 3,
-    "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,
+    "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,  
+    
+    "MAX_RAY_LENGTH"                        : "10000.0"
 }
 
 CONST_GLSL_ONLY = {
-    "MAX_RAY_LENGTH"                        : "10000.0"
 }
 
 
@@ -448,7 +449,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "bloomEmissionMultiplier",      1),
     (TYPE_FLOAT32,      1,      "bloomSkyMultiplier",           1),
-    (TYPE_FLOAT32,      1,      "_pad2",                        1),
+    (TYPE_FLOAT32,      1,      "rayLength",                    1),
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),

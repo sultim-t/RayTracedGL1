@@ -612,6 +612,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
         frameInfo.rayCullMaskWorld = 0xFF;
+        frameInfo.rayLength = 10000.0f;
 
         RgDrawFrameSkyParams skyParams = {};
         skyParams.skyColorDefault = { 0.71f, 0.88f, 1.0f };

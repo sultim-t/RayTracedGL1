@@ -824,6 +824,8 @@ typedef struct RgDrawFrameInfo
     // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD_*
     // Default value: 0x7
     uint32_t            rayCullMaskWorld;
+    // Max value: 10000.0
+    float               rayLength;
     RgBool32            disableRayTracing;
     RgBool32            disableRasterization;
     RgExtent2D          renderSize;
