@@ -57,6 +57,14 @@ vec3 getFresnelSchlick(float nl, const vec3 specularColor)
     return specularColor + (vec3(1.0) - specularColor) * pow(1 - max(nl, 0), 5);
 }
 
+float getFresnelSchlick(float n1, float n2, const vec3 V, const vec3 N)
+{
+    float R0 = (n1 - n2) / (n1 + n2);
+    R0 *= R0;
+
+    return mix(R0, 1.0, pow(1.0 - abs(dot(N, V)), 5.0));
+}
+
 // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
 // s -- is either l or v
 float G1GGX(const vec3 s, const vec3 n, float alpha)

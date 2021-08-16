@@ -433,6 +433,38 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->bloomSkyMultiplier = 0.05f;
     }
 
+    static_assert(
+        RG_MEDIA_TYPE_VACUUM == MEDIA_TYPE_VACUUM &&
+        RG_MEDIA_TYPE_WATER == MEDIA_TYPE_WATER &&
+        RG_MEDIA_TYPE_GLASS == MEDIA_TYPE_GLASS, 
+        "Interface and GLSL constants must be identical");
+
+    static_assert(
+        sizeof(gu->portalOutputOffsetFromCamera) >= sizeof(drawInfo.pReflectRefractParams->portalOutputOffsetFromCamera.data),
+        "Recheck uniform member and interface member sizes");
+
+    if (drawInfo.pReflectRefractParams != nullptr)
+    {
+        if (drawInfo.pReflectRefractParams->typeOfMediaAroundCamera < 0 ||
+            drawInfo.pReflectRefractParams->typeOfMediaAroundCamera >= MEDIA_TYPE_COUNT - 1)
+        {
+            gu->cameraMediaType = drawInfo.pReflectRefractParams->typeOfMediaAroundCamera;
+        }
+        else
+        {
+            gu->cameraMediaType = MEDIA_TYPE_VACUUM;
+        }
+
+        gu->reflectRefractMaxDepth = std::min(4u, drawInfo.pReflectRefractParams->maxReflectRefractDepth);
+        memcpy(gu->portalOutputOffsetFromCamera, drawInfo.pReflectRefractParams->portalOutputOffsetFromCamera.data, sizeof(drawInfo.pReflectRefractParams->portalOutputOffsetFromCamera.data));
+    }
+    else
+    {
+        gu->cameraMediaType = MEDIA_TYPE_VACUUM;
+        gu->reflectRefractMaxDepth = 2;
+        gu->portalOutputOffsetFromCamera[0] = gu->portalOutputOffsetFromCamera[1] = gu->portalOutputOffsetFromCamera[2] = 0.0f;
+    }
+
     gu->rayCullMaskWorld = std::min((uint32_t)INSTANCE_MASK_WORLD_ALL, std::max((uint32_t)INSTANCE_MASK_WORLD_MIN, drawInfo.rayCullMaskWorld));
     gu->rayLength = std::min((float)MAX_RAY_LENGTH, std::max(0.1f, drawInfo.rayLength));
 }
@@ -615,7 +647,11 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE &&
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_ALPHA_TESTED &&
-        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT &&
 
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0 &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_1 &&

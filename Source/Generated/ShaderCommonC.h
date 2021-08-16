@@ -38,7 +38,7 @@ namespace RTGL1
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
-#define INSTANCE_CUSTOM_INDEX_FLAG_REFLECT (1 << 3)
+#define INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT (1 << 3)
 #define INSTANCE_MASK_ALL (0xFF)
 #define INSTANCE_MASK_WORLD_MIN (0)
 #define INSTANCE_MASK_WORLD_ALL (0x3F)
@@ -104,6 +104,10 @@ namespace RTGL1
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
 #define MAX_RAY_LENGTH (10000.0)
+#define MEDIA_TYPE_VACUUM (0)
+#define MEDIA_TYPE_WATER (1)
+#define MEDIA_TYPE_GLASS (2)
+#define MEDIA_TYPE_COUNT (3)
 
 struct ShVertexBufferStatic
 {
@@ -175,7 +179,12 @@ struct ShGlobalUniform
     float bloomEmissionMultiplier;
     float bloomSkyMultiplier;
     float rayLength;
+    uint32_t reflectRefractMaxDepth;
+    uint32_t cameraMediaType;
+    float _pad1;
+    float _pad2;
     float _pad3;
+    float portalOutputOffsetFromCamera[4];
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

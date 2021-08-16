@@ -147,11 +147,16 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
     return payload; 
 }
 
-ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefraction)
+ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefraction, bool ignoreReflectRefractGeometry)
 {
     resetPayload();
 
-    uint cullMask = getReflectionRefractionCullMask(isRefraction);
+    uint cullMask = getReflectionRefractionCullMask(isRefraction) ;
+
+    if (ignoreReflectRefractGeometry)
+    {
+        cullMask = cullMask & (~INSTANCE_MASK_REFLECT_REFRACT);
+    }
 
     traceRayEXT(
         topLevelAS,
@@ -251,16 +256,6 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 #define SHADOW_RAY_EPS_MAX_DIST 25
 
 #define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
-
-
-
-#define AIR_TRANSMITTANCE_SIGMA 0.01
-
-float getAirTransmittance(const float distante)
-{
-    // very coarse air transmittance
-    return exp(-distante * AIR_TRANSMITTANCE_SIGMA);
-}
 
 
 

@@ -242,7 +242,11 @@ typedef enum RgGeometryPassThroughType
 {
     RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
     RG_GEOMETRY_PASS_THROUGH_TYPE_ALPHA_TESTED,
-    RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT
+    RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR,
+    RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL,
+    RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT,
+    RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT,
+    RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT,
 } RgGeometryPassThroughType;
 
 // WORLD_0, WORLD_1, WORLD_2 may be specified for culling with RgDrawFrameInfo::rayCullMaskWorld
@@ -760,82 +764,99 @@ typedef enum RgSkyType
 
 typedef struct RgDrawFrameTonemappingParams
 {
-    float               minLogLuminance;
-    float               maxLogLuminance;
-    float               luminanceWhitePoint;
+    float       minLogLuminance;
+    float       maxLogLuminance;
+    float       luminanceWhitePoint;
 } RgDrawFrameTonemappingParams;
 
 typedef struct RgDrawFrameSkyParams
 {
-    RgSkyType           skyType;
+    RgSkyType   skyType;
     // Used as a main color for RG_SKY_TYPE_COLOR and ray-miss color for RG_SKY_TYPE_GEOMETRY.
-    RgFloat3D           skyColorDefault;
+    RgFloat3D   skyColorDefault;
     // The result sky color is multiplied by this value.
-    float               skyColorMultiplier;
-    float               skyColorSaturation;
+    float       skyColorMultiplier;
+    float       skyColorSaturation;
     // A point from which rays are traced while using RG_SKY_TYPE_GEOMETRY.
-    RgFloat3D           skyViewerPosition;
+    RgFloat3D   skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
-    RgCubemap           skyCubemap;
+    RgCubemap   skyCubemap;
 } RgDrawFrameSkyParams;
 
 typedef struct RgDrawFrameOverridenTexturesParams
 {
-    float               normalMapStrength;
+    float       normalMapStrength;
     // Multiplier for emission map values.
-    float               emissionMapBoost;
+    float       emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
-    float               emissionMaxScreenColor;
+    float       emissionMaxScreenColor;
 } RgDrawFrameOverridenTexturesParams;
 
 typedef struct RgDrawFrameDebugParams
 {
-    RgBool32            showMotionVectors;
-    RgBool32            showGradients;
+    RgBool32    showMotionVectors;
+    RgBool32    showGradients;
 } RgDrawFrameDebugParams;
 
 typedef struct RgDrawFrameShadowParams
 {
     // Directional light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSphereLights).
-    uint32_t            maxBounceShadowsDirectionalLights;
+    uint32_t    maxBounceShadowsDirectionalLights;
     // Sphere light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsDirectionalLights).
-    uint32_t            maxBounceShadowsSphereLights;
+    uint32_t    maxBounceShadowsSphereLights;
     // Spotlight shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSpotlights).
-    uint32_t            maxBounceShadowsSpotlights;
+    uint32_t    maxBounceShadowsSpotlights;
 } RgDrawFrameShadowParams;
 
 typedef struct RgDrawFrameBloomParams
 {
     // Negative value disables bloom pass
-    float bloomIntensity;
-    float inputThreshold;
-    float inputThresholdLength;
-    float upsampleRadius;
-    float bloomEmissionMultiplier;
-    float bloomSkyMultiplier;
+    float       bloomIntensity;
+    float       inputThreshold;
+    float       inputThresholdLength;
+    float       upsampleRadius;
+    float       bloomEmissionMultiplier;
+    float       bloomSkyMultiplier;
 } RgDrawFrameBloomParams;
+
+typedef enum RgMediaType
+{
+    RG_MEDIA_TYPE_VACUUM,
+    RG_MEDIA_TYPE_WATER,
+    RG_MEDIA_TYPE_GLASS
+} RgMediaType;
+
+typedef struct RgDrawFrameReflectRefractParams
+{   
+    uint32_t    maxReflectRefractDepth;
+    // Media type, in which camera currently is.
+    RgMediaType typeOfMediaAroundCamera;
+    // Position of the portal output, relative to the current camera position
+    RgFloat3D   portalOutputOffsetFromCamera;
+} RgDrawFrameReflectRefractParams;
 
 typedef struct RgDrawFrameInfo
 {
     // View and projection matrices are column major.
-    float               view[16];
-    float               projection[16];
+    float       view[16];
+    float       projection[16];
     // What world parts to render. Mask bits are in [0..0x7]
     // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD_*
     // Default value: 0x7
-    uint32_t            rayCullMaskWorld;
+    uint32_t    rayCullMaskWorld;
     // Max value: 10000.0
-    float               rayLength;
-    RgBool32            disableRayTracing;
-    RgBool32            disableRasterization;
-    RgExtent2D          renderSize;
-    double              currentTime;
-    RgBool32            disableEyeAdaptation;
+    float       rayLength;
+    RgBool32    disableRayTracing;
+    RgBool32    disableRasterization;
+    RgExtent2D  renderSize;
+    double      currentTime;
+    RgBool32    disableEyeAdaptation;
 
     // Null, if default values should be used.
     const RgDrawFrameShadowParams               *pShadowParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
+    const RgDrawFrameReflectRefractParams       *pReflectRefractParams;
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameOverridenTexturesParams    *pOverridenTexturesParams;
     const RgDrawFrameDebugParams                *pDebugParams;

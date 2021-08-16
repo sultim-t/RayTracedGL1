@@ -51,7 +51,7 @@ vec2 getPixelUV()
     return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
 }
 
-void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, float firstHitDepthNDC)
+void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC)
 {
     if (calculateSkyAndStoreToAlbedo)
     {
@@ -71,6 +71,25 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufSurfacePosition,     pix, vec4(0.0));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+}
+
+// Ray Tracing Gems II. Chapter 8: Reflection and Refraction Formulas
+// Returns false, if total internal reflection
+bool calcRefractionDirection(float n1, float n2, const vec3 I, const vec3 N, out vec3 T)
+{
+    float eta = n1 / n2; //  relative index of refraction
+    float c1 = -dot(I, N); // cos(theta1)
+    float w = eta * c1;
+    float c2m = (w - eta) * (w + eta); // cos^2(theta2) - 1
+
+    if (c2m < -1.0f)
+    { 
+        return false; // total internal reflection
+    }
+
+    T = eta * I + (w - sqrt(1.0f + c2m)) * N;
+    return true;
 }
 
 void main() 
@@ -97,7 +116,7 @@ void main()
     if (!isPayloadConsistent(payload))
     {
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, MAX_RAY_LENGTH * 2.0);
+        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0);
         return;
     }
 
@@ -110,52 +129,114 @@ void main()
     ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 1.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, screenEmission);
 
 
+    vec3 throughput = vec3(1.0);
     float fullPathLength = h.linearDepth;
+    uint currentRayMedia = globalUniform.cameraMediaType;
+    bool wasSplit = false;
 
 
-    for (int i = 0; i < 2; i++)
+    throughput *= getMediaTransmittance(currentRayMedia, h.linearDepth);
+
+
+    for (int i = 0; i < globalUniform.reflectRefractMaxDepth; i++)
     {
-        if ((unpackInstanceIdAndCustomIndex(payload.instIdAndIndex).y & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT) != 0)
-        {
-            // water
-            const float refractionIndex = 1.0 / 1.1; // 1.0 / 1.33;
-            const bool isRefraction = isCheckerboardPixOdd(pix) != 0;
+        const uint instIndex = unpackInstanceIdAndCustomIndex(payload.instIdAndIndex).y;
 
-            if (dot(h.normal, -rayDir) < 0.0)
-            {
-                h.normal *= -1;
-            }
-
-            h.normal = normalize(h.normal + 0.1 * vec3(h.albedo.r - 0.5, h.albedo.b - 0.5, h.albedo.g - 0.5));
-
-            if (isRefraction)
-            {
-                rayDir = refract(rayDir, h.normal, refractionIndex);
-            }
-            else
-            {
-                rayDir = reflect(rayDir, h.normal);
-            }
-
-            
-            payload = traceReflectionRefractionRay(h.hitPosition, rayDir, isRefraction);
-
-            
-            if (!isPayloadConsistent(payload))
-            {
-                storeSky(pix, rayDir, true, firstHitDepthNDC);
-                return;  
-            }
-
-            float depthNDC;
-            h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
-
-            fullPathLength += h.linearDepth;
-        }
-        else
+        if ((instIndex & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT) == 0)
         {
             break;
         }
+
+        const bool isPixOdd = isCheckerboardPixOdd(pix) != 0;
+
+        const uint newRayMedia = currentRayMedia == MEDIA_TYPE_WATER ? MEDIA_TYPE_VACUUM : MEDIA_TYPE_WATER;
+            /*(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_ONLY_REFLECT) != 0 || (instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_REFLECT_REFRACT) != 0 ? MEDIA_TYPE_WATER :
+            (instIndex & INSTANCE_CUSTOM_INDEX_FLAG_GLASS_REFLECT_REFRACT) != 0 ? MEDIA_TYPE_GLASS :
+            MEDIA_TYPE_VACUUM;*/
+
+        const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
+        const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
+
+        const bool isPortal = false;
+            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_PORTAL) != 0 && i == 0;
+        const bool toRefract = true;
+            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_REFLECT_REFRACT) != 0 || 
+            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_GLASS_REFLECT_REFRACT) != 0;
+        const bool toReflect = true;
+            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_REFLECT_REFRACT) != 0 || 
+            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_GLASS_REFLECT_REFRACT) != 0 ||
+            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_ONLY_REFLECT) != 0;
+
+
+        if (!toReflect && !toRefract && !isPortal)
+        {
+            break;
+        }
+
+        if (dot(h.normal, -rayDir) < 0.0)
+        {
+            h.normal *= -1;
+        }
+        //h.normal = normalize(h.normal + 0.2 * normalize(vec3(h.albedo.r - 0.5, h.albedo.b - 0.5, h.albedo.g - 0.5)));
+           
+        vec3 rayOrigin = h.hitPosition;
+        bool doSplit = !wasSplit;
+        bool doRefraction;
+        vec3 refractionDir;
+        float F;
+
+        if (toRefract && calcRefractionDirection(curIndexOfRefraction, newIndexOfRefraction, rayDir, h.normal, refractionDir))
+        {
+            doRefraction = isPixOdd;
+            F = getFresnelSchlick(curIndexOfRefraction, newIndexOfRefraction, -rayDir, h.normal);
+        }
+        else
+        {
+            // total internal reflection
+            doRefraction = false;
+            doSplit = false;
+            F = 1.0;
+        }
+        
+        if (doRefraction)
+        {
+            rayDir = refractionDir;
+            throughput *= (1 - F);
+
+            // change media
+            currentRayMedia = newRayMedia;
+        }
+        else if (isPortal)
+        {
+            rayOrigin += globalUniform.portalOutputOffsetFromCamera.xyz;
+        }
+        else
+        {
+            rayDir = reflect(rayDir, h.normal);
+            throughput *= F;
+        }
+
+        if (doSplit)
+        {
+            throughput *= 2;
+            wasSplit = true;
+        }
+
+
+        payload = traceReflectionRefractionRay(rayOrigin, rayDir, doRefraction, false);
+
+        
+        if (!isPayloadConsistent(payload))
+        {
+            storeSky(pix, rayDir, true, throughput, firstHitDepthNDC);
+            return;  
+        }
+
+        float depthNDC;
+        h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+
+        throughput *= getMediaTransmittance(currentRayMedia, h.linearDepth);
+        fullPathLength += h.linearDepth;
     }
 
 
@@ -169,4 +250,5 @@ void main()
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
 }

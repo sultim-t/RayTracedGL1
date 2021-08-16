@@ -244,17 +244,11 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
             flags |= (FL)FT::PT_ALPHA_TESTED;
             break;
         }
-        /*case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_ADDITIVE:
-        {
-            flags |= (FL)FT::PT_BLEND_ADDITIVE;
-            break;
-        }
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_BLEND_UNDER:
-        {
-            flags |= (FL)FT::PT_BLEND_UNDER;
-            break;
-        }*/
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_REFLECT:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT:
         {
             flags |= (FL)FT::PT_REFLECT;
             break;

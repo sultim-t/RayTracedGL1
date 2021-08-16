@@ -39,6 +39,11 @@
 
 
 
+#define FAKE_ROUGH_SPECULAR_THRESHOLD 0.5
+#define FAKE_ROUGH_SPECULAR_LENGTH 0.25
+
+
+
 #ifdef DESC_SET_GLOBAL_UNIFORM
 layout(
     set = DESC_SET_GLOBAL_UNIFORM,
@@ -490,5 +495,39 @@ bool isSky(const vec4 albedo)
 #endif // DESC_SET_FRAMEBUFFERS
 
 
-#define FAKE_ROUGH_SPECULAR_THRESHOLD 0.5
-#define FAKE_ROUGH_SPECULAR_LENGTH 0.25
+
+float getIndexOfRefraction(uint media)
+{
+    switch (media)
+    {
+        case MEDIA_TYPE_WATER:
+            return 1.33;
+        case MEDIA_TYPE_GLASS:
+            return 1.52;
+        default:
+            return 1.0;
+    }
+}
+
+#define AIR_TRANSMITTANCE_SIGMA 0.01
+
+float getAirTransmittance(float distance)
+{
+    // very coarse air transmittance
+    return exp(-distance * AIR_TRANSMITTANCE_SIGMA);
+}
+
+vec3 getMediaTransmittance(uint media, float distance)
+{
+    // the values are relative
+    // https://refractiveindex.info/?shelf=3d&book=liquids&page=water
+
+    vec3 extinction = vec3(0.0);
+
+    if (media == MEDIA_TYPE_WATER)
+    {
+        extinction = vec3(0.033, 0.017, 0.013);
+    }
+
+    return exp(-distance * extinction);
+}

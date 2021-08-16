@@ -245,7 +245,7 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
-    "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT"                : "1 << 3",
+    "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT"        : "1 << 3",
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_WORLD_MIN"               : "0",
@@ -325,7 +325,12 @@ CONST = {
     "COMPUTE_ASVGF_STRATA_SIZE"                         : 3,
     "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,  
     
-    "MAX_RAY_LENGTH"                        : "10000.0"
+    "MAX_RAY_LENGTH"                        : "10000.0",
+
+    "MEDIA_TYPE_VACUUM"                     : 0,
+    "MEDIA_TYPE_WATER"                      : 1,
+    "MEDIA_TYPE_GLASS"                      : 2,
+    "MEDIA_TYPE_COUNT"                      : 3,
 }
 
 CONST_GLSL_ONLY = {
@@ -450,7 +455,14 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "bloomEmissionMultiplier",      1),
     (TYPE_FLOAT32,      1,      "bloomSkyMultiplier",           1),
     (TYPE_FLOAT32,      1,      "rayLength",                    1),
+    (TYPE_UINT32,       1,      "reflectRefractMaxDepth",       1),
+
+    (TYPE_UINT32,       1,      "cameraMediaType",              1),
+    (TYPE_FLOAT32,      1,      "_pad1",                        1),
+    (TYPE_FLOAT32,      1,      "_pad2",                        1),
     (TYPE_FLOAT32,      1,      "_pad3",                        1),
+
+    (TYPE_FLOAT32,      4,      "portalOutputOffsetFromCamera", 1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
@@ -600,6 +612,7 @@ FRAMEBUFFERS = {
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     # bilinear for bloom
     "PreFinal"                          : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),

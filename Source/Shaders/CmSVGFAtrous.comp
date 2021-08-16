@@ -269,6 +269,7 @@ void main()
         const vec3 albedo = texelFetchAlbedo(pix).rgb;
         const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
         const vec3 normal = texelFetchNormal(pix);
+        const vec3 throughput = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
 
         const float metallic = mrFb.x;
         const float roughness = mrFb.y;
@@ -282,9 +283,11 @@ void main()
             indirect,
             smoothstep(FAKE_ROUGH_SPECULAR_THRESHOLD, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, roughness));
 
-        const vec3 illuminated = 
+        vec3 illuminated = 
             (diffuse + indirect) * albedo * (1 - metallic) + 
             specular * getSpecularColor(albedo, metallic);
+
+        illuminated *= throughput;
 
         imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }
