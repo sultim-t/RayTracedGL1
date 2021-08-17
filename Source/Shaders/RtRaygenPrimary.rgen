@@ -208,7 +208,7 @@ void main()
         }
         else if (isPortal)
         {
-            rayOrigin += globalUniform.portalOutputOffsetFromCamera.xyz;
+            rayOrigin += globalUniform.portalInputToOutputDiff.xyz;
             throughput *= h.albedo;
         }
         else

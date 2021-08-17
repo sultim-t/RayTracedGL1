@@ -831,8 +831,8 @@ typedef struct RgDrawFrameReflectRefractParams
     uint32_t    maxReflectRefractDepth;
     // Media type, in which camera currently is.
     RgMediaType typeOfMediaAroundCamera;
-    // Position of the portal output, relative to the current camera position
-    RgFloat3D   portalOutputOffsetFromCamera;
+    // Difference between portal input and portal output world positions.
+    RgFloat3D   portalInputToOutputDiff;
 } RgDrawFrameReflectRefractParams;
 
 typedef struct RgDrawFrameInfo

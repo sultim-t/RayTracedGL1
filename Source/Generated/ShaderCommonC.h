@@ -184,7 +184,7 @@ struct ShGlobalUniform
     float _pad1;
     float _pad2;
     float _pad3;
-    float portalOutputOffsetFromCamera[4];
+    float portalInputToOutputDiff[4];
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

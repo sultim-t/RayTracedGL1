@@ -440,7 +440,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         "Interface and GLSL constants must be identical");
 
     static_assert(
-        sizeof(gu->portalOutputOffsetFromCamera) >= sizeof(drawInfo.pReflectRefractParams->portalOutputOffsetFromCamera.data),
+        sizeof(gu->portalInputToOutputDiff) >= sizeof(drawInfo.pReflectRefractParams->portalInputToOutputDiff.data),
         "Recheck uniform member and interface member sizes");
 
     if (drawInfo.pReflectRefractParams != nullptr)
@@ -456,13 +456,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
 
         gu->reflectRefractMaxDepth = std::min(4u, drawInfo.pReflectRefractParams->maxReflectRefractDepth);
-        memcpy(gu->portalOutputOffsetFromCamera, drawInfo.pReflectRefractParams->portalOutputOffsetFromCamera.data, sizeof(drawInfo.pReflectRefractParams->portalOutputOffsetFromCamera.data));
+        memcpy(gu->portalInputToOutputDiff, drawInfo.pReflectRefractParams->portalInputToOutputDiff.data, sizeof(drawInfo.pReflectRefractParams->portalInputToOutputDiff.data));
     }
     else
     {
         gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         gu->reflectRefractMaxDepth = 2;
-        gu->portalOutputOffsetFromCamera[0] = gu->portalOutputOffsetFromCamera[1] = gu->portalOutputOffsetFromCamera[2] = 0.0f;
+        gu->portalInputToOutputDiff[0] = gu->portalInputToOutputDiff[1] = gu->portalInputToOutputDiff[2] = 0.0f;
     }
 
     gu->rayCullMaskWorld = std::min((uint32_t)INSTANCE_MASK_WORLD_ALL, std::max((uint32_t)INSTANCE_MASK_WORLD_MIN, drawInfo.rayCullMaskWorld));
