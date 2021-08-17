@@ -92,6 +92,37 @@ bool calcRefractionDirection(float n1, float n2, const vec3 I, const vec3 N, out
     return true;
 }
 
+uint getMediaTypeFromFlags(uint geometryInstanceFlags)
+{
+    if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_WATER) != 0)
+    {
+        return MEDIA_TYPE_WATER;
+    }
+    else if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_GLASS) != 0)
+    {
+        return MEDIA_TYPE_GLASS;
+    }
+    else
+    {
+        return MEDIA_TYPE_VACUUM;
+    }
+}
+
+bool isPortalFromFlags(uint geometryInstanceFlags)
+{
+    return (geometryInstanceFlags & GEOM_INST_FLAG_PORTAL) != 0;
+}
+
+bool isRefractFromFlags(uint geometryInstanceFlags)
+{
+    return (geometryInstanceFlags & GEOM_INST_FLAG_REFRACT) != 0;
+}
+
+bool isReflectFromFlags(uint geometryInstanceFlags)
+{
+    return (geometryInstanceFlags & GEOM_INST_FLAG_REFLECT) != 0;
+}
+
 void main() 
 {
     const ivec2 pix = getCheckerboardPix(ivec2(gl_LaunchIDEXT.xy));
@@ -149,23 +180,14 @@ void main()
 
         const bool isPixOdd = isCheckerboardPixOdd(pix) != 0;
 
-        const uint newRayMedia = currentRayMedia == MEDIA_TYPE_WATER ? MEDIA_TYPE_VACUUM : MEDIA_TYPE_WATER;
-            /*(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_ONLY_REFLECT) != 0 || (instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_REFLECT_REFRACT) != 0 ? MEDIA_TYPE_WATER :
-            (instIndex & INSTANCE_CUSTOM_INDEX_FLAG_GLASS_REFLECT_REFRACT) != 0 ? MEDIA_TYPE_GLASS :
-            MEDIA_TYPE_VACUUM;*/
+        const uint newRayMedia = getMediaTypeFromFlags(h.geometryInstanceFlags);
 
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const bool isPortal = false;
-            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_PORTAL) != 0 && i == 0;
-        const bool toRefract = true;
-            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_REFLECT_REFRACT) != 0 || 
-            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_GLASS_REFLECT_REFRACT) != 0;
-        const bool toReflect = true;
-            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_REFLECT_REFRACT) != 0 || 
-            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_GLASS_REFLECT_REFRACT) != 0 ||
-            //(instIndex & INSTANCE_CUSTOM_INDEX_FLAG_WATER_ONLY_REFLECT) != 0;
+        const bool isPortal = isPortalFromFlags(h.geometryInstanceFlags);
+        const bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
+        const bool toReflect = isReflectFromFlags(h.geometryInstanceFlags);
 
 
         if (!toReflect && !toRefract && !isPortal)

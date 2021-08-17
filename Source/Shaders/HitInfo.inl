@@ -23,16 +23,16 @@
 #ifdef DESC_SET_TEXTURES
 
 #ifdef TEXTURE_GRADIENTS
-vec3 processAlbedoGrad(uint materialsBlendFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
+vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
 #else
-vec3 processAlbedo(uint materialsBlendFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], float lod)
+vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], float lod)
 #endif
 {
     const uint blendsFlags[] = 
     {
-        (materialsBlendFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
-        (materialsBlendFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
-        (materialsBlendFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
+        (geometryInstanceFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
+        (geometryInstanceFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
+        (geometryInstanceFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
     };
 
     vec3 dst = vec3(1.0);
@@ -91,7 +91,7 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
         tr.layerTexCoord[2] * baryCoords
     };
     
-    return processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, 0);
+    return processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, 0);
 }
 
 
@@ -223,7 +223,7 @@ ShHitInfo getHitInfoBounce(
         (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2]) * textureGrad_dTMultiplier
     };
 
-    h.albedo = processAlbedoGrad(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
+    h.albedo = processAlbedoGrad(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
 #else
 
     const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
@@ -231,7 +231,7 @@ ShHitInfo getHitInfoBounce(
 
     const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
-    h.albedo = processAlbedo(tr.materialsBlendFlags, texCoords, tr.materials, tr.materialColors, lod);
+    h.albedo = processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, lod);
 #endif
 
     if (tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
@@ -283,6 +283,7 @@ ShHitInfo getHitInfoBounce(
     }
 
     h.instCustomIndex = instCustomIndex;
+    h.geometryInstanceFlags = tr.geometryInstanceFlags;
 
     return h;
 }

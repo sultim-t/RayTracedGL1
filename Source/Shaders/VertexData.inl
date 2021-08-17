@@ -492,7 +492,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.normals[2] = model3 * tr.normals[2];
     tr.tangent.xyz = model3 * tr.tangent.xyz;
 
-    tr.materialsBlendFlags = inst.flags;
+    tr.geometryInstanceFlags = inst.flags;
 
     tr.geomRoughness = inst.defaultRoughness;
     tr.geomMetallicity = inst.defaultMetallicity;

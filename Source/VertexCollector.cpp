@@ -339,6 +339,32 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
         geomInfo.flags |= GEOM_INST_FLAG_IS_MOVABLE;
     }
 
+    switch (info.passThroughType)
+    {
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR:
+            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
+            break;
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL:
+            geomInfo.flags |= GEOM_INST_FLAG_PORTAL;
+            break;
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT:
+            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
+            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
+            break;
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT:
+            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
+            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
+            geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
+            break;
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT:
+            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_GLASS;
+            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
+            geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
+            break;
+        default:
+            break;
+    }
+
     for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
     {
         uint32_t *pMatArr = &geomInfo.materials0A;
