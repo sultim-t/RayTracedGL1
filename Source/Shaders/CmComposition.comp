@@ -83,17 +83,19 @@ void main()
     }
     else
     {
+        const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
+
         if (globalUniform.bloomIntensity > 0.0)
         {
             // if bloom is enabled, need to minimize the color difference between sky and scene
             // this fixes it (a good way to avoid this is to bring HDR sky) 
             color /= max(0.001, globalUniform.bloomSkyMultiplier * 2);
 
-            color += albedo4.rgb;
+            color += albedo4.rgb * throughput;
         }
         else
         {
-            color = albedo4.rgb;
+            color = albedo4.rgb * throughput;
         }
     }
 
