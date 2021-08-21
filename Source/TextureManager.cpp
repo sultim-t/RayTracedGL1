@@ -92,6 +92,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     info.baseSize = size;
     info.format = VK_FORMAT_R8G8B8A8_UNORM;
     info.levelCount = 1;
+    info.isPregenerated = false;
     info.levelSizes[0] = sizeof(data);
 
     VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
@@ -320,7 +321,7 @@ uint32_t TextureManager::PrepareStaticTexture(
     info.useMipmaps = useMipmaps;
     info.pDebugName = debugName;
     info.isCubemap = false;
-    info.pregeneratedLevelCount = imageInfo.levelCount;
+    info.pregeneratedLevelCount = imageInfo.isPregenerated ? imageInfo.levelCount : 0;
     info.pLevelDataOffsets = imageInfo.levelOffsets;
     info.pLevelDataSizes = imageInfo.levelSizes;
 

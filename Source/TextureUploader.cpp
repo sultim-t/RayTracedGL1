@@ -67,7 +67,7 @@ bool TextureUploader::DoesFormatSupportBlit(VkFormat format) const
 
 bool TextureUploader::AreMipmapsPregenerated(const UploadInfo &info) const
 {
-    return info.pregeneratedLevelCount > 1;
+    return info.pregeneratedLevelCount > 0;
 }
 
 uint32_t TextureUploader::GetMipmapCount(const RgExtent2D &size, const UploadInfo &info) const

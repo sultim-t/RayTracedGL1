@@ -445,8 +445,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     if (drawInfo.pReflectRefractParams != nullptr)
     {
-        if (drawInfo.pReflectRefractParams->typeOfMediaAroundCamera < 0 ||
-            drawInfo.pReflectRefractParams->typeOfMediaAroundCamera >= MEDIA_TYPE_COUNT - 1)
+        if (drawInfo.pReflectRefractParams->typeOfMediaAroundCamera >= 0 &&
+            drawInfo.pReflectRefractParams->typeOfMediaAroundCamera < MEDIA_TYPE_COUNT)
         {
             gu->cameraMediaType = drawInfo.pReflectRefractParams->typeOfMediaAroundCamera;
         }

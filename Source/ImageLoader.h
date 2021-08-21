@@ -40,6 +40,7 @@ public:
         uint32_t        levelOffsets[MAX_PREGENERATED_MIPMAP_LEVELS];
         uint32_t        levelSizes[MAX_PREGENERATED_MIPMAP_LEVELS];
         uint32_t        levelCount;
+        bool            isPregenerated;
         const uint8_t *pData;
         uint32_t        dataSize;
         RgExtent2D      baseSize;

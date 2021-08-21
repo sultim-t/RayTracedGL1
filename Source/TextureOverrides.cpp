@@ -133,6 +133,7 @@ TextureOverrides::TextureOverrides(
             results[i].pData = static_cast<const uint8_t *>(defaultData[i]->pData);
             results[i].dataSize = defaultDataSize;
             results[i].levelCount = 1;
+            results[i].isPregenerated = false;
             results[i].levelOffsets[0] = 0;
             results[i].levelSizes[0] = defaultDataSize;
             results[i].baseSize = _defaultSize;

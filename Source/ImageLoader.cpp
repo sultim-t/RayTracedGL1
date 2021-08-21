@@ -96,6 +96,7 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
     pResultInfo->format = ktxTexture_GetVkFormat(pTexture);
     pResultInfo->pData = ktxTexture_GetData(pTexture);
     pResultInfo->dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture));
+    pResultInfo->isPregenerated = true;
 
     
     // get mipmap offsets
