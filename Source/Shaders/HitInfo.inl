@@ -36,6 +36,7 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
     };
 
     vec3 dst = vec3(1.0);
+    bool hasAnyAlbedoTexture = false;
 
     for (uint i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
     {
@@ -64,8 +65,13 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
                   float(alp) * (src.rgb * src.a + dst * (1 - src.a)) + 
                   float(add) * (src.rgb + dst) +
                   float(shd) * (src.rgb * dst * 2);
+
+            hasAnyAlbedoTexture = true; 
         }
     }
+
+    // if no albedo textures, use primary color 
+    dst = mix(materialColors[0].rgb, dst, float(hasAnyAlbedoTexture));
 
     return clamp(dst, vec3(0), vec3(1));
 }

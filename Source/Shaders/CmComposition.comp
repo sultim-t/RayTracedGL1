@@ -83,7 +83,7 @@ void main()
     }
     else
     {
-        const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
+        const vec3 throughput = push.forceIsSky != 0 ? vec3(1.0) : texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
 
         if (globalUniform.bloomIntensity > 0.0)
         {
