@@ -496,14 +496,15 @@ bool isSky(const vec4 albedo)
 
 
 
+#ifdef DESC_SET_GLOBAL_UNIFORM
 float getIndexOfRefraction(uint media)
 {
     switch (media)
     {
         case MEDIA_TYPE_WATER:
-            return 1.33;
+            return globalUniform.indexOfRefractionWater;
         case MEDIA_TYPE_GLASS:
-            return 1.52;
+            return globalUniform.indexOfRefractionGlass;
         default:
             return 1.0;
     }
@@ -526,8 +527,9 @@ vec3 getMediaTransmittance(uint media, float distance)
 
     if (media == MEDIA_TYPE_WATER)
     {
-        extinction = vec3(0.033, 0.017, 0.013);
+        extinction = globalUniform.waterDensityMultiplier * vec3(0.033, 0.017, 0.013);
     }
 
     return exp(-distance * extinction);
 }
+#endif // DESC_SET_GLOBAL_UNIFORM

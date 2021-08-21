@@ -71,6 +71,7 @@ namespace RTGL1
 #define MATERIAL_BLENDING_MASK_FIRST_LAYER (15)
 #define MATERIAL_BLENDING_MASK_SECOND_LAYER (240)
 #define MATERIAL_BLENDING_MASK_THIRD_LAYER (3840)
+#define GEOM_INST_FLAG_NO_MEDIA_CHANGE (1 << 23)
 #define GEOM_INST_FLAG_REFRACT (1 << 24)
 #define GEOM_INST_FLAG_REFLECT (1 << 25)
 #define GEOM_INST_FLAG_PORTAL (1 << 26)
@@ -186,10 +187,14 @@ struct ShGlobalUniform
     float rayLength;
     uint32_t reflectRefractMaxDepth;
     uint32_t cameraMediaType;
-    float _pad1;
-    float _pad2;
-    float _pad3;
+    float indexOfRefractionWater;
+    float indexOfRefractionGlass;
+    float waterDensityMultiplier;
     float portalInputToOutputDiff[4];
+    uint32_t enableShadowsFromReflRefr;
+    uint32_t enableIndirectFromReflRefr;
+    uint32_t forceNoWaterRefraction;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

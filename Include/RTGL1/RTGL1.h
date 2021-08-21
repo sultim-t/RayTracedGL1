@@ -291,6 +291,10 @@ typedef struct RgFloat4D
 typedef enum RgGeometryUploadFlagBits
 {
     RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT = 0x00000001,
+    // Set this flag if on the both sides of polygons the media is the same.
+    // For example, waterfall geometry represented by one flat square,
+    // so on both sides is air media.
+    RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 0x00000002,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 
@@ -831,6 +835,18 @@ typedef struct RgDrawFrameReflectRefractParams
     uint32_t    maxReflectRefractDepth;
     // Media type, in which camera currently is.
     RgMediaType typeOfMediaAroundCamera;
+    // Should reflect-refract geometry cast shadows?
+    RgBool32    reflectRefractCastShadows;
+    // Should reflect-refract geometry be hit when indirect illumination is ray traced?
+    // Note: indirect illumination will interpret reflect-refract geometry as non reflect-refract
+    RgBool32    reflectRefractToIndirect;
+    // Default: 1.52
+    float       indexOfRefractionGlass;
+    // Default: 1.33
+    float       indexOfRefractionWater;
+    // Default: 1.0
+    float       waterDensityMultiplier;
+    RgBool32    forceNoWaterRefraction;
     // Difference between portal input and portal output world positions.
     RgFloat3D   portalInputToOutputDiff;
 } RgDrawFrameReflectRefractParams;

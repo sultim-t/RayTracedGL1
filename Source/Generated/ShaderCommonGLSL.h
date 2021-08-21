@@ -64,6 +64,7 @@
 #define MATERIAL_BLENDING_MASK_FIRST_LAYER (15)
 #define MATERIAL_BLENDING_MASK_SECOND_LAYER (240)
 #define MATERIAL_BLENDING_MASK_THIRD_LAYER (3840)
+#define GEOM_INST_FLAG_NO_MEDIA_CHANGE (1 << 23)
 #define GEOM_INST_FLAG_REFRACT (1 << 24)
 #define GEOM_INST_FLAG_REFLECT (1 << 25)
 #define GEOM_INST_FLAG_PORTAL (1 << 26)
@@ -181,10 +182,14 @@ struct ShGlobalUniform
     float rayLength;
     uint reflectRefractMaxDepth;
     uint cameraMediaType;
-    float _pad1;
-    float _pad2;
-    float _pad3;
+    float indexOfRefractionWater;
+    float indexOfRefractionGlass;
+    float waterDensityMultiplier;
     vec4 portalInputToOutputDiff;
+    uint enableShadowsFromReflRefr;
+    uint enableIndirectFromReflRefr;
+    uint forceNoWaterRefraction;
+    float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

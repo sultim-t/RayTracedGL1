@@ -115,12 +115,27 @@ bool isPortalFromFlags(uint geometryInstanceFlags)
 
 bool isRefractFromFlags(uint geometryInstanceFlags)
 {
-    return (geometryInstanceFlags & GEOM_INST_FLAG_REFRACT) != 0;
+    // if water, but water refraction is disabled, return false;
+    // otherwise, check refract flag
+    return 
+        !(globalUniform.forceNoWaterRefraction != 0 && (geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_WATER) != 0) &&
+        ((geometryInstanceFlags & GEOM_INST_FLAG_REFRACT) != 0);
 }
 
 bool isReflectFromFlags(uint geometryInstanceFlags)
 {
     return (geometryInstanceFlags & GEOM_INST_FLAG_REFLECT) != 0;
+}
+
+uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
+{
+    // if camera is not in vacuum, assume that new media is vacuum
+    if (i == 0 && globalUniform.cameraMediaType != MEDIA_TYPE_VACUUM)
+    {
+       return MEDIA_TYPE_VACUUM;
+    }
+
+    return getMediaTypeFromFlags(geometryInstanceFlags);
 }
 
 void main() 
@@ -143,9 +158,15 @@ void main()
     ShPayload payload = tracePrimaryRay(cameraOrigin, rayDir);
 
 
+    uint currentRayMedia = globalUniform.cameraMediaType;
+
+
     // was no hit
     if (!isPayloadConsistent(payload))
     {
+        vec3 throughput = vec3(1.0);
+        throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, vec3(0,1,0))), -3));
+
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
         storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0);
         return;
@@ -162,7 +183,6 @@ void main()
 
     vec3 throughput = vec3(1.0);
     float fullPathLength = h.linearDepth;
-    uint currentRayMedia = globalUniform.cameraMediaType;
     bool wasSplit = false;
 
 
@@ -178,16 +198,32 @@ void main()
             break;
         }
 
-        const bool isPixOdd = isCheckerboardPixOdd(pix) != 0;
+        bool isPixOdd = isCheckerboardPixOdd(pix) != 0;
 
-        const uint newRayMedia = getMediaTypeFromFlags(h.geometryInstanceFlags);
+
+        uint newRayMedia = getNewRayMedia(i, currentRayMedia, h.geometryInstanceFlags);
 
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const bool isPortal = isPortalFromFlags(h.geometryInstanceFlags);
-        const bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
-        const bool toReflect = isReflectFromFlags(h.geometryInstanceFlags);
+        bool isPortal = isPortalFromFlags(h.geometryInstanceFlags);
+        bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
+        bool toReflect = isReflectFromFlags(h.geometryInstanceFlags);
+
+
+        bool delaySplitOnNextTime = false;
+            
+        if ((h.geometryInstanceFlags & GEOM_INST_FLAG_NO_MEDIA_CHANGE) != 0)
+        {
+            // apply small new media transmittance, and ignore the media
+            throughput *= getMediaTransmittance(newRayMedia, 1.0);
+            newRayMedia = currentRayMedia;
+            
+            // very coarse fix so there are no reflections if viewing from inside
+            // of NO_MEDIA_CHANGE geometry
+            // TODO: make new variable
+            delaySplitOnNextTime = dot(h.normal, -rayDir) < 0.0;
+        }
 
 
         if (!toReflect && !toRefract && !isPortal)
@@ -199,7 +235,7 @@ void main()
         {
             h.normal *= -1;
         }
-        //h.normal = normalize(h.normal + 0.2 * normalize(vec3(h.albedo.r - 0.5, h.albedo.b - 0.5, h.albedo.g - 0.5)));
+        h.normal = normalize(h.normal + 0.1 * normalize(vec3(h.albedo.r - 0.5, h.albedo.b - 0.5, h.albedo.g - 0.5)));
            
         vec3 rayOrigin = h.hitPosition;
         bool doSplit = !wasSplit;
@@ -207,6 +243,14 @@ void main()
         vec3 refractionDir;
         float F;
 
+        if (delaySplitOnNextTime)
+        {
+            doSplit = false;
+            // force refraction for all pixels
+            toRefract = true;
+            isPixOdd = true;
+        }
+        
         if (toRefract && calcRefractionDirection(curIndexOfRefraction, newIndexOfRefraction, rayDir, h.normal, refractionDir))
         {
             doRefraction = isPixOdd;
@@ -251,6 +295,8 @@ void main()
         
         if (!isPayloadConsistent(payload))
         {
+            throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, vec3(0,1,0))), -3));
+
             storeSky(pix, rayDir, true, throughput, firstHitDepthNDC);
             return;  
         }

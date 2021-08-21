@@ -70,9 +70,10 @@ uint getReflectionRefractionCullMask(bool isRefraction)
 
 uint getShadowCullMask(uint surfInstCustomIndex)
 {
-    // without reflective/refractive
-    const uint world = globalUniform.rayCullMaskWorld & (~INSTANCE_MASK_REFLECT_REFRACT);
-    
+    const uint world = 
+        globalUniform.rayCullMaskWorld | 
+        (globalUniform.enableShadowsFromReflRefr == 0 ? 0 : INSTANCE_MASK_REFLECT_REFRACT);
+
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {
         // no first-person viewer shadows -- on first-person
@@ -94,7 +95,9 @@ uint getShadowCullMask(uint surfInstCustomIndex)
 
 uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
 {
-    const uint world = globalUniform.rayCullMaskWorld & (~INSTANCE_MASK_REFLECT_REFRACT);
+    const uint world = 
+        globalUniform.rayCullMaskWorld | 
+        (globalUniform.enableIndirectFromReflRefr == 0 ? 0 : INSTANCE_MASK_REFLECT_REFRACT);
     
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {

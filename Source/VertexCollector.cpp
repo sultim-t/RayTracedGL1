@@ -334,6 +334,11 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
         geomInfo.flags |= GEOM_INST_FLAG_INVERTED_NORMALS;
     }
 
+    if (info.flags & RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT)
+    {
+        geomInfo.flags |= GEOM_INST_FLAG_NO_MEDIA_CHANGE;
+    }
+
     if (geomFlags & FT::CF_STATIC_MOVABLE)
     {
         geomInfo.flags |= GEOM_INST_FLAG_IS_MOVABLE;
