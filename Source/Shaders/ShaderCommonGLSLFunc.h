@@ -148,22 +148,6 @@ void unpackGeometryAndPrimitiveIndex(uint geomAndPrimIndex, out int geometryInde
 
 
 
-#ifdef DESC_SET_VERTEX_DATA
-#ifdef DESC_SET_GLOBAL_UNIFORM
-#ifdef DESC_SET_TEXTURES
-
-    #include "HitInfo.inl"
-
-    #define TEXTURE_GRADIENTS
-        #include "HitInfo.inl"
-    #undef TEXTURE_GRADIENTS
-
-#endif // DESC_SET_TEXTURES
-#endif // DESC_SET_GLOBAL_UNIFORM
-#endif // DESC_SET_VERTEX_DATA
-
-
-
 #ifdef DESC_SET_TONEMAPPING
 layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM) 
 #ifndef TONEMAPPING_BUFFER_WRITEABLE

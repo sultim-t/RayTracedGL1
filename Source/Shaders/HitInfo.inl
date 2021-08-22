@@ -22,8 +22,11 @@
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_TEXTURES
 
-#ifdef TEXTURE_GRADIENTS
+
+#if defined(HITINFO_INL_0)
 vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
+#elif defined(HITINFO_INL_1)
+vec3 processAlbedoRayConeDeriv(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const DerivativeSet derivSet)
 #else
 vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], float lod)
 #endif
@@ -38,14 +41,17 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
     vec3 dst = vec3(1.0);
     bool hasAnyAlbedoTexture = false;
 
-    for (uint i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
+    for (int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
     {
         if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {
-        #ifdef TEXTURE_GRADIENTS
-            const vec4 src = materialColors[i] * getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
+            const vec4 src = materialColors[i] *
+        #if defined(HITINFO_INL_0)
+                getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
+        #elif defined(HITINFO_INL_1)
+                getTextureSampleDerivSet(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], derivSet, i);
         #else
-            const vec4 src = materialColors[i] * getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
+                getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
         #endif
 
             bool opq = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0;
@@ -76,7 +82,8 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
     return clamp(dst, vec3(0), vec3(1));
 }
 
-#ifndef TEXTURE_GRADIENTS
+
+#if defined(HITINFO_INL_2)
 vec3 getHitInfoAlbedoOnly(ShPayload pl) 
 {
     int instanceId, instCustomIndex;
@@ -99,8 +106,10 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
     
     return processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, 0);
 }
+#endif // HITINFO_INL_2
 
 
+#if defined(HITINFO_INL_0)
 // "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
 float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth, float bounceMipBias)
 {    
@@ -117,10 +126,10 @@ float getBounceLOD(float roughness, float viewDist, float hitDist, float screenW
 
     return mip + bounceMipBias;
 }
+#endif // HITINFO_INL_0
 
-#endif // !TEXTURE_GRADIENTS
 
-#ifdef TEXTURE_GRADIENTS
+#if defined(HITINFO_INL_0)
 // Fast, Minimum Storage Ray-Triangle Intersection, Moller, Trumbore
 vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 {
@@ -140,21 +149,34 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 
     return vec3(1 - u - v, u, v);
 }
-#endif // TEXTURE_GRADIENTS
+#endif // HITINFO_INL_0
 
-#ifdef TEXTURE_GRADIENTS
+
+#if defined(HITINFO_INL_0)
+
 ShHitInfo getHitInfoPrimaryRay(
     const ShPayload pl, 
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
-    const float textureGrad_dTMultiplier,
     out vec2 motion, out float motionDepthLinear, 
     out vec2 gradDepth, out float depthNDC,
     out float screenEmission)
+
+#elif defined(HITINFO_INL_1)
+
+ShHitInfo getHitInfoWithRayCone(
+    const ShPayload pl, const RayCone rayCone,
+    const vec3 rayOrig, const vec3 rayDir, const vec3 rayDirAX, const vec3 rayDirAY, 
+    out vec2 motion, out float motionDepthLinear, 
+    out vec2 gradDepth, out float depthNDC,
+    out float screenEmission)
+
 #else
+
 ShHitInfo getHitInfoBounce(
     const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias,
     out float hitDistance)
-#endif // TEXTURE_GRADIENTS
+
+#endif // HITINFO_INL_0
 {
     ShHitInfo h;
 
@@ -177,8 +199,9 @@ ShHitInfo getHitInfoBounce(
     };
     
     h.hitPosition = tr.positions * baryCoords;
+    h.normalGeom = safeNormalize(tr.normals * baryCoords);
 
-#ifdef TEXTURE_GRADIENTS
+#if defined(HITINFO_INL_0) || defined(HITINFO_INL_1)
     // Tracing Ray Differentials, Igehy
 
     // instead of casting new rays, check intersections on the same triangle
@@ -214,22 +237,37 @@ ShHitInfo getHitInfoBounce(
     gradDepth = vec2(clipSpaceDepthAX - clipSpaceDepth, clipSpaceDepthAY - clipSpaceDepth);
 
 
-    // pixel's footprint in texture space
-    const vec2 dTdx[] = 
-    {
-        (tr.layerTexCoord[0] * baryCoordsAX - texCoords[0]) * textureGrad_dTMultiplier,
-        (tr.layerTexCoord[1] * baryCoordsAX - texCoords[1]) * textureGrad_dTMultiplier,
-        (tr.layerTexCoord[2] * baryCoordsAX - texCoords[2]) * textureGrad_dTMultiplier
-    };
+    #if defined(HITINFO_INL_0) 
+        // pixel's footprint in texture space
+        const vec2 dTdx[] = 
+        {
+            (tr.layerTexCoord[0] * baryCoordsAX - texCoords[0]),
+            (tr.layerTexCoord[1] * baryCoordsAX - texCoords[1]),
+            (tr.layerTexCoord[2] * baryCoordsAX - texCoords[2])
+        };
 
-    const vec2 dTdy[] = 
-    {
-        (tr.layerTexCoord[0] * baryCoordsAY - texCoords[0]) * textureGrad_dTMultiplier,
-        (tr.layerTexCoord[1] * baryCoordsAY - texCoords[1]) * textureGrad_dTMultiplier,
-        (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2]) * textureGrad_dTMultiplier
-    };
+        const vec2 dTdy[] = 
+        {
+            (tr.layerTexCoord[0] * baryCoordsAY - texCoords[0]),
+            (tr.layerTexCoord[1] * baryCoordsAY - texCoords[1]),
+            (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2])
+        };
 
-    h.albedo = processAlbedoGrad(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, dTdx, dTdy);
+        h.albedo = processAlbedoGrad(
+            tr.geometryInstanceFlags, texCoords,
+             tr.materials, tr.materialColors, 
+             dTdx, dTdy);
+    #else
+
+        DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
+
+        h.albedo = processAlbedoRayConeDeriv(
+            tr.geometryInstanceFlags, texCoords, 
+            tr.materials, tr.materialColors, 
+            derivSet);
+
+    #endif // HITINFO_INL_0
+
 #else
 
     const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
@@ -238,21 +276,24 @@ ShHitInfo getHitInfoBounce(
     const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
     h.albedo = processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, lod);
-#endif
+#endif // HITINFO_INL_0
 
     if (tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
     {
-    #ifdef TEXTURE_GRADIENTS
-        const vec3 rme = getTextureSampleGrad(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+        const vec3 rme = 
+    #if defined(HITINFO_INL_0)
+            getTextureSampleGrad(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+    #elif defined(HITINFO_INL_1)
+            getTextureSampleDerivSet(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], derivSet, 0).xyz;
     #else
-        const vec3 rme = getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
+            getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
     #endif
 
         h.roughness = rme[0];
         h.metallic  = rme[1];
         h.emission  = rme[2] * globalUniform.emissionMapBoost /*+ tr.geomEmission*/;
 
-    #ifdef TEXTURE_GRADIENTS
+    #if defined(HITINFO_INL_0) || defined(HITINFO_INL_1)
         screenEmission = clamp(rme[2] /*+ tr.geomEmission*/, 0.0, 1.0);
     #endif
     }
@@ -262,19 +303,20 @@ ShHitInfo getHitInfoBounce(
         h.metallic  = tr.geomMetallicity;
         h.emission  = tr.geomEmission;
 
-    #ifdef TEXTURE_GRADIENTS
+    #if defined(HITINFO_INL_0) || defined(HITINFO_INL_1)
         screenEmission = clamp(h.emission, 0.0, 1.0);
     #endif
     }
 
-    h.normalGeom = safeNormalize(tr.normals * baryCoords);
-
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
-    #ifdef TEXTURE_GRADIENTS
-        vec3 nrm = getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+        vec3 nrm = 
+    #if defined(HITINFO_INL_0)
+            getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+    #elif defined(HITINFO_INL_1)
+            getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0).xyz;
     #else
-        vec3 nrm = getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod).xyz;
+            getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod).xyz;
     #endif
         nrm.xy = nrm.xy * 2.0 - vec2(1.0);
 
@@ -293,6 +335,7 @@ ShHitInfo getHitInfoBounce(
 
     return h;
 }
+
 #endif // DESC_SET_TEXTURES
 #endif // DESC_SET_GLOBAL_UNIFORM
 #endif // DESC_SET_VERTEX_DATA

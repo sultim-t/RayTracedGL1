@@ -232,12 +232,19 @@ void main()
     }
 
 
+    // TODO: fov
+    float fovAngleY = radians(75);
+    RayCone rayCone;
+    rayCone.width = 0;
+    rayCone.spreadAngle = atan((2.0f * tan(fovAngleY * 0.5f)) / globalUniform.renderHeight);
+
+
     vec2 motionCurToPrev;
     float motionDepthLinearCurToPrev;
     vec2 gradDepth;
     float firstHitDepthNDC;
     float screenEmission;
-    ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 1.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, screenEmission);
+    ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, screenEmission);
 
 
     vec3 throughput = vec3(1.0);
@@ -247,6 +254,7 @@ void main()
 
 
     throughput *= getMediaTransmittance(currentRayMedia, h.linearDepth);
+    propagateRayCone(rayCone, h.linearDepth);
 
 
     for (int i = 0; i < globalUniform.reflectRefractMaxDepth; i++)
@@ -359,10 +367,11 @@ void main()
         }
 
         float depthNDC;
-        h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+        h = getHitInfoWithRayCone(payload, rayCone, cameraOrigin, rayDir, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
 
         const float rayLen = length(h.hitPosition - prevHitPosition);
         throughput *= getMediaTransmittance(currentRayMedia, rayLen);
+        propagateRayCone(rayCone, rayLen);
         fullPathLength += rayLen;
         prevHitPosition = h.hitPosition;
     }

@@ -21,7 +21,9 @@
 #extension GL_EXT_ray_tracing : require
 
 
+
 #include "ShaderCommonGLSLFunc.h"
+
 
 
 #if !defined(DESC_SET_TLAS) || \
@@ -32,6 +34,23 @@
     !defined(DESC_SET_LIGHT_SOURCES)
         #error Descriptor set indices must be set!
 #endif
+
+
+
+#include "RayCone.h"
+
+#define HITINFO_INL_0
+    #include "HitInfo.inl"
+#undef HITINFO_INL_0
+
+#define HITINFO_INL_1
+    #include "HitInfo.inl"
+#undef HITINFO_INL_1
+
+#define HITINFO_INL_2
+    #include "HitInfo.inl"
+#undef HITINFO_INL_2
+
 
 
 layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uniform accelerationStructureEXT topLevelAS;

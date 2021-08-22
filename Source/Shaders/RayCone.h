@@ -60,3 +60,49 @@ vec4 getUVDerivativesFromRayCone(
 
     return vec4(ULength, 0, 0, ULength);
 }
+
+struct DerivativeSet
+{
+    float u[3];
+};
+
+DerivativeSet getTriangleUVDerivativesFromRayCone(
+    const ShTriangle triangle,
+    const vec3 worldNormal,
+    const RayCone rayCone, 
+    const vec3 rayDir)
+{
+    const vec3 edge10 = triangle.positions[1] - triangle.positions[0];
+    const vec3 edge20 = triangle.positions[2] - triangle.positions[0];
+    const vec3 faceNormal = cross(edge10, edge20);
+    float quadArea = length(faceNormal);
+
+    float normalTerm = abs(dot(rayDir, worldNormal));
+    float projectedConeWidth = rayCone.width / normalTerm;
+    float visibleAreaRatio = (projectedConeWidth * projectedConeWidth) / quadArea;
+
+
+    DerivativeSet derivSet;
+
+    for (int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
+    {
+        const mat3x2 vertTexCoords = triangle.layerTexCoord[i];
+
+        const vec2 uv10 = vertTexCoords[1] - vertTexCoords[0];
+        const vec2 uv20 = vertTexCoords[2] - vertTexCoords[0];
+        float quadUVArea = abs(uv10.x * uv20.y - uv20.x * uv10.y);
+
+        float visibleUVArea = quadUVArea * visibleAreaRatio;
+        float ULength = sqrt(visibleUVArea);
+
+        derivSet.u[i] = ULength;
+    }
+
+    return derivSet;
+}
+
+vec4 getTextureSampleDerivSet(uint textureIndex, const vec2 texCoord, const DerivativeSet derivSet, int index)
+{
+    float u = derivSet.u[index];
+    return textureGrad(globalTextures[nonuniformEXT(textureIndex)], texCoord, vec2(u, 0), vec2(0, u));
+}
