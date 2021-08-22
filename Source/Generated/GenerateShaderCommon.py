@@ -478,8 +478,8 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "noBackfaceReflForNoMediaChange",   1),
     (TYPE_FLOAT32,      1,      "time",                             1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
-    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+    (TYPE_FLOAT32,      1,      "waterWaveSpeed",                   1),
+    (TYPE_FLOAT32,      1,      "waterWaveStrength",                1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),

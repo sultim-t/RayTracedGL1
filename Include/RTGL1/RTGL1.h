@@ -846,6 +846,8 @@ typedef struct RgDrawFrameReflectRefractParams
     // Default: 1.0
     float       waterDensityMultiplier;
     RgBool32    forceNoWaterRefraction;
+    float       waterWaveSpeed;
+    float       waterWaveNormalStrength;
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
     RgBool32    disableBackfaceReflectionsForNoMediaChange;

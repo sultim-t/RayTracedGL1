@@ -467,6 +467,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->waterDensityMultiplier = std::max(0.0f, drawInfo.pReflectRefractParams->waterDensityMultiplier);
         gu->forceNoWaterRefraction = !!drawInfo.pReflectRefractParams->forceNoWaterRefraction;
+        gu->waterWaveSpeed = drawInfo.pReflectRefractParams->waterWaveSpeed;
+        gu->waterWaveStrength = drawInfo.pReflectRefractParams->waterWaveNormalStrength;
     
         gu->noBackfaceReflForNoMediaChange = drawInfo.pReflectRefractParams->disableBackfaceReflectionsForNoMediaChange;
     }
@@ -484,6 +486,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->waterDensityMultiplier = 1.0f;
         gu->forceNoWaterRefraction = false;
+        gu->waterWaveSpeed = 1.0f;
+        gu->waterWaveStrength = 1.0f;
 
         gu->noBackfaceReflForNoMediaChange = false;
     }

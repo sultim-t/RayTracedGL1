@@ -192,8 +192,8 @@ struct ShGlobalUniform
     uint waterNormalTextureIndex;
     float noBackfaceReflForNoMediaChange;
     float time;
-    float _pad2;
-    float _pad3;
+    float waterWaveSpeed;
+    float waterWaveStrength;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];
