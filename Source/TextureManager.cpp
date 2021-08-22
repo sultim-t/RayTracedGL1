@@ -128,8 +128,8 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
     parseInfo.texturesPath = "";
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        parseInfo.postfixes[i] = postfixes[i].c_str();
-        parseInfo.overridenIsSRGB[i] = overridenIsSRGB[i];
+        parseInfo.postfixes[i] = "";
+        parseInfo.overridenIsSRGB[i] = false;
     }
 
     const uint32_t defaultData[] = { 0x7F7FFFFF };

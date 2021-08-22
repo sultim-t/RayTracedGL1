@@ -143,18 +143,58 @@ vec3 getWaterNormal(const vec3 normalGeom, const vec3 position)
     const mat3 basis = getONB(normalGeom);
     const vec2 baseUV = vec2(dot(position, basis[0]), dot(position, basis[1])); 
 
-    float flowSpeed = 1.0 - abs(normalGeom.y);
+    // how much vertical flow to apply
+    float verticality = 1.0 - abs(normalGeom.y);
 
-    vec2 uv0 = 0.01 * baseUV + flowSpeed * globalUniform.time * vec2(0.01);
+    // project basis[0] and basis[1] on vec3(0, 1, 0))
+    vec2 flowSpeedVertical = 10 * vec2(basis[0].y, basis[1].y);
+
+    vec2 flowSpeedHorizontal = vec2(1.0);
+
+    float uvScale = 0.05; 
+    vec2 speed0 = uvScale * mix(flowSpeedHorizontal, flowSpeedVertical, verticality) * 0.7;// globalUniform.waterWaveSpeed;
+    vec2 speed1 = -0.9 * speed0 * mix(1.0, 0.1, verticality);
+
+    const float scale = 0.5;
+
+    vec2 uv0 = uvScale * baseUV + globalUniform.time * speed0;
     vec3 n0 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv0, 0).xyz;
     n0.xy = n0.xy * 2.0 - vec2(1.0);
 
-    vec2 uv1 = 0.01 * baseUV + flowSpeed * globalUniform.time * vec2(-0.01);
+    vec2 uv1 = 0.8 * uvScale * baseUV + globalUniform.time * speed1;
     vec3 n1 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv1, 0).xyz;
     n1.xy = n1.xy * 2.0 - vec2(1.0);
 
-    const vec3 n = normalize(n0 * 0.3 + n1 * 0.3);
+    vec2 uv2 = 0.1 * (uvScale * baseUV + speed0 * sin(globalUniform.time * 0.5));
+    vec3 n2 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv2, 0).xyz;
+    n2.xy = n2.xy * 2.0 - vec2(1.0);
+
+    const float strength = 1;// globalUniform.waterWaveStrength;
+
+    const vec3 n = normalize(vec3(0, 0, 1) + strength * (0.25 * n0 + 0.2 * n1 + 0.1 * n2));
     return basis * n;   
+}
+
+bool isBackface(const vec3 normalGeom, const vec3 rayDir)
+{
+    return dot(normalGeom, -rayDir) < 0.0;
+}
+
+vec3 getNormal(const vec3 position, const vec3 normalGeom, const vec3 rayDir, bool isWater)
+{
+    vec3 normal = normalGeom;
+
+    if (isBackface(normalGeom, rayDir))
+    {
+        normal *= -1;
+    }
+
+    if (isWater)
+    {
+        normal = getWaterNormal(normal, position);
+    }
+
+    return normal;
 }
 
 void main() 
@@ -202,6 +242,7 @@ void main()
 
     vec3 throughput = vec3(1.0);
     float fullPathLength = h.linearDepth;
+    vec3 prevHitPosition = h.hitPosition;
     bool wasSplit = false;
 
 
@@ -222,25 +263,9 @@ void main()
 
         uint newRayMedia = getNewRayMedia(i, currentRayMedia, h.geometryInstanceFlags);
 
-        const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
-        const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
-
         bool isPortal = isPortalFromFlags(h.geometryInstanceFlags);
         bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
         bool toReflect = isReflectFromFlags(h.geometryInstanceFlags);
-
-
-        bool delaySplitOnNextTime = false;
-            
-        if ((h.geometryInstanceFlags & GEOM_INST_FLAG_NO_MEDIA_CHANGE) != 0)
-        {
-            // apply small new media transmittance, and ignore the media
-            throughput *= getMediaTransmittance(newRayMedia, 1.0);
-            newRayMedia = currentRayMedia;
-            
-            // if reflections are disabled if viewing from inside of NO_MEDIA_CHANGE geometry
-            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && dot(h.normal, -rayDir) < 0.0;
-        }
 
 
         if (!toReflect && !toRefract && !isPortal)
@@ -248,12 +273,27 @@ void main()
             break;
         }
 
-        if (dot(h.normalGeom, -rayDir) < 0.0)
+
+        const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
+        const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
+
+        const vec3 normal = getNormal(h.hitPosition, h.normalGeom, rayDir, newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER);
+
+
+        bool delaySplitOnNextTime = false;
+            
+        if ((h.geometryInstanceFlags & GEOM_INST_FLAG_NO_MEDIA_CHANGE) != 0)
         {
-            h.normalGeom *= -1;
-            h.normal = getWaterNormal(h.normalGeom, h.hitPosition);
+            // apply small new media transmittance, and ignore the media (but not the refraction indices)
+            throughput *= getMediaTransmittance(newRayMedia, 1.0);
+            newRayMedia = currentRayMedia;
+            
+            // if reflections are disabled if viewing from inside of NO_MEDIA_CHANGE geometry
+            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && isBackface(h.normal, rayDir);
         }
+
            
+
         vec3 rayOrigin = h.hitPosition;
         bool doSplit = !wasSplit;
         bool doRefraction;
@@ -268,10 +308,10 @@ void main()
             isPixOdd = true;
         }
         
-        if (toRefract && calcRefractionDirection(curIndexOfRefraction, newIndexOfRefraction, rayDir, h.normal, refractionDir))
+        if (toRefract && calcRefractionDirection(curIndexOfRefraction, newIndexOfRefraction, rayDir, normal, refractionDir))
         {
             doRefraction = isPixOdd;
-            F = getFresnelSchlick(curIndexOfRefraction, newIndexOfRefraction, -rayDir, h.normal);
+            F = getFresnelSchlick(curIndexOfRefraction, newIndexOfRefraction, -rayDir, normal);
         }
         else
         {
@@ -296,7 +336,7 @@ void main()
         }
         else
         {
-            rayDir = reflect(rayDir, h.normal);
+            rayDir = reflect(rayDir, normal);
             throughput *= F;
         }
 
@@ -321,8 +361,10 @@ void main()
         float depthNDC;
         h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, 0.0, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
 
-        throughput *= getMediaTransmittance(currentRayMedia, h.linearDepth);
-        fullPathLength += h.linearDepth;
+        const float rayLen = length(h.hitPosition - prevHitPosition);
+        throughput *= getMediaTransmittance(currentRayMedia, rayLen);
+        fullPathLength += rayLen;
+        prevHitPosition = h.hitPosition;
     }
 
 
