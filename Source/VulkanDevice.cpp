@@ -304,6 +304,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->renderHeight = (float)drawInfo.renderSize.height;
         gu->frameId = frameId;
         gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
+        gu->time = (float)currentFrameTime;
     }
 
     {
@@ -466,6 +467,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->waterDensityMultiplier = std::max(0.0f, drawInfo.pReflectRefractParams->waterDensityMultiplier);
         gu->forceNoWaterRefraction = !!drawInfo.pReflectRefractParams->forceNoWaterRefraction;
+    
+        gu->noBackfaceReflForNoMediaChange = drawInfo.pReflectRefractParams->disableBackfaceReflectionsForNoMediaChange;
     }
     else
     {
@@ -481,10 +484,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->waterDensityMultiplier = 1.0f;
         gu->forceNoWaterRefraction = false;
+
+        gu->noBackfaceReflForNoMediaChange = false;
     }
 
     gu->rayCullMaskWorld = std::min((uint32_t)INSTANCE_MASK_WORLD_ALL, std::max((uint32_t)INSTANCE_MASK_WORLD_MIN, drawInfo.rayCullMaskWorld));
     gu->rayLength = std::min((float)MAX_RAY_LENGTH, std::max(0.1f, drawInfo.rayLength));
+
+    gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

@@ -75,13 +75,19 @@ TextureManager::TextureManager(
     // submit cmd to create empty texture
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
     CreateEmptyTexture(cmd, 0);
+    CreateWaterNormalTexture(cmd, 0, _info.pWaterNormalTexturePath);
     _cmdManager->Submit(cmd);
     _cmdManager->WaitGraphicsIdle();
+
+    if (this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Couldn't create water normal texture with path: " + std::string(_info.pWaterNormalTexturePath));
+    }
 }
 
 void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    assert(textures[0].image == VK_NULL_HANDLE && textures[0].view == VK_NULL_HANDLE);
+    assert(textures[EMPTY_TEXTURE_INDEX].image == VK_NULL_HANDLE && textures[EMPTY_TEXTURE_INDEX].view == VK_NULL_HANDLE);
 
     const uint32_t data[] = { 0xFFFFFFFF };
     const RgExtent2D size = { 1,1 };
@@ -109,6 +115,29 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
 
     // if texture will be reset, it will use empty texture's info
     textureDesc->SetEmptyTextureInfo(emptyView, sampler);
+}
+
+// Check CreateStaticMaterial for notes
+void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath)
+{
+    VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+
+    TextureOverrides::OverrideInfo parseInfo = {};
+    parseInfo.disableOverride = false;
+    // use absolute path
+    parseInfo.texturesPath = "";
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    {
+        parseInfo.postfixes[i] = postfixes[i].c_str();
+        parseInfo.overridenIsSRGB[i] = overridenIsSRGB[i];
+    }
+
+    const uint32_t defaultData[] = { 0x7F7FFFFF };
+    const RgExtent2D defaultSize = { 1, 1 };
+    // try to load image file
+    TextureOverrides ovrd(pFilePath, defaultData, false, defaultSize, parseInfo, imageLoader);
+
+    this->waterNormalTextureIndex = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(0), sampler, true, "Water normal");
 }
 
 TextureManager::~TextureManager()
@@ -678,4 +707,9 @@ void TextureManager::Unsubscribe(const IMaterialDependency *subscriber)
 
         return true;
     });
+}
+
+uint32_t TextureManager::GetWaterNormalTextureIndex() const
+{
+    return waterNormalTextureIndex;
 }

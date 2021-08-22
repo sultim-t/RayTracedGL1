@@ -189,6 +189,10 @@ struct ShGlobalUniform
     uint enableShadowsFromReflRefr;
     uint enableIndirectFromReflRefr;
     uint forceNoWaterRefraction;
+    uint waterNormalTextureIndex;
+    float noBackfaceReflForNoMediaChange;
+    float time;
+    float _pad2;
     float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];

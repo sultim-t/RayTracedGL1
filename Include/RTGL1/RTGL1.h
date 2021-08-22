@@ -198,9 +198,8 @@ typedef struct RgInstanceCreateInfo
     RgBool32                    overridenRoughnessMetallicEmissionTextureIsSRGB;
     RgBool32                    overridenNormalTextureIsSRGB;
 
-    // If a texture doesn't have overriden data, these default values are used.
-    float                       defaultRoughness;
-    float                       defaultMetallicity;
+    // Path to normal texture path. Ignores pOverridenTexturesFolderPath and pOverridenNormalTexturePostfix
+    const char                  *pWaterNormalTexturePath;
 
     // Vertex data strides in bytes. Must be 4-byte aligned.
     uint32_t                    vertexPositionStride;
@@ -847,6 +846,9 @@ typedef struct RgDrawFrameReflectRefractParams
     // Default: 1.0
     float       waterDensityMultiplier;
     RgBool32    forceNoWaterRefraction;
+    // If true, reflections are disabled for backface triangles
+    // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
+    RgBool32    disableBackfaceReflectionsForNoMediaChange;
     // Difference between portal input and portal output world positions.
     RgFloat3D   portalInputToOutputDiff;
 } RgDrawFrameReflectRefractParams;

@@ -138,6 +138,25 @@ uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
     return getMediaTypeFromFlags(geometryInstanceFlags);
 }
 
+vec3 getWaterNormal(const vec3 normalGeom, const vec3 position)
+{
+    const mat3 basis = getONB(normalGeom);
+    const vec2 baseUV = vec2(dot(position, basis[0]), dot(position, basis[1])); 
+
+    float flowSpeed = 1.0 - abs(normalGeom.y);
+
+    vec2 uv0 = 0.01 * baseUV + flowSpeed * globalUniform.time * vec2(0.01);
+    vec3 n0 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv0, 0).xyz;
+    n0.xy = n0.xy * 2.0 - vec2(1.0);
+
+    vec2 uv1 = 0.01 * baseUV + flowSpeed * globalUniform.time * vec2(-0.01);
+    vec3 n1 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv1, 0).xyz;
+    n1.xy = n1.xy * 2.0 - vec2(1.0);
+
+    const vec3 n = normalize(n0 * 0.3 + n1 * 0.3);
+    return basis * n;   
+}
+
 void main() 
 {
     const ivec2 pix = getCheckerboardPix(ivec2(gl_LaunchIDEXT.xy));
@@ -219,10 +238,8 @@ void main()
             throughput *= getMediaTransmittance(newRayMedia, 1.0);
             newRayMedia = currentRayMedia;
             
-            // very coarse fix so there are no reflections if viewing from inside
-            // of NO_MEDIA_CHANGE geometry
-            // TODO: make new variable
-            delaySplitOnNextTime = dot(h.normal, -rayDir) < 0.0;
+            // if reflections are disabled if viewing from inside of NO_MEDIA_CHANGE geometry
+            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && dot(h.normal, -rayDir) < 0.0;
         }
 
 
@@ -231,11 +248,11 @@ void main()
             break;
         }
 
-        if (dot(h.normal, -rayDir) < 0.0)
+        if (dot(h.normalGeom, -rayDir) < 0.0)
         {
-            h.normal *= -1;
+            h.normalGeom *= -1;
+            h.normal = getWaterNormal(h.normalGeom, h.hitPosition);
         }
-        h.normal = normalize(h.normal + 0.1 * normalize(vec3(h.albedo.r - 0.5, h.albedo.b - 0.5, h.albedo.g - 0.5)));
            
         vec3 rayOrigin = h.hitPosition;
         bool doSplit = !wasSplit;

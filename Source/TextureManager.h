@@ -69,6 +69,7 @@ public:
     MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
 
     static constexpr uint32_t GetEmptyTextureIndex();
+    uint32_t GetWaterNormalTextureIndex() const;
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
@@ -80,6 +81,7 @@ public:
 
 private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
+    void CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath);
 
     uint32_t PrepareStaticTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const ImageLoader::ResultInfo &info,
@@ -118,6 +120,8 @@ private:
 
     std::map<uint32_t, AnimatedMaterial> animatedMaterials;
     std::map<uint32_t, Material> materials;
+
+    uint32_t waterNormalTextureIndex;
 
     std::string defaultTexturesPath;
     std::string postfixes[TEXTURES_PER_MATERIAL_COUNT];

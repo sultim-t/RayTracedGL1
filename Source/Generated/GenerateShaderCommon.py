@@ -474,7 +474,12 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "enableShadowsFromReflRefr",    1),
     (TYPE_UINT32,       1,      "enableIndirectFromReflRefr",   1),
     (TYPE_UINT32,       1,      "forceNoWaterRefraction",       1),
-    (TYPE_FLOAT32,      1,      "_pad3",                        1),
+    (TYPE_UINT32,       1,      "waterNormalTextureIndex",      1),
+
+    (TYPE_FLOAT32,      1,      "noBackfaceReflForNoMediaChange",   1),
+    (TYPE_FLOAT32,      1,      "time",                             1),
+    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),
