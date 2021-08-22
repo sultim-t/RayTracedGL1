@@ -61,6 +61,22 @@ vec4 getUVDerivativesFromRayCone(
     return vec4(ULength, 0, 0, ULength);
 }
 
+float getWaterDerivU(const RayCone rayCone, const vec3 rayDir, const vec3 worldNormal)
+{
+    // just any values
+    const float quadArea = 1.0;
+    const float quadUVArea = 1.0;
+
+    float normalTerm = abs(dot(rayDir, worldNormal));
+    float projectedConeWidth = rayCone.width / normalTerm;
+    float visibleAreaRatio = (projectedConeWidth * projectedConeWidth) / quadArea;
+
+    float visibleUVArea = quadUVArea * visibleAreaRatio;
+    float ULength = sqrt(visibleUVArea);
+
+    return ULength;
+}
+
 struct DerivativeSet
 {
     float u[3];
@@ -101,8 +117,12 @@ DerivativeSet getTriangleUVDerivativesFromRayCone(
     return derivSet;
 }
 
+vec4 getTextureSampleDerivU(uint textureIndex, const vec2 texCoord, const float uDeriv)
+{
+    return textureGrad(globalTextures[nonuniformEXT(textureIndex)], texCoord, vec2(uDeriv, 0), vec2(0, uDeriv));
+}
+
 vec4 getTextureSampleDerivSet(uint textureIndex, const vec2 texCoord, const DerivativeSet derivSet, int index)
 {
-    float u = derivSet.u[index];
-    return textureGrad(globalTextures[nonuniformEXT(textureIndex)], texCoord, vec2(u, 0), vec2(0, u));
+    return getTextureSampleDerivU(textureIndex, texCoord, derivSet.u[index]);
 }

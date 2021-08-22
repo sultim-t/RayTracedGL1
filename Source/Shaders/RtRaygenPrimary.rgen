@@ -138,10 +138,11 @@ uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
     return getMediaTypeFromFlags(geometryInstanceFlags);
 }
 
-vec3 getWaterNormal(const vec3 normalGeom, const vec3 position)
+vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalGeom, const vec3 position)
 {
     const mat3 basis = getONB(normalGeom);
     const vec2 baseUV = vec2(dot(position, basis[0]), dot(position, basis[1])); 
+
 
     // how much vertical flow to apply
     float verticality = 1.0 - abs(normalGeom.y);
@@ -151,23 +152,30 @@ vec3 getWaterNormal(const vec3 normalGeom, const vec3 position)
 
     vec2 flowSpeedHorizontal = vec2(1.0);
 
-    float uvScale = 0.05; 
-    vec2 speed0 = uvScale * mix(flowSpeedHorizontal, flowSpeedVertical, verticality) * globalUniform.waterWaveSpeed;
-    vec2 speed1 = -0.9 * speed0 * mix(1.0, 0.1, verticality);
 
-    const float scale = 0.5;
+    const float uvScale = 0.05;
+    vec2 speed0 = uvScale * mix(flowSpeedHorizontal, flowSpeedVertical, verticality) * globalUniform.waterWaveSpeed;
+    vec2 speed1 = -0.9 * speed0 * mix(1.0, -0.1, verticality);
+
+
+    // for texture sampling
+    float derivU = 0.3 * uvScale * getWaterDerivU(rayCone, rayDir, normalGeom);
+
 
     vec2 uv0 = uvScale * baseUV + globalUniform.time * speed0;
-    vec3 n0 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv0, 0).xyz;
+    vec3 n0 = getTextureSampleDerivU(globalUniform.waterNormalTextureIndex, uv0, derivU).xyz;
     n0.xy = n0.xy * 2.0 - vec2(1.0);
 
+
     vec2 uv1 = 0.8 * uvScale * baseUV + globalUniform.time * speed1;
-    vec3 n1 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv1, 0).xyz;
+    vec3 n1 = getTextureSampleDerivU(globalUniform.waterNormalTextureIndex, uv1, derivU).xyz;
     n1.xy = n1.xy * 2.0 - vec2(1.0);
 
+
     vec2 uv2 = 0.1 * (uvScale * baseUV + speed0 * sin(globalUniform.time * 0.5));
-    vec3 n2 = getTextureSampleLod(globalUniform.waterNormalTextureIndex, uv2, 0).xyz;
+    vec3 n2 = getTextureSampleDerivU(globalUniform.waterNormalTextureIndex, uv2, derivU).xyz;
     n2.xy = n2.xy * 2.0 - vec2(1.0);
+
 
     const float strength = globalUniform.waterWaveStrength;
 
@@ -180,7 +188,7 @@ bool isBackface(const vec3 normalGeom, const vec3 rayDir)
     return dot(normalGeom, -rayDir) < 0.0;
 }
 
-vec3 getNormal(const vec3 position, const vec3 normalGeom, const vec3 rayDir, bool isWater)
+vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone, const vec3 rayDir, bool isWater)
 {
     vec3 normal = normalGeom;
 
@@ -191,7 +199,7 @@ vec3 getNormal(const vec3 position, const vec3 normalGeom, const vec3 rayDir, bo
 
     if (isWater)
     {
-        normal = getWaterNormal(normal, position);
+        normal = getWaterNormal(rayCone, rayDir, normal, position);
     }
 
     return normal;
@@ -285,7 +293,7 @@ void main()
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const vec3 normal = getNormal(h.hitPosition, h.normalGeom, rayDir, newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER);
+        const vec3 normal = getNormal(h.hitPosition, h.normalGeom, rayCone, rayDir, !isPortal && (newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER));
 
 
         bool delaySplitOnNextTime = false;
