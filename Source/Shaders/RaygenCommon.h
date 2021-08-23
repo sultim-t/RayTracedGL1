@@ -466,7 +466,7 @@ void processSphericalLight(
         return;
     }
 
-    pdf = max(pdf / weightSum, 0.001);
+    pdf = max(pdf / weightSum / sphLightCount, 0.001);
 
 
     if (isGradientSample)
