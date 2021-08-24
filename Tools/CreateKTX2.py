@@ -47,8 +47,11 @@ def main():
         print("Usage: CreateKTX2.py")
         print("")
         print("  CreateKTX2 compresses PNG files from input folder to KTX2 files with")
-        print("  BC7 format to output folder. Folders of the files are preserved the")
+        print("  BC7/BC5 format to output folder. Folders of the files are preserved the")
         print("  same as in the input folder.")
+        print("")
+        print("  If image file name without extension ends with \"_n\", it's assumed that")
+        print("  it's a normal map image and will be compressed with BC5 format.")
         print("")
         print("  Requires compressonatorcli:")
         print("  https://github.com/GPUOpen-Tools/compressonator")
@@ -96,8 +99,17 @@ def main():
             isOutdated = filename in cache and lastModifTime != cache[filename]
 
             if isNew or isOutdated:
-                print("> Converting " + filename)
 
+                isNormalMap = pathNoExt[-2:] == "_n"
+
+                if isNormalMap:
+                    compressionFormat = "BC5"
+                else:
+                    compressionFormat = "BC7"
+
+                print("> Converting " + filename + " (" + compressionFormat + ")")
+
+        
                 inputFile = os.path.join(DEFAULT_INPUT_FOLDER_NAME, filename)
                 outputFile = os.path.join(DEFAULT_OUTPUT_FOLDER_NAME, pathNoExt + OUTPUT_EXTENSION)
 
@@ -106,7 +118,7 @@ def main():
 
                 r = subprocess.run([
                     "compressonatorcli.exe",
-                    "-fd", "BC7",
+                    "-fd", compressionFormat,
                     "-miplevels", "20",
                     "-EncodeWith", "GPU",
                     inputFile,
