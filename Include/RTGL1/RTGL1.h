@@ -843,11 +843,11 @@ typedef struct RgDrawFrameReflectRefractParams
     float       indexOfRefractionGlass;
     // Default: 1.33
     float       indexOfRefractionWater;
-    // Default: 1.0
-    float       waterDensityMultiplier;
     RgBool32    forceNoWaterRefraction;
     float       waterWaveSpeed;
     float       waterWaveNormalStrength;
+    // Default: (0.030, 0.019, 0.013)
+    RgFloat3D   waterExtinction;
     // The lower this value, the sharper water normal textures.
     // Default: 1.0
     float       waterWaveTextureDerivativesMultiplier;

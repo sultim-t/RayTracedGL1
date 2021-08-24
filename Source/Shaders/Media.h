@@ -54,7 +54,7 @@ vec3 getMediaTransmittance(uint media, float distance)
 
     if (media == MEDIA_TYPE_WATER)
     {
-        extinction = globalUniform.waterDensityMultiplier * vec3(0.030, 0.019, 0.013);
+        extinction = globalUniform.waterExtinction.rgb;
     }
 
     return exp(-distance * extinction);

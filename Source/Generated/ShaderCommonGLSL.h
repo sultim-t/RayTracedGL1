@@ -184,7 +184,7 @@ struct ShGlobalUniform
     uint cameraMediaType;
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
-    float waterDensityMultiplier;
+    float waterTextureDerivativesMultiplier;
     uint enableShadowsFromReflRefr;
     uint enableIndirectFromReflRefr;
     uint forceNoWaterRefraction;
@@ -193,12 +193,13 @@ struct ShGlobalUniform
     float time;
     float waterWaveSpeed;
     float waterWaveStrength;
+    vec4 waterExtinction;
     vec4 portalInputToOutputTransform0;
     vec4 portalInputToOutputTransform1;
     vec4 portalInputToOutputTransform2;
     vec4 portalInputPosition;
     float cameraRayConeSpreadAngle;
-    float waterTextureDerivativesMultiplier;
+    float _pad1;
     float _pad2;
     float _pad3;
     ivec4 instanceGeomInfoOffset[12];

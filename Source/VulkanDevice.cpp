@@ -476,7 +476,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->indexOfRefractionGlass = std::max(0.0f, rr.indexOfRefractionGlass);
         gu->indexOfRefractionWater = std::max(0.0f, rr.indexOfRefractionWater);
 
-        gu->waterDensityMultiplier = std::max(0.0f, rr.waterDensityMultiplier);
+        memcpy(gu->waterExtinction, rr.waterExtinction.data, 3 * sizeof(float));
+
         gu->forceNoWaterRefraction = !!rr.forceNoWaterRefraction;
         gu->waterWaveSpeed = rr.waterWaveSpeed;
         gu->waterWaveStrength = rr.waterWaveNormalStrength;
@@ -504,7 +505,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->indexOfRefractionGlass = 1.52f;
         gu->indexOfRefractionWater = 1.33f;
 
-        gu->waterDensityMultiplier = 1.0f;
+        gu->waterExtinction[0] = 0.030f; 
+        gu->waterExtinction[1] = 0.019f;
+        gu->waterExtinction[2] = 0.013f;
+
         gu->forceNoWaterRefraction = false;
         gu->waterWaveSpeed = 1.0f;
         gu->waterWaveStrength = 1.0f;

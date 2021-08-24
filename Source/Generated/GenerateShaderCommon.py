@@ -449,35 +449,37 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "spotlightCosAngleInner",       1),
     (TYPE_FLOAT32,      1,      "spotlightFalloffDistance",     1),
 
-    (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",    1),
-    (TYPE_UINT32,       1,      "maxBounceShadowsSphereLights",         1),
-    (TYPE_UINT32,       1,      "maxBounceShadowsSpotlights",           1),
-    (TYPE_UINT32,       1,      "rayCullMaskWorld",                     1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsSphereLights",     1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsSpotlights",       1),
+    (TYPE_UINT32,       1,      "rayCullMaskWorld",                 1),
 
-    (TYPE_FLOAT32,      1,      "bloomThreshold",               1),
-    (TYPE_FLOAT32,      1,      "bloomThresholdLength",         1),
-    (TYPE_FLOAT32,      1,      "bloomUpsampleRadius",          1),
-    (TYPE_FLOAT32,      1,      "bloomIntensity",               1),
+    (TYPE_FLOAT32,      1,      "bloomThreshold",                   1),
+    (TYPE_FLOAT32,      1,      "bloomThresholdLength",             1),
+    (TYPE_FLOAT32,      1,      "bloomUpsampleRadius",              1),
+    (TYPE_FLOAT32,      1,      "bloomIntensity",                   1),
 
-    (TYPE_FLOAT32,      1,      "bloomEmissionMultiplier",      1),
-    (TYPE_FLOAT32,      1,      "bloomSkyMultiplier",           1),
-    (TYPE_FLOAT32,      1,      "rayLength",                    1),
-    (TYPE_UINT32,       1,      "reflectRefractMaxDepth",       1),
+    (TYPE_FLOAT32,      1,      "bloomEmissionMultiplier",          1),
+    (TYPE_FLOAT32,      1,      "bloomSkyMultiplier",               1),
+    (TYPE_FLOAT32,      1,      "rayLength",                        1),
+    (TYPE_UINT32,       1,      "reflectRefractMaxDepth",           1),
 
-    (TYPE_UINT32,       1,      "cameraMediaType",              1),
-    (TYPE_FLOAT32,      1,      "indexOfRefractionWater",       1),
-    (TYPE_FLOAT32,      1,      "indexOfRefractionGlass",       1),
-    (TYPE_FLOAT32,      1,      "waterDensityMultiplier",       1),
+    (TYPE_UINT32,       1,      "cameraMediaType",                  1),
+    (TYPE_FLOAT32,      1,      "indexOfRefractionWater",           1),
+    (TYPE_FLOAT32,      1,      "indexOfRefractionGlass",           1),
+    (TYPE_FLOAT32,      1,      "waterTextureDerivativesMultiplier",1),
 
-    (TYPE_UINT32,       1,      "enableShadowsFromReflRefr",    1),
-    (TYPE_UINT32,       1,      "enableIndirectFromReflRefr",   1),
-    (TYPE_UINT32,       1,      "forceNoWaterRefraction",       1),
-    (TYPE_UINT32,       1,      "waterNormalTextureIndex",      1),
+    (TYPE_UINT32,       1,      "enableShadowsFromReflRefr",        1),
+    (TYPE_UINT32,       1,      "enableIndirectFromReflRefr",       1),
+    (TYPE_UINT32,       1,      "forceNoWaterRefraction",           1),
+    (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 
     (TYPE_FLOAT32,      1,      "noBackfaceReflForNoMediaChange",   1),
     (TYPE_FLOAT32,      1,      "time",                             1),
     (TYPE_FLOAT32,      1,      "waterWaveSpeed",                   1),
     (TYPE_FLOAT32,      1,      "waterWaveStrength",                1),
+
+    (TYPE_FLOAT32,      4,      "waterExtinction",                  1),
 
     (TYPE_FLOAT32,      4,      "portalInputToOutputTransform0",    1),
 
@@ -488,7 +490,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
-    (TYPE_FLOAT32,      1,      "waterTextureDerivativesMultiplier",1),
+    (TYPE_FLOAT32,      1,      "_pad1",                            1),
     (TYPE_FLOAT32,      1,      "_pad2",                            1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
