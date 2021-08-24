@@ -36,7 +36,7 @@
 #endif
 
 
-
+#include "Media.h"
 #include "RayCone.h"
 
 #define HITINFO_INL_0
@@ -270,7 +270,6 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 {
     return traceShadowRay(surfInstCustomIndex, o, l, MAX_RAY_LENGTH);
 }
-
 
 
 #define SHADOW_RAY_EPS_MIN      0.001

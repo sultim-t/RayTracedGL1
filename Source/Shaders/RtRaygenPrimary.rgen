@@ -74,59 +74,6 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
 }
 
-// Ray Tracing Gems II. Chapter 8: Reflection and Refraction Formulas
-// Returns false, if total internal reflection
-bool calcRefractionDirection(float n1, float n2, const vec3 I, const vec3 N, out vec3 T)
-{
-    float eta = n1 / n2; //  relative index of refraction
-    float c1 = -dot(I, N); // cos(theta1)
-    float w = eta * c1;
-    float c2m = (w - eta) * (w + eta); // cos^2(theta2) - 1
-
-    if (c2m < -1.0f)
-    { 
-        return false; // total internal reflection
-    }
-
-    T = eta * I + (w - sqrt(1.0f + c2m)) * N;
-    return true;
-}
-
-uint getMediaTypeFromFlags(uint geometryInstanceFlags)
-{
-    if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_WATER) != 0)
-    {
-        return MEDIA_TYPE_WATER;
-    }
-    else if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_GLASS) != 0)
-    {
-        return MEDIA_TYPE_GLASS;
-    }
-    else
-    {
-        return MEDIA_TYPE_VACUUM;
-    }
-}
-
-bool isPortalFromFlags(uint geometryInstanceFlags)
-{
-    return (geometryInstanceFlags & GEOM_INST_FLAG_PORTAL) != 0;
-}
-
-bool isRefractFromFlags(uint geometryInstanceFlags)
-{
-    // if water, but water refraction is disabled, return false;
-    // otherwise, check refract flag
-    return 
-        !(globalUniform.forceNoWaterRefraction != 0 && (geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_WATER) != 0) &&
-        ((geometryInstanceFlags & GEOM_INST_FLAG_REFRACT) != 0);
-}
-
-bool isReflectFromFlags(uint geometryInstanceFlags)
-{
-    return (geometryInstanceFlags & GEOM_INST_FLAG_REFLECT) != 0;
-}
-
 uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
 {
     // if camera is not in vacuum, assume that new media is vacuum
