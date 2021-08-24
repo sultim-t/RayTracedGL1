@@ -469,8 +469,6 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "indexOfRefractionGlass",       1),
     (TYPE_FLOAT32,      1,      "waterDensityMultiplier",       1),
 
-    (TYPE_FLOAT32,      4,      "portalInputToOutputDiff",      1),
-
     (TYPE_UINT32,       1,      "enableShadowsFromReflRefr",    1),
     (TYPE_UINT32,       1,      "enableIndirectFromReflRefr",   1),
     (TYPE_UINT32,       1,      "forceNoWaterRefraction",       1),
@@ -480,6 +478,19 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "time",                             1),
     (TYPE_FLOAT32,      1,      "waterWaveSpeed",                   1),
     (TYPE_FLOAT32,      1,      "waterWaveStrength",                1),
+
+    (TYPE_FLOAT32,      4,      "portalInputToOutputTransform0",    1),
+
+    (TYPE_FLOAT32,      4,      "portalInputToOutputTransform1",    1),
+
+    (TYPE_FLOAT32,      4,      "portalInputToOutputTransform2",    1),
+
+    (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
+
+    (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
+    (TYPE_FLOAT32,      1,      "waterTextureDerivativesMultiplier",1),
+    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                        1),
     #(TYPE_FLOAT32,      1,      "_pad1",                        1),

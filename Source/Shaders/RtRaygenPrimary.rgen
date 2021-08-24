@@ -138,7 +138,7 @@ uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
     return getMediaTypeFromFlags(geometryInstanceFlags);
 }
 
-vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalGeom, const vec3 position)
+vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalGeom, const vec3 position, bool wasPortal)
 {
     const mat3 basis = getONB(normalGeom);
     const vec2 baseUV = vec2(dot(position, basis[0]), dot(position, basis[1])); 
@@ -159,7 +159,13 @@ vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalG
 
 
     // for texture sampling
-    float derivU = 0.3 * uvScale * getWaterDerivU(rayCone, rayDir, normalGeom);
+    float derivU = globalUniform.waterTextureDerivativesMultiplier * 0.5 * uvScale * getWaterDerivU(rayCone, rayDir, normalGeom);
+
+    // make water sharper if visible through the portal
+    if (wasPortal)
+    {
+        derivU *= 0.1;
+    }
 
 
     vec2 uv0 = uvScale * baseUV + globalUniform.time * speed0;
@@ -188,7 +194,7 @@ bool isBackface(const vec3 normalGeom, const vec3 rayDir)
     return dot(normalGeom, -rayDir) < 0.0;
 }
 
-vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone, const vec3 rayDir, bool isWater)
+vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone, const vec3 rayDir, bool isWater, bool wasPortal)
 {
     vec3 normal = normalGeom;
 
@@ -199,7 +205,7 @@ vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone
 
     if (isWater)
     {
-        normal = getWaterNormal(rayCone, rayDir, normal, position);
+        normal = getWaterNormal(rayCone, rayDir, normal, position, wasPortal);
     }
 
     return normal;
@@ -240,12 +246,9 @@ void main()
     }
 
 
-    // TODO: fov
-    float fovAngleY = radians(75);
     RayCone rayCone;
     rayCone.width = 0;
-    rayCone.spreadAngle = atan((2.0f * tan(fovAngleY * 0.5f)) / globalUniform.renderHeight);
-
+    rayCone.spreadAngle = globalUniform.cameraRayConeSpreadAngle;
 
     vec2 motionCurToPrev;
     float motionDepthLinearCurToPrev;
@@ -259,6 +262,7 @@ void main()
     float fullPathLength = h.linearDepth;
     vec3 prevHitPosition = h.hitPosition;
     bool wasSplit = false;
+    bool wasPortal = false;
 
 
     throughput *= getMediaTransmittance(currentRayMedia, h.linearDepth);
@@ -293,7 +297,7 @@ void main()
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const vec3 normal = getNormal(h.hitPosition, h.normalGeom, rayCone, rayDir, !isPortal && (newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER));
+        const vec3 normal = getNormal(h.hitPosition, h.normalGeom, rayCone, rayDir, !isPortal && (newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER), wasPortal);
 
 
         bool delaySplitOnNextTime = false;
@@ -305,7 +309,7 @@ void main()
             newRayMedia = currentRayMedia;
             
             // if reflections are disabled if viewing from inside of NO_MEDIA_CHANGE geometry
-            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && isBackface(h.normal, rayDir);
+            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && isBackface(h.normalGeom, rayDir);
         }
 
            
@@ -347,8 +351,18 @@ void main()
         }
         else if (isPortal)
         {
-            rayOrigin += globalUniform.portalInputToOutputDiff.xyz;
+            const mat4x3 portalTransform = transpose(mat3x4(
+                globalUniform.portalInputToOutputTransform0, 
+                globalUniform.portalInputToOutputTransform1, 
+                globalUniform.portalInputToOutputTransform2
+            ));
+            
+            rayDir    = portalTransform * vec4(rayDir, 0.0);
+            rayOrigin = portalTransform * vec4(rayOrigin - globalUniform.portalInputPosition.xyz, 1.0) + globalUniform.portalInputPosition.xyz;
+
             throughput *= h.albedo;
+
+            wasPortal = true;
         }
         else
         {
@@ -376,6 +390,7 @@ void main()
 
         float depthNDC;
         h = getHitInfoWithRayCone(payload, rayCone, cameraOrigin, rayDir, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, depthNDC, screenEmission);
+
 
         const float rayLen = length(h.hitPosition - prevHitPosition);
         throughput *= getMediaTransmittance(currentRayMedia, rayLen);

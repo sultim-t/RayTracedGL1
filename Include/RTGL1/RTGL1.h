@@ -272,10 +272,10 @@ typedef struct RgTransform
     float       matrix[3][4];
 } RgTransform;
 
-typedef struct RgMatrix
+typedef struct RgMatrix3D
 {
-    float       matrix[4][4];
-} RgMatrix;
+    float       matrix[3][3];
+} RgMatrix3D;
 
 typedef struct RgFloat3D
 {
@@ -848,11 +848,17 @@ typedef struct RgDrawFrameReflectRefractParams
     RgBool32    forceNoWaterRefraction;
     float       waterWaveSpeed;
     float       waterWaveNormalStrength;
+    // The lower this value, the sharper water normal textures.
+    // Default: 1.0
+    float       waterWaveTextureDerivativesMultiplier;
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
     RgBool32    disableBackfaceReflectionsForNoMediaChange;
     // Difference between portal input and portal output world positions.
-    RgFloat3D   portalInputToOutputDiff;
+    RgFloat3D   portalInputPosition;
+    RgFloat3D   portalOutputPosition;
+    // Rotation of the output portal rotation relative to rotation of the input .
+    RgMatrix3D  portalRelativeRotation;
 } RgDrawFrameReflectRefractParams;
 
 typedef struct RgDrawFrameInfo
@@ -860,6 +866,8 @@ typedef struct RgDrawFrameInfo
     // View and projection matrices are column major.
     float       view[16];
     float       projection[16];
+    // Additional info for ray cones, it's used to calculate differentials for texture sampling.
+    float       fovYRadians;
     // What world parts to render. Mask bits are in [0..0x7]
     // Affects only geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD_*
     // Default value: 0x7

@@ -190,7 +190,6 @@ struct ShGlobalUniform
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
     float waterDensityMultiplier;
-    float portalInputToOutputDiff[4];
     uint32_t enableShadowsFromReflRefr;
     uint32_t enableIndirectFromReflRefr;
     uint32_t forceNoWaterRefraction;
@@ -199,6 +198,14 @@ struct ShGlobalUniform
     float time;
     float waterWaveSpeed;
     float waterWaveStrength;
+    float portalInputToOutputTransform0[4];
+    float portalInputToOutputTransform1[4];
+    float portalInputToOutputTransform2[4];
+    float portalInputPosition[4];
+    float cameraRayConeSpreadAngle;
+    float waterTextureDerivativesMultiplier;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

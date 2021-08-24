@@ -441,42 +441,62 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         "Interface and GLSL constants must be identical");
 
     static_assert(
-        sizeof(gu->portalInputToOutputDiff) >= sizeof(drawInfo.pReflectRefractParams->portalInputToOutputDiff.data),
+        sizeof(gu->portalInputToOutputTransform0) == 4 * sizeof(float) &&
+        sizeof(gu->portalInputToOutputTransform1) == 4 * sizeof(float) &&
+        sizeof(gu->portalInputToOutputTransform2) == 4 * sizeof(float),
         "Recheck uniform member and interface member sizes");
 
     if (drawInfo.pReflectRefractParams != nullptr)
     {
-        if (drawInfo.pReflectRefractParams->typeOfMediaAroundCamera >= 0 &&
-            drawInfo.pReflectRefractParams->typeOfMediaAroundCamera < MEDIA_TYPE_COUNT)
+        const auto &rr = *drawInfo.pReflectRefractParams;
+
+        if (rr.typeOfMediaAroundCamera >= 0 &&
+            rr.typeOfMediaAroundCamera < MEDIA_TYPE_COUNT)
         {
-            gu->cameraMediaType = drawInfo.pReflectRefractParams->typeOfMediaAroundCamera;
+            gu->cameraMediaType = rr.typeOfMediaAroundCamera;
         }
         else
         {
             gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         }
 
-        gu->reflectRefractMaxDepth = std::min(4u, drawInfo.pReflectRefractParams->maxReflectRefractDepth);
-        memcpy(gu->portalInputToOutputDiff, drawInfo.pReflectRefractParams->portalInputToOutputDiff.data, sizeof(drawInfo.pReflectRefractParams->portalInputToOutputDiff.data));
-  
-        gu->enableShadowsFromReflRefr = !!drawInfo.pReflectRefractParams->reflectRefractCastShadows;
-        gu->enableIndirectFromReflRefr = !!drawInfo.pReflectRefractParams->reflectRefractToIndirect;
-    
-        gu->indexOfRefractionGlass = std::max(0.0f, drawInfo.pReflectRefractParams->indexOfRefractionGlass);
-        gu->indexOfRefractionWater = std::max(0.0f, drawInfo.pReflectRefractParams->indexOfRefractionWater);
+        gu->reflectRefractMaxDepth = std::min(4u, rr.maxReflectRefractDepth);
 
-        gu->waterDensityMultiplier = std::max(0.0f, drawInfo.pReflectRefractParams->waterDensityMultiplier);
-        gu->forceNoWaterRefraction = !!drawInfo.pReflectRefractParams->forceNoWaterRefraction;
-        gu->waterWaveSpeed = drawInfo.pReflectRefractParams->waterWaveSpeed;
-        gu->waterWaveStrength = drawInfo.pReflectRefractParams->waterWaveNormalStrength;
+        memcpy(gu->portalInputToOutputTransform0, rr.portalRelativeRotation.matrix[0], 3 * sizeof(float));
+        memcpy(gu->portalInputToOutputTransform1, rr.portalRelativeRotation.matrix[1], 3 * sizeof(float));
+        memcpy(gu->portalInputToOutputTransform2, rr.portalRelativeRotation.matrix[2], 3 * sizeof(float));
+        gu->portalInputToOutputTransform0[3] = rr.portalOutputPosition.data[0] - rr.portalInputPosition.data[0];
+        gu->portalInputToOutputTransform1[3] = rr.portalOutputPosition.data[1] - rr.portalInputPosition.data[1];
+        gu->portalInputToOutputTransform2[3] = rr.portalOutputPosition.data[2] - rr.portalInputPosition.data[2];
+        memcpy(gu->portalInputPosition, rr.portalInputPosition.data, 3 * sizeof(float));
+
+        gu->enableShadowsFromReflRefr = !!rr.reflectRefractCastShadows;
+        gu->enableIndirectFromReflRefr = !!rr.reflectRefractToIndirect;
     
-        gu->noBackfaceReflForNoMediaChange = drawInfo.pReflectRefractParams->disableBackfaceReflectionsForNoMediaChange;
+        gu->indexOfRefractionGlass = std::max(0.0f, rr.indexOfRefractionGlass);
+        gu->indexOfRefractionWater = std::max(0.0f, rr.indexOfRefractionWater);
+
+        gu->waterDensityMultiplier = std::max(0.0f, rr.waterDensityMultiplier);
+        gu->forceNoWaterRefraction = !!rr.forceNoWaterRefraction;
+        gu->waterWaveSpeed = rr.waterWaveSpeed;
+        gu->waterWaveStrength = rr.waterWaveNormalStrength;
+        gu->waterTextureDerivativesMultiplier = std::max(0.0f, rr.waterWaveTextureDerivativesMultiplier);
+    
+        gu->noBackfaceReflForNoMediaChange = rr.disableBackfaceReflectionsForNoMediaChange;
     }
     else
     {
         gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         gu->reflectRefractMaxDepth = 2;
-        gu->portalInputToOutputDiff[0] = gu->portalInputToOutputDiff[1] = gu->portalInputToOutputDiff[2] = 0.0f;
+        memset(gu->portalInputToOutputTransform0, 0, sizeof(gu->portalInputToOutputTransform0));
+        memset(gu->portalInputToOutputTransform1, 0, sizeof(gu->portalInputToOutputTransform1));
+        memset(gu->portalInputToOutputTransform2, 0, sizeof(gu->portalInputToOutputTransform2));
+        gu->portalInputToOutputTransform0[0] = 1.0f;
+        gu->portalInputToOutputTransform1[1] = 1.0f;
+        gu->portalInputToOutputTransform2[2] = 1.0f;
+        gu->portalInputPosition[0] = 0.0f;
+        gu->portalInputPosition[1] = 0.0f;
+        gu->portalInputPosition[2] = 0.0f;
     
         gu->enableShadowsFromReflRefr = false;
         gu->enableIndirectFromReflRefr = true;
@@ -488,6 +508,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->forceNoWaterRefraction = false;
         gu->waterWaveSpeed = 1.0f;
         gu->waterWaveStrength = 1.0f;
+        gu->waterTextureDerivativesMultiplier = 1.0f;
 
         gu->noBackfaceReflForNoMediaChange = false;
     }
@@ -496,6 +517,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->rayLength = std::min((float)MAX_RAY_LENGTH, std::max(0.1f, drawInfo.rayLength));
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
+
+    gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / drawInfo.renderSize.height);
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
