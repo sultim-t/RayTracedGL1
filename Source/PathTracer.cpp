@@ -88,10 +88,14 @@ void PathTracer::TracePrimaryRays(
         width, height, 1);
 }
 
-void RTGL1::PathTracer::PrepareForTracingIllumination(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers)
+void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, 
+                                        uint32_t width, uint32_t height,
+                                        const std::shared_ptr<Framebuffers> &framebuffers)
 {
-    typedef FramebufferImageIndex FI;
+    CmdLabel label(cmd, "Direct illumination");
 
+
+    typedef FramebufferImageIndex FI;
     FI fs[] =
     {
         FI::FB_IMAGE_INDEX_ALBEDO,
@@ -104,13 +108,8 @@ void RTGL1::PathTracer::PrepareForTracingIllumination(VkCommandBuffer cmd, uint3
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
         FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES
     };
-
     framebuffers->BarrierMultiple(cmd, frameIndex, fs);
-}
 
-void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
-{
-    CmdLabel label(cmd, "Direct illumination");
 
     VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
@@ -121,10 +120,21 @@ void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex
         width, height, 1);
 }
 
-void PathTracer::TraceIndirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
+void PathTracer::TraceIndirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, 
+                                          uint32_t width, uint32_t height,
+                                          const std::shared_ptr<Framebuffers> &framebuffers)
 {
     CmdLabel label(cmd, "Indirect illumination");
     
+
+    typedef FramebufferImageIndex FI;
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
+
     VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
 

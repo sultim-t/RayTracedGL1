@@ -576,9 +576,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
         // update the illumination
-        pathTracer->PrepareForTracingIllumination(cmd, frameIndex, framebuffers);
-        pathTracer->TraceDirectllumination(cmd, frameIndex, renderWidth, renderHeight);
-        pathTracer->TraceIndirectllumination(cmd, frameIndex, renderWidth, renderHeight);
+        pathTracer->TraceDirectllumination(cmd, frameIndex, renderWidth, renderHeight, framebuffers);
+        pathTracer->TraceIndirectllumination(cmd, frameIndex, renderWidth, renderHeight, framebuffers);
 
         denoiser->Denoise(cmd, frameIndex, uniform);
 
