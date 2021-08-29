@@ -193,7 +193,7 @@ SH processIndirectDiffuse(
 {
     vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
-    getDiffuseBounce(seed, surfNormal, bounceDirection, throughput);
+    getDiffuseBounce(seed, surfNormalGeom, bounceDirection, throughput);
 
     const vec3 contrib = processBounce(
         seed, surfInstCustomIndex, surfPosition, 
