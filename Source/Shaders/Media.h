@@ -37,14 +37,6 @@ float getIndexOfRefraction(uint media)
     }
 }
 
-#define AIR_TRANSMITTANCE_SIGMA 0.01
-
-float getAirTransmittance(float distance)
-{
-    // very coarse air transmittance
-    return exp(-distance * AIR_TRANSMITTANCE_SIGMA);
-}
-
 vec3 getMediaTransmittance(uint media, float distance)
 {
     // the values are relative

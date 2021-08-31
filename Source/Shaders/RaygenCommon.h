@@ -353,10 +353,31 @@ void processDirectionalLight(
     }
 
     const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition /*+ (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN*/, dir);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
+}
+
+// Ray Tracing Gems II. Chapter 20. Muliple Importance Sampling 101. 20.1.3 Light Sampling
+float getGeometryFactor(const vec3 nSurf, const vec3 directionPtoPSurf, float distancePtoPSurf)
+{
+    float dist2 = distancePtoPSurf * distancePtoPSurf;
+    return abs(-dot(nSurf, directionPtoPSurf)) / dist2;
+}
+
+float getGeometryFactorWoNormal(float distancePtoPSurf)
+{
+    float dist2 = distancePtoPSurf * distancePtoPSurf;
+    return 1.0 / dist2;
+}
+
+vec3 getDirectionAndLength(const vec3 start, const vec3 end, out float outLength)
+{
+    vec3 atob = end - start;
+    outLength = max(length(atob), 0.0001);
+    
+    return atob / outLength;
 }
 
 void processSphericalLight(
@@ -398,22 +419,21 @@ void processSphericalLight(
         
 
 
-        vec3 dir = light.position - surfPosition;
+        float dist;
+        vec3 dir = getDirectionAndLength(surfPosition, light.position, dist);
+
 
         const float r = light.radius;
         const float z = light.falloff;
-        const float d = length(dir);
 
-        if (d < max(r, 0.001))
+        if (dist < max(r, 0.001))
         {
             outDiffuse = light.color;
             outSpecular = light.color;
             return;
         }
-
-        dir /= max(d, 0.001);
         
-        const float I = pow(clamp((z - d) / max(z - r, 1), 0, 1), 2);
+        const float I = pow(clamp((z - dist) / max(z - r, 1), 0, 1), 2);
         const vec3 c = I * light.color;
 
         const vec3 irradiance = M_PI * c * max(dot(surfNormal, dir/*ToCenter*/), 0.0);
@@ -424,7 +444,7 @@ void processSphericalLight(
             evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * 
             light.color * 
             dot(surfNormal, dir) * 
-            getAirTransmittance(d);
+            getGeometryFactorWoNormal(dist);
 
 
         weights[i] = getLuminance(diff + spec);
@@ -487,32 +507,25 @@ void processSphericalLight(
 
     const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
 
+    float distToCenter;
+    const vec3 dirToCenter = getDirectionAndLength(surfPosition, sphLight.position, distToCenter);
+
+    // sample hemisphere visible to the surface point
     const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
-    const vec3 posOnSphere = sphLight.position + sampleSphere(u[0], u[1]) * sphLight.radius;
-
-    vec3 dir = posOnSphere - surfPosition;
-    const float distance = length(dir);
-
-    surfPosition += (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN;
-
-    // processed previously
-    /*if (distance <= max(sphLight.radius, 0.001))
-    {
-        outDiffuse = sphLight.color * oneOverPdf;
-        outSpecular = sphLight.color * oneOverPdf;
-        return;
-    }*/
+    float ltHsOneOverPdf;
+    const vec3 lightNormal = sampleOrientedHemisphere(-dirToCenter, u[0], u[1], ltHsOneOverPdf);
+    const float halfSphereArea = 2 * M_PI * sphLight.radius * sphLight.radius;
+    //pdf /= max(halfSphereArea, 0.00001);
     
-    dir = dir / distance;
+    const vec3 posOnSphere = sphLight.position + lightNormal * sphLight.radius;
 
-    vec3 dirToCenter = sphLight.position - surfPosition;
+    float distOntoSphere;
+    const vec3 dirOntoSphere = getDirectionAndLength(surfPosition, posOnSphere, distOntoSphere);
 
     const float r = sphLight.radius;
     const float z = sphLight.falloff;
-    const float d = max(length(dirToCenter), 0.0001);
-    dirToCenter /= d;
     
-    const float i = pow(clamp((z - d) / max(z - r, 1), 0, 1), 2);
+    const float i = pow(clamp((z - distToCenter) / max(z - r, 1), 0, 1), 2);
     const vec3 c = i * sphLight.color;
 
     const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
@@ -520,10 +533,10 @@ void processSphericalLight(
 
     outDiffuse = radiance;
     outSpecular = 
-        evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * 
+        evalBRDFSmithGGX(surfNormal, toViewerDir, dirOntoSphere, surfRoughness, surfSpecularColor) * 
         sphLight.color * 
-        dot(surfNormal, dir) *
-        getAirTransmittance(d);
+        dot(surfNormal, dirOntoSphere) *
+        getGeometryFactor(lightNormal, dirOntoSphere, distOntoSphere);
 
     outDiffuse /= pdf;
     outSpecular /= pdf;
@@ -533,7 +546,7 @@ void processSphericalLight(
         return;
     }
     
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, distance);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN, dirOntoSphere, distOntoSphere);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -595,8 +608,6 @@ void processSpotLight(
     const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
     outDiffuse *= angleWeight;
     outSpecular *= angleWeight;
-    
-    outSpecular *= getAirTransmittance(dist);
 
     // outDiffuse *= oneOverPdf;
     // outSpecular *= oneOverPdf;
