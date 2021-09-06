@@ -22,8 +22,31 @@
 
 #include <cassert>
 
+static const char *GetRgResultName(RgResult r)
+{
+    switch (r)
+    {
+        case RG_SUCCESS: return "RG_SUCCESS";
+        case RG_GRAPHICS_API_ERROR: return "RG_GRAPHICS_API_ERROR";
+        case RG_CANT_FIND_PHYSICAL_DEVICE: return "RG_CANT_FIND_PHYSICAL_DEVICE";
+        case RG_WRONG_ARGUMENT: return "RG_WRONG_ARGUMENT";
+        case RG_TOO_MANY_INSTANCES: return "RG_TOO_MANY_INSTANCES";
+        case RG_WRONG_INSTANCE: return "RG_WRONG_INSTANCE";
+        case RG_FRAME_WASNT_STARTED: return "RG_FRAME_WASNT_STARTED";
+        case RG_FRAME_WASNT_ENDED: return "RG_FRAME_WASNT_ENDED";
+        case RG_CANT_UPDATE_TRANSFORM: return "RG_CANT_UPDATE_TRANSFORM";
+        case RG_CANT_UPDATE_TEXCOORDS: return "RG_CANT_UPDATE_TEXCOORDS";
+        case RG_CANT_UPDATE_DYNAMIC_MATERIAL: return "RG_CANT_UPDATE_DYNAMIC_MATERIAL";
+        case RG_CANT_UPDATE_ANIMATED_MATERIAL: return "RG_CANT_UPDATE_ANIMATED_MATERIAL";
+        case RG_CANT_UPLOAD_RASTERIZED_GEOMETRY: return "RG_CANT_UPLOAD_RASTERIZED_GEOMETRY";
+        case RG_WRONG_MATERIAL_PARAMETER: return "RG_WRONG_MATERIAL_PARAMETER";
+    }
+
+    return "Unknown RgResult";
+}
+
 RTGL1::RgException::RgException(RgResult _errorCode)
-    : runtime_error(""), errorCode(_errorCode)
+    : runtime_error(GetRgResultName(_errorCode)), errorCode(_errorCode)
 {
     assert(errorCode != RG_SUCCESS);
 }

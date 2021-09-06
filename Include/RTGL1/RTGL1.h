@@ -83,6 +83,7 @@ typedef enum RgResult
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
     RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
     RG_WRONG_MATERIAL_PARAMETER,
+    RG_WRONG_FUNCTION_CALL,
 } RgResult;
 
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
@@ -357,9 +358,12 @@ typedef struct RgUpdateTexCoordsInfo
 } RgUpdateTexCoordsInfo;
 
 
-// Uploaded static geometries are only visible after submitting them using rgSubmitStaticGeometries.
-// Uploaded dynamic geometries are only visible in the current frame.
-// "result" may be null, if its transform won't be changed
+// Uploaded dynamic geometry can only be visible in the current frame, i.e.
+// dynamic geometry must be uploaded each frame.
+// Uploaded static geometriy can only be visible after submitting them using rgSubmitStaticGeometries.
+// Dynamic geometry can be uploaded only between rgStartFrame - rgDrawFrame.
+// Static geometry can be uploaded only between rgStartNewScene - rgSubmitStaticGeometries.
+// Uploading dynamic geometries and then calling rgStartNewScene will erase them.
 RgResult rgUploadGeometry(
     RgInstance                              rgInstance,
     const RgGeometryUploadInfo              *pUploadInfo);
@@ -374,6 +378,23 @@ RgResult rgUpdateGeometryTransform(
 RgResult rgUpdateGeometryTexCoords(
     RgInstance                              rgInstance,
     const RgUpdateTexCoordsInfo             *pUpdateInfo);
+
+
+
+// Clear current scene from all static geometries and make it available for recording new geometries.
+// New scene can be visible only after the submission using rgSubmitStaticGeometries.
+RgResult rgStartNewScene(
+    RgInstance                          rgInstance);
+
+// After uploading all static geometry, scene must be submitted before rendering.
+// Note that movable static geometry can be still moved using rgUpdateGeometryTransform.
+// If the static scene geometry should be changed, it must be cleared using rgStartNewScene
+// and new static geometries must be uploaded.
+// To clear static scene, call rgStartNewScene and then rgSubmitStaticGeometries
+// without uploading any geometry.
+// rgStartNewScene and rgSubmitStaticGeometries can be called outside of rgStartFrame-rgDrawFrame.
+RgResult rgSubmitStaticGeometries(
+    RgInstance                          rgInstance);
 
 
 
@@ -501,7 +522,6 @@ RgResult rgUploadRasterizedGeometry(
 
 typedef enum RgLightType
 {
-    RG_LIGHT_TYPE_STATIC,
     RG_LIGHT_TYPE_DYNAMIC
 } RgLightType;
 
@@ -555,21 +575,6 @@ RgResult rgUploadSphericalLight(
 RgResult rgUploadSpotlightLight(
     RgInstance                          rgInstance,
     RgSpotlightUploadInfo               *pLightInfo);
-
-
-
-// After uploading all static geometry and static lights, scene must be submitted before rendering.
-// However, movable static geometry can be moved using rgUpdateGeometryTransform.
-// When the static scene data should be changed, it must be cleared using rgClearScene
-// and new static geometries must be uploaded.
-RgResult rgSubmitStaticGeometries(
-    RgInstance                          rgInstance);
-
-// Clear current scene from all static geometries and static lights
-// and make it available for recording new geometries.
-// New scene can be shown only after its submission using rgSubmitStaticGeometries.
-RgResult rgStartNewScene(
-    RgInstance                          rgInstance);
 
 
 

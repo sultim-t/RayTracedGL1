@@ -603,6 +603,11 @@ void ASManager::SubmitStaticGeometry()
     // build AS
     asBuilder->BuildBottomLevel(cmd);
 
+    // submit geom info, in case if rgStartNewScene and rgSubmitStaticGeometries 
+    // were out of rgStartFrame - rgDrawFrame, so static geominfo-s won't be
+    // erased on GeomInfoManager::PrepareForFrame
+    geomInfoMgr->CopyFromStaging(cmd, 0, false);
+
     // submit and wait
     cmdManager->Submit(cmd, staticCopyFence);
     Utils::WaitAndResetFence(device, staticCopyFence);
@@ -836,7 +841,7 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
     int32_t geomCount = blas.GetGeomCount();
 
     // BLAS must not be empty, if it's added to TLAS
-    assert(geomCount > 0);
+    assert(geomCount > 0 && geomCount < MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT);
 
     instanceGeomInfoOffset[index] = arrayOffset;
     instanceGeomCount[index] = geomCount;

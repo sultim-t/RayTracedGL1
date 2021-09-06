@@ -368,6 +368,116 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     std::vector<RgCubemap> skyboxes(cubemapNames.size());
 
 
+
+    // out of frame init
+    {
+
+        // create skyboxes
+        /*for (uint32_t i = 0; i < cubemapNames.size(); i++)
+        {
+            std::string skyboxFolderPath = std::string("../../") + cubemapNames[i] + "/";
+
+            std::string px = skyboxFolderPath + "px.png";
+            std::string py = skyboxFolderPath + "py.png";
+            std::string pz = skyboxFolderPath + "pz.png";
+            std::string nx = skyboxFolderPath + "nx.png";
+            std::string ny = skyboxFolderPath + "ny.png";
+            std::string nz = skyboxFolderPath + "nz.png";
+
+            RgCubemapCreateInfo skyboxInfo = {};
+            skyboxInfo.useMipmaps = RG_TRUE;
+            skyboxInfo.isSRGB = RG_TRUE;
+            skyboxInfo.relativePathFaces.positiveX = px.c_str();
+            skyboxInfo.relativePathFaces.positiveY = py.c_str();
+            skyboxInfo.relativePathFaces.positiveZ = pz.c_str();
+            skyboxInfo.relativePathFaces.negativeX = nx.c_str();
+            skyboxInfo.relativePathFaces.negativeY = ny.c_str();
+            skyboxInfo.relativePathFaces.negativeZ = nz.c_str();
+
+            r = rgCreateCubemap(instance, &skyboxInfo, &skyboxes[i]);
+            RG_CHECKERROR(r);
+        }*/
+
+
+        // start static scene upload
+        r = rgStartNewScene(instance);
+        RG_CHECKERROR(r);
+
+        RgGeometryUploadInfo stInfo = cubeInfo;
+        stInfo.geomType = RG_GEOMETRY_TYPE_STATIC;
+
+        // bottom
+        stInfo.transform = {
+            5 * 0.5, 0, 0, 0,
+            0, 1 * 0.5, 0, -4,
+            0, 0, 5 * 0.5, 0
+        };
+        stInfo.layerColors[0] = { 1, 1, 1, 1 };
+        stInfo.uniqueID = 9;
+        r = rgUploadGeometry(instance, &stInfo);
+        RG_CHECKERROR(r);
+
+        // up
+        stInfo.transform = {
+            5 * 0.5, 0, 0, 0,
+            0, 1 * 0.5, 0, +4,
+            0, 0, 5 * 0.5, 0
+        };
+        stInfo.layerColors[0] = { 1, 1, 1, 1 };
+        stInfo.uniqueID = 99;
+        r = rgUploadGeometry(instance, &stInfo);
+        RG_CHECKERROR(r);
+
+        // left, red
+        stInfo.transform = {
+            1 * 0.5, 0, 0, -3,
+            0, 9 * 0.5, 0, 0,
+            0, 0, 5 * 0.5, 0
+        };
+        stInfo.layerColors[0] = { 1, 0, 0, 1 };
+        stInfo.uniqueID = 999;
+        r = rgUploadGeometry(instance, &stInfo);
+        RG_CHECKERROR(r);
+
+        // right, green
+        stInfo.transform = {
+            1 * 0.5, 0, 0, +3,
+            0, 9 * 0.5, 0, 0,
+            0, 0, 5 * 0.5, 0
+        };
+        stInfo.layerColors[0] = { 0, 1, 0, 1 };
+        stInfo.uniqueID = 9999;
+        r = rgUploadGeometry(instance, &stInfo);
+        RG_CHECKERROR(r);
+
+        // back
+        stInfo.transform = {
+            7 * 0.5, 0, 0, 0,
+            0, 9 * 0.5, 0, 0,
+            0, 0, 1 * 0.5, -3
+        };
+        stInfo.layerColors[0] = { 1, 1, 1, 1 };
+        stInfo.uniqueID = 99999;
+        r = rgUploadGeometry(instance, &stInfo);
+        RG_CHECKERROR(r);
+
+
+        // tall left box
+        RgGeometryUploadInfo mvInfo = cubeInfo;
+        mvInfo.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
+        mvInfo.uniqueID = 1;
+        mvInfo.geomMaterial.layerMaterials[0] = material;
+        r = rgUploadGeometry(instance, &mvInfo);
+        RG_CHECKERROR(r);
+
+
+        // upload static geometry
+        r = rgSubmitStaticGeometries(instance);
+        RG_CHECKERROR(r);
+    }
+
+
+
     while (!glfwWindowShouldClose(pWindow->glfwHandle))
     {
         glfwPollEvents();
@@ -384,117 +494,13 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             RG_CHECKERROR(r);
         }
 
+        // TODO: oout of frame upload
         if (frameCount == 0)
         {
             // upload material
             r = rgCreateStaticMaterial(instance, &textureInfo, &material);
             RG_CHECKERROR(r);
-
-
-            // create skyboxes
-            /*for (uint32_t i = 0; i < cubemapNames.size(); i++)
-            {
-                std::string skyboxFolderPath = std::string("../../") + cubemapNames[i] + "/";
-
-                std::string px = skyboxFolderPath + "px.png";
-                std::string py = skyboxFolderPath + "py.png";
-                std::string pz = skyboxFolderPath + "pz.png";
-                std::string nx = skyboxFolderPath + "nx.png";
-                std::string ny = skyboxFolderPath + "ny.png";
-                std::string nz = skyboxFolderPath + "nz.png";
-
-                RgCubemapCreateInfo skyboxInfo = {};
-                skyboxInfo.useMipmaps = RG_TRUE;
-                skyboxInfo.isSRGB = RG_TRUE;
-                skyboxInfo.relativePathFaces.positiveX = px.c_str();
-                skyboxInfo.relativePathFaces.positiveY = py.c_str();
-                skyboxInfo.relativePathFaces.positiveZ = pz.c_str();
-                skyboxInfo.relativePathFaces.negativeX = nx.c_str();
-                skyboxInfo.relativePathFaces.negativeY = ny.c_str();
-                skyboxInfo.relativePathFaces.negativeZ = nz.c_str();
-
-                r = rgCreateCubemap(instance, &skyboxInfo, &skyboxes[i]);
-                RG_CHECKERROR(r);    
-            }*/
-
-
-            // start static scene upload
-            r = rgStartNewScene(instance);
-            RG_CHECKERROR(r);
-
-            RgGeometryUploadInfo stInfo = cubeInfo;
-            stInfo.geomType = RG_GEOMETRY_TYPE_STATIC;
-
-            // bottom
-            stInfo.transform = {
-                5 * 0.5, 0, 0, 0,
-                0, 1 * 0.5, 0, -4,
-                0, 0, 5 * 0.5, 0
-            };
-            stInfo.layerColors[0] = { 1, 1, 1, 1 };
-            stInfo.uniqueID = 9;
-            r = rgUploadGeometry(instance, &stInfo);
-            RG_CHECKERROR(r);
-
-            // up
-            stInfo.transform = {
-                5 * 0.5, 0, 0, 0,
-                0, 1 * 0.5, 0, +4,
-                0, 0, 5 * 0.5, 0
-            };
-            stInfo.layerColors[0] = { 1, 1, 1, 1 };
-            stInfo.uniqueID = 99;
-            r = rgUploadGeometry(instance, &stInfo);
-            RG_CHECKERROR(r);
-
-            // left, red
-            stInfo.transform = {
-                1 * 0.5, 0, 0, -3,
-                0, 9 * 0.5, 0, 0,
-                0, 0, 5 * 0.5, 0
-            };
-            stInfo.layerColors[0] = { 1, 0, 0, 1 };
-            stInfo.uniqueID = 999;
-            r = rgUploadGeometry(instance, &stInfo);
-            RG_CHECKERROR(r);
-
-            // right, green
-            stInfo.transform = {
-                1 * 0.5, 0, 0, +3,
-                0, 9 * 0.5, 0, 0,
-                0, 0, 5 * 0.5, 0
-            };
-            stInfo.layerColors[0] = { 0, 1, 0, 1 };
-            stInfo.uniqueID = 9999;
-            r = rgUploadGeometry(instance, &stInfo);
-            RG_CHECKERROR(r);
-
-            // back
-            stInfo.transform = {
-                7 * 0.5, 0, 0, 0,
-                0, 9 * 0.5, 0, 0,
-                0, 0, 1 * 0.5, -3
-            };
-            stInfo.layerColors[0] = { 1, 1, 1, 1 };
-            stInfo.uniqueID = 99999;
-            r = rgUploadGeometry(instance, &stInfo);
-            RG_CHECKERROR(r);
-
-
-            // tall left box
-            RgGeometryUploadInfo mvInfo = cubeInfo;
-            mvInfo.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
-            mvInfo.uniqueID = 1;
-            mvInfo.geomMaterial.layerMaterials[0] = material;
-            r = rgUploadGeometry(instance, &mvInfo);
-            RG_CHECKERROR(r);
-
-
-            // upload static geometry
-            r = rgSubmitStaticGeometries(instance);
-            RG_CHECKERROR(r);
         }
-
 
         // update transform of movable geometry
         RgUpdateTransformInfo updateInfo = {};

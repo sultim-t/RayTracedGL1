@@ -113,6 +113,11 @@ bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
 
     if (uploadInfo.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
+        if (isRecordingStatic)
+        {
+            throw RgException(RG_WRONG_FUNCTION_CALL, "Dynamic geometry must not be uploaded between rgStartNewScene and rgSubmitStaticGeometries calls");
+        }
+
         uint32_t simpleIndex = asManager->AddDynamicGeometry(frameIndex, uploadInfo);
 
         if (simpleIndex != UINT32_MAX)
@@ -124,9 +129,9 @@ bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
     else
     {
         if (!isRecordingStatic)
-        {
-            asManager->BeginStaticGeometry();
-            isRecordingStatic = true;
+        {          
+            // never allow submitting static geometry out of StartNewStatic-SubmitStatic
+            throw RgException(RG_WRONG_FUNCTION_CALL, "Submitting static geometry is only allowed between rgStartNewScene and rgSubmitStaticGeometries calls");
         }
 
         uint32_t simpleIndex = asManager->AddStaticGeometry(frameIndex, uploadInfo);
@@ -187,7 +192,8 @@ bool RTGL1::Scene::UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo)
 
 void Scene::SubmitStatic()
 {
-    // submit even if nothing was recorded
+    // submit even if nothing was recorded, 
+    // so the static scene will be empty
     if (!isRecordingStatic)
     {
         asManager->BeginStaticGeometry();
@@ -201,13 +207,14 @@ void Scene::SubmitStatic()
 
 void Scene::StartNewStatic()
 {
-    // if static geometry wasn't submitted yet
     if (isRecordingStatic)
     {
-        // then just reset it
-        asManager->ResetStaticGeometry();
-        lightManager->Reset();
+        throw RgException(RG_WRONG_FUNCTION_CALL, "rgStartNewScene must be called only once before rgSubmitStaticGeometries");
     }
+
+    isRecordingStatic = true;
+    asManager->BeginStaticGeometry();
+    lightManager->Reset();
 
     staticUniqueIDToSimpleIndex.clear();
     movableGeomIndices.clear();
