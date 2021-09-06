@@ -24,7 +24,7 @@
 using namespace RTGL1;
 
 CommandBufferManager::CommandBufferManager(VkDevice device, std::shared_ptr<Queues> queues) :
-    currentFrameIndex(0)
+    currentFrameIndex(MAX_FRAMES_IN_FLIGHT - 1)
 {
     this->device = device;
     this->queues = queues;

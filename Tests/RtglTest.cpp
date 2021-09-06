@@ -345,13 +345,9 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         0, 0, 1, 0
     };
 
-    // texture info
-    RgStaticMaterialCreateInfo textureInfo = {};
-    textureInfo.pRelativePath = "../../TopMap01.ktx2";
-    textureInfo.useMipmaps = RG_FALSE;
 
 
-    // rasterized geometry for HUD
+    // vertices for rasterized HUD
     RgRasterizedGeometryVertexArrays hudVertData = {};
     hudVertData.pVertexData = quadPositions;
     hudVertData.pTexCoordData = quadTexCoords;
@@ -370,7 +366,15 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
 
     // out of frame init
-    {
+    {   
+        // texture info
+        RgStaticMaterialCreateInfo textureInfo = {};
+        textureInfo.pRelativePath = "../../TopMap01.ktx2";
+
+        // upload material
+        r = rgCreateStaticMaterial(instance, &textureInfo, &material);
+        RG_CHECKERROR(r);
+
 
         // create skyboxes
         /*for (uint32_t i = 0; i < cubemapNames.size(); i++)
@@ -491,14 +495,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
             startInfo.requestShaderReload = RELOAD_SHADERS;
 
             r = rgStartFrame(instance, &startInfo);
-            RG_CHECKERROR(r);
-        }
-
-        // TODO: oout of frame upload
-        if (frameCount == 0)
-        {
-            // upload material
-            r = rgCreateStaticMaterial(instance, &textureInfo, &material);
             RG_CHECKERROR(r);
         }
 

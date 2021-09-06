@@ -34,8 +34,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     instance(VK_NULL_HANDLE),
     device(VK_NULL_HANDLE),
     surface(VK_NULL_HANDLE),
-    currentFrameIndex(MAX_FRAMES_IN_FLIGHT - 1),
-    currentFrameCmd(VK_NULL_HANDLE),
+    currentFrameState(),
     frameId(1),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
@@ -236,9 +235,7 @@ VulkanDevice::~VulkanDevice()
 
 VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
 {
-    currentFrameIndex = (currentFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-
-    uint32_t frameIndex = currentFrameIndex;
+    uint32_t frameIndex = currentFrameState.IncrementFrameIndexAndGet();
 
     // wait for previous cmd with the same frame index
     Utils::WaitAndResetFence(device, frameFences[frameIndex]);
@@ -247,10 +244,32 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     swapchain->RequestVsync(startInfo.requestVSync);
     swapchain->AcquireImage(imageAvailableSemaphores[frameIndex]);
 
+    VkSemaphore semaphoreToWaitOnSubmit = imageAvailableSemaphores[frameIndex];
+
+
+    // if out-of-frame cmd exist, submit it
+    {
+        VkCommandBuffer preFrameCmd = currentFrameState.GetPreFrameCmdAndRemove();
+        if (preFrameCmd != VK_NULL_HANDLE)
+        {
+            // signal inFrameSemaphore after completion
+            cmdManager->Submit(preFrameCmd,
+                               semaphoreToWaitOnSubmit, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                               inFrameSemaphores[frameIndex],
+                               VK_NULL_HANDLE);
+
+            // should wait other semaphore in this case
+            semaphoreToWaitOnSubmit = inFrameSemaphores[frameIndex];
+        }
+    }
+    currentFrameState.SetSemaphore(semaphoreToWaitOnSubmit);
+
+
     if (startInfo.requestShaderReload)
     {
         shaderManager->ReloadShaders();
     }
+
 
     // reset cmds for current frame index
     cmdManager->PrepareForFrame(frameIndex);
@@ -531,7 +550,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     EndCmdLabel(cmd);
 
 
-    const uint32_t frameIndex = currentFrameIndex;
+    const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
@@ -619,12 +638,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 {
-    uint32_t frameIndex = currentFrameIndex;
+    uint32_t frameIndex = currentFrameState.GetFrameIndex();
+    VkSemaphore semaphoreToWait = currentFrameState.GetSemaphoreForWaitAndRemove();
 
     // submit command buffer, but wait until presentation engine has completed using image
     cmdManager->Submit(
         cmd, 
-        imageAvailableSemaphores[frameIndex],
+        semaphoreToWait,
         VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, 
         renderFinishedSemaphores[frameIndex],
         frameFences[frameIndex]);
@@ -641,20 +661,33 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 void VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
 {
-    if (currentFrameCmd != VK_NULL_HANDLE)
+    if (currentFrameState.WasFrameStarted())
     {
         throw RgException(RG_FRAME_WASNT_ENDED);
     }
 
-    currentFrameCmd = BeginFrame(*startInfo);
+    if (startInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    VkCommandBuffer newFrameCmd = BeginFrame(*startInfo);
+    currentFrameState.OnBeginFrame(newFrameCmd);
 }
 
 void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
 {
-    if (currentFrameCmd == VK_NULL_HANDLE)
+    if (!currentFrameState.WasFrameStarted())
     {
         throw RgException(RG_FRAME_WASNT_STARTED);
     }
+
+    if (drawInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    VkCommandBuffer cmd = currentFrameState.GetCmdBuffer();
 
     previousFrameTime = currentFrameTime;
     currentFrameTime = drawInfo->currentTime;
@@ -662,12 +695,11 @@ void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     if (drawInfo->renderSize.width > 0 && drawInfo->renderSize.height > 0)
     {
         FillUniform(uniform->GetData(), *drawInfo);
-        Render(currentFrameCmd, *drawInfo);
+        Render(cmd, *drawInfo);
     }
 
-    EndFrame(currentFrameCmd);
-
-    currentFrameCmd = VK_NULL_HANDLE;
+    EndFrame(cmd);
+    currentFrameState.OnEndFrame();
 }
 
 void VulkanDevice::Print(const char *pMessage) const
@@ -722,7 +754,7 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
     }
 
-    scene->Upload(currentFrameIndex, *uploadInfo);
+    scene->Upload(currentFrameState.GetFrameIndex(), *uploadInfo);
 }
 
 void VulkanDevice::UpdateGeometryTransform(const RgUpdateTransformInfo *updateInfo)
@@ -772,7 +804,7 @@ void VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect index data");
     }
 
-    rasterizer->Upload(currentFrameIndex, *uploadInfo, viewProjection, viewport);
+    rasterizer->Upload(currentFrameState.GetFrameIndex(), *uploadInfo, viewProjection, viewport);
 }
 
 void VulkanDevice::SubmitStaticGeometries()
@@ -792,7 +824,7 @@ void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *pLightInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameIndex, *pLightInfo);
+    scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
 void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
@@ -802,7 +834,7 @@ void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameIndex, *pLightInfo);
+    scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
 void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
@@ -812,31 +844,23 @@ void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameIndex, uniform, *pLightInfo);
+    scene->UploadLight(currentFrameState.GetFrameIndex(), uniform, *pLightInfo);
 }
 
 void VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
 {
-    if (currentFrameCmd == VK_NULL_HANDLE)
-    {
-        throw RgException(RG_FRAME_WASNT_STARTED);
-    }
-
     if (createInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    *result = textureManager->CreateStaticMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
+    *result = textureManager->CreateStaticMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager), 
+                                                   currentFrameState.GetFrameIndex(), 
+                                                   *createInfo);
 }
 
 void VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result)
 {
-    if (currentFrameCmd == VK_NULL_HANDLE)
-    {
-        throw RgException(RG_FRAME_WASNT_STARTED);
-    }
-
     if (createInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
@@ -847,21 +871,23 @@ void VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *cr
         throw RgException(RG_WRONG_ARGUMENT, "Animated materials must have non-zero amount of frames");
     }
 
-    *result = textureManager->CreateAnimatedMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
+    *result = textureManager->CreateAnimatedMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager), 
+                                                     currentFrameState.GetFrameIndex(), 
+                                                     *createInfo);
 }
 
 void VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)
 {
+    if (!currentFrameState.WasFrameStarted())
+    {
+        throw RgException(RG_FRAME_WASNT_STARTED);
+    }
+
     bool wasChanged = textureManager->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
 }
 
 void VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result)
 {
-    if (currentFrameCmd == VK_NULL_HANDLE)
-    {
-        throw RgException(RG_FRAME_WASNT_STARTED);
-    }
-
     if (createInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
@@ -873,12 +899,14 @@ void VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *crea
                           std::to_string(createInfo->size.width) + ", " + std::to_string(createInfo->size.height) + ")");
     }
     
-    *result = textureManager->CreateDynamicMaterial(currentFrameCmd, currentFrameIndex, *createInfo);
+    *result = textureManager->CreateDynamicMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager),
+                                                    currentFrameState.GetFrameIndex(), 
+                                                    *createInfo);
 }
 
 void VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo)
 {
-    if (currentFrameCmd == VK_NULL_HANDLE)
+    if (!currentFrameState.WasFrameStarted())
     {
         throw RgException(RG_FRAME_WASNT_STARTED);
     }
@@ -888,25 +916,25 @@ void VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *upda
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameCmd, *updateInfo);
+    bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager), *updateInfo);
 }
 
 void VulkanDevice::DestroyMaterial(RgMaterial material)
 {
-    textureManager->DestroyMaterial(currentFrameIndex, material);
+    textureManager->DestroyMaterial(currentFrameState.GetFrameIndex(), material);
 }
 void VulkanDevice::CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result)
 {
-    if (currentFrameCmd == VK_NULL_HANDLE)
+    if (!currentFrameState.WasFrameStarted())
     {
         throw RgException(RG_FRAME_WASNT_STARTED);
     }
 
-    *result = cubemapManager->CreateCubemap(currentFrameCmd, currentFrameIndex, *createInfo);
+    *result = cubemapManager->CreateCubemap(currentFrameState.GetCmdBuffer(), currentFrameState.GetFrameIndex(), *createInfo);
 }
 void VulkanDevice::DestroyCubemap(RgCubemap cubemap)
 {
-    cubemapManager->DestroyCubemap(currentFrameIndex, cubemap);
+    cubemapManager->DestroyCubemap(currentFrameState.GetFrameIndex(), cubemap);
 }
 #pragma endregion 
 
@@ -1176,12 +1204,15 @@ void VulkanDevice::CreateSyncPrimitives()
         VK_CHECKERROR(r);
         r = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[i]);
         VK_CHECKERROR(r);
+        r = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &inFrameSemaphores[i]);
+        VK_CHECKERROR(r);
 
         r = vkCreateFence(device, &fenceInfo, nullptr, &frameFences[i]);
         VK_CHECKERROR(r);
 
         SET_DEBUG_NAME(device, imageAvailableSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "Image available semaphore");
         SET_DEBUG_NAME(device, renderFinishedSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "Render finished semaphore");
+        SET_DEBUG_NAME(device, inFrameSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "In-frame semaphore");
         SET_DEBUG_NAME(device, frameFences[i], VK_OBJECT_TYPE_FENCE, "Frame fence");
     }
 }
@@ -1320,6 +1351,7 @@ void VulkanDevice::DestroySyncPrimitives()
     {
         vkDestroySemaphore(device, imageAvailableSemaphores[i], nullptr);
         vkDestroySemaphore(device, renderFinishedSemaphores[i], nullptr);
+        vkDestroySemaphore(device, inFrameSemaphores[i], nullptr);
 
         vkDestroyFence(device, frameFences[i], nullptr);
     }
