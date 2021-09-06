@@ -91,7 +91,7 @@ private:
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, uint32_t dataSize, const RgExtent2D &size,
         VkSampler sampler, VkFormat format, bool generateMipmaps, const char *debugName);
 
-    uint32_t InsertTexture(VkImage image, VkImageView view, VkSampler sampler);
+    uint32_t InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, VkSampler sampler);
     void DestroyTexture(const Texture &texture);
     void AddToBeDestroyed(uint32_t frameIndex, const Texture &texture);
 

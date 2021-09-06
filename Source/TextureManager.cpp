@@ -361,7 +361,7 @@ uint32_t TextureManager::PrepareStaticTexture(
         return EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertTexture(result.image, result.view, sampler);
+    return InsertTexture(frameIndex, result.image, result.view, sampler);
 }
 
 uint32_t TextureManager::PrepareDynamicTexture(
@@ -396,7 +396,7 @@ uint32_t TextureManager::PrepareDynamicTexture(
         return EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertTexture(result.image, result.view, sampler);
+    return InsertTexture(frameIndex, result.image, result.view, sampler);
 }
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
@@ -618,7 +618,7 @@ void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materi
     }
 }
 
-uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view, VkSampler sampler)
+uint32_t TextureManager::InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, VkSampler sampler)
 {
     auto texture = std::find_if(textures.begin(), textures.end(), [] (const Texture &t)
     {
@@ -629,7 +629,13 @@ uint32_t TextureManager::InsertTexture(VkImage image, VkImageView view, VkSample
     if (texture == textures.end())
     {
         // clean created data
-        textureUploader->DestroyImage(image, view);
+        Texture t = {};
+        t.image = image;
+        t.view = view;
+        AddToBeDestroyed(frameIndex, t);
+
+        // TODO: properly warn user, add severity to print
+        assert(false && "Too many textures");
 
         return EMPTY_TEXTURE_INDEX;
     }
