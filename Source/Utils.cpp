@@ -132,6 +132,29 @@ void Utils::WaitAndResetFence(VkDevice device, VkFence fence)
     VK_CHECKERROR(r);
 }
 
+void RTGL1::Utils::WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B)
+{
+    VkResult r;
+    VkFence fences[2];
+    uint32_t count = 0;
+
+    if (fence_A != VK_NULL_HANDLE)
+    {
+        fences[count++] = fence_A;
+    }
+
+    if (fence_B != VK_NULL_HANDLE)
+    {
+        fences[count++] = fence_B;
+    }
+
+    r = vkWaitForFences(device, count, fences, VK_TRUE, UINT64_MAX);
+    VK_CHECKERROR(r);
+
+    r = vkResetFences(device, count, fences);
+    VK_CHECKERROR(r);
+}
+
 uint32_t Utils::Align(uint32_t value, uint32_t alignment)
 {
     return (value + alignment - 1) & ~(alignment - 1);

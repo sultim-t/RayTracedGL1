@@ -36,6 +36,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     surface(VK_NULL_HANDLE),
     currentFrameState(),
     frameId(1),
+    waitForOutOfFrameFence(false),
     enableValidationLayer(info->enableValidationLayer == RG_TRUE),
     debugMessenger(VK_NULL_HANDLE),
     userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
@@ -237,8 +238,15 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
 {
     uint32_t frameIndex = currentFrameState.IncrementFrameIndexAndGet();
 
-    // wait for previous cmd with the same frame index
-    Utils::WaitAndResetFence(device, frameFences[frameIndex]);
+    if (!waitForOutOfFrameFence)
+    {
+        // wait for previous cmd with the same frame index
+        Utils::WaitAndResetFence(device, frameFences[frameIndex]);
+    }
+    else
+    {
+        Utils::WaitAndResetFences(device, frameFences[frameIndex], outOfFrameFences[frameIndex]);
+    }
 
     swapchain->RequestNewSize(startInfo.surfaceSize.width, startInfo.surfaceSize.height);
     swapchain->RequestVsync(startInfo.requestVSync);
@@ -252,14 +260,23 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
         VkCommandBuffer preFrameCmd = currentFrameState.GetPreFrameCmdAndRemove();
         if (preFrameCmd != VK_NULL_HANDLE)
         {
-            // signal inFrameSemaphore after completion
+            // Signal inFrameSemaphore after completion.
+            // Signal outOfFrameFences, but for the next frame
+            // because we can't reset cmd pool with cmds (in this case 
+            // it's preFrameCmd) that are in use.
             cmdManager->Submit(preFrameCmd,
                                semaphoreToWaitOnSubmit, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
                                inFrameSemaphores[frameIndex],
-                               VK_NULL_HANDLE);
+                               outOfFrameFences[(frameIndex + 1) % MAX_FRAMES_IN_FLIGHT]);
 
             // should wait other semaphore in this case
             semaphoreToWaitOnSubmit = inFrameSemaphores[frameIndex];
+
+            waitForOutOfFrameFence = true;
+        }
+        else
+        {
+            waitForOutOfFrameFence = false;
         }
     }
     currentFrameState.SetSemaphore(semaphoreToWaitOnSubmit);
@@ -1198,6 +1215,9 @@ void VulkanDevice::CreateSyncPrimitives()
     fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
     fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
 
+    VkFenceCreateInfo nonSignaledFenceInfo = {};
+    nonSignaledFenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         r = vkCreateSemaphore(device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[i]);
@@ -1209,11 +1229,14 @@ void VulkanDevice::CreateSyncPrimitives()
 
         r = vkCreateFence(device, &fenceInfo, nullptr, &frameFences[i]);
         VK_CHECKERROR(r);
+        r = vkCreateFence(device, &nonSignaledFenceInfo, nullptr, &outOfFrameFences[i]);
+        VK_CHECKERROR(r);
 
         SET_DEBUG_NAME(device, imageAvailableSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "Image available semaphore");
         SET_DEBUG_NAME(device, renderFinishedSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "Render finished semaphore");
         SET_DEBUG_NAME(device, inFrameSemaphores[i], VK_OBJECT_TYPE_SEMAPHORE, "In-frame semaphore");
         SET_DEBUG_NAME(device, frameFences[i], VK_OBJECT_TYPE_FENCE, "Frame fence");
+        SET_DEBUG_NAME(device, outOfFrameFences[i], VK_OBJECT_TYPE_FENCE, "Out of frame fence");
     }
 }
 
@@ -1354,6 +1377,7 @@ void VulkanDevice::DestroySyncPrimitives()
         vkDestroySemaphore(device, inFrameSemaphores[i], nullptr);
 
         vkDestroyFence(device, frameFences[i], nullptr);
+        vkDestroyFence(device, outOfFrameFences[i], nullptr);
     }
 }
 

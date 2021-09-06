@@ -232,6 +232,9 @@ private:
     VkSemaphore         renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
     VkSemaphore         inFrameSemaphores[MAX_FRAMES_IN_FLIGHT];
 
+    bool                waitForOutOfFrameFence;
+    VkFence             outOfFrameFences[MAX_FRAMES_IN_FLIGHT];
+
     std::shared_ptr<PhysicalDevice>         physDevice;
     std::shared_ptr<Queues>                 queues;
     std::shared_ptr<Swapchain>              swapchain;

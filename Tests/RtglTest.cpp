@@ -364,14 +364,13 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     std::vector<RgCubemap> skyboxes(cubemapNames.size());
 
 
+    // texture info
+    RgStaticMaterialCreateInfo textureInfo = {};
+    textureInfo.pRelativePath = "../../TopMap01.ktx2";
 
     // out of frame init
     {   
-        // texture info
-        RgStaticMaterialCreateInfo textureInfo = {};
-        textureInfo.pRelativePath = "../../TopMap01.ktx2";
-
-        // upload material
+        // can be created outside frame now
         r = rgCreateStaticMaterial(instance, &textureInfo, &material);
         RG_CHECKERROR(r);
 

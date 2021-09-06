@@ -60,6 +60,7 @@ public:
     static void WaitForFence(VkDevice device, VkFence fence);
     static void ResetFence(VkDevice device, VkFence fence);
     static void WaitAndResetFence(VkDevice device, VkFence fence);
+    static void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
 
     static uint32_t Align(uint32_t value, uint32_t alignment);
 
