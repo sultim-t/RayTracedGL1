@@ -66,11 +66,13 @@ TextureManager::TextureManager(
         this->overridenIsSRGB[i] = userOverridenIsSRGB[i];
     }
 
+    const uint32_t maxTextureCount = std::max<uint32_t>(TEXTURE_COUNT_MIN, std::min<uint32_t>(_info.maxTextureCount, TEXTURE_COUNT_MAX));
+
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
-    textureDesc = std::make_shared<TextureDescriptors>(device, MAX_TEXTURE_COUNT, BINDING_TEXTURES);
+    textureDesc = std::make_shared<TextureDescriptors>(device, maxTextureCount, BINDING_TEXTURES);
     textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
-    textures.resize(MAX_TEXTURE_COUNT);
+    textures.resize(maxTextureCount);
 
     // submit cmd to create empty texture
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();

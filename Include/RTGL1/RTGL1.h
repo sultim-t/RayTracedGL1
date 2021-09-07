@@ -182,6 +182,10 @@ typedef struct RgInstanceCreateInfo
     // Size of a cubemap side to render rasterized sky in.
     uint32_t                    rasterizedSkyCubemapSize;  
 
+    // Max amount of textures to be used during the execution.
+    // The value is clamped to [1024..4096]
+    uint32_t                    maxTextureCount;
+
     // The folder to find overriding textures in.
     const char                  *pOverridenTexturesFolderPath;
     // Postfixes will be used to determine textures that should be 
