@@ -933,7 +933,7 @@ void VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *upda
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager), *updateInfo);
+    bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameState.GetCmdBuffer(), *updateInfo);
 }
 
 void VulkanDevice::DestroyMaterial(RgMaterial material)
@@ -942,12 +942,7 @@ void VulkanDevice::DestroyMaterial(RgMaterial material)
 }
 void VulkanDevice::CreateSkyboxCubemap(const RgCubemapCreateInfo *createInfo, RgCubemap *result)
 {
-    if (!currentFrameState.WasFrameStarted())
-    {
-        throw RgException(RG_FRAME_WASNT_STARTED);
-    }
-
-    *result = cubemapManager->CreateCubemap(currentFrameState.GetCmdBuffer(), currentFrameState.GetFrameIndex(), *createInfo);
+    *result = cubemapManager->CreateCubemap(currentFrameState.GetCmdBufferForMaterials(cmdManager), currentFrameState.GetFrameIndex(), *createInfo);
 }
 void VulkanDevice::DestroyCubemap(RgCubemap cubemap)
 {
