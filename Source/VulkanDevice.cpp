@@ -568,6 +568,19 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 
     gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / drawInfo.renderSize.height);
+
+    if (std::abs(drawInfo.worldUpVector.data[0]) + std::abs(drawInfo.worldUpVector.data[1]) + std::abs(drawInfo.worldUpVector.data[2]) < 0.01f )
+    {
+        gu->worldUpVector[0] = 0.0f;
+        gu->worldUpVector[1] = 1.0f;
+        gu->worldUpVector[2] = 0.0f;
+    }
+    else
+    {
+        gu->worldUpVector[0] = drawInfo.worldUpVector.data[0];
+        gu->worldUpVector[1] = drawInfo.worldUpVector.data[1];
+        gu->worldUpVector[2] = drawInfo.worldUpVector.data[2];
+    }
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

@@ -860,6 +860,10 @@ typedef struct RgDrawFrameReflectRefractParams
     // The lower this value, the sharper water normal textures.
     // Default: 1.0
     float       waterWaveTextureDerivativesMultiplier;
+    // The larger this value, the larger the area one water texture covers.
+    // If equals to 0.0, then default value is used.
+    // Default: 1.0
+    float       waterTextureAreaScale;
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
     RgBool32    disableBackfaceReflectionsForNoMediaChange;
@@ -875,6 +879,10 @@ typedef struct RgDrawFrameInfo
     // View and projection matrices are column major.
     float       view[16];
     float       projection[16];
+    // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
+    // And rotate cubemap, so it should point up in this direction.
+    // If the length is close to 0.0, then (0, 1, 0) is used.
+    RgFloat3D   worldUpVector;
     // Additional info for ray cones, it's used to calculate differentials for texture sampling.
     float       fovYRadians;
     // What world parts to render. Mask bits are in [0..0x7]

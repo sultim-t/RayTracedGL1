@@ -202,6 +202,7 @@ struct ShGlobalUniform
     float waterTextureAreaScale;
     float _pad2;
     float _pad3;
+    vec4 worldUpVector;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

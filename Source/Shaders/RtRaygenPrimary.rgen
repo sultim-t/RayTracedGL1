@@ -92,10 +92,11 @@ vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalG
 
 
     // how much vertical flow to apply
-    float verticality = 1.0 - abs(normalGeom.y);
+    float verticality = 1.0 - abs(dot(normalGeom, globalUniform.worldUpVector.xyz));
 
-    // project basis[0] and basis[1] on vec3(0, 1, 0))
-    vec2 flowSpeedVertical = 10 * vec2(basis[0].y, basis[1].y);
+    // project basis[0] and basis[1] on up vector
+    vec2 flowSpeedVertical = 10 * vec2(dot(basis[0], globalUniform.worldUpVector.xyz), 
+                                       dot(basis[1], globalUniform.worldUpVector.xyz));
 
     vec2 flowSpeedHorizontal = vec2(1.0);
 
@@ -329,7 +330,7 @@ void main()
         
         if (!isPayloadConsistent(payload))
         {
-            throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, vec3(0,1,0))), -3));
+            throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, globalUniform.worldUpVector.xyz)), -3));
 
             storeSky(pix, rayDir, true, throughput, firstHitDepthNDC);
             return;  
