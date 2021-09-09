@@ -490,7 +490,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
-    (TYPE_FLOAT32,      1,      "_pad1",                            1),
+    (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),
     (TYPE_FLOAT32,      1,      "_pad2",                            1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
 

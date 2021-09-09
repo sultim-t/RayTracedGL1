@@ -204,7 +204,7 @@ struct ShGlobalUniform
     float portalInputToOutputTransform2[4];
     float portalInputPosition[4];
     float cameraRayConeSpreadAngle;
-    float _pad1;
+    float waterTextureAreaScale;
     float _pad2;
     float _pad3;
     int32_t instanceGeomInfoOffset[48];

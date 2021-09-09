@@ -69,7 +69,7 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
         }
         else
         {
-            return albedo4.rgb * globalUniform.skyColorMultiplier * globalUniform.bloomSkyMultiplier;
+            return albedo4.rgb /* * globalUniform.skyColorMultiplier*/ * globalUniform.bloomSkyMultiplier;
         }
     }
 

@@ -518,6 +518,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->waterWaveSpeed = rr.waterWaveSpeed;
         gu->waterWaveStrength = rr.waterWaveNormalStrength;
         gu->waterTextureDerivativesMultiplier = std::max(0.0f, rr.waterWaveTextureDerivativesMultiplier);
+        if (rr.waterTextureAreaScale < 0.0001f)
+        {
+            gu->waterTextureAreaScale = 1.0f;
+        }
+        else
+        {
+            gu->waterTextureAreaScale = rr.waterTextureAreaScale;
+        }
     
         gu->noBackfaceReflForNoMediaChange = rr.disableBackfaceReflectionsForNoMediaChange;
     }
@@ -549,6 +557,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->waterWaveSpeed = 1.0f;
         gu->waterWaveStrength = 1.0f;
         gu->waterTextureDerivativesMultiplier = 1.0f;
+        gu->waterTextureAreaScale = 1.0f;
 
         gu->noBackfaceReflForNoMediaChange = false;
     }

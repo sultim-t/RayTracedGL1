@@ -199,7 +199,7 @@ struct ShGlobalUniform
     vec4 portalInputToOutputTransform2;
     vec4 portalInputPosition;
     float cameraRayConeSpreadAngle;
-    float _pad1;
+    float waterTextureAreaScale;
     float _pad2;
     float _pad3;
     ivec4 instanceGeomInfoOffset[12];

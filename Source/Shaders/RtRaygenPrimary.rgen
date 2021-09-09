@@ -100,7 +100,7 @@ vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalG
     vec2 flowSpeedHorizontal = vec2(1.0);
 
 
-    const float uvScale = 0.05;
+    const float uvScale = 0.05 / globalUniform.waterTextureAreaScale;
     vec2 speed0 = uvScale * mix(flowSpeedHorizontal, flowSpeedVertical, verticality) * globalUniform.waterWaveSpeed;
     vec2 speed1 = -0.9 * speed0 * mix(1.0, -0.1, verticality);
 
