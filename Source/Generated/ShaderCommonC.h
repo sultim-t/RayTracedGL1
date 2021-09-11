@@ -205,7 +205,7 @@ struct ShGlobalUniform
     float portalInputPosition[4];
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
-    float _pad2;
+    uint32_t useSqrtRoughnessForIndirect;
     float _pad3;
     float worldUpVector[4];
     int32_t instanceGeomInfoOffset[48];

@@ -491,7 +491,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
     (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_UINT32,       1,      "useSqrtRoughnessForIndirect",      1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     (TYPE_FLOAT32,      4,      "worldUpVector",                    1),

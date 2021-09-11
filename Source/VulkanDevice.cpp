@@ -597,6 +597,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->worldUpVector[1] = drawInfo.worldUpVector.data[1];
         gu->worldUpVector[2] = drawInfo.worldUpVector.data[2];
     }
+
+    gu->useSqrtRoughnessForIndirect = !!drawInfo.useSqrtRoughnessForIndirect;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

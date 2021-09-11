@@ -36,6 +36,11 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define RAYGEN_SHADOW_PAYLOAD
 #include "RaygenCommon.h"
 
+float getModifiedIndirRoughness(float r)
+{
+    return globalUniform.useSqrtRoughnessForIndirect == 0 ? r : sqrt(r);
+}
+
 // v -- direction to viewer
 // n -- surface normal
 void getSpecularBounce(
@@ -45,7 +50,7 @@ void getSpecularBounce(
     const vec4 u = getRandomSample(seed, RANDOM_SALT_SPEC_BOUNCE(0));
 
     // sample microfacet normal
-    const vec3 m = sampleSmithGGX(n, v, roughness, u[0], u[1]);
+    const vec3 m = sampleSmithGGX(n, v, getModifiedIndirRoughness(roughness), u[0], u[1]);
 
     // light sample; incident vector must point to surface
     const vec3 l = normalize(reflect(-v, m));

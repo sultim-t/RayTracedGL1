@@ -899,6 +899,7 @@ typedef struct RgDrawFrameInfo
     RgExtent2D  renderSize;
     double      currentTime;
     RgBool32    disableEyeAdaptation;
+    RgBool32    useSqrtRoughnessForIndirect;
 
     // Null, if default values should be used.
     const RgDrawFrameShadowParams               *pShadowParams;
