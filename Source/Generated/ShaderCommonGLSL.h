@@ -207,6 +207,7 @@ struct ShGlobalUniform
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];
     mat4 viewProjCubemap[6];
+    mat4 skyCubemapRotationTransform;
 };
 
 struct ShGeometryInstance

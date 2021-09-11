@@ -506,6 +506,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_INT32,        4,      "instanceGeomInfoOffsetPrev",   align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
     (TYPE_INT32,        4,      "instanceGeomCount",            align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
     (TYPE_FLOAT32,     44,      "viewProjCubemap",              6),
+    (TYPE_FLOAT32,     44,      "skyCubemapRotationTransform",  1),
 ]
 
 GEOM_INSTANCE_STRUCT = [
@@ -767,7 +768,10 @@ def getStruct(name, definition, typeNames, alignmentType, breakType):
             #if dim > 4 and typeNames == C_TYPE_NAMES:
             #    raise Exception("If count > 1, dimensions must be in [1..4]")
             if breakType == STRUCT_BREAK_TYPE_COMPLEX or (typeNames == C_TYPE_NAMES and breakType == STRUCT_BREAK_TYPE_ONLY_C):
-                r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
+                if dim <= 4:
+                    r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * dim))
+                else:
+                    r += "%s %s[%d]" % (typeNames[baseType], mname, align4(count * int(TYPE_ACTUAL_SIZES[(baseType, dim)] / 4)))
             else:
                 if dim == 1:
                     r += "%s %s[%d]" % (typeNames[baseType], mname, count)
