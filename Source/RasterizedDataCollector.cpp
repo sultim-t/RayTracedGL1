@@ -115,11 +115,16 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
             throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "Vertex data is null in pArrays");
         }
 
-        if (info.pArrays->vertexStride < 3 * sizeof(float) || 
-            info.pArrays->colorStride < sizeof(uint32_t) || 
+        if (info.pArrays->vertexStride < 3 * sizeof(float) ||  
             info.pArrays->texCoordStride < 2 * sizeof(float))
         {
             throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "Strides are too small in pArrays");
+        }
+
+        if (info.pArrays->pColorData != nullptr &&
+            info.pArrays->colorStride < sizeof(uint32_t))
+        {
+            throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "Color data isn't null, and color stride is too small in pArrays");
         }
     }
 
