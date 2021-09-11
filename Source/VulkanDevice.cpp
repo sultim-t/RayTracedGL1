@@ -1125,9 +1125,9 @@ void VulkanDevice::CreateDevice()
     features.imageCubeArray = 1;
     features.independentBlend = 1;
     features.geometryShader = 0;
-    features.tessellationShader = 1;
+    features.tessellationShader = 0;
     features.sampleRateShading = 0;
-    features.dualSrcBlend = 1;
+    features.dualSrcBlend = 0;
     features.logicOp = 1;
     features.multiDrawIndirect = 1;
     features.drawIndirectFirstInstance = 1;
@@ -1137,7 +1137,7 @@ void VulkanDevice::CreateDevice()
     features.depthBounds = 1;
     features.wideLines = 0;
     features.largePoints = 0;
-    features.alphaToOne = 1;
+    features.alphaToOne = 0;
     features.multiViewport = 0;
     features.samplerAnisotropy = 1;
     features.textureCompressionETC2 = 0;
@@ -1164,15 +1164,15 @@ void VulkanDevice::CreateDevice()
     features.shaderInt16 = 1;
     features.shaderResourceResidency = 1;
     features.shaderResourceMinLod = 1;
-    features.sparseBinding = 1;
-    features.sparseResidencyBuffer = 1;
-    features.sparseResidencyImage2D = 1;
-    features.sparseResidencyImage3D = 1;
-    features.sparseResidency2Samples = 1;
-    features.sparseResidency4Samples = 1;
-    features.sparseResidency8Samples = 1;
-    features.sparseResidency16Samples = 1;
-    features.sparseResidencyAliased = 1;
+    features.sparseBinding = 0;
+    features.sparseResidencyBuffer = 0;
+    features.sparseResidencyImage2D = 0;
+    features.sparseResidencyImage3D = 0;
+    features.sparseResidency2Samples = 0;
+    features.sparseResidency4Samples = 0;
+    features.sparseResidency8Samples = 0;
+    features.sparseResidency16Samples = 0;
+    features.sparseResidencyAliased = 0;
     features.variableMultisampleRate = 0;
     features.inheritedQueries = 1;
 
@@ -1208,12 +1208,6 @@ void VulkanDevice::CreateDevice()
         VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-        VK_KHR_GET_MEMORY_REQUIREMENTS_2_EXTENSION_NAME,
-        VK_KHR_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME,
-        VK_KHR_DEDICATED_ALLOCATION_EXTENSION_NAME,
-        VK_KHR_MAINTENANCE3_EXTENSION_NAME,
-        VK_EXT_DESCRIPTOR_INDEXING_EXTENSION_NAME,
-        VK_KHR_MULTIVIEW_EXTENSION_NAME
     };
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;

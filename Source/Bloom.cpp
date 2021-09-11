@@ -81,8 +81,8 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
 
     for (int i = 0; i < COMPUTE_BLOOM_STEP_COUNT; i++)
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X));
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y));
+        uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X)));
+        uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y)));
 
         CmdLabel label(cmd, "Bloom downsample iteration");
 
@@ -103,8 +103,8 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
     // start from the other side
     for (int i = COMPUTE_BLOOM_STEP_COUNT - 1; i >= 0; i--)
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X));
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y));
+        uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X)));
+        uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y)));
 
         CmdLabel label(cmd, "Bloom upsample iteration");
 
