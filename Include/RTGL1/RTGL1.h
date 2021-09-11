@@ -784,15 +784,19 @@ typedef struct RgDrawFrameTonemappingParams
 typedef struct RgDrawFrameSkyParams
 {
     RgSkyType   skyType;
-    // Used as a main color for RG_SKY_TYPE_COLOR and ray-miss color for RG_SKY_TYPE_GEOMETRY.
+    // Used as a main color for RG_SKY_TYPE_COLOR.
     RgFloat3D   skyColorDefault;
     // The result sky color is multiplied by this value.
     float       skyColorMultiplier;
     float       skyColorSaturation;
-    // A point from which rays are traced while using RG_SKY_TYPE_GEOMETRY.
+    // A point from which rays are traced while using RG_SKY_TYPE_RASTERIZED_GEOMETRY.
     RgFloat3D   skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
     RgCubemap   skyCubemap;
+    // Apply this transform to the direction when sampling a sky cubemap (RG_SKY_TYPE_CUBEMAP).
+    // If equals to zero, then default value is used.
+    // Default: identity matrix.
+    RgMatrix3D  skyCubemapRotationTransform;
 } RgDrawFrameSkyParams;
 
 typedef struct RgDrawFrameOverridenTexturesParams
@@ -880,7 +884,6 @@ typedef struct RgDrawFrameInfo
     float       view[16];
     float       projection[16];
     // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
-    // And rotate cubemap, so it should point up in this direction.
     // If the length is close to 0.0, then (0, 1, 0) is used.
     RgFloat3D   worldUpVector;
     // Additional info for ray cones, it's used to calculate differentials for texture sampling.

@@ -174,3 +174,52 @@ bool Utils::AreViewportsSame(const VkViewport &a, const VkViewport &b)
         std::abs(a.minDepth - b.minDepth)   < depthEps &&
         std::abs(a.maxDepth - b.maxDepth)   < depthEps;
 }
+
+constexpr float ALMOST_ZERO_THRESHOLD = 0.01f;
+
+bool RTGL1::Utils::IsAlmostZero(const RgFloat3D &v)
+{
+    return
+        std::abs(v.data[0]) +
+        std::abs(v.data[1]) +
+        std::abs(v.data[2]) < ALMOST_ZERO_THRESHOLD;
+}
+
+bool RTGL1::Utils::IsAlmostZero(const RgMatrix3D &m)
+{
+    float s = 0;
+
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            s += std::abs(m.matrix[i][j]);
+        }
+    }
+
+    return s < ALMOST_ZERO_THRESHOLD;
+}
+
+void RTGL1::Utils::SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src)
+{
+    const bool toColumnMajor = true;
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 4; j++)
+        {
+            float v;
+
+            if (i < 3 && j < 3)
+            {
+                v = toColumnMajor ? src.matrix[j][i] : src.matrix[i][j];
+            }
+            else
+            {
+                v = i == j ? 1 : 0;
+            }
+
+            dst[i * 4 + j] = v;
+        }
+    }
+}

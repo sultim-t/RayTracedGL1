@@ -227,19 +227,7 @@ vec3 getSkyPrimary(vec3 direction)
 
     if (skyType == SKY_TYPE_CUBEMAP)
     {
-        const vec3 vulkanUpVector = vec3(0, -1, 0);
-
-        // (general direction) -> (vectors with Vulkan up vector)
-        const mat3 A = getONB(vulkanUpVector);
-
-        // (general direction) -> (vectors with 'worldUpVector' up vector)
-        const mat3 B = getONB(globalUniform.worldUpVector.xyz);
-
-        // Apply A^-1 to get vector in general directions domain.
-        // A is orthonormal, so A^-1=A^T
-        direction = transpose(A) * direction;
-        // Then apply B to get vector with 'worldUpVector' up vector
-        direction = B * direction;
+        direction = mat3(globalUniform.skyCubemapRotationTransform) * direction;
         
         return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
     }

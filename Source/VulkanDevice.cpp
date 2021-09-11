@@ -308,6 +308,14 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
 
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const
 {
+    const float IdentityMat4x4[16] =
+    {
+        1,0,0,0,
+        0,1,0,0,
+        0,0,1,0,
+        0,0,0,1
+    };
+
     {
         memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
         memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
@@ -378,6 +386,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
+        static_assert(sizeof(gu->skyCubemapRotationTransform) == sizeof(IdentityMat4x4) && 
+                      sizeof(IdentityMat4x4) == 16 * sizeof(float), "Recheck skyCubemapRotationTransform sizes");
+        memcpy(gu->skyCubemapRotationTransform, IdentityMat4x4, 16 * sizeof(float));
+
         if (drawInfo.pSkyParams != nullptr)
         {
             const auto &sp = *drawInfo.pSkyParams;
@@ -395,6 +407,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
             gu->skyCubemapIndex = cubemapManager->IsCubemapValid(sp.skyCubemap) ? sp.skyCubemap : RG_EMPTY_CUBEMAP;
 
+            if (!Utils::IsAlmostZero(drawInfo.pSkyParams->skyCubemapRotationTransform))
+            {
+                Utils::SetMatrix3ToGLSLMat4(gu->skyCubemapRotationTransform, drawInfo.pSkyParams->skyCubemapRotationTransform);
+            }
         }
         else
         {
@@ -569,7 +585,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / drawInfo.renderSize.height);
 
-    if (std::abs(drawInfo.worldUpVector.data[0]) + std::abs(drawInfo.worldUpVector.data[1]) + std::abs(drawInfo.worldUpVector.data[2]) < 0.01f )
+    if (Utils::IsAlmostZero(drawInfo.worldUpVector))
     {
         gu->worldUpVector[0] = 0.0f;
         gu->worldUpVector[1] = 1.0f;

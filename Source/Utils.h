@@ -65,6 +65,12 @@ public:
     static uint32_t Align(uint32_t value, uint32_t alignment);
 
     static bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
+
+    static bool IsAlmostZero(const RgFloat3D &v);
+    static bool IsAlmostZero(const RgMatrix3D &m);
+    // In terms of GLSL: mat3(a), where a is mat4.
+    // The remaining values are initialized with identity matrix.
+    static void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
 };
 
 }
