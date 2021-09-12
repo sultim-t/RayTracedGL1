@@ -209,6 +209,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     // if exceeds a limit of geometries in a group with specified geomFlags
     if (GetGeometryCount(geomFlags) + 1 >= VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(geomFlags))
     {
+        assert(false && "Too many geometries in a group");
         return UINT32_MAX;
     }
 
