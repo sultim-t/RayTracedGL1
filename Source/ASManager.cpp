@@ -815,18 +815,28 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
         instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
         instance.flags =
             VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
     }
-    else 
+    else if (filter & FT::PT_ALPHA_TESTED)
     {
-        if (filter & FT::PT_ALPHA_TESTED)
-        {
-            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
-        }
-        
+        instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
         instance.flags =
             VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR;
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
+    }
+    else if (filter & FT::PT_REFLECT)
+    {
+        instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
+        instance.flags =
+            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
+    }
+    else
+    {
+        assert(false);
     }
 
 

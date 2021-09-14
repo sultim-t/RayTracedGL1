@@ -249,15 +249,15 @@ CONST = {
 
     "INSTANCE_MASK_ALL"                     : "0xFF",
     "INSTANCE_MASK_WORLD_MIN"               : "0",
-    "INSTANCE_MASK_WORLD_ALL"               : "0x3F",
-    "INSTANCE_MASK_WORLD_0"                 : "1 << 0",
-    "INSTANCE_MASK_WORLD_1"                 : "1 << 1",
-    "INSTANCE_MASK_WORLD_2"                 : "1 << 2",
-    "INSTANCE_MASK_WORLD_3"                 : "1 << 3",
-    "INSTANCE_MASK_WORLD_4"                 : "1 << 4",
-    "INSTANCE_MASK_REFLECT_REFRACT"         : "1 << 5",
-    "INSTANCE_MASK_FIRST_PERSON"            : "1 << 6",
-    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : "1 << 7",
+    "INSTANCE_MASK_WORLD_ALL"               : CONST_TO_EVALUATE,
+    "INSTANCE_MASK_WORLD_0"                 : 1 << 0,
+    "INSTANCE_MASK_WORLD_1"                 : 1 << 1,
+    "INSTANCE_MASK_WORLD_2"                 : 1 << 2,
+    "INSTANCE_MASK_RESERVED_0"              : 1 << 3,
+    "INSTANCE_MASK_RESERVED_1"              : 1 << 4,
+    "INSTANCE_MASK_REFLECT_REFRACT"         : 1 << 5,
+    "INSTANCE_MASK_FIRST_PERSON"            : 1 << 6,
+    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : 1 << 7,
     
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,
@@ -363,6 +363,8 @@ def evalConst():
     CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]       = 32 - CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW"]
     CONST["MAX_GEOMETRY_PRIMITIVE_COUNT"]           = 1 << CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]
     CONST["BLUE_NOISE_TEXTURE_SIZE_POW"]            = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
+
+    CONST["INSTANCE_MASK_WORLD_ALL"] = CONST["INSTANCE_MASK_WORLD_0"] | CONST["INSTANCE_MASK_WORLD_1"] | CONST["INSTANCE_MASK_WORLD_2"]
 
     assert len([None for _, v in CONST.items() if v == CONST_TO_EVALUATE]) == 0, "All CONST_TO_EVALUATE values must be calculated"
 
