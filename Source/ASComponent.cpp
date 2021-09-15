@@ -29,7 +29,7 @@ RTGL1::ASComponent::ASComponent(VkDevice _device, const char *_debugName)
 
 RTGL1::BLASComponent::BLASComponent(VkDevice _device, VertexCollectorFilterTypeFlags _filter)
 :
-    ASComponent(_device, VertexCollectorFilterTypeFlags_GetNameForBLAS(filter)),
+    ASComponent(_device, VertexCollectorFilterTypeFlags_GetNameForBLAS(_filter)),
     filter(_filter),
     geomCount(0)
 {}

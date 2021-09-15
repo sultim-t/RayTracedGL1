@@ -43,8 +43,7 @@ RTGL1::CubemapManager::CubemapManager(
     device(_device),
     allocator(std::move(_allocator)),
     samplerManager(std::move(_samplerManager)),
-    cubemaps(MAX_CUBEMAP_COUNT),
-    emptyCubemapInfo{}
+    cubemaps(MAX_CUBEMAP_COUNT)
 {
     defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
     overridenTexturePostfix = _overridenTexturePostfix != nullptr ? _overridenTexturePostfix : DEFAULT_TEXTURES_POSTFIXES[MATERIAL_COLOR_TEXTURE_INDEX];
@@ -216,6 +215,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     upload.format = commonFormat;
     if (commonFormat != VK_FORMAT_R8G8B8A8_SRGB && commonFormat != VK_FORMAT_R8G8B8A8_UNORM)
     {
+        assert(false && "For now, cubemaps only support only R8G8B8A8 formats!");
         return RG_EMPTY_CUBEMAP;
     }
     upload.baseSize = commonSize;

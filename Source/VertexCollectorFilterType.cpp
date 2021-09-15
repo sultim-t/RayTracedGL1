@@ -177,20 +177,14 @@ const static FLName FL_NAMES[] =
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE,                "BLAS static opaque"                    },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_ALPHA_TESTED,          "BLAS static alpha tested"              },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_REFLECT,               "BLAS static reflect"                   },
-    //{ FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_ADDITIVE,        "BLAS static blended additive"        },
-    //{ FT::CF_STATIC_NON_MOVABLE | FT::PT_BLEND_UNDER,           "BLAS static blended under"           },
 
     { FT::CF_STATIC_MOVABLE     | FT::PT_OPAQUE,                "BLAS movable opaque"                   },
     { FT::CF_STATIC_MOVABLE     | FT::PT_ALPHA_TESTED,          "BLAS movable alpha tested"             },
     { FT::CF_STATIC_MOVABLE     | FT::PT_REFLECT,               "BLAS movable reflect"                  },
-    //{ FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_ADDITIVE,        "BLAS movable blended additive"       },
-    //{ FT::CF_STATIC_MOVABLE     | FT::PT_BLEND_UNDER,           "BLAS movable blended under"          },
 
     { FT::CF_DYNAMIC            | FT::PT_OPAQUE,                "BLAS dynamic opaque"                   },
     { FT::CF_DYNAMIC            | FT::PT_ALPHA_TESTED,          "BLAS dynamic alpha tested"             },
     { FT::CF_DYNAMIC            | FT::PT_REFLECT,               "BLAS dynamic reflect"                  },
-    //{ FT::CF_DYNAMIC            | FT::PT_BLEND_ADDITIVE,        "BLAS dynamic blended additive"       },
-    //{ FT::CF_DYNAMIC            | FT::PT_BLEND_UNDER,           "BLAS dynamic blended under"          },
 };
 
 const char *RTGL1::VertexCollectorFilterTypeFlags_GetNameForBLAS(FL flags)

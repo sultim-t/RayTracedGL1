@@ -80,8 +80,6 @@ private:
     std::vector<Texture>    cubemaps;
     std::vector<Texture>    cubemapsToDestroy[MAX_FRAMES_IN_FLIGHT];
 
-    VkDescriptorImageInfo   emptyCubemapInfo;    
-
     std::string defaultTexturesPath;
     std::string overridenTexturePostfix;
 };
