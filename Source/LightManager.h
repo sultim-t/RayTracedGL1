@@ -46,6 +46,7 @@ public:
     void Reset();
 
     uint32_t GetSpotlightCount() const;
+    uint32_t GetSpotlightCountPrev() const;
     uint32_t GetSphericalLightCount() const;
     uint32_t GetDirectionalLightCount() const;
     uint32_t GetSphericalLightCountPrev() const;
@@ -84,14 +85,18 @@ private:
     std::map<uint64_t, uint32_t> sphUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
     std::map<uint64_t, uint32_t> dirUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
-    uint32_t spotLightCount;
     uint32_t sphLightCount;
-    uint32_t dirLightCount;
     uint32_t sphLightCountPrev;
+
+    uint32_t dirLightCount;
     uint32_t dirLightCountPrev;
+
+    uint32_t spotLightCount;
+    uint32_t spotLightCountPrev;
 
     uint32_t maxSphericalLightCount;
     uint32_t maxDirectionalLightCount;
+    uint32_t maxSpotLightCount;
 
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;

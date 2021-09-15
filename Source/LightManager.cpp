@@ -33,11 +33,9 @@ constexpr double RG_PI = 3.14159265358979323846264338327950288419716939937510582
 
 constexpr float MIN_COLOR_SUM = 0.0001f;
 
-constexpr uint32_t START_MAX_LIGHT_COUNT_SPHERICAL = 1024;
-constexpr uint32_t START_MAX_LIGHT_COUNT_DIRECTIONAL = 32;
-
-constexpr uint32_t STEP_LIGHT_COUNT_SPHERICAL = 1024;
-constexpr uint32_t STEP_LIGHT_COUNT_DIRECTIONAL = 32;
+constexpr uint32_t MAX_LIGHT_COUNT_SPHERICAL = 1024;
+constexpr uint32_t MAX_LIGHT_COUNT_DIRECTIONAL = 32;
+constexpr uint32_t MAX_LIGHT_COUNT_SPOT = 1;
 }
 
 RTGL1::LightManager::LightManager(
@@ -46,11 +44,14 @@ RTGL1::LightManager::LightManager(
 :
     device(_device),
     sphLightCount(0),
-    dirLightCount(0),
     sphLightCountPrev(0),
+    dirLightCount(0),
     dirLightCountPrev(0),
-    maxSphericalLightCount(START_MAX_LIGHT_COUNT_SPHERICAL),
-    maxDirectionalLightCount(START_MAX_LIGHT_COUNT_DIRECTIONAL),
+    spotLightCount(0),
+    spotLightCountPrev(0),
+    maxSphericalLightCount(MAX_LIGHT_COUNT_SPHERICAL),
+    maxDirectionalLightCount(MAX_LIGHT_COUNT_DIRECTIONAL),
+    maxSpotLightCount(MAX_LIGHT_COUNT_SPOT),
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSets{},
@@ -80,10 +81,11 @@ void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
 {
     sphLightCountPrev = sphLightCount;
     dirLightCountPrev = dirLightCount;
+    spotLightCountPrev = spotLightCount;
 
-    spotLightCount = 0;
     sphLightCount = 0;
     dirLightCount = 0;
+    spotLightCount = 0;
 
     memset(sphericalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * sphLightCountPrev);
     memset(directionalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) *  dirLightCountPrev);
@@ -103,14 +105,19 @@ void RTGL1::LightManager::Reset()
         dirUniqueIDToPrevIndex[i].clear();
     }
 
-    spotLightCount = 0;
     sphLightCount = sphLightCountPrev = 0;
     dirLightCount = dirLightCountPrev = 0;
+    spotLightCount = spotLightCountPrev = 0;
 }
 
 uint32_t RTGL1::LightManager::GetSpotlightCount() const
 {
     return spotLightCount;
+}
+
+uint32_t RTGL1::LightManager::GetSpotlightCountPrev() const
+{
+    return spotLightCountPrev;
 }
 
 uint32_t RTGL1::LightManager::GetSphericalLightCount() const
@@ -145,14 +152,14 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
         return;
     }
 
-    uint32_t index = sphLightCount;
-    sphLightCount++;
-
     if (sphLightCount >= maxSphericalLightCount)
     {
-        // TODO: schedule buffer to be destroyed in the next frame
+        assert(0);
         return;
     }
+
+    uint32_t index = sphLightCount;
+    sphLightCount++;
 
     auto *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
     FillInfo(info, &dst[index]);
@@ -168,9 +175,10 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
 {
-    if (spotLightCount > 0)
+    if (spotLightCount >= maxSpotLightCount)
     {
         // TODO: more spotlights
+        assert(0);
         throw RgException(RG_WRONG_ARGUMENT, "Only one spotlight is available to be added");
     }
 
@@ -211,14 +219,14 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_pt
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info)
 {
-    uint32_t index = dirLightCount;
-    dirLightCount++;
-
     if (dirLightCount >= maxDirectionalLightCount)
     {
-        // TODO: schedule buffer to be destroyed in the next frame
+        assert(0);
         return;
     }
+
+    uint32_t index = dirLightCount;
+    dirLightCount++;
 
     auto *dst = (ShLightDirectional*)directionalLights->GetMapped(frameIndex);
     FillInfo(info, &dst[index]);

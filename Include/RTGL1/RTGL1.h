@@ -551,7 +551,6 @@ typedef struct RgSphericalLightUploadInfo
 } RgSphericalLightUploadInfo;
 
 // Only one spotlight is available in a scene.
-// That instance is specified throw RgDrawFrameInfo.
 typedef struct RgSpotlightUploadInfo
 {
     RgFloat3D position;
@@ -605,9 +604,9 @@ typedef struct RgTextureData
 
 typedef struct RgTextureSet
 {
-    RgTextureData albedoAlpha;
-    RgTextureData roughnessMetallicEmission;
-    RgTextureData normal;
+    RgTextureData           albedoAlpha;
+    RgTextureData           roughnessMetallicEmission;
+    RgTextureData           normal;
 } RgTextureSet;
 
 typedef struct RgStaticMaterialCreateInfo
