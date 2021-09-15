@@ -108,8 +108,6 @@ uint getShadowCullMask(uint surfInstCustomIndex)
         // no first-person shadows -- on world
         return world | INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
-    
-    // blended geometry doesn't have shadows
 }
 
 uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
@@ -159,7 +157,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
 
     traceRayEXT(
         topLevelAS,
-        gl_RayFlagsNoneEXT, 
+        gl_RayFlagsCullBackFacingTrianglesEXT, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -179,10 +177,10 @@ ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefra
     {
         cullMask = cullMask & (~INSTANCE_MASK_REFLECT_REFRACT);
     }
-
+    
     traceRayEXT(
         topLevelAS,
-        gl_RayFlagsNoneEXT, 
+        gl_RayFlagsCullBackFacingTrianglesEXT, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -200,7 +198,7 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
 
     traceRayEXT(
         topLevelAS,
-        gl_RayFlagsNoneEXT, 
+        gl_RayFlagsCullBackFacingTrianglesEXT, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -249,16 +247,21 @@ vec3 getSky(vec3 direction)
 #ifdef RAYGEN_SHADOW_PAYLOAD
 
 // l is pointed to the light
-bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance)
+bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance, bool ignoreFirstPersonViewer)
 {
     // prepare shadow payload
     payloadShadow.isShadowed = 1;  
 
     uint cullMask = getShadowCullMask(surfInstCustomIndex);
 
+    if (ignoreFirstPersonViewer)
+    {
+        cullMask &= ~INSTANCE_MASK_FIRST_PERSON_VIEWER;
+    }
+
     traceRayEXT(
         topLevelAS, 
-        gl_RayFlagsSkipClosestHitShaderEXT, 
+        gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsSkipClosestHitShaderEXT, 
         cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
@@ -270,7 +273,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance)
 
 bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
 {
-    return traceShadowRay(surfInstCustomIndex, o, l, MAX_RAY_LENGTH);
+    return traceShadowRay(surfInstCustomIndex, o, l, MAX_RAY_LENGTH, false);
 }
 
 
@@ -289,12 +292,13 @@ void processDirectionalLight(
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, float distanceToViewer,
     bool isGradientSample,
-    bool castShadowRay,
+    int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint dirLightCount = isGradientSample ? globalUniform.lightCountDirectionalPrev : globalUniform.lightCountDirectional;
+    bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsDirectionalLights;
 
-    if (dirLightCount == 0)
+    if (dirLightCount == 0 || (!castShadowRay && bounceIndex != 0))
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
@@ -387,12 +391,13 @@ void processSphericalLight(
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, 
     bool isGradientSample,
-    bool castShadowRay,
+    int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     uint sphLightCount = isGradientSample ? globalUniform.lightCountSphericalPrev : globalUniform.lightCountSpherical;
+    bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSphereLights;
 
-    if (sphLightCount == 0)
+    if (sphLightCount == 0 || (!castShadowRay && bounceIndex != 0))
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
@@ -548,7 +553,7 @@ void processSphericalLight(
         return;
     }
     
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN, dirOntoSphere, distOntoSphere);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN, dirOntoSphere, distOntoSphere, false);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -559,12 +564,15 @@ void processSpotLight(
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, 
     bool isGradientSample,
-    bool castShadowRay,
+    int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
+    bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSpotlights;
+
     if (globalUniform.spotlightCosAngleOuter <= 0.0 || 
         globalUniform.spotlightRadius <= 0.0 ||
-        globalUniform.spotlightFalloffDistance <= 0.0)
+        globalUniform.spotlightFalloffDistance <= 0.0 ||
+        (!castShadowRay && bounceIndex != 0))
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
@@ -620,7 +628,7 @@ void processSpotLight(
         return;
     }
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, dist);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, dist, true);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -641,7 +649,7 @@ void processDirectIllumination(
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, distanceToViewer,
         isGradientSample, 
-        bounceIndex < globalUniform.maxBounceShadowsDirectionalLights,
+        bounceIndex,
         dirDiff, dirSpec);
     
     vec3 sphDiff, sphSpec;
@@ -650,7 +658,7 @@ void processDirectIllumination(
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, 
         isGradientSample,  
-        bounceIndex < globalUniform.maxBounceShadowsSphereLights,
+        bounceIndex,
         sphDiff, sphSpec);
 
     vec3 spotDiff, spotSpec;
@@ -659,7 +667,7 @@ void processDirectIllumination(
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, 
         isGradientSample,  
-        bounceIndex < globalUniform.maxBounceShadowsSpotlights,
+        bounceIndex,
         spotDiff, spotSpec);
     
     outDiffuse = dirDiff + sphDiff + spotDiff;
