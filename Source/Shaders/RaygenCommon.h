@@ -39,21 +39,21 @@
 #include "Media.h"
 #include "RayCone.h"
 
-#define HITINFO_INL_0
+#define HITINFO_INL_PRIM
     #include "HitInfo.inl"
-#undef HITINFO_INL_0
+#undef HITINFO_INL_PRIM
 
-#define HITINFO_INL_1
+#define HITINFO_INL_RFL
     #include "HitInfo.inl"
-#undef HITINFO_INL_1
+#undef HITINFO_INL_RFL
 
-#define HITINFO_INL_2
+#define HITINFO_INL_INDIR
     #include "HitInfo.inl"
-#undef HITINFO_INL_2
+#undef HITINFO_INL_INDIR
 
-#define HITINFO_INL_3
+#define HITINFO_INL_RFR
     #include "HitInfo.inl"
-#undef HITINFO_INL_3
+#undef HITINFO_INL_RFR
 
 
 

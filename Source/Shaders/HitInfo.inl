@@ -23,13 +23,13 @@
 #ifdef DESC_SET_TEXTURES
 
 
-#if !defined(HITINFO_INL_3)
+#if !defined(HITINFO_INL_RFR)
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
 vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
-#elif defined(HITINFO_INL_1)
+#elif defined(HITINFO_INL_RFL)
 vec3 processAlbedoRayConeDeriv(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const DerivativeSet derivSet)
-#elif defined(HITINFO_INL_2)
+#elif defined(HITINFO_INL_INDIR)
 vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], float lod)
 #endif
 {
@@ -48,11 +48,11 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
         if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {
             const vec4 src = materialColors[i] *
-        #if defined(HITINFO_INL_0)
+        #if defined(HITINFO_INL_PRIM)
                 getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
-        #elif defined(HITINFO_INL_1)
+        #elif defined(HITINFO_INL_RFL)
                 getTextureSampleDerivSet(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], derivSet, i);
-        #elif defined(HITINFO_INL_2)
+        #elif defined(HITINFO_INL_INDIR)
                 getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
         #endif
 
@@ -85,7 +85,7 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
 }
 
 
-#if defined(HITINFO_INL_2)
+#if defined(HITINFO_INL_INDIR)
 vec3 getHitInfoAlbedoOnly(ShPayload pl) 
 {
     int instanceId, instCustomIndex;
@@ -108,10 +108,10 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
     
     return processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, 0);
 }
-#endif // HITINFO_INL_2
+#endif // HITINFO_INL_INDIR
 
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
 // "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
 float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth, float bounceMipBias)
 {    
@@ -128,10 +128,10 @@ float getBounceLOD(float roughness, float viewDist, float hitDist, float screenW
 
     return mip + bounceMipBias;
 }
-#endif // HITINFO_INL_0
+#endif // HITINFO_INL_PRIM
 
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
 // Fast, Minimum Storage Ray-Triangle Intersection, Moller, Trumbore
 vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 {
@@ -151,12 +151,12 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 
     return vec3(1 - u - v, u, v);
 }
-#endif // HITINFO_INL_0
+#endif // HITINFO_INL_PRIM
 
-#endif // !HITINFO_INL_3
+#endif // !HITINFO_INL_RFR
 
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
 
 ShHitInfo getHitInfoPrimaryRay(
     const ShPayload pl, 
@@ -165,7 +165,7 @@ ShHitInfo getHitInfoPrimaryRay(
     out vec2 gradDepth, out float depthNDC, out float depthLinear,
     out float screenEmission)
 
-#elif defined(HITINFO_INL_1)
+#elif defined(HITINFO_INL_RFL)
 
 ShHitInfo getHitInfoWithRayCone_Reflection(
     const ShPayload pl, const RayCone rayCone,
@@ -176,7 +176,7 @@ ShHitInfo getHitInfoWithRayCone_Reflection(
     in out vec2 gradDepth,
     out float screenEmission)
 
-#elif defined(HITINFO_INL_3)
+#elif defined(HITINFO_INL_RFR)
 
 ShHitInfo getHitInfoWithRayCone_Refraction(
     const ShPayload pl, const RayCone rayCone,
@@ -186,7 +186,7 @@ ShHitInfo getHitInfoWithRayCone_Refraction(
     out vec2 gradDepth,
     out float screenEmission)
 
-#elif defined(HITINFO_INL_2)
+#elif defined(HITINFO_INL_INDIR)
 
 ShHitInfo getHitInfoBounce(
     const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias,
@@ -218,7 +218,7 @@ ShHitInfo getHitInfoBounce(
     h.normalGeom = safeNormalize(tr.normals * baryCoords);
 
 
-#if defined(HITINFO_INL_0) || defined(HITINFO_INL_3)
+#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFR)
     // Tracing Ray Differentials, Igehy
     // instead of casting new rays, check intersections on the same triangle
     const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);
@@ -241,15 +241,15 @@ ShHitInfo getHitInfoBounce(
 
     const vec2 screenSpaceCur    = ndcCur.xy  * 0.5 + 0.5;
     const vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
-#endif // HITINFO_INL_0  || HITINFO_INL_3
+#endif // HITINFO_INL_PRIM  || HITINFO_INL_RFR
 
 
-#if defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+#if defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
     rayLen = length(h.hitPosition - prevHitPosition);
 #endif 
 
 
-#if defined(HITINFO_INL_1)
+#if defined(HITINFO_INL_RFL)
     virtualPosForMotion += viewDir * rayLen;
 
     const vec4 viewSpacePosCur   = globalUniform.view     * vec4(virtualPosForMotion, 1.0);
@@ -262,37 +262,37 @@ ShHitInfo getHitInfoBounce(
     const vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
 
     const float clipSpaceDepth   = clipSpacePosCur[2];
-#endif // HITINFO_INL_1
+#endif // HITINFO_INL_RFL
 
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
     depthNDC = ndcCur.z;
     depthLinear = length(viewSpacePosCur.xyz);
 #endif
 
 
-#if defined(HITINFO_INL_0) || defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
     // difference in screen-space
     motion = (screenSpacePrev - screenSpaceCur);
 #endif
 
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
     motionDepthLinear = length(viewSpacePosPrev.xyz) - depthLinear;
-#elif defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+#elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
     motionDepthLinear = length(viewSpacePosPrev.xyz) - length(viewSpacePosCur.xyz);
 #endif 
 
 
-#if defined(HITINFO_INL_0) || defined(HITINFO_INL_3) 
+#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFR) 
     // gradient of clip-space depth with respect to clip-space coordinates
     gradDepth = vec2(clipSpaceDepthAX - clipSpaceDepth, clipSpaceDepthAY - clipSpaceDepth);
-#elif defined(HITINFO_INL_1) 
+#elif defined(HITINFO_INL_RFL) 
     // don't touch gradDepth for reflections
 #endif
 
 
-#if defined(HITINFO_INL_0)
+#if defined(HITINFO_INL_PRIM)
     // pixel's footprint in texture space
     const vec2 dTdx[] = 
     {
@@ -312,37 +312,37 @@ ShHitInfo getHitInfoBounce(
         tr.geometryInstanceFlags, texCoords,
             tr.materials, tr.materialColors, 
             dTdx, dTdy);
-#endif // HITINFO_INL_0 
+#endif // HITINFO_INL_PRIM 
 
 
-#if defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+#if defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
     DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
 
     h.albedo = processAlbedoRayConeDeriv(
         tr.geometryInstanceFlags, texCoords, 
         tr.materials, tr.materialColors, 
         derivSet);
-#endif // HITINFO_INL_1 || HITINFO_INL_3
+#endif // HITINFO_INL_RFL || HITINFO_INL_RFR
 
 
-#if defined(HITINFO_INL_2)
+#if defined(HITINFO_INL_INDIR)
     const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
     hitDistance = length(h.hitPosition - originPosition);
 
     const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
     h.albedo = processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, lod);
-#endif // HITINFO_INL_2
+#endif // HITINFO_INL_INDIR
 
 
     if (tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
     {
         const vec3 rme = 
-    #if defined(HITINFO_INL_0)
+    #if defined(HITINFO_INL_PRIM)
             getTextureSampleGrad(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
-    #elif defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+    #elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
             getTextureSampleDerivSet(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], derivSet, 0).xyz;
-    #elif defined(HITINFO_INL_2)
+    #elif defined(HITINFO_INL_INDIR)
             getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
     #endif
 
@@ -350,7 +350,7 @@ ShHitInfo getHitInfoBounce(
         h.metallic  = rme[1];
         h.emission  = rme[2] * globalUniform.emissionMapBoost /*+ tr.geomEmission*/;
 
-    #if defined(HITINFO_INL_0) || defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
         screenEmission = clamp(rme[2] /*+ tr.geomEmission*/, 0.0, 1.0);
     #endif
     }
@@ -360,7 +360,7 @@ ShHitInfo getHitInfoBounce(
         h.metallic  = tr.geomMetallicity;
         h.emission  = tr.geomEmission;
 
-    #if defined(HITINFO_INL_0) || defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
         screenEmission = clamp(h.emission, 0.0, 1.0);
     #endif
     }
@@ -368,11 +368,11 @@ ShHitInfo getHitInfoBounce(
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
         vec3 nrm = 
-    #if defined(HITINFO_INL_0)
+    #if defined(HITINFO_INL_PRIM)
             getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
-    #elif defined(HITINFO_INL_1) || defined(HITINFO_INL_3)
+    #elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
             getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0).xyz;
-    #elif defined(HITINFO_INL_2)
+    #elif defined(HITINFO_INL_INDIR)
             getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod).xyz;
     #endif
         nrm.xy = nrm.xy * 2.0 - vec2(1.0);
