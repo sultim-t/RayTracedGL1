@@ -340,7 +340,30 @@ void main()
         }
 
         float rayLen;
-        h = getHitInfoWithRayCone(payload, rayCone, cameraOrigin, rayDir, viewDir, virtualPos, prevHitPosition, rayLen, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, screenEmission);
+        
+        if (doRefraction || isPortal)
+        {
+            h = getHitInfoWithRayCone_Refraction(
+                payload, rayCone, 
+                cameraOrigin, rayDir, rayDirAX, rayDirAY,
+                prevHitPosition, rayLen,
+                motionCurToPrev, motionDepthLinearCurToPrev, 
+                gradDepth, 
+                screenEmission
+            );
+        }
+        else
+        {
+            h = getHitInfoWithRayCone_Reflection(
+                payload, rayCone, 
+                cameraOrigin, rayDir, viewDir, 
+                virtualPos, 
+                prevHitPosition, rayLen, 
+                motionCurToPrev, motionDepthLinearCurToPrev, 
+                gradDepth, 
+                screenEmission
+            );
+        }
 
 
         throughput *= getMediaTransmittance(currentRayMedia, rayLen);

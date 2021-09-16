@@ -51,6 +51,10 @@
     #include "HitInfo.inl"
 #undef HITINFO_INL_2
 
+#define HITINFO_INL_3
+    #include "HitInfo.inl"
+#undef HITINFO_INL_3
+
 
 
 layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uniform accelerationStructureEXT topLevelAS;
