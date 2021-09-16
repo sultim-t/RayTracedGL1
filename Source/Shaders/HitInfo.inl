@@ -165,9 +165,11 @@ ShHitInfo getHitInfoPrimaryRay(
 
 ShHitInfo getHitInfoWithRayCone(
     const ShPayload pl, const RayCone rayCone,
-    const vec3 rayOrig, const vec3 rayDir,
+    const vec3 rayOrig, const vec3 rayDir, const vec3 viewDir,
+    in out vec3 virtualPosForMotion, const vec3 prevHitPosition,
+    out float rayLen,
     out vec2 motion, out float motionDepthLinear, 
-    out vec2 gradDepth,
+    in out vec2 gradDepth,
     out float screenEmission)
 
 #else
@@ -207,23 +209,23 @@ ShHitInfo getHitInfoBounce(
     const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);
     const vec3 baryCoordsAY = intersectRayTriangle(tr.positions, rayOrig, rayDirAY);
 
-    const vec4 viewSpacePosCur  = globalUniform.view     * vec4(h.hitPosition, 1.0);
-    const vec4 viewSpacePosPrev = globalUniform.viewPrev * vec4(tr.prevPositions * baryCoords, 1.0);
-    const vec4 viewSpacePosAX   = globalUniform.view     * vec4(tr.positions     * baryCoordsAX, 1.0);
-    const vec4 viewSpacePosAY   = globalUniform.view     * vec4(tr.positions     * baryCoordsAY, 1.0);
+    const vec4 viewSpacePosCur   = globalUniform.view     * vec4(h.hitPosition, 1.0);
+    const vec4 viewSpacePosPrev  = globalUniform.viewPrev * vec4(tr.prevPositions * baryCoords, 1.0);
+    const vec4 viewSpacePosAX    = globalUniform.view     * vec4(tr.positions     * baryCoordsAX, 1.0);
+    const vec4 viewSpacePosAY    = globalUniform.view     * vec4(tr.positions     * baryCoordsAY, 1.0);
 
-    const vec4 clipSpacePosCur  = globalUniform.projection     * viewSpacePosCur;
-    const vec4 clipSpacePosPrev = globalUniform.projectionPrev * viewSpacePosPrev;
+    const vec4 clipSpacePosCur   = globalUniform.projection     * viewSpacePosCur;
+    const vec4 clipSpacePosPrev  = globalUniform.projectionPrev * viewSpacePosPrev;
 
     const float clipSpaceDepth   = clipSpacePosCur[2];
     const float clipSpaceDepthAX = dot(globalUniform.projection[2], viewSpacePosAX);
     const float clipSpaceDepthAY = dot(globalUniform.projection[2], viewSpacePosAY);
 
-    const vec3 ndcCur  = clipSpacePosCur.xyz  / clipSpacePosCur.w;
-    const vec3 ndcPrev = clipSpacePosPrev.xyz / clipSpacePosPrev.w;
+    const vec3 ndcCur            = clipSpacePosCur.xyz  / clipSpacePosCur.w;
+    const vec3 ndcPrev           = clipSpacePosPrev.xyz / clipSpacePosPrev.w;
 
-    const vec2 screenSpaceCur  = ndcCur.xy * 0.5 + 0.5;
-    const vec2 screenSpacePrev = ndcPrev.xy * 0.5 + 0.5;
+    const vec2 screenSpaceCur    = ndcCur.xy  * 0.5 + 0.5;
+    const vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
 
 
     depthNDC = ndcCur.z;
@@ -257,6 +259,27 @@ ShHitInfo getHitInfoBounce(
             dTdx, dTdy);
 
 #elif defined(HITINFO_INL_1)
+
+    rayLen = length(h.hitPosition - prevHitPosition);
+    virtualPosForMotion += viewDir * rayLen;
+
+    const vec4 viewSpacePosCur   = globalUniform.view     * vec4(virtualPosForMotion, 1.0);
+    const vec4 viewSpacePosPrev  = globalUniform.viewPrev * vec4(virtualPosForMotion, 1.0);
+    const vec4 clipSpacePosCur   = globalUniform.projection     * viewSpacePosCur;
+    const vec4 clipSpacePosPrev  = globalUniform.projectionPrev * viewSpacePosPrev;
+    const vec3 ndcCur            = clipSpacePosCur.xyz  / clipSpacePosCur.w;
+    const vec3 ndcPrev           = clipSpacePosPrev.xyz / clipSpacePosPrev.w;
+    const vec2 screenSpaceCur    = ndcCur.xy  * 0.5 + 0.5;
+    const vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
+
+    const float clipSpaceDepth   = clipSpacePosCur[2];
+
+
+    // difference in screen-space
+    motion = (screenSpacePrev - screenSpaceCur);
+    motionDepthLinear = length(viewSpacePosPrev.xyz) - length(viewSpacePosCur.xyz);
+    // gradient of clip-space depth with respect to clip-space coordinates
+    // TODO: gradDepth = ??? 
 
     DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
 

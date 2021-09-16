@@ -212,6 +212,8 @@ void main()
     vec3 prevHitPosition = h.hitPosition;
     bool wasSplit = false;
     bool wasPortal = false;
+    const vec3 viewDir = rayDir;
+    vec3 virtualPos = h.hitPosition;
 
 
     throughput *= getMediaTransmittance(currentRayMedia, firstHitDepthLinear);
@@ -337,10 +339,10 @@ void main()
             return;  
         }
 
-        h = getHitInfoWithRayCone(payload, rayCone, cameraOrigin, rayDir, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, screenEmission);
+        float rayLen;
+        h = getHitInfoWithRayCone(payload, rayCone, cameraOrigin, rayDir, viewDir, virtualPos, prevHitPosition, rayLen, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, screenEmission);
 
 
-        const float rayLen = length(h.hitPosition - prevHitPosition);
         throughput *= getMediaTransmittance(currentRayMedia, rayLen);
         propagateRayCone(rayCone, rayLen);
         fullPathLength += rayLen;
