@@ -52,9 +52,8 @@ struct ShHitInfo
     vec3    normal;
     float   roughness;
     vec3    normalGeom;
-    float   linearDepth;
+    float   emission;
     vec3    hitPosition;
     uint    instCustomIndex;
     uint    geometryInstanceFlags;
-    float   emission;
 };

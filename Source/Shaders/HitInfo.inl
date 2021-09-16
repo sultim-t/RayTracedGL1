@@ -158,16 +158,16 @@ ShHitInfo getHitInfoPrimaryRay(
     const ShPayload pl, 
     const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
     out vec2 motion, out float motionDepthLinear, 
-    out vec2 gradDepth, out float depthNDC,
+    out vec2 gradDepth, out float depthNDC, out float depthLinear,
     out float screenEmission)
 
 #elif defined(HITINFO_INL_1)
 
 ShHitInfo getHitInfoWithRayCone(
     const ShPayload pl, const RayCone rayCone,
-    const vec3 rayOrig, const vec3 rayDir, const vec3 rayDirAX, const vec3 rayDirAY, 
+    const vec3 rayOrig, const vec3 rayDir,
     out vec2 motion, out float motionDepthLinear, 
-    out vec2 gradDepth, out float depthNDC,
+    out vec2 gradDepth,
     out float screenEmission)
 
 #else
@@ -201,13 +201,11 @@ ShHitInfo getHitInfoBounce(
     h.hitPosition = tr.positions * baryCoords;
     h.normalGeom = safeNormalize(tr.normals * baryCoords);
 
-#if defined(HITINFO_INL_0) || defined(HITINFO_INL_1)
+#if defined(HITINFO_INL_0) 
     // Tracing Ray Differentials, Igehy
-
     // instead of casting new rays, check intersections on the same triangle
     const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);
     const vec3 baryCoordsAY = intersectRayTriangle(tr.positions, rayOrig, rayDirAY);
-
 
     const vec4 viewSpacePosCur  = globalUniform.view     * vec4(h.hitPosition, 1.0);
     const vec4 viewSpacePosPrev = globalUniform.viewPrev * vec4(tr.prevPositions * baryCoords, 1.0);
@@ -227,46 +225,45 @@ ShHitInfo getHitInfoBounce(
     const vec2 screenSpaceCur  = ndcCur.xy * 0.5 + 0.5;
     const vec2 screenSpacePrev = ndcPrev.xy * 0.5 + 0.5;
 
+
     depthNDC = ndcCur.z;
-    h.linearDepth = length(viewSpacePosCur.xyz);
+    depthLinear = length(viewSpacePosCur.xyz);
 
     // difference in screen-space
     motion = (screenSpacePrev - screenSpaceCur);
-    motionDepthLinear = length(viewSpacePosPrev.xyz) - h.linearDepth;
+    motionDepthLinear = length(viewSpacePosPrev.xyz) - depthLinear;
     // gradient of clip-space depth with respect to clip-space coordinates
     gradDepth = vec2(clipSpaceDepthAX - clipSpaceDepth, clipSpaceDepthAY - clipSpaceDepth);
 
 
-    #if defined(HITINFO_INL_0) 
-        // pixel's footprint in texture space
-        const vec2 dTdx[] = 
-        {
-            (tr.layerTexCoord[0] * baryCoordsAX - texCoords[0]),
-            (tr.layerTexCoord[1] * baryCoordsAX - texCoords[1]),
-            (tr.layerTexCoord[2] * baryCoordsAX - texCoords[2])
-        };
+    // pixel's footprint in texture space
+    const vec2 dTdx[] = 
+    {
+        (tr.layerTexCoord[0] * baryCoordsAX - texCoords[0]),
+        (tr.layerTexCoord[1] * baryCoordsAX - texCoords[1]),
+        (tr.layerTexCoord[2] * baryCoordsAX - texCoords[2])
+    };
 
-        const vec2 dTdy[] = 
-        {
-            (tr.layerTexCoord[0] * baryCoordsAY - texCoords[0]),
-            (tr.layerTexCoord[1] * baryCoordsAY - texCoords[1]),
-            (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2])
-        };
+    const vec2 dTdy[] = 
+    {
+        (tr.layerTexCoord[0] * baryCoordsAY - texCoords[0]),
+        (tr.layerTexCoord[1] * baryCoordsAY - texCoords[1]),
+        (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2])
+    };
 
-        h.albedo = processAlbedoGrad(
-            tr.geometryInstanceFlags, texCoords,
-             tr.materials, tr.materialColors, 
-             dTdx, dTdy);
-    #else
-
-        DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
-
-        h.albedo = processAlbedoRayConeDeriv(
-            tr.geometryInstanceFlags, texCoords, 
+    h.albedo = processAlbedoGrad(
+        tr.geometryInstanceFlags, texCoords,
             tr.materials, tr.materialColors, 
-            derivSet);
+            dTdx, dTdy);
 
-    #endif // HITINFO_INL_0
+#elif defined(HITINFO_INL_1)
+
+    DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
+
+    h.albedo = processAlbedoRayConeDeriv(
+        tr.geometryInstanceFlags, texCoords, 
+        tr.materials, tr.materialColors, 
+        derivSet);
 
 #else
 
