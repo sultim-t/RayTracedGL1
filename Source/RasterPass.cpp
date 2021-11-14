@@ -28,7 +28,7 @@
 
 constexpr const char *VERT_SHADER = "VertRasterizer";
 constexpr const char *FRAG_SHADER = "FragRasterizer";
-constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_X8_D24_UNORM_PACK32;
+constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
 constexpr const char *DEPTH_FORMAT_NAME = "VK_FORMAT_X8_D24_UNORM_PACK32";
 
 

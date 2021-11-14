@@ -20,6 +20,7 @@
 
 #include "TextureOverrides.h"
 #include "Const.h"
+#include <stdio.h>
 
 using namespace RTGL1;
 
@@ -220,7 +221,11 @@ static void SPrintfIfNotNull(
 {
     if (postfix != nullptr)
     {
+#if _WINDLL
         sprintf_s(dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
+#else
+        snprintf(dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
+#endif
     }
     else
     {

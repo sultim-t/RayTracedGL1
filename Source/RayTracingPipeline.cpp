@@ -22,6 +22,8 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "Utils.h"
+#include <cstring>
+#include <string>
 
 using namespace RTGL1;
 

@@ -21,6 +21,7 @@
 #include "TextureUploader.h"
 
 #include <algorithm>
+#include <cmath>
 
 #include "Const.h"
 #include "Utils.h"

@@ -21,6 +21,7 @@
 #include "VertexCollectorFilterType.h"
 
 #include <cassert>
+#include <cstring>
 
 #include "Generated/ShaderCommonC.h"
 

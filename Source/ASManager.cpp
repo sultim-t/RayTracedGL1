@@ -21,6 +21,7 @@
 #include "ASManager.h"
 
 #include <array>
+#include <cstring>
 
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
@@ -221,7 +222,7 @@ void ASManager::CreateDescriptors()
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
 
     poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+    poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT * 8;
 
     poolSizes[1].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
     poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
