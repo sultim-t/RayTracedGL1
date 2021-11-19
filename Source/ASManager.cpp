@@ -119,7 +119,7 @@ ASManager::ASManager(
     instanceBuffer = std::make_unique<AutoBuffer>(device, allocator, "TLAS instance buffer staging", "TLAS instance buffer");
 
     VkDeviceSize instanceBufferSize = MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR);
-    instanceBuffer->Create(instanceBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT);
+    instanceBuffer->Create(instanceBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR);
 
 
     CreateDescriptors();

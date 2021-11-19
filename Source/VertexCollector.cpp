@@ -79,21 +79,21 @@ VertexCollector::VertexCollector(
     // vertex buffers
     vertBuffer->Init(
         _allocator, _bufferSize,
-        transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         isDynamic ? "Dynamic Vertices data buffer" : "Static Vertices data buffer");
 
     // index buffers
     indexBuffer->Init(
         _allocator, INDEX_BUFFER_SIZE,
-        transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         isDynamic ? "Dynamic Index data buffer" : "Static Index data buffer");
 
     // transforms buffer
     transformsBuffer->Init(
         _allocator, TRANSFORM_BUFFER_SIZE,
-        transferUsage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+        transferUsage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
         isDynamic ? "Dynamic BLAS transforms buffer" : "Static BLAS transforms buffer");
 

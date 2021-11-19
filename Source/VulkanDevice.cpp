@@ -1176,26 +1176,23 @@ void VulkanDevice::CreateDevice()
     features.variableMultisampleRate = 0;
     features.inheritedQueries = 1;
 
-    VkPhysicalDeviceDescriptorIndexingFeatures indexingFeatures = {};
-    indexingFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES;
-    indexingFeatures.runtimeDescriptorArray = 1;
-    indexingFeatures.shaderSampledImageArrayNonUniformIndexing = 1;
-    indexingFeatures.shaderStorageBufferArrayNonUniformIndexing = 1;
-
-    VkPhysicalDeviceBufferDeviceAddressFeatures bufferAddressFeatures = {};
-    bufferAddressFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES;
-    bufferAddressFeatures.pNext = &indexingFeatures;
-    bufferAddressFeatures.bufferDeviceAddress = VK_TRUE;
+    VkPhysicalDeviceVulkan12Features vulkan12Features = {};
+    vulkan12Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+    vulkan12Features.samplerMirrorClampToEdge = 1;
+    vulkan12Features.runtimeDescriptorArray = 1;
+    vulkan12Features.shaderSampledImageArrayNonUniformIndexing = 1;
+    vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = 1;
+    vulkan12Features.bufferDeviceAddress = 1;
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures = {};
     rtPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-    rtPipelineFeatures.pNext = &bufferAddressFeatures;
-    rtPipelineFeatures.rayTracingPipeline = VK_TRUE;
+    rtPipelineFeatures.pNext = &vulkan12Features;
+    rtPipelineFeatures.rayTracingPipeline = 1;
 
     VkPhysicalDeviceAccelerationStructureFeaturesKHR asFeatures = {};
     asFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR;
     asFeatures.pNext = &rtPipelineFeatures;
-    asFeatures.accelerationStructure = VK_TRUE;
+    asFeatures.accelerationStructure = 1;
 
     VkPhysicalDeviceFeatures2 physicalDeviceFeatures2 = {};
     physicalDeviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
