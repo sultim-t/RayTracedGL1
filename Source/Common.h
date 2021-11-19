@@ -38,6 +38,7 @@ constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 	VK_EXTENSION_FUNCTION(vkDestroyDebugUtilsMessengerEXT)
 
 #define VK_DEVICE_FUNCTION_LIST \
+	VK_EXTENSION_FUNCTION(vkCmdPipelineBarrier2KHR) \
 	VK_EXTENSION_FUNCTION(vkCreateAccelerationStructureKHR) \
 	VK_EXTENSION_FUNCTION(vkDestroyAccelerationStructureKHR) \
 	VK_EXTENSION_FUNCTION(vkGetRayTracingShaderGroupHandlesKHR) \

@@ -481,7 +481,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
     else
     {
-        gu->bloomThreshold = 0.5f;
+        gu->bloomThreshold = 1.0f;
         gu->bloomThresholdLength = 0.25f;
         gu->bloomUpsampleRadius = 1.0f;
         gu->bloomIntensity = 1.0f;
@@ -1189,9 +1189,14 @@ void VulkanDevice::CreateDevice()
     vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = 1;
     vulkan12Features.bufferDeviceAddress = 1;
 
+    VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features = {};
+    sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+    sync2Features.pNext = &vulkan12Features;
+    sync2Features.synchronization2 = 1;
+
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures = {};
     rtPipelineFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
-    rtPipelineFeatures.pNext = &vulkan12Features;
+    rtPipelineFeatures.pNext = &sync2Features;
     rtPipelineFeatures.rayTracingPipeline = 1;
 
     VkPhysicalDeviceAccelerationStructureFeaturesKHR asFeatures = {};
@@ -1210,6 +1215,7 @@ void VulkanDevice::CreateDevice()
         VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
     };
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;

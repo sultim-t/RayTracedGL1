@@ -77,7 +77,6 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
     uint32_t forceIsSky = wasNoRayTracing;
     vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                        0, sizeof(uint32_t), &forceIsSky);
-    
 
     for (int i = 0; i < COMPUTE_BLOOM_STEP_COUNT; i++)
     {
@@ -97,6 +96,24 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, downsamplePipelines[i]);
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+    }
+
+
+    // quick fix for bloom pass artifacts 
+    {
+        VkMemoryBarrier2KHR b = {};
+        b.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR;
+        b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+
+        VkDependencyInfoKHR dependencyInfo = {};
+        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+        dependencyInfo.memoryBarrierCount = 1;
+        dependencyInfo.pMemoryBarriers = &b;
+
+        svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
     }
 
 

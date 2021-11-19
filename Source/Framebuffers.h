@@ -118,7 +118,7 @@ private:
 template<uint32_t BARRIER_COUNT>
 inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameIndex, const FramebufferImageIndex(&fbIndices)[BARRIER_COUNT])
 {
-    std::array<VkImageMemoryBarrier, BARRIER_COUNT> tmpBarriers;
+    std::array<VkImageMemoryBarrier2KHR, BARRIER_COUNT> tmpBarriers;
 
     for (uint32_t i = 0; i < BARRIER_COUNT; i++)
     {
@@ -126,15 +126,17 @@ inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameInd
         FramebufferImageIndex fbIndex = FrameIndexToFBIndex(fbIndices[i], frameIndex);
         VkImage img = images[fbIndex];
 
-        VkImageMemoryBarrier &b = tmpBarriers[i];
+        VkImageMemoryBarrier2KHR &b = tmpBarriers[i];
         b = {};
 
-        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+        b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR;
         b.image = img;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-        b.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
+        b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR;
         b.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
         b.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 
@@ -146,12 +148,12 @@ inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameInd
         sub.layerCount = 1;
     }
 
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
-        0, nullptr,
-        0, nullptr,
-        tmpBarriers.size(), tmpBarriers.data());
+    VkDependencyInfoKHR dependencyInfo = {};
+    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+    dependencyInfo.imageMemoryBarrierCount = tmpBarriers.size();
+    dependencyInfo.pImageMemoryBarriers = tmpBarriers.data();
+
+    svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
 }
 
 }
