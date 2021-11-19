@@ -308,7 +308,8 @@ void RTGL1::Denoiser::Denoise(
                     FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR,
                     FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_R,
                     FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_G,
-                    FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B
+                    FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B,
+                    FI::FB_IMAGE_INDEX_THROUGHPUT
                 };
 
                 framebuffers->BarrierMultiple(cmd, frameIndex, fs);

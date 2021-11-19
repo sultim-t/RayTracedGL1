@@ -674,14 +674,16 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     // final image composition
     imageComposition->Compose(cmd, frameIndex, uniform, tonemapping, !traceRays);
 
-    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
-
     if (!drawInfo.disableRasterization)
     {
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection,
                                      werePrimaryTraced);
+    }
+    else
+    {
+        framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
     }
 
     // blit result image to present on a surface

@@ -106,8 +106,6 @@ private:
     std::vector<VkDeviceMemory> imageMemories;
     std::vector<VkImageView> imageViews;
 
-    std::vector<VkImageMemoryBarrier> barriers;
-
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;
     VkDescriptorSet descSets[FRAMEBUFFERS_HISTORY_LENGTH];
@@ -120,7 +118,7 @@ private:
 template<uint32_t BARRIER_COUNT>
 inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameIndex, const FramebufferImageIndex(&fbIndices)[BARRIER_COUNT])
 {
-    std::array<VkImageMemoryBarrier, BARRIER_COUNT> barriers;
+    std::array<VkImageMemoryBarrier, BARRIER_COUNT> tmpBarriers;
 
     for (uint32_t i = 0; i < BARRIER_COUNT; i++)
     {
@@ -128,7 +126,7 @@ inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameInd
         FramebufferImageIndex fbIndex = FrameIndexToFBIndex(fbIndices[i], frameIndex);
         VkImage img = images[fbIndex];
 
-        VkImageMemoryBarrier &b = barriers[i];
+        VkImageMemoryBarrier &b = tmpBarriers[i];
         b = {};
 
         b.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
@@ -153,7 +151,7 @@ inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameInd
         VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0,
         0, nullptr,
         0, nullptr,
-        barriers.size(), barriers.data());
+        tmpBarriers.size(), tmpBarriers.data());
 }
 
 }

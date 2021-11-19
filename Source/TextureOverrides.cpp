@@ -221,11 +221,7 @@ static void SPrintfIfNotNull(
 {
     if (postfix != nullptr)
     {
-#if _WINDLL
-        sprintf_s(dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
-#else
         snprintf(dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
-#endif
     }
     else
     {

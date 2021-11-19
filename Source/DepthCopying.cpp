@@ -162,6 +162,8 @@ void RTGL1::DepthCopying::CreateRenderPass(VkFormat depthFormat)
 
     VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &renderPass);
     VK_CHECKERROR(r);
+
+    SET_DEBUG_NAME(device, renderPass, VK_OBJECT_TYPE_RENDER_PASS, "Depth copying render pass");
 }
 
 void RTGL1::DepthCopying::CreateFramebuffers(VkImageView pDepthAttchViews[MAX_FRAMES_IN_FLIGHT], uint32_t width, uint32_t height)
