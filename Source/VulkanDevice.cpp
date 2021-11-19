@@ -21,6 +21,9 @@
 #include "VulkanDevice.h"
 
 #include <algorithm>
+#include <stdlib.h>
+#include <cstring>
+#include <cmath>
 #include <stdexcept>
 
 #include "Matrix.h"
@@ -1342,7 +1345,7 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
         xcbInfo.connection = info.pXcbSurfaceCreateInfo->connection;
         xcbInfo.window = info.pXcbSurfaceCreateInfo->window;
 
-        r = (instance, &, nullptr, &surface);
+        r = vkCreateXcbSurfaceKHR(instance, &xcbInfo, nullptr, &surface);
         VK_CHECKERROR(r);
 
         return surface;
@@ -1363,7 +1366,7 @@ VkSurfaceKHR VulkanDevice::GetSurfaceFromUser(VkInstance instance, const RgInsta
         xlibInfo.dpy = info.pXlibSurfaceCreateInfo->dpy;
         xlibInfo.window = info.pXlibSurfaceCreateInfo->window;
 
-        r = (instance, &, nullptr, &surface);
+        r = vkCreateXlibSurfaceKHR(instance, &xlibInfo, nullptr, &surface);
         VK_CHECKERROR(r);
 
         return surface;

@@ -22,6 +22,7 @@
 
 #include <fstream>
 #include <vector>
+#include <cstring>
 #include "RgException.h"
 
 using namespace RTGL1;

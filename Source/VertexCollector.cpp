@@ -21,6 +21,7 @@
 #include "VertexCollector.h"
 
 #include <algorithm>
+#include <cstring>
 
 #include "Generated/ShaderCommonC.h"
 #include "Matrix.h"

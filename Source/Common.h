@@ -22,6 +22,7 @@
 
 #include <cassert>
 #include <memory>
+#include <cstring>
 #include <vulkan/vulkan.h>
 
 namespace RTGL1
@@ -66,7 +67,7 @@ void InitDeviceExtensionFunctions_DebugUtils(VkDevice device);
 #pragma endregion
 
 
-constexpr void VK_CHECKERROR(const VkResult r)
+inline void VK_CHECKERROR(const VkResult r)
 {
     assert(r == VK_SUCCESS);
 }

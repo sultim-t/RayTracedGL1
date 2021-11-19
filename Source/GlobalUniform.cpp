@@ -22,6 +22,7 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include <cstring>
 
 using namespace RTGL1;
 

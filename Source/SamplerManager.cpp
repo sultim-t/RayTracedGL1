@@ -21,6 +21,7 @@
 #include "SamplerManager.h"
 #include "RgException.h"
 #include <string>
+#include <float.h>
 
 using namespace RTGL1;
 

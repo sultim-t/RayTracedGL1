@@ -46,10 +46,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 
 using namespace RTGL1;
 
+#ifndef M_PI
 constexpr float M_PI = 3.141592653589793238462643383279f;
+#endif
 
 void Matrix::Inverse(float *inversed, const float *m)
 {
