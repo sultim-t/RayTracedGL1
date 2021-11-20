@@ -108,7 +108,7 @@
 #define MEDIA_TYPE_GLASS (2)
 #define MEDIA_TYPE_COUNT (3)
 
-
+#define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
 
 struct ShVertexBufferStatic
 {

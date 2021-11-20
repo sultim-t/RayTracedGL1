@@ -47,23 +47,28 @@ layout(push_constant) uniform FsrPush_BT
     void FsrRcasInputH(inout AH1 r, inout AH1 g, inout AH1 b) {}
     #include "FSR/ffx_fsr1.h"
 
+void storeOutput(const AH3 Gamma2Color, const AU2 gxy)
+{
+    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(pow(Gamma2Color, AH3(FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)), 1));
+}
+
 void main()
 {
     AH3 Gamma2Color = AH3(0, 0, 0);
     AU2 gxy = ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
 	
     FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    storeOutput(Gamma2Color, gxy);
 
 	gxy.x += 8u;
     FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    storeOutput(Gamma2Color, gxy);
 
 	gxy.y += 8u;
     FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    storeOutput(Gamma2Color, gxy);
 
 	gxy.x -= 8u;
     FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    storeOutput(Gamma2Color, gxy);
 }

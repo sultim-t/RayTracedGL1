@@ -43,9 +43,9 @@ layout(push_constant) uniform FsrPush_BT
     #include "FSR/ffx_a.h"
 
     #define FSR_EASU_H 1
-    AH4 FsrEasuRH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 0)); return res; }
-    AH4 FsrEasuGH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 1)); return res; }
-    AH4 FsrEasuBH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 2)); return res; }
+    AH4 FsrEasuRH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 0)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }
+    AH4 FsrEasuGH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 1)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }
+    AH4 FsrEasuBH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 2)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }
     #include "FSR/ffx_fsr1.h"
 
 void main()
