@@ -32,6 +32,18 @@ layout(push_constant) uniform CompositionPush_BT
     uint forceIsSky;
 } push;
 
+float getExposure()
+{
+    return tonemapping.avgLuminance > 0.0 ? 1.0 / tonemapping.avgLuminance : 1.0;
+}
+
+vec3 reinhard(const vec3 c)
+{
+    const vec3 c1 = clamp(c, exp2(globalUniform.minLogLuminance), exp2(globalUniform.maxLogLuminance));
+    const float w2 = globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint;
+    return c * (1.0 + c1 / w2) / (1.0 + c1);
+}
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
@@ -70,14 +82,9 @@ void main()
     // if not sky
     if (push.forceIsSky == 0 && !isSky(albedo4))
     {
-        const float lIn = max(getLuminance(color), exp2(globalUniform.minLogLuminance));
-        const float lInAdj = lIn / tonemapping.avgLuminance;
-        // Reinhard
-        const float lOut = lInAdj * (1.0f + (lInAdj / (globalUniform.luminanceWhitePoint * globalUniform.luminanceWhitePoint))) / (1.0f + lInAdj);
-        
-        color = color * lOut / lIn;
+        color *= getExposure();
+        color = reinhard(color);
 
-        
         const vec3 e = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
         color = mix(color, e, clamp((e.x + e.y + e.z) / 3.0, 0.0, 1.0));
     }
