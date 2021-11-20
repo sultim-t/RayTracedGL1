@@ -184,6 +184,11 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         shaderManager,
         uniform);
 
+    superResolution     = std::make_shared<SuperResolution>(
+        device,
+        framebuffers,
+        shaderManager);
+
     denoiser            = std::make_shared<Denoiser>(
         device,
         framebuffers,
@@ -201,6 +206,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
     shaderManager->Subscribe(bloom);
+    shaderManager->Subscribe(superResolution);
 
     framebuffers->Subscribe(rasterizer);
 }
@@ -217,6 +223,7 @@ VulkanDevice::~VulkanDevice()
     tonemapping.reset();
     imageComposition.reset();
     bloom.reset();
+    superResolution.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -622,7 +629,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     // submit geometry and upload uniform after getting data from a scene
     const bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
 
-    framebuffers->PrepareForSize(renderWidth, renderHeight);
+    framebuffers->PrepareForSize(renderWidth, renderHeight,
+                                 swapchain->GetWidth(), swapchain->GetHeight());
 
     bool werePrimaryTraced = false;
 
@@ -681,16 +689,32 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      uniform->GetData()->view, uniform->GetData()->projection,
                                      werePrimaryTraced);
     }
+
+    FramebufferImageIndex imageToSwapchain;
+    VkExtent2D imageToSwapchainSize;
+
+    // upscale finalized image
+    if (true)
+    {
+        imageToSwapchain = superResolution->Apply(cmd, frameIndex, framebuffers,
+                                                  renderWidth, renderHeight, 
+                                                  swapchain->GetWidth(), swapchain->GetHeight(),
+                                                  0.0f);
+
+        imageToSwapchainSize = { swapchain->GetWidth(), swapchain->GetHeight() };
+    }
     else
     {
-        framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+        imageToSwapchain = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+        imageToSwapchainSize = { renderWidth, renderHeight };
     }
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, frameIndex, swapchain, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL,
-        renderWidth, renderHeight, VK_IMAGE_LAYOUT_GENERAL);
+        cmd, frameIndex, swapchain, imageToSwapchain,
+        imageToSwapchainSize.width, imageToSwapchainSize.height, VK_IMAGE_LAYOUT_GENERAL);
 
+    // draw geometry such as HUD directly into the swapchain image
     if (!drawInfo.disableRasterization)
     {
         rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), textureManager, 
@@ -1188,6 +1212,7 @@ void VulkanDevice::CreateDevice()
     vulkan12Features.shaderSampledImageArrayNonUniformIndexing = 1;
     vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = 1;
     vulkan12Features.bufferDeviceAddress = 1;
+    vulkan12Features.shaderFloat16 = 1;
 
     VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features = {};
     sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
@@ -1215,7 +1240,8 @@ void VulkanDevice::CreateDevice()
         VK_KHR_PIPELINE_LIBRARY_EXTENSION_NAME,
         VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
         VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
-        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME
+        VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
+        VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
     };
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;

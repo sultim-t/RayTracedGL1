@@ -44,6 +44,7 @@
 #include "Denoiser.h"
 #include "UserFunction.h"
 #include "Bloom.h"
+#include "SuperResolution.h"
 
 namespace RTGL1
 {
@@ -256,6 +257,7 @@ private:
     std::shared_ptr<Tonemapping>            tonemapping;
     std::shared_ptr<ImageComposition>       imageComposition;
     std::shared_ptr<Bloom>                  bloom;
+    std::shared_ptr<SuperResolution>        superResolution;
 
     std::shared_ptr<SamplerManager>         samplerManager;
     std::shared_ptr<BlueNoise>              blueNoise;

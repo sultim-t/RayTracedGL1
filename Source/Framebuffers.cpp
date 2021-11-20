@@ -56,6 +56,7 @@ Framebuffers::Framebuffers(
     cmdManager(std::move(_cmdManager)),
     samplerManager(std::move(_samplerManager)),
     currentSize{},
+    currentUpscaledSize{},
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSets{}
@@ -161,9 +162,11 @@ void Framebuffers::CreateDescriptors()
     }
 }
 
-bool RTGL1::Framebuffers::PrepareForSize(uint32_t width, uint32_t height)
+bool RTGL1::Framebuffers::PrepareForSize(uint32_t renderWidth, uint32_t renderHeight,
+                                         uint32_t upscaledWidth, uint32_t upscaledHeight)
 {
-    if (currentSize.width == width && currentSize.height == height)
+    if (currentSize.width == renderWidth && currentSize.height == renderHeight &&
+        currentUpscaledSize.width == upscaledWidth && currentUpscaledSize.height == upscaledHeight)
     {
         return false;
     }
@@ -171,9 +174,11 @@ bool RTGL1::Framebuffers::PrepareForSize(uint32_t width, uint32_t height)
     vkDeviceWaitIdle(device);
 
     DestroyImages();
-    CreateImages(width, height);
+    CreateImages(renderWidth, renderHeight,
+                 upscaledWidth, upscaledHeight);
 
-    assert(currentSize.width == width && currentSize.height == height);
+    assert(currentSize.width == renderWidth && currentSize.height == renderHeight &&
+           currentUpscaledSize.width == upscaledWidth && currentUpscaledSize.height == upscaledHeight);
     return true;
 }
 
@@ -191,11 +196,10 @@ void Framebuffers::PresentToSwapchain(
 {
     CmdLabel label(cmd, "Present to swapchain");
 
-
-    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
+    BarrierOne(cmd, frameIndex, framebufferImageIndex);
 
     swapchain->BlitForPresent(
-        cmd, images[framebufferImageIndex],
+        cmd, images[FrameIndexToFBIndex(framebufferImageIndex, frameIndex)],
         srcWidth, srcHeight, srcLayout);
 }
 
@@ -215,7 +219,8 @@ VkImageView Framebuffers::GetImageView(FramebufferImageIndex framebufferImageInd
     return imageViews[framebufferImageIndex];
 }
 
-void Framebuffers::CreateImages(uint32_t width, uint32_t height)
+void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
+                                uint32_t upscaledWidth, uint32_t upscaledHeight)
 {
     VkResult r;
 
@@ -228,7 +233,7 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
 
         VkExtent3D extent;
     
-        extent = { width, height, 1 };
+        extent = { renderWidth, renderHeight, 1 };
 
         int downscale = 1;
 
@@ -257,11 +262,17 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
             downscale = 32;
         }
 
-        extent.width = (width + 1) / downscale;
-        extent.height = (height + 1) / downscale;
+        extent.width = (renderWidth + 1) / downscale;
+        extent.height = (renderHeight + 1) / downscale;
 
         extent.width  = std::max(1u, extent.width); 
         extent.height = std::max(1u, extent.height);
+
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_UPSCALED_SIZE)
+        {
+            extent.width = upscaledWidth;
+            extent.height = upscaledHeight;
+        }
 
         // create image
         VkImageCreateInfo imageInfo = {};
@@ -325,13 +336,15 @@ void Framebuffers::CreateImages(uint32_t width, uint32_t height)
     cmdManager->Submit(cmd);
     cmdManager->WaitGraphicsIdle();
 
-    currentSize.width = width;
-    currentSize.height = height;
+    currentSize.width = renderWidth;
+    currentSize.height = renderHeight;
+    currentUpscaledSize.width = upscaledWidth;
+    currentUpscaledSize.height = upscaledHeight;
 
 
     UpdateDescriptors();
 
-    NotifySubscribersAboutResize(width, height);
+    NotifySubscribersAboutResize(renderWidth, renderHeight);
 }
 
 void Framebuffers::UpdateDescriptors()

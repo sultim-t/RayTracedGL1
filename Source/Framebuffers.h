@@ -52,7 +52,8 @@ public:
     Framebuffers &operator=(const Framebuffers &other) = delete;
     Framebuffers &operator=(Framebuffers &&other) noexcept = delete;
 
-    bool PrepareForSize(uint32_t width, uint32_t height);
+    bool PrepareForSize(uint32_t renderWidth, uint32_t renderHeight,
+                        uint32_t upscaledWidth, uint32_t upscaledHeight);
 
     void BarrierOne(VkCommandBuffer cmd,
                     uint32_t frameIndex,
@@ -86,7 +87,8 @@ private:
 
     void CreateDescriptors();
 
-    void CreateImages(uint32_t width, uint32_t height);
+    void CreateImages(uint32_t renderWidth, uint32_t renderHeight,
+                      uint32_t upscaledWidth, uint32_t upscaledHeight);
     void UpdateDescriptors();
 
     void DestroyImages();
@@ -101,6 +103,7 @@ private:
     std::shared_ptr<SamplerManager> samplerManager;
 
     VkExtent2D currentSize;
+    VkExtent2D currentUpscaledSize;
 
     std::vector<VkImage> images;
     std::vector<VkDeviceMemory> imageMemories;

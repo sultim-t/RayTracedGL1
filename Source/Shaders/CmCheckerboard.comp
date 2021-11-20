@@ -61,5 +61,6 @@ void main()
 
     color = mix(color, crossColor, 0.5);
 
+    color = clamp(color, 0.0, 1.0);
     imageStore(framebufFinal, pix, vec4(color, 0));
 }

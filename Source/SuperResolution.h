@@ -23,30 +23,29 @@
 #include "Common.h"
 #include "ShaderManager.h"
 #include "Framebuffers.h"
-#include "GlobalUniform.h"
 
 namespace RTGL1
 {
 
-class Bloom final : public IShaderDependency
+class SuperResolution final : public IShaderDependency
 {
 public:
-    Bloom(
+    SuperResolution(
         VkDevice device,
-        std::shared_ptr<Framebuffers> framebuffers,
-        const std::shared_ptr<const ShaderManager> &shaderManager,
-        const std::shared_ptr<const GlobalUniform> &uniform);
-    ~Bloom() override;
+        const std::shared_ptr<const Framebuffers> &framebuffers,
+        const std::shared_ptr<const ShaderManager> &shaderManager);
+    ~SuperResolution() override;
 
-    Bloom(const Bloom &other) = delete;
-    Bloom(Bloom &&other) noexcept = delete;
-    Bloom &operator=(const Bloom &other) = delete;
-    Bloom &operator=(Bloom &&other) noexcept = delete;
+    SuperResolution(const SuperResolution &other) = delete;
+    SuperResolution(SuperResolution &&other) noexcept = delete;
+    SuperResolution & operator=(const SuperResolution &other) = delete;
+    SuperResolution & operator=(SuperResolution &&other) noexcept = delete;
 
-    void Apply(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform, 
-        bool wasNoRayTracing);
+    FramebufferImageIndex Apply(
+        VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
+        uint32_t srcWidth, uint32_t srcHeight,
+        uint32_t upscaledWidth, uint32_t upscaledHeight,
+        float sharpness);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
@@ -58,12 +57,10 @@ private:
 private:
     VkDevice device;
 
-    std::shared_ptr<Framebuffers> framebuffers;
-
     VkPipelineLayout pipelineLayout;
 
-    VkPipeline downsamplePipelines[5];
-    VkPipeline upsamplePipelines[5];
+    VkPipeline pipelineEasu;
+    VkPipeline pipelineRcas;
 };
 
 }
