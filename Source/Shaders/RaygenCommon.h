@@ -22,6 +22,10 @@
 
 
 
+#define ADDITIONAL_RAY_FLAGS 0 // gl_RayFlagsCullBackFacingTrianglesEXT
+
+
+
 #include "ShaderCommonGLSLFunc.h"
 
 
@@ -161,7 +165,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
 
     traceRayEXT(
         topLevelAS,
-        gl_RayFlagsCullBackFacingTrianglesEXT, 
+        ADDITIONAL_RAY_FLAGS, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -184,7 +188,7 @@ ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefra
     
     traceRayEXT(
         topLevelAS,
-        gl_RayFlagsCullBackFacingTrianglesEXT, 
+        ADDITIONAL_RAY_FLAGS, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -202,7 +206,7 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
 
     traceRayEXT(
         topLevelAS,
-        gl_RayFlagsCullBackFacingTrianglesEXT, 
+        ADDITIONAL_RAY_FLAGS, 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -265,7 +269,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance,
 
     traceRayEXT(
         topLevelAS, 
-        gl_RayFlagsCullBackFacingTrianglesEXT | gl_RayFlagsSkipClosestHitShaderEXT, 
+        gl_RayFlagsSkipClosestHitShaderEXT | ADDITIONAL_RAY_FLAGS, 
         cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex

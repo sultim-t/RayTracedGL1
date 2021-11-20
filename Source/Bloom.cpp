@@ -61,6 +61,19 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
     typedef FramebufferImageIndex FI;
 
 
+    VkMemoryBarrier2KHR memoryBarrier = {};
+    memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR;
+    memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
+    memoryBarrier.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT_KHR;
+    memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+    memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+
+    VkDependencyInfoKHR dependencyInfo = {};
+    dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+    dependencyInfo.memoryBarrierCount = 1;
+    dependencyInfo.pMemoryBarriers = &memoryBarrier;
+
+
     // bind desc sets
     VkDescriptorSet sets[] =
     {
@@ -85,6 +98,8 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
 
         CmdLabel label(cmd, "Bloom downsample iteration");
 
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, downsamplePipelines[i]);
+
         switch (i)
         {
             case 0: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_PRE_FINAL); break;
@@ -94,27 +109,11 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
             case 4: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP4); break;
         }
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, downsamplePipelines[i]);
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
     }
 
 
-    // quick fix for bloom pass artifacts 
-    {
-        VkMemoryBarrier2KHR b = {};
-        b.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR;
-        b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
-        b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT_KHR;
-        b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
-        b.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
-
-        VkDependencyInfoKHR dependencyInfo = {};
-        dependencyInfo.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
-        dependencyInfo.memoryBarrierCount = 1;
-        dependencyInfo.pMemoryBarriers = &b;
-
-        svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
-    }
+    svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
 
 
     // start from the other side
@@ -125,6 +124,8 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
 
         CmdLabel label(cmd, "Bloom upsample iteration");
 
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upsamplePipelines[i]);
+
         switch (i)
         {
             case 4: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP5); break;
@@ -134,9 +135,11 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
             case 0: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP1); break;
         }
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upsamplePipelines[i]);
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
     }
+
+
+    svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
 }
 
 void RTGL1::Bloom::OnShaderReload(const ShaderManager * shaderManager)
