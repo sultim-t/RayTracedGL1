@@ -43,6 +43,7 @@ layout(push_constant) uniform FsrPush_BT
     #include "ffx_a.h"
 
     #define FSR_RCAS_H 1
+    #define FSR_RCAS_DENOISE  1
     AH4 FsrRcasLoadH(ASW2 p) { return AH4(texelFetch(INPUT_TEXTURE, ASU2(p), 0)); }
     void FsrRcasInputH(inout AH1 r, inout AH1 g, inout AH1 b) {}
     #include "ffx_fsr1.h"
