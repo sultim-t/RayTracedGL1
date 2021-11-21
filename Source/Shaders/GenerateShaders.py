@@ -29,7 +29,7 @@ CACHE_FOLDER_PATH     = "Build/"
 CACHE_FILE_NAME       = "GenerateShadersCache.txt"
 EXTENSIONS            = [ ".comp", ".vert", "frag", ".rgen", ".rahit", ".rchit", ".rmiss" ]
 DEPENDENCY_EXTENSIONS = [ ".h", ".inl" ]
-DEPENDENCY_FOLDERS    = [ "", "../Generated/" ]
+DEPENDENCY_FOLDERS    = [ "", "../Generated/", "FSR/" ]
 DEPENDENCY_IGNORE     = [ "BlueNoiseFileNames.h", "ShaderCommonC.h", "ShaderCommonCFramebuf.h" ]
 
 
@@ -60,6 +60,10 @@ def printInPowerShell(msg, color):
         "\"" + msg + "\"",
         "-ForegroundColor", color
     ])
+
+
+def getDependentFoldersProcArg():
+    return [a for p in DEPENDENCY_FOLDERS if p != "" for a in ("-I", p)]
 
 
 def main():
@@ -170,7 +174,7 @@ def main():
                             dpdFile = line.split("\"")[1]
                             for dpdFolder in DEPENDENCY_FOLDERS:
                                 dpd = dpdFolder + dpdFile
-                                if os.path.exists(dpd):
+                                if os.path.exists(dpd) and dpd != filename:
                                     dependencyMap[filename].add(dpd)
 
     #if wereDependentModified and not forceRebuild:
@@ -206,8 +210,8 @@ def main():
             print("> Building " + filename)
 
             r = subprocess.run([
-                "glslc", "--target-env=vulkan1.2", 
-                "-I", "../Generated",
+                "glslc", "--target-env=vulkan1.2"
+                ] + getDependentFoldersProcArg() + [
                 filename, 
                 "-o", "../../Build/" + filename + ".spv"], 
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
