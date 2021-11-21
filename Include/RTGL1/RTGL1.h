@@ -896,6 +896,8 @@ typedef struct RgDrawFrameInfo
     RgBool32    disableRayTracing;
     RgBool32    disableRasterization;
     RgExtent2D  renderSize;
+    RgBool32    useFSR;
+    RgBool32    useCAS;
     double      currentTime;
     RgBool32    disableEyeAdaptation;
     RgBool32    useSqrtRoughnessForIndirect;

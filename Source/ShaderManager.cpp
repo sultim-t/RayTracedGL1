@@ -64,8 +64,9 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CBloomDownsample",        "CmBloomDownsample.comp.spv"           },
     {"CBloomUpsample",          "CmBloomUpsample.comp.spv"             },
     {"CCheckerboard",           "CmCheckerboard.comp.spv"              },
-    {"CFsrEasu",                "CmFsrEasu.comp.spv"           },
-    {"CFsrRcas",                "CmFsrRcas.comp.spv"           },
+    {"CFsrEasu",                "CmFsrEasu.comp.spv"                   },
+    {"CFsrRcas",                "CmFsrRcas.comp.spv"                   },
+    {"CCas",                    "CmCas.comp.spv"                       },
 };
 
 

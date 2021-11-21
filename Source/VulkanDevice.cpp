@@ -189,6 +189,11 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers,
         shaderManager);
 
+    sharpening          = std::make_shared<Sharpening>(
+        device,
+        framebuffers,
+        shaderManager);
+
     denoiser            = std::make_shared<Denoiser>(
         device,
         framebuffers,
@@ -207,6 +212,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
     shaderManager->Subscribe(bloom);
     shaderManager->Subscribe(superResolution);
+    shaderManager->Subscribe(sharpening);
 
     framebuffers->Subscribe(rasterizer);
 }
@@ -224,6 +230,7 @@ VulkanDevice::~VulkanDevice()
     imageComposition.reset();
     bloom.reset();
     superResolution.reset();
+    sharpening.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -690,11 +697,12 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      werePrimaryTraced);
     }
 
-    FramebufferImageIndex imageToSwapchain;
-    VkExtent2D imageToSwapchainSize;
+
+    FramebufferImageIndex imageToSwapchain = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+    VkExtent2D imageToSwapchainSize = { renderWidth, renderHeight };
 
     // upscale finalized image
-    if (true)
+    if (drawInfo.useFSR)
     {
         imageToSwapchain = superResolution->Apply(cmd, frameIndex, framebuffers,
                                                   renderWidth, renderHeight, 
@@ -703,16 +711,22 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
         imageToSwapchainSize = { swapchain->GetWidth(), swapchain->GetHeight() };
     }
-    else
+
+    // sharpen
+    if (drawInfo.useCAS)
     {
-        imageToSwapchain = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
-        imageToSwapchainSize = { renderWidth, renderHeight };
+        imageToSwapchain = sharpening->Apply(cmd, frameIndex, framebuffers,
+                                             imageToSwapchainSize.width, imageToSwapchainSize.height,
+                                             1.0f,
+                                             imageToSwapchain != FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
     }
+
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain, imageToSwapchain,
         imageToSwapchainSize.width, imageToSwapchainSize.height, VK_IMAGE_LAYOUT_GENERAL);
+
 
     // draw geometry such as HUD directly into the swapchain image
     if (!drawInfo.disableRasterization)

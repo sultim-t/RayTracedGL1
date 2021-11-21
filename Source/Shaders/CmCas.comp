@@ -25,51 +25,54 @@
 
 layout(local_size_x = 64) in;
 
-layout(push_constant) uniform FsrPush_BT
+layout(constant_id = 0) const uint framebufFinalIsInput = 0;
+
+layout(push_constant) uniform CasPush_BT
 {
     uvec4 con0;
-    uvec4 con1_Unused;
-    uvec4 con2_Unused;
-    uvec4 con3_Unused;
+    uvec4 con1;
 } push;
 
-    // FSR impl
-    #define INPUT_TEXTURE framebufUpscaledIntermediary_Sampler
-    #define OUTPUT_IMAGE framebufUpscaledOutput
+    // CAS impl
+    #define OUTPUT_IMAGE framebufUpscaledIntermediary
 
     #define A_GPU 1
     #define A_GLSL 1
     #define A_HALF 1
-    #include "FSR/ffx_a.h"
+    #define CAS_PACKED_ONLY 1
+    #include "CAS/ffx_a.h"
 
-    #define FSR_RCAS_H 1
-    #define FSR_RCAS_DENOISE  1
-    AH4 FsrRcasLoadH(ASW2 p) { return AH4(texelFetch(INPUT_TEXTURE, ASU2(p), 0)); }
-    void FsrRcasInputH(inout AH1 r, inout AH1 g, inout AH1 b) {}
-    #include "FSR/ffx_fsr1.h"
-
-void storeOutput(const AH3 Gamma2Color, const AU2 gxy)
-{
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(pow(Gamma2Color, AH3(FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)), 1));
-}
+    AH3 CasLoadH(ASW2 p) 
+    {
+        if (framebufFinalIsInput != 0)
+        {
+            return AH3(texelFetch(         framebufFinal_Sampler, ASU2(p), 0).rgb); 
+        }
+        else
+        {
+            return AH3(texelFetch(framebufUpscaledOutput_Sampler, ASU2(p), 0).rgb); 
+        }
+    }
+    void CasInputH(inout AH2 r, inout AH2 g, inout AH2 b) {}
+    #include "CAS/ffx_cas.h"
 
 void main()
 {
-    AH3 Gamma2Color = AH3(0, 0, 0);
+    const bool sharpenOnly = true;
     AU2 gxy = ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
-	
-    FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    storeOutput(Gamma2Color, gxy);
 
-	gxy.x += 8u;
-    FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    storeOutput(Gamma2Color, gxy);
+    AH4 c0,c1;
+    AH2 cR, cG, cB;
 
-	gxy.y += 8u;
-    FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    storeOutput(Gamma2Color, gxy);
+    CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
+    CasDepack(c0, c1, cR, cG, cB);
+    imageStore(OUTPUT_IMAGE, ASU2(gxy), AF4(c0));
+    imageStore(OUTPUT_IMAGE, ASU2(gxy)+ASU2(8,0), AF4(c1));
+    gxy.y+=8u;
 
-	gxy.x -= 8u;
-    FsrRcasH(Gamma2Color.r, Gamma2Color.g, Gamma2Color.b, gxy, push.con0);
-    storeOutput(Gamma2Color, gxy);
+    CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
+    CasDepack(c0, c1, cR, cG, cB);
+    imageStore(OUTPUT_IMAGE, ASU2(gxy), AF4(c0));
+    imageStore(OUTPUT_IMAGE, ASU2(gxy)+ASU2(8,0), AF4(c1));
+    
 }

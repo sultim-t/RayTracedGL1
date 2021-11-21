@@ -75,6 +75,7 @@ set(PrivateHeaders
     "Source/CmdLabel.h"
     "Source/Bloom.h"
     "Source/SuperResolution.h"
+    "Source/Sharpening.h"
 )
 
 set(Sources
@@ -132,6 +133,7 @@ set(Sources
     "Source/RgException.cpp"
     "Source/Bloom.cpp"
     "Source/SuperResolution.cpp"
+    "Source/Sharpening.cpp"
 )
 
 

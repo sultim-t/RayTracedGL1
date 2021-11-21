@@ -29,7 +29,7 @@ CACHE_FOLDER_PATH     = "Build/"
 CACHE_FILE_NAME       = "GenerateShadersCache.txt"
 EXTENSIONS            = [ ".comp", ".vert", "frag", ".rgen", ".rahit", ".rchit", ".rmiss" ]
 DEPENDENCY_EXTENSIONS = [ ".h", ".inl" ]
-DEPENDENCY_FOLDERS    = [ "", "../Generated/", "FSR/" ]
+DEPENDENCY_FOLDERS    = [ "", "../Generated/" ]
 DEPENDENCY_IGNORE     = [ "BlueNoiseFileNames.h", "ShaderCommonC.h", "ShaderCommonCFramebuf.h" ]
 
 
