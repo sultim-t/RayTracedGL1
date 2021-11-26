@@ -48,23 +48,30 @@ layout(push_constant) uniform FsrPush_BT
     AH4 FsrEasuBH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p, 2)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }
     #include "FSR/ffx_fsr1.h"
 
+void storeOutput(const AH3 c, const AU2 gxy)
+{
+    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(c, 1));
+}
+
+void filterAndStore(const AU2 gxy)
+{
+    AH3 c;
+    FsrEasuH(c, gxy, push.con0, push.con1, push.con2, push.con3);
+
+    storeOutput(c, gxy);
+}
+
 void main()
 {
-    AH3 Gamma2Color = AH3(0, 0, 0);
     AU2 gxy = ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
-    
-    FsrEasuH(Gamma2Color, gxy, push.con0, push.con1, push.con2, push.con3);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    filterAndStore(gxy);
 
 	gxy.x += 8u;
-    FsrEasuH(Gamma2Color, gxy, push.con0, push.con1, push.con2, push.con3);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    filterAndStore(gxy);
 
 	gxy.y += 8u;
-    FsrEasuH(Gamma2Color, gxy, push.con0, push.con1, push.con2, push.con3);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    filterAndStore(gxy);
 
 	gxy.x -= 8u;
-    FsrEasuH(Gamma2Color, gxy, push.con0, push.con1, push.con2, push.con3);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(Gamma2Color, 1));
+    filterAndStore(gxy);
 }
