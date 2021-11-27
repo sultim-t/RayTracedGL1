@@ -42,21 +42,26 @@ layout(push_constant) uniform CasPush_BT
     #define CAS_PACKED_ONLY 1
     #include "CAS/ffx_a.h"
 
-    AH3 CasLoadH(ASW2 p) 
+    AF3 loadInput(ASU2 p) 
     {
         if (framebufFinalIsInput != 0)
         {
-            return AH3(texelFetch(         framebufFinal_Sampler, ASU2(p), 0).rgb); 
+            return texelFetch(         framebufFinal_Sampler, p, 0).rgb; 
         }
         else
         {
-            return AH3(texelFetch(framebufUpscaledOutput_Sampler, ASU2(p), 0).rgb); 
+            return texelFetch(framebufUpscaledOutput_Sampler, p, 0).rgb; 
         }
+    }
+
+    AH3 CasLoadH(ASW2 p) 
+    {
+        return AH3(loadInput(ASU2(p)));
     }
     void CasInputH(inout AH2 r, inout AH2 g, inout AH2 b) {}
     #include "CAS/ffx_cas.h"
 
-void main()
+void applyCas()
 {
     const bool sharpenOnly = true;
     AU2 gxy = ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
@@ -66,13 +71,55 @@ void main()
 
     CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
     CasDepack(c0, c1, cR, cG, cB);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AF4(c0));
-    imageStore(OUTPUT_IMAGE, ASU2(gxy)+ASU2(8,0), AF4(c1));
-    gxy.y+=8u;
+    imageStore(OUTPUT_IMAGE, ASU2(gxy)             , AF4(c0));
+    imageStore(OUTPUT_IMAGE, ASU2(gxy) + ASU2(8, 0), AF4(c1));
 
+    gxy.y += 8u;
     CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
     CasDepack(c0, c1, cR, cG, cB);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy), AF4(c0));
-    imageStore(OUTPUT_IMAGE, ASU2(gxy)+ASU2(8,0), AF4(c1));
-    
+    imageStore(OUTPUT_IMAGE, ASU2(gxy)             , AF4(c0));
+    imageStore(OUTPUT_IMAGE, ASU2(gxy) + ASU2(8, 0), AF4(c1));
+}
+
+AF4 sharp(const ASU2 p)
+{
+    const float w = 1.0;
+
+    const AF3 r = 
+        loadInput(p             )  * (1 + 4 * w) +
+        loadInput(p + ASU2( 0, 1)) * (-w) +
+        loadInput(p + ASU2( 1, 0)) * (-w) +
+        loadInput(p + ASU2( 0,-1)) * (-w) +
+        loadInput(p + ASU2(-1, 0)) * (-w);
+
+    return AF4(r, 0);
+}
+
+void applySimpleSharp()
+{
+    ASU2 gxy = ASU2(ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u));
+    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+
+    gxy.x += 8;
+    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+
+    gxy.y += 8;
+    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+
+    gxy.x -= 8;
+    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+}
+
+void main()
+{
+    const uint useSimpleSharp = 1;
+
+    if (useSimpleSharp != 0)
+    {
+        applySimpleSharp();
+    }
+    else 
+    {
+        applyCas();
+    }
 }
