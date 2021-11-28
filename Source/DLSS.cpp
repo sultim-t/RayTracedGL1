@@ -27,6 +27,11 @@
 #include "CmdLabel.h"
 #include "RenderResolutionHelper.h"
 
+#if __linux__
+#include <unistd.h>         
+#include <linux/limits.h>
+#endif
+
 static void PrintCallback(const char *message, NVSDK_NGX_Logging_Level loggingLevel, NVSDK_NGX_Feature sourceComponent)
 {
     printf("DLSS (sourceComponent = %d): %s \n", sourceComponent,  message);
@@ -54,20 +59,33 @@ RTGL1::DLSS::DLSS(
     }
 }
 
+static std::wstring GetFolderPath()
+{
+#if defined(_WIN32)
+    wchar_t appPath[MAX_PATH];
+    GetModuleFileNameW(NULL, appPath, MAX_PATH);
+#elif defined(__linux__)
+    wchar_t appPath[PATH_MAX];
+    char appPath_c[PATH_MAX];
+    ssize_t count = readlink("/proc/self/exe", appPath, PATH_MAX);
+    std::mbstowcs(appPath, appPath_c, PATH_MAX);
+#endif
+
+    std::wstring curFolderPath = appPath;
+    auto p = curFolderPath.find_last_of(L"\\/");
+    return curFolderPath.substr(0, p);
+}
+
 bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, bool enableDebug)
 {
     NVSDK_NGX_Result r;
 
-    wchar_t *debugPath = L"dev/";
-    wchar_t *releasePath = L"rel/";
+    std::wstring dllPath = GetFolderPath() + (enableDebug ? L"/dev/" : L"/rel/") ;
+    wchar_t *dllPath_c = (wchar_t *)dllPath.c_str();
 
-    NVSDK_NGX_PathListInfo debugPathsInfo = {};
-    debugPathsInfo.Path = &debugPath;
-    debugPathsInfo.Length = 1;
-
-    NVSDK_NGX_PathListInfo releasePathsInfo = {};
-    releasePathsInfo.Path = &releasePath;
-    releasePathsInfo.Length = 1;
+    NVSDK_NGX_PathListInfo pathsInfo = {};
+    pathsInfo.Path = &dllPath_c;
+    pathsInfo.Length = 1;
 
     NGSDK_NGX_LoggingInfo debugLogInfo = {};
     debugLogInfo.LoggingCallback = &PrintCallback;
@@ -76,7 +94,7 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
     NGSDK_NGX_LoggingInfo releaseLogInfo = {};
 
     NVSDK_NGX_FeatureCommonInfo commonInfo = {};
-    commonInfo.PathListInfo = enableDebug ? debugPathsInfo : releasePathsInfo;
+    commonInfo.PathListInfo = pathsInfo;
     commonInfo.LoggingInfo = enableDebug ? debugLogInfo : releaseLogInfo;
 
     r = NVSDK_NGX_VULKAN_Init_with_ProjectID(
@@ -143,7 +161,7 @@ bool RTGL1::DLSS::CheckSupport() const
     {
         // more details about what failed (per feature init result)
         r = NVSDK_NGX_Parameter_GetI(pParams, NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, (int *)&featureInitResult);
-        if (NVSDK_NGX_FAILED(r))
+        if (NVSDK_NGX_SUCCEED(r))
         {
             // LOG INFO("NVIDIA DLSS not available on this hardward/platform., FeatureInitResult = 0x%08x, info: %ls\n", featureInitResult, GetNGXResultAsString(featureInitResult));
         }
@@ -260,7 +278,7 @@ bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutio
     // motion vectors contain jitter
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
-    dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
+    dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_DoSharpening;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
 
@@ -371,7 +389,7 @@ void RTGL1::DLSS::GetOptimalSettings(uint32_t userWidth, uint32_t userHeight, Rg
     *pOutHeight = userHeight;
     *pOutSharpness = 0.0f;
 
-    if (isInitialized && pParams != nullptr)
+    if (!isInitialized || pParams == nullptr)
     {
         return;
     }

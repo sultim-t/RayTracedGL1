@@ -624,6 +624,11 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RgDrawFrameDebugParams debugParams = {};
         debugParams.showGradients = SHOW_GRAD;
 
+        RgDrawFrameRenderResolutionParams resolutionParams = {};
+        resolutionParams.upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS;
+        resolutionParams.resolutionMode = RG_RENDER_RESOLUTION_MODE_BALANCED;
+
+        frameInfo.pRenderResolutionParams = &resolutionParams;
         frameInfo.pSkyParams = &skyParams;
         frameInfo.pDebugParams = &debugParams;
 
