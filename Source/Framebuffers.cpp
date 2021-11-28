@@ -219,6 +219,26 @@ VkImageView Framebuffers::GetImageView(FramebufferImageIndex framebufferImageInd
     return imageViews[framebufferImageIndex];
 }
 
+void RTGL1::Framebuffers::GetImageHandles(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex, VkImage *pOutImage, VkImageView *pOutView, VkFormat *pOutFormat) const
+{
+    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
+
+    if (pOutImage)
+    {
+        *pOutImage = images[framebufferImageIndex];
+    }
+
+    if (pOutView)
+    {
+        *pOutView = imageViews[framebufferImageIndex];
+    }
+    
+    if (pOutFormat)
+    {
+        *pOutFormat = ShFramebuffers_Formats[framebufferImageIndex];
+    }
+}
+
 void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
                                 uint32_t upscaledWidth, uint32_t upscaledHeight)
 {
@@ -272,6 +292,12 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
         {
             extent.width = upscaledWidth;
             extent.height = upscaledHeight;
+        }
+
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE)
+        {
+            extent.width = 1;
+            extent.height = 1;
         }
 
         // create image

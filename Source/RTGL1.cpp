@@ -291,3 +291,12 @@ RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *pDrawInfo)
     }
     CATCH_OR_RETURN;
 }
+
+RgResult rgIsRenderUpscaleTechniqueAvailable(RgInstance rgInstance, RgRenderUpscaleTechnique technique, RgBool32 *pOutResult)
+{
+    try
+    {
+        *pOutResult = GetDevice(rgInstance)->IsRenderUpscaleTechniqueAvailable(technique);
+    }
+    CATCH_OR_RETURN;
+}

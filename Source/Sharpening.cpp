@@ -21,6 +21,7 @@
 #include "Sharpening.h"
 
 #include "CmdLabel.h"
+#include "RenderResolutionHelper.h"
 
 #define A_CPU
 #include "Shaders/CAS/ffx_a.h"
@@ -59,9 +60,13 @@ RTGL1::Sharpening::~Sharpening()
 
 RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-    uint32_t width, uint32_t height, float sharpness, bool afterSuperUpscalePass)
+    const RenderResolutionHelper &renderResolution, bool wasUpscalePass)
 {
-    CmdLabel label(cmd, "CAS");
+    CmdLabel label(cmd, "Sharpening");
+
+    
+    const uint32_t width  = wasUpscalePass ? renderResolution.UpscaledWidth()  : renderResolution.Width();
+    const uint32_t height = wasUpscalePass ? renderResolution.UpscaledHeight() : renderResolution.Height();
 
 
     const int threadGroupWorkRegionDim = 16;
@@ -84,19 +89,17 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     {
         CasPush casPush;
         CasSetup(casPush.con0, casPush.con1,
-                 sharpness,         // sharpness tuning knob (0.0 to 1.0).
-                 width, height,     // input size.
-                 width, height);    // output size.
+                 renderResolution.GetSharpeningIntensity(), // sharpness tuning knob (0.0 to 1.0).
+                 width, height,                             // input size.
+                 width, height);                            // output size.
 
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                            0, sizeof(casPush), &casPush);
 
-        framebuffers->BarrierOne(cmd, frameIndex, 
-                                 afterSuperUpscalePass ? 
-                                 FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_OUTPUT :
-                                 FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+        framebuffers->BarrierOne(cmd, frameIndex, wasUpscalePass ? FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_OUTPUT :
+                                                                   FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, afterSuperUpscalePass ? pipelineFromUpscaled : pipelineFromFinal);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, wasUpscalePass ? pipelineFromUpscaled : pipelineFromFinal);
         vkCmdDispatch(cmd, dispatchX, dispatchY, 1);
     }
 
@@ -132,7 +135,8 @@ void RTGL1::Sharpening::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, 
 void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
 {
     assert(pipelineLayout != VK_NULL_HANDLE);
-    assert(pipeline == VK_NULL_HANDLE);
+    assert(pipelineFromFinal == VK_NULL_HANDLE);
+    assert(pipelineFromUpscaled == VK_NULL_HANDLE);
 
     uint32_t framebufFinalIsInput = 0;
 
@@ -174,7 +178,8 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
 
 void RTGL1::Sharpening::DestroyPipelines()
 {
-    assert(pipeline != VK_NULL_HANDLE);
+    assert(pipelineFromFinal != VK_NULL_HANDLE);
+    assert(pipelineFromUpscaled != VK_NULL_HANDLE);
 
     vkDestroyPipeline(device, pipelineFromFinal, nullptr);
     pipelineFromFinal = VK_NULL_HANDLE;

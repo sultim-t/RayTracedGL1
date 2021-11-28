@@ -46,6 +46,8 @@
 #include "Bloom.h"
 #include "SuperResolution.h"
 #include "Sharpening.h"
+#include "DLSS.h"
+#include "RenderResolutionHelper.h"
 
 namespace RTGL1
 {
@@ -88,6 +90,9 @@ public:
 
     void StartFrame(const RgStartFrameInfo *pStartInfo);
     void DrawFrame(const RgDrawFrameInfo *pFrameInfo);
+
+
+    bool IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechnique technique) const;
 
 
     void Print(const char *pMessage) const;
@@ -258,7 +263,8 @@ private:
     std::shared_ptr<Tonemapping>            tonemapping;
     std::shared_ptr<ImageComposition>       imageComposition;
     std::shared_ptr<Bloom>                  bloom;
-    std::shared_ptr<SuperResolution>        superResolution;
+    std::shared_ptr<SuperResolution>        amdFsr;
+    std::shared_ptr<DLSS>                   nvDlss;
     std::shared_ptr<Sharpening>             sharpening;
 
     std::shared_ptr<SamplerManager>         samplerManager;
@@ -272,6 +278,8 @@ private:
     std::shared_ptr<UserFileLoad>           userFileLoad;
 
     VertexBufferProperties                  vbProperties;
+
+    RenderResolutionHelper                  renderResolution;
 
     double                                  previousFrameTime;
     double                                  currentFrameTime;

@@ -23,6 +23,8 @@
 
 #include <stdint.h>
 
+#define RG_RTGL_VERSION_API "1.01.0000"
+
 #ifdef RG_USE_SURFACE_WIN32
     #include <windows.h>
 #endif // RG_USE_SURFACE_WIN32
@@ -281,6 +283,11 @@ typedef struct RgMatrix3D
 {
     float       matrix[3][3];
 } RgMatrix3D;
+
+typedef struct RgFloat2D
+{
+    float       data[2];
+} RgFloat2D;
 
 typedef struct RgFloat3D
 {
@@ -877,6 +884,39 @@ typedef struct RgDrawFrameReflectRefractParams
     RgMatrix3D  portalRelativeRotation;
 } RgDrawFrameReflectRefractParams;
 
+typedef enum RgRenderUpscaleTechnique
+{
+    RG_RENDER_UPSCALE_TECHNIQUE_LINEAR,
+    RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR,
+    RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS,
+} RgRenderUpscaleTechnique;
+
+typedef enum RgRenderSharpenTechnique
+{
+    RG_RENDER_SHARPEN_TECHNIQUE_NONE,
+    RG_RENDER_SHARPEN_TECHNIQUE_NAIVE,
+    RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS,
+} RgRenderSharpenTechnique;
+
+typedef enum RgRenderResolutionMode
+{
+    RG_RENDER_RESOLUTION_MODE_CUSTOM,
+    RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE,    // with AMD_FSR, same as PERFORMANCE
+    RG_RENDER_RESOLUTION_MODE_PERFORMANCE,
+    RG_RENDER_RESOLUTION_MODE_BALANCED,
+    RG_RENDER_RESOLUTION_MODE_QUALITY,
+    RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY,
+} RgRenderResolutionMode;
+
+typedef struct RgDrawFrameRenderResolutionParams
+{
+    RgRenderUpscaleTechnique    upscaleTechnique;
+    RgRenderSharpenTechnique    sharpenTechnique; 
+    RgRenderResolutionMode      resolutionMode;
+    // Used, if resolutionMode is CUSTOM
+    RgExtent2D                  renderSize;
+} RgDrawFrameRenderResolutionParams;
+
 typedef struct RgDrawFrameInfo
 {
     // View and projection matrices are column major.
@@ -895,14 +935,12 @@ typedef struct RgDrawFrameInfo
     float       rayLength;
     RgBool32    disableRayTracing;
     RgBool32    disableRasterization;
-    RgExtent2D  renderSize;
-    RgBool32    useFSR;
-    RgBool32    useCAS;
     double      currentTime;
     RgBool32    disableEyeAdaptation;
     RgBool32    useSqrtRoughnessForIndirect;
 
-    // Null, if default values should be used.
+    // Set to null, to use default values.
+    const RgDrawFrameRenderResolutionParams     *pRenderResolutionParams;
     const RgDrawFrameShadowParams               *pShadowParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
@@ -916,6 +954,13 @@ typedef struct RgDrawFrameInfo
 RgResult rgDrawFrame(
     RgInstance                          rgInstance,
     const RgDrawFrameInfo               *pDrawInfo);
+
+
+
+RgResult rgIsRenderUpscaleTechniqueAvailable(
+    RgInstance                          rgInstance,
+    RgRenderUpscaleTechnique            technique,
+    RgBool32                            *pOutResult);
 
 #ifdef __cplusplus
 }

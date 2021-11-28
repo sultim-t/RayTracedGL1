@@ -27,6 +27,7 @@
 #include <stdexcept>
 
 #include "Matrix.h"
+#include "RenderResolutionHelper.h"
 #include "RgException.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
@@ -184,10 +185,16 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         shaderManager,
         uniform);
 
-    superResolution     = std::make_shared<SuperResolution>(
+    amdFsr              = std::make_shared<SuperResolution>(
         device,
         framebuffers,
         shaderManager);
+
+    nvDlss              = std::make_shared<DLSS>(
+        instance, 
+        device, 
+        physDevice->Get(),
+        enableValidationLayer);
 
     sharpening          = std::make_shared<Sharpening>(
         device,
@@ -211,7 +218,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
     shaderManager->Subscribe(bloom);
-    shaderManager->Subscribe(superResolution);
+    shaderManager->Subscribe(amdFsr);
     shaderManager->Subscribe(sharpening);
 
     framebuffers->Subscribe(rasterizer);
@@ -229,7 +236,8 @@ VulkanDevice::~VulkanDevice()
     tonemapping.reset();
     imageComposition.reset();
     bloom.reset();
-    superResolution.reset();
+    amdFsr.reset();
+    nvDlss.reset();
     sharpening.reset();
     denoiser.reset();
     uniform.reset();
@@ -361,11 +369,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
-        gu->renderWidth = (float)drawInfo.renderSize.width;
-        gu->renderHeight = (float)drawInfo.renderSize.height;
         gu->frameId = frameId;
         gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
         gu->time = (float)currentFrameTime;
+    }
+
+    {
+        gu->renderWidth = renderResolution.Width();
+        gu->renderHeight = renderResolution.Height();
     }
 
     {
@@ -600,7 +611,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 
-    gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / drawInfo.renderSize.height);
+    gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / renderResolution.Height());
 
     if (Utils::IsAlmostZero(drawInfo.worldUpVector))
     {
@@ -626,18 +637,18 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
+
     textureManager->SubmitDescriptors(frameIndex);
     cubemapManager->SubmitDescriptors(frameIndex);
 
-    const uint32_t renderWidth  = drawInfo.renderSize.width;
-    const uint32_t renderHeight = drawInfo.renderSize.height;
-    assert(renderWidth > 0 && renderHeight > 0);
 
     // submit geometry and upload uniform after getting data from a scene
     const bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
 
-    framebuffers->PrepareForSize(renderWidth, renderHeight,
-                                 swapchain->GetWidth(), swapchain->GetHeight());
+
+    framebuffers->PrepareForSize(renderResolution.Width(),         renderResolution.Height(),
+                                 renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight());
+
 
     bool werePrimaryTraced = false;
 
@@ -662,7 +673,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             scene, uniform, textureManager, 
             framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
 
-        pathTracer->TracePrimaryRays(cmd, frameIndex, renderWidth, renderHeight);
+        pathTracer->TracePrimaryRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height());
 
         werePrimaryTraced = true;
 
@@ -670,8 +681,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
 
         // update the illumination
-        pathTracer->TraceDirectllumination(cmd, frameIndex, renderWidth, renderHeight, framebuffers);
-        pathTracer->TraceIndirectllumination(cmd, frameIndex, renderWidth, renderHeight, framebuffers);
+        pathTracer->TraceDirectllumination(  cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+        pathTracer->TraceIndirectllumination(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
 
         denoiser->Denoise(cmd, frameIndex, uniform);
 
@@ -698,34 +709,38 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    FramebufferImageIndex imageToSwapchain = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
-    VkExtent2D imageToSwapchainSize = { renderWidth, renderHeight };
+    FramebufferImageIndex imageToPresent = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+    bool wasUpscale = false;
 
     // upscale finalized image
-    if (drawInfo.useFSR)
+    if (renderResolution.IsNvDlssEnabled())
     {
-        imageToSwapchain = superResolution->Apply(cmd, frameIndex, framebuffers,
-                                                  renderWidth, renderHeight, 
-                                                  swapchain->GetWidth(), swapchain->GetHeight(),
-                                                  0.0f);
+        RgFloat2D jitter = { 0,0 };
 
-        imageToSwapchainSize = { swapchain->GetWidth(), swapchain->GetHeight() };
+        imageToPresent = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
+
+        wasUpscale = true;
+    }
+    else if (renderResolution.IsAmdFsrEnabled())
+    {
+        imageToPresent = amdFsr->Apply(cmd, frameIndex, framebuffers, renderResolution);
+        wasUpscale = true;
     }
 
     // sharpen
-    if (drawInfo.useCAS)
+    if (renderResolution.IsSharpeningEnabled())
     {
-        imageToSwapchain = sharpening->Apply(cmd, frameIndex, framebuffers,
-                                             imageToSwapchainSize.width, imageToSwapchainSize.height,
-                                             1.0f,
-                                             imageToSwapchain != FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+        imageToPresent = sharpening->Apply(cmd, frameIndex, framebuffers, renderResolution, wasUpscale);
     }
 
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, frameIndex, swapchain, imageToSwapchain,
-        imageToSwapchainSize.width, imageToSwapchainSize.height, VK_IMAGE_LAYOUT_GENERAL);
+        cmd, frameIndex, swapchain, 
+        imageToPresent,
+        wasUpscale ? renderResolution.UpscaledWidth()  : renderResolution.Width(),
+        wasUpscale ? renderResolution.UpscaledHeight() : renderResolution.Height(),
+        VK_IMAGE_LAYOUT_GENERAL);
 
 
     // draw geometry such as HUD directly into the swapchain image
@@ -792,7 +807,10 @@ void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     previousFrameTime = currentFrameTime;
     currentFrameTime = drawInfo->currentTime;
 
-    if (drawInfo->renderSize.width > 0 && drawInfo->renderSize.height > 0)
+    renderResolution.Setup(drawInfo->pRenderResolutionParams,
+                           swapchain->GetWidth(), swapchain->GetHeight(), nvDlss);
+
+    if (renderResolution.Width() > 0 && renderResolution.Height() > 0)
     {
         FillUniform(uniform->GetData(), *drawInfo);
         Render(cmd, *drawInfo);
@@ -800,6 +818,21 @@ void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
 
     EndFrame(cmd);
     currentFrameState.OnEndFrame();
+}
+
+bool RTGL1::VulkanDevice::IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechnique technique) const
+{
+    switch (technique)
+    {
+        case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
+            return true;
+        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR:
+            return true;
+        case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:
+            return nvDlss->IsDlssAvailable();
+        default:
+            throw RgException(RG_WRONG_ARGUMENT, "Incorrect technique was passed to rgIsRenderUpscaleTechniqueAvailable");
+    }
 }
 
 void VulkanDevice::Print(const char *pMessage) const

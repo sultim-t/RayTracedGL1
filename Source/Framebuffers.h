@@ -76,6 +76,8 @@ public:
     VkDescriptorSetLayout GetDescSetLayout() const;
 
     VkImageView GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const;
+    void GetImageHandles(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex,
+                         VkImage *pOutImage, VkImageView *pOutView, VkFormat *pOutFormat) const;
 
     // Subscribe to framebuffers' size change event.
     // shared_ptr will be transformed to weak_ptr

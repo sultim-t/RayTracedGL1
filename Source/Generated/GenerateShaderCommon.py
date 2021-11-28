@@ -620,6 +620,7 @@ FRAMEBUF_FLAGS_FORCE_SIZE_1_16      = 1 << 7
 FRAMEBUF_FLAGS_FORCE_SIZE_1_32      = 1 << 8
 FRAMEBUF_FLAGS_BILINEAR_SAMPLER     = 1 << 9
 FRAMEBUF_FLAGS_UPSCALED_SIZE        = 1 << 10
+FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE    = 1 << 11
 
 # only these flags are shown for C++ side
 FRAMEBUF_FLAGS_ENUM = {
@@ -632,6 +633,7 @@ FRAMEBUF_FLAGS_ENUM = {
     "FRAMEBUF_FLAGS_FORCE_SIZE_1_32"    : FRAMEBUF_FLAGS_FORCE_SIZE_1_32,
     "FRAMEBUF_FLAGS_BILINEAR_SAMPLER"   : FRAMEBUF_FLAGS_BILINEAR_SAMPLER,
     "FRAMEBUF_FLAGS_UPSCALED_SIZE"      : FRAMEBUF_FLAGS_UPSCALED_SIZE,
+    "FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE"  : FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE,
 }
 
 FRAMEBUFFERS = {
@@ -651,6 +653,7 @@ FRAMEBUFFERS = {
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "Exposure"                          : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE),
     # bilinear for bloom
     "PreFinal"                          : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
@@ -658,6 +661,7 @@ FRAMEBUFFERS = {
     "UpscaledOutput"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE),
 
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),
 
     "AccumHistoryLength"                : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
     

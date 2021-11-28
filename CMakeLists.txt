@@ -76,6 +76,8 @@ set(PrivateHeaders
     "Source/Bloom.h"
     "Source/SuperResolution.h"
     "Source/Sharpening.h"
+    "Source/DLSS.h"
+    "Source/RenderResolutionHelper.h"
 )
 
 set(Sources
@@ -134,6 +136,7 @@ set(Sources
     "Source/Bloom.cpp"
     "Source/SuperResolution.cpp"
     "Source/Sharpening.cpp"
+    "Source/DLSS.cpp"
 )
 
 
@@ -207,9 +210,29 @@ add_library(RayTracedGL1 STATIC
     ${KTXSources}
     ${PublicHeaders}
 )
+
+# KTX
 target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include")
 target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include" "Source/KTX/other_include" "Source/KTX/lib/basisu/zstd")
 
+# DLSS
+if (DEFINED ENV{DLSS_SDK_PATH})
+    message(STATUS "Found DLSS SDK: $ENV{DLSS_SDK_PATH}")
+    target_include_directories(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/include")
+    if (WIN32)
+        target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Windows_x86_64/x86_64/nvsdk_ngx_s.lib")
+    else()
+        target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Linux_x86_64/libnvsdk_ngx.a")
+        target_link_libraries(RayTracedGL1 PRIVATE ${CMAKE_DL_LIBS})
+        target_link_libraries(RayTracedGL1 PRIVATE libstdc++)
+    endif()
+else()
+    message(FATAL_ERROR 
+        "Can't find DLSS_SDK_PATH environment variable. "
+        "Please, provide the path to https://github.com/NVIDIA/DLSS, to configure the library")
+endif()
+
+# Vulkan
 target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 

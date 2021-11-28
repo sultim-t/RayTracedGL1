@@ -21,6 +21,7 @@
 #include "SuperResolution.h"
 
 #include "CmdLabel.h"
+#include "RenderResolutionHelper.h"
 
 #define A_CPU
 #include "Shaders/FSR/ffx_a.h"
@@ -61,16 +62,14 @@ RTGL1::SuperResolution::~SuperResolution()
 
 RTGL1::FramebufferImageIndex RTGL1::SuperResolution::Apply(
     VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-    uint32_t srcWidth, uint32_t srcHeight,
-    uint32_t upscaledWidth, uint32_t upscaledHeight,
-    float sharpness)
+    const RenderResolutionHelper &renderResolution)
 {
     CmdLabel label(cmd, "FSR Upscale");
 
 
     const int threadGroupWorkRegionDim = 16;
-    int dispatchX = ((int)upscaledWidth  + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
-    int dispatchY = ((int)upscaledHeight + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
+    int dispatchX = ((int)renderResolution.UpscaledWidth()  + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
+    int dispatchY = ((int)renderResolution.UpscaledHeight() + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
 
 
     // bind desc sets
@@ -91,9 +90,9 @@ RTGL1::FramebufferImageIndex RTGL1::SuperResolution::Apply(
         FsrPush easuCon;
         FsrEasuCon(
             easuCon.con0, easuCon.con1, easuCon.con2, easuCon.con3,
-            (AF1)srcWidth,      (AF1)srcHeight,         // viewport size
-            (AF1)srcWidth,      (AF1)srcHeight,         // image resource size
-            (AF1)upscaledWidth, (AF1)upscaledHeight     // upscaled size
+            (AF1)renderResolution.Width(),         (AF1)renderResolution.Height(),          // viewport size
+            (AF1)renderResolution.Width(),         (AF1)renderResolution.Height(),          // image resource size
+            (AF1)renderResolution.UpscaledWidth(), (AF1)renderResolution.UpscaledHeight()   // upscaled size
         );
 
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
@@ -111,7 +110,7 @@ RTGL1::FramebufferImageIndex RTGL1::SuperResolution::Apply(
         FsrPush rcasCon;
         FsrRcasCon(
             rcasCon.con0,
-            (AF1)sharpness
+            (AF1)renderResolution.GetAmdFsrSharpness()
         );
 
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,

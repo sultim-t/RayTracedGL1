@@ -598,7 +598,6 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
         // submit frame to be rendered
         RgDrawFrameInfo frameInfo = {};
-        frameInfo.renderSize = { (uint32_t)pWindow->width, (uint32_t)pWindow->height };
 
         auto tm = std::chrono::system_clock::now() - timeStart;
         frameInfo.currentTime = std::chrono::duration_cast<std::chrono::milliseconds>(tm).count() / 1000.0f;

@@ -27,6 +27,10 @@
 namespace RTGL1
 {
 
+
+class RenderResolutionHelper;
+
+
 class Sharpening final : public IShaderDependency
 {
 public:
@@ -41,9 +45,10 @@ public:
     Sharpening & operator=(const Sharpening &other) = delete;
     Sharpening & operator=(Sharpening &&other) noexcept = delete;
 
+    // sharpness: 0 - none, 1 - full
     FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-        uint32_t width, uint32_t height, float sharpness, bool afterSuperUpscalePass);
+        const RenderResolutionHelper &renderResolution, bool wasUpscalePass);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 

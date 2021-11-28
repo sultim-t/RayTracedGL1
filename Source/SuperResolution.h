@@ -27,6 +27,10 @@
 namespace RTGL1
 {
 
+
+class RenderResolutionHelper;
+
+
 class SuperResolution final : public IShaderDependency
 {
 public:
@@ -43,9 +47,7 @@ public:
 
     FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-        uint32_t srcWidth, uint32_t srcHeight,
-        uint32_t upscaledWidth, uint32_t upscaledHeight,
-        float sharpness);
+        const RenderResolutionHelper &renderResolution);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
