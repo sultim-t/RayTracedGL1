@@ -71,7 +71,7 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
 
     NGSDK_NGX_LoggingInfo debugLogInfo = {};
     debugLogInfo.LoggingCallback = &PrintCallback;
-    debugLogInfo.MinimumLoggingLevel = NVSDK_NGX_Logging_Level::NVSDK_NGX_LOGGING_LEVEL_VERBOSE;
+    debugLogInfo.MinimumLoggingLevel = NVSDK_NGX_Logging_Level::NVSDK_NGX_LOGGING_LEVEL_ON;
 
     NGSDK_NGX_LoggingInfo releaseLogInfo = {};
 
@@ -80,10 +80,10 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
     commonInfo.LoggingInfo = enableDebug ? debugLogInfo : releaseLogInfo;
 
     r = NVSDK_NGX_VULKAN_Init_with_ProjectID(
-        "",
+        "459d6734-62a6-4d47-927a-bedcdb0445c5",
         NVSDK_NGX_EngineType::NVSDK_NGX_ENGINE_TYPE_CUSTOM, RG_RTGL_VERSION_API, L"DLSSTemp/", instance, physDevice, device, &commonInfo);
 
-    if (NVSDK_NGX_SUCCEED(r))
+    if (NVSDK_NGX_FAILED(r))
     {
         return false;
     }
@@ -102,6 +102,11 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
 
 bool RTGL1::DLSS::CheckSupport() const
 {
+    if (!isInitialized || pParams == nullptr)
+    {
+        return false;
+    }
+
     int needsUpdatedDriver = 0;
     unsigned int minDriverVersionMajor = 0;
     unsigned int minDriverVersionMinor = 0;
@@ -121,28 +126,26 @@ bool RTGL1::DLSS::CheckSupport() const
         else
         {
             // LOG INFO("NIDIA DLSS Minimum driver version was reported as: minDriverVersionMajor.minDriverVersionMinor");
-            assert(0);
         }
     }
     else
     {
         // LOG INFO("NVIDIA DLSS Minimum driver version was not reported.");
-        assert(0);
     }
 
 
     int isDlssSupported = 0;
-    int featureInitResult;
+    NVSDK_NGX_Result featureInitResult;
     NVSDK_NGX_Result r;
     
     r = pParams->Get(NVSDK_NGX_Parameter_SuperSampling_Available, &isDlssSupported);
     if (NVSDK_NGX_FAILED(r) || !isDlssSupported)
     {
         // more details about what failed (per feature init result)
-        r = NVSDK_NGX_Parameter_GetI(pParams, NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, &featureInitResult);
+        r = NVSDK_NGX_Parameter_GetI(pParams, NVSDK_NGX_Parameter_SuperSampling_FeatureInitResult, (int *)&featureInitResult);
         if (NVSDK_NGX_FAILED(r))
         {
-            // LOG ERROR("NVIDIA DLSS not available on this hardward/platform., FeatureInitResult = 0x%08x, info: %ls", featureInitResult, GetNGXResultAsString(featureInitResult));
+            // LOG INFO("NVIDIA DLSS not available on this hardward/platform., FeatureInitResult = 0x%08x, info: %ls\n", featureInitResult, GetNGXResultAsString(featureInitResult));
         }
 
         return false;
@@ -357,6 +360,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     {
        // LOG ERROR("Failed to NVSDK_NGX_VULKAN_EvaluateFeature for DLSS, code = 0x%08x, info: %ls", r, GetNGXResultAsString(r));
     }
+
+    return outputImage;
 }
 
 void RTGL1::DLSS::GetOptimalSettings(uint32_t userWidth, uint32_t userHeight, RgRenderResolutionMode mode,
