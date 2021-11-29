@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "Framebuffers.h"
 
 struct NVSDK_NGX_Parameter;
@@ -54,6 +56,9 @@ public:
 
     bool IsDlssAvailable() const;
 
+    static std::vector<const char *> GetDlssVulkanInstanceExtensions();
+    static std::vector<const char *> GetDlssVulkanDeviceExtensions();
+
 private:
     bool TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, bool enableDebug);
     bool CheckSupport() const;
@@ -61,6 +66,8 @@ private:
     void Destroy();
 
     bool AreSameDlssFeatureValues(const RenderResolutionHelper &renderResolution) const;
+    void SaveDlssFeatureValues(const RenderResolutionHelper &renderResolution);
+
     bool ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutionHelper &renderResolution);
 
 private:

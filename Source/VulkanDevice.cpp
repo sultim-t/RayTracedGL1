@@ -1156,6 +1156,11 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
         extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
     }
 
+    for (const char *n : DLSS::GetDlssVulkanInstanceExtensions())
+    {
+        extensions.push_back(n);
+    }
+
 
     VkApplicationInfo appInfo = {};
     appInfo.apiVersion = VK_API_VERSION_1_2;
@@ -1281,6 +1286,7 @@ void VulkanDevice::CreateDevice()
     physicalDeviceFeatures2.pNext = &asFeatures;
     physicalDeviceFeatures2.features = features;
 
+
     std::vector<const char *> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
         VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
@@ -1290,6 +1296,12 @@ void VulkanDevice::CreateDevice()
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
     };
+
+    for (const char *n : DLSS::GetDlssVulkanDeviceExtensions())
+    {
+        deviceExtensions.push_back(n);
+    }
+
 
     std::vector<VkDeviceQueueCreateInfo> queueCreateInfos;
     queues->GetDeviceQueueCreateInfos(queueCreateInfos);

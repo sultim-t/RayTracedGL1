@@ -245,6 +245,14 @@ bool RTGL1::DLSS::AreSameDlssFeatureValues(const RenderResolutionHelper &renderR
         prevDlssFeatureValues.upscaledHeight == renderResolution.UpscaledHeight();
 }
 
+void RTGL1::DLSS::SaveDlssFeatureValues(const RenderResolutionHelper &renderResolution)
+{
+    prevDlssFeatureValues.renderWidth == renderResolution.Width();
+    prevDlssFeatureValues.renderHeight == renderResolution.Height();
+    prevDlssFeatureValues.upscaledWidth == renderResolution.UpscaledWidth();
+    prevDlssFeatureValues.upscaledHeight == renderResolution.UpscaledHeight();
+}
+
 bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutionHelper &renderResolution)
 {
     if (!isInitialized || pParams == nullptr)
@@ -257,6 +265,7 @@ bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutio
     {
         return true;
     }
+    SaveDlssFeatureValues(renderResolution);
 
 
     if (pDlssFeature != nullptr)
@@ -404,4 +413,44 @@ void RTGL1::DLSS::GetOptimalSettings(uint32_t userWidth, uint32_t userHeight, Rg
     {
         // LOG INFO("Querying Optimal Settings failed! code = 0x%08x, info: %ls", r, GetNGXResultAsString(r));
     }
+}
+
+std::vector<const char *> RTGL1::DLSS::GetDlssVulkanInstanceExtensions()
+{
+    uint32_t instanceExtCount;
+    const char **ppInstanceExts;
+    uint32_t deviceExtCount;
+    const char **ppDeviceExts;
+
+    NVSDK_NGX_Result r = NVSDK_NGX_VULKAN_RequiredExtensions(&instanceExtCount, &ppInstanceExts, &deviceExtCount, &ppDeviceExts);
+    assert(NVSDK_NGX_SUCCEED(r));
+
+    std::vector<const char *> v;
+
+    for (uint32_t i = 0; i < instanceExtCount; i++)
+    {
+        v.push_back(ppInstanceExts[i]);
+    }
+
+    return v;
+}
+
+std::vector<const char *> RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
+{
+    uint32_t instanceExtCount;
+    const char **ppInstanceExts;
+    uint32_t deviceExtCount;
+    const char **ppDeviceExts;
+
+    NVSDK_NGX_Result r = NVSDK_NGX_VULKAN_RequiredExtensions(&instanceExtCount, &ppInstanceExts, &deviceExtCount, &ppDeviceExts);
+    assert(NVSDK_NGX_SUCCEED(r));
+
+    std::vector<const char *> v;
+
+    for (uint32_t i = 0; i < deviceExtCount; i++)
+    {
+        v.push_back(ppDeviceExts[i]);
+    }
+
+    return v;
 }
