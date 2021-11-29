@@ -247,10 +247,10 @@ bool RTGL1::DLSS::AreSameDlssFeatureValues(const RenderResolutionHelper &renderR
 
 void RTGL1::DLSS::SaveDlssFeatureValues(const RenderResolutionHelper &renderResolution)
 {
-    prevDlssFeatureValues.renderWidth == renderResolution.Width();
-    prevDlssFeatureValues.renderHeight == renderResolution.Height();
-    prevDlssFeatureValues.upscaledWidth == renderResolution.UpscaledWidth();
-    prevDlssFeatureValues.upscaledHeight == renderResolution.UpscaledHeight();
+    prevDlssFeatureValues.renderWidth = renderResolution.Width();
+    prevDlssFeatureValues.renderHeight = renderResolution.Height();
+    prevDlssFeatureValues.upscaledWidth = renderResolution.UpscaledWidth();
+    prevDlssFeatureValues.upscaledHeight = renderResolution.UpscaledHeight();
 }
 
 bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutionHelper &renderResolution)
@@ -377,6 +377,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     evalParams.InMVScaleY = 1.0f;
     evalParams.InColorSubrectBase = sourceOffset;
     evalParams.InDepthSubrectBase = sourceOffset;
+    evalParams.InTranslucencySubrectBase = sourceOffset;
     evalParams.InMVSubrectBase = sourceOffset;
     evalParams.InRenderSubrectDimensions = sourceSize;
 
@@ -449,6 +450,11 @@ std::vector<const char *> RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
 
     for (uint32_t i = 0; i < deviceExtCount; i++)
     {
+        if (strcmp(ppDeviceExts[i], VK_EXT_BUFFER_DEVICE_ADDRESS_EXTENSION_NAME) == 0)
+        {
+            continue;
+        }
+
         v.push_back(ppDeviceExts[i]);
     }
 

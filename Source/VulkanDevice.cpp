@@ -1081,6 +1081,14 @@ VKAPI_ATTR VkBool32 VKAPI_CALL DebugMessengerCallback(
         return VK_FALSE;
     }
 
+
+    // DLSS: ignore error 'VUID-VkCuLaunchInfoNVX-paramCount-arraylength' - 'paramCount must be greater than 0'
+    if (pCallbackData->messageIdNumber == 2044605652)
+    {
+        return VK_FALSE;
+    }
+
+
     const char *msg;
 
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT)
