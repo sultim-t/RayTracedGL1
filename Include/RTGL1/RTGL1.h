@@ -85,7 +85,7 @@ typedef enum RgResult
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
     RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
     RG_WRONG_MATERIAL_PARAMETER,
-    RG_WRONG_FUNCTION_CALL,
+    RG_WRONG_FUNCTION_CALL
 } RgResult;
 
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);

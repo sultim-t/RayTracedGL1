@@ -20,12 +20,16 @@
 
 #include "DLSS.h"
 
-#include <nvsdk_ngx_helpers_vk.h>
-#include <nvsdk_ngx_helpers.h>
-
 #include "RTGL1/RTGL1.h"
 #include "CmdLabel.h"
 #include "RenderResolutionHelper.h"
+
+
+#ifdef RG_USE_NVIDIA_DLSS
+
+
+#include <nvsdk_ngx_helpers_vk.h>
+#include <nvsdk_ngx_helpers.h>
 
 #if __linux__
 #include <unistd.h>         
@@ -460,3 +464,34 @@ std::vector<const char *> RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
 
     return v;
 }
+
+
+#else 
+
+
+RTGL1::DLSS::DLSS(VkInstance _instance, VkDevice _device, VkPhysicalDevice _physDevice, bool _enableDebug) : device(_device),isInitialized(false), pParams(nullptr), pDlssFeature(nullptr), prevDlssFeatureValues{} { }
+RTGL1::DLSS::~DLSS() { }
+
+RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers, const RenderResolutionHelper &renderResolution, RgFloat2D jitterOffset)
+{ throw RgException(RG_WRONG_ARGUMENT, "RTGL1 was built without DLSS support. Enable RG_WITH_NVIDIA_DLSS CMake option."); }
+
+void RTGL1::DLSS::GetOptimalSettings(uint32_t userWidth, uint32_t userHeight, RgRenderResolutionMode mode, uint32_t *pOutWidth, uint32_t *pOutHeight, float *pOutSharpness) const
+{ throw RgException(RG_WRONG_ARGUMENT, "RTGL1 was built without DLSS support. Enable RG_WITH_NVIDIA_DLSS CMake option."); }
+
+bool RTGL1::DLSS::IsDlssAvailable() const { return false; }
+
+std::vector<const char *> RTGL1::DLSS::GetDlssVulkanInstanceExtensions() { return {}; }
+std::vector<const char *> RTGL1::DLSS::GetDlssVulkanDeviceExtensions() { return {}; }
+
+
+// private
+bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, bool enableDebug) { return false; }
+bool RTGL1::DLSS::CheckSupport() const { return false; }
+void RTGL1::DLSS::Destroy() { }
+void RTGL1::DLSS::DestroyDlssFeature() { }
+bool RTGL1::DLSS::AreSameDlssFeatureValues(const RenderResolutionHelper &renderResolution) const { return false; }
+void RTGL1::DLSS::SaveDlssFeatureValues(const RenderResolutionHelper &renderResolution) { }
+bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutionHelper &renderResolution) { return false; }
+
+
+#endif // RG_USE_NVIDIA_DLSS

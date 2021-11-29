@@ -168,6 +168,8 @@ option(RG_WITH_SURFACE_WAYLAND  "Build with ability to create Wayland VkSurfaceK
 option(RG_WITH_SURFACE_XCB      "Build with ability to create Xcb VkSurfaceKHR"     OFF)
 option(RG_WITH_SURFACE_XLIB     "Build with ability to create Xlib VkSurfaceKHR"    OFF)
 
+option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"          ON)
+
 option(RG_WITH_STATIC_LIBS      "Build RTGL1's static library files"    ON)
 option(RG_WITH_EXAMPLES         "Add examples for the library"          OFF)
 
@@ -216,25 +218,30 @@ target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include")
 target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include" "Source/KTX/other_include" "Source/KTX/lib/basisu/zstd")
 
 # DLSS
-if (DEFINED ENV{DLSS_SDK_PATH})
-    message(STATUS "Found DLSS SDK: $ENV{DLSS_SDK_PATH}")
-    target_include_directories(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/include")
-    if (WIN32)
-        string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE )
-        if (BUILD_TYPE STREQUAL "DEBUG")
-            target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d_dbg.lib")
+if (RG_WITH_NVIDIA_DLSS)
+    message(STATUS "RG_USE_NVIDIA_DLSS enabled")
+    add_definitions(-DRG_USE_NVIDIA_DLSS)
+
+    if (DEFINED ENV{DLSS_SDK_PATH})
+        message(STATUS "Found DLSS SDK: $ENV{DLSS_SDK_PATH}")
+        target_include_directories(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/include")
+        if (WIN32)
+            string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE )
+            if (BUILD_TYPE STREQUAL "DEBUG")
+                target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d_dbg.lib")
+            else()
+                target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d.lib")
+            endif()
         else()
-            target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d.lib")
+            target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Linux_x86_64/libnvsdk_ngx.a")
+            target_link_libraries(RayTracedGL1 PRIVATE ${CMAKE_DL_LIBS})
+            target_link_libraries(RayTracedGL1 PRIVATE libstdc++)
         endif()
     else()
-        target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Linux_x86_64/libnvsdk_ngx.a")
-        target_link_libraries(RayTracedGL1 PRIVATE ${CMAKE_DL_LIBS})
-        target_link_libraries(RayTracedGL1 PRIVATE libstdc++)
+        message(FATAL_ERROR 
+            "Can't find DLSS_SDK_PATH environment variable. "
+            "Please, provide the path to https://github.com/NVIDIA/DLSS, to configure the library")
     endif()
-else()
-    message(FATAL_ERROR 
-        "Can't find DLSS_SDK_PATH environment variable. "
-        "Please, provide the path to https://github.com/NVIDIA/DLSS, to configure the library")
 endif()
 
 # Vulkan
