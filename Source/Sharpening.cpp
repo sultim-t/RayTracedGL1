@@ -60,8 +60,12 @@ RTGL1::Sharpening::~Sharpening()
 
 RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-    const RenderResolutionHelper &renderResolution, bool wasUpscalePass)
+    const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
 {
+    assert(inputImage == FB_IMAGE_INDEX_UPSCALED_PONG || inputImage == FB_IMAGE_INDEX_FINAL);
+    const bool wasUpscalePass = inputImage == FB_IMAGE_INDEX_UPSCALED_PONG;
+
+
     CmdLabel label(cmd, "Sharpening");
 
     
@@ -96,14 +100,14 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                            0, sizeof(casPush), &casPush);
 
-        framebuffers->BarrierOne(cmd, frameIndex, wasUpscalePass ? FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_OUTPUT :
+        framebuffers->BarrierOne(cmd, frameIndex, wasUpscalePass ? FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PONG :
                                                                    FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, wasUpscalePass ? pipelineFromUpscaled : pipelineFromFinal);
         vkCmdDispatch(cmd, dispatchX, dispatchY, 1);
     }
 
-    return FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_INTERMEDIARY;
+    return FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PING;
 }
 
 void RTGL1::Sharpening::OnShaderReload(const ShaderManager *shaderManager)

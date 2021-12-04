@@ -34,27 +34,29 @@ layout(push_constant) uniform CasPush_BT
 } push;
 
     // CAS impl
-    #define OUTPUT_IMAGE framebufUpscaledIntermediary
-
     #define A_GPU 1
     #define A_GLSL 1
     #define A_HALF 1
     #define CAS_PACKED_ONLY 1
     #include "CAS/ffx_a.h"
 
-    AF3 loadInput(ASU2 p) 
+    // CAS should operate in linear space 
+    AF3 loadInput(const ASU2 p) 
     {
         if (framebufFinalIsInput != 0)
         {
-            return texelFetch(         framebufFinal_Sampler, p, 0).rgb; 
+            return texelFetch(framebufFinal_Sampler, p, 0).rgb; 
         }
-        else
-        {
-            return texelFetch(framebufUpscaledOutput_Sampler, p, 0).rgb; 
-        }
+        
+        return texelFetch(framebufUpscaledPong_Sampler, p, 0).rgb;   
     }
 
-    AH3 CasLoadH(ASW2 p) 
+    void storeOutput(const ASU2 p, const AF4 color)
+    {
+        imageStore(framebufUpscaledPing, p, color);
+    }
+
+    AH3 CasLoadH(const ASW2 p) 
     {
         return AH3(loadInput(ASU2(p)));
     }
@@ -71,14 +73,14 @@ void applyCas()
 
     CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
     CasDepack(c0, c1, cR, cG, cB);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy)             , AF4(c0));
-    imageStore(OUTPUT_IMAGE, ASU2(gxy) + ASU2(8, 0), AF4(c1));
+    storeOutput(ASU2(gxy)             , AF4(c0));
+    storeOutput(ASU2(gxy) + ASU2(8, 0), AF4(c1));
 
     gxy.y += 8u;
     CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
     CasDepack(c0, c1, cR, cG, cB);
-    imageStore(OUTPUT_IMAGE, ASU2(gxy)             , AF4(c0));
-    imageStore(OUTPUT_IMAGE, ASU2(gxy) + ASU2(8, 0), AF4(c1));
+    storeOutput(ASU2(gxy)             , AF4(c0));
+    storeOutput(ASU2(gxy) + ASU2(8, 0), AF4(c1));
 }
 
 AF4 sharp(const ASU2 p)
@@ -98,16 +100,16 @@ AF4 sharp(const ASU2 p)
 void applySimpleSharp()
 {
     ASU2 gxy = ASU2(ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u));
-    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+    storeOutput(gxy, sharp(gxy));
 
     gxy.x += 8;
-    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+    storeOutput(gxy, sharp(gxy));
 
     gxy.y += 8;
-    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+    storeOutput(gxy, sharp(gxy));
 
     gxy.x -= 8;
-    imageStore(OUTPUT_IMAGE, gxy, sharp(gxy));
+    storeOutput(gxy, sharp(gxy));
 }
 
 void main()

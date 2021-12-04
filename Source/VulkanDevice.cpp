@@ -709,7 +709,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    FramebufferImageIndex imageToPresent = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+    FramebufferImageIndex currentResultImage = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
     bool wasUpscale = false;
 
     // upscale finalized image
@@ -717,27 +717,27 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         RgFloat2D jitter = { 0,0 };
 
-        imageToPresent = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
+        currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
 
         wasUpscale = true;
     }
     else if (renderResolution.IsAmdFsrEnabled())
     {
-        imageToPresent = amdFsr->Apply(cmd, frameIndex, framebuffers, renderResolution);
+        currentResultImage = amdFsr->Apply(cmd, frameIndex, framebuffers, renderResolution);
         wasUpscale = true;
     }
 
     // sharpen
     if (renderResolution.IsSharpeningEnabled())
     {
-        imageToPresent = sharpening->Apply(cmd, frameIndex, framebuffers, renderResolution, wasUpscale);
+        currentResultImage = sharpening->Apply(cmd, frameIndex, framebuffers, renderResolution, currentResultImage);
     }
 
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain, 
-        imageToPresent,
+        currentResultImage,
         wasUpscale ? renderResolution.UpscaledWidth()  : renderResolution.Width(),
         wasUpscale ? renderResolution.UpscaledHeight() : renderResolution.Height(),
         VK_IMAGE_LAYOUT_GENERAL);

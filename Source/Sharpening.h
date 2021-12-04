@@ -48,7 +48,7 @@ public:
     // sharpness: 0 - none, 1 - full
     FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-        const RenderResolutionHelper &renderResolution, bool wasUpscalePass);
+        const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 

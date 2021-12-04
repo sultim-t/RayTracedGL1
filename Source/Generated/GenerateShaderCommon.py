@@ -658,8 +658,8 @@ FRAMEBUFFERS = {
     # bilinear for bloom
     "PreFinal"                          : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
-    "UpscaledIntermediary"              : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE),
-    "UpscaledOutput"                    : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER_DST), # dst for DLSS
+    "UpscaledPing"                      : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE),
+    "UpscaledPong"                      : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER_DST), # dst for DLSS
 
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),

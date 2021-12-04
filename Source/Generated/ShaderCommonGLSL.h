@@ -291,8 +291,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 19, rgba16f) uniform image2D frame
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 20, rgba16f) uniform image2D framebufThroughput;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 21, r11f_g11f_b10f) uniform image2D framebufPreFinal;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 22, r11f_g11f_b10f) uniform image2D framebufFinal;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 23, rgba16f) uniform image2D framebufUpscaledIntermediary;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 24, rgba16f) uniform image2D framebufUpscaledOutput;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 23, rgba8) uniform image2D framebufUpscaledPing;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 24, rgba8) uniform image2D framebufUpscaledPong;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, rgba16f) uniform image2D framebufMotion;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 26, rg16f) uniform image2D framebufMotionDlss;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 27, r11f_g11f_b10f) uniform image2D framebufAccumHistoryLength;
@@ -357,8 +357,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 83) uniform sampler2D framebufView
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 84) uniform sampler2D framebufThroughput_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 85) uniform sampler2D framebufPreFinal_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 86) uniform sampler2D framebufFinal_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 87) uniform sampler2D framebufUpscaledIntermediary_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 88) uniform sampler2D framebufUpscaledOutput_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 87) uniform sampler2D framebufUpscaledPing_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 88) uniform sampler2D framebufUpscaledPong_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 89) uniform sampler2D framebufMotion_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 90) uniform sampler2D framebufMotionDlss_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 91) uniform sampler2D framebufAccumHistoryLength_Sampler;

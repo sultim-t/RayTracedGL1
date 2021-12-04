@@ -116,13 +116,13 @@ RTGL1::FramebufferImageIndex RTGL1::SuperResolution::Apply(
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                            0, sizeof(rcasCon), &rcasCon);
 
-        framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_INTERMEDIARY);
+        framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PING);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineRcas);
         vkCmdDispatch(cmd, dispatchX, dispatchY, 1);
     }
 
-    return FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_OUTPUT;
+    return FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PONG;
 }
 
 void RTGL1::SuperResolution::OnShaderReload(const ShaderManager *shaderManager)

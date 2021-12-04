@@ -346,7 +346,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
 
 
     typedef FramebufferImageIndex FI;
-    const FI outputImage = FI::FB_IMAGE_INDEX_UPSCALED_OUTPUT;
+    const FI outputImage = FI::FB_IMAGE_INDEX_UPSCALED_PONG;
 
 
     CmdLabel label(cmd, "DLSS");

@@ -35,7 +35,7 @@ layout(push_constant) uniform FsrPush_BT
 
     // FSR impl 
     #define INPUT_TEXTURE framebufFinal_Sampler
-    #define OUTPUT_IMAGE framebufUpscaledIntermediary
+    #define OUTPUT_IMAGE framebufUpscaledPing
 
     #define A_GPU 1
     #define A_GLSL 1
@@ -43,6 +43,7 @@ layout(push_constant) uniform FsrPush_BT
     #include "FSR/ffx_a.h"
 
     #define FSR_EASU_H 1
+    // FSR should operate in perceptual space
     AH4 FsrEasuRH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p + AF2(0.5, -0.5) * AF2_AU2(push.con1.zw), 0)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }
     AH4 FsrEasuGH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p + AF2(0.5, -0.5) * AF2_AU2(push.con1.zw), 1)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }
     AH4 FsrEasuBH(AF2 p) { AH4 res = AH4(textureGather(INPUT_TEXTURE, p + AF2(0.5, -0.5) * AF2_AU2(push.con1.zw), 2)); return pow(res, AH4(1.0 / FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)); }

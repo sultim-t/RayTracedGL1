@@ -34,8 +34,8 @@ layout(push_constant) uniform FsrPush_BT
 } push;
 
     // FSR impl
-    #define INPUT_TEXTURE framebufUpscaledIntermediary_Sampler
-    #define OUTPUT_IMAGE framebufUpscaledOutput
+    #define INPUT_TEXTURE framebufUpscaledPing_Sampler
+    #define OUTPUT_IMAGE framebufUpscaledPong
 
     #define A_GPU 1
     #define A_GLSL 1
@@ -50,6 +50,7 @@ layout(push_constant) uniform FsrPush_BT
 
 void storeOutput(const AH3 c, const AU2 gxy)
 {
+    // save back in linear space
     imageStore(OUTPUT_IMAGE, ASU2(gxy), AH4(pow(c, AH3(FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE)), 1));
 }
 
