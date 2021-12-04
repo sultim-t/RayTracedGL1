@@ -86,8 +86,5 @@ void main()
         float adaptedLuminance = lastFrameLuminance + (weightedAvgLuminance - lastFrameLuminance) * t;
 
         tonemapping.avgLuminance = adaptedLuminance;
-
-        // for DLSS
-        imageStore(framebufExposure, ivec2(0), vec4(adaptedLuminance));
     }
 }

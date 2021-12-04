@@ -290,7 +290,7 @@ bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutio
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
     // motion vectors contain jitter
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
-    dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
+    dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_DoSharpening;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
@@ -364,7 +364,6 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     NVSDK_NGX_Resource_VK resolvedColorResource     = ToNGXResource(framebuffers, frameIndex, outputImage,                  targetSize, true);
     NVSDK_NGX_Resource_VK motionVectorsResource     = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_MOTION,    sourceSize);
     NVSDK_NGX_Resource_VK depthResource             = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_DEPTH,     sourceSize);
-    NVSDK_NGX_Resource_VK exposureResource          = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_EXPOSURE,  { 1, 1 });
 
 
     NVSDK_NGX_VK_DLSS_Eval_Params evalParams = {};
@@ -372,7 +371,6 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     evalParams.Feature.pInOutput = &resolvedColorResource;
     evalParams.pInDepth = &depthResource;
     evalParams.pInMotionVectors = &motionVectorsResource;
-    evalParams.pInExposureTexture = &exposureResource;
     evalParams.InJitterOffsetX = jitterOffset.data[0];
     evalParams.InJitterOffsetY = jitterOffset.data[1];
     evalParams.Feature.InSharpness = renderResolution.GetNvDlssSharpness();
