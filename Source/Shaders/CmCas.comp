@@ -45,11 +45,11 @@ layout(push_constant) uniform CasPush_BT
     {    
         switch (sourceFramebufIndex)
         {
-            case FB_IMAGE_INDEX_FINAL:         texelFetch(framebufFinal_Sampler, p, 0).rgb; 
-            case FB_IMAGE_INDEX_UPSCALED_PONG: texelFetch(framebufUpscaledPong_Sampler, p, 0).rgb;   
+            case FB_IMAGE_INDEX_FINAL:         return texelFetch(framebufFinal_Sampler, p, 0).rgb;
+            case FB_IMAGE_INDEX_UPSCALED_PONG: return texelFetch(framebufUpscaledPong_Sampler, p, 0).rgb;
         }
 
-        return AF3(0);
+        return AF3(0.1);
     }
 
     void storeOutput(const ASU2 p, const AF4 color)

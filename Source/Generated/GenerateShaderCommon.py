@@ -653,6 +653,7 @@ FRAMEBUFFERS = {
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredDirect"                  : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredSpecular"                : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredIndirectSH_R"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
@@ -668,7 +669,7 @@ FRAMEBUFFERS = {
     "UpscaledPing"                      : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE),
     "UpscaledPong"                      : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER_DST), # dst for DLSS
 
-    "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "DepthDlss"                         : (TYPE_FLOAT32,    COMPONENT_R,   0),
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),
 
     "AccumHistoryLength"                : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),

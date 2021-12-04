@@ -105,13 +105,14 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                            0, sizeof(casPush), &casPush);
 
-        framebuffers->BarrierOne(cmd, frameIndex, wasUpscalePass ? FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PONG :
+        framebuffers->BarrierOne(cmd, frameIndex, wasUpscalePass ? SOURCE_UPSCALED_FRAMEBUF :
                                                                    FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, wasUpscalePass ? pipelineFromUpscaled : pipelineFromFinal);
         vkCmdDispatch(cmd, dispatchX, dispatchY, 1);
     }
 
+    // the result is always saved to this framebuf
     return FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PING;
 }
 
@@ -181,7 +182,7 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
         VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineFromUpscaled);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, pipelineFromUpscaled, VK_OBJECT_TYPE_PIPELINE, "CAS after FSR pipeline");
+        SET_DEBUG_NAME(device, pipelineFromUpscaled, VK_OBJECT_TYPE_PIPELINE, "CAS after upscale pipeline");
     }
 }
 

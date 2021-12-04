@@ -54,7 +54,7 @@ public:
         const std::shared_ptr<const GlobalUniform> &uniform, 
         bool wasNoRayTracing);
 
-    void Apply(
+    RTGL1::FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const RenderResolutionHelper &renderResolution, 

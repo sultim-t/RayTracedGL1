@@ -140,8 +140,8 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
 }
 
-void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform,
-                         const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
+RTGL1::FramebufferImageIndex RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform,
+                                                 const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
 {
     CmdLabel label(cmd, "Bloom apply");
 
@@ -171,9 +171,14 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
                             0, nullptr);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, applyPipelines[inputImage]);
-
+    
+    framebuffers->BarrierOne(cmd, frameIndex, inputImage);
     framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_RESULT);
+
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+
+
+    return inputImage;
 }
 
 void RTGL1::Bloom::OnShaderReload(const ShaderManager * shaderManager)

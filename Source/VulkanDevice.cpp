@@ -739,11 +739,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         currentResultImage = sharpening->Apply(cmd, frameIndex, framebuffers, renderResolution, currentResultImage);
     }
 
-
     // apply prepared bloom
     if (enableBloom)
     {
-        bloom->Apply(cmd, frameIndex, uniform, renderResolution, currentResultImage);
+        currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution, currentResultImage);
     }
 
 

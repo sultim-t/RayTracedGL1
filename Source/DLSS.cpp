@@ -341,7 +341,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
 
     if (!IsDlssAvailable())
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Nvidia DLSS is not supported. Check availability before usage.");
+        throw RgException(RG_WRONG_ARGUMENT, "Nvidia DLSS is not supported (or DLSS dynamic library files are not found). Check availability before usage.");
     }
 
 
@@ -360,10 +360,10 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     NVSDK_NGX_Dimensions  targetSize = { renderResolution.UpscaledWidth(), renderResolution .UpscaledHeight() };
 
 
-    NVSDK_NGX_Resource_VK unresolvedColorResource   = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_FINAL,     sourceSize);
-    NVSDK_NGX_Resource_VK resolvedColorResource     = ToNGXResource(framebuffers, frameIndex, outputImage,                  targetSize, true);
-    NVSDK_NGX_Resource_VK motionVectorsResource     = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_MOTION,    sourceSize);
-    NVSDK_NGX_Resource_VK depthResource             = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_DEPTH,     sourceSize);
+    NVSDK_NGX_Resource_VK unresolvedColorResource   = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_FINAL,       sourceSize);
+    NVSDK_NGX_Resource_VK resolvedColorResource     = ToNGXResource(framebuffers, frameIndex, outputImage,                    targetSize, true);
+    NVSDK_NGX_Resource_VK motionVectorsResource     = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_MOTION_DLSS, sourceSize);
+    NVSDK_NGX_Resource_VK depthResource             = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_DEPTH_DLSS,  sourceSize);
 
 
     NVSDK_NGX_VK_DLSS_Eval_Params evalParams = {};
