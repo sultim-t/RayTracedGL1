@@ -23,6 +23,7 @@
 #include "CmdLabel.h"
 #include "RenderResolutionHelper.h"
 
+
 #define A_CPU
 #include "Shaders/CAS/ffx_a.h"
 #include "Shaders/CAS/ffx_cas.h"
@@ -32,6 +33,11 @@ struct CasPush
     uint32_t con0[4];
     uint32_t con1[4];
 };
+
+
+// modify shader sources if this var is changed
+#define SOURCE_UPSCALED_FRAMEBUF FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PONG
+
 
 RTGL1::Sharpening::Sharpening(
     VkDevice _device,
@@ -62,8 +68,8 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
     const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
 {
-    assert(inputImage == FB_IMAGE_INDEX_UPSCALED_PONG || inputImage == FB_IMAGE_INDEX_FINAL);
-    const bool wasUpscalePass = inputImage == FB_IMAGE_INDEX_UPSCALED_PONG;
+    assert(inputImage == SOURCE_UPSCALED_FRAMEBUF || inputImage == FB_IMAGE_INDEX_FINAL);
+    const bool wasUpscalePass = inputImage != FB_IMAGE_INDEX_FINAL;
 
 
     CmdLabel label(cmd, "Sharpening");
@@ -83,11 +89,10 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     {
         framebuffers->GetDescSet(frameIndex),
     };
-    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
                             pipelineLayout,
-                            0, setCount, sets,
+                            0, std::size(sets), sets,
                             0, nullptr);
 
     {
@@ -142,7 +147,7 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
     assert(pipelineFromFinal == VK_NULL_HANDLE);
     assert(pipelineFromUpscaled == VK_NULL_HANDLE);
 
-    uint32_t framebufFinalIsInput = 0;
+    FramebufferImageIndex sourceFramebufIndex;
 
     VkSpecializationMapEntry entry = {};
     entry.constantID = 0;
@@ -153,7 +158,7 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
     specInfo.mapEntryCount = 1;
     specInfo.pMapEntries = &entry;
     specInfo.dataSize = sizeof(uint32_t);
-    specInfo.pData = &framebufFinalIsInput;
+    specInfo.pData = &sourceFramebufIndex;
 
     VkComputePipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
@@ -162,7 +167,7 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
     plInfo.stage.pSpecializationInfo = &specInfo;
 
     {
-        framebufFinalIsInput = 1;
+        sourceFramebufIndex = FB_IMAGE_INDEX_FINAL;
 
         VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineFromFinal);
         VK_CHECKERROR(r);
@@ -171,7 +176,7 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
     }
 
     {
-        framebufFinalIsInput = 0;
+        sourceFramebufIndex = SOURCE_UPSCALED_FRAMEBUF;
 
         VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineFromUpscaled);
         VK_CHECKERROR(r);

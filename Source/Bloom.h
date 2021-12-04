@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "Common.h"
 #include "ShaderManager.h"
 #include "Framebuffers.h"
@@ -27,6 +29,10 @@
 
 namespace RTGL1
 {
+
+
+class RenderResolutionHelper;
+
 
 class Bloom final : public IShaderDependency
 {
@@ -43,16 +49,24 @@ public:
     Bloom &operator=(const Bloom &other) = delete;
     Bloom &operator=(Bloom &&other) noexcept = delete;
 
-    void Apply(
+    void Prepare(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform, 
         bool wasNoRayTracing);
+
+    void Apply(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const RenderResolutionHelper &renderResolution, 
+        FramebufferImageIndex inputImage);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
     void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelines(const ShaderManager *shaderManager);
+    void CreateStepPipelines(const ShaderManager *shaderManager);
+    void CreateApplyPipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
 
 private:
@@ -64,6 +78,8 @@ private:
 
     VkPipeline downsamplePipelines[5];
     VkPipeline upsamplePipelines[5];
+    
+    std::unordered_map<FramebufferImageIndex, VkPipeline> applyPipelines;
 };
 
 }

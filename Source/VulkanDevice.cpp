@@ -377,6 +377,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         gu->renderWidth = renderResolution.Width();
         gu->renderHeight = renderResolution.Height();
+
+        gu->upscaledRenderWidth = renderResolution.UpscaledWidth();
+        gu->upscaledRenderHeight = renderResolution.UpscaledHeight();
     }
 
     {
@@ -691,9 +694,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    if (drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f))
+    bool enableBloom = drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f);
+
+    if (enableBloom)
     {
-        bloom->Apply(cmd, frameIndex, uniform, !traceRays);
+        bloom->Prepare(cmd, frameIndex, uniform, !traceRays);
     }
 
 
@@ -727,10 +732,18 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         wasUpscale = true;
     }
 
+
     // sharpen
     if (renderResolution.IsSharpeningEnabled())
     {
         currentResultImage = sharpening->Apply(cmd, frameIndex, framebuffers, renderResolution, currentResultImage);
+    }
+
+
+    // apply prepared bloom
+    if (enableBloom)
+    {
+        bloom->Apply(cmd, frameIndex, uniform, renderResolution, currentResultImage);
     }
 
 

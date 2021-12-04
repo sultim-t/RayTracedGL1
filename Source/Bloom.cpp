@@ -24,6 +24,8 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include "RenderResolutionHelper.h"
+
 
 RTGL1::Bloom::Bloom(
     VkDevice _device,
@@ -56,11 +58,8 @@ RTGL1::Bloom::~Bloom()
     DestroyPipelines();
 }
 
-void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform, bool wasNoRayTracing)
+void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform, bool wasNoRayTracing)
 {
-    typedef FramebufferImageIndex FI;
-
-
     VkMemoryBarrier2KHR memoryBarrier = {};
     memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR;
     memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
@@ -80,11 +79,10 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
         framebuffers->GetDescSet(frameIndex),
         uniform->GetDescSet(frameIndex)
     };
-    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
                             pipelineLayout,
-                            0, setCount, sets,
+                            0, std::size(sets), sets,
                             0, nullptr);
 
     uint32_t forceIsSky = wasNoRayTracing;
@@ -142,13 +140,49 @@ void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::sh
     svkCmdPipelineBarrier2KHR(cmd, &dependencyInfo);
 }
 
+void RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform,
+                         const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
+{
+    CmdLabel label(cmd, "Bloom apply");
+
+
+    assert(applyPipelines.find(inputImage) != applyPipelines.end());
+
+
+    const bool wasUpscalePass = inputImage != FB_IMAGE_INDEX_FINAL;
+
+    const uint32_t width  = wasUpscalePass ? renderResolution.UpscaledWidth() : renderResolution.Width();
+    const uint32_t height = wasUpscalePass ? renderResolution.UpscaledHeight() : renderResolution.Height();
+
+    const uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(width / (float)COMPUTE_BLOOM_APPLY_GROUP_SIZE_X));
+    const uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(height / (float)COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y));
+
+
+    // bind desc sets
+    VkDescriptorSet sets[] =
+    {
+        framebuffers->GetDescSet(frameIndex),
+        uniform->GetDescSet(frameIndex)
+    };
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            pipelineLayout,
+                            0, std::size(sets), sets,
+                            0, nullptr);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, applyPipelines[inputImage]);
+
+    framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_RESULT);
+    vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+}
+
 void RTGL1::Bloom::OnShaderReload(const ShaderManager * shaderManager)
 {
     DestroyPipelines();
     CreatePipelines(shaderManager);
 }
 
-void RTGL1::Bloom::CreatePipelineLayout(VkDescriptorSetLayout * pSetLayouts, uint32_t setLayoutCount)
+void RTGL1::Bloom::CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount)
 {
     VkPushConstantRange push = {};
     push.offset = 0;
@@ -168,7 +202,13 @@ void RTGL1::Bloom::CreatePipelineLayout(VkDescriptorSetLayout * pSetLayouts, uin
     SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Bloom pipeline layout");
 }
 
-void RTGL1::Bloom::CreatePipelines(const ShaderManager * shaderManager)
+void RTGL1::Bloom::CreatePipelines(const ShaderManager *shaderManager)
+{
+    CreateStepPipelines(shaderManager);
+    CreateApplyPipelines(shaderManager);
+}
+
+void RTGL1::Bloom::CreateStepPipelines(const ShaderManager *shaderManager)
 {
     assert(pipelineLayout != VK_NULL_HANDLE);
 
@@ -236,6 +276,56 @@ void RTGL1::Bloom::CreatePipelines(const ShaderManager * shaderManager)
     }
 }
 
+void RTGL1::Bloom::CreateApplyPipelines(const ShaderManager *shaderManager)
+{
+    for (const auto &t : applyPipelines)
+    {
+        assert(t.second == VK_NULL_HANDLE);
+    }
+
+
+    FramebufferImageIndex inputImages[] =
+    {
+        FB_IMAGE_INDEX_UPSCALED_PING,
+        FB_IMAGE_INDEX_UPSCALED_PONG,
+        FB_IMAGE_INDEX_FINAL
+    };
+
+
+    uint32_t inputImageIndex = 0;
+
+    VkSpecializationMapEntry specEntry = {};
+    specEntry.constantID = 0;
+    specEntry.offset = 0;
+    specEntry.size = sizeof(uint32_t);
+
+    VkSpecializationInfo specInfo = {};
+    specInfo.mapEntryCount = 1;
+    specInfo.pMapEntries = &specEntry;
+    specInfo.dataSize = sizeof(uint32_t);
+    specInfo.pData = &inputImageIndex;
+
+
+    VkComputePipelineCreateInfo plInfo = {};
+    plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+    plInfo.layout = pipelineLayout;
+    plInfo.stage = shaderManager->GetStageInfo("CBloomApply");
+    plInfo.stage.pSpecializationInfo = &specInfo;
+
+    for (auto i : inputImages)
+    {
+        VkPipeline &p = applyPipelines[i];
+
+        // modify specInfo.pData
+        inputImageIndex = i;
+
+        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &p);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, p, VK_OBJECT_TYPE_PIPELINE, ("Bloom apply from " + std::string(ShFramebuffers_DebugNames[i])).c_str());
+    }
+}
+
 void RTGL1::Bloom::DestroyPipelines()
 {
     for (VkPipeline &p : downsamplePipelines)
@@ -248,5 +338,11 @@ void RTGL1::Bloom::DestroyPipelines()
     {
         vkDestroyPipeline(device, p, nullptr);
         p = VK_NULL_HANDLE;
+    }
+
+    for (auto &t : applyPipelines)
+    {
+        vkDestroyPipeline(device, t.second, nullptr);
+        t.second = VK_NULL_HANDLE;
     }
 }

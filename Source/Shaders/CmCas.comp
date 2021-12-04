@@ -25,7 +25,7 @@
 
 layout(local_size_x = 64) in;
 
-layout(constant_id = 0) const uint framebufFinalIsInput = 0;
+layout(constant_id = 0) const uint sourceFramebufIndex = 0;
 
 layout(push_constant) uniform CasPush_BT
 {
@@ -42,13 +42,14 @@ layout(push_constant) uniform CasPush_BT
 
     // CAS should operate in linear space 
     AF3 loadInput(const ASU2 p) 
-    {
-        if (framebufFinalIsInput != 0)
+    {    
+        switch (sourceFramebufIndex)
         {
-            return texelFetch(framebufFinal_Sampler, p, 0).rgb; 
+            case FB_IMAGE_INDEX_FINAL:         texelFetch(framebufFinal_Sampler, p, 0).rgb; 
+            case FB_IMAGE_INDEX_UPSCALED_PONG: texelFetch(framebufUpscaledPong_Sampler, p, 0).rgb;   
         }
-        
-        return texelFetch(framebufUpscaledPong_Sampler, p, 0).rgb;   
+
+        return AF3(0);
     }
 
     void storeOutput(const ASU2 p, const AF4 color)
