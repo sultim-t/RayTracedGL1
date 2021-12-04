@@ -45,10 +45,36 @@ vec3 getRayDir(vec2 inUV)
     return rayDir.xyz;
 }
 
-vec2 getPixelUV()
+vec2 getPixelUV(const ivec2 pix)
 {
-    const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5);
+    const vec2 pixelCenter = vec2(pix) + vec2(0.5);
     return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+}
+
+vec2 getDlssMotionVector(const vec2 motionCurToPrev)
+{
+    return vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
+}
+
+vec2 getMotionForInfinitePoint(const ivec2 pix)
+{
+    // treat as a point with .w=0, i.e. at infinite distance
+    vec3 rayDir = getRayDir(getPixelUV(pix));
+
+    vec3 viewSpacePosCur   = mat3(globalUniform.view)     * rayDir;
+    vec3 viewSpacePosPrev  = mat3(globalUniform.viewPrev) * rayDir;
+
+    vec3 clipSpacePosCur   = mat3(globalUniform.projection)     * viewSpacePosCur;
+    vec3 clipSpacePosPrev  = mat3(globalUniform.projectionPrev) * viewSpacePosPrev;
+
+    // don't divide by .w
+    vec3 ndcCur            = clipSpacePosCur.xyz;
+    vec3 ndcPrev           = clipSpacePosPrev.xyz;
+
+    vec2 screenSpaceCur    = ndcCur.xy  * 0.5 + 0.5;
+    vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
+
+    return screenSpacePrev - screenSpaceCur;
 }
 
 void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC)
@@ -63,15 +89,19 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
         imageStoreAlbedoSky(                pix, texelFetchAlbedo(pix).rgb);
     }
 
+    vec2 m = getMotionForInfinitePoint(pix);
+
     imageStoreNormal(                       pix, vec3(0.0));
     imageStoreNormalGeometry(               pix, vec3(0.0));
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
     imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, firstHitDepthNDC));
-    imageStore(framebufMotion,              pix, vec4(0.0));
+    imageStore(framebufMotion,              pix, vec4(m, 0.0, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(0.0));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(firstHitDepthNDC));
+    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(m), 0.0, 0.0));
 }
 
 uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
@@ -161,8 +191,9 @@ vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone
 
 void main() 
 {
-    const ivec2 pix = getCheckerboardPix(ivec2(gl_LaunchIDEXT.xy));
-    const vec2 inUV = getPixelUV();
+    const ivec2 regularPix = ivec2(gl_LaunchIDEXT.xy);
+    const ivec2 pix = getCheckerboardPix(regularPix);
+    const vec2 inUV = getPixelUV(regularPix);
 
     const float AX = 1.0 / globalUniform.renderWidth;
     const float AY = 1.0 / globalUniform.renderHeight;
@@ -384,4 +415,6 @@ void main()
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(firstHitDepthNDC));
+    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));
 }
