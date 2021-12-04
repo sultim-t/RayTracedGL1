@@ -45,9 +45,7 @@ RTGL1::Sharpening::Sharpening(
     const std::shared_ptr<const ShaderManager> &_shaderManager)
 :
     device(_device),
-    pipelineLayout(VK_NULL_HANDLE),
-    pipelineFromFinal(VK_NULL_HANDLE),
-    pipelineFromUpscaled(VK_NULL_HANDLE)
+    pipelineLayout(VK_NULL_HANDLE)
 {
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
@@ -68,6 +66,8 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
     const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
 {
+    assert(renderResolution.IsSharpeningEnabled());
+
     assert(inputImage == SOURCE_UPSCALED_FRAMEBUF || inputImage == FB_IMAGE_INDEX_FINAL);
     const bool wasUpscalePass = inputImage != FB_IMAGE_INDEX_FINAL;
 
@@ -105,10 +105,9 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                            0, sizeof(casPush), &casPush);
 
-        framebuffers->BarrierOne(cmd, frameIndex, wasUpscalePass ? SOURCE_UPSCALED_FRAMEBUF :
-                                                                   FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+        framebuffers->BarrierOne(cmd, frameIndex, inputImage);
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, wasUpscalePass ? pipelineFromUpscaled : pipelineFromFinal);
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, *GetPipeline(renderResolution.GetSharpeningTechnique(), inputImage));
         vkCmdDispatch(cmd, dispatchX, dispatchY, 1);
     }
 
@@ -145,55 +144,91 @@ void RTGL1::Sharpening::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, 
 void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
 {
     assert(pipelineLayout != VK_NULL_HANDLE);
-    assert(pipelineFromFinal == VK_NULL_HANDLE);
-    assert(pipelineFromUpscaled == VK_NULL_HANDLE);
 
-    FramebufferImageIndex sourceFramebufIndex;
+    struct SpecData
+    {
+        FramebufferImageIndex sourceFramebufIndex;
+        uint32_t useSimpleSharp;
+    } data;
 
-    VkSpecializationMapEntry entry = {};
-    entry.constantID = 0;
-    entry.offset = 0;
-    entry.size = sizeof(uint32_t);
+    VkSpecializationMapEntry entries[2] = {};
+
+    entries[0].constantID = 0;
+    entries[0].offset = offsetof(SpecData, sourceFramebufIndex);
+    entries[0].size = sizeof(data.sourceFramebufIndex);
+
+    entries[1].constantID = 1;
+    entries[1].offset = offsetof(SpecData, useSimpleSharp);
+    entries[1].size = sizeof(data.useSimpleSharp);
 
     VkSpecializationInfo specInfo = {};
-    specInfo.mapEntryCount = 1;
-    specInfo.pMapEntries = &entry;
-    specInfo.dataSize = sizeof(uint32_t);
-    specInfo.pData = &sourceFramebufIndex;
+    specInfo.mapEntryCount = std::size(entries);
+    specInfo.pMapEntries = entries;
+    specInfo.dataSize = sizeof(data);
+    specInfo.pData = &data;
 
     VkComputePipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     plInfo.layout = pipelineLayout;
     plInfo.stage = shaderManager->GetStageInfo("CCas");
     plInfo.stage.pSpecializationInfo = &specInfo;
-
+    
+    FramebufferImageIndex sourceFramebufIndices[] =
     {
-        sourceFramebufIndex = FB_IMAGE_INDEX_FINAL;
+        SOURCE_UPSCALED_FRAMEBUF,
+        FB_IMAGE_INDEX_FINAL
+    };
 
-        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineFromFinal);
-        VK_CHECKERROR(r);
-
-        SET_DEBUG_NAME(device, pipelineFromFinal, VK_OBJECT_TYPE_PIPELINE, "CAS pipeline");
-    }
-
+    for (uint32_t useSimpleSharp = 0; useSimpleSharp <= 1; useSimpleSharp++)
     {
-        sourceFramebufIndex = SOURCE_UPSCALED_FRAMEBUF;
+        for (FramebufferImageIndex sourceFramebufIndex : sourceFramebufIndices)
+        {
+            assert(*GetPipeline(useSimpleSharp, sourceFramebufIndex) == VK_NULL_HANDLE);
 
-        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &pipelineFromUpscaled);
-        VK_CHECKERROR(r);
+            // modify specialization data
+            data.useSimpleSharp = useSimpleSharp;
+            data.sourceFramebufIndex = sourceFramebufIndex;
 
-        SET_DEBUG_NAME(device, pipelineFromUpscaled, VK_OBJECT_TYPE_PIPELINE, "CAS after upscale pipeline");
+            VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, GetPipeline(useSimpleSharp, sourceFramebufIndex));
+            VK_CHECKERROR(r);
+
+            SET_DEBUG_NAME(device, *GetPipeline(useSimpleSharp, sourceFramebufIndex), VK_OBJECT_TYPE_PIPELINE, useSimpleSharp ? "Simple sharpening" : "CAS");
+        }
     }
 }
 
 void RTGL1::Sharpening::DestroyPipelines()
 {
-    assert(pipelineFromFinal != VK_NULL_HANDLE);
-    assert(pipelineFromUpscaled != VK_NULL_HANDLE);
+    std::unordered_map<FramebufferImageIndex, VkPipeline> *pPipelineMaps[] =
+    {
+        &simpleSharpPipelines,
+        &casPipelines
+    };
 
-    vkDestroyPipeline(device, pipelineFromFinal, nullptr);
-    pipelineFromFinal = VK_NULL_HANDLE;
+    for (auto *m : pPipelineMaps)
+    {
+        for (auto &t : *m)
+        {
+            assert(t.second != VK_NULL_HANDLE);
 
-    vkDestroyPipeline(device, pipelineFromUpscaled, nullptr);
-    pipelineFromUpscaled = VK_NULL_HANDLE;
+            vkDestroyPipeline(device, t.second, nullptr);
+            t.second = VK_NULL_HANDLE;
+        }
+    }
+}
+
+VkPipeline *RTGL1::Sharpening::GetPipeline(RgRenderSharpenTechnique technique, FramebufferImageIndex inputImage)
+{
+    switch (technique)
+    {
+        case RG_RENDER_SHARPEN_TECHNIQUE_NAIVE:   return GetPipeline(true,  inputImage);
+        case RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS: return GetPipeline(false, inputImage);
+        default: assert(0); return nullptr;
+    }
+}
+
+VkPipeline *RTGL1::Sharpening::GetPipeline(bool useSimpleSharp, FramebufferImageIndex inputImage)
+{
+    auto &map = useSimpleSharp ? simpleSharpPipelines : casPipelines;
+    return &map[inputImage];
 }

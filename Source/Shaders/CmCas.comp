@@ -26,6 +26,7 @@
 layout(local_size_x = 64) in;
 
 layout(constant_id = 0) const uint sourceFramebufIndex = 0;
+layout(constant_id = 1) const uint useSimpleSharp = 0;
 
 layout(push_constant) uniform CasPush_BT
 {
@@ -115,8 +116,6 @@ void applySimpleSharp()
 
 void main()
 {
-    const uint useSimpleSharp = 1;
-
     if (useSimpleSharp != 0)
     {
         applySimpleSharp();

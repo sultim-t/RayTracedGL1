@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <unordered_map>
+
 #include "Common.h"
 #include "ShaderManager.h"
 #include "Framebuffers.h"
@@ -56,13 +58,15 @@ private:
     void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
+    VkPipeline *GetPipeline(bool useSimpleSharp, FramebufferImageIndex inputImage);
+    VkPipeline *GetPipeline(RgRenderSharpenTechnique technique, FramebufferImageIndex inputImage);
 
 private:
     VkDevice device;
 
     VkPipelineLayout pipelineLayout;
-    VkPipeline pipelineFromFinal;
-    VkPipeline pipelineFromUpscaled;
+    std::unordered_map<FramebufferImageIndex, VkPipeline> simpleSharpPipelines;
+    std::unordered_map<FramebufferImageIndex, VkPipeline> casPipelines;
 };
 
 }
