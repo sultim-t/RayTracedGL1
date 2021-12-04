@@ -310,6 +310,8 @@ CONST = {
     "COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y"   : 16,
     "COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X" : 16,
     "COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y" : 16,
+    "COMPUTE_BLOOM_APPLY_GROUP_SIZE_X"      : 16,
+    "COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y"      : 16,
     "COMPUTE_BLOOM_STEP_COUNT"              : 5,
 
     "COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X"    : 16,
@@ -495,14 +497,19 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
     (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),
     (TYPE_UINT32,       1,      "useSqrtRoughnessForIndirect",      1),
-    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+    (TYPE_FLOAT32,      1,      "upscaledRenderWidth",              1),
 
     (TYPE_FLOAT32,      4,      "worldUpVector",                    1),
 
-    #(TYPE_FLOAT32,      1,      "_pad0",                        1),
-    #(TYPE_FLOAT32,      1,      "_pad1",                        1),
-    #(TYPE_FLOAT32,      1,      "_pad2",                        1),
-    #(TYPE_FLOAT32,      1,      "_pad3",                        1),
+    (TYPE_FLOAT32,      1,      "upscaledRenderHeight",             1),
+    (TYPE_FLOAT32,      1,      "_pad1",                            1),
+    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+
+    #(TYPE_FLOAT32,      1,      "_pad0",                           1),
+    #(TYPE_FLOAT32,      1,      "_pad1",                           1),
+    #(TYPE_FLOAT32,      1,      "_pad2",                           1),
+    #(TYPE_FLOAT32,      1,      "_pad3",                           1),
 
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",       align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),
@@ -699,6 +706,7 @@ FRAMEBUFFERS = {
     "Bloom_Mip3"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_8  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Bloom_Mip4"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_16 | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Bloom_Mip5"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_32 | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
+    "Bloom_Result"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
 }
 
 
@@ -959,7 +967,15 @@ def getAllGLSLFramebufDeclarations():
     global CURRENT_FRAMEBUF_BINDING_COUNT
     CURRENT_FRAMEBUF_BINDING_COUNT = 0
     return "#ifdef " + FRAMEBUF_DESC_SET_NAME \
+        \
+        + "\n\n// framebuffer indices\n" \
+        \
+        + "\n".join(
+        "#define FB_IMAGE_INDEX_%s %d" % (s, d) for (s, d) in getAllFramebufEnumTuples()
+        ) \
+        \
         + "\n\n// framebuffers\n" \
+        \
         + "\n".join(
             getGLSLFramebufDeclaration(FRAMEBUF_PREFIX + name, baseFormat, components, flags)
             for name, (baseFormat, components, flags) in FRAMEBUFFERS.items()
@@ -996,18 +1012,22 @@ def capitalizeForEnum(s):
     return removeCoupledDuplicateChars("_".join(filter(None, re.split("([A-Z][^A-Z]*)", s))).upper())
 
 
-def getAllFramebufConstants():
+# returns (name, index) tuples for framebuf-s
+def getAllFramebufEnumTuples():
     names = []
     for name, (_, _, flags) in FRAMEBUFFERS.items():
         names.append(name)
         if flags & FRAMEBUF_FLAGS_STORE_PREV:
             names.append(name + FRAMEBUF_STORE_PREV_POSTFIX)
 
+    return [(capitalizeForEnum(names[i]), i) for i in range(len(names))]
+
+
+def getAllFramebufConstants():
     fbConst = "#define " + FRAMEBUF_SAMPLER_INVALID_BINDING + " 0xFFFFFFFF\n\n"
 
     fbEnum = "enum FramebufferImageIndex\n{\n" + "\n".join(
-        "    FB_IMAGE_INDEX_%s = %d," % (capitalizeForEnum(names[i]), i)
-        for i in range(len(names))
+        "    FB_IMAGE_INDEX_%s = %d," % (s, d) for (s, d) in getAllFramebufEnumTuples()
     ) + "\n};\n\n"
 
     fbFlags = "enum FramebufferImageFlagBits\n{\n" + "\n".join(

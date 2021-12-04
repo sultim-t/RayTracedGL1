@@ -92,6 +92,8 @@ namespace RTGL1
 #define COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y (16)
 #define COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X (16)
 #define COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y (16)
+#define COMPUTE_BLOOM_APPLY_GROUP_SIZE_X (16)
+#define COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y (16)
 #define COMPUTE_BLOOM_STEP_COUNT (5)
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X (16)
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y (16)
@@ -206,8 +208,12 @@ struct ShGlobalUniform
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
     uint32_t useSqrtRoughnessForIndirect;
-    float _pad3;
+    float upscaledRenderWidth;
     float worldUpVector[4];
+    float upscaledRenderHeight;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

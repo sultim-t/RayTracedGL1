@@ -75,6 +75,7 @@ enum FramebufferImageIndex
     FB_IMAGE_INDEX_BLOOM_MIP3 = 61,
     FB_IMAGE_INDEX_BLOOM_MIP4 = 62,
     FB_IMAGE_INDEX_BLOOM_MIP5 = 63,
+    FB_IMAGE_INDEX_BLOOM_RESULT = 64,
 };
 
 enum FramebufferImageFlagBits
