@@ -45,10 +45,12 @@ vec3 getRayDir(vec2 inUV)
     return rayDir.xyz;
 }
 
-vec2 getPixelUV(const ivec2 pix)
+vec2 getPixelUVWithJitter(const ivec2 pix)
 {
     const vec2 pixelCenter = vec2(pix) + vec2(0.5);
-    return pixelCenter / vec2(gl_LaunchSizeEXT.xy);
+    const vec2 jitter = vec2(globalUniform.jitterX, globalUniform.jitterY);
+
+    return (pixelCenter + jitter) / vec2(gl_LaunchSizeEXT.xy);
 }
 
 vec2 getDlssMotionVector(const vec2 motionCurToPrev)
@@ -59,7 +61,7 @@ vec2 getDlssMotionVector(const vec2 motionCurToPrev)
 vec2 getMotionForInfinitePoint(const ivec2 pix)
 {
     // treat as a point with .w=0, i.e. at infinite distance
-    vec3 rayDir = getRayDir(getPixelUV(pix));
+    vec3 rayDir = getRayDir(getPixelUVWithJitter(pix));
 
     vec3 viewSpacePosCur   = mat3(globalUniform.view)     * rayDir;
     vec3 viewSpacePosPrev  = mat3(globalUniform.viewPrev) * rayDir;
@@ -193,7 +195,7 @@ void main()
 {
     const ivec2 regularPix = ivec2(gl_LaunchIDEXT.xy);
     const ivec2 pix = getCheckerboardPix(regularPix);
-    const vec2 inUV = getPixelUV(regularPix);
+    const vec2 inUV = getPixelUVWithJitter(regularPix);
 
     const float AX = 1.0 / globalUniform.renderWidth;
     const float AY = 1.0 / globalUniform.renderHeight;

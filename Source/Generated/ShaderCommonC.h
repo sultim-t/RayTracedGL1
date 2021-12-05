@@ -211,8 +211,8 @@ struct ShGlobalUniform
     float upscaledRenderWidth;
     float worldUpVector[4];
     float upscaledRenderHeight;
-    float _pad1;
-    float _pad2;
+    float jitterX;
+    float jitterY;
     float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];

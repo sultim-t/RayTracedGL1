@@ -78,6 +78,7 @@ set(PrivateHeaders
     "Source/Sharpening.h"
     "Source/DLSS.h"
     "Source/RenderResolutionHelper.h"
+    "Source/HaltonSequence.h"
 )
 
 set(Sources
@@ -137,6 +138,7 @@ set(Sources
     "Source/SuperResolution.cpp"
     "Source/Sharpening.cpp"
     "Source/DLSS.cpp"
+    "Source/HaltonSequence.cpp"
 )
 
 

@@ -26,6 +26,7 @@
 #include <cmath>
 #include <stdexcept>
 
+#include "HaltonSequence.h"
 #include "Matrix.h"
 #include "RenderResolutionHelper.h"
 #include "RgException.h"
@@ -384,6 +385,19 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->upscaledRenderWidth = renderResolution.UpscaledWidth();
         gu->upscaledRenderHeight = renderResolution.UpscaledHeight();
+
+        if (renderResolution.IsNvDlssEnabled())
+        {
+            RgFloat2D jitter = HaltonSequence::GetJitter_Halton23(frameId);
+
+            gu->jitterX = jitter.data[0];
+            gu->jitterY = jitter.data[1];
+        }
+        else
+        {
+            gu->jitterX = 0.0f;
+            gu->jitterY = 0.0f;
+        }
     }
 
     {
@@ -726,9 +740,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     // upscale finalized image
     if (renderResolution.IsNvDlssEnabled())
     {
-        RgFloat2D jitter = { 0,0 };
-
-        currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
+        currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, HaltonSequence::GetJitter_Halton23(frameId));
 
         wasUpscale = true;
     }
