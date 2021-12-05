@@ -23,13 +23,15 @@
 
 using namespace RTGL1;
 
-TextureDescriptors::TextureDescriptors(VkDevice _device, uint32_t _maxTextureCount, uint32_t _bindingIndex) :
+TextureDescriptors::TextureDescriptors(VkDevice _device, std::shared_ptr<SamplerManager> _samplerManager, uint32_t _maxTextureCount, uint32_t _bindingIndex) :
     device(_device),
+    samplerManager(std::move(_samplerManager)),
     bindingIndex(_bindingIndex),
     descPool(VK_NULL_HANDLE),
     descLayout(VK_NULL_HANDLE),
     descSets{},
-    emptyTextureInfo{},
+    emptyTextureImageView(VK_NULL_HANDLE),
+    emptyTextureImageLayout(VK_IMAGE_LAYOUT_UNDEFINED),
     currentWriteCount(0)
 {
     writeImageInfos.resize(_maxTextureCount);
@@ -59,11 +61,10 @@ VkDescriptorSetLayout TextureDescriptors::GetDescSetLayout() const
     return descLayout;
 }
 
-void TextureDescriptors::SetEmptyTextureInfo(VkImageView view, VkSampler sampler)
+void TextureDescriptors::SetEmptyTextureInfo(VkImageView view)
 {
-    emptyTextureInfo.imageView = view;
-    emptyTextureInfo.sampler = sampler;
-    emptyTextureInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    emptyTextureImageView = view;
+    emptyTextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 }
 
 void TextureDescriptors::CreateDescriptors(uint32_t maxTextureCount)
@@ -115,26 +116,26 @@ void TextureDescriptors::CreateDescriptors(uint32_t maxTextureCount)
     }
 }
 
-bool TextureDescriptors::IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
+bool TextureDescriptors::IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle)
 {
     return writeCache[frameIndex][textureIndex].view == view
-        && writeCache[frameIndex][textureIndex].sampler == sampler;
+        && writeCache[frameIndex][textureIndex].samplerHandle == samplerHandle;
 }
 
-void TextureDescriptors::AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
+void TextureDescriptors::AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle)
 {
     writeCache[frameIndex][textureIndex].view = view;
-    writeCache[frameIndex][textureIndex].sampler = sampler;
+    writeCache[frameIndex][textureIndex].samplerHandle = samplerHandle;
 }
 
 void TextureDescriptors::ResetCache(uint32_t frameIndex, uint32_t textureIndex)
 {
-    writeCache[frameIndex][textureIndex] = { VK_NULL_HANDLE, VK_NULL_HANDLE };
+    writeCache[frameIndex][textureIndex] = { VK_NULL_HANDLE, SamplerManager::Handle() };
 }
 
-void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler)
+void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle, bool ignoreCache)
 {
-    assert(view != VK_NULL_HANDLE && sampler != VK_NULL_HANDLE);
+    assert(view != VK_NULL_HANDLE);
 
     if  (currentWriteCount >= writeInfos.size())
     {
@@ -143,13 +144,13 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
     }
 
     // don't update if already is set to given parameters
-    if (IsCached(frameIndex, textureIndex, view, sampler))
+    if (!ignoreCache && IsCached(frameIndex, textureIndex, view, samplerHandle))
     {
         return;
     }
 
     VkDescriptorImageInfo &imageInfo = writeImageInfos[currentWriteCount];
-    imageInfo.sampler = sampler;
+    imageInfo.sampler = samplerManager->GetSampler(samplerHandle);
     imageInfo.imageView = view;
     imageInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
 
@@ -164,17 +165,17 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
 
     currentWriteCount++;
 
-    AddToCache(frameIndex, textureIndex, view, sampler);
+    AddToCache(frameIndex, textureIndex, view, samplerHandle);
 }
 
 void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex)
 {
-    assert(emptyTextureInfo.imageView != VK_NULL_HANDLE &&
-           emptyTextureInfo.imageLayout != VK_IMAGE_LAYOUT_UNDEFINED &&
-           emptyTextureInfo.sampler != VK_NULL_HANDLE);
+    assert(emptyTextureImageView != VK_NULL_HANDLE &&
+           emptyTextureImageLayout != VK_IMAGE_LAYOUT_UNDEFINED);
 
     // try to update with empty data
-    UpdateTextureDesc(frameIndex, textureIndex, emptyTextureInfo.imageView, emptyTextureInfo.sampler);
+    UpdateTextureDesc(frameIndex, textureIndex, 
+                      emptyTextureImageView, SamplerManager::Handle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT));
 }
 
 void TextureDescriptors::FlushDescWrites()

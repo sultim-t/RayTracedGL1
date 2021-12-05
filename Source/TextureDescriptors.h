@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "Common.h"
+#include "SamplerManager.h"
 
 namespace RTGL1
 {
@@ -30,7 +31,7 @@ namespace RTGL1
 class TextureDescriptors
 {
 public:
-    explicit TextureDescriptors(VkDevice device, uint32_t maxTextureCount, uint32_t bindingIndex);
+    explicit TextureDescriptors(VkDevice device, std::shared_ptr<SamplerManager> samplerManager, uint32_t maxTextureCount, uint32_t bindingIndex);
     ~TextureDescriptors();
 
     TextureDescriptors(const TextureDescriptors &other) = delete;
@@ -38,7 +39,7 @@ public:
     TextureDescriptors &operator=(const TextureDescriptors &other) = delete;
     TextureDescriptors &operator=(TextureDescriptors &&other) noexcept = delete;
 
-    void UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
+    void UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle, bool ignoreCache = false);
     void ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex);
 
     // Must be called after a series of UpdateTextureDesc and
@@ -49,32 +50,34 @@ public:
     VkDescriptorSetLayout GetDescSetLayout() const;
 
     // Set texture info that should be used in ResetTextureDesc(..)
-    void SetEmptyTextureInfo(VkImageView view, VkSampler sampler);
+    void SetEmptyTextureInfo(VkImageView view);
 
 private:
     void CreateDescriptors(uint32_t maxTextureCount);
 
-    bool IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
-    void AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, VkSampler sampler);
+    bool IsCached(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle);
+    void AddToCache(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle);
     void ResetCache(uint32_t frameIndex, uint32_t textureIndex);
 
 private:
     struct UpdatedDescCache
     {
         VkImageView view;
-        VkSampler sampler;
+        SamplerManager::Handle samplerHandle;
     };
 
 private:
     VkDevice device;
+    std::shared_ptr<SamplerManager> samplerManager;
 
     uint32_t bindingIndex;
 
     VkDescriptorPool descPool;
     VkDescriptorSetLayout descLayout;
     VkDescriptorSet descSets[MAX_FRAMES_IN_FLIGHT];
-
-    VkDescriptorImageInfo emptyTextureInfo;
+    
+    VkImageView      emptyTextureImageView;
+    VkImageLayout    emptyTextureImageLayout;
 
     uint32_t currentWriteCount;
     std::vector<VkDescriptorImageInfo> writeImageInfos;

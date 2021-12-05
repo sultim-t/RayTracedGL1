@@ -133,14 +133,28 @@ public:
         }
     }
 
+    float GetMipLodBias(float nativeBias = 0.0f) const
+    {
+        if (!IsUpscaleEnabled())
+        {
+            return nativeBias;
+        }
+
+        // DLSS Programming Guide, Section 3.5
+        float ratio = (float)Width() / (float)UpscaledWidth();
+        return nativeBias + log2f(std::max(0.01f, ratio)) - 1.0f;
+    }
+
     uint32_t Width()            const { return renderWidth; }
     uint32_t Height()           const { return renderHeight; }
 
     uint32_t UpscaledWidth()    const { return upscaledWidth; }
     uint32_t UpscaledHeight()   const { return upscaledHeight; }
-    
+
     bool IsAmdFsrEnabled()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR; }
     bool IsNvDlssEnabled()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS; }
+    bool IsUpscaleEnabled()     const { return IsAmdFsrEnabled() || IsNvDlssEnabled(); }
+
     float GetAmdFsrSharpness()  const { return 0.0f; }          // 0.0 - max, 1.0 - min
     float GetNvDlssSharpness()  const { return dlssSharpness; } 
 

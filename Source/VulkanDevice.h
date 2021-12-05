@@ -267,7 +267,8 @@ private:
     std::shared_ptr<DLSS>                   nvDlss;
     std::shared_ptr<Sharpening>             sharpening;
 
-    std::shared_ptr<SamplerManager>         samplerManager;
+    std::shared_ptr<SamplerManager>         worldSamplerManager;
+    std::shared_ptr<SamplerManager>         genericSamplerManager;
     std::shared_ptr<BlueNoise>              blueNoise;
     std::shared_ptr<TextureManager>         textureManager;
     std::shared_ptr<CubemapManager>         cubemapManager;

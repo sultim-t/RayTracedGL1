@@ -54,7 +54,7 @@ public:
     TextureManager &operator=(TextureManager &&other) noexcept = delete;
 
     void PrepareForFrame(uint32_t frameIndex);
-    void SubmitDescriptors(uint32_t frameIndex);
+    void SubmitDescriptors(uint32_t frameIndex, bool forceUpdateAllDescriptors = false); // forceUpdateAllDescriptors=true, if mip lod bias was changed, for example
 
     uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
 
@@ -85,13 +85,13 @@ private:
 
     uint32_t PrepareStaticTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const ImageLoader::ResultInfo &info,
-        VkSampler sampler, bool useMipmaps, const char *debugName);
+        SamplerManager::Handle samplerHandle, bool useMipmaps, const char *debugName);
 
     uint32_t PrepareDynamicTexture(
         VkCommandBuffer cmd, uint32_t frameIndex, const void *data, uint32_t dataSize, const RgExtent2D &size,
-        VkSampler sampler, VkFormat format, bool generateMipmaps, const char *debugName);
+        SamplerManager::Handle samplerHandle, VkFormat format, bool generateMipmaps, const char *debugName);
 
-    uint32_t InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, VkSampler sampler);
+    uint32_t InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, SamplerManager::Handle samplerHandle);
     void DestroyTexture(const Texture &texture);
     void AddToBeDestroyed(uint32_t frameIndex, const Texture &texture);
 

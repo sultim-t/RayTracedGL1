@@ -19,23 +19,61 @@
 // SOFTWARE.
 
 #include "SamplerManager.h"
-#include "RgException.h"
+
 #include <string>
 #include <float.h>
 
+#include "RgException.h"
+
 using namespace RTGL1;
 
-SamplerManager::SamplerManager(VkDevice device)
+
+static VkFilter RgFilterToVk(RgSamplerFilter r)
 {
-    this->device = device;
+    switch (r)
+    {
+        case RG_SAMPLER_FILTER_LINEAR:  return VK_FILTER_LINEAR;
+        case RG_SAMPLER_FILTER_NEAREST: return VK_FILTER_NEAREST;
+        default: assert(0); return VK_FILTER_NEAREST;
+    }
+}
+
+static VkSamplerAddressMode RgAddressModeToVk(RgSamplerAddressMode r)
+{
+    switch (r)
+    {
+        case RG_SAMPLER_ADDRESS_MODE_REPEAT:                return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        case RG_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:       return VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT;
+        case RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:         return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+        case RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:       return VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER;
+        case RG_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:  return VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE;
+        default: assert(0); return VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    }
+}
+
+
+SamplerManager::SamplerManager(VkDevice _device, uint32_t _anisotropy) : device(_device), mipLodBias(0.0f), anisotropy(_anisotropy)
+{
+    CreateAllSamplers(anisotropy, mipLodBias);
+}
+
+SamplerManager::~SamplerManager()
+{
+    DestroyAllSamplers();
+}
+
+void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLodBias)
+{
+    assert(samplers.empty());
+    assert(_anisotropy == 0 || _anisotropy == 2 || _anisotropy == 4 || _anisotropy == 8 || _anisotropy == 16);
 
     VkSamplerCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
     info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
-    info.mipLodBias = 0;
-    info.anisotropyEnable = VK_TRUE;
-    info.maxAnisotropy = 8;
+    info.mipLodBias = _mipLodBias;
+    info.anisotropyEnable = _anisotropy > 0 ? VK_TRUE : VK_FALSE;
+    info.maxAnisotropy = _anisotropy;
     info.compareEnable = VK_FALSE;
     info.minLod = 0.0f;
     info.maxLod = FLT_MAX;
@@ -81,19 +119,21 @@ SamplerManager::SamplerManager(VkDevice device)
     }
 }
 
-SamplerManager::~SamplerManager()
+void RTGL1::SamplerManager::DestroyAllSamplers()
 {
     for (auto &p : samplers)
     {
         vkDestroySampler(device, p.second, nullptr);
     }
+
+    samplers.clear();
 }
 
 VkSampler SamplerManager::GetSampler(
     RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV) const
 {
     uint32_t index = ToIndex(filter, addressModeU, addressModeV);
-    
+
     auto f = samplers.find(index);
 
     if (f != samplers.end())
@@ -110,55 +150,66 @@ VkSampler SamplerManager::GetSampler(
     }
 }
 
+VkSampler RTGL1::SamplerManager::GetSampler(const Handle &handle) const
+{
+    assert(handle.internalIndex != 0);
+    auto f = samplers.find(handle.internalIndex);
 
-#define FILTER_LINEAR                           (0 << 0)
-#define FILTER_NEAREST                          (1 << 0)
-#define FILTER_MASK                             (1 << 0)
+    if (f == samplers.end())
+    {
+        // pHandle->internalIndex is incorrect
+        assert(0);
+        return VK_NULL_HANDLE;
+    }
 
-#define ADDRESS_MODE_U_REPEAT                   (0 << 1)
-#define ADDRESS_MODE_U_MIRRORED_REPEAT          (1 << 1)
-#define ADDRESS_MODE_U_CLAMP_TO_EDGE            (2 << 1)
-#define ADDRESS_MODE_U_CLAMP_TO_BORDER          (3 << 1)
-#define ADDRESS_MODE_U_MIRROR_CLAMP_TO_EDGE     (4 << 1)
-#define ADDRESS_MODE_U_MASK                     (7 << 1)
+    return f->second;
+}
 
-#define ADDRESS_MODE_V_REPEAT                   (0 << 4)
-#define ADDRESS_MODE_V_MIRRORED_REPEAT          (1 << 4)
-#define ADDRESS_MODE_V_CLAMP_TO_EDGE            (2 << 4)
-#define ADDRESS_MODE_V_CLAMP_TO_BORDER          (3 << 4)
-#define ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE     (4 << 4)
-#define ADDRESS_MODE_V_MASK                     (7 << 4)
+bool RTGL1::SamplerManager::TryChangeMipLodBias(float newMipLodBias)
+{
+    constexpr float delta = 0.025f;
+
+    if (std::abs(newMipLodBias - mipLodBias) < delta)
+    {
+        return false;
+    }
+
+    // full stop
+    vkDeviceWaitIdle(device);
+
+    DestroyAllSamplers();
+    CreateAllSamplers(anisotropy, newMipLodBias);
+
+    mipLodBias = newMipLodBias;
+    return true;
+}
+
+
+
+// sampler flags
+
+#define FILTER_LINEAR                           (1 << 0)
+#define FILTER_NEAREST                          (2 << 0)
+#define FILTER_MASK                             (3 << 0)
+
+#define ADDRESS_MODE_U_REPEAT                   (1 << 2)
+#define ADDRESS_MODE_U_MIRRORED_REPEAT          (2 << 2)
+#define ADDRESS_MODE_U_CLAMP_TO_EDGE            (3 << 2)
+#define ADDRESS_MODE_U_CLAMP_TO_BORDER          (4 << 2)
+#define ADDRESS_MODE_U_MIRROR_CLAMP_TO_EDGE     (5 << 2)
+#define ADDRESS_MODE_U_MASK                     (7 << 2)
+
+#define ADDRESS_MODE_V_REPEAT                   (1 << 5)
+#define ADDRESS_MODE_V_MIRRORED_REPEAT          (2 << 5)
+#define ADDRESS_MODE_V_CLAMP_TO_EDGE            (3 << 5)
+#define ADDRESS_MODE_V_CLAMP_TO_BORDER          (4 << 5)
+#define ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE     (5 << 5)
+#define ADDRESS_MODE_V_MASK                     (7 << 5)
 
 uint32_t SamplerManager::ToIndex(
     RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV)
 {
-    uint32_t index = 0;
-
-    switch (filter)
-    {
-        case RG_SAMPLER_FILTER_NEAREST: index |= FILTER_NEAREST;    break;
-        case RG_SAMPLER_FILTER_LINEAR:  index |= FILTER_LINEAR;     break;
-    }
-
-    switch (addressModeU)
-    {
-        case RG_SAMPLER_ADDRESS_MODE_REPEAT:                index |= ADDRESS_MODE_U_REPEAT;                 break;
-        case RG_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:       index |= ADDRESS_MODE_U_MIRRORED_REPEAT;        break;
-        case RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:         index |= ADDRESS_MODE_U_CLAMP_TO_EDGE;          break;
-        case RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:       index |= ADDRESS_MODE_U_CLAMP_TO_BORDER;        break;
-        case RG_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:  index |= ADDRESS_MODE_U_MIRROR_CLAMP_TO_EDGE;   break;
-    }
-
-    switch (addressModeV)
-    {
-        case RG_SAMPLER_ADDRESS_MODE_REPEAT:                index |= ADDRESS_MODE_V_REPEAT;                 break;
-        case RG_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:       index |= ADDRESS_MODE_V_MIRRORED_REPEAT;        break;
-        case RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:         index |= ADDRESS_MODE_V_CLAMP_TO_EDGE;          break;
-        case RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:       index |= ADDRESS_MODE_V_CLAMP_TO_BORDER;        break;
-        case RG_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:  index |= ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE;   break;
-    }
-
-    return index;
+    return ToIndex(RgFilterToVk(filter), RgAddressModeToVk(addressModeU), RgAddressModeToVk(addressModeV));
 }
 
 uint32_t SamplerManager::ToIndex(
@@ -170,7 +221,7 @@ uint32_t SamplerManager::ToIndex(
     {
         case VK_FILTER_NEAREST: index |= FILTER_NEAREST;    break;
         case VK_FILTER_LINEAR:  index |= FILTER_LINEAR;     break;
-        default: break;
+        default: assert(0); break;
     }
 
     switch (addressModeU)
@@ -180,7 +231,7 @@ uint32_t SamplerManager::ToIndex(
         case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:         index |= ADDRESS_MODE_U_CLAMP_TO_EDGE;          break;
         case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:       index |= ADDRESS_MODE_U_CLAMP_TO_BORDER;        break;
         case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:  index |= ADDRESS_MODE_U_MIRROR_CLAMP_TO_EDGE;   break;
-        default: break;
+        default: assert(0); break;
     }
 
     switch (addressModeV)
@@ -190,8 +241,17 @@ uint32_t SamplerManager::ToIndex(
         case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:         index |= ADDRESS_MODE_V_CLAMP_TO_EDGE;          break;
         case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:       index |= ADDRESS_MODE_V_CLAMP_TO_BORDER;        break;
         case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:  index |= ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE;   break;
-        default: break;
+        default: assert(0); break;
     }
 
+    assert(index != 0);
     return index;
 }
+
+RTGL1::SamplerManager::Handle::Handle() :
+    internalIndex(0)
+{}
+
+RTGL1::SamplerManager::Handle::Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV) :
+    internalIndex(ToIndex(filter, addressModeU, addressModeV))
+{}

@@ -22,6 +22,7 @@
 
 #include "Common.h"
 #include "Const.h"
+#include "SamplerManager.h"
 
 namespace RTGL1
 {
@@ -30,7 +31,7 @@ struct Texture
 {
     VkImage             image;
     VkImageView         view;
-    VkSampler           sampler;
+    SamplerManager::Handle samplerHandle;
 };
 
 union MaterialTextures

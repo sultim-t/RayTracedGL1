@@ -49,7 +49,7 @@ RTGL1::CubemapManager::CubemapManager(
     overridenTexturePostfix = _overridenTexturePostfix != nullptr ? _overridenTexturePostfix : DEFAULT_TEXTURES_POSTFIXES[MATERIAL_COLOR_TEXTURE_INDEX];
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
-    cubemapDesc = std::make_shared<TextureDescriptors>(device, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
+    cubemapDesc = std::make_shared<TextureDescriptors>(device, samplerManager, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
     cubemapUploader = std::make_shared<CubemapUploader>(device, allocator);
 
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
@@ -77,7 +77,7 @@ void RTGL1::CubemapManager::CreateEmptyCubemap(VkCommandBuffer cmd)
     uint32_t index = CreateCubemap(cmd, 0, info);
     assert(index == RG_EMPTY_CUBEMAP);
 
-    cubemapDesc->SetEmptyTextureInfo(cubemaps[RG_EMPTY_CUBEMAP].view, cubemaps[RG_EMPTY_CUBEMAP].sampler);
+    cubemapDesc->SetEmptyTextureInfo(cubemaps[RG_EMPTY_CUBEMAP].view);
 }
 
 RTGL1::CubemapManager::~CubemapManager()
@@ -94,8 +94,8 @@ RTGL1::CubemapManager::~CubemapManager()
     {
         for (auto &t : *arr)
         {
-            assert((t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE && t.sampler == VK_NULL_HANDLE) ||
-                   (t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE && t.sampler != VK_NULL_HANDLE));
+            assert((t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE) ||
+                   (t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE));
 
             if (t.image != VK_NULL_HANDLE)
             {
@@ -110,10 +110,10 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     auto f = std::find_if(cubemaps.begin(), cubemaps.end(), [] (const Texture &t)
     {
         // also check if texture's members are all empty or all filled
-        assert((t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE && t.sampler == VK_NULL_HANDLE) ||
-               (t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE && t.sampler != VK_NULL_HANDLE));
+        assert((t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE) ||
+               (t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE));
 
-        return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE && t.sampler == VK_NULL_HANDLE;
+        return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
     });
 
     TextureUploader::UploadInfo upload = {};
@@ -232,7 +232,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
     f->image = i.image;
     f->view = i.view;
-    f->sampler = samplerManager->GetSampler(info.filter, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    f->samplerHandle = SamplerManager::Handle(info.filter, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
 
     return std::distance(cubemaps.begin(), f);
 }
@@ -257,7 +257,7 @@ void RTGL1::CubemapManager::DestroyCubemap(uint32_t frameIndex, uint32_t cubemap
     // clear data
     t.image = VK_NULL_HANDLE;
     t.view = VK_NULL_HANDLE;
-    t.sampler = VK_NULL_HANDLE;
+    t.samplerHandle = SamplerManager::Handle();
 }
 
 VkDescriptorSetLayout RTGL1::CubemapManager::GetDescSetLayout() const
@@ -291,7 +291,7 @@ void RTGL1::CubemapManager::SubmitDescriptors(uint32_t frameIndex)
     {
         if (cubemaps[i].image != VK_NULL_HANDLE)
         {
-            cubemapDesc->UpdateTextureDesc(frameIndex, i, cubemaps[i].view, cubemaps[i].sampler);
+            cubemapDesc->UpdateTextureDesc(frameIndex, i, cubemaps[i].view, cubemaps[i].samplerHandle);
         }
         else
         {

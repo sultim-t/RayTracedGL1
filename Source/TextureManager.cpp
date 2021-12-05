@@ -69,7 +69,7 @@ TextureManager::TextureManager(
     const uint32_t maxTextureCount = std::max<uint32_t>(TEXTURE_COUNT_MIN, std::min<uint32_t>(_info.maxTextureCount, TEXTURE_COUNT_MAX));
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
-    textureDesc = std::make_shared<TextureDescriptors>(device, maxTextureCount, BINDING_TEXTURES);
+    textureDesc = std::make_shared<TextureDescriptors>(device, samplerMgr, maxTextureCount, BINDING_TEXTURES);
     textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
     textures.resize(maxTextureCount);
@@ -103,9 +103,9 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     info.isPregenerated = false;
     info.levelSizes[0] = sizeof(data);
 
-    VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
-    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, info, sampler, false, "Empty texture");
+    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, info, samplerHandle, false, "Empty texture");
 
     // must have specific index
     assert(textureIndex == EMPTY_TEXTURE_INDEX);
@@ -116,13 +116,13 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     assert(emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE);
 
     // if texture will be reset, it will use empty texture's info
-    textureDesc->SetEmptyTextureInfo(emptyView, sampler);
+    textureDesc->SetEmptyTextureInfo(emptyView);
 }
 
 // Check CreateStaticMaterial for notes
 void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath)
 {
-    VkSampler sampler = samplerMgr->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.disableOverride = false;
@@ -139,7 +139,7 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
     // try to load image file
     TextureOverrides ovrd(pFilePath, defaultData, false, defaultSize, parseInfo, imageLoader);
 
-    this->waterNormalTextureIndex = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(0), sampler, true, "Water normal");
+    this->waterNormalTextureIndex = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(0), samplerHandle, true, "Water normal");
 }
 
 TextureManager::~TextureManager()
@@ -177,14 +177,14 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
     textureUploader->ClearStaging(frameIndex);
 }
 
-void TextureManager::SubmitDescriptors(uint32_t frameIndex)
+void TextureManager::SubmitDescriptors(uint32_t frameIndex, bool forceUpdateAllDescriptors)
 {
     // update desc set with current values
     for (uint32_t i = 0; i < textures.size(); i++)
     {
         if (textures[i].image != VK_NULL_HANDLE)
         {
-            textureDesc->UpdateTextureDesc(frameIndex, i, textures[i].view, textures[i].sampler);
+            textureDesc->UpdateTextureDesc(frameIndex, i, textures[i].view, textures[i].samplerHandle, forceUpdateAllDescriptors);
         }
         else
         {
@@ -206,7 +206,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
     }
 
-    VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
+    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.disableOverride = createInfo.disableOverride;
@@ -225,7 +225,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        textures.indices[i] = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(i), sampler, createInfo.useMipmaps, ovrd.GetDebugName());
+        textures.indices[i] = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(i), samplerHandle, createInfo.useMipmaps, ovrd.GetDebugName());
     }
 
 
@@ -234,7 +234,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
-    VkSampler sampler = samplerMgr->GetSampler(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
+    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
 
     const RgTextureData *tds[TEXTURES_PER_MATERIAL_COUNT] =
     { 
@@ -253,7 +253,7 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         VkFormat format = tds[i]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
-        textures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, tds[i]->pData, dataSize, createInfo.size, sampler, format, createInfo.useMipmaps, nullptr);
+        textures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, tds[i]->pData, dataSize, createInfo.size, samplerHandle, format, createInfo.useMipmaps, nullptr);
     }
 
 
@@ -319,7 +319,7 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 uint32_t TextureManager::PrepareStaticTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     const ImageLoader::ResultInfo &imageInfo,
-    VkSampler sampler, bool useMipmaps, 
+    SamplerManager::Handle samplerHandle, bool useMipmaps,
     const char *debugName)
 {
     // only dynamic textures can have null data
@@ -363,13 +363,13 @@ uint32_t TextureManager::PrepareStaticTexture(
         return EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertTexture(frameIndex, result.image, result.view, sampler);
+    return InsertTexture(frameIndex, result.image, result.view, samplerHandle);
 }
 
 uint32_t TextureManager::PrepareDynamicTexture(
     VkCommandBuffer cmd, uint32_t frameIndex,
     const void *data, uint32_t dataSize, const RgExtent2D &size,
-    VkSampler sampler, VkFormat format, bool generateMipmaps, 
+    SamplerManager::Handle samplerHandle, VkFormat format, bool generateMipmaps,
     const char *debugName)
 {
     if (data == nullptr)
@@ -398,7 +398,7 @@ uint32_t TextureManager::PrepareDynamicTexture(
         return EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertTexture(frameIndex, result.image, result.view, sampler);
+    return InsertTexture(frameIndex, result.image, result.view, samplerHandle);
 }
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
@@ -571,7 +571,7 @@ void TextureManager::DestroyMaterialTextures(uint32_t frameIndex, const Material
             // null data
             texture.image = VK_NULL_HANDLE;
             texture.view = VK_NULL_HANDLE;
-            texture.sampler = VK_NULL_HANDLE;
+            texture.samplerHandle = SamplerManager::Handle();
         }
     }
 }
@@ -620,7 +620,7 @@ void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materi
     }
 }
 
-uint32_t TextureManager::InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, VkSampler sampler)
+uint32_t TextureManager::InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, SamplerManager::Handle samplerHandle)
 {
     auto texture = std::find_if(textures.begin(), textures.end(), [] (const Texture &t)
     {
@@ -644,7 +644,7 @@ uint32_t TextureManager::InsertTexture(uint32_t frameIndex, VkImage image, VkIma
 
     texture->image = image;
     texture->view = view;
-    texture->sampler = sampler;
+    texture->samplerHandle = samplerHandle;
 
     return (uint32_t)std::distance(textures.begin(), texture);
 }

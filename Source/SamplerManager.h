@@ -21,6 +21,7 @@
 #pragma once
 
 #include <map>
+#include <vector>
 
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
@@ -28,10 +29,29 @@
 namespace RTGL1
 {
 
+// TODO: separate classes for fixed / updateable(with SamplerHandle) samplers
 class SamplerManager
 {
 public:
-    SamplerManager(VkDevice device);
+    class Handle
+    {
+        friend class SamplerManager;
+
+    public:
+        explicit Handle();
+        explicit Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV);
+
+        bool operator==(const Handle &other) const
+        {
+            return other.internalIndex == internalIndex;
+        }
+
+    private:
+        uint32_t internalIndex;
+    };
+
+public:
+    SamplerManager(VkDevice device, uint32_t anisotropy);
     ~SamplerManager();
 
     SamplerManager(const SamplerManager &other) = delete;
@@ -44,7 +64,16 @@ public:
         RgSamplerAddressMode addressModeU, 
         RgSamplerAddressMode addressModeV) const;
 
+    // In case, if mip load bias was updated and a fresh sampler is required
+    VkSampler GetSampler(const Handle &handle) const;
+
+    // Wait idle and recreate all the samplers with new lod bias
+    bool TryChangeMipLodBias(float newMipLodBias);
+
 private:
+    void CreateAllSamplers(uint32_t anisotropy, float mipLodBias);
+    void DestroyAllSamplers();
+
     static uint32_t ToIndex(
         RgSamplerFilter filter,
         RgSamplerAddressMode addressModeU,
@@ -57,7 +86,10 @@ private:
 
 private:
     VkDevice device;
+
     std::map<uint32_t, VkSampler> samplers;
+    float mipLodBias;
+    uint32_t anisotropy;
 };
 
 }

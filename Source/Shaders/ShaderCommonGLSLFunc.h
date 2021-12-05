@@ -464,6 +464,7 @@ vec4 texelFetchAlbedo(const ivec2 pix)
 
 vec4 textureLodAlbedo(const vec2 uv)
 {
+    // framebufAlbedo has nearest filtering, so values won't be interpolated
     return textureLod(framebufAlbedo_Sampler, uv, 0);
 }
 

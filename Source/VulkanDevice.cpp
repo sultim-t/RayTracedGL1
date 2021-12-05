@@ -89,26 +89,27 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     swapchain           = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
-    samplerManager      = std::make_shared<SamplerManager>(device);
+    // for world samplers with modifyable lod biad
+    worldSamplerManager     = std::make_shared<SamplerManager>(device, 8);
+    genericSamplerManager   = std::make_shared<SamplerManager>(device, 0);
 
     framebuffers        = std::make_shared<Framebuffers>(
         device,
         memAllocator, 
         cmdManager, 
-        samplerManager);
+        genericSamplerManager);
 
     blueNoise           = std::make_shared<BlueNoise>(
         device,
         info->pBlueNoiseFilePath,
         memAllocator,
         cmdManager, 
-        samplerManager,
         userFileLoad);
 
     textureManager      = std::make_shared<TextureManager>(
         device, 
         memAllocator,
-        samplerManager, 
+        worldSamplerManager,
         cmdManager,
         userFileLoad,
         *info);
@@ -116,7 +117,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     cubemapManager      = std::make_shared<CubemapManager>(
         device,
         memAllocator,
-        samplerManager,
+        genericSamplerManager,
         cmdManager,
         userFileLoad,
         info->pOverridenTexturesFolderPath,
@@ -142,7 +143,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         shaderManager,
         textureManager,
         uniform,
-        samplerManager,
+        genericSamplerManager,
         memAllocator,
         framebuffers,
         cmdManager,
@@ -246,7 +247,8 @@ VulkanDevice::~VulkanDevice()
     rtPipeline.reset();
     pathTracer.reset();
     rasterizer.reset();
-    samplerManager.reset();
+    worldSamplerManager.reset();
+    genericSamplerManager.reset();
     blueNoise.reset();
     textureManager.reset();
     cubemapManager.reset();
@@ -641,7 +643,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
 
-    textureManager->SubmitDescriptors(frameIndex);
+    bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(renderResolution.GetMipLodBias());
+
+    textureManager->SubmitDescriptors(frameIndex, mipLodBiasUpdated);
     cubemapManager->SubmitDescriptors(frameIndex);
 
 

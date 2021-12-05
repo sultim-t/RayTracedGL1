@@ -23,7 +23,6 @@
 #include "Common.h"
 #include "CommandBufferManager.h"
 #include "MemoryAllocator.h"
-#include "SamplerManager.h"
 #include "UserFunction.h"
 
 namespace RTGL1
@@ -37,7 +36,6 @@ public:
         const char *blueNoiseFilePath,
         std::shared_ptr<MemoryAllocator> allocator,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
-        const std::shared_ptr<SamplerManager> &samplerManager,
         std::shared_ptr<UserFileLoad> userFileLoad);
     ~BlueNoise();
 
@@ -50,7 +48,7 @@ public:
     VkDescriptorSet GetDescSet() const;
 
 private:
-    void CreateDescriptors(VkSampler sampler);
+    void CreateDescriptors();
 
 private:
     VkDevice device;
