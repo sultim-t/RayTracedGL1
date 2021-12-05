@@ -133,7 +133,19 @@ void TextureDescriptors::ResetCache(uint32_t frameIndex, uint32_t textureIndex)
     writeCache[frameIndex][textureIndex] = { VK_NULL_HANDLE, SamplerManager::Handle() };
 }
 
-void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle, bool ignoreCache)
+void RTGL1::TextureDescriptors::ResetAllCache(uint32_t frameIndex)
+{
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        for (auto &f : writeCache[i])
+        {
+            f.view = VK_NULL_HANDLE;
+            f.samplerHandle = SamplerManager::Handle();
+        }
+    }
+}
+
+void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle)
 {
     assert(view != VK_NULL_HANDLE);
 
@@ -144,7 +156,7 @@ void TextureDescriptors::UpdateTextureDesc(uint32_t frameIndex, uint32_t texture
     }
 
     // don't update if already is set to given parameters
-    if (!ignoreCache && IsCached(frameIndex, textureIndex, view, samplerHandle))
+    if (IsCached(frameIndex, textureIndex, view, samplerHandle))
     {
         return;
     }

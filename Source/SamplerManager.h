@@ -59,6 +59,8 @@ public:
     SamplerManager &operator=(const SamplerManager &other) = delete;
     SamplerManager &operator=(SamplerManager &&other) noexcept = delete;
 
+    void PrepareForFrame(uint32_t frameIndex);
+
     VkSampler GetSampler(
         RgSamplerFilter filter, 
         RgSamplerAddressMode addressModeU, 
@@ -68,11 +70,11 @@ public:
     VkSampler GetSampler(const Handle &handle) const;
 
     // Wait idle and recreate all the samplers with new lod bias
-    bool TryChangeMipLodBias(float newMipLodBias);
+    bool TryChangeMipLodBias(uint32_t frameIndex, float newMipLodBias);
 
 private:
     void CreateAllSamplers(uint32_t anisotropy, float mipLodBias);
-    void DestroyAllSamplers();
+    void AddAllSamplersToDestroy(uint32_t frameIndex);
 
     static uint32_t ToIndex(
         RgSamplerFilter filter,
@@ -88,6 +90,7 @@ private:
     VkDevice device;
 
     std::map<uint32_t, VkSampler> samplers;
+    std::vector<VkSampler> samplersToDelete[MAX_FRAMES_IN_FLIGHT];
     float mipLodBias;
     uint32_t anisotropy;
 };

@@ -179,12 +179,17 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
 
 void TextureManager::SubmitDescriptors(uint32_t frameIndex, bool forceUpdateAllDescriptors)
 {
+    if (forceUpdateAllDescriptors)
+    {
+        textureDesc->ResetAllCache(frameIndex);
+    }
+
     // update desc set with current values
     for (uint32_t i = 0; i < textures.size(); i++)
     {
         if (textures[i].image != VK_NULL_HANDLE)
         {
-            textureDesc->UpdateTextureDesc(frameIndex, i, textures[i].view, textures[i].samplerHandle, forceUpdateAllDescriptors);
+            textureDesc->UpdateTextureDesc(frameIndex, i, textures[i].view, textures[i].samplerHandle);
         }
         else
         {

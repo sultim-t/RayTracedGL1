@@ -319,6 +319,8 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     cmdManager->PrepareForFrame(frameIndex);
 
     // clear the data that were created MAX_FRAMES_IN_FLIGHT ago
+    worldSamplerManager->PrepareForFrame(frameIndex);
+    genericSamplerManager->PrepareForFrame(frameIndex);
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
     rasterizer->PrepareForFrame(frameIndex, startInfo.requestRasterizedSkyGeometryReuse);
@@ -643,7 +645,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
 
-    bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(renderResolution.GetMipLodBias());
+    bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(frameIndex, renderResolution.GetMipLodBias());
 
     textureManager->SubmitDescriptors(frameIndex, mipLodBiasUpdated);
     cubemapManager->SubmitDescriptors(frameIndex);

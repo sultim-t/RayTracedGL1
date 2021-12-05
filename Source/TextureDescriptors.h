@@ -39,8 +39,9 @@ public:
     TextureDescriptors &operator=(const TextureDescriptors &other) = delete;
     TextureDescriptors &operator=(TextureDescriptors &&other) noexcept = delete;
 
-    void UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle, bool ignoreCache = false);
+    void UpdateTextureDesc(uint32_t frameIndex, uint32_t textureIndex, VkImageView view, SamplerManager::Handle samplerHandle);
     void ResetTextureDesc(uint32_t frameIndex, uint32_t textureIndex);
+    void ResetAllCache(uint32_t frameIndex);
 
     // Must be called after a series of UpdateTextureDesc and
     // ResetTextureDesc to make an actual desc write 

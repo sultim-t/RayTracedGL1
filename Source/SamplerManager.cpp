@@ -59,7 +59,22 @@ SamplerManager::SamplerManager(VkDevice _device, uint32_t _anisotropy) : device(
 
 SamplerManager::~SamplerManager()
 {
-    DestroyAllSamplers();
+    for (auto &p : samplers)
+    {
+        vkDestroySampler(device, p.second, nullptr);
+    }
+
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    {
+        for (VkSampler s : samplersToDelete[i])
+        {
+            vkDestroySampler(device, s, nullptr);
+        }
+
+        samplersToDelete[i].clear();
+    }
+;
+    samplers.clear();
 }
 
 void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLodBias)
@@ -119,14 +134,24 @@ void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLo
     }
 }
 
-void RTGL1::SamplerManager::DestroyAllSamplers()
+void RTGL1::SamplerManager::AddAllSamplersToDestroy(uint32_t frameIndex)
 {
     for (auto &p : samplers)
     {
-        vkDestroySampler(device, p.second, nullptr);
+        samplersToDelete[frameIndex].push_back(p.second);
     }
 
     samplers.clear();
+}
+
+void RTGL1::SamplerManager::PrepareForFrame(uint32_t frameIndex)
+{
+    for (VkSampler s : samplersToDelete[frameIndex])
+    {
+        vkDestroySampler(device, s, nullptr);
+    }
+
+    samplersToDelete[frameIndex].clear();
 }
 
 VkSampler SamplerManager::GetSampler(
@@ -165,7 +190,7 @@ VkSampler RTGL1::SamplerManager::GetSampler(const Handle &handle) const
     return f->second;
 }
 
-bool RTGL1::SamplerManager::TryChangeMipLodBias(float newMipLodBias)
+bool RTGL1::SamplerManager::TryChangeMipLodBias(uint32_t frameIndex, float newMipLodBias)
 {
     constexpr float delta = 0.025f;
 
@@ -173,11 +198,8 @@ bool RTGL1::SamplerManager::TryChangeMipLodBias(float newMipLodBias)
     {
         return false;
     }
-
-    // full stop
-    vkDeviceWaitIdle(device);
-
-    DestroyAllSamplers();
+    
+    AddAllSamplersToDestroy(frameIndex);
     CreateAllSamplers(anisotropy, newMipLodBias);
 
     mipLodBias = newMipLodBias;
