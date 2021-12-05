@@ -288,8 +288,7 @@ bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutio
     int &dlssCreateFeatureFlags = dlssParams.InFeatureCreateFlags;
     // motion vectors are in render resolution, not target resolution
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVLowRes;
-    // motion vectors contain jitter
-    dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
+    dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
     dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_DoSharpening;
@@ -371,8 +370,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     evalParams.Feature.pInOutput = &resolvedColorResource;
     evalParams.pInDepth = &depthResource;
     evalParams.pInMotionVectors = &motionVectorsResource;
-    evalParams.InJitterOffsetX = jitterOffset.data[0];
-    evalParams.InJitterOffsetY = jitterOffset.data[1];
+    evalParams.InJitterOffsetX = jitterOffset.data[0] * (-1);
+    evalParams.InJitterOffsetY = jitterOffset.data[1] * (-1);
     evalParams.Feature.InSharpness = renderResolution.GetNvDlssSharpness();
     evalParams.InReset = resetAccumulation;
     evalParams.InMVScaleX = 1.0f;

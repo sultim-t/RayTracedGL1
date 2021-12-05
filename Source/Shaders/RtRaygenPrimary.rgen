@@ -55,7 +55,7 @@ vec2 getPixelUVWithJitter(const ivec2 pix)
 
 vec2 getDlssMotionVector(const vec2 motionCurToPrev)
 {
-    return vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
+    return -vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
 }
 
 vec2 getMotionForInfinitePoint(const ivec2 pix)
@@ -102,7 +102,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
-    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(firstHitDepthNDC));
+    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(m), 0.0, 0.0));
 }
 
@@ -417,6 +417,6 @@ void main()
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
-    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(firstHitDepthNDC));
+    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));
 }
