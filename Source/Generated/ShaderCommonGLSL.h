@@ -366,8 +366,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 20, rgba16f) uniform image2D frame
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 21, rgba16f) uniform image2D framebufThroughput;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 22, r11f_g11f_b10f) uniform image2D framebufPreFinal;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 23, r11f_g11f_b10f) uniform image2D framebufFinal;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 24, rgba8) uniform image2D framebufUpscaledPing;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, rgba8) uniform image2D framebufUpscaledPong;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 24, r11f_g11f_b10f) uniform image2D framebufUpscaledPing;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, r11f_g11f_b10f) uniform image2D framebufUpscaledPong;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 26, r32f) uniform image2D framebufDepthDlss;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 27, rg16f) uniform image2D framebufMotionDlss;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 28, r11f_g11f_b10f) uniform image2D framebufAccumHistoryLength;
