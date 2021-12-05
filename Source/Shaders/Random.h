@@ -177,7 +177,7 @@ vec3 sampleOrientedHemisphere(const vec3 n, float u1, float u2, out float oneOve
 layout(
     set = DESC_SET_RANDOM,
     binding = BINDING_BLUE_NOISE)
-    uniform sampler2DArray blueNoiseTextures;
+    uniform texture2DArray blueNoiseTextures;
 
 #if BLUE_NOISE_TEXTURE_SIZE_POW * 2 > 31
     #error BLUE_NOISE_TEXTURE_SIZE_POW must be lower, around 6-8

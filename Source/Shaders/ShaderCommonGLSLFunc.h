@@ -18,12 +18,13 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#extension GL_EXT_nonuniform_qualifier : require
+#extension GL_EXT_samplerless_texture_functions : require
+
 #include "Utils.h"
 #include "ShaderCommonGLSL.h"
 #include "Structs.h"
 #include "BRDF.h"
-
-#extension GL_EXT_nonuniform_qualifier : enable
 
 // Functions to access RTGL data.
 // Available defines:

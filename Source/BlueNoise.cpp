@@ -35,7 +35,6 @@ BlueNoise::BlueNoise(
     const char *_blueNoiseFilePath,
     std::shared_ptr<MemoryAllocator> _allocator,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
-    const std::shared_ptr<SamplerManager> &_samplerManager,
     std::shared_ptr<UserFileLoad> _userFileLoad)
 :
     device(_device),
@@ -184,12 +183,8 @@ BlueNoise::BlueNoise(
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, blueNoiseImagesView, VK_OBJECT_TYPE_IMAGE_VIEW, "Blue noise View");
-
-    VkSampler sampler = _samplerManager->GetSampler(
-        RG_SAMPLER_FILTER_NEAREST, 
-        RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
-
-    CreateDescriptors(sampler);
+    
+    CreateDescriptors();
 }
 
 BlueNoise::~BlueNoise()
@@ -211,13 +206,13 @@ VkDescriptorSet BlueNoise::GetDescSet() const
     return descSet;
 }
 
-void BlueNoise::CreateDescriptors(VkSampler sampler)
+void BlueNoise::CreateDescriptors()
 {
     VkResult r;
 
     VkDescriptorSetLayoutBinding binding = {};
     binding.binding = BINDING_BLUE_NOISE;
-    binding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    binding.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     binding.descriptorCount = 1;
     binding.stageFlags = VK_SHADER_STAGE_ALL;
 
@@ -230,7 +225,7 @@ void BlueNoise::CreateDescriptors(VkSampler sampler)
     VK_CHECKERROR(r);
 
     VkDescriptorPoolSize poolSize = {};
-    poolSize.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    poolSize.type = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     poolSize.descriptorCount = 1;
 
     VkDescriptorPoolCreateInfo poolInfo = {};
@@ -254,7 +249,6 @@ void BlueNoise::CreateDescriptors(VkSampler sampler)
     VkDescriptorImageInfo imgInfo = {};
     imgInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     imgInfo.imageView = blueNoiseImagesView;
-    imgInfo.sampler = sampler;
 
     VkWriteDescriptorSet write = {};
     write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -262,7 +256,7 @@ void BlueNoise::CreateDescriptors(VkSampler sampler)
     write.dstBinding = BINDING_BLUE_NOISE;
     write.dstArrayElement = 0;
     write.descriptorCount = 1;
-    write.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+    write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
     write.pImageInfo = &imgInfo;
 
     vkUpdateDescriptorSets(device, 1, &write, 0, nullptr);

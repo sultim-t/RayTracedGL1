@@ -20,7 +20,7 @@
 
 #version 460
 
-#extension GL_EXT_control_flow_attributes : enable
+#extension GL_EXT_control_flow_attributes : require
 
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
