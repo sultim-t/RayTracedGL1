@@ -55,7 +55,8 @@ vec2 getPixelUVWithJitter(const ivec2 pix)
 
 vec2 getDlssMotionVector(const vec2 motionCurToPrev)
 {
-    return -vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
+    float c = BACK_FACE_IS_PRIMARY ? 1.0 : -1.0;
+    return c * vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
 }
 
 vec2 getMotionForInfinitePoint(const ivec2 pix)

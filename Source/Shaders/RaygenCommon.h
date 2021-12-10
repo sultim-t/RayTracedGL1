@@ -22,6 +22,7 @@
 
 
 
+#define BACK_FACE_IS_PRIMARY true
 #define ADDITIONAL_RAY_FLAGS 0 // gl_RayFlagsCullBackFacingTrianglesEXT
 
 
