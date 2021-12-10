@@ -72,7 +72,7 @@ float G1GGX(const vec3 s, const vec3 n, float alpha)
     return 2 * dot(n, s) / (dot(n, s) * (2 - alpha) + alpha);
 }
 
-#define MIN_GGX_ROUGHNESS 0.001
+#define MIN_GGX_ROUGHNESS 0.02
 
 // n -- macrosurface normal
 // v -- direction to viewer
@@ -116,6 +116,10 @@ vec3 evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha, con
 // output   -- normal sampled with PDF D_v(Ne) = G1(v) * max(0, dot(v, Ne)) * D(Ne) / v.z
 vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2)
 {
+    // fix: avoid grazing angles
+    u1 *= 0.98;
+    u2 *= 0.98;
+
     // Section 3.2: transforming the view direction to the hemisphere configuration
     vec3 Vh = normalize(vec3(alpha * v.x, alpha * v.y, v.z));
     
@@ -149,6 +153,11 @@ vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2)
 // Check Heitz's paper for the special representation of rendering equation term 
 vec3 sampleSmithGGX(const vec3 n, const vec3 v, float alpha, float u1, float u2)
 {
+    if (alpha < MIN_GGX_ROUGHNESS)
+    {
+        return n;
+    }
+
     alpha = max(alpha, MIN_GGX_ROUGHNESS);
 
     const mat3 basis = getONB(n);
