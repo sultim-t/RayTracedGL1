@@ -26,6 +26,7 @@
 #include "Matrix.h"
 #include "Utils.h"
 #include "CmdLabel.h"
+#include "RenderResolutionHelper.h"
 
 
 namespace RTGL1
@@ -145,7 +146,9 @@ void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex,
     }
 }
 
-void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const float skyViewerPos[3], float *proj)
+void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, 
+                                 float *view, const float skyViewerPos[3], float *proj, 
+                                 const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution)
 {
     CmdLabel label(cmd, "Rasterized sky to albedo framebuf");
 
@@ -155,8 +158,13 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
     float skyView[16];
     Matrix::SetNewViewerPosition(skyView, view, skyViewerPos);
 
+    float jitterredProj[16];
+    memcpy(jitterredProj, proj, 16 * sizeof(float));
+    jitterredProj[2 * 4 + 0] += jitter.data[0] / (float)renderResolution.Width();
+    jitterredProj[2 * 4 + 1] += jitter.data[1] / (float)renderResolution.Height();
+
     float defaultSkyViewProj[16];
-    Matrix::Multiply(defaultSkyViewProj, skyView, proj);
+    Matrix::Multiply(defaultSkyViewProj, skyView, jitterredProj);
 
     const DrawParams params
     {

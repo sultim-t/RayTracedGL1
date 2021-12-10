@@ -38,6 +38,10 @@
 namespace RTGL1
 {
 
+
+class RenderResolutionHelper;
+
+
 // This class provides rasterization functionality
 class Rasterizer : public ISwapchainDependency, public IShaderDependency, public IFramebuffersDependency
 {
@@ -68,7 +72,7 @@ public:
 
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
-    void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const float skyViewerPos[3], float *proj);
+    void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const float skyViewerPos[3], float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution);
     void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj, bool werePrimaryTraced);
     void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
 

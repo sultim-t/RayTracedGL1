@@ -661,6 +661,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 
     bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(frameIndex, renderResolution.GetMipLodBias());
+    const RgFloat2D jitter = renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) : RgFloat2D{ 0, 0 };
 
     textureManager->SubmitDescriptors(frameIndex, mipLodBiasUpdated);
     cubemapManager->SubmitDescriptors(frameIndex);
@@ -684,7 +685,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         if (uniform->GetData()->skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
         {
             rasterizer->DrawSkyToCubemap(cmd, frameIndex, textureManager, uniform);
-            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, uniform->GetData()->skyViewerPosition, uniform->GetData()->projection);
+            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, uniform->GetData()->skyViewerPosition, uniform->GetData()->projection, jitter, renderResolution);
         }
     }
 
@@ -741,7 +742,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     // upscale finalized image
     if (renderResolution.IsNvDlssEnabled())
     {
-        currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, HaltonSequence::GetJitter_Halton23(frameId));
+        currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
 
         wasUpscale = true;
     }
