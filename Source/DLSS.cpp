@@ -232,7 +232,7 @@ void RTGL1::DLSS::Destroy()
 
 bool RTGL1::DLSS::IsDlssAvailable() const
 {
-    return isInitialized && pParams != nullptr && pDlssFeature != nullptr;
+    return isInitialized && pParams != nullptr /* && pDlssFeature != nullptr */;
 }
 
 static NVSDK_NGX_PerfQuality_Value ToNGXPerfQuality(RgRenderResolutionMode mode)
@@ -350,12 +350,18 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
                                                 const RenderResolutionHelper &renderResolution, 
                                                 RgFloat2D jitterOffset)
 {
-    ValidateDlssFeature(cmd, renderResolution);
-
-
     if (!IsDlssAvailable())
     {
         throw RgException(RG_WRONG_ARGUMENT, "Nvidia DLSS is not supported (or DLSS dynamic library files are not found). Check availability before usage.");
+    }
+
+
+    ValidateDlssFeature(cmd, renderResolution);
+
+
+    if (pDlssFeature == nullptr)
+    {
+        throw RgException(RG_GRAPHICS_API_ERROR, "Internal error of Nvidia DLSS: NGX_VULKAN_CREATE_DLSS_EXT has failed.");
     }
 
 
@@ -371,7 +377,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     int resetAccumulation = 0;
     NVSDK_NGX_Coordinates sourceOffset = { 0, 0 };
     NVSDK_NGX_Dimensions  sourceSize = { renderResolution.Width(),         renderResolution.Height()          };
-    NVSDK_NGX_Dimensions  targetSize = { renderResolution.UpscaledWidth(), renderResolution .UpscaledHeight() };
+    NVSDK_NGX_Dimensions  targetSize = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()  };
 
 
     NVSDK_NGX_Resource_VK unresolvedColorResource   = ToNGXResource(framebuffers, frameIndex, FI::FB_IMAGE_INDEX_FINAL,       sourceSize);
