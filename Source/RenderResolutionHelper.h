@@ -130,6 +130,13 @@ public:
         {
             dlss->GetOptimalSettings(fullWidth, fullHeight, resolutionMode,
                                      &renderWidth, &renderHeight, &dlssSharpness);
+
+            // ultra quality returns (0,0)
+            if (renderWidth == 0 || renderHeight == 0)
+            {
+                renderWidth = fullWidth;
+                renderHeight = fullHeight;
+            }
         }
     }
 

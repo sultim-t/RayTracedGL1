@@ -656,7 +656,9 @@ int main()
 
 
         RgInstanceCreateInfo info = {};
-        info.pName                      = "RTGL1 Test";
+        info.pAppName                   = "RTGL1 Test";
+        info.pAppGUID                   = "459d6734-62a6-4d47-927a-bedcdb0445c5";
+
         info.enableValidationLayer      = RG_TRUE;
         
         info.primaryRaysMaxAlbedoLayers = 3;

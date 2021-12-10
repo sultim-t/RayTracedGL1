@@ -37,7 +37,8 @@ class RenderResolutionHelper;
 class DLSS
 {
 public:
-    DLSS(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, 
+    DLSS(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice,
+         const char *pAppGuid,
          bool enableDebug);
     ~DLSS();
 
@@ -60,7 +61,7 @@ public:
     static std::vector<const char *> GetDlssVulkanDeviceExtensions();
 
 private:
-    bool TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, bool enableDebug);
+    bool TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, const char *pAppGuid, bool enableDebug);
     bool CheckSupport() const;
     void DestroyDlssFeature();
     void Destroy();

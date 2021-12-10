@@ -196,6 +196,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         instance, 
         device, 
         physDevice->Get(),
+        info->pAppGUID,
         enableValidationLayer);
 
     sharpening          = std::make_shared<Sharpening>(
@@ -411,9 +412,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
         else
         {
-            gu->minLogLuminance = -2.0f;
-            gu->maxLogLuminance = 10.0f;
-            gu->luminanceWhitePoint = 1.5f;
+            gu->minLogLuminance = -10.0f;
+            gu->maxLogLuminance = 2.0f;
+            gu->luminanceWhitePoint = 11.0f;
         }
     }
 
@@ -1202,7 +1203,7 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
 
     VkApplicationInfo appInfo = {};
     appInfo.apiVersion = VK_API_VERSION_1_2;
-    appInfo.pApplicationName = info.pName;
+    appInfo.pApplicationName = info.pAppName;
 
     VkInstanceCreateInfo instanceInfo = {};
     instanceInfo.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;

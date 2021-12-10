@@ -139,7 +139,10 @@ typedef struct RgXlibSurfaceCreateInfo
 
 typedef struct RgInstanceCreateInfo
 {
-    const char                  *pName;
+    // Application name.
+    const char                  *pAppName;
+    // Application GUID. Generate it for your application and specify it here.
+    const char                  *pAppGUID;
 
     // Exactly one of these surface create infos must be not null.
     RgWin32SurfaceCreateInfo    *pWin32SurfaceInfo;

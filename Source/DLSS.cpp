@@ -20,6 +20,8 @@
 
 #include "DLSS.h"
 
+#include <regex>
+
 #include "RTGL1/RTGL1.h"
 #include "CmdLabel.h"
 #include "RenderResolutionHelper.h"
@@ -46,7 +48,8 @@ static void PrintCallback(const char *message, NVSDK_NGX_Logging_Level loggingLe
 RTGL1::DLSS::DLSS(
     VkInstance _instance,
     VkDevice _device,
-    VkPhysicalDevice _physDevice,
+    VkPhysicalDevice _physDevice, 
+    const char *_pAppGuid,
     bool _enableDebug)
 :
     device(_device),
@@ -55,7 +58,7 @@ RTGL1::DLSS::DLSS(
     pDlssFeature(nullptr),
     prevDlssFeatureValues{}
 {
-    isInitialized = TryInit(_instance, _device, _physDevice, _enableDebug);
+    isInitialized = TryInit(_instance, _device, _physDevice, _pAppGuid, _enableDebug);
 
     if (!CheckSupport())
     {
@@ -80,7 +83,7 @@ static std::wstring GetFolderPath()
     return curFolderPath.substr(0, p);
 }
 
-bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, bool enableDebug)
+bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, const char *pAppGuid, bool enableDebug)
 {
     NVSDK_NGX_Result r;
 
@@ -101,8 +104,20 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
     commonInfo.PathListInfo = pathsInfo;
     commonInfo.LoggingInfo = enableDebug ? debugLogInfo : releaseLogInfo;
 
+    const std::regex guidRegex("^[{]?[0-9a-fA-F]{8}-([0-9a-fA-F]{4}-){3}[0-9a-fA-F]{12}[}]?$");
+
+    if (pAppGuid == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Application GUID wasn't provided. Generate and specify it to use DLSS.");
+    }
+
+    if (!std::regex_match(pAppGuid, guidRegex))
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Provided application GUID is not GUID. Generate and specify correct GUID to use DLSS.");
+    }
+
     r = NVSDK_NGX_VULKAN_Init_with_ProjectID(
-        "459d6734-62a6-4d47-927a-bedcdb0445c5",
+        pAppGuid,
         NVSDK_NGX_EngineType::NVSDK_NGX_ENGINE_TYPE_CUSTOM, RG_RTGL_VERSION_API, L"DLSSTemp/", instance, physDevice, device, &commonInfo);
 
     if (NVSDK_NGX_FAILED(r))
