@@ -337,6 +337,12 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     return cmd;
 }
 
+template<typename T>
+static constexpr T clamp(const T &v, const T &v_min, const T &v_max)
+{
+    return std::min(v_max, std::max(v_min, v));
+}
+
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const
 {
     const float IdentityMat4x4[16] =
@@ -412,8 +418,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
         else
         {
-            gu->minLogLuminance = -10.0f;
-            gu->maxLogLuminance = 2.0f;
+            gu->minLogLuminance = -7.0f;
+            gu->maxLogLuminance = 0.0f;
             gu->luminanceWhitePoint = 11.0f;
         }
     }
@@ -628,8 +634,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->noBackfaceReflForNoMediaChange = false;
     }
 
-    gu->rayCullMaskWorld = std::min((uint32_t)INSTANCE_MASK_WORLD_ALL, std::max((uint32_t)INSTANCE_MASK_WORLD_MIN, drawInfo.rayCullMaskWorld));
-    gu->rayLength = std::min((float)MAX_RAY_LENGTH, std::max(0.1f, drawInfo.rayLength));
+    gu->rayCullMaskWorld = clamp(drawInfo.rayCullMaskWorld, (uint32_t)INSTANCE_MASK_WORLD_MIN, (uint32_t)INSTANCE_MASK_WORLD_ALL);
+    gu->rayLength = clamp(drawInfo.rayLength, 0.1f, (float)MAX_RAY_LENGTH);
+    gu->primaryRayMinDist = clamp(drawInfo.primaryRayMinDist, 0.001f, gu->rayLength);
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 

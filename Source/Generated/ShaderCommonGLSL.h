@@ -208,7 +208,7 @@ struct ShGlobalUniform
     float upscaledRenderHeight;
     float jitterX;
     float jitterY;
-    float _pad3;
+    float primaryRayMinDist;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

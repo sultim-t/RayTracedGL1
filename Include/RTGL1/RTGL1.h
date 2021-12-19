@@ -936,6 +936,8 @@ typedef struct RgDrawFrameInfo
     uint32_t    rayCullMaskWorld;
     // Max value: 10000.0
     float       rayLength;
+    // Distance, at which primary ray starts. Can be used as a near plane distance.
+    float       primaryRayMinDist;
     RgBool32    disableRayTracing;
     RgBool32    disableRasterization;
     double      currentTime;

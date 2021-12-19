@@ -504,7 +504,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "upscaledRenderHeight",             1),
     (TYPE_FLOAT32,      1,      "jitterX",                          1),
     (TYPE_FLOAT32,      1,      "jitterY",                          1),
-    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+    (TYPE_FLOAT32,      1,      "primaryRayMinDist",                1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                           1),
     #(TYPE_FLOAT32,      1,      "_pad1",                           1),

@@ -170,7 +170,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
-        origin, 0.001, direction, globalUniform.rayLength, 
+        origin, globalUniform.primaryRayMinDist, direction, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT);
 
     return payload; 
