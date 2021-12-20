@@ -506,10 +506,15 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "jitterY",                          1),
     (TYPE_FLOAT32,      1,      "primaryRayMinDist",                1),
 
-    #(TYPE_FLOAT32,      1,      "_pad0",                           1),
-    #(TYPE_FLOAT32,      1,      "_pad1",                           1),
-    #(TYPE_FLOAT32,      1,      "_pad2",                           1),
-    #(TYPE_FLOAT32,      1,      "_pad3",                           1),
+    (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
+    (TYPE_FLOAT32,      1,      "_pad1",                            1),
+    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+
+    #(TYPE_FLOAT32,      1,      "_pad0",                            1),
+    #(TYPE_FLOAT32,      1,      "_pad1",                            1),
+    #(TYPE_FLOAT32,      1,      "_pad2",                            1),
+    #(TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     # for std140
     (TYPE_INT32,        4,      "instanceGeomInfoOffset",       align4(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"]) // 4),

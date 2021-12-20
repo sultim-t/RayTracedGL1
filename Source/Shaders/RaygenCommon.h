@@ -22,8 +22,7 @@
 
 
 
-#define BACK_FACE_IS_PRIMARY true
-#define ADDITIONAL_RAY_FLAGS 0 // gl_RayFlagsCullBackFacingTrianglesEXT
+#define FRONT_FACE_IS_PRIMARY true
 
 
 
@@ -146,6 +145,13 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
 
 
 
+uint getAdditionalRayFlags()
+{
+    return globalUniform.rayCullBackFaces != 0 ? gl_RayFlagsCullBackFacingTrianglesEXT : 0;
+}
+
+
+
 bool isPayloadConsistent(const ShPayload p)
 {
     return p.instIdAndIndex != UINT32_MAX && p.geomAndPrimIndex != UINT32_MAX;
@@ -166,7 +172,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
 
     traceRayEXT(
         topLevelAS,
-        ADDITIONAL_RAY_FLAGS, 
+        getAdditionalRayFlags(), 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -189,7 +195,7 @@ ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefra
     
     traceRayEXT(
         topLevelAS,
-        ADDITIONAL_RAY_FLAGS, 
+        getAdditionalRayFlags(), 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -207,7 +213,7 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
 
     traceRayEXT(
         topLevelAS,
-        ADDITIONAL_RAY_FLAGS, 
+        getAdditionalRayFlags(), 
         cullMask, 
         0, 0,     // sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_DEFAULT, 
@@ -270,7 +276,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance,
 
     traceRayEXT(
         topLevelAS, 
-        gl_RayFlagsSkipClosestHitShaderEXT | ADDITIONAL_RAY_FLAGS, 
+        gl_RayFlagsSkipClosestHitShaderEXT | getAdditionalRayFlags(), 
         cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex

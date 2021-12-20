@@ -209,6 +209,10 @@ struct ShGlobalUniform
     float jitterX;
     float jitterY;
     float primaryRayMinDist;
+    uint rayCullBackFaces;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

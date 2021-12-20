@@ -173,6 +173,7 @@ typedef struct RgInstanceCreateInfo
     // How many texture layers should be used to get albedo color for primary rays / indrect illumination.
     uint32_t                    primaryRaysMaxAlbedoLayers;
     uint32_t                    indirectIlluminationMaxAlbedoLayers;
+    RgBool32                    rayCullBackFacingTriangles;
 
     // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.

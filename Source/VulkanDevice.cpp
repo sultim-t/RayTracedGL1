@@ -46,6 +46,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     debugMessenger(VK_NULL_HANDLE),
     userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
     userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
+    rayCullBackFacingTriangles(info->rayCullBackFacingTriangles),
     previousFrameTime(-1.0 / 60.0),
     currentFrameTime(0)
 {
@@ -634,6 +635,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->noBackfaceReflForNoMediaChange = false;
     }
 
+    gu->rayCullBackFaces = rayCullBackFacingTriangles ? 1 : 0;
     gu->rayCullMaskWorld = clamp(drawInfo.rayCullMaskWorld, (uint32_t)INSTANCE_MASK_WORLD_MIN, (uint32_t)INSTANCE_MASK_WORLD_ALL);
     gu->rayLength = clamp(drawInfo.rayLength, 0.1f, (float)MAX_RAY_LENGTH);
     gu->primaryRayMinDist = clamp(drawInfo.primaryRayMinDist, 0.001f, gu->rayLength);

@@ -279,6 +279,7 @@ private:
     std::shared_ptr<UserFileLoad>           userFileLoad;
 
     VertexBufferProperties                  vbProperties;
+    bool                                    rayCullBackFacingTriangles;
 
     RenderResolutionHelper                  renderResolution;
 

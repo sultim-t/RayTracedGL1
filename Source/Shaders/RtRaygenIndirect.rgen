@@ -19,7 +19,6 @@
 // SOFTWARE.
 
 #version 460
-#extension GL_EXT_ray_tracing : require
 
 layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define MATERIAL_MAX_ALBEDO_LAYERS maxAlbedoLayerCount
