@@ -286,9 +286,9 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance,
     return payloadShadow.isShadowed == 1;
 }
 
-bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l)
+bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance)
 {
-    return traceShadowRay(surfInstCustomIndex, o, l, MAX_RAY_LENGTH, false);
+    return traceShadowRay(surfInstCustomIndex, o, l, maxDistance, false);
 }
 
 
@@ -353,7 +353,7 @@ void processDirectionalLight(
     }
 
     const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition /*+ (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN*/, l);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition /*+ (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN*/, l, MAX_RAY_LENGTH);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -551,7 +551,7 @@ void processSphericalLight(
         return;
     }
     
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN, dirOntoSphere, distOntoSphere, false);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN, dirOntoSphere, distOntoSphere);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -561,7 +561,7 @@ void processSphericalLight(
 void processPolygonalLight(
     uint seed, 
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 toViewerDir, float distanceToViewer,
+    const vec3 toViewerDir, 
     bool isGradientSample,
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
@@ -604,7 +604,7 @@ void processPolygonalLight(
     const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
     const vec3 triPoint = sampleTriangle(polyLight.position_0, polyLight.position_1, polyLight.position_2, u[0], u[1]);
 
-    const vec3 triNormal = normalize(cross(polyLight.position_1 - polyLight.position_0, polyLight.position_2 - polyLight.position_0));
+    const vec3 triNormal = safeNormalize(cross(polyLight.position_1 - polyLight.position_0, polyLight.position_2 - polyLight.position_0));
     
     float distToLightPoint;
     const vec3 l = getDirectionAndLength(surfPosition, triPoint, distToLightPoint);
@@ -620,13 +620,14 @@ void processPolygonalLight(
     }
 
     const vec3 polyLightColor = vec3(polyLight.color_R, polyLight.color_G, polyLight.color_B);
-
-    outDiffuse = evalBRDFLambertian(1.0) * polyLightColor * nl * M_PI;
-    outSpecular = 
-        evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * 
+    
+    const vec3 s =
         polyLightColor * 
-        nl *
+        nl * 
         getGeometryFactor(triNormal, l, distToLightPoint);
+
+    outDiffuse  = evalBRDFLambertian(1.0) * M_PI * s;
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
@@ -637,7 +638,7 @@ void processPolygonalLight(
         return;
     }
 
-   const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, l);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, l, distToLightPoint);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -749,9 +750,18 @@ void processDirectIllumination(
         toViewerDir, 
         bounceIndex,
         spotDiff, spotSpec);
+
+    vec3 polyDiff, polySpec;
+    processPolygonalLight(
+        seed, 
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
+        toViewerDir, 
+        isGradientSample,  
+        bounceIndex,
+        polyDiff, polySpec);
     
-    outDiffuse = dirDiff + sphDiff + spotDiff;
-    outSpecular = dirSpec + sphSpec + spotSpec;
+    outDiffuse = dirDiff + sphDiff + spotDiff + polyDiff;
+    outSpecular = dirSpec + sphSpec + spotSpec + polySpec;
 }
 
 
