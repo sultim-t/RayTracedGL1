@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
+#include <unordered_map>
 
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
@@ -89,7 +89,7 @@ private:
 private:
     VkDevice device;
 
-    std::map<uint32_t, VkSampler> samplers;
+    std::unordered_map<uint32_t, VkSampler> samplers;
     std::vector<VkSampler> samplersToDelete[MAX_FRAMES_IN_FLIGHT];
     float mipLodBias;
     uint32_t anisotropy;

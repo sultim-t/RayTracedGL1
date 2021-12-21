@@ -319,13 +319,13 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
 }
 
 void RTGL1::LightManager::FillMatchPrev(
-    const std::map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+    const std::unordered_map<uint64_t, uint32_t> *pUniqueToPrevIndex,
     const std::shared_ptr<AutoBuffer> &matchPrev,
     uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    const std::map<uint64_t, uint32_t> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
+    const std::unordered_map<uint64_t, uint32_t> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
 
     auto found = uniqueToPrevIndex.find(uniqueID);
 

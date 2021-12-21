@@ -151,8 +151,8 @@ private:
 
     // geometry's uniqueID to geom frame info,
     // used for getting info from previous frame
-    std::map<uint64_t, GeomFrameInfo> dynamicIDToGeomFrameInfo[MAX_FRAMES_IN_FLIGHT];
-    std::map<uint64_t, GeomFrameInfo> movableIDToGeomFrameInfo;
+    std::unordered_map<uint64_t, GeomFrameInfo> dynamicIDToGeomFrameInfo[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<uint64_t, GeomFrameInfo> movableIDToGeomFrameInfo;
 };
 
 }

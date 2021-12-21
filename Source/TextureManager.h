@@ -118,8 +118,8 @@ private:
     // they won't be in use
     std::vector<Texture> texturesToDestroy[MAX_FRAMES_IN_FLIGHT];
 
-    std::map<uint32_t, AnimatedMaterial> animatedMaterials;
-    std::map<uint32_t, Material> materials;
+    std::unordered_map<uint32_t, AnimatedMaterial> animatedMaterials;
+    std::unordered_map<uint32_t, Material> materials;
 
     uint32_t waterNormalTextureIndex;
 

@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <vector>
+#include <unordered_map>
 
 #include "Common.h"
 #include "ShaderManager.h"
@@ -66,7 +66,7 @@ private:
     VkRenderPass renderPass;
     VkPipelineShaderStageCreateInfo shaderStages[2];
 
-    std::map<uint32_t, VkPipeline> pipelines;
+    std::unordered_map<uint32_t, VkPipeline> pipelines;
     VkPipelineCache pipelineCache;
 
     struct

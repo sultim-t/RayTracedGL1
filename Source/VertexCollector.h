@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 #pragma once
-#include <map>
+
 #include <vector>
 
 #include "Buffer.h"
@@ -179,9 +179,9 @@ private:
     VkTransformMatrixKHR *mappedTransformData;
 
     // material index to a list of () that have that material
-    std::map<uint32_t, std::vector<MaterialRef>> materialDependencies;
+    std::unordered_map<uint32_t, std::vector<MaterialRef>> materialDependencies;
 
-    std::map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
+    std::unordered_map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
 
     // if some static geometries changed their tex coords, then they should be copied 
     // from staging to device-local; this array holds copy ranges; freed after vkCmdCopy call
@@ -189,7 +189,7 @@ private:
     VkDeviceSize texCoordsToCopyLowerBound;
     VkDeviceSize texCoordsToCopyUpperBound;
 
-    std::map<uint32_t, uint32_t> simpleIndexToTransformIndex;
+    std::unordered_map<uint32_t, uint32_t> simpleIndexToTransformIndex;
 };
 
 }

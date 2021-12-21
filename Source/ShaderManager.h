@@ -21,8 +21,8 @@
 #pragma once
 
 #include <list>
-#include <map>
 #include <string>
+#include <unordered_map>
 
 #include "Common.h"
 #include "IShaderDependency.h"
@@ -77,7 +77,7 @@ private:
     std::shared_ptr<UserFileLoad> userFileLoad;
     std::string shaderFolderPath;
 
-    std::map<std::string, ShaderModule> modules;
+    std::unordered_map<std::string, ShaderModule> modules;
 
     std::list<std::weak_ptr<IShaderDependency>> subscribers;
 };

@@ -129,7 +129,7 @@ protected:
     std::vector<VkBuffer> stagingToFree[MAX_FRAMES_IN_FLIGHT];
 
     // Each dynamic image has its pointer to HOST_VISIBLE data for updating.
-    std::map<VkImage, DynamicImageInfo> dynamicImageInfos;
+    std::unordered_map<VkImage, DynamicImageInfo> dynamicImageInfos;
 };
 
 }

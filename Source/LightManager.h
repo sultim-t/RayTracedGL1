@@ -63,7 +63,7 @@ public:
 
 private:
     void FillMatchPrev(
-        const std::map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+        const std::unordered_map<uint64_t, uint32_t> *pUniqueToPrevIndex,
         const std::shared_ptr<AutoBuffer> &matchPrev,
         uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID);
 
@@ -79,8 +79,8 @@ private:
     std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
     std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
 
-    std::map<uint64_t, uint32_t> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
-    std::map<uint64_t, uint32_t> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<uint64_t, uint32_t> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<uint64_t, uint32_t> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
     uint32_t sphLightCount;
     uint32_t sphLightCountPrev;

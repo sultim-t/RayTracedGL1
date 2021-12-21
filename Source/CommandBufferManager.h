@@ -20,8 +20,8 @@
 
 #pragma once
 
-#include <map>
 #include <vector>
+#include <unordered_map>
 
 #include "Common.h"
 #include "Queues.h"
@@ -82,7 +82,7 @@ private:
     AllocatedCmds transferCmds[MAX_FRAMES_IN_FLIGHT];
 
     std::weak_ptr<Queues> queues;
-    std::map<VkCommandBuffer, VkQueue> cmdQueues[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<VkCommandBuffer, VkQueue> cmdQueues[MAX_FRAMES_IN_FLIGHT];
 };
 
 }
