@@ -261,8 +261,13 @@ vec3 getSky(vec3 direction)
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
 
+
+
+#define SHADOW_RAY_EPS 0.01
+#define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
+
 // l is pointed to the light
-bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance, bool ignoreFirstPersonViewer)
+bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer)
 {
     // prepare shadow payload
     payloadShadow.isShadowed = 1;  
@@ -274,29 +279,26 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance,
         cullMask &= ~INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
 
+    vec3 l = end - start;
+    float maxDistance = length(l);
+    l /= maxDistance;
+
     traceRayEXT(
         topLevelAS, 
         gl_RayFlagsSkipClosestHitShaderEXT | getAdditionalRayFlags(), 
         cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
-        o, 0.001, l, maxDistance, 
+        start, 0.001, l, maxDistance - SHADOW_RAY_EPS, 
         PAYLOAD_INDEX_SHADOW);
 
     return payloadShadow.isShadowed == 1;
 }
 
-bool traceShadowRay(uint surfInstCustomIndex, vec3 o, vec3 l, float maxDistance)
+bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end)
 {
-    return traceShadowRay(surfInstCustomIndex, o, l, maxDistance, false);
+    return traceShadowRay(surfInstCustomIndex, start, end, false);
 }
-
-
-#define SHADOW_RAY_EPS_MIN      0.001
-#define SHADOW_RAY_EPS_MAX      0.1
-#define SHADOW_RAY_EPS_MAX_DIST 25
-
-#define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
 
 
 
@@ -352,8 +354,7 @@ void processDirectionalLight(
         return;
     }
 
-    const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition /*+ (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN*/, l, MAX_RAY_LENGTH);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, surfPosition + l * MAX_RAY_LENGTH);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -551,7 +552,7 @@ void processSphericalLight(
         return;
     }
     
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN, dirOntoSphere, distOntoSphere);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + toViewerDir * SHADOW_RAY_EPS, posOnSphere);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -612,7 +613,7 @@ void processPolygonalLight(
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
 
-    if (nl <= 0 || ngl <= 0)
+    if (nl <= 0 || ngl <= 0 || dot(triNormal, l) <= 0)
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
@@ -638,7 +639,7 @@ void processPolygonalLight(
         return;
     }
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, l, distToLightPoint);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + toViewerDir * SHADOW_RAY_EPS, triPoint);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
@@ -710,7 +711,7 @@ void processSpotLight(
         return;
     }
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, dir, dist, true);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, posOnDisk, true);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
