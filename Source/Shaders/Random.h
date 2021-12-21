@@ -20,11 +20,12 @@
 
 
 
-#define RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX 1
 #define RANDOM_SALT_DIRECTIONAL_LIGHT_DISK 2
 #define RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE 3
 #define RANDOM_SALT_SPHERICAL_LIGHT_DISK 4
 #define RANDOM_SALT_SPOT_LIGHT_DISK 5
+#define RANDOM_SALT_POLYGONAL_LIGHT_CHOOSE 6
+#define RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT 7
 #define RANDOM_BOUNCE_DIFF_BASE_INDEX 8
 #define RANDOM_SALT_DIFF_BOUNCE(bounceIndex) (RANDOM_BOUNCE_DIFF_BASE_INDEX + bounceIndex)
 #define RANDOM_BOUNCE_SPEC_BASE_INDEX 16
@@ -37,6 +38,10 @@
 // u1, u2 -- uniform random numbers
 vec2 sampleDisk(float radius, float u1, float u2)
 {
+    // from [0,1] to [0,1)
+    u1 *= 0.99;
+    u2 *= 0.99;
+
     // polar mapping
     const float r = radius * sqrt(u1);
     const float phi = 2 * M_PI * u2;
@@ -49,10 +54,31 @@ vec2 sampleDisk(float radius, float u1, float u2)
     // pdf = M_PI * radius * radius;
 }
 
+// Sample triangle uniformly
+// u1, u2 -- uniform random numbers
+// "Ray Tracing Gems", Chapter 16: Sampling Transformations Zoo,
+// 16.5.2.1 Warping
+vec3 sampleTriangle(const vec3 p0, const vec3 p1, const vec3 p2, float u1, float u2)
+{
+    // from [0,1] to [0,1)
+    u1 *= 0.99;
+    u2 *= 0.99;
+
+    float beta = 1 - sqrt(u1);
+    float gamma = (1 - beta) * u2;
+    float alpha = 1 - beta - gamma;
+    
+    return alpha * p0 + beta * p1 + gamma * p2;
+}
+
 // Sample direction from cosine-weighted unit hemisphere oriented to Z axis
 // u1, u2 -- uniform random numbers
 vec3 sampleHemisphere(float u1, float u2, out float oneOverPdf)
 {
+    // from [0,1] to [0,1)
+    u1 *= 0.99;
+    u2 *= 0.99;
+
     const float r = sqrt(u1);
     const float phi = 2 * M_PI * u2;
 
@@ -74,6 +100,10 @@ vec3 sampleHemisphere(float u1, float u2, out float oneOverPdf)
 // Octathedral concentric uniform map
 vec3 sampleSphere(float u1, float u2)
 {
+    // from [0,1] to [0,1)
+    u1 *= 0.99;
+    u2 *= 0.99;
+
     u1 = 2 * u1 - 1;
     u2 = 2 * u2 - 1;
 

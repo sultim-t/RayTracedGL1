@@ -28,9 +28,6 @@
 namespace RTGL1
 {
 
-struct ShLightSpherical;
-struct ShLightDirectional;
-
 class LightManager
 {
 public:
@@ -48,12 +45,15 @@ public:
     uint32_t GetSpotlightCount() const;
     uint32_t GetSpotlightCountPrev() const;
     uint32_t GetSphericalLightCount() const;
-    uint32_t GetDirectionalLightCount() const;
     uint32_t GetSphericalLightCountPrev() const;
+    uint32_t GetDirectionalLightCount() const;
     uint32_t GetDirectionalLightCountPrev() const;
+    uint32_t GetPolygonalLightCount() const;
+    uint32_t GetPolygonalLightCountPrev() const;
 
-    void AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info);
     void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
+    void AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info);
+    void AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info);
     void AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info);
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
@@ -67,9 +67,6 @@ private:
         const std::shared_ptr<AutoBuffer> &matchPrev,
         uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID);
 
-    void FillInfo(const RgSphericalLightUploadInfo &info, ShLightSpherical *dst);
-    void FillInfo(const RgDirectionalLightUploadInfo &info, ShLightDirectional *dst);
-
     void CreateDescriptors();
     void UpdateDescriptors(uint32_t frameIndex);
 
@@ -77,13 +74,13 @@ private:
     VkDevice device;
 
     std::shared_ptr<AutoBuffer> sphericalLights;
-    std::shared_ptr<AutoBuffer> directionalLights;
+    std::shared_ptr<AutoBuffer> polygonalLights;
 
     std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
-    std::shared_ptr<AutoBuffer> directionalLightMatchPrev;
+    std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
 
-    std::map<uint64_t, uint32_t> sphUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
-    std::map<uint64_t, uint32_t> dirUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::map<uint64_t, uint32_t> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::map<uint64_t, uint32_t> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
     uint32_t sphLightCount;
     uint32_t sphLightCountPrev;
@@ -94,9 +91,8 @@ private:
     uint32_t spotLightCount;
     uint32_t spotLightCountPrev;
 
-    uint32_t maxSphericalLightCount;
-    uint32_t maxDirectionalLightCount;
-    uint32_t maxSpotLightCount;
+    uint32_t polyLightCount;
+    uint32_t polyLightCountPrev;
 
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;

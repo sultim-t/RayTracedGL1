@@ -238,9 +238,9 @@ CONST = {
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
     "BINDING_LIGHT_SOURCES_SPHERICAL"       : 0,
-    "BINDING_LIGHT_SOURCES_DIRECTIONAL"     : 1,
+    "BINDING_LIGHT_SOURCES_POLYGONAL"       : 1,
     "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"  : 2,
-    "BINDING_LIGHT_SOURCES_DIR_MATCH_PREV"  : 3,
+    "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV" : 3,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -487,11 +487,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      4,      "waterExtinction",                  1),
 
     (TYPE_FLOAT32,      4,      "portalInputToOutputTransform0",    1),
-
     (TYPE_FLOAT32,      4,      "portalInputToOutputTransform1",    1),
-
     (TYPE_FLOAT32,      4,      "portalInputToOutputTransform2",    1),
-
     (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
@@ -507,9 +504,17 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "primaryRayMinDist",                1),
 
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
-    (TYPE_FLOAT32,      1,      "_pad1",                            1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
-    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsPolygonalLights",  1),
+    (TYPE_UINT32,       1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "directionalLightTanAngularRadius", 1),
+
+    (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
+    (TYPE_FLOAT32,      4,      "directionalLightColor",            1),
+
+    (TYPE_UINT32,       1,      "lightCountSpotlight",              1),
+    (TYPE_UINT32,       1,      "lightCountSpotlightPrev",          1),
+    (TYPE_UINT32,       1,      "lightCountPolygonal",              1),
+    (TYPE_UINT32,       1,      "lightCountPolygonalPrev",          1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),
     #(TYPE_FLOAT32,      1,      "_pad1",                            1),
@@ -556,10 +561,19 @@ LIGHT_SPHERICAL_STRUCT = [
     (TYPE_FLOAT32,      1,      "falloff",              1),
 ]
 
-LIGHT_DIRECTIONAL_STRUCT = [
-    (TYPE_FLOAT32,      3,      "direction",            1),
-    (TYPE_FLOAT32,      1,      "tanAngularRadius",     1),
-    (TYPE_FLOAT32,      3,      "color",                1),
+# LIGHT_DIRECTIONAL_STRUCT = [
+#     (TYPE_FLOAT32,      3,      "direction",            1),
+#     (TYPE_FLOAT32,      1,      "tanAngularRadius",     1),
+#     (TYPE_FLOAT32,      3,      "color",                1),
+# ]
+
+LIGHT_POLYGONAL_STRUCT = [
+    (TYPE_FLOAT32,      3,      "position_0",            1),
+    (TYPE_FLOAT32,      1,      "color_R",               1),
+    (TYPE_FLOAT32,      3,      "position_1",            1),
+    (TYPE_FLOAT32,      1,      "color_G",               1),
+    (TYPE_FLOAT32,      3,      "position_2",            1),
+    (TYPE_FLOAT32,      1,      "color_B",               1),
 ]
 
 TONEMAPPING_STRUCT = [
@@ -592,7 +606,8 @@ STRUCTS = {
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
     "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
+    # "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShLightPolygonal":         (LIGHT_POLYGONAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,  False,  0,                          0),
 }
 

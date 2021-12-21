@@ -168,9 +168,9 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPHERICAL) 
     ShLightSpherical lightSourcesSpherical[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIRECTIONAL) readonly buffer LightSourcesDirectional_BT
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLYGONAL) readonly buffer LightSourcesPolygonal_BT
 {
-    ShLightDirectional lightSourcesDirecitional[];
+    ShLightPolygonal lightSourcesPolygonal[];
 };
 
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV) readonly buffer LightSourcesSphMatchPrev_BT
@@ -178,9 +178,9 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPH_MATCH_P
     uint lightSourcesSphMatchPrev[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_DIR_MATCH_PREV) readonly buffer LightSourcesDirMatchPrev_BT
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLY_MATCH_PREV) readonly buffer LightSourcesPolyMatchPrev_BT
 {
-    uint lightSourcesDirMatchPrev[];
+    uint lightSourcesPolyMatchPrev[];
 };
 #endif
 

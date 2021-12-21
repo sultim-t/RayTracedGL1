@@ -32,9 +32,9 @@ namespace RTGL1
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
 #define BINDING_LIGHT_SOURCES_SPHERICAL (0)
-#define BINDING_LIGHT_SOURCES_DIRECTIONAL (1)
+#define BINDING_LIGHT_SOURCES_POLYGONAL (1)
 #define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (2)
-#define BINDING_LIGHT_SOURCES_DIR_MATCH_PREV (3)
+#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (3)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -215,9 +215,15 @@ struct ShGlobalUniform
     float jitterY;
     float primaryRayMinDist;
     uint32_t rayCullBackFaces;
-    float _pad1;
-    float _pad2;
-    float _pad3;
+    uint32_t maxBounceShadowsPolygonalLights;
+    uint32_t _pad2;
+    float directionalLightTanAngularRadius;
+    float directionalLightDirection[4];
+    float directionalLightColor[4];
+    uint32_t lightCountSpotlight;
+    uint32_t lightCountSpotlightPrev;
+    uint32_t lightCountPolygonal;
+    uint32_t lightCountPolygonalPrev;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];
@@ -266,12 +272,14 @@ struct ShLightSpherical
     float falloff;
 };
 
-struct ShLightDirectional
+struct ShLightPolygonal
 {
-    float direction[3];
-    float tanAngularRadius;
-    float color[3];
-    uint32_t __pad0;
+    float position_0[3];
+    float color_R;
+    float position_1[3];
+    float color_G;
+    float position_2[3];
+    float color_B;
 };
 
 struct ShVertPreprocessing

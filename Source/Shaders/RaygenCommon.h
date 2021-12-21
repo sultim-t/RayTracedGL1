@@ -306,53 +306,32 @@ void processDirectionalLight(
     uint seed, 
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, float distanceToViewer,
-    bool isGradientSample,
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    uint dirLightCount = isGradientSample ? globalUniform.lightCountDirectionalPrev : globalUniform.lightCountDirectional;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsDirectionalLights;
 
-    if (dirLightCount == 0 || (!castShadowRay && bounceIndex != 0))
+    if (globalUniform.lightCountDirectional == 0 || (!castShadowRay && bounceIndex != 0))
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
         return;
     }
 
-    // if it's a gradient sample, then the seed is from previous frame
-    const float randomIndex = dirLightCount * getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_INDEX).x;
-    uint dirLightIndex = clamp(uint(randomIndex), 0, dirLightCount - 1);;
+    const vec3 dirlightDirection            = globalUniform.directionalLightDirection.xyz;
+    const vec3 dirlightColor                = globalUniform.directionalLightColor.xyz;
+    const float dirlightTanAngularRadius    = globalUniform.directionalLightTanAngularRadius;
 
-    if (isGradientSample)
-    {
-        // choose light using prev frame's info
-        const uint prevFrameDirLightIndex = dirLightIndex;
-
-        // get cur frame match for the chosen light
-        dirLightIndex = lightSourcesDirMatchPrev[prevFrameDirLightIndex];
-
-        // if light disappeared
-        if (dirLightIndex == UINT32_MAX)
-        {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
-            return;
-        }
-    }
-
-    const float oneOverPdf = dirLightCount;
-
-    const ShLightDirectional dirLight = lightSourcesDirecitional[dirLightIndex];
+    float oneOverPdf = 1.0;
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
-    const vec2 disk = sampleDisk(dirLight.tanAngularRadius, u[0], u[1]);
+    const vec2 disk = sampleDisk(dirlightTanAngularRadius, u[0], u[1]);
 
-    const mat3 basis = getONB(dirLight.direction);
-    const vec3 dir = normalize(dirLight.direction + basis[0] * disk.x + basis[1] * disk.y);
+    const mat3 basis = getONB(dirlightDirection);
+    const vec3 l = normalize(dirlightDirection + basis[0] * disk.x + basis[1] * disk.y);
 
-    const float nl = dot(surfNormal, dir);
-    const float ngl = dot(surfNormalGeom, dir);
+    const float nl = dot(surfNormal, l);
+    const float ngl = dot(surfNormalGeom, l);
 
     if (nl <= 0 || ngl <= 0)
     {
@@ -361,8 +340,8 @@ void processDirectionalLight(
         return;
     }
 
-    outDiffuse = evalBRDFLambertian(1.0) * dirLight.color * nl * M_PI;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirLight.direction, surfRoughness, surfSpecularColor) * dirLight.color * nl;
+    outDiffuse = evalBRDFLambertian(1.0) * dirlightColor * nl * M_PI;
+    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor) * dirlightColor * nl;
 
     outDiffuse *= oneOverPdf;
     outSpecular *= oneOverPdf;
@@ -374,11 +353,12 @@ void processDirectionalLight(
     }
 
     const float shadowRayEps = mix(SHADOW_RAY_EPS_MIN, SHADOW_RAY_EPS_MAX, distanceToViewer / SHADOW_RAY_EPS_MAX_DIST);
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition /*+ (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN*/, dir);
+    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition /*+ (toViewerDir + surfNormalGeom) * SHADOW_RAY_EPS_MIN*/, l);
 
     outDiffuse *= float(!isShadowed);
     outSpecular *= float(!isShadowed);
 }
+
 
 // Ray Tracing Gems II. Chapter 20. Muliple Importance Sampling 101. 20.1.3 Light Sampling
 float getGeometryFactor(const vec3 nSurf, const vec3 directionPtoPSurf, float distancePtoPSurf)
@@ -387,11 +367,13 @@ float getGeometryFactor(const vec3 nSurf, const vec3 directionPtoPSurf, float di
     return abs(-dot(nSurf, directionPtoPSurf)) / dist2;
 }
 
+
 float getGeometryFactorWoNormal(float distancePtoPSurf)
 {
     float dist2 = distancePtoPSurf * distancePtoPSurf;
     return 1.0 / dist2;
 }
+
 
 vec3 getDirectionAndLength(const vec3 start, const vec3 end, out float outLength)
 {
@@ -400,6 +382,7 @@ vec3 getDirectionAndLength(const vec3 start, const vec3 end, out float outLength
     
     return atob / outLength;
 }
+
 
 void processSphericalLight(
     uint seed,
@@ -465,7 +448,7 @@ void processSphericalLight(
         const vec3 spec = 
             evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * 
             light.color * 
-            dot(surfNormal, dir) * 
+            max(dot(surfNormal, dir), 0.0) * 
             getGeometryFactorWoNormal(dist);
 
 
@@ -557,7 +540,7 @@ void processSphericalLight(
     outSpecular = 
         evalBRDFSmithGGX(surfNormal, toViewerDir, dirOntoSphere, surfRoughness, surfSpecularColor) * 
         sphLight.color * 
-        dot(surfNormal, dirOntoSphere) *
+        max(dot(surfNormal, dirOntoSphere), 0.0) *
         getGeometryFactor(lightNormal, dirOntoSphere, distOntoSphere);
 
     outDiffuse /= pdf;
@@ -574,20 +557,103 @@ void processSphericalLight(
     outSpecular *= float(!isShadowed);
 }
 
+
+void processPolygonalLight(
+    uint seed, 
+    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 toViewerDir, float distanceToViewer,
+    bool isGradientSample,
+    int bounceIndex,
+    out vec3 outDiffuse, out vec3 outSpecular)
+{
+    uint polyLightCount = isGradientSample ? globalUniform.lightCountPolygonalPrev : globalUniform.lightCountPolygonal;
+    bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsPolygonalLights;
+
+    if (polyLightCount == 0 || (!castShadowRay && bounceIndex != 0))
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    // if it's a gradient sample, then the seed is from previous frame
+    const float randomIndex = polyLightCount * getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_CHOOSE).x;
+    uint polyLightIndex = clamp(uint(randomIndex), 0, polyLightCount - 1);;
+
+    if (isGradientSample)
+    {
+        // choose light using prev frame's info
+        const uint prevFramePolyLightIndex = polyLightIndex;
+
+        // get cur frame match for the chosen light
+        polyLightIndex = lightSourcesPolyMatchPrev[prevFramePolyLightIndex];
+
+        // if light disappeared
+        if (polyLightIndex == UINT32_MAX)
+        {
+            outDiffuse = vec3(0.0);
+            outSpecular = vec3(0.0);
+            return;
+        }
+    }
+
+    const float oneOverPdf = polyLightCount;
+
+    const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
+
+    const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
+    const vec3 triPoint = sampleTriangle(polyLight.position_0, polyLight.position_1, polyLight.position_2, u[0], u[1]);
+
+    const vec3 triNormal = normalize(cross(polyLight.position_1 - polyLight.position_0, polyLight.position_2 - polyLight.position_0));
+    
+    float distToLightPoint;
+    const vec3 l = getDirectionAndLength(surfPosition, triPoint, distToLightPoint);
+
+    const float nl = dot(surfNormal, l);
+    const float ngl = dot(surfNormalGeom, l);
+
+    if (nl <= 0 || ngl <= 0)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+
+    const vec3 polyLightColor = vec3(polyLight.color_R, polyLight.color_G, polyLight.color_B);
+
+    outDiffuse = evalBRDFLambertian(1.0) * polyLightColor * nl * M_PI;
+    outSpecular = 
+        evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * 
+        polyLightColor * 
+        nl *
+        getGeometryFactor(triNormal, l, distToLightPoint);
+
+    outDiffuse *= oneOverPdf;
+    outSpecular *= oneOverPdf;
+
+    // if too dim, don't cast shadow ray
+    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    {
+        return;
+    }
+
+   const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, l);
+
+    outDiffuse *= float(!isShadowed);
+    outSpecular *= float(!isShadowed);
+}
+
+
 void processSpotLight(
     uint seed,
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir, 
-    bool isGradientSample,
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSpotlights;
 
-    if (globalUniform.spotlightCosAngleOuter <= 0.0 || 
-        globalUniform.spotlightRadius <= 0.0 ||
-        globalUniform.spotlightFalloffDistance <= 0.0 ||
-        (!castShadowRay && bounceIndex != 0))
+    if (globalUniform.lightCountSpotlight == 0 || (!castShadowRay && bounceIndex != 0))
     {
         outDiffuse = vec3(0.0);
         outSpecular = vec3(0.0);
@@ -649,6 +715,7 @@ void processSpotLight(
     outSpecular *= float(!isShadowed);
 }
 
+
 void processDirectIllumination(
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
@@ -663,7 +730,6 @@ void processDirectIllumination(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, distanceToViewer,
-        isGradientSample, 
         bounceIndex,
         dirDiff, dirSpec);
     
@@ -681,13 +747,13 @@ void processDirectIllumination(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
         toViewerDir, 
-        isGradientSample,  
         bounceIndex,
         spotDiff, spotSpec);
     
     outDiffuse = dirDiff + sphDiff + spotDiff;
     outSpecular = dirSpec + sphSpec + spotSpec;
 }
+
 
 void processDirectIllumination(
     uint seed, 

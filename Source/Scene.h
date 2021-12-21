@@ -56,8 +56,9 @@ public:
     bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
     bool UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo);
 
-    void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo);
+    void UploadLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &lightInfo);
+    void UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo);
 
     void SubmitStatic();

@@ -255,14 +255,19 @@ bool Scene::TryGetStaticSimpleIndex(uint64_t uniqueID, uint32_t *result) const
     return false;
 }
 
-void Scene::UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo)
+void Scene::UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &lightInfo)
 {
-    lightManager->AddDirectionalLight(frameIndex, lightInfo);
+    lightManager->AddDirectionalLight(frameIndex, uniform, lightInfo);
 }
 
 void Scene::UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo)
 {
     lightManager->AddSphericalLight(frameIndex, lightInfo);
+}
+
+void RTGL1::Scene::UploadLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &lightInfo)
+{
+    lightManager->AddPolygonalLight(frameIndex, lightInfo);
 }
 
 void Scene::UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo)

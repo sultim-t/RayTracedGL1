@@ -426,20 +426,17 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
-        gu->lightCountSpherical = scene->GetLightManager()->GetSphericalLightCount();
-        gu->lightCountDirectional = scene->GetLightManager()->GetDirectionalLightCount();
-        gu->lightCountSphericalPrev = scene->GetLightManager()->GetSphericalLightCountPrev();
-        gu->lightCountDirectionalPrev = scene->GetLightManager()->GetDirectionalLightCountPrev();
+        gu->lightCountSpherical         = scene->GetLightManager()->GetSphericalLightCount();
+        gu->lightCountSphericalPrev     = scene->GetLightManager()->GetSphericalLightCountPrev();
 
-        // if there are no spotlights, set incorrect values
-        // TODO: add spotlight count to global uniform
-        if (scene->GetLightManager()->GetSpotlightCount() == 0)
-        {
-            gu->spotlightRadius = -1;
-            gu->spotlightCosAngleOuter = -1;
-            gu->spotlightCosAngleInner = -1;
-            gu->spotlightFalloffDistance = -1;
-        }
+        gu->lightCountDirectional       = scene->GetLightManager()->GetDirectionalLightCount();
+        gu->lightCountDirectionalPrev   = scene->GetLightManager()->GetDirectionalLightCountPrev();
+
+        gu->lightCountSpotlight         = scene->GetLightManager()->GetSpotlightCount();
+        gu->lightCountSpotlightPrev     = scene->GetLightManager()->GetSpotlightCountPrev();
+
+        gu->lightCountPolygonal         = scene->GetLightManager()->GetPolygonalLightCount();
+        gu->lightCountPolygonalPrev     = scene->GetLightManager()->GetPolygonalLightCountPrev();
     }
 
     {
@@ -513,15 +510,17 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     if (drawInfo.pShadowParams != nullptr)
     {
-        gu->maxBounceShadowsDirectionalLights = drawInfo.pShadowParams->maxBounceShadowsDirectionalLights;
-        gu->maxBounceShadowsSphereLights = drawInfo.pShadowParams->maxBounceShadowsSphereLights;
-        gu->maxBounceShadowsSpotlights = drawInfo.pShadowParams->maxBounceShadowsSpotlights;
+        gu->maxBounceShadowsDirectionalLights   = drawInfo.pShadowParams->maxBounceShadowsDirectionalLights;
+        gu->maxBounceShadowsSphereLights        = drawInfo.pShadowParams->maxBounceShadowsSphereLights;
+        gu->maxBounceShadowsSpotlights          = drawInfo.pShadowParams->maxBounceShadowsSpotlights;
+        gu->maxBounceShadowsPolygonalLights     = drawInfo.pShadowParams->maxBounceShadowsPolygonalLights;
     }
     else
     {
         gu->maxBounceShadowsDirectionalLights = 8;
         gu->maxBounceShadowsSphereLights = 2;
         gu->maxBounceShadowsSpotlights = 2;
+        gu->maxBounceShadowsPolygonalLights = 2;
     }
 
     if (drawInfo.pBloomParams != nullptr)
@@ -998,7 +997,7 @@ void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *pLightInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
+    scene->UploadLight(currentFrameState.GetFrameIndex(), uniform, *pLightInfo);
 }
 
 void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
@@ -1019,6 +1018,16 @@ void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
     }
 
     scene->UploadLight(currentFrameState.GetFrameIndex(), uniform, *pLightInfo);
+}
+
+void RTGL1::VulkanDevice::UploadLight(const RgPolygonalLightUploadInfo *pLightInfo)
+{
+    if (pLightInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
 void VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)

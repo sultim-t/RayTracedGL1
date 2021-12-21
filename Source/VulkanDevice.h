@@ -76,6 +76,7 @@ public:
     void UploadLight(const RgDirectionalLightUploadInfo *pLightInfo);
     void UploadLight(const RgSphericalLightUploadInfo *pLightInfo);
     void UploadLight(const RgSpotlightUploadInfo *pLightInfo);
+    void UploadLight(const RgPolygonalLightUploadInfo *pLightInfo);
 
     void CreateStaticMaterial(const RgStaticMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);

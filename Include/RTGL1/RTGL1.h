@@ -561,6 +561,13 @@ typedef struct RgSphericalLightUploadInfo
     float           falloffDistance;
 } RgSphericalLightUploadInfo;
 
+typedef struct RgPolygonalLightUploadInfo
+{
+    uint64_t        uniqueID;
+    RgFloat3D       color;
+    RgFloat3D       positions[3];
+} RgPolygonalLightUploadInfo;
+
 // Only one spotlight is available in a scene.
 typedef struct RgSpotlightUploadInfo
 {
@@ -589,6 +596,10 @@ RgResult rgUploadSphericalLight(
 RgResult rgUploadSpotlightLight(
     RgInstance                          rgInstance,
     RgSpotlightUploadInfo               *pLightInfo);
+
+RgResult rgUploadPolygonalLight(
+    RgInstance                          rgInstance,
+    RgPolygonalLightUploadInfo          *pLightInfo);
 
 
 
@@ -826,12 +837,11 @@ typedef struct RgDrawFrameDebugParams
 
 typedef struct RgDrawFrameShadowParams
 {
-    // Directional light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSphereLights).
+    // Shadow rays are cast, if illumination bounce index is in [0, maxBounceShadows).
     uint32_t    maxBounceShadowsDirectionalLights;
-    // Sphere light shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsDirectionalLights).
     uint32_t    maxBounceShadowsSphereLights;
-    // Spotlight shadow rays are cast, if illumination bounce index is in [0, maxBounceShadowsSpotlights).
     uint32_t    maxBounceShadowsSpotlights;
+    uint32_t    maxBounceShadowsPolygonalLights;
 } RgDrawFrameShadowParams;
 
 typedef struct RgDrawFrameBloomParams

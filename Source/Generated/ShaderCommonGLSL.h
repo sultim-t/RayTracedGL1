@@ -25,9 +25,9 @@
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
 #define BINDING_LIGHT_SOURCES_SPHERICAL (0)
-#define BINDING_LIGHT_SOURCES_DIRECTIONAL (1)
+#define BINDING_LIGHT_SOURCES_POLYGONAL (1)
 #define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (2)
-#define BINDING_LIGHT_SOURCES_DIR_MATCH_PREV (3)
+#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (3)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -210,9 +210,15 @@ struct ShGlobalUniform
     float jitterY;
     float primaryRayMinDist;
     uint rayCullBackFaces;
-    float _pad1;
-    float _pad2;
-    float _pad3;
+    uint maxBounceShadowsPolygonalLights;
+    uint _pad2;
+    float directionalLightTanAngularRadius;
+    vec4 directionalLightDirection;
+    vec4 directionalLightColor;
+    uint lightCountSpotlight;
+    uint lightCountSpotlightPrev;
+    uint lightCountPolygonal;
+    uint lightCountPolygonalPrev;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];
@@ -261,12 +267,14 @@ struct ShLightSpherical
     float falloff;
 };
 
-struct ShLightDirectional
+struct ShLightPolygonal
 {
-    vec3 direction;
-    float tanAngularRadius;
-    vec3 color;
-    uint __pad0;
+    vec3 position_0;
+    float color_R;
+    vec3 position_1;
+    float color_G;
+    vec3 position_2;
+    float color_B;
 };
 
 struct ShVertPreprocessing
