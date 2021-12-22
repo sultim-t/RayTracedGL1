@@ -35,10 +35,20 @@ void RTGL1::LightLists::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex
 
 void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorID lightSectorId)
 {
-    // for each potentially visible sector from "lightSectorId"
-    for (SectorID visibleSector : sectorVisibility->GetPotentiallyVisibleSectors(lightSectorId))
+    // sector is always visible from itself, so append the light
+    lightLists[lightSectorId].push_back(lightIndex.GetArrayIndex());
+
+
+    if (sectorVisibility->ArePotentiallyVisibleSectorsExist(lightSectorId))
     {
-        // append given light to light list of such sector
-        lightLists[visibleSector].push_back(lightIndex.GetArrayIndex());
+        // for each potentially visible sector from "lightSectorId"
+
+        for (SectorID visibleSector : sectorVisibility->GetPotentiallyVisibleSectors(lightSectorId))
+        {
+            assert(visibleSector != lightSectorId);
+
+            // append given light to light list of such sector
+            lightLists[visibleSector].push_back(lightIndex.GetArrayIndex());
+        }
     }
 }

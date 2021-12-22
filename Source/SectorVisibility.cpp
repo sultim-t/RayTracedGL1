@@ -27,6 +27,12 @@
 
 void RTGL1::SectorVisibility::SetPotentialVisibility(SectorID a, SectorID b)
 {
+    if (a == b)
+    {
+        // it's implicitly implied that sector is visible from itself
+        return;
+    }
+
     CheckSize(a);
     CheckSize(b);
 
@@ -40,10 +46,15 @@ void RTGL1::SectorVisibility::Reset()
     pvs.clear();
 }
 
+bool RTGL1::SectorVisibility::ArePotentiallyVisibleSectorsExist(SectorID forThisSector) const
+{
+    return pvs.find(forThisSector) != pvs.end();
+}
+
 const std::unordered_set<RTGL1::SectorID> &RTGL1::SectorVisibility::GetPotentiallyVisibleSectors(SectorID fromThisSector)
 {
     // should exist
-    assert(pvs.find(fromThisSector) != pvs.end());
+    assert(ArePotentiallyVisibleSectorsExist(fromThisSector));
     
     return pvs[fromThisSector];
 }

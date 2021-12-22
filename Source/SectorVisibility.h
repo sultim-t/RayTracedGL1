@@ -43,6 +43,7 @@ public:
     void SetPotentialVisibility(SectorID a, SectorID b);
     void Reset();
 
+    bool ArePotentiallyVisibleSectorsExist(SectorID forThisSector) const;
     const std::unordered_set<SectorID> &GetPotentiallyVisibleSectors(SectorID fromThisSector);
 
 private:

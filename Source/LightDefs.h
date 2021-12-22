@@ -67,6 +67,10 @@ struct SectorID
     {
         return _id == other._id;
     }
+    bool operator!=(const SectorID &other) const
+    {
+        return _id != other._id;
+    }
 };
 static_assert(std::is_pod_v<SectorID>, "");
 
