@@ -25,6 +25,7 @@
 #include "ASManager.h"
 #include "LightManager.h"
 #include "VertexPreprocessing.h"
+#include "SectorVisibility.h"
 
 namespace RTGL1
 {
@@ -61,6 +62,8 @@ public:
     void UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo);
 
+    void SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B);
+
     void SubmitStatic();
     void StartNewStatic();
 
@@ -78,6 +81,7 @@ private:
     std::shared_ptr<LightManager> lightManager;
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
     std::shared_ptr<VertexPreprocessing> vertPreproc;
+    std::shared_ptr<SectorVisibility> sectorVisibility;
 
     // Dynamic indices are cleared every frame
     std::unordered_map<uint64_t, uint32_t> dynamicUniqueIDToSimpleIndex;

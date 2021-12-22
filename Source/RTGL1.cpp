@@ -309,3 +309,12 @@ RgResult rgIsRenderUpscaleTechniqueAvailable(RgInstance rgInstance, RgRenderUpsc
     }
     CATCH_OR_RETURN;
 }
+
+RgResult rgSetPotentialVisibility(RgInstance rgInstance, uint32_t sectorID_A, uint32_t sectorID_B)
+{
+    try
+    {
+        GetDevice(rgInstance)->SetPotentialVisibility(RTGL1::SectorID{ sectorID_A }, RTGL1::SectorID{ sectorID_B });
+    }
+    CATCH_OR_RETURN;
+}

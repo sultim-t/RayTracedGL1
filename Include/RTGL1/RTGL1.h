@@ -85,7 +85,8 @@ typedef enum RgResult
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
     RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
     RG_WRONG_MATERIAL_PARAMETER,
-    RG_WRONG_FUNCTION_CALL
+    RG_WRONG_FUNCTION_CALL,
+    RG_TOO_MANY_SECTORS
 } RgResult;
 
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
@@ -413,6 +414,17 @@ RgResult rgSubmitStaticGeometries(
 
 
 
+// Set mutual potential visibility between sectors A and B.
+// It improves the light sampling by using specific light lists for each sector.
+// If none was set, light sources are chosen uniformly.
+// Note: visibility data is being cleared after calling rgStartNewScene! 
+RgResult rgSetPotentialVisibility(
+    RgInstance                          rgInstance,
+    uint32_t                            sectorID_A,
+    uint32_t                            sectorID_B);
+
+
+
 typedef enum RgBlendFactor
 {
     RG_BLEND_FACTOR_ONE,
@@ -535,15 +547,8 @@ RgResult rgUploadRasterizedGeometry(
 
 
 
-typedef enum RgLightType
-{
-    RG_LIGHT_TYPE_DYNAMIC
-} RgLightType;
-
 typedef struct RgDirectionalLightUploadInfo
 {
-    uint64_t        uniqueID;
-    RgLightType     type;
     RgFloat3D       color;
     RgFloat3D       direction;
     float           angularDiameterDegrees;
@@ -551,19 +556,23 @@ typedef struct RgDirectionalLightUploadInfo
 
 typedef struct RgSphericalLightUploadInfo
 {
+    // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    RgLightType     type;
     RgFloat3D       color;
     RgFloat3D       position;
-    // Sphere radius
+    // Sphere radius.
     float           radius;
-    // There will be no light after this distance
+    // There will be no light after this distance.
     float           falloffDistance;
 } RgSphericalLightUploadInfo;
 
 typedef struct RgPolygonalLightUploadInfo
 {
+    // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
+    // ID of the sector this light belongs to.
+    // All lights can have the same sectorID, but then more noise should be expected.
+    uint32_t        sectorID;
     RgFloat3D       color;
     RgFloat3D       positions[3];
 } RgPolygonalLightUploadInfo;

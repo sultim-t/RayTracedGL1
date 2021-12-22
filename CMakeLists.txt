@@ -79,6 +79,9 @@ set(PrivateHeaders
     "Source/DLSS.h"
     "Source/RenderResolutionHelper.h"
     "Source/HaltonSequence.h"
+    "Source/LightLists.h"
+    "Source/LightDefs.h"
+    "Source/SectorVisibility.h"
 )
 
 set(Sources
@@ -139,6 +142,8 @@ set(Sources
     "Source/Sharpening.cpp"
     "Source/DLSS.cpp"
     "Source/HaltonSequence.cpp"
+    "Source/LightLists.cpp"
+    "Source/SectorVisibility.cpp"
 )
 
 

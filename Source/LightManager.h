@@ -24,32 +24,15 @@
 #include "Common.h"
 #include "AutoBuffer.h"
 #include "GlobalUniform.h"
+#include "LightLists.h"
 
 namespace RTGL1
 {
 
-
-// Passed to the library by user
-typedef uint64_t UniqueLightID;
-
-
-// Index in the global light array.
-// Used to match lights by UniqueLightID between current and previous frames,
-// as indices for the same light in them can be different, and only UniqueLightID is constant.
-struct GlobalLightIndex
-{
-    uint32_t GetArrayIndex() const { return _indexInGlobalArray; }
-    bool operator==(const GlobalLightIndex &other) const { return _indexInGlobalArray == other._indexInGlobalArray; };
-
-    uint32_t _indexInGlobalArray;
-};
-static_assert(std::is_pod_v<GlobalLightIndex>, "");
-
-
 class LightManager
 {
 public:
-    LightManager(VkDevice device, std::shared_ptr<MemoryAllocator> &allocator);
+    LightManager(VkDevice device, std::shared_ptr<MemoryAllocator> &allocator, std::shared_ptr<SectorVisibility> &sectorVisibility);
     ~LightManager();
 
     LightManager(const LightManager &other) = delete;
@@ -91,11 +74,14 @@ private:
 private:
     VkDevice device;
 
-    std::shared_ptr<LightList> lightList;
+    std::shared_ptr<LightLists> lightLists;
 
     std::shared_ptr<AutoBuffer> sphericalLights;
     std::shared_ptr<AutoBuffer> polygonalLights;
 
+    // The light was uploaded in previous frame with GlobalLightIndex==i.
+    // We need to access the same light, but in current frame it has other GlobalLightIndex==k.
+    // These arrays are used to access 'k' by 'i'.
     std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
     std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
 

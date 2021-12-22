@@ -68,7 +68,7 @@ public:
     void UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *pUpdateInfo);
 
     void UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *pUploadInfo,
-                                      const float *pViewProjection, const RgViewport *pViewport);
+                                  const float *pViewProjection, const RgViewport *pViewport);
 
     void SubmitStaticGeometries();
     void StartNewStaticScene();
@@ -77,6 +77,8 @@ public:
     void UploadLight(const RgSphericalLightUploadInfo *pLightInfo);
     void UploadLight(const RgSpotlightUploadInfo *pLightInfo);
     void UploadLight(const RgPolygonalLightUploadInfo *pLightInfo);
+
+    void SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B);
 
     void CreateStaticMaterial(const RgStaticMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);

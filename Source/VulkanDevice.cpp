@@ -1030,6 +1030,11 @@ void RTGL1::VulkanDevice::UploadLight(const RgPolygonalLightUploadInfo *pLightIn
     scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
+void RTGL1::VulkanDevice::SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B)
+{
+    scene->SetPotentialVisibility(sectorID_A, sectorID_B);
+}
+
 void VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
 {
     if (createInfo == nullptr)

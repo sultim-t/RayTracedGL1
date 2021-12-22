@@ -29,7 +29,7 @@
 
 namespace RTGL1
 {
-constexpr double RG_PI = 3.141592653589793238462643383279502884197169399375105820974944592307816406;
+constexpr double RG_PI = 3.1415926535897932384626433;
 
 constexpr float MIN_COLOR_SUM = 0.0001f;
 
@@ -41,7 +41,8 @@ constexpr uint32_t MAX_LIGHT_COUNT_POLYGONAL = 1024;
 
 RTGL1::LightManager::LightManager(
     VkDevice _device, 
-    std::shared_ptr<MemoryAllocator> &_allocator)
+    std::shared_ptr<MemoryAllocator> &_allocator, 
+    std::shared_ptr<SectorVisibility> &_sectorVisibility)
 :
     device(_device),
     sphLightCount(0),
@@ -57,6 +58,8 @@ RTGL1::LightManager::LightManager(
     descSets{},
     needDescSetUpdate{}
 {
+    lightLists              = std::make_shared<LightLists>(_sectorVisibility);
+
     sphericalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights spherical staging", "Lights spherical");
     polygonalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights polugonal staging", "Lights polygonal");
     sphericalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights spherical staging", "Match previous Lights spherical");
@@ -251,6 +254,9 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
 
     // save index for the next frame
     polygonalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
+
+
+    lightLists->InsertLight(index, SectorID{ info.sectorID });
 }
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
@@ -324,18 +330,18 @@ void RTGL1::LightManager::FillMatchPrev(
     uint32_t curFrameIndex, GlobalLightIndex lightIndexInCurFrame, UniqueLightID uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-
     const std::unordered_map<UniqueLightID, GlobalLightIndex> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
 
     auto found = uniqueToPrevIndex.find(uniqueID);
-
-    if (found != uniqueToPrevIndex.end())
-    {        
-        GlobalLightIndex prevLightIndex = found->second;
-
-        uint32_t *dst = (uint32_t*)matchPrev->GetMapped(curFrameIndex);
-        dst[prevLightIndex.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();
+    if (found == uniqueToPrevIndex.end())
+    {
+        return;
     }
+
+    GlobalLightIndex lightIndexInPrevFrame = found->second;
+
+    uint32_t *dst = (uint32_t*)matchPrev->GetMapped(curFrameIndex);
+    dst[lightIndexInPrevFrame.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();
 }
 
 void RTGL1::LightManager::CreateDescriptors()

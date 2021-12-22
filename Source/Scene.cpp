@@ -40,7 +40,9 @@ Scene::Scene(
 {
     VertexCollectorFilterTypeFlags_Init();
 
-    lightManager = std::make_shared<LightManager>(_device, _allocator);
+    sectorVisibility = std::make_shared<SectorVisibility>();
+
+    lightManager = std::make_shared<LightManager>(_device, _allocator, sectorVisibility);
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
 
     asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, _properties);
@@ -215,6 +217,7 @@ void Scene::StartNewStatic()
     isRecordingStatic = true;
     asManager->BeginStaticGeometry();
     lightManager->Reset();
+    sectorVisibility->Reset();
 
     staticUniqueIDToSimpleIndex.clear();
     movableGeomIndices.clear();
@@ -273,4 +276,9 @@ void RTGL1::Scene::UploadLight(uint32_t frameIndex, const RgPolygonalLightUpload
 void Scene::UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo)
 {
     lightManager->AddSpotlight(frameIndex, uniform, lightInfo);
+}
+
+void RTGL1::Scene::SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B)
+{
+    sectorVisibility->SetPotentialVisibility(sectorID_A, sectorID_B);
 }
