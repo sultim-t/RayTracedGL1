@@ -598,14 +598,26 @@ void processPolygonalLight(
         }
     }
 
-    const float oneOverPdf = polyLightCount;
-
+    float oneOverPdf = polyLightCount;
     const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
+
+
+    vec3 triNormal = cross(polyLight.position_1 - polyLight.position_0, polyLight.position_2 - polyLight.position_0);
+    const float triArea = length(triNormal) / 2.0;
+
+    if (triArea < 0.0001)
+    {
+        outDiffuse = vec3(0.0);
+        outSpecular = vec3(0.0);
+        return;
+    }
+    triNormal /= triArea * 2;
+    oneOverPdf *= triArea;
+
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
     const vec3 triPoint = sampleTriangle(polyLight.position_0, polyLight.position_1, polyLight.position_2, u[0], u[1]);
 
-    const vec3 triNormal = safeNormalize(cross(polyLight.position_1 - polyLight.position_0, polyLight.position_2 - polyLight.position_0));
     
     float distToLightPoint;
     const vec3 l = getDirectionAndLength(surfPosition, triPoint, distToLightPoint);
