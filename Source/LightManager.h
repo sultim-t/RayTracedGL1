@@ -64,9 +64,9 @@ public:
 
 private:
     void FillMatchPrev(
-        const std::unordered_map<UniqueLightID, GlobalLightIndex> *pUniqueToPrevIndex,
+        const std::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
         const std::shared_ptr<AutoBuffer> &matchPrev,
-        uint32_t curFrameIndex, GlobalLightIndex lightIndexInCurFrame, UniqueLightID uniqueID);
+        uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID);
 
     void CreateDescriptors();
     void UpdateDescriptors(uint32_t frameIndex);
@@ -79,14 +79,14 @@ private:
     std::shared_ptr<AutoBuffer> sphericalLights;
     std::shared_ptr<AutoBuffer> polygonalLights;
 
-    // The light was uploaded in previous frame with GlobalLightIndex==i.
-    // We need to access the same light, but in current frame it has other GlobalLightIndex==k.
+    // The light was uploaded in previous frame with LightArrayIndex==i.
+    // We need to access the same light, but in current frame it has other LightArrayIndex==k.
     // These arrays are used to access 'k' by 'i'.
     std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
     std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
 
-    std::unordered_map<UniqueLightID, GlobalLightIndex> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
-    std::unordered_map<UniqueLightID, GlobalLightIndex> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<UniqueLightID, LightArrayIndex> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<UniqueLightID, LightArrayIndex> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
     uint32_t sphLightCount;
     uint32_t sphLightCountPrev;

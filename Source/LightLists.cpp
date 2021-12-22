@@ -33,7 +33,7 @@ void RTGL1::LightLists::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex
     lightLists.clear();
 }
 
-void RTGL1::LightLists::InsertLight(GlobalLightIndex lightIndex, SectorID lightSectorId)
+void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorID lightSectorId)
 {
     // for each potentially visible sector from "lightSectorId"
     for (SectorID visibleSector : sectorVisibility->GetPotentiallyVisibleSectors(lightSectorId))

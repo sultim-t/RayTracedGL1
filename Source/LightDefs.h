@@ -37,7 +37,7 @@ typedef uint64_t UniqueLightID;
 // Index in the global light array.
 // Used to match lights by UniqueLightID between current and previous frames,
 // as indices for the same light in them can be different, and only UniqueLightID is constant.
-struct GlobalLightIndex
+struct LightArrayIndex
 {
     typedef uint32_t index_t;
     index_t _indexInGlobalArray;
@@ -46,12 +46,12 @@ struct GlobalLightIndex
     {
         return _indexInGlobalArray;
     }
-    bool operator==(const GlobalLightIndex &other) const
+    bool operator==(const LightArrayIndex &other) const
     {
         return _indexInGlobalArray == other._indexInGlobalArray;
     }
 };
-static_assert(std::is_pod_v<GlobalLightIndex>, "");
+static_assert(std::is_pod_v<LightArrayIndex>, "");
 
 
 struct SectorID
@@ -77,11 +77,11 @@ static_assert(std::is_pod_v<SectorID>, "");
 // default hash specialializations
 
 template<>
-struct std::hash<RTGL1::GlobalLightIndex>
+struct std::hash<RTGL1::LightArrayIndex>
 {
-    std::size_t operator()(RTGL1::GlobalLightIndex const &s) const noexcept
+    std::size_t operator()(RTGL1::LightArrayIndex const &s) const noexcept
     {
-        return std::hash<RTGL1::GlobalLightIndex::index_t>{}(s._indexInGlobalArray);
+        return std::hash<RTGL1::LightArrayIndex::index_t>{}(s._indexInGlobalArray);
     }
 };
 

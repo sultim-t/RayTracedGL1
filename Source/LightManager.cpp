@@ -213,7 +213,7 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
         return;
     }
 
-    const GlobalLightIndex index = GlobalLightIndex{ sphLightCount };
+    const LightArrayIndex index = LightArrayIndex{ sphLightCount };
     sphLightCount++;
 
     auto *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
@@ -241,7 +241,7 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
         return;
     }
 
-    const GlobalLightIndex index = GlobalLightIndex{ polyLightCount };
+    const LightArrayIndex index = LightArrayIndex{ polyLightCount };
     polyLightCount++;
 
     auto *dst = (ShLightPolygonal *)polygonalLights->GetMapped(frameIndex);
@@ -325,12 +325,12 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
 }
 
 void RTGL1::LightManager::FillMatchPrev(
-    const std::unordered_map<UniqueLightID, GlobalLightIndex> *pUniqueToPrevIndex,
+    const std::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
     const std::shared_ptr<AutoBuffer> &matchPrev,
-    uint32_t curFrameIndex, GlobalLightIndex lightIndexInCurFrame, UniqueLightID uniqueID)
+    uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-    const std::unordered_map<UniqueLightID, GlobalLightIndex> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
+    const std::unordered_map<UniqueLightID, LightArrayIndex> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
 
     auto found = uniqueToPrevIndex.find(uniqueID);
     if (found == uniqueToPrevIndex.end())
@@ -338,7 +338,7 @@ void RTGL1::LightManager::FillMatchPrev(
         return;
     }
 
-    GlobalLightIndex lightIndexInPrevFrame = found->second;
+    LightArrayIndex lightIndexInPrevFrame = found->second;
 
     uint32_t *dst = (uint32_t*)matchPrev->GetMapped(curFrameIndex);
     dst[lightIndexInPrevFrame.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();

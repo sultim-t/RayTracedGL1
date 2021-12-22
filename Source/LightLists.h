@@ -40,14 +40,14 @@ public:
 
     void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
 
-    void InsertLight(GlobalLightIndex lightIndex, SectorID lightSectorId);
+    void InsertLight(LightArrayIndex lightIndex, SectorID lightSectorId);
 
 
 private:
     std::shared_ptr<SectorVisibility> sectorVisibility;
 
     // light list for each sector in the current frame
-    std::unordered_map<SectorID, std::vector<GlobalLightIndex::index_t>> lightLists;
+    std::unordered_map<SectorID, std::vector<LightArrayIndex::index_t>> lightLists;
 };
 
 }
