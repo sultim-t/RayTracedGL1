@@ -79,7 +79,7 @@ vec2 getMotionForInfinitePoint(const ivec2 pix)
     return screenSpacePrev - screenSpaceCur;
 }
 
-void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC)
+void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC, bool wasSplit)
 {
     if (calculateSkyAndStoreToAlbedo)
     {
@@ -101,7 +101,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufSurfacePosition,     pix, vec4(0.0));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(m), 0.0, 0.0));
 }
@@ -222,7 +222,7 @@ void main()
         throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, vec3(0,1,0))), -3));
 
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0);
+        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0, false);
         return;
     }
 
@@ -368,7 +368,7 @@ void main()
         {
             throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, globalUniform.worldUpVector.xyz)), -3));
 
-            storeSky(pix, rayDir, true, throughput, firstHitDepthNDC);
+            storeSky(pix, rayDir, true, throughput, firstHitDepthNDC, wasSplit);
             return;  
         }
 
@@ -416,7 +416,7 @@ void main()
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));
 }

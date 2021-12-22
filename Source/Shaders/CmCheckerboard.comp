@@ -43,6 +43,7 @@ bool isRightOutOfBounds(int checkerboardPix_X)
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    const ivec2 checkerboardPix = getCheckerboardPix(pix);
 
     if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
     {
@@ -51,15 +52,18 @@ void main()
 
     vec3 color = imageLoad(framebufPreFinal, pix).rgb;
 
-    const ivec2 checkerboardPix = getCheckerboardPix(pix);
+    const bool wasSplit = texelFetch(framebufThroughput_Sampler, checkerboardPix, 0).a > 0.5;
 
-    const vec3 crossColor = 
-        0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2(-1, 0), 0).rgb * float(!isLeftOutOfBounds(checkerboardPix.x)) +
-        0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2( 1, 0), 0).rgb * float(!isRightOutOfBounds(checkerboardPix.x)) +
-        0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2( 0, 1), 0).rgb +
-        0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2( 0,-1), 0).rgb;
+    if (wasSplit)
+    {
+        const vec3 crossColor = 
+            0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2(-1, 0), 0).rgb * float(!isLeftOutOfBounds(checkerboardPix.x)) +
+            0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2( 1, 0), 0).rgb * float(!isRightOutOfBounds(checkerboardPix.x)) +
+            0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2( 0, 1), 0).rgb +
+            0.25 * texelFetch(framebufPreFinal_Sampler, pix + ivec2( 0,-1), 0).rgb;
 
-    color = mix(color, crossColor, 0.5);
+        color = mix(color, crossColor, 0.5);
+    }
 
     color = clamp(color, 0.0, 1.0);
     imageStore(framebufFinal, pix, vec4(color, 0));
