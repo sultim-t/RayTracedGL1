@@ -210,11 +210,11 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
         return;
     }
 
-    uint32_t index = sphLightCount;
+    const GlobalLightIndex index = GlobalLightIndex{ sphLightCount };
     sphLightCount++;
 
     auto *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
-    FillInfoSpherical(info, &dst[index]);
+    FillInfoSpherical(info, &dst[index.GetArrayIndex()]);
 
     FillMatchPrev(sphericalUniqueIDToPrevIndex, sphericalLightMatchPrev, frameIndex, index, info.uniqueID);
 
@@ -238,11 +238,11 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
         return;
     }
 
-    uint32_t index = polyLightCount;
-    polyLightCount ++;
+    const GlobalLightIndex index = GlobalLightIndex{ polyLightCount };
+    polyLightCount++;
 
     auto *dst = (ShLightPolygonal *)polygonalLights->GetMapped(frameIndex);
-    FillInfoPolygonal(info, &dst[index]);
+    FillInfoPolygonal(info, &dst[index.GetArrayIndex()]);
 
     FillMatchPrev(polygonalUniqueIDToPrevIndex, polygonalLightMatchPrev, frameIndex, index, info.uniqueID);
 
@@ -319,22 +319,22 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
 }
 
 void RTGL1::LightManager::FillMatchPrev(
-    const std::unordered_map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+    const std::unordered_map<UniqueLightID, GlobalLightIndex> *pUniqueToPrevIndex,
     const std::shared_ptr<AutoBuffer> &matchPrev,
-    uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID)
+    uint32_t curFrameIndex, GlobalLightIndex lightIndexInCurFrame, UniqueLightID uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
 
-    const std::unordered_map<uint64_t, uint32_t> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
+    const std::unordered_map<UniqueLightID, GlobalLightIndex> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
 
     auto found = uniqueToPrevIndex.find(uniqueID);
 
     if (found != uniqueToPrevIndex.end())
     {        
-        uint32_t prevLightIndex = found->second;
+        GlobalLightIndex prevLightIndex = found->second;
 
         uint32_t *dst = (uint32_t*)matchPrev->GetMapped(curFrameIndex);
-        dst[prevLightIndex] = curLightIndex;
+        dst[prevLightIndex.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();
     }
 }
 

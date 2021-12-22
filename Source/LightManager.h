@@ -28,6 +28,24 @@
 namespace RTGL1
 {
 
+
+// Passed to the library by user
+typedef uint64_t UniqueLightID;
+
+
+// Index in the global light array.
+// Used to match lights by UniqueLightID between current and previous frames,
+// as indices for the same light in them can be different, and only UniqueLightID is constant.
+struct GlobalLightIndex
+{
+    uint32_t GetArrayIndex() const { return _indexInGlobalArray; }
+    bool operator==(const GlobalLightIndex &other) const { return _indexInGlobalArray == other._indexInGlobalArray; };
+
+    uint32_t _indexInGlobalArray;
+};
+static_assert(std::is_pod_v<GlobalLightIndex>, "");
+
+
 class LightManager
 {
 public:
@@ -63,9 +81,9 @@ public:
 
 private:
     void FillMatchPrev(
-        const std::unordered_map<uint64_t, uint32_t> *pUniqueToPrevIndex,
+        const std::unordered_map<UniqueLightID, GlobalLightIndex> *pUniqueToPrevIndex,
         const std::shared_ptr<AutoBuffer> &matchPrev,
-        uint32_t curFrameIndex, uint32_t curLightIndex, uint64_t uniqueID);
+        uint32_t curFrameIndex, GlobalLightIndex lightIndexInCurFrame, UniqueLightID uniqueID);
 
     void CreateDescriptors();
     void UpdateDescriptors(uint32_t frameIndex);
@@ -73,14 +91,16 @@ private:
 private:
     VkDevice device;
 
+    std::shared_ptr<LightList> lightList;
+
     std::shared_ptr<AutoBuffer> sphericalLights;
     std::shared_ptr<AutoBuffer> polygonalLights;
 
     std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
     std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
 
-    std::unordered_map<uint64_t, uint32_t> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
-    std::unordered_map<uint64_t, uint32_t> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<UniqueLightID, GlobalLightIndex> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    std::unordered_map<UniqueLightID, GlobalLightIndex> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
     uint32_t sphLightCount;
     uint32_t sphLightCountPrev;
