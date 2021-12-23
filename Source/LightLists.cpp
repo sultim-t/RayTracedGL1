@@ -22,8 +22,12 @@
 #include "RgException.h"
 #include "Generated/ShaderCommonC.h"
 
+
 #define PLAIN_LIGHT_LIST_SIZEOF_ELEMENT             (sizeof(decltype(plainLightList_Raw)::value_type))
 #define SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT  (sizeof(decltype(sectorToLightListRegion_Raw)::value_type))
+
+constexpr std::size_t VECTOR_START_CAPACITY = 128;
+
 
 RTGL1::LightLists::LightLists(
     VkDevice _device, 
@@ -51,17 +55,50 @@ RTGL1::LightLists::~LightLists()
 
 void RTGL1::LightLists::PrepareForFrame()
 {
+    // don't free vectors, they can be reused, since the static scene sectors
+    // most probably will be the same
+    for (auto &l : lightLists)
+    {
+        l.second.clear();
+    }
+}
+
+void RTGL1::LightLists::Reset()
+{
     lightLists.clear();
 }
+
+void RTGL1::LightLists::AddLightToSectorLightList(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex)
+{
+    auto f = lightLists.find(lightSectorIndex);
+
+    // if vector exists
+    if (f != lightLists.end())
+    {
+        f->second.push_back(lightIndex);
+    }
+    else
+    {
+        std::vector<LightArrayIndex> v;
+        v.reserve(VECTOR_START_CAPACITY);
+        v.push_back(lightIndex);
+
+        // move vector
+        auto i = lightLists.emplace(lightSectorIndex, v);
+
+        // successful insertion
+        assert(i.second);
+    }
+
+    // values must be unique
+    assert(std::count(lightLists[lightSectorIndex].cbegin(), lightLists[lightSectorIndex].cend(), lightIndex) == 1);
+}
+
 
 void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex)
 {
     // sector is always visible from itself, so append the light unconditionally
-    lightLists[lightSectorIndex].push_back(lightIndex);
-
-    // values must be unique
-    assert(std::count(lightLists[lightSectorIndex].cbegin(), lightLists[lightSectorIndex].cend(), lightIndex) == 1);
-
+    AddLightToSectorLightList(lightIndex, lightSectorIndex);
 
     if (sectorVisibility->ArePotentiallyVisibleSectorsExist(lightSectorIndex))
     {
@@ -72,10 +109,7 @@ void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex
             assert(visibleSector != lightSectorIndex);
 
             // append given light to light list of such sector
-            lightLists[visibleSector].push_back(lightIndex);
-
-            // values must be unique
-            assert(std::count(lightLists[visibleSector].cbegin(), lightLists[visibleSector].cend(), lightIndex) == 1);
+            AddLightToSectorLightList(lightIndex, visibleSector);
         }
     }
 }

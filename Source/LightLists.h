@@ -39,6 +39,7 @@ public:
     LightLists &operator=(LightLists &&other) noexcept = delete;
 
     void PrepareForFrame();
+    void Reset();
 
     void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex);
     void BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
@@ -49,6 +50,8 @@ public:
     VkBuffer GetSectorToLightListRegionDeviceLocalBuffer();
 
 private:
+    void AddLightToSectorLightList(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex);
+
     void BuildArrays(
         LightArrayIndex::index_t *pOutputPlainLightList, uint32_t *pOutputPlainLightListSize,
         SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCountToCopy) const;

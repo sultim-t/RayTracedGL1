@@ -195,6 +195,8 @@ void RTGL1::LightManager::Reset()
     dirLightCount = dirLightCountPrev = 0;
     spotLightCount = spotLightCountPrev = 0;
     polyLightCount = polyLightCountPrev = 0;
+
+    lightLists->Reset();
 }
 
 static bool IsColorTooDim(const RgFloat3D &c)
