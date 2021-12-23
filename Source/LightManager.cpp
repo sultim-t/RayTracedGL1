@@ -58,7 +58,7 @@ RTGL1::LightManager::LightManager(
     descSets{},
     needDescSetUpdate{}
 {
-    lightLists              = std::make_shared<LightLists>(_sectorVisibility);
+    lightLists              = std::make_shared<LightLists>(device, _allocator, _sectorVisibility);
 
     sphericalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights spherical staging", "Lights spherical");
     polygonalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights polugonal staging", "Lights polygonal");
@@ -93,7 +93,7 @@ static void FillInfoSpherical(const RgSphericalLightUploadInfo &info, RTGL1::ShL
     memcpy(dst, &lt, sizeof(RTGL1::ShLightSpherical));
 }
 
-static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::ShLightPolygonal *dst)
+static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::SectorArrayIndex sectorArrayIndex, RTGL1::ShLightPolygonal *dst)
 {
     RTGL1::ShLightPolygonal lt = {};
 
@@ -101,9 +101,9 @@ static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::ShL
     memcpy(lt.position_1, info.positions[1].data, sizeof(float) * 3);
     memcpy(lt.position_2, info.positions[2].data, sizeof(float) * 3);
 
-    lt.color_R = info.color.data[0];
-    lt.color_G = info.color.data[1];
-    lt.color_B = info.color.data[2];
+    memcpy(lt.color, info.color.data, sizeof(float) * 3);
+
+    lt.sectorArrayIndex = sectorArrayIndex.GetArrayIndex();
 
     memcpy(dst, &lt, sizeof(RTGL1::ShLightPolygonal));
 }
@@ -241,11 +241,16 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
         return;
     }
 
+
+    const SectorID sectorId = SectorID{ info.sectorID };
+    const SectorArrayIndex sectorArrayIndex = lightLists->SectorIDToArrayIndex(sectorId);
+
+
     const LightArrayIndex index = LightArrayIndex{ polyLightCount };
     polyLightCount++;
 
     auto *dst = (ShLightPolygonal *)polygonalLights->GetMapped(frameIndex);
-    FillInfoPolygonal(info, &dst[index.GetArrayIndex()]);
+    FillInfoPolygonal(info, sectorArrayIndex, &dst[index.GetArrayIndex()]);
 
     FillMatchPrev(polygonalUniqueIDToPrevIndex, polygonalLightMatchPrev, frameIndex, index, info.uniqueID);
 
@@ -256,7 +261,7 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
     polygonalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 
 
-    lightLists->InsertLight(index, SectorID{ info.sectorID });
+    lightLists->InsertLight(index, sectorArrayIndex);
 }
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
@@ -306,6 +311,8 @@ void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameInd
     sphericalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * sphLightCountPrev);
     polygonalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * polyLightCountPrev);
 
+    lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
+
     // should be used when buffers changed
     if (needDescSetUpdate[frameIndex])
     {
@@ -344,35 +351,33 @@ void RTGL1::LightManager::FillMatchPrev(
     dst[lightIndexInPrevFrame.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();
 }
 
+constexpr uint32_t BINDINGS[] =
+{
+    BINDING_LIGHT_SOURCES_SPHERICAL,
+    BINDING_LIGHT_SOURCES_POLYGONAL,
+    BINDING_LIGHT_SOURCES_SPH_MATCH_PREV,
+    BINDING_LIGHT_SOURCES_POLY_MATCH_PREV,
+    BINDING_PLAIN_LIGHT_LIST,
+    BINDING_SECTOR_TO_LIGHT_LIST_REGION,
+};
+
 void RTGL1::LightManager::CreateDescriptors()
 {
     VkResult r;
+    
+    std::array<VkDescriptorSetLayoutBinding, std::size(BINDINGS)> bindings = {};
 
-    std::array<VkDescriptorSetLayoutBinding, 4> bindings = {};
+    for (uint32_t i = 0; i < std::size(BINDINGS); i++)
+    {
+        uint32_t bnd = BINDINGS[i];
+        assert(i == bnd);
 
-    auto &bndSph = bindings[0];
-    bndSph.binding = BINDING_LIGHT_SOURCES_SPHERICAL;
-    bndSph.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    bndSph.descriptorCount = 1;
-    bndSph.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    auto &bndPly = bindings[1];
-    bndPly.binding = BINDING_LIGHT_SOURCES_POLYGONAL;
-    bndPly.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    bndPly.descriptorCount = 1;
-    bndPly.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    auto &bndMsp = bindings[2];
-    bndMsp.binding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV;
-    bndMsp.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    bndMsp.descriptorCount = 1;
-    bndMsp.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-    auto &bndMpl = bindings[3];
-    bndMpl.binding = BINDING_LIGHT_SOURCES_POLY_MATCH_PREV;
-    bndMpl.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    bndMpl.descriptorCount = 1;
-    bndMpl.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        VkDescriptorSetLayoutBinding &b = bindings[bnd];
+        b.binding = bnd;
+        b.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        b.descriptorCount = 1;
+        b.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+    }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -421,63 +426,40 @@ void RTGL1::LightManager::CreateDescriptors()
 
 void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
 {
-    VkDescriptorBufferInfo bfSphInfo = {};
-    bfSphInfo.buffer = sphericalLights->GetDeviceLocal();
-    bfSphInfo.offset = 0;
-    bfSphInfo.range = VK_WHOLE_SIZE;
+    const VkBuffer buffers[] =
+    {
+        sphericalLights->GetDeviceLocal(),
+        polygonalLights->GetDeviceLocal(),
+        sphericalLightMatchPrev->GetDeviceLocal(),
+        polygonalLightMatchPrev->GetDeviceLocal(),
+        lightLists->GetPlainLightListDeviceLocalBuffer(),
+        lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
+    };
+    static_assert(std::size(BINDINGS) == std::size(buffers), "");
 
-    VkDescriptorBufferInfo bfPlyInfo = {};
-    bfPlyInfo.buffer = polygonalLights->GetDeviceLocal();
-    bfPlyInfo.offset = 0;
-    bfPlyInfo.range = VK_WHOLE_SIZE;
+    std::array<VkDescriptorBufferInfo, std::size(BINDINGS)> bufs = {};
+    std::array<VkWriteDescriptorSet, std::size(BINDINGS)> wrts = {};
 
-    VkDescriptorBufferInfo bfMpSInfo = {};
-    bfMpSInfo.buffer = sphericalLightMatchPrev->GetDeviceLocal();
-    bfMpSInfo.offset = 0;
-    bfMpSInfo.range = VK_WHOLE_SIZE;
+    for (uint32_t i = 0; i < std::size(BINDINGS); i++)
+    {
+        uint32_t bnd = BINDINGS[i];
+        // 'buffers' should be actually a map (binding->buffer), but a plain array works too, if this is true
+        assert(i == bnd);
 
-    VkDescriptorBufferInfo bfMpPInfo = {};
-    bfMpPInfo.buffer = polygonalLightMatchPrev->GetDeviceLocal();
-    bfMpPInfo.offset = 0;
-    bfMpPInfo.range = VK_WHOLE_SIZE;
-
-    std::array<VkWriteDescriptorSet, 4> wrts = {};
-
-    auto &wrtSph = wrts[0];
-    wrtSph.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wrtSph.dstSet = descSets[frameIndex];
-    wrtSph.dstBinding = BINDING_LIGHT_SOURCES_SPHERICAL;
-    wrtSph.dstArrayElement = 0;
-    wrtSph.descriptorCount = 1;
-    wrtSph.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    wrtSph.pBufferInfo = &bfSphInfo;
-
-    auto &wrtDir = wrts[1];
-    wrtDir.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wrtDir.dstSet = descSets[frameIndex];
-    wrtDir.dstBinding = BINDING_LIGHT_SOURCES_POLYGONAL;
-    wrtDir.dstArrayElement = 0;
-    wrtDir.descriptorCount = 1;
-    wrtDir.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    wrtDir.pBufferInfo = &bfPlyInfo;
-
-    auto &wrtMpS = wrts[2];
-    wrtMpS.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wrtMpS.dstSet = descSets[frameIndex];
-    wrtMpS.dstBinding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV;
-    wrtMpS.dstArrayElement = 0;
-    wrtMpS.descriptorCount = 1;
-    wrtMpS.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    wrtMpS.pBufferInfo = &bfMpSInfo;
-
-    auto &wrtMpD = wrts[3];
-    wrtMpD.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-    wrtMpD.dstSet = descSets[frameIndex];
-    wrtMpD.dstBinding = BINDING_LIGHT_SOURCES_POLY_MATCH_PREV;
-    wrtMpD.dstArrayElement = 0;
-    wrtMpD.descriptorCount = 1;
-    wrtMpD.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    wrtMpD.pBufferInfo = &bfMpPInfo;
+        VkDescriptorBufferInfo &b = bufs[bnd];
+        b.buffer = buffers[bnd];
+        b.offset = 0;
+        b.range = VK_WHOLE_SIZE;
+        
+        VkWriteDescriptorSet &w = wrts[bnd];
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet = descSets[frameIndex];
+        w.dstBinding = bnd;
+        w.dstArrayElement = 0;
+        w.descriptorCount = 1;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        w.pBufferInfo = &b;
+    }
 
     vkUpdateDescriptorSets(device, wrts.size(), wrts.data(), 0, nullptr);
 }

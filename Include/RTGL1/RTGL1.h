@@ -86,7 +86,8 @@ typedef enum RgResult
     RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
     RG_WRONG_MATERIAL_PARAMETER,
     RG_WRONG_FUNCTION_CALL,
-    RG_TOO_MANY_SECTORS
+    RG_TOO_MANY_SECTORS,
+    RG_ERROR_INTERNAL,
 } RgResult;
 
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
@@ -570,8 +571,9 @@ typedef struct RgPolygonalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    // ID of the sector this light belongs to.
-    // All lights can have the same sectorID, but then more noise should be expected.
+    // ID of the sector this light belongs to. Can be any uint32_t value.
+    // If advanced sampling technique is not needed, leave the field with 0,
+    // so all lights will use that one sector, but more noisy results should be expected.
     uint32_t        sectorID;
     RgFloat3D       color;
     RgFloat3D       positions[3];

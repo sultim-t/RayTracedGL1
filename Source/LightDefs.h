@@ -21,6 +21,7 @@
 #pragma once
 
 #include <functional>
+#include <cassert>
 
 namespace RTGL1
 {
@@ -30,7 +31,7 @@ constexpr size_t MAX_SECTOR_COUNT = 1024;
 constexpr size_t MAX_LIGHT_LIST_SIZE = 1024;
 
 
-// Passed to the library by user
+// Passed to the library by user.
 typedef uint64_t UniqueLightID;
 
 
@@ -54,6 +55,7 @@ struct LightArrayIndex
 static_assert(std::is_pod_v<LightArrayIndex>, "");
 
 
+// Passed to the library by user.
 struct SectorID
 {
     typedef uint32_t id_t;
@@ -73,6 +75,29 @@ struct SectorID
     }
 };
 static_assert(std::is_pod_v<SectorID>, "");
+
+
+// Used in shaders and in indexing, as SectorID can be any value.
+struct SectorArrayIndex
+{
+    typedef uint32_t index_t;
+    index_t _indexInArray;
+
+    index_t GetArrayIndex() const
+    {
+        assert(_indexInArray < MAX_SECTOR_COUNT);
+        return _indexInArray;
+    }
+    bool operator==(const SectorArrayIndex &other) const
+    {
+        return _indexInArray == other._indexInArray;
+    }
+    bool operator!=(const SectorArrayIndex &other) const
+    {
+        return _indexInArray != other._indexInArray;
+    }
+};
+static_assert(std::is_pod_v<SectorArrayIndex>, "");
 
 
 }
@@ -95,5 +120,14 @@ struct std::hash<RTGL1::SectorID>
     std::size_t operator()(RTGL1::SectorID const &s) const noexcept
     {
         return std::hash<RTGL1::SectorID::id_t>{}(s._id);
+    }
+};
+
+template<>
+struct std::hash<RTGL1::SectorArrayIndex>
+{
+    std::size_t operator()(RTGL1::SectorArrayIndex const &s) const noexcept
+    {
+        return std::hash<RTGL1::SectorArrayIndex::index_t>{}(s._indexInArray);
     }
 };

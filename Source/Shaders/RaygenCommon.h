@@ -602,7 +602,7 @@ void processPolygonalLight(
     const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
 
-    vec3 triNormal = cross(polyLight.position_1 - polyLight.position_0, polyLight.position_2 - polyLight.position_0);
+    vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
     const float triArea = length(triNormal) / 2.0;
 
     if (triArea < 0.0001)
@@ -616,7 +616,7 @@ void processPolygonalLight(
 
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
-    const vec3 triPoint = sampleTriangle(polyLight.position_0, polyLight.position_1, polyLight.position_2, u[0], u[1]);
+    const vec3 triPoint = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, u[0], u[1]);
 
     
     float distToLightPoint;
@@ -632,7 +632,7 @@ void processPolygonalLight(
         return;
     }
 
-    const vec3 polyLightColor = vec3(polyLight.color_R, polyLight.color_G, polyLight.color_B);
+    const vec3 polyLightColor = polyLight.color;
     
     const vec3 s =
         polyLightColor * 

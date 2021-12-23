@@ -31,7 +31,7 @@ namespace RTGL1
 class SectorVisibility
 {
 public:
-    SectorVisibility() = default;
+    SectorVisibility();
     ~SectorVisibility() = default;
 
     SectorVisibility(const SectorVisibility &other) = delete;
@@ -43,14 +43,20 @@ public:
     void SetPotentialVisibility(SectorID a, SectorID b);
     void Reset();
 
-    bool ArePotentiallyVisibleSectorsExist(SectorID forThisSector) const;
-    const std::unordered_set<SectorID> &GetPotentiallyVisibleSectors(SectorID fromThisSector);
+    SectorArrayIndex SectorIDToArrayIndex(SectorID id) const;
+
+    bool ArePotentiallyVisibleSectorsExist(SectorArrayIndex forThisSector) const;
+    const std::unordered_set<SectorArrayIndex> &GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector);
 
 private:
-    void CheckSize(SectorID i) const;
+    void CheckSize(SectorArrayIndex index, SectorID id) const;
+    SectorArrayIndex AssignArrayIndexForID(SectorID id);
 
-public:
-    std::unordered_map<SectorID, std::unordered_set<SectorID>> pvs;
+private:
+    std::unordered_map<SectorArrayIndex, std::unordered_set<SectorArrayIndex>> pvs;
+
+    SectorArrayIndex::index_t lastSectorArrayIndex;
+    std::unordered_map<SectorID, SectorArrayIndex> sectorIDToArrayIndex;
 };
 
 }

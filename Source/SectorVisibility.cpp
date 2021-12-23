@@ -24,34 +24,56 @@
 #include <string>
 
 #include "RgException.h"
+#include "Generated/ShaderCommonC.h"
+
+
+// value, from which sector array indices should start
+constexpr RTGL1::SectorArrayIndex::index_t  SECTOR_ARRAY_INDEX_BASE_VALUE = 0;
+
+
+RTGL1::SectorVisibility::SectorVisibility() : lastSectorArrayIndex(SECTOR_ARRAY_INDEX_BASE_VALUE)
+{
+    Reset();
+}
 
 void RTGL1::SectorVisibility::SetPotentialVisibility(SectorID a, SectorID b)
 {
+    const SectorArrayIndex ia = AssignArrayIndexForID(a);
+    const SectorArrayIndex ib = AssignArrayIndexForID(b);
+
     if (a == b)
     {
         // it's implicitly implied that sector is visible from itself
         return;
     }
 
-    CheckSize(a);
-    CheckSize(b);
+    CheckSize(ia, a);
+    CheckSize(ib, b);
 
-    pvs[a].insert(b);
-    pvs[b].insert(a);
+    pvs[ia].insert(ib);
+    pvs[ib].insert(ia);
 }
 
 void RTGL1::SectorVisibility::Reset()
 {
     pvs.clear();
     pvs.clear();
+
+    lastSectorArrayIndex = SECTOR_ARRAY_INDEX_BASE_VALUE;
+    sectorIDToArrayIndex.clear();
+
+    // but always keep potential visibility for sector ID = 0.
+    
+    SectorID defaultSectorId = { 0 };
+    SetPotentialVisibility(defaultSectorId, defaultSectorId);
 }
 
-bool RTGL1::SectorVisibility::ArePotentiallyVisibleSectorsExist(SectorID forThisSector) const
+bool RTGL1::SectorVisibility::ArePotentiallyVisibleSectorsExist(SectorArrayIndex forThisSector) const
 {
     return pvs.find(forThisSector) != pvs.end();
 }
 
-const std::unordered_set<RTGL1::SectorID> &RTGL1::SectorVisibility::GetPotentiallyVisibleSectors(SectorID fromThisSector)
+const std::unordered_set<RTGL1::SectorArrayIndex> &RTGL1::SectorVisibility::GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector)
 {
     // should exist
     assert(ArePotentiallyVisibleSectorsExist(fromThisSector));
@@ -59,21 +81,46 @@ const std::unordered_set<RTGL1::SectorID> &RTGL1::SectorVisibility::GetPotential
     return pvs[fromThisSector];
 }
 
-void RTGL1::SectorVisibility::CheckSize(SectorID i) const
+void RTGL1::SectorVisibility::CheckSize(SectorArrayIndex index, SectorID id) const
 {
-    using namespace std::string_literals;
+    assert(SectorIDToArrayIndex(id) == index);
+    const auto &sv = pvs.find(index);
 
-    const auto &s = pvs.find(i);
-    if (s == pvs.end())
+    if (sv != pvs.end() && sv->second.size() >= RTGL1::MAX_SECTOR_COUNT)
     {
-        return;
-    }
+        using namespace std::string_literals;
 
-    if (s->second.size() >= RTGL1::MAX_SECTOR_COUNT)
-    {
         throw RTGL1::RgException(
             RG_TOO_MANY_SECTORS,
-            "Number of potentially visible sectors for the sector #"s + std::to_string(i.GetID()) +
-            " exceeds the limit of " + std::to_string(RTGL1::MAX_SECTOR_COUNT));
+            "Number of potentially visible sectors for the sector #"s + std::to_string(id.GetID()) +
+            " exceeds the limit of "s + std::to_string(RTGL1::MAX_SECTOR_COUNT));
     }
 }
+
+RTGL1::SectorArrayIndex RTGL1::SectorVisibility::AssignArrayIndexForID(SectorID id)
+{
+    // if doesn't exist
+    if (sectorIDToArrayIndex.find(id) == sectorIDToArrayIndex.end())
+    {
+        assert(lastSectorArrayIndex < MAX_SECTOR_COUNT);
+
+        // add new
+        sectorIDToArrayIndex[id] = SectorArrayIndex{ lastSectorArrayIndex };
+        lastSectorArrayIndex++;
+    }
+
+    return sectorIDToArrayIndex[id];
+}
+
+RTGL1::SectorArrayIndex RTGL1::SectorVisibility::SectorIDToArrayIndex(SectorID id) const
+{
+    const auto &found = sectorIDToArrayIndex.find(id);
+
+    if (found == sectorIDToArrayIndex.end())
+    {
+        throw RgException(RG_ERROR_INTERNAL, "");
+    }
+
+    return found->second;
+}
+

@@ -58,7 +58,6 @@ public:
     VkDeviceSize GetSize() const;
 
 private:
-    VkDevice device;
     std::shared_ptr<MemoryAllocator> allocator;
 
     Buffer staging[MAX_FRAMES_IN_FLIGHT];

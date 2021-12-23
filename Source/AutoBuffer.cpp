@@ -26,7 +26,6 @@ RTGL1::AutoBuffer::AutoBuffer(
     const char *_debugNameStaging, 
     const char *_debugName)
 :
-    device(_device),
     allocator(std::move(_allocator)),
     mapped{},
     debugNameStaging(_debugNameStaging),

@@ -241,6 +241,8 @@ CONST = {
     "BINDING_LIGHT_SOURCES_POLYGONAL"       : 1,
     "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"  : 2,
     "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV" : 3,
+    "BINDING_PLAIN_LIGHT_LIST"              : 4,
+    "BINDING_SECTOR_TO_LIGHT_LIST_REGION"   : 5,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -568,12 +570,11 @@ LIGHT_SPHERICAL_STRUCT = [
 # ]
 
 LIGHT_POLYGONAL_STRUCT = [
-    (TYPE_FLOAT32,      3,      "position_0",            1),
-    (TYPE_FLOAT32,      1,      "color_R",               1),
-    (TYPE_FLOAT32,      3,      "position_1",            1),
-    (TYPE_FLOAT32,      1,      "color_G",               1),
-    (TYPE_FLOAT32,      3,      "position_2",            1),
-    (TYPE_FLOAT32,      1,      "color_B",               1),
+    (TYPE_FLOAT32,      4,      "position_0",           1),
+    (TYPE_FLOAT32,      4,      "position_1",           1),
+    (TYPE_FLOAT32,      4,      "position_2",           1),
+    (TYPE_FLOAT32,      3,      "color",                1),
+    (TYPE_UINT32,       1,      "sectorArrayIndex",     1),
 ]
 
 TONEMAPPING_STRUCT = [

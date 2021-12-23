@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "Common.h"
+#include "AutoBuffer.h"
 #include "LightDefs.h"
 #include "SectorVisibility.h"
 
@@ -30,7 +30,7 @@ namespace RTGL1
 class LightLists
 {
 public:
-    LightLists(std::shared_ptr<SectorVisibility> sectorVisibility);
+    LightLists(VkDevice device, const std::shared_ptr<MemoryAllocator> &memoryAllocator, std::shared_ptr<SectorVisibility> sectorVisibility);
     ~LightLists();
 
     LightLists(const LightLists &other) = delete;
@@ -40,14 +40,31 @@ public:
 
     void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
 
-    void InsertLight(LightArrayIndex lightIndex, SectorID lightSectorId);
+    void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex);
+    void BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
+    SectorArrayIndex SectorIDToArrayIndex(SectorID id) const;
+
+    VkBuffer GetPlainLightListDeviceLocalBuffer();
+    VkBuffer GetSectorToLightListRegionDeviceLocalBuffer();
+
+private:
+    void BuildArrays(
+        LightArrayIndex::index_t *pOutputPlainLightList, uint32_t *pOutputPlainLightListSize,
+        SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCount) const;
 
 private:
     std::shared_ptr<SectorVisibility> sectorVisibility;
 
     // light list for each sector in the current frame
-    std::unordered_map<SectorID, std::vector<LightArrayIndex::index_t>> lightLists;
+    std::unordered_map<SectorArrayIndex, std::vector<LightArrayIndex>> lightLists;
+
+    std::shared_ptr<AutoBuffer> plainLightList;
+    std::shared_ptr<AutoBuffer> sectorToLightListRegion;
+
+    // used to copy to mapped memory, to reduce interactions with mapped memory
+    std::vector<LightArrayIndex::index_t> plainLightList_Raw;
+    std::vector<SectorArrayIndex::index_t> sectorToLightListRegion_Raw;
 };
 
 }
