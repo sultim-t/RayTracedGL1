@@ -87,6 +87,7 @@ typedef enum RgResult
     RG_WRONG_MATERIAL_PARAMETER,
     RG_WRONG_FUNCTION_CALL,
     RG_TOO_MANY_SECTORS,
+    RG_ERROR_INCORRECT_SECTOR,
     RG_ERROR_INTERNAL,
 } RgResult;
 
@@ -418,7 +419,8 @@ RgResult rgSubmitStaticGeometries(
 // Set mutual potential visibility between sectors A and B.
 // It improves the light sampling by using specific light lists for each sector.
 // If none was set, light sources are chosen uniformly.
-// Note: visibility data is being cleared after calling rgStartNewScene! 
+// Note: visibility data is being cleared after calling rgStartNewScene.
+// Note: sector can be registered by just specifiying the same value for sectorID_A and sectorID_B.
 RgResult rgSetPotentialVisibility(
     RgInstance                          rgInstance,
     uint32_t                            sectorID_A,

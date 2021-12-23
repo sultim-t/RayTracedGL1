@@ -176,6 +176,8 @@ void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
 
     sphericalUniqueIDToPrevIndex[frameIndex].clear();
     polygonalUniqueIDToPrevIndex[frameIndex].clear();
+
+    lightLists->PrepareForFrame();
 }
 
 void RTGL1::LightManager::Reset()

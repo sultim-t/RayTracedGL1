@@ -49,7 +49,7 @@ RTGL1::LightLists::LightLists(
 RTGL1::LightLists::~LightLists()
 {}
 
-void RTGL1::LightLists::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
+void RTGL1::LightLists::PrepareForFrame()
 {
     lightLists.clear();
 }
@@ -58,6 +58,9 @@ void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex
 {
     // sector is always visible from itself, so append the light unconditionally
     lightLists[lightSectorIndex].push_back(lightIndex);
+
+    // values must be unique
+    assert(std::count(lightLists[lightSectorIndex].cbegin(), lightLists[lightSectorIndex].cend(), lightIndex) == 1);
 
 
     if (sectorVisibility->ArePotentiallyVisibleSectorsExist(lightSectorIndex))
@@ -70,19 +73,22 @@ void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex
 
             // append given light to light list of such sector
             lightLists[visibleSector].push_back(lightIndex);
+
+            // values must be unique
+            assert(std::count(lightLists[visibleSector].cbegin(), lightLists[visibleSector].cend(), lightIndex) == 1);
         }
     }
 }
 
 void RTGL1::LightLists::BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    uint32_t plainLightListSize, sectorCount;
+    uint32_t plainLightListSize, sectorCountToCopy;
 
     BuildArrays(plainLightList_Raw.data(), &plainLightListSize,
-                sectorToLightListRegion_Raw.data(), &sectorCount);
+                sectorToLightListRegion_Raw.data(), &sectorCountToCopy);
 
     uint64_t plainLightList_Bytes = plainLightListSize * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT;
-    uint64_t sectorToLightListRegion_Bytes = sectorCount * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT;
+    uint64_t sectorToLightListRegion_Bytes = sectorCountToCopy * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT;
 
     memcpy(plainLightList->GetMapped(frameIndex),           plainLightList_Raw.data(),          plainLightList_Bytes);
     memcpy(sectorToLightListRegion->GetMapped(frameIndex),  sectorToLightListRegion_Raw.data(), sectorToLightListRegion_Bytes);
@@ -93,13 +99,14 @@ void RTGL1::LightLists::BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t fr
 
 void RTGL1::LightLists::BuildArrays(
     LightArrayIndex::index_t *pOutputPlainLightList, uint32_t *pOutputPlainLightListSize,
-    SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCount) const
+    SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCountToCopy) const
 {
     if (lightLists.size() >= MAX_SECTOR_COUNT)
     {
         throw RgException(RG_TOO_MANY_SECTORS, "Too many sectors exist. Can't build light lists.");
     }
 
+    uint32_t maxSectorIndex = 0;
     uint32_t iter = 0;
 
     for (const auto &p : lightLists)
@@ -119,12 +126,12 @@ void RTGL1::LightLists::BuildArrays(
                 break;
             }
 
+            maxSectorIndex = std::max(maxSectorIndex, sectorIndex.GetArrayIndex());
+
             pOutputPlainLightList[iter] = i.GetArrayIndex();
             iter++;
         }
-
-        // assume this, so only amount of lightLists.size() can be copied to VkBuffer
-        assert(sectorIndex.GetArrayIndex() < lightLists.size());
+        
 
         // write start/end, so the sector's light list can be accessed by sector array index
         pOutputSectorToLightListStartEnd[sectorIndex.GetArrayIndex() * 2 + 0] = startArrayOffset;
@@ -132,7 +139,7 @@ void RTGL1::LightLists::BuildArrays(
     }
 
     *pOutputPlainLightListSize = iter;
-    *pOutputSectorCount = (uint32_t)lightLists.size();
+    *pOutputSectorCountToCopy = maxSectorIndex;
 }
 
 RTGL1::SectorArrayIndex RTGL1::LightLists::SectorIDToArrayIndex(SectorID id) const

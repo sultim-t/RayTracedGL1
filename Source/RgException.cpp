@@ -40,6 +40,10 @@ static const char *GetRgResultName(RgResult r)
         case RG_CANT_UPDATE_ANIMATED_MATERIAL: return "RG_CANT_UPDATE_ANIMATED_MATERIAL";
         case RG_CANT_UPLOAD_RASTERIZED_GEOMETRY: return "RG_CANT_UPLOAD_RASTERIZED_GEOMETRY";
         case RG_WRONG_MATERIAL_PARAMETER: return "RG_WRONG_MATERIAL_PARAMETER";
+        case RG_WRONG_FUNCTION_CALL: return "RG_WRONG_FUNCTION_CALL";
+        case RG_TOO_MANY_SECTORS: return "RG_TOO_MANY_SECTORS";
+        case RG_ERROR_INCORRECT_SECTOR: return "RG_ERROR_INCORRECT_SECTOR";
+        case RG_ERROR_INTERNAL: return "RG_ERROR_INTERNAL";
     }
 
     return "Unknown RgResult";

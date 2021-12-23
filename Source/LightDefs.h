@@ -27,7 +27,7 @@ namespace RTGL1
 {
 
 
-constexpr size_t MAX_SECTOR_COUNT = 1024;
+constexpr size_t MAX_SECTOR_COUNT = 4096;
 constexpr size_t MAX_LIGHT_LIST_SIZE = 1024;
 
 

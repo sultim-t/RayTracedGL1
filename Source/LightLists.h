@@ -38,7 +38,7 @@ public:
     LightLists &operator=(const LightLists &other) = delete;
     LightLists &operator=(LightLists &&other) noexcept = delete;
 
-    void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
+    void PrepareForFrame();
 
     void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex);
     void BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
@@ -51,7 +51,7 @@ public:
 private:
     void BuildArrays(
         LightArrayIndex::index_t *pOutputPlainLightList, uint32_t *pOutputPlainLightListSize,
-        SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCount) const;
+        SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCountToCopy) const;
 
 private:
     std::shared_ptr<SectorVisibility> sectorVisibility;

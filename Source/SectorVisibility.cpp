@@ -24,7 +24,6 @@
 #include <string>
 
 #include "RgException.h"
-#include "Generated/ShaderCommonC.h"
 
 
 // value, from which sector array indices should start
@@ -88,12 +87,10 @@ void RTGL1::SectorVisibility::CheckSize(SectorArrayIndex index, SectorID id) con
 
     if (sv != pvs.end() && sv->second.size() >= RTGL1::MAX_SECTOR_COUNT)
     {
-        using namespace std::string_literals;
-
         throw RTGL1::RgException(
             RG_TOO_MANY_SECTORS,
-            "Number of potentially visible sectors for the sector #"s + std::to_string(id.GetID()) +
-            " exceeds the limit of "s + std::to_string(RTGL1::MAX_SECTOR_COUNT));
+            "Number of potentially visible sectors for the sector #" + std::to_string(id.GetID()) +
+            " exceeds the limit of " + std::to_string(RTGL1::MAX_SECTOR_COUNT));
     }
 }
 
@@ -118,7 +115,9 @@ RTGL1::SectorArrayIndex RTGL1::SectorVisibility::SectorIDToArrayIndex(SectorID i
 
     if (found == sectorIDToArrayIndex.end())
     {
-        throw RgException(RG_ERROR_INTERNAL, "");
+        throw RgException(RG_ERROR_INCORRECT_SECTOR,
+                          "Can't find sector ID=" + std::to_string(id.GetID()) + 
+                          ". Probably, it wasn't referenced with rgSetPotentialVisibility");
     }
 
     return found->second;
