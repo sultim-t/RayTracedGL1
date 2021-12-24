@@ -27,18 +27,21 @@
 namespace RTGL1
 {
 
+
 struct Texture
 {
-    VkImage             image;
-    VkImageView         view;
-    SamplerManager::Handle samplerHandle;
+    VkImage                 image = VK_NULL_HANDLE;
+    VkImageView             view = VK_NULL_HANDLE;
+    SamplerManager::Handle  samplerHandle = SamplerManager::Handle();
 };
 
-union MaterialTextures
+
+struct MaterialTextures
 {
     // Indices to use in shaders, each index represents RgTextureData from RgTextureSet
     uint32_t            indices[TEXTURES_PER_MATERIAL_COUNT];
 };
+
 
 struct Material
 {
@@ -46,11 +49,13 @@ struct Material
     uint32_t            isDynamic;
 };
 
+
 struct AnimatedMaterial
 {
     // Indices of static materials.
     std::vector<uint32_t>   materialIndices;
-    uint32_t                currentFrame;
+    uint32_t                currentFrame = 0;
 };
+
 
 }
