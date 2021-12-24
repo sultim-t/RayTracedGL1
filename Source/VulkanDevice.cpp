@@ -1329,9 +1329,14 @@ void VulkanDevice::CreateDevice()
     vulkan12Features.bufferDeviceAddress = 1;
     vulkan12Features.shaderFloat16 = 1;
 
+    VkPhysicalDevice16BitStorageFeatures storage16 = {};
+    storage16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+    storage16.pNext = &vulkan12Features;
+    storage16.storageBuffer16BitAccess = 1;
+
     VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features = {};
     sync2Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-    sync2Features.pNext = &vulkan12Features;
+    sync2Features.pNext = &storage16;
     sync2Features.synchronization2 = 1;
 
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures = {};

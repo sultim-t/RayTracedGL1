@@ -515,7 +515,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     // if should use per-triangle info
     if (inst.triangleArrayIndex != GEOM_INST_NO_TRIANGLE_INFO)
     {
-        tr.sectorArrayIndex = triangleSectorIndices[inst.triangleArrayIndex];
+        tr.sectorArrayIndex = triangleSectorIndices[inst.triangleArrayIndex + primitiveId];
     }
     else
     {

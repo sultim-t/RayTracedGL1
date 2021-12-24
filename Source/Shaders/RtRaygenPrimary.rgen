@@ -100,7 +100,8 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufMotion,              pix, vec4(m, 0.0, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(0.0));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
-    imageStore(framebufViewDirection,       pix, vec4(rayDir, uintBitsToFloat(SECTOR_INDEX_NONE)));
+    imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
+    imageStore(framebufSectorIndex,         pix, uvec4(SECTOR_INDEX_NONE));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(m), 0.0, 0.0));
@@ -415,7 +416,8 @@ void main()
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
-    imageStore(framebufViewDirection,       pix, vec4(rayDir, uintBitsToFloat(h.sectorArrayIndex)));
+    imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
+    imageStore(framebufSectorIndex,         pix, uvec4(h.sectorArrayIndex));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));

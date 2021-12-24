@@ -345,7 +345,7 @@ CONST = {
     "MEDIA_TYPE_COUNT"                      : 3,
 
     "GEOM_INST_NO_TRIANGLE_INFO"            : "UINT32_MAX",
-    "SECTOR_INDEX_NONE"                     : "UINT32_MAX",
+    "SECTOR_INDEX_NONE"                     : ((1 << 15) - 1),
 }
 
 CONST_GLSL_ONLY = {
@@ -687,6 +687,7 @@ FRAMEBUFFERS = {
     "UnfilteredIndirectSH_B"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "SectorIndex"                       : (TYPE_UINT16,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     # bilinear for bloom

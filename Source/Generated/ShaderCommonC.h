@@ -120,7 +120,7 @@ namespace RTGL1
 #define MEDIA_TYPE_GLASS (2)
 #define MEDIA_TYPE_COUNT (3)
 #define GEOM_INST_NO_TRIANGLE_INFO (UINT32_MAX)
-#define SECTOR_INDEX_NONE (UINT32_MAX)
+#define SECTOR_INDEX_NONE (32767)
 
 struct ShVertexBufferStatic
 {

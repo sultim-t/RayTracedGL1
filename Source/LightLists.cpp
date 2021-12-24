@@ -29,6 +29,9 @@
 constexpr std::size_t VECTOR_START_CAPACITY = 128;
 
 
+static_assert(RTGL1::MAX_SECTOR_COUNT < SECTOR_INDEX_NONE, "");
+
+
 RTGL1::LightLists::LightLists(
     VkDevice _device, 
     const std::shared_ptr<MemoryAllocator> &_memoryAllocator, 
