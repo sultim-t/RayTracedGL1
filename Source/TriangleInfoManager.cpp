@@ -69,8 +69,8 @@ uint32_t RTGL1::TriangleInfoManager::UploadAndGetArrayIndex(uint32_t frameIndex,
 
     if (geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
-        // there were no static and trying to add dynamic
-        if (staticGeometryRange.GetCount() == 0)
+        // trying to add first dynamic, lock static
+        if (dynamicGeometryRange.GetCount() == 0)
         {
             staticGeometryRange.Lock();
         }
@@ -103,6 +103,7 @@ uint32_t RTGL1::TriangleInfoManager::UploadAndGetArrayIndex(uint32_t frameIndex,
 void RTGL1::TriangleInfoManager::PrepareForFrame(uint32_t frameIndex)
 {
     // start dynamic again, but don't touch static geom indices
+    dynamicGeometryRange.Reset(0);
     dynamicGeometryRange.StartIndexingAfter(staticGeometryRange);
 }
 
