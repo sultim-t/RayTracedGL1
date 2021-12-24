@@ -64,7 +64,7 @@ void Buffer::Init(
     VkMemoryRequirements memReq = {};
     vkGetBufferMemoryRequirements(device, buffer, &memReq);
 
-    memory = allocator->AllocDedicated(memReq, properties, true);
+    memory = allocator->AllocDedicated(memReq, properties, MemoryAllocator::AllocType::WITH_ADDRESS_QUERY, debugName);
 
     r = vkBindBufferMemory(device, buffer, memory, 0);
     VK_CHECKERROR(r);

@@ -64,12 +64,13 @@ MemoryAllocator::~MemoryAllocator()
     vmaDestroyAllocator(allocator);
 }
 
-VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo *info, void **pOutMappedData, VkDeviceMemory *outMemory)
+VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo *info, const char *pDebugName, void **pOutMappedData, VkDeviceMemory *outMemory)
 {
     VmaAllocationCreateInfo allocInfo = {};
     // alloc TRANSFER_SRC buffer with writeable by CPU memory
     allocInfo.pool = texturesStagingPool;
-    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
+    allocInfo.pUserData = const_cast<char *>(pDebugName);
 
     VkBuffer buffer;
     VmaAllocation resultAlloc;
@@ -99,12 +100,13 @@ VkBuffer MemoryAllocator::CreateStagingSrcTextureBuffer(const VkBufferCreateInfo
     return buffer;
 }
 
-VkImage MemoryAllocator::CreateDstTextureImage(const VkImageCreateInfo *info, VkDeviceMemory *outMemory)
+VkImage MemoryAllocator::CreateDstTextureImage(const VkImageCreateInfo *info, const char *pDebugName, VkDeviceMemory *outMemory)
 {
     VmaAllocationCreateInfo allocInfo = {};
     // alloc SAMPLED_BIT | TRANSFER_DST
     allocInfo.pool = texturesFinalPool;
-    allocInfo.flags = 0;
+    allocInfo.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
+    allocInfo.pUserData = const_cast<char *>(pDebugName);
 
     VkImage image;
     VmaAllocation resultAlloc;
@@ -170,6 +172,8 @@ void MemoryAllocator::CreateTexturesStagingPool()
     // transfer source, will be filled from the cpu
     VmaAllocationCreateInfo prototype = {};
     prototype.usage = VMA_MEMORY_USAGE_CPU_ONLY;
+    prototype.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
+    prototype.pUserData = const_cast<char *>("VMA Image staing pool prototype");
 
     uint32_t memTypeIndex;
     r = vmaFindMemoryTypeIndexForBufferInfo(allocator, &bufferInfo, &prototype, &memTypeIndex);
@@ -207,6 +211,8 @@ void MemoryAllocator::CreateTexturesFinalPool()
     // transfer destination, data will be copied from staging buffer
     VmaAllocationCreateInfo prototype = {};
     prototype.usage = VMA_MEMORY_USAGE_GPU_ONLY;
+    prototype.flags = VMA_ALLOCATION_CREATE_USER_DATA_COPY_STRING_BIT;
+    prototype.pUserData = const_cast<char *>("VMA Image pool prototype");
 
     uint32_t memTypeIndex;
     r = vmaFindMemoryTypeIndexForImageInfo(allocator, &imageInfo, &prototype, &memTypeIndex);
@@ -229,7 +235,7 @@ VkDevice MemoryAllocator::GetDevice()
 }
 
 VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties,
-                                               bool addressQuery) const
+                                               AllocType allocType, const char *pDebugName) const
 {
     VkDeviceMemory memory;
 
@@ -240,7 +246,7 @@ VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements &memRe
 
     VkMemoryAllocateFlagsInfo allocFlagInfo = {};
 
-    if (addressQuery)
+    if (allocType == AllocType::WITH_ADDRESS_QUERY)
     {
         allocFlagInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO;
         allocFlagInfo.flags = VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT;
@@ -251,13 +257,15 @@ VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements &memRe
     VkResult r = vkAllocateMemory(device, &memAllocInfo, nullptr, &memory);
     VK_CHECKERROR(r);
 
+    SET_DEBUG_NAME(device, memory, VK_OBJECT_TYPE_DEVICE_MEMORY, pDebugName);
+
     return memory;
 }
 
 VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties,
-                                               bool addressQuery) const
+                                               AllocType allocType, const char *pDebugName) const
 {
-    return AllocDedicated(memReqs2.memoryRequirements, properties, addressQuery);
+    return AllocDedicated(memReqs2.memoryRequirements, properties, allocType, pDebugName);
 }
 
 void MemoryAllocator::FreeDedicated(VkDeviceMemory memory) const

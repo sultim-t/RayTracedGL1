@@ -369,8 +369,7 @@ void RTGL1::RenderCubemap::CreateAttch(
     VkMemoryRequirements memReqs;
     vkGetImageMemoryRequirements(device, result.image, &memReqs);
 
-    result.memory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    SET_DEBUG_NAME(device, result.memory, VK_OBJECT_TYPE_DEVICE_MEMORY, isDepth ? "Render cubemap depth memory" : "Render cubemap image memory");
+    result.memory = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryAllocator::AllocType::DEFAULT, isDepth ? "Render cubemap depth memory" : "Render cubemap image memory");
 
     if (result.memory == VK_NULL_HANDLE)
     {

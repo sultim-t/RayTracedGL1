@@ -52,7 +52,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
 
     for (uint32_t i = 0; i < 6; i++)
     {
-        stagingBuffers[i] = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &mappedData[i]);
+        stagingBuffers[i] = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, info.pDebugName, &mappedData[i]);
 
         // if couldn't allocate memory
         if (stagingBuffers[i] == VK_NULL_HANDLE)

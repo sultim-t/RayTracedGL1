@@ -87,7 +87,7 @@ BlueNoise::BlueNoise(
 
 
     void *mappedData = nullptr;
-    VkBuffer stagingBuffer = allocator->CreateStagingSrcTextureBuffer(&stagingInfo, &mappedData);
+    VkBuffer stagingBuffer = allocator->CreateStagingSrcTextureBuffer(&stagingInfo, "Blue noise image VMA staging alloc", &mappedData);
 
     assert(stagingBuffer != VK_NULL_HANDLE);
 
@@ -117,7 +117,7 @@ BlueNoise::BlueNoise(
         VK_IMAGE_USAGE_SAMPLED_BIT;
     info.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-    blueNoiseImages = allocator->CreateDstTextureImage(&info);
+    blueNoiseImages = allocator->CreateDstTextureImage(&info, "Blue noise image VMA alloc");
 
     SET_DEBUG_NAME(device, blueNoiseImages, VK_OBJECT_TYPE_IMAGE, "Blue noise Image");
 

@@ -33,6 +33,13 @@ namespace RTGL1
 class MemoryAllocator
 {
 public:
+    enum class AllocType
+    {
+        DEFAULT,
+        WITH_ADDRESS_QUERY
+    };
+
+public:
     explicit MemoryAllocator(
         VkInstance instance,
         VkDevice device,
@@ -48,16 +55,16 @@ public:
 
 
     // If addressQuery=true device address can be queried
-    VkDeviceMemory AllocDedicated(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties, bool addressQuery = false) const;
-    VkDeviceMemory AllocDedicated(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties, bool addressQuery = false) const;
+    VkDeviceMemory AllocDedicated(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties, AllocType allocType, const char *pDebugName = nullptr) const;
+    VkDeviceMemory AllocDedicated(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties, AllocType allocType, const char *pDebugName = nullptr) const;
     void FreeDedicated(VkDeviceMemory memory) const;
 
     
     VkBuffer CreateStagingSrcTextureBuffer(
-        const VkBufferCreateInfo *info, 
+        const VkBufferCreateInfo *info, const char *pDebugName,
         void **pOutMappedData, VkDeviceMemory *outMemory = nullptr);
     VkImage CreateDstTextureImage(
-        const VkImageCreateInfo *info,
+        const VkImageCreateInfo *info, const char *pDebugName,
         VkDeviceMemory *outMemory = nullptr);
 
     void DestroyStagingSrcTextureBuffer(VkBuffer buffer);

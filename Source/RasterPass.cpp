@@ -342,8 +342,7 @@ void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height,
         VkMemoryRequirements memReqs;
         vkGetImageMemoryRequirements(device, depthImages[i], &memReqs);
 
-        depthMemory[i] = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-        SET_DEBUG_NAME(device, depthMemory[i], VK_OBJECT_TYPE_DEVICE_MEMORY, "Rasterizer raster pass depth memory");
+        depthMemory[i] = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryAllocator::AllocType::DEFAULT, "Rasterizer raster pass depth memory");
 
         if (depthMemory[i] == VK_NULL_HANDLE)
         {

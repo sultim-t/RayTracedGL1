@@ -229,7 +229,7 @@ bool TextureUploader::CreateImage(const UploadInfo &info, VkImage *result)
     imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
     imageInfo.usage = VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    VkImage image = memAllocator->CreateDstTextureImage(&imageInfo);
+    VkImage image = memAllocator->CreateDstTextureImage(&imageInfo, info.pDebugName);
     if (image == VK_NULL_HANDLE)
     {
         return false;
@@ -429,7 +429,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     stagingInfo.size = dataSize;
     stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-    VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, &mappedData);
+    VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, info.pDebugName, &mappedData);
     if (stagingBuffer == VK_NULL_HANDLE)
     {
         return result;

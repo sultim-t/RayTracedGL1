@@ -333,7 +333,7 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
         VkMemoryRequirements memReqs;
         vkGetImageMemoryRequirements(device, images[i], &memReqs);
 
-        imageMemories[i] = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+        imageMemories[i] = allocator->AllocDedicated(memReqs, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryAllocator::AllocType::DEFAULT, ShFramebuffers_DebugNames[i]);
 
         r = vkBindImageMemory(device, images[i], imageMemories[i], 0);
         VK_CHECKERROR(r);
