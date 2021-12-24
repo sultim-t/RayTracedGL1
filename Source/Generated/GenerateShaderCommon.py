@@ -592,13 +592,6 @@ VERT_PREPROC_PUSH_STRUCT = [
     (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",        align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
 ]
 
-TRIANGLE_INFO_STRUCT = [
-    (TYPE_UINT32,       1,      "materials0A",          1),
-    (TYPE_UINT32,       1,      "materials0B",          1),
-    (TYPE_UINT32,       1,      "materials0C",          1),
-    (TYPE_UINT32,       1,      "sectorArrayIndex",     1),
-]
-
 
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
@@ -617,7 +610,6 @@ STRUCTS = {
     "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShTriangleInfo":           (TRIANGLE_INFO_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
     "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
     # "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),

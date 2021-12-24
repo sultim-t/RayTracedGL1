@@ -344,6 +344,11 @@ typedef struct RgGeometryUploadInfo
     uint32_t                        indexCount;
     const void                      *pIndexData;
 
+    // Sector ID per triangle. If null, sector IDs are ignored.
+    // Otherwise, must point to an array of (vertexCount/3) or
+    // (indexCount/3) elements (if pIndexData is not null)
+    const uint32_t                  *pTriangleSectorIDs;
+
     // RGBA color for each material layer.
     RgFloat4D                       layerColors[3];
     RgGeometryMaterialBlendType     layerBlendingTypes[3];

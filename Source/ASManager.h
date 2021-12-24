@@ -49,6 +49,7 @@ public:
               std::shared_ptr<CommandBufferManager> cmdManager,
               std::shared_ptr<TextureManager> textureManager,
               std::shared_ptr<GeomInfoManager> geomInfoManager,
+              std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
               const VertexBufferProperties &properties);
     ~ASManager();
 
@@ -149,6 +150,7 @@ private:
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<TextureManager> textureMgr;
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
+    std::shared_ptr<TriangleInfoManager> triangleInfoMgr;
 
     std::vector<std::unique_ptr<BLASComponent>> allStaticBlas;
     std::vector<std::unique_ptr<BLASComponent>> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];

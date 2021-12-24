@@ -35,6 +35,7 @@ ASManager::ASManager(
     std::shared_ptr<CommandBufferManager> _cmdManager,
     std::shared_ptr<TextureManager> _textureManager,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
+    std::shared_ptr<TriangleInfoManager> _triangleInfoMgr,
     const VertexBufferProperties &_properties)
 :
     device(_device),
@@ -43,6 +44,7 @@ ASManager::ASManager(
     cmdManager(std::move(_cmdManager)),
     textureMgr(std::move(_textureManager)),
     geomInfoMgr(std::move(_geomInfoManager)),
+    triangleInfoMgr(std::move(_triangleInfoMgr)),
     descPool(VK_NULL_HANDLE),
     buffersDescSetLayout(VK_NULL_HANDLE),
     asDescSetLayout(VK_NULL_HANDLE),
@@ -80,7 +82,7 @@ ASManager::ASManager(
 
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
-        device, allocator, geomInfoMgr,
+        device, allocator, geomInfoMgr, triangleInfoMgr,
         sizeof(ShVertexBufferStatic), properties,
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -94,7 +96,7 @@ ASManager::ASManager(
 
     // dynamic vertices
     collectorDynamic[0] = std::make_shared<VertexCollector>(
-        device, allocator, geomInfoMgr,
+        device, allocator, geomInfoMgr, triangleInfoMgr,
         sizeof(ShVertexBufferDynamic), properties,
         FT::CF_DYNAMIC | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -148,7 +150,7 @@ void ASManager::CreateDescriptors()
     VkResult r;
 
     {
-        std::array<VkDescriptorSetLayoutBinding, 8> bindings{};
+        std::array<VkDescriptorSetLayoutBinding, 9> bindings{};
 
         // static vertex data
         bindings[0].binding = BINDING_VERTEX_BUFFER_STATIC;
@@ -192,7 +194,12 @@ void ASManager::CreateDescriptors()
         bindings[7].descriptorCount = 1;
         bindings[7].stageFlags = VK_SHADER_STAGE_ALL;
 
-        static_assert(sizeof(bindings) / sizeof(bindings[0]) == 8, "");
+        bindings[8].binding = BINDING_PER_TRIANGLE_INFO;
+        bindings[8].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bindings[8].descriptorCount = 1;
+        bindings[8].stageFlags = VK_SHADER_STAGE_ALL;
+
+        static_assert(bindings.size() == 9, "");
 
         VkDescriptorSetLayoutCreateInfo layoutInfo = {};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -263,7 +270,7 @@ void ASManager::CreateDescriptors()
 
 void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
 {
-    const uint32_t bindingCount = 8;
+    constexpr  uint32_t bindingCount = 9;
 
     std::array<VkDescriptorBufferInfo, bindingCount> bufferInfos{};
     std::array<VkWriteDescriptorSet, bindingCount> writes{};
@@ -308,6 +315,11 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     piBufInfo.buffer = previousDynamicIndices.GetBuffer();
     piBufInfo.offset = 0;
     piBufInfo.range = VK_WHOLE_SIZE;
+
+    VkDescriptorBufferInfo &trBufInfo = bufferInfos[BINDING_PER_TRIANGLE_INFO];
+    trBufInfo.buffer = triangleInfoMgr->GetBuffer();
+    trBufInfo.offset = 0;
+    trBufInfo.range = VK_WHOLE_SIZE;
 
 
     // writes
@@ -382,6 +394,15 @@ void ASManager::UpdateBufferDescriptors(uint32_t frameIndex)
     piWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     piWrt.descriptorCount = 1;
     piWrt.pBufferInfo = &piBufInfo;
+
+    VkWriteDescriptorSet &trWrt = writes[BINDING_PER_TRIANGLE_INFO];
+    trWrt.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    trWrt.dstSet = buffersDescSets[frameIndex];
+    trWrt.dstBinding = BINDING_PER_TRIANGLE_INFO;
+    trWrt.dstArrayElement = 0;
+    trWrt.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+    trWrt.descriptorCount = 1;
+    trWrt.pBufferInfo = &trBufInfo;
 
     vkUpdateDescriptorSets(device, writes.size(), writes.data(), 0, nullptr);
 }
@@ -543,6 +564,7 @@ void ASManager::ResetStaticGeometry()
 {
     collectorStatic->Reset();
     geomInfoMgr->ResetWithStatic();
+    triangleInfoMgr->Reset();
 }
 
 void ASManager::BeginStaticGeometry()
@@ -550,6 +572,7 @@ void ASManager::BeginStaticGeometry()
     // the whole static vertex data must be recreated, clear previous data
     collectorStatic->Reset();
     geomInfoMgr->ResetWithStatic();
+    triangleInfoMgr->Reset();
 
     collectorStatic->BeginCollecting(true);
 }
@@ -608,6 +631,7 @@ void ASManager::SubmitStaticGeometry()
     // were out of rgStartFrame - rgDrawFrame, so static geominfo-s won't be
     // erased on GeomInfoManager::PrepareForFrame
     geomInfoMgr->CopyFromStaging(cmd, 0, false);
+    triangleInfoMgr->CopyFromStaging(cmd, 0, false);
 
     // submit and wait
     cmdManager->Submit(cmd, staticCopyFence);

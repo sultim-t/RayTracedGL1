@@ -82,6 +82,7 @@ set(PrivateHeaders
     "Source/LightLists.h"
     "Source/LightDefs.h"
     "Source/SectorVisibility.h"
+    "Source/TriangleInfoManager.h"
 )
 
 set(Sources
@@ -144,6 +145,7 @@ set(Sources
     "Source/HaltonSequence.cpp"
     "Source/LightLists.cpp"
     "Source/SectorVisibility.cpp"
+    "Source/TriangleInfoManager.cpp"
 )
 
 

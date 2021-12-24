@@ -80,6 +80,7 @@ private:
     std::shared_ptr<ASManager> asManager;
     std::shared_ptr<LightManager> lightManager;
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
+    std::shared_ptr<TriangleInfoManager> triangleInfoMgr;
     std::shared_ptr<VertexPreprocessing> vertPreproc;
     std::shared_ptr<SectorVisibility> sectorVisibility;
 

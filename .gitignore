@@ -6,5 +6,6 @@
 *.userprefs
 .vs/
 .idea/
+.vscode/
 
 Build/

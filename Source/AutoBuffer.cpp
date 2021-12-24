@@ -118,6 +118,11 @@ void RTGL1::AutoBuffer::CopyFromStaging(
 {
     assert(staging[frameIndex].GetSize() == deviceLocal.GetSize());
 
+    if (copyInfosCount == 0)
+    {
+        return;
+    }
+
     vkCmdCopyBuffer(
         cmd,
         staging[frameIndex].GetBuffer(), deviceLocal.GetBuffer(),

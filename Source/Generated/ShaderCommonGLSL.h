@@ -258,14 +258,6 @@ struct ShGeometryInstance
     uint triangleArrayIndex;
 };
 
-struct ShTriangleInfo
-{
-    uint materials0A;
-    uint materials0B;
-    uint materials0C;
-    uint sectorArrayIndex;
-};
-
 struct ShTonemapping
 {
     uint histogram[256];

@@ -44,8 +44,9 @@ Scene::Scene(
 
     lightManager = std::make_shared<LightManager>(_device, _allocator, sectorVisibility);
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
+    triangleInfoMgr = std::make_shared<TriangleInfoManager>(_device, _allocator, sectorVisibility);
 
-    asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, _properties);
+    asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, _properties);
   
     vertPreproc = std::make_shared<VertexPreprocessing>(_device, _uniform, asManager, _shaderManager);
 }
@@ -58,6 +59,7 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     dynamicUniqueIDToSimpleIndex.clear();
 
     geomInfoMgr->PrepareForFrame(frameIndex);
+    triangleInfoMgr->PrepareForFrame(frameIndex);
     lightManager->PrepareForFrame(frameIndex);
 
     // dynamic geomtry
@@ -89,8 +91,9 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     asManager->SubmitDynamicGeometry(cmd, frameIndex);
 
 
-    // copy geom infos to device-local
+    // copy geom and tri infos to device-local
     geomInfoMgr->CopyFromStaging(cmd, frameIndex);
+    triangleInfoMgr->CopyFromStaging(cmd, frameIndex);
 
 
     ShVertPreprocessing push = {};

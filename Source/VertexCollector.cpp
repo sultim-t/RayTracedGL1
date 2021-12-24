@@ -51,6 +51,7 @@ VertexCollector::VertexCollector(
     VkDevice _device, 
     const std::shared_ptr<MemoryAllocator> &_allocator,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
+    std::shared_ptr<TriangleInfoManager> _triangleInfoMgr,
     VkDeviceSize _bufferSize,
     const VertexBufferProperties &_properties,
     VertexCollectorFilterTypeFlags _filters) 
@@ -59,6 +60,7 @@ VertexCollector::VertexCollector(
     properties(_properties),
     filtersFlags(_filters),
     geomInfoMgr(std::move(_geomInfoManager)),
+    triangleInfoMgr(std::move(_triangleInfoMgr)),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curTransformCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), 
     texCoordsToCopyLowerBound(UINT64_MAX),
@@ -114,6 +116,7 @@ VertexCollector::VertexCollector(
     indexBuffer(_src->indexBuffer),
     transformsBuffer(_src->transformsBuffer),
     geomInfoMgr(_src->geomInfoMgr),
+    triangleInfoMgr(_src->triangleInfoMgr),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curTransformCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr),
     texCoordsToCopyLowerBound(UINT64_MAX),
@@ -130,7 +133,7 @@ void VertexCollector::InitStagingBuffers(const std::shared_ptr<MemoryAllocator> 
     assert(vertBuffer       && vertBuffer->GetSize() > 0);
     assert(indexBuffer      && indexBuffer->GetSize() > 0);
     assert(transformsBuffer && transformsBuffer->GetSize() > 0);
-    assert(geomInfoMgr);
+    assert(geomInfoMgr && triangleInfoMgr);
 
     // vertex buffers
     stagingVertBuffer.Init(
@@ -386,6 +389,8 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
             break;
         }
     }
+
+    geomInfo.triangleArrayIndex = triangleInfoMgr->UploadAndGetArrayIndex(frameIndex, info.pTriangleSectorIDs, primitiveCount, info.geomType);
 
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)

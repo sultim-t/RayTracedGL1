@@ -104,9 +104,9 @@ layout(
     set = DESC_SET_VERTEX_DATA,
     binding = BINDING_PER_TRIANGLE_INFO)
     readonly 
-    buffer _BT
+    buffer PerTriangleInfo_BT
 {
-    ShTriangleInfo perTriangleInfo[];
+    uint triangleSectorIndices[];
 };
 
 vec3 getStaticVerticesPositions(uint index)
@@ -515,11 +515,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     // if should use per-triangle info
     if (inst.triangleArrayIndex != GEOM_INST_NO_TRIANGLE_INFO)
     {
-        const ShTriangleInfo perTriInfo = perTriangleInfo[inst.triangleArrayIndex];
-        
-        // replace geomInst material with per-triangle material 
-        tr.materials[0] = uvec3(perTriInfo.materials0A, perTriInfo.materials0B, perTriInfo.materials0C);
-        tr.sectorArrayIndex = perTriInfo.sectorArrayIndex;
+        tr.sectorArrayIndex = triangleSectorIndices[inst.triangleArrayIndex];
     }
     else
     {
