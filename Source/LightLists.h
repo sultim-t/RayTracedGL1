@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <array>
+
 #include "AutoBuffer.h"
 #include "LightDefs.h"
 #include "SectorVisibility.h"
@@ -31,7 +33,7 @@ class LightLists
 {
 public:
     LightLists(VkDevice device, const std::shared_ptr<MemoryAllocator> &memoryAllocator, std::shared_ptr<SectorVisibility> sectorVisibility);
-    ~LightLists();
+    ~LightLists() = default;
 
     LightLists(const LightLists &other) = delete;
     LightLists(LightLists &&other) noexcept = delete;
@@ -59,8 +61,9 @@ private:
 private:
     std::shared_ptr<SectorVisibility> sectorVisibility;
 
-    // light list for each sector in the current frame
-    std::unordered_map<SectorArrayIndex, std::vector<LightArrayIndex>> lightLists;
+    // light list for each sector in the current frame,
+    // assume that it's indexed by 'SectorArrayIndex'
+    std::array<std::vector<LightArrayIndex>, MAX_SECTOR_COUNT> lightLists;
 
     std::shared_ptr<AutoBuffer> plainLightList;
     std::shared_ptr<AutoBuffer> sectorToLightListRegion;

@@ -50,48 +50,43 @@ RTGL1::LightLists::LightLists(
     sectorToLightListRegion->Create(sectorToLightListRegion_Raw.size() * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
-RTGL1::LightLists::~LightLists()
-{}
-
 void RTGL1::LightLists::PrepareForFrame()
 {
-    // don't free vectors, they can be reused, since the static scene sectors
-    // most probably will be the same
-    for (auto &l : lightLists)
+    // clear the vectors but without deallocating; they can be reused,
+    // since the static scene sectors most probably will be the same
+    for (auto &v : lightLists)
     {
-        l.second.clear();
+        v.clear();
     }
 }
 
 void RTGL1::LightLists::Reset()
 {
-    lightLists.clear();
+    for (auto &v : lightLists)
+    {
+        v.~vector();
+    }
 }
 
 void RTGL1::LightLists::AddLightToSectorLightList(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex)
 {
-    auto f = lightLists.find(lightSectorIndex);
-
-    // if vector exists
-    if (f != lightLists.end())
+    auto &v = lightLists[lightSectorIndex.GetArrayIndex()];
+    
+    if (v.capacity() != 0)
     {
-        f->second.push_back(lightIndex);
+        v.push_back(lightIndex);
     }
     else
     {
-        std::vector<LightArrayIndex> v;
-        v.reserve(VECTOR_START_CAPACITY);
-        v.push_back(lightIndex);
+        std::vector<LightArrayIndex> temp;
+        temp.reserve(VECTOR_START_CAPACITY);
+        temp.push_back(lightIndex);
 
-        // move vector
-        auto i = lightLists.emplace(lightSectorIndex, v);
-
-        // successful insertion
-        assert(i.second);
+        v = temp;
     }
 
     // values must be unique
-    assert(std::count(lightLists[lightSectorIndex].cbegin(), lightLists[lightSectorIndex].cend(), lightIndex) == 1);
+    assert(std::count(lightLists[lightSectorIndex.GetArrayIndex()].cbegin(), lightLists[lightSectorIndex.GetArrayIndex()].cend(), lightIndex) == 1);
 }
 
 
@@ -135,18 +130,16 @@ void RTGL1::LightLists::BuildArrays(
     LightArrayIndex::index_t *pOutputPlainLightList, uint32_t *pOutputPlainLightListSize,
     SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCountToCopy) const
 {
-    if (lightLists.size() >= MAX_SECTOR_COUNT)
-    {
-        throw RgException(RG_TOO_MANY_SECTORS, "Too many sectors exist. Can't build light lists.");
-    }
-
     uint32_t maxSectorIndex = 0;
     uint32_t iter = 0;
 
-    for (const auto &p : lightLists)
+    for (SectorArrayIndex::index_t _i = 0; _i < lightLists.size(); _i++)
     {
-        const SectorArrayIndex sectorIndex = p.first;
-        const std::vector<LightArrayIndex> &sectorLightList = p.second;
+        // pretend like we iterate over SectorArrayIndex
+        const SectorArrayIndex sectorIndex = SectorArrayIndex{ _i };
+
+
+        const std::vector<LightArrayIndex> &sectorLightList = lightLists[sectorIndex.GetArrayIndex()];
 
         const uint32_t startArrayOffset = iter;
         const uint32_t endArrayOffset   = iter + (uint32_t)sectorLightList.size();
