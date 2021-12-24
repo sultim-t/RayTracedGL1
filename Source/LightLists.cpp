@@ -64,29 +64,20 @@ void RTGL1::LightLists::Reset()
 {
     for (auto &v : lightLists)
     {
-        v.~vector();
+        v = {};
     }
 }
 
 void RTGL1::LightLists::AddLightToSectorLightList(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex)
 {
     auto &v = lightLists[lightSectorIndex.GetArrayIndex()];
-    
-    if (v.capacity() != 0)
-    {
-        v.push_back(lightIndex);
-    }
-    else
-    {
-        std::vector<LightArrayIndex> temp;
-        temp.reserve(VECTOR_START_CAPACITY);
-        temp.push_back(lightIndex);
 
-        v = temp;
-    }
+    // guarantee capacity of >= VECTOR_START_CAPACITY
+    v.reserve(VECTOR_START_CAPACITY);
+    v.push_back(lightIndex);
 
     // values must be unique
-    assert(std::count(lightLists[lightSectorIndex.GetArrayIndex()].cbegin(), lightLists[lightSectorIndex.GetArrayIndex()].cend(), lightIndex) == 1);
+    assert(std::count(v.cbegin(), v.cend(), lightIndex) == 1);
 }
 
 
