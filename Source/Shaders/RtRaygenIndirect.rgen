@@ -107,8 +107,8 @@ vec3 processSecondBounce(
         vec3 diffuse, specular;
         processDirectIllumination(
             seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic),
-            -bounceDirection, hitDistance,
+            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic), h.sectorArrayIndex,
+            -bounceDirection,
             isGradientSample, 
             2,
             diffuse, specular);
@@ -142,8 +142,8 @@ vec3 processBounce(
         vec3 diffuse, specular;
         processDirectIllumination(
             seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic),
-            -bounceDir_First, hitDistance,
+            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic), h.sectorArrayIndex,
+            -bounceDir_First,
             isGradientSample, 
             1,
             diffuse, specular);

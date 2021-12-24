@@ -303,11 +303,10 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end)
 
 
 // toViewerDir -- is direction to viewer
-// distanceToViewer -- used for shadow ray origin fix, so it can't be under the surface
 void processDirectionalLight(
     uint seed, 
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 toViewerDir, float distanceToViewer,
+    const vec3 toViewerDir,
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
@@ -561,7 +560,7 @@ void processSphericalLight(
 
 void processPolygonalLight(
     uint seed, 
-    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
     const vec3 toViewerDir, 
     bool isGradientSample,
     int bounceIndex,
@@ -732,8 +731,8 @@ void processSpotLight(
 
 void processDirectIllumination(
     uint seed, 
-    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 toViewerDir, float distanceToViewer,
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
+    const vec3 toViewerDir,
     bool isGradientSample,
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
@@ -743,7 +742,7 @@ void processDirectIllumination(
     processDirectionalLight(
         seed, 
         surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-        toViewerDir, distanceToViewer,
+        toViewerDir,
         bounceIndex,
         dirDiff, dirSpec);
     
@@ -767,7 +766,7 @@ void processDirectIllumination(
     vec3 polyDiff, polySpec;
     processPolygonalLight(
         seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,
         toViewerDir, 
         isGradientSample,  
         bounceIndex,
@@ -775,24 +774,5 @@ void processDirectIllumination(
     
     outDiffuse = dirDiff + sphDiff + spotDiff + polyDiff;
     outSpecular = dirSpec + sphSpec + spotSpec + polySpec;
-}
-
-
-void processDirectIllumination(
-    uint seed, 
-    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 toViewerDir,
-    bool isGradientSample,
-    int bounceIndex,
-    out vec3 outDiffuse, out vec3 outSpecular)
-{
-    // TODO: length(..) if reflect/refract
-    processDirectIllumination(
-        seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-        toViewerDir, length(surfPosition - globalUniform.cameraPosition.xyz),
-        isGradientSample,
-        bounceIndex,
-        outDiffuse, outSpecular);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD

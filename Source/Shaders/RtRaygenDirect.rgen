@@ -60,6 +60,7 @@ void main()
     const vec3 surfSpecularColor      = getSpecularColor(albedo4.rgb, surfMetallic);
 
     const uint instCustomIndex        = floatBitsToUint(surfPosition.a);
+    const uint sectorArrayIndex       = floatBitsToUint(viewDirection.a);
 
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
@@ -67,7 +68,7 @@ void main()
     vec3 diffuse, specular;
     processDirectIllumination(
         seed, 
-        instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
+        instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, sectorArrayIndex,
         -viewDirection.xyz,
         isGradientSample, 
         0,

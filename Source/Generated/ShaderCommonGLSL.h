@@ -17,6 +17,7 @@
 #define BINDING_GEOMETRY_INSTANCES_MATCH_PREV (5)
 #define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (6)
 #define BINDING_PREV_INDEX_BUFFER_DYNAMIC (7)
+#define BINDING_PER_TRIANGLE_INFO (8)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
 #define BINDING_TEXTURES (0)
@@ -111,6 +112,8 @@
 #define MEDIA_TYPE_WATER (1)
 #define MEDIA_TYPE_GLASS (2)
 #define MEDIA_TYPE_COUNT (3)
+#define GEOM_INST_NO_TRIANGLE_INFO (UINT32_MAX)
+#define SECTOR_INDEX_NONE (UINT32_MAX)
 
 #define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
 
@@ -252,7 +255,15 @@ struct ShGeometryInstance
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
-    uint __pad0;
+    uint triangleArrayIndex;
+};
+
+struct ShTriangleInfo
+{
+    uint materials0A;
+    uint materials0B;
+    uint materials0C;
+    uint sectorArrayIndex;
 };
 
 struct ShTonemapping

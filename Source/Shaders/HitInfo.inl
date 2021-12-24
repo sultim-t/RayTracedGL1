@@ -389,6 +389,7 @@ ShHitInfo getHitInfoBounce(
 
     h.instCustomIndex = instCustomIndex;
     h.geometryInstanceFlags = tr.geometryInstanceFlags;
+    h.sectorArrayIndex = tr.sectorArrayIndex;
 
     return h;
 }

@@ -230,6 +230,7 @@ CONST = {
     "BINDING_GEOMETRY_INSTANCES_MATCH_PREV" : 5,
     "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC" : 6,
     "BINDING_PREV_INDEX_BUFFER_DYNAMIC"     : 7,
+    "BINDING_PER_TRIANGLE_INFO"             : 8,
     "BINDING_GLOBAL_UNIFORM"                : 0,
     "BINDING_ACCELERATION_STRUCTURE_MAIN"   : 0,
     "BINDING_TEXTURES"                      : 0,
@@ -342,6 +343,9 @@ CONST = {
     "MEDIA_TYPE_WATER"                      : 1,
     "MEDIA_TYPE_GLASS"                      : 2,
     "MEDIA_TYPE_COUNT"                      : 3,
+
+    "GEOM_INST_NO_TRIANGLE_INFO"            : "UINT32_MAX",
+    "SECTOR_INDEX_NONE"                     : "UINT32_MAX",
 }
 
 CONST_GLSL_ONLY = {
@@ -554,6 +558,7 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,      1,      "defaultRoughness",     1),
     (TYPE_FLOAT32,      1,      "defaultMetallicity",   1),
     (TYPE_FLOAT32,      1,      "defaultEmission",      1),
+    (TYPE_UINT32,       1,      "triangleArrayIndex",   1),
 ]
 
 LIGHT_SPHERICAL_STRUCT = [
@@ -587,6 +592,13 @@ VERT_PREPROC_PUSH_STRUCT = [
     (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",        align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
 ]
 
+TRIANGLE_INFO_STRUCT = [
+    (TYPE_UINT32,       1,      "materials0A",          1),
+    (TYPE_UINT32,       1,      "materials0B",          1),
+    (TYPE_UINT32,       1,      "materials0C",          1),
+    (TYPE_UINT32,       1,      "sectorArrayIndex",     1),
+]
+
 
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
@@ -605,6 +617,7 @@ STRUCTS = {
     "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShTriangleInfo":           (TRIANGLE_INFO_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
     "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
     # "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),

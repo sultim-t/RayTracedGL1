@@ -100,6 +100,15 @@ layout(
     uint prevDynamicIndices[];
 };
 
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_PER_TRIANGLE_INFO)
+    readonly 
+    buffer _BT
+{
+    ShTriangleInfo perTriangleInfo[];
+};
+
 vec3 getStaticVerticesPositions(uint index)
 {
     return vec3(
@@ -214,6 +223,7 @@ void setDynamicVerticesTexCoords(uint index, vec2 value)
 }
 #endif // VERTEX_BUFFER_WRITEABLE
 
+// Get indices in vertex buffer. If geom uses index buffer then it flattens them to vertex buffer indices.
 uvec3 getVertIndicesStatic(uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
 {
     // if to use indices
@@ -252,7 +262,8 @@ uvec3 getVertIndicesDynamic(uint baseVertexIndex, uint baseIndexIndex, uint prim
     }
 }
 
-uvec3 getPrevVertIndices(uint prevBaseVertexIndex, uint prevBaseIndexIndex, uint primitiveId)
+// Only for dynamic, static geom vertices are not changed.
+uvec3 getPrevVertIndicesDynamic(uint prevBaseVertexIndex, uint prevBaseIndexIndex, uint primitiveId)
 {
     // if to use indices
     if (prevBaseIndexIndex != UINT32_MAX)
@@ -417,7 +428,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
         if (hasPrevInfo)
         {
-            const uvec3 prevVertIndices = getPrevVertIndices(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
+            const uvec3 prevVertIndices = getPrevVertIndicesDynamic(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
 
             const vec4 prevLocalPos[] =
             {
@@ -492,13 +503,28 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     tr.normals[2] = model3 * tr.normals[2];
     tr.tangent.xyz = model3 * tr.tangent.xyz;
 
+
     tr.geometryInstanceFlags = inst.flags;
 
     tr.geomRoughness = inst.defaultRoughness;
     tr.geomMetallicity = inst.defaultMetallicity;
 
-    // use the first layer's color
+    // use (first layer's color) * defaultEmission
     tr.geomEmission = inst.defaultEmission;
+
+    // if should use per-triangle info
+    if (inst.triangleArrayIndex != GEOM_INST_NO_TRIANGLE_INFO)
+    {
+        const ShTriangleInfo perTriInfo = perTriangleInfo[inst.triangleArrayIndex];
+        
+        // replace geomInst material with per-triangle material 
+        tr.materials[0] = uvec3(perTriInfo.materials0A, perTriInfo.materials0B, perTriInfo.materials0C);
+        tr.sectorArrayIndex = perTriInfo.sectorArrayIndex;
+    }
+    else
+    {
+        tr.sectorArrayIndex = SECTOR_INDEX_NONE;
+    }
 
     return tr;
 }
@@ -548,7 +574,7 @@ mat3 getOnlyPrevPositions(int globalGeometryIndex, int instanceCustomIndex, int 
 
         if (hasPrevInfo)
         {
-            const uvec3 prevVertIndices = getPrevVertIndices(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
+            const uvec3 prevVertIndices = getPrevVertIndicesDynamic(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
 
             const vec4 prevLocalPos[] =
             {

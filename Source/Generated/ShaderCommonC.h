@@ -24,6 +24,7 @@ namespace RTGL1
 #define BINDING_GEOMETRY_INSTANCES_MATCH_PREV (5)
 #define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (6)
 #define BINDING_PREV_INDEX_BUFFER_DYNAMIC (7)
+#define BINDING_PER_TRIANGLE_INFO (8)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
 #define BINDING_TEXTURES (0)
@@ -118,6 +119,8 @@ namespace RTGL1
 #define MEDIA_TYPE_WATER (1)
 #define MEDIA_TYPE_GLASS (2)
 #define MEDIA_TYPE_COUNT (3)
+#define GEOM_INST_NO_TRIANGLE_INFO (UINT32_MAX)
+#define SECTOR_INDEX_NONE (UINT32_MAX)
 
 struct ShVertexBufferStatic
 {
@@ -257,7 +260,15 @@ struct ShGeometryInstance
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
-    uint32_t __pad0;
+    uint32_t triangleArrayIndex;
+};
+
+struct ShTriangleInfo
+{
+    uint32_t materials0A;
+    uint32_t materials0B;
+    uint32_t materials0C;
+    uint32_t sectorArrayIndex;
 };
 
 struct ShTonemapping
