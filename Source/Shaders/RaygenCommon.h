@@ -302,6 +302,10 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end)
 
 
 
+#define MAX_SUBSET_LEN 8
+
+
+
 // toViewerDir -- is direction to viewer
 void processDirectionalLight(
     uint seed, 
@@ -392,13 +396,14 @@ void processSphericalLight(
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
+    outDiffuse = vec3(0.0);
+    outSpecular = vec3(0.0);
+
     uint sphLightCount = isGradientSample ? globalUniform.lightCountSphericalPrev : globalUniform.lightCountSpherical;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSphereLights;
 
     if (sphLightCount == 0 || (!castShadowRay && bounceIndex != 0))
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
@@ -433,8 +438,6 @@ void processSphericalLight(
 
         if (dist < max(r, 0.001))
         {
-            outDiffuse = light.color;
-            outSpecular = light.color;
             return;
         }
         
@@ -458,44 +461,41 @@ void processSphericalLight(
 
     if (weightSum <= 0)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
 
     // choose a light source with its appropriate probability
     uint sphLightIndex = UINT32_MAX;
-    float rand = weightSum * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x;
-    float pdf = 0;
+    float rnd = weightSum * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x;
+    float w = 0;
     
     for (int i = 0; i < MAX_LIGHTS_PER_SAMPLE; i++)
     {
-        pdf = weights[i];
-        rand -= pdf;
+        w = weights[i];
+        rnd -= w;
 
         const float fIndex  = sphLightCount * rnds[i / 4][i % 4];
         sphLightIndex = clamp(uint(fIndex), 0, sphLightCount - 1);
 
-        if (rand <= 0)
+        if (rnd <= 0)
         {
             break;
         }
     }
     
-    if (rand > 0)
+    if (rnd > 0)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
-    pdf = max(pdf / weightSum / sphLightCount, 0.001);
+    float pdf = max(w / (weightSum * sphLightCount), 0.001);
 
 
     if (isGradientSample)
     {        
-        // choose light using prev frame's info
+        // the seed and other input params were replaced by prev frame's data,
+        // so in some degree, lightIndex is the same as it was chosen in prev frame
         const uint prevFrameSphLightIndex = sphLightIndex;
 
         // get cur frame match for the chosen light
@@ -504,8 +504,6 @@ void processSphericalLight(
         // if light disappeared
         if (sphLightIndex == UINT32_MAX)
         {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
             return;
         }
     }
@@ -558,6 +556,29 @@ void processSphericalLight(
 }
 
 
+float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom, uint polyLightIndex)
+{
+    const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
+
+    const vec3 pointsOnUnitSphere[3] = 
+    {
+        normalize(polyLight.position_0.xyz - surfPosition),
+        normalize(polyLight.position_1.xyz - surfPosition),
+        normalize(polyLight.position_2.xyz - surfPosition),
+    };
+
+    vec3 triNormal = cross(pointsOnUnitSphere[1] - pointsOnUnitSphere[0], pointsOnUnitSphere[2] - pointsOnUnitSphere[0]);
+    const float triArea = length(triNormal) / 2.0;
+
+    if (triArea < 0.0001 || dot(triNormal, surfNormalGeom) <= 0.0)
+    {
+        return 0;
+    }
+
+    return getLuminance(polyLight.color) * triArea;
+}
+
+
 void processPolygonalLight(
     uint seed, 
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
@@ -566,39 +587,105 @@ void processPolygonalLight(
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
+    outDiffuse = vec3(0.0);
+    outSpecular = vec3(0.0);
+
     uint polyLightCount = isGradientSample ? globalUniform.lightCountPolygonalPrev : globalUniform.lightCountPolygonal;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsPolygonalLights;
 
     if (polyLightCount == 0 || (!castShadowRay && bounceIndex != 0))
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
-    // if it's a gradient sample, then the seed is from previous frame
-    const float randomIndex = polyLightCount * getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_CHOOSE).x;
-    uint polyLightIndex = clamp(uint(randomIndex), 0, polyLightCount - 1);;
+    // using Subset Importance Sampling
+    // Ray Tracing Gems II, chapter 47
+
+    // random in [0,1)
+    float rnd = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_CHOOSE).x * 0.99;
+
+    const uint lightListBegin = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 0];
+    const uint lightListEnd   = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 1];
+
+    const uint S = uint(ceil(lightListEnd - lightListBegin)) / MAX_SUBSET_LEN;
+    const uint subsetStride = S;
+    const uint subsetOffset = uint(floor(rnd * S));
+    rnd = rnd * S - float(subsetOffset);
+
+    float weightsTotal = 0;
+    float weightsIS[MAX_SUBSET_LEN]; 
+
+    uint lightIndex = lightListBegin + subsetOffset;
+
+    for (int i = 0; i < MAX_SUBSET_LEN; ++i) 
+    {
+        if (lightIndex >= lightListEnd) 
+        {
+            break;
+        }
+
+        const float w = getPolygonalLightWeight(surfPosition, surfNormalGeom, lightIndex);
+
+        weightsIS[i] = w;
+        weightsTotal += w;
+
+        lightIndex += subsetOffset;
+    }
+
+    if (weightsTotal <= 0.0)
+    {
+        return;
+    }
+
+    rnd *= weightsTotal;
+
+    float mass = 0;
+    lightIndex = lightListBegin + subsetOffset;
+
+    for (int i = 0; i < MAX_SUBSET_LEN; ++i)
+    {
+        if (lightIndex >= lightListEnd) 
+        {
+            break;
+        }
+
+        mass = weightsIS[i];
+        rnd -= mass;
+
+        if (rnd <= 0.0)
+        {
+            break;
+        }
+
+        lightIndex += subsetOffset;
+    }
+
+    if (rnd > 0.0 || mass <= 0.0)
+    {
+        return;
+    }
+
+    float pdf = mass / (weightsTotal * S);
+
+
 
     if (isGradientSample)
     {
-        // choose light using prev frame's info
-        const uint prevFramePolyLightIndex = polyLightIndex;
+        // the seed and other input params were replaced by prev frame's data,
+        // so in some degree, lightIndex is the same as it was chosen in prev frame
+        const uint prevFrameLightIndex = lightIndex;
 
         // get cur frame match for the chosen light
-        polyLightIndex = lightSourcesPolyMatchPrev[prevFramePolyLightIndex];
+        lightIndex = lightSourcesPolyMatchPrev[prevFrameLightIndex];
 
         // if light disappeared
-        if (polyLightIndex == UINT32_MAX)
+        if (lightIndex == UINT32_MAX)
         {
-            outDiffuse = vec3(0.0);
-            outSpecular = vec3(0.0);
             return;
         }
     }
 
-    float oneOverPdf = polyLightCount;
-    const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
+    const ShLightPolygonal polyLight = lightSourcesPolygonal[lightIndex];
 
 
     vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
@@ -606,12 +693,10 @@ void processPolygonalLight(
 
     if (triArea < 0.0001)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
     triNormal /= triArea * 2;
-    oneOverPdf *= triArea;
+    pdf /= triArea;
 
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
@@ -626,23 +711,19 @@ void processPolygonalLight(
 
     if (nl <= 0 || ngl <= 0 || dot(triNormal, l) <= 0)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
-    const vec3 polyLightColor = polyLight.color;
-    
     const vec3 s =
-        polyLightColor * 
+        polyLight.color * 
         nl * 
         getGeometryFactor(triNormal, l, distToLightPoint);
 
     outDiffuse  = evalBRDFLambertian(1.0) * M_PI * s;
     outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;
 
-    outDiffuse *= oneOverPdf;
-    outSpecular *= oneOverPdf;
+    outDiffuse /= pdf;
+    outSpecular /= pdf;
 
     // if too dim, don't cast shadow ray
     if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
