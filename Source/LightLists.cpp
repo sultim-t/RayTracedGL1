@@ -111,7 +111,7 @@ void RTGL1::LightLists::BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t fr
                 sectorToLightListRegion_Raw.data(), &sectorCountToCopy);
 
     uint64_t plainLightList_Bytes = plainLightListSize * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT;
-    uint64_t sectorToLightListRegion_Bytes = sectorCountToCopy * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT;
+    uint64_t sectorToLightListRegion_Bytes = 2 * sectorCountToCopy * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT;
 
     memcpy(plainLightList->GetMapped(frameIndex),           plainLightList_Raw.data(),          plainLightList_Bytes);
     memcpy(sectorToLightListRegion->GetMapped(frameIndex),  sectorToLightListRegion_Raw.data(), sectorToLightListRegion_Bytes);
@@ -147,16 +147,15 @@ void RTGL1::LightLists::BuildArrays(
                 break;
             }
 
-            maxSectorIndex = std::max(maxSectorIndex, sectorIndex.GetArrayIndex());
-
             pOutputPlainLightList[iter] = i.GetArrayIndex();
             iter++;
         }
-        
 
         // write start/end, so the sector's light list can be accessed by sector array index
         pOutputSectorToLightListStartEnd[sectorIndex.GetArrayIndex() * 2 + 0] = startArrayOffset;
         pOutputSectorToLightListStartEnd[sectorIndex.GetArrayIndex() * 2 + 1] = endArrayOffset;
+
+        maxSectorIndex = std::max(maxSectorIndex, sectorIndex.GetArrayIndex());
     }
 
     *pOutputPlainLightListSize = iter;

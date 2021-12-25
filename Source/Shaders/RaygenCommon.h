@@ -556,8 +556,9 @@ void processSphericalLight(
 }
 
 
-float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom, uint polyLightIndex)
+float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom, uint plainLightListIndex)
 {
+    const uint polyLightIndex = plainLightList[plainLightListIndex];
     const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
     const vec3 pointsOnUnitSphere[3] = 
@@ -593,7 +594,7 @@ void processPolygonalLight(
     uint polyLightCount = isGradientSample ? globalUniform.lightCountPolygonalPrev : globalUniform.lightCountPolygonal;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsPolygonalLights;
 
-    if (polyLightCount == 0 || (!castShadowRay && bounceIndex != 0))
+    if (polyLightCount == 0 || (!castShadowRay && bounceIndex != 0) || surfSectorArrayIndex == SECTOR_INDEX_NONE)
     {
         return;
     }
@@ -615,21 +616,21 @@ void processPolygonalLight(
     float weightsTotal = 0;
     float weightsIS[MAX_SUBSET_LEN]; 
 
-    uint lightIndex = lightListBegin + subsetOffset;
+    uint plainLightListIndex = lightListBegin + subsetOffset;
 
     for (int i = 0; i < MAX_SUBSET_LEN; ++i) 
     {
-        if (lightIndex >= lightListEnd) 
+        if (plainLightListIndex >= lightListEnd) 
         {
             break;
         }
 
-        const float w = getPolygonalLightWeight(surfPosition, surfNormalGeom, lightIndex);
+        const float w = getPolygonalLightWeight(surfPosition, surfNormalGeom, plainLightListIndex);
 
         weightsIS[i] = w;
         weightsTotal += w;
 
-        lightIndex += subsetOffset;
+        plainLightListIndex += subsetOffset;
     }
 
     if (weightsTotal <= 0.0)
@@ -640,11 +641,11 @@ void processPolygonalLight(
     rnd *= weightsTotal;
 
     float mass = 0;
-    lightIndex = lightListBegin + subsetOffset;
+    plainLightListIndex = lightListBegin + subsetOffset;
 
     for (int i = 0; i < MAX_SUBSET_LEN; ++i)
     {
-        if (lightIndex >= lightListEnd) 
+        if (plainLightListIndex >= lightListEnd) 
         {
             break;
         }
@@ -657,7 +658,7 @@ void processPolygonalLight(
             break;
         }
 
-        lightIndex += subsetOffset;
+        plainLightListIndex += subsetOffset;
     }
 
     if (rnd > 0.0 || mass <= 0.0)
@@ -668,24 +669,25 @@ void processPolygonalLight(
     float pdf = mass / (weightsTotal * S);
 
 
+    uint polyLightIndex = plainLightList[plainLightListIndex];
 
     if (isGradientSample)
     {
         // the seed and other input params were replaced by prev frame's data,
         // so in some degree, lightIndex is the same as it was chosen in prev frame
-        const uint prevFrameLightIndex = lightIndex;
+        const uint prevFrameLightIndex = polyLightIndex;
 
         // get cur frame match for the chosen light
-        lightIndex = lightSourcesPolyMatchPrev[prevFrameLightIndex];
+        polyLightIndex = lightSourcesPolyMatchPrev[prevFrameLightIndex];
 
         // if light disappeared
-        if (lightIndex == UINT32_MAX)
+        if (polyLightIndex == UINT32_MAX)
         {
             return;
         }
     }
 
-    const ShLightPolygonal polyLight = lightSourcesPolygonal[lightIndex];
+    const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
 
     vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
