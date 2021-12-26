@@ -84,6 +84,7 @@ void RTGL1::AutoBuffer::Destroy()
 
 void RTGL1::AutoBuffer::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, VkDeviceSize size, VkDeviceSize offset)
 {
+    assert(frameIndex < MAX_FRAMES_IN_FLIGHT);
     assert(staging[frameIndex].GetSize() == deviceLocal.GetSize());
 
     if (size == VK_WHOLE_SIZE)
@@ -116,6 +117,7 @@ void RTGL1::AutoBuffer::CopyFromStaging(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     const VkBufferCopy *copyInfos, uint32_t copyInfosCount)
 {
+    assert(frameIndex < MAX_FRAMES_IN_FLIGHT);
     assert(staging[frameIndex].GetSize() == deviceLocal.GetSize());
 
     if (copyInfosCount == 0)
@@ -131,12 +133,14 @@ void RTGL1::AutoBuffer::CopyFromStaging(
 
 void *RTGL1::AutoBuffer::GetMapped(uint32_t frameIndex)
 {
+    assert(frameIndex < MAX_FRAMES_IN_FLIGHT);
     assert(staging[frameIndex].IsMapped());
     return mapped[frameIndex];
 }
 
 VkBuffer RTGL1::AutoBuffer::GetStaging(uint32_t frameIndex)
 {
+    assert(frameIndex < MAX_FRAMES_IN_FLIGHT);
     assert(staging[frameIndex].IsInitted());
     return staging[frameIndex].GetBuffer();
 }

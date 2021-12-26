@@ -62,7 +62,6 @@ uint32_t RTGL1::TriangleInfoManager::UploadAndGetArrayIndex(uint32_t frameIndex,
 
 
     auto &indices = TransformIdsToIndices(pTriangleSectorIDs, count);
-    uint32_t *pDst = (uint32_t *)triangleSectorIndicesBuffer->GetMapped(frameIndex);
 
 
     uint32_t startIndexInArray;
@@ -80,14 +79,22 @@ uint32_t RTGL1::TriangleInfoManager::UploadAndGetArrayIndex(uint32_t frameIndex,
 
         startIndexInArray = dynamicGeometryRange.GetFirstIndexAfterRange();
 
+        uint32_t *pDst = (uint32_t *)triangleSectorIndicesBuffer->GetMapped(frameIndex);
         memcpy(&pDst[startIndexInArray], indices.data(), indices.size() * TRIANGLE_INFO_SIZE);
+
         dynamicGeometryRange.Add(indices.size());
     }
     else
     {
         startIndexInArray = staticGeometryRange.GetFirstIndexAfterRange();
 
-        memcpy(&pDst[startIndexInArray], indices.data(), indices.size() * TRIANGLE_INFO_SIZE);
+        // need to copy static geom data to both staging buffers, to be able to upload it in any frameIndex
+        for (uint32_t f = 0; f < MAX_FRAMES_IN_FLIGHT; f++)
+        {
+            uint32_t *pDst = (uint32_t *)triangleSectorIndicesBuffer->GetMapped(f);
+            memcpy(&pDst[startIndexInArray], indices.data(), indices.size() * TRIANGLE_INFO_SIZE);
+        }
+
         staticGeometryRange.Add(indices.size());
 
 
