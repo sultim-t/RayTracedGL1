@@ -221,7 +221,7 @@ struct ShGlobalUniform
     float primaryRayMinDist;
     uint32_t rayCullBackFaces;
     uint32_t maxBounceShadowsPolygonalLights;
-    uint32_t _pad2;
+    uint32_t dbgShowSectors;
     float directionalLightTanAngularRadius;
     float directionalLightDirection[4];
     float directionalLightColor[4];
@@ -249,7 +249,7 @@ struct ShGeometryInstance
     uint32_t materials1C;
     uint32_t materials2A;
     uint32_t materials2B;
-    uint32_t materials2C;
+    uint32_t sectorArrayIndex;
     uint32_t flags;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;

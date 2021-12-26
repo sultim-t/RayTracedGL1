@@ -511,7 +511,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "maxBounceShadowsPolygonalLights",  1),
-    (TYPE_UINT32,       1,      "_pad2",                            1),
+    (TYPE_UINT32,       1,      "dbgShowSectors",                   1),
     (TYPE_FLOAT32,      1,      "directionalLightTanAngularRadius", 1),
 
     (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
@@ -543,11 +543,11 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "materials0B",          1),
     (TYPE_UINT32,       1,      "materials0C",          1),
     (TYPE_UINT32,       1,      "materials1A",          1),
-    (TYPE_UINT32,       1,      "materials1B",          1),
-    (TYPE_UINT32,       1,      "materials1C",          1),
+    (TYPE_UINT32,       1,      "materials1B",          1), # not used
+    (TYPE_UINT32,       1,      "materials1C",          1), # not used
     (TYPE_UINT32,       1,      "materials2A",          1),
-    (TYPE_UINT32,       1,      "materials2B",          1),
-    (TYPE_UINT32,       1,      "materials2C",          1),
+    (TYPE_UINT32,       1,      "materials2B",          1), # not used
+    (TYPE_UINT32,       1,      "sectorArrayIndex",     1),
     (TYPE_UINT32,       1,      "flags",                1),
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),

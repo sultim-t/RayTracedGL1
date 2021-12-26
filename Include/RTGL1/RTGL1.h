@@ -348,6 +348,9 @@ typedef struct RgGeometryUploadInfo
     // Otherwise, must point to an array of (vertexCount/3) or
     // (indexCount/3) elements (if pIndexData is not null)
     const uint32_t                  *pTriangleSectorIDs;
+    // If per triangle sector IDs are not provided,
+    // use this for whole geometry.
+    uint32_t                        sectorID;
 
     // RGBA color for each material layer.
     RgFloat4D                       layerColors[3];
@@ -851,6 +854,7 @@ typedef struct RgDrawFrameDebugParams
 {
     RgBool32    showMotionVectors;
     RgBool32    showGradients;
+    RgBool32    showSectors;
 } RgDrawFrameDebugParams;
 
 typedef struct RgDrawFrameShadowParams

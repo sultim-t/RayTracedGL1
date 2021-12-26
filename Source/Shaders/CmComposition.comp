@@ -132,23 +132,24 @@ void main()
         color.b = 0;
     }
 
-#if DEBUG_SECTOR_INDEX
-    uint sectorArrayIndex = texelFetch(framebufSectorIndex_Sampler, getCheckerboardPix(pix), 0).r; 
-    if (sectorArrayIndex != SECTOR_INDEX_NONE)
+    if (globalUniform.dbgShowSectors != 0)
     {
-        const uint colorCount = 10;
-        uint r = uint(sectorArrayIndex * 128 * M_PI);
-        color = vec3(
-            (((r / 1  ) % (colorCount - 1)) + 1) / float(colorCount),
-            (((r / 10 ) % (colorCount - 1)) + 1) / float(colorCount),
-            (((r / 100) % (colorCount - 1)) + 1) / float(colorCount)
-        );
+        uint sectorArrayIndex = texelFetch(framebufSectorIndex_Sampler, getCheckerboardPix(pix), 0).r; 
+        if (sectorArrayIndex != SECTOR_INDEX_NONE)
+        {
+            const uint colorCount = 32;
+            uint r = uint(sectorArrayIndex);
+            color = vec3(
+                0,
+                ((r % (colorCount - 1)) + 1) / float(colorCount),
+                (((r >> (uint(log2(colorCount)))) % (colorCount - 1)) + 1) / float(colorCount)
+            );
+        }
+        else
+        {
+            color = vec3(1,0,0);
+        }
     }
-    else
-    {
-        color = vec3(0);
-    }
-#endif
    
     imageStore(framebufPreFinal, pix, vec4(color, 0));
 }

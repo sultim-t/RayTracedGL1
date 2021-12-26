@@ -488,11 +488,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         gu->dbgShowGradients = !!drawInfo.pDebugParams->showGradients;
         gu->dbgShowMotionVectors = !!drawInfo.pDebugParams->showMotionVectors;
+        gu->dbgShowSectors = !!drawInfo.pDebugParams->showSectors;
     }
     else
     {
         gu->dbgShowGradients = false;
         gu->dbgShowMotionVectors = false;
+        gu->dbgShowSectors = false;
     }
 
     if (drawInfo.pOverridenTexturesParams != nullptr)
