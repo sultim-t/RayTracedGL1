@@ -48,6 +48,7 @@ public:
         const std::shared_ptr<MemoryAllocator> &allocator,
         std::shared_ptr<GeomInfoManager> geomInfoManager,
         std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
+        std::shared_ptr<SectorVisibility> sectorVisibility,
         VkDeviceSize bufferSize, 
         const VertexBufferProperties &properties,
         VertexCollectorFilterTypeFlags filters);
@@ -171,6 +172,7 @@ private:
 
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
     std::shared_ptr<TriangleInfoManager> triangleInfoMgr;
+    std::shared_ptr<SectorVisibility> sectorVisibility;
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

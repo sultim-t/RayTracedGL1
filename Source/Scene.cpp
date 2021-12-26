@@ -46,7 +46,7 @@ Scene::Scene(
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
     triangleInfoMgr = std::make_shared<TriangleInfoManager>(_device, _allocator, sectorVisibility);
 
-    asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, _properties);
+    asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, sectorVisibility, _properties);
   
     vertPreproc = std::make_shared<VertexPreprocessing>(_device, _uniform, asManager, _shaderManager);
 }

@@ -50,6 +50,7 @@ public:
               std::shared_ptr<TextureManager> textureManager,
               std::shared_ptr<GeomInfoManager> geomInfoManager,
               std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
+              std::shared_ptr<SectorVisibility> &_sectorVisibility,
               const VertexBufferProperties &properties);
     ~ASManager();
 

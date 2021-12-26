@@ -456,7 +456,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
         tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
         tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, inst.materials1C);
-        tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, inst.materials2C);
+        tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, MATERIAL_NO_TEXTURE);
 
         tr.materialColors[0] = inst.materialColors[0];
         tr.materialColors[1] = inst.materialColors[1];
@@ -519,7 +519,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     }
     else
     {
-        tr.sectorArrayIndex = SECTOR_INDEX_NONE;
+        tr.sectorArrayIndex = inst.sectorArrayIndex;
     }
 
     return tr;

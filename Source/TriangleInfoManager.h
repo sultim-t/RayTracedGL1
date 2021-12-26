@@ -63,7 +63,7 @@ private:
         void Add(uint32_t amount)                { assert(!locked); count += amount; }
         void Lock()                              { locked = true; }
         void Reset(uint32_t _startIndex)         { startIndex = _startIndex; count = 0; locked = false; }
-        void StartIndexingAfter(const Range &r)  { assert(count == 0 && !locked); startIndex = r.GetCount(); }
+        void StartIndexingAfter(const Range &r)  { assert(count == 0 && !locked); startIndex = r.GetFirstIndexAfterRange(); }
 
         uint32_t GetStartIndex() const           { return startIndex; }
         uint32_t GetFirstIndexAfterRange() const { return startIndex + count; }

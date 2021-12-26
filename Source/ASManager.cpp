@@ -36,6 +36,7 @@ ASManager::ASManager(
     std::shared_ptr<TextureManager> _textureManager,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
     std::shared_ptr<TriangleInfoManager> _triangleInfoMgr,
+    std::shared_ptr<SectorVisibility> &_sectorVisibility,
     const VertexBufferProperties &_properties)
 :
     device(_device),
@@ -82,7 +83,7 @@ ASManager::ASManager(
 
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
-        device, allocator, geomInfoMgr, triangleInfoMgr,
+        device, allocator, geomInfoMgr, triangleInfoMgr, _sectorVisibility,
         sizeof(ShVertexBufferStatic), properties,
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | 
         FT::MASK_PASS_THROUGH_GROUP | 
@@ -96,7 +97,7 @@ ASManager::ASManager(
 
     // dynamic vertices
     collectorDynamic[0] = std::make_shared<VertexCollector>(
-        device, allocator, geomInfoMgr, triangleInfoMgr,
+        device, allocator, geomInfoMgr, triangleInfoMgr, _sectorVisibility,
         sizeof(ShVertexBufferDynamic), properties,
         FT::CF_DYNAMIC | 
         FT::MASK_PASS_THROUGH_GROUP | 

@@ -52,6 +52,7 @@ VertexCollector::VertexCollector(
     const std::shared_ptr<MemoryAllocator> &_allocator,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
     std::shared_ptr<TriangleInfoManager> _triangleInfoMgr,
+    std::shared_ptr<SectorVisibility> _sectorVisibility,
     VkDeviceSize _bufferSize,
     const VertexBufferProperties &_properties,
     VertexCollectorFilterTypeFlags _filters) 
@@ -61,6 +62,7 @@ VertexCollector::VertexCollector(
     filtersFlags(_filters),
     geomInfoMgr(std::move(_geomInfoManager)),
     triangleInfoMgr(std::move(_triangleInfoMgr)),
+    sectorVisibility(std::move(_sectorVisibility)),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curTransformCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr), 
     texCoordsToCopyLowerBound(UINT64_MAX),
@@ -117,6 +119,7 @@ VertexCollector::VertexCollector(
     transformsBuffer(_src->transformsBuffer),
     geomInfoMgr(_src->geomInfoMgr),
     triangleInfoMgr(_src->triangleInfoMgr),
+    sectorVisibility(_src->sectorVisibility),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curTransformCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr),
     texCoordsToCopyLowerBound(UINT64_MAX),
@@ -375,22 +378,25 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
             break;
     }
 
-    for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
+    geomInfo.materials0A = materials[0].indices[0];
+    geomInfo.materials0B = materials[0].indices[1];
+    geomInfo.materials0C = materials[0].indices[2];
+
+    geomInfo.materials1A = materials[1].indices[0];
+    geomInfo.materials1B = materials[1].indices[1];
+    geomInfo.materials1C = materials[1].indices[2];
+
+    geomInfo.materials2A = materials[2].indices[0];
+    geomInfo.materials2B = materials[2].indices[1];
+    // no materials2C member
+
+    for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
     {
-        uint32_t *pMatArr = &geomInfo.materials0A;
-
-        memcpy(&pMatArr[layer * TEXTURES_PER_MATERIAL_COUNT], materials[layer].indices, TEXTURES_PER_MATERIAL_COUNT * sizeof(uint32_t));
         memcpy(geomInfo.materialColors[layer], info.layerColors[layer].data, sizeof(info.layerColors[layer].data));
-
-        // ignore lower level layers, if they won't be visible (i.e. current one is opaque) 
-        if (info.layerBlendingTypes[layer] == RG_GEOMETRY_MATERIAL_BLEND_TYPE_OPAQUE &&
-            info.geomMaterial.layerMaterials[layer] != RG_NO_MATERIAL)
-        {
-            break;
-        }
     }
 
     geomInfo.triangleArrayIndex = triangleInfoMgr->UploadAndGetArrayIndex(frameIndex, info.pTriangleSectorIDs, primitiveCount, info.geomType);
+    geomInfo.sectorArrayIndex = sectorVisibility->SectorIDToArrayIndex(SectorID{ info.sectorID }).GetArrayIndex();
 
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)
@@ -398,20 +404,19 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     // local geometry index -- index of geometry in BLAS
     uint32_t simpleIndex = geomInfoMgr->WriteGeomInfo(frameIndex, info.uniqueID, localIndex, geomFlags, geomInfo);
 
+
     if (collectStatic)
     {
         // add material dependency but only for static geometry,
         // dynamic is updated each frame, so their materials will be updated anyway
-        for (int32_t layer = MATERIALS_MAX_LAYER_COUNT - 1; layer >= 0; layer--)
+        for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
         {
             const uint32_t materialIndex = info.geomMaterial.layerMaterials[layer];
 
             for (uint32_t t = 0; t < TEXTURES_PER_MATERIAL_COUNT; t++)
             {
-                uint32_t *pMatArr = &geomInfo.materials0A;
-
                 // if at least one texture is not empty on this layer, add dependency 
-                if (pMatArr[layer * TEXTURES_PER_MATERIAL_COUNT + t] != EMPTY_TEXTURE_INDEX)
+                if (materials[layer].indices[t] != EMPTY_TEXTURE_INDEX)
                 {
                     AddMaterialDependency(simpleIndex, layer, materialIndex);
 
@@ -423,6 +428,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
         // also, save transform index for updating static movable's transforms
         simpleIndexToTransformIndex[simpleIndex] = transformIndex;
     }
+
 
     return simpleIndex;
 }

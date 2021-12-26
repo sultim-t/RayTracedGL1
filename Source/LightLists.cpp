@@ -124,7 +124,6 @@ void RTGL1::LightLists::BuildArrays(
     LightArrayIndex::index_t *pOutputPlainLightList, uint32_t *pOutputPlainLightListSize,
     SectorArrayIndex::index_t *pOutputSectorToLightListStartEnd, uint32_t *pOutputSectorCountToCopy) const
 {
-    uint32_t maxSectorIndex = 0;
     uint32_t iter = 0;
 
     for (SectorArrayIndex::index_t _i = 0; _i < lightLists.size(); _i++)
@@ -154,12 +153,10 @@ void RTGL1::LightLists::BuildArrays(
         // write start/end, so the sector's light list can be accessed by sector array index
         pOutputSectorToLightListStartEnd[sectorIndex.GetArrayIndex() * 2 + 0] = startArrayOffset;
         pOutputSectorToLightListStartEnd[sectorIndex.GetArrayIndex() * 2 + 1] = endArrayOffset;
-
-        maxSectorIndex = std::max(maxSectorIndex, sectorIndex.GetArrayIndex());
     }
 
     *pOutputPlainLightListSize = iter;
-    *pOutputSectorCountToCopy = maxSectorIndex;
+    *pOutputSectorCountToCopy = lightLists.size();
 }
 
 RTGL1::SectorArrayIndex RTGL1::LightLists::SectorIDToArrayIndex(SectorID id) const
