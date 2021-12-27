@@ -608,10 +608,10 @@ void processPolygonalLight(
     const uint lightListBegin = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 0];
     const uint lightListEnd   = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 1];
 
-    const uint S = uint(ceil(lightListEnd - lightListBegin)) / MAX_SUBSET_LEN;
+    const uint S = uint(ceil(float(lightListEnd - lightListBegin) / MAX_SUBSET_LEN));
     const uint subsetStride = S;
     const uint subsetOffset = uint(floor(rnd * S));
-    rnd = rnd * S - float(subsetOffset);
+    rnd = rnd * S - subsetOffset;
 
     float weightsTotal = 0;
     float weightsIS[MAX_SUBSET_LEN]; 
@@ -630,7 +630,7 @@ void processPolygonalLight(
         weightsIS[i] = w;
         weightsTotal += w;
 
-        plainLightListIndex += subsetOffset;
+        plainLightListIndex += subsetStride;
     }
 
     if (weightsTotal <= 0.0)
@@ -658,7 +658,7 @@ void processPolygonalLight(
             break;
         }
 
-        plainLightListIndex += subsetOffset;
+        plainLightListIndex += subsetStride;
     }
 
     if (rnd > 0.0 || mass <= 0.0)
