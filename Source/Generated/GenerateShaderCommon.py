@@ -288,6 +288,7 @@ CONST = {
     "MATERIAL_BLENDING_MASK_SECOND_LAYER"   : CONST_TO_EVALUATE,
     "MATERIAL_BLENDING_MASK_THIRD_LAYER"    : CONST_TO_EVALUATE,
     # 12 first bits are for the blending flags per each layer, others can be used
+    "GEOM_INST_FLAG_ALBEDO_ON_REFL_REFR"    : "1 << 22",
     "GEOM_INST_FLAG_NO_MEDIA_CHANGE"        : "1 << 23",
     "GEOM_INST_FLAG_REFRACT"                : "1 << 24",
     "GEOM_INST_FLAG_REFLECT"                : "1 << 25",

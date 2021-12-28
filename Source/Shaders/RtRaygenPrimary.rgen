@@ -362,6 +362,12 @@ void main()
         }
 
 
+        if ((h.geometryInstanceFlags & GEOM_INST_FLAG_ALBEDO_ON_REFL_REFR) != 0)
+        {
+            throughput *= h.albedo;
+        }
+
+
         payload = traceReflectionRefractionRay(rayOrigin, rayDir, doRefraction, false);
 
         

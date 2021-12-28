@@ -347,6 +347,11 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
         geomInfo.flags |= GEOM_INST_FLAG_NO_MEDIA_CHANGE;
     }
 
+    if (info.flags & RG_GEOMETRY_UPLOAD_ALBEDO_ON_REFL_REFR_BIT)
+    {
+        geomInfo.flags |= GEOM_INST_FLAG_ALBEDO_ON_REFL_REFR;
+    }
+
     if (geomFlags & FT::CF_STATIC_MOVABLE)
     {
         geomInfo.flags |= GEOM_INST_FLAG_IS_MOVABLE;

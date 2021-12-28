@@ -313,6 +313,9 @@ typedef enum RgGeometryUploadFlagBits
     // For example, waterfall geometry represented by one flat square,
     // so on both sides is air media.
     RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 0x00000002,
+    // Multiply the thoughput by albedo on reflection / refraction.
+    // E.g. mirror has some texture on it. 
+    RG_GEOMETRY_UPLOAD_ALBEDO_ON_REFL_REFR_BIT = 0x00000004,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 
