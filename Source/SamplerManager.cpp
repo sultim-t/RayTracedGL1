@@ -21,7 +21,6 @@
 #include "SamplerManager.h"
 
 #include <string>
-#include <float.h>
 
 #include "RgException.h"
 
@@ -91,7 +90,7 @@ void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLo
     info.maxAnisotropy = _anisotropy;
     info.compareEnable = VK_FALSE;
     info.minLod = 0.0f;
-    info.maxLod = FLT_MAX;
+    info.maxLod = VK_LOD_CLAMP_NONE;
     info.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
     info.unnormalizedCoordinates = VK_FALSE;
 
@@ -120,7 +119,7 @@ void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLo
                 info.addressModeU = modeU;
                 info.addressModeV = modeV;
 
-                uint32_t index = ToIndex(filter, modeU, modeV);
+                uint32_t index = ToIndex(filter, modeU, modeV, false);
                 VkSampler sampler;
 
                 VkResult r = vkCreateSampler(device, &info, nullptr, &sampler);
@@ -131,6 +130,23 @@ void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLo
                 samplers[index] = sampler;
             }
         }
+    }
+
+    // corner case: create only 1 sampler with 'forceLowestMip'
+    {
+        info.minFilter = info.magFilter = VK_FILTER_LINEAR;
+        info.addressModeU = info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+        info.minLod = VK_LOD_CLAMP_NONE - 1;
+
+        uint32_t index = ToIndex(info.minFilter, info.addressModeU, info.addressModeV, true);
+        VkSampler sampler;
+
+        VkResult r = vkCreateSampler(device, &info, nullptr, &sampler);
+        VK_CHECKERROR(r);
+
+        assert(samplers.find(index) == samplers.end());
+
+        samplers[index] = sampler;
     }
 }
 
@@ -155,9 +171,9 @@ void RTGL1::SamplerManager::PrepareForFrame(uint32_t frameIndex)
 }
 
 VkSampler SamplerManager::GetSampler(
-    RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV) const
+    RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip) const
 {
-    uint32_t index = ToIndex(filter, addressModeU, addressModeV);
+    uint32_t index = ToIndex(filter, addressModeU, addressModeV, forceLowestMip);
 
     auto f = samplers.find(index);
 
@@ -228,16 +244,23 @@ bool RTGL1::SamplerManager::TryChangeMipLodBias(uint32_t frameIndex, float newMi
 #define ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE     (5 << 5)
 #define ADDRESS_MODE_V_MASK                     (7 << 5)
 
+#define FORCE_LOWEST_MIP_BOOL                   (1 << 8)
+
 uint32_t SamplerManager::ToIndex(
-    RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV)
+    RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip)
 {
-    return ToIndex(RgFilterToVk(filter), RgAddressModeToVk(addressModeU), RgAddressModeToVk(addressModeV));
+    return ToIndex(RgFilterToVk(filter), RgAddressModeToVk(addressModeU), RgAddressModeToVk(addressModeV), forceLowestMip);
 }
 
 uint32_t SamplerManager::ToIndex(
-    VkFilter filter, VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV)
+    VkFilter filter, VkSamplerAddressMode addressModeU, VkSamplerAddressMode addressModeV, bool forceLowestMip)
 {
     uint32_t index = 0;
+
+    if (forceLowestMip)
+    {
+        return FORCE_LOWEST_MIP_BOOL;
+    }
 
     switch (filter)
     {
@@ -274,6 +297,6 @@ RTGL1::SamplerManager::Handle::Handle() :
     internalIndex(0)
 {}
 
-RTGL1::SamplerManager::Handle::Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV) :
-    internalIndex(ToIndex(filter, addressModeU, addressModeV))
+RTGL1::SamplerManager::Handle::Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip) :
+    internalIndex(ToIndex(filter, addressModeU, addressModeV, forceLowestMip))
 {}

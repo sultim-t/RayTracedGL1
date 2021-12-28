@@ -39,7 +39,7 @@ public:
 
     public:
         explicit Handle();
-        explicit Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV);
+        explicit Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip = false);
 
         bool operator==(const Handle &other) const
         {
@@ -64,7 +64,8 @@ public:
     VkSampler GetSampler(
         RgSamplerFilter filter, 
         RgSamplerAddressMode addressModeU, 
-        RgSamplerAddressMode addressModeV) const;
+        RgSamplerAddressMode addressModeV,
+        bool forceLowestMip = false) const;
 
     // In case, if mip load bias was updated and a fresh sampler is required
     VkSampler GetSampler(const Handle &handle) const;
@@ -79,12 +80,14 @@ private:
     static uint32_t ToIndex(
         RgSamplerFilter filter,
         RgSamplerAddressMode addressModeU,
-        RgSamplerAddressMode addressModeV);
+        RgSamplerAddressMode addressModeV,
+        bool forceLowestMip);
 
     static uint32_t ToIndex(
         VkFilter filter,
         VkSamplerAddressMode addressModeU,
-        VkSamplerAddressMode addressModeV);
+        VkSamplerAddressMode addressModeV,
+        bool forceLowestMip);
 
 private:
     VkDevice device;
