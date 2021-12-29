@@ -147,7 +147,7 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
 
 uint getAdditionalRayFlags()
 {
-    return globalUniform.rayCullBackFaces != 0 ? gl_RayFlagsCullBackFacingTrianglesEXT : 0;
+    return globalUniform.rayCullBackFaces != 0 ? gl_RayFlagsCullFrontFacingTrianglesEXT : 0;
 }
 
 
@@ -561,6 +561,8 @@ float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom
     const uint polyLightIndex = plainLightList[plainLightListIndex];
     const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
+    const vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
+ 
     const vec3 pointsOnUnitSphere[3] = 
     {
         normalize(polyLight.position_0.xyz - surfPosition),
@@ -568,15 +570,22 @@ float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom
         normalize(polyLight.position_2.xyz - surfPosition),
     };
 
-    vec3 triNormal = cross(pointsOnUnitSphere[1] - pointsOnUnitSphere[0], pointsOnUnitSphere[2] - pointsOnUnitSphere[0]);
-    const float triArea = length(triNormal) / 2.0;
-
-    if (triArea < 0.0001 || dot(triNormal, surfNormalGeom) <= 0.0)
+    if (-dot(pointsOnUnitSphere[0], triNormal) <= 0 && 
+        -dot(pointsOnUnitSphere[1], triNormal) <= 0 && 
+        -dot(pointsOnUnitSphere[2], triNormal) <= 0)
+    {
+        return 0;
+    }
+    
+    if (dot(pointsOnUnitSphere[0], surfNormalGeom) <= 0 &&
+        dot(pointsOnUnitSphere[1], surfNormalGeom) <= 0 &&
+        dot(pointsOnUnitSphere[2], surfNormalGeom) <= 0)
     {
         return 0;
     }
 
-    return getLuminance(polyLight.color) * triArea;
+    const float projTriArea = length(cross(pointsOnUnitSphere[1] - pointsOnUnitSphere[0], pointsOnUnitSphere[2] - pointsOnUnitSphere[0])) / 2.0;
+    return getLuminance(polyLight.color) * projTriArea;
 }
 
 
@@ -711,7 +720,7 @@ void processPolygonalLight(
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
 
-    if (nl <= 0 || ngl <= 0 || dot(triNormal, l) <= 0)
+    if (nl <= 0 || ngl <= 0 || -dot(triNormal, l) <= 0)
     {
         return;
     }
