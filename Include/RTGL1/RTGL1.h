@@ -484,7 +484,7 @@ typedef struct RgRasterizedGeometryVertexArrays
 typedef struct RgRasterizedGeometryVertexStruct
 {
     float               position[3];
-    // RGBA packed into 32-bit uint. Little-endian.
+    // RGBA packed into 32-bit uint. R component is at the little end, i.e. (a<<24 | b<<16 | g<<8 | r)
     uint32_t            packedColor;
     float               texCoord[2];
 } RgRasterizedGeometryVertexStruct;
