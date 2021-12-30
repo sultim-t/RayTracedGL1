@@ -392,6 +392,37 @@ vec3 getDirectionAndLength(const vec3 start, const vec3 end, out float outLength
 }
 
 
+float getSphericalLightWeight(
+    const vec3 surfPosition, const vec3 surfNormal, float surfRoughness, const vec3 surfSpecularColor,
+    const vec3 toViewerDir,
+    uint plainLightListIndex)
+{
+    const uint sphLightIndex = /* TODO: lists for spherical lights */ plainLightListIndex;
+    const ShLightSpherical light = lightSourcesSpherical[sphLightIndex];
+
+    float dist;
+    vec3 dirToCenter = getDirectionAndLength(surfPosition, light.position, dist);
+
+    const float r = light.radius;
+    const float z = light.falloff;
+    
+    const float I = pow(clamp((z - dist) / max(z - r, 1), 0, 1), 2);
+    const vec3 c = I * light.color;
+
+    const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
+    const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
+
+    const vec3 diff = radiance;
+    const vec3 spec = 
+        evalBRDFSmithGGX(surfNormal, toViewerDir, dirToCenter, surfRoughness, surfSpecularColor) * 
+        light.color * 
+        max(dot(surfNormal, dirToCenter), 0.0) * 
+        getGeometryFactorWoNormal(dist);
+
+    return getLuminance(diff + spec);
+}
+
+
 void processSphericalLight(
     uint seed,
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
@@ -413,88 +444,65 @@ void processSphericalLight(
 
     // note: if it's a gradient sample, then the seed is from previous frame
 
-    float weightSum = 0.0; 
+    // random in [0,1)
+    float rnd = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x * 0.99;
 
-    const int MAX_LIGHTS_PER_SAMPLE = 8;
-    float weights[MAX_LIGHTS_PER_SAMPLE];
-    vec4 rnds[MAX_LIGHTS_PER_SAMPLE / 4] = 
+    const uint lightListBegin = 0;             // sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 0];
+    const uint lightListEnd   = sphLightCount; // sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 1];
+
+    const uint S = uint(ceil(float(lightListEnd - lightListBegin) / MAX_SUBSET_LEN));
+    const uint subsetStride = S;
+    const uint subsetOffset = uint(floor(rnd * S));
+    rnd = rnd * S - subsetOffset;
+
+    uint  selected_plainLightListIndex = UINT32_MAX;
+    float selected_mass = 0;
+
+    float weightsTotal = 0;
+    uint plainLightListIndex_iter = lightListBegin + subsetOffset;
+
+    for (int i = 0; i < MAX_SUBSET_LEN; ++i) 
     {
-        getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX(0)),
-        getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_INDEX(1))
-    };
-
-    // choose light 
-    for (int i = 0; i < MAX_LIGHTS_PER_SAMPLE; i++)
-    {
-        const float randomIndex = sphLightCount * rnds[i / 4][i % 4];
-        const uint lightIndex = clamp(uint(randomIndex), 0, sphLightCount - 1);
-        
-        const ShLightSpherical light = lightSourcesSpherical[lightIndex];
-        
-
-
-        float dist;
-        vec3 dir = getDirectionAndLength(surfPosition, light.position, dist);
-
-
-        const float r = light.radius;
-        const float z = light.falloff;
-
-        if (dist < max(r, 0.001))
-        {
-            return;
-        }
-        
-        const float I = pow(clamp((z - dist) / max(z - r, 1), 0, 1), 2);
-        const vec3 c = I * light.color;
-
-        const vec3 irradiance = M_PI * c * max(dot(surfNormal, dir/*ToCenter*/), 0.0);
-        const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
-
-        const vec3 diff = radiance;
-        const vec3 spec = 
-            evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * 
-            light.color * 
-            max(dot(surfNormal, dir), 0.0) * 
-            getGeometryFactorWoNormal(dist);
-
-
-        weights[i] = getLuminance(diff + spec);
-        weightSum += weights[i];
-    }
-
-    if (weightSum <= 0)
-    {
-        return;
-    }
-
-
-    // choose a light source with its appropriate probability
-    uint sphLightIndex = UINT32_MAX;
-    float rnd = weightSum * getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x;
-    float w = 0;
-    
-    for (int i = 0; i < MAX_LIGHTS_PER_SAMPLE; i++)
-    {
-        w = weights[i];
-        rnd -= w;
-
-        const float fIndex  = sphLightCount * rnds[i / 4][i % 4];
-        sphLightIndex = clamp(uint(fIndex), 0, sphLightCount - 1);
-
-        if (rnd <= 0)
+        if (plainLightListIndex_iter >= lightListEnd) 
         {
             break;
         }
+
+        const float w = getSphericalLightWeight(surfPosition, surfNormal, surfRoughness, surfSpecularColor, toViewerDir, 
+                                                plainLightListIndex_iter);
+
+        if (w > 0)
+        {
+            const float tau = weightsTotal / (weightsTotal + w);
+            weightsTotal += w;
+
+            if (rnd < tau)
+            {
+                rnd /= tau;
+            }
+            else
+            {
+                selected_plainLightListIndex = plainLightListIndex_iter;
+                selected_mass = w;
+
+                rnd = (rnd - tau) / (1 - tau);
+            }
+
+            rnd = clamp(rnd, 0, 0.999);
+        }
+
+        plainLightListIndex_iter += subsetStride;
     }
-    
-    if (rnd > 0)
+
+    if (weightsTotal <= 0.0 || selected_mass <= 0.0 || selected_plainLightListIndex == UINT32_MAX)
     {
         return;
     }
 
-    float pdf = max(w / (weightSum * sphLightCount), 0.001);
+    float pdf = selected_mass / (weightsTotal * S);
 
+
+    uint sphLightIndex = /* TODO: lists for spherical lights */ selected_plainLightListIndex;
 
     if (isGradientSample)
     {        

@@ -30,9 +30,6 @@
 #define RANDOM_SALT_DIFF_BOUNCE(bounceIndex) (RANDOM_BOUNCE_DIFF_BASE_INDEX + bounceIndex)
 #define RANDOM_BOUNCE_SPEC_BASE_INDEX 16
 #define RANDOM_SALT_SPEC_BOUNCE(bounceIndex) (RANDOM_BOUNCE_SPEC_BASE_INDEX + bounceIndex)
-#define RANDOM_SPHERICAL_LIGHT_BASE_INDEX 24
-#define RANDOM_SALT_SPHERICAL_LIGHT_INDEX(index) (RANDOM_SPHERICAL_LIGHT_BASE_INDEX + index)
-
 
 // Sample disk uniformly
 // u1, u2 -- uniform random numbers
