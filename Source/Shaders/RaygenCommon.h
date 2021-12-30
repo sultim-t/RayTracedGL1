@@ -626,63 +626,53 @@ void processPolygonalLight(
     const uint subsetOffset = uint(floor(rnd * S));
     rnd = rnd * S - subsetOffset;
 
-    float weightsTotal = 0;
-    float weightsIS[MAX_SUBSET_LEN]; 
+    uint  selected_plainLightListIndex = UINT32_MAX;
+    float selected_mass = 0;
 
-    uint plainLightListIndex = lightListBegin + subsetOffset;
+    float weightsTotal = 0;
+    uint plainLightListIndex_iter = lightListBegin + subsetOffset;
 
     for (int i = 0; i < MAX_SUBSET_LEN; ++i) 
     {
-        if (plainLightListIndex >= lightListEnd) 
+        if (plainLightListIndex_iter >= lightListEnd) 
         {
             break;
         }
 
-        const float w = getPolygonalLightWeight(surfPosition, surfNormalGeom, plainLightListIndex);
+        const float w = getPolygonalLightWeight(surfPosition, surfNormalGeom, plainLightListIndex_iter);
 
-        weightsIS[i] = w;
-        weightsTotal += w;
+        if (w > 0)
+        {
+            const float tau = weightsTotal / (weightsTotal + w);
+            weightsTotal += w;
 
-        plainLightListIndex += subsetStride;
+            if (rnd < tau)
+            {
+                rnd /= tau;
+            }
+            else
+            {
+                selected_plainLightListIndex = plainLightListIndex_iter;
+                selected_mass = w;
+
+                rnd = (rnd - tau) / (1 - tau);
+            }
+
+            rnd = clamp(rnd, 0, 0.999);
+        }
+
+        plainLightListIndex_iter += subsetStride;
     }
 
-    if (weightsTotal <= 0.0)
+    if (weightsTotal <= 0.0 || selected_mass <= 0.0 || selected_plainLightListIndex == UINT32_MAX)
     {
         return;
     }
 
-    rnd *= weightsTotal;
-
-    float mass = 0;
-    plainLightListIndex = lightListBegin + subsetOffset;
-
-    for (int i = 0; i < MAX_SUBSET_LEN; ++i)
-    {
-        if (plainLightListIndex >= lightListEnd) 
-        {
-            break;
-        }
-
-        mass = weightsIS[i];
-        rnd -= mass;
-
-        if (rnd <= 0.0)
-        {
-            break;
-        }
-
-        plainLightListIndex += subsetStride;
-    }
-
-    if (rnd > 0.0 || mass <= 0.0)
-    {
-        return;
-    }
-
-    float pdf = mass / (weightsTotal * S);
+    float pdf = selected_mass / (weightsTotal * S);
 
 
-    uint polyLightIndex = plainLightList[plainLightListIndex];
+    uint polyLightIndex = plainLightList[selected_plainLightListIndex];
 
     if (isGradientSample)
     {
