@@ -368,7 +368,7 @@ void main()
         }
 
 
-        payload = traceReflectionRefractionRay(rayOrigin, rayDir, doRefraction, false);
+        payload = traceReflectionRefractionRay(rayOrigin, rayDir, instIndex, doRefraction, false);
 
         
         if (!isPayloadConsistent(payload))

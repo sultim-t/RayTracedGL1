@@ -84,9 +84,15 @@ uint getPrimaryVisibilityCullMask()
     return globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT | INSTANCE_MASK_FIRST_PERSON;
 }
 
-uint getReflectionRefractionCullMask(bool isRefraction)
+uint getReflectionRefractionCullMask(uint surfInstCustomIndex, bool isRefraction)
 {
     const uint world = globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT;
+
+    if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
+    {
+        // ignore first-person viewer -- on first-person
+        return world | INSTANCE_MASK_FIRST_PERSON;
+    }
     
     return isRefraction ? 
         // no first-person viewer in refractions
@@ -139,8 +145,6 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
         // no first-person indirect illumination -- on first-person viewer
         return world | INSTANCE_MASK_FIRST_PERSON_VIEWER;
     }
-    
-    // blended geometry doesn't have indirect illumination
 }
 
 
@@ -182,11 +186,11 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
     return payload; 
 }
 
-ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, bool isRefraction, bool ignoreReflectRefractGeometry)
+ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfInstCustomIndex, bool isRefraction, bool ignoreReflectRefractGeometry)
 {
     resetPayload();
 
-    uint cullMask = getReflectionRefractionCullMask(isRefraction) ;
+    uint cullMask = getReflectionRefractionCullMask(surfInstCustomIndex, isRefraction);
 
     if (ignoreReflectRefractGeometry)
     {
