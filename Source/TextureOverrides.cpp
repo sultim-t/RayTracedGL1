@@ -258,9 +258,12 @@ bool TextureOverrides::ParseOverrideTexturePaths(
         return false;
     }
 
-    SPrintfIfNotNull(paths[0], overrideInfo.postfixes[0], overrideInfo.texturesPath, folderPath, name, extension);
-    SPrintfIfNotNull(paths[1], overrideInfo.postfixes[1], overrideInfo.texturesPath, folderPath, name, extension);
-    SPrintfIfNotNull(paths[2], overrideInfo.postfixes[2], overrideInfo.texturesPath, folderPath, name, extension);
+    // ignore original extension, and force KTX2
+    const char *newExtension = ".ktx2";
+
+    SPrintfIfNotNull(paths[0], overrideInfo.postfixes[0], overrideInfo.texturesPath, folderPath, name, newExtension);
+    SPrintfIfNotNull(paths[1], overrideInfo.postfixes[1], overrideInfo.texturesPath, folderPath, name, newExtension);
+    SPrintfIfNotNull(paths[2], overrideInfo.postfixes[2], overrideInfo.texturesPath, folderPath, name, newExtension);
 
     static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
 
