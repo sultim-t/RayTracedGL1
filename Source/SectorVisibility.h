@@ -44,6 +44,7 @@ public:
     void Reset();
 
     SectorArrayIndex SectorIDToArrayIndex(SectorID id) const;
+    SectorID SectorArrayIndexToID(SectorArrayIndex index) const;
 
     bool ArePotentiallyVisibleSectorsExist(SectorArrayIndex forThisSector) const;
     const std::unordered_set<SectorArrayIndex> &GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector);
@@ -57,6 +58,9 @@ private:
 
     SectorArrayIndex::index_t lastSectorArrayIndex;
     std::unordered_map<SectorID, SectorArrayIndex> sectorIDToArrayIndex;
+
+    // indexed by SectorArrayIndex::index_t
+    SectorID sectorArrayIndexToID[MAX_SECTOR_COUNT];
 };
 
 }

@@ -25,6 +25,7 @@
 #include "AutoBuffer.h"
 #include "LightDefs.h"
 #include "SectorVisibility.h"
+#include "RTGL1/RTGL1.h"
 
 namespace RTGL1
 {
@@ -43,7 +44,8 @@ public:
     void PrepareForFrame();
     void Reset();
 
-    void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex);
+    void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex, 
+                     PFN_rgIsLightVisibleFromSector pfnRgIsLightVisibleFromSector, void *pUserDataForPfn);
     void BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
     SectorArrayIndex SectorIDToArrayIndex(SectorID id) const;

@@ -265,7 +265,8 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
     polygonalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 
 
-    lightLists->InsertLight(index, sectorArrayIndex);
+    lightLists->InsertLight(index, sectorArrayIndex,
+                            info.pfnIsLightVisibleFromSector, info.pUserDataForPfn);
 }
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)

@@ -84,10 +84,17 @@ void RTGL1::LightLists::AddLightToSectorLightList(LightArrayIndex lightIndex, Se
 }
 
 
-void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex)
+void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex,
+                                    PFN_rgIsLightVisibleFromSector pfnRgIsLightVisibleFromSector, void *pUserDataForPfn)
 {
     // sector is always visible from itself, so append the light unconditionally
     AddLightToSectorLightList(lightIndex, lightSectorIndex);
+
+    if (pfnRgIsLightVisibleFromSector != nullptr)
+    {
+        pfnRgIsLightVisibleFromSector(sectorVisibility->SectorArrayIndexToID(lightSectorIndex).GetID(), pUserDataForPfn);
+    }
+
 
     if (sectorVisibility->ArePotentiallyVisibleSectorsExist(lightSectorIndex))
     {
@@ -99,6 +106,12 @@ void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex
 
             // append given light to light list of such sector
             AddLightToSectorLightList(lightIndex, visibleSector);
+
+
+            if (pfnRgIsLightVisibleFromSector != nullptr)
+            {
+                pfnRgIsLightVisibleFromSector(sectorVisibility->SectorArrayIndexToID(visibleSector).GetID(), pUserDataForPfn);
+            }
         }
     }
 }

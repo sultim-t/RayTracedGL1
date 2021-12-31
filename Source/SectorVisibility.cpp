@@ -30,7 +30,7 @@
 constexpr RTGL1::SectorArrayIndex::index_t  SECTOR_ARRAY_INDEX_BASE_VALUE = 0;
 
 
-RTGL1::SectorVisibility::SectorVisibility() : lastSectorArrayIndex(SECTOR_ARRAY_INDEX_BASE_VALUE)
+RTGL1::SectorVisibility::SectorVisibility() : lastSectorArrayIndex(SECTOR_ARRAY_INDEX_BASE_VALUE), sectorArrayIndexToID()
 {
     Reset();
 }
@@ -60,6 +60,8 @@ void RTGL1::SectorVisibility::Reset()
 
     lastSectorArrayIndex = SECTOR_ARRAY_INDEX_BASE_VALUE;
     sectorIDToArrayIndex.clear();
+
+    memset(sectorArrayIndexToID, 0, sizeof(sectorArrayIndexToID));
 
     // but always keep potential visibility for sector ID = 0.
     
@@ -101,8 +103,12 @@ RTGL1::SectorArrayIndex RTGL1::SectorVisibility::AssignArrayIndexForID(SectorID 
     {
         assert(lastSectorArrayIndex < MAX_SECTOR_COUNT);
 
+
         // add new
         sectorIDToArrayIndex[id] = SectorArrayIndex{ lastSectorArrayIndex };
+        sectorArrayIndexToID[lastSectorArrayIndex] = id;
+            
+
         lastSectorArrayIndex++;
     }
 
@@ -121,5 +127,13 @@ RTGL1::SectorArrayIndex RTGL1::SectorVisibility::SectorIDToArrayIndex(SectorID i
     }
 
     return found->second;
+}
+
+RTGL1::SectorID RTGL1::SectorVisibility::SectorArrayIndexToID(SectorArrayIndex index) const
+{
+    const SectorID &id = sectorArrayIndexToID[index.GetArrayIndex()];
+
+    assert(sectorIDToArrayIndex.find(id) != sectorIDToArrayIndex.end());
+    return id;
 }
 
