@@ -828,10 +828,17 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
 
     if (filter & FT::PT_REFLECT)
     {
-        // completely rewrite mask, ignoring INSTANCE_MASK_WORLD_*,
-        // if mask contains those world bits, then (mask & (~INSTANCE_MASK_REFLECT_REFRACT))
-        // won't actually cull INSTANCE_MASK_REFLECT_REFRACT
-        instance.mask = INSTANCE_MASK_REFLECT_REFRACT;
+        // don't touch first-person
+        bool rewriteMask = !(filter & FT::PV_FIRST_PERSON) && !(filter & FT::PV_FIRST_PERSON_VIEWER);
+
+        if (rewriteMask)
+        {
+            // completely rewrite mask, ignoring INSTANCE_MASK_WORLD_*,
+            // if mask contains those world bits, then (mask & (~INSTANCE_MASK_REFLECT_REFRACT))
+            // won't actually cull INSTANCE_MASK_REFLECT_REFRACT
+            instance.mask = INSTANCE_MASK_REFLECT_REFRACT;
+        }
+
         instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT;
     }
 
