@@ -225,7 +225,13 @@ void atrous0(
     const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * prefilterLuminanceVariance() + 0.00001);
    
     // the rougher the surface, the more blur to apply
-    const float wRoughMultiplier = pow(center.roughness, STEP_SIZE);
+    const float wRoughMultiplier = clamp(center.roughness * 30, 0, 1);
+
+    float historyLengthSpec = texelFetch(framebufAccumHistoryLength_Sampler, pix, 0).b;
+    float normalWeightScale = clamp(historyLengthSpec / 8, 0, 1);
+	float normalWeightSpec = RoughnessSquareToSpecPower(center.roughness * center.roughness);
+    normalWeightSpec = clamp(normalWeightSpec, 8, 1024);
+	normalWeightSpec *= normalWeightScale;
 
     const float gradDepth = center.gradDepth;
 
@@ -251,13 +257,19 @@ void atrous0(
 
 
             const float l_q = getLuminance(other.directDiffuseColor);
+            const float n_n = max(0.0, dotEnc(center.encNormalGeometry, other.encNormalGeometry));
 
             const float w_z = abs(center.depth - other.depth) / max(gradDepth * (abs(xx) + abs(yy)), 0.01);
-            const float w_n = pow(max(0.0, dotEnc(center.encNormalGeometry, other.encNormalGeometry)), 128.0);
+            const float w_n = pow(n_n, 128.0);
             const float w_l = abs(l - l_q) * wLumMultiplier;
 
             // larger weight if roughness difference is small
-            const float w_r = min(pow(1.025 - abs(center.roughness - other.roughness), 32), 1.0) * wRoughMultiplier;
+            float w_r =  max(0, 1 - 10 * abs(center.roughness - other.roughness)) * wRoughMultiplier;
+
+			if(normalWeightSpec > 0)
+			{
+				w_r *= pow(n_n, normalWeightSpec);
+			}
 
             const float waveletW = WAVELET_KERNEL[abs(yy)][abs(xx)];
             const float isInside = float(testPixInRenderArea(pix_q, chRenderArea));
