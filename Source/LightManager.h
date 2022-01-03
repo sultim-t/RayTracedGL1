@@ -74,7 +74,8 @@ private:
 private:
     VkDevice device;
 
-    std::shared_ptr<LightLists> lightLists;
+    std::shared_ptr<LightLists> lightListsForPolygonal;
+    std::shared_ptr<LightLists> lightListsForSpherical;
 
     std::shared_ptr<AutoBuffer> sphericalLights;
     std::shared_ptr<AutoBuffer> polygonalLights;

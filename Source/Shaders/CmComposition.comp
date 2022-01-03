@@ -149,6 +149,8 @@ void main()
         {
             color = vec3(1,0,0);
         }
+        //color = texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
+       // color = texelFetchSpecPongColor(getCheckerboardPix(pix));
     }
    
     imageStore(framebufPreFinal, pix, vec4(color, 0));

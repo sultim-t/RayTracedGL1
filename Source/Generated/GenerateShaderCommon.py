@@ -238,12 +238,14 @@ CONST = {
     "BINDING_RENDER_CUBEMAP"                : 0,
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
-    "BINDING_LIGHT_SOURCES_SPHERICAL"       : 0,
-    "BINDING_LIGHT_SOURCES_POLYGONAL"       : 1,
-    "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"  : 2,
-    "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV" : 3,
-    "BINDING_PLAIN_LIGHT_LIST"              : 4,
-    "BINDING_SECTOR_TO_LIGHT_LIST_REGION"   : 5,
+    "BINDING_LIGHT_SOURCES_SPHERICAL"           : 0,
+    "BINDING_LIGHT_SOURCES_POLYGONAL"           : 1,
+    "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"      : 2,
+    "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV"     : 3,
+    "BINDING_PLAIN_LIGHT_LIST_POLY"             : 4,
+    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY"  : 5,
+    "BINDING_PLAIN_LIGHT_LIST_SPH"              : 6,
+    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH"   : 7,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -580,7 +582,6 @@ LIGHT_POLYGONAL_STRUCT = [
     (TYPE_FLOAT32,      4,      "position_1",           1),
     (TYPE_FLOAT32,      4,      "position_2",           1),
     (TYPE_FLOAT32,      3,      "color",                1),
-    (TYPE_UINT32,       1,      "sectorArrayIndex",     1),
 ]
 
 TONEMAPPING_STRUCT = [

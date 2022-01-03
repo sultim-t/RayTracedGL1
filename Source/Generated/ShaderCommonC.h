@@ -36,8 +36,10 @@ namespace RTGL1
 #define BINDING_LIGHT_SOURCES_POLYGONAL (1)
 #define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (2)
 #define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (3)
-#define BINDING_PLAIN_LIGHT_LIST (4)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION (5)
+#define BINDING_PLAIN_LIGHT_LIST_POLY (4)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY (5)
+#define BINDING_PLAIN_LIGHT_LIST_SPH (6)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (7)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -284,7 +286,7 @@ struct ShLightPolygonal
     float position_1[4];
     float position_2[4];
     float color[3];
-    uint32_t sectorArrayIndex;
+    uint32_t __pad0;
 };
 
 struct ShVertPreprocessing

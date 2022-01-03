@@ -183,17 +183,26 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLY_MATCH_
     uint lightSourcesPolyMatchPrev[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_PLAIN_LIGHT_LIST) readonly buffer PlainLightList_BT
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_PLAIN_LIGHT_LIST_POLY) readonly buffer PlainLightListPoly_BT
 {
-    uint plainLightList[];
+    uint plainLightList_Poly[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGION) readonly buffer SectorToLightListRegion_BT
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY) readonly buffer SectorToLightListRegionPoly_BT
 {
     // to get light list region for a sector,
     // [sectorArrayIndex * 2 + 0] is the start index in 'plainLightList'
     // [sectorArrayIndex * 2 + 1] is the end (excluding) index in 'plainLightList'
-    uint sectorToLightListRegion_StartEnd[];
+    uint sectorToLightListRegion_StartEnd_Poly[];
+};
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_PLAIN_LIGHT_LIST_SPH) readonly buffer PlainLightListSph_BT
+{
+    uint plainLightList_Sph[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH) readonly buffer SectorToLightListRegionSph_BT
+{
+    uint sectorToLightListRegion_StartEnd_Sph[];
 };
 #endif
 

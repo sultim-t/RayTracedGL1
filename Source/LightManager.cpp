@@ -58,7 +58,8 @@ RTGL1::LightManager::LightManager(
     descSets{},
     needDescSetUpdate{}
 {
-    lightLists              = std::make_shared<LightLists>(device, _allocator, _sectorVisibility);
+    lightListsForPolygonal  = std::make_shared<LightLists>(device, _allocator, _sectorVisibility, "polygonal");
+    lightListsForSpherical  = std::make_shared<LightLists>(device, _allocator, _sectorVisibility, "spherical");
 
     sphericalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights spherical staging", "Lights spherical");
     polygonalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights polugonal staging", "Lights polygonal");
@@ -93,7 +94,7 @@ static void FillInfoSpherical(const RgSphericalLightUploadInfo &info, RTGL1::ShL
     memcpy(dst, &lt, sizeof(RTGL1::ShLightSpherical));
 }
 
-static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::SectorArrayIndex sectorArrayIndex, RTGL1::ShLightPolygonal *dst)
+static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::ShLightPolygonal *dst)
 {
     RTGL1::ShLightPolygonal lt = {};
 
@@ -102,8 +103,6 @@ static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::Sec
     memcpy(lt.position_2, info.positions[2].data, sizeof(float) * 3);
 
     memcpy(lt.color, info.color.data, sizeof(float) * 3);
-
-    lt.sectorArrayIndex = sectorArrayIndex.GetArrayIndex();
 
     memcpy(dst, &lt, sizeof(RTGL1::ShLightPolygonal));
 }
@@ -177,7 +176,8 @@ void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
     sphericalUniqueIDToPrevIndex[frameIndex].clear();
     polygonalUniqueIDToPrevIndex[frameIndex].clear();
 
-    lightLists->PrepareForFrame();
+    lightListsForSpherical->PrepareForFrame();
+    lightListsForPolygonal->PrepareForFrame();
 }
 
 void RTGL1::LightManager::Reset()
@@ -196,7 +196,8 @@ void RTGL1::LightManager::Reset()
     spotLightCount = spotLightCountPrev = 0;
     polyLightCount = polyLightCountPrev = 0;
 
-    lightLists->Reset();
+    lightListsForSpherical->Reset();
+    lightListsForPolygonal->Reset();
 }
 
 static bool IsColorTooDim(const RgFloat3D &c)
@@ -217,6 +218,11 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
         return;
     }
 
+
+    const SectorID sectorId = SectorID{ info.sectorID };
+    const SectorArrayIndex sectorArrayIndex = lightListsForSpherical->SectorIDToArrayIndex(sectorId);
+
+
     const LightArrayIndex index = LightArrayIndex{ sphLightCount };
     sphLightCount++;
 
@@ -230,6 +236,10 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
 
     // save index for the next frame
     sphericalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
+
+
+    lightListsForSpherical->InsertLight(index, sectorArrayIndex,
+                                        nullptr, nullptr);
 }
 
 void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info)
@@ -247,14 +257,14 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
 
 
     const SectorID sectorId = SectorID{ info.sectorID };
-    const SectorArrayIndex sectorArrayIndex = lightLists->SectorIDToArrayIndex(sectorId);
+    const SectorArrayIndex sectorArrayIndex = lightListsForPolygonal->SectorIDToArrayIndex(sectorId);
 
 
     const LightArrayIndex index = LightArrayIndex{ polyLightCount };
     polyLightCount++;
 
     auto *dst = (ShLightPolygonal *)polygonalLights->GetMapped(frameIndex);
-    FillInfoPolygonal(info, sectorArrayIndex, &dst[index.GetArrayIndex()]);
+    FillInfoPolygonal(info, &dst[index.GetArrayIndex()]);
 
     FillMatchPrev(polygonalUniqueIDToPrevIndex, polygonalLightMatchPrev, frameIndex, index, info.uniqueID);
 
@@ -265,8 +275,8 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
     polygonalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 
 
-    lightLists->InsertLight(index, sectorArrayIndex,
-                            info.pfnIsLightVisibleFromSector, info.pUserDataForPfn);
+    lightListsForPolygonal->InsertLight(index, sectorArrayIndex,
+                                        info.pfnIsLightVisibleFromSector, info.pUserDataForPfn);
 }
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
@@ -316,7 +326,8 @@ void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameInd
     sphericalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * sphLightCountPrev);
     polygonalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * polyLightCountPrev);
 
-    lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
+    lightListsForSpherical->BuildAndCopyFromStaging(cmd, frameIndex);
+    lightListsForPolygonal->BuildAndCopyFromStaging(cmd, frameIndex);
 
     // should be used when buffers changed
     if (needDescSetUpdate[frameIndex])
@@ -362,8 +373,10 @@ constexpr uint32_t BINDINGS[] =
     BINDING_LIGHT_SOURCES_POLYGONAL,
     BINDING_LIGHT_SOURCES_SPH_MATCH_PREV,
     BINDING_LIGHT_SOURCES_POLY_MATCH_PREV,
-    BINDING_PLAIN_LIGHT_LIST,
-    BINDING_SECTOR_TO_LIGHT_LIST_REGION,
+    BINDING_PLAIN_LIGHT_LIST_POLY,
+    BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY,
+    BINDING_PLAIN_LIGHT_LIST_SPH,
+    BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH,
 };
 
 void RTGL1::LightManager::CreateDescriptors()
@@ -437,8 +450,10 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
         polygonalLights->GetDeviceLocal(),
         sphericalLightMatchPrev->GetDeviceLocal(),
         polygonalLightMatchPrev->GetDeviceLocal(),
-        lightLists->GetPlainLightListDeviceLocalBuffer(),
-        lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
+        lightListsForPolygonal->GetPlainLightListDeviceLocalBuffer(),
+        lightListsForPolygonal->GetSectorToLightListRegionDeviceLocalBuffer(),
+        lightListsForSpherical->GetPlainLightListDeviceLocalBuffer(),
+        lightListsForSpherical->GetSectorToLightListRegionDeviceLocalBuffer(),
     };
     static_assert(std::size(BINDINGS) == std::size(buffers), "");
 

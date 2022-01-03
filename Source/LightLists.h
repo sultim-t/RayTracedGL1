@@ -33,7 +33,10 @@ namespace RTGL1
 class LightLists
 {
 public:
-    LightLists(VkDevice device, const std::shared_ptr<MemoryAllocator> &memoryAllocator, std::shared_ptr<SectorVisibility> sectorVisibility);
+    LightLists(VkDevice device, 
+               const std::shared_ptr<MemoryAllocator> &memoryAllocator,
+               std::shared_ptr<SectorVisibility> sectorVisibility,
+               const char *pDebugName);
     ~LightLists() = default;
 
     LightLists(const LightLists &other) = delete;

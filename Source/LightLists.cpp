@@ -19,6 +19,9 @@
 // SOFTWARE.
 
 #include "LightLists.h"
+
+#include <string>
+
 #include "RgException.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -35,21 +38,24 @@ static_assert(RTGL1::MAX_SECTOR_COUNT < SECTOR_INDEX_NONE, "");
 RTGL1::LightLists::LightLists(
     VkDevice _device, 
     const std::shared_ptr<MemoryAllocator> &_memoryAllocator, 
-    std::shared_ptr<SectorVisibility> _sectorVisibility)
+    std::shared_ptr<SectorVisibility> _sectorVisibility,
+    const char *_pDebugName)
 :
     sectorVisibility(std::move(_sectorVisibility))
 {
+    using namespace std::string_literals;
+
     // plain global light list, to use in shaders
     plainLightList_Raw.resize(MAX_SECTOR_COUNT * MAX_LIGHT_LIST_SIZE);
 
-    plainLightList = std::make_shared<AutoBuffer>(_device, _memoryAllocator, "Light list staging buffer", "Light list buffer");
+    plainLightList = std::make_shared<AutoBuffer>(_device, _memoryAllocator, "Light list staging buffer - "s + _pDebugName, "Light list buffer - "s + _pDebugName);
     plainLightList->Create(plainLightList_Raw.size() * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
 
     // contains tuples (begin, end) for each sector
     sectorToLightListRegion_Raw.resize(MAX_SECTOR_COUNT * 2);
 
-    sectorToLightListRegion = std::make_shared<AutoBuffer>(_device, _memoryAllocator, "Sector to light list region staging buffer", "Sector to light list region buffer");
+    sectorToLightListRegion = std::make_shared<AutoBuffer>(_device, _memoryAllocator, "Sector to light list region staging buffer - "s + _pDebugName, "Sector to light list region buffer - "s + _pDebugName);
     sectorToLightListRegion->Create(sectorToLightListRegion_Raw.size() * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 }
 
@@ -90,11 +96,6 @@ void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex
     // sector is always visible from itself, so append the light unconditionally
     AddLightToSectorLightList(lightIndex, lightSectorIndex);
 
-    if (pfnRgIsLightVisibleFromSector != nullptr)
-    {
-        pfnRgIsLightVisibleFromSector(sectorVisibility->SectorArrayIndexToID(lightSectorIndex).GetID(), pUserDataForPfn);
-    }
-
 
     if (sectorVisibility->ArePotentiallyVisibleSectorsExist(lightSectorIndex))
     {
@@ -104,14 +105,19 @@ void RTGL1::LightLists::InsertLight(LightArrayIndex lightIndex, SectorArrayIndex
         {
             assert(visibleSector != lightSectorIndex);
 
-            // append given light to light list of such sector
-            AddLightToSectorLightList(lightIndex, visibleSector);
-
-
+            // check if truly can be added
             if (pfnRgIsLightVisibleFromSector != nullptr)
             {
-                pfnRgIsLightVisibleFromSector(sectorVisibility->SectorArrayIndexToID(visibleSector).GetID(), pUserDataForPfn);
+                RgBool32 isAdded = pfnRgIsLightVisibleFromSector(sectorVisibility->SectorArrayIndexToID(visibleSector).GetID(), pUserDataForPfn);
+
+                if (!isAdded)
+                {
+                    continue;
+                }
             }
+
+            // append given light to light list of such sector
+            AddLightToSectorLightList(lightIndex, visibleSector);
         }
     }
 }

@@ -32,6 +32,10 @@ RTGL1::AutoBuffer::AutoBuffer(
     debugName(_debugName)
 {}
 
+RTGL1::AutoBuffer::AutoBuffer(VkDevice device, std::shared_ptr<MemoryAllocator> allocator, const std::string &debugNameStaging, const std::string &debugName)
+    : AutoBuffer(device, std::move(allocator), debugNameStaging.c_str(), debugName.c_str())
+{}
+
 RTGL1::AutoBuffer::~AutoBuffer()
 {
     Destroy();

@@ -36,6 +36,11 @@ public:
         std::shared_ptr<MemoryAllocator> allocator, 
         const char *debugNameStaging = nullptr,
         const char *debugName = nullptr);
+    AutoBuffer(
+        VkDevice device,
+        std::shared_ptr<MemoryAllocator> allocator,
+        const std::string &debugNameStaging,
+        const std::string &debugName);
     ~AutoBuffer();
 
     AutoBuffer(const AutoBuffer &other) = delete;

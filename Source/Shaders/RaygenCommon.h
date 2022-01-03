@@ -397,7 +397,7 @@ float getSphericalLightWeight(
     const vec3 toViewerDir,
     uint plainLightListIndex)
 {
-    const uint sphLightIndex = /* TODO: lists for spherical lights */ plainLightListIndex;
+    const uint sphLightIndex = plainLightList_Sph[plainLightListIndex];
     const ShLightSpherical light = lightSourcesSpherical[sphLightIndex];
 
     float dist;
@@ -425,7 +425,7 @@ float getSphericalLightWeight(
 
 void processSphericalLight(
     uint seed,
-    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
     const vec3 toViewerDir, 
     bool isGradientSample,
     int bounceIndex,
@@ -437,7 +437,7 @@ void processSphericalLight(
     uint sphLightCount = isGradientSample ? globalUniform.lightCountSphericalPrev : globalUniform.lightCountSpherical;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSphereLights;
 
-    if (sphLightCount == 0 || (!castShadowRay && bounceIndex != 0))
+    if (sphLightCount == 0 || (!castShadowRay && bounceIndex != 0) || surfSectorArrayIndex == SECTOR_INDEX_NONE)
     {
         return;
     }
@@ -447,8 +447,8 @@ void processSphericalLight(
     // random in [0,1)
     float rnd = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_CHOOSE).x * 0.99;
 
-    const uint lightListBegin = 0;             // sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 0];
-    const uint lightListEnd   = sphLightCount; // sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 1];
+    const uint lightListBegin = sectorToLightListRegion_StartEnd_Sph[surfSectorArrayIndex * 2 + 0];
+    const uint lightListEnd   = sectorToLightListRegion_StartEnd_Sph[surfSectorArrayIndex * 2 + 1];
 
     const uint S = uint(ceil(float(lightListEnd - lightListBegin) / MAX_SUBSET_LEN));
     const uint subsetStride = S;
@@ -502,7 +502,7 @@ void processSphericalLight(
     float pdf = selected_mass / (weightsTotal * S);
 
 
-    uint sphLightIndex = /* TODO: lists for spherical lights */ selected_plainLightListIndex;
+    uint sphLightIndex = plainLightList_Sph[selected_plainLightListIndex];
 
     if (isGradientSample)
     {        
@@ -570,7 +570,7 @@ void processSphericalLight(
 
 float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom, uint plainLightListIndex)
 {
-    const uint polyLightIndex = plainLightList[plainLightListIndex];
+    const uint polyLightIndex = plainLightList_Poly[plainLightListIndex];
     const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
     const vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
@@ -626,8 +626,8 @@ void processPolygonalLight(
     // random in [0,1)
     float rnd = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_CHOOSE).x * 0.99;
 
-    const uint lightListBegin = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 0];
-    const uint lightListEnd   = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 1];
+    const uint lightListBegin = sectorToLightListRegion_StartEnd_Poly[surfSectorArrayIndex * 2 + 0];
+    const uint lightListEnd   = sectorToLightListRegion_StartEnd_Poly[surfSectorArrayIndex * 2 + 1];
 
     const uint S = uint(ceil(float(lightListEnd - lightListBegin) / MAX_SUBSET_LEN));
     const uint subsetStride = S;
@@ -680,7 +680,7 @@ void processPolygonalLight(
     float pdf = selected_mass / (weightsTotal * S);
 
 
-    uint polyLightIndex = plainLightList[selected_plainLightListIndex];
+    uint polyLightIndex = plainLightList_Poly[selected_plainLightListIndex];
 
     if (isGradientSample)
     {
@@ -843,7 +843,7 @@ void processDirectIllumination(
     vec3 sphDiff, sphSpec;
     processSphericalLight(
         seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
+        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,
         toViewerDir, 
         isGradientSample,  
         bounceIndex,

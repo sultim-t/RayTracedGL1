@@ -575,6 +575,8 @@ typedef struct RgSphericalLightUploadInfo
     uint64_t        uniqueID;
     RgFloat3D       color;
     RgFloat3D       position;
+    // Look notes in RgPolygonalLightUploadInfo::sectorID
+    uint32_t        sectorID;
     // Sphere radius.
     float           radius;
     // There will be no light after this distance.
