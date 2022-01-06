@@ -71,6 +71,7 @@ void main()
         return;
     }
 
+
 #ifdef DEBUG_SHOW_SH
     ivec2 checkSHRange = ivec2(800, 400);
 
@@ -93,6 +94,7 @@ void main()
     }
 #endif
 
+
     vec3 color = imageLoad(framebufPreFinal, pix).rgb;
 
     const vec4 albedo4 = texelFetchAlbedo(getCheckerboardPix(pix));
@@ -114,6 +116,8 @@ void main()
         color = albedo4.rgb * throughput;
     }
 
+
+#if GRADIENT_ESTIMATION_ENABLED
     if (globalUniform.dbgShowGradients != 0)
     {
         const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
@@ -123,6 +127,8 @@ void main()
         const float lambdaIndir = clamp(gradI.r, 0.0, 1.0);
         color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
     }
+#endif
+
 
     if (globalUniform.dbgShowMotionVectors != 0)
     {
@@ -131,6 +137,7 @@ void main()
         color.g = abs(m.g);
         color.b = 0;
     }
+
 
     if (globalUniform.dbgShowSectors != 0)
     {
@@ -152,6 +159,7 @@ void main()
         //color = texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
        // color = texelFetchSpecPongColor(getCheckerboardPix(pix));
     }
+   
    
     imageStore(framebufPreFinal, pix, vec4(color, 0));
 }

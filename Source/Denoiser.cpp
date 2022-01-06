@@ -76,6 +76,8 @@ void RTGL1::Denoiser::MergeSamples(
     const std::shared_ptr<const GlobalUniform> &uniform,
     const std::shared_ptr<const ASManager> &asManager)
 {
+#if GRADIENT_ESTIMATION_ENABLED
+
     typedef FramebufferImageIndex FI;
  
     CmdLabel label(cmd, "Gradient Merging");
@@ -119,6 +121,8 @@ void RTGL1::Denoiser::MergeSamples(
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, merging);
     vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
+
+#endif // GRADIENT_ESTIMATION_ENABLED 
 }
 
 void RTGL1::Denoiser::Denoise(
@@ -142,6 +146,7 @@ void RTGL1::Denoiser::Denoise(
                         0, nullptr);
 
 
+#if GRADIENT_ESTIMATION_ENABLED
     // gradient samples
     {
         uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
@@ -197,6 +202,7 @@ void RTGL1::Denoiser::Denoise(
             vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
         }
     }
+#endif // GRADIENT_ESTIMATION_ENABLED
 
 
     // temporal accumulation
@@ -213,8 +219,10 @@ void RTGL1::Denoiser::Denoise(
             FI::FB_IMAGE_INDEX_NORMAL,
             FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
             FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY,
+#if GRADIENT_ESTIMATION_ENABLED
             FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT,
             FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT
+#endif
         };
         framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 

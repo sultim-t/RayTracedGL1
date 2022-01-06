@@ -106,7 +106,9 @@ void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex
         FI::FB_IMAGE_INDEX_RANDOM_SEED,
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+#if GRADIENT_ESTIMATION_ENABLED
         FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES
+#endif
     };
     framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 

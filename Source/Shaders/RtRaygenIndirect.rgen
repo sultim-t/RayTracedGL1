@@ -259,7 +259,6 @@ void main()
     const vec3 surfNormalGeom         = texelFetchNormalGeometry(pix);
     const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     const vec3 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
-    const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
 
     const float surfRoughness         = surfMetallicRoughness.g;
     const float surfMetallic          = surfMetallicRoughness.r;
@@ -267,8 +266,14 @@ void main()
 
     const uint surfInstCustomIndex    = floatBitsToUint(surfPosition.a);
   
+
+#if GRADIENT_ESTIMATION_ENABLED
+    const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
     const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
                                         (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
+#else
+    const bool isGradientSample       = false;
+#endif
 
     processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, -viewDirection, isGradientSample);        
 }

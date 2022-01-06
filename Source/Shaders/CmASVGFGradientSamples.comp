@@ -20,6 +20,7 @@
 
 #version 460
 
+
 // "Gradient Estimation for Real-Time Adaptive Temporal Filtering", C.Schied et al.
 
 #define DESC_SET_FRAMEBUFFERS 0
@@ -27,6 +28,10 @@
 #include "ShaderCommonGLSLFunc.h"
 
 layout(local_size_x = COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X, local_size_y = COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X, local_size_z = 1) in;
+
+
+#if GRADIENT_ESTIMATION_ENABLED
+
 
 void main()
 {
@@ -97,3 +102,8 @@ void main()
         imageStore(framebufIndirPingGradient, gradPix, vec4(a));
     }
 }
+
+
+#else
+void main() {}
+#endif // GRADIENT_ESTIMATION_ENABLED

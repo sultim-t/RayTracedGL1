@@ -29,6 +29,10 @@
 
 layout(local_size_x = COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, local_size_y = COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, local_size_z = 1) in;
 
+
+#if GRADIENT_ESTIMATION_ENABLED
+
+
 void main()
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
@@ -162,3 +166,8 @@ void main()
         imageStore(framebufViewDirection,   samplePix, vec4(viewDir, 0.0));
     }
 }
+
+
+#else
+void main() {}
+#endif // GRADIENT_ESTIMATION_ENABLED

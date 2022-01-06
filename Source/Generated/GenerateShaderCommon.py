@@ -208,6 +208,8 @@ CONST_TO_EVALUATE = "CONST VALUE MUST BE EVALUATED"
 # User defined constants
 # --------------------------------------------------------------------------------------------- #
 
+GRADIENT_ESTIMATION_ENABLED = False
+
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 20,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
@@ -329,6 +331,7 @@ CONST = {
     "VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE" : 1,
     "VERT_PREPROC_MODE_ALL"                 : 2,
 
+    "GRADIENT_ESTIMATION_ENABLED"           : int(GRADIENT_ESTIMATION_ENABLED),
     "COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X" : 16,
     "COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X" : 16,
     "COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X"  : 16,
@@ -725,12 +728,6 @@ FRAMEBUFFERS = {
     "IndirPongSH_B"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
 
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R, 0),
-    
-    "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3 | FRAMEBUF_FLAGS_STORE_PREV),
-    "DiffAndSpecPingGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
-    "DiffAndSpecPongGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
-    "IndirPingGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
-    "IndirPongGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
 
     "Bloom_Mip1"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_2  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Bloom_Mip2"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_4  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
@@ -740,6 +737,14 @@ FRAMEBUFFERS = {
     "Bloom_Result"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
 }
 
+if GRADIENT_ESTIMATION_ENABLED:
+    FRAMEBUFFERS.update({
+        "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3 | FRAMEBUF_FLAGS_STORE_PREV),
+        "DiffAndSpecPingGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "DiffAndSpecPongGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "IndirPingGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "IndirPongGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+    })
 
 
 # ---

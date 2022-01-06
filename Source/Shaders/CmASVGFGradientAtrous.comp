@@ -32,6 +32,10 @@ layout (constant_id = 0) const uint atrousIteration = 0;
 
 const int STEP_SIZE = 1 << atrousIteration;
 
+
+#if GRADIENT_ESTIMATION_ENABLED
+
+
 // Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
 // samplerGradient[0] -- temporal gradient (eq. 2)
 // samplerGradient[1] -- normalization factor (eq. 13)
@@ -116,3 +120,8 @@ void main()
 #if COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT != 4
     #error Gradient atrous is implemented for 4 iterations 
 #endif
+
+
+#else
+void main() {}
+#endif // GRADIENT_ESTIMATION_ENABLED
