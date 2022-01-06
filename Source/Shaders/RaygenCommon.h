@@ -721,15 +721,16 @@ void processPolygonalLight(
 
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
+    const float ll = -dot(triNormal, l);
 
-    if (nl <= 0 || ngl <= 0 || -dot(triNormal, l) <= 0)
+    if (nl <= 0 || ngl <= 0 || ll <= 0)
     {
         return;
     }
 
     const vec3 s =
         polyLight.color * 
-        nl * 
+        nl * pow(ll, globalUniform.polyLightSpotlightFactor) *
         getGeometryFactor(triNormal, l, distToLightPoint);
 
     outDiffuse  = evalBRDFLambertian(1.0) * M_PI * s;

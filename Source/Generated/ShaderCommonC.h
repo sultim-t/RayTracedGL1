@@ -118,6 +118,12 @@ namespace RTGL1
 #define COMPUTE_SVGF_ATROUS_ITERATION_COUNT (4)
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
+#define DEBUG_SHOW_FLAG_MOTION_VECTORS (1 << 0)
+#define DEBUG_SHOW_FLAG_GRADIENTS (1 << 1)
+#define DEBUG_SHOW_FLAG_SECTORS (1 << 2)
+#define DEBUG_SHOW_FLAG_UNFILTERED_DIFF (1 << 3)
+#define DEBUG_SHOW_FLAG_UNFILTERED_SPEC (1 << 4)
+#define DEBUG_SHOW_FLAG_UNFILTERED_INDIR (1 << 5)
 #define MAX_RAY_LENGTH (10000.0)
 #define MEDIA_TYPE_VACUUM (0)
 #define MEDIA_TYPE_WATER (1)
@@ -169,8 +175,8 @@ struct ShGlobalUniform
     float skyColorDefault[4];
     float skyViewerPosition[4];
     float cameraPosition[4];
-    uint32_t dbgShowMotionVectors;
-    uint32_t dbgShowGradients;
+    uint32_t debugShowFlags;
+    uint32_t _unused;
     uint32_t lightCountSphericalPrev;
     uint32_t lightCountDirectionalPrev;
     float emissionMapBoost;
@@ -225,7 +231,7 @@ struct ShGlobalUniform
     float primaryRayMinDist;
     uint32_t rayCullBackFaces;
     uint32_t maxBounceShadowsPolygonalLights;
-    uint32_t dbgShowSectors;
+    float polyLightSpotlightFactor;
     float directionalLightTanAngularRadius;
     float directionalLightDirection[4];
     float directionalLightColor[4];

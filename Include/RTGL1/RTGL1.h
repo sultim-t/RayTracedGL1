@@ -876,6 +876,9 @@ typedef struct RgDrawFrameShadowParams
     uint32_t    maxBounceShadowsSphereLights;
     uint32_t    maxBounceShadowsSpotlights;
     uint32_t    maxBounceShadowsPolygonalLights;
+    // The higher the value, the more polygonal lights act like a spotlight. 
+    // Default: 2
+    float       polygonalLightSpotlightFactor;
 } RgDrawFrameShadowParams;
 
 typedef struct RgDrawFrameBloomParams

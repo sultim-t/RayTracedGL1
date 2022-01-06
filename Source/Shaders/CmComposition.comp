@@ -117,29 +117,15 @@ void main()
     }
 
 
-#if GRADIENT_ESTIMATION_ENABLED
-    if (globalUniform.dbgShowGradients != 0)
-    {
-        const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const float lambda = getAntilagAlpha(gradDS.r, gradDS.g);
-        const float lambdaSpec = getAntilagAlpha(gradDS.b, gradDS.a);
-        const float lambdaIndir = clamp(gradI.r, 0.0, 1.0);
-        color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
-    }
-#endif
 
-
-    if (globalUniform.dbgShowMotionVectors != 0)
+    if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_MOTION_VECTORS) != 0)
     {
         const vec2 m = texelFetch(framebufMotion_Sampler, getCheckerboardPix(pix), 0).rg;
         color.r = abs(m.r);
         color.g = abs(m.g);
         color.b = 0;
     }
-
-
-    if (globalUniform.dbgShowSectors != 0)
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_SECTORS) != 0)
     {
         uint sectorArrayIndex = texelFetch(framebufSectorIndex_Sampler, getCheckerboardPix(pix), 0).r; 
         if (sectorArrayIndex != SECTOR_INDEX_NONE)
@@ -156,9 +142,35 @@ void main()
         {
             color = vec3(1,0,0);
         }
-        //color = texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
-       // color = texelFetchSpecPongColor(getCheckerboardPix(pix));
     }
+#if 0
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_DIFF) != 0)
+    {
+        color = texelFetchUnfilteredDirect(getCheckerboardPix(pix));
+    }
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_SPEC) != 0)
+    {
+        color = texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
+    }
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_INDIR) != 0)
+    {
+        SH sh = texelFetchUnfilteredIndirectSH(getCheckerboardPix(pix));
+        vec3 normal = texelFetchNormal(getCheckerboardPix(pix));
+        color = SHToIrradiance(sh, normal);
+    }
+#endif
+#if GRADIENT_ESTIMATION_ENABLED
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_GRADIENTS) != 0)
+    {
+        const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        const float lambda = getAntilagAlpha(gradDS.r, gradDS.g);
+        const float lambdaSpec = getAntilagAlpha(gradDS.b, gradDS.a);
+        const float lambdaIndir = clamp(gradI.r, 0.0, 1.0);
+        color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
+    }
+#endif
+
    
    
     imageStore(framebufPreFinal, pix, vec4(color, 0));

@@ -486,15 +486,22 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     if (drawInfo.pDebugParams != nullptr)
     {
-        gu->dbgShowGradients = !!drawInfo.pDebugParams->showGradients;
-        gu->dbgShowMotionVectors = !!drawInfo.pDebugParams->showMotionVectors;
-        gu->dbgShowSectors = !!drawInfo.pDebugParams->showSectors;
+        if (drawInfo.pDebugParams->showGradients)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_GRADIENTS;
+        }
+        if (drawInfo.pDebugParams->showMotionVectors)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_MOTION_VECTORS;
+        }
+        if (drawInfo.pDebugParams->showSectors)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_SECTORS;
+        }
     }
     else
     {
-        gu->dbgShowGradients = false;
-        gu->dbgShowMotionVectors = false;
-        gu->dbgShowSectors = false;
+        gu->debugShowFlags = 0;
     }
 
     if (drawInfo.pOverridenTexturesParams != nullptr)
@@ -516,6 +523,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->maxBounceShadowsSphereLights        = drawInfo.pShadowParams->maxBounceShadowsSphereLights;
         gu->maxBounceShadowsSpotlights          = drawInfo.pShadowParams->maxBounceShadowsSpotlights;
         gu->maxBounceShadowsPolygonalLights     = drawInfo.pShadowParams->maxBounceShadowsPolygonalLights;
+        gu->polyLightSpotlightFactor            = std::max(0.0f, drawInfo.pShadowParams->polygonalLightSpotlightFactor);
     }
     else
     {
@@ -523,6 +531,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->maxBounceShadowsSphereLights = 2;
         gu->maxBounceShadowsSpotlights = 2;
         gu->maxBounceShadowsPolygonalLights = 2;
+        gu->polyLightSpotlightFactor = 2.0f;
     }
 
     if (drawInfo.pBloomParams != nullptr)

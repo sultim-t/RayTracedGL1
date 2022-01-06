@@ -342,6 +342,13 @@ CONST = {
 
     "COMPUTE_ASVGF_STRATA_SIZE"                         : 3,
     "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,  
+
+    "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : "1 << 0",
+    "DEBUG_SHOW_FLAG_GRADIENTS"             : "1 << 1",
+    "DEBUG_SHOW_FLAG_SECTORS"               : "1 << 2",
+    "DEBUG_SHOW_FLAG_UNFILTERED_DIFF"       : "1 << 3",
+    "DEBUG_SHOW_FLAG_UNFILTERED_SPEC"       : "1 << 4",
+    "DEBUG_SHOW_FLAG_UNFILTERED_INDIR"      : "1 << 5",
     
     "MAX_RAY_LENGTH"                        : "10000.0",
 
@@ -446,8 +453,8 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "cameraPosition",               1),
 
-    (TYPE_UINT32,       1,      "dbgShowMotionVectors",         1),
-    (TYPE_UINT32,       1,      "dbgShowGradients",             1),
+    (TYPE_UINT32,       1,      "debugShowFlags",               1),
+    (TYPE_UINT32,       1,      "_unused",                      1),
     (TYPE_UINT32,       1,      "lightCountSphericalPrev",      1),
     (TYPE_UINT32,       1,      "lightCountDirectionalPrev",    1),
 
@@ -517,7 +524,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "maxBounceShadowsPolygonalLights",  1),
-    (TYPE_UINT32,       1,      "dbgShowSectors",                   1),
+    (TYPE_FLOAT32,      1,      "polyLightSpotlightFactor",         1),
     (TYPE_FLOAT32,      1,      "directionalLightTanAngularRadius", 1),
 
     (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
