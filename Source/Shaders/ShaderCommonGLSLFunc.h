@@ -237,7 +237,7 @@ vec2 getCurScreenPos(sampler2D motionSampler, const ivec2 prevPix)
 
 ivec2 getPrevFramePix(sampler2D motionSampler, const ivec2 curFramePix)
 {
-    return ivec2(floor(getPrevScreenPos(motionSampler, curFramePix)));
+    return ivec2(floor(getPrevScreenPos(motionSampler, curFramePix) - 0.5));
 }
 #endif // DESC_SET_FRAMEBUFFERS
 #endif // DESC_SET_GLOBAL_UNIFORM
