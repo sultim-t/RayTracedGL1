@@ -298,7 +298,6 @@ LightResult newLightResult()
 
 
 #define SHADOW_RAY_EPS 0.01
-#define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
 
 ShPayload traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer /* = false */)
 {
@@ -371,7 +370,9 @@ void processDirectionalLight(
     }
 
     out_result.diffuse  = evalBRDFLambertian(1.0) * dirlightColor * nl * M_PI;
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor) * dirlightColor * nl;
+#endif
 
     out_result.diffuse  *= oneOverPdf;
     out_result.specular *= oneOverPdf;
@@ -431,6 +432,10 @@ float getSphericalLightWeight(
     const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
     const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
+#ifdef RAYGEN_COMMON_ONLY_DIFFUSE
+    return getLuminance(radiance);
+#else
+
     const vec3 diff = radiance;
     const vec3 spec = 
         evalBRDFSmithGGX(surfNormal, toViewerDir, dirToCenter, surfRoughness, surfSpecularColor) * 
@@ -439,6 +444,7 @@ float getSphericalLightWeight(
         getGeometryFactorWoNormal(dist);
 
     return getLuminance(diff + spec);
+#endif
 }
 
 
@@ -563,11 +569,13 @@ void processSphericalLight(
     const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
     out_result.diffuse  = radiance;
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = 
         evalBRDFSmithGGX(surfNormal, toViewerDir, dirOntoSphere, surfRoughness, surfSpecularColor) * 
         sphLight.color * 
         max(dot(surfNormal, dirOntoSphere), 0.0) *
         getGeometryFactor(lightNormal, dirOntoSphere, distOntoSphere);
+#endif
 
     out_result.diffuse  /= pdf;
     out_result.specular /= pdf;
@@ -746,7 +754,9 @@ void processPolygonalLight(
         getGeometryFactor(triNormal, l, distToLightPoint);
 
     out_result.diffuse  = evalBRDFLambertian(1.0) * M_PI * s;
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;
+#endif
 
     out_result.diffuse  /= pdf;
     out_result.specular /= pdf;
@@ -809,7 +819,9 @@ void processSpotLight(
     const float distWeight = pow(clamp((spotFalloff - dist) / max(spotFalloff, 1), 0, 1), 2);
 
     out_result.diffuse  = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * spotColor * nl;
+#endif
 
     const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
     out_result.diffuse  *= angleWeight;
@@ -827,6 +839,16 @@ void processSpotLight(
     out_result.shadowRayStart  = surfPosition;
     out_result.shadowRayEnd    = posOnDisk;
     out_result.shadowRayIgnoreFirstPersonViewer = true;
+}
+
+
+float getCandidateWeight(const LightResult c)
+{
+#ifdef RAYGEN_COMMON_ONLY_DIFFUSE
+    return getLuminance(c.diffuse);
+#else
+    return getLuminance(c.diffuse + c.specular);
+#endif
 }
 
 
@@ -876,7 +898,7 @@ void processDirectIllumination(
     float weightsTotal = 0.0;
 
 
-#define PROCESS_CANDIDATE(pfnProcessLight)                                      \
+#define PROCESS_CANDIDATE(pfnProcessLight, pfnCandidateWeight)                  \
     {                                                                           \
         LightResult candidate = newLightResult();                               \
                                                                                 \
@@ -888,7 +910,7 @@ void processDirectIllumination(
             bounceIndex,                                                        \
             candidate);                                                         \
                                                                                 \
-        const float w = getLuminance(candidate.diffuse + candidate.specular);   \
+        const float w = pfnCandidateWeight(candidate);                          \
                                                                                 \
         if (w > 0)                                                              \
         {                                                                       \
@@ -912,9 +934,9 @@ void processDirectIllumination(
     }
 
 
-    PROCESS_CANDIDATE(processSphericalLight);
-    PROCESS_CANDIDATE(processSpotLight);
-    PROCESS_CANDIDATE(processPolygonalLight);
+    PROCESS_CANDIDATE(processSphericalLight, getCandidateWeight);
+    PROCESS_CANDIDATE(processSpotLight,      getCandidateWeight);
+    PROCESS_CANDIDATE(processPolygonalLight, getCandidateWeight);
     
 
     if (weightsTotal <= 0.0 || selected_mass <= 0.0)
