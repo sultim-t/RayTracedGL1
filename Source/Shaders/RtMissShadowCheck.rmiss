@@ -23,10 +23,7 @@
 
 #include "ShaderCommonGLSLFunc.h"
 
-// this payload must be used only in this and calling shader
-layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadInEXT ShPayloadShadow payloadShadow;
+layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadInEXT ShPayload payloadShadow;
 
 void main()
-{
-    payloadShadow.isShadowed = 0;
-}
+{}

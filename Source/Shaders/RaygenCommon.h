@@ -74,7 +74,7 @@ layout(set = DESC_SET_RENDER_CUBEMAP, binding = BINDING_RENDER_CUBEMAP) uniform 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
-layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
+layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayload payloadShadow;
 #endif // RAYGEN_SHADOW_PAYLOAD
 
 
@@ -161,16 +161,19 @@ bool isPayloadConsistent(const ShPayload p)
     return p.instIdAndIndex != UINT32_MAX && p.geomAndPrimIndex != UINT32_MAX;
 }
 
-void resetPayload()
+ShPayload newPayload()
 {
-    payload.baryCoords = vec2(0.0);
-    payload.instIdAndIndex = UINT32_MAX;
-    payload.geomAndPrimIndex = UINT32_MAX;
+    ShPayload r;
+    r.baryCoords = vec2(0.0);
+    r.instIdAndIndex = UINT32_MAX;
+    r.geomAndPrimIndex = UINT32_MAX;
+
+    return r;
 }
 
 ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
 {
-    resetPayload();
+    payload = newPayload();
 
     uint cullMask = getPrimaryVisibilityCullMask();
 
@@ -188,7 +191,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
 
 ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfInstCustomIndex, bool isRefraction, bool ignoreReflectRefractGeometry)
 {
-    resetPayload();
+    payload = newPayload();
 
     uint cullMask = getReflectionRefractionCullMask(surfInstCustomIndex, isRefraction);
 
@@ -211,7 +214,7 @@ ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfIns
 
 ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bounceDirection)
 {
-    resetPayload();
+    payload = newPayload();
 
     uint cullMask = getIndirectIlluminationCullMask(surfInstCustomIndex);
 
@@ -274,6 +277,7 @@ struct LightResult
     vec3    specular;
     bool    shadowRayEnable;
     vec3    shadowRayStart;
+    bool    shadowRayIgnoreFirstPersonViewer;
     vec3    shadowRayEnd;
 };
 
@@ -286,6 +290,7 @@ LightResult newLightResult()
     r.shadowRayEnable   = false;
     r.shadowRayStart    = vec3(0);
     r.shadowRayEnd      = vec3(0);
+    r.shadowRayIgnoreFirstPersonViewer = false;
     
     return r;
 }
@@ -295,11 +300,9 @@ LightResult newLightResult()
 #define SHADOW_RAY_EPS 0.01
 #define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
 
-// l is pointed to the light
-bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer)
+ShPayload traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer /* = false */)
 {
-    // prepare shadow payload
-    payloadShadow.isShadowed = 1;  
+    payloadShadow = newPayload();
 
     uint cullMask = getShadowCullMask(surfInstCustomIndex);
 
@@ -312,21 +315,18 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
     float maxDistance = length(l);
     l /= maxDistance;
 
+    // removed gl_RayFlagsSkipClosestHitShaderEXT, as
+    // occluder position is required for precise motion vectors
     traceRayEXT(
         topLevelAS, 
-        gl_RayFlagsSkipClosestHitShaderEXT | getAdditionalRayFlags(), 
+        getAdditionalRayFlags(),
         cullMask, 
         0, 0, 	// sbtRecordOffset, sbtRecordStride
         SBT_INDEX_MISS_SHADOW, 		// shadow missIndex
         start, 0.001, l, maxDistance - SHADOW_RAY_EPS, 
         PAYLOAD_INDEX_SHADOW);
 
-    return payloadShadow.isShadowed == 1;
-}
-
-bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end)
-{
-    return traceShadowRay(surfInstCustomIndex, start, end, false);
+    return payloadShadow;
 }
 
 
@@ -826,6 +826,7 @@ void processSpotLight(
     out_result.shadowRayEnable = true;
     out_result.shadowRayStart  = surfPosition;
     out_result.shadowRayEnd    = posOnDisk;
+    out_result.shadowRayIgnoreFirstPersonViewer = true;
 }
 
 
@@ -851,8 +852,9 @@ void processDirectIllumination(
 
         if (dirLight.shadowRayEnable)
         {
-            const bool isShadowed = traceShadowRay(surfInstCustomIndex, dirLight.shadowRayStart, dirLight.shadowRayEnd);
-            
+            const ShPayload p = traceShadowRay(surfInstCustomIndex, dirLight.shadowRayStart, dirLight.shadowRayEnd, dirLight.shadowRayIgnoreFirstPersonViewer);
+            const bool isShadowed = isPayloadConsistent(p);
+
             dirLight.diffuse  *= float(!isShadowed);
             dirLight.specular *= float(!isShadowed);
         }
@@ -925,8 +927,9 @@ void processDirectIllumination(
 
     if (selected.shadowRayEnable)
     {
-        const bool isShadowed = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, false /* TODO: true for spotlight */);
-        
+        const ShPayload p = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);
+        const bool isShadowed = isPayloadConsistent(p);
+
         selected.diffuse  *= float(!isShadowed);
         selected.specular *= float(!isShadowed);
     }

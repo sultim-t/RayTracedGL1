@@ -41,11 +41,6 @@ struct ShPayload
     uint    geomAndPrimIndex;
 };
 
-struct ShPayloadShadow
-{
-    uint    isShadowed;
-};
-
 struct ShHitInfo
 {
     vec3    albedo;
