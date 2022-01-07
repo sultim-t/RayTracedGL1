@@ -267,6 +267,31 @@ vec3 getSky(vec3 direction)
 
 
 
+struct LightResult
+{
+    vec3    diffuse;
+    uint    lightID;
+    vec3    specular;
+    bool    shadowRayEnable;
+    vec3    shadowRayStart;
+    vec3    shadowRayEnd;
+};
+
+LightResult newLightResult()
+{
+    LightResult r;
+    r.diffuse           = vec3(0);
+    r.lightID           = UINT32_MAX;
+    r.specular          = vec3(0);
+    r.shadowRayEnable   = false;
+    r.shadowRayStart    = vec3(0);
+    r.shadowRayEnd      = vec3(0);
+    
+    return r;
+}
+
+
+
 #define SHADOW_RAY_EPS 0.01
 #define SHADOW_CAST_LUMINANCE_THRESHOLD 0.000001
 
@@ -316,14 +341,12 @@ void processDirectionalLight(
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir,
     int bounceIndex,
-    out vec3 outDiffuse, out vec3 outSpecular)
+    inout LightResult out_result)
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsDirectionalLights;
 
     if (globalUniform.lightCountDirectional == 0 || (!castShadowRay && bounceIndex != 0))
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
@@ -344,27 +367,23 @@ void processDirectionalLight(
 
     if (nl <= 0 || ngl <= 0)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
-    outDiffuse = evalBRDFLambertian(1.0) * dirlightColor * nl * M_PI;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor) * dirlightColor * nl;
+    out_result.diffuse  = evalBRDFLambertian(1.0) * dirlightColor * nl * M_PI;
+    out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor) * dirlightColor * nl;
 
-    outDiffuse *= oneOverPdf;
-    outSpecular *= oneOverPdf;
+    out_result.diffuse  *= oneOverPdf;
+    out_result.specular *= oneOverPdf;
 
-    // if too dim, don't cast shadow ray
-    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay)
     {
         return;
     }
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, surfPosition + l * MAX_RAY_LENGTH);
-
-    outDiffuse *= float(!isShadowed);
-    outSpecular *= float(!isShadowed);
+    out_result.shadowRayEnable = true;
+    out_result.shadowRayStart  = surfPosition;
+    out_result.shadowRayEnd    = surfPosition + l * MAX_RAY_LENGTH;
 }
 
 
@@ -429,11 +448,8 @@ void processSphericalLight(
     const vec3 toViewerDir, 
     bool isGradientSample,
     int bounceIndex,
-    out vec3 outDiffuse, out vec3 outSpecular)
+    inout LightResult out_result)
 {
-    outDiffuse = vec3(0.0);
-    outSpecular = vec3(0.0);
-
     uint sphLightCount = isGradientSample ? globalUniform.lightCountSphericalPrev : globalUniform.lightCountSpherical;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSphereLights;
 
@@ -546,25 +562,24 @@ void processSphericalLight(
     const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
     const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
 
-    outDiffuse = radiance;
-    outSpecular = 
+    out_result.diffuse  = radiance;
+    out_result.specular = 
         evalBRDFSmithGGX(surfNormal, toViewerDir, dirOntoSphere, surfRoughness, surfSpecularColor) * 
         sphLight.color * 
         max(dot(surfNormal, dirOntoSphere), 0.0) *
         getGeometryFactor(lightNormal, dirOntoSphere, distOntoSphere);
 
-    outDiffuse /= pdf;
-    outSpecular /= pdf;
+    out_result.diffuse  /= pdf;
+    out_result.specular /= pdf;
     
-    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay)
     {
         return;
     }
     
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + toViewerDir * SHADOW_RAY_EPS, posOnSphere);
-
-    outDiffuse *= float(!isShadowed);
-    outSpecular *= float(!isShadowed);
+    out_result.shadowRayEnable = true;
+    out_result.shadowRayStart  = surfPosition + toViewerDir * SHADOW_RAY_EPS;
+    out_result.shadowRayEnd    = posOnSphere;
 }
 
 
@@ -607,11 +622,8 @@ void processPolygonalLight(
     const vec3 toViewerDir, 
     bool isGradientSample,
     int bounceIndex,
-    out vec3 outDiffuse, out vec3 outSpecular)
+    inout LightResult out_result)
 {
-    outDiffuse = vec3(0.0);
-    outSpecular = vec3(0.0);
-
     uint polyLightCount = isGradientSample ? globalUniform.lightCountPolygonalPrev : globalUniform.lightCountPolygonal;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsPolygonalLights;
 
@@ -733,38 +745,35 @@ void processPolygonalLight(
         nl * pow(ll, globalUniform.polyLightSpotlightFactor) *
         getGeometryFactor(triNormal, l, distToLightPoint);
 
-    outDiffuse  = evalBRDFLambertian(1.0) * M_PI * s;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;
+    out_result.diffuse  = evalBRDFLambertian(1.0) * M_PI * s;
+    out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;
 
-    outDiffuse /= pdf;
-    outSpecular /= pdf;
+    out_result.diffuse  /= pdf;
+    out_result.specular /= pdf;
 
-    // if too dim, don't cast shadow ray
-    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay)
     {
         return;
     }
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition + toViewerDir * SHADOW_RAY_EPS, triPoint);
-
-    outDiffuse *= float(!isShadowed);
-    outSpecular *= float(!isShadowed);
+    out_result.shadowRayEnable = true;
+    out_result.shadowRayStart  = surfPosition + toViewerDir * SHADOW_RAY_EPS;
+    out_result.shadowRayEnd    = triPoint;
 }
 
 
 void processSpotLight(
     uint seed,
-    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
     const vec3 toViewerDir, 
+    bool isGradientSample,
     int bounceIndex,
-    out vec3 outDiffuse, out vec3 outSpecular)
+    inout LightResult out_result)
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsSpotlights;
 
     if (globalUniform.lightCountSpotlight == 0 || (!castShadowRay && bounceIndex != 0))
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
@@ -794,33 +803,29 @@ void processSpotLight(
 
     if (nl <= 0 || ngl <= 0 || cosA < spotCosAngleOuter)
     {
-        outDiffuse = vec3(0.0);
-        outSpecular = vec3(0.0);
         return;
     }
 
     const float distWeight = pow(clamp((spotFalloff - dist) / max(spotFalloff, 1), 0, 1), 2);
 
-    outDiffuse = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
-    outSpecular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * spotColor * nl;
+    out_result.diffuse  = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
+    out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * spotColor * nl;
 
     const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
-    outDiffuse *= angleWeight;
-    outSpecular *= angleWeight;
+    out_result.diffuse  *= angleWeight;
+    out_result.specular *= angleWeight;
 
-    // outDiffuse *= oneOverPdf;
-    // outSpecular *= oneOverPdf;
+    // out_result.diffuse  *= oneOverPdf;
+    // out_result.specular *= oneOverPdf;
 
-    // if too dim, don't cast shadow ray
-    if (!castShadowRay || getLuminance(outDiffuse) + getLuminance(outSpecular) < SHADOW_CAST_LUMINANCE_THRESHOLD)
+    if (!castShadowRay)
     {
         return;
     }
 
-    const bool isShadowed = traceShadowRay(surfInstCustomIndex, surfPosition, posOnDisk, true);
-
-    outDiffuse *= float(!isShadowed);
-    outSpecular *= float(!isShadowed);
+    out_result.shadowRayEnable = true;
+    out_result.shadowRayStart  = surfPosition;
+    out_result.shadowRayEnd    = posOnDisk;
 }
 
 
@@ -832,42 +837,101 @@ void processDirectIllumination(
     int bounceIndex,
     out vec3 outDiffuse, out vec3 outSpecular)
 {
-    // always cast shadow ray for directional lights
-    vec3 dirDiff, dirSpec;
-    processDirectionalLight(
-        seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-        toViewerDir,
-        bounceIndex,
-        dirDiff, dirSpec);
-    
-    vec3 sphDiff, sphSpec;
-    processSphericalLight(
-        seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,
-        toViewerDir, 
-        isGradientSample,  
-        bounceIndex,
-        sphDiff, sphSpec);
+    outDiffuse = outSpecular = vec3(0.0);
 
-    vec3 spotDiff, spotSpec;
-    processSpotLight(
-        seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-        toViewerDir, 
-        bounceIndex,
-        spotDiff, spotSpec);
+    {
+        LightResult dirLight = newLightResult();
 
-    vec3 polyDiff, polySpec;
-    processPolygonalLight(
-        seed, 
-        surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,
-        toViewerDir, 
-        isGradientSample,  
-        bounceIndex,
-        polyDiff, polySpec);
+        processDirectionalLight(
+            seed, 
+            surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
+            toViewerDir,
+            bounceIndex,
+            dirLight);
+
+        if (dirLight.shadowRayEnable)
+        {
+            const bool isShadowed = traceShadowRay(surfInstCustomIndex, dirLight.shadowRayStart, dirLight.shadowRayEnd);
+            
+            dirLight.diffuse  *= float(!isShadowed);
+            dirLight.specular *= float(!isShadowed);
+        }
+
+        outDiffuse  += dirLight.diffuse;
+        outSpecular += dirLight.specular;
+    }
+
+
+
+#define LIGHT_TYPE_SPHERICAL 1
+#define LIGHT_TYPE_POLYGONAL 2
+#define LIGHT_TYPE_SPOTLIGHT 3
+
+    LightResult selected = newLightResult();
+    float selected_mass = 0.0;
+
+    float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_TYPE_CHOOSE).x * 0.99;
+    float weightsTotal = 0.0;
+
+
+#define PROCESS_CANDIDATE(pfnProcessLight)                                      \
+    {                                                                           \
+        LightResult candidate = newLightResult();                               \
+                                                                                \
+        pfnProcessLight(                                                        \
+            seed,                                                               \
+            surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,  \
+            toViewerDir,                                                        \
+            isGradientSample,                                                   \
+            bounceIndex,                                                        \
+            candidate);                                                         \
+                                                                                \
+        const float w = getLuminance(candidate.diffuse + candidate.specular);   \
+                                                                                \
+        if (w > 0)                                                              \
+        {                                                                       \
+            const float tau = weightsTotal / (weightsTotal + w);                \
+            weightsTotal += w;                                                  \
+                                                                                \
+            if (rnd < tau)                                                      \
+            {                                                                   \
+                rnd /= tau;                                                     \
+            }                                                                   \
+            else                                                                \
+            {                                                                   \
+                selected = candidate;                                           \
+                selected_mass = w;                                              \
+                                                                                \
+                rnd = (rnd - tau) / (1 - tau);                                  \
+            }                                                                   \
+                                                                                \
+            rnd = clamp(rnd, 0, 0.999);                                         \
+        }                                                                       \
+    }
+
+
+    PROCESS_CANDIDATE(processSphericalLight);
+    PROCESS_CANDIDATE(processSpotLight);
+    PROCESS_CANDIDATE(processPolygonalLight);
     
-    outDiffuse = dirDiff + sphDiff + spotDiff + polyDiff;
-    outSpecular = dirSpec + sphSpec + spotSpec + polySpec;
+
+    if (weightsTotal <= 0.0 || selected_mass <= 0.0)
+    {
+        return;
+    }
+
+    float pdf = selected_mass / weightsTotal;
+
+
+    if (selected.shadowRayEnable)
+    {
+        const bool isShadowed = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, false /* TODO: true for spotlight */);
+        
+        selected.diffuse  *= float(!isShadowed);
+        selected.specular *= float(!isShadowed);
+    }
+
+    outDiffuse  += selected.diffuse  / pdf;
+    outSpecular += selected.specular / pdf;
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
