@@ -298,6 +298,8 @@ void main()
         vec3 illuminated = 
             (diffuse + indirect) * albedo * (1 - metallic) + 
             specular * getSpecularColor(albedo, metallic);
+            
+        illuminated = diffuse * albedo;
 
         illuminated *= throughput;
 

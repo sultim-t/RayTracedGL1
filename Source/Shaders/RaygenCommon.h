@@ -59,6 +59,7 @@
     #include "HitInfo.inl"
 #undef HITINFO_INL_RFR
 
+#include "RelieableMotionVectors.h"
 
 
 layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uniform accelerationStructureEXT topLevelAS;
@@ -862,6 +863,10 @@ float getCandidateWeight(const LightResult c)
 
 
 void processDirectIllumination(
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+    ivec2 pix,
+    out vec2 shadowMotionVector,
+#endif
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
     const vec3 toViewerDir,
@@ -883,8 +888,16 @@ void processDirectIllumination(
 
         if (dirLight.shadowRayEnable)
         {
-            const ShPayload p = traceShadowRay(surfInstCustomIndex, dirLight.shadowRayStart, dirLight.shadowRayEnd, dirLight.shadowRayIgnoreFirstPersonViewer);
-            const bool isShadowed = isPayloadConsistent(p);
+            const ShPayload blocker = traceShadowRay(surfInstCustomIndex, dirLight.shadowRayStart, dirLight.shadowRayEnd, dirLight.shadowRayIgnoreFirstPersonViewer);
+            const bool isShadowed = isPayloadConsistent(blocker);
+
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+            if (isShadowed)
+            {
+                shadowMotionVector = getShadowMotionVector(
+                    pix, blocker, dirLight.shadowRayEnd, dirLight.shadowRayEnd /* TODO: prev ligh pos*/);
+            }
+#endif
 
             dirLight.diffuse  *= float(!isShadowed);
             dirLight.specular *= float(!isShadowed);
@@ -893,6 +906,12 @@ void processDirectIllumination(
         outDiffuse  += dirLight.diffuse;
         outSpecular += dirLight.specular;
     }
+
+    return;
+
+
+
+
 
 
 
@@ -958,8 +977,8 @@ void processDirectIllumination(
 
     if (selected.shadowRayEnable)
     {
-        const ShPayload p = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);
-        const bool isShadowed = isPayloadConsistent(p);
+        const ShPayload blocker = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);
+        const bool isShadowed = isPayloadConsistent(blocker);
 
         selected.diffuse  *= float(!isShadowed);
         selected.specular *= float(!isShadowed);

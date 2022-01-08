@@ -691,7 +691,10 @@ FRAMEBUFFERS = {
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "MotionShadow"                      : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+
     "UnfilteredDirect"                  : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredSpecular"                : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredIndirectSH_R"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),

@@ -43,6 +43,7 @@ void main()
     {
         imageStore(framebufUnfilteredDirect, pix, uvec4(0));
         imageStore(framebufUnfilteredSpecular, pix, uvec4(0));
+        imageStore(framebufMotionShadow, pix, vec4(0));
         return;
     }
 
@@ -71,7 +72,10 @@ void main()
 #endif
 
     vec3 diffuse, specular;
+    vec2 shadowMotionVector;
+
     processDirectIllumination(
+        pix, shadowMotionVector,
         seed, 
         instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, sectorArrayIndex,
         -viewDirection,
@@ -81,4 +85,5 @@ void main()
 
     imageStoreUnfilteredDirect(pix, diffuse);
     imageStoreUnfilteredSpecular(pix, specular);
+    imageStore(framebufMotionShadow, pix, vec4(shadowMotionVector, 0, 0));
 }

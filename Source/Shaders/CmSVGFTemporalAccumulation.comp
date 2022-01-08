@@ -64,9 +64,11 @@ void main()
         return;
     }
 
-    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
+    const ivec3 chRenderArea  = getCheckerboardedRenderArea(pix);
 
-    const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
+    // const vec2 posPrev        = getPrevScreenPos(framebufMotion_Sampler, pix);
+    // const vec2 posPrev_Shadow = getPrevScreenPos(framebufMotionShadow_Sampler, pix);
+    const vec2 posPrev = getPrevScreenPos(framebufMotionShadow_Sampler, pix);
 
     const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
