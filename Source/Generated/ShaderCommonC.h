@@ -176,7 +176,7 @@ struct ShGlobalUniform
     float skyViewerPosition[4];
     float cameraPosition[4];
     uint32_t debugShowFlags;
-    uint32_t _unused;
+    float firefliesClamp;
     uint32_t lightCountSphericalPrev;
     uint32_t lightCountDirectionalPrev;
     float emissionMapBoost;

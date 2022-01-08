@@ -562,13 +562,17 @@ void processSphericalLight(
     const float r = sphLight.radius;
     const float z = sphLight.falloff;
     
-    const float i = pow(clamp((z - distToCenter) / max(z - r, 1), 0, 1), 2);
-    const vec3 c = i * sphLight.color;
+    const float I = pow(clamp((z - distToCenter) / max(z - r, 1), 0, 1), 2);
+    float irradiance = I * max(dot(surfNormal, dirToCenter), 0.0);
+    
+#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
+    irradiance = min(irradiance, globalUniform.firefliesClamp);
+#endif
 
-    const vec3 irradiance = M_PI * c * max(dot(surfNormal, dirToCenter), 0.0);
-    const vec3 radiance = evalBRDFLambertian(1.0) * irradiance;
-
-    out_result.diffuse  = radiance;
+    out_result.diffuse  = 
+        evalBRDFLambertian(1.0) *
+        sphLight.color * 
+        M_PI * irradiance;
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = 
         evalBRDFSmithGGX(surfNormal, toViewerDir, dirOntoSphere, surfRoughness, surfSpecularColor) * 
@@ -748,11 +752,16 @@ void processPolygonalLight(
         return;
     }
 
-    const vec3 s =
-        polyLight.color * 
-        nl * pow(ll, globalUniform.polyLightSpotlightFactor) *
+    float irradiance = 
+        pow(ll, globalUniform.polyLightSpotlightFactor) * 
         getGeometryFactor(triNormal, l, distToLightPoint);
 
+#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
+    irradiance = min(irradiance, globalUniform.firefliesClamp);
+#endif
+
+    const vec3 s = polyLight.color * nl * irradiance;
+    
     out_result.diffuse  = evalBRDFLambertian(1.0) * M_PI * s;
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;

@@ -879,6 +879,9 @@ typedef struct RgDrawFrameShadowParams
     // The higher the value, the more polygonal lights act like a spotlight. 
     // Default: 2
     float       polygonalLightSpotlightFactor;
+    // Clamp indirect diffuse with this value to prevent fireflies.
+    // Default: 3.0
+    float       sphericalPolygonalLightsFirefliesClamp;
 } RgDrawFrameShadowParams;
 
 typedef struct RgDrawFrameBloomParams
