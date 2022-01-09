@@ -190,7 +190,9 @@ struct ShGlobalUniform
     float spotlightPosition[4];
     float spotlightPositionPrev[4];
     float spotlightDirection[4];
+    float spotlightDirectionPrev[4];
     float spotlightUpVector[4];
+    float spotlightUpVectorPrev[4];
     float spotlightColor[4];
     float spotlightRadius;
     float spotlightCosAngleOuter;

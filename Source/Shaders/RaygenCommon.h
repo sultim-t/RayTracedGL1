@@ -271,32 +271,34 @@ vec3 getSky(vec3 direction)
 
 
 
+#define LIGHT_TYPE_NONE        0
+#define LIGHT_TYPE_DIRECTIONAL 1
+#define LIGHT_TYPE_SPHERICAL   2
+#define LIGHT_TYPE_POLYGONAL   3
+#define LIGHT_TYPE_SPOTLIGHT   4
+
 struct LightResult
 {
     vec3    diffuse;
-    uint    lightID;
+    uint    lightIndex;
     vec3    specular;
     bool    shadowRayEnable;
     vec3    shadowRayStart;
     bool    shadowRayIgnoreFirstPersonViewer;
     vec3    shadowRayEnd;
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    vec3    shadowRayEnd_Prev;
-#endif
+    uint    lightType;
 };
 
 LightResult newLightResult()
 {
     LightResult r;
     r.diffuse           = vec3(0);
-    r.lightID           = UINT32_MAX;
+    r.lightIndex        = UINT32_MAX;
     r.specular          = vec3(0);
     r.shadowRayEnable   = false;
     r.shadowRayStart    = vec3(0);
     r.shadowRayEnd      = vec3(0);
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    r.shadowRayEnd_Prev = vec3(0);
-#endif
+    r.lightType         = LIGHT_TYPE_NONE;
     r.shadowRayIgnoreFirstPersonViewer = false;
     
     return r;
@@ -352,14 +354,25 @@ vec3 getDirectionalLightVector(uint seed, const vec3 dirlightDirection, float di
 }
 
 
+// resolvedSeedPrev must not be RESOLVED_SEED_INVALID
+vec3 getDirectionalLightVector_Prev(uint resolvedSeedPrev, const LightResult curDirLight, const vec3 surfPosition)
+{
+    if (globalUniform.lightCountDirectionalPrev == 0)
+    {
+        return curDirLight.shadowRayEnd;
+    }
+
+    const vec3 l_prev = getDirectionalLightVector(resolvedSeedPrev, globalUniform.directionalLightDirectionPrev.xyz, globalUniform.directionalLightTanAngularRadius);
+    return surfPosition + l_prev * MAX_RAY_LENGTH;
+}
+
+
 // toViewerDir -- is direction to viewer
 void processDirectionalLight(
     uint seed, 
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    uint resolvedSeedPrev,
-#endif
-    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
+    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
     const vec3 toViewerDir,
+    bool isGradientSample,
     int bounceIndex,
     inout LightResult out_result)
 {
@@ -386,6 +399,9 @@ void processDirectionalLight(
         return;
     }
 
+    out_result.lightIndex = 0;
+    out_result.lightType = LIGHT_TYPE_DIRECTIONAL;
+
     out_result.diffuse  = evalBRDFLambertian(1.0) * dirlightColor * nl * M_PI;
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor) * dirlightColor * nl;
@@ -402,14 +418,6 @@ void processDirectionalLight(
     out_result.shadowRayEnable   = true;
     out_result.shadowRayStart    = surfPosition;
     out_result.shadowRayEnd      = surfPosition + l * MAX_RAY_LENGTH;
-
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    if (resolvedSeedPrev != RESOLVED_SEED_INVALID)
-    {
-        const vec3 l_prev = getDirectionalLightVector(resolvedSeedPrev, globalUniform.directionalLightDirectionPrev.xyz, dirlightTanAngularRadius);
-        out_result.shadowRayEnd_Prev = surfPosition + l_prev * MAX_RAY_LENGTH;
-    }
-#endif
 }
 
 
@@ -470,6 +478,43 @@ float getSphericalLightWeight(
 
     return getLuminance(diff + spec);
 #endif
+}
+
+
+vec3 getSphericalLightPosition(uint seed, const vec3 dirToCenter, const vec3 sphLightCenter, float sphLightRadius, out vec3 lightNormal)
+{
+    // sample hemisphere visible to the surface point
+    const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
+
+    float ltHsOneOverPdf;
+    lightNormal = sampleOrientedHemisphere(-dirToCenter, u[0], u[1], ltHsOneOverPdf);
+
+    //const float halfSphereArea = 2 * M_PI * sphLight.radius * sphLight.radius;
+    //pdf /= max(halfSphereArea, 0.00001);
+
+    return sphLightCenter + lightNormal * sphLightRadius;
+}
+
+
+// resolvedSeedPrev must not be RESOLVED_SEED_INVALID
+// must be in sync with processSphericalLight
+vec3 getSphericalLightPosition_Prev(uint resolvedSeedPrev, const LightResult curSphLight, const vec3 surfPosition)
+{
+    uint sphLightIndexPrev = lightSourcesSphMatchPrev[curSphLight.lightIndex];
+
+    if (sphLightIndexPrev == UINT32_MAX)
+    {
+        // if didn't exist
+        return curSphLight.shadowRayEnd;
+    }
+
+    const ShLightSpherical sphLightPrev = lightSourcesSpherical_Prev[sphLightIndexPrev];
+
+    float distToCenter;
+    const vec3 dirToCenter = getDirectionAndLength(surfPosition, sphLightPrev.position, distToCenter);
+
+    vec3 lightNormal;
+    return getSphericalLightPosition(resolvedSeedPrev, dirToCenter, sphLightPrev.position, sphLightPrev.radius, lightNormal);
 }
 
 
@@ -577,14 +622,8 @@ void processSphericalLight(
     float distToCenter;
     const vec3 dirToCenter = getDirectionAndLength(surfPosition, sphLight.position, distToCenter);
 
-    // sample hemisphere visible to the surface point
-    const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
-    float ltHsOneOverPdf;
-    const vec3 lightNormal = sampleOrientedHemisphere(-dirToCenter, u[0], u[1], ltHsOneOverPdf);
-    const float halfSphereArea = 2 * M_PI * sphLight.radius * sphLight.radius;
-    //pdf /= max(halfSphereArea, 0.00001);
-    
-    const vec3 posOnSphere = sphLight.position + lightNormal * sphLight.radius;
+    vec3 lightNormal;
+    const vec3 posOnSphere = getSphericalLightPosition(seed, dirToCenter, sphLight.position, sphLight.radius, lightNormal);
 
     float distOntoSphere;
     const vec3 dirOntoSphere = getDirectionAndLength(surfPosition, posOnSphere, distOntoSphere);
@@ -599,7 +638,10 @@ void processSphericalLight(
     irradiance = min(irradiance, globalUniform.firefliesClamp);
 #endif
 
-    out_result.diffuse  = 
+    out_result.lightIndex = sphLightIndex;
+    out_result.lightType = LIGHT_TYPE_SPHERICAL;
+
+    out_result.diffuse = 
         evalBRDFLambertian(1.0) *
         sphLight.color * 
         M_PI * irradiance;
@@ -655,6 +697,23 @@ float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom
 
     const float projTriArea = length(cross(pointsOnUnitSphere[1] - pointsOnUnitSphere[0], pointsOnUnitSphere[2] - pointsOnUnitSphere[0])) / 2.0;
     return getLuminance(polyLight.color) * projTriArea;
+}
+
+
+vec3 getPolygonalLightPosition_Prev(uint resolvedSeedPrev, const LightResult curPolyLight)
+{       
+    uint polyLightIndexPrev = lightSourcesPolyMatchPrev[curPolyLight.lightIndex];
+
+    if (polyLightIndexPrev == UINT32_MAX)
+    {
+        // if didn't exist
+        return curPolyLight.shadowRayEnd;
+    }
+
+    const ShLightPolygonal polyLightPrev = lightSourcesPolygonal_Prev[polyLightIndexPrev];
+
+    const vec2 u = getRandomSample(resolvedSeedPrev, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
+    return sampleTriangle(polyLightPrev.position_0.xyz, polyLightPrev.position_1.xyz, polyLightPrev.position_2.xyz, u[0], u[1]);
 }
 
 
@@ -798,6 +857,9 @@ void processPolygonalLight(
 
     const vec3 s = polyLight.color * nl * irradiance;
     
+    out_result.lightIndex = polyLightIndex;
+    out_result.lightType = LIGHT_TYPE_POLYGONAL;
+
     out_result.diffuse  = evalBRDFLambertian(1.0) * M_PI * s;
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor) * s;
@@ -817,6 +879,27 @@ void processPolygonalLight(
 }
 
 
+vec3 getSpotLightPosition_Prev(uint resolvedSeedPrev, const LightResult curSpotLight)
+{
+    if (globalUniform.lightCountSpotlightPrev == 0)
+    {
+        return curSpotLight.shadowRayEnd;
+    }
+
+    const vec3 spotPos      = globalUniform.spotlightPositionPrev.xyz; 
+    const vec3 spotDir      = globalUniform.spotlightDirectionPrev.xyz; 
+    const vec3 spotUp       = globalUniform.spotlightUpVectorPrev.xyz; 
+    // just use current
+    const float spotRadius  = max(globalUniform.spotlightRadius, 0.001);
+
+    const vec2 u = getRandomSample(resolvedSeedPrev, RANDOM_SALT_SPOT_LIGHT_DISK).xy;    
+    const vec2 disk = sampleDisk(spotRadius, u[0], u[1]);
+    const vec3 spotRight = cross(spotDir, spotUp);
+    
+    return spotPos + spotRight * disk.x + spotUp * disk.y;
+}
+
+
 void processSpotLight(
     uint seed,
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
@@ -832,14 +915,14 @@ void processSpotLight(
         return;
     }
 
-    const vec3 spotPos = globalUniform.spotlightPosition.xyz; 
-    const vec3 spotDir = globalUniform.spotlightDirection.xyz; 
-    const vec3 spotUp = globalUniform.spotlightUpVector.xyz; 
-    const vec3 spotColor = globalUniform.spotlightColor.xyz;
-    const float spotRadius = max(globalUniform.spotlightRadius, 0.001);
+    const vec3 spotPos      = globalUniform.spotlightPosition.xyz; 
+    const vec3 spotDir      = globalUniform.spotlightDirection.xyz; 
+    const vec3 spotUp       = globalUniform.spotlightUpVector.xyz; 
+    const vec3 spotColor    = globalUniform.spotlightColor.xyz;
+    const float spotRadius  = max(globalUniform.spotlightRadius, 0.001);
+    const float spotFalloff = globalUniform.spotlightFalloffDistance;
     const float spotCosAngleOuter = globalUniform.spotlightCosAngleOuter;
     const float spotCosAngleInner = globalUniform.spotlightCosAngleInner;
-    const float spotFalloff = globalUniform.spotlightFalloffDistance;
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_SPOT_LIGHT_DISK).xy;    
     const vec2 disk = sampleDisk(spotRadius, u[0], u[1]);
@@ -862,6 +945,9 @@ void processSpotLight(
     }
 
     const float distWeight = pow(clamp((spotFalloff - dist) / max(spotFalloff, 1), 0, 1), 2);
+
+    out_result.lightIndex = 0;
+    out_result.lightType = LIGHT_TYPE_SPOTLIGHT;
 
     out_result.diffuse  = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
@@ -912,55 +998,6 @@ void processDirectIllumination(
 {
     outDiffuse = outSpecular = vec3(0.0);
 
-    {
-        LightResult dirLight = newLightResult();
-
-        processDirectionalLight(
-            seed, 
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-            resolvedSeedPrev,
-#endif
-            surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-            toViewerDir,
-            bounceIndex,
-            dirLight);
-
-        if (dirLight.shadowRayEnable)
-        {
-            const ShPayload blocker = traceShadowRay(surfInstCustomIndex, dirLight.shadowRayStart, dirLight.shadowRayEnd, dirLight.shadowRayIgnoreFirstPersonViewer);
-            const bool isShadowed = isPayloadConsistent(blocker);
-
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-            if (isShadowed && resolvedSeedPrev != RESOLVED_SEED_INVALID)
-            {
-                shadowMotionVector = getShadowMotionVector(
-                    pix, blocker, dirLight.shadowRayEnd, dirLight.shadowRayEnd_Prev);
-            }
-            else
-            {
-                shadowMotionVector = invalidateShadowMotionVector();
-            }
-#endif
-
-            dirLight.diffuse  *= float(!isShadowed);
-            dirLight.specular *= float(!isShadowed);
-        }
-
-        outDiffuse  += dirLight.diffuse;
-        outSpecular += dirLight.specular;
-    }
-
-    return;
-
-
-
-
-
-
-
-#define LIGHT_TYPE_SPHERICAL 1
-#define LIGHT_TYPE_POLYGONAL 2
-#define LIGHT_TYPE_SPOTLIGHT 3
 
     LightResult selected = newLightResult();
     float selected_mass = 0.0;
@@ -1005,9 +1042,10 @@ void processDirectIllumination(
     }
 
 
-    PROCESS_CANDIDATE(processSphericalLight, getCandidateWeight);
-    PROCESS_CANDIDATE(processSpotLight,      getCandidateWeight);
-    PROCESS_CANDIDATE(processPolygonalLight, getCandidateWeight);
+    PROCESS_CANDIDATE(processSphericalLight,    getCandidateWeight);
+    PROCESS_CANDIDATE(processSpotLight,         getCandidateWeight);
+    PROCESS_CANDIDATE(processPolygonalLight,    getCandidateWeight);
+    PROCESS_CANDIDATE(processDirectionalLight,  getCandidateWeight);
     
 
     if (weightsTotal <= 0.0 || selected_mass <= 0.0)
@@ -1022,6 +1060,29 @@ void processDirectIllumination(
     {
         const ShPayload blocker = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);
         const bool isShadowed = isPayloadConsistent(blocker);
+
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+
+        if (isShadowed && resolvedSeedPrev != RESOLVED_SEED_INVALID)
+        {
+            vec3 shadowRayEndPrev = selected.shadowRayEnd;
+
+            switch (selected.lightType)
+            {
+                case LIGHT_TYPE_DIRECTIONAL:    shadowRayEndPrev = getDirectionalLightVector_Prev(resolvedSeedPrev, selected, surfPosition); break;
+                case LIGHT_TYPE_SPHERICAL:      shadowRayEndPrev = getSphericalLightPosition_Prev(resolvedSeedPrev, selected, surfPosition); break;
+                case LIGHT_TYPE_POLYGONAL:      shadowRayEndPrev = getPolygonalLightPosition_Prev(resolvedSeedPrev, selected); break;
+                case LIGHT_TYPE_SPOTLIGHT:      shadowRayEndPrev = getSpotLightPosition_Prev(resolvedSeedPrev, selected); break;
+            }
+
+            shadowMotionVector = getShadowMotionVector(pix, blocker, selected.shadowRayEnd, shadowRayEndPrev);
+        }
+        else
+        {
+            shadowMotionVector = invalidateShadowMotionVector();
+        }
+
+#endif
 
         selected.diffuse  *= float(!isShadowed);
         selected.specular *= float(!isShadowed);

@@ -471,7 +471,9 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      4,      "spotlightPosition",            1),
     (TYPE_FLOAT32,      4,      "spotlightPositionPrev",        1),
     (TYPE_FLOAT32,      4,      "spotlightDirection",           1),
+    (TYPE_FLOAT32,      4,      "spotlightDirectionPrev",       1),
     (TYPE_FLOAT32,      4,      "spotlightUpVector",            1),
+    (TYPE_FLOAT32,      4,      "spotlightUpVectorPrev",        1),
     (TYPE_FLOAT32,      4,      "spotlightColor",               1),
 
     (TYPE_FLOAT32,      1,      "spotlightRadius",              1),

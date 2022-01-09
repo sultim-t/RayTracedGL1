@@ -67,11 +67,11 @@ RTGL1::LightManager::LightManager(
     polygonalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights polygonal staging", "Match previous Lights polygonal");
 
 
-    sphericalLights->Create(sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    polygonalLights->Create(sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    sphericalLights->Create(sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    polygonalLights->Create(sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
 
-    sphericalLightsPrev.Init(_allocator, sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    polygonalLightsPrev.Init(_allocator, sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    sphericalLightsPrev.Init(_allocator, sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    polygonalLightsPrev.Init(_allocator, sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     sphericalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     polygonalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
@@ -312,9 +312,13 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_pt
     // handle prev frame info
     if (spotLightCountPrev > 0)
     {
-        memcpy(uniform->GetData()->spotlightPositionPrev, spotLightPositionPrev.data, 3 * sizeof(float));
+        memcpy(uniform->GetData()->spotlightPositionPrev,  spotLightPositionPrev.data,  3 * sizeof(float));
+        memcpy(uniform->GetData()->spotlightDirectionPrev, spotLightDirectionPrev.data, 3 * sizeof(float));
+        memcpy(uniform->GetData()->spotlightUpVectorPrev,  spotLightUpVectorPrev.data,  3 * sizeof(float));
     }
-    memcpy(spotLightPositionPrev.data, info.position.data, 3 * sizeof(float));
+    memcpy(spotLightPositionPrev.data,  info.position.data,  3 * sizeof(float));
+    memcpy(spotLightDirectionPrev.data, info.direction.data, 3 * sizeof(float));
+    memcpy(spotLightUpVectorPrev.data,  info.upVector.data,  3 * sizeof(float));
 }
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info)

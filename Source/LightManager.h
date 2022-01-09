@@ -101,6 +101,8 @@ private:
     uint32_t spotLightCount;
     uint32_t spotLightCountPrev;
     RgFloat3D spotLightPositionPrev;
+    RgFloat3D spotLightDirectionPrev;
+    RgFloat3D spotLightUpVectorPrev;
 
     uint32_t polyLightCount;
     uint32_t polyLightCountPrev;
