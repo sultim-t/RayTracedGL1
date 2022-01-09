@@ -168,9 +168,19 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPHERICAL) 
     ShLightSpherical lightSourcesSpherical[];
 };
 
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPHERICAL_PREV) readonly buffer LightSourcesSphericalPrev_BT
+{
+    ShLightSpherical lightSourcesSpherical_Prev[];
+};
+
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLYGONAL) readonly buffer LightSourcesPolygonal_BT
 {
     ShLightPolygonal lightSourcesPolygonal[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLYGONAL_PREV) readonly buffer LightSourcesPolygonalPrev_BT
+{
+    ShLightPolygonal lightSourcesPolygonal_Prev[];
 };
 
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV) readonly buffer LightSourcesSphMatchPrev_BT

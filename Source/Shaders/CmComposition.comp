@@ -167,11 +167,6 @@ void main()
         color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
     }
 #endif
-        SH sh = texelFetchUnfilteredIndirectSH(getCheckerboardPix(pix));
-        vec3 normal = texelFetchNormal(getCheckerboardPix(pix));
-     //   color = SHToIrradiance(sh, normal);
-     
-        
-   // imageStore(framebufPreFinal, pix, vec4(color * float(getLuminance(color) > 4), 0));
-   imageStore(framebufPreFinal, pix, vec4(color,0));
+
+   imageStore(framebufPreFinal, pix, vec4(color, 0));
 }

@@ -60,7 +60,7 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 
     geomInfoMgr->PrepareForFrame(frameIndex);
     triangleInfoMgr->PrepareForFrame(frameIndex);
-    lightManager->PrepareForFrame(frameIndex);
+    lightManager->PrepareForFrame(cmd, frameIndex);
 
     // dynamic geomtry
     asManager->BeginDynamicGeometry(cmd, frameIndex);

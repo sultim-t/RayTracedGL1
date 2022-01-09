@@ -549,9 +549,14 @@ void processSphericalLight(
     float pdf = selected_mass / (weightsTotal * S);
 
 
+    ShLightSpherical sphLight;
     uint sphLightIndex = plainLightList_Sph[selected_plainLightListIndex];
 
-    if (isGradientSample)
+    if (!isGradientSample)
+    {
+        sphLight = lightSourcesSpherical[sphLightIndex];
+    }
+    else
     {        
         // the seed and other input params were replaced by prev frame's data,
         // so in some degree, lightIndex is the same as it was chosen in prev frame
@@ -565,9 +570,9 @@ void processSphericalLight(
         {
             return;
         }
-    }
 
-    const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
+        sphLight = lightSourcesSpherical_Prev[sphLightIndex];
+    }
 
     float distToCenter;
     const vec3 dirToCenter = getDirectionAndLength(surfPosition, sphLight.position, distToCenter);
@@ -729,9 +734,15 @@ void processPolygonalLight(
     float pdf = selected_mass / (weightsTotal * S);
 
 
+    
+    ShLightPolygonal polyLight;
     uint polyLightIndex = plainLightList_Poly[selected_plainLightListIndex];
 
-    if (isGradientSample)
+    if (!isGradientSample)
+    {
+        polyLight = lightSourcesPolygonal[polyLightIndex];
+    }
+    else
     {
         // the seed and other input params were replaced by prev frame's data,
         // so in some degree, lightIndex is the same as it was chosen in prev frame
@@ -745,9 +756,9 @@ void processPolygonalLight(
         {
             return;
         }
-    }
 
-    const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
+        polyLight = lightSourcesPolygonal_Prev[polyLightIndex];
+    }
 
 
     vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);

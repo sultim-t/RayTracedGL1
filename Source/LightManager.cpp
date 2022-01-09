@@ -66,11 +66,16 @@ RTGL1::LightManager::LightManager(
     sphericalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights spherical staging", "Match previous Lights spherical");
     polygonalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights polygonal staging", "Match previous Lights polygonal");
 
+
     sphericalLights->Create(sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     polygonalLights->Create(sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
 
+    sphericalLightsPrev.Init(_allocator, sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+    polygonalLightsPrev.Init(_allocator, sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
     sphericalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
     polygonalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+
 
     CreateDescriptors();
 }
@@ -137,7 +142,7 @@ static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobal
 
 }
 
-void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
+void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     sphLightCountPrev = sphLightCount;
     dirLightCountPrev = dirLightCount;
@@ -148,6 +153,32 @@ void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
     dirLightCount = 0;
     spotLightCount = 0;
     polyLightCount = 0;
+
+    // TODO: similar system to just swap desc sets, instead of copying
+    if (sphLightCountPrev > 0)
+    {
+        VkBufferCopy info = {};
+        info.srcOffset = 0;
+        info.dstOffset = 0;
+        info.size = sphLightCountPrev * sizeof(ShLightSpherical);
+
+        vkCmdCopyBuffer(
+            cmd,
+            sphericalLights->GetDeviceLocal(), sphericalLightsPrev.GetBuffer(),
+            1, &info);
+    }
+    if (polyLightCountPrev > 0)
+    {
+        VkBufferCopy info = {};
+        info.srcOffset = 0;
+        info.dstOffset = 0;
+        info.size = polyLightCountPrev * sizeof(ShLightPolygonal);
+
+        vkCmdCopyBuffer(
+            cmd,
+            polygonalLights->GetDeviceLocal(), polygonalLightsPrev.GetBuffer(),
+            1, &info);
+    }
 
     memset(sphericalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * sphLightCountPrev);
     memset(polygonalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * polyLightCountPrev);
@@ -367,7 +398,9 @@ void RTGL1::LightManager::FillMatchPrev(
 constexpr uint32_t BINDINGS[] =
 {
     BINDING_LIGHT_SOURCES_SPHERICAL,
+    BINDING_LIGHT_SOURCES_SPHERICAL_PREV,
     BINDING_LIGHT_SOURCES_POLYGONAL,
+    BINDING_LIGHT_SOURCES_POLYGONAL_PREV,
     BINDING_LIGHT_SOURCES_SPH_MATCH_PREV,
     BINDING_LIGHT_SOURCES_POLY_MATCH_PREV,
     BINDING_PLAIN_LIGHT_LIST_POLY,
@@ -444,7 +477,9 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
     const VkBuffer buffers[] =
     {
         sphericalLights->GetDeviceLocal(),
+        sphericalLightsPrev.GetBuffer(),
         polygonalLights->GetDeviceLocal(),
+        polygonalLightsPrev.GetBuffer(),
         sphericalLightMatchPrev->GetDeviceLocal(),
         polygonalLightMatchPrev->GetDeviceLocal(),
         lightListsForPolygonal->GetPlainLightListDeviceLocalBuffer(),
