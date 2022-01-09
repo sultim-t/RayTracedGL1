@@ -118,6 +118,8 @@ namespace RTGL1
 #define COMPUTE_SVGF_ATROUS_ITERATION_COUNT (4)
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
+#define COMPUTE_RESOLVED_SEED_PREV_GROUP_SIZE_X (16)
+#define RESOLVED_SEED_INVALID (UINT32_MAX)
 #define DEBUG_SHOW_FLAG_MOTION_VECTORS (1 << 0)
 #define DEBUG_SHOW_FLAG_GRADIENTS (1 << 1)
 #define DEBUG_SHOW_FLAG_SECTORS (1 << 2)
@@ -184,6 +186,7 @@ struct ShGlobalUniform
     float normalMapStrength;
     float skyColorSaturation;
     float spotlightPosition[4];
+    float spotlightPositionPrev[4];
     float spotlightDirection[4];
     float spotlightUpVector[4];
     float spotlightColor[4];
@@ -234,6 +237,7 @@ struct ShGlobalUniform
     float polyLightSpotlightFactor;
     float directionalLightTanAngularRadius;
     float directionalLightDirection[4];
+    float directionalLightDirectionPrev[4];
     float directionalLightColor[4];
     uint32_t lightCountSpotlight;
     uint32_t lightCountSpotlightPrev;

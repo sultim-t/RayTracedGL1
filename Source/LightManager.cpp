@@ -120,14 +120,6 @@ static void FillInfoDirectional(const RgDirectionalLightUploadInfo &info, RTGL1:
     dst->directionalLightTanAngularRadius = (float)tan(std::max(0.0, 0.5 * (double)info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
 }
 
-static void ResetInfoDirectional(RTGL1::ShGlobalUniform *gu)
-{
-    memset(gu->directionalLightColor, 0, sizeof(gu->directionalLightColor));
-    memset(gu->directionalLightDirection, 0, sizeof(gu->directionalLightDirection));
-
-    gu->directionalLightTanAngularRadius = 0.0f;
-}
-
 static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobalUniform *gu)
 {
     // use global uniform buffer for one spotlight instance
@@ -143,19 +135,6 @@ static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobal
 
     gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
 
-}
-
-static void ResetInfoSpotlight(RTGL1::ShGlobalUniform *gu)
-{
-    memset(gu->spotlightPosition, 0, sizeof(gu->spotlightPosition));
-    memset(gu->spotlightDirection, 0, sizeof(gu->spotlightDirection));
-    memset(gu->spotlightUpVector, 0, sizeof(gu->spotlightUpVector));
-    memset(gu->spotlightColor, 0, sizeof(gu->spotlightColor));
-
-    gu->spotlightRadius = -1;
-    gu->spotlightCosAngleOuter = -1;
-    gu->spotlightCosAngleInner = -1;
-    gu->spotlightFalloffDistance = -1;
 }
 
 void RTGL1::LightManager::PrepareForFrame(uint32_t frameIndex)
@@ -297,6 +276,14 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_pt
 
     FillInfoSpotlight(info, uniform->GetData());
     spotLightCount++;
+
+
+    // handle prev frame info
+    if (spotLightCountPrev > 0)
+    {
+        memcpy(uniform->GetData()->spotlightPositionPrev, spotLightPositionPrev.data, 3 * sizeof(float));
+    }
+    memcpy(spotLightPositionPrev.data, info.position.data, 3 * sizeof(float));
 }
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info)
@@ -314,6 +301,16 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const std::sh
     
     FillInfoDirectional(info, uniform->GetData());
     dirLightCount++;
+
+
+    // handle prev frame info
+    if (dirLightCountPrev > 0)
+    {
+        memcpy(uniform->GetData()->directionalLightDirectionPrev, dirLightDirectionPrev.data, 3 * sizeof(float));
+    }
+    dirLightDirectionPrev.data[0] = -info.direction.data[0];
+    dirLightDirectionPrev.data[1] = -info.direction.data[1];
+    dirLightDirectionPrev.data[2] = -info.direction.data[2];
 }
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)

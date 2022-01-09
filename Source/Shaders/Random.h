@@ -214,8 +214,8 @@ layout(
 uint packRandomSeed(uint textureIndex, uvec2 offset)
 {
     return 
-        textureIndex << (BLUE_NOISE_TEXTURE_SIZE_POW * 2) | 
-        offset.y     <<  BLUE_NOISE_TEXTURE_SIZE_POW     | 
+        (textureIndex << (BLUE_NOISE_TEXTURE_SIZE_POW * 2)) | 
+        (offset.y     << (BLUE_NOISE_TEXTURE_SIZE_POW    )) | 
         offset.x;
 }
 
@@ -241,12 +241,6 @@ vec4 getRandomSample(uint seed, uint salt)
 uint getCurrentRandomSeed(const ivec2 pix)
 {
     uvec4 seed = texelFetch(framebufRandomSeed_Sampler, pix, 0);
-    return seed.x;
-}
-
-uint getPreviousRandomSeed(const ivec2 pix)
-{
-    uvec4 seed = texelFetch(framebufRandomSeed_Prev_Sampler, pix, 0);
     return seed.x;
 }
 

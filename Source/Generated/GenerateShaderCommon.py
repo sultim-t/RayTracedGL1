@@ -343,6 +343,9 @@ CONST = {
     "COMPUTE_ASVGF_STRATA_SIZE"                         : 3,
     "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,  
 
+    "COMPUTE_RESOLVED_SEED_PREV_GROUP_SIZE_X"           : 16,         
+    "RESOLVED_SEED_INVALID"                             : "UINT32_MAX",              
+
     "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : "1 << 0",
     "DEBUG_SHOW_FLAG_GRADIENTS"             : "1 << 1",
     "DEBUG_SHOW_FLAG_SECTORS"               : "1 << 2",
@@ -464,6 +467,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
     (TYPE_FLOAT32,      4,      "spotlightPosition",            1),
+    (TYPE_FLOAT32,      4,      "spotlightPositionPrev",        1),
     (TYPE_FLOAT32,      4,      "spotlightDirection",           1),
     (TYPE_FLOAT32,      4,      "spotlightUpVector",            1),
     (TYPE_FLOAT32,      4,      "spotlightColor",               1),
@@ -528,6 +532,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "directionalLightTanAngularRadius", 1),
 
     (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
+    (TYPE_FLOAT32,      4,      "directionalLightDirectionPrev",    1),
     (TYPE_FLOAT32,      4,      "directionalLightColor",            1),
 
     (TYPE_UINT32,       1,      "lightCountSpotlight",              1),
@@ -691,6 +696,7 @@ FRAMEBUFFERS = {
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "RandomSeed"                        : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "ResolvedSeedPrev"                  : (TYPE_UINT32,     COMPONENT_R,    0),
     
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "MotionShadow"                      : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),

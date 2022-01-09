@@ -94,9 +94,11 @@ private:
 
     uint32_t dirLightCount;
     uint32_t dirLightCountPrev;
+    RgFloat3D dirLightDirectionPrev;
 
     uint32_t spotLightCount;
     uint32_t spotLightCountPrev;
+    RgFloat3D spotLightPositionPrev;
 
     uint32_t polyLightCount;
     uint32_t polyLightCountPrev;

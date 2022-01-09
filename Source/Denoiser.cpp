@@ -38,6 +38,7 @@ RTGL1::Denoiser::Denoiser(
     merging(VK_NULL_HANDLE),
     gradientSamples(VK_NULL_HANDLE),
     gradientAtrous{},
+    resolveSeedPrev(VK_NULL_HANDLE),
     temporalAccumulation(VK_NULL_HANDLE),
     varianceEstimation(VK_NULL_HANDLE),
     atrous{}
@@ -76,9 +77,9 @@ void RTGL1::Denoiser::MergeSamples(
     const std::shared_ptr<const GlobalUniform> &uniform,
     const std::shared_ptr<const ASManager> &asManager)
 {
-#if GRADIENT_ESTIMATION_ENABLED
-
     typedef FramebufferImageIndex FI;
+
+#if GRADIENT_ESTIMATION_ENABLED
  
     CmdLabel label(cmd, "Gradient Merging");
 
@@ -122,6 +123,37 @@ void RTGL1::Denoiser::MergeSamples(
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, merging);
     vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
 
+#else
+
+    CmdLabel label(cmd, "Resolve SeedPrev");
+
+
+    VkDescriptorSet sets[] =
+    {
+        framebuffers->GetDescSet(frameIndex),
+        uniform->GetDescSet(frameIndex)
+    };
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            pipelineLayout,
+                            0, std::size(sets), sets,
+                            0, nullptr);
+
+    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth  / COMPUTE_RESOLVED_SEED_PREV_GROUP_SIZE_X);
+    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_RESOLVED_SEED_PREV_GROUP_SIZE_X);
+
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_MOTION,
+        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_NORMAL,
+        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, resolveSeedPrev);
+    vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+
 #endif // GRADIENT_ESTIMATION_ENABLED 
 }
 
@@ -138,11 +170,10 @@ void RTGL1::Denoiser::Denoise(
         framebuffers->GetDescSet(frameIndex),
         uniform->GetDescSet(frameIndex)
     };
-    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
                         pipelineLayout,
-                        0, setCount, sets,
+                        0, std::size(sets), sets,
                         0, nullptr);
 
 
@@ -371,6 +402,7 @@ void RTGL1::Denoiser::DestroyPipelines()
 {
     vkDestroyPipeline(device, merging, nullptr);
     vkDestroyPipeline(device, gradientSamples, nullptr);
+    vkDestroyPipeline(device, resolveSeedPrev, nullptr);
     vkDestroyPipeline(device, temporalAccumulation, nullptr);
     vkDestroyPipeline(device, varianceEstimation, nullptr);
     
@@ -388,6 +420,7 @@ void RTGL1::Denoiser::DestroyPipelines()
 
     merging = VK_NULL_HANDLE;
     gradientSamples = VK_NULL_HANDLE;
+    resolveSeedPrev = VK_NULL_HANDLE;
     temporalAccumulation = VK_NULL_HANDLE;
     varianceEstimation = VK_NULL_HANDLE;
 }
@@ -455,6 +488,15 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
 
             SET_DEBUG_NAME(device, gradientAtrous[i], VK_OBJECT_TYPE_PIPELINE, debugNames[i]);
         }
+    }
+
+    {
+        plInfo.stage = shaderManager->GetStageInfo("CCmResolveSeedPrev");
+
+        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &resolveSeedPrev);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, resolveSeedPrev, VK_OBJECT_TYPE_PIPELINE, "Resolve SeedPrev");
     }
 
     {

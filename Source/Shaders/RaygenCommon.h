@@ -280,6 +280,9 @@ struct LightResult
     vec3    shadowRayStart;
     bool    shadowRayIgnoreFirstPersonViewer;
     vec3    shadowRayEnd;
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+    vec3    shadowRayEnd_Prev;
+#endif
 };
 
 LightResult newLightResult()
@@ -291,6 +294,9 @@ LightResult newLightResult()
     r.shadowRayEnable   = false;
     r.shadowRayStart    = vec3(0);
     r.shadowRayEnd      = vec3(0);
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+    r.shadowRayEnd_Prev = vec3(0);
+#endif
     r.shadowRayIgnoreFirstPersonViewer = false;
     
     return r;
@@ -335,9 +341,23 @@ ShPayload traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ig
 
 
 
+vec3 getDirectionalLightVector(uint seed, const vec3 dirlightDirection, float dirlightTanAngularRadius)
+{
+    const vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
+    const vec2 disk = sampleDisk(dirlightTanAngularRadius, u[0], u[1]);
+
+    const mat3 basis = getONB(dirlightDirection);
+
+    return normalize(dirlightDirection + basis[0] * disk.x + basis[1] * disk.y);
+}
+
+
 // toViewerDir -- is direction to viewer
 void processDirectionalLight(
     uint seed, 
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+    uint resolvedSeedPrev,
+#endif
     uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor,
     const vec3 toViewerDir,
     int bounceIndex,
@@ -356,11 +376,7 @@ void processDirectionalLight(
 
     float oneOverPdf = 1.0;
 
-    const vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
-    const vec2 disk = sampleDisk(dirlightTanAngularRadius, u[0], u[1]);
-
-    const mat3 basis = getONB(dirlightDirection);
-    const vec3 l = normalize(dirlightDirection + basis[0] * disk.x + basis[1] * disk.y);
+    const vec3 l = getDirectionalLightVector(seed, dirlightDirection, dirlightTanAngularRadius);
 
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
@@ -383,9 +399,17 @@ void processDirectionalLight(
         return;
     }
 
-    out_result.shadowRayEnable = true;
-    out_result.shadowRayStart  = surfPosition;
-    out_result.shadowRayEnd    = surfPosition + l * MAX_RAY_LENGTH;
+    out_result.shadowRayEnable   = true;
+    out_result.shadowRayStart    = surfPosition;
+    out_result.shadowRayEnd      = surfPosition + l * MAX_RAY_LENGTH;
+
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+    if (resolvedSeedPrev != RESOLVED_SEED_INVALID)
+    {
+        const vec3 l_prev = getDirectionalLightVector(resolvedSeedPrev, globalUniform.directionalLightDirectionPrev.xyz, dirlightTanAngularRadius);
+        out_result.shadowRayEnd_Prev = surfPosition + l_prev * MAX_RAY_LENGTH;
+    }
+#endif
 }
 
 
@@ -866,6 +890,7 @@ void processDirectIllumination(
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     ivec2 pix,
     out vec2 shadowMotionVector,
+    uint resolvedSeedPrev,
 #endif
     uint seed, 
     uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
@@ -881,6 +906,9 @@ void processDirectIllumination(
 
         processDirectionalLight(
             seed, 
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+            resolvedSeedPrev,
+#endif
             surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
             toViewerDir,
             bounceIndex,
@@ -892,10 +920,15 @@ void processDirectIllumination(
             const bool isShadowed = isPayloadConsistent(blocker);
 
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-            if (isShadowed)
+            if (isShadowed && resolvedSeedPrev != RESOLVED_SEED_INVALID)
             {
                 shadowMotionVector = getShadowMotionVector(
-                    pix, blocker, dirLight.shadowRayEnd, dirLight.shadowRayEnd /* TODO: prev ligh pos*/);
+                    pix, blocker, dirLight.shadowRayEnd, dirLight.shadowRayEnd_Prev);
+            }
+            else
+            {
+                // TODO: properly invalidate
+                shadowMotionVector = vec2(0.0);
             }
 #endif
 

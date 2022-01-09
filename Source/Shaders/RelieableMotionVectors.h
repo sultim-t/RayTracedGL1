@@ -19,7 +19,7 @@
 // SOFTWARE.
 
 
-vec2 getScreenSpacePrev(vec3 posPrev)
+vec2 projectPointToScreenWithPrev(vec3 posPrev)
 {
     const vec4 viewSpacePosPrev  = globalUniform.viewPrev * vec4(posPrev, 1.0);
     const vec4 clipSpacePosPrev  = globalUniform.projectionPrev * viewSpacePosPrev;
@@ -119,7 +119,7 @@ vec2 getShadowMotionVector(
     // The custom function toScreen(...) projects 
     // a given world-space point to screen space 
     // to get corresponding the image-space pixel.
-    vec2 prevX = getScreenSpacePrev(intersection);
+    vec2 prevX = projectPointToScreenWithPrev(intersection);
 
     return prevX - X;
 }

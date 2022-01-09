@@ -68,6 +68,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CFsrEasu",                "CmFsrEasu.comp.spv"                   },
     {"CFsrRcas",                "CmFsrRcas.comp.spv"                   },
     {"CCas",                    "CmCas.comp.spv"                       },
+    {"CCmResolveSeedPrev",      "CmResolveSeedPrev.comp.spv"           },
 };
 
 

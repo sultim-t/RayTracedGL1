@@ -73,6 +73,8 @@ private:
     VkPipeline gradientSamples;
     VkPipeline gradientAtrous[4];
 
+    VkPipeline resolveSeedPrev;
+
     VkPipeline temporalAccumulation;
     VkPipeline varianceEstimation;
     VkPipeline atrous[4];

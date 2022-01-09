@@ -55,6 +55,7 @@ void main()
     const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
     const vec3 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
     const uint sectorArrayIndex       = texelFetch(framebufSectorIndex_Sampler, pix, 0).r;
+    const uint resolvedSeedPrev       = texelFetch(framebufResolvedSeedPrev_Sampler, pix, 0).r;
 
     const float surfRoughness         = surfMetallicRoughness.g;
     const float surfMetallic          = surfMetallicRoughness.r;
@@ -75,7 +76,7 @@ void main()
     vec2 shadowMotionVector;
 
     processDirectIllumination(
-        pix, shadowMotionVector,
+        pix, shadowMotionVector, resolvedSeedPrev,
         seed, 
         instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, sectorArrayIndex,
         -viewDirection,
