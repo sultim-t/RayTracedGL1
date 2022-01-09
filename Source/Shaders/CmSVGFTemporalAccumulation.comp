@@ -64,11 +64,17 @@ void main()
         return;
     }
 
-    const ivec3 chRenderArea  = getCheckerboardedRenderArea(pix);
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
 
-    // const vec2 posPrev        = getPrevScreenPos(framebufMotion_Sampler, pix);
-    // const vec2 posPrev_Shadow = getPrevScreenPos(framebufMotionShadow_Sampler, pix);
-    const vec2 posPrev = getPrevScreenPos(framebufMotionShadow_Sampler, pix);
+
+    const vec2 posPrev_Default  = getPrevScreenPos(framebufMotion_Sampler, pix);
+
+    const vec2 shadowMV         = texelFetch(framebufMotionShadow_Sampler, pix, 0).rg;
+    bool shadowMV_IsInvalid     = isShadowMotionVectorInvalid(shadowMV);
+
+    const vec2 posPrev = shadowMV_IsInvalid ? posPrev_Default : getPrevScreenPos(shadowMV, pix);
+   
+
 
     const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
     const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);

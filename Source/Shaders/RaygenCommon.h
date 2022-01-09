@@ -927,8 +927,7 @@ void processDirectIllumination(
             }
             else
             {
-                // TODO: properly invalidate
-                shadowMotionVector = vec2(0.0);
+                shadowMotionVector = invalidateShadowMotionVector();
             }
 #endif
 

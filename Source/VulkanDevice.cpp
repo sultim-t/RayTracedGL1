@@ -484,6 +484,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
     }
 
+    gu->debugShowFlags = 0;
+
     if (drawInfo.pDebugParams != nullptr)
     {
         if (drawInfo.pDebugParams->showGradients)
@@ -498,10 +500,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_SECTORS;
         }
-    }
-    else
-    {
-        gu->debugShowFlags = 0;
     }
 
     if (drawInfo.pOverridenTexturesParams != nullptr)
