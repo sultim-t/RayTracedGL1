@@ -914,6 +914,43 @@ void processDirectIllumination(
     outDiffuse = outSpecular = vec3(0.0);
 
 
+#define SEPARATE_SHADOW_RAYS
+#ifdef SEPARATE_SHADOW_RAYS
+    
+    LightResult selected;
+
+#define PROCESS_SEPARATELY(pfnProcessLight)                                     \
+    {                                                                           \
+        selected = newLightResult();                                            \
+                                                                                \
+        pfnProcessLight(                                                        \
+            seed,                                                               \
+            surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,  \
+            toViewerDir,                                                        \
+            isGradientSample,                                                   \
+            bounceIndex,                                                        \
+            selected);                                                          \
+                                                                                \
+        bool isShadowed = false;                                                \
+                                                                                \
+        if (selected.shadowRayEnable)                                           \
+        {                                                                       \
+            isShadowed = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);    \
+        }                                                                       \
+                                                                                \
+        outDiffuse  += selected.diffuse  * float(!isShadowed);                  \
+        outSpecular += selected.specular * float(!isShadowed);                  \
+    }
+
+    PROCESS_SEPARATELY(processDirectionalLight);
+    PROCESS_SEPARATELY(processSphericalLight);
+    PROCESS_SEPARATELY(processPolygonalLight);
+    PROCESS_SEPARATELY(processSpotLight);
+    
+
+#else // !SEPARATE_SHADOW_RAYS
+
+
     LightResult selected = newLightResult();
     float selected_mass = 0.0;
 
@@ -981,5 +1018,8 @@ void processDirectIllumination(
 
     outDiffuse  += selected.diffuse  / pdf;
     outSpecular += selected.specular / pdf;
+
+#endif // SEPARATE_SHADOW_RAYS
+
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
