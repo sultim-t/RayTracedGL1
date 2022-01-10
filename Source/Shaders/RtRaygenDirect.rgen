@@ -74,9 +74,10 @@ void main()
 
     vec3 diffuse, specular;
     vec2 shadowMotionVector;
+    uint lightType;
 
     processDirectIllumination(
-        pix, shadowMotionVector, resolvedSeedPrev,
+        pix, shadowMotionVector, lightType, resolvedSeedPrev,
         seed, 
         instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, sectorArrayIndex,
         -viewDirection,

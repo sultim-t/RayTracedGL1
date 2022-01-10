@@ -271,12 +271,6 @@ vec3 getSky(vec3 direction)
 
 
 
-#define LIGHT_TYPE_NONE        0
-#define LIGHT_TYPE_DIRECTIONAL 1
-#define LIGHT_TYPE_SPHERICAL   2
-#define LIGHT_TYPE_POLYGONAL   3
-#define LIGHT_TYPE_SPOTLIGHT   4
-
 struct LightResult
 {
     vec3    diffuse;
@@ -355,15 +349,17 @@ vec3 getDirectionalLightVector(uint seed, const vec3 dirlightDirection, float di
 
 
 // resolvedSeedPrev must not be RESOLVED_SEED_INVALID
-vec3 getDirectionalLightVector_Prev(uint resolvedSeedPrev, const LightResult curDirLight, const vec3 surfPosition)
+bool getDirectionalLightVector_Prev(out vec3 result, uint resolvedSeedPrev, const LightResult curDirLight, const vec3 surfPosition)
 {
     if (globalUniform.lightCountDirectionalPrev == 0)
     {
-        return curDirLight.shadowRayEnd;
+        return false;
     }
 
     const vec3 l_prev = getDirectionalLightVector(resolvedSeedPrev, globalUniform.directionalLightDirectionPrev.xyz, globalUniform.directionalLightTanAngularRadius);
-    return surfPosition + l_prev * MAX_RAY_LENGTH;
+    
+    result = surfPosition + l_prev * MAX_RAY_LENGTH;
+    return true;
 }
 
 
@@ -498,14 +494,13 @@ vec3 getSphericalLightPosition(uint seed, const vec3 dirToCenter, const vec3 sph
 
 // resolvedSeedPrev must not be RESOLVED_SEED_INVALID
 // must be in sync with processSphericalLight
-vec3 getSphericalLightPosition_Prev(uint resolvedSeedPrev, const LightResult curSphLight, const vec3 surfPosition)
+bool getSphericalLightPosition_Prev(out vec3 result, uint resolvedSeedPrev, const LightResult curSphLight, const vec3 surfPosition)
 {
     uint sphLightIndexPrev = lightSourcesSphMatchPrev[curSphLight.lightIndex];
 
     if (sphLightIndexPrev == UINT32_MAX)
     {
-        // if didn't exist
-        return curSphLight.shadowRayEnd;
+        return false;
     }
 
     const ShLightSpherical sphLightPrev = lightSourcesSpherical_Prev[sphLightIndexPrev];
@@ -514,7 +509,8 @@ vec3 getSphericalLightPosition_Prev(uint resolvedSeedPrev, const LightResult cur
     const vec3 dirToCenter = getDirectionAndLength(surfPosition, sphLightPrev.position, distToCenter);
 
     vec3 lightNormal;
-    return getSphericalLightPosition(resolvedSeedPrev, dirToCenter, sphLightPrev.position, sphLightPrev.radius, lightNormal);
+    result = getSphericalLightPosition(resolvedSeedPrev, dirToCenter, sphLightPrev.position, sphLightPrev.radius, lightNormal);
+    return true;
 }
 
 
@@ -700,20 +696,21 @@ float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom
 }
 
 
-vec3 getPolygonalLightPosition_Prev(uint resolvedSeedPrev, const LightResult curPolyLight)
+bool getPolygonalLightPosition_Prev(out vec3 result, uint resolvedSeedPrev, const LightResult curPolyLight)
 {       
     uint polyLightIndexPrev = lightSourcesPolyMatchPrev[curPolyLight.lightIndex];
 
     if (polyLightIndexPrev == UINT32_MAX)
     {
-        // if didn't exist
-        return curPolyLight.shadowRayEnd;
+        return false;
     }
 
     const ShLightPolygonal polyLightPrev = lightSourcesPolygonal_Prev[polyLightIndexPrev];
 
     const vec2 u = getRandomSample(resolvedSeedPrev, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
-    return sampleTriangle(polyLightPrev.position_0.xyz, polyLightPrev.position_1.xyz, polyLightPrev.position_2.xyz, u[0], u[1]);
+    
+    result = sampleTriangle(polyLightPrev.position_0.xyz, polyLightPrev.position_1.xyz, polyLightPrev.position_2.xyz, u[0], u[1]);
+    return true;
 }
 
 
@@ -879,11 +876,11 @@ void processPolygonalLight(
 }
 
 
-vec3 getSpotLightPosition_Prev(uint resolvedSeedPrev, const LightResult curSpotLight)
+bool getSpotLightPosition_Prev(out vec3 result, uint resolvedSeedPrev, const LightResult curSpotLight)
 {
     if (globalUniform.lightCountSpotlightPrev == 0)
     {
-        return curSpotLight.shadowRayEnd;
+        return false;
     }
 
     const vec3 spotPos      = globalUniform.spotlightPositionPrev.xyz; 
@@ -896,7 +893,8 @@ vec3 getSpotLightPosition_Prev(uint resolvedSeedPrev, const LightResult curSpotL
     const vec2 disk = sampleDisk(spotRadius, u[0], u[1]);
     const vec3 spotRight = cross(spotDir, spotUp);
     
-    return spotPos + spotRight * disk.x + spotUp * disk.y;
+    result = spotPos + spotRight * disk.x + spotUp * disk.y;
+    return true;
 }
 
 
@@ -987,6 +985,7 @@ void processDirectIllumination(
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     ivec2 pix,
     out vec2 shadowMotionVector,
+    out uint lightType,
     uint resolvedSeedPrev,
 #endif
     uint seed, 
@@ -1063,25 +1062,27 @@ void processDirectIllumination(
 
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
 
-        if (isShadowed && resolvedSeedPrev != RESOLVED_SEED_INVALID)
+        shadowMotionVector = invalidateShadowMotionVector();
+        lightType = LIGHT_TYPE_NONE;
+
+        if (resolvedSeedPrev != RESOLVED_SEED_INVALID)
         {
-            vec3 shadowRayEndPrev = selected.shadowRayEnd;
+            bool success = false;
+            vec3 shadowRayEndPrev;
 
             switch (selected.lightType)
             {
-                case LIGHT_TYPE_DIRECTIONAL:    shadowRayEndPrev = getDirectionalLightVector_Prev(resolvedSeedPrev, selected, surfPosition); break;
-                case LIGHT_TYPE_SPHERICAL:      shadowRayEndPrev = getSphericalLightPosition_Prev(resolvedSeedPrev, selected, surfPosition); break;
-                case LIGHT_TYPE_POLYGONAL:      shadowRayEndPrev = getPolygonalLightPosition_Prev(resolvedSeedPrev, selected); break;
-                case LIGHT_TYPE_SPOTLIGHT:      shadowRayEndPrev = getSpotLightPosition_Prev(resolvedSeedPrev, selected); break;
+                case LIGHT_TYPE_DIRECTIONAL: success = getDirectionalLightVector_Prev(shadowRayEndPrev, resolvedSeedPrev, selected, surfPosition); break;
+                case LIGHT_TYPE_SPHERICAL:   success = getSphericalLightPosition_Prev(shadowRayEndPrev, resolvedSeedPrev, selected, surfPosition); break;
+                case LIGHT_TYPE_POLYGONAL:   success = getPolygonalLightPosition_Prev(shadowRayEndPrev, resolvedSeedPrev, selected);               break;
+                case LIGHT_TYPE_SPOTLIGHT:   success =      getSpotLightPosition_Prev(shadowRayEndPrev, resolvedSeedPrev, selected);               break;
             }
 
-            shadowMotionVector = getShadowMotionVector(pix, blocker, selected.shadowRayEnd, shadowRayEndPrev);
+            if (success && setShadowMotionVector(shadowMotionVector, pix, blocker, selected.shadowRayEnd, shadowRayEndPrev))
+            {
+                lightType = selected.lightType;
+            }
         }
-        else
-        {
-            shadowMotionVector = invalidateShadowMotionVector();
-        }
-
 #endif
 
         selected.diffuse  *= float(!isShadowed);

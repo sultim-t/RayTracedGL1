@@ -84,42 +84,32 @@ void getBlockerInfo(const ShPayload blockerPl, out vec3 blockerPos, out vec3 blo
 
 
 // Ray Tracing Gems II. Chapter 25. TEMPORALLY RELIABLE MOTION VECTORS FOR BETTER USE OF TEMPORAL INFORMATION
-vec2 getShadowMotionVector(
-    ivec2 pix, 
+
+bool setShadowMotionVector(
+    inout vec2 motionVectorShadow,
+    ivec2 pix, // must be checkerboarded
     const ShPayload blocker, 
     vec3 lightPos, vec3 lightPos_Prev)
 {
-    // For each pixel X_i in shadow (in image space) ...
-    vec2 X = pix + vec2(0.5f, 0.5f);
-
     // TODO: surfPos, surfNormal?
     vec3 surfPos, surfPos_Prev, surfNormal, surfNormal_Prev;
     getSurfaceInfo(pix, surfPos, surfPos_Prev, surfNormal, surfNormal_Prev);
 
     vec3 blockerPos, blockerPos_Prev;
     getBlockerInfo(blocker, blockerPos, blockerPos_Prev);    
-
-
-
-    // Next, find the intersection of the virtual plane 
-    // (defined by S_i and its normal in the previous frame) 
-    // and the ray (from L_(i-1) to B_(i-1)).
+    
     vec3 origin = lightPos_Prev;
     vec3 direction = blockerPos_Prev - lightPos_Prev;
-   
-    // The custom function rayPlaneIntersect(...) finds the intersection between 
-    // a ray (defined by origin and direction) and a plane ( defined by point and normal).
+    
     vec3 intersection;
     if (!rayPlaneIntersect(origin, direction, surfPos_Prev, surfNormal_Prev, intersection))
     {
-        return vec2(0.0);
+        return false;
     }
     
-    // Finally, project it to screen space to find X^(V)_(i-1).
-    // The custom function toScreen(...) projects 
-    // a given world-space point to screen space 
-    // to get corresponding the image-space pixel.
+    vec2 X = (getRegularPixFromCheckerboardPix(pix) + vec2(0.5)) / vec2(globalUniform.renderWidth, globalUniform.renderHeight);
     vec2 prevX = projectPointToScreenWithPrev(intersection);
 
-    return prevX - X;
+    motionVectorShadow = prevX - X;
+    return true;
 }
