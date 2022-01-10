@@ -525,6 +525,93 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     return tr;
 }
 
+// Copy of getTriangle but only get surf pos/normal info
+void getTriangle_PositionAndNormal(
+    int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId, const vec2 bary,
+    out vec3 position, out vec3 position_Prev,
+    out vec3 normal, out vec3 normal_Prev)
+{
+    const vec3 baryCoords = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
+
+    ShTriangle tr;
+
+    // get info about geometry by the index in pGeometries in BLAS with index "instanceID"
+    const int globalGeometryIndex = getGeometryIndex(instanceID, localGeometryIndex);
+    const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
+
+    const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
+
+    if (isDynamic)
+    {
+        const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+
+        tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+
+        // to local and then to world space
+        position = tr.positions * baryCoords;
+        position = (inst.model * vec4(position, 1.0)).xyz;
+
+        const vec3 localNormal = tr.normals * baryCoords;
+        normal = mat3(inst.model) * localNormal;
+        
+        
+        // dynamic     -- use prev model matrix and prev positions if exist
+        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
+
+        if (hasPrevInfo)
+        {
+            const uvec3 prevVertIndices = getPrevVertIndicesDynamic(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
+
+            position_Prev =
+                getPrevDynamicVerticesPositions(prevVertIndices[0]) * baryCoords[0] +
+                getPrevDynamicVerticesPositions(prevVertIndices[1]) * baryCoords[1] +
+                getPrevDynamicVerticesPositions(prevVertIndices[2]) * baryCoords[2];
+                
+            position_Prev = (inst.prevModel * vec4(position_Prev, 1.0)).xyz;
+
+            // TODO: prev normals array, like with prevDynamicPositions
+            normal_Prev = mat3(inst.prevModel) * localNormal;
+        }
+        else
+        {
+            position_Prev = position;
+            normal_Prev = normal;
+        }
+    }
+    else
+    {
+        const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+
+        tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+
+        // to local and then to world space
+        const vec3 localPosition = tr.positions * baryCoords;
+        const vec3 localNormal = tr.normals * baryCoords;
+        
+        position = (inst.model * vec4(localPosition, 1.0)).xyz;
+        normal = mat3(inst.model) * localNormal;
+
+        
+        const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
+        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
+
+        // movable     -- use prev model matrix if exist
+        // non-movable -- use current model matrix
+        if (isMovable && hasPrevInfo)
+        {
+            // static geoms' local positions are constant, 
+            // only model matrices are changing
+            position_Prev = (inst.prevModel * vec4(localPosition, 1.0)).xyz;
+            normal_Prev = mat3(inst.prevModel) * localNormal;
+        }
+        else
+        {
+            position_Prev = position;
+            normal_Prev = normal;
+        }
+    }
+}
+
 mat3 getOnlyCurPositions(int globalGeometryIndex, int instanceCustomIndex, int primitiveId)
 {
     mat3 positions;
@@ -645,6 +732,17 @@ int unpackInstCustomIndexFromVisibilityBuffer(const vec4 v)
     unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), instanceID, instCustomIndex);
 
     return instCustomIndex;
+}
+
+void unpackVisibilityBuffer(
+    const vec4 v,
+    out int instanceID, out int instCustomIndex,
+    out int localGeomIndex, out int primIndex,
+    out vec2 bary)
+{
+    unpackInstanceIdAndCustomIndex(floatBitsToUint(v[0]), instanceID, instCustomIndex);
+    unpackGeometryAndPrimitiveIndex(floatBitsToUint(v[1]), localGeomIndex, primIndex);
+    bary = vec2(v[2], v[3]);
 }
 
 // v must be fetched from framebufVisibilityBuffer_Prev_Sampler

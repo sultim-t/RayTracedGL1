@@ -33,13 +33,15 @@ namespace RTGL1
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
 #define BINDING_LIGHT_SOURCES_SPHERICAL (0)
-#define BINDING_LIGHT_SOURCES_POLYGONAL (1)
-#define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (2)
-#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (3)
-#define BINDING_PLAIN_LIGHT_LIST_POLY (4)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY (5)
-#define BINDING_PLAIN_LIGHT_LIST_SPH (6)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (7)
+#define BINDING_LIGHT_SOURCES_SPHERICAL_PREV (1)
+#define BINDING_LIGHT_SOURCES_POLYGONAL (2)
+#define BINDING_LIGHT_SOURCES_POLYGONAL_PREV (3)
+#define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (4)
+#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (5)
+#define BINDING_PLAIN_LIGHT_LIST_POLY (6)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY (7)
+#define BINDING_PLAIN_LIGHT_LIST_SPH (8)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (9)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -108,6 +110,7 @@ namespace RTGL1
 #define VERT_PREPROC_MODE_ONLY_DYNAMIC (0)
 #define VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE (1)
 #define VERT_PREPROC_MODE_ALL (2)
+#define GRADIENT_ESTIMATION_ENABLED (1)
 #define COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X (16)
 #define COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X (16)
 #define COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X (16)
@@ -117,6 +120,12 @@ namespace RTGL1
 #define COMPUTE_SVGF_ATROUS_ITERATION_COUNT (4)
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
+#define DEBUG_SHOW_FLAG_MOTION_VECTORS (1 << 0)
+#define DEBUG_SHOW_FLAG_GRADIENTS (1 << 1)
+#define DEBUG_SHOW_FLAG_SECTORS (1 << 2)
+#define DEBUG_SHOW_FLAG_UNFILTERED_DIFF (1 << 3)
+#define DEBUG_SHOW_FLAG_UNFILTERED_SPEC (1 << 4)
+#define DEBUG_SHOW_FLAG_UNFILTERED_INDIR (1 << 5)
 #define MAX_RAY_LENGTH (10000.0)
 #define MEDIA_TYPE_VACUUM (0)
 #define MEDIA_TYPE_WATER (1)
@@ -168,8 +177,8 @@ struct ShGlobalUniform
     float skyColorDefault[4];
     float skyViewerPosition[4];
     float cameraPosition[4];
-    uint32_t dbgShowMotionVectors;
-    uint32_t dbgShowGradients;
+    uint32_t debugShowFlags;
+    float firefliesClamp;
     uint32_t lightCountSphericalPrev;
     uint32_t lightCountDirectionalPrev;
     float emissionMapBoost;
@@ -177,8 +186,11 @@ struct ShGlobalUniform
     float normalMapStrength;
     float skyColorSaturation;
     float spotlightPosition[4];
+    float spotlightPositionPrev[4];
     float spotlightDirection[4];
+    float spotlightDirectionPrev[4];
     float spotlightUpVector[4];
+    float spotlightUpVectorPrev[4];
     float spotlightColor[4];
     float spotlightRadius;
     float spotlightCosAngleOuter;
@@ -224,9 +236,10 @@ struct ShGlobalUniform
     float primaryRayMinDist;
     uint32_t rayCullBackFaces;
     uint32_t maxBounceShadowsPolygonalLights;
-    uint32_t dbgShowSectors;
+    float polyLightSpotlightFactor;
     float directionalLightTanAngularRadius;
     float directionalLightDirection[4];
+    float directionalLightDirectionPrev[4];
     float directionalLightColor[4];
     uint32_t lightCountSpotlight;
     uint32_t lightCountSpotlightPrev;

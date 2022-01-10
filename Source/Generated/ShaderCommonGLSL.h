@@ -26,13 +26,15 @@
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
 #define BINDING_LIGHT_SOURCES_SPHERICAL (0)
-#define BINDING_LIGHT_SOURCES_POLYGONAL (1)
-#define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (2)
-#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (3)
-#define BINDING_PLAIN_LIGHT_LIST_POLY (4)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY (5)
-#define BINDING_PLAIN_LIGHT_LIST_SPH (6)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (7)
+#define BINDING_LIGHT_SOURCES_SPHERICAL_PREV (1)
+#define BINDING_LIGHT_SOURCES_POLYGONAL (2)
+#define BINDING_LIGHT_SOURCES_POLYGONAL_PREV (3)
+#define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (4)
+#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (5)
+#define BINDING_PLAIN_LIGHT_LIST_POLY (6)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY (7)
+#define BINDING_PLAIN_LIGHT_LIST_SPH (8)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (9)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -101,6 +103,7 @@
 #define VERT_PREPROC_MODE_ONLY_DYNAMIC (0)
 #define VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE (1)
 #define VERT_PREPROC_MODE_ALL (2)
+#define GRADIENT_ESTIMATION_ENABLED (1)
 #define COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X (16)
 #define COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X (16)
 #define COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X (16)
@@ -110,6 +113,12 @@
 #define COMPUTE_SVGF_ATROUS_ITERATION_COUNT (4)
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
+#define DEBUG_SHOW_FLAG_MOTION_VECTORS (1 << 0)
+#define DEBUG_SHOW_FLAG_GRADIENTS (1 << 1)
+#define DEBUG_SHOW_FLAG_SECTORS (1 << 2)
+#define DEBUG_SHOW_FLAG_UNFILTERED_DIFF (1 << 3)
+#define DEBUG_SHOW_FLAG_UNFILTERED_SPEC (1 << 4)
+#define DEBUG_SHOW_FLAG_UNFILTERED_INDIR (1 << 5)
 #define MAX_RAY_LENGTH (10000.0)
 #define MEDIA_TYPE_VACUUM (0)
 #define MEDIA_TYPE_WATER (1)
@@ -163,8 +172,8 @@ struct ShGlobalUniform
     vec4 skyColorDefault;
     vec4 skyViewerPosition;
     vec4 cameraPosition;
-    uint dbgShowMotionVectors;
-    uint dbgShowGradients;
+    uint debugShowFlags;
+    float firefliesClamp;
     uint lightCountSphericalPrev;
     uint lightCountDirectionalPrev;
     float emissionMapBoost;
@@ -172,8 +181,11 @@ struct ShGlobalUniform
     float normalMapStrength;
     float skyColorSaturation;
     vec4 spotlightPosition;
+    vec4 spotlightPositionPrev;
     vec4 spotlightDirection;
+    vec4 spotlightDirectionPrev;
     vec4 spotlightUpVector;
+    vec4 spotlightUpVectorPrev;
     vec4 spotlightColor;
     float spotlightRadius;
     float spotlightCosAngleOuter;
@@ -219,9 +231,10 @@ struct ShGlobalUniform
     float primaryRayMinDist;
     uint rayCullBackFaces;
     uint maxBounceShadowsPolygonalLights;
-    uint dbgShowSectors;
+    float polyLightSpotlightFactor;
     float directionalLightTanAngularRadius;
     vec4 directionalLightDirection;
+    vec4 directionalLightDirectionPrev;
     vec4 directionalLightColor;
     uint lightCountSpotlight;
     uint lightCountSpotlightPrev;
@@ -349,18 +362,18 @@ struct ShVertPreprocessing
 #define FB_IMAGE_INDEX_INDIR_PONG_S_H_G 53
 #define FB_IMAGE_INDEX_INDIR_PONG_S_H_B 54
 #define FB_IMAGE_INDEX_ATROUS_FILTERED_VARIANCE 55
-#define FB_IMAGE_INDEX_GRADIENT_SAMPLES 56
-#define FB_IMAGE_INDEX_GRADIENT_SAMPLES_PREV 57
-#define FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT 58
-#define FB_IMAGE_INDEX_DIFF_AND_SPEC_PONG_GRADIENT 59
-#define FB_IMAGE_INDEX_INDIR_PING_GRADIENT 60
-#define FB_IMAGE_INDEX_INDIR_PONG_GRADIENT 61
-#define FB_IMAGE_INDEX_BLOOM_MIP1 62
-#define FB_IMAGE_INDEX_BLOOM_MIP2 63
-#define FB_IMAGE_INDEX_BLOOM_MIP3 64
-#define FB_IMAGE_INDEX_BLOOM_MIP4 65
-#define FB_IMAGE_INDEX_BLOOM_MIP5 66
-#define FB_IMAGE_INDEX_BLOOM_RESULT 67
+#define FB_IMAGE_INDEX_BLOOM_MIP1 56
+#define FB_IMAGE_INDEX_BLOOM_MIP2 57
+#define FB_IMAGE_INDEX_BLOOM_MIP3 58
+#define FB_IMAGE_INDEX_BLOOM_MIP4 59
+#define FB_IMAGE_INDEX_BLOOM_MIP5 60
+#define FB_IMAGE_INDEX_BLOOM_RESULT 61
+#define FB_IMAGE_INDEX_GRADIENT_SAMPLES 62
+#define FB_IMAGE_INDEX_GRADIENT_SAMPLES_PREV 63
+#define FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT 64
+#define FB_IMAGE_INDEX_DIFF_AND_SPEC_PONG_GRADIENT 65
+#define FB_IMAGE_INDEX_INDIR_PING_GRADIENT 66
+#define FB_IMAGE_INDEX_INDIR_PONG_GRADIENT 67
 
 // framebuffers
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba16f) uniform image2D framebufAlbedo;
@@ -419,18 +432,18 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 52, rgba16f) uniform image2D frame
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 53, rgba16f) uniform image2D framebufIndirPongSH_G;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 54, rgba16f) uniform image2D framebufIndirPongSH_B;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 55, r16f) uniform image2D framebufAtrousFilteredVariance;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 56, rgba32ui) uniform uimage2D framebufGradientSamples;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 57, rgba32ui) uniform uimage2D framebufGradientSamples_Prev;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 58, rgba16f) uniform image2D framebufDiffAndSpecPingGradient;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 59, rgba16f) uniform image2D framebufDiffAndSpecPongGradient;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 60, r16f) uniform image2D framebufIndirPingGradient;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 61, r16f) uniform image2D framebufIndirPongGradient;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 62, r11f_g11f_b10f) uniform image2D framebufBloom_Mip1;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 63, r11f_g11f_b10f) uniform image2D framebufBloom_Mip2;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 64, r11f_g11f_b10f) uniform image2D framebufBloom_Mip3;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 65, r11f_g11f_b10f) uniform image2D framebufBloom_Mip4;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 66, r11f_g11f_b10f) uniform image2D framebufBloom_Mip5;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 67, r11f_g11f_b10f) uniform image2D framebufBloom_Result;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 56, r11f_g11f_b10f) uniform image2D framebufBloom_Mip1;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 57, r11f_g11f_b10f) uniform image2D framebufBloom_Mip2;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 58, r11f_g11f_b10f) uniform image2D framebufBloom_Mip3;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 59, r11f_g11f_b10f) uniform image2D framebufBloom_Mip4;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 60, r11f_g11f_b10f) uniform image2D framebufBloom_Mip5;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 61, r11f_g11f_b10f) uniform image2D framebufBloom_Result;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 62, rgba32ui) uniform uimage2D framebufGradientSamples;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 63, rgba32ui) uniform uimage2D framebufGradientSamples_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 64, rgba16f) uniform image2D framebufDiffAndSpecPingGradient;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 65, rgba16f) uniform image2D framebufDiffAndSpecPongGradient;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 66, r16f) uniform image2D framebufIndirPingGradient;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 67, r16f) uniform image2D framebufIndirPongGradient;
 
 // samplers
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 68) uniform sampler2D framebufAlbedo_Sampler;
@@ -489,18 +502,18 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 120) uniform sampler2D framebufInd
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 121) uniform sampler2D framebufIndirPongSH_G_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 122) uniform sampler2D framebufIndirPongSH_B_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 123) uniform sampler2D framebufAtrousFilteredVariance_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 124) uniform usampler2D framebufGradientSamples_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 125) uniform usampler2D framebufGradientSamples_Prev_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 126) uniform sampler2D framebufDiffAndSpecPingGradient_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 127) uniform sampler2D framebufDiffAndSpecPongGradient_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 128) uniform sampler2D framebufIndirPingGradient_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 129) uniform sampler2D framebufIndirPongGradient_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 130) uniform sampler2D framebufBloom_Mip1_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 131) uniform sampler2D framebufBloom_Mip2_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 132) uniform sampler2D framebufBloom_Mip3_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 133) uniform sampler2D framebufBloom_Mip4_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 134) uniform sampler2D framebufBloom_Mip5_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 135) uniform sampler2D framebufBloom_Result_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 124) uniform sampler2D framebufBloom_Mip1_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 125) uniform sampler2D framebufBloom_Mip2_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 126) uniform sampler2D framebufBloom_Mip3_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 127) uniform sampler2D framebufBloom_Mip4_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 128) uniform sampler2D framebufBloom_Mip5_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 129) uniform sampler2D framebufBloom_Result_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 130) uniform usampler2D framebufGradientSamples_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 131) uniform usampler2D framebufGradientSamples_Prev_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 132) uniform sampler2D framebufDiffAndSpecPingGradient_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 133) uniform sampler2D framebufDiffAndSpecPongGradient_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 134) uniform sampler2D framebufIndirPingGradient_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 135) uniform sampler2D framebufIndirPongGradient_Sampler;
 
 // pack/unpack formats
 void imageStoreUnfilteredDirect(const ivec2 pix, const vec3 unpacked) { imageStore(framebufUnfilteredDirect, pix, uvec4(encodeE5B9G9R9(unpacked))); }

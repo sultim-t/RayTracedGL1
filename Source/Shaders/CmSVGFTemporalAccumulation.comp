@@ -129,8 +129,22 @@ void main()
         }
     }
     
-    const vec4 gradDiffSpec = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
-    const float gradIndir = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).r;
+
+    float antilagAlpha_Diff, antilagAlpha_Spec, antilagAlpha_Indir;
+
+#if GRADIENT_ESTIMATION_ENABLED
+    {
+        const vec4 gradDiffSpec = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
+        antilagAlpha_Diff = getAntilagAlpha(gradDiffSpec[0], gradDiffSpec[1]);
+        antilagAlpha_Spec = getAntilagAlpha(gradDiffSpec[2], gradDiffSpec[3]);
+        antilagAlpha_Indir = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).r;
+    }
+#else
+    antilagAlpha_Diff  = 0.0;
+    antilagAlpha_Spec  = 0.0;
+    antilagAlpha_Indir = 0.0;
+#endif
+
 
     vec3 diffColorAccum;
     vec2 diffMomentsAccum;
@@ -159,17 +173,15 @@ void main()
         
         // direct diffuse
         {
-            const float antilagAlpha = getAntilagAlpha(gradDiffSpec.r, gradDiffSpec.g);
-
-            diffHistoryLength *= pow(1.0 - antilagAlpha, 10);
+            diffHistoryLength *= pow(1.0 - antilagAlpha_Diff, 10);
             diffHistoryLength = clamp(diffHistoryLength + 1.0, 1.0, 256.0);
 
             const float minAlpha = 0.01;
             float alphaColor   = max(minAlpha, 1.0 / diffHistoryLength);
             float alphaMoments = max(minAlpha, 1.0 / diffHistoryLength);
 
-            alphaColor   = mix(alphaColor,   1.0, antilagAlpha);
-            alphaMoments = mix(alphaMoments, 1.0, antilagAlpha);
+            alphaColor   = mix(alphaColor,   1.0, antilagAlpha_Diff);
+            alphaMoments = mix(alphaMoments, 1.0, antilagAlpha_Diff);
 
             diffColorAccum   = mix(diffPrev, unfilteredDiff, alphaColor);
             diffMomentsAccum = mix(momentsPrev, moments, alphaMoments);
@@ -180,16 +192,15 @@ void main()
         {
             const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
 
-            float antilagAlpha = getAntilagAlpha(gradDiffSpec.b, gradDiffSpec.a);
-            antilagAlpha *= (1 - roughness) * 0.9 + 0.1;
+            antilagAlpha_Spec *= (1 - roughness) * 0.9 + 0.1;
 
-            specHistoryLength *= pow(1.0 - antilagAlpha, 5);
+            specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
             specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, 256.0);
 
             const float minAlpha = 0.01;
             float alphaColor = max(minAlpha, 1.0 / specHistoryLength);
 
-            alphaColor = mix(alphaColor, 1.0, antilagAlpha);
+            alphaColor = mix(alphaColor, 1.0, antilagAlpha_Spec);
 
             specColorAccum = mix(specPrev, unfilteredSpec, alphaColor);
             specHistoryLengthAccum = specHistoryLength;
@@ -197,15 +208,13 @@ void main()
 
         // indirect diffuse
         {
-            float antilagAlpha = gradIndir.r;
-
-            indirHistoryLength *= pow(1.0 - antilagAlpha, 10);
+            indirHistoryLength *= pow(1.0 - antilagAlpha_Indir, 10);
             indirHistoryLength = clamp(indirHistoryLength + 1.0, 1.0, 256.0);
 
             const float minAlpha = 0.01;
             float alphaColor = max(minAlpha, 1.0 / indirHistoryLength);
 
-            alphaColor = mix(alphaColor, 1.0, antilagAlpha);
+            alphaColor = mix(alphaColor, 1.0, antilagAlpha_Indir);
 
             indirSHAccum = mixSH(indirPrev, unfilteredIndirSH, alphaColor);
             indirHistoryLengthAccum = indirHistoryLength;

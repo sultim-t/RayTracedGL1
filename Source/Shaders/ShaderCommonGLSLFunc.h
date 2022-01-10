@@ -168,9 +168,19 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPHERICAL) 
     ShLightSpherical lightSourcesSpherical[];
 };
 
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPHERICAL_PREV) readonly buffer LightSourcesSphericalPrev_BT
+{
+    ShLightSpherical lightSourcesSpherical_Prev[];
+};
+
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLYGONAL) readonly buffer LightSourcesPolygonal_BT
 {
     ShLightPolygonal lightSourcesPolygonal[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_POLYGONAL_PREV) readonly buffer LightSourcesPolygonalPrev_BT
+{
+    ShLightPolygonal lightSourcesPolygonal_Prev[];
 };
 
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_SPH_MATCH_PREV) readonly buffer LightSourcesSphMatchPrev_BT
@@ -213,14 +223,17 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGI
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_FRAMEBUFFERS
-vec2 getPrevScreenPos(sampler2D motionSampler, const ivec2 pix)
+vec2 getPrevScreenPos(const vec2 motionCurToPrev, const ivec2 pix)
 {
-    const vec2 motionCurToPrev = texelFetch(motionSampler, pix, 0).rg;
-
     const vec2 screenSize = vec2(globalUniform.renderWidth / float(CHECKERBOARD_SEPARATOR_DIVISOR), globalUniform.renderHeight);
     const vec2 invScreenSize = vec2(1.0 / screenSize.x, 1.0 / screenSize.y);
    
     return ((vec2(pix) + vec2(0.5)) * invScreenSize + motionCurToPrev) * screenSize;
+}
+
+vec2 getPrevScreenPos(sampler2D motionSampler, const ivec2 pix)
+{
+    return getPrevScreenPos(texelFetch(motionSampler, pix, 0).rg, pix);
 }
 
 /*

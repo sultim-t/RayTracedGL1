@@ -208,6 +208,8 @@ CONST_TO_EVALUATE = "CONST VALUE MUST BE EVALUATED"
 # User defined constants
 # --------------------------------------------------------------------------------------------- #
 
+GRADIENT_ESTIMATION_ENABLED = True
+
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 20,
     "MAX_DYNAMIC_VERTEX_COUNT"              : 1 << 21,
@@ -239,13 +241,15 @@ CONST = {
     "BINDING_BLUE_NOISE"                    : 0,
     "BINDING_LUM_HISTOGRAM"                 : 0,
     "BINDING_LIGHT_SOURCES_SPHERICAL"           : 0,
-    "BINDING_LIGHT_SOURCES_POLYGONAL"           : 1,
-    "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"      : 2,
-    "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV"     : 3,
-    "BINDING_PLAIN_LIGHT_LIST_POLY"             : 4,
-    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY"  : 5,
-    "BINDING_PLAIN_LIGHT_LIST_SPH"              : 6,
-    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH"   : 7,
+    "BINDING_LIGHT_SOURCES_SPHERICAL_PREV"      : 1,
+    "BINDING_LIGHT_SOURCES_POLYGONAL"           : 2,
+    "BINDING_LIGHT_SOURCES_POLYGONAL_PREV"      : 3,
+    "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"      : 4,
+    "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV"     : 5,
+    "BINDING_PLAIN_LIGHT_LIST_POLY"             : 6,
+    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY"  : 7,
+    "BINDING_PLAIN_LIGHT_LIST_SPH"              : 8,
+    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH"   : 9,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -329,6 +333,7 @@ CONST = {
     "VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE" : 1,
     "VERT_PREPROC_MODE_ALL"                 : 2,
 
+    "GRADIENT_ESTIMATION_ENABLED"           : int(GRADIENT_ESTIMATION_ENABLED),
     "COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X" : 16,
     "COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X" : 16,
     "COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X"  : 16,
@@ -339,6 +344,13 @@ CONST = {
 
     "COMPUTE_ASVGF_STRATA_SIZE"                         : 3,
     "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,  
+
+    "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : "1 << 0",
+    "DEBUG_SHOW_FLAG_GRADIENTS"             : "1 << 1",
+    "DEBUG_SHOW_FLAG_SECTORS"               : "1 << 2",
+    "DEBUG_SHOW_FLAG_UNFILTERED_DIFF"       : "1 << 3",
+    "DEBUG_SHOW_FLAG_UNFILTERED_SPEC"       : "1 << 4",
+    "DEBUG_SHOW_FLAG_UNFILTERED_INDIR"      : "1 << 5",
     
     "MAX_RAY_LENGTH"                        : "10000.0",
 
@@ -443,8 +455,8 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "cameraPosition",               1),
 
-    (TYPE_UINT32,       1,      "dbgShowMotionVectors",         1),
-    (TYPE_UINT32,       1,      "dbgShowGradients",             1),
+    (TYPE_UINT32,       1,      "debugShowFlags",               1),
+    (TYPE_FLOAT32,      1,      "firefliesClamp",               1),
     (TYPE_UINT32,       1,      "lightCountSphericalPrev",      1),
     (TYPE_UINT32,       1,      "lightCountDirectionalPrev",    1),
 
@@ -454,8 +466,11 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
     (TYPE_FLOAT32,      4,      "spotlightPosition",            1),
+    (TYPE_FLOAT32,      4,      "spotlightPositionPrev",        1),
     (TYPE_FLOAT32,      4,      "spotlightDirection",           1),
+    (TYPE_FLOAT32,      4,      "spotlightDirectionPrev",       1),
     (TYPE_FLOAT32,      4,      "spotlightUpVector",            1),
+    (TYPE_FLOAT32,      4,      "spotlightUpVectorPrev",        1),
     (TYPE_FLOAT32,      4,      "spotlightColor",               1),
 
     (TYPE_FLOAT32,      1,      "spotlightRadius",              1),
@@ -514,10 +529,11 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "maxBounceShadowsPolygonalLights",  1),
-    (TYPE_UINT32,       1,      "dbgShowSectors",                   1),
+    (TYPE_FLOAT32,      1,      "polyLightSpotlightFactor",         1),
     (TYPE_FLOAT32,      1,      "directionalLightTanAngularRadius", 1),
 
     (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
+    (TYPE_FLOAT32,      4,      "directionalLightDirectionPrev",    1),
     (TYPE_FLOAT32,      4,      "directionalLightColor",            1),
 
     (TYPE_UINT32,       1,      "lightCountSpotlight",              1),
@@ -725,12 +741,6 @@ FRAMEBUFFERS = {
     "IndirPongSH_B"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
 
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R, 0),
-    
-    "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3 | FRAMEBUF_FLAGS_STORE_PREV),
-    "DiffAndSpecPingGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
-    "DiffAndSpecPongGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
-    "IndirPingGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
-    "IndirPongGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
 
     "Bloom_Mip1"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_2  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Bloom_Mip2"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_4  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
@@ -740,6 +750,14 @@ FRAMEBUFFERS = {
     "Bloom_Result"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
 }
 
+if GRADIENT_ESTIMATION_ENABLED:
+    FRAMEBUFFERS.update({
+        "GradientSamples"                   : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3 | FRAMEBUF_FLAGS_STORE_PREV),
+        "DiffAndSpecPingGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "DiffAndSpecPongGradient"           : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "IndirPingGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "IndirPongGradient"                 : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+    })
 
 
 # ---

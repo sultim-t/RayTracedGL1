@@ -40,7 +40,7 @@ public:
     LightManager &operator=(const LightManager &other) = delete;
     LightManager &operator=(LightManager &&other) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex);
+    void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void Reset();
 
     uint32_t GetSpotlightCount() const;
@@ -79,6 +79,8 @@ private:
 
     std::shared_ptr<AutoBuffer> sphericalLights;
     std::shared_ptr<AutoBuffer> polygonalLights;
+    Buffer sphericalLightsPrev;
+    Buffer polygonalLightsPrev;
 
     // The light was uploaded in previous frame with LightArrayIndex==i.
     // We need to access the same light, but in current frame it has other LightArrayIndex==k.
@@ -94,9 +96,13 @@ private:
 
     uint32_t dirLightCount;
     uint32_t dirLightCountPrev;
+    RgFloat3D dirLightDirectionPrev;
 
     uint32_t spotLightCount;
     uint32_t spotLightCountPrev;
+    RgFloat3D spotLightPositionPrev;
+    RgFloat3D spotLightDirectionPrev;
+    RgFloat3D spotLightUpVectorPrev;
 
     uint32_t polyLightCount;
     uint32_t polyLightCountPrev;

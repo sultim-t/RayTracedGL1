@@ -26,6 +26,4 @@
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
 
 void main()
-{
-    //payload.color += vec4(0.85, 0.95, 1.0, 1.0);
-}
+{}
