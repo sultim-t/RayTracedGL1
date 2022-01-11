@@ -43,14 +43,6 @@ void main()
         return;
     }
 
-    // suppress gradient samples, if light count changed
-    // TODO: why changing light count fails gradients?
-    if (globalUniform.lightCountSphericalPrev != globalUniform.lightCountSpherical ||
-        globalUniform.lightCountPolygonalPrev != globalUniform.lightCountPolygonal)
-    {
-        imageStore(framebufGradientSamples, gradPix, uvec4(UINT32_MAX));
-        return;
-    }
 
     const uint grFB = texelFetch(framebufGradientSamples_Prev_Sampler, gradPix, 0).x;
     const uvec2 prevStrataPos = uvec2(grFB % COMPUTE_ASVGF_STRATA_SIZE, grFB / COMPUTE_ASVGF_STRATA_SIZE);
