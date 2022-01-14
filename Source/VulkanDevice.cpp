@@ -502,11 +502,11 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
     }
 
-    if (drawInfo.pOverridenTexturesParams != nullptr)
+    if (drawInfo.pTexturesParams != nullptr)
     {
-        gu->normalMapStrength = drawInfo.pOverridenTexturesParams->normalMapStrength;
-        gu->emissionMapBoost = std::max(drawInfo.pOverridenTexturesParams->emissionMapBoost, 0.0f);
-        gu->emissionMaxScreenColor = std::max(drawInfo.pOverridenTexturesParams->emissionMaxScreenColor, 0.0f);
+        gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
+        gu->emissionMapBoost = std::max(drawInfo.pTexturesParams->emissionMapBoost, 0.0f);
+        gu->emissionMaxScreenColor = std::max(drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f);
     }
     else
     {
@@ -1097,7 +1097,7 @@ void VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *crea
         throw RgException(RG_WRONG_MATERIAL_PARAMETER, "Dynamic materials must have non-zero width and height, but given size is (" +
                           std::to_string(createInfo->size.width) + ", " + std::to_string(createInfo->size.height) + ")");
     }
-    
+
     *result = textureManager->CreateDynamicMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager),
                                                     currentFrameState.GetFrameIndex(), 
                                                     *createInfo);

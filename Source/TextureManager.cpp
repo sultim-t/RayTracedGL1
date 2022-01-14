@@ -211,10 +211,10 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
     }
 
-    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.forceLowestMip);
+    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags & RG_MATERIAL_CREATE_FORCE_LOWEST_MIP_BIT);
 
     TextureOverrides::OverrideInfo parseInfo = {};
-    parseInfo.disableOverride = createInfo.disableOverride;
+    parseInfo.disableOverride = createInfo.flags & RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT;
     parseInfo.texturesPath = defaultTexturesPath.c_str();
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
@@ -226,20 +226,21 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     TextureOverrides ovrd(createInfo.pRelativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
 
 
-    MaterialTextures textures = {};
+    MaterialTextures mtextures = {};
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        textures.indices[i] = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(i), samplerHandle, createInfo.useMipmaps, ovrd.GetDebugName());
+        mtextures.indices[i] = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(i), samplerHandle,
+                                                   !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), ovrd.GetDebugName());
     }
 
 
-    return InsertMaterial(textures, false);
+    return InsertMaterial(mtextures, false);
 }
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
-    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV);
+    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags & RG_MATERIAL_CREATE_FORCE_LOWEST_MIP_BIT);
 
     const RgTextureData *tds[TEXTURES_PER_MATERIAL_COUNT] =
     { 
@@ -253,16 +254,17 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
     assert(dataSize > 0);
 
 
-    MaterialTextures textures = {};
+    MaterialTextures mtextures = {};
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         VkFormat format = tds[i]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
-        textures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, tds[i]->pData, dataSize, createInfo.size, samplerHandle, format, createInfo.useMipmaps, nullptr);
+        mtextures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, tds[i]->pData, dataSize, createInfo.size, samplerHandle, format,
+                                                    !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), nullptr);
     }
 
 
-    return InsertMaterial(textures, true);
+    return InsertMaterial(mtextures, true);
 }
 
 bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo)
