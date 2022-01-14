@@ -232,7 +232,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
     f->image = i.image;
     f->view = i.view;
-    f->samplerHandle = SamplerManager::Handle(info.filter, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
+    f->samplerHandle = SamplerManager::Handle(info.filter, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, 0);
 
     return std::distance(cubemaps.begin(), f);
 }

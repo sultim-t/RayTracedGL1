@@ -678,11 +678,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
-
+    
     bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(frameIndex, renderResolution.GetMipLodBias());
     const RgFloat2D jitter = renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) : RgFloat2D{ 0, 0 };
 
-    textureManager->SubmitDescriptors(frameIndex, mipLodBiasUpdated);
+    textureManager->SubmitDescriptors(frameIndex, drawInfo.pTexturesParams, mipLodBiasUpdated);
     cubemapManager->SubmitDescriptors(frameIndex);
 
 

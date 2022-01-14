@@ -39,15 +39,18 @@ public:
 
     public:
         explicit Handle();
-        explicit Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip = false);
+        explicit Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, RgMaterialCreateFlags flags);
 
         bool operator==(const Handle &other) const
         {
             return other.internalIndex == internalIndex;
         }
 
+        bool SetIfHasDynamicSamplerFilter(RgSamplerFilter newDynamicSamplerFilter);
+
     private:
         uint32_t internalIndex;
+        bool hasDynamicSamplerFilter;
     };
 
 public:

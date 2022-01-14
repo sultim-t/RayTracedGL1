@@ -54,7 +54,9 @@ public:
     TextureManager &operator=(TextureManager &&other) noexcept = delete;
 
     void PrepareForFrame(uint32_t frameIndex);
-    void SubmitDescriptors(uint32_t frameIndex, bool forceUpdateAllDescriptors = false); // forceUpdateAllDescriptors=true, if mip lod bias was changed, for example
+    void SubmitDescriptors(uint32_t frameIndex,
+                           const RgDrawFrameTexturesParams *pTexturesParams,
+                           bool forceUpdateAllDescriptors = false); // true, if mip lod bias was changed, for example
 
     uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
 
@@ -122,6 +124,8 @@ private:
     std::unordered_map<uint32_t, Material> materials;
 
     uint32_t waterNormalTextureIndex;
+
+    RgSamplerFilter currentDynamicSamplerFilter;
 
     std::string defaultTexturesPath;
     std::string postfixes[TEXTURES_PER_MATERIAL_COUNT];

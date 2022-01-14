@@ -226,25 +226,25 @@ bool RTGL1::SamplerManager::TryChangeMipLodBias(uint32_t frameIndex, float newMi
 
 // sampler flags
 
-#define FILTER_LINEAR                           (1 << 0)
-#define FILTER_NEAREST                          (2 << 0)
-#define FILTER_MASK                             (3 << 0)
+#define FILTER_LINEAR                           (1u << 0)
+#define FILTER_NEAREST                          (2u << 0)
+#define FILTER_MASK                             (3u << 0)
 
-#define ADDRESS_MODE_U_REPEAT                   (1 << 2)
-#define ADDRESS_MODE_U_MIRRORED_REPEAT          (2 << 2)
-#define ADDRESS_MODE_U_CLAMP_TO_EDGE            (3 << 2)
-#define ADDRESS_MODE_U_CLAMP_TO_BORDER          (4 << 2)
-#define ADDRESS_MODE_U_MIRROR_CLAMP_TO_EDGE     (5 << 2)
-#define ADDRESS_MODE_U_MASK                     (7 << 2)
+#define ADDRESS_MODE_U_REPEAT                   (1u << 2)
+#define ADDRESS_MODE_U_MIRRORED_REPEAT          (2u << 2)
+#define ADDRESS_MODE_U_CLAMP_TO_EDGE            (3u << 2)
+#define ADDRESS_MODE_U_CLAMP_TO_BORDER          (4u << 2)
+#define ADDRESS_MODE_U_MIRROR_CLAMP_TO_EDGE     (5u << 2)
+#define ADDRESS_MODE_U_MASK                     (7u << 2)
 
-#define ADDRESS_MODE_V_REPEAT                   (1 << 5)
-#define ADDRESS_MODE_V_MIRRORED_REPEAT          (2 << 5)
-#define ADDRESS_MODE_V_CLAMP_TO_EDGE            (3 << 5)
-#define ADDRESS_MODE_V_CLAMP_TO_BORDER          (4 << 5)
-#define ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE     (5 << 5)
-#define ADDRESS_MODE_V_MASK                     (7 << 5)
+#define ADDRESS_MODE_V_REPEAT                   (1u << 5)
+#define ADDRESS_MODE_V_MIRRORED_REPEAT          (2u << 5)
+#define ADDRESS_MODE_V_CLAMP_TO_EDGE            (3u << 5)
+#define ADDRESS_MODE_V_CLAMP_TO_BORDER          (4u << 5)
+#define ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE     (5u << 5)
+#define ADDRESS_MODE_V_MASK                     (7u << 5)
 
-#define FORCE_LOWEST_MIP_BOOL                   (1 << 8)
+#define FORCE_LOWEST_MIP_BOOL                   (1u << 8)
 
 uint32_t SamplerManager::ToIndex(
     RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip)
@@ -293,10 +293,42 @@ uint32_t SamplerManager::ToIndex(
     return index;
 }
 
+static uint32_t SwapFilterInIndex(uint32_t srcIndex, RgSamplerFilter newFilter)
+{
+    if (srcIndex & FORCE_LOWEST_MIP_BOOL)
+    {
+        return FORCE_LOWEST_MIP_BOOL;
+    }
+
+    // clear previous filter type
+    uint32_t i = srcIndex & (~FILTER_MASK);
+
+    switch (newFilter)
+    {
+        case RG_SAMPLER_FILTER_NEAREST: i |= FILTER_NEAREST;    break;
+        case RG_SAMPLER_FILTER_LINEAR:  i |= FILTER_LINEAR;     break;
+        default: assert(0); break;
+    }
+
+    assert(i != 0);
+    return i;
+}
+
 RTGL1::SamplerManager::Handle::Handle() :
-    internalIndex(0)
+    internalIndex(0), hasDynamicSamplerFilter(false)
 {}
 
-RTGL1::SamplerManager::Handle::Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, bool forceLowestMip) :
-    internalIndex(ToIndex(filter, addressModeU, addressModeV, forceLowestMip))
+RTGL1::SamplerManager::Handle::Handle(RgSamplerFilter filter, RgSamplerAddressMode addressModeU, RgSamplerAddressMode addressModeV, RgMaterialCreateFlags flags) :
+    internalIndex(ToIndex(filter, addressModeU, addressModeV, flags & RG_MATERIAL_CREATE_FORCE_LOWEST_MIP_BIT)), hasDynamicSamplerFilter(flags &RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT)
 {}
+
+bool RTGL1::SamplerManager::Handle::SetIfHasDynamicSamplerFilter(RgSamplerFilter newDynamicSamplerFilter)
+{
+    if (hasDynamicSamplerFilter)
+    {
+        internalIndex = SwapFilterInIndex(internalIndex, newDynamicSamplerFilter);
+        return true;
+    }
+
+    return false;
+}

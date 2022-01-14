@@ -187,7 +187,7 @@ void TextureDescriptors::ResetTextureDesc(uint32_t frameIndex, uint32_t textureI
 
     // try to update with empty data
     UpdateTextureDesc(frameIndex, textureIndex, 
-                      emptyTextureImageView, SamplerManager::Handle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT));
+                      emptyTextureImageView, SamplerManager::Handle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0));
 }
 
 void TextureDescriptors::FlushDescWrites()

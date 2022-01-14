@@ -674,7 +674,7 @@ typedef enum RgMaterialCreateFlagBits
     // Always set for dynamic materials.
     RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT = 0x00000004,
     // If set, sampler will be controlled with RgDrawFrameTexturesParams::dynamicSamplerFilter.
-    RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_BIT = 0x00000008,
+    RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT = 0x00000008,
 } RgMaterialCreateFlagBits;
 typedef RgFlags RgMaterialCreateFlags;
 
@@ -862,7 +862,7 @@ typedef struct RgDrawFrameSkyParams
 
 typedef struct RgDrawFrameTexturesParams
 {
-    // What sampler filter to use for materials with RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_BIT.
+    // What sampler filter to use for materials with RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT.
     // Should be changed infrequently, as it reloads all texture descriptors.
     RgSamplerFilter dynamicSamplerFilter;
     float           normalMapStrength;

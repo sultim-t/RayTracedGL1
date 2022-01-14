@@ -28,10 +28,14 @@
 #include "Generated/ShaderCommonC.h"
 #include "RgException.h"
 
+
 using namespace RTGL1;
 static_assert(TEXTURES_PER_MATERIAL_COUNT == sizeof(RgTextureSet) / sizeof(RgTextureData), "TEXTURES_PER_MATERIAL_COUNT must be same as in RgTextureSet");
 
 constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
+
+constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
+
 
 TextureManager::TextureManager(
     VkDevice _device,
@@ -42,7 +46,8 @@ TextureManager::TextureManager(
     const RgInstanceCreateInfo &_info)
 :
     device(_device),
-    samplerMgr(std::move(_samplerMgr))
+    samplerMgr(std::move(_samplerMgr)),
+    currentDynamicSamplerFilter(DefaultDynamicSamplerFilter)
 {
     this->defaultTexturesPath = _info.pOverridenTexturesFolderPath != nullptr ? _info.pOverridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
 
@@ -103,7 +108,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
     info.isPregenerated = false;
     info.levelSizes[0] = sizeof(data);
 
-    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0);
 
     uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, info, samplerHandle, false, "Empty texture");
 
@@ -122,7 +127,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
 // Check CreateStaticMaterial for notes
 void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath)
 {
-    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT);
+    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0);
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.disableOverride = false;
@@ -177,8 +182,21 @@ void TextureManager::PrepareForFrame(uint32_t frameIndex)
     textureUploader->ClearStaging(frameIndex);
 }
 
-void TextureManager::SubmitDescriptors(uint32_t frameIndex, bool forceUpdateAllDescriptors)
+void TextureManager::SubmitDescriptors(uint32_t frameIndex, 
+                                       const RgDrawFrameTexturesParams *pTexturesParams,
+                                       bool forceUpdateAllDescriptors)
 {
+    // check if dynamic sampler filter was changed
+    RgSamplerFilter newDynamicSamplerFilter = pTexturesParams != nullptr ?
+        pTexturesParams->dynamicSamplerFilter : DefaultDynamicSamplerFilter;
+
+    if (currentDynamicSamplerFilter != newDynamicSamplerFilter)
+    {
+        currentDynamicSamplerFilter = newDynamicSamplerFilter;
+        forceUpdateAllDescriptors = true;
+    }
+
+
     if (forceUpdateAllDescriptors)
     {
         textureDesc->ResetAllCache(frameIndex);
@@ -187,6 +205,9 @@ void TextureManager::SubmitDescriptors(uint32_t frameIndex, bool forceUpdateAllD
     // update desc set with current values
     for (uint32_t i = 0; i < textures.size(); i++)
     {
+        textures[i].samplerHandle.SetIfHasDynamicSamplerFilter(newDynamicSamplerFilter);
+
+
         if (textures[i].image != VK_NULL_HANDLE)
         {
             textureDesc->UpdateTextureDesc(frameIndex, i, textures[i].view, textures[i].samplerHandle);
@@ -211,7 +232,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
         throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
     }
 
-    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags & RG_MATERIAL_CREATE_FORCE_LOWEST_MIP_BIT);
+    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags);
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.disableOverride = createInfo.flags & RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT;
@@ -240,7 +261,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 
 uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
 {
-    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags & RG_MATERIAL_CREATE_FORCE_LOWEST_MIP_BIT);
+    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags);
 
     const RgTextureData *tds[TEXTURES_PER_MATERIAL_COUNT] =
     { 
