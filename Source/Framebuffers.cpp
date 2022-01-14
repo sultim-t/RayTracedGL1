@@ -48,13 +48,11 @@ FramebufferImageIndex Framebuffers::FrameIndexToFBIndex(FramebufferImageIndex fr
 Framebuffers::Framebuffers(
     VkDevice _device, 
     std::shared_ptr<MemoryAllocator> _allocator, 
-    std::shared_ptr<CommandBufferManager> _cmdManager,
-    std::shared_ptr<SamplerManager> _samplerManager)
+    std::shared_ptr<CommandBufferManager> _cmdManager)
 : 
     device(_device),
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
-    samplerManager(std::move(_samplerManager)),
     currentSize{},
     currentUpscaledSize{},
     descSetLayout(VK_NULL_HANDLE),
@@ -66,11 +64,15 @@ Framebuffers::Framebuffers(
     imageViews.resize(ShFramebuffers_Count);
 
     CreateDescriptors();
+    CreateSamplers();
 }
 
 Framebuffers::~Framebuffers()
 {
     DestroyImages();
+
+    vkDestroySampler(device, nearestSampler, nullptr);
+    vkDestroySampler(device, bilinearSampler, nullptr);
     
     vkDestroyDescriptorPool(device, descPool, nullptr);
     vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
@@ -159,6 +161,37 @@ void Framebuffers::CreateDescriptors()
         VK_CHECKERROR(r);
 
         SET_DEBUG_NAME(device, descSets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET, "Framebuffers Desc set");
+    }
+}
+
+void RTGL1::Framebuffers::CreateSamplers()
+{
+    VkSamplerCreateInfo info = {};
+    info.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
+    info.addressModeU = info.addressModeV = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    info.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
+    info.mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR;
+    info.mipLodBias = 0.0f;
+    info.anisotropyEnable = VK_FALSE;
+    info.maxAnisotropy = 0;
+    info.compareEnable = VK_FALSE;
+    info.minLod = 0.0f;
+    info.maxLod = VK_LOD_CLAMP_NONE;
+    info.borderColor = VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK;
+    info.unnormalizedCoordinates = VK_FALSE;
+
+    {
+        info.minFilter = info.magFilter = VK_FILTER_NEAREST;
+
+        VkResult r = vkCreateSampler(device, &info, nullptr, &nearestSampler);
+        VK_CHECKERROR(r);
+    }
+
+    {
+        info.minFilter = info.magFilter = VK_FILTER_LINEAR;
+
+        VkResult r = vkCreateSampler(device, &info, nullptr, &bilinearSampler);
+        VK_CHECKERROR(r);
     }
 }
 
@@ -380,11 +413,6 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
 
 void Framebuffers::UpdateDescriptors()
 {
-    // texelFetch should be used to get a specific texel,
-    // and texture/textureLod for sampling with bilinear interpolation
-    VkSampler bilinearSampler = samplerManager->GetSampler(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-    VkSampler nearestSampler  = samplerManager->GetSampler(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE, RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE);
-
     const uint32_t allBindingsCount = ShFramebuffers_Count * 2;
     const uint32_t samplerBindingOffset = ShFramebuffers_Count;
 
@@ -400,7 +428,10 @@ void Framebuffers::UpdateDescriptors()
 
     // gsampler2D
     for (uint32_t i = 0; i < ShFramebuffers_Count; i++)
-    {
+    {    
+        // texelFetch should be used to get a specific texel,
+        // and texture/textureLod for sampling with bilinear interpolation
+
         bool useBilinear = ShFramebuffers_Flags[i] & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_BILINEAR_SAMPLER;
 
         imageInfos[samplerBindingOffset + i].sampler = useBilinear ? bilinearSampler : nearestSampler;

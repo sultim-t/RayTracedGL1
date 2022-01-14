@@ -195,6 +195,9 @@ typedef struct RgInstanceCreateInfo
     // Max amount of textures to be used during the execution.
     // The value is clamped to [1024..4096]
     uint32_t                    maxTextureCount;
+    // If true, 'filter' in RgStaticMaterialCreateInfo, RgDynamicMaterialCreateInfo, RgCubemapCreateInfo
+    // will set only magnification filter.
+    RgBool32                    textureSamplerForceMinificationFilterLinear;
 
     // The folder to find overriding textures in. Must contain '/' at the end.
     const char                  *pOverridenTexturesFolderPath;

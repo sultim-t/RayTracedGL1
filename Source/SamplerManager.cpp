@@ -51,7 +51,9 @@ static VkSamplerAddressMode RgAddressModeToVk(RgSamplerAddressMode r)
 }
 
 
-SamplerManager::SamplerManager(VkDevice _device, uint32_t _anisotropy) : device(_device), mipLodBias(0.0f), anisotropy(_anisotropy)
+SamplerManager::SamplerManager(VkDevice _device, uint32_t _anisotropy, bool _forceMinificationFilterLinear)
+:
+    device(_device), mipLodBias(0.0f), anisotropy(_anisotropy), forceMinificationFilterLinear(_forceMinificationFilterLinear)
 {
     CreateAllSamplers(anisotropy, mipLodBias);
 }
@@ -115,7 +117,8 @@ void RTGL1::SamplerManager::CreateAllSamplers(uint32_t _anisotropy, float _mipLo
         {
             for (auto modeV : modes)
             {
-                info.minFilter = info.magFilter = filter;
+                info.minFilter = forceMinificationFilterLinear ? VK_FILTER_LINEAR : filter;
+                info.magFilter = filter;
                 info.addressModeU = modeU;
                 info.addressModeV = modeV;
 

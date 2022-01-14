@@ -43,8 +43,7 @@ class Framebuffers
 public:
     explicit Framebuffers(VkDevice device,
                           std::shared_ptr<MemoryAllocator> allocator,
-                          std::shared_ptr<CommandBufferManager> cmdManager,
-                          std::shared_ptr<SamplerManager> samplerManager);
+                          std::shared_ptr<CommandBufferManager> cmdManager);
     ~Framebuffers();
 
     Framebuffers(const Framebuffers &other) = delete;
@@ -88,6 +87,7 @@ private:
     static FramebufferImageIndex FrameIndexToFBIndex(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex);
 
     void CreateDescriptors();
+    void CreateSamplers();
 
     void CreateImages(uint32_t renderWidth, uint32_t renderHeight,
                       uint32_t upscaledWidth, uint32_t upscaledHeight);
@@ -99,10 +99,11 @@ private:
 
 private:
     VkDevice device;
+    VkSampler bilinearSampler;
+    VkSampler nearestSampler;
 
     std::shared_ptr<MemoryAllocator> allocator;
     std::shared_ptr<CommandBufferManager> cmdManager;
-    std::shared_ptr<SamplerManager> samplerManager;
 
     VkExtent2D currentSize;
     VkExtent2D currentUpscaledSize;

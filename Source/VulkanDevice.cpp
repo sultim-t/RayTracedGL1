@@ -92,14 +92,13 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     swapchain           = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
 
     // for world samplers with modifyable lod biad
-    worldSamplerManager     = std::make_shared<SamplerManager>(device, 8);
-    genericSamplerManager   = std::make_shared<SamplerManager>(device, 0);
+    worldSamplerManager     = std::make_shared<SamplerManager>(device, 8, info->textureSamplerForceMinificationFilterLinear);
+    genericSamplerManager   = std::make_shared<SamplerManager>(device, 0, info->textureSamplerForceMinificationFilterLinear);
 
     framebuffers        = std::make_shared<Framebuffers>(
         device,
         memAllocator, 
-        cmdManager, 
-        genericSamplerManager);
+        cmdManager);
 
     blueNoise           = std::make_shared<BlueNoise>(
         device,

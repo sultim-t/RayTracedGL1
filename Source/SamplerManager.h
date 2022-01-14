@@ -54,7 +54,7 @@ public:
     };
 
 public:
-    SamplerManager(VkDevice device, uint32_t anisotropy);
+    SamplerManager(VkDevice device, uint32_t anisotropy, bool forceMinificationFilterLinear);
     ~SamplerManager();
 
     SamplerManager(const SamplerManager &other) = delete;
@@ -99,6 +99,7 @@ private:
     std::vector<VkSampler> samplersToDelete[MAX_FRAMES_IN_FLIGHT];
     float mipLodBias;
     uint32_t anisotropy;
+    bool forceMinificationFilterLinear;
 };
 
 }
