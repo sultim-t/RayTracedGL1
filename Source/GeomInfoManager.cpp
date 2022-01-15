@@ -35,13 +35,13 @@ RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<Memory
     staticGeomCount(0),
     dynamicGeomCount(0)
 {
-    buffer = std::make_shared<AutoBuffer>(device, _allocator, "Geometry info staging buffer", "Geometry info buffer");
-    matchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Geometry infos staging buffer", "Match previous Geometry infos buffer");
+    buffer = std::make_shared<AutoBuffer>(device, _allocator);
+    matchPrev = std::make_shared<AutoBuffer>(device, _allocator);
 
     const uint32_t allBottomLevelGeomsCount = VertexCollectorFilterTypeFlags_GetAllBottomLevelGeomsCount();
 
-    buffer->Create(allBottomLevelGeomsCount * sizeof(RTGL1::ShGeometryInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    matchPrev->Create(allBottomLevelGeomsCount * sizeof(int32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    buffer->Create(allBottomLevelGeomsCount * sizeof(RTGL1::ShGeometryInstance), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Geometry info buffer");
+    matchPrev->Create(allBottomLevelGeomsCount * sizeof(int32_t), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Match previous Geometry infos buffer");
     matchPrevShadow = std::make_unique<int32_t[]>(allBottomLevelGeomsCount);
 
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)

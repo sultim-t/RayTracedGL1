@@ -22,18 +22,10 @@
 
 RTGL1::AutoBuffer::AutoBuffer(
     VkDevice _device, 
-    std::shared_ptr<MemoryAllocator> _allocator,
-    const char *_debugNameStaging, 
-    const char *_debugName)
+    std::shared_ptr<MemoryAllocator> _allocator)
 :
     allocator(std::move(_allocator)),
-    mapped{},
-    debugNameStaging(_debugNameStaging),
-    debugName(_debugName)
-{}
-
-RTGL1::AutoBuffer::AutoBuffer(VkDevice device, std::shared_ptr<MemoryAllocator> allocator, const std::string &debugNameStaging, const std::string &debugName)
-    : AutoBuffer(device, std::move(allocator), debugNameStaging.c_str(), debugName.c_str())
+    mapped{}
 {}
 
 RTGL1::AutoBuffer::~AutoBuffer()
@@ -41,9 +33,11 @@ RTGL1::AutoBuffer::~AutoBuffer()
     Destroy();
 }
 
-void RTGL1::AutoBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, uint32_t frameCount)
+void RTGL1::AutoBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, const std::string &debugName, uint32_t frameCount)
 {
-    assert(frameCount <= MAX_FRAMES_IN_FLIGHT);
+    assert(frameCount > 0 && frameCount <= MAX_FRAMES_IN_FLIGHT);
+
+    const std::string debugNameStaging = debugName + " - staging";
 
     for (uint32_t i = 0; i < frameCount; i++)
     {
@@ -53,7 +47,7 @@ void RTGL1::AutoBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, uint
             allocator, size,
             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            debugNameStaging);
+            debugNameStaging.c_str());
 
         mapped[i] = staging[i].Map();
     }
@@ -64,7 +58,7 @@ void RTGL1::AutoBuffer::Create(VkDeviceSize size, VkBufferUsageFlags usage, uint
         allocator, size,
         usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        debugName);
+        debugName.c_str());
 }
 
 void RTGL1::AutoBuffer::Destroy()

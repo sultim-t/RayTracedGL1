@@ -34,8 +34,8 @@ RTGL1::TriangleInfoManager::TriangleInfoManager(
     dynamicGeometryRange(0),
     copyStaticRange(false)
 {
-    triangleSectorIndicesBuffer = std::make_unique<AutoBuffer>(device, _allocator, "Triangle info staging buffer", "Triangle info buffer");
-    triangleSectorIndicesBuffer->Create(MAX_INDEXED_PRIMITIVE_COUNT * TRIANGLE_INFO_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    triangleSectorIndicesBuffer = std::make_unique<AutoBuffer>(device, _allocator);
+    triangleSectorIndicesBuffer->Create(MAX_INDEXED_PRIMITIVE_COUNT * TRIANGLE_INFO_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Triangle info");
 
     static_assert(sizeof(decltype(tempValues)::value_type) == TRIANGLE_INFO_SIZE, "");
 }

@@ -55,7 +55,7 @@ RayTracingPipeline::RayTracingPipeline(
     primaryRaysMaxAlbedoLayers(_rgInfo.primaryRaysMaxAlbedoLayers),
     indirectIlluminationMaxAlbedoLayers(_rgInfo.indirectIlluminationMaxAlbedoLayers)
 {
-    shaderBindingTable = std::make_shared<AutoBuffer>(device, std::move(_allocator), "SBT staging", "SBT");
+    shaderBindingTable = std::make_shared<AutoBuffer>(device, std::move(_allocator));
 
     // all set layouts to be used
     std::vector<VkDescriptorSetLayout> setLayouts =
@@ -222,6 +222,7 @@ void RayTracingPipeline::CreateSBT()
     shaderBindingTable->Create(
         sbtSize,
         VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT, 
+        "SBT",
         1);
 
     std::vector<uint8_t> shaderHandles(handleSize * groupCount);

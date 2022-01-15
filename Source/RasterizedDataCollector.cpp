@@ -70,14 +70,14 @@ RasterizedDataCollector::RasterizedDataCollector(
     curVertexCount(0),
     curIndexCount(0)
 {
-    vertexBuffer = std::make_shared<AutoBuffer>(_device, _allocator, "Rasterizer vertex buffer staging", "Rasterizer vertex buffer");
-    indexBuffer = std::make_shared<AutoBuffer>(_device, _allocator, "Rasterizer index buffer staging", "Rasterizer index buffer");
+    vertexBuffer = std::make_shared<AutoBuffer>(_device, _allocator);
+    indexBuffer = std::make_shared<AutoBuffer>(_device, _allocator);
 
     _maxVertexCount = std::max(_maxVertexCount, 64u);
     _maxIndexCount = std::max(_maxIndexCount, 64u);
 
-    vertexBuffer->Create(_maxVertexCount * sizeof(RasterizerVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
-    indexBuffer->Create(_maxIndexCount * sizeof(RasterizerVertex), VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
+    vertexBuffer->Create(_maxVertexCount * sizeof(RasterizerVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "Rasterizer vertex buffer");
+    indexBuffer->Create(_maxIndexCount * sizeof(RasterizerVertex), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "Rasterizer index buffer");
 }
 
 RasterizedDataCollector::~RasterizedDataCollector()

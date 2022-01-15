@@ -61,20 +61,20 @@ RTGL1::LightManager::LightManager(
     lightListsForPolygonal  = std::make_shared<LightLists>(device, _allocator, _sectorVisibility, "polygonal");
     lightListsForSpherical  = std::make_shared<LightLists>(device, _allocator, _sectorVisibility, "spherical");
 
-    sphericalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights spherical staging", "Lights spherical");
-    polygonalLights         = std::make_shared<AutoBuffer>(device, _allocator, "Lights polugonal staging", "Lights polygonal");
-    sphericalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights spherical staging", "Match previous Lights spherical");
-    polygonalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator, "Match previous Lights polygonal staging", "Match previous Lights polygonal");
+    sphericalLights         = std::make_shared<AutoBuffer>(device, _allocator);
+    polygonalLights         = std::make_shared<AutoBuffer>(device, _allocator);
+    sphericalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator);
+    polygonalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator);
 
 
-    sphericalLights->Create(sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
-    polygonalLights->Create(sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
+    sphericalLights->Create(sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights spherical");
+    polygonalLights->Create(sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights polygonal");
 
     sphericalLightsPrev.Init(_allocator, sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
     polygonalLightsPrev.Init(_allocator, sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
-    sphericalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
-    polygonalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT);
+    sphericalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Match previous Lights spherical");
+    polygonalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Match previous Lights polygonal");
 
 
     CreateDescriptors();

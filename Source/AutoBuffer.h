@@ -33,14 +33,7 @@ class AutoBuffer
 public:
     AutoBuffer(
         VkDevice device,
-        std::shared_ptr<MemoryAllocator> allocator, 
-        const char *debugNameStaging = nullptr,
-        const char *debugName = nullptr);
-    AutoBuffer(
-        VkDevice device,
-        std::shared_ptr<MemoryAllocator> allocator,
-        const std::string &debugNameStaging,
-        const std::string &debugName);
+        std::shared_ptr<MemoryAllocator> allocator);
     ~AutoBuffer();
 
     AutoBuffer(const AutoBuffer &other) = delete;
@@ -48,7 +41,9 @@ public:
     AutoBuffer &operator=(const AutoBuffer &other) = delete;
     AutoBuffer &operator=(AutoBuffer &&other) noexcept = delete;
 
-    void Create(VkDeviceSize size, VkBufferUsageFlags usage, uint32_t frameCount = MAX_FRAMES_IN_FLIGHT);
+    void Create(VkDeviceSize size, VkBufferUsageFlags usage,
+                const std::string &debugName,
+                uint32_t frameCount = MAX_FRAMES_IN_FLIGHT);
     void Destroy();
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex, VkDeviceSize size = VK_WHOLE_SIZE, VkDeviceSize offset = 0);
@@ -69,9 +64,6 @@ private:
     Buffer deviceLocal;
 
     void *mapped[MAX_FRAMES_IN_FLIGHT];
-
-    const char *debugNameStaging;
-    const char *debugName;
 };
 
 }
