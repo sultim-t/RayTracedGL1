@@ -319,7 +319,8 @@ typedef enum RgGeometryUploadFlagBits
     RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 0x00000002,
     // Multiply the thoughput by albedo on reflection / refraction.
     // E.g. mirror has some texture on it. 
-    RG_GEOMETRY_UPLOAD_ALBEDO_ON_REFL_REFR_BIT = 0x00000004,
+    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 0x00000004,
+    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 0x00000008,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 

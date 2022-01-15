@@ -932,6 +932,12 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect type of ray traced geometry");
     }
 
+    if ((uploadInfo->flags & RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT) != 0 &&
+        (uploadInfo->flags & RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT) != 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT and RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT must be set separately");
+    }
+
     if (scene->DoesUniqueIDExist(uploadInfo->uniqueID))
     {
         throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
