@@ -321,6 +321,8 @@ typedef enum RgGeometryUploadFlagBits
     // E.g. mirror has some texture on it. 
     RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 0x00000004,
     RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 0x00000008,
+    // Ignore refl/refr geometry after one refl/refr hit.
+    RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT = 0x00000010,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 

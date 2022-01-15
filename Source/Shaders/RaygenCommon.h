@@ -86,7 +86,13 @@ uint getPrimaryVisibilityCullMask()
 
 uint getReflectionRefractionCullMask(uint surfInstCustomIndex, bool isRefraction)
 {
-    const uint world = globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT;
+    uint world = globalUniform.rayCullMaskWorld;
+
+    if ((surfInstCustomIndex & GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER) == GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER)
+    {
+        // ignore refl/reft geometry if requested
+        world |= INSTANCE_MASK_REFLECT_REFRACT;
+    }
 
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {

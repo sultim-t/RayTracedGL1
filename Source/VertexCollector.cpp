@@ -354,6 +354,11 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     else if (info.flags & RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT)
     {
         geomInfo.flags |= GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD;
+    }  
+    
+    if (info.flags & RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT)
+    {
+        geomInfo.flags |= GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER;
     }
 
     if (geomFlags & FT::CF_STATIC_MOVABLE)
