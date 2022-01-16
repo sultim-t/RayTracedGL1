@@ -44,6 +44,7 @@ namespace RTGL1
 #define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (9)
 #define BINDING_LENS_FLARES_CULLING_INPUT (0)
 #define BINDING_LENS_FLARES_DRAW_CMDS (1)
+#define BINDING_DRAW_LENS_FLARES_INSTANCES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -125,7 +126,7 @@ namespace RTGL1
 #define COMPUTE_ASVGF_STRATA_SIZE (3)
 #define COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT (4)
 #define COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X (256)
-#define LENS_FLARES_MAX_DRAW_CMD_COUNT (4096)
+#define LENS_FLARES_MAX_DRAW_CMD_COUNT (512)
 #define DEBUG_SHOW_FLAG_MOTION_VECTORS (1 << 0)
 #define DEBUG_SHOW_FLAG_GRADIENTS (1 << 1)
 #define DEBUG_SHOW_FLAG_SECTORS (1 << 2)
@@ -328,6 +329,11 @@ struct ShIndirectDrawCommand
     float positionToCheck_X;
     float positionToCheck_Y;
     float positionToCheck_Z;
+};
+
+struct ShLensFlareInstance
+{
+    uint32_t textureIndex;
 };
 
 }

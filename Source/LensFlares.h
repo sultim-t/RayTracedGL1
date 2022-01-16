@@ -60,9 +60,11 @@ public:
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void CreateDescriptors();
+    void CreateCullDescriptors();
+    void CreateRasterDescriptors();
     void CreatePipelineLayouts(VkDescriptorSetLayout uniform,
-                               VkDescriptorSetLayout textures, 
+                               VkDescriptorSetLayout textures,
+                               VkDescriptorSetLayout raster,
                                VkDescriptorSetLayout lensFlaresCull,
                                VkDescriptorSetLayout framebufs);
     void CreatePipelines(const ShaderManager *shaderManager);
@@ -88,14 +90,18 @@ private:
 
 
     VkPipelineLayout vertFragPipelineLayout;
-    VkPipelineLayout cullPipelineLayout;
+    std::unique_ptr<RasterizerPipelines> rasterPipelines;
 
-    std::unique_ptr<RasterizerPipelines> pipelines;
+    VkDescriptorPool rasterDescPool;
+    VkDescriptorSet rasterDescSet;
+    VkDescriptorSetLayout rasterDescSetLayout;
+
+
+    VkPipelineLayout cullPipelineLayout;
     VkPipeline cullPipeline;
 
-
     VkDescriptorPool cullDescPool;
-    VkDescriptorSet cullDescSets[MAX_FRAMES_IN_FLIGHT];
+    VkDescriptorSet cullDescSet;
     VkDescriptorSetLayout cullDescSetLayout;
 };
 

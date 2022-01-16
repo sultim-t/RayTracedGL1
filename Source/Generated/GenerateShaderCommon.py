@@ -252,6 +252,7 @@ CONST = {
     "BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH"   : 9,
     "BINDING_LENS_FLARES_CULLING_INPUT"         : 0,
     "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
+    "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -633,6 +634,10 @@ INDIRECT_DRAW_CMD_STRUCT = [
     (TYPE_FLOAT32,      1,      "positionToCheck_Z",    1),
 ]
 
+LENS_FLARES_INSTANCE_STRUCT = [
+    (TYPE_UINT32,       1,      "textureIndex",         1),
+]
+
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
 STRUCT_ALIGNMENT_STD140     = 2
@@ -646,16 +651,18 @@ STRUCT_BREAK_TYPE_ONLY_C    = 2
 # breakType         -- if member's type is not primitive and its count>0 then
 #                      it'll be represented as an array of primitive types
 STRUCTS = {
-    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,      False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
-    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,     False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
-    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,     False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
-    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShTonemapping":            (TONEMAPPING_STRUCT,        False,  0,                          0),
-    "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
-    # "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShLightPolygonal":         (LIGHT_POLYGONAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,  False,  0,                          0),
-    "ShIndirectDrawCommand":    (INDIRECT_DRAW_CMD_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,          False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
+    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,         False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
+    "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,         False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
+    "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,          False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShTonemapping":            (TONEMAPPING_STRUCT,            False,  0,                          0),
+    "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,        False,  STRUCT_ALIGNMENT_STD430,    0),
+    # "ShLightDirectional":     (LIGHT_DIRECTIONAL_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShLightPolygonal":         (LIGHT_POLYGONAL_STRUCT,        False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,      False,  0,                          0),
+    "ShIndirectDrawCommand":    (INDIRECT_DRAW_CMD_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
+    # TODO: should be STRUCT_ALIGNMENT_STD430, but current generator is not great as it just adds pads at the end, so it's 0
+    "ShLensFlareInstance":      (LENS_FLARES_INSTANCE_STRUCT,   False,  0,                          0),
 }
 
 # --------------------------------------------------------------------------------------------- #

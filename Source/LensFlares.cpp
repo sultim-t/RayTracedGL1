@@ -38,12 +38,6 @@ struct RasterizerVertex
 };
 
 
-struct RasterizerInstance
-{
-    uint32_t textureIndex;
-};
-
-
 // indirectDrawCommands: one uint32_t - for count, the rest - cmds
 constexpr VkDeviceSize GetIndirectDrawCommandsOffset()
 {
@@ -89,10 +83,13 @@ RTGL1::LensFlares::LensFlares(
     vertexCount(0),
     indexCount(0),
     vertFragPipelineLayout(VK_NULL_HANDLE),
+    rasterDescPool(VK_NULL_HANDLE),
+    rasterDescSet(VK_NULL_HANDLE),
+    rasterDescSetLayout(VK_NULL_HANDLE),
     cullPipelineLayout(VK_NULL_HANDLE),
     cullPipeline(VK_NULL_HANDLE),
     cullDescPool(VK_NULL_HANDLE),
-    cullDescSets{},
+    cullDescSet(VK_NULL_HANDLE),
     cullDescSetLayout(VK_NULL_HANDLE)
 {
     cullingInput = std::make_unique<AutoBuffer>(_allocator);
@@ -119,28 +116,33 @@ RTGL1::LensFlares::LensFlares(
         VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "Lens flares index buffer");
 
     instanceBuffer->Create(
-        LENS_FLARES_MAX_DRAW_CMD_COUNT * sizeof(RasterizerInstance),
-        VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "Lens flares instance buffer");
+        LENS_FLARES_MAX_DRAW_CMD_COUNT * sizeof(ShLensFlareInstance),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lens flares instance buffer");
 
 
-    CreateDescriptors();
+    CreateCullDescriptors();
+    CreateRasterDescriptors();
 
 
-    CreatePipelineLayouts(uniform->GetDescSetLayout(), textureManager->GetDescSetLayout(), cullDescSetLayout, framebuffers->GetDescSetLayout());
+    CreatePipelineLayouts(uniform->GetDescSetLayout(), textureManager->GetDescSetLayout(), rasterDescSetLayout, cullDescSetLayout, framebuffers->GetDescSetLayout());
 
 
-    pipelines = std::make_unique<RasterizerPipelines>(device, vertFragPipelineLayout, renderPass, _instanceInfo.rasterizedVertexColorGamma);
-    pipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
+    rasterPipelines = std::make_unique<RasterizerPipelines>(device, vertFragPipelineLayout, renderPass, _instanceInfo.rasterizedVertexColorGamma);
+    rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
 
     CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::LensFlares::~LensFlares()
 {
+    vkDestroyDescriptorPool(device, rasterDescPool, nullptr);
+    vkDestroyDescriptorSetLayout(device, rasterDescSetLayout, nullptr);
     vkDestroyDescriptorPool(device, cullDescPool, nullptr);
     vkDestroyDescriptorSetLayout(device, cullDescSetLayout, nullptr);
+
     vkDestroyPipelineLayout(device, vertFragPipelineLayout, nullptr);
     vkDestroyPipelineLayout(device, cullPipelineLayout, nullptr);
+
     DestroyPipelines();
 }
 
@@ -194,12 +196,12 @@ void RTGL1::LensFlares::Upload(uint32_t frameIndex, const RgLensFlareUploadInfo 
 
 
     // instances
-    RasterizerInstance instance = {};
+    ShLensFlareInstance instance = {};
     instance.textureIndex = textureManager->GetMaterialTextures(uploadInfo.material).indices[MATERIAL_ALBEDO_ALPHA_INDEX];
 
     {
-        RasterizerInstance *dst = (RasterizerInstance *)instanceBuffer->GetMapped(frameIndex);
-        memcpy(&dst[instanceIndex], &instance, sizeof(RasterizerInstance));
+        ShLensFlareInstance *dst = (ShLensFlareInstance *)instanceBuffer->GetMapped(frameIndex);
+        memcpy(&dst[instanceIndex], &instance, sizeof(ShLensFlareInstance));
     }
 
 
@@ -230,7 +232,7 @@ void RTGL1::LensFlares::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
       cullingInput->CopyFromStaging(cmd, frameIndex, cullingInputCount * sizeof(ShIndirectDrawCommand));
       vertexBuffer->CopyFromStaging(cmd, frameIndex, vertexCount       * sizeof(RasterizerVertex));
        indexBuffer->CopyFromStaging(cmd, frameIndex, indexCount        * sizeof(uint32_t));
-    instanceBuffer->CopyFromStaging(cmd, frameIndex, cullingInputCount * sizeof(RasterizerInstance));
+    instanceBuffer->CopyFromStaging(cmd, frameIndex, cullingInputCount * sizeof(ShLensFlareInstance));
 }
 
 void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
@@ -242,8 +244,7 @@ void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
 
     // sync
     {
-        VkBufferMemoryBarrier2KHR bs[4] = {};
-
+        VkBufferMemoryBarrier2KHR bs[1] = {};
         {
             VkBufferMemoryBarrier2KHR &b = bs[0];
             b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
@@ -254,39 +255,6 @@ void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
             b.buffer = cullingInput->GetDeviceLocal();
             b.offset = 0;
             b.size = cullingInputCount * sizeof(ShIndirectDrawCommand);
-        }
-        {
-            VkBufferMemoryBarrier2KHR &b = bs[1];
-            b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
-            b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
-            b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
-            b.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT_KHR;
-            b.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT_KHR;
-            b.buffer = vertexBuffer->GetDeviceLocal();
-            b.offset = 0;
-            b.size = vertexCount * sizeof(RasterizerVertex);
-        }
-        {
-            VkBufferMemoryBarrier2KHR &b = bs[2];
-            b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
-            b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
-            b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
-            b.dstStageMask = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT_KHR;
-            b.dstAccessMask = VK_ACCESS_2_INDEX_READ_BIT_KHR;
-            b.buffer = indexBuffer->GetDeviceLocal();
-            b.offset = 0;
-            b.size = indexCount * sizeof(uint32_t);
-        }
-        {
-            VkBufferMemoryBarrier2KHR &b = bs[3];
-            b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
-            b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
-            b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
-            b.dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR;
-            b.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR;
-            b.buffer = instanceBuffer->GetDeviceLocal();
-            b.offset = 0;
-            b.size = cullingInputCount * sizeof(RasterizerInstance);
         }
 
         VkDependencyInfoKHR info = {};
@@ -304,7 +272,7 @@ void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
     {
         uniform->GetDescSet(frameIndex),
         framebuffers->GetDescSet(frameIndex),
-        cullDescSets[frameIndex]
+        cullDescSet
     };
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
                             cullPipelineLayout,
@@ -322,7 +290,7 @@ void RTGL1::LensFlares::SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex)
         return;
     }		
 
-    VkBufferMemoryBarrier2KHR bs[2] = {};
+    VkBufferMemoryBarrier2KHR bs[5] = {};
 
     {
         VkBufferMemoryBarrier2KHR &b = bs[0];
@@ -346,6 +314,40 @@ void RTGL1::LensFlares::SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex)
         b.offset = GetIndirectDrawCountOffset();
         b.size = sizeof(uint32_t);
     }
+    {
+        VkBufferMemoryBarrier2KHR &b = bs[2];
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
+        b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR;
+        b.buffer = instanceBuffer->GetDeviceLocal();
+        b.offset = 0;
+        b.size = cullingInputCount * sizeof(ShLensFlareInstance);
+    }
+    {
+        VkBufferMemoryBarrier2KHR &b = bs[3];
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
+        b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_ATTRIBUTE_INPUT_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT_KHR;
+        b.buffer = vertexBuffer->GetDeviceLocal();
+        b.offset = 0;
+        b.size = vertexCount * sizeof(RasterizerVertex);
+    }
+    {
+        VkBufferMemoryBarrier2KHR &b = bs[4];
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
+        b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_INDEX_INPUT_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_INDEX_READ_BIT_KHR;
+        b.buffer = indexBuffer->GetDeviceLocal();
+        b.offset = 0;
+        b.size = indexCount * sizeof(uint32_t);
+    }
+
 
     VkDependencyInfoKHR info = {};
     info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
@@ -362,15 +364,16 @@ void RTGL1::LensFlares::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
         return;
     }
 
-    VkPipeline drawPipeline = pipelines->GetPipeline(true, RG_BLEND_FACTOR_SRC_ALPHA, RG_BLEND_FACTOR_ONE, false, false);
+    VkPipeline drawPipeline = rasterPipelines->GetPipeline(true, RG_BLEND_FACTOR_SRC_ALPHA, RG_BLEND_FACTOR_ONE, false, false);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawPipeline);
 
     VkDescriptorSet sets[] =
     {
         uniform->GetDescSet(frameIndex),
-        textureManager->GetDescSet(frameIndex)
+        textureManager->GetDescSet(frameIndex),
+        rasterDescSet
     };
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelines->GetPipelineLayout(), 
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, rasterPipelines->GetPipelineLayout(),
                             0, std::size(sets), sets,
                             0, nullptr);       
 
@@ -391,14 +394,15 @@ uint32_t RTGL1::LensFlares::GetCullingInputCount() const
     return cullingInputCount;
 }
 
-void RTGL1::LensFlares::CreatePipelineLayouts(VkDescriptorSetLayout uniform, VkDescriptorSetLayout textures,
+void RTGL1::LensFlares::CreatePipelineLayouts(VkDescriptorSetLayout uniform, VkDescriptorSetLayout textures, VkDescriptorSetLayout raster,
                                               VkDescriptorSetLayout lensFlaresCull, VkDescriptorSetLayout framebufs)
 {
     {
         VkDescriptorSetLayout s[] =
         {
             uniform,
-            textures
+            textures,
+            raster
         };
 
         VkPipelineLayoutCreateInfo layoutInfo = {};
@@ -454,25 +458,25 @@ void RTGL1::LensFlares::DestroyPipelines()
 
 void RTGL1::LensFlares::OnShaderReload(const ShaderManager *shaderManager)
 {
-    pipelines->Clear();
-    pipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER);
+    rasterPipelines->Clear();
+    rasterPipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER);
 
     DestroyPipelines();
     CreatePipelines(shaderManager);
 }
 
-void RTGL1::LensFlares::CreateDescriptors()
+void RTGL1::LensFlares::CreateCullDescriptors()
 {
     {
         VkDescriptorPoolSize poolSize = {};
         poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        poolSize.descriptorCount = MAX_FRAMES_IN_FLIGHT * 2;
+        poolSize.descriptorCount = 2;
 
         VkDescriptorPoolCreateInfo poolInfo = {};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
         poolInfo.poolSizeCount = 1;
         poolInfo.pPoolSizes = &poolSize;
-        poolInfo.maxSets = MAX_FRAMES_IN_FLIGHT;
+        poolInfo.maxSets = 1;
 
         VkResult r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &cullDescPool);
         VK_CHECKERROR(r);
@@ -503,7 +507,6 @@ void RTGL1::LensFlares::CreateDescriptors()
         SET_DEBUG_NAME(device, cullDescSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Lens flare cull desc set layout");
     }
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         VkDescriptorSetAllocateInfo allocInfo = {};
         allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
@@ -511,13 +514,11 @@ void RTGL1::LensFlares::CreateDescriptors()
         allocInfo.descriptorSetCount = 1;
         allocInfo.pSetLayouts = &cullDescSetLayout;
 
-        VkResult r = vkAllocateDescriptorSets(device, &allocInfo, &cullDescSets[i]);
+        VkResult r = vkAllocateDescriptorSets(device, &allocInfo, &cullDescSet);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, cullDescSets[i], VK_OBJECT_TYPE_DESCRIPTOR_SET, "Lens flare cull desc set");
+        SET_DEBUG_NAME(device, cullDescSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "Lens flare cull desc set");
     }
-
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
         VkDescriptorBufferInfo bufs[2] = {};
         VkWriteDescriptorSet writes[2] = {};
@@ -530,7 +531,7 @@ void RTGL1::LensFlares::CreateDescriptors()
 
             VkWriteDescriptorSet &w = writes[0];
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            w.dstSet = cullDescSets[i];
+            w.dstSet = cullDescSet;
             w.dstBinding = BINDING_LENS_FLARES_CULLING_INPUT;
             w.dstArrayElement = 0;
             w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -545,7 +546,7 @@ void RTGL1::LensFlares::CreateDescriptors()
 
             VkWriteDescriptorSet &w = writes[1];
             w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            w.dstSet = cullDescSets[i];
+            w.dstSet = cullDescSet;
             w.dstBinding = BINDING_LENS_FLARES_DRAW_CMDS;
             w.dstArrayElement = 0;
             w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
@@ -556,3 +557,71 @@ void RTGL1::LensFlares::CreateDescriptors()
         vkUpdateDescriptorSets(device, std::size(writes), writes, 0, nullptr);
     }
 }
+
+void RTGL1::LensFlares::CreateRasterDescriptors()
+{
+    {
+        VkDescriptorPoolSize poolSize = {};
+        poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        poolSize.descriptorCount = 1;
+
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = 1;
+
+        VkResult r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &rasterDescPool);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, rasterDescPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Lens flare raster desc pool");
+    }
+    {
+        VkDescriptorSetLayoutBinding binding = {};
+        binding.binding = BINDING_DRAW_LENS_FLARES_INSTANCES;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        binding.descriptorCount = 1;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        VkDescriptorSetLayoutCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        info.bindingCount = 1;
+        info.pBindings = &binding;
+
+        VkResult r = vkCreateDescriptorSetLayout(device, &info, nullptr, &rasterDescSetLayout);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, rasterDescSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Lens flare raster desc set layout");
+    }
+
+    {
+        VkDescriptorSetAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = rasterDescPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &rasterDescSetLayout;
+
+        VkResult r = vkAllocateDescriptorSets(device, &allocInfo, &rasterDescSet);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, rasterDescSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "Lens flare raster desc set");
+    }
+    {
+        VkDescriptorBufferInfo b = {};
+        b.buffer = instanceBuffer->GetDeviceLocal();
+        b.offset = 0;
+        b.range = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet w = {};
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet = rasterDescSet;
+        w.dstBinding = BINDING_DRAW_LENS_FLARES_INSTANCES;
+        w.dstArrayElement = 0;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        w.descriptorCount = 1;
+        w.pBufferInfo = &b;
+
+        vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+    }
+}
+

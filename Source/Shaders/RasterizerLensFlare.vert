@@ -26,9 +26,17 @@ layout (location = 2) in vec2 texCoord;
 
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec2 outTexCoord;
+layout (location = 2) out uint outTextureIndex;
 
 #define DESC_SET_GLOBAL_UNIFORM 0
+#define DESC_SET_LENS_FLARE_VERTEX_INSTANCES 2
 #include "ShaderCommonGLSLFunc.h"
+
+layout(set = DESC_SET_LENS_FLARE_VERTEX_INSTANCES, binding = BINDING_DRAW_LENS_FLARES_INSTANCES) buffer LensFlareInstances_BT
+{
+    ShLensFlareInstance lensFlareInstances[];
+};
+
 
 layout (constant_id = 0) const uint applyVertexColorGamma = 0;
 
@@ -44,5 +52,6 @@ void main()
     }
 
     outTexCoord = texCoord;
+    outTextureIndex = lensFlareInstances[gl_InstanceIndex].textureIndex;
     gl_Position = globalUniform.projection * globalUniform.view * vec4(position, 1.0);
 }

@@ -22,6 +22,7 @@
 
 layout (location = 0) in vec4 vertColor;
 layout (location = 1) in vec2 vertTexCoord;
+layout (location = 2) flat in uint textureIndex;
 
 layout (location = 0) out vec4 outColor;
 
@@ -30,6 +31,5 @@ layout (location = 0) out vec4 outColor;
 
 void main()
 {
-    uint textureIndex = 0; // TODO: texture for lens flares
     outColor = vertColor * getTextureSample(textureIndex, vertTexCoord);
 }
