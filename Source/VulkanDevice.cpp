@@ -506,12 +506,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
         gu->emissionMapBoost = std::max(drawInfo.pTexturesParams->emissionMapBoost, 0.0f);
         gu->emissionMaxScreenColor = std::max(drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f);
+        gu->emissionMapScreenBoost = std::max(drawInfo.pTexturesParams->emissionMapBoostForScreen, 0.0f);
     }
     else
     {
         gu->normalMapStrength = 1.0f;
         gu->emissionMapBoost = 100.0f;
         gu->emissionMaxScreenColor = 1.5f;
+        gu->emissionMapScreenBoost = 1.0f;
     }
 
     if (drawInfo.pShadowParams != nullptr)
@@ -940,7 +942,8 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 
     if (scene->DoesUniqueIDExist(uploadInfo->uniqueID))
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
+        return;
+      //  throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
     }
 
     scene->Upload(currentFrameState.GetFrameIndex(), *uploadInfo);

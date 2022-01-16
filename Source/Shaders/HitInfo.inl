@@ -351,7 +351,7 @@ ShHitInfo getHitInfoBounce(
         h.emission  = rme[2] * globalUniform.emissionMapBoost /*+ tr.geomEmission*/;
 
     #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
-        screenEmission = clamp(rme[2] /*+ tr.geomEmission*/, 0.0, 1.0);
+        screenEmission = clamp(rme[2] * globalUniform.emissionMapScreenBoost /*+ tr.geomEmission*/, 0.0, 1.0);
     #endif
     }
     else

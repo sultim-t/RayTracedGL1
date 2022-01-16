@@ -872,10 +872,12 @@ typedef struct RgDrawFrameTexturesParams
     // Should be changed infrequently, as it reloads all texture descriptors.
     RgSamplerFilter dynamicSamplerFilter;
     float           normalMapStrength;
-    // Multiplier for emission map values.
+    // Multiplier for emission map values for indirect lighting.
     float           emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float           emissionMaxScreenColor;
+    // Multiplier for screen emission from emission maps.
+    float           emissionMapBoostForScreen;
 } RgDrawFrameTexturesParams;
 
 typedef struct RgDrawFrameDebugParams

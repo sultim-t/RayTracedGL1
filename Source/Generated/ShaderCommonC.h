@@ -247,6 +247,10 @@ struct ShGlobalUniform
     uint32_t lightCountSpotlightPrev;
     uint32_t lightCountPolygonal;
     uint32_t lightCountPolygonalPrev;
+    float emissionMapScreenBoost;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

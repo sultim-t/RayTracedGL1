@@ -484,9 +484,10 @@ void imageStoreAlbedoSurface(const ivec2 pix, const vec3 surfaceAlbedo, float sc
     imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(surfaceAlbedo, max(0.0, screenEmission)));
 }
 
-void imageStoreAlbedoSky(const ivec2 pix, const vec3 skyAlbedo)
+// directSkyHit - true, if it was the primary ray that hit the sky
+void imageStoreAlbedoSky(const ivec2 pix, const vec3 skyAlbedo, bool directSkyHit)
 {
-    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(skyAlbedo, -1.0));
+    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(skyAlbedo, directSkyHit ? -1 : -2));
 }
 
 vec4 texelFetchAlbedo(const ivec2 pix)
@@ -507,6 +508,15 @@ float getScreenEmissionFromAlbedo4(const vec4 albedo)
 {
     return max(0.0, albedo.a);
 }
+
+#ifdef DESC_SET_GLOBAL_UNIFORM
+float getScreenEmissionFromAlbedo4_Sky(const vec4 albedo)
+{
+    // -1: sky, hit with primary ray -- emission only for this
+    // -2: sky, but on secondary suface, like mirror, water, etc
+    return float(albedo.a > -1.5 && albedo.a < -0.5) * globalUniform.bloomSkyMultiplier;
+}
+#endif // DESC_SET_GLOBAL_UNIFORM
 
 bool isSky(const vec4 albedo)
 {
