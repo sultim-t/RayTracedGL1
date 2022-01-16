@@ -276,10 +276,20 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams
 {
     assert(drawParams.framebuffer != VK_NULL_HANDLE);
 
-    if (drawParams.drawInfos.empty())
+    const bool draw = !drawParams.drawInfos.empty();
+    const bool drawLensFlares = drawParams.pLensFlares != nullptr && drawParams.pLensFlares->GetCullingInputCount() > 0;
+
+    if (!draw && !drawLensFlares)
     {
         return;
     }
+
+
+    if (drawLensFlares)
+    {
+        drawParams.pLensFlares->SyncForDraw(cmd, frameIndex);
+    }
+
 
     const VkViewport defaultViewport = { 0, 0, (float)drawParams.width, (float)drawParams.height, 0.0f, 1.0f };
     const VkRect2D defaultRenderArea = { { 0, 0 }, { drawParams.width, drawParams.height }};
@@ -298,54 +308,57 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams
     vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
 
 
-    VkPipeline curPipeline = VK_NULL_HANDLE;
-    BindPipelineIfNew(cmd, drawParams.drawInfos[0], drawParams.pipelines, curPipeline);
-
-
-    VkDeviceSize offset = 0;
-
-    vkCmdBindDescriptorSets(
-        cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawParams.pipelines->GetPipelineLayout(), 0,
-        1, &drawParams.texturesDescSet,
-        0, nullptr);
-    vkCmdBindVertexBuffers(cmd, 0, 1, &drawParams.vertexBuffer, &offset);
-    vkCmdBindIndexBuffer(cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32);
-
-
-    vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
-    vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
-
-    VkViewport curViewport = defaultViewport;
-
-    for (const auto &info : drawParams.drawInfos)
+    if (draw)
     {
-        SetViewportIfNew(cmd, info, defaultViewport, curViewport);
-        BindPipelineIfNew(cmd, info, drawParams.pipelines, curPipeline);
+        VkPipeline curPipeline = VK_NULL_HANDLE;
+        BindPipelineIfNew(cmd, drawParams.drawInfos[0], drawParams.pipelines, curPipeline);
 
-        // push const
-        {
-            RasterizedPushConst push(info, drawParams.defaultViewProj);
 
-            vkCmdPushConstants(
-                cmd, drawParams.pipelines->GetPipelineLayout(),
-                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                0, sizeof(push),
-                &push);
-        }
+        VkDeviceSize offset = 0;
 
-        // draw
-        if (info.indexCount > 0)
+        vkCmdBindDescriptorSets(
+            cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawParams.pipelines->GetPipelineLayout(), 0,
+            1, &drawParams.texturesDescSet,
+            0, nullptr);
+        vkCmdBindVertexBuffers(cmd, 0, 1, &drawParams.vertexBuffer, &offset);
+        vkCmdBindIndexBuffer(cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32);
+
+
+        vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
+        vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
+
+        VkViewport curViewport = defaultViewport;
+
+        for (const auto &info : drawParams.drawInfos)
         {
-            vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
-        }
-        else
-        {
-            vkCmdDraw(cmd, info.vertexCount, 1, info.firstVertex, 0);
+            SetViewportIfNew(cmd, info, defaultViewport, curViewport);
+            BindPipelineIfNew(cmd, info, drawParams.pipelines, curPipeline);
+
+            // push const
+            {
+                RasterizedPushConst push(info, drawParams.defaultViewProj);
+
+                vkCmdPushConstants(
+                    cmd, drawParams.pipelines->GetPipelineLayout(),
+                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                    0, sizeof(push),
+                    &push);
+            }
+
+            // draw
+            if (info.indexCount > 0)
+            {
+                vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
+            }
+            else
+            {
+                vkCmdDraw(cmd, info.vertexCount, 1, info.firstVertex, 0);
+            }
         }
     }
 
 
-    if (drawParams.pLensFlares != nullptr)
+    if (drawLensFlares)
     {
         vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
         vkCmdSetViewport(cmd, 0, 1, &defaultViewport);

@@ -52,6 +52,7 @@ public:
     void Upload(uint32_t frameIndex, const RgLensFlareUploadInfo &uploadInfo);
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void Cull(VkCommandBuffer cmd, uint32_t frameIndex);
+    void SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex);
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex);
 
     uint32_t GetCullingInputCount() const;

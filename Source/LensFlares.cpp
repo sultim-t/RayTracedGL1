@@ -315,46 +315,51 @@ void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
     vkCmdDispatch(cmd, wgCount, 1, 1);
 }
 
-void RTGL1::LensFlares::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
+void RTGL1::LensFlares::SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     if (cullingInputCount == 0)
     {
         return;
     }		
 
-    // sync
+    VkBufferMemoryBarrier2KHR bs[2] = {};
+
     {
-        VkBufferMemoryBarrier2KHR bs[2] = {};
+        VkBufferMemoryBarrier2KHR &b = bs[0];
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+        b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR;
+        b.buffer = indirectDrawCommands.GetBuffer();
+        b.offset = GetIndirectDrawCommandsOffset();
+        b.size = cullingInputCount * sizeof(ShIndirectDrawCommand);
+    }
+    {
+        VkBufferMemoryBarrier2KHR &b = bs[1];
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+        b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_INDIRECT_COMMAND_READ_BIT_KHR;
+        b.buffer = indirectDrawCommands.GetBuffer();
+        b.offset = GetIndirectDrawCountOffset();
+        b.size = sizeof(uint32_t);
+    }
 
-        {
-            VkBufferMemoryBarrier2KHR &b = bs[0];
-            b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
-            b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
-            b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
-            b.dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR;
-            b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT_KHR;
-            b.buffer = indirectDrawCommands.GetBuffer();
-            b.offset = GetIndirectDrawCommandsOffset();
-            b.size = cullingInputCount * sizeof(ShIndirectDrawCommand);
-        }
-        {
-            VkBufferMemoryBarrier2KHR &b = bs[1];
-            b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
-            b.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
-            b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
-            b.dstStageMask = VK_PIPELINE_STAGE_2_DRAW_INDIRECT_BIT_KHR;
-            b.dstAccessMask = VK_ACCESS_2_SHADER_READ_BIT_KHR;
-            b.buffer = indirectDrawCommands.GetBuffer();
-            b.offset = GetIndirectDrawCountOffset();
-            b.size = sizeof(uint32_t);
-        }
+    VkDependencyInfoKHR info = {};
+    info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+    info.bufferMemoryBarrierCount = std::size(bs);
+    info.pBufferMemoryBarriers = bs;
 
-        VkDependencyInfoKHR info = {};
-        info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
-        info.bufferMemoryBarrierCount = std::size(bs);
-        info.pBufferMemoryBarriers = bs;
+    svkCmdPipelineBarrier2KHR(cmd, &info);
+}
 
-        svkCmdPipelineBarrier2KHR(cmd, &info);
+void RTGL1::LensFlares::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    if (cullingInputCount == 0)
+    {
+        return;
     }
 
     VkPipeline drawPipeline = pipelines->GetPipeline(true, RG_BLEND_FACTOR_SRC_ALPHA, RG_BLEND_FACTOR_ONE, false, false);

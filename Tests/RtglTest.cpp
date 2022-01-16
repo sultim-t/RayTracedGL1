@@ -575,6 +575,41 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RG_CHECKERROR(r);
 
 
+
+        RgRasterizedGeometryVertexStruct vvv[] =
+        {
+            {
+                {-1,0,0},
+                0xFF0000FF,
+                {0,0}
+            },
+            {
+                {1,0,0},
+                0xFF0000FF,
+                {0,0}
+            },
+            {
+                {0,1,0},
+                0xFF0000FF,
+                {0,0}
+            }
+        };
+
+        uint32_t iii[] = { 0, 1, 2 };
+
+
+        RgLensFlareUploadInfo lensFlareInfo = {};
+        lensFlareInfo.vertexCount = 3;
+        lensFlareInfo.pVertexData = vvv;
+        lensFlareInfo.indexCount = 3;
+        lensFlareInfo.pIndexData = iii;
+        lensFlareInfo.pointToCheck = { 0, 0.333f, 0 };
+
+        r = rgUploadLensFlare(instance, &lensFlareInfo);
+        RG_CHECKERROR(r);
+
+
+
         // upload light
         RgDirectionalLightUploadInfo dirLight = {};
         dirLight.color = { LIGHT_COLOR[0], LIGHT_COLOR[1], LIGHT_COLOR[2] };
@@ -625,7 +660,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         debugParams.showGradients = SHOW_GRAD;
 
         RgDrawFrameRenderResolutionParams resolutionParams = {};
-        resolutionParams.upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS;
+        resolutionParams.upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR;
         resolutionParams.resolutionMode = RG_RENDER_RESOLUTION_MODE_BALANCED;
 
         frameInfo.pRenderResolutionParams = &resolutionParams;
