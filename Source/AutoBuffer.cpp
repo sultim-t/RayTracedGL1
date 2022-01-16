@@ -20,12 +20,14 @@
 
 #include "AutoBuffer.h"
 
-RTGL1::AutoBuffer::AutoBuffer(
-    VkDevice _device, 
-    std::shared_ptr<MemoryAllocator> _allocator)
+RTGL1::AutoBuffer::AutoBuffer(std::shared_ptr<MemoryAllocator> _allocator)
 :
     allocator(std::move(_allocator)),
     mapped{}
+{}
+
+// TODO: remove this constructor
+RTGL1::AutoBuffer::AutoBuffer(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocator) : AutoBuffer(std::move(_allocator))
 {}
 
 RTGL1::AutoBuffer::~AutoBuffer()

@@ -669,6 +669,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     gu->useSqrtRoughnessForIndirect = !!drawInfo.useSqrtRoughnessForIndirect;
+
+    gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
@@ -969,34 +971,54 @@ void RTGL1::VulkanDevice::UpdateGeometryTexCoords(const RgUpdateTexCoordsInfo *u
     scene->UpdateTexCoords(*updateInfo);
 }
 
-void VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *uploadInfo,
-                                                const float *viewProjection, const RgViewport *viewport)
+void VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *pUploadInfo,
+                                                const float *pViewProjection, const RgViewport *pViewport)
 {
-    if (uploadInfo == nullptr)
+    if (pUploadInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    if (uploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT &&
-        uploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN &&
-        uploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
+    if (pUploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT &&
+        pUploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN &&
+        pUploadInfo->renderType != RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect render type of rasterized geometry");
     }
 
-    if ((uploadInfo->pArrays != nullptr && uploadInfo->pStructs != nullptr) || 
-        (uploadInfo->pArrays == nullptr && uploadInfo->pStructs == nullptr))
+    if ((pUploadInfo->pArrays != nullptr && pUploadInfo->pStructs != nullptr) || 
+        (pUploadInfo->pArrays == nullptr && pUploadInfo->pStructs == nullptr))
     {
         throw RgException(RG_WRONG_ARGUMENT, "Exactly one of pArrays and pStructs must be not null");
     }
 
-    if ((uploadInfo->pIndexData == nullptr && uploadInfo->indexCount != 0) ||
-        (uploadInfo->pIndexData != nullptr && uploadInfo->indexCount == 0))
+    if ((pUploadInfo->pIndexData == nullptr && pUploadInfo->indexCount != 0) ||
+        (pUploadInfo->pIndexData != nullptr && pUploadInfo->indexCount == 0))
     {
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect index data");
     }
 
-    rasterizer->Upload(currentFrameState.GetFrameIndex(), *uploadInfo, viewProjection, viewport);
+    rasterizer->Upload(currentFrameState.GetFrameIndex(), *pUploadInfo, pViewProjection, pViewport);
+}
+
+void RTGL1::VulkanDevice::UploadLensFlare(const RgLensFlareUploadInfo *pUploadInfo)
+{
+    if (pUploadInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    if (pUploadInfo->indexCount == 0 || pUploadInfo->pIndexData == 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Lens flare index data and count must not be null");
+    }
+
+    if (pUploadInfo->vertexCount == 0 || pUploadInfo->pVertexData == 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Lens flare vertex data and count must not be null");
+    }
+
+    rasterizer->UploadLensFlare(currentFrameState.GetFrameIndex(), *pUploadInfo);
 }
 
 void VulkanDevice::SubmitStaticGeometries()

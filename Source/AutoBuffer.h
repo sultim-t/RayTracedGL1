@@ -30,10 +30,9 @@ namespace RTGL1
 // and one device local buffer to copy in.
 class AutoBuffer
 {
-public:
-    AutoBuffer(
-        VkDevice device,
-        std::shared_ptr<MemoryAllocator> allocator);
+public:    
+    AutoBuffer(std::shared_ptr<MemoryAllocator> allocator);
+    AutoBuffer(VkDevice device, std::shared_ptr<MemoryAllocator> allocator);
     ~AutoBuffer();
 
     AutoBuffer(const AutoBuffer &other) = delete;

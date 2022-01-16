@@ -154,6 +154,16 @@ RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeo
     CATCH_OR_RETURN;
 }
 
+RgResult rgUploadLensFlare(RgInstance rgInstance, const RgLensFlareUploadInfo *pUploadInfo)
+{
+    try
+    {
+        GetDevice(rgInstance)->UploadLensFlare(pUploadInfo);
+    }
+    CATCH_OR_RETURN;
+}
+
+
 RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
 {
     try

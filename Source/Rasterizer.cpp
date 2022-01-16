@@ -91,6 +91,8 @@ Rasterizer::Rasterizer(
     rasterPass = std::make_shared<RasterPass>(device, _physDevice, commonPipelineLayout, _shaderManager, storageFramebuffers, _instanceInfo);
     swapchainPass = std::make_shared<SwapchainPass>(device, commonPipelineLayout, _surfaceFormat, _shaderManager, _instanceInfo);
     renderCubemap = std::make_shared<RenderCubemap>(device, allocator, _shaderManager, _textureManager, _uniform, _samplerManager, cmdManager, _instanceInfo);
+
+    lensFlares = std::make_unique<LensFlares>(device, allocator, _shaderManager, rasterPass->GetRasterRenderPass(), _uniform, storageFramebuffers, _textureManager, _instanceInfo);
 }
 
 Rasterizer::~Rasterizer()
@@ -107,6 +109,8 @@ void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyG
         collectorSky->Clear(frameIndex);
         isCubemapOutdated = true;
     }
+
+    lensFlares->PrepareForFrame(frameIndex);
 }
 
 void Rasterizer::Upload(uint32_t frameIndex, 
@@ -125,12 +129,19 @@ void Rasterizer::Upload(uint32_t frameIndex,
     }
 }
 
+void Rasterizer::UploadLensFlare(uint32_t frameIndex, const RgLensFlareUploadInfo &uploadInfo)
+{
+    lensFlares->Upload(frameIndex, uploadInfo);
+}
+
 void Rasterizer::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     CmdLabel label(cmd, "Copying rasterizer data");
 
     collectorGeneral->CopyFromStaging(cmd, frameIndex);
     collectorSky->CopyFromStaging(cmd, frameIndex);
+
+    lensFlares->SubmitForFrame(cmd, frameIndex);
 }
 
 void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, 
@@ -180,10 +191,11 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
         collectorSky->GetVertexBuffer(),
         collectorSky->GetIndexBuffer(),
         textureManager->GetDescSet(frameIndex),
-        defaultSkyViewProj
+        defaultSkyViewProj,
+        nullptr
     };
 
-    Draw(cmd, params);
+    Draw(cmd, frameIndex, params);
 }
 
 void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, 
@@ -203,8 +215,13 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
     storageFramebuffers->BarrierMultiple(cmd, frameIndex, fs);
 
 
+    // prepare lens flares draw commands
+    lensFlares->Cull(cmd, frameIndex);
+
+
     // copy depth buffer
     rasterPass->PrepareForFinal(cmd, frameIndex, storageFramebuffers, werePrimaryTraced);
+
 
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
@@ -223,10 +240,11 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
         collectorGeneral->GetVertexBuffer(),
         collectorGeneral->GetIndexBuffer(),
         textureManager->GetDescSet(frameIndex),
-        defaultViewProj
+        defaultViewProj,
+        lensFlares.get()
     };
 
-    Draw(cmd, params);
+    Draw(cmd, frameIndex, params);
 }
 
 void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj)
@@ -236,7 +254,7 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
 
-    const DrawParams params = 
+    const DrawParams params =
     {
         swapchainPass->GetSwapchainPipelines(),
         collectorGeneral->GetSwapchainDrawInfos(),
@@ -247,13 +265,14 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
         collectorGeneral->GetVertexBuffer(),
         collectorGeneral->GetIndexBuffer(),
         textureManager->GetDescSet(frameIndex),
-        defaultViewProj
+        defaultViewProj,
+        nullptr
     };
 
-    Draw(cmd, params);
+    Draw(cmd, frameIndex, params);
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, const DrawParams &drawParams)
+void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams &drawParams)
 {
     assert(drawParams.framebuffer != VK_NULL_HANDLE);
 
@@ -287,7 +306,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, const DrawParams &drawParams)
 
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawParams.pipelines->GetPipelineLayout(), 0,
-        1, &drawParams.descSet,
+        1, &drawParams.texturesDescSet,
         0, nullptr);
     vkCmdBindVertexBuffers(cmd, 0, 1, &drawParams.vertexBuffer, &offset);
     vkCmdBindIndexBuffer(cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32);
@@ -325,6 +344,16 @@ void Rasterizer::Draw(VkCommandBuffer cmd, const DrawParams &drawParams)
         }
     }
 
+
+    if (drawParams.pLensFlares != nullptr)
+    {
+        vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
+        vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
+
+        drawParams.pLensFlares->Draw(cmd, frameIndex);
+    }
+
+
     vkCmdEndRenderPass(cmd);
 }
 
@@ -351,6 +380,11 @@ const std::shared_ptr<RenderCubemap> &Rasterizer::GetRenderCubemap() const
     return renderCubemap;
 }
 
+uint32_t Rasterizer::GetLensFlareCullingInputCount() const
+{
+    return lensFlares->GetCullingInputCount();
+}
+
 void Rasterizer::OnSwapchainCreate(const Swapchain *pSwapchain)
 {
     swapchainPass->CreateFramebuffers(
@@ -368,6 +402,7 @@ void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
     rasterPass->OnShaderReload(shaderManager);
     swapchainPass->OnShaderReload(shaderManager);
     renderCubemap->OnShaderReload(shaderManager);
+    lensFlares->OnShaderReload(shaderManager);
 }
 
 void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)

@@ -205,6 +205,7 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGI
     // [sectorArrayIndex * 2 + 1] is the end (excluding) index in 'plainLightList'
     uint sectorToLightListRegion_StartEnd_Poly[];
 };
+
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_PLAIN_LIGHT_LIST_SPH) readonly buffer PlainLightListSph_BT
 {
     uint plainLightList_Sph[];
@@ -216,6 +217,20 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGI
 };
 #endif
 
+
+
+#ifdef DESC_SET_LENS_FLARES
+layout(set = DESC_SET_LENS_FLARES, binding = BINDING_LENS_FLARES_CULLING_INPUT) readonly buffer LensFlareCullingInput_BT
+{
+    ShIndirectDrawCommand lensFlareCullingInput[];
+};
+
+layout(set = DESC_SET_LENS_FLARES, binding = BINDING_LENS_FLARES_DRAW_CMDS) buffer LensFlareDrawCmds_BT
+{
+    ShIndirectDrawCommand lensFlareDrawCmds[LENS_FLARES_MAX_DRAW_CMD_COUNT];
+    uint lensFlareDrawCmdsCount;
+};
+#endif // DESC_SET_LENS_FLARES
 
 
 

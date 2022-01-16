@@ -568,6 +568,24 @@ RgResult rgUploadRasterizedGeometry(
 
 
 
+typedef struct RgLensFlareUploadInfo
+{
+    // Must be in world space.
+    uint32_t                                vertexCount;
+    const RgRasterizedGeometryVertexStruct  *pVertexData;
+    // Must not be null.
+    uint32_t        indexCount;
+    const void      *pIndexData;
+    RgMaterial      material;
+    RgFloat3D       pointToCheck;
+} RgLensFlareUploadInfo;
+
+RgResult rgUploadLensFlare(
+    RgInstance                              rgInstance,
+    const RgLensFlareUploadInfo             *pUploadInfo);
+
+
+
 typedef struct RgDirectionalLightUploadInfo
 {
     RgFloat3D       color;

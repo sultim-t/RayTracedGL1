@@ -224,22 +224,22 @@ CONST = {
     
     "MAX_TOP_LEVEL_INSTANCE_COUNT"          : 45,
     
-    "BINDING_VERTEX_BUFFER_STATIC"          : 0,
-    "BINDING_VERTEX_BUFFER_DYNAMIC"         : 1,
-    "BINDING_INDEX_BUFFER_STATIC"           : 2,
-    "BINDING_INDEX_BUFFER_DYNAMIC"          : 3,
-    "BINDING_GEOMETRY_INSTANCES"            : 4,
-    "BINDING_GEOMETRY_INSTANCES_MATCH_PREV" : 5,
-    "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC" : 6,
-    "BINDING_PREV_INDEX_BUFFER_DYNAMIC"     : 7,
-    "BINDING_PER_TRIANGLE_INFO"             : 8,
-    "BINDING_GLOBAL_UNIFORM"                : 0,
-    "BINDING_ACCELERATION_STRUCTURE_MAIN"   : 0,
-    "BINDING_TEXTURES"                      : 0,
-    "BINDING_CUBEMAPS"                      : 0,
-    "BINDING_RENDER_CUBEMAP"                : 0,
-    "BINDING_BLUE_NOISE"                    : 0,
-    "BINDING_LUM_HISTOGRAM"                 : 0,
+    "BINDING_VERTEX_BUFFER_STATIC"              : 0,
+    "BINDING_VERTEX_BUFFER_DYNAMIC"             : 1,
+    "BINDING_INDEX_BUFFER_STATIC"               : 2,
+    "BINDING_INDEX_BUFFER_DYNAMIC"              : 3,
+    "BINDING_GEOMETRY_INSTANCES"                : 4,
+    "BINDING_GEOMETRY_INSTANCES_MATCH_PREV"     : 5,
+    "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC"     : 6,
+    "BINDING_PREV_INDEX_BUFFER_DYNAMIC"         : 7,
+    "BINDING_PER_TRIANGLE_INFO"                 : 8,
+    "BINDING_GLOBAL_UNIFORM"                    : 0,
+    "BINDING_ACCELERATION_STRUCTURE_MAIN"       : 0,
+    "BINDING_TEXTURES"                          : 0,
+    "BINDING_CUBEMAPS"                          : 0,
+    "BINDING_RENDER_CUBEMAP"                    : 0,
+    "BINDING_BLUE_NOISE"                        : 0,
+    "BINDING_LUM_HISTOGRAM"                     : 0,
     "BINDING_LIGHT_SOURCES_SPHERICAL"           : 0,
     "BINDING_LIGHT_SOURCES_SPHERICAL_PREV"      : 1,
     "BINDING_LIGHT_SOURCES_POLYGONAL"           : 2,
@@ -250,6 +250,8 @@ CONST = {
     "BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY"  : 7,
     "BINDING_PLAIN_LIGHT_LIST_SPH"              : 8,
     "BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH"   : 9,
+    "BINDING_LENS_FLARES_CULLING_INPUT"         : 0,
+    "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -346,6 +348,9 @@ CONST = {
 
     "COMPUTE_ASVGF_STRATA_SIZE"                         : 3,
     "COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT"     : 4,  
+
+    "COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X"         : 256,
+    "LENS_FLARES_MAX_DRAW_CMD_COUNT"                    : 512,
 
     "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : "1 << 0",
     "DEBUG_SHOW_FLAG_GRADIENTS"             : "1 << 1",
@@ -544,7 +549,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "lightCountPolygonalPrev",          1),
 
     (TYPE_FLOAT32,      1,      "emissionMapScreenBoost",           1),
-    (TYPE_FLOAT32,      1,      "_pad1",                            1),
+    (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
     (TYPE_FLOAT32,      1,      "_pad2",                            1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
@@ -617,6 +622,16 @@ VERT_PREPROC_PUSH_STRUCT = [
     (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",        align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
 ]
 
+INDIRECT_DRAW_CMD_STRUCT = [
+    (TYPE_UINT32,       1,      "indexCount",           1),
+    (TYPE_UINT32,       1,      "instanceCount",        1),
+    (TYPE_UINT32,       1,      "firstIndex",           1),
+    (TYPE_INT32,        1,      "vertexOffset",         1),
+    (TYPE_UINT32,       1,      "firstInstance",        1),
+    (TYPE_FLOAT32,      1,      "positionToCheck_X",    1),
+    (TYPE_FLOAT32,      1,      "positionToCheck_Y",    1),
+    (TYPE_FLOAT32,      1,      "positionToCheck_Z",    1),
+]
 
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
@@ -640,6 +655,7 @@ STRUCTS = {
     # "ShLightDirectional":       (LIGHT_DIRECTIONAL_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShLightPolygonal":         (LIGHT_POLYGONAL_STRUCT,    False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,  False,  0,                          0),
+    "ShIndirectDrawCommand":    (INDIRECT_DRAW_CMD_STRUCT,  False,  STRUCT_ALIGNMENT_STD430,    0),
 }
 
 # --------------------------------------------------------------------------------------------- #

@@ -27,6 +27,7 @@
 #include "GlobalUniform.h"
 #include "IFramebuffersDependency.h"
 #include "ISwapchainDependency.h"
+#include "LensFlares.h"
 #include "RasterizedDataCollector.h"
 #include "RasterizerPipelines.h"
 #include "RasterPass.h"
@@ -69,6 +70,7 @@ public:
     void Upload(uint32_t frameIndex, 
                 const RgRasterizedGeometryUploadInfo &uploadInfo, 
                 const float *viewProjection, const RgViewport *viewport);
+    void UploadLensFlare(uint32_t frameIndex, const RgLensFlareUploadInfo &uploadInfo);
 
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
@@ -84,6 +86,8 @@ public:
 
     const std::shared_ptr<RenderCubemap> &GetRenderCubemap() const;
 
+    uint32_t GetLensFlareCullingInputCount() const;
+
 private:
     struct DrawParams
     {
@@ -95,12 +99,14 @@ private:
         uint32_t height;
         VkBuffer vertexBuffer;
         VkBuffer indexBuffer;
-        VkDescriptorSet descSet;
+        VkDescriptorSet texturesDescSet;
         float *defaultViewProj;
+        // not the best way to optionally draw lens flares
+        LensFlares *pLensFlares;
     };
 
 private:
-    void Draw(VkCommandBuffer cmd, const DrawParams &drawParams);
+    void Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams &drawParams);
 
     void CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout);
 
@@ -127,6 +133,8 @@ private:
 
     bool isCubemapOutdated;
     std::shared_ptr<RenderCubemap> renderCubemap;
+
+    std::unique_ptr<LensFlares> lensFlares;
 };
 
 }

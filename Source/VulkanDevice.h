@@ -69,6 +69,7 @@ public:
 
     void UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo *pUploadInfo,
                                   const float *pViewProjection, const RgViewport *pViewport);
+    void UploadLensFlare(const RgLensFlareUploadInfo *pUploadInfo);
 
     void SubmitStaticGeometries();
     void StartNewStaticScene();
