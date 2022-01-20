@@ -944,8 +944,7 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
 
     if (scene->DoesUniqueIDExist(uploadInfo->uniqueID))
     {
-        return;
-      //  throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
+        throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
     }
 
     scene->Upload(currentFrameState.GetFrameIndex(), *uploadInfo);
