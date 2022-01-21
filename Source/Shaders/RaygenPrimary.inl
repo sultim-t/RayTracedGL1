@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Sultim Tsyrendashiev
+// Copyright (c) 2021-2022 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,10 +18,27 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#version 460
 
-layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
-#define MATERIAL_MAX_ALBEDO_LAYERS maxAlbedoLayerCount
+
+// This file was originally a raygen shader. But G-buffer decals are drawn
+// on primary surfaces, but not in perfect reflections/refractions. Because
+// 
+
+// Must be defined:
+// - either RAYGEN_PRIMARY_SHADER or RAYGEN_REFL_REFR_SHADER
+// - MATERIAL_MAX_ALBEDO_LAYERS
+
+#if defined(RAYGEN_PRIMARY_SHADER) && defined(RAYGEN_REFL_REFR_SHADER)
+    #error Only one of RAYGEN_PRIMARY_SHADER and RAYGEN_REFL_REFR_SHADER must be defined
+#endif
+#if !defined(RAYGEN_PRIMARY_SHADER) && !defined(RAYGEN_REFL_REFR_SHADER)
+    #error RAYGEN_PRIMARY_SHADER or RAYGEN_REFL_REFR_SHADER must be defined
+#endif
+#ifndef MATERIAL_MAX_ALBEDO_LAYERS
+    #error MATERIAL_MAX_ALBEDO_LAYERS is not defined
+#endif 
+
+
 
 #define DESC_SET_TLAS 0
 #define DESC_SET_FRAMEBUFFERS 1
