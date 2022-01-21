@@ -107,6 +107,7 @@ void PathTracer::TraceReflectionRefractionRays(VkCommandBuffer cmd, uint32_t fra
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
         FI::FB_IMAGE_INDEX_SECTOR_INDEX,
         FI::FB_IMAGE_INDEX_THROUGHPUT,
+        FI::FB_IMAGE_INDEX_PRIMARY_TO_REFL_REFR,
     };
     framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 

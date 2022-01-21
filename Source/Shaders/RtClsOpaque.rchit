@@ -23,12 +23,12 @@
 
 #include "ShaderCommonGLSLFunc.h"
 
-layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadInEXT ShPayload g_payload;
 hitAttributeEXT vec2 inBaryCoords;
 
 void main()
 {
-    payload.baryCoords = inBaryCoords;
-    payload.instIdAndIndex = packInstanceIdAndCustomIndex(gl_InstanceID, gl_InstanceCustomIndexEXT);
-    payload.geomAndPrimIndex = packGeometryAndPrimitiveIndex(gl_GeometryIndexEXT, gl_PrimitiveID);
+    g_payload.baryCoords = inBaryCoords;
+    g_payload.instIdAndIndex = packInstanceIdAndCustomIndex(gl_InstanceID, gl_InstanceCustomIndexEXT);
+    g_payload.geomAndPrimIndex = packGeometryAndPrimitiveIndex(gl_GeometryIndexEXT, gl_PrimitiveID);
 }

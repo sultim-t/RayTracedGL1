@@ -71,10 +71,10 @@ layout(set = DESC_SET_RENDER_CUBEMAP, binding = BINDING_RENDER_CUBEMAP) uniform 
 #endif
 
 
-layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload payload;
+layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload g_payload;
 
 #ifdef RAYGEN_SHADOW_PAYLOAD
-layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow payloadShadow;
+layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow g_payloadShadow;
 #endif // RAYGEN_SHADOW_PAYLOAD
 
 
@@ -169,9 +169,9 @@ bool isPayloadConsistent(const ShPayload p)
 
 void resetPayload()
 {
-    payload.baryCoords = vec2(0.0);
-    payload.instIdAndIndex = UINT32_MAX;
-    payload.geomAndPrimIndex = UINT32_MAX;
+    g_payload.baryCoords = vec2(0.0);
+    g_payload.instIdAndIndex = UINT32_MAX;
+    g_payload.geomAndPrimIndex = UINT32_MAX;
 }
 
 ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
@@ -189,7 +189,7 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
         origin, globalUniform.primaryRayMinDist, direction, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT);
 
-    return payload; 
+    return g_payload; 
 }
 
 ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfInstCustomIndex, bool isRefraction, bool ignoreReflectRefractGeometry)
@@ -212,7 +212,7 @@ ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfIns
         origin, 0.001, direction, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT);
 
-    return payload; 
+    return g_payload; 
 }
 
 ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bounceDirection)
@@ -230,7 +230,7 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
         surfPosition, 0.001, bounceDirection, globalUniform.rayLength, 
         PAYLOAD_INDEX_DEFAULT); 
 
-    return payload;
+    return g_payload;
 }
 
 
@@ -307,7 +307,7 @@ LightResult newLightResult()
 bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer /* = false */)
 {
     // prepare shadow payload
-    payloadShadow.isShadowed = 1;  
+    g_payloadShadow.isShadowed = 1;  
 
     uint cullMask = getShadowCullMask(surfInstCustomIndex);
 
@@ -329,7 +329,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
         start, 0.001, l, maxDistance - SHADOW_RAY_EPS, 
         PAYLOAD_INDEX_SHADOW);
 
-    return payloadShadow.isShadowed == 1;
+    return g_payloadShadow.isShadowed == 1;
 }
 
 

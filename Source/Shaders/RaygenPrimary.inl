@@ -69,6 +69,18 @@ vec2 getPixelUVWithJitter(const ivec2 pix)
     return (pixelCenter + jitter) / vec2(gl_LaunchSizeEXT.xy);
 }
 
+vec3 getRayDirAX(vec2 inUV)
+{
+    const float AX = 1.0 / globalUniform.renderWidth;
+    return getRayDir(inUV + vec2(AX, 0));
+}
+
+vec3 getRayDirAY(vec2 inUV)
+{
+    const float AY = 1.0 / globalUniform.renderHeight;
+    return getRayDir(inUV + vec2(0, AY));
+}
+
 vec2 getDlssMotionVector(const vec2 motionCurToPrev)
 {
     float c = FRONT_FACE_IS_PRIMARY ? 1.0 : -1.0;
@@ -120,8 +132,11 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufSectorIndex,         pix, uvec4(SECTOR_INDEX_NONE));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
+#ifdef RAYGEN_PRIMARY_SHADER
+    imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(m), 0.0, 0.0));
+#endif
 }
 
 uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
@@ -209,45 +224,39 @@ vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone
     return normal;
 }
 
+#ifdef RAYGEN_PRIMARY_SHADER
 void main() 
 {
     const ivec2 regularPix = ivec2(gl_LaunchIDEXT.xy);
     const ivec2 pix = getCheckerboardPix(regularPix);
     const vec2 inUV = getPixelUVWithJitter(regularPix);
 
-    const float AX = 1.0 / globalUniform.renderWidth;
-    const float AY = 1.0 / globalUniform.renderHeight;
-
-    vec3 rayDir   = getRayDir(inUV);
-    const vec3 rayDirAX = getRayDir(inUV + vec2(AX, 0.0));
-    const vec3 rayDirAY = getRayDir(inUV + vec2(0.0, AY));
+    const vec3 cameraOrigin = globalUniform.cameraPosition.xyz;
+    const vec3 cameraRayDir = getRayDir(inUV);
+    const vec3 cameraRayDirAX = getRayDirAX(inUV);
+    const vec3 cameraRayDirAY = getRayDirAY(inUV);
 
     const uint randomSeed = getRandomSeed(pix, globalUniform.frameId, globalUniform.renderWidth, globalUniform.renderHeight);
     imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
     
     
-    const vec3 cameraOrigin = globalUniform.cameraPosition.xyz;
-    ShPayload payload = tracePrimaryRay(cameraOrigin, rayDir);
+    const ShPayload primaryPayload = tracePrimaryRay(cameraOrigin, cameraRayDir);
 
 
-    uint currentRayMedia = globalUniform.cameraMediaType;
+    const uint currentRayMedia = globalUniform.cameraMediaType;
 
 
     // was no hit
-    if (!isPayloadConsistent(payload))
+    if (!isPayloadConsistent(primaryPayload))
     {
         vec3 throughput = vec3(1.0);
-        throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, vec3(0,1,0))), -3));
+        throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(cameraRayDir, vec3(0,1,0))), -3));
 
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, rayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0, false, true);
+        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0, false, true);
         return;
     }
 
-
-    RayCone rayCone;
-    rayCone.width = 0;
-    rayCone.spreadAngle = globalUniform.cameraRayConeSpreadAngle;
 
     vec2 motionCurToPrev;
     float motionDepthLinearCurToPrev;
@@ -255,25 +264,108 @@ void main()
     float firstHitDepthNDC;
     float firstHitDepthLinear;
     float screenEmission;
-    ShHitInfo h = getHitInfoPrimaryRay(payload, cameraOrigin, rayDirAX, rayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, firstHitDepthLinear, screenEmission);
+    const ShHitInfo h = getHitInfoPrimaryRay(primaryPayload, cameraOrigin, cameraRayDirAX, cameraRayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, firstHitDepthLinear, screenEmission);
 
+
+    const bool wasSplit = false;
 
     vec3 throughput = vec3(1.0);
+    throughput *= getMediaTransmittance(currentRayMedia, firstHitDepthLinear);
+
+
+    imageStoreAlbedoSurface(                pix, h.albedo, screenEmission);
+    imageStoreNormal(                       pix, h.normal);
+    imageStoreNormalGeometry(               pix, h.normalGeom);
+    imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
+    // save only the first hit's depth for rasterization, as reflections/refraction only may be losely represented via rasterization
+    imageStore(framebufDepth,               pix, vec4(firstHitDepthLinear, gradDepth, firstHitDepthNDC));
+    imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
+    imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
+    imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(primaryPayload));
+    imageStore(framebufViewDirection,       pix, vec4(cameraRayDir, 0.0));
+    imageStore(framebufSectorIndex,         pix, uvec4(h.sectorArrayIndex));
+    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
+
+    // save some info for refl/refr shader
+    imageStore(framebufPrimaryToReflRefr,   pix, uvec4(h.geometryInstanceFlags, primaryPayload.instIdAndIndex, 0, 0));
+
+    // save info for DLSS, but only about primary surface 
+    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
+    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));
+}
+#endif
+
+
+#ifdef RAYGEN_REFL_REFR_SHADER
+void main() 
+{
+    if (globalUniform.reflectRefractMaxDepth == 0)
+    {
+        return;
+    }
+
+
+    const ivec2 regularPix = ivec2(gl_LaunchIDEXT.xy);
+    const ivec2 pix = getCheckerboardPix(regularPix);
+    const vec2 inUV = getPixelUVWithJitter(regularPix);
+
+    const vec3 cameraOrigin = globalUniform.cameraPosition.xyz;
+    const vec3 cameraRayDir = getRayDir(inUV);
+    const vec3 cameraRayDirAX = getRayDirAX(inUV);
+    const vec3 cameraRayDirAY = getRayDirAY(inUV);
+    
+    const vec4 albedoBuf = texelFetchAlbedo(pix);
+    if (isSky(albedoBuf))
+    {
+        return;
+    }
+
+
+
+    // restore state from primary shader
+    const uvec2 primaryToReflRefrBuf        = texelFetch(framebufPrimaryToReflRefr_Sampler, pix, 0).rg;
+    ShHitInfo h;
+    h.albedo                                = albedoBuf.rgb;
+    h.hitPosition                           = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
+    h.geometryInstanceFlags                 = primaryToReflRefrBuf.r;
+    h.normalGeom                            = texelFetchNormalGeometry(pix);
+    h.normal                                = texelFetchNormal(pix);
+    const vec3  motionBuf                   = texelFetch(framebufMotion_Sampler, pix, 0).rgb;
+    vec2        motionCurToPrev             = motionBuf.rg;
+    float       motionDepthLinearCurToPrev  = motionBuf.b;
+    const vec4  depthBuf                    = texelFetch(framebufDepth_Sampler, pix, 0);
+    vec2        gradDepth                   = depthBuf.gb;
+    float       firstHitDepthLinear         = depthBuf.r;
+    float       firstHitDepthNDC            = depthBuf.a;
+    float       screenEmission              = getScreenEmissionFromAlbedo4(albedoBuf);
+    vec3        throughput                  = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
+    ShPayload currentPayload;
+    currentPayload.instIdAndIndex           = primaryToReflRefrBuf.g;
+
+
+
+    RayCone rayCone;
+    rayCone.width = 0;
+    rayCone.spreadAngle = globalUniform.cameraRayConeSpreadAngle;
+
     float fullPathLength = firstHitDepthLinear;
     vec3 prevHitPosition = h.hitPosition;
     bool wasSplit = false;
     bool wasPortal = false;
-    const vec3 viewDir = rayDir;
     vec3 virtualPos = h.hitPosition;
+    vec3 rayDir = cameraRayDir;
+    uint currentRayMedia = globalUniform.cameraMediaType;
+    // if there was no hitinfo from refl/refr, preserve primary hitinfo
+    bool hitInfoWasOverwritten = false;
 
 
-    throughput *= getMediaTransmittance(currentRayMedia, firstHitDepthLinear);
     propagateRayCone(rayCone, firstHitDepthLinear);
+
 
 
     for (int i = 0; i < globalUniform.reflectRefractMaxDepth; i++)
     {
-        const uint instIndex = unpackInstanceIdAndCustomIndex(payload.instIdAndIndex).y;
+        const uint instIndex = unpackInstanceIdAndCustomIndex(currentPayload.instIdAndIndex).y;
 
         if ((instIndex & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT) == 0)
         {
@@ -389,10 +481,10 @@ void main()
         }
 
 
-        payload = traceReflectionRefractionRay(rayOrigin, rayDir, instIndex, doRefraction, false);
+        currentPayload = traceReflectionRefractionRay(rayOrigin, rayDir, instIndex, doRefraction, false);
 
         
-        if (!isPayloadConsistent(payload))
+        if (!isPayloadConsistent(currentPayload))
         {
             throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, globalUniform.worldUpVector.xyz)), -3));
 
@@ -405,8 +497,8 @@ void main()
         if (doRefraction || isPortal)
         {
             h = getHitInfoWithRayCone_Refraction(
-                payload, rayCone, 
-                cameraOrigin, rayDir, rayDirAX, rayDirAY,
+                currentPayload, rayCone, 
+                cameraOrigin, rayDir, cameraRayDirAX, cameraRayDirAY,
                 prevHitPosition, rayLen,
                 motionCurToPrev, motionDepthLinearCurToPrev, 
                 gradDepth, 
@@ -416,8 +508,8 @@ void main()
         else
         {
             h = getHitInfoWithRayCone_Reflection(
-                payload, rayCone, 
-                cameraOrigin, rayDir, viewDir, 
+                currentPayload, rayCone, 
+                cameraOrigin, rayDir, cameraRayDir, 
                 virtualPos, 
                 prevHitPosition, rayLen, 
                 motionCurToPrev, motionDepthLinearCurToPrev, 
@@ -427,10 +519,17 @@ void main()
         }
 
 
+        hitInfoWasOverwritten = true;
         throughput *= getMediaTransmittance(currentRayMedia, rayLen);
         propagateRayCone(rayCone, rayLen);
         fullPathLength += rayLen;
         prevHitPosition = h.hitPosition;
+    }
+
+
+    if (!hitInfoWasOverwritten)
+    {
+        return;
     }
 
 
@@ -442,10 +541,9 @@ void main()
     imageStore(framebufDepth,               pix, vec4(fullPathLength, gradDepth, firstHitDepthNDC));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
-    imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(payload));
+    imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(currentPayload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufSectorIndex,         pix, uvec4(h.sectorArrayIndex));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
-    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
-    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));
 }
+#endif

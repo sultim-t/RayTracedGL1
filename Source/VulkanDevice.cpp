@@ -722,6 +722,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
         pathTracer->TracePrimaryRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height());
 
+        if (uniform->GetData()->reflectRefractMaxDepth > 0)
+        {
+            pathTracer->TraceReflectionRefractionRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+        }
+
         werePrimaryTraced = true;
 
         // save and merge samples from previous illumination results
