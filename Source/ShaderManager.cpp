@@ -39,6 +39,7 @@ struct ShaderModuleDefinition
 static ShaderModuleDefinition G_SHADERS[] =
 {
     {"RGenPrimary",             "RtRaygenPrimary.rgen.spv"             },
+    {"RGenReflRefr",            "RtRaygenReflRefr.rgen.spv"            },
     {"RGenDirect",              "RtRaygenDirect.rgen.spv"              },
     {"RGenIndirect",            "RtRaygenIndirect.rgen.spv"            },
     {"RMiss",                   "RtMiss.rmiss.spv"                     },
@@ -70,7 +71,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CCas",                    "CmCas.comp.spv"                       },
     {"VertLensFlare",           "RasterizerLensFlare.vert.spv"         },
     {"FragLensFlare",           "RasterizerLensFlare.frag.spv"         },
-    {"CCullLensFlares",     "CmCullLensFlares.comp.spv"                },
+    {"CCullLensFlares",         "CmCullLensFlares.comp.spv"            },
 };
 
 

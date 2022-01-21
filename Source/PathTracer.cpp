@@ -71,9 +71,7 @@ void PathTracer::Bind(
                             0, nullptr);
 }
 
-void PathTracer::TracePrimaryRays(
-    VkCommandBuffer cmd, uint32_t frameIndex, 
-    uint32_t width, uint32_t height)
+void PathTracer::TracePrimaryRays(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
 {
     CmdLabel label(cmd, "Primary rays");
 
@@ -81,6 +79,39 @@ void PathTracer::TracePrimaryRays(
 
     // primary
     rtPipeline->GetEntries(SBT_INDEX_RAYGEN_PRIMARY, raygenEntry, missEntry, hitEntry, callableEntry);
+
+    svkCmdTraceRaysKHR(
+        cmd,
+        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+        width, height, 1);
+}
+
+void PathTracer::TraceReflectionRefractionRays(VkCommandBuffer cmd, uint32_t frameIndex,
+                                               uint32_t width, uint32_t height,
+                                               const std::shared_ptr<Framebuffers> &framebuffers)
+{
+    CmdLabel label(cmd, "Reflection/refraction rays");
+
+    typedef FramebufferImageIndex FI;
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_RANDOM_SEED,
+        FI::FB_IMAGE_INDEX_ALBEDO,
+        FI::FB_IMAGE_INDEX_NORMAL,
+        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+        FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
+        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_MOTION,
+        FI::FB_IMAGE_INDEX_SURFACE_POSITION,
+        FI::FB_IMAGE_INDEX_VISIBILITY_BUFFER,
+        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+        FI::FB_IMAGE_INDEX_SECTOR_INDEX,
+        FI::FB_IMAGE_INDEX_THROUGHPUT,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
+    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_REFL_REFR, raygenEntry, missEntry, hitEntry, callableEntry);
 
     svkCmdTraceRaysKHR(
         cmd,

@@ -275,8 +275,9 @@ CONST = {
     "PAYLOAD_INDEX_SHADOW"                  : 1,
     
     "SBT_INDEX_RAYGEN_PRIMARY"              : 0,
-    "SBT_INDEX_RAYGEN_DIRECT"               : 1,
-    "SBT_INDEX_RAYGEN_INDIRECT"             : 2,
+    "SBT_INDEX_RAYGEN_REFL_REFR"            : 1,
+    "SBT_INDEX_RAYGEN_DIRECT"               : 2,
+    "SBT_INDEX_RAYGEN_INDIRECT"             : 3,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
     "SBT_INDEX_MISS_SHADOW"                 : 1,
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,

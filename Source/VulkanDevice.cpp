@@ -1020,6 +1020,16 @@ void RTGL1::VulkanDevice::UploadLensFlare(const RgLensFlareUploadInfo *pUploadIn
     rasterizer->UploadLensFlare(currentFrameState.GetFrameIndex(), *pUploadInfo);
 }
 
+void RTGL1::VulkanDevice::UploadDecal(const RgDecalUploadInfo *pUploadInfo)
+{
+    if (pUploadInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    // TODO: upload decal
+}
+
 void VulkanDevice::SubmitStaticGeometries()
 {
     scene->SubmitStatic();

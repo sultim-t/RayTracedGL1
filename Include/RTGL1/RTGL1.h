@@ -568,21 +568,36 @@ RgResult rgUploadRasterizedGeometry(
 
 
 
+// Render specified vertex geometry, if 'pointToCheck' is not hidden.
 typedef struct RgLensFlareUploadInfo
 {
     // Must be in world space.
     uint32_t                                vertexCount;
     const RgRasterizedGeometryVertexStruct  *pVertexData;
     // Must not be null.
-    uint32_t        indexCount;
-    const void      *pIndexData;
-    RgMaterial      material;
-    RgFloat3D       pointToCheck;
+    uint32_t                                indexCount;
+    const void                              *pIndexData;
+    RgMaterial                              material;
+    RgFloat3D                               pointToCheck;
 } RgLensFlareUploadInfo;
 
 RgResult rgUploadLensFlare(
     RgInstance                              rgInstance,
     const RgLensFlareUploadInfo             *pUploadInfo);
+
+
+
+typedef struct RgDecalUploadInfo
+{
+    // Transformation from [0..1] cube to a scaled oriented box.
+    // Orientation should transform (0,0,1) to decal's normal.
+    RgTransform     transform;
+    RgMaterial      material;
+} RgDecalUploadInfo;
+
+RgResult rgUploadDecal(
+    RgInstance                              rgInstance,
+    const RgDecalUploadInfo                 *pUploadInfo);
 
 
 

@@ -163,6 +163,15 @@ RgResult rgUploadLensFlare(RgInstance rgInstance, const RgLensFlareUploadInfo *p
     CATCH_OR_RETURN;
 }
 
+RgResult rgUploadDecal(RgInstance rgInstance, const RgDecalUploadInfo *pUploadInfo)
+{
+    try
+    {
+        GetDevice(rgInstance)->UploadDecal(pUploadInfo);
+    }
+    CATCH_OR_RETURN;
+}
+
 
 RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
 {

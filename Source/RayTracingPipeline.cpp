@@ -89,6 +89,7 @@ RayTracingPipeline::RayTracingPipeline(
     shaderStageInfos =
     {
         { "RGenPrimary",    &primaryRaysMaxAlbedoLayers },
+        { "RGenReflRefr",   &primaryRaysMaxAlbedoLayers },
         { "RGenDirect",     nullptr },
         { "RGenIndirect",   &indirectIlluminationMaxAlbedoLayers },
         { "RMiss",          nullptr },
@@ -118,6 +119,7 @@ RayTracingPipeline::RayTracingPipeline(
     // set shader binding table structure the same as defined with SBT_INDEX_* 
 
     AddRayGenGroup(toIndex("RGenPrimary"));                         assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_PRIMARY);
+    AddRayGenGroup(toIndex("RGenReflRefr"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_REFL_REFR);
     AddRayGenGroup(toIndex("RGenDirect"));                          assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_DIRECT);
     AddRayGenGroup(toIndex("RGenIndirect"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT);
 
@@ -265,8 +267,9 @@ void RayTracingPipeline::GetEntries(
     VkStridedDeviceAddressRegionKHR &hitEntry,
     VkStridedDeviceAddressRegionKHR &callableEntry) const
 {
-    assert(sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY || 
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT  ||
+    assert(sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY   || 
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_REFL_REFR ||
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT    ||
            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT);
 
     VkDeviceAddress bufferAddress = shaderBindingTable->GetDeviceAddress();
