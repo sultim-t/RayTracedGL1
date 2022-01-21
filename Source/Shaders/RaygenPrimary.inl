@@ -108,8 +108,14 @@ vec2 getMotionForInfinitePoint(const ivec2 pix)
     return screenSpacePrev - screenSpaceCur;
 }
 
-void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC, bool wasSplit, bool isPrimaryRay)
+void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC, bool wasSplit)
 {
+#ifdef RAYGEN_PRIMARY_SHADER
+    const bool isPrimaryRay = true;
+#else
+    const bool isPrimaryRay = false;
+#endif
+
     if (calculateSkyAndStoreToAlbedo)
     {
         imageStoreAlbedoSky(                pix, getSkyPrimary(rayDir), isPrimaryRay);
@@ -253,7 +259,7 @@ void main()
         throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(cameraRayDir, vec3(0,1,0))), -3));
 
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0, false, true);
+        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0, false);
         return;
     }
 
@@ -488,7 +494,7 @@ void main()
         {
             throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, globalUniform.worldUpVector.xyz)), -3));
 
-            storeSky(pix, rayDir, true, throughput, firstHitDepthNDC, wasSplit, false);
+            storeSky(pix, rayDir, true, throughput, firstHitDepthNDC, wasSplit);
             return;  
         }
 
