@@ -487,7 +487,7 @@ std::vector<const char *> RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
 #else 
 
 
-RTGL1::DLSS::DLSS(VkInstance _instance, VkDevice _device, VkPhysicalDevice _physDevice, bool _enableDebug) : device(_device),isInitialized(false), pParams(nullptr), pDlssFeature(nullptr), prevDlssFeatureValues{} { }
+RTGL1::DLSS::DLSS(VkInstance _instance, VkDevice _device, VkPhysicalDevice _physDevice, const char *pAppGuid, bool _enableDebug) : device(_device),isInitialized(false), pParams(nullptr), pDlssFeature(nullptr), prevDlssFeatureValues{} { }
 RTGL1::DLSS::~DLSS() { }
 
 RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers, const RenderResolutionHelper &renderResolution, RgFloat2D jitterOffset)
@@ -503,7 +503,7 @@ std::vector<const char *> RTGL1::DLSS::GetDlssVulkanDeviceExtensions() { return 
 
 
 // private
-bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, bool enableDebug) { return false; }
+bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice physDevice, const char *pAppGuid, bool enableDebug) { return false; }
 bool RTGL1::DLSS::CheckSupport() const { return false; }
 void RTGL1::DLSS::Destroy() { }
 void RTGL1::DLSS::DestroyDlssFeature() { }
