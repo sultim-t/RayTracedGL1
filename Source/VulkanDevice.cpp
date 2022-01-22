@@ -1049,7 +1049,7 @@ void RTGL1::VulkanDevice::UploadDecal(const RgDecalUploadInfo *pUploadInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    // TODO: upload decal
+    decalManager->Upload(currentFrameState.GetFrameIndex(), *pUploadInfo);
 }
 
 void VulkanDevice::SubmitStaticGeometries()

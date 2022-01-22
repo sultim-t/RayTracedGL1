@@ -237,7 +237,7 @@ void RTGL1::DecalManager::CreatePipelines(const ShaderManager *shaderManager)
     VkPipelineRasterizationStateCreateInfo raster = {};
     raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
     raster.depthClampEnable = VK_FALSE;
-    raster.rasterizerDiscardEnable = VK_TRUE;
+    raster.rasterizerDiscardEnable = VK_FALSE;
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.cullMode = VK_CULL_MODE_NONE;
     raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
