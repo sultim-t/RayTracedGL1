@@ -25,12 +25,13 @@ import subprocess
 import pathlib
 
 
-CACHE_FOLDER_PATH     = "Build/"
-CACHE_FILE_NAME       = "GenerateShadersCache.txt"
-EXTENSIONS            = [ ".comp", ".vert", "frag", ".rgen", ".rahit", ".rchit", ".rmiss" ]
-DEPENDENCY_EXTENSIONS = [ ".h", ".inl" ]
-DEPENDENCY_FOLDERS    = [ "", "../Generated/" ]
-DEPENDENCY_IGNORE     = [ "BlueNoiseFileNames.h", "ShaderCommonC.h", "ShaderCommonCFramebuf.h" ]
+CACHE_FOLDER_PATH           = "Build/"
+CACHE_FILE_NAME             = "GenerateShadersCache.txt"
+EXTENSIONS                  = [ ".comp", ".vert", "frag", ".rgen", ".rahit", ".rchit", ".rmiss" ]
+DEPENDENCY_EXTENSIONS       = [ ".h", ".inl" ]
+DEPENDENCY_FOLDERS          = { "", "../Generated/" }
+DEPENDENCY_FOLDERS_IGNORE   = [ CACHE_FOLDER_PATH, ".vscode/" ]
+DEPENDENCY_IGNORE           = [ "BlueNoiseFileNames.h", "ShaderCommonC.h", "ShaderCommonCFramebuf.h" ]
 
 
 CACHE_FILE_DEPENDENCY_MAP_SEPARATOR_LINE = "DEPENDENCY\n"
@@ -45,7 +46,7 @@ def wereDependentModified(dependencyMap, modifiedDependent, cache, baseFile, fir
     for dpd in dependencyMap[baseFile]:
         if dpd in modifiedDependent or dpd not in cache:
             return True
-        else:
+        elif dpd not in MARKED_FILES:
             MARKED_FILES.append(dpd)
             if wereDependentModified(dependencyMap, modifiedDependent, cache, dpd, firstTime=False):
                 return True
@@ -70,6 +71,24 @@ def abspath(filename):
     return os.path.abspath(filename).replace('\\','/')
 
 
+def getAllSubfolders(folder):
+    folder = folder if folder != "" else "."
+    return {os.path.relpath(root).replace('\\','/') + '/' for root, _, _ in os.walk(folder) if abspath(root) != abspath(folder)}
+
+
+def fillDependencyFolders():
+    global DEPENDENCY_FOLDERS
+
+    fs = DEPENDENCY_FOLDERS
+    for f in DEPENDENCY_FOLDERS:
+        fs = fs.union(getAllSubfolders(f))
+
+    for i in DEPENDENCY_FOLDERS_IGNORE:
+        fs.discard(i)
+
+    DEPENDENCY_FOLDERS = fs
+
+
 def main():
     if "--help" in sys.argv or "-help" in sys.argv or "-h" in sys.argv or "--h" in sys.argv:
         print("-rebuild  : clear cache and rebuild all shaders")
@@ -91,6 +110,8 @@ def main():
     #elif len(sys.argv) > 1:
     #    print("> Couldn't parse arguments")
     #    return
+
+    fillDependencyFolders()
 
     if not os.path.exists(CACHE_FOLDER_PATH):
         try:
