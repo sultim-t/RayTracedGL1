@@ -253,6 +253,7 @@ CONST = {
     "BINDING_LENS_FLARES_CULLING_INPUT"         : 0,
     "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
     "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
+    "BINDING_DECAL_INSTANCES"                   : 0,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -639,6 +640,13 @@ LENS_FLARES_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "textureIndex",         1),
 ]
 
+DECAL_INSTANCE_STRUCT = [
+    (TYPE_FLOAT32,     44,      "transform",                1),
+    (TYPE_UINT32,       1,      "textureAlbedoAlpha",       1),
+    (TYPE_UINT32,       1,      "textureRougnessMetallic",  1),
+    (TYPE_UINT32,       1,      "textureNormals",           1),
+]
+
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
 STRUCT_ALIGNMENT_STD140     = 2
@@ -664,6 +672,7 @@ STRUCTS = {
     "ShIndirectDrawCommand":    (INDIRECT_DRAW_CMD_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
     # TODO: should be STRUCT_ALIGNMENT_STD430, but current generator is not great as it just adds pads at the end, so it's 0
     "ShLensFlareInstance":      (LENS_FLARES_INSTANCE_STRUCT,   False,  0,                          0),
+    "ShDecalInstance":          (DECAL_INSTANCE_STRUCT,         False,  STRUCT_ALIGNMENT_STD430,    0),
 }
 
 # --------------------------------------------------------------------------------------------- #

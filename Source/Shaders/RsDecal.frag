@@ -29,7 +29,7 @@
 
 void main()
 {
-    const ivec2 pix = getCheckerboardPix(ivec2(gl_FragCoord.xy));
+    const ivec2 pix = ivec2(gl_FragCoord.xy);
     
     imageStore(framebufAlbedo, pix, vec4(0));
 }

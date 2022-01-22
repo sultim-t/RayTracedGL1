@@ -37,6 +37,8 @@
 // * DESC_SET_RANDOM            -- to access blue noise (uniform distribution) and sampling points on surfaces
 // * DESC_SET_TONEMAPPING       -- to access histogram and average luminance;
 //                                 define TONEMAPPING_BUFFER_WRITEABLE for writing
+// * DESC_SET_LENS_FLARES
+// * DESC_SET_DECALS
 
 
 
@@ -231,6 +233,15 @@ layout(set = DESC_SET_LENS_FLARES, binding = BINDING_LENS_FLARES_DRAW_CMDS) buff
     uint lensFlareDrawCmdsCount;
 };
 #endif // DESC_SET_LENS_FLARES
+
+
+
+#ifdef DESC_SET_DECALS
+layout(set = DESC_SET_DECALS, binding = BINDING_DECAL_INSTANCES) buffer DecalInstances_BT
+{
+    ShDecalInstance decalInstances[];
+};
+#endif // DESC_SET_DECALS
 
 
 

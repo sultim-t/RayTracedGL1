@@ -20,6 +20,7 @@
 
 #include "DecalManager.h"
 
+#include "Matrix.h"
 #include "Generated/ShaderCommonC.h"
 
 
@@ -42,23 +43,34 @@ RTGL1::DecalManager::DecalManager(
     renderPass(VK_NULL_HANDLE),
     framebuffer(VK_NULL_HANDLE),
     pipelineLayout(VK_NULL_HANDLE),
-    pipeline(VK_NULL_HANDLE)
+    pipeline(VK_NULL_HANDLE),
+    descPool(VK_NULL_HANDLE),
+    descSetLayout(VK_NULL_HANDLE),
+    descSet(VK_NULL_HANDLE)
 {
-    CreateRenderPass();
+    instanceBuffer = std::make_unique<AutoBuffer>(_allocator);
+    instanceBuffer->Create(
+        DECAL_MAX_COUNT * sizeof(ShDecalInstance),
+        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Decal instance buffer");
 
+    CreateDescriptors();
+    CreateRenderPass();
     VkDescriptorSetLayout setLayouts[] =
     {
         _uniform->GetDescSetLayout(),
         _framebuffers->GetDescSetLayout(),
-        _textureManager->GetDescSetLayout()
+        _textureManager->GetDescSetLayout(),
+        descSetLayout
     };
     CreatePipelineLayout(setLayouts, std::size(setLayouts));
-
     CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::DecalManager::~DecalManager()
 {
+    vkDestroyDescriptorSetLayout(device, descSetLayout, nullptr);
+    vkDestroyDescriptorPool(device, descPool, nullptr);
+
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
     DestroyPipelines();
 
@@ -71,7 +83,8 @@ void RTGL1::DecalManager::PrepareForFrame(uint32_t frameIndex)
     decalCount = 0;
 }
 
-void RTGL1::DecalManager::Upload(uint32_t frameIndex, const RgDecalUploadInfo &uploadInfo)
+void RTGL1::DecalManager::Upload(uint32_t frameIndex, const RgDecalUploadInfo &uploadInfo,
+                                 const std::shared_ptr<TextureManager> &textureManager)
 {
     if (decalCount >= DECAL_MAX_COUNT)
     {
@@ -79,17 +92,57 @@ void RTGL1::DecalManager::Upload(uint32_t frameIndex, const RgDecalUploadInfo &u
         return;
     }
 
+    const uint32_t decalIndex = decalCount;
     decalCount++;
+
+    const MaterialTextures mat = textureManager->GetMaterialTextures(uploadInfo.material);
+
+    ShDecalInstance instance = {};
+    instance.textureAlbedoAlpha      = mat.indices[MATERIAL_ALBEDO_ALPHA_INDEX];
+    instance.textureRougnessMetallic = mat.indices[MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX];
+    instance.textureNormals          = mat.indices[MATERIAL_NORMAL_INDEX];
+    Matrix::ToMat4Transposed(instance.transform, uploadInfo.transform);
+
+    {
+        ShDecalInstance *dst = (ShDecalInstance *)instanceBuffer->GetMapped(frameIndex);
+        memcpy(&dst[decalIndex], &instance, sizeof(ShDecalInstance));
+    }
 }
 
 void RTGL1::DecalManager::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
-{}
+{
+    if (decalCount == 0)
+    {
+        return;
+    }
+
+    instanceBuffer->CopyFromStaging(cmd, frameIndex, decalCount * sizeof(ShDecalInstance));
+}
 
 void RTGL1::DecalManager::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const std::shared_ptr<Framebuffers> &framebuffers, const std::shared_ptr<TextureManager> &textureManager)
 {
     if (decalCount == 0)
     {
         return;
+    }
+
+    {
+        VkBufferMemoryBarrier2KHR b = {};
+        b.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
+        b.srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
+        b.srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+        b.dstStageMask = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR;
+        b.dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR;
+        b.buffer = instanceBuffer->GetDeviceLocal();
+        b.offset = 0;
+        b.size = decalCount * sizeof(ShDecalInstance);
+
+        VkDependencyInfoKHR info = {};
+        info.sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
+        info.bufferMemoryBarrierCount = 1;
+        info.pBufferMemoryBarriers = &b;
+
+        svkCmdPipelineBarrier2KHR(cmd, &info);
     }
 
     assert(framebuffer != VK_NULL_HANDLE);
@@ -112,6 +165,7 @@ void RTGL1::DecalManager::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const s
         uniform->GetDescSet(frameIndex),
         framebuffers->GetDescSet(frameIndex),
         textureManager->GetDescSet(frameIndex),
+        descSet
     };
 
     vkCmdBindDescriptorSets(
@@ -304,4 +358,71 @@ void RTGL1::DecalManager::DestroyPipelines()
 
     vkDestroyPipeline(device, pipeline, nullptr);
     pipeline = VK_NULL_HANDLE;
+}
+
+void RTGL1::DecalManager::CreateDescriptors()
+{
+    {
+        VkDescriptorPoolSize poolSize = {};
+        poolSize.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        poolSize.descriptorCount = 1;
+
+        VkDescriptorPoolCreateInfo poolInfo = {};
+        poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfo.poolSizeCount = 1;
+        poolInfo.pPoolSizes = &poolSize;
+        poolInfo.maxSets = 1;
+
+        VkResult r = vkCreateDescriptorPool(device, &poolInfo, nullptr, &descPool);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, descPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Decal desc pool");
+    }
+    {
+        VkDescriptorSetLayoutBinding binding = {};
+        binding.binding = BINDING_DECAL_INSTANCES;
+        binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        binding.descriptorCount = 1;
+        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+
+        VkDescriptorSetLayoutCreateInfo info = {};
+        info.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
+        info.bindingCount = 1;
+        info.pBindings = &binding;
+
+        VkResult r = vkCreateDescriptorSetLayout(device, &info, nullptr, &descSetLayout);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, descSetLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Decal desc set layout");
+    }
+
+    {
+        VkDescriptorSetAllocateInfo allocInfo = {};
+        allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+        allocInfo.descriptorPool = descPool;
+        allocInfo.descriptorSetCount = 1;
+        allocInfo.pSetLayouts = &descSetLayout;
+
+        VkResult r = vkAllocateDescriptorSets(device, &allocInfo, &descSet);
+        VK_CHECKERROR(r);
+
+        SET_DEBUG_NAME(device, descSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "Decal desc set");
+    }
+    {
+        VkDescriptorBufferInfo b = {};
+        b.buffer = instanceBuffer->GetDeviceLocal();
+        b.offset = 0;
+        b.range = VK_WHOLE_SIZE;
+
+        VkWriteDescriptorSet w = {};
+        w.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        w.dstSet = descSet;
+        w.dstBinding = BINDING_DECAL_INSTANCES;
+        w.dstArrayElement = 0;
+        w.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        w.descriptorCount = 1;
+        w.pBufferInfo = &b;
+
+        vkUpdateDescriptorSets(device, 1, &w, 0, nullptr);
+    }
 }

@@ -21,20 +21,21 @@
 #version 460
 
 #define DESC_SET_GLOBAL_UNIFORM 0
+#define DESC_SET_DECALS 3
 #include "ShaderCommonGLSLFunc.h"
 
 //layout (location = 0) out vec2 outNormal;
 
-// Buffer-free cube triangle strips 
+// Buffer-free [-1..1] cube triangle strips 
 vec4 getPosition()
 {
     // https://twitter.com/donzanoid/status/616370134278606848
     int b = 1 << (gl_VertexIndex % 14);
 
     return vec4(
-        float((0x287A & b) != 0),
-        float((0x02AF & b) != 0),
-        float((0x31E3 & b) != 0),
+        float((0x287A & b) != 0) * 2.0 - 1.0,
+        float((0x02AF & b) != 0) * 2.0 - 1.0,
+        float((0x31E3 & b) != 0) * 2.0 - 1.0,
         1.0
     );
 }
@@ -42,5 +43,5 @@ vec4 getPosition()
 void main()
 {
     //outNormal = ;
-    gl_Position = globalUniform.projection * globalUniform.view * /* decalInstances[gl_InstanceIndex].tranform; * */ getPosition();
+    gl_Position = globalUniform.projection * globalUniform.view * decalInstances[gl_InstanceIndex].transform * getPosition();
 }

@@ -589,7 +589,7 @@ RgResult rgUploadLensFlare(
 
 typedef struct RgDecalUploadInfo
 {
-    // Transformation from [0..1] cube to a scaled oriented box.
+    // Transformation from [-1..1] cube to a scaled oriented box.
     // Orientation should transform (0,0,1) to decal's normal.
     RgTransform     transform;
     RgMaterial      material;

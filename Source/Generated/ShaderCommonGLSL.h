@@ -38,6 +38,7 @@
 #define BINDING_LENS_FLARES_CULLING_INPUT (0)
 #define BINDING_LENS_FLARES_DRAW_CMDS (1)
 #define BINDING_DRAW_LENS_FLARES_INSTANCES (0)
+#define BINDING_DECAL_INSTANCES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -330,6 +331,15 @@ struct ShIndirectDrawCommand
 struct ShLensFlareInstance
 {
     uint textureIndex;
+};
+
+struct ShDecalInstance
+{
+    mat4 transform;
+    uint textureAlbedoAlpha;
+    uint textureRougnessMetallic;
+    uint textureNormals;
+    uint __pad0;
 };
 
 #ifdef DESC_SET_FRAMEBUFFERS

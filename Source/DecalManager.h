@@ -46,7 +46,8 @@ public:
     DecalManager &operator=(DecalManager &&other) noexcept = delete;
 
     void PrepareForFrame(uint32_t frameIndex);
-    void Upload(uint32_t frameIndex, const RgDecalUploadInfo &uploadInfo);
+    void Upload(uint32_t frameIndex, const RgDecalUploadInfo &uploadInfo,
+                const std::shared_ptr<TextureManager> &textureManager);
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex,
               const std::shared_ptr<GlobalUniform> &uniform,
@@ -63,10 +64,12 @@ private:
     void CreatePipelineLayout(const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
+    void CreateDescriptors();
 
 private:
     VkDevice device;
 
+    std::unique_ptr<AutoBuffer> instanceBuffer;
     uint32_t decalCount;
 
     VkRenderPass renderPass;
@@ -74,6 +77,10 @@ private:
 
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
+
+    VkDescriptorPool descPool;
+    VkDescriptorSetLayout descSetLayout;
+    VkDescriptorSet descSet;
 };
 
 }
