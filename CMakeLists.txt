@@ -84,6 +84,7 @@ set(PrivateHeaders
     "Source/SectorVisibility.h"
     "Source/TriangleInfoManager.h"
     "Source/LensFlares.h"
+    "Source/DecalManager.h"
 )
 
 set(Sources
@@ -148,6 +149,7 @@ set(Sources
     "Source/SectorVisibility.cpp"
     "Source/TriangleInfoManager.cpp"
     "Source/LensFlares.cpp"
+    "Source/DecalManager.cpp"
 )
 
 

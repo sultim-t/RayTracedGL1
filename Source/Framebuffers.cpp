@@ -97,7 +97,7 @@ void Framebuffers::CreateDescriptors()
         bnd.binding = ShFramebuffers_Bindings[i];
         bnd.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         bnd.descriptorCount = 1;
-        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
+        bnd.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
         bndCount++;
     }

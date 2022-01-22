@@ -322,7 +322,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.cullMode = VK_CULL_MODE_NONE;
     raster.depthClampEnable = VK_FALSE;
-    raster.rasterizerDiscardEnable = VK_FALSE;
+    raster.rasterizerDiscardEnable = VK_TRUE;
     raster.lineWidth = 1.0f;
     raster.depthBiasEnable = VK_FALSE;
 

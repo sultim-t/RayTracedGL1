@@ -609,6 +609,17 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         RG_CHECKERROR(r);
 
 
+        RgDecalUploadInfo decalInfo = {};
+        decalInfo.transform = {
+            1, 0, 0, 0,
+            0, 1, 0, 0,
+            0, 0, 1, 0
+        };
+        decalInfo.material = RG_NO_MATERIAL;
+
+        r = rgUploadDecal(instance, &decalInfo);
+        RG_CHECKERROR(r);
+
 
         // upload light
         RgDirectionalLightUploadInfo dirLight = {};

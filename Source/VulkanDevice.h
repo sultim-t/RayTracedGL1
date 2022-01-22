@@ -48,6 +48,7 @@
 #include "Sharpening.h"
 #include "DLSS.h"
 #include "RenderResolutionHelper.h"
+#include "DecalManager.h"
 
 namespace RTGL1
 {
@@ -264,6 +265,7 @@ private:
     std::shared_ptr<RayTracingPipeline>     rtPipeline;
     std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
+    std::shared_ptr<DecalManager>           decalManager;
     std::shared_ptr<Denoiser>               denoiser;
     std::shared_ptr<Tonemapping>            tonemapping;
     std::shared_ptr<ImageComposition>       imageComposition;

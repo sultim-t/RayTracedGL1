@@ -72,6 +72,8 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"VertLensFlare",           "RsRasterizerLensFlare.vert.spv"       },
     {"FragLensFlare",           "RsRasterizerLensFlare.frag.spv"       },
     {"CCullLensFlares",         "CmCullLensFlares.comp.spv"            },
+    {"VertDecal",               "RsDecal.vert.spv"                     },
+    {"FragDecal",               "RsDecal.frag.spv"                     },
 };
 
 

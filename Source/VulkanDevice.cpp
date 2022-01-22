@@ -151,6 +151,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         swapchain->GetSurfaceFormat(),
         *info);
 
+    decalManager        = std::make_shared<DecalManager>(
+        device,
+        memAllocator,
+        shaderManager,
+        uniform,
+        framebuffers,
+        textureManager);
+
     rtPipeline          = std::make_shared<RayTracingPipeline>(
         device, 
         physDevice, 
@@ -217,6 +225,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(denoiser);
     shaderManager->Subscribe(imageComposition);
     shaderManager->Subscribe(rasterizer);
+    shaderManager->Subscribe(decalManager);
     shaderManager->Subscribe(rtPipeline);
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
@@ -225,6 +234,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(sharpening);
 
     framebuffers->Subscribe(rasterizer);
+    framebuffers->Subscribe(decalManager);
 }
 
 VulkanDevice::~VulkanDevice()
@@ -249,6 +259,7 @@ VulkanDevice::~VulkanDevice()
     rtPipeline.reset();
     pathTracer.reset();
     rasterizer.reset();
+    decalManager.reset();
     worldSamplerManager.reset();
     genericSamplerManager.reset();
     blueNoise.reset();
@@ -326,6 +337,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
     rasterizer->PrepareForFrame(frameIndex, startInfo.requestRasterizedSkyGeometryReuse);
+    decalManager->PrepareForFrame(frameIndex);
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
@@ -715,12 +727,17 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (traceRays)
     {
+        decalManager->SubmitForFrame(cmd, frameIndex);
+
         pathTracer->Bind(
             cmd, frameIndex, 
             scene, uniform, textureManager, 
             framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
 
         pathTracer->TracePrimaryRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height());
+
+        // draw decals on top of primary surface
+        decalManager->Draw(cmd, frameIndex, uniform, framebuffers, textureManager);
 
         if (uniform->GetData()->reflectRefractMaxDepth > 0)
         {
