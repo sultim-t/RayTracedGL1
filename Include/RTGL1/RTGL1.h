@@ -659,19 +659,19 @@ typedef struct RgSpotlightUploadInfo
 
 RgResult rgUploadDirectionalLight(
     RgInstance                          rgInstance,
-    RgDirectionalLightUploadInfo        *pLightInfo);
+    const RgDirectionalLightUploadInfo  *pLightInfo);
 
 RgResult rgUploadSphericalLight(
     RgInstance                          rgInstance,
-    RgSphericalLightUploadInfo          *pLightInfo);
+    const RgSphericalLightUploadInfo    *pLightInfo);
 
 RgResult rgUploadSpotlightLight(
     RgInstance                          rgInstance,
-    RgSpotlightUploadInfo               *pLightInfo);
+    const RgSpotlightUploadInfo         *pLightInfo);
 
 RgResult rgUploadPolygonalLight(
     RgInstance                          rgInstance,
-    RgPolygonalLightUploadInfo          *pLightInfo);
+    const RgPolygonalLightUploadInfo    *pLightInfo);
 
 
 

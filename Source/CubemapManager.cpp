@@ -107,6 +107,8 @@ RTGL1::CubemapManager::~CubemapManager()
 
 uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const RgCubemapCreateInfo &info)
 {
+    using namespace std::string_literals;
+
     auto f = std::find_if(cubemaps.begin(), cubemaps.end(), [] (const Texture &t)
     {
         // also check if texture's members are all empty or all filled
@@ -161,15 +163,26 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     {
         const auto &faceSize = o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize;
 
-        if (
-            // same format on each face
-            o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).format != commonFormat ||
-            // albedo data exist
-            o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).pData == nullptr ||
-            // square size
-            faceSize.width != faceSize.height ||
-            // same size on each face
-            faceSize.width != commonSize.width || faceSize.height != commonSize.height)
+        if (o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).format != commonFormat)
+        {
+            throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have the same format on each face. Failed on: "s + o->GetDebugName());
+        }
+
+        if (faceSize.width != faceSize.height)
+        {
+            throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have square face size: "s + o->GetDebugName() + " has (" + std::to_string(faceSize.width) + ", " + std::to_string(faceSize.height) + ")");
+        }
+
+        if (faceSize.width != commonSize.width || faceSize.height != commonSize.height)
+        {
+            throw RgException(RG_WRONG_ARGUMENT,
+                              "Cubemap faces must have the same size: "s +
+                              o->GetDebugName() + " has (" + std::to_string(faceSize.width) + ", " + std::to_string(faceSize.height) + ")"
+                              "but expected (" + std::to_string(commonSize.width) + ", " + std::to_string(commonSize.height) + ") like on " + ovrd[0]->GetDebugName());
+        }
+
+        // albedo must data exist
+        if (o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).pData == nullptr)
         {
             useOvrd = false;
             break;

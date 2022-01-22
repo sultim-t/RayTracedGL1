@@ -191,7 +191,7 @@ RgResult rgStartNewScene(RgInstance rgInstance)
     CATCH_OR_RETURN;
 }
 
-RgResult rgUploadDirectionalLight(RgInstance rgInstance, RgDirectionalLightUploadInfo *pLightInfo)
+RgResult rgUploadDirectionalLight(RgInstance rgInstance, const RgDirectionalLightUploadInfo *pLightInfo)
 {
     try
     {
@@ -200,7 +200,7 @@ RgResult rgUploadDirectionalLight(RgInstance rgInstance, RgDirectionalLightUploa
     CATCH_OR_RETURN;
 }
 
-RgResult rgUploadSphericalLight(RgInstance rgInstance, RgSphericalLightUploadInfo *pLightInfo)
+RgResult rgUploadSphericalLight(RgInstance rgInstance, const RgSphericalLightUploadInfo *pLightInfo)
 {
     try
     {
@@ -209,7 +209,7 @@ RgResult rgUploadSphericalLight(RgInstance rgInstance, RgSphericalLightUploadInf
     CATCH_OR_RETURN;
 }
 
-RgResult rgUploadSpotlightLight(RgInstance rgInstance, RgSpotlightUploadInfo *pLightInfo)
+RgResult rgUploadSpotlightLight(RgInstance rgInstance, const RgSpotlightUploadInfo *pLightInfo)
 {
     try
     {
@@ -218,7 +218,7 @@ RgResult rgUploadSpotlightLight(RgInstance rgInstance, RgSpotlightUploadInfo *pL
     CATCH_OR_RETURN;
 }
 
-RgResult rgUploadPolygonalLight(RgInstance rgInstance, RgPolygonalLightUploadInfo *pLightInfo)
+RgResult rgUploadPolygonalLight(RgInstance rgInstance, const RgPolygonalLightUploadInfo *pLightInfo)
 {
     try
     {
@@ -230,6 +230,7 @@ RgResult rgUploadPolygonalLight(RgInstance rgInstance, RgPolygonalLightUploadInf
 RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *pCreateInfo,
                                RgMaterial *pResult)
 {
+    *pResult = RG_NO_MATERIAL;
     try
     {
         GetDevice(rgInstance)->CreateStaticMaterial(pCreateInfo, pResult);
@@ -240,6 +241,7 @@ RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCre
 RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *pCreateInfo,
                                  RgMaterial *pResult)
 {
+    *pResult = RG_NO_MATERIAL;
     try
     {
         GetDevice(rgInstance)->CreateAnimatedMaterial(pCreateInfo, pResult);
@@ -259,6 +261,7 @@ RgResult rgChangeAnimatedMaterialFrame(RgInstance rgInstance, RgMaterial animate
 RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialCreateInfo *pCreateInfo,
                                 RgMaterial *pResult)
 {
+    *pResult = RG_NO_MATERIAL;
     try
     {
         GetDevice(rgInstance)->CreateDynamicMaterial(pCreateInfo, pResult);
@@ -286,6 +289,7 @@ RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
 
 RgResult rgCreateCubemap(RgInstance rgInstance, const RgCubemapCreateInfo *pCreateInfo, RgCubemap *pResult)
 {
+    *pResult = RG_EMPTY_CUBEMAP;
     try
     {
         GetDevice(rgInstance)->CreateSkyboxCubemap(pCreateInfo, pResult);
