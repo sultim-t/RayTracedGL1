@@ -66,6 +66,10 @@ def getDependentFoldersProcArg():
     return [a for p in DEPENDENCY_FOLDERS if p != "" for a in ("-I", p)]
 
 
+def abspath(filename):
+    return os.path.abspath(filename).replace('\\','/')
+
+
 def main():
     if "--help" in sys.argv or "-help" in sys.argv or "-h" in sys.argv or "--h" in sys.argv:
         print("-rebuild  : clear cache and rebuild all shaders")
@@ -146,7 +150,7 @@ def main():
             if otherFolderFilename in DEPENDENCY_IGNORE:
                 continue
 
-            filename = folder + otherFolderFilename
+            filename = abspath(folder + otherFolderFilename)
             isDependentOn = any([filename.endswith(ext) for ext in DEPENDENCY_EXTENSIONS])
 
             if not isDependentOn:
@@ -173,7 +177,7 @@ def main():
                         if "#include" in line:
                             dpdFile = line.split("\"")[1]
                             for dpdFolder in DEPENDENCY_FOLDERS:
-                                dpd = dpdFolder + dpdFile
+                                dpd = abspath(dpdFolder + dpdFile)
                                 if os.path.exists(dpd) and dpd != filename:
                                     dependencyMap[filename].add(dpd)
 
@@ -181,7 +185,8 @@ def main():
     #    print("> Dependency files were modified. Rebuilding all...")
     # print()
 
-    for filename in os.listdir():
+    for filenameRelative in os.listdir():
+        filename = abspath(filenameRelative)
         isShader = any([filename.endswith(ext) for ext in EXTENSIONS])
 
         if not isShader:
@@ -202,18 +207,18 @@ def main():
                     if "#include" in line:
                         dpdFile = line.split("\"")[1]
                         for dpdFolder in DEPENDENCY_FOLDERS:
-                            dpd = dpdFolder + dpdFile
+                            dpd = abspath(dpdFolder + dpdFile)
                             if os.path.exists(dpd):
                                 dependencyMap[filename].add(dpd)
 
         if filename not in cache or isOutdated or wereDependentModified(dependencyMap, modifiedDependent, cache, filename):
-            print("> Building " + filename)
+            print("> Building " + os.path.basename(filename))
 
             r = subprocess.run([
                 "glslc", "--target-env=vulkan1.2"
                 ] + getDependentFoldersProcArg() + [
                 filename, 
-                "-o", "../../Build/" + filename + ".spv"], 
+                "-o", "../../Build/" + os.path.basename(filename) + ".spv"], 
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
             if len(r.stdout) > 0:
