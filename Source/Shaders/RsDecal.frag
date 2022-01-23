@@ -23,13 +23,40 @@
 #define DESC_SET_GLOBAL_UNIFORM 0
 #define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_TEXTURES 2
+#define DESC_SET_DECALS 3
 #include "ShaderCommonGLSLFunc.h"
 
-//layout (location = 0) in vec3 vertNormal;
+layout (location = 0) flat in uint instanceIndex;
 
 void main()
 {
-    const ivec2 pix = ivec2(gl_FragCoord.xy);
+    const ivec2 pix = getCheckerboardPix(ivec2(gl_FragCoord.xy));
+    const vec4 albedo4 = texelFetchAlbedo(pix);
+
+    if (isSky(albedo4))
+    {
+        return;
+    }
+
+    const ShDecalInstance decal = decalInstances[instanceIndex];
     
-    imageStore(framebufAlbedo, pix, vec4(0));
+    const vec3 worldPosition = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
+    const mat4 worldToLocal = inverse(decal.transform); // TODO: on CPU
+    const vec4 localPosition = worldToLocal * vec4(worldPosition, 1.0);
+
+    // if not inside [-1, 1] box
+    if (any(greaterThan(abs(localPosition.xyz), vec3(1.0))))
+    {
+        return;
+    }
+
+    // Z points from surface to outside
+    const vec2 texCoord = localPosition.xy * 0.5 + 0.5;
+
+    const vec4 decalAlbedo = getTextureSample(decal.textureAlbedoAlpha, texCoord);
+
+    const vec3 finalAlbedo = mix(albedo4.rgb, decalAlbedo.rgb, decalAlbedo.a);
+    const float finalEmission = mix(albedo4.a, 0, decalAlbedo.a);
+    
+    imageStoreAlbedoSurface(pix, finalAlbedo, finalEmission);
 }

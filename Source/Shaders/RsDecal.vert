@@ -24,7 +24,7 @@
 #define DESC_SET_DECALS 3
 #include "ShaderCommonGLSLFunc.h"
 
-//layout (location = 0) out vec2 outNormal;
+layout (location = 0) flat out uint outInstanceIndex;
 
 // Buffer-free [-1..1] cube triangle strips 
 vec4 getPosition()
@@ -42,6 +42,6 @@ vec4 getPosition()
 
 void main()
 {
-    //outNormal = ;
+    outInstanceIndex = gl_InstanceIndex;
     gl_Position = globalUniform.projection * globalUniform.view * decalInstances[gl_InstanceIndex].transform * getPosition();
 }

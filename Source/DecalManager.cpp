@@ -145,6 +145,19 @@ void RTGL1::DecalManager::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const s
         svkCmdPipelineBarrier2KHR(cmd, &info);
     }
 
+    {
+        FramebufferImageIndex fs[] =
+        {
+            FB_IMAGE_INDEX_ALBEDO,
+            FB_IMAGE_INDEX_SURFACE_POSITION,
+            FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+            FB_IMAGE_INDEX_NORMAL,
+            FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
+        };
+
+        framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+    }
+
     assert(framebuffer != VK_NULL_HANDLE);
 
     const VkViewport viewport = { 0, 0, uniform->GetData()->renderWidth, uniform->GetData()->renderHeight, 0.0f, 1.0f };
