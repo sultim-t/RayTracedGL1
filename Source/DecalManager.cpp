@@ -20,6 +20,7 @@
 
 #include "DecalManager.h"
 
+#include "CmdLabel.h"
 #include "Matrix.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -116,6 +117,8 @@ void RTGL1::DecalManager::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameInde
         return;
     }
 
+    CmdLabel label(cmd, "Copying decal data");
+
     instanceBuffer->CopyFromStaging(cmd, frameIndex, decalCount * sizeof(ShDecalInstance));
 }
 
@@ -125,6 +128,8 @@ void RTGL1::DecalManager::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const s
     {
         return;
     }
+
+    CmdLabel label(cmd, "Decal draw");
 
     {
         VkBufferMemoryBarrier2KHR b = {};
