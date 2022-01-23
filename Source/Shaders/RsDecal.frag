@@ -20,6 +20,7 @@
 
 #version 460
 
+#define FRAMEBUF_IGNORE_ATTACHMENTS
 #define DESC_SET_GLOBAL_UNIFORM 0
 #define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_TEXTURES 2
@@ -28,15 +29,11 @@
 
 layout (location = 0) flat in uint instanceIndex;
 
+layout (location = 0) out vec4 outAlbedo;
+
 void main()
 {
     const ivec2 pix = getCheckerboardPix(ivec2(gl_FragCoord.xy));
-    const vec4 albedo4 = texelFetchAlbedo(pix);
-
-    if (isSky(albedo4))
-    {
-        return;
-    }
 
     const ShDecalInstance decal = decalInstances[instanceIndex];
     
@@ -47,7 +44,7 @@ void main()
     // if not inside [-1, 1] box
     if (any(greaterThan(abs(localPosition.xyz), vec3(1.0))))
     {
-        return;
+        discard;
     }
 
     // Z points from surface to outside
@@ -55,8 +52,5 @@ void main()
 
     const vec4 decalAlbedo = getTextureSample(decal.textureAlbedoAlpha, texCoord);
 
-    const vec3 finalAlbedo = mix(albedo4.rgb, decalAlbedo.rgb, decalAlbedo.a);
-    const float finalEmission = mix(albedo4.a, 0, decalAlbedo.a);
-    
-    imageStoreAlbedoSurface(pix, finalAlbedo, finalEmission);
+    outAlbedo = decalAlbedo;
 }

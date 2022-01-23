@@ -36,7 +36,7 @@ public:
                  std::shared_ptr<MemoryAllocator> &allocator,
                  const std::shared_ptr<ShaderManager> &shaderManager,
                  const std::shared_ptr<GlobalUniform> &uniform,
-                 const std::shared_ptr<Framebuffers> &framebuffers,
+                 std::shared_ptr<Framebuffers> _storageFramebuffers,
                  const std::shared_ptr<TextureManager> &textureManager);
     ~DecalManager() override;
 
@@ -59,8 +59,8 @@ public:
 
 private:
     void CreateRenderPass();
-    void CreateFramebuffer(uint32_t width, uint32_t height);
-    void DestroyFramebuffer();
+    void CreateFramebuffers(uint32_t width, uint32_t height);
+    void DestroyFramebuffers();
     void CreatePipelineLayout(const VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
@@ -68,12 +68,13 @@ private:
 
 private:
     VkDevice device;
+    std::shared_ptr<Framebuffers> storageFramebuffers;
 
     std::unique_ptr<AutoBuffer> instanceBuffer;
     uint32_t decalCount;
 
     VkRenderPass renderPass;
-    VkFramebuffer framebuffer;
+    VkFramebuffer passFramebuffers[MAX_FRAMES_IN_FLIGHT];
 
     VkPipelineLayout pipelineLayout;
     VkPipeline pipeline;
