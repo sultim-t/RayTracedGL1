@@ -114,7 +114,7 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
             depthViews[i]
         };
 
-        fbInfo.attachmentCount = sizeof(attchs) / sizeof(attchs[0]);
+        fbInfo.attachmentCount = std::size(attchs);
         fbInfo.pAttachments = attchs;
 
         {
@@ -228,7 +228,8 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
     VkAttachmentDescription attchs[attchCount] = {};
 
     auto &colorAttch = attchs[0];
-    colorAttch.format = VK_FORMAT_UNDEFINED;
+    // will be overwritten
+    colorAttch.format = VK_FORMAT_MAX_ENUM;
     colorAttch.samples = VK_SAMPLE_COUNT_1_BIT;
     colorAttch.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD;
     colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
