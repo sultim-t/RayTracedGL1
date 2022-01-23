@@ -487,7 +487,7 @@ void main()
         }
 
 
-        currentPayload = traceReflectionRefractionRay(rayOrigin, rayDir, instIndex, doRefraction, false);
+        currentPayload = traceReflectionRefractionRay(rayOrigin, rayDir, instIndex, h.geometryInstanceFlags, doRefraction);
 
         
         if (!isPayloadConsistent(currentPayload))

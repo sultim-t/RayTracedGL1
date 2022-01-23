@@ -84,14 +84,14 @@ uint getPrimaryVisibilityCullMask()
     return globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT | INSTANCE_MASK_FIRST_PERSON;
 }
 
-uint getReflectionRefractionCullMask(uint surfInstCustomIndex, bool isRefraction)
+uint getReflectionRefractionCullMask(uint surfInstCustomIndex, uint geometryInstanceFlags, bool isRefraction)
 {
-    uint world = globalUniform.rayCullMaskWorld;
+    uint world = globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT;
 
-    if ((surfInstCustomIndex & GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER) == GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER)
+    if ((geometryInstanceFlags & GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER) != 0)
     {
-        // ignore refl/reft geometry if requested
-        world |= INSTANCE_MASK_REFLECT_REFRACT;
+        // ignore refl/refr geometry if requested
+        world = world & (~INSTANCE_MASK_REFLECT_REFRACT);
     }
 
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
@@ -192,17 +192,12 @@ ShPayload tracePrimaryRay(vec3 origin, vec3 direction)
     return g_payload; 
 }
 
-ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfInstCustomIndex, bool isRefraction, bool ignoreReflectRefractGeometry)
+ShPayload traceReflectionRefractionRay(vec3 origin, vec3 direction, uint surfInstCustomIndex, uint geometryInstanceFlags, bool isRefraction)
 {
     resetPayload();
 
-    uint cullMask = getReflectionRefractionCullMask(surfInstCustomIndex, isRefraction);
+    uint cullMask = getReflectionRefractionCullMask(surfInstCustomIndex, geometryInstanceFlags, isRefraction);
 
-    if (ignoreReflectRefractGeometry)
-    {
-        cullMask = cullMask & (~INSTANCE_MASK_REFLECT_REFRACT);
-    }
-    
     traceRayEXT(
         topLevelAS,
         getAdditionalRayFlags(), 
