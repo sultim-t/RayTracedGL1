@@ -41,14 +41,14 @@ void main()
     const mat4 worldToLocal = inverse(decal.transform); // TODO: on CPU
     const vec4 localPosition = worldToLocal * vec4(worldPosition, 1.0);
 
-    // if not inside [-1, 1] box
-    if (any(greaterThan(abs(localPosition.xyz), vec3(1.0))))
+    // if not inside [-0.5, 0.5] box
+    if (any(greaterThan(abs(localPosition.xyz), vec3(0.5))))
     {
         discard;
     }
 
     // Z points from surface to outside
-    const vec2 texCoord = localPosition.xy * 0.5 + 0.5;
+    const vec2 texCoord = localPosition.xy + 0.5;
 
     const vec4 decalAlbedo = getTextureSample(decal.textureAlbedoAlpha, texCoord);
 

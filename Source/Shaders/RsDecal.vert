@@ -26,16 +26,16 @@
 
 layout (location = 0) flat out uint outInstanceIndex;
 
-// Buffer-free [-1..1] cube triangle strips 
+// Buffer-free [-0.5, 0.5] cube triangle strips 
 vec4 getPosition()
 {
     // https://twitter.com/donzanoid/status/616370134278606848
     int b = 1 << (gl_VertexIndex % 14);
 
     return vec4(
-        float((0x287A & b) != 0) * 2.0 - 1.0,
-        float((0x02AF & b) != 0) * 2.0 - 1.0,
-        float((0x31E3 & b) != 0) * 2.0 - 1.0,
+        float((0x287A & b) != 0) - 0.5,
+        float((0x02AF & b) != 0) - 0.5,
+        float((0x31E3 & b) != 0) - 0.5,
         1.0
     );
 }
