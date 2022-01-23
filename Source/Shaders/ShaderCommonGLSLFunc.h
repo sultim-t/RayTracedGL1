@@ -505,6 +505,7 @@ void imageStoreNormalGeometry(const ivec2 pix, const vec3 normal)
 
 // framebufAlbedo ALWAYS uses regular layout because of the sky rasterization pass  
 
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 void imageStoreAlbedoSurface(const ivec2 pix, const vec3 surfaceAlbedo, float screenEmission)
 {
     imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(surfaceAlbedo, max(0.0, screenEmission)));
@@ -520,15 +521,18 @@ vec4 texelFetchAlbedo(const ivec2 pix)
 {
     return texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0);
 }
+#endif
 
 #endif // CHECKERBOARD_FULL_HEIGHT
 #endif // CHECKERBOARD_FULL_WIDTH
 
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 vec4 textureLodAlbedo(const vec2 uv)
 {
     // framebufAlbedo has nearest filtering, so values won't be interpolated
     return textureLod(framebufAlbedo_Sampler, uv, 0);
 }
+#endif
 
 float getScreenEmissionFromAlbedo4(const vec4 albedo)
 {

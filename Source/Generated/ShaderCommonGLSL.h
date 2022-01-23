@@ -137,6 +137,7 @@
 #define SECTOR_INDEX_NONE (32767)
 
 #define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
+#define SURFACE_POSITION_INCORRECT (10000000.0)
 
 struct ShVertexBufferStatic
 {
@@ -416,7 +417,9 @@ struct ShDecalInstance
 #define FB_IMAGE_INDEX_INDIR_PONG_GRADIENT 68
 
 // framebuffers
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 0, rgba16f) uniform image2D framebufAlbedo;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 1, r32ui) uniform uimage2D framebufNormal;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 2, r32ui) uniform uimage2D framebufNormal_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 3, r32ui) uniform uimage2D framebufNormalGeometry;
@@ -442,7 +445,9 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 22, rgba16f) uniform image2D frame
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 23, rg32ui) uniform uimage2D framebufPrimaryToReflRefr;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 24, rgba16f) uniform image2D framebufThroughput;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, r11f_g11f_b10f) uniform image2D framebufPreFinal;
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 26, r11f_g11f_b10f) uniform image2D framebufFinal;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 27, r11f_g11f_b10f) uniform image2D framebufUpscaledPing;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 28, r11f_g11f_b10f) uniform image2D framebufUpscaledPong;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 29, r32f) uniform image2D framebufDepthDlss;
@@ -487,7 +492,9 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 67, r16f) uniform image2D framebuf
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 68, r16f) uniform image2D framebufIndirPongGradient;
 
 // samplers
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 69) uniform sampler2D framebufAlbedo_Sampler;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 70) uniform usampler2D framebufNormal_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 71) uniform usampler2D framebufNormal_Prev_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 72) uniform usampler2D framebufNormalGeometry_Sampler;
@@ -513,7 +520,9 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 91) uniform sampler2D framebufView
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 92) uniform usampler2D framebufPrimaryToReflRefr_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 93) uniform sampler2D framebufThroughput_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 94) uniform sampler2D framebufPreFinal_Sampler;
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 95) uniform sampler2D framebufFinal_Sampler;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 96) uniform sampler2D framebufUpscaledPing_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 97) uniform sampler2D framebufUpscaledPong_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 98) uniform sampler2D framebufDepthDlss_Sampler;

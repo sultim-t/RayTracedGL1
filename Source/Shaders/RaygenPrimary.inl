@@ -133,7 +133,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
     imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, firstHitDepthNDC));
     imageStore(framebufMotion,              pix, vec4(m, 0.0, 0.0));
-    imageStore(framebufSurfacePosition,     pix, vec4(0.0));
+    imageStore(framebufSurfacePosition,     pix, vec4(SURFACE_POSITION_INCORRECT));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufSectorIndex,         pix, uvec4(SECTOR_INDEX_NONE));

@@ -209,6 +209,7 @@ CONST_TO_EVALUATE = "CONST VALUE MUST BE EVALUATED"
 # --------------------------------------------------------------------------------------------- #
 
 GRADIENT_ESTIMATION_ENABLED = True
+FRAMEBUF_IGNORE_ATTACHMENTS_DEFINE = "FRAMEBUF_IGNORE_ATTACHMENTS" # define this, to not specify framebufs that are used as attachments
 
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 20,
@@ -374,7 +375,8 @@ CONST = {
 }
 
 CONST_GLSL_ONLY = {
-    "FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE" : 3.0   # FSR works in perceptual space
+    "FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE" : 3.0,   # FSR works in perceptual space
+    "SURFACE_POSITION_INCORRECT"            : 10000000.0,  
 }
 
 
@@ -1005,9 +1007,13 @@ def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
     bindingSampler = binding + 1
     CURRENT_FRAMEBUF_BINDING_COUNT += 1
 
+    r = ""
+    if flags & FRAMEBUF_FLAGS_IS_ATTACHMENT:
+        r += "#ifndef " + FRAMEBUF_IGNORE_ATTACHMENTS_DEFINE + "\n"
+
     template = ("layout(set = %s, binding = %d, %s) uniform %s %s;")
 
-    r = template % (FRAMEBUF_DESC_SET_NAME, binding, 
+    r += template % (FRAMEBUF_DESC_SET_NAME, binding, 
         GLSL_IMAGE_FORMATS[(baseFormat, components)], 
         GLSL_IMAGE_2D_TYPE[baseFormat], name)
 
@@ -1016,6 +1022,9 @@ def getGLSLFramebufDeclaration(name, baseFormat, components, flags):
         r += getGLSLFramebufDeclaration(
             name + FRAMEBUF_STORE_PREV_POSTFIX, baseFormat, components, 
             flags & ~FRAMEBUF_FLAGS_STORE_PREV)
+
+    if flags & FRAMEBUF_FLAGS_IS_ATTACHMENT:
+        r += "\n#endif"
 
     return r
 
@@ -1027,9 +1036,13 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
     bindingSampler = binding + 1
     CURRENT_FRAMEBUF_BINDING_COUNT += 1
 
+    r = ""
+    if flags & FRAMEBUF_FLAGS_IS_ATTACHMENT:
+        r += "#ifndef " + FRAMEBUF_IGNORE_ATTACHMENTS_DEFINE + "\n"
+
     templateSampler = ("layout(set = %s, binding = %d) uniform %s %s;")
 
-    r = templateSampler % (FRAMEBUF_DESC_SET_NAME, bindingSampler,
+    r += templateSampler % (FRAMEBUF_DESC_SET_NAME, bindingSampler,
         GLSL_SAMPLER_2D_TYPE[baseFormat], name + FRAMEBUF_SAMPLER_POSTFIX)
 
     if flags & FRAMEBUF_FLAGS_STORE_PREV:
@@ -1037,6 +1050,9 @@ def getGLSLFramebufSamplerDeclaration(name, baseFormat, components, flags):
         r += getGLSLFramebufSamplerDeclaration(
             name + FRAMEBUF_STORE_PREV_POSTFIX, baseFormat, components, 
             flags & ~FRAMEBUF_FLAGS_STORE_PREV)
+
+    if flags & FRAMEBUF_FLAGS_IS_ATTACHMENT:
+        r += "\n#endif"
 
     return r
 
