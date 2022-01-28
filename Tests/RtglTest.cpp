@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 
+#define RG_USE_SURFACE_WIN32
 #include <RTGL1/RTGL1.h>
 
 #include <GLFW/glfw3.h>
@@ -19,6 +20,8 @@
 
 #include <fstream>
 #include <chrono>
+
+#define ASSET_DIRECTORY "../../Build/"
 
 #define RG_CHECKERROR(x) assert(x == RG_SUCCESS)
 
@@ -314,7 +317,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
     std::vector<uint32_t>    cubeIndices;
 
     // cube with extents: (-1,-1,-1) (1,1,1)
-    LoadObj("../../Cube.obj", cubePositions, cubeNormals, cubeTexCoords, cubeIndices);
+    LoadObj(ASSET_DIRECTORY"Cube.obj", cubePositions, cubeNormals, cubeTexCoords, cubeIndices);
 
     for (auto f : cubeTexCoords)
     {
@@ -366,7 +369,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
 
     // texture info
     RgStaticMaterialCreateInfo textureInfo = {};
-    textureInfo.pRelativePath = "../../TopMap01.ktx2";
+    textureInfo.pRelativePath = ASSET_DIRECTORY"TopMap01.ktx2";
 
     // out of frame init
     {   
@@ -723,8 +726,8 @@ int main()
 
         info.pWin32SurfaceInfo          = &win32Info;
         info.pfnPrint                   = DebugPrint;
-        info.pBlueNoiseFilePath         = "../../BlueNoise_LDR_RGBA_128.ktx2";
-        info.pShaderFolderPath          = "../../";
+        info.pBlueNoiseFilePath         = ASSET_DIRECTORY"BlueNoise_LDR_RGBA_128.ktx2";
+        info.pShaderFolderPath          = ASSET_DIRECTORY;
 
         r = rgCreateInstance(&info, &instance);
         RG_CHECKERROR(r);
