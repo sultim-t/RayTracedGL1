@@ -12,17 +12,7 @@
       "ctestCommandArgs": "",
       "variables": [
         {
-          "name": "RG_WITH_STATIC_LIBS",
-          "value": "true",
-          "type": "BOOL"
-        },
-        {
           "name": "RG_WITH_SURFACE_WIN32",
-          "value": "True",
-          "type": "BOOL"
-        },
-        {
-          "name": "RG_WITH_EXAMPLES",
           "value": "True",
           "type": "BOOL"
         }
@@ -41,16 +31,6 @@
       "variables": [
         {
           "name": "RG_WITH_SURFACE_WIN32",
-          "value": "True",
-          "type": "BOOL"
-        },
-        {
-          "name": "RG_WITH_STATIC_LIBS",
-          "value": "true",
-          "type": "BOOL"
-        },
-        {
-          "name": "RG_WITH_EXAMPLES",
           "value": "True",
           "type": "BOOL"
         }

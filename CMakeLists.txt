@@ -174,17 +174,15 @@ set(KTXSources
     ${KTXSourceFolder}"/dfdutils/vk2dfd.c"
 )
 
+option(RG_WITH_EXPORTS          "Compile library for export"                ON)
 
-option(RG_WITH_SURFACE_WIN32    "Build with ability to create Win32 VkSurfaceKHR"   OFF)
-option(RG_WITH_SURFACE_METAL    "Build with ability to create Metal VkSurfaceKHR"   OFF)
-option(RG_WITH_SURFACE_WAYLAND  "Build with ability to create Wayland VkSurfaceKHR" OFF)
-option(RG_WITH_SURFACE_XCB      "Build with ability to create Xcb VkSurfaceKHR"     OFF)
-option(RG_WITH_SURFACE_XLIB     "Build with ability to create Xlib VkSurfaceKHR"    OFF)
+option(RG_WITH_SURFACE_WIN32    "Build with Win32 VkSurfaceKHR support"     OFF)
+option(RG_WITH_SURFACE_METAL    "Build with Metal VkSurfaceKHR support"     OFF)
+option(RG_WITH_SURFACE_WAYLAND  "Build with Wayland VkSurfaceKHR support"   OFF)
+option(RG_WITH_SURFACE_XCB      "Build with Xcb VkSurfaceKHR support"       OFF)
+option(RG_WITH_SURFACE_XLIB     "Build with Xlib VkSurfaceKHR support"      OFF)
 
-option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"          ON)
-
-option(RG_WITH_STATIC_LIBS      "Build RTGL1's static library files"    ON)
-option(RG_WITH_EXAMPLES         "Add examples for the library"          OFF)
+option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"              ON)
 
 
 # for KTX-Software
@@ -192,6 +190,11 @@ add_definitions(-DKHRONOS_STATIC -DLIBKTX)
 
 
 # options to definitions
+if (RG_WITH_EXPORTS)
+    message(STATUS "RG_WITH_EXPORTS enabled. RTGL1 functions are exported.")
+    add_definitions(-DRG_LIBRARY_EXPORTS)
+endif()
+
 if (RG_WITH_SURFACE_WIN32)
     message(STATUS "RG_WITH_SURFACE_WIN32 enabled")
     add_definitions(-DNOMINMAX)
@@ -220,7 +223,7 @@ if (RG_WITH_SURFACE_XLIB)
 endif()
 
 
-add_library(RayTracedGL1 STATIC  
+add_library(RayTracedGL1 SHARED  
     ${Sources}
     ${KTXSources}
     ${PublicHeaders}
@@ -261,14 +264,3 @@ endif()
 target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 
-
-if (RG_WITH_STATIC_LIBS)
-    message(STATUS "Adding empty executable to build static library files")
-    add_subdirectory(Compile)
-endif()
-
-
-if (RG_WITH_EXAMPLES)
-    message(STATUS "Adding examples")
-    add_subdirectory(Tests)
-endif()

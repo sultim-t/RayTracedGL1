@@ -23,6 +23,18 @@
 
 #include <stdint.h>
 
+#if defined(_WIN32)
+    #ifdef RG_LIBRARY_EXPORTS
+        #define RGAPI __declspec(dllexport)
+    #else
+        #define RGAPI __declspec(dllimport)
+    #endif // RTGL1_EXPORTS
+    #define RGCONV __cdecl
+#else
+    #define RGAPI
+    #define RGCONV
+#endif // defined(_WIN32)
+
 #define RG_RTGL_VERSION_API "1.01.0000"
 
 #ifdef RG_USE_SURFACE_WIN32
@@ -233,11 +245,11 @@ typedef struct RgInstanceCreateInfo
 
 } RgInstanceCreateInfo;
 
-RgResult rgCreateInstance(
+RGAPI RgResult RGCONV rgCreateInstance(
     const RgInstanceCreateInfo          *pInfo,
     RgInstance                          *pResult);
 
-RgResult rgDestroyInstance(
+RGAPI RgResult RGCONV rgDestroyInstance(
     RgInstance                          rgInstance);
 
 
@@ -400,18 +412,18 @@ typedef struct RgUpdateTexCoordsInfo
 // Dynamic geometry can be uploaded only between rgStartFrame - rgDrawFrame.
 // Static geometry can be uploaded only between rgStartNewScene - rgSubmitStaticGeometries.
 // Uploading dynamic geometries and then calling rgStartNewScene will erase them.
-RgResult rgUploadGeometry(
+RGAPI RgResult RGCONV rgUploadGeometry(
     RgInstance                              rgInstance,
     const RgGeometryUploadInfo              *pUploadInfo);
 
 // Updating transform is available only for movable static geometry.
 // Other geometry types don't need it because they are either fully static
 // or uploaded every frame, so transforms are always as they are intended.
-RgResult rgUpdateGeometryTransform(
+RGAPI RgResult RGCONV rgUpdateGeometryTransform(
     RgInstance                              rgInstance,
     const RgUpdateTransformInfo             *pUpdateInfo);
 
-RgResult rgUpdateGeometryTexCoords(
+RGAPI RgResult RGCONV rgUpdateGeometryTexCoords(
     RgInstance                              rgInstance,
     const RgUpdateTexCoordsInfo             *pUpdateInfo);
 
@@ -419,7 +431,7 @@ RgResult rgUpdateGeometryTexCoords(
 
 // Clear current scene from all static geometries and make it available for recording new geometries.
 // New scene can be visible only after the submission using rgSubmitStaticGeometries.
-RgResult rgStartNewScene(
+RGAPI RgResult RGCONV rgStartNewScene(
     RgInstance                          rgInstance);
 
 // After uploading all static geometry, scene must be submitted before rendering.
@@ -429,7 +441,7 @@ RgResult rgStartNewScene(
 // To clear static scene, call rgStartNewScene and then rgSubmitStaticGeometries
 // without uploading any geometry.
 // rgStartNewScene and rgSubmitStaticGeometries can be called outside of rgStartFrame-rgDrawFrame.
-RgResult rgSubmitStaticGeometries(
+RGAPI RgResult RGCONV rgSubmitStaticGeometries(
     RgInstance                          rgInstance);
 
 
@@ -439,7 +451,7 @@ RgResult rgSubmitStaticGeometries(
 // If none was set, light sources are chosen uniformly.
 // Note: visibility data is being cleared after calling rgStartNewScene.
 // Note: sector can be registered by just specifiying the same value for sectorID_A and sectorID_B.
-RgResult rgSetPotentialVisibility(
+RGAPI RgResult RGCONV rgSetPotentialVisibility(
     RgInstance                          rgInstance,
     uint32_t                            sectorID_A,
     uint32_t                            sectorID_B);
@@ -560,7 +572,7 @@ typedef struct RgViewport
 // "viewport"       -- pointer to a viewport to draw in. If it's null,
 //                     then the fullscreen one is used with minDepth 0.0
 //                     and maxDepth 1.0.
-RgResult rgUploadRasterizedGeometry(
+RGAPI RgResult RGCONV rgUploadRasterizedGeometry(
     RgInstance                              rgInstance,
     const RgRasterizedGeometryUploadInfo    *pUploadInfo,
     const float                             *pViewProjection,
@@ -581,7 +593,7 @@ typedef struct RgLensFlareUploadInfo
     RgFloat3D                               pointToCheck;
 } RgLensFlareUploadInfo;
 
-RgResult rgUploadLensFlare(
+RGAPI RgResult RGCONV rgUploadLensFlare(
     RgInstance                              rgInstance,
     const RgLensFlareUploadInfo             *pUploadInfo);
 
@@ -595,7 +607,7 @@ typedef struct RgDecalUploadInfo
     RgMaterial      material;
 } RgDecalUploadInfo;
 
-RgResult rgUploadDecal(
+RGAPI RgResult RGCONV rgUploadDecal(
     RgInstance                              rgInstance,
     const RgDecalUploadInfo                 *pUploadInfo);
 
@@ -657,19 +669,19 @@ typedef struct RgSpotlightUploadInfo
     float falloffDistance;
 } RgSpotlightUploadInfo;
 
-RgResult rgUploadDirectionalLight(
+RGAPI RgResult RGCONV rgUploadDirectionalLight(
     RgInstance                          rgInstance,
     const RgDirectionalLightUploadInfo  *pLightInfo);
 
-RgResult rgUploadSphericalLight(
+RGAPI RgResult RGCONV rgUploadSphericalLight(
     RgInstance                          rgInstance,
     const RgSphericalLightUploadInfo    *pLightInfo);
 
-RgResult rgUploadSpotlightLight(
+RGAPI RgResult RGCONV rgUploadSpotlightLight(
     RgInstance                          rgInstance,
     const RgSpotlightUploadInfo         *pLightInfo);
 
-RgResult rgUploadPolygonalLight(
+RGAPI RgResult RGCONV rgUploadPolygonalLight(
     RgInstance                          rgInstance,
     const RgPolygonalLightUploadInfo    *pLightInfo);
 
@@ -768,32 +780,32 @@ typedef struct RgAnimatedMaterialCreateInfo
     RgStaticMaterialCreateInfo          *pFrames;
 } RgAnimatedMaterialCreateInfo;
 
-RgResult rgCreateStaticMaterial(
+RGAPI RgResult RGCONV rgCreateStaticMaterial(
     RgInstance                          rgInstance,
     const RgStaticMaterialCreateInfo    *pCreateInfo,
     RgMaterial                          *pResult);
 
-RgResult rgCreateAnimatedMaterial(
+RGAPI RgResult RGCONV rgCreateAnimatedMaterial(
     RgInstance                          rgInstance,
     const RgAnimatedMaterialCreateInfo  *pCreateInfo,
     RgMaterial                          *pResult);
 
-RgResult rgChangeAnimatedMaterialFrame(
+RGAPI RgResult RGCONV rgChangeAnimatedMaterialFrame(
     RgInstance                          rgInstance,
     RgMaterial                          animatedMaterial,
     uint32_t                            frameIndex);
     
-RgResult rgCreateDynamicMaterial(
+RGAPI RgResult RGCONV rgCreateDynamicMaterial(
     RgInstance                          rgInstance,
     const RgDynamicMaterialCreateInfo   *pCreateInfo,
     RgMaterial                          *pResult);
 
-RgResult rgUpdateDynamicMaterial(
+RGAPI RgResult RGCONV rgUpdateDynamicMaterial(
     RgInstance                          rgInstance,
     const RgDynamicMaterialUpdateInfo   *pUpdateInfo);
 
 // Destroying RG_NO_MATERIAL has no effect.
-RgResult rgDestroyMaterial(
+RGAPI RgResult RGCONV rgDestroyMaterial(
     RgInstance                          rgInstance,
     RgMaterial                          material);
 
@@ -842,12 +854,12 @@ typedef struct RgCubemapCreateInfo
     RgSamplerFilter         filter;
 } RgCubemapCreateInfo;
 
-RgResult rgCreateCubemap(
+RGAPI RgResult RGCONV rgCreateCubemap(
     RgInstance                          rgInstance,
     const RgCubemapCreateInfo           *pCreateInfo,
     RgCubemap                           *pResult);
 
-RgResult rgDestroyCubemap(
+RGAPI RgResult RGCONV rgDestroyCubemap(
     RgInstance                          rgInstance,
     RgCubemap                           cubemap);
 
@@ -863,7 +875,7 @@ typedef struct RgStartFrameInfo
     RgBool32        requestRasterizedSkyGeometryReuse;
 } RgStartFrameInfo;
 
-RgResult rgStartFrame(
+RGAPI RgResult RGCONV rgStartFrame(
     RgInstance                          rgInstance,
     const RgStartFrameInfo              *pStartInfo);
 
@@ -1058,13 +1070,13 @@ typedef struct RgDrawFrameInfo
 
 } RgDrawFrameInfo;
 
-RgResult rgDrawFrame(
+RGAPI RgResult RGCONV rgDrawFrame(
     RgInstance                          rgInstance,
     const RgDrawFrameInfo               *pDrawInfo);
 
 
 
-RgResult rgIsRenderUpscaleTechniqueAvailable(
+RGAPI RgResult RGCONV rgIsRenderUpscaleTechniqueAvailable(
     RgInstance                          rgInstance,
     RgRenderUpscaleTechnique            technique,
     RgBool32                            *pOutResult);
