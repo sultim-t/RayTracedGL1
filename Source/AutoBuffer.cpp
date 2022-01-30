@@ -69,7 +69,7 @@ void RTGL1::AutoBuffer::Destroy()
     {
         if (staging[i].IsInitted())
         {
-            staging[i].Unmap();
+            staging[i].TryUnmap();
             staging[i].Destroy();
         }
 
