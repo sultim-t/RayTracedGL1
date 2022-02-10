@@ -909,20 +909,13 @@ void VertexCollector::InsertVertexPreprocessBeginBarrier(VkCommandBuffer cmd)
 
 void VertexCollector::InsertVertexPreprocessFinishBarrier(VkCommandBuffer cmd)
 {
-    assert((curVertexCount > 0 && curIndexCount > 0) ||
-           (curVertexCount == 0 && curIndexCount == 0));
-
-    if (curVertexCount == 0 || curIndexCount == 0)
-    {
-        return;
-    }
-
     std::vector<VkBufferCopy> vertCopyInfos;
     bool isDynamic = filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
     GetVertBufferCopyInfos(!isDynamic, vertCopyInfos);
 
 
     VkBufferMemoryBarrier barriers[10];
+    assert(std::size(barriers) >= vertCopyInfos.size() + 1);
     uint32_t barrierCount = 0;
 
     for (const auto &cp : vertCopyInfos)
@@ -941,6 +934,7 @@ void VertexCollector::InsertVertexPreprocessFinishBarrier(VkCommandBuffer cmd)
         vrtBr.size = cp.size;
     }
 
+    if (curIndexCount > 0)
     {
         VkBufferMemoryBarrier &indBr = barriers[barrierCount];
         barrierCount++;
@@ -955,6 +949,11 @@ void VertexCollector::InsertVertexPreprocessFinishBarrier(VkCommandBuffer cmd)
         indBr.size = curIndexCount * sizeof(uint32_t);
     }
 
+    if (barrierCount == 0)
+    {
+        return;
+    }
+    
     vkCmdPipelineBarrier(
         cmd,
         VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR | 
