@@ -149,7 +149,14 @@ public:
 
         // DLSS Programming Guide, Section 3.5
         float ratio = (float)Width() / (float)UpscaledWidth();
-        return nativeBias + log2f(std::max(0.01f, ratio)) - 1.0f;
+        float bias =  nativeBias + log2f(std::max(0.01f, ratio)) - 1.0f;
+
+        if (IsAmdFsrEnabled() && bias < 0)
+        {
+            bias *= 0.5f;
+        }
+
+        return bias;
     }
 
     uint32_t Width()            const { return renderWidth; }
@@ -162,7 +169,7 @@ public:
     bool IsNvDlssEnabled()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS; }
     bool IsUpscaleEnabled()     const { return IsAmdFsrEnabled() || IsNvDlssEnabled(); }
 
-    float GetAmdFsrSharpness()  const { return 0.0f; }          // 0.0 - max, 1.0 - min
+    float GetAmdFsrSharpness()  const { return 1.0f; }          // 0.0 - max, 1.0 - min
     float GetNvDlssSharpness()  const { return dlssSharpness; } 
 
     // For the additional sharpening pass
