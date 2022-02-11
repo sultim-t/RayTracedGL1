@@ -287,6 +287,7 @@ private:
 
     VertexBufferProperties                  vbProperties;
     bool                                    rayCullBackFacingTriangles;
+    bool                                    lensFlareVerticesInScreenSpace;
 
     RenderResolutionHelper                  renderResolution;
 

@@ -256,7 +256,7 @@ struct ShGlobalUniform
     uint32_t lightCountPolygonalPrev;
     float emissionMapScreenBoost;
     uint32_t lensFlareCullingInputCount;
-    float _pad2;
+    uint32_t applyViewProjToLensFlares;
     float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];

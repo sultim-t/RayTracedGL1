@@ -555,7 +555,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "emissionMapScreenBoost",           1),
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_UINT32,       1,      "applyViewProjToLensFlares",        1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),

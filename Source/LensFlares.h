@@ -51,6 +51,7 @@ public:
     void PrepareForFrame(uint32_t frameIndex);
     void Upload(uint32_t frameIndex, const RgLensFlareUploadInfo &uploadInfo);
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
+    void SetParams(const RgDrawFrameLensFlareParams *pLensFlareParams);
     void Cull(VkCommandBuffer cmd, uint32_t frameIndex);
     void SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex);
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex);
@@ -103,6 +104,9 @@ private:
     VkDescriptorPool cullDescPool;
     VkDescriptorSet cullDescSet;
     VkDescriptorSetLayout cullDescSetLayout;
+
+    RgBlendFactor lensFlareBlendFactorSrc;
+    RgBlendFactor lensFlareBlendFactorDst;
 };
 
 }

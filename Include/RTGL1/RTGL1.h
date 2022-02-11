@@ -243,6 +243,8 @@ typedef struct RgInstanceCreateInfo
     // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
     RgBool32                    vertexArrayOfStructs;
 
+    RgBool32                    lensFlareVerticesInScreenSpace;
+
 } RgInstanceCreateInfo;
 
 RGAPI RgResult RGCONV rgCreateInstance(
@@ -1034,6 +1036,12 @@ typedef struct RgDrawFrameRenderResolutionParams
     RgExtent2D                  renderSize;
 } RgDrawFrameRenderResolutionParams;
 
+typedef struct RgDrawFrameLensFlareParams
+{
+    RgBlendFactor               lensFlareBlendFuncSrc;
+    RgBlendFactor               lensFlareBlendFuncDst;
+} RgDrawFrameLensFlareParams;
+
 typedef struct RgDrawFrameInfo
 {
     // View and projection matrices are column major.
@@ -1066,6 +1074,7 @@ typedef struct RgDrawFrameInfo
     const RgDrawFrameReflectRefractParams       *pReflectRefractParams;
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameTexturesParams             *pTexturesParams;
+    const RgDrawFrameLensFlareParams            *pLensFlareParams;
     const RgDrawFrameDebugParams                *pDebugParams;
 
 } RgDrawFrameInfo;

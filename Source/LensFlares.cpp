@@ -90,7 +90,9 @@ RTGL1::LensFlares::LensFlares(
     cullPipeline(VK_NULL_HANDLE),
     cullDescPool(VK_NULL_HANDLE),
     cullDescSet(VK_NULL_HANDLE),
-    cullDescSetLayout(VK_NULL_HANDLE)
+    cullDescSetLayout(VK_NULL_HANDLE),
+    lensFlareBlendFactorSrc{},
+    lensFlareBlendFactorDst{}
 {
     cullingInput = std::make_unique<AutoBuffer>(_allocator);
     vertexBuffer = std::make_unique<AutoBuffer>(_allocator);
@@ -235,6 +237,20 @@ void RTGL1::LensFlares::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     instanceBuffer->CopyFromStaging(cmd, frameIndex, cullingInputCount * sizeof(ShLensFlareInstance));
 }
 
+void RTGL1::LensFlares::SetParams(const RgDrawFrameLensFlareParams *pLensFlareParams)
+{
+    if (pLensFlareParams != nullptr)
+    {
+        lensFlareBlendFactorSrc = pLensFlareParams->lensFlareBlendFuncSrc;
+        lensFlareBlendFactorDst = pLensFlareParams->lensFlareBlendFuncDst;
+    }
+    else
+    {
+        lensFlareBlendFactorSrc = RG_BLEND_FACTOR_ONE;
+        lensFlareBlendFactorDst = RG_BLEND_FACTOR_ONE;
+    }
+}
+
 void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     if (cullingInputCount == 0)
@@ -364,7 +380,7 @@ void RTGL1::LensFlares::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
         return;
     }
 
-    VkPipeline drawPipeline = rasterPipelines->GetPipeline(true, RG_BLEND_FACTOR_SRC_ALPHA, RG_BLEND_FACTOR_ONE, false, false);
+    VkPipeline drawPipeline = rasterPipelines->GetPipeline(true, lensFlareBlendFactorSrc, lensFlareBlendFactorDst, false, false);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawPipeline);
 
     VkDescriptorSet sets[] =

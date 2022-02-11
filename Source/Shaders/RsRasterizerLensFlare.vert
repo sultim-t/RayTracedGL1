@@ -53,5 +53,13 @@ void main()
 
     outTexCoord = texCoord;
     outTextureIndex = lensFlareInstances[gl_InstanceIndex].textureIndex;
-    gl_Position = globalUniform.projection * globalUniform.view * vec4(position, 1.0);
+
+    if (globalUniform.applyViewProjToLensFlares != 0)
+    {
+        gl_Position = globalUniform.projection * globalUniform.view * vec4(position, 1.0);
+    }
+    else
+    {
+        gl_Position = vec4(position, 1.0);
+    }
 }

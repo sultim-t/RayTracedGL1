@@ -47,6 +47,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
     userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
     rayCullBackFacingTriangles(info->rayCullBackFacingTriangles),
+    lensFlareVerticesInScreenSpace(info->lensFlareVerticesInScreenSpace),
     previousFrameTime(-1.0 / 60.0),
     currentFrameTime(0)
 {
@@ -665,7 +666,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 
-    gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / renderResolution.Height());
+    gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / (float)renderResolution.Height());
 
     if (Utils::IsAlmostZero(drawInfo.worldUpVector))
     {
@@ -683,6 +684,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->useSqrtRoughnessForIndirect = !!drawInfo.useSqrtRoughnessForIndirect;
 
     gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
+    gu->applyViewProjToLensFlares = !lensFlareVerticesInScreenSpace;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
@@ -776,7 +778,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection,
-                                     werePrimaryTraced);
+                                     werePrimaryTraced, drawInfo.pLensFlareParams);
     }
 
 

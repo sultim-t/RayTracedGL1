@@ -201,7 +201,8 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
 void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, 
                                   const std::shared_ptr<TextureManager> &textureManager, 
                                   float *view, float *proj,
-                                  bool werePrimaryTraced)
+                                  bool werePrimaryTraced,
+                                  const RgDrawFrameLensFlareParams *pLensFlareParams)
 {
     CmdLabel label(cmd, "Rasterized to final framebuf");
 
@@ -216,6 +217,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
 
 
     // prepare lens flares draw commands
+    lensFlares->SetParams(pLensFlareParams);
     lensFlares->Cull(cmd, frameIndex);
 
 
