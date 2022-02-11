@@ -92,7 +92,8 @@ RTGL1::LensFlares::LensFlares(
     cullDescSet(VK_NULL_HANDLE),
     cullDescSetLayout(VK_NULL_HANDLE),
     lensFlareBlendFactorSrc{},
-    lensFlareBlendFactorDst{}
+    lensFlareBlendFactorDst{},
+    isPointToCheckInScreenSpace(!!_instanceInfo.lensFlarePointToCheckIsInScreenSpace)
 {
     cullingInput = std::make_unique<AutoBuffer>(_allocator);
     vertexBuffer = std::make_unique<AutoBuffer>(_allocator);
@@ -453,12 +454,22 @@ void RTGL1::LensFlares::CreatePipelineLayouts(VkDescriptorSetLayout uniform, VkD
 
 void RTGL1::LensFlares::CreatePipelines(const ShaderManager *shaderManager)
 {
+    VkSpecializationMapEntry entry = {};
+    entry.constantID = 0;
+    entry.size = sizeof(uint32_t);
+    entry.offset = 0;
+
     VkSpecializationInfo spec = {};
+    spec.mapEntryCount = 1;
+    spec.pMapEntries = &entry;
+    spec.dataSize = sizeof(uint32_t);
+    spec.pData = &isPointToCheckInScreenSpace;
 
     VkComputePipelineCreateInfo info = {};
     info.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
     info.layout = cullPipelineLayout;
     info.stage = shaderManager->GetStageInfo("CCullLensFlares");
+    info.stage.pSpecializationInfo = &spec;
 
     VkResult r = vkCreateComputePipelines(device, nullptr, 1, &info, nullptr, &cullPipeline);
     VK_CHECKERROR(r);

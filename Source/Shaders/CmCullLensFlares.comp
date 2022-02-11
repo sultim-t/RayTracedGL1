@@ -28,6 +28,8 @@
 
 layout(local_size_x = COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X, local_size_y = 1, local_size_z = 1) in;
 
+layout(constant_id = 0) const uint positionToCheckIsInScreenSpace = 0;
+
 
 void getPixAndDepthFromWorldPoint(const vec3 position, out ivec2 pix, out float depthNdc)
 {
@@ -40,6 +42,16 @@ void getPixAndDepthFromWorldPoint(const vec3 position, out ivec2 pix, out float 
     vec2 screenSpace = ndc.xy * 0.5 + 0.5;
     vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
     pix = ivec2(floor(screenSpace * screenSize));
+}
+
+
+void getPixAndDepthFromScreenPoint(const vec3 screenSpacePosition, out ivec2 pix, out float depthNdc)
+{
+    depthNdc = screenSpacePosition.z;
+
+    // screenSpacePosition.xy is in [0..1]
+    vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
+    pix = ivec2(floor(screenSpacePosition.xy * screenSize));
 }
 
 
@@ -64,8 +76,16 @@ void main()
     
     ivec2 pix; 
     float depth;
-    getPixAndDepthFromWorldPoint(vec3(l.positionToCheck_X, l.positionToCheck_Y, l.positionToCheck_Z), pix, depth);
 
+    if (positionToCheckIsInScreenSpace != 0)
+    {
+        getPixAndDepthFromScreenPoint(vec3(l.positionToCheck_X, l.positionToCheck_Y, l.positionToCheck_Z), pix, depth);
+    }
+    else
+    {
+        getPixAndDepthFromWorldPoint(vec3(l.positionToCheck_X, l.positionToCheck_Y, l.positionToCheck_Z), pix, depth);
+    }
+    
     float occluderDepth = texelFetch(framebufDepth_Sampler, getCheckerboardPix(pix), 0).w;
 
     if (depth < occluderDepth + 0.001)

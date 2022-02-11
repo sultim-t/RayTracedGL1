@@ -107,6 +107,7 @@ private:
 
     RgBlendFactor lensFlareBlendFactorSrc;
     RgBlendFactor lensFlareBlendFactorDst;
+    uint32_t isPointToCheckInScreenSpace;
 };
 
 }

@@ -244,6 +244,10 @@ typedef struct RgInstanceCreateInfo
     RgBool32                    vertexArrayOfStructs;
 
     RgBool32                    lensFlareVerticesInScreenSpace;
+    // If true, 'pointToCheck' XY are screen space [0..1] coordinates to check NDC depth [0..1] which is specified in Z.
+    // Otherwise, XYZ specify a world point to which view-projection will be applied to determine its
+    // screen space coords and NDC depth.
+    RgBool32                    lensFlarePointToCheckIsInScreenSpace;
 
 } RgInstanceCreateInfo;
 
@@ -592,6 +596,7 @@ typedef struct RgLensFlareUploadInfo
     uint32_t                                indexCount;
     const void                              *pIndexData;
     RgMaterial                              material;
+    // Format is defined by 'lensFlarePointToCheckIsInScreenSpace'
     RgFloat3D                               pointToCheck;
 } RgLensFlareUploadInfo;
 
