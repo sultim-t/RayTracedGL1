@@ -1402,9 +1402,14 @@ void VulkanDevice::CreateDevice()
     vulkan12Features.shaderFloat16 = 1;
     vulkan12Features.drawIndirectCount = 1;
 
+    VkPhysicalDeviceMultiviewFeatures multiviewFeatures = {};
+    multiviewFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES;
+    multiviewFeatures.pNext = &vulkan12Features;
+    multiviewFeatures.multiview = 1;
+
     VkPhysicalDevice16BitStorageFeatures storage16 = {};
     storage16.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
-    storage16.pNext = &vulkan12Features;
+    storage16.pNext = &multiviewFeatures;
     storage16.storageBuffer16BitAccess = 1;
 
     VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features = {};

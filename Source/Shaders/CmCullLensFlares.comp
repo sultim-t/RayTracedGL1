@@ -88,7 +88,7 @@ void main()
     
     float occluderDepth = texelFetch(framebufDepth_Sampler, getCheckerboardPix(pix), 0).w;
 
-    if (depth < occluderDepth + 0.001 || globalUniform.areFramebufsInitedByRT == 0)
+    if (depth < occluderDepth + 0.00001 || globalUniform.areFramebufsInitedByRT == 0)
     {
         uint lensFlareDrawCmdIndex = atomicAdd(lensFlareDrawCmdsCount, 1);
         lensFlareDrawCmds[lensFlareDrawCmdIndex] = l;
