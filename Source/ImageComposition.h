@@ -48,8 +48,7 @@ public:
     void Compose(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping, 
-        bool wasNoRayTracing);
+        const std::shared_ptr<const Tonemapping> &tonemapping);
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
@@ -57,8 +56,7 @@ private:
     void ProcessPrefinal(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping,
-        bool wasNoRayTracing);
+        const std::shared_ptr<const Tonemapping> &tonemapping);
     void ProcessCheckerboard(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
@@ -66,7 +64,6 @@ private:
     static void CreatePipelineLayout(
         VkDevice device,
         VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
-        bool withUintPushConst,
         VkPipelineLayout *pDstPipelineLayout,
         const char *pDebugName);
     

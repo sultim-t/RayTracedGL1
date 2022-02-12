@@ -704,14 +704,12 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 
     // submit geometry and upload uniform after getting data from a scene
-    const bool sceneNotEmpty = scene->SubmitForFrame(cmd, frameIndex, uniform);
+    const bool raysCanBeTraced = scene->SubmitForFrame(cmd, frameIndex, uniform, drawInfo.disableRayTracing);
 
 
     framebuffers->PrepareForSize(renderResolution.Width(),         renderResolution.Height(),
                                  renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight());
-
-
-    bool werePrimaryTraced = false;
+    
 
     if (!drawInfo.disableRasterization)
     {
@@ -725,9 +723,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
     }
 
-    bool traceRays = sceneNotEmpty && !drawInfo.disableRayTracing;
 
-    if (traceRays)
+    assert(uniform->GetData()->areFramebufsInitedByRT == raysCanBeTraced);
+
+
+    if (raysCanBeTraced)
     {
         decalManager->SubmitForFrame(cmd, frameIndex);
 
@@ -745,8 +745,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         {
             pathTracer->TraceReflectionRefractionRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
         }
-
-        werePrimaryTraced = true;
 
         // save and merge samples from previous illumination results
         denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
@@ -766,19 +764,19 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (enableBloom)
     {
-        bloom->Prepare(cmd, frameIndex, uniform, !traceRays);
+        bloom->Prepare(cmd, frameIndex, uniform);
     }
 
 
     // final image composition
-    imageComposition->Compose(cmd, frameIndex, uniform, tonemapping, !traceRays);
+    imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
 
     if (!drawInfo.disableRasterization)
     {
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection,
-                                     werePrimaryTraced, drawInfo.pLensFlareParams);
+                                     raysCanBeTraced, drawInfo.pLensFlareParams);
     }
 
 

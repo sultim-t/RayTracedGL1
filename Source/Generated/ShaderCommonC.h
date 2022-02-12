@@ -257,7 +257,7 @@ struct ShGlobalUniform
     float emissionMapScreenBoost;
     uint32_t lensFlareCullingInputCount;
     uint32_t applyViewProjToLensFlares;
-    float _pad3;
+    uint32_t areFramebufsInitedByRT;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

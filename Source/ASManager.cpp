@@ -948,11 +948,12 @@ void ASManager::PrepareForBuildingTLAS(
     outPush->tlasInstanceCount = r.instanceCount;
 }
 
-bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
+void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
 {
-    if (r.instanceCount == 0)
+    assert(!r.IsEmpty());
+    if (r.IsEmpty())
     {
-        return false;
+        return;
     }
 
 
@@ -1005,9 +1006,6 @@ bool ASManager::TryBuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLA
 
     // shader desc access
     UpdateASDescriptors(frameIndex);
-
-
-    return true;
 }
 
 void ASManager::CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frameIndex)

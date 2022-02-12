@@ -51,8 +51,7 @@ public:
 
     void Prepare(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform, 
-        bool wasNoRayTracing);
+        const std::shared_ptr<const GlobalUniform> &uniform);
 
     RTGL1::FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,

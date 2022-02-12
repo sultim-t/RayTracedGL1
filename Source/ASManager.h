@@ -41,6 +41,11 @@ public:
     {
         VkAccelerationStructureInstanceKHR instances[45];
         uint32_t instanceCount;
+
+        bool IsEmpty() const
+        {
+            return instanceCount == 0;
+        }
     };
 
 public:
@@ -91,7 +96,7 @@ public:
         ShGlobalUniform &uniformData,
         ShVertPreprocessing *outPush,
         TLASPrepareResult *outResult) const;
-    bool TryBuildTLAS(
+    void BuildTLAS(
         VkCommandBuffer cmd, uint32_t frameIndex, 
         const TLASPrepareResult &info);
 

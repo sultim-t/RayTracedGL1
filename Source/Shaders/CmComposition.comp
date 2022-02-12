@@ -27,11 +27,6 @@
 
 layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
 
-layout(push_constant) uniform CompositionPush_BT
-{
-    uint forceIsSky;
-} push;
-
 float getExposure()
 {
     return tonemapping.avgLuminance > 0.0 ? 1.0 / tonemapping.avgLuminance : 1.0;
@@ -100,7 +95,7 @@ void main()
     const vec4 albedo4 = texelFetchAlbedo(getCheckerboardPix(pix));
     
     // if not sky
-    if (push.forceIsSky == 0 && !isSky(albedo4))
+    if (globalUniform.areFramebufsInitedByRT != 0 && !isSky(albedo4))
     {
         color *= getExposure();
         //color = reinhard(color);
@@ -111,7 +106,7 @@ void main()
     }
     else
     {
-        const vec3 throughput = push.forceIsSky != 0 ? vec3(1.0) : texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
+        const vec3 throughput = globalUniform.areFramebufsInitedByRT != 0 ? texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb : vec3(1.0);
 
         color = albedo4.rgb * throughput;
     }

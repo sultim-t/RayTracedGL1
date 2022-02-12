@@ -31,11 +31,6 @@ layout(local_size_x = COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X, local_size_y = COMPUT
 // for upsampling, stepIndex is decreasing by 1 on each step
 layout (constant_id = 0) const uint stepIndex = 0;
 
-layout(push_constant) uniform BloomPush_BT
-{
-    uint forceIsSky;
-} push;
-
 vec2 getInverseSrcSize()
 {
     return vec2(float(1 << (stepIndex + 1)) / globalUniform.renderWidth, float(1 << (stepIndex + 1)) / globalUniform.renderHeight);

@@ -28,11 +28,6 @@ layout(local_size_x = COMPUTE_BLOOM_APPLY_GROUP_SIZE_X, local_size_y = COMPUTE_B
 
 layout(constant_id = 0) const uint sourceFramebufIndex = 0;
 
-layout(push_constant) uniform BloomPush_BT
-{
-    uint forceIsSky;
-} push;
-
 vec2 getInverseSrcSize()
 {
     switch (sourceFramebufIndex)

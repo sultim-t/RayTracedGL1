@@ -66,7 +66,7 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     asManager->BeginDynamicGeometry(cmd, frameIndex);
 }
 
-bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform)
+bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool disableRayTracing)
 {
     uint32_t preprocMode = submittedStaticInCurrentFrame ? VERT_PREPROC_MODE_ALL : 
                            toResubmitMovable             ? VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE : 
@@ -103,13 +103,21 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), &push, &prepare);
 
     // upload uniform data
+    uniform->GetData()->areFramebufsInitedByRT = !prepare.IsEmpty() && !disableRayTracing;
     uniform->Upload(cmd, frameIndex);
     
     
     vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
 
 
-    return asManager->TryBuildTLAS(cmd, frameIndex, prepare);
+    if (prepare.IsEmpty())
+    {
+        return false;
+    }
+
+
+    asManager->BuildTLAS(cmd, frameIndex, prepare);
+    return true;
 }
 
 bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)

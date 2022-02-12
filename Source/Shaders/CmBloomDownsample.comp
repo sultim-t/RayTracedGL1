@@ -30,11 +30,6 @@ layout(local_size_x = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X, local_size_y = COMP
 
 layout(constant_id = 0) const uint stepIndex = 0;
 
-layout(push_constant) uniform BloomPush_BT
-{
-    uint forceIsSky;
-} push;
-
 vec2 getInverseSrcSize()
 {
     return vec2(float(1 << stepIndex) / globalUniform.renderWidth, float(1 << stepIndex) / globalUniform.renderHeight);
@@ -57,7 +52,7 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
     {
         const vec4 albedo4 = textureLodAlbedo(uv);
         
-        if (push.forceIsSky == 0 && !isSky(albedo4))
+        if (globalUniform.areFramebufsInitedByRT != 0 && !isSky(albedo4))
         {
             const vec3 emis = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4)  * globalUniform.bloomEmissionMultiplier;
 

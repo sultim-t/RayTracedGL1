@@ -48,7 +48,6 @@ RTGL1::ImageComposition::ImageComposition(
 
         CreatePipelineLayout(device,
                              setLayouts.data(), setLayouts.size(),
-                             true,
                              &composePipelineLayout, "Composition pipeline layout");
     }
 
@@ -61,7 +60,6 @@ RTGL1::ImageComposition::ImageComposition(
 
         CreatePipelineLayout(device,
                              setLayouts.data(), setLayouts.size(),
-                             false,
                              &checkerboardPipelineLayout, "Checkerboard pipeline layout");
     }
 
@@ -78,10 +76,9 @@ RTGL1::ImageComposition::~ImageComposition()
 void RTGL1::ImageComposition::Compose(
     VkCommandBuffer cmd, uint32_t frameIndex,
     const std::shared_ptr<const GlobalUniform> &uniform,
-    const std::shared_ptr<const Tonemapping> &tonemapping, 
-    bool wasNoRayTracing)
+    const std::shared_ptr<const Tonemapping> &tonemapping)
 {
-    ProcessPrefinal(cmd, frameIndex, uniform, tonemapping, wasNoRayTracing);
+    ProcessPrefinal(cmd, frameIndex, uniform, tonemapping);
     ProcessCheckerboard(cmd, frameIndex, uniform);
 }
 
@@ -94,8 +91,7 @@ void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
 void RTGL1::ImageComposition::ProcessPrefinal(VkCommandBuffer cmd,
                                               uint32_t frameIndex, 
                                               const std::shared_ptr<const GlobalUniform> &uniform, 
-                                              const std::shared_ptr<const Tonemapping> &tonemapping,
-                                              bool wasNoRayTracing)
+                                              const std::shared_ptr<const Tonemapping> &tonemapping)
 {
     CmdLabel label(cmd, "Prefinal framebuf compose");
 
@@ -121,10 +117,6 @@ void RTGL1::ImageComposition::ProcessPrefinal(VkCommandBuffer cmd,
                             composePipelineLayout,
                             0, setCount, sets,
                             0, nullptr);
-
-    uint32_t forceIsSky = wasNoRayTracing;
-    vkCmdPushConstants(cmd, composePipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-                       0, sizeof(uint32_t), &forceIsSky);
 
 
     // start compute shader
@@ -170,20 +162,12 @@ void RTGL1::ImageComposition::ProcessCheckerboard(VkCommandBuffer cmd, uint32_t 
 
 void RTGL1::ImageComposition::CreatePipelineLayout(VkDevice device, 
                                                    VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
-                                                   bool withUintPushConst,
                                                    VkPipelineLayout *pDstPipelineLayout, const char *pDebugName)
 {
-    VkPushConstantRange push = {};
-    push.offset = 0;
-    push.size = sizeof(uint32_t);
-    push.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
-
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
     plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     plLayoutInfo.setLayoutCount = setLayoutCount;
     plLayoutInfo.pSetLayouts = pSetLayouts;
-    plLayoutInfo.pushConstantRangeCount = withUintPushConst ? 1 : 0;
-    plLayoutInfo.pPushConstantRanges = &push;
 
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, pDstPipelineLayout);
     VK_CHECKERROR(r);
