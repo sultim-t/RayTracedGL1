@@ -397,7 +397,7 @@ void processDirectionalLight(
     }
 
     out_result.shadowRayEnable   = true;
-    out_result.shadowRayStart    = surfPosition;
+    out_result.shadowRayStart    = surfPosition + toViewerDir * SHADOW_RAY_EPS;
     out_result.shadowRayEnd      = surfPosition + l * MAX_RAY_LENGTH;
 }
 
