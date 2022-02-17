@@ -277,5 +277,5 @@ void main()
     const bool isGradientSample       = false;
 #endif
 
-    processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, -viewDirection, isGradientSample);        
+    processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz - viewDirection * RAY_ORIGIN_LEAK_BIAS, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, -viewDirection, isGradientSample);        
 }

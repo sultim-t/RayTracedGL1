@@ -310,7 +310,10 @@ LightResult newLightResult()
 
 
 
-#define SHADOW_RAY_EPS 0.01
+#define SHADOW_RAY_EPS       0.01
+#define RAY_ORIGIN_LEAK_BIAS 0.01    // offset a bit towards a viewer to prevent light leaks from the other side of polygons
+
+
 
 bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer /* = false */)
 {
@@ -410,7 +413,7 @@ void processDirectionalLight(
     }
 
     out_result.shadowRayEnable   = true;
-    out_result.shadowRayStart    = surfPosition + toViewerDir * SHADOW_RAY_EPS;
+    out_result.shadowRayStart    = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;
     out_result.shadowRayEnd      = surfPosition + l * MAX_RAY_LENGTH;
 }
 
@@ -634,7 +637,7 @@ void processSphericalLight(
     }
     
     out_result.shadowRayEnable = true;
-    out_result.shadowRayStart  = surfPosition + toViewerDir * SHADOW_RAY_EPS;
+    out_result.shadowRayStart  = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;
     out_result.shadowRayEnd    = posOnSphere;
 }
 
@@ -829,7 +832,7 @@ void processPolygonalLight(
     }
 
     out_result.shadowRayEnable = true;
-    out_result.shadowRayStart  = surfPosition + toViewerDir * SHADOW_RAY_EPS;
+    out_result.shadowRayStart  = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;
     out_result.shadowRayEnd    = triPoint;
 }
 
