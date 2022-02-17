@@ -698,6 +698,16 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     #else
         #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
     #endif
+
+
+        if (allowGeometryWithSkyFlag)
+        {
+            gu->rayCullMaskWorld_Shadow = gu->rayCullMaskWorld & (~INSTANCE_MASK_WORLD_2);
+        }
+        else
+        {
+            gu->rayCullMaskWorld_Shadow = gu->rayCullMaskWorld;
+        }
     }
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();

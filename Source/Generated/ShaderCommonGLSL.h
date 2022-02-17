@@ -255,7 +255,7 @@ struct ShGlobalUniform
     uint lightCountSpotlightPrev;
     uint lightCountPolygonal;
     uint lightCountPolygonalPrev;
-    float _pad0;
+    uint rayCullMaskWorld_Shadow;
     uint lensFlareCullingInputCount;
     uint applyViewProjToLensFlares;
     uint areFramebufsInitedByRT;

@@ -110,7 +110,7 @@ uint getReflectionRefractionCullMask(uint surfInstCustomIndex, uint geometryInst
 uint getShadowCullMask(uint surfInstCustomIndex)
 {
     const uint world = 
-        globalUniform.rayCullMaskWorld | 
+        globalUniform.rayCullMaskWorld_Shadow | 
         (globalUniform.enableShadowsFromReflRefr == 0 ? 0 : INSTANCE_MASK_REFLECT_REFRACT);
 
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
