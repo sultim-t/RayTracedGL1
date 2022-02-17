@@ -500,6 +500,18 @@ void imageStoreNormalGeometry(const ivec2 pix, const vec3 normal)
 }
 
 
+
+#define ALBSKY_PRIMARY_RAY     -1
+#define ALBSKY_SECONDARY_RAY   -2
+#if (ALBSKY_PRIMARY_RAY < 0) && (ALBSKY_SECONDARY_RAY < 0)
+    #define ALBSKY_IS_PRIMARY_RAY(a)     ((a) > (ALBSKY_PRIMARY_RAY   - 0.2) && (a) < (ALBSKY_PRIMARY_RAY   + 0.2))
+    #define ALBSKY_IS_SECONDARY_RAY(a)   ((a) > (ALBSKY_SECONDARY_RAY - 0.2) && (a) < (ALBSKY_SECONDARY_RAY + 0.2))
+#else 
+    #error ALBSKY_IS_PRIMARY_RAY/ALBSKY_IS_SECONDARY_RAY assumes negative values
+#endif
+
+
+
 #ifdef CHECKERBOARD_FULL_WIDTH
 #ifdef CHECKERBOARD_FULL_HEIGHT
 
@@ -514,7 +526,7 @@ void imageStoreAlbedoSurface(const ivec2 pix, const vec3 surfaceAlbedo, float sc
 // directSkyHit - true, if it was the primary ray that hit the sky
 void imageStoreAlbedoSky(const ivec2 pix, const vec3 skyAlbedo, bool directSkyHit)
 {
-    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(skyAlbedo, directSkyHit ? -1 : -2));
+    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(skyAlbedo, directSkyHit ? ALBSKY_PRIMARY_RAY : ALBSKY_SECONDARY_RAY));
 }
 
 vec4 texelFetchAlbedo(const ivec2 pix)
@@ -544,7 +556,7 @@ float getScreenEmissionFromAlbedo4_Sky(const vec4 albedo)
 {
     // -1: sky, hit with primary ray -- emission only for this
     // -2: sky, but on secondary suface, like mirror, water, etc
-    return float(albedo.a > -1.5 && albedo.a < -0.5) * globalUniform.bloomSkyMultiplier;
+    return float(ALBSKY_IS_PRIMARY_RAY(albedo.a)) * globalUniform.bloomSkyMultiplier;
 }
 #endif // DESC_SET_GLOBAL_UNIFORM
 
