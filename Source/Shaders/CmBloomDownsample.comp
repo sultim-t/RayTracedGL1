@@ -54,17 +54,18 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
         
         if (globalUniform.areFramebufsInitedByRT != 0 && !isSky(albedo4))
         {
-            const vec3 emis = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4)  * globalUniform.bloomEmissionMultiplier;
+            const vec3 emis = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.bloomEmissionMultiplier;
+            const vec3 illum = textureLod(srcSampler, uv, 0).rgb;
 
-            const vec3 lt = textureLod(srcSampler, uv, 0).rgb + emis;
+            float f = smoothstep(
+                globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
+                (illum.x + illum.y + illum.z) / 3.0);
 
-            return lt * smoothstep(globalUniform.bloomThreshold, 
-                                   globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
-                                   (lt.x + lt.y + lt.z) / 3.0);
+            return illum * f + emis;
         }
         else
         {
-            return albedo4.rgb /* * globalUniform.skyColorMultiplier*/ * getScreenEmissionFromAlbedo4_Sky(albedo4);
+            return albedo4.rgb * getScreenEmissionFromAlbedo4_Sky(albedo4) /* * globalUniform.skyColorMultiplier */;
         }
     }
 

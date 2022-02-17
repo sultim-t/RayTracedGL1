@@ -928,8 +928,6 @@ typedef struct RgDrawFrameTexturesParams
     float           emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float           emissionMaxScreenColor;
-    // Multiplier for screen emission from emission maps.
-    float           emissionMapBoostForScreen;
 } RgDrawFrameTexturesParams;
 
 typedef struct RgDrawFrameDebugParams

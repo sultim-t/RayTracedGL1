@@ -553,7 +553,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "lightCountPolygonal",              1),
     (TYPE_UINT32,       1,      "lightCountPolygonalPrev",          1),
 
-    (TYPE_FLOAT32,      1,      "emissionMapScreenBoost",           1),
+    (TYPE_FLOAT32,      1,      "_pad0",                            1),
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
     (TYPE_UINT32,       1,      "applyViewProjToLensFlares",        1),
     (TYPE_UINT32,       1,      "areFramebufsInitedByRT",           1),

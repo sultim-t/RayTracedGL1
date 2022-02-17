@@ -254,7 +254,7 @@ struct ShGlobalUniform
     uint32_t lightCountSpotlightPrev;
     uint32_t lightCountPolygonal;
     uint32_t lightCountPolygonalPrev;
-    float emissionMapScreenBoost;
+    float _pad0;
     uint32_t lensFlareCullingInputCount;
     uint32_t applyViewProjToLensFlares;
     uint32_t areFramebufsInitedByRT;
