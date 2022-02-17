@@ -23,6 +23,7 @@
 #include <cassert>
 #include <cstring>
 
+#include "Const.h"
 #include "Generated/ShaderCommonC.h"
 
 static_assert(
@@ -278,6 +279,15 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
             flags |= (FL)FT::PV_FIRST_PERSON_VIEWER;
             break;
         }
+    #if RAYCULLMASK_SKY_IS_WORLD2
+        case RG_GEOMETRY_VISIBILITY_TYPE_SKY:
+        {
+            flags |= (FL)FT::PV_WORLD_2;
+            break;
+        }
+    #else
+        #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
+    #endif
         default: assert(0);
     }
 

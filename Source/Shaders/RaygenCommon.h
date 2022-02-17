@@ -162,9 +162,22 @@ uint getAdditionalRayFlags()
 
 
 
-bool isPayloadConsistent(const ShPayload p)
+bool doesPayloadContainHitInfo(const ShPayload p)
 {
-    return p.instIdAndIndex != UINT32_MAX && p.geomAndPrimIndex != UINT32_MAX;
+    if (p.instIdAndIndex == UINT32_MAX || p.geomAndPrimIndex == UINT32_MAX)
+    {
+        return false;
+    }
+
+    int instanceId, instanceCustomIndex;
+    unpackInstanceIdAndCustomIndex(p.instIdAndIndex, instanceId, instanceCustomIndex);
+
+    if ((instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_SKY) != 0)
+    {
+        return false;
+    }
+
+    return true;
 }
 
 void resetPayload()

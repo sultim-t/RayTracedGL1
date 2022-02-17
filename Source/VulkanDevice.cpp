@@ -47,6 +47,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
     userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
     rayCullBackFacingTriangles(info->rayCullBackFacingTriangles),
+    allowGeometryWithSkyFlag(info->allowGeometryWithSkyFlag),
     lensFlareVerticesInScreenSpace(info->lensFlareVerticesInScreenSpace),
     previousFrameTime(-1.0 / 60.0),
     currentFrameTime(0)
@@ -658,9 +659,46 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     gu->rayCullBackFaces = rayCullBackFacingTriangles ? 1 : 0;
-    gu->rayCullMaskWorld = clamp(drawInfo.rayCullMaskWorld, (uint32_t)INSTANCE_MASK_WORLD_MIN, (uint32_t)INSTANCE_MASK_WORLD_ALL);
     gu->rayLength = clamp(drawInfo.rayLength, 0.1f, (float)MAX_RAY_LENGTH);
     gu->primaryRayMinDist = clamp(drawInfo.primaryRayMinDist, 0.001f, gu->rayLength);
+
+    {
+        gu->rayCullMaskWorld = 0;
+
+        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT)
+        {
+            gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_0;
+        }
+
+        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_1_BIT)
+        {
+            gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_1;
+        }
+
+        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_2_BIT)
+        {
+            if (allowGeometryWithSkyFlag)
+            {
+                throw RgException(RG_WRONG_ARGUMENT, "RG_DRAW_FRAME_RAY_CULL_WORLD_2_BIT cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was true");
+            }
+
+            gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_2;
+        }
+
+    #if RAYCULLMASK_SKY_IS_WORLD2
+        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_SKY_BIT)
+        {
+            if (!allowGeometryWithSkyFlag)
+            {
+                throw RgException(RG_WRONG_ARGUMENT, "RG_DRAW_FRAME_RAY_CULL_SKY_BIT cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was false");
+            }
+
+            gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_2;
+        }
+    #else
+        #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
+    #endif
+    }
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 
@@ -702,7 +740,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 
     // submit geometry and upload uniform after getting data from a scene
-    const bool raysCanBeTraced = scene->SubmitForFrame(cmd, frameIndex, uniform, drawInfo.disableRayTracing);
+    const bool raysCanBeTraced = scene->SubmitForFrame(cmd, frameIndex, uniform, uniform->GetData()->rayCullMaskWorld, allowGeometryWithSkyFlag, drawInfo.disableRayTracing);
 
 
     framebuffers->PrepareForSize(renderResolution.Width(),         renderResolution.Height(),
@@ -951,9 +989,25 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_1 &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2 &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON &&
-        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER)
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_FIRST_PERSON_VIEWER && 
+        uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_SKY)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect type of ray traced geometry");
+    }
+
+    if (allowGeometryWithSkyFlag)
+    {
+        if (uploadInfo->visibilityType == RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2)
+        {
+            throw RgException(RG_WRONG_ARGUMENT, "Geometry with RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2 cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was true");
+        }
+    }
+    else
+    {
+        if (uploadInfo->visibilityType == RG_GEOMETRY_VISIBILITY_TYPE_SKY)
+        {
+            throw RgException(RG_WRONG_ARGUMENT, "Geometry with RG_GEOMETRY_VISIBILITY_TYPE_SKY cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was false");
+        }
     }
 
     if ((uploadInfo->flags & RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT) != 0 &&

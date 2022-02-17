@@ -100,7 +100,7 @@ vec3 processSecondBounce(
     // got the bounce direction, trace ray
     const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDirection); 
 
-    if (isPayloadConsistent(p))
+    if (doesPayloadContainHitInfo(p))
     {
         float hitDistance;
         const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, SECOND_BOUNCE_MIP_BIAS, hitDistance);
@@ -135,7 +135,7 @@ vec3 processBounce(
     // got the bounce direction, trace ray
     const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDir_First); 
 
-    if (isPayloadConsistent(p))
+    if (doesPayloadContainHitInfo(p))
     {
         float hitDistance;
         const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, FIRST_BOUNCE_MIP_BIAS, hitDistance);

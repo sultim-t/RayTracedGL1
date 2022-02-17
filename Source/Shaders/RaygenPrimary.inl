@@ -253,7 +253,7 @@ void main()
 
 
     // was no hit
-    if (!isPayloadConsistent(primaryPayload))
+    if (!doesPayloadContainHitInfo(primaryPayload))
     {
         vec3 throughput = vec3(1.0);
         throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(cameraRayDir, vec3(0,1,0))), -3));
@@ -490,7 +490,7 @@ void main()
         currentPayload = traceReflectionRefractionRay(rayOrigin, rayDir, instIndex, h.geometryInstanceFlags, doRefraction);
 
         
-        if (!isPayloadConsistent(currentPayload))
+        if (!doesPayloadContainHitInfo(currentPayload))
         {
             throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, globalUniform.worldUpVector.xyz)), -3));
 

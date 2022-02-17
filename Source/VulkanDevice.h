@@ -240,13 +240,13 @@ private:
     // incremented every frame
     uint32_t            frameId;
 
-    VkFence             frameFences[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore         renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT];
-    VkSemaphore         inFrameSemaphores[MAX_FRAMES_IN_FLIGHT];
+    VkFence             frameFences[MAX_FRAMES_IN_FLIGHT] = {};
+    VkSemaphore         imageAvailableSemaphores[MAX_FRAMES_IN_FLIGHT] = {};
+    VkSemaphore         renderFinishedSemaphores[MAX_FRAMES_IN_FLIGHT] = {};
+    VkSemaphore         inFrameSemaphores[MAX_FRAMES_IN_FLIGHT] = {};
 
     bool                waitForOutOfFrameFence;
-    VkFence             outOfFrameFences[MAX_FRAMES_IN_FLIGHT];
+    VkFence             outOfFrameFences[MAX_FRAMES_IN_FLIGHT] = {};
 
     std::shared_ptr<PhysicalDevice>         physDevice;
     std::shared_ptr<Queues>                 queues;
@@ -285,8 +285,9 @@ private:
     std::unique_ptr<UserPrint>              userPrint;
     std::shared_ptr<UserFileLoad>           userFileLoad;
 
-    VertexBufferProperties                  vbProperties;
+    VertexBufferProperties                  vbProperties = {};
     bool                                    rayCullBackFacingTriangles;
+    bool                                    allowGeometryWithSkyFlag;
     bool                                    lensFlareVerticesInScreenSpace;
 
     RenderResolutionHelper                  renderResolution;

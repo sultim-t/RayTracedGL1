@@ -51,7 +51,8 @@ public:
 
     void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     // Return true if TLAS was built
-    bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool disableRayTracing);
+    bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform,
+                        uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool disableRayTracing);
 
     bool Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
     bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);

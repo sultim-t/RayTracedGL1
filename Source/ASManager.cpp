@@ -744,7 +744,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, VkAccelerationStructureInstanceKHR &instance)
+bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, bool allowGeometryWithSkyFlag, VkAccelerationStructureInstanceKHR &instance)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -793,7 +793,7 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
         {
             instance.mask = INSTANCE_MASK_WORLD_0;
 
-            if (!(rayCullMaskWorld & (1 << 0)))
+            if (!(rayCullMaskWorld & INSTANCE_MASK_WORLD_0))
             {
                 instance = {};
                 return false;
@@ -803,7 +803,7 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
         {
             instance.mask = INSTANCE_MASK_WORLD_1;
 
-            if (!(rayCullMaskWorld & (1 << 1)))
+            if (!(rayCullMaskWorld & INSTANCE_MASK_WORLD_1))
             {
                 instance = {};
                 return false;
@@ -813,11 +813,20 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
         {
             instance.mask = INSTANCE_MASK_WORLD_2;
 
-            if (!(rayCullMaskWorld & (1 << 2)))
+            if (!(rayCullMaskWorld & INSTANCE_MASK_WORLD_2))
             {
                 instance = {};
                 return false;
             }
+
+        #if RAYCULLMASK_SKY_IS_WORLD2
+            if (allowGeometryWithSkyFlag)
+            {
+                instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_SKY;
+            }
+        #else
+            #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
+        #endif
         }
         else
         {
@@ -893,6 +902,8 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
 void ASManager::PrepareForBuildingTLAS(
     uint32_t frameIndex,
     ShGlobalUniform &uniformData,
+    uint32_t uniformData_rayCullMaskWorld,
+    bool allowGeometryWithSkyFlag,
     ShVertPreprocessing *outPush,
     TLASPrepareResult *outResult) const
 {
@@ -929,7 +940,7 @@ void ASManager::PrepareForBuildingTLAS(
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
 
             // add to TLAS instances array
-            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData.rayCullMaskWorld, r.instances[r.instanceCount]);
+            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, r.instances[r.instanceCount]);
 
             if (isAdded)
             {

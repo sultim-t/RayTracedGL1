@@ -94,6 +94,8 @@ public:
     void PrepareForBuildingTLAS(
         uint32_t frameIndex,
         ShGlobalUniform &uniformData,
+        uint32_t uniformData_rayCullMaskWorld,
+        bool allowGeometryWithSkyFlag,
         ShVertPreprocessing *outPush,
         TLASPrepareResult *outResult) const;
     void BuildTLAS(
@@ -131,7 +133,8 @@ private:
 
     static bool SetupTLASInstanceFromBLAS(
         const BLASComponent &as,
-        uint32_t rayCullMaskWorld,
+        uint32_t rayCullMaskWorld, 
+        bool allowGeometryWithSkyFlag,
         VkAccelerationStructureInstanceKHR &instance);
 
     static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);

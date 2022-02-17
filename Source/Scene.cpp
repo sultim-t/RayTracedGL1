@@ -66,7 +66,8 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     asManager->BeginDynamicGeometry(cmd, frameIndex);
 }
 
-bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, bool disableRayTracing)
+bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, 
+                           uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool disableRayTracing)
 {
     uint32_t preprocMode = submittedStaticInCurrentFrame ? VERT_PREPROC_MODE_ALL : 
                            toResubmitMovable             ? VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE : 
@@ -99,8 +100,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     ShVertPreprocessing push = {};
     ASManager::TLASPrepareResult prepare = {};
 
-    // prepare for building and fill uniform data
-    asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), &push, &prepare);
+    asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, &push, &prepare);
 
     // upload uniform data
     uniform->GetData()->areFramebufsInitedByRT = !prepare.IsEmpty() && !disableRayTracing;

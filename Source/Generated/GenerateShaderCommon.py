@@ -260,10 +260,8 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
     "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT"        : "1 << 3",
+    "INSTANCE_CUSTOM_INDEX_FLAG_SKY"                    : "1 << 4",
 
-    "INSTANCE_MASK_ALL"                     : "0xFF",
-    "INSTANCE_MASK_WORLD_MIN"               : "0",
-    "INSTANCE_MASK_WORLD_ALL"               : CONST_TO_EVALUATE,
     "INSTANCE_MASK_WORLD_0"                 : 1 << 0,
     "INSTANCE_MASK_WORLD_1"                 : 1 << 1,
     "INSTANCE_MASK_WORLD_2"                 : 1 << 2,
@@ -300,6 +298,13 @@ CONST = {
     "MATERIAL_BLENDING_MASK_SECOND_LAYER"   : CONST_TO_EVALUATE,
     "MATERIAL_BLENDING_MASK_THIRD_LAYER"    : CONST_TO_EVALUATE,
     # 12 first bits are for the blending flags per each layer, others can be used
+    "GEOM_INST_FLAG_RESERVED_0"             : "1 << 13",
+    "GEOM_INST_FLAG_RESERVED_1"             : "1 << 14",
+    "GEOM_INST_FLAG_RESERVED_2"             : "1 << 15",
+    "GEOM_INST_FLAG_RESERVED_3"             : "1 << 16",
+    "GEOM_INST_FLAG_RESERVED_4"             : "1 << 17",
+    "GEOM_INST_FLAG_RESERVED_5"             : "1 << 18",
+    "GEOM_INST_FLAG_RESERVED_6"             : "1 << 19",
     "GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER" : "1 << 20",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT"  : "1 << 21",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD"   : "1 << 22",
@@ -399,8 +404,6 @@ def evalConst():
     CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]       = 32 - CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW"]
     CONST["MAX_GEOMETRY_PRIMITIVE_COUNT"]           = 1 << CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]
     CONST["BLUE_NOISE_TEXTURE_SIZE_POW"]            = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
-
-    CONST["INSTANCE_MASK_WORLD_ALL"] = CONST["INSTANCE_MASK_WORLD_0"] | CONST["INSTANCE_MASK_WORLD_1"] | CONST["INSTANCE_MASK_WORLD_2"]
 
     assert len([None for _, v in CONST.items() if v == CONST_TO_EVALUATE]) == 0, "All CONST_TO_EVALUATE values must be calculated"
 
