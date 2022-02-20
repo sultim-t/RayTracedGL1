@@ -750,7 +750,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 
     // submit geometry and upload uniform after getting data from a scene
-    const bool raysCanBeTraced = scene->SubmitForFrame(cmd, frameIndex, uniform, uniform->GetData()->rayCullMaskWorld, allowGeometryWithSkyFlag, drawInfo.disableRayTracing);
+    const bool raysCanBeTraced = scene->SubmitForFrame(cmd, frameIndex, uniform, 
+                                                       uniform->GetData()->rayCullMaskWorld, 
+                                                       allowGeometryWithSkyFlag, 
+                                                       drawInfo.pReflectRefractParams ? drawInfo.pReflectRefractParams->isReflRefrAlphaTested : false,
+                                                       drawInfo.disableRayTracing);
 
 
     framebuffers->PrepareForSize(renderResolution.Width(),         renderResolution.Height(),

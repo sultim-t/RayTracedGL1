@@ -976,7 +976,8 @@ typedef enum RgMediaType
 } RgMediaType;
 
 typedef struct RgDrawFrameReflectRefractParams
-{   
+{
+    RgBool32    isReflRefrAlphaTested;
     uint32_t    maxReflectRefractDepth;
     // Media type, in which camera currently is.
     RgMediaType typeOfMediaAroundCamera;

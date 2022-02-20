@@ -744,7 +744,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, bool allowGeometryWithSkyFlag, VkAccelerationStructureInstanceKHR &instance)
+bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, VkAccelerationStructureInstanceKHR &instance)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -870,11 +870,22 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
     }
     else if (filter & FT::PT_REFLECT)
     {
-        instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
-        instance.flags =
-            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
+        if (isReflRefrAlphaTested)
+        {
+            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
+            instance.flags =
+                VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |
+                VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
+                VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
+        }
+        else
+        {
+            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
+            instance.flags =
+                VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
+                VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
+                VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
+        }
     }
     else
     {
@@ -904,6 +915,7 @@ void ASManager::PrepareForBuildingTLAS(
     ShGlobalUniform &uniformData,
     uint32_t uniformData_rayCullMaskWorld,
     bool allowGeometryWithSkyFlag,
+    bool isReflRefrAlphaTested,
     ShVertPreprocessing *outPush,
     TLASPrepareResult *outResult) const
 {
@@ -940,7 +952,7 @@ void ASManager::PrepareForBuildingTLAS(
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
 
             // add to TLAS instances array
-            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, r.instances[r.instanceCount]);
+            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, isReflRefrAlphaTested, r.instances[r.instanceCount]);
 
             if (isAdded)
             {
