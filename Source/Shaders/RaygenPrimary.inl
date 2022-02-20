@@ -55,8 +55,10 @@ vec3 getRayDir(vec2 inUV)
 {
     inUV = inUV * 2.0 - 1.0;
     
-    const vec4 target = globalUniform.invProjection * vec4(inUV.x, inUV.y, 1, 1);
-    const vec4 rayDir = globalUniform.invView * vec4(normalize(target.xyz / target.w), 0);
+    vec4 target = globalUniform.invProjection * vec4(inUV.x, inUV.y, 1, 1);
+    vec3 localDir = abs(target.w) < 0.001 ? target.xyz : target.xyz / target.w;   
+
+    vec4 rayDir = globalUniform.invView * vec4(normalize(localDir), 0);
     
     return rayDir.xyz;
 }
