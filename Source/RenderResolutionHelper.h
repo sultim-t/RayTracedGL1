@@ -65,6 +65,7 @@ public:
         {
             switch (upscaleTechnique)
             {
+                case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
                 case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
                 case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR:
                 case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:
@@ -142,18 +143,17 @@ public:
 
     float GetMipLodBias(float nativeBias = 0.0f) const
     {
-        if (!IsUpscaleEnabled())
-        {
-            return nativeBias;
-        }
-
         // DLSS Programming Guide, Section 3.5
         float ratio = (float)Width() / (float)UpscaledWidth();
         float bias =  nativeBias + log2f(std::max(0.01f, ratio)) - 1.0f;
 
-        if (IsAmdFsrEnabled() && bias < 0)
+        if (bias < 0)
         {
-            bias *= 0.5f;
+            // softer for non-dlss
+            if (!IsNvDlssEnabled())
+            {
+                bias *= 0.5f;
+            }
         }
 
         return bias;
@@ -176,6 +176,8 @@ public:
     RgRenderSharpenTechnique GetSharpeningTechnique() const { return sharpenTechnique; }
     bool                     IsSharpeningEnabled()    const { return sharpenTechnique != RG_RENDER_SHARPEN_TECHNIQUE_NONE; }
     float                    GetSharpeningIntensity() const { return 1.0f; }
+
+    VkFilter                 GetBlitFilter() const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NEAREST ? VK_FILTER_NEAREST : VK_FILTER_LINEAR; }
 
     // RgRenderResolutionMode   GetResolutionMode()      const { return resolutionMode; }
 

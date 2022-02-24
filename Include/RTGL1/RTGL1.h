@@ -1015,6 +1015,7 @@ typedef struct RgDrawFrameReflectRefractParams
 typedef enum RgRenderUpscaleTechnique
 {
     RG_RENDER_UPSCALE_TECHNIQUE_LINEAR,
+    RG_RENDER_UPSCALE_TECHNIQUE_NEAREST,
     RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR,
     RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS,
 } RgRenderUpscaleTechnique;

@@ -225,7 +225,7 @@ void Framebuffers::PresentToSwapchain(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     const std::shared_ptr<Swapchain> &swapchain,
     FramebufferImageIndex framebufferImageIndex, 
-    uint32_t srcWidth, uint32_t srcHeight, VkImageLayout srcLayout)
+    uint32_t srcWidth, uint32_t srcHeight, VkFilter filter, VkImageLayout srcLayout)
 {
     CmdLabel label(cmd, "Present to swapchain");
 
@@ -233,7 +233,7 @@ void Framebuffers::PresentToSwapchain(
 
     swapchain->BlitForPresent(
         cmd, images[FrameIndexToFBIndex(framebufferImageIndex, frameIndex)],
-        srcWidth, srcHeight, srcLayout);
+        srcWidth, srcHeight, filter, srcLayout);
 }
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const

@@ -153,7 +153,7 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
 }
 
 void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t srcImageWidth,
-                               uint32_t srcImageHeight, VkImageLayout srcImageLayout)
+                               uint32_t srcImageHeight, VkFilter filter, VkImageLayout srcImageLayout)
 {
     VkImageBlit region = {};
 
@@ -182,7 +182,7 @@ void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t s
     vkCmdBlitImage(
         cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1, &region, VK_FILTER_LINEAR);
+        1, &region, filter);
 
     // restore layouts
     Utils::BarrierImage(

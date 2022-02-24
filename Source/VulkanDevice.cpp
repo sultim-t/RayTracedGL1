@@ -866,6 +866,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         currentResultImage,
         wasUpscale ? renderResolution.UpscaledWidth()  : renderResolution.Width(),
         wasUpscale ? renderResolution.UpscaledHeight() : renderResolution.Height(),
+        renderResolution.GetBlitFilter(),
         VK_IMAGE_LAYOUT_GENERAL);
 
 
@@ -950,8 +951,8 @@ bool RTGL1::VulkanDevice::IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechn
 {
     switch (technique)
     {
+        case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
         case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
-            return true;
         case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR:
             return true;
         case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:

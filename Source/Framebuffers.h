@@ -69,6 +69,7 @@ public:
         const std::shared_ptr<Swapchain> &swapchain,
         FramebufferImageIndex framebufferImageIndex,
         uint32_t srcWidth, uint32_t srcHeight,
+        VkFilter filter,
         VkImageLayout srcLayout);
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
