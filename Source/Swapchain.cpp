@@ -155,6 +155,14 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
 void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t srcImageWidth,
                                uint32_t srcImageHeight, VkFilter filter, VkImageLayout srcImageLayout)
 {
+    // if source has almost the same size as the surface, then use nearest blit
+    if (std::abs((int)srcImageWidth  - (int)surfaceExtent.width ) < 8 && 
+        std::abs((int)srcImageHeight - (int)surfaceExtent.height) < 8)
+    {
+        filter = VK_FILTER_NEAREST;
+    }
+
+
     VkImageBlit region = {};
 
     region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
