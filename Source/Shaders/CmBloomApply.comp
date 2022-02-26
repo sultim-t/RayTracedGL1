@@ -28,24 +28,13 @@ layout(local_size_x = COMPUTE_BLOOM_APPLY_GROUP_SIZE_X, local_size_y = COMPUTE_B
 
 layout(constant_id = 0) const uint isSourcePing = 0;
 
-vec2 getInverseSrcSize()
-{
-    return vec2(1.0 / globalUniform.upscaledRenderWidth, 1.0 / globalUniform.upscaledRenderHeight);
-}
-
-// get UV coords in [0..1] range
-vec2 getSrcUV(const ivec2 pix)
-{
-    return (vec2(pix) + 0.5) * getInverseSrcSize();
-}
-
-#define LOAD_AND_ADD(_framebuf_Src, _framebuf_Dst, _pix, _x) \
-    imageStore(_framebuf_Dst, _pix, vec4(imageLoad(_framebuf_Src, _pix).rgb + (_x), 0.0));
+#define EFFECT_SOURCE_IS_PING (isSourcePing != 0)
+#include "EfCommon.inl"
 
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    const vec2 uv = getSrcUV(pix);
+    const vec2 uv = getEffectSourceUV(pix);
 
     if (uv.x > 1.0 || uv.y > 1.0)
     {
@@ -54,12 +43,6 @@ void main()
 
     const vec3 bloom = globalUniform.bloomIntensity * textureLod(framebufBloom_Result_Sampler, uv, 0).rgb;
     
-    if (isSourcePing != 0)
-    {
-        LOAD_AND_ADD(framebufUpscaledPing, framebufUpscaledPong, pix, bloom);
-    }
-    else
-    {
-        LOAD_AND_ADD(framebufUpscaledPong, framebufUpscaledPing, pix, bloom);
-    }
+    vec3 c = loadFromEffectSource(pix) + bloom;
+    storeToEffectTarget(c, pix);
 }
