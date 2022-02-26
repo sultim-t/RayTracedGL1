@@ -831,43 +831,44 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 
     FramebufferImageIndex currentResultImage = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
-    bool wasUpscale = false;
-
-    // upscale finalized image
-    if (renderResolution.IsNvDlssEnabled())
     {
-        currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
+        VkExtent2D extent = { renderResolution.Width(), renderResolution.Height() };
 
-        wasUpscale = true;
-    }
-    else if (renderResolution.IsAmdFsrEnabled())
-    {
-        currentResultImage = amdFsr->Apply(cmd, frameIndex, framebuffers, renderResolution);
-        wasUpscale = true;
+        // upscale finalized image
+        if (renderResolution.IsNvDlssEnabled())
+        {
+            currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
+            extent = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight() };
+        }
+        else if (renderResolution.IsAmdFsrEnabled())
+        {
+            currentResultImage = amdFsr->Apply(cmd, frameIndex, framebuffers, renderResolution);
+            extent = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight() };
+        }
+
+        currentResultImage = framebuffers->BlitForEffects(cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter());
     }
 
 
     // sharpen
     if (renderResolution.IsSharpeningEnabled())
     {
-        currentResultImage = sharpening->Apply(cmd, frameIndex, framebuffers, renderResolution, currentResultImage);
+        currentResultImage = sharpening->Apply(
+            cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage,
+            renderResolution.GetSharpeningTechnique(), renderResolution.GetSharpeningIntensity());
     }
 
     // apply prepared bloom
     if (enableBloom)
     {
-        currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution, currentResultImage);
+        currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
     }
 
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
-        cmd, frameIndex, swapchain, 
-        currentResultImage,
-        wasUpscale ? renderResolution.UpscaledWidth()  : renderResolution.Width(),
-        wasUpscale ? renderResolution.UpscaledHeight() : renderResolution.Height(),
-        renderResolution.GetBlitFilter(),
-        VK_IMAGE_LAYOUT_GENERAL);
+        cmd, frameIndex, swapchain,
+        currentResultImage, VK_FILTER_NEAREST);
 
 
     // draw geometry such as HUD directly into the swapchain image

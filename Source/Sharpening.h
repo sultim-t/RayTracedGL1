@@ -50,7 +50,8 @@ public:
     // sharpness: 0 - none, 1 - full
     FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-        const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage);
+        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf, 
+        RgRenderSharpenTechnique sharpenTechnique, float sharpenIntensity);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
@@ -58,15 +59,14 @@ private:
     void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
-    VkPipeline *GetPipeline(bool useSimpleSharp, FramebufferImageIndex inputImage);
-    VkPipeline *GetPipeline(RgRenderSharpenTechnique technique, FramebufferImageIndex inputImage);
+    VkPipeline *GetPipeline(RgRenderSharpenTechnique technique, uint32_t isSourcePing);
 
 private:
     VkDevice device;
 
     VkPipelineLayout pipelineLayout;
-    std::unordered_map<FramebufferImageIndex, VkPipeline> simpleSharpPipelines;
-    std::unordered_map<FramebufferImageIndex, VkPipeline> casPipelines;
+    VkPipeline simpleSharpPipelines[2];
+    VkPipeline casPipelines[2];
 };
 
 }

@@ -54,23 +54,25 @@ public:
     bool PrepareForSize(uint32_t renderWidth, uint32_t renderHeight,
                         uint32_t upscaledWidth, uint32_t upscaledHeight);
 
+    enum class BarrierType { All, Storage, ColorAttachment, Transfer };
+
     void BarrierOne(VkCommandBuffer cmd,
                     uint32_t frameIndex,
-                    FramebufferImageIndex framebufferImageIndex);
+                    FramebufferImageIndex framebufImageIndex,
+                    BarrierType barrierTypeFrom = BarrierType::All);
 
-    // Barrier framebuffer images for given frameIndex 
+    // Barrier framebuffer images for given frameIndex
     template <uint32_t BARRIER_COUNT>
     void BarrierMultiple(VkCommandBuffer cmd,
                          uint32_t frameIndex,
-                         const FramebufferImageIndex (&framebufferImageIndices)[BARRIER_COUNT]);
+                         const FramebufferImageIndex (&framebufImageIndices)[BARRIER_COUNT],
+                         BarrierType barrierTypeFrom = BarrierType::All);
 
     void PresentToSwapchain(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<Swapchain> &swapchain,
-        FramebufferImageIndex framebufferImageIndex,
-        uint32_t srcWidth, uint32_t srcHeight,
-        VkFilter filter,
-        VkImageLayout srcLayout);
+        VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Swapchain> &swapchain,
+        FramebufferImageIndex framebufImageIndex, VkFilter filter);
+    FramebufferImageIndex BlitForEffects(
+        VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex, VkFilter filter);
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
@@ -93,6 +95,10 @@ private:
     void CreateImages(uint32_t renderWidth, uint32_t renderHeight,
                       uint32_t upscaledWidth, uint32_t upscaledHeight);
     void UpdateDescriptors();
+
+    static VkExtent2D GetFramebufSize(FramebufferImageFlags flags,
+                                      uint32_t renderWidth, uint32_t renderHeight,
+                                      uint32_t upscaledWidth, uint32_t upscaledHeight);
 
     void DestroyImages();
 
@@ -123,14 +129,59 @@ private:
 
 
 template<uint32_t BARRIER_COUNT>
-inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameIndex, const FramebufferImageIndex(&fbIndices)[BARRIER_COUNT])
+inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameIndex, const FramebufferImageIndex(&framebufImageIndices)[BARRIER_COUNT], BarrierType barrierTypeFrom)
 {
     std::array<VkImageMemoryBarrier2KHR, BARRIER_COUNT> tmpBarriers;
+
+    VkAccessFlags2KHR srcAccess = 0, dstAccess = 0;
+    VkPipelineStageFlags2KHR srcStage = 0, dstStage = 0;
+
+    switch (barrierTypeFrom)
+    {
+        case BarrierType::All:
+            srcAccess = VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR | VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+            srcStage =
+                VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR |
+                VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR | 
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR;
+            break;
+        case BarrierType::Storage:
+            srcAccess = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
+            srcStage =
+                VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR |
+                VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR |
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+            break;
+        case BarrierType::ColorAttachment:
+            srcAccess = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR;
+            srcStage =
+                VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR;
+            break;
+        case BarrierType::Transfer:
+            srcAccess = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
+            srcStage =
+                VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR;
+            break;
+        default: assert(0);
+    }
+
+    // TODO: add barrierTypeTo, now it just includes all
+    dstAccess = 
+        VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT_KHR |
+        VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT_KHR | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT_KHR | 
+        VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR | VK_ACCESS_2_TRANSFER_READ_BIT_KHR;
+    dstStage = 
+        VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR | 
+        VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | 
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR |
+        VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT_KHR;
+
 
     for (uint32_t i = 0; i < BARRIER_COUNT; i++)
     {
         // correct framebuf index according to the frame index
-        FramebufferImageIndex fbIndex = FrameIndexToFBIndex(fbIndices[i], frameIndex);
+        FramebufferImageIndex fbIndex = FrameIndexToFBIndex(framebufImageIndices[i], frameIndex);
         VkImage img = images[fbIndex];
 
         VkImageMemoryBarrier2KHR &b = tmpBarriers[i];
@@ -140,10 +191,10 @@ inline void Framebuffers::BarrierMultiple(VkCommandBuffer cmd, uint32_t frameInd
         b.image = img;
         b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
         b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-        b.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR;
-        b.dstAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT_KHR | VK_ACCESS_2_SHADER_READ_BIT_KHR;
-        b.srcStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
-        b.dstStageMask = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT_KHR | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR;
+        b.srcAccessMask = srcAccess;
+        b.dstAccessMask = dstAccess;
+        b.srcStageMask = srcStage;
+        b.dstStageMask = dstStage;
         b.oldLayout = VK_IMAGE_LAYOUT_GENERAL;
         b.newLayout = VK_IMAGE_LAYOUT_GENERAL;
 

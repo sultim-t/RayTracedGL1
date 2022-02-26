@@ -56,8 +56,7 @@ public:
     RTGL1::FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
-        const RenderResolutionHelper &renderResolution, 
-        FramebufferImageIndex inputImage);
+        uint32_t width, uint32_t height, FramebufferImageIndex inputImage);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
@@ -78,7 +77,7 @@ private:
     VkPipeline downsamplePipelines[5];
     VkPipeline upsamplePipelines[5];
     
-    std::unordered_map<FramebufferImageIndex, VkPipeline> applyPipelines;
+    VkPipeline applyPipelines[2];
 };
 
 }

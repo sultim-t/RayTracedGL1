@@ -215,25 +215,94 @@ bool RTGL1::Framebuffers::PrepareForSize(uint32_t renderWidth, uint32_t renderHe
     return true;
 }
 
-void RTGL1::Framebuffers::BarrierOne(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufferImageIndex)
+void RTGL1::Framebuffers::BarrierOne(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex, BarrierType barrierTypeFrom)
 {
-    FramebufferImageIndex fs[] = { framebufferImageIndex };
-    BarrierMultiple(cmd, frameIndex, fs);
+    FramebufferImageIndex fs[] = { framebufImageIndex };
+    BarrierMultiple(cmd, frameIndex, fs, barrierTypeFrom);
 }
 
 void Framebuffers::PresentToSwapchain(
-    VkCommandBuffer cmd, uint32_t frameIndex, 
-    const std::shared_ptr<Swapchain> &swapchain,
-    FramebufferImageIndex framebufferImageIndex, 
-    uint32_t srcWidth, uint32_t srcHeight, VkFilter filter, VkImageLayout srcLayout)
+    VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Swapchain> &swapchain,
+    FramebufferImageIndex framebufImageIndex, VkFilter filter)
 {
     CmdLabel label(cmd, "Present to swapchain");
 
-    BarrierOne(cmd, frameIndex, framebufferImageIndex);
+    BarrierOne(cmd, frameIndex, framebufImageIndex);
+
+    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[framebufImageIndex], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
 
     swapchain->BlitForPresent(
-        cmd, images[FrameIndexToFBIndex(framebufferImageIndex, frameIndex)],
-        srcWidth, srcHeight, filter, srcLayout);
+        cmd, images[FrameIndexToFBIndex(framebufImageIndex, frameIndex)],
+        srcExtent.width, srcExtent.height, filter, VK_IMAGE_LAYOUT_GENERAL);
+}
+
+RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex, VkFilter filter)
+{
+    FramebufferImageIndex src = FrameIndexToFBIndex(framebufImageIndex, frameIndex);
+    FramebufferImageIndex dst;
+
+    switch (src)
+    {
+        case FB_IMAGE_INDEX_FINAL:         dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_PING, frameIndex); break;
+        case FB_IMAGE_INDEX_UPSCALED_PING: dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_PONG, frameIndex); break;
+        case FB_IMAGE_INDEX_UPSCALED_PONG: dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_PING, frameIndex); break;
+        default: assert(0); return FB_IMAGE_INDEX_UPSCALED_PING;
+    }
+
+    VkImage srcImage = images[src];
+    VkImage dstImage = images[dst];
+
+    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[src], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
+    VkExtent2D dstExtent = GetFramebufSize(ShFramebuffers_Flags[dst], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
+
+    // if source has almost the same size as the surface, then use nearest blit
+    if (std::abs((int)srcExtent.width  - (int)dstExtent.width) < 8 &&
+        std::abs((int)srcExtent.height - (int)dstExtent.height) < 8)
+    {
+        filter = VK_FILTER_NEAREST;
+    }
+
+
+    VkImageBlit region = {};
+
+    region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.srcOffsets[0] = { 0, 0, 0 };
+    region.srcOffsets[1] = { static_cast<int32_t>(srcExtent.width), static_cast<int32_t>(srcExtent.height), 1 };
+
+    region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+    region.dstOffsets[0] = { 0, 0, 0 };
+    region.dstOffsets[1] = { static_cast<int32_t>(dstExtent.width), static_cast<int32_t>(dstExtent.height), 1 };
+
+    
+
+    // set layout for blit
+    Utils::BarrierImage(
+        cmd, srcImage,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    Utils::BarrierImage(
+        cmd, dstImage,
+        0, VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    vkCmdBlitImage(
+        cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &region, filter);
+
+    // restore layouts
+    Utils::BarrierImage(
+        cmd, srcImage,
+        VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+    Utils::BarrierImage(
+        cmd, dstImage,
+        VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+    return dst;
 }
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const
@@ -272,6 +341,62 @@ void RTGL1::Framebuffers::GetImageHandles(FramebufferImageIndex framebufferImage
     }
 }
 
+VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags, 
+                                                uint32_t renderWidth, uint32_t renderHeight,
+                                                uint32_t upscaledWidth, uint32_t upscaledHeight)
+{
+    if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_UPSCALED_SIZE)
+    {
+        return { upscaledWidth, upscaledHeight };
+    }
+
+    if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE)
+    {
+        return { 1,1 };
+    }
+
+    int downscale = 1;
+
+    if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_2)
+    {
+        downscale = 2;
+    }
+    else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3)
+    {
+        downscale = 3;
+    }
+    else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_4)
+    {
+        downscale = 4;
+    }
+    else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_8)
+    {
+        downscale = 8;
+    }
+    else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_16)
+    {
+        downscale = 16;
+    }
+    else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_32)
+    {
+        downscale = 32;
+    }
+    else
+    {
+        return { renderWidth, renderHeight };
+    }
+
+    VkExtent2D extent;
+
+    extent.width  = (renderWidth  + 1) / downscale;
+    extent.height = (renderHeight + 1) / downscale;
+
+    extent.width  = std::max(1u, extent.width);
+    extent.height = std::max(1u, extent.height);
+
+    return extent;
+}
+
 void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
                                 uint32_t upscaledWidth, uint32_t upscaledHeight)
 {
@@ -284,61 +409,14 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
         VkFormat format = ShFramebuffers_Formats[i];
         FramebufferImageFlags flags = ShFramebuffers_Flags[i];
 
-        VkExtent3D extent;
-    
-        extent = { renderWidth, renderHeight, 1 };
-
-        int downscale = 1;
-
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_2)
-        {
-            downscale = 2;
-        }
-        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3)
-        {
-            downscale = 3;
-        }
-        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_4)
-        {
-            downscale = 4;
-        }
-        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_8)
-        {
-            downscale = 8;
-        }
-        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_16)
-        {
-            downscale = 16;
-        }
-        else if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_32)
-        {
-            downscale = 32;
-        }
-
-        extent.width = (renderWidth + 1) / downscale;
-        extent.height = (renderHeight + 1) / downscale;
-
-        extent.width  = std::max(1u, extent.width); 
-        extent.height = std::max(1u, extent.height);
-
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_UPSCALED_SIZE)
-        {
-            extent.width = upscaledWidth;
-            extent.height = upscaledHeight;
-        }
-
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE)
-        {
-            extent.width = 1;
-            extent.height = 1;
-        }
+        VkExtent2D extent = GetFramebufSize(flags, renderWidth, renderHeight, upscaledWidth, upscaledHeight);
 
         // create image
         VkImageCreateInfo imageInfo = {};
         imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
         imageInfo.imageType = VK_IMAGE_TYPE_2D;
         imageInfo.format = format;
-        imageInfo.extent = extent;
+        imageInfo.extent = { extent.width, extent.height, 1};
         imageInfo.mipLevels = 1;
         imageInfo.arrayLayers = 1;
         imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;

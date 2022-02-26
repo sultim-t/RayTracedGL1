@@ -26,18 +26,11 @@
 
 layout(local_size_x = COMPUTE_BLOOM_APPLY_GROUP_SIZE_X, local_size_y = COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y, local_size_z = 1) in;
 
-layout(constant_id = 0) const uint sourceFramebufIndex = 0;
+layout(constant_id = 0) const uint isSourcePing = 0;
 
 vec2 getInverseSrcSize()
 {
-    switch (sourceFramebufIndex)
-    {
-        case FB_IMAGE_INDEX_FINAL:         return vec2(1.0 / globalUniform.renderWidth, 1.0 / globalUniform.renderHeight);
-        case FB_IMAGE_INDEX_UPSCALED_PING: return vec2(1.0 / globalUniform.upscaledRenderWidth, 1.0 / globalUniform.upscaledRenderHeight);
-        case FB_IMAGE_INDEX_UPSCALED_PONG: return vec2(1.0 / globalUniform.upscaledRenderWidth, 1.0 / globalUniform.upscaledRenderHeight);
-    }
-
-    return vec2(0);
+    return vec2(1.0 / globalUniform.upscaledRenderWidth, 1.0 / globalUniform.upscaledRenderHeight);
 }
 
 // get UV coords in [0..1] range
@@ -46,8 +39,8 @@ vec2 getSrcUV(const ivec2 pix)
     return (vec2(pix) + 0.5) * getInverseSrcSize();
 }
 
-#define LOAD_AND_ADD(_framebuf, _pix, _x) \
-    imageStore(_framebuf, _pix, vec4(imageLoad(_framebuf, _pix).rgb + (_x), 0.0));
+#define LOAD_AND_ADD(_framebuf_Src, _framebuf_Dst, _pix, _x) \
+    imageStore(_framebuf_Dst, _pix, vec4(imageLoad(_framebuf_Src, _pix).rgb + (_x), 0.0));
 
 void main()
 {
@@ -61,10 +54,12 @@ void main()
 
     const vec3 bloom = globalUniform.bloomIntensity * textureLod(framebufBloom_Result_Sampler, uv, 0).rgb;
     
-    switch (sourceFramebufIndex)
+    if (isSourcePing != 0)
     {
-        case FB_IMAGE_INDEX_FINAL:         LOAD_AND_ADD(framebufFinal, pix, bloom);        break;
-        case FB_IMAGE_INDEX_UPSCALED_PING: LOAD_AND_ADD(framebufUpscaledPing, pix, bloom); break;
-        case FB_IMAGE_INDEX_UPSCALED_PONG: LOAD_AND_ADD(framebufUpscaledPong, pix, bloom); break;
+        LOAD_AND_ADD(framebufUpscaledPing, framebufUpscaledPong, pix, bloom);
+    }
+    else
+    {
+        LOAD_AND_ADD(framebufUpscaledPong, framebufUpscaledPing, pix, bloom);
     }
 }

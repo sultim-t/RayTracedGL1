@@ -35,17 +35,15 @@ struct CasPush
 };
 
 
-// modify shader sources if this var is changed
-#define SOURCE_UPSCALED_FRAMEBUF FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PONG
-
-
 RTGL1::Sharpening::Sharpening(
     VkDevice _device,
     const std::shared_ptr<const Framebuffers> &_framebuffers,
     const std::shared_ptr<const ShaderManager> &_shaderManager)
 :
     device(_device),
-    pipelineLayout(VK_NULL_HANDLE)
+    pipelineLayout(VK_NULL_HANDLE),
+    simpleSharpPipelines{},
+    casPipelines{}
 {
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
@@ -64,19 +62,19 @@ RTGL1::Sharpening::~Sharpening()
 
 RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<Framebuffers> &framebuffers,
-    const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
+    uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf, 
+    RgRenderSharpenTechnique sharpenTechnique, float sharpenIntensity)
 {
-    assert(renderResolution.IsSharpeningEnabled());
-
-    assert(inputImage == SOURCE_UPSCALED_FRAMEBUF || inputImage == FB_IMAGE_INDEX_FINAL);
-    const bool wasUpscalePass = inputImage != FB_IMAGE_INDEX_FINAL;
-
+    if (sharpenTechnique == RG_RENDER_SHARPEN_TECHNIQUE_NONE)
+    {
+        return inputFramebuf;
+    }
 
     CmdLabel label(cmd, "Sharpening");
 
-    
-    const uint32_t width  = wasUpscalePass ? renderResolution.UpscaledWidth()  : renderResolution.Width();
-    const uint32_t height = wasUpscalePass ? renderResolution.UpscaledHeight() : renderResolution.Height();
+
+    assert(inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING || inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PONG);
+    uint32_t isSourcePing = inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING;
 
 
     const int threadGroupWorkRegionDim = 16;
@@ -98,21 +96,20 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     {
         CasPush casPush;
         CasSetup(casPush.con0, casPush.con1,
-                 renderResolution.GetSharpeningIntensity(), // sharpness tuning knob (0.0 to 1.0).
-                 width, height,                             // input size.
-                 width, height);                            // output size.
+                 sharpenIntensity,              // sharpness tuning knob (0.0 to 1.0).
+                 width, height,                 // input size.
+                 width, height);                // output size.
 
         vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                            0, sizeof(casPush), &casPush);
 
-        framebuffers->BarrierOne(cmd, frameIndex, inputImage);
+        framebuffers->BarrierOne(cmd, frameIndex, inputFramebuf);
 
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, *GetPipeline(renderResolution.GetSharpeningTechnique(), inputImage));
+        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, *GetPipeline(sharpenTechnique, isSourcePing));
         vkCmdDispatch(cmd, dispatchX, dispatchY, 1);
     }
 
-    // the result is always saved to this framebuf
-    return FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PING;
+    return isSourcePing ? FB_IMAGE_INDEX_UPSCALED_PONG : FB_IMAGE_INDEX_UPSCALED_PING;
 }
 
 void RTGL1::Sharpening::OnShaderReload(const ShaderManager *shaderManager)
@@ -147,15 +144,15 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
 
     struct SpecData
     {
-        FramebufferImageIndex sourceFramebufIndex;
+        uint32_t isSourcePing;
         uint32_t useSimpleSharp;
     } data;
 
     VkSpecializationMapEntry entries[2] = {};
 
     entries[0].constantID = 0;
-    entries[0].offset = offsetof(SpecData, sourceFramebufIndex);
-    entries[0].size = sizeof(data.sourceFramebufIndex);
+    entries[0].offset = offsetof(SpecData, isSourcePing);
+    entries[0].size = sizeof(data.isSourcePing);
 
     entries[1].constantID = 1;
     entries[1].offset = offsetof(SpecData, useSimpleSharp);
@@ -172,63 +169,55 @@ void RTGL1::Sharpening::CreatePipelines(const ShaderManager *shaderManager)
     plInfo.layout = pipelineLayout;
     plInfo.stage = shaderManager->GetStageInfo("CCas");
     plInfo.stage.pSpecializationInfo = &specInfo;
-    
-    FramebufferImageIndex sourceFramebufIndices[] =
+
+    RgRenderSharpenTechnique ts[] =
     {
-        SOURCE_UPSCALED_FRAMEBUF,
-        FB_IMAGE_INDEX_FINAL
+        RG_RENDER_SHARPEN_TECHNIQUE_NAIVE,
+        RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS
     };
 
-    for (uint32_t useSimpleSharp = 0; useSimpleSharp <= 1; useSimpleSharp++)
+    for (auto t : ts)
     {
-        for (FramebufferImageIndex sourceFramebufIndex : sourceFramebufIndices)
+        for (uint32_t b = 0; b <= 1; b++)
         {
-            assert(*GetPipeline(useSimpleSharp, sourceFramebufIndex) == VK_NULL_HANDLE);
+            assert(*GetPipeline(t, b) == VK_NULL_HANDLE);
 
             // modify specialization data
-            data.useSimpleSharp = useSimpleSharp;
-            data.sourceFramebufIndex = sourceFramebufIndex;
+            data.isSourcePing = b;
+            data.useSimpleSharp = t == RG_RENDER_SHARPEN_TECHNIQUE_NAIVE;
 
-            VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, GetPipeline(useSimpleSharp, sourceFramebufIndex));
+            VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, GetPipeline(t, b));
             VK_CHECKERROR(r);
 
-            SET_DEBUG_NAME(device, *GetPipeline(useSimpleSharp, sourceFramebufIndex), VK_OBJECT_TYPE_PIPELINE, useSimpleSharp ? "Simple sharpening" : "CAS");
+            SET_DEBUG_NAME(device, *GetPipeline(t, b), VK_OBJECT_TYPE_PIPELINE, data.useSimpleSharp ? "Simple sharpening" : "CAS");
         }
     }
 }
 
 void RTGL1::Sharpening::DestroyPipelines()
 {
-    std::unordered_map<FramebufferImageIndex, VkPipeline> *pPipelineMaps[] =
+    for (auto &t : simpleSharpPipelines)
     {
-        &simpleSharpPipelines,
-        &casPipelines
-    };
+        assert(t != VK_NULL_HANDLE);
 
-    for (auto *m : pPipelineMaps)
+        vkDestroyPipeline(device, t, nullptr);
+        t = VK_NULL_HANDLE;
+    }
+    for (auto &t : casPipelines)
     {
-        for (auto &t : *m)
-        {
-            assert(t.second != VK_NULL_HANDLE);
+        assert(t != VK_NULL_HANDLE);
 
-            vkDestroyPipeline(device, t.second, nullptr);
-            t.second = VK_NULL_HANDLE;
-        }
+        vkDestroyPipeline(device, t, nullptr);
+        t = VK_NULL_HANDLE;
     }
 }
 
-VkPipeline *RTGL1::Sharpening::GetPipeline(RgRenderSharpenTechnique technique, FramebufferImageIndex inputImage)
+VkPipeline *RTGL1::Sharpening::GetPipeline(RgRenderSharpenTechnique technique, uint32_t isSourcePing)
 {
     switch (technique)
     {
-        case RG_RENDER_SHARPEN_TECHNIQUE_NAIVE:   return GetPipeline(true,  inputImage);
-        case RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS: return GetPipeline(false, inputImage);
+        case RG_RENDER_SHARPEN_TECHNIQUE_NAIVE:   return &simpleSharpPipelines[isSourcePing];
+        case RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS: return &casPipelines[isSourcePing];
         default: assert(0); return nullptr;
     }
-}
-
-VkPipeline *RTGL1::Sharpening::GetPipeline(bool useSimpleSharp, FramebufferImageIndex inputImage)
-{
-    auto &map = useSimpleSharp ? simpleSharpPipelines : casPipelines;
-    return &map[inputImage];
 }

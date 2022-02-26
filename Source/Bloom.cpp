@@ -37,7 +37,8 @@ RTGL1::Bloom::Bloom(
     framebuffers(std::move(_framebuffers)),
     pipelineLayout(VK_NULL_HANDLE),
     downsamplePipelines{},
-    upsamplePipelines{}
+    upsamplePipelines{},
+    applyPipelines{}
 {
     std::vector<VkDescriptorSetLayout> setLayouts =
     {
@@ -137,18 +138,15 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 }
 
 RTGL1::FramebufferImageIndex RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform,
-                                                 const RenderResolutionHelper &renderResolution, FramebufferImageIndex inputImage)
+                                                 uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf)
 {
+
     CmdLabel label(cmd, "Bloom apply");
 
 
-    assert(applyPipelines.find(inputImage) != applyPipelines.end());
+    assert(inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING || inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PONG);
+    uint32_t isSourcePing = inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING;
 
-
-    const bool wasUpscalePass = inputImage != FB_IMAGE_INDEX_FINAL;
-
-    const uint32_t width  = wasUpscalePass ? renderResolution.UpscaledWidth() : renderResolution.Width();
-    const uint32_t height = wasUpscalePass ? renderResolution.UpscaledHeight() : renderResolution.Height();
 
     const uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(width / (float)COMPUTE_BLOOM_APPLY_GROUP_SIZE_X));
     const uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(height / (float)COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y));
@@ -166,15 +164,19 @@ RTGL1::FramebufferImageIndex RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t f
                             0, std::size(sets), sets,
                             0, nullptr);
 
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, applyPipelines[inputImage]);
-    
-    framebuffers->BarrierOne(cmd, frameIndex, inputImage);
-    framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_RESULT);
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, applyPipelines[isSourcePing]);
+
+    FramebufferImageIndex fs[] =
+    {
+    inputFramebuf,
+    FB_IMAGE_INDEX_BLOOM_RESULT
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 
 
-    return inputImage;
+    return isSourcePing ? FB_IMAGE_INDEX_UPSCALED_PONG : FB_IMAGE_INDEX_UPSCALED_PING;
 }
 
 void RTGL1::Bloom::OnShaderReload(const ShaderManager * shaderManager)
@@ -272,32 +274,24 @@ void RTGL1::Bloom::CreateStepPipelines(const ShaderManager *shaderManager)
 
 void RTGL1::Bloom::CreateApplyPipelines(const ShaderManager *shaderManager)
 {
-    for (const auto &t : applyPipelines)
+    for (VkPipeline t : applyPipelines)
     {
-        assert(t.second == VK_NULL_HANDLE);
+        assert(t == VK_NULL_HANDLE);
     }
 
 
-    FramebufferImageIndex inputImages[] =
-    {
-        FB_IMAGE_INDEX_UPSCALED_PING,
-        FB_IMAGE_INDEX_UPSCALED_PONG,
-        FB_IMAGE_INDEX_FINAL
-    };
-
-
-    uint32_t inputImageIndex = 0;
+    uint32_t isSourcePing = 0;
 
     VkSpecializationMapEntry specEntry = {};
     specEntry.constantID = 0;
     specEntry.offset = 0;
-    specEntry.size = sizeof(uint32_t);
+    specEntry.size = sizeof(isSourcePing);
 
     VkSpecializationInfo specInfo = {};
     specInfo.mapEntryCount = 1;
     specInfo.pMapEntries = &specEntry;
-    specInfo.dataSize = sizeof(uint32_t);
-    specInfo.pData = &inputImageIndex;
+    specInfo.dataSize = sizeof(isSourcePing);
+    specInfo.pData = &isSourcePing;
 
 
     VkComputePipelineCreateInfo plInfo = {};
@@ -306,17 +300,15 @@ void RTGL1::Bloom::CreateApplyPipelines(const ShaderManager *shaderManager)
     plInfo.stage = shaderManager->GetStageInfo("CBloomApply");
     plInfo.stage.pSpecializationInfo = &specInfo;
 
-    for (auto i : inputImages)
+    for (int b = 0; b <= 1; b++)
     {
-        VkPipeline &p = applyPipelines[i];
-
         // modify specInfo.pData
-        inputImageIndex = i;
-
-        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &p);
+        isSourcePing = b;
+        
+        VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &applyPipelines[isSourcePing]);
         VK_CHECKERROR(r);
 
-        SET_DEBUG_NAME(device, p, VK_OBJECT_TYPE_PIPELINE, ("Bloom apply from " + std::string(ShFramebuffers_DebugNames[i])).c_str());
+        SET_DEBUG_NAME(device, applyPipelines[isSourcePing], VK_OBJECT_TYPE_PIPELINE, ("Bloom apply from " + std::string(isSourcePing ? "Ping" : "Pong")).c_str());
     }
 }
 
@@ -334,9 +326,9 @@ void RTGL1::Bloom::DestroyPipelines()
         p = VK_NULL_HANDLE;
     }
 
-    for (auto &t : applyPipelines)
+    for (VkPipeline &t : applyPipelines)
     {
-        vkDestroyPipeline(device, t.second, nullptr);
-        t.second = VK_NULL_HANDLE;
+        vkDestroyPipeline(device, t, nullptr);
+        t = VK_NULL_HANDLE;
     }
 }
