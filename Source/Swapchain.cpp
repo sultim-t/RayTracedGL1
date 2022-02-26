@@ -179,7 +179,7 @@ void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t s
     // set layout for blit
     Utils::BarrierImage(
         cmd, srcImage,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
         srcImageLayout, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     Utils::BarrierImage(
@@ -195,7 +195,7 @@ void Swapchain::BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t s
     // restore layouts
     Utils::BarrierImage(
         cmd, srcImage,
-        VK_ACCESS_SHADER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, srcImageLayout);
 
     Utils::BarrierImage(
@@ -446,6 +446,12 @@ VkImageView Swapchain::GetImageView(uint32_t index) const
 {
     assert(index < swapchainViews.size());
     return swapchainViews[index];
+}
+
+VkImage RTGL1::Swapchain::GetImage(uint32_t index) const
+{
+    assert(index < swapchainImages.size());
+    return swapchainImages[index];
 }
 
 const VkImageView *Swapchain::GetImageViews() const

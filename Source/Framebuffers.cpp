@@ -232,7 +232,7 @@ void Framebuffers::PresentToSwapchain(
     VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[framebufImageIndex], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
 
     swapchain->BlitForPresent(
-        cmd, images[FrameIndexToFBIndex(framebufImageIndex, frameIndex)],
+        cmd, GetImage(framebufImageIndex, frameIndex),
         srcExtent.width, srcExtent.height, filter, VK_IMAGE_LAYOUT_GENERAL);
 }
 
@@ -278,7 +278,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
     // set layout for blit
     Utils::BarrierImage(
         cmd, srcImage,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     Utils::BarrierImage(
@@ -294,7 +294,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
     // restore layouts
     Utils::BarrierImage(
         cmd, srcImage,
-        VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT,
+        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
     Utils::BarrierImage(
@@ -313,6 +313,12 @@ VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const
 VkDescriptorSetLayout Framebuffers::GetDescSetLayout() const
 {
     return descSetLayout;
+}
+
+VkImage Framebuffers::GetImage(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const
+{
+    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
+    return images[framebufferImageIndex];
 }
 
 VkImageView Framebuffers::GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const

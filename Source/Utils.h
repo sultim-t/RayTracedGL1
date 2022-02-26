@@ -71,6 +71,7 @@ namespace Utils
     // The remaining values are initialized with identity matrix.
     void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
 
+    uint32_t GetPreviousByModulo(uint32_t value, uint32_t count);
 };
 
 template<typename T>

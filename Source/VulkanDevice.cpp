@@ -869,7 +869,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
     
-    if (effectWipe->Setup(drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth()))
+    if (effectWipe->Setup(cmd, frameIndex, swapchain, framebuffers, drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()))
     {
         currentResultImage = effectWipe->Apply(cmd, frameIndex, framebuffers, uniform, blueNoise, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
     }

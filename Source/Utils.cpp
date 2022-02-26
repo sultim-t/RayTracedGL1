@@ -223,3 +223,9 @@ void RTGL1::Utils::SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src)
         }
     }
 }
+
+uint32_t RTGL1::Utils::GetPreviousByModulo(uint32_t value, uint32_t count)
+{
+    assert(count > 0);
+    return (value + (count - 1)) % count;
+}

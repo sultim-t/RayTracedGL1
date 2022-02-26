@@ -77,6 +77,7 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
 
+    VkImage GetImage(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const;
     VkImageView GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const;
     void GetImageHandles(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex,
                          VkImage *pOutImage, VkImageView *pOutView, VkFormat *pOutFormat) const;

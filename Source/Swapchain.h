@@ -67,6 +67,7 @@ public:
     uint32_t GetCurrentImageIndex() const;
     uint32_t GetImageCount() const;
     VkImageView GetImageView(uint32_t index) const;
+    VkImage GetImage(uint32_t index) const;
     const VkImageView *GetImageViews() const;
 
 private:

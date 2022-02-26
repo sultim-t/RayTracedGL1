@@ -972,7 +972,7 @@ typedef struct RgDrawFrameWipeEffectParams
 {
     // [0..1] where 1 is whole screen width.
     float       stripWidth;
-    float       startTime;
+    RgBool32    beginNow;
     float       duration;
 } RgDrawFrameWipeEffectParams;
 

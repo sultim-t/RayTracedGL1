@@ -43,7 +43,8 @@ struct EffectWipe final : public EffectBase
         const std::shared_ptr<const BlueNoise>     &blueNoise,
         const std::shared_ptr<const ShaderManager> &shaderManager)
     :
-        EffectBase(device)
+        EffectBase(device),
+        push{}
     {
         VkDescriptorSetLayout setLayouts[] =
         {
@@ -56,24 +57,67 @@ struct EffectWipe final : public EffectBase
                  setLayouts, PushConst());
     }
 
-
-    bool Setup(const RgDrawFrameWipeEffectParams *params, float currentTime, uint32_t currentFrameId, uint32_t screenWidth)
+    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex,
+               const std::shared_ptr<Swapchain> &swapchain, const std::shared_ptr<Framebuffers> &framebuffers,
+               const RgDrawFrameWipeEffectParams *params, float currentTime, uint32_t currentFrameId, uint32_t width, uint32_t height)
     {
         if (params == nullptr)
         {
             return false;
         }
         
-        push.stripWidthInPixels = (uint32_t)(screenWidth * clamp(params->stripWidth, 0.0f, 1.0f));
-        push.startFrameId = currentFrameId;
-        push.beginTime = params->startTime;
-        push.endTime   = params->startTime + params->duration;
+        push.stripWidthInPixels = (uint32_t)(width * clamp(params->stripWidth, 0.0f, 1.0f));
+
+        if (params->beginNow)
+        {
+            push.startFrameId = currentFrameId;
+            push.beginTime = currentTime;
+            push.endTime = currentTime + params->duration;
+        }
 
         if (push.stripWidthInPixels == 0 || 
             push.beginTime >= push.endTime ||
             currentTime >= push.endTime)
         {
             return false;
+        }
+
+        if (params->beginNow)
+        {
+            uint32_t previousSwapchainIndex = Utils::GetPreviousByModulo(swapchain->GetCurrentImageIndex(), swapchain->GetImageCount());
+            VkImage src = swapchain->GetImage(previousSwapchainIndex);
+
+            VkImage dst = framebuffers->GetImage(FB_IMAGE_INDEX_WIPE_EFFECT_SOURCE, frameIndex);
+
+            VkImageCopy region = {};
+            region.extent = { width, height, 1 };
+            region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+            region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+
+            Utils::BarrierImage(
+                cmd, src,
+                VK_ACCESS_NONE_KHR, VK_ACCESS_TRANSFER_READ_BIT,
+                VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+            Utils::BarrierImage(
+                cmd, dst,
+                VK_ACCESS_NONE_KHR, VK_ACCESS_TRANSFER_WRITE_BIT,
+                VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+            vkCmdCopyImage(cmd,
+                           src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                           dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                           1, &region);
+
+            Utils::BarrierImage(
+                cmd, dst,
+                VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
+                VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+            Utils::BarrierImage(
+                cmd, src,
+                VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_NONE_KHR,
+                VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
         }
 
         return true;
