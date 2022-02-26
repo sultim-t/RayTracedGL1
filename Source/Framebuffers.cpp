@@ -432,9 +432,9 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
             imageInfo.usage |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
         }
 
-        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_USAGE_TRANSFER_DST)
+        if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_USAGE_TRANSFER)
         {
-            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+            imageInfo.usage |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
         }
 
         r = vkCreateImage(device, &imageInfo, nullptr, &images[i]);
