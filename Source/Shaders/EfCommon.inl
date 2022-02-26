@@ -24,9 +24,15 @@
 #endif
 
 
+ivec2 getEffectSourceSize()
+{
+    return imageSize(framebufUpscaledPing); // framebufUpscaledPong has the same size
+}
+
+
 vec2 getInverseEffectSourceSize()
 {
-    ivec2 sz = imageSize(framebufUpscaledPing); // framebufUpscaledPong has the same size
+    ivec2 sz = getEffectSourceSize();
     return vec2(1.0 / float(sz.x), 1.0 / float(sz.y));
 }
 
@@ -64,9 +70,16 @@ void storeToEffectTarget(const vec3 value, ivec2 pix)
 }
 
 
-#ifdef DESC_SET_RANDOM
-vec4 getEffectRandomSample(ivec2 pix, uint frameIndex, ivec2 imgSize)
+void copyEffectFromSourceToTarget(ivec2 pix)
 {
-    return getRandomSample(getRandomSeed(pix, frameIndex, imgSize.x, imgSize.y), 0);
+    storeToEffectTarget(loadFromEffectSource(pix), pix);
+}
+
+
+#ifdef DESC_SET_RANDOM
+vec4 getEffectRandomSample(ivec2 pix, uint frameIndex)
+{
+    ivec2 sz = getEffectSourceSize();
+    return getRandomSample(getRandomSeed(pix, frameIndex, sz.x, sz.y), 0);
 }
 #endif

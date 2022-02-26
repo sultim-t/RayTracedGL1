@@ -26,51 +26,58 @@
 namespace RTGL1
 {
 
-class Utils
+namespace Utils
 {
-public:
-    static void BarrierImage(
+    void BarrierImage(
         VkCommandBuffer cmd, VkImage image,
         VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
         VkImageLayout oldLayout, VkImageLayout newLayout,
         VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
         const VkImageSubresourceRange &subresourceRange);
 
-    static void BarrierImage(
+    void BarrierImage(
         VkCommandBuffer cmd, VkImage image,
         VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
         VkImageLayout oldLayout, VkImageLayout newLayout,
         const VkImageSubresourceRange &subresourceRange);
 
-    static void BarrierImage(
+    void BarrierImage(
         VkCommandBuffer cmd, VkImage image,
         VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
         VkImageLayout oldLayout, VkImageLayout newLayout,
         VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask);
 
-    static void BarrierImage(
+    void BarrierImage(
         VkCommandBuffer cmd, VkImage image,
         VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
         VkImageLayout oldLayout, VkImageLayout newLayout);
 
-    static void ASBuildMemoryBarrier(
+    void ASBuildMemoryBarrier(
         VkCommandBuffer cmd
     );
 
-    static void WaitForFence(VkDevice device, VkFence fence);
-    static void ResetFence(VkDevice device, VkFence fence);
-    static void WaitAndResetFence(VkDevice device, VkFence fence);
-    static void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
+    void WaitForFence(VkDevice device, VkFence fence);
+    void ResetFence(VkDevice device, VkFence fence);
+    void WaitAndResetFence(VkDevice device, VkFence fence);
+    void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
 
-    static uint32_t Align(uint32_t value, uint32_t alignment);
+    uint32_t Align(uint32_t value, uint32_t alignment);
 
-    static bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
+    bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
 
-    static bool IsAlmostZero(const RgFloat3D &v);
-    static bool IsAlmostZero(const RgMatrix3D &m);
+    bool IsAlmostZero(const RgFloat3D &v);
+    bool IsAlmostZero(const RgMatrix3D &m);
     // In terms of GLSL: mat3(a), where a is mat4.
     // The remaining values are initialized with identity matrix.
-    static void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
+    void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
+
 };
+
+template<typename T>
+constexpr T clamp(const T &v, const T &v_min, const T &v_max)
+{
+    assert(v_min <= v_max);
+    return std::min(v_max, std::max(v_min, v));
+}
 
 }

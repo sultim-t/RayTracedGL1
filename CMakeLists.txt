@@ -85,6 +85,7 @@ set(PrivateHeaders
     "Source/TriangleInfoManager.h"
     "Source/LensFlares.h"
     "Source/DecalManager.h"
+    "Source/EffectBase.h"
 )
 
 set(Sources
@@ -150,6 +151,7 @@ set(Sources
     "Source/TriangleInfoManager.cpp"
     "Source/LensFlares.cpp"
     "Source/DecalManager.cpp"
+    "Source/EffectBase.cpp"
 )
 
 

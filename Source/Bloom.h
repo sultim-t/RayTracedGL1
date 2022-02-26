@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include "Common.h"
 #include "ShaderManager.h"
 #include "Framebuffers.h"
@@ -53,10 +51,10 @@ public:
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
 
-    RTGL1::FramebufferImageIndex Apply(
+    FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform,
-        uint32_t width, uint32_t height, FramebufferImageIndex inputImage);
+        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
