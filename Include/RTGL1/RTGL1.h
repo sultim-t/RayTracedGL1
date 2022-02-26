@@ -968,6 +968,14 @@ typedef struct RgDrawFrameBloomParams
     float       bloomSkyMultiplier;
 } RgDrawFrameBloomParams;
 
+typedef struct RgDrawFrameWipeEffectParams
+{
+    // [0..1] where 1 is whole screen width.
+    float       stripWidth;
+    float       startTime;
+    float       duration;
+} RgDrawFrameWipeEffectParams;
+
 typedef enum RgMediaType
 {
     RG_MEDIA_TYPE_VACUUM,
@@ -1088,6 +1096,7 @@ typedef struct RgDrawFrameInfo
     const RgDrawFrameShadowParams               *pShadowParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
+    const RgDrawFrameWipeEffectParams           *pWipeEffectParams;
     const RgDrawFrameReflectRefractParams       *pReflectRefractParams;
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameTexturesParams             *pTexturesParams;

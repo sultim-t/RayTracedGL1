@@ -32,6 +32,7 @@
 #include "RgException.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
+#include "EffectWipe.h"
 
 using namespace RTGL1;
 
@@ -221,6 +222,13 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         scene->GetASManager());
 
+    effectWipe          = std::make_shared<EffectWipe>(
+        device,
+        framebuffers,
+        uniform,
+        blueNoise,
+        shaderManager);
+
 
     swapchain->Subscribe(rasterizer);
 
@@ -234,6 +242,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(bloom);
     shaderManager->Subscribe(amdFsr);
     shaderManager->Subscribe(sharpening);
+    shaderManager->Subscribe(effectWipe);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -254,6 +263,7 @@ VulkanDevice::~VulkanDevice()
     amdFsr.reset();
     nvDlss.reset();
     sharpening.reset();
+    effectWipe.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -349,12 +359,6 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     scene->PrepareForFrame(cmd, frameIndex);
 
     return cmd;
-}
-
-template<typename T>
-static constexpr T clamp(const T &v, const T &v_min, const T &v_max)
-{
-    return std::min(v_max, std::max(v_min, v));
 }
 
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const
@@ -862,6 +866,12 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     if (enableBloom)
     {
         currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
+    }
+
+    
+    if (effectWipe->Setup(drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth()))
+    {
+        currentResultImage = effectWipe->Apply(cmd, frameIndex, framebuffers, uniform, blueNoise, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
     }
 
 

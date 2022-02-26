@@ -86,6 +86,7 @@ set(PrivateHeaders
     "Source/LensFlares.h"
     "Source/DecalManager.h"
     "Source/EffectBase.h"
+    "Source/EffectWipe.h"
 )
 
 set(Sources
