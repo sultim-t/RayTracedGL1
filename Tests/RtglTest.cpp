@@ -660,7 +660,7 @@ static void MainLoop(RgInstance instance, Window *pWindow)
         glm::mat4 view = glm::lookAt(CAMERA_POS, CAMERA_POS + CAMERA_DIR, CAMERA_UP);
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
-        frameInfo.rayCullMaskWorld = 0xFF;
+        frameInfo.rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT;
         frameInfo.rayLength = 10000.0f;
 
         RgDrawFrameSkyParams skyParams = {};

@@ -31,3 +31,15 @@ target_link_libraries(RtglTest RayTracedGL1)
 target_link_libraries(RtglTest glfw)
 target_include_directories(RtglTest PUBLIC )
 target_include_directories(RtglTest PUBLIC Libs/glm)
+
+# copy dll-s to exe directory
+get_target_property(RTGL1_DLL_PATH RayTracedGL1 IMPORTED_LOCATION)
+get_target_property(RTGL1_DLL_PATH_D RayTracedGL1 IMPORTED_LOCATION_DEBUG)
+add_custom_command(TARGET RtglTest POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy_if_different
+	"$<$<CONFIG:Debug>:${RTGL1_DLL_PATH_D}>"
+	"$<$<CONFIG:MinSizeRel>:${RTGL1_DLL_PATH}>"
+	"$<$<CONFIG:RelWithDebInfo>:${RTGL1_DLL_PATH}>"
+	"$<$<CONFIG:Release>:${RTGL1_DLL_PATH}>"
+    $<TARGET_FILE_DIR:RtglTest>/RayTracedGL1.dll
+)
