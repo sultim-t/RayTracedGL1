@@ -63,15 +63,14 @@ void main()
     progress *= progress;
 
     
-    if (pix.y / float(sz.y) < progress)
+    int offset = int(progress * sz.y);
+    if (pix.y < offset)
     {
         copyEffectFromSourceToTarget(pix);
         return;
     }
     
 
-    vec3 c = imageLoad(framebufWipeEffectSource, pix).rgb;
-
-    int offset = int(progress * getEffectSourceSize().y);
-    storeToEffectTarget(c, pix + ivec2(0, offset));
+    vec3 c = imageLoad(framebufWipeEffectSource, ivec2(pix.x, pix.y - offset)).rgb;
+    storeToEffectTarget(c, ivec2(pix.x, pix.y + offset));
 }
