@@ -89,10 +89,15 @@ struct EffectWipe final : public EffectBase
 
             VkImage dst = framebuffers->GetImage(FB_IMAGE_INDEX_WIPE_EFFECT_SOURCE, frameIndex);
 
-            VkImageCopy region = {};
-            region.extent = { width, height, 1 };
+            VkImageBlit region = {};
+
             region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+            region.srcOffsets[0] = { 0, 0, 0 };
+            region.srcOffsets[1] = { static_cast<int32_t>(swapchain->GetWidth()), static_cast<int32_t>(swapchain->GetHeight()), 1 };
+
             region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+            region.dstOffsets[0] = { 0, 0, 0 };
+            region.dstOffsets[1] = { static_cast<int32_t>(swapchain->GetWidth()), static_cast<int32_t>(swapchain->GetHeight()), 1 };
 
             Utils::BarrierImage(
                 cmd, src,
@@ -104,10 +109,10 @@ struct EffectWipe final : public EffectBase
                 VK_ACCESS_NONE_KHR, VK_ACCESS_TRANSFER_WRITE_BIT,
                 VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-            vkCmdCopyImage(cmd,
+            vkCmdBlitImage(cmd,
                            src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                            dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-                           1, &region);
+                           1, &region, VK_FILTER_NEAREST);
 
             Utils::BarrierImage(
                 cmd, dst,
@@ -118,6 +123,7 @@ struct EffectWipe final : public EffectBase
                 cmd, src,
                 VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_NONE_KHR,
                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
         }
 
         return true;
