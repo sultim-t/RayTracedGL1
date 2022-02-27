@@ -127,7 +127,7 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
         requestedExtent.height != surfaceExtent.height || 
         requestedVsync != isVsync)
     {
-        Recreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+        TryRecreate(requestedExtent.width, requestedExtent.height, requestedVsync);
     }
 
     while (true)
@@ -143,7 +143,7 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
         }
         else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
         {
-            Recreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+            TryRecreate(requestedExtent.width, requestedExtent.height, requestedVsync);
         }
         else
         {
@@ -219,12 +219,27 @@ void Swapchain::Present(const std::shared_ptr<Queues> &queues, VkSemaphore rende
 
     if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
     {
-        Recreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+        TryRecreate(requestedExtent.width, requestedExtent.height, requestedVsync);
     }
 }
 
-bool Swapchain::Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
+bool Swapchain::TryRecreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
 {
+    VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
+    VK_CHECKERROR(r);
+
+    // normalize new extent
+    if (surfCapabilities.currentExtent.width != UINT32_MAX && surfCapabilities.currentExtent.height != UINT32_MAX)
+    {
+        newWidth  = surfCapabilities.currentExtent.width;
+        newHeight = surfCapabilities.currentExtent.height;
+    }
+    else
+    {
+        newWidth  = clamp(newWidth,  surfCapabilities.minImageExtent.width,  surfCapabilities.maxImageExtent.width);
+        newHeight = clamp(newHeight, surfCapabilities.minImageExtent.height, surfCapabilities.maxImageExtent.height);
+    }
+
     if (surfaceExtent.width == newWidth && surfaceExtent.height == newHeight && isVsync == vsync)
     {
         return false;
@@ -241,27 +256,29 @@ bool Swapchain::Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
 void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync, VkSwapchainKHR oldSwapchain)
 {
     this->isVsync = vsync;
+    this->surfaceExtent = { newWidth, newHeight };
+
+    VkResult r;
+
+#ifndef NDEBUG
+    r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
+    VK_CHECKERROR(r);
+
+    if (surfCapabilities.currentExtent.width  != UINT32_MAX && surfCapabilities.currentExtent.height != UINT32_MAX)
+    {
+        assert(surfaceExtent.width  == surfCapabilities.currentExtent.width && 
+               surfaceExtent.height == surfCapabilities.currentExtent.height);
+    }
+    else
+    {
+        assert(surfCapabilities.minImageExtent.width  <= surfaceExtent.width  && surfaceExtent.width  <= surfCapabilities.maxImageExtent.width);
+        assert(surfCapabilities.minImageExtent.height <= surfaceExtent.height && surfaceExtent.height <= surfCapabilities.maxImageExtent.height);
+    }
+#endif
 
     assert(swapchain == VK_NULL_HANDLE);
     assert(swapchainImages.empty());
     assert(swapchainViews.empty());
-
-    VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
-    VK_CHECKERROR(r);
-
-    if (surfCapabilities.currentExtent.width != UINT32_MAX &&
-        surfCapabilities.currentExtent.height != UINT32_MAX)
-    {
-        surfaceExtent = surfCapabilities.currentExtent;
-    }
-    else
-    {
-        surfaceExtent.width = std::min(surfCapabilities.maxImageExtent.width, newWidth);
-        surfaceExtent.height = std::min(surfCapabilities.maxImageExtent.height, newHeight);
-
-        surfaceExtent.width = std::max(surfCapabilities.minImageExtent.width, surfaceExtent.width);
-        surfaceExtent.height = std::max(surfCapabilities.minImageExtent.height, surfaceExtent.height);
-    }
 
     uint32_t imageCount = std::max(3U, surfCapabilities.minImageCount);
     if (surfCapabilities.maxImageCount > 0)

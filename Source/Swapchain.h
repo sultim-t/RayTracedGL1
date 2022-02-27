@@ -72,7 +72,7 @@ public:
 
 private:
     // Safe to call even if swapchain wasn't created
-    bool Recreate(uint32_t newWidth, uint32_t newHeight, bool vsync);
+    bool TryRecreate(uint32_t newWidth, uint32_t newHeight, bool vsync);
 
     void Create(uint32_t newWidth, uint32_t newHeight, bool vsync, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
     void Destroy();
