@@ -43,17 +43,27 @@ layout(push_constant) uniform WipePush_BT
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    const vec2 uv = getEffectSourceUV(pix);
+    ivec2 sz = getEffectSourceSize();
 
-    float rnd = getEffectRandomSample(pix, push.startFrameId).x;
-
+    uint count = sz.x  / push.stripWidthInPixels;
     uint strip = pix.x / push.stripWidthInPixels;
 
-    float progress = max(globalUniform.time - push.beginTime, 0.0) / max(push.endTime - push.beginTime, 0.001);
-    progress = clamp(progress, 0.0, 1.0);
+    float rnd = getEffectRandomSample(ivec2(0, 0), push.startFrameId).x;
+
+    float x = strip / float(count) + rnd * 10;
+  
+    const float maxDiff = 0.1f;
+    float wave = maxDiff * sin(20 * x) * sin(10 * x) * sin(100 * x) + maxDiff;
+    
+    float progress = 
+        max(globalUniform.time - push.beginTime, 0.0) / 
+        max(push.endTime       - push.beginTime, 0.001);
+
+    progress = clamp(progress - wave, 0.0, 1.0);
+    progress *= progress;
 
     
-    if (uv.y < progress)
+    if (pix.y / float(sz.y) < progress)
     {
         copyEffectFromSourceToTarget(pix);
         return;
