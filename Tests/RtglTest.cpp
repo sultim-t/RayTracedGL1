@@ -162,6 +162,8 @@ static void MainLoop(RgInstance instance)
         r = rgCreateStaticMaterial(instance, &textureInfo, &material);
         RG_CHECK(r);
 
+
+#if 0
         RgCubemapCreateInfo skyboxInfo = 
         {
             .relativePathFaces = {
@@ -173,6 +175,7 @@ static void MainLoop(RgInstance instance)
         };
         r = rgCreateCubemap(instance, &skyboxInfo, &skybox);
         RG_CHECK(r);
+#endif
 
 
         // upload static scene
@@ -181,6 +184,7 @@ static void MainLoop(RgInstance instance)
         {
             const RgGeometryUploadInfo staticCubeGeomTemplate = 
             {
+                .flags                  = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
                 .vertexCount            = std::size(s_CubePositions),
                 .pVertexData            = s_CubePositions,
                 .pNormalData            = nullptr,
@@ -337,6 +341,7 @@ static void MainLoop(RgInstance instance)
         RgGeometryUploadInfo dynamicGeomInfo = 
         {
             .uniqueID               = 300,
+            .flags                  = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
             .geomType               = RG_GEOMETRY_TYPE_DYNAMIC,
             .vertexCount            = std::size(s_CubePositions),
             .pVertexData            = s_CubePositions,
@@ -406,13 +411,14 @@ static void MainLoop(RgInstance instance)
         RgDirectionalLightUploadInfo dirLight = 
         {
             .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
-            .direction              = { -1, -1, -1 },
+            .direction              = { -2, -1, -1 },
             .angularDiameterDegrees = 0.5f
         };
         r = rgUploadDirectionalLight(instance, &dirLight);
         RG_CHECK(r);
 
 
+#if 0
         // upload sphere lights
         {
             uint32_t count = (frameId % 2) * 64 + 128;
@@ -427,16 +433,14 @@ static void MainLoop(RgInstance instance)
                     .radius             = 0.25f,
                     .falloffDistance    = 10.0f,
                 };
-                //r = rgUploadSphericalLight(instance, &l);        
+                r = rgUploadSphericalLight(instance, &l);        
                 RG_CHECK(r);    
             }
         }
+#endif
 
 
-        // GLM is column major, copy matrix data directly
-        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f);
-        // invert Y in view*proj
-        persp[1][1] *= -1;
+        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f); persp[1][1] *= -1;
         glm::mat4 view = glm::lookAt(ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0,1,0 });
 
 
@@ -462,13 +466,15 @@ static void MainLoop(RgInstance instance)
 
         RgDrawFrameInfo frameInfo = 
         {
-            .rayCullMaskWorld = RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0,
+            .fovYRadians = glm::radians(75.0f),
+            .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
             .rayLength = 10000.0f,
             .currentTime = GetCurrentTimeInSeconds(),
             .pRenderResolutionParams = &resolutionParams,
             .pSkyParams = &skyParams,
             .pDebugParams = &debugParams,
         };
+        // GLM is column major, copy matrix data directly
         memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
@@ -512,7 +518,7 @@ int main()
         .primaryRaysMaxAlbedoLayers         = 1,
         .indirectIlluminationMaxAlbedoLayers= 1,
 
-        .rayCullBackFacingTriangles         = true,
+        .rayCullBackFacingTriangles         = false,
 
         .rasterizedMaxVertexCount           = 4096,
         .rasterizedMaxIndexCount            = 2048,
