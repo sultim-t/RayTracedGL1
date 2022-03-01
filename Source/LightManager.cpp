@@ -117,9 +117,12 @@ static void FillInfoDirectional(const RgDirectionalLightUploadInfo &info, RTGL1:
     memcpy(dst->directionalLightColor, info.color.data, sizeof(float) * 3);
     dst->directionalLightColor[3] = 0.0f;
 
-    dst->directionalLightDirection[0] = -info.direction.data[0];
-    dst->directionalLightDirection[1] = -info.direction.data[1];
-    dst->directionalLightDirection[2] = -info.direction.data[2];
+    const float *v = info.direction.data;
+    float f = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+
+    dst->directionalLightDirection[0] = f > 0.001f ? -v[0] / f : 0;
+    dst->directionalLightDirection[1] = f > 0.001f ? -v[1] / f : -1;
+    dst->directionalLightDirection[2] = f > 0.001f ? -v[2] / f : 0;
     dst->directionalLightDirection[3] = 0.0f;
 
     dst->directionalLightTanAngularRadius = (float)tan(std::max(0.0, 0.5 * (double)info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
