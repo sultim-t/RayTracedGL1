@@ -187,6 +187,8 @@ option(RG_WITH_SURFACE_XLIB     "Build with Xlib VkSurfaceKHR support"      OFF)
 
 option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"              ON)
 
+option(RG_WITH_EXAMPLES         "Add examples project"                      OFF)
+
 
 # for KTX-Software
 add_definitions(-DKHRONOS_STATIC -DLIBKTX)
@@ -267,3 +269,9 @@ endif()
 target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 
+
+if (RG_WITH_EXAMPLES)
+    set(RTGL1_EXAMPLES_STANDALONE OFF CACHE BOOL "" FORCE)
+    set(RTGL1_SDK_PATH "${CMAKE_SOURCE_DIR}")
+    add_subdirectory(Tests)
+endif()
