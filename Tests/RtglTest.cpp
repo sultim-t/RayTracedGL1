@@ -26,7 +26,7 @@
 static GLFWwindow   *g_GlfwHandle;
 
 static glm::vec3    ctl_CameraPosition      = glm::vec3(0, -1.5f, 4.5f);
-static glm::vec3    ctl_CameraDirection     = glm::vec3(0, 0, 1);
+static glm::vec3    ctl_CameraDirection     = glm::vec3(0, 0, -1);
 static glm::vec3    ctl_LightPosition       = glm::vec3(0, 0, 1);
 static float        ctl_LightIntensity      = 1.0f;
 static float        ctl_LightCount          = 0.0f;
@@ -510,7 +510,10 @@ int main()
         .pWin32SurfaceInfo                  = &win32Info,
 
         .enableValidationLayer              = true,
-        .pfnPrint                           = [] (const char *pMessage, void *pUserData) { std::cout << pMessage << std::endl; },
+        .pfnPrint                           = [] (const char *pMessage, void *pUserData)
+                                            {
+                                                std::cout << pMessage << std::endl;
+                                            },
 
         .pShaderFolderPath                  = ASSET_DIRECTORY,
         .pBlueNoiseFilePath                 = ASSET_DIRECTORY"BlueNoise_LDR_RGBA_128.ktx2",
