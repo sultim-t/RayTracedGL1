@@ -101,8 +101,8 @@ void main()
         //color = reinhard(color);
         color = Uncharted2Tonemap(color);
 
-        const vec3 e = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
-        color = mix(color, e, clamp((e.x + e.y + e.z) / 3.0, 0.0, 1.0));
+        const vec3 emission = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
+        color += emission;
     }
     else
     {
