@@ -28,28 +28,29 @@
 constexpr uint32_t PIPELINE_STATE_MASK_BLEND_ENABLE                     = 1 << 0;
 constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_TEST_ENABLE                = 1 << 1;
 constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE               = 1 << 2;
+constexpr uint32_t PIPELINE_STATE_MASK_IS_LINES                         = 1 << 3;
 
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE                   = 1 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ZERO                  = 2 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR             = 3 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_COLOR   = 4 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR             = 5 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_DST_COLOR   = 6 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA             = 7 << 3;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_ALPHA   = 8 << 3;
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_SRC                        = 15 << 3;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE                   = 1 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ZERO                  = 2 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR             = 3 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_COLOR   = 4 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR             = 5 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_DST_COLOR   = 6 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA             = 7 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_ALPHA   = 8 << 4;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_SRC                        = 15 << 4;
 
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE                   = 1 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ZERO                  = 2 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR             = 3 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_COLOR   = 4 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR             = 5 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_DST_COLOR   = 6 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA             = 7 << 7;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_ALPHA   = 8 << 7;
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_DST                        = 15 << 7;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE                   = 1 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ZERO                  = 2 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR             = 3 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_COLOR   = 4 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR             = 5 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_DST_COLOR   = 6 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA             = 7 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_ALPHA   = 8 << 8;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_DST                        = 15 << 8;
 
-static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
+static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
 {
     uint32_t r = 0;
 
@@ -94,6 +95,11 @@ static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc
         r |= PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE;
     }
 
+    if (isLines)
+    {
+        r |= PIPELINE_STATE_MASK_IS_LINES;
+    }
+
     return r;
 }
 
@@ -121,31 +127,19 @@ static bool TestFlags()
 
     for (auto be : bs)
     {
-        for (auto dt : bs)
+    for (auto dt : bs)
+    {
+    for (auto dw : bs)
+    {
+    for (auto ln : bs)
+    {
+        if (be)
         {
-            for (auto dw : bs)
+            for (auto src : fs)
             {
-                if (be)
+                for (auto dst : fs)
                 {
-                    for (auto src : fs)
-                    {
-                        for (auto dst : fs)
-                        {
-                            uint32_t flags = ConvertToStateFlags(true, src, dst, dt, dw);
-
-                            if (un.count(flags) > 0)
-                            {
-                                assert(0);
-                                return false;
-                            }
-
-                            un.insert(flags);
-                        }
-                    }
-                }
-                else
-                {
-                    uint32_t flags = ConvertToStateFlags(false, RG_BLEND_FACTOR_ONE, RG_BLEND_FACTOR_ONE, dt, dw);
+                    uint32_t flags = ConvertToStateFlags(true, src, dst, dt, dw, ln);
 
                     if (un.count(flags) > 0)
                     {
@@ -157,6 +151,21 @@ static bool TestFlags()
                 }
             }
         }
+        else
+        {
+            uint32_t flags = ConvertToStateFlags(false, RG_BLEND_FACTOR_ONE, RG_BLEND_FACTOR_ONE, dt, dw, ln);
+
+            if (un.count(flags) > 0)
+            {
+                assert(0);
+                return false;
+            }
+
+            un.insert(flags);
+        }
+    }
+    }
+    }
     }
 
     return true;
@@ -236,9 +245,9 @@ void RTGL1::RasterizerPipelines::DisableDynamicState(const VkViewport &viewport,
     dynamicState.scissors = scissors;
 }
 
-VkPipeline RTGL1::RasterizerPipelines::GetPipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
+VkPipeline RTGL1::RasterizerPipelines::GetPipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
 {
-    uint32_t flags = ConvertToStateFlags(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite);
+    uint32_t flags = ConvertToStateFlags(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite, isLines);
 
     auto f = pipelines.find(flags);
 
@@ -249,7 +258,7 @@ VkPipeline RTGL1::RasterizerPipelines::GetPipeline(bool blendEnable, RgBlendFact
     }
     else
     {
-        VkPipeline p = CreatePipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite);
+        VkPipeline p = CreatePipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite, isLines);
 
         pipelines[flags] = p;
         return p;
@@ -261,7 +270,7 @@ VkPipelineLayout RTGL1::RasterizerPipelines::GetPipelineLayout()
     return pipelineLayout;
 }
 
-VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
+VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
 {
     assert(shaderStages[0].sType != 0 && shaderStages[1].sType != 0);
 
@@ -306,7 +315,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
 
     VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
     inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.topology = isLines ? VK_PRIMITIVE_TOPOLOGY_LINE_LIST : VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     inputAssembly.primitiveRestartEnable = VK_FALSE;
 
     VkPipelineViewportStateCreateInfo viewportState = {};
@@ -392,9 +401,9 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
 
 void RTGL1::RasterizerPipelines::BindPipelineIfNew(
     VkCommandBuffer cmd, VkPipeline &curPipeline,
-    bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite)
+    bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
 {
-    VkPipeline p = GetPipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite);
+    VkPipeline p = GetPipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite, isLines);
 
     if (p != curPipeline)
     {

@@ -546,6 +546,8 @@ typedef struct RgRasterizedGeometryUploadInfo
     RgBlendFactor       blendFuncDst;
     RgBool32            depthTest;
     RgBool32            depthWrite;
+    // Default topology is a triangle list.
+    RgBool32            useAsLineList;
 } RgRasterizedGeometryUploadInfo;
 
 

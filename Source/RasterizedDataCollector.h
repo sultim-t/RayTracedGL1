@@ -56,6 +56,7 @@ public:
         RgBlendFactor   blendFuncDst;
         bool            depthTest;
         bool            depthWrite;
+        bool            isLines;
     };
 
 public:

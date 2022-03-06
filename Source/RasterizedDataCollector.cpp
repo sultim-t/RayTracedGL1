@@ -158,6 +158,7 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     drawInfo.blendFuncDst = info.blendFuncDst;
     drawInfo.depthTest = info.depthTest;
     drawInfo.depthWrite = info.depthWrite;
+    drawInfo.isLines = info.useAsLineList;
 
     if (pViewport != nullptr)
     {
