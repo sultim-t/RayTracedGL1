@@ -45,13 +45,8 @@ struct EffectSimple : public EffectBase
             uniform->GetDescSetLayout(),
         };
 
-        InitBase(shaderManager, setLayouts, PUSH_CONST());
+        InitBase(shaderManager, setLayouts, push);
     }
-
-#define RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(T, SHADER_NAME) \
-    T(VkDevice device, const std::shared_ptr<const Framebuffers> &framebuffers, \
-    const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const ShaderManager> &shaderManager) : \
-    EffectSimple(device, SHADER_NAME, framebuffers, uniform, shaderManager) {}
 
 protected:
     bool SetupNull()
@@ -103,7 +98,7 @@ public:
 protected:
     bool GetPushConstData(uint8_t(&pData)[128], uint32_t *pDataSize) const override
     {
-        static_assert(sizeof(PUSH_CONST) <= 128, "");
+        static_assert(sizeof(push) <= 128, "");
         memcpy(pData, &push, sizeof(push));
         *pDataSize = sizeof(push);
         return true;
@@ -114,12 +109,29 @@ protected:
         return shaderName;
     }
 
+    // Can be changed by child classes
+    PUSH_CONST &GetPush()
+    {
+        return push.custom;
+    }
+
 protected:
-    // can be changed by child classes
-    PUSH_CONST push;
+    struct
+    {
+        uint32_t transitionType; // 0 - in, 1 - out
+        float transitionBeginTime;                
+        float transitionDuration;
+        PUSH_CONST custom;
+    } push;
 private:
     bool isCurrentlyActive;
     const char *shaderName;
 };
+
+
+#define RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(T, SHADER_NAME) \
+    T(VkDevice device, const std::shared_ptr<const Framebuffers> &framebuffers, \
+    const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const ShaderManager> &shaderManager) : \
+    EffectSimple(device, SHADER_NAME, framebuffers, uniform, shaderManager) {}
 
 }

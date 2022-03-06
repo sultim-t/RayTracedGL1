@@ -26,11 +26,7 @@ namespace RTGL1
 {
 
 struct EffectRadialBlur_PushConst
-{
-    uint32_t transitionType; // 0 - in, 1 - out
-    float transitionBeginTime;
-    float transitionDuration;
-};
+{};
 
 struct EffectRadialBlur final : public EffectSimple<EffectRadialBlur_PushConst>
 {

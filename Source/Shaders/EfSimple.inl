@@ -29,11 +29,14 @@ layout(constant_id = 0) const uint isSourcePing = 0;
 #define EFFECT_SOURCE_IS_PING (isSourcePing != 0)
 #include "EfCommon.inl"
 
-layout(push_constant) uniform RadialBlurPush_BT
+layout(push_constant) uniform EffectSimplePush_BT
 {
     uint transitionType; // 0 - no transition, 1 - in, 2 - out
     float transitionBeginTime;
     float transitionDuration;
+#ifdef EFFECT_PUSH_CONST_T
+    EFFECT_PUSH_CONST_T custom;
+#endif
 } push;
 
 // 0 - no effect, 1 - full effect
