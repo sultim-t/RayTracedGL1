@@ -74,7 +74,8 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CCullLensFlares",         "CmCullLensFlares.comp.spv"            },
     {"VertDecal",               "RsDecal.vert.spv"                     },
     {"FragDecal",               "RsDecal.frag.spv"                     },
-    {"EffectWipe",              "EfWipe.comp.spv"                     },
+    {"EffectWipe",              "EfWipe.comp.spv"                      },
+    {"EffectRadialBlur",        "EfRadialBlur.comp.spv"                },
 };
 
 

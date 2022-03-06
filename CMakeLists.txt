@@ -87,6 +87,7 @@ set(PrivateHeaders
     "Source/DecalManager.h"
     "Source/EffectBase.h"
     "Source/EffectWipe.h"
+    "Source/EffectRadialBlur.h"
 )
 
 set(Sources

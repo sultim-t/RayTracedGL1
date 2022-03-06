@@ -53,8 +53,7 @@ struct EffectWipe final : public EffectBase
             blueNoise->GetDescSetLayout(),
         };
 
-        InitBase(framebuffers, uniform, blueNoise, shaderManager, 
-                 setLayouts, PushConst());
+        InitBase(shaderManager, setLayouts, PushConst());
     }
 
     bool Setup(VkCommandBuffer cmd, uint32_t frameIndex,
@@ -127,6 +126,21 @@ struct EffectWipe final : public EffectBase
         }
 
         return true;
+    }
+
+    FramebufferImageIndex Apply(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<Framebuffers> &framebuffers, const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const BlueNoise> &blueNoise,
+        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf)
+    {
+        VkDescriptorSet descSets[] =
+        {
+            framebuffers->GetDescSet(frameIndex),
+            uniform->GetDescSet(frameIndex),
+            blueNoise->GetDescSet(),
+        };
+
+        return Dispatch(cmd, frameIndex, framebuffers, width, height, inputFramebuf, descSets);
     }
 
 protected:

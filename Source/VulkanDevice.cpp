@@ -32,7 +32,6 @@
 #include "RgException.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
-#include "EffectWipe.h"
 
 using namespace RTGL1;
 
@@ -229,6 +228,12 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         blueNoise,
         shaderManager);
 
+    effectRadialBlur    = std::make_shared<EffectRadialBlur>(
+        device,
+        framebuffers,
+        uniform,
+        shaderManager);
+
 
     swapchain->Subscribe(rasterizer);
 
@@ -243,6 +248,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(amdFsr);
     shaderManager->Subscribe(sharpening);
     shaderManager->Subscribe(effectWipe);
+    shaderManager->Subscribe(effectRadialBlur);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -264,6 +270,7 @@ VulkanDevice::~VulkanDevice()
     nvDlss.reset();
     sharpening.reset();
     effectWipe.reset();
+    effectRadialBlur.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -872,6 +879,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     if (effectWipe->Setup(cmd, frameIndex, swapchain, framebuffers, drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()))
     {
         currentResultImage = effectWipe->Apply(cmd, frameIndex, framebuffers, uniform, blueNoise, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
+    }
+    if (effectRadialBlur->Setup(cmd, frameIndex, drawInfo.pRadialBlurEffectParams, currentFrameTime))
+    {
+        currentResultImage = effectRadialBlur->Apply(cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
     }
 
 

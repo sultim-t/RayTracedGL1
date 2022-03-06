@@ -50,6 +50,7 @@
 #include "RenderResolutionHelper.h"
 #include "DecalManager.h"
 #include "EffectWipe.h"
+#include "EffectRadialBlur.h"
 
 namespace RTGL1
 {
@@ -275,6 +276,7 @@ private:
     std::shared_ptr<DLSS>                   nvDlss;
     std::shared_ptr<Sharpening>             sharpening;
     std::shared_ptr<EffectWipe>             effectWipe;
+    std::shared_ptr<EffectRadialBlur>       effectRadialBlur;
 
     std::shared_ptr<SamplerManager>         worldSamplerManager;
     std::shared_ptr<SamplerManager>         genericSamplerManager;

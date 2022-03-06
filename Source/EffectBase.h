@@ -30,6 +30,9 @@
 namespace RTGL1
 {
 
+constexpr uint32_t EFFECT_BASE_COMPUTE_GROUP_SIZE_X = 16;
+constexpr uint32_t EFFECT_BASE_COMPUTE_GROUP_SIZE_Y = 16;
+
 class EffectBase : public IShaderDependency
 {
 public:
@@ -42,23 +45,22 @@ public:
     EffectBase &operator=(const EffectBase &other) = delete;
     EffectBase &operator=(EffectBase &&other) noexcept = delete;
 
-    FramebufferImageIndex Apply(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<Framebuffers> &framebuffers, const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const BlueNoise> &blueNoise,
-        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf);
-
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 protected:
+    // Call this function in a child class to start compute shader
+    template <int DESC_SET_COUNT>
+    FramebufferImageIndex Dispatch(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<Framebuffers> &framebuffers, uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf,
+        const VkDescriptorSet(&descSets)[DESC_SET_COUNT]);
+
     // Call this function in a child class constructor
     template <typename PUSH_CONST_T = std::nullptr_t, int DESC_SET_COUNT>
     void InitBase(
-        const std::shared_ptr<const Framebuffers>  &framebuffers,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const BlueNoise>     &blueNoise,
         const std::shared_ptr<const ShaderManager> &shaderManager, 
         const VkDescriptorSetLayout(&setLayouts)[DESC_SET_COUNT],
-        const PUSH_CONST_T &push);
+        const PUSH_CONST_T&);
 
     virtual const char *GetShaderName() = 0;
 
@@ -79,11 +81,7 @@ private:
 
 template<typename PUSH_CONST_T, int DESC_SET_COUNT>
 void EffectBase::InitBase(
-    const std::shared_ptr<const Framebuffers>  &framebuffers,
-    const std::shared_ptr<const GlobalUniform> &uniform, 
-    const std::shared_ptr<const BlueNoise>     &blueNoise,
     const std::shared_ptr<const ShaderManager> &shaderManager,
-
     const VkDescriptorSetLayout(&setLayouts)[DESC_SET_COUNT],
     const PUSH_CONST_T&)
 {
@@ -113,6 +111,49 @@ void EffectBase::CreatePipelineLayout(const VkDescriptorSetLayout(&setLayouts)[D
     VK_CHECKERROR(r);
 
     SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Bloom pipeline layout");
+}
+
+template <int DESC_SET_COUNT>
+FramebufferImageIndex EffectBase::Dispatch(
+    VkCommandBuffer cmd, uint32_t frameIndex,
+    const std::shared_ptr<Framebuffers> &framebuffers, uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf,
+    const VkDescriptorSet(&descSets)[DESC_SET_COUNT])
+{
+    CmdLabel label(cmd, GetShaderName());
+
+
+    assert(inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING || inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PONG);
+    uint32_t isSourcePing = inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING;
+
+
+    const uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil((float)width  / (float)EFFECT_BASE_COMPUTE_GROUP_SIZE_X));
+    const uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil((float)height / (float)EFFECT_BASE_COMPUTE_GROUP_SIZE_Y));
+
+
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            pipelineLayout,
+                            0, std::size(descSets), descSets,
+                            0, nullptr);
+
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipelines[isSourcePing]);
+
+    uint8_t pushData[128];
+    uint32_t pushDataSize = 0;
+    if (GetPushConstData(pushData, &pushDataSize))
+    {
+        vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, pushDataSize, pushData);
+    }
+
+    FramebufferImageIndex fs[] =
+    {
+        inputFramebuf,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
+    vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+
+
+    return isSourcePing ? FB_IMAGE_INDEX_UPSCALED_PONG : FB_IMAGE_INDEX_UPSCALED_PING;
 }
 
 }

@@ -978,6 +978,13 @@ typedef struct RgDrawFrameWipeEffectParams
     float       duration;
 } RgDrawFrameWipeEffectParams;
 
+typedef struct RgDrawFrameRadialBlurEffectParams
+{
+    RgBool32    beginNow;
+    float       duration;
+    float       transitionDuration;
+} RgDrawFrameRadialBlurEffectParams;
+
 typedef enum RgMediaType
 {
     RG_MEDIA_TYPE_VACUUM,
@@ -1099,6 +1106,7 @@ typedef struct RgDrawFrameInfo
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
     const RgDrawFrameWipeEffectParams           *pWipeEffectParams;
+    const RgDrawFrameRadialBlurEffectParams     *pRadialBlurEffectParams;
     const RgDrawFrameReflectRefractParams       *pReflectRefractParams;
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameTexturesParams             *pTexturesParams;
