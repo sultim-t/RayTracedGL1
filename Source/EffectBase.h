@@ -62,7 +62,7 @@ protected:
         const VkDescriptorSetLayout(&setLayouts)[DESC_SET_COUNT],
         const PUSH_CONST_T&);
 
-    virtual const char *GetShaderName() = 0;
+    virtual const char *GetShaderName() const = 0;
 
     virtual bool GetPushConstData(uint8_t(&pData)[128], uint32_t *pDataSize) const { return false; }
 
@@ -110,7 +110,7 @@ void EffectBase::CreatePipelineLayout(const VkDescriptorSetLayout(&setLayouts)[D
     VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineLayout);
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Bloom pipeline layout");
+    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "EffectBase pipeline layout");
 }
 
 template <int DESC_SET_COUNT>

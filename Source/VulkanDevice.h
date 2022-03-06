@@ -50,7 +50,7 @@
 #include "RenderResolutionHelper.h"
 #include "DecalManager.h"
 #include "EffectWipe.h"
-#include "EffectRadialBlur.h"
+#include "EffectSimple.h"
 
 namespace RTGL1
 {

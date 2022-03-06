@@ -25,7 +25,7 @@
 namespace RTGL1
 {
 
-struct EffectRadialBlur final : public EffectBase
+struct EffectSimple : public EffectBase
 {
     struct PushConst
     {
@@ -34,15 +34,16 @@ struct EffectRadialBlur final : public EffectBase
         float transitionDuration;
     };
 
-    explicit EffectRadialBlur(
-        VkDevice device,
+    explicit EffectSimple(
+        VkDevice device, const char *pShaderName,
         const std::shared_ptr<const Framebuffers> &framebuffers,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<const ShaderManager> &shaderManager)
     :
         EffectBase(device),
         push{},
-        isActive(false)
+        isCurrentlyActive(false),
+        shaderName(pShaderName)
     {
         VkDescriptorSetLayout setLayouts[] =
         {
@@ -53,37 +54,44 @@ struct EffectRadialBlur final : public EffectBase
         InitBase(shaderManager, setLayouts, PushConst());
     }
 
-    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex, const RgDrawFrameRadialBlurEffectParams *params, float currentTime)
-    {
-        if (params == nullptr)
-        {
-            isActive = false;
-            return false;
-        }
+#define RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(T, SHADER_NAME) \
+    T(VkDevice device, const std::shared_ptr<const Framebuffers> &framebuffers, \
+    const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const ShaderManager> &shaderManager) : \
+    EffectSimple(device, SHADER_NAME, framebuffers, uniform, shaderManager) {}
 
-        bool wasActivePreviously = isActive;
-        isActive = params->isActive;
+protected:
+    bool SetupNull()
+    {
+        isCurrentlyActive = false;
+        return false;
+    }
+
+    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex, float currentTime, bool isActive, float transitionDurationIn, float transitionDurationOut)
+    {
+        bool wasActivePreviously = isCurrentlyActive;
+        isCurrentlyActive = isActive;
 
         // if to start
-        if (!wasActivePreviously && isActive)
+        if (!wasActivePreviously && isCurrentlyActive)
         {
             push.transitionType = 0;
             push.transitionBeginTime = currentTime;
-            push.transitionDuration = params->transitionDurationIn;
+            push.transitionDuration = transitionDurationIn;
         }
         // if to end
-        else if (wasActivePreviously && !isActive)
+        else if (wasActivePreviously && !isCurrentlyActive)
         {
             push.transitionType = 1;
             push.transitionBeginTime = currentTime;
-            push.transitionDuration = params->transitionDurationOut;
+            push.transitionDuration = transitionDurationOut;
         }
 
         return
-            isActive ||
+            isCurrentlyActive ||
             (push.transitionType == 1 && currentTime - push.transitionBeginTime <= push.transitionDuration);
     }
 
+public:
     FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<Framebuffers> &framebuffers, const std::shared_ptr<const GlobalUniform> &uniform,
@@ -99,11 +107,6 @@ struct EffectRadialBlur final : public EffectBase
     }
 
 protected:
-    const char *GetShaderName() override
-    {
-        return "EffectRadialBlur";
-    }
-
     bool GetPushConstData(uint8_t(&pData)[128], uint32_t *pDataSize) const override
     {
         memcpy(pData, &push, sizeof(push));
@@ -111,9 +114,32 @@ protected:
         return true;
     }
 
+    const char *GetShaderName() const override
+    {
+        return shaderName;
+    }
+
 private:
     PushConst push;
-    bool isActive;
+    bool isCurrentlyActive;
+    const char *shaderName;
 };
+
+
+struct EffectRadialBlur final : public EffectSimple
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectRadialBlur, "EffectRadialBlur")
+
+    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex, const RgDrawFrameRadialBlurEffectParams *params, float currentTime)
+    {
+        if (params == nullptr)
+        {
+            return SetupNull();
+        }
+
+        return EffectSimple::Setup(cmd, frameIndex, currentTime, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
 
 }

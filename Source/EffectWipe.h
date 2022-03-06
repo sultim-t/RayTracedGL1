@@ -144,7 +144,7 @@ struct EffectWipe final : public EffectBase
     }
 
 protected:
-    const char *GetShaderName() override
+    const char *GetShaderName() const override
     {
         return "EffectWipe";
     }

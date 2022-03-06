@@ -18,36 +18,39 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#version 460
+#define DESC_SET_FRAMEBUFFERS 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
 
-#include "EfSimple.inl"
+layout(local_size_x = COMPUTE_EFFECT_GROUP_SIZE_X, local_size_y = COMPUTE_EFFECT_GROUP_SIZE_Y, local_size_z = 1) in;
 
-void main()
+layout(constant_id = 0) const uint isSourcePing = 0;
+
+#define EFFECT_SOURCE_IS_PING (isSourcePing != 0)
+#include "EfCommon.inl"
+
+layout(push_constant) uniform RadialBlurPush_BT
 {
-    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    uint transitionType; // 0 - no transition, 1 - in, 2 - out
+    float transitionBeginTime;
+    float transitionDuration;
+} push;
 
-    vec2 toCenter = effect_getCenteredFromPix(pix);
-    float d = length(toCenter);
+// 0 - no effect, 1 - full effect
+float getProgress()
+{
+    float progress = 
+        max(globalUniform.time - push.transitionBeginTime, 0.0) / 
+        max(push.transitionDuration, 0.001);
 
-    float progress = getProgress();
+    progress = clamp(progress, 0, 1);
 
-    float bend      = mix(1.0, 0.85, progress);
-    float threshold = mix(1.0, 0.15, progress);
-
-
-    if (d > threshold)
+    if (push.transitionType == 1)
     {
-        float b = mix(1, bend, d - threshold);
-        
-        vec3 c = 
-            effect_loadFromSource(pix) +
-            effect_loadFromSource(effect_getPixFromCentered(toCenter * b)) + 
-            effect_loadFromSource(effect_getPixFromCentered(toCenter * b * b));
-
-        effect_storeToTarget(c / 3, pix);
+        return 1.0 - progress;
     }
     else
     {
-        effect_storeUnmodifiedToTarget(pix);
+        return progress;
     }
 }

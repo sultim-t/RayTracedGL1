@@ -44,6 +44,20 @@ vec2 effect_getFramebufUV(ivec2 pix)
 }
 
 
+// to [-1..1]
+vec2 effect_getCenteredFromPix(ivec2 pix)
+{
+    return effect_getFramebufUV(pix) * 2.0 - 1.0;
+}
+
+
+// from [-1..1]
+ivec2 effect_getPixFromCentered(vec2 centered)
+{
+    return ivec2((centered * 0.5 + 0.5) * effect_getFramebufSize());
+}
+
+
 vec3 effect_loadFromSource(ivec2 pix)
 {
     if (EFFECT_SOURCE_IS_PING)
