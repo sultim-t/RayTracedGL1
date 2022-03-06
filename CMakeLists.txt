@@ -50,7 +50,6 @@ set(PrivateHeaders
     "Source/IMaterialDependency.h"
     "Source/Generated/ShaderCommonC.h"
     "Source/Generated/ShaderCommonCFramebuf.h"
-    "Source/Generated/BlueNoiseFileNames.h"
     "Source/Framebuffers.h"
     "Source/BlueNoise.h"
     "Source/ImageComposition.h"
@@ -88,6 +87,7 @@ set(PrivateHeaders
     "Source/EffectBase.h"
     "Source/EffectWipe.h"
     "Source/EffectSimple.h"
+    "Source/EffectSimple_Instances.h"
 )
 
 set(Sources

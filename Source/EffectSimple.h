@@ -25,15 +25,9 @@
 namespace RTGL1
 {
 
+template<typename PUSH_CONST>
 struct EffectSimple : public EffectBase
 {
-    struct PushConst
-    {
-        uint32_t transitionType; // 0 - in, 1 - out
-        float transitionBeginTime;
-        float transitionDuration;
-    };
-
     explicit EffectSimple(
         VkDevice device, const char *pShaderName,
         const std::shared_ptr<const Framebuffers> &framebuffers,
@@ -51,7 +45,7 @@ struct EffectSimple : public EffectBase
             uniform->GetDescSetLayout(),
         };
 
-        InitBase(shaderManager, setLayouts, PushConst());
+        InitBase(shaderManager, setLayouts, PUSH_CONST());
     }
 
 #define RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(T, SHADER_NAME) \
@@ -109,6 +103,7 @@ public:
 protected:
     bool GetPushConstData(uint8_t(&pData)[128], uint32_t *pDataSize) const override
     {
+        static_assert(sizeof(PUSH_CONST) <= 128, "");
         memcpy(pData, &push, sizeof(push));
         *pDataSize = sizeof(push);
         return true;
@@ -119,27 +114,12 @@ protected:
         return shaderName;
     }
 
+protected:
+    // can be changed by child classes
+    PUSH_CONST push;
 private:
-    PushConst push;
     bool isCurrentlyActive;
     const char *shaderName;
 };
-
-
-struct EffectRadialBlur final : public EffectSimple
-{
-    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectRadialBlur, "EffectRadialBlur")
-
-    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex, const RgDrawFrameRadialBlurEffectParams *params, float currentTime)
-    {
-        if (params == nullptr)
-        {
-            return SetupNull();
-        }
-
-        return EffectSimple::Setup(cmd, frameIndex, currentTime, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
-    }
-};
-
 
 }
