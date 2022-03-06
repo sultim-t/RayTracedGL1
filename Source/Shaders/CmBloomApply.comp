@@ -34,7 +34,7 @@ layout(constant_id = 0) const uint isSourcePing = 0;
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    const vec2 uv = getEffectSourceUV(pix);
+    const vec2 uv = effect_getFramebufUV(pix);
 
     if (uv.x > 1.0 || uv.y > 1.0)
     {
@@ -43,6 +43,6 @@ void main()
 
     const vec3 bloom = globalUniform.bloomIntensity * textureLod(framebufBloom_Result_Sampler, uv, 0).rgb;
     
-    vec3 c = loadFromEffectSource(pix) + bloom;
-    storeToEffectTarget(c, pix);
+    vec3 c = effect_loadFromSource(pix) + bloom;
+    effect_storeToTarget(c, pix);
 }
