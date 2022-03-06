@@ -980,9 +980,9 @@ typedef struct RgDrawFrameWipeEffectParams
 
 typedef struct RgDrawFrameRadialBlurEffectParams
 {
-    RgBool32    beginNow;
-    float       duration;
-    float       transitionDuration;
+    RgBool32    isActive;
+    float       transitionDurationIn;
+    float       transitionDurationOut;
 } RgDrawFrameRadialBlurEffectParams;
 
 typedef enum RgMediaType

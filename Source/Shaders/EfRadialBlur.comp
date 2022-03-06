@@ -33,8 +33,8 @@ layout(constant_id = 0) const uint isSourcePing = 0;
 
 layout(push_constant) uniform RadialBlurPush_BT
 {
-    float beginTime;
-    float endTime;
+    uint transitionType; // 0 - no transition, 1 - in, 2 - out
+    float transitionBeginTime;
     float transitionDuration;
 } push;
 
@@ -50,8 +50,24 @@ ivec2 getPixFromCentered(vec2 centered)
     return ivec2((centered * 0.5 + 0.5) * effect_getFramebufSize());
 }
 
-const float bend = 0.85;
-const float threshold = 0.15;
+// 0 - no effect, 1 - full effect
+float getProgress()
+{
+    float progress = 
+        max(globalUniform.time - push.transitionBeginTime, 0.0) / 
+        max(push.transitionDuration, 0.001);
+
+    progress = clamp(progress, 0, 1);
+
+    if (push.transitionType == 1)
+    {
+        return 1.0 - progress;
+    }
+    else
+    {
+        return progress;
+    }
+}
 
 void main()
 {
@@ -59,6 +75,12 @@ void main()
 
     vec2 toCenter = getCenteredFromPix(pix);
     float d = length(toCenter);
+
+    float progress = getProgress();
+
+    float bend      = mix(1.0, 0.85, progress);
+    float threshold = mix(1.0, 0.15, progress);
+
 
     if (d > threshold)
     {

@@ -875,14 +875,14 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
     }
 
-    
-    if (effectWipe->Setup(cmd, frameIndex, swapchain, framebuffers, drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()))
-    {
-        currentResultImage = effectWipe->Apply(cmd, frameIndex, framebuffers, uniform, blueNoise, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
-    }
+
     if (effectRadialBlur->Setup(cmd, frameIndex, drawInfo.pRadialBlurEffectParams, currentFrameTime))
     {
         currentResultImage = effectRadialBlur->Apply(cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
+    }
+    if (effectWipe->Setup(cmd, frameIndex, swapchain, framebuffers, drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()))
+    {
+        currentResultImage = effectWipe->Apply(cmd, frameIndex, framebuffers, uniform, blueNoise, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
     }
 
 

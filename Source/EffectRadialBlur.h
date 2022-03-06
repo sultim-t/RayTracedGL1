@@ -21,7 +21,6 @@
 #pragma once
 
 #include "EffectBase.h"
-#include "Utils.h"
 
 namespace RTGL1
 {
@@ -30,8 +29,8 @@ struct EffectRadialBlur final : public EffectBase
 {
     struct PushConst
     {
-        float beginTime;
-        float endTime;
+        uint32_t transitionType; // 0 - in, 1 - out
+        float transitionBeginTime;
         float transitionDuration;
     };
 
@@ -42,7 +41,8 @@ struct EffectRadialBlur final : public EffectBase
         const std::shared_ptr<const ShaderManager> &shaderManager)
     :
         EffectBase(device),
-        push{}
+        push{},
+        isActive(false)
     {
         VkDescriptorSetLayout setLayouts[] =
         {
@@ -57,22 +57,31 @@ struct EffectRadialBlur final : public EffectBase
     {
         if (params == nullptr)
         {
-            return false;
-        }
-        
-        if (params->beginNow)
-        {
-            push.beginTime = currentTime;
-            push.endTime = currentTime + params->duration;
-            push.transitionDuration = std::max(0.0f, params->transitionDuration);
-        }
-
-        if (push.beginTime >= push.endTime || currentTime >= push.endTime)
-        {
+            isActive = false;
             return false;
         }
 
-        return true;
+        bool wasActivePreviously = isActive;
+        isActive = params->isActive;
+
+        // if to start
+        if (!wasActivePreviously && isActive)
+        {
+            push.transitionType = 0;
+            push.transitionBeginTime = currentTime;
+            push.transitionDuration = params->transitionDurationIn;
+        }
+        // if to end
+        else if (wasActivePreviously && !isActive)
+        {
+            push.transitionType = 1;
+            push.transitionBeginTime = currentTime;
+            push.transitionDuration = params->transitionDurationOut;
+        }
+
+        return
+            isActive ||
+            (push.transitionType == 1 && currentTime - push.transitionBeginTime <= push.transitionDuration);
     }
 
     FramebufferImageIndex Apply(
@@ -104,6 +113,7 @@ protected:
 
 private:
     PushConst push;
+    bool isActive;
 };
 
 }
