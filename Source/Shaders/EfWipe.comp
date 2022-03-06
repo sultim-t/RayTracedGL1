@@ -43,12 +43,12 @@ layout(push_constant) uniform WipePush_BT
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    ivec2 sz = getEffectSourceSize();
+    ivec2 sz = effect_getFramebufSize();
 
     uint count = sz.x  / push.stripWidthInPixels;
     uint strip = pix.x / push.stripWidthInPixels;
 
-    float rnd = getEffectRandomSample(ivec2(0, 0), push.startFrameId).x;
+    float rnd = effect_getRandomSample(ivec2(0, 0), push.startFrameId).x;
 
     float x = strip / float(count) + rnd * 10;
   
@@ -66,11 +66,11 @@ void main()
     int offset = int(progress * sz.y);
     if (pix.y < offset)
     {
-        copyEffectFromSourceToTarget(pix);
+        effect_storeUnmodifiedToTarget(pix);
         return;
     }
     
 
     vec3 c = imageLoad(framebufWipeEffectSource, ivec2(pix.x, pix.y - offset)).rgb;
-    storeToEffectTarget(c, ivec2(pix.x, pix.y + offset));
+    effect_storeToTarget(c, ivec2(pix.x, pix.y + offset));
 }

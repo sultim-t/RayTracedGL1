@@ -38,14 +38,41 @@ layout(push_constant) uniform RadialBlurPush_BT
     float transitionDuration;
 } push;
 
+// to [-1..1]
+vec2 getCenteredFromPix(ivec2 pix)
+{
+    return effect_getFramebufUV(pix) * 2.0 - 1.0;
+}
+
+// from [-1..1]
+ivec2 getPixFromCentered(vec2 centered)
+{
+    return ivec2((centered * 0.5 + 0.5) * effect_getFramebufSize());
+}
+
+const float bend = 0.85;
+const float threshold = 0.15;
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    ivec2 sz = getEffectSourceSize();
-    ivec2 center = sz / 2;
 
+    vec2 toCenter = getCenteredFromPix(pix);
+    float d = length(toCenter);
 
-    vec3 c = loadFromEffectSource(pix);
+    if (d > threshold)
+    {
+        float b = mix(1, bend, d - threshold);
+        
+        vec3 c = 
+            effect_loadFromSource(pix) +
+            effect_loadFromSource(getPixFromCentered(toCenter * b)) + 
+            effect_loadFromSource(getPixFromCentered(toCenter * b * b));
 
-    storeToEffectTarget(c, pix);
+        effect_storeToTarget(c / 3, pix);
+    }
+    else
+    {
+        effect_storeUnmodifiedToTarget(pix);
+    }
 }

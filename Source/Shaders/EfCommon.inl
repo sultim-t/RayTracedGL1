@@ -24,27 +24,27 @@
 #endif
 
 
-ivec2 getEffectSourceSize()
+ivec2 effect_getFramebufSize()
 {
     return imageSize(framebufUpscaledPing); // framebufUpscaledPong has the same size
 }
 
 
-vec2 getInverseEffectSourceSize()
+vec2 effect_getInverseFramebufSize()
 {
-    ivec2 sz = getEffectSourceSize();
+    ivec2 sz = effect_getFramebufSize();
     return vec2(1.0 / float(sz.x), 1.0 / float(sz.y));
 }
 
 
 // get UV coords in [0..1] range
-vec2 getEffectSourceUV(ivec2 pix)
+vec2 effect_getFramebufUV(ivec2 pix)
 {
-    return (vec2(pix) + 0.5) * getInverseEffectSourceSize();
+    return (vec2(pix) + 0.5) * effect_getInverseFramebufSize();
 }
 
 
-vec3 loadFromEffectSource(ivec2 pix)
+vec3 effect_loadFromSource(ivec2 pix)
 {
     if (EFFECT_SOURCE_IS_PING)
     {
@@ -57,7 +57,7 @@ vec3 loadFromEffectSource(ivec2 pix)
 }
 
 
-void storeToEffectTarget(const vec3 value, ivec2 pix)
+void effect_storeToTarget(const vec3 value, ivec2 pix)
 {
     if (EFFECT_SOURCE_IS_PING)
     {
@@ -70,16 +70,16 @@ void storeToEffectTarget(const vec3 value, ivec2 pix)
 }
 
 
-void copyEffectFromSourceToTarget(ivec2 pix)
+void effect_storeUnmodifiedToTarget(ivec2 pix)
 {
-    storeToEffectTarget(loadFromEffectSource(pix), pix);
+    effect_storeToTarget(effect_loadFromSource(pix), pix);
 }
 
 
 #ifdef DESC_SET_RANDOM
-vec4 getEffectRandomSample(ivec2 pix, uint frameIndex)
+vec4 effect_getRandomSample(ivec2 pix, uint frameIndex)
 {
-    ivec2 sz = getEffectSourceSize();
+    ivec2 sz = effect_getFramebufSize();
     return getRandomSample(getRandomSeed(pix, frameIndex, sz.x, sz.y), 0);
 }
 #endif
