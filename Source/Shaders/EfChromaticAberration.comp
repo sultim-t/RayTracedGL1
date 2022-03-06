@@ -28,17 +28,21 @@ struct EffectChromaticAberration_PushConst
 #define EFFECT_PUSH_CONST_T EffectChromaticAberration_PushConst
 #include "EfSimple.inl"
 
+const float baseRadius = 0.01;
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
-    vec2 toCenter = effect_getCenteredFromPix(pix);
-    float d = length(toCenter);
+    vec2 c = effect_getCenteredFromPix(pix);
+    vec2 offset = baseRadius * getProgress() * push.custom.intensity * clamp(c, -1, 1);
 
-    float progress = getProgress();
-
-
+    vec3 color = 
     {
-        effect_storeUnmodifiedToTarget(pix);
-    }
+        effect_loadFromSource_Centered(c + vec2(-offset.x, 0       )).r,
+        effect_loadFromSource_Centered(c + vec2( offset.x, 0       )).g,
+        effect_loadFromSource_Centered(c + vec2(        0, offset.y)).b,
+    };
+
+    effect_storeToTarget(color, pix);
 }

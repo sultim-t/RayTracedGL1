@@ -90,6 +90,12 @@ void effect_storeUnmodifiedToTarget(ivec2 pix)
 }
 
 
+vec3 effect_loadFromSource_Centered(vec2 centered)
+{
+    return effect_loadFromSource(effect_getPixFromCentered(centered));
+}
+
+
 #ifdef DESC_SET_RANDOM
 vec4 effect_getRandomSample(ivec2 pix, uint frameIndex)
 {

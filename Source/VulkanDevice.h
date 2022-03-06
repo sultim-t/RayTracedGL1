@@ -275,8 +275,9 @@ private:
     std::shared_ptr<SuperResolution>        amdFsr;
     std::shared_ptr<DLSS>                   nvDlss;
     std::shared_ptr<Sharpening>             sharpening;
-    std::shared_ptr<EffectWipe>             effectWipe;
-    std::shared_ptr<EffectRadialBlur>       effectRadialBlur;
+    std::shared_ptr<EffectWipe>                 effectWipe;
+    std::shared_ptr<EffectRadialBlur>           effectRadialBlur;
+    std::shared_ptr<EffectChromaticAberration>  effectChromaticAberration;
 
     std::shared_ptr<SamplerManager>         worldSamplerManager;
     std::shared_ptr<SamplerManager>         genericSamplerManager;

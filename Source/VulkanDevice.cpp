@@ -234,6 +234,12 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         shaderManager);
 
+    effectChromaticAberration = std::make_shared<EffectChromaticAberration>(
+        device,
+        framebuffers,
+        uniform,
+        shaderManager);
+
 
     swapchain->Subscribe(rasterizer);
 
@@ -249,6 +255,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(sharpening);
     shaderManager->Subscribe(effectWipe);
     shaderManager->Subscribe(effectRadialBlur);
+    shaderManager->Subscribe(effectChromaticAberration);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -271,6 +278,7 @@ VulkanDevice::~VulkanDevice()
     sharpening.reset();
     effectWipe.reset();
     effectRadialBlur.reset();
+    effectChromaticAberration.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -876,6 +884,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
+    if (effectChromaticAberration->Setup(cmd, frameIndex, drawInfo.pChromaticAberrationEffectParams, currentFrameTime))
+    {
+        currentResultImage = effectChromaticAberration->Apply(cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
+    }
     if (effectRadialBlur->Setup(cmd, frameIndex, drawInfo.pRadialBlurEffectParams, currentFrameTime))
     {
         currentResultImage = effectRadialBlur->Apply(cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
