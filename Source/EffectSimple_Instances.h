@@ -43,4 +43,26 @@ struct EffectRadialBlur final : public EffectSimple<EffectRadialBlur_PushConst>
     }
 };
 
+
+struct EffectChromaticAberration_PushConst
+{
+    float intensity;
+};
+
+struct EffectChromaticAberration final : public EffectSimple<EffectChromaticAberration_PushConst>
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectChromaticAberration, "EffectChromaticAberration")
+
+    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex, const RgDrawFrameChromaticAberrationEffectParams *params, float currentTime)
+    {
+        if (params == nullptr || params->intensity <= 0.0f)
+        {
+            return SetupNull();
+        }
+
+        GetPush().intensity = params->intensity;
+        return EffectSimple::Setup(cmd, frameIndex, currentTime, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
 }

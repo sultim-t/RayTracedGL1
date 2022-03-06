@@ -76,6 +76,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"FragDecal",               "RsDecal.frag.spv"                     },
     {"EffectWipe",              "EfWipe.comp.spv"                      },
     {"EffectRadialBlur",        "EfRadialBlur.comp.spv"                },
+    {"EffectChromaticAberration","EfChromaticAberration.comp.spv"      },
 };
 
 
