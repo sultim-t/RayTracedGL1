@@ -951,6 +951,11 @@ void VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
+    if (startInfo->surfaceSize.width == 0 || startInfo->surfaceSize.height == 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "surfaceSize dimensions must be >0");
+    }
+
     VkCommandBuffer newFrameCmd = BeginFrame(*startInfo);
     currentFrameState.OnBeginFrame(newFrameCmd);
 }
