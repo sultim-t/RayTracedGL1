@@ -20,26 +20,36 @@
 
 #version 460
 
+struct EffectDistortedSides_PushConst
+{
+    // not vec4 for padding
+    float colorTintBlend;
+    float colorTint_R;
+    float colorTint_G;
+    float colorTint_B;
+};
+
+#define EFFECT_PUSH_CONST_T EffectDistortedSides_PushConst
 #include "EfSimple.inl"
 
-float getBW(vec3 color)
+vec3 applyTint(vec3 color)
 {
-    return max(max(color.r, color.g), color.b);
+    vec3 tint = vec3(push.custom.colorTint_R, push.custom.colorTint_G, push.custom.colorTint_B);
+    
+    float t = push.custom.colorTintBlend * getLuminance(color) * getProgress();
+    return mix(color, tint, t);
 }
 
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    vec3 color = effect_loadFromSource(pix);
+    vec2 c = effect_getCenteredFromPix(pix);
 
-    const ivec2 rendPix = ivec2(effect_getFramebufUV(pix) * vec2(globalUniform.renderWidth, globalUniform.renderHeight));
-    const vec3 albedo = texelFetchAlbedo(getCheckerboardPix(rendPix)).rgb;
+    // more distortion toward the edges
+    float t = c.x * c.x * getProgress();
+    c.x = mix(c.x, c.x * c.x * sign(c.x), t);
 
-    float bw = max(getBW(color), getBW(albedo));
-    bw = sqrt(bw);
+    vec3 rgb = effect_loadFromSource_Centered(c);
 
-    const int L = 8;
-    bw = clamp(int(bw * L), 0, L) / float(L);
-
-    effect_storeToTarget(vec3(1 - bw), pix);
+    effect_storeToTarget(applyTint(rgb), pix);
 }

@@ -90,4 +90,31 @@ struct EffectInverseBW final : public EffectSimple<EffectInverseBW_PushConst>
     }
 };
 
+
+// ------------------ //
+
+
+struct EffectDistortedSides_PushConst
+{
+    float colorTintAlpha;
+    RgFloat3D colorTint;
+};
+
+struct EffectDistortedSides final : public EffectSimple<EffectDistortedSides_PushConst>
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectDistortedSides, "EffectDistortedSides")
+
+        bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectDistortedSides *params)
+    {
+        if (params == nullptr)
+        {
+            return SetupNull();
+        }
+
+        GetPush().colorTintAlpha = params->colorTint.data[3];
+        memcpy(GetPush().colorTint.data, params->colorTint.data, 3 * sizeof(float));
+        return EffectSimple::Setup(args, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
 }

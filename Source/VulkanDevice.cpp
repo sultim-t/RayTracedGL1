@@ -232,6 +232,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectRadialBlur            = CONSTRUCT_SIMPLE_EFFECT(EffectRadialBlur);
     effectChromaticAberration   = CONSTRUCT_SIMPLE_EFFECT(EffectChromaticAberration);
     effectInverseBW             = CONSTRUCT_SIMPLE_EFFECT(EffectInverseBW);
+    effectDistortedSides        = CONSTRUCT_SIMPLE_EFFECT(EffectDistortedSides);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
 
@@ -251,6 +252,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectRadialBlur);
     shaderManager->Subscribe(effectChromaticAberration);
     shaderManager->Subscribe(effectInverseBW);
+    shaderManager->Subscribe(effectDistortedSides);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -275,6 +277,7 @@ VulkanDevice::~VulkanDevice()
     effectRadialBlur.reset();
     effectChromaticAberration.reset();
     effectInverseBW.reset();
+    effectDistortedSides.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -890,6 +893,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         if (effectChromaticAberration->Setup(args, drawInfo.postEffectParams.pChromaticAberration))
         {
             currentResultImage = effectChromaticAberration->Apply(args, currentResultImage);
+        }
+        if (effectDistortedSides->Setup(args, drawInfo.postEffectParams.pDistortedSides))
+        {
+            currentResultImage = effectDistortedSides->Apply(args, currentResultImage);
         }
         if (effectRadialBlur->Setup(args, drawInfo.postEffectParams.pRadialBlur))
         {
