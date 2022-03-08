@@ -55,7 +55,7 @@ protected:
         return false;
     }
 
-    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex, float currentTime, bool isActive, float transitionDurationIn, float transitionDurationOut)
+    bool Setup(const CommonnlyUsedEffectArguments &args, bool isActive, float transitionDurationIn, float transitionDurationOut)
     {
         bool wasActivePreviously = isCurrentlyActive;
         isCurrentlyActive = isActive;
@@ -64,35 +64,32 @@ protected:
         if (!wasActivePreviously && isCurrentlyActive)
         {
             push.transitionType = 0;
-            push.transitionBeginTime = currentTime;
+            push.transitionBeginTime = args.currentTime;
             push.transitionDuration = transitionDurationIn;
         }
         // if to end
         else if (wasActivePreviously && !isCurrentlyActive)
         {
             push.transitionType = 1;
-            push.transitionBeginTime = currentTime;
+            push.transitionBeginTime = args.currentTime;
             push.transitionDuration = transitionDurationOut;
         }
 
         return
             isCurrentlyActive ||
-            (push.transitionType == 1 && currentTime - push.transitionBeginTime <= push.transitionDuration);
+            (push.transitionType == 1 && args.currentTime - push.transitionBeginTime <= push.transitionDuration);
     }
 
 public:
-    FramebufferImageIndex Apply(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<Framebuffers> &framebuffers, const std::shared_ptr<const GlobalUniform> &uniform,
-        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf)
+    FramebufferImageIndex Apply(const CommonnlyUsedEffectArguments &args, FramebufferImageIndex inputFramebuf)
     {
         VkDescriptorSet descSets[] =
         {
-            framebuffers->GetDescSet(frameIndex),
-            uniform->GetDescSet(frameIndex),
+            args.framebuffers->GetDescSet(args.frameIndex),
+            args.uniform->GetDescSet(args.frameIndex),
         };
 
-        return Dispatch(cmd, frameIndex, framebuffers, width, height, inputFramebuf, descSets);
+        return Dispatch(args.cmd, args.frameIndex, args.framebuffers, args.width, args.height, inputFramebuf, descSets);
     }
 
 protected:

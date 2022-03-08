@@ -970,28 +970,43 @@ typedef struct RgDrawFrameBloomParams
     float       bloomSkyMultiplier;
 } RgDrawFrameBloomParams;
 
-typedef struct RgDrawFrameWipeEffectParams
+typedef struct RgPostEffectWipe
 {
     // [0..1] where 1 is whole screen width.
     float       stripWidth;
     RgBool32    beginNow;
     float       duration;
-} RgDrawFrameWipeEffectParams;
+} RgPostEffectWipe;
 
-typedef struct RgDrawFrameRadialBlurEffectParams
+typedef struct RgPostEffectRadialBlur
 {
     RgBool32    isActive;
     float       transitionDurationIn;
     float       transitionDurationOut;
-} RgDrawFrameRadialBlurEffectParams;
+} RgPostEffectRadialBlur;
 
-typedef struct RgDrawFrameChromaticAberrationEffectParams
+typedef struct RgPostEffectChromaticAberration
 {
     RgBool32    isActive;
     float       transitionDurationIn;
     float       transitionDurationOut;
     float       intensity;
-} RgDrawFrameChromaticAberrationEffectParams;
+} RgPostEffectChromaticAberration;
+
+typedef struct RgPostEffectInverseBlackAndWhite
+{
+    RgBool32    isActive;
+    float       transitionDurationIn;
+    float       transitionDurationOut;
+} RgPostEffectInverseBlackAndWhite;
+
+typedef struct RgDrawFramePostEffectsParams
+{
+    const RgPostEffectWipe                  *pWipe;
+    const RgPostEffectRadialBlur            *pRadialBlur;
+    const RgPostEffectChromaticAberration   *pChromaticAberration;
+    const RgPostEffectInverseBlackAndWhite  *pInverseBlackAndWhite;
+} RgDrawFramePostEffectsParams;
 
 typedef enum RgMediaType
 {
@@ -1113,14 +1128,12 @@ typedef struct RgDrawFrameInfo
     const RgDrawFrameShadowParams               *pShadowParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
-    const RgDrawFrameWipeEffectParams           *pWipeEffectParams;
-    const RgDrawFrameRadialBlurEffectParams     *pRadialBlurEffectParams;
-    const RgDrawFrameChromaticAberrationEffectParams *pChromaticAberrationEffectParams;
     const RgDrawFrameReflectRefractParams       *pReflectRefractParams;
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameTexturesParams             *pTexturesParams;
     const RgDrawFrameLensFlareParams            *pLensFlareParams;
     const RgDrawFrameDebugParams                *pDebugParams;
+    const RgDrawFramePostEffectsParams          postEffectParams;
 
 } RgDrawFrameInfo;
 

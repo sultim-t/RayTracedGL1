@@ -228,17 +228,11 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         blueNoise,
         shaderManager);
 
-    effectRadialBlur    = std::make_shared<EffectRadialBlur>(
-        device,
-        framebuffers,
-        uniform,
-        shaderManager);
-
-    effectChromaticAberration = std::make_shared<EffectChromaticAberration>(
-        device,
-        framebuffers,
-        uniform,
-        shaderManager);
+#define CONSTRUCT_SIMPLE_EFFECT(T) std::make_shared<T>(device, framebuffers, uniform, shaderManager)
+    effectRadialBlur            = CONSTRUCT_SIMPLE_EFFECT(EffectRadialBlur);
+    effectChromaticAberration   = CONSTRUCT_SIMPLE_EFFECT(EffectChromaticAberration);
+    effectInverseBW             = CONSTRUCT_SIMPLE_EFFECT(EffectInverseBW);
+#undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
 
     swapchain->Subscribe(rasterizer);
@@ -256,6 +250,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectWipe);
     shaderManager->Subscribe(effectRadialBlur);
     shaderManager->Subscribe(effectChromaticAberration);
+    shaderManager->Subscribe(effectInverseBW);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -279,6 +274,7 @@ VulkanDevice::~VulkanDevice()
     effectWipe.reset();
     effectRadialBlur.reset();
     effectChromaticAberration.reset();
+    effectInverseBW.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -884,17 +880,25 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    if (effectChromaticAberration->Setup(cmd, frameIndex, drawInfo.pChromaticAberrationEffectParams, currentFrameTime))
     {
-        currentResultImage = effectChromaticAberration->Apply(cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
-    }
-    if (effectRadialBlur->Setup(cmd, frameIndex, drawInfo.pRadialBlurEffectParams, currentFrameTime))
-    {
-        currentResultImage = effectRadialBlur->Apply(cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
-    }
-    if (effectWipe->Setup(cmd, frameIndex, swapchain, framebuffers, drawInfo.pWipeEffectParams, currentFrameTime, frameId, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()))
-    {
-        currentResultImage = effectWipe->Apply(cmd, frameIndex, framebuffers, uniform, blueNoise, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
+        const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
+
+        if (effectInverseBW->Setup(args, drawInfo.postEffectParams.pInverseBlackAndWhite))
+        {
+            currentResultImage = effectInverseBW->Apply(args, currentResultImage);
+        }
+        if (effectChromaticAberration->Setup(args, drawInfo.postEffectParams.pChromaticAberration))
+        {
+            currentResultImage = effectChromaticAberration->Apply(args, currentResultImage);
+        }
+        if (effectRadialBlur->Setup(args, drawInfo.postEffectParams.pRadialBlur))
+        {
+            currentResultImage = effectRadialBlur->Apply(args, currentResultImage);
+        }
+        if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
+        {
+            currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
+        }
     }
 
 

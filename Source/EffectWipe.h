@@ -56,27 +56,25 @@ struct EffectWipe final : public EffectBase
         InitBase(shaderManager, setLayouts, PushConst());
     }
 
-    bool Setup(VkCommandBuffer cmd, uint32_t frameIndex,
-               const std::shared_ptr<Swapchain> &swapchain, const std::shared_ptr<Framebuffers> &framebuffers,
-               const RgDrawFrameWipeEffectParams *params, float currentTime, uint32_t currentFrameId, uint32_t width, uint32_t height)
+    bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectWipe *params, const std::shared_ptr<Swapchain> &swapchain, uint32_t currentFrameId)
     {
         if (params == nullptr)
         {
             return false;
         }
         
-        push.stripWidthInPixels = (uint32_t)(width * clamp(params->stripWidth, 0.0f, 1.0f));
+        push.stripWidthInPixels = (uint32_t)((float)args.width * clamp(params->stripWidth, 0.0f, 1.0f));
 
         if (params->beginNow)
         {
             push.startFrameId = currentFrameId;
-            push.beginTime = currentTime;
-            push.endTime = currentTime + params->duration;
+            push.beginTime = args.currentTime;
+            push.endTime = args.currentTime + params->duration;
         }
 
         if (push.stripWidthInPixels == 0 || 
             push.beginTime >= push.endTime ||
-            currentTime >= push.endTime)
+            args.currentTime >= push.endTime)
         {
             return false;
         }
@@ -86,7 +84,7 @@ struct EffectWipe final : public EffectBase
             uint32_t previousSwapchainIndex = Utils::GetPreviousByModulo(swapchain->GetCurrentImageIndex(), swapchain->GetImageCount());
             VkImage src = swapchain->GetImage(previousSwapchainIndex);
 
-            VkImage dst = framebuffers->GetImage(FB_IMAGE_INDEX_WIPE_EFFECT_SOURCE, frameIndex);
+            VkImage dst = args.framebuffers->GetImage(FB_IMAGE_INDEX_WIPE_EFFECT_SOURCE, args.frameIndex);
 
             VkImageBlit region = {};
 
@@ -99,27 +97,27 @@ struct EffectWipe final : public EffectBase
             region.dstOffsets[1] = { static_cast<int32_t>(swapchain->GetWidth()), static_cast<int32_t>(swapchain->GetHeight()), 1 };
 
             Utils::BarrierImage(
-                cmd, src,
+                args.cmd, src,
                 VK_ACCESS_NONE_KHR, VK_ACCESS_TRANSFER_READ_BIT,
                 VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
             Utils::BarrierImage(
-                cmd, dst,
+                args.cmd, dst,
                 VK_ACCESS_NONE_KHR, VK_ACCESS_TRANSFER_WRITE_BIT,
                 VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
 
-            vkCmdBlitImage(cmd,
+            vkCmdBlitImage(args.cmd,
                            src, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
                            dst, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                            1, &region, VK_FILTER_NEAREST);
 
             Utils::BarrierImage(
-                cmd, dst,
+                args.cmd, dst,
                 VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_READ_BIT,
                 VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
             Utils::BarrierImage(
-                cmd, src,
+                args.cmd, src,
                 VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_NONE_KHR,
                 VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 
@@ -128,19 +126,16 @@ struct EffectWipe final : public EffectBase
         return true;
     }
 
-    FramebufferImageIndex Apply(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<Framebuffers> &framebuffers, const std::shared_ptr<const GlobalUniform> &uniform, const std::shared_ptr<const BlueNoise> &blueNoise,
-        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf)
+    FramebufferImageIndex Apply(const CommonnlyUsedEffectArguments &args, const std::shared_ptr<const BlueNoise> &blueNoise, FramebufferImageIndex inputFramebuf)
     {
         VkDescriptorSet descSets[] =
         {
-            framebuffers->GetDescSet(frameIndex),
-            uniform->GetDescSet(frameIndex),
+            args.framebuffers->GetDescSet(args.frameIndex),
+            args.uniform->GetDescSet(args.frameIndex),
             blueNoise->GetDescSet(),
         };
 
-        return Dispatch(cmd, frameIndex, framebuffers, width, height, inputFramebuf, descSets);
+        return Dispatch(args.cmd, args.frameIndex, args.framebuffers, args.width, args.height, inputFramebuf, descSets);
     }
 
 protected:

@@ -278,6 +278,7 @@ private:
     std::shared_ptr<EffectWipe>                 effectWipe;
     std::shared_ptr<EffectRadialBlur>           effectRadialBlur;
     std::shared_ptr<EffectChromaticAberration>  effectChromaticAberration;
+    std::shared_ptr<EffectInverseBW>            effectInverseBW;
 
     std::shared_ptr<SamplerManager>         worldSamplerManager;
     std::shared_ptr<SamplerManager>         genericSamplerManager;

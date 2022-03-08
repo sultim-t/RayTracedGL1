@@ -156,4 +156,15 @@ FramebufferImageIndex EffectBase::Dispatch(
     return isSourcePing ? FB_IMAGE_INDEX_UPSCALED_PONG : FB_IMAGE_INDEX_UPSCALED_PING;
 }
 
+
+struct CommonnlyUsedEffectArguments
+{
+    const VkCommandBuffer cmd;
+    const uint32_t frameIndex;
+    const std::shared_ptr<Framebuffers> &framebuffers;
+    const std::shared_ptr<GlobalUniform> &uniform;
+    const uint32_t width, height;
+    const float currentTime;
+};
+
 }
