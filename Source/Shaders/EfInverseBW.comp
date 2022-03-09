@@ -41,5 +41,5 @@ void main()
     const int L = 8;
     bw = clamp(int(bw * L), 0, L) / float(L);
 
-    effect_storeToTarget(vec3(1 - bw), pix);
+    effect_storeToTarget(mix(color, vec3(1 - bw), getProgress()), pix);
 }
