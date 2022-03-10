@@ -280,6 +280,7 @@ private:
     std::shared_ptr<EffectChromaticAberration>  effectChromaticAberration;
     std::shared_ptr<EffectInverseBW>            effectInverseBW;
     std::shared_ptr<EffectDistortedSides>       effectDistortedSides;
+    std::shared_ptr<EffectColorTint>            effectColorTint;
 
     std::shared_ptr<SamplerManager>         worldSamplerManager;
     std::shared_ptr<SamplerManager>         genericSamplerManager;

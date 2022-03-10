@@ -233,6 +233,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectChromaticAberration   = CONSTRUCT_SIMPLE_EFFECT(EffectChromaticAberration);
     effectInverseBW             = CONSTRUCT_SIMPLE_EFFECT(EffectInverseBW);
     effectDistortedSides        = CONSTRUCT_SIMPLE_EFFECT(EffectDistortedSides);
+    effectColorTint             = CONSTRUCT_SIMPLE_EFFECT(EffectColorTint);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
 
@@ -253,6 +254,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectChromaticAberration);
     shaderManager->Subscribe(effectInverseBW);
     shaderManager->Subscribe(effectDistortedSides);
+    shaderManager->Subscribe(effectColorTint);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -278,6 +280,7 @@ VulkanDevice::~VulkanDevice()
     effectChromaticAberration.reset();
     effectInverseBW.reset();
     effectDistortedSides.reset();
+    effectColorTint.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -886,6 +889,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
 
+        if (effectColorTint->Setup(args, drawInfo.postEffectParams.pColorTint))
+        {
+            currentResultImage = effectColorTint->Apply(args, currentResultImage);
+        }
         if (effectInverseBW->Setup(args, drawInfo.postEffectParams.pInverseBlackAndWhite))
         {
             currentResultImage = effectInverseBW->Apply(args, currentResultImage);

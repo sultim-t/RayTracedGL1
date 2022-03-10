@@ -32,6 +32,7 @@ void main()
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
     vec3 color = effect_loadFromSource(pix);
 
+    // sample albedo, so dark places will be visible too
     const ivec2 rendPix = ivec2(effect_getFramebufUV(pix) * vec2(globalUniform.renderWidth, globalUniform.renderHeight));
     const vec3 albedo = texelFetchAlbedo(getCheckerboardPix(rendPix)).rgb;
 

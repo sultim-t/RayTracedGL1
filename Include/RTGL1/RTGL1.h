@@ -1005,8 +1005,16 @@ typedef struct RgPostEffectDistortedSides
     RgBool32    isActive;
     float       transitionDurationIn;
     float       transitionDurationOut;
-    RgFloat4D   colorTint;
 } RgPostEffectDistortedSides;
+
+typedef struct RgPostEffectColorTint
+{
+    RgBool32    isActive;
+    float       transitionDurationIn;
+    float       transitionDurationOut;
+    float       intensity;
+    RgFloat3D   color;
+} RgPostEffectColorTint;
 
 typedef struct RgDrawFramePostEffectsParams
 {
@@ -1015,6 +1023,7 @@ typedef struct RgDrawFramePostEffectsParams
     const RgPostEffectChromaticAberration   *pChromaticAberration;
     const RgPostEffectInverseBlackAndWhite  *pInverseBlackAndWhite;
     const RgPostEffectDistortedSides        *pDistortedSides;
+    const RgPostEffectColorTint             *pColorTint;
 } RgDrawFramePostEffectsParams;
 
 typedef enum RgMediaType

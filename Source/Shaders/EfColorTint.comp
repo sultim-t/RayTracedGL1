@@ -20,16 +20,28 @@
 
 #version 460
 
+struct EffectColorTint_PushConst
+{
+    // not vec4 for padding
+    float intensity;
+    float r;
+    float g;
+    float b;
+};
+
+#define EFFECT_PUSH_CONST_T EffectColorTint_PushConst
 #include "EfSimple.inl"
+
+vec3 applyTint(vec3 color)
+{
+    vec3 tint = vec3(push.custom.r, push.custom.g, push.custom.b);
+    
+    float t = push.custom.intensity * getLuminance(color) * getProgress();
+    return mix(color, tint, t);
+}
 
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    vec2 c = effect_getCenteredFromPix(pix);
-
-    // more distortion toward the edges
-    float t = c.x * c.x * getProgress();
-    c.x = mix(c.x, c.x * c.x * sign(c.x), t);
-
-    effect_storeToTarget(effect_loadFromSource_Centered(c), pix);
+    effect_storeToTarget(applyTint(effect_loadFromSource(pix)), pix);
 }

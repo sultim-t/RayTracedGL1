@@ -95,24 +95,48 @@ struct EffectInverseBW final : public EffectSimple<EffectInverseBW_PushConst>
 
 
 struct EffectDistortedSides_PushConst
-{
-    float colorTintAlpha;
-    RgFloat3D colorTint;
-};
+{};
 
 struct EffectDistortedSides final : public EffectSimple<EffectDistortedSides_PushConst>
 {
     RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectDistortedSides, "EffectDistortedSides")
 
-        bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectDistortedSides *params)
+    bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectDistortedSides *params)
     {
         if (params == nullptr)
         {
             return SetupNull();
         }
 
-        GetPush().colorTintAlpha = params->colorTint.data[3];
-        memcpy(GetPush().colorTint.data, params->colorTint.data, 3 * sizeof(float));
+        return EffectSimple::Setup(args, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
+
+// ------------------ //
+
+
+struct EffectColorTint_PushConst
+{
+    float intensity;
+    float r, g, b;
+};
+
+struct EffectColorTint final : public EffectSimple<EffectColorTint_PushConst>
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectColorTint, "EffectColorTint")
+
+    bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectColorTint *params)
+    {
+        if (params == nullptr)
+        {
+            return SetupNull();
+        }
+
+        GetPush().intensity = params->intensity;
+        GetPush().r = params->color.data[0];
+        GetPush().g = params->color.data[1];
+        GetPush().b = params->color.data[2];
         return EffectSimple::Setup(args, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
     }
 };
