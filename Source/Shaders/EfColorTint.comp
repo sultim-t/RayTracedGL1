@@ -36,12 +36,24 @@ vec3 applyTint(vec3 color)
 {
     vec3 tint = vec3(push.custom.r, push.custom.g, push.custom.b);
     
-    float t = push.custom.intensity * getLuminance(color) * getProgress();
+    float t = push.custom.intensity * clamp(getLuminance(color), 0.05, 1.0) * getProgress();
     return mix(color, tint, t);
 }
+
+#define APPLY_RADIAL_OFFSET 1
 
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    effect_storeToTarget(applyTint(effect_loadFromSource(pix)), pix);
+
+#if APPLY_RADIAL_OFFSET
+    vec2 c = effect_getCenteredFromPix(pix);
+    c *= mix(1, 0.985, getProgress());
+    
+    vec3 rgb = mix(effect_loadFromSource(pix), applyTint(effect_loadFromSource_Centered(c)), 0.5 * dot(c, c));
+#else
+    vec3 rgb = applyTint(effect_loadFromSource(pix));
+#endif
+
+    effect_storeToTarget(rgb, pix);
 }
