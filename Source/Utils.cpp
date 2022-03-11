@@ -20,6 +20,8 @@
 
 #include "Utils.h"
 
+#include <cmath>
+
 using namespace RTGL1;
 
 void Utils::BarrierImage(
@@ -228,4 +230,20 @@ uint32_t RTGL1::Utils::GetPreviousByModulo(uint32_t value, uint32_t count)
 {
     assert(count > 0);
     return (value + (count - 1)) % count;
+}
+
+uint32_t RTGL1::Utils::GetWorkGroupCount(float size, uint32_t groupSize)
+{
+    return GetWorkGroupCount((uint32_t)std::ceil(size), groupSize);
+}
+
+uint32_t RTGL1::Utils::GetWorkGroupCount(uint32_t size, uint32_t groupSize)
+{
+    if (groupSize == 0)
+    {
+        assert(0);
+        return 0;
+    }
+
+    return 1 + (size + (groupSize - 1)) / groupSize;
 }

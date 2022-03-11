@@ -72,6 +72,9 @@ namespace Utils
     void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
 
     uint32_t GetPreviousByModulo(uint32_t value, uint32_t count);
+    
+    uint32_t GetWorkGroupCount(float size, uint32_t groupSize);
+    uint32_t GetWorkGroupCount(uint32_t size, uint32_t groupSize);
 };
 
 template<typename T>
