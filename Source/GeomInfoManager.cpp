@@ -419,7 +419,7 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData(
 {
     int32_t *prevIndexToCurIndex = matchPrevShadow.get();
 
-    const std::unordered_map<uint64_t, GeomFrameInfo> *prevIdToInfo = nullptr;
+    const rgl::unordered_map<uint64_t, GeomFrameInfo> *prevIdToInfo = nullptr;
 
     bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
     bool isDynamic = flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
@@ -494,7 +494,7 @@ void RTGL1::GeomInfoManager::WriteInfoForNextUsage(
     bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
     bool isDynamic = flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
 
-    std::unordered_map<uint64_t, GeomFrameInfo> *idToInfo = nullptr;
+    rgl::unordered_map<uint64_t, GeomFrameInfo> *idToInfo = nullptr;
 
     if (isDynamic)
     {

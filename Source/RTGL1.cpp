@@ -18,8 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <unordered_map>
-
 #include "VulkanDevice.h"
 #include "RgException.h"
 
@@ -39,7 +37,7 @@ using namespace RTGL1;
 
 
 constexpr uint32_t MAX_DEVICE_COUNT = 8;
-static std::unordered_map<RgInstance, std::unique_ptr<VulkanDevice>> G_DEVICES;
+static rgl::unordered_map<RgInstance, std::unique_ptr<VulkanDevice>> G_DEVICES;
 
 static RgInstance GetNextID()
 {

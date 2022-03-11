@@ -22,6 +22,7 @@
 
 #include "RTGL1/RTGL1.h"
 #include "Common.h"
+#include "Containers.h"
 #include "AutoBuffer.h"
 #include "GlobalUniform.h"
 #include "LightLists.h"
@@ -64,7 +65,7 @@ public:
 
 private:
     void FillMatchPrev(
-        const std::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
+        const rgl::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
         const std::shared_ptr<AutoBuffer> &matchPrev,
         uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID);
 
@@ -88,8 +89,8 @@ private:
     std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
     std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
 
-    std::unordered_map<UniqueLightID, LightArrayIndex> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
-    std::unordered_map<UniqueLightID, LightArrayIndex> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    rgl::unordered_map<UniqueLightID, LightArrayIndex> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    rgl::unordered_map<UniqueLightID, LightArrayIndex> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
     uint32_t sphLightCount;
     uint32_t sphLightCountPrev;

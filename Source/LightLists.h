@@ -21,6 +21,7 @@
 #pragma once
 
 #include <array>
+#include <vector>
 
 #include "AutoBuffer.h"
 #include "LightDefs.h"

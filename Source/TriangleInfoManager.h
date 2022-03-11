@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <vector>
+
 #include "RTGL1/RTGL1.h"
 #include "AutoBuffer.h"
 #include "SectorVisibility.h"

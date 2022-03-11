@@ -20,9 +20,7 @@
 
 #pragma once
 
-#include <unordered_set>
-#include <unordered_map>
-
+#include "Containers.h"
 #include "LightDefs.h"
 
 namespace RTGL1
@@ -47,17 +45,17 @@ public:
     SectorID SectorArrayIndexToID(SectorArrayIndex index) const;
 
     bool ArePotentiallyVisibleSectorsExist(SectorArrayIndex forThisSector) const;
-    const std::unordered_set<SectorArrayIndex> &GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector);
+    const rgl::unordered_set<SectorArrayIndex> &GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector);
 
 private:
     void CheckSize(SectorArrayIndex index, SectorID id) const;
     SectorArrayIndex AssignArrayIndexForID(SectorID id);
 
 private:
-    std::unordered_map<SectorArrayIndex, std::unordered_set<SectorArrayIndex>> pvs;
+    rgl::unordered_map<SectorArrayIndex, rgl::unordered_set<SectorArrayIndex>> pvs;
 
     SectorArrayIndex::index_t lastSectorArrayIndex;
-    std::unordered_map<SectorID, SectorArrayIndex> sectorIDToArrayIndex;
+    rgl::unordered_map<SectorID, SectorArrayIndex> sectorIDToArrayIndex;
 
     // indexed by SectorArrayIndex::index_t
     SectorID sectorArrayIndexToID[MAX_SECTOR_COUNT];

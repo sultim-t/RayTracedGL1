@@ -184,9 +184,8 @@ private:
     VkTransformMatrixKHR *mappedTransformData;
 
     // material index to a list of () that have that material
-    std::unordered_map<uint32_t, std::vector<MaterialRef>> materialDependencies;
-
-    std::unordered_map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
+    rgl::unordered_map<uint32_t, std::vector<MaterialRef>> materialDependencies;
+    rgl::unordered_map<VertexCollectorFilterTypeFlags, std::shared_ptr<VertexCollectorFilter>> filters;
 
     // if some static geometries changed their tex coords, then they should be copied 
     // from staging to device-local; this array holds copy ranges; freed after vkCmdCopy call
@@ -194,7 +193,7 @@ private:
     VkDeviceSize texCoordsToCopyLowerBound;
     VkDeviceSize texCoordsToCopyUpperBound;
 
-    std::unordered_map<uint32_t, uint32_t> simpleIndexToTransformIndex;
+    rgl::unordered_map<uint32_t, uint32_t> simpleIndexToTransformIndex;
 };
 
 }

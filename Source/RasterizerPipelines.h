@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include "Common.h"
+#include "Containers.h"
 #include "ShaderManager.h"
 #include "RTGL1/RTGL1.h"
 
@@ -66,7 +65,7 @@ private:
     VkRenderPass renderPass;
     VkPipelineShaderStageCreateInfo shaderStages[2];
 
-    std::unordered_map<uint32_t, VkPipeline> pipelines;
+    rgl::unordered_map<uint32_t, VkPipeline> pipelines;
     VkPipelineCache pipelineCache;
 
     struct

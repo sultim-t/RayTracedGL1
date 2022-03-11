@@ -74,7 +74,7 @@ bool RTGL1::SectorVisibility::ArePotentiallyVisibleSectorsExist(SectorArrayIndex
     return pvs.find(forThisSector) != pvs.end();
 }
 
-const std::unordered_set<RTGL1::SectorArrayIndex> &RTGL1::SectorVisibility::GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector)
+const rgl::unordered_set<RTGL1::SectorArrayIndex> &RTGL1::SectorVisibility::GetPotentiallyVisibleSectors(SectorArrayIndex fromThisSector)
 {
     // should exist
     assert(ArePotentiallyVisibleSectorsExist(fromThisSector));

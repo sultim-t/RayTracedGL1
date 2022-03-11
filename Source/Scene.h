@@ -20,8 +20,6 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include "ASManager.h"
 #include "LightManager.h"
 #include "VertexPreprocessing.h"
@@ -86,8 +84,8 @@ private:
     std::shared_ptr<SectorVisibility> sectorVisibility;
 
     // Dynamic indices are cleared every frame
-    std::unordered_map<uint64_t, uint32_t> dynamicUniqueIDToSimpleIndex;
-    std::unordered_map<uint64_t, uint32_t> staticUniqueIDToSimpleIndex;
+    rgl::unordered_map<uint64_t, uint32_t> dynamicUniqueIDToSimpleIndex;
+    rgl::unordered_map<uint64_t, uint32_t> staticUniqueIDToSimpleIndex;
 
     // Movable geometry IDs
     std::vector<uint32_t> movableGeomIndices;

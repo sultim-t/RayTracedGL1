@@ -24,6 +24,7 @@
 
 #include "AutoBuffer.h"
 #include "Common.h"
+#include "Containers.h"
 #include "Material.h"
 #include "MemoryAllocator.h"
 #include "VertexCollectorFilterType.h"
@@ -151,8 +152,8 @@ private:
 
     // geometry's uniqueID to geom frame info,
     // used for getting info from previous frame
-    std::unordered_map<uint64_t, GeomFrameInfo> dynamicIDToGeomFrameInfo[MAX_FRAMES_IN_FLIGHT];
-    std::unordered_map<uint64_t, GeomFrameInfo> movableIDToGeomFrameInfo;
+    rgl::unordered_map<uint64_t, GeomFrameInfo> dynamicIDToGeomFrameInfo[MAX_FRAMES_IN_FLIGHT];
+    rgl::unordered_map<uint64_t, GeomFrameInfo> movableIDToGeomFrameInfo;
 };
 
 }

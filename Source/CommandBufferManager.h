@@ -21,9 +21,9 @@
 #pragma once
 
 #include <vector>
-#include <unordered_map>
 
 #include "Common.h"
+#include "Containers.h"
 #include "Queues.h"
 
 namespace RTGL1
@@ -82,7 +82,7 @@ private:
     AllocatedCmds transferCmds[MAX_FRAMES_IN_FLIGHT];
 
     std::weak_ptr<Queues> queues;
-    std::unordered_map<VkCommandBuffer, VkQueue> cmdQueues[MAX_FRAMES_IN_FLIGHT];
+    rgl::unordered_map<VkCommandBuffer, VkQueue> cmdQueues[MAX_FRAMES_IN_FLIGHT];
 };
 
 }

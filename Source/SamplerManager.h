@@ -21,9 +21,9 @@
 #pragma once
 
 #include <vector>
-#include <unordered_map>
 
 #include "Common.h"
+#include "Containers.h"
 #include "RTGL1/RTGL1.h"
 
 namespace RTGL1
@@ -95,7 +95,7 @@ private:
 private:
     VkDevice device;
 
-    std::unordered_map<uint32_t, VkSampler> samplers;
+    rgl::unordered_map<uint32_t, VkSampler> samplers;
     std::vector<VkSampler> samplersToDelete[MAX_FRAMES_IN_FLIGHT];
     float mipLodBias;
     uint32_t anisotropy;

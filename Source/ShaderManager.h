@@ -22,9 +22,9 @@
 
 #include <list>
 #include <string>
-#include <unordered_map>
 
 #include "Common.h"
+#include "Containers.h"
 #include "IShaderDependency.h"
 #include "UserFunction.h"
 
@@ -77,7 +77,7 @@ private:
     std::shared_ptr<UserFileLoad> userFileLoad;
     std::string shaderFolderPath;
 
-    std::unordered_map<std::string, ShaderModule> modules;
+    rgl::unordered_map<std::string, ShaderModule> modules;
 
     std::list<std::weak_ptr<IShaderDependency>> subscribers;
 };

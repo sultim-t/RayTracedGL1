@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <unordered_map>
-
 #include "Common.h"
+#include "Containers.h"
 #include "PhysicalDevice.h"
 #include "Vma/vk_mem_alloc.h"
 
@@ -87,8 +86,8 @@ private:
     VmaPool texturesFinalPool;
 
     // maps for freeing corresponding allocations
-    std::unordered_map<VkBuffer, VmaAllocation> bufAllocs;
-    std::unordered_map<VkImage, VmaAllocation> imgAllocs;
+    rgl::unordered_map<VkBuffer, VmaAllocation> bufAllocs;
+    rgl::unordered_map<VkImage, VmaAllocation> imgAllocs;
 };
 
 }
