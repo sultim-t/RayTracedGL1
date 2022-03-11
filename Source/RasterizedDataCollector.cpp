@@ -98,7 +98,8 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     // if renderToSwapchain, depth data is not available
     if (renderToSwapchain)
     {
-        assert(!info.depthTest && !info.depthWrite);
+        assert(!(info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST));
+        assert(!(info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE));
     }
 
     // if renderToSky, default pViewProjection and pViewport are used,
@@ -153,12 +154,9 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     drawInfo.isDefaultViewport = pViewport == nullptr;
     drawInfo.isDefaultViewProjMatrix = pViewProjection == nullptr;
     drawInfo.transform = info.transform;
-    drawInfo.blendEnable = info.blendEnable;
+    drawInfo.pipelineState = info.pipelineState;
     drawInfo.blendFuncSrc = info.blendFuncSrc;
     drawInfo.blendFuncDst = info.blendFuncDst;
-    drawInfo.depthTest = info.depthTest;
-    drawInfo.depthWrite = info.depthWrite;
-    drawInfo.isLines = info.useAsLineList;
 
     if (pViewport != nullptr)
     {
@@ -329,7 +327,7 @@ const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollectorGen
     return swapchainDrawInfos;
 }
 
-RasterizedDataCollector::DrawInfo *RasterizedDataCollectorGeneral::PushInfo(RgRaterizedGeometryRenderType renderType)
+RasterizedDataCollector::DrawInfo *RasterizedDataCollectorGeneral::PushInfo(RgRasterizedGeometryRenderType renderType)
 {
     if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT)
     {
@@ -378,7 +376,7 @@ const std::vector<RasterizedDataCollector::DrawInfo> & RasterizedDataCollectorSk
     return skyDrawInfos;
 }
 
-RasterizedDataCollector::DrawInfo *RasterizedDataCollectorSky::PushInfo(RgRaterizedGeometryRenderType renderType)
+RasterizedDataCollector::DrawInfo *RasterizedDataCollectorSky::PushInfo(RgRasterizedGeometryRenderType renderType)
 {
     if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
     {

@@ -491,12 +491,22 @@ typedef enum RgBlendFactor
 //              if skyType is RG_SKY_TYPE_RASTERIZED_GEOMETRY.
 //              Also, the cubemap for this kind of geometry will be created
 //              for specular and indirect bounces.
-typedef enum RgRaterizedGeometryRenderType
+typedef enum RgRasterizedGeometryRenderType
 {
     RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
     RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN,
     RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY
-} RgRaterizedGeometryRenderType;
+} RgRasterizedGeometryRenderType;
+
+typedef enum RgRasterizedGeometryStateFlagBits
+{
+    RG_RASTERIZED_GEOMETRY_STATE_ALPHA_TEST         = 1,
+    RG_RASTERIZED_GEOMETRY_STATE_BLEND_ENABLE       = 2,
+    RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST         = 4,
+    RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE        = 8,
+    RG_RASTERIZED_GEOMETRY_STATE_FORCE_LINE_LIST    = 16,
+} RgRasterizedGeometryStateFlagBits;
+typedef uint32_t RgRasterizedGeometryStateFlags;
 
 typedef struct RgRasterizedGeometryVertexArrays
 {
@@ -521,33 +531,29 @@ typedef struct RgRasterizedGeometryVertexStruct
 
 typedef struct RgRasterizedGeometryUploadInfo
 {
-    RgRaterizedGeometryRenderType renderType;
+    RgRasterizedGeometryRenderType renderType;
 
-    uint32_t            vertexCount;
+    uint32_t                                vertexCount;
     // Exactly one must be not null.
     // "pArrays"  -- pointer to a struct that defines separate arrays
     //               for position and texCoord data.
     // "pStructs" -- is an array of packed vertices.
-    const RgRasterizedGeometryVertexArrays *pArrays;
-    const RgRasterizedGeometryVertexStruct *pStructs;
+    const RgRasterizedGeometryVertexArrays  *pArrays;
+    const RgRasterizedGeometryVertexStruct  *pStructs;
     
     // Can be 0/null.
     // indexData is an array of uint32_t of size indexCount.
-    uint32_t            indexCount;
-    const void          *pIndexData;
+    uint32_t                                indexCount;
+    const void                              *pIndexData;
 
-    RgTransform         transform;
+    RgTransform                             transform;
 
-    RgFloat4D           color;
+    RgFloat4D                               color;
     // Only the albedo-alpha texture is used for rasterized geometry.
-    RgMaterial          material;
-    RgBool32            blendEnable;
-    RgBlendFactor       blendFuncSrc;
-    RgBlendFactor       blendFuncDst;
-    RgBool32            depthTest;
-    RgBool32            depthWrite;
-    // Default topology is a triangle list.
-    RgBool32            useAsLineList;
+    RgMaterial                              material;
+    RgRasterizedGeometryStateFlags          pipelineState;
+    RgBlendFactor                           blendFuncSrc;
+    RgBlendFactor                           blendFuncDst;
 } RgRasterizedGeometryUploadInfo;
 
 

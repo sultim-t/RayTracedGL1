@@ -25,36 +25,39 @@
 
 #include "RasterizedDataCollector.h"
 
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_ENABLE                     = 1 << 0;
-constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_TEST_ENABLE                = 1 << 1;
-constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE               = 1 << 2;
-constexpr uint32_t PIPELINE_STATE_MASK_IS_LINES                         = 1 << 3;
+constexpr uint32_t PIPELINE_STATE_MASK_IS_ALPHA_TEST                    = 1 << 0;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_ENABLE                     = 1 << 1;
+constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_TEST_ENABLE                = 1 << 2;
+constexpr uint32_t PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE               = 1 << 3;
+constexpr uint32_t PIPELINE_STATE_MASK_IS_LINES                         = 1 << 4;
+constexpr uint32_t PS_SRC_OFFSET                                        = 5;
 
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE                   = 1 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ZERO                  = 2 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR             = 3 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_COLOR   = 4 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR             = 5 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_DST_COLOR   = 6 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA             = 7 << 4;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_ALPHA   = 8 << 4;
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_SRC                        = 15 << 4;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE                   = 1 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ZERO                  = 2 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_COLOR             = 3 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_COLOR   = 4 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_DST_COLOR             = 5 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_DST_COLOR   = 6 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_SRC_ALPHA             = 7 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_SRC_ONE_MINUS_SRC_ALPHA   = 8 << PS_SRC_OFFSET;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_SRC                        = 15 << PS_SRC_OFFSET;
+constexpr uint32_t PS_DST_OFFSET                                        = 4 + PS_SRC_OFFSET;
 
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE                   = 1 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ZERO                  = 2 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR             = 3 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_COLOR   = 4 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR             = 5 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_DST_COLOR   = 6 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA             = 7 << 8;
-constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_ALPHA   = 8 << 8;
-constexpr uint32_t PIPELINE_STATE_MASK_BLEND_DST                        = 15 << 8;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE                   = 1 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ZERO                  = 2 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_COLOR             = 3 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_COLOR   = 4 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_DST_COLOR             = 5 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_DST_COLOR   = 6 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_SRC_ALPHA             = 7 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_VALUE_BLEND_DST_ONE_MINUS_SRC_ALPHA   = 8 << PS_DST_OFFSET;
+constexpr uint32_t PIPELINE_STATE_MASK_BLEND_DST                        = 15 << PS_DST_OFFSET;
 
-static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
+static uint32_t ConvertToStateFlags(RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst)
 {
     uint32_t r = 0;
 
-    if (blendEnable)
+    if (pipelineState & RG_RASTERIZED_GEOMETRY_STATE_BLEND_ENABLE)
     {
         r |= PIPELINE_STATE_MASK_BLEND_ENABLE;
 
@@ -85,19 +88,24 @@ static uint32_t ConvertToStateFlags(bool blendEnable, RgBlendFactor blendFuncSrc
         }
     }
 
-    if (depthTest)
+    if (pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST)
     {
         r |= PIPELINE_STATE_MASK_DEPTH_TEST_ENABLE;
     }
 
-    if (depthWrite)
+    if (pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE)
     {
         r |= PIPELINE_STATE_MASK_DEPTH_WRITE_ENABLE;
     }
 
-    if (isLines)
+    if (pipelineState & RG_RASTERIZED_GEOMETRY_STATE_FORCE_LINE_LIST)
     {
         r |= PIPELINE_STATE_MASK_IS_LINES;
+    }
+
+    if (pipelineState & RG_RASTERIZED_GEOMETRY_STATE_ALPHA_TEST)
+    {
+        r |= PIPELINE_STATE_MASK_IS_ALPHA_TEST;
     }
 
     return r;
@@ -125,21 +133,39 @@ static bool TestFlags()
 
     std::set<uint32_t> un;
 
-    for (auto be : bs)
-    {
-    for (auto dt : bs)
-    {
-    for (auto dw : bs)
-    {
+    for (auto al : bs) {
+    for (auto be : bs) {
+    for (auto dt : bs) {
+    for (auto dw : bs) {
     for (auto ln : bs)
     {
+        RgRasterizedGeometryStateFlags pstate = 0;
+        if (al)
+        {
+            pstate |= RG_RASTERIZED_GEOMETRY_STATE_ALPHA_TEST;
+        }
+        if (dt)
+        {
+            pstate |= RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST;
+        }
+        if (dw)
+        {
+            pstate |= RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE;
+        }
+        if (ln)
+        {
+            pstate |= RG_RASTERIZED_GEOMETRY_STATE_FORCE_LINE_LIST;
+        }
+
         if (be)
         {
+            pstate |= RG_RASTERIZED_GEOMETRY_STATE_BLEND_ENABLE;
+
             for (auto src : fs)
             {
                 for (auto dst : fs)
                 {
-                    uint32_t flags = ConvertToStateFlags(true, src, dst, dt, dw, ln);
+                    uint32_t flags = ConvertToStateFlags(pstate, src, dst);
 
                     if (un.count(flags) > 0)
                     {
@@ -153,7 +179,7 @@ static bool TestFlags()
         }
         else
         {
-            uint32_t flags = ConvertToStateFlags(false, RG_BLEND_FACTOR_ONE, RG_BLEND_FACTOR_ONE, dt, dw, ln);
+            uint32_t flags = ConvertToStateFlags(pstate, RG_BLEND_FACTOR_ONE, RG_BLEND_FACTOR_ONE);
 
             if (un.count(flags) > 0)
             {
@@ -163,10 +189,7 @@ static bool TestFlags()
 
             un.insert(flags);
         }
-    }
-    }
-    }
-    }
+    } } } } }
 
     return true;
 }
@@ -196,7 +219,9 @@ RTGL1::RasterizerPipelines::RasterizerPipelines(
     device(_device),
     pipelineLayout(_pipelineLayout),
     renderPass(_renderPass),
-    shaderStages{},
+    vertShaderStage{},
+    fragShaderStage{},
+    fragAlphaShaderStage{},
     pipelineCache(VK_NULL_HANDLE),
     applyVertexColorGamma(_applyVertexColorGamma)
 {
@@ -231,8 +256,9 @@ void RTGL1::RasterizerPipelines::Clear()
 
 void RTGL1::RasterizerPipelines::SetShaders(const ShaderManager *shaderManager, const char *vertexShaderName, const char *fragmentShaderName)
 {
-    shaderStages[0] = shaderManager->GetStageInfo(vertexShaderName);
-    shaderStages[1] = shaderManager->GetStageInfo(fragmentShaderName);
+    vertShaderStage         = shaderManager->GetStageInfo(vertexShaderName);
+    fragShaderStage         = shaderManager->GetStageInfo(fragmentShaderName);
+    fragAlphaShaderStage    = shaderManager->GetStageInfo(fragmentShaderName);
 }
 
 void RTGL1::RasterizerPipelines::DisableDynamicState(const VkViewport &viewport, const VkRect2D &scissors)
@@ -245,9 +271,9 @@ void RTGL1::RasterizerPipelines::DisableDynamicState(const VkViewport &viewport,
     dynamicState.scissors = scissors;
 }
 
-VkPipeline RTGL1::RasterizerPipelines::GetPipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
+VkPipeline RTGL1::RasterizerPipelines::GetPipeline(RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst)
 {
-    uint32_t flags = ConvertToStateFlags(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite, isLines);
+    uint32_t flags = ConvertToStateFlags(pipelineState, blendFuncSrc, blendFuncDst);
 
     auto f = pipelines.find(flags);
 
@@ -258,7 +284,7 @@ VkPipeline RTGL1::RasterizerPipelines::GetPipeline(bool blendEnable, RgBlendFact
     }
     else
     {
-        VkPipeline p = CreatePipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite, isLines);
+        VkPipeline p = CreatePipeline(pipelineState, blendFuncSrc, blendFuncDst);
 
         pipelines[flags] = p;
         return p;
@@ -270,9 +296,16 @@ VkPipelineLayout RTGL1::RasterizerPipelines::GetPipelineLayout()
     return pipelineLayout;
 }
 
-VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
+VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst) const
 {
-    assert(shaderStages[0].sType != 0 && shaderStages[1].sType != 0);
+    assert(vertShaderStage.sType != 0 && fragShaderStage.sType != 0 && fragAlphaShaderStage.sType != 0);
+
+
+    bool alphaTest      = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_ALPHA_TEST;
+    bool blendEnable    = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_BLEND_ENABLE;
+    bool depthTest      = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST;
+    bool depthWrite     = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE;
+    bool isLines        = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_FORCE_LINE_LIST;
 
 
     VkSpecializationMapEntry mapEntry = {};
@@ -286,6 +319,11 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
     vertSpecInfo.dataSize = sizeof(uint32_t);
     vertSpecInfo.pData = &applyVertexColorGamma;
 
+    VkPipelineShaderStageCreateInfo shaderStages[] =
+    {
+        vertShaderStage,
+        alphaTest ? fragAlphaShaderStage : fragShaderStage
+    };
     shaderStages[0].pSpecializationInfo = &vertSpecInfo;
 
 
@@ -369,12 +407,12 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
 
     VkPipelineDynamicStateCreateInfo dynamicInfo = {};
     dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = dynamicState.isEnabled ? sizeof(dynamicStates) / sizeof(dynamicStates[0]) : 0;
+    dynamicInfo.dynamicStateCount = dynamicState.isEnabled ? std::size(dynamicStates) : 0;
     dynamicInfo.pDynamicStates = dynamicStates;
 
     VkGraphicsPipelineCreateInfo plInfo = {};
     plInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    plInfo.stageCount = 2;
+    plInfo.stageCount = std::size(shaderStages);
     plInfo.pStages = shaderStages;
     plInfo.pVertexInputState = &vertexInputInfo;
     plInfo.pInputAssemblyState = &inputAssembly;
@@ -401,9 +439,9 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(bool blendEnable, RgBlendF
 
 void RTGL1::RasterizerPipelines::BindPipelineIfNew(
     VkCommandBuffer cmd, VkPipeline &curPipeline,
-    bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines)
+    RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst)
 {
-    VkPipeline p = GetPipeline(blendEnable, blendFuncSrc, blendFuncDst, depthTest, depthWrite, isLines);
+    VkPipeline p = GetPipeline(pipelineState, blendFuncSrc, blendFuncDst);
 
     if (p != curPipeline)
     {

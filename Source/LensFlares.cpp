@@ -382,7 +382,7 @@ void RTGL1::LensFlares::Draw(VkCommandBuffer cmd, uint32_t frameIndex)
         return;
     }
 
-    VkPipeline drawPipeline = rasterPipelines->GetPipeline(true, lensFlareBlendFactorSrc, lensFlareBlendFactorDst, false, false, false);
+    VkPipeline drawPipeline = rasterPipelines->GetPipeline(RG_RASTERIZED_GEOMETRY_STATE_BLEND_ENABLE, lensFlareBlendFactorSrc, lensFlareBlendFactorDst);
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawPipeline);
 
     VkDescriptorSet sets[] =

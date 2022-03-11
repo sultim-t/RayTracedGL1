@@ -208,7 +208,7 @@ VkDescriptorSet RTGL1::RenderCubemap::GetDescSet() const
 
 void RTGL1::RenderCubemap::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkPipeline &curPipeline)
 {
-    pipelines->BindPipelineIfNew(cmd, curPipeline, info.blendEnable, info.blendFuncSrc, info.blendFuncDst, info.depthTest, info.depthWrite, false);
+    pipelines->BindPipelineIfNew(cmd, curPipeline, info.pipelineState, info.blendFuncSrc, info.blendFuncDst);
 }
 
 

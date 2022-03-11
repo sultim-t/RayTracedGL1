@@ -387,7 +387,7 @@ void Rasterizer::SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataColle
 void Rasterizer::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,
     const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
 {
-    pipelines->BindPipelineIfNew(cmd, curPipeline, info.blendEnable, info.blendFuncSrc, info.blendFuncDst, info.depthTest, info.depthWrite, info.isLines);
+    pipelines->BindPipelineIfNew(cmd, curPipeline, info.pipelineState, info.blendFuncSrc, info.blendFuncDst);
 }
 
 const std::shared_ptr<RenderCubemap> &Rasterizer::GetRenderCubemap() const

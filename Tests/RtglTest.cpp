@@ -386,9 +386,7 @@ static void MainLoop(RgInstance instance)
             },
             .color = { 1.0f, 1.0f, 1.0f, 1.0f },
             .material = RG_NO_MATERIAL,
-            .blendEnable = RG_FALSE,
-            .depthTest = true,
-            .depthWrite = true
+            .pipelineState = RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST | RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE,
         };
         r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
         RG_CHECK(r);

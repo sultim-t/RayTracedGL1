@@ -51,12 +51,9 @@ public:
         float       color[4];
         uint32_t    textureIndex;
 
-        bool            blendEnable;
-        RgBlendFactor   blendFuncSrc;
-        RgBlendFactor   blendFuncDst;
-        bool            depthTest;
-        bool            depthWrite;
-        bool            isLines;
+        RgRasterizedGeometryStateFlags  pipelineState;
+        RgBlendFactor                   blendFuncSrc;
+        RgBlendFactor                   blendFuncDst;
     };
 
 public:
@@ -90,7 +87,7 @@ protected:
                      const RgRasterizedGeometryUploadInfo &info, 
                      const float *viewProjection, const RgViewport *viewport);
 
-    virtual DrawInfo *PushInfo(RgRaterizedGeometryRenderType renderType) = 0;
+    virtual DrawInfo *PushInfo(RgRasterizedGeometryRenderType renderType) = 0;
 
 private:
     struct RasterizerVertex;
@@ -136,7 +133,7 @@ public:
     const std::vector<DrawInfo> &GetSwapchainDrawInfos() const;
 
 protected:
-    DrawInfo *PushInfo(RgRaterizedGeometryRenderType renderType) override;
+    DrawInfo *PushInfo(RgRasterizedGeometryRenderType renderType) override;
 
 private:
     std::vector<DrawInfo> rasterDrawInfos;
@@ -167,7 +164,7 @@ public:
     const std::vector<DrawInfo> &GetSkyDrawInfos() const;
 
 protected:
-    DrawInfo *PushInfo(RgRaterizedGeometryRenderType renderType) override;
+    DrawInfo *PushInfo(RgRasterizedGeometryRenderType renderType) override;
 
 private:
     std::vector<DrawInfo> skyDrawInfos;

@@ -48,22 +48,24 @@ public:
     void SetShaders(const ShaderManager *shaderManager, const char *vertexShaderName, const char *fragmentShaderName);
     void DisableDynamicState(const VkViewport &viewport, const VkRect2D &scissors);
 
-    VkPipeline GetPipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines);
+    VkPipeline GetPipeline(RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst);
     VkPipelineLayout GetPipelineLayout();
 
     void BindPipelineIfNew(VkCommandBuffer cmd, VkPipeline &curPipeline,
-                           bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines);
+                           RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst);
 
 
 private:
-    VkPipeline CreatePipeline(bool blendEnable, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst, bool depthTest, bool depthWrite, bool isLines);
+    VkPipeline CreatePipeline(RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst) const;
 
 private:
     VkDevice device;
 
     VkPipelineLayout pipelineLayout;
     VkRenderPass renderPass;
-    VkPipelineShaderStageCreateInfo shaderStages[2];
+    VkPipelineShaderStageCreateInfo vertShaderStage;
+    VkPipelineShaderStageCreateInfo fragShaderStage;
+    VkPipelineShaderStageCreateInfo fragAlphaShaderStage;
 
     rgl::unordered_map<uint32_t, VkPipeline> pipelines;
     VkPipelineCache pipelineCache;
