@@ -25,6 +25,7 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include "Utils.h"
 
 RTGL1::Tonemapping::Tonemapping(
     VkDevice _device,
@@ -107,8 +108,8 @@ void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, histogramPipeline);
 
     // cover full render size
-    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X);
-    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y);
+    uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X);
+    uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 

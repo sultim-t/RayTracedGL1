@@ -26,6 +26,7 @@
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
 #include "BlueNoise.h"
+#include "Utils.h"
 
 namespace RTGL1
 {
@@ -126,8 +127,8 @@ FramebufferImageIndex EffectBase::Dispatch(
     uint32_t isSourcePing = inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING;
 
 
-    const uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil((float)width  / (float)EFFECT_BASE_COMPUTE_GROUP_SIZE_X));
-    const uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil((float)height / (float)EFFECT_BASE_COMPUTE_GROUP_SIZE_Y));
+    const uint32_t wgCountX = Utils::GetWorkGroupCount(width, EFFECT_BASE_COMPUTE_GROUP_SIZE_X);
+    const uint32_t wgCountY = Utils::GetWorkGroupCount(height, EFFECT_BASE_COMPUTE_GROUP_SIZE_Y);
 
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,

@@ -25,6 +25,7 @@
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
 #include "RenderResolutionHelper.h"
+#include "Utils.h"
 
 
 RTGL1::Bloom::Bloom(
@@ -88,8 +89,8 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
     for (int i = 0; i < COMPUTE_BLOOM_STEP_COUNT; i++)
     {
-        uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X)));
-        uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << (i + 1)) * COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y)));
+        uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth  / (float)(1 << (i + 1)), COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X);
+        uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / (float)(1 << (i + 1)), COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y);
 
         CmdLabel label(cmd, "Bloom downsample iteration");
 
@@ -102,6 +103,7 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
             case 2: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP2); break;
             case 3: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP3); break;
             case 4: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP4); break;
+            default:assert(0);  
         }
 
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
@@ -114,8 +116,8 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     // start from the other side
     for (int i = COMPUTE_BLOOM_STEP_COUNT - 1; i >= 0; i--)
     {
-        uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderWidth  / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X)));
-        uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(uniform->GetData()->renderHeight / (float)((1 << i) * COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y)));
+        uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth  / (float)(1 << i), COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X);
+        uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / (float)(1 << i), COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y);
 
         CmdLabel label(cmd, "Bloom upsample iteration");
 
@@ -128,6 +130,7 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
             case 2: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP3); break;
             case 1: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP2); break;
             case 0: framebuffers->BarrierOne(cmd, frameIndex, FB_IMAGE_INDEX_BLOOM_MIP1); break;
+            default:assert(0);
         }
 
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
@@ -148,8 +151,8 @@ RTGL1::FramebufferImageIndex RTGL1::Bloom::Apply(VkCommandBuffer cmd, uint32_t f
     uint32_t isSourcePing = inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING;
 
 
-    const uint32_t wgCountX = std::max(1u, (uint32_t)std::ceil(width / (float)COMPUTE_BLOOM_APPLY_GROUP_SIZE_X));
-    const uint32_t wgCountY = std::max(1u, (uint32_t)std::ceil(height / (float)COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y));
+    const uint32_t wgCountX = Utils::GetWorkGroupCount(width, COMPUTE_BLOOM_APPLY_GROUP_SIZE_X);
+    const uint32_t wgCountY = Utils::GetWorkGroupCount(height, COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y);
 
 
     // bind desc sets

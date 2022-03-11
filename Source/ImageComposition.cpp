@@ -25,6 +25,7 @@
 
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include "Utils.h"
 
 RTGL1::ImageComposition::ImageComposition(
     VkDevice _device,
@@ -120,8 +121,8 @@ void RTGL1::ImageComposition::ProcessPrefinal(VkCommandBuffer cmd,
 
 
     // start compute shader
-    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_GROUP_SIZE_X);
-    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_GROUP_SIZE_Y);
+    uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_COMPOSE_GROUP_SIZE_X);
+    uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_COMPOSE_GROUP_SIZE_Y);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }
@@ -154,8 +155,8 @@ void RTGL1::ImageComposition::ProcessCheckerboard(VkCommandBuffer cmd, uint32_t 
 
 
     // start compute shader
-    uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_COMPOSE_GROUP_SIZE_X);
-    uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_COMPOSE_GROUP_SIZE_Y);
+    uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_COMPOSE_GROUP_SIZE_X); 
+    uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_COMPOSE_GROUP_SIZE_Y);
 
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }

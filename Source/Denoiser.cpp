@@ -23,6 +23,7 @@
 #include <cmath>
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include "Utils.h"
 
 RTGL1::Denoiser::Denoiser(
     VkDevice _device, 
@@ -97,8 +98,8 @@ void RTGL1::Denoiser::MergeSamples(
                     0, setCount, sets,
                     0, nullptr);
 
-    uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X / COMPUTE_ASVGF_STRATA_SIZE);
-    uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X / COMPUTE_ASVGF_STRATA_SIZE);
+    uint32_t wgGradCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, COMPUTE_ASVGF_STRATA_SIZE);
+    uint32_t wgGradCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, COMPUTE_ASVGF_STRATA_SIZE);
 
     FI fs[] =
     {
@@ -148,8 +149,8 @@ void RTGL1::Denoiser::Denoise(
 #if GRADIENT_ESTIMATION_ENABLED
     // gradient samples
     {
-        uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
-        uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
+        uint32_t wgGradCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE, COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
+        uint32_t wgGradCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE, COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
 
         CmdLabel label(cmd, "Gradient Samples");
 
@@ -175,8 +176,8 @@ void RTGL1::Denoiser::Denoise(
 
         for (uint32_t i = 0; i < COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT; i++)
         {
-            uint32_t wgGradCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
-            uint32_t wgGradCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE / COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
+            uint32_t wgGradCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE, COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
+            uint32_t wgGradCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE, COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X);
 
             if (i % 2 == 0)
             {
@@ -206,8 +207,8 @@ void RTGL1::Denoiser::Denoise(
 
     // temporal accumulation
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
+        uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
+        uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
 
         CmdLabel label(cmd, "SVGF Temporal accumulation");
 
@@ -232,8 +233,8 @@ void RTGL1::Denoiser::Denoise(
 
     // variance estimation
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X);
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X);
+        uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X);
+        uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X);
 
         CmdLabel label(cmd, "SVGF Variance estimation");
 
@@ -254,8 +255,8 @@ void RTGL1::Denoiser::Denoise(
 
     for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
     {
-        uint32_t wgCountX = (uint32_t)std::ceil(uniform->GetData()->renderWidth / COMPUTE_SVGF_ATROUS_GROUP_SIZE_X);
-        uint32_t wgCountY = (uint32_t)std::ceil(uniform->GetData()->renderHeight / COMPUTE_SVGF_ATROUS_GROUP_SIZE_X);
+        uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_SVGF_ATROUS_GROUP_SIZE_X);
+        uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_SVGF_ATROUS_GROUP_SIZE_X);
 
         CmdLabel label(cmd, "SVGF Atrous");
 

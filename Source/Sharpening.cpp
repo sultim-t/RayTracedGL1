@@ -25,6 +25,7 @@
 
 
 #define A_CPU
+#include "Utils.h"
 #include "Shaders/CAS/ffx_a.h"
 #include "Shaders/CAS/ffx_cas.h"
 
@@ -77,9 +78,9 @@ RTGL1::FramebufferImageIndex RTGL1::Sharpening::Apply(
     uint32_t isSourcePing = inputFramebuf == FB_IMAGE_INDEX_UPSCALED_PING;
 
 
-    const int threadGroupWorkRegionDim = 16;
-    int dispatchX = ((int)width  + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
-    int dispatchY = ((int)height + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
+    const uint32_t threadGroupWorkRegionDim = 16;
+    uint32_t dispatchX = Utils::GetWorkGroupCount(width, threadGroupWorkRegionDim);
+    uint32_t dispatchY = Utils::GetWorkGroupCount(height, threadGroupWorkRegionDim);
 
 
     // bind desc sets

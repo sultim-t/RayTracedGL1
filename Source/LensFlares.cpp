@@ -20,6 +20,7 @@
 
 #include "LensFlares.h"
 
+#include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
 
@@ -295,8 +296,8 @@ void RTGL1::LensFlares::Cull(VkCommandBuffer cmd, uint32_t frameIndex)
                             cullPipelineLayout,
                             0, std::size(sets), sets,
                             0, nullptr);
-
-    uint32_t wgCount = (uint32_t)std::ceil((float)cullingInputCount / COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X);
+    
+    uint32_t wgCount = Utils::GetWorkGroupCount(cullingInputCount, COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X);
     vkCmdDispatch(cmd, wgCount, 1, 1);
 }
 

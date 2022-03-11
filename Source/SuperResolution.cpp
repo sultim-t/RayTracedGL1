@@ -24,6 +24,7 @@
 #include "RenderResolutionHelper.h"
 
 #define A_CPU
+#include "Utils.h"
 #include "Shaders/FSR/ffx_a.h"
 #include "Shaders/FSR/ffx_fsr1.h"
 
@@ -67,9 +68,9 @@ RTGL1::FramebufferImageIndex RTGL1::SuperResolution::Apply(
     CmdLabel label(cmd, "FSR Upscale");
 
 
-    const int threadGroupWorkRegionDim = 16;
-    int dispatchX = ((int)renderResolution.UpscaledWidth()  + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
-    int dispatchY = ((int)renderResolution.UpscaledHeight() + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
+    const uint32_t threadGroupWorkRegionDim = 16;
+    uint32_t dispatchX = Utils::GetWorkGroupCount(renderResolution.UpscaledWidth(), threadGroupWorkRegionDim);
+    uint32_t dispatchY = Utils::GetWorkGroupCount(renderResolution.UpscaledHeight(), threadGroupWorkRegionDim);
 
 
     // bind desc sets
@@ -77,11 +78,9 @@ RTGL1::FramebufferImageIndex RTGL1::SuperResolution::Apply(
     {
         framebuffers->GetDescSet(frameIndex),
     };
-    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
-
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
                             pipelineLayout,
-                            0, setCount, sets,
+                            0, std::size(sets), sets,
                             0, nullptr);
 
 
