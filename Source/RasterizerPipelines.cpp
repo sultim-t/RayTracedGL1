@@ -221,7 +221,6 @@ RTGL1::RasterizerPipelines::RasterizerPipelines(
     renderPass(_renderPass),
     vertShaderStage{},
     fragShaderStage{},
-    fragAlphaShaderStage{},
     pipelineCache(VK_NULL_HANDLE),
     applyVertexColorGamma(_applyVertexColorGamma)
 {
@@ -258,7 +257,6 @@ void RTGL1::RasterizerPipelines::SetShaders(const ShaderManager *shaderManager, 
 {
     vertShaderStage         = shaderManager->GetStageInfo(vertexShaderName);
     fragShaderStage         = shaderManager->GetStageInfo(fragmentShaderName);
-    fragAlphaShaderStage    = shaderManager->GetStageInfo(fragmentShaderName);
 }
 
 void RTGL1::RasterizerPipelines::DisableDynamicState(const VkViewport &viewport, const VkRect2D &scissors)
@@ -298,33 +296,45 @@ VkPipelineLayout RTGL1::RasterizerPipelines::GetPipelineLayout()
 
 VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(RgRasterizedGeometryStateFlags pipelineState, RgBlendFactor blendFuncSrc, RgBlendFactor blendFuncDst) const
 {
-    assert(vertShaderStage.sType != 0 && fragShaderStage.sType != 0 && fragAlphaShaderStage.sType != 0);
+    assert(vertShaderStage.sType != 0 && fragShaderStage.sType != 0);
 
 
-    bool alphaTest      = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_ALPHA_TEST;
+    RgBool32 alphaTest  = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_ALPHA_TEST ? 1 : 0;
     bool blendEnable    = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_BLEND_ENABLE;
     bool depthTest      = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST;
     bool depthWrite     = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE;
     bool isLines        = pipelineState & RG_RASTERIZED_GEOMETRY_STATE_FORCE_LINE_LIST;
 
 
-    VkSpecializationMapEntry mapEntry = {};
-    mapEntry.constantID = 0;
-    mapEntry.offset = 0;
-    mapEntry.size = sizeof(uint32_t);
+    VkSpecializationMapEntry vertMapEntry = {};
+    vertMapEntry.constantID = 0;
+    vertMapEntry.offset = 0;
+    vertMapEntry.size = sizeof(uint32_t);
 
     VkSpecializationInfo vertSpecInfo = {};
     vertSpecInfo.mapEntryCount = 1;
-    vertSpecInfo.pMapEntries = &mapEntry;
-    vertSpecInfo.dataSize = sizeof(uint32_t);
+    vertSpecInfo.pMapEntries = &vertMapEntry;
+    vertSpecInfo.dataSize = sizeof(applyVertexColorGamma);
     vertSpecInfo.pData = &applyVertexColorGamma;
+
+    VkSpecializationMapEntry fragMapEntry = {};
+    fragMapEntry.constantID = 0;
+    fragMapEntry.offset = 0;
+    fragMapEntry.size = sizeof(uint32_t);
+
+    VkSpecializationInfo fragSpecInfo = {};
+    fragSpecInfo.mapEntryCount = 1;
+    fragSpecInfo.pMapEntries = &fragMapEntry;
+    fragSpecInfo.dataSize = sizeof(alphaTest);
+    fragSpecInfo.pData = &alphaTest;
 
     VkPipelineShaderStageCreateInfo shaderStages[] =
     {
         vertShaderStage,
-        alphaTest ? fragAlphaShaderStage : fragShaderStage
+        fragShaderStage
     };
     shaderStages[0].pSpecializationInfo = &vertSpecInfo;
+    shaderStages[1].pSpecializationInfo = &fragSpecInfo;
 
 
     VkDynamicState dynamicStates[2] =

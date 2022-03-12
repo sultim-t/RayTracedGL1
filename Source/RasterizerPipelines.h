@@ -65,7 +65,6 @@ private:
     VkRenderPass renderPass;
     VkPipelineShaderStageCreateInfo vertShaderStage;
     VkPipelineShaderStageCreateInfo fragShaderStage;
-    VkPipelineShaderStageCreateInfo fragAlphaShaderStage;
 
     rgl::unordered_map<uint32_t, VkPipeline> pipelines;
     VkPipelineCache pipelineCache;

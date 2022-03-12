@@ -34,7 +34,19 @@ layout(push_constant) uniform RasterizerFrag_BT
     layout(offset = 80) uint textureIndex;
 } rasterizerFragInfo;
 
+layout (constant_id = 0) const uint alphaTest = 0;
+
+#define ALPHA_THRESHOLD 0.5
+
 void main()
 {
     outColor = rasterizerFragInfo.color * vertColor * getTextureSample(rasterizerFragInfo.textureIndex, vertTexCoord);
+
+    if (alphaTest != 0)
+    {
+        if (outColor.a < ALPHA_THRESHOLD)
+        {
+            discard;
+        }
+    }
 }

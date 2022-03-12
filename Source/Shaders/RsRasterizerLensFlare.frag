@@ -29,7 +29,19 @@ layout (location = 0) out vec4 outColor;
 #define DESC_SET_TEXTURES 1
 #include "ShaderCommonGLSLFunc.h"
 
+layout (constant_id = 0) const uint alphaTest = 0;
+
+#define ALPHA_THRESHOLD 0.5
+
 void main()
 {
     outColor = vertColor * getTextureSample(textureIndex, vertTexCoord);
+
+    if (alphaTest != 0)
+    {
+        if (outColor.a < ALPHA_THRESHOLD)
+        {
+            discard;
+        }
+    }
 }
