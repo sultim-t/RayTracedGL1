@@ -215,21 +215,31 @@ bool isBackface(const vec3 normalGeom, const vec3 rayDir)
     return dot(normalGeom, -rayDir) < 0.0;
 }
 
-vec3 getNormal(const vec3 position, const vec3 normalGeom, const RayCone rayCone, const vec3 rayDir, bool isWater, bool wasPortal)
+vec3 getNormal(const vec3 position, const vec3 normalFromMap, const vec3 normalGeom, const RayCone rayCone, const vec3 rayDir, bool isWater, bool wasPortal)
 {
-    vec3 normal = normalGeom;
-
-    if (isBackface(normalGeom, rayDir))
-    {
-        normal *= -1;
-    }
-
     if (isWater)
     {
-        normal = getWaterNormal(rayCone, rayDir, normal, position, wasPortal);
-    }
+        vec3 n = normalGeom;
 
-    return normal;
+        if (isBackface(normalGeom, rayDir))
+        {
+            n *= -1;
+        }
+
+        return getWaterNormal(rayCone, rayDir, n, position, wasPortal);
+    }
+    else
+    {
+        // only a small portion of normal map
+        vec3 n = normalGeom + normalFromMap * 0.01;
+
+        if (isBackface(normalGeom, rayDir))
+        {
+           n *= -1;
+        }
+
+        return normalize(n);
+    }
 }
 
 #ifdef RAYGEN_PRIMARY_SHADER
@@ -399,7 +409,7 @@ void main()
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const vec3 normal = getNormal(h.hitPosition, h.normalGeom, rayCone, rayDir, !isPortal && (newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER), wasPortal);
+        const vec3 normal = getNormal(h.hitPosition, h.normal, h.normalGeom, rayCone, rayDir, !isPortal && (newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER), wasPortal);
 
 
         bool delaySplitOnNextTime = false;
