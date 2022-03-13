@@ -74,7 +74,7 @@ void main()
             const vec3 prevSpec = texelFetchUnfilteredSpecular(prevPix);
             const float prevLuminanceSpec = getLuminance(prevSpec);
 
-            if (lastLuminance + lastLuminanceSpec < prevLuminance + prevLuminanceSpec)
+            if (lastLuminance < prevLuminance)
             {
                 lastStrataPos = ivec2(xx, yy);
                 lastPrevPix = prevPix;
