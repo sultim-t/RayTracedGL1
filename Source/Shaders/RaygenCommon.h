@@ -960,10 +960,8 @@ void processDirectIllumination(
     }
 
     PROCESS_SEPARATELY(processDirectionalLight);
-    #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     PROCESS_SEPARATELY(processSphericalLight);
     PROCESS_SEPARATELY(processPolygonalLight);
-    #endif
     PROCESS_SEPARATELY(processSpotLight);
     
 
