@@ -39,7 +39,7 @@ void main()
     float bw = max(getBW(color), getBW(albedo));
     bw = sqrt(bw);
 
-    const int L = 8;
+    const int L = 32;
     bw = clamp(int(bw * L), 0, L) / float(L);
 
     effect_storeToTarget(mix(color, vec3(1 - bw), getProgress()), pix);
