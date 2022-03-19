@@ -61,16 +61,20 @@ void main()
 
     progress = clamp(progress - wave, 0.0, 1.0);
     progress *= progress;
+    progress *= 2;
 
     
-    int offset = int(progress * sz.y);
-    if (pix.y < offset)
+    int pix_offset = int(progress * sz.y);
+    vec3 c;
+
+    if (pix.y - pix_offset < 0)
     {
-        effect_storeUnmodifiedToTarget(pix);
-        return;
+        c = effect_loadFromSource(pix);
+    }
+    else
+    {
+        c = imageLoad(framebufWipeEffectSource, ivec2(pix.x, pix.y - pix_offset)).rgb;
     }
     
-
-    vec3 c = imageLoad(framebufWipeEffectSource, ivec2(pix.x, pix.y - offset)).rgb;
-    effect_storeToTarget(c, ivec2(pix.x, pix.y + offset));
+    effect_storeToTarget(c, pix);
 }
