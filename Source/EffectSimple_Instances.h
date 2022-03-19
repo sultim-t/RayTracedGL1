@@ -141,4 +141,26 @@ struct EffectColorTint final : public EffectSimple<EffectColorTint_PushConst>
     }
 };
 
+
+// ------------------ //
+
+
+struct EffectHueShift_PushConst
+{};
+
+struct EffectHueShift final : public EffectSimple<EffectHueShift_PushConst>
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectHueShift, "EffectHueShift")
+
+        bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectHueShift *params)
+    {
+        if (params == nullptr)
+        {
+            return SetupNull();
+        }
+
+        return EffectSimple::Setup(args, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
 }

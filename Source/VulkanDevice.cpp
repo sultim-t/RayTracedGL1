@@ -232,6 +232,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectRadialBlur            = CONSTRUCT_SIMPLE_EFFECT(EffectRadialBlur);
     effectChromaticAberration   = CONSTRUCT_SIMPLE_EFFECT(EffectChromaticAberration);
     effectInverseBW             = CONSTRUCT_SIMPLE_EFFECT(EffectInverseBW);
+    effectHueShift              = CONSTRUCT_SIMPLE_EFFECT(EffectHueShift);
     effectDistortedSides        = CONSTRUCT_SIMPLE_EFFECT(EffectDistortedSides);
     effectColorTint             = CONSTRUCT_SIMPLE_EFFECT(EffectColorTint);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
@@ -253,6 +254,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectRadialBlur);
     shaderManager->Subscribe(effectChromaticAberration);
     shaderManager->Subscribe(effectInverseBW);
+    shaderManager->Subscribe(effectHueShift);
     shaderManager->Subscribe(effectDistortedSides);
     shaderManager->Subscribe(effectColorTint);
 
@@ -279,6 +281,7 @@ VulkanDevice::~VulkanDevice()
     effectRadialBlur.reset();
     effectChromaticAberration.reset();
     effectInverseBW.reset();
+    effectHueShift.reset();
     effectDistortedSides.reset();
     effectColorTint.reset();
     denoiser.reset();
@@ -896,6 +899,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         if (effectInverseBW->Setup(args, drawInfo.postEffectParams.pInverseBlackAndWhite))
         {
             currentResultImage = effectInverseBW->Apply(args, currentResultImage);
+        }
+        if (effectHueShift->Setup(args, drawInfo.postEffectParams.pHueShift))
+        {
+            currentResultImage = effectHueShift->Apply(args, currentResultImage);
         }
         if (effectChromaticAberration->Setup(args, drawInfo.postEffectParams.pChromaticAberration))
         {

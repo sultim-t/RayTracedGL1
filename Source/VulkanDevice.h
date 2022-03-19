@@ -279,6 +279,7 @@ private:
     std::shared_ptr<EffectRadialBlur>           effectRadialBlur;
     std::shared_ptr<EffectChromaticAberration>  effectChromaticAberration;
     std::shared_ptr<EffectInverseBW>            effectInverseBW;
+    std::shared_ptr<EffectHueShift>             effectHueShift;
     std::shared_ptr<EffectDistortedSides>       effectDistortedSides;
     std::shared_ptr<EffectColorTint>            effectColorTint;
 

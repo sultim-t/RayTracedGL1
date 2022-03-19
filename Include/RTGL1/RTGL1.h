@@ -1006,6 +1006,13 @@ typedef struct RgPostEffectInverseBlackAndWhite
     float       transitionDurationOut;
 } RgPostEffectInverseBlackAndWhite;
 
+typedef struct RgPostEffectHueShift
+{
+    RgBool32    isActive;
+    float       transitionDurationIn;
+    float       transitionDurationOut;
+} RgPostEffectHueShift;
+
 typedef struct RgPostEffectDistortedSides
 {
     RgBool32    isActive;
@@ -1028,6 +1035,7 @@ typedef struct RgDrawFramePostEffectsParams
     const RgPostEffectRadialBlur            *pRadialBlur;
     const RgPostEffectChromaticAberration   *pChromaticAberration;
     const RgPostEffectInverseBlackAndWhite  *pInverseBlackAndWhite;
+    const RgPostEffectHueShift              *pHueShift;
     const RgPostEffectDistortedSides        *pDistortedSides;
     const RgPostEffectColorTint             *pColorTint;
 } RgDrawFramePostEffectsParams;
