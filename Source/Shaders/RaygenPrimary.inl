@@ -230,8 +230,7 @@ vec3 getNormal(const vec3 position, const vec3 normalFromMap, const vec3 normalG
     }
     else
     {
-        // only a small portion of normal map
-        vec3 n = normalGeom + normalFromMap * 0.01;
+        vec3 n = normalFromMap;
 
         if (isBackface(normalGeom, rayDir))
         {
