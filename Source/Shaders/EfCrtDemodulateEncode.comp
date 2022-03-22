@@ -52,11 +52,9 @@ const mat3 mix_mat = mat3(
 
 vec3 demodulateAndEncode(ivec2 pix)
 {
-    const float frame_count = 1;
-
 	vec3 yiq = rgb2yiq(effect_loadFromSource(pix));
 
-    float chroma_phase = M_PI * (mod(pix.y, 2.0) + frame_count);
+    float chroma_phase = M_PI * (mod(pix.y, 2.0) + globalUniform.frameId);
 
 	float mod_phase = chroma_phase + pix.x * CHROMA_MOD_FREQ;
 
