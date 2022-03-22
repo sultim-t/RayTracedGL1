@@ -1029,6 +1029,11 @@ typedef struct RgPostEffectColorTint
     RgFloat3D   color;
 } RgPostEffectColorTint;
 
+typedef struct RgPostEffectCRT
+{
+    RgBool32    isActive;
+} RgPostEffectCRT;
+
 typedef struct RgDrawFramePostEffectsParams
 {
     const RgPostEffectWipe                  *pWipe;
@@ -1038,6 +1043,7 @@ typedef struct RgDrawFramePostEffectsParams
     const RgPostEffectHueShift              *pHueShift;
     const RgPostEffectDistortedSides        *pDistortedSides;
     const RgPostEffectColorTint             *pColorTint;
+    const RgPostEffectCRT                   *pCRT;
 } RgDrawFramePostEffectsParams;
 
 typedef enum RgMediaType

@@ -235,6 +235,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectHueShift              = CONSTRUCT_SIMPLE_EFFECT(EffectHueShift);
     effectDistortedSides        = CONSTRUCT_SIMPLE_EFFECT(EffectDistortedSides);
     effectColorTint             = CONSTRUCT_SIMPLE_EFFECT(EffectColorTint);
+    effectCrtDemodulateEncode   = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDemodulateEncode);
+    effectCrtDecode             = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDecode);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
 
@@ -257,6 +259,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectHueShift);
     shaderManager->Subscribe(effectDistortedSides);
     shaderManager->Subscribe(effectColorTint);
+    shaderManager->Subscribe(effectCrtDemodulateEncode);
+    shaderManager->Subscribe(effectCrtDecode);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -284,6 +288,8 @@ VulkanDevice::~VulkanDevice()
     effectHueShift.reset();
     effectDistortedSides.reset();
     effectColorTint.reset();
+    effectCrtDemodulateEncode.reset();
+    effectCrtDecode.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -919,6 +925,14 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
         {
             currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
+        }
+        if (drawInfo.postEffectParams.pCRT != NULL && drawInfo.postEffectParams.pCRT->isActive)
+        {
+            effectCrtDemodulateEncode->Setup(args);
+            currentResultImage = effectCrtDemodulateEncode->Apply(args, currentResultImage);
+
+            effectCrtDecode->Setup(args);
+            currentResultImage = effectCrtDecode->Apply(args, currentResultImage);
         }
     }
 

@@ -1,0 +1,90 @@
+// Copyright (c) 2022 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+
+// from https://github.com/libretro/glsl-shaders
+
+
+#version 460
+
+#include "EfSimple.inl"
+
+const mat3 yiq2rgb_mat = mat3(
+   1.0, 0.956, 0.6210,
+   1.0, -0.2720, -0.6474,
+   1.0, -1.1060, 1.7046);
+
+vec3 yiq2rgb(vec3 yiq)
+{
+   return yiq * yiq2rgb_mat;
+}
+
+#define NTSC_CRT_GAMMA 2.4
+#define NTSC_MONITOR_GAMMA 2.0
+
+#define TAPS 32
+const float luma_filter[TAPS + 1] = float[TAPS + 1](
+  -0.000174844,  -0.000205844,  -0.000149453,  -0.000051693,
+   0.000000000,  -0.000066171,  -0.000245058,  -0.000432928,   
+  -0.000472644,  -0.000252236,   0.000198929,   0.000687058, 
+   0.000944112,   0.000803467,   0.000363199,   0.000013422,   
+   0.000253402,   0.001339461,   0.002932972,   0.003983485,
+   0.003026683,  -0.001102056,  -0.008373026,  -0.016897700,   
+  -0.022914480,  -0.021642347,  -0.008863273,   0.017271957,   
+   0.054921920,   0.098342579,   0.139044281,   0.168055832,  
+   0.178571429);
+
+const float chroma_filter[TAPS + 1] = float[TAPS + 1](
+   0.001384762,   0.001678312,   0.002021715,   0.002420562,
+   0.002880460,   0.003406879,   0.004004985,   0.004679445,
+   0.005434218,   0.006272332,   0.007195654,   0.008204665,
+   0.009298238,   0.010473450,   0.011725413,   0.013047155,
+   0.014429548,   0.015861306,   0.017329037,   0.018817382,
+   0.020309220,   0.021785952,   0.023227857,   0.024614500,
+   0.025925203,   0.027139546,   0.028237893,   0.029201910,
+   0.030015081,   0.030663170,   0.031134640,   0.031420995,
+   0.031517031);
+
+#define fetch_offset(offset) effect_loadFromSource(pix + ivec2(offset, 0.0))
+
+vec3 decode(ivec2 pix)
+{
+	vec3 signal = vec3(0.0);
+
+	for (int i = 0; i < TAPS; i++)
+	{
+		signal += 
+            (fetch_offset(i - TAPS) + fetch_offset(TAPS - i)) * 
+            vec3(luma_filter[i], chroma_filter[i], chroma_filter[i]);
+	}
+
+	signal += 
+        fetch_offset(0) * 
+        vec3(luma_filter[TAPS], chroma_filter[TAPS], chroma_filter[TAPS]);
+
+    vec3 rgb = yiq2rgb(signal);
+    return pow(rgb, vec3(NTSC_CRT_GAMMA / NTSC_MONITOR_GAMMA));
+}
+
+void main()
+{
+    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    effect_storeToTarget(decode(pix), pix);
+}

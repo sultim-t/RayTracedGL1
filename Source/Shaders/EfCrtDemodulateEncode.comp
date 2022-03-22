@@ -1,0 +1,77 @@
+// Copyright (c) 2022 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+
+// from https://github.com/libretro/glsl-shaders
+
+
+#version 460
+
+#include "EfSimple.inl"
+
+const mat3 yiq_mat = mat3(
+      0.2989, 0.5870, 0.1140,
+      0.5959, -0.2744, -0.3216,
+      0.2115, -0.5229, 0.3114
+);
+
+vec3 rgb2yiq(vec3 col)
+{
+   return col * yiq_mat;
+}
+
+#define CHROMA_MOD_FREQ (4.0 * M_PI / 15.0)
+
+#define SATURATION 1.0
+#define BRIGHTNESS 1.0
+#define ARTIFACTING 0.0
+#define FRINGING 0.0
+
+const mat3 mix_mat = mat3(
+	BRIGHTNESS, FRINGING, FRINGING,
+	ARTIFACTING, 2.0 * SATURATION, 0.0,
+	ARTIFACTING, 0.0, 2.0 * SATURATION
+);
+
+vec3 demodulateAndEncode(ivec2 pix)
+{
+    const float frame_count = 1;
+
+	vec3 yiq = rgb2yiq(effect_loadFromSource(pix));
+
+    float chroma_phase = M_PI * (mod(pix.y, 2.0) + frame_count);
+
+	float mod_phase = chroma_phase + pix.x * CHROMA_MOD_FREQ;
+
+	float i_mod = cos(mod_phase);
+	float q_mod = sin(mod_phase);
+
+	yiq.yz *= vec2(i_mod, q_mod); // Modulate.
+	yiq *= mix_mat; // Cross-talk.
+	yiq.yz *= vec2(i_mod, q_mod); // Demodulate.
+    
+    return yiq;
+}
+
+void main()
+{
+    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    effect_storeToTarget(demodulateAndEncode(pix), pix);
+}

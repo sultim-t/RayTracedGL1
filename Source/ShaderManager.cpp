@@ -80,7 +80,9 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"EffectInverseBW",             "EfInverseBW.comp.spv"             },
     {"EffectDistortedSides",        "EfDistortedSides.comp.spv"        },
     {"EffectColorTint",             "EfColorTint.comp.spv"             },
-    {"EffectHueShift",              "EfHueShift.comp.spv"             },
+    {"EffectHueShift",              "EfHueShift.comp.spv"              },
+    {"EffectCrtDemodulateEncode",   "EfCrtDemodulateEncode.comp.spv"   },
+    {"EffectCrtDecode",             "EfCrtDecode.comp.spv"             },
 };
 
 
