@@ -922,10 +922,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         {
             currentResultImage = effectRadialBlur->Apply(args, currentResultImage);
         }
-        if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
-        {
-            currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
-        }
         if (drawInfo.postEffectParams.pCRT != NULL && drawInfo.postEffectParams.pCRT->isActive)
         {
             effectCrtDemodulateEncode->Setup(args);
@@ -933,6 +929,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
             effectCrtDecode->Setup(args);
             currentResultImage = effectCrtDecode->Apply(args, currentResultImage);
+        }
+        if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
+        {
+            currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
         }
     }
 

@@ -107,12 +107,33 @@ vec4 effect_getRandomSample(ivec2 pix, uint frameIndex)
 
 // Need these functions as R10G11B10 doesn't allow negative values,
 // and I/Q components can be <0
+#define I_LIMIT 0.6
+#define Q_LIMIT 0.55
 vec3 encodeYiqForStorage(vec3 yiq)
 {
-#define YIQ_STORAGE_SCALE 0.2 // to make less green
-    return (yiq + 1) * YIQ_STORAGE_SCALE;
+    float i = clamp(yiq.y, -I_LIMIT, I_LIMIT);
+    float q = clamp(yiq.z, -Q_LIMIT, Q_LIMIT);
+
+    i += I_LIMIT;
+    q += Q_LIMIT;
+
+    i /= I_LIMIT * 2;
+    q /= Q_LIMIT * 2;
+
+    return vec3(yiq.x, i, q);
 }
 vec3 decodeYiqFromStorage(vec3 yiqFromStorage)
 {
-    return (yiqFromStorage / YIQ_STORAGE_SCALE) - 1;
+    float i = clamp(yiqFromStorage.y, 0, 1);
+    float q = clamp(yiqFromStorage.z, 0, 1);
+
+    i *= I_LIMIT * 2;
+    q *= Q_LIMIT * 2;
+
+    i -= I_LIMIT;
+    q -= Q_LIMIT;
+
+    return vec3(yiqFromStorage.x, i, q);
 }
+#undef I_LIMIT
+#undef Q_LIMIT
