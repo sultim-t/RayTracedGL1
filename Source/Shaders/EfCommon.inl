@@ -103,3 +103,16 @@ vec4 effect_getRandomSample(ivec2 pix, uint frameIndex)
     return getRandomSample(getRandomSeed(pix, frameIndex, sz.x, sz.y), 0);
 }
 #endif
+
+
+// Need these functions as R10G11B10 doesn't allow negative values,
+// and I/Q components can be <0
+vec3 encodeYiqForStorage(vec3 yiq)
+{
+#define YIQ_STORAGE_SCALE 0.2 // to make less green
+    return (yiq + 1) * YIQ_STORAGE_SCALE;
+}
+vec3 decodeYiqFromStorage(vec3 yiqFromStorage)
+{
+    return (yiqFromStorage / YIQ_STORAGE_SCALE) - 1;
+}

@@ -62,7 +62,16 @@ const float chroma_filter[TAPS + 1] = float[TAPS + 1](
    0.030015081,   0.030663170,   0.031134640,   0.031420995,
    0.031517031);
 
-#define fetch_offset(offset) effect_loadFromSource(pix + ivec2(offset, 0.0))
+
+vec3 fetchOffset(ivec2 pix, int xoffset) 
+{
+    if (pix.x + xoffset < 0 || pix.x + xoffset >= effect_getFramebufSize().x)
+    {
+        return vec3(0.0);
+    }
+
+    return decodeYiqFromStorage(effect_loadFromSource(pix + ivec2(xoffset, 0)));
+}
 
 vec3 decode(ivec2 pix)
 {
@@ -71,12 +80,12 @@ vec3 decode(ivec2 pix)
 	for (int i = 0; i < TAPS; i++)
 	{
 		signal += 
-            (fetch_offset(i - TAPS) + fetch_offset(TAPS - i)) * 
+            (fetchOffset(pix, i - TAPS) + fetchOffset(pix, TAPS - i)) * 
             vec3(luma_filter[i], chroma_filter[i], chroma_filter[i]);
 	}
 
 	signal += 
-        fetch_offset(0) * 
+        fetchOffset(pix, 0) * 
         vec3(luma_filter[TAPS], chroma_filter[TAPS], chroma_filter[TAPS]);
 
     vec3 rgb = yiq2rgb(signal);
