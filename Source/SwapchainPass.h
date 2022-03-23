@@ -20,9 +20,8 @@
 
 #pragma once
 
-#include <vector>
-
 #include "Common.h"
+#include "Framebuffers.h"
 #include "RasterizerPipelines.h"
 
 namespace RTGL1
@@ -33,7 +32,6 @@ class SwapchainPass : public IShaderDependency
 public:
     SwapchainPass(VkDevice device, 
                   VkPipelineLayout pipelineLayout, 
-                  VkFormat surfaceFormat,
                   const std::shared_ptr<ShaderManager> &shaderManager,
                   const RgInstanceCreateInfo &instanceInfo);
     ~SwapchainPass() override;
@@ -43,8 +41,7 @@ public:
     SwapchainPass &operator=(const SwapchainPass &other) = delete;
     SwapchainPass &operator=(SwapchainPass &&other) noexcept = delete;
 
-    void CreateFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight,
-                            const VkImageView *pSwapchainAttchs, uint32_t swapchainAttchCount);
+    void CreateFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight, const std::shared_ptr<Framebuffers> &storageFramebuffers);
     void DestroyFramebuffers();
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
@@ -53,7 +50,7 @@ public:
     const std::shared_ptr<RasterizerPipelines> &GetSwapchainPipelines() const;
     uint32_t GetSwapchainWidth() const;
     uint32_t GetSwapchainHeight() const;
-    VkFramebuffer GetSwapchainFramebuffer(uint32_t swapchainImageIndex) const;
+    VkFramebuffer GetSwapchainFramebuffer(FramebufferImageIndex framebufIndex, uint32_t frameIndex) const;
 
 private:
     void CreateSwapchainRenderPass(VkFormat surfaceFormat);
@@ -67,7 +64,8 @@ private:
     uint32_t swapchainWidth;
     uint32_t swapchainHeight;
 
-    std::vector<VkFramebuffer> swapchainFramebuffers;
+    VkFramebuffer fbPing[MAX_FRAMES_IN_FLIGHT];
+    VkFramebuffer fbPong[MAX_FRAMES_IN_FLIGHT];
 };
 
 }

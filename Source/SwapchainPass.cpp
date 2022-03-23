@@ -23,16 +23,18 @@
 RTGL1::SwapchainPass::SwapchainPass(
     VkDevice _device, 
     VkPipelineLayout _pipelineLayout,
-    VkFormat _surfaceFormat,
     const std::shared_ptr<ShaderManager> &_shaderManager,
     const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
     swapchainRenderPass(VK_NULL_HANDLE),
     swapchainWidth(0),
-    swapchainHeight(0)
+    swapchainHeight(0),
+    fbPing{},
+    fbPong{}
 {
-    CreateSwapchainRenderPass(_surfaceFormat);
+    assert(ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PING] == ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PONG]);
+    CreateSwapchainRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PING]);
 
     swapchainPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, swapchainRenderPass, _instanceInfo.rasterizedVertexColorGamma);
     swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
@@ -44,29 +46,37 @@ RTGL1::SwapchainPass::~SwapchainPass()
     DestroyFramebuffers();
 }
 
-void RTGL1::SwapchainPass::CreateFramebuffers(uint32_t newSwapchainWidth, uint32_t newSwapchainHeight,
-                                              const VkImageView *pSwapchainAttchs, uint32_t swapchainAttchCount)
+void RTGL1::SwapchainPass::CreateFramebuffers(uint32_t newSwapchainWidth, uint32_t newSwapchainHeight, const std::shared_ptr<Framebuffers> &storageFramebuffers)
 {
-    // prepare framebuffers for drawing right into swapchain images
-    swapchainFramebuffers.resize(swapchainAttchCount, VK_NULL_HANDLE);
-
-    for (uint32_t i = 0; i < swapchainAttchCount; i++)
+    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        assert(swapchainFramebuffers[i] == VK_NULL_HANDLE);
+        assert(fbPing[i] == VK_NULL_HANDLE && fbPong[i] == VK_NULL_HANDLE);
+
+        VkImageView v = VK_NULL_HANDLE;
 
         VkFramebufferCreateInfo fbInfo = {};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fbInfo.renderPass = swapchainRenderPass;
         fbInfo.attachmentCount = 1;
-        fbInfo.pAttachments = &pSwapchainAttchs[i];
+        fbInfo.pAttachments = &v;
         fbInfo.width = newSwapchainWidth;
         fbInfo.height = newSwapchainHeight;
         fbInfo.layers = 1;
 
-        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &swapchainFramebuffers[i]);
-        VK_CHECKERROR(r);
+        {
+            v = storageFramebuffers->GetImageView(FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PING, 0);
 
-        SET_DEBUG_NAME(device, swapchainFramebuffers[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer swapchain framebuffer");
+            VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &fbPing[i]);
+            VK_CHECKERROR(r);
+        }
+        {
+            v = storageFramebuffers->GetImageView(FramebufferImageIndex::FB_IMAGE_INDEX_UPSCALED_PONG, 0);
+
+            VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &fbPong[i]);
+            VK_CHECKERROR(r);
+        }
+        SET_DEBUG_NAME(device, fbPing[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer swapchain ping framebuffer");
+        SET_DEBUG_NAME(device, fbPong[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer swapchain pong framebuffer");
     }
 
     this->swapchainWidth = newSwapchainWidth;
@@ -75,7 +85,15 @@ void RTGL1::SwapchainPass::CreateFramebuffers(uint32_t newSwapchainWidth, uint32
 
 void RTGL1::SwapchainPass::DestroyFramebuffers()
 {
-    for (VkFramebuffer &fb : swapchainFramebuffers)
+    for (VkFramebuffer &fb : fbPing)
+    {
+        if (fb != VK_NULL_HANDLE)
+        {
+            vkDestroyFramebuffer(device, fb, nullptr);
+            fb = VK_NULL_HANDLE;
+        }
+    }
+    for (VkFramebuffer &fb : fbPong)
     {
         if (fb != VK_NULL_HANDLE)
         {
@@ -111,14 +129,16 @@ uint32_t RTGL1::SwapchainPass::GetSwapchainHeight() const
     return swapchainHeight;
 }
 
-VkFramebuffer RTGL1::SwapchainPass::GetSwapchainFramebuffer(uint32_t swapchainImageIndex) const
+VkFramebuffer RTGL1::SwapchainPass::GetSwapchainFramebuffer(FramebufferImageIndex framebufIndex, uint32_t frameIndex) const
 {
-    if (swapchainImageIndex >= swapchainFramebuffers.size())
-    {
-        VK_NULL_HANDLE;
-    }
+    assert(frameIndex < MAX_FRAMES_IN_FLIGHT);
 
-    return swapchainFramebuffers[swapchainImageIndex];
+    switch (framebufIndex)
+    {
+        case FB_IMAGE_INDEX_UPSCALED_PING: return fbPing[frameIndex];
+        case FB_IMAGE_INDEX_UPSCALED_PONG: return fbPong[frameIndex];
+        default: assert(0); return VK_NULL_HANDLE;
+    }
 }
 
 void RTGL1::SwapchainPass::CreateSwapchainRenderPass(VkFormat surfaceFormat)
@@ -130,8 +150,8 @@ void RTGL1::SwapchainPass::CreateSwapchainRenderPass(VkFormat surfaceFormat)
     colorAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttch.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    colorAttch.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    colorAttch.initialLayout = VK_IMAGE_LAYOUT_GENERAL;
+    colorAttch.finalLayout = VK_IMAGE_LAYOUT_GENERAL;
 
 
     VkAttachmentReference colorRef = {};

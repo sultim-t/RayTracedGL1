@@ -26,7 +26,6 @@
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
 #include "IFramebuffersDependency.h"
-#include "ISwapchainDependency.h"
 #include "LensFlares.h"
 #include "RasterizedDataCollector.h"
 #include "RasterizerPipelines.h"
@@ -44,7 +43,7 @@ class RenderResolutionHelper;
 
 
 // This class provides rasterization functionality
-class Rasterizer : public ISwapchainDependency, public IShaderDependency, public IFramebuffersDependency
+class Rasterizer : public IShaderDependency, public IFramebuffersDependency
 {
 public:
     explicit Rasterizer(
@@ -57,7 +56,6 @@ public:
         std::shared_ptr<MemoryAllocator> allocator,
         std::shared_ptr<Framebuffers> storageFramebuffers,
         std::shared_ptr<CommandBufferManager> cmdManager,
-        VkFormat surfaceFormat,
         const RgInstanceCreateInfo &instanceInfo);
     ~Rasterizer() override;
 
@@ -76,13 +74,10 @@ public:
     void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
     void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, const float skyViewerPos[3], float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution);
     void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj, bool werePrimaryTraced, const RgDrawFrameLensFlareParams *pLensFlareParams);
-    void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
-
-    void OnSwapchainCreate(const Swapchain *pSwapchain) override;
-    void OnSwapchainDestroy() override;
+    void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex imageToDrawIn, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
-    void OnFramebuffersSizeChange(uint32_t width, uint32_t height) override;
+    void OnFramebuffersSizeChange(const ResolutionState &resolutionState) override;
 
     const std::shared_ptr<RenderCubemap> &GetRenderCubemap() const;
 

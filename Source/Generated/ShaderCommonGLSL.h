@@ -456,8 +456,12 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, r11f_g11f_b10f) uniform image2
 #ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 26, r11f_g11f_b10f) uniform image2D framebufFinal;
 #endif
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 27, r11f_g11f_b10f) uniform image2D framebufUpscaledPing;
+#endif
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 28, r11f_g11f_b10f) uniform image2D framebufUpscaledPong;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 29, r32f) uniform image2D framebufDepthDlss;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 30, rg16f) uniform image2D framebufMotionDlss;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 31, r11f_g11f_b10f) uniform image2D framebufAccumHistoryLength;
@@ -532,8 +536,12 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 95) uniform sampler2D framebufPreF
 #ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 96) uniform sampler2D framebufFinal_Sampler;
 #endif
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 97) uniform sampler2D framebufUpscaledPing_Sampler;
+#endif
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 98) uniform sampler2D framebufUpscaledPong_Sampler;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 99) uniform sampler2D framebufDepthDlss_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 100) uniform sampler2D framebufMotionDlss_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 101) uniform sampler2D framebufAccumHistoryLength_Sampler;

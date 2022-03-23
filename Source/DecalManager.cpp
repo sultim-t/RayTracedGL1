@@ -206,10 +206,10 @@ void RTGL1::DecalManager::OnShaderReload(const ShaderManager *shaderManager)
     CreatePipelines(shaderManager);
 }
 
-void RTGL1::DecalManager::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
+void RTGL1::DecalManager::OnFramebuffersSizeChange(const ResolutionState &resolutionState)
 {
     DestroyFramebuffers();
-    CreateFramebuffers(width, height);
+    CreateFramebuffers(resolutionState.renderWidth, resolutionState.renderHeight);
 }
 
 void RTGL1::DecalManager::CreateRenderPass()

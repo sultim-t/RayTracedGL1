@@ -24,6 +24,7 @@
 
 #include "DLSS.h"
 #include "RgException.h"
+#include "ResolutionState.h"
 
 namespace RTGL1
 {
@@ -33,6 +34,11 @@ class RenderResolutionHelper
 public:
     RenderResolutionHelper() = default;
     ~RenderResolutionHelper() = default;
+
+    RenderResolutionHelper(const RenderResolutionHelper &other) = delete;
+    RenderResolutionHelper(RenderResolutionHelper &&other) noexcept = delete;
+    RenderResolutionHelper &operator=(const RenderResolutionHelper &other) = delete;
+    RenderResolutionHelper &operator=(RenderResolutionHelper &&other) noexcept = delete;
 
     void Setup(const RgDrawFrameRenderResolutionParams *pParams, 
                uint32_t fullWidth, uint32_t fullHeight,
@@ -180,6 +186,8 @@ public:
     VkFilter                 GetBlitFilter() const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NEAREST ? VK_FILTER_NEAREST : VK_FILTER_LINEAR; }
 
     // RgRenderResolutionMode   GetResolutionMode()      const { return resolutionMode; }
+
+    ResolutionState GetResolutionState() const { return ResolutionState{ renderWidth, renderHeight, upscaledWidth, upscaledHeight }; }
 
 private:
     uint32_t renderWidth = 0;

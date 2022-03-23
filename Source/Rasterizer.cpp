@@ -73,7 +73,6 @@ Rasterizer::Rasterizer(
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<Framebuffers> _storageFramebuffers,
     std::shared_ptr<CommandBufferManager> _cmdManager,
-    VkFormat _surfaceFormat,
     const RgInstanceCreateInfo &_instanceInfo)
 :
     device(_device),
@@ -89,7 +88,7 @@ Rasterizer::Rasterizer(
     CreatePipelineLayout(_textureManager->GetDescSetLayout());
 
     rasterPass = std::make_shared<RasterPass>(device, _physDevice, commonPipelineLayout, _shaderManager, storageFramebuffers, _instanceInfo);
-    swapchainPass = std::make_shared<SwapchainPass>(device, commonPipelineLayout, _surfaceFormat, _shaderManager, _instanceInfo);
+    swapchainPass = std::make_shared<SwapchainPass>(device, commonPipelineLayout, _shaderManager, _instanceInfo);
     renderCubemap = std::make_shared<RenderCubemap>(device, allocator, _shaderManager, _textureManager, _uniform, _samplerManager, cmdManager, _instanceInfo);
 
     lensFlares = std::make_unique<LensFlares>(device, allocator, _shaderManager, rasterPass->GetRasterRenderPass(), _uniform, storageFramebuffers, _textureManager, _instanceInfo);
@@ -249,7 +248,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
     Draw(cmd, frameIndex, params);
 }
 
-void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t swapchainIndex, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj)
+void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex imageToDrawIn, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj)
 {
     CmdLabel label(cmd, "Rasterized to swapchain");
 
@@ -261,7 +260,7 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, uint3
         swapchainPass->GetSwapchainPipelines(),
         collectorGeneral->GetSwapchainDrawInfos(),
         swapchainPass->GetSwapchainRenderPass(),
-        swapchainPass->GetSwapchainFramebuffer(swapchainIndex),
+        swapchainPass->GetSwapchainFramebuffer(imageToDrawIn, frameIndex),
         swapchainPass->GetSwapchainWidth(),
         swapchainPass->GetSwapchainHeight(),
         collectorGeneral->GetVertexBuffer(),
@@ -400,18 +399,6 @@ uint32_t Rasterizer::GetLensFlareCullingInputCount() const
     return lensFlares->GetCullingInputCount();
 }
 
-void Rasterizer::OnSwapchainCreate(const Swapchain *pSwapchain)
-{
-    swapchainPass->CreateFramebuffers(
-        pSwapchain->GetWidth(), pSwapchain->GetHeight(),
-        pSwapchain->GetImageViews(), pSwapchain->GetImageCount());
-}
-
-void Rasterizer::OnSwapchainDestroy()
-{
-    swapchainPass->DestroyFramebuffers();
-}
-
 void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
 {
     rasterPass->OnShaderReload(shaderManager);
@@ -420,10 +407,13 @@ void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
     lensFlares->OnShaderReload(shaderManager);
 }
 
-void Rasterizer::OnFramebuffersSizeChange(uint32_t width, uint32_t height)
+void Rasterizer::OnFramebuffersSizeChange(const ResolutionState &resolutionState)
 {
     rasterPass->DestroyFramebuffers();
-    rasterPass->CreateFramebuffers(width, height, storageFramebuffers, allocator, cmdManager);
+    swapchainPass->DestroyFramebuffers();
+
+    rasterPass->CreateFramebuffers(resolutionState.renderWidth, resolutionState.renderHeight, storageFramebuffers, allocator, cmdManager);
+    swapchainPass->CreateFramebuffers(resolutionState.upscaledWidth, resolutionState.upscaledHeight, storageFramebuffers);
 }
 
 void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout)

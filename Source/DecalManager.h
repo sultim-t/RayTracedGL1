@@ -55,7 +55,7 @@ public:
               const std::shared_ptr<TextureManager> &textureManager);
 
     void OnShaderReload(const ShaderManager *shaderManager) override;
-    void OnFramebuffersSizeChange(uint32_t width, uint32_t height) override;
+    void OnFramebuffersSizeChange(const ResolutionState &resolutionState) override;
 
 private:
     void CreateRenderPass();

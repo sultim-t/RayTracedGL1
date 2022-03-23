@@ -150,7 +150,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator,
         framebuffers,
         cmdManager,
-        swapchain->GetSurfaceFormat(),
         *info);
 
     decalManager        = std::make_shared<DecalManager>(
@@ -239,8 +238,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectCrtDecode             = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDecode);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
-
-    swapchain->Subscribe(rasterizer);
 
     shaderManager->Subscribe(denoiser);
     shaderManager->Subscribe(imageComposition);
@@ -787,8 +784,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                                        drawInfo.disableRayTracing);
 
 
-    framebuffers->PrepareForSize(renderResolution.Width(),         renderResolution.Height(),
-                                 renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight());
+    framebuffers->PrepareForSize(renderResolution.GetResolutionState());
     
 
     if (!drawInfo.disableRasterization)
@@ -804,7 +800,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    assert(uniform->GetData()->areFramebufsInitedByRT == raysCanBeTraced);
+    assert(!!(uniform->GetData()->areFramebufsInitedByRT) == raysCanBeTraced);
 
 
     if (raysCanBeTraced)
@@ -936,19 +932,17 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
     }
 
+    // draw geometry such as HUD directly into the swapchain image
+    if (!drawInfo.disableRasterization)
+    {
+        rasterizer->DrawToSwapchain(cmd, frameIndex, currentResultImage, textureManager,
+                                    uniform->GetData()->view, uniform->GetData()->projection);
+    }
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain,
         currentResultImage, VK_FILTER_NEAREST);
-
-
-    // draw geometry such as HUD directly into the swapchain image
-    if (!drawInfo.disableRasterization)
-    {
-        rasterizer->DrawToSwapchain(cmd, frameIndex, swapchain->GetCurrentImageIndex(), textureManager, 
-                                    uniform->GetData()->view, uniform->GetData()->projection);
-    }
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)

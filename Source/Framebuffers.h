@@ -51,8 +51,7 @@ public:
     Framebuffers &operator=(const Framebuffers &other) = delete;
     Framebuffers &operator=(Framebuffers &&other) noexcept = delete;
 
-    bool PrepareForSize(uint32_t renderWidth, uint32_t renderHeight,
-                        uint32_t upscaledWidth, uint32_t upscaledHeight);
+    bool PrepareForSize(ResolutionState resolutionState);
 
     enum class BarrierType { All, Storage, ColorAttachment, Transfer };
 
@@ -93,17 +92,14 @@ private:
     void CreateDescriptors();
     void CreateSamplers();
 
-    void CreateImages(uint32_t renderWidth, uint32_t renderHeight,
-                      uint32_t upscaledWidth, uint32_t upscaledHeight);
+    void CreateImages(ResolutionState resolutionState);
     void UpdateDescriptors();
 
-    static VkExtent2D GetFramebufSize(FramebufferImageFlags flags,
-                                      uint32_t renderWidth, uint32_t renderHeight,
-                                      uint32_t upscaledWidth, uint32_t upscaledHeight);
+    static VkExtent2D GetFramebufSize(FramebufferImageFlags flags, const ResolutionState &resolutionState);
 
     void DestroyImages();
 
-    void NotifySubscribersAboutResize(uint32_t width, uint32_t height);
+    void NotifySubscribersAboutResize(const ResolutionState &resolutionState);
 
 private:
     VkDevice device;
@@ -113,8 +109,7 @@ private:
     std::shared_ptr<MemoryAllocator> allocator;
     std::shared_ptr<CommandBufferManager> cmdManager;
 
-    VkExtent2D currentSize;
-    VkExtent2D currentUpscaledSize;
+    ResolutionState currentResolution;
 
     std::vector<VkImage> images;
     std::vector<VkDeviceMemory> imageMemories;

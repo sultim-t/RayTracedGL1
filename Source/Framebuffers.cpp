@@ -51,10 +51,11 @@ Framebuffers::Framebuffers(
     std::shared_ptr<CommandBufferManager> _cmdManager)
 : 
     device(_device),
+    bilinearSampler(VK_NULL_HANDLE),
+    nearestSampler(VK_NULL_HANDLE),
     allocator(std::move(_allocator)),
     cmdManager(std::move(_cmdManager)),
-    currentSize{},
-    currentUpscaledSize{},
+    currentResolution{},
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSets{}
@@ -195,11 +196,9 @@ void RTGL1::Framebuffers::CreateSamplers()
     }
 }
 
-bool RTGL1::Framebuffers::PrepareForSize(uint32_t renderWidth, uint32_t renderHeight,
-                                         uint32_t upscaledWidth, uint32_t upscaledHeight)
+bool RTGL1::Framebuffers::PrepareForSize(ResolutionState resolutionState)
 {
-    if (currentSize.width == renderWidth && currentSize.height == renderHeight &&
-        currentUpscaledSize.width == upscaledWidth && currentUpscaledSize.height == upscaledHeight)
+    if (currentResolution == resolutionState)
     {
         return false;
     }
@@ -207,11 +206,9 @@ bool RTGL1::Framebuffers::PrepareForSize(uint32_t renderWidth, uint32_t renderHe
     vkDeviceWaitIdle(device);
 
     DestroyImages();
-    CreateImages(renderWidth, renderHeight,
-                 upscaledWidth, upscaledHeight);
+    CreateImages(resolutionState);
 
-    assert(currentSize.width == renderWidth && currentSize.height == renderHeight &&
-           currentUpscaledSize.width == upscaledWidth && currentUpscaledSize.height == upscaledHeight);
+    assert(currentResolution == resolutionState);
     return true;
 }
 
@@ -229,7 +226,7 @@ void Framebuffers::PresentToSwapchain(
 
     BarrierOne(cmd, frameIndex, framebufImageIndex);
 
-    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[framebufImageIndex], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
+    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[framebufImageIndex], currentResolution);
 
     swapchain->BlitForPresent(
         cmd, GetImage(framebufImageIndex, frameIndex),
@@ -252,8 +249,8 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
     VkImage srcImage = images[src];
     VkImage dstImage = images[dst];
 
-    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[src], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
-    VkExtent2D dstExtent = GetFramebufSize(ShFramebuffers_Flags[dst], currentSize.width, currentSize.height, currentUpscaledSize.width, currentUpscaledSize.height);
+    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[src], currentResolution);
+    VkExtent2D dstExtent = GetFramebufSize(ShFramebuffers_Flags[dst], currentResolution);
 
     // if source has almost the same size as the surface, then use nearest blit
     if (std::abs((int)srcExtent.width  - (int)dstExtent.width) < 8 &&
@@ -347,13 +344,11 @@ void RTGL1::Framebuffers::GetImageHandles(FramebufferImageIndex framebufferImage
     }
 }
 
-VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags, 
-                                                uint32_t renderWidth, uint32_t renderHeight,
-                                                uint32_t upscaledWidth, uint32_t upscaledHeight)
+VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags, const ResolutionState &resolutionState)
 {
     if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_UPSCALED_SIZE)
     {
-        return { upscaledWidth, upscaledHeight };
+        return { resolutionState.upscaledWidth, resolutionState.upscaledHeight };
     }
 
     if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_SINGLE_PIXEL_SIZE)
@@ -389,13 +384,13 @@ VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags,
     }
     else
     {
-        return { renderWidth, renderHeight };
+        return { resolutionState.renderWidth, resolutionState.renderHeight };
     }
 
     VkExtent2D extent;
 
-    extent.width  = (renderWidth  + 1) / downscale;
-    extent.height = (renderHeight + 1) / downscale;
+    extent.width  = (resolutionState.renderWidth  + 1) / downscale;
+    extent.height = (resolutionState.renderHeight + 1) / downscale;
 
     extent.width  = std::max(1u, extent.width);
     extent.height = std::max(1u, extent.height);
@@ -403,8 +398,7 @@ VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags,
     return extent;
 }
 
-void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
-                                uint32_t upscaledWidth, uint32_t upscaledHeight)
+void Framebuffers::CreateImages(ResolutionState resolutionState)
 {
     VkResult r;
 
@@ -415,7 +409,7 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
         VkFormat format = ShFramebuffers_Formats[i];
         FramebufferImageFlags flags = ShFramebuffers_Flags[i];
 
-        VkExtent2D extent = GetFramebufSize(flags, renderWidth, renderHeight, upscaledWidth, upscaledHeight);
+        VkExtent2D extent = GetFramebufSize(flags, resolutionState);
 
         // create image
         VkImageCreateInfo imageInfo = {};
@@ -484,15 +478,12 @@ void Framebuffers::CreateImages(uint32_t renderWidth, uint32_t renderHeight,
     cmdManager->Submit(cmd);
     cmdManager->WaitGraphicsIdle();
 
-    currentSize.width = renderWidth;
-    currentSize.height = renderHeight;
-    currentUpscaledSize.width = upscaledWidth;
-    currentUpscaledSize.height = upscaledHeight;
+    currentResolution = resolutionState;
 
 
     UpdateDescriptors();
 
-    NotifySubscribersAboutResize(renderWidth, renderHeight);
+    NotifySubscribersAboutResize(resolutionState);
 }
 
 void Framebuffers::UpdateDescriptors()
@@ -605,13 +596,13 @@ void Framebuffers::DestroyImages()
     }
 }
 
-void Framebuffers::NotifySubscribersAboutResize(uint32_t width, uint32_t height)
+void Framebuffers::NotifySubscribersAboutResize(const ResolutionState &resolutionState)
 {
     for (auto &ws : subscribers)
     {
         if (auto s = ws.lock())
         {
-            s->OnFramebuffersSizeChange(width, height);
+            s->OnFramebuffersSizeChange(resolutionState);
         }
     }
 }

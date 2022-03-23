@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Sultim Tsyrendashiev
+// Copyright (c) 2020-2021 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,19 +20,29 @@
 
 #pragma once
 
-#include "Common.h"
-#include "ResolutionState.h"
 
 namespace RTGL1
 {
 
-class Framebuffers;
-
-class IFramebuffersDependency
+struct ResolutionState
 {
-public:
-    virtual ~IFramebuffersDependency() = default;
-    virtual void OnFramebuffersSizeChange(const ResolutionState &resolutionState) = 0;
+    uint32_t renderWidth;
+    uint32_t renderHeight;
+    uint32_t upscaledWidth;
+    uint32_t upscaledHeight;
+
+    friend bool operator==(const ResolutionState &lhs, const ResolutionState &rhs)
+    {
+        return lhs.renderWidth == rhs.renderWidth
+            && lhs.renderHeight == rhs.renderHeight
+            && lhs.upscaledWidth == rhs.upscaledWidth
+            && lhs.upscaledHeight == rhs.upscaledHeight;
+    }
+
+    friend bool operator!=(const ResolutionState &lhs, const ResolutionState &rhs)
+    {
+        return !(lhs == rhs);
+    }
 };
 
 }
