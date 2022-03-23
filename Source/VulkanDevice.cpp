@@ -428,11 +428,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
-        gu->renderWidth = renderResolution.Width();
-        gu->renderHeight = renderResolution.Height();
+        gu->renderWidth = (float)renderResolution.Width();
+        gu->renderHeight = (float)renderResolution.Height();
+        // render width must be always even for checkerboarding!
+        assert((int)gu->renderWidth % 2 == 0);
 
-        gu->upscaledRenderWidth = renderResolution.UpscaledWidth();
-        gu->upscaledRenderHeight = renderResolution.UpscaledHeight();
+        gu->upscaledRenderWidth = (float)renderResolution.UpscaledWidth();
+        gu->upscaledRenderHeight = (float)renderResolution.UpscaledHeight();
 
         if (renderResolution.IsNvDlssEnabled())
         {

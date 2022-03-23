@@ -165,7 +165,8 @@ public:
         return bias;
     }
 
-    uint32_t Width()            const { return renderWidth; }
+    // Render width always must be even for checkerboarding!
+    uint32_t Width()            const { return renderWidth + renderWidth % 2; }
     uint32_t Height()           const { return renderHeight; }
 
     uint32_t UpscaledWidth()    const { return upscaledWidth; }
@@ -187,7 +188,11 @@ public:
 
     // RgRenderResolutionMode   GetResolutionMode()      const { return resolutionMode; }
 
-    ResolutionState GetResolutionState() const { return ResolutionState{ renderWidth, renderHeight, upscaledWidth, upscaledHeight }; }
+    ResolutionState GetResolutionState() const
+    {
+        assert(Width() % 2 == 0);
+        return ResolutionState{ Width(), Height(), UpscaledWidth(), UpscaledHeight() };
+    }
 
 private:
     uint32_t renderWidth = 0;
