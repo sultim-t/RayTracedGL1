@@ -891,9 +891,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
+    const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
     {
-        const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
-
         if (effectColorTint->Setup(args, drawInfo.postEffectParams.pColorTint))
         {
             currentResultImage = effectColorTint->Apply(args, currentResultImage);
@@ -918,6 +917,21 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         {
             currentResultImage = effectRadialBlur->Apply(args, currentResultImage);
         }
+    }
+
+    // draw geometry such as HUD directly into the swapchain image
+    if (!drawInfo.disableRasterization)
+    {
+        rasterizer->DrawToSwapchain(cmd, frameIndex, currentResultImage, textureManager,
+                                    uniform->GetData()->view, uniform->GetData()->projection);
+    }
+
+    // post-effect that work on swapchain geometry too
+    {
+        if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
+        {
+            currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
+        }
         if (drawInfo.postEffectParams.pCRT != NULL && drawInfo.postEffectParams.pCRT->isActive)
         {
             effectCrtDemodulateEncode->Setup(args);
@@ -926,17 +940,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             effectCrtDecode->Setup(args);
             currentResultImage = effectCrtDecode->Apply(args, currentResultImage);
         }
-        if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
-        {
-            currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
-        }
-    }
-
-    // draw geometry such as HUD directly into the swapchain image
-    if (!drawInfo.disableRasterization)
-    {
-        rasterizer->DrawToSwapchain(cmd, frameIndex, currentResultImage, textureManager,
-                                    uniform->GetData()->view, uniform->GetData()->projection);
     }
 
     // blit result image to present on a surface
