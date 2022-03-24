@@ -584,6 +584,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->bloomIntensity          = std::max(drawInfo.pBloomParams->bloomIntensity, 0.0f);
         gu->bloomEmissionMultiplier = std::max(drawInfo.pBloomParams->bloomEmissionMultiplier, 0.0f);
         gu->bloomSkyMultiplier      = std::max(drawInfo.pBloomParams->bloomSkyMultiplier, 0.0f);
+        gu->bloomEmissionSaturationBias = clamp(drawInfo.pBloomParams->bloomEmissionSaturationBias, -1.0f, 20.0f);
     }
     else
     {
@@ -593,6 +594,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->bloomIntensity = 1.0f;
         gu->bloomEmissionMultiplier = 64.0f;
         gu->bloomSkyMultiplier = 0.05f;
+        gu->bloomEmissionSaturationBias = 0.0f;
     }
 
     static_assert(

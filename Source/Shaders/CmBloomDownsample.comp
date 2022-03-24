@@ -54,7 +54,10 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
         
         if (globalUniform.areFramebufsInitedByRT != 0 && !isSky(albedo4))
         {
-            const vec3 emis = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.bloomEmissionMultiplier;
+            vec3 emis = albedo4.rgb;
+            emis = mix(vec3(getLuminance(emis)), emis, 1.0 + globalUniform.bloomEmissionSaturationBias);
+            emis = clamp(emis, 0, 1) * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.bloomEmissionMultiplier;
+            
             const vec3 illum = textureLod(srcSampler, uv, 0).rgb;
 
             float f = smoothstep(
