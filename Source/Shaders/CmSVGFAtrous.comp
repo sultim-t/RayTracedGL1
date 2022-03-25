@@ -98,7 +98,7 @@ void atrous(sampler2D samplerDiff,
         return;
     }
     
-    const vec3 normal = texelFetchNormalGeometry(pix);
+    const vec3 normal = texelFetchNormal(pix);
 
     const float l = getLuminance(outDiff);
     const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * getPrefilteredLuminanceVariance(pix) + 0.00001);
@@ -160,7 +160,7 @@ void atrous(sampler2D samplerDiff,
 
 
             const float roughness_q = texelFetch(framebufMetallicRoughness_Sampler, pix_q, 0).g;
-            const vec3  normal_q    = texelFetchNormalGeometry(                     pix_q);
+            const vec3  normal_q    = texelFetchNormal(                             pix_q);
             const float depth_q     = texelFetch(framebufDepth_Sampler,             pix_q, 0).r;
 
             const vec3  specColor_q = decodeE5B9G9R9(texelFetch(samplerSpec,        pix_q, 0).r);

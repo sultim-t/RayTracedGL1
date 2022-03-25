@@ -105,8 +105,8 @@ void main()
     const float depth     = texelFetch(framebufDepth_Sampler,                 samplePix,     0).r;
     const float depthPrev = texelFetch(framebufDepth_Prev_Sampler,            samplePrevPix, 0).r;
 
-    const vec3 normal     = texelFetchNormalGeometry(                         samplePix);
-    const vec3 normalPrev = texelFetchNormalGeometry_Prev(                    samplePrevPix);
+    const vec3 normal     = texelFetchNormal(                                 samplePix);
+    const vec3 normalPrev = texelFetchNormal_Prev(                            samplePrevPix);
 
     const vec4 visBuf     = texelFetch(framebufVisibilityBuffer_Sampler,      samplePix,     0);
     const vec4 visBufPrev = texelFetch(framebufVisibilityBuffer_Prev_Sampler, samplePrevPix, 0);
@@ -141,8 +141,8 @@ void main()
     imageStore(framebufRandomSeed,        samplePix, uvec4(oldSeed));
     
     // surface shading samples
-    imageStoreNormalGeometry(             samplePix, normalPrev);
-    imageStoreNormal(                     samplePix, texelFetchNormal_Prev(samplePrevPix));
+    imageStoreNormalGeometry(             samplePix, texelFetchNormalGeometry_Prev(samplePrevPix));
+    imageStoreNormal(                     samplePix, normalPrev);
     imageStore(framebufMetallicRoughness, samplePix, texelFetch(framebufMetallicRoughness_Prev_Sampler, samplePrevPix, 0));
     imageStore(framebufSectorIndex,       samplePix, texelFetch(framebufSectorIndex_Prev_Sampler, samplePrevPix, 0));
 

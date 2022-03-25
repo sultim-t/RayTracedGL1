@@ -73,7 +73,7 @@ void main()
     const float motionZ = texelFetch(framebufMotion_Sampler,    pix,    0).z;
 
     const float depth   = texelFetch(framebufDepth_Sampler,     pix,    0).r;
-    const vec3 normal   = texelFetchNormalGeometry(             pix);
+    const vec3 normal   = texelFetchNormal(                     pix);
 
     const float l = getLuminance(unfilteredDiff);
     const vec2 moments = vec2(l, l * l);
@@ -139,7 +139,7 @@ void main()
                 ivec2 xy = pixPrev + ivec2(xx, yy);
 
                 float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
-                vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
+                vec3 normalPrev = texelFetchNormal_Prev(                 xy);
 
                 bool isConsistent = 
                     testPixInRenderArea(xy, chRenderArea) &&
@@ -165,7 +165,7 @@ void main()
                 ivec2 xy = pixPrev_Spec + ivec2(xx, yy);
 
                 float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
-                vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
+                vec3 normalPrev = texelFetchNormal_Prev(         xy);
 
                 bool isConsistent = 
                     testPixInRenderArea(xy, chRenderArea) &&
