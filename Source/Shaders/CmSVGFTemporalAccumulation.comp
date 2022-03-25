@@ -66,17 +66,6 @@ void main()
 
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
 
-    const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
-
-    const ivec2 pixPrev = ivec2(floor(posPrev - 0.5));
-    const vec2 subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
-
-    const float bilinearWeights[2][2] = 
-    {
-        { (1.0 - subPix.x) * (1.0 - subPix.y), subPix.x * (1.0 - subPix.y) },
-        { (1.0 - subPix.x) * subPix.y,         subPix.x * subPix.y         },
-    };
-
     const vec3 unfilteredDiff = texelFetchUnfilteredDirect(pix);
     const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);
     const vec3 unfilteredSpec = texelFetchUnfilteredSpecular(pix);
@@ -89,6 +78,49 @@ void main()
     const float l = getLuminance(unfilteredDiff);
     const vec2 moments = vec2(l, l * l);
 
+
+    ivec2 pixPrev; vec2 subPix;
+    {
+        const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
+
+        pixPrev = ivec2(floor(posPrev - 0.5));
+        subPix = (posPrev - 0.5) - floor(posPrev - 0.5);
+    }
+    const float bilinearWeights[2][2] = 
+    {
+        { (1.0 - subPix.x) * (1.0 - subPix.y), subPix.x * (1.0 - subPix.y) },
+        { (1.0 - subPix.x) * subPix.y,         subPix.x * subPix.y         },
+    };
+
+
+    ivec2 pixPrev_Spec; vec2 subPix_Spec;
+    {
+        vec4 rayInfo      = texelFetch(framebufViewDirection_Sampler,   pix, 0);
+        vec3 virtualPos   = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz
+                            + rayInfo.xyz * rayInfo.a;
+                        
+        const vec4 viewSpacePosCur   = globalUniform.view     * vec4(virtualPos, 1.0);
+        const vec4 viewSpacePosPrev  = globalUniform.viewPrev * vec4(virtualPos, 1.0);
+        const vec4 clipSpacePosCur   = globalUniform.projection     * viewSpacePosCur;
+        const vec4 clipSpacePosPrev  = globalUniform.projectionPrev * viewSpacePosPrev;
+        const vec3 ndcCur            = clipSpacePosCur.xyz  / clipSpacePosCur.w;
+        const vec3 ndcPrev           = clipSpacePosPrev.xyz / clipSpacePosPrev.w;
+        const vec2 screenSpaceCur    = ndcCur.xy  * 0.5 + 0.5;
+        const vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
+        const vec2 specMotion = (screenSpacePrev - screenSpaceCur);
+
+        const vec2 specPosPrev = getPrevScreenPos(specMotion, pix);
+
+        pixPrev_Spec = ivec2(floor(specPosPrev - 0.5));
+        subPix_Spec = (specPosPrev - 0.5) - floor(specPosPrev - 0.5);
+    }
+    const float bilinearWeights_Spec[2][2] = 
+    {
+        { (1.0 - subPix_Spec.x) * (1.0 - subPix_Spec.y), subPix_Spec.x * (1.0 - subPix_Spec.y) },
+        { (1.0 - subPix_Spec.x) * subPix_Spec.y,         subPix_Spec.x * subPix_Spec.y         },
+    };
+
+
     // history length for direct, indirect, specular
     vec3 historyLengthDIS = vec3(0.0);
     vec3 diffPrev = vec3(0.0);
@@ -96,36 +128,61 @@ void main()
     vec3 specPrev = vec3(0.0);
     SH indirPrev = newSH();
     float weightSum = 0.0;
+    float weightSum_Spec = 0.0;
 
     // 2x2 tap bilinear interpolation
     for (int yy = 0; yy <= 1; yy++)
     {
         for(int xx = 0; xx <= 1; xx++)
         {
-            const ivec2 xy = pixPrev + ivec2(xx, yy);
-
-            const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
-            const vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
-
-            const bool isConsistent = 
-                testPixInRenderArea(xy, chRenderArea) &&
-                testReprojectedDepth(depth, depthPrev, motionZ) &&
-                testReprojectedNormal(normal, normalPrev);
-
-            if (isConsistent)
             {
-                const float weight = bilinearWeights[yy][xx];
+                ivec2 xy = pixPrev + ivec2(xx, yy);
 
-                historyLengthDIS += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rgb * weight;
+                float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
+                vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
 
-                diffPrev         += texelFetch(framebufDiffColorHistory_Sampler,        xy, 0).rgb * weight;
-                momentsPrev      += texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg  * weight;
-                specPrev         += texelFetchSpecAccumColor_Prev(                      xy   )     * weight;
+                bool isConsistent = 
+                    testPixInRenderArea(xy, chRenderArea) &&
+                    testReprojectedDepth(depth, depthPrev, motionZ) &&
+                    testReprojectedNormal(normal, normalPrev);
+
+                if (isConsistent)
+                {
+                    const float weight = bilinearWeights[yy][xx];
+
+                    historyLengthDIS.rg += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rg * weight;
+
+                    diffPrev            += texelFetch(framebufDiffColorHistory_Sampler,        xy, 0).rgb * weight;
+                    momentsPrev         += texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg  * weight;    
+                    
+                    accumulateSH(indirPrev, texelFetchIndirAccumSH_Prev(xy), weight);
+
+                    weightSum += weight;
+                }
+            }
+
+            {
+                ivec2 xy = pixPrev_Spec + ivec2(xx, yy);
+
+                float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
+                vec3 normalPrev = texelFetchNormalGeometry_Prev(         xy);
+
+                bool isConsistent = 
+                    testPixInRenderArea(xy, chRenderArea) &&
+                    testReprojectedDepth(depth, depthPrev, motionZ) &&
+                    testReprojectedNormal(normal, normalPrev);
+
+                if (isConsistent)
+                {
+                    const float weight = bilinearWeights_Spec[yy][xx];
+
+                    historyLengthDIS.b += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).b * weight;
                 
-                accumulateSH(indirPrev, texelFetchIndirAccumSH_Prev(xy), weight);
+                    specPrev += texelFetchSpecAccumColor_Prev(xy) * weight;
 
-                weightSum += weight;
-			}
+                    weightSum_Spec += weight;
+                }
+            }
         }
     }
     
@@ -164,7 +221,7 @@ void main()
         historyLengthDIS  *= invWeightSum;
         diffPrev          *= invWeightSum;
         momentsPrev       *= invWeightSum;
-        specPrev          *= invWeightSum;
+        specPrev          /= max(weightSum_Spec, 0.001);
         multiplySH(indirPrev, invWeightSum);
 
         float diffHistoryLength  = historyLengthDIS[0];
@@ -190,17 +247,17 @@ void main()
 
         // specular
         {
-            const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
+            // const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
 
-            antilagAlpha_Spec *= (1 - roughness) * 0.9 + 0.1;
+            // antilagAlpha_Spec *= (1 - roughness) * 0.9 + 0.1;
 
-            specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
-            specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, 256.0);
+            // specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
+            specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, 64.0);
 
             const float minAlpha = 0.01;
             float alphaColor = max(minAlpha, 1.0 / specHistoryLength);
 
-            alphaColor = mix(alphaColor, 1.0, antilagAlpha_Spec);
+            // alphaColor = mix(alphaColor, 1.0, antilagAlpha_Spec);
 
             specColorAccum = mix(specPrev, unfilteredSpec, alphaColor);
             specHistoryLengthAccum = specHistoryLength;

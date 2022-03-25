@@ -130,7 +130,8 @@ vec3 processBounce(
     const vec3 surfNormal, const vec3 surfNormalGeom,
     const float surfRoughness, const vec3 v, const bool isGradientSample,
     const vec3 bounceDir_First, 
-    inout vec3 throughput_First)
+    inout vec3 throughput_First,
+    out float rayHitDistance)
 {
     // got the bounce direction, trace ray
     const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDir_First); 
@@ -150,6 +151,7 @@ vec3 processBounce(
             1,
             diffuse, specular);
         throughput_First *= h.albedo;
+        rayHitDistance = length(h.hitPosition - surfPosition);
 
 
         vec3 bounceDir_Second;
@@ -169,6 +171,7 @@ vec3 processBounce(
     }
     else
     {
+        rayHitDistance = MAX_RAY_LENGTH;
         return getSky(bounceDir_First) * throughput_First;
     }
 }
@@ -178,7 +181,8 @@ vec3 processSpecular(
     const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
     const vec3 surfNormal, const vec3 surfNormalGeom,
     const float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 v, const bool isGradientSample)
+    const vec3 v, const bool isGradientSample,
+    out float rayHitDistance)
 {
     vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
@@ -189,7 +193,8 @@ vec3 processSpecular(
         surfNormal, surfNormalGeom, surfRoughness, 
         v, isGradientSample,
         bounceDirection,
-        throughput);
+        throughput,
+        rayHitDistance);
 }
 
 SH processIndirectDiffuse(
@@ -200,13 +205,15 @@ SH processIndirectDiffuse(
     vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
     getDiffuseBounce(seed, surfNormalGeom, bounceDirection, throughput);
+    float rayHitDistance;
 
     const vec3 contrib = processBounce(
         seed, surfInstCustomIndex, surfPosition, 
         surfNormal, surfNormalGeom, surfRoughness, 
         v, isGradientSample,
         bounceDirection,
-        throughput);
+        throughput,
+        rayHitDistance);
 
     return irradianceToSH(contrib, bounceDirection);
 }
@@ -223,13 +230,15 @@ void processIndirectIllumination(
     if (surfRoughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
     {
         const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
+        float rayHitDistance = 0;
 
         const vec3 contribution = processSpecular(
             seed, surfInstCustomIndex, surfPosition, 
             surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-            v, isGradientSample);
+            v, isGradientSample, rayHitDistance);
 
         imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
+        imageStore(framebufViewDirection, pix, vec4(-v, rayHitDistance));
     }
 
     {
