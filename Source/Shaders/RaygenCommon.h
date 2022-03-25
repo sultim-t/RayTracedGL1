@@ -926,9 +926,19 @@ void processDirectIllumination(
     const vec3 toViewerDir,
     bool isGradientSample,
     int bounceIndex,
+#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
+    out float outDistance,
+#endif
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     outDiffuse = outSpecular = vec3(0.0);
+
+#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
+    outDistance = MAX_RAY_LENGTH;
+    #define APPEND_DIST(x) outDistance = min(outDistance, length(x)) 
+#else
+    #define APPEND_DIST(x)
+#endif
 
 
 #define SEPARATE_SHADOW_RAYS
@@ -953,6 +963,7 @@ void processDirectIllumination(
         if (selected.shadowRayEnable)                                           \
         {                                                                       \
             isShadowed = traceShadowRay(surfInstCustomIndex, selected.shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);    \
+            APPEND_DIST(selected.shadowRayStart - selected.shadowRayEnd);       \
         }                                                                       \
                                                                                 \
         outDiffuse  += selected.diffuse  * float(!isShadowed);                  \

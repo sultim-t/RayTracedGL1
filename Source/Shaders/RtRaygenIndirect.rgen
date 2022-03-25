@@ -238,7 +238,11 @@ void processIndirectIllumination(
             v, isGradientSample, rayHitDistance);
 
         imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
-        imageStore(framebufViewDirection, pix, vec4(-v, rayHitDistance));
+
+        if (getLuminance(directSpecular) < getLuminance(contribution))
+        {
+            imageStore(framebufViewDirection, pix, vec4(-v, rayHitDistance));
+        }
     }
 
     {

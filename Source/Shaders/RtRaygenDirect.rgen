@@ -31,6 +31,7 @@
 #define DESC_SET_RANDOM 5
 #define DESC_SET_LIGHT_SOURCES 6
 #define RAYGEN_SHADOW_PAYLOAD
+#define RAYGEN_COMMON_DISTANCE_TO_LIGHT
 #include "RaygenCommon.h"
 
 void main()
@@ -71,14 +72,17 @@ void main()
 #endif
 
     vec3 diffuse, specular;
+    float distToLight;
     processDirectIllumination(
         seed, 
         instCustomIndex, surfPosition.xyz, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, sectorArrayIndex,
         -viewDirection,
         isGradientSample, 
         0,
+        distToLight,
         diffuse, specular);
 
     imageStoreUnfilteredDirect(pix, diffuse);
+    imageStore(framebufViewDirection, pix, vec4(viewDirection, distToLight));
     imageStoreUnfilteredSpecular(pix, specular);
 }
