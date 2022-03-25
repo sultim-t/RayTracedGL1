@@ -160,6 +160,11 @@ layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM)
 {
     ShTonemapping tonemapping;
 };
+
+float getExposure()
+{
+    return tonemapping.avgLuminance > 0.0 ? 1.0 / tonemapping.avgLuminance : 1.0;
+}
 #endif // DESC_SET_TONEMAPPING
 
 

@@ -32,7 +32,8 @@ RTGL1::Bloom::Bloom(
     VkDevice _device,
     std::shared_ptr<Framebuffers> _framebuffers,
     const std::shared_ptr<const ShaderManager> &_shaderManager,
-    const std::shared_ptr<const GlobalUniform> &_uniform)
+    const std::shared_ptr<const GlobalUniform> &_uniform,
+    const std::shared_ptr<const Tonemapping> &_tonemapping)
     :
     device(_device),
     framebuffers(std::move(_framebuffers)),
@@ -41,13 +42,14 @@ RTGL1::Bloom::Bloom(
     upsamplePipelines{},
     applyPipelines{}
 {
-    std::vector<VkDescriptorSetLayout> setLayouts =
+    VkDescriptorSetLayout setLayouts[] =
     {
         framebuffers->GetDescSetLayout(),
-        _uniform->GetDescSetLayout()
+        _uniform->GetDescSetLayout(),
+        _tonemapping->GetDescSetLayout()
     };
 
-    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+    CreatePipelineLayout(setLayouts, std::size(setLayouts));
     CreatePipelines(_shaderManager.get());
 
     static_assert(sizeof(downsamplePipelines) / sizeof(downsamplePipelines[0]) == COMPUTE_BLOOM_STEP_COUNT, "Recheck COMPUTE_BLOOM_STEP_COUNT");
@@ -60,7 +62,9 @@ RTGL1::Bloom::~Bloom()
     DestroyPipelines();
 }
 
-void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
+void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex,
+                           const std::shared_ptr<const GlobalUniform> &uniform,
+                           const std::shared_ptr<const Tonemapping> &tonemapping)
 {
     VkMemoryBarrier2KHR memoryBarrier = {};
     memoryBarrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2_KHR;
@@ -79,7 +83,8 @@ void RTGL1::Bloom::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     VkDescriptorSet sets[] =
     {
         framebuffers->GetDescSet(frameIndex),
-        uniform->GetDescSet(frameIndex)
+        uniform->GetDescSet(frameIndex),
+        tonemapping->GetDescSet()
     };
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,

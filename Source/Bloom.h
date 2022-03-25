@@ -24,6 +24,7 @@
 #include "ShaderManager.h"
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
+#include "Tonemapping.h"
 
 namespace RTGL1
 {
@@ -39,7 +40,8 @@ public:
         VkDevice device,
         std::shared_ptr<Framebuffers> framebuffers,
         const std::shared_ptr<const ShaderManager> &shaderManager,
-        const std::shared_ptr<const GlobalUniform> &uniform);
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const Tonemapping> &tonemapping);
     ~Bloom() override;
 
     Bloom(const Bloom &other) = delete;
@@ -49,7 +51,8 @@ public:
 
     void Prepare(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform);
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const Tonemapping> &tonemapping);
 
     FramebufferImageIndex Apply(
         VkCommandBuffer cmd, uint32_t frameIndex,

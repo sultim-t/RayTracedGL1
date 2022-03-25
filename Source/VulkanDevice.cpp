@@ -194,7 +194,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device,
         framebuffers,
         shaderManager,
-        uniform);
+        uniform,
+        tonemapping);
 
     amdFsr              = std::make_shared<SuperResolution>(
         device,
@@ -844,7 +845,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (enableBloom)
     {
-        bloom->Prepare(cmd, frameIndex, uniform);
+        bloom->Prepare(cmd, frameIndex, uniform, tonemapping);
     }
 
 

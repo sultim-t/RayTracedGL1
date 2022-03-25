@@ -24,6 +24,7 @@
 
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_TONEMAPPING 2
 #include "ShaderCommonGLSLFunc.h"
 
 layout(local_size_x = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_X, local_size_y = COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y, local_size_z = 1) in;
@@ -58,11 +59,8 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
             emis = mix(vec3(getLuminance(emis)), emis, 1.0 + globalUniform.bloomEmissionSaturationBias);
             emis = clamp(emis, 0, 1) * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.bloomEmissionMultiplier;
             
-            const vec3 illum = textureLod(srcSampler, uv, 0).rgb;
-
-            float f = smoothstep(
-                globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
-                (illum.x + illum.y + illum.z) / 3.0);
+            const vec3 illum = textureLod(srcSampler, uv, 0).rgb * getExposure();
+            float f = smoothstep(globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, getLuminance(illum));
 
             return illum * f + emis;
         }
