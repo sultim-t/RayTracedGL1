@@ -64,15 +64,15 @@ void main()
         return;
     }
 
-    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
+    const ivec3 chRenderArea   = getCheckerboardedRenderArea(   pix);
 
-    const vec3 unfilteredDiff = texelFetchUnfilteredDirect(pix);
+    const vec3 unfilteredDiff  = texelFetchUnfilteredDirect(    pix);
     const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);
-    const vec3 unfilteredSpec = texelFetchUnfilteredSpecular(pix);
+    const vec3 unfilteredSpec  = texelFetchUnfilteredSpecular(  pix);
 
-    const float motionZ = texelFetch(framebufMotion_Sampler,    pix,    0).z;
+    const float motionZ = texelFetch(framebufMotion_Sampler,    pix, 0).z;
 
-    const float depth   = texelFetch(framebufDepth_Sampler,     pix,    0).r;
+    const float depth   = texelFetch(framebufDepth_Sampler,     pix, 0).r;
     const vec3 normal   = texelFetchNormal(                     pix);
 
     const float l = getLuminance(unfilteredDiff);
@@ -139,7 +139,7 @@ void main()
                 ivec2 xy = pixPrev + ivec2(xx, yy);
 
                 float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
-                vec3 normalPrev = texelFetchNormal_Prev(                 xy);
+                vec3 normalPrev = texelFetchNormal_Prev(xy);
 
                 bool isConsistent = 
                     testPixInRenderArea(xy, chRenderArea) &&
@@ -162,13 +162,13 @@ void main()
             }
 
             {
-                ivec2 xy = pixPrev_Spec + ivec2(xx, yy);
+                ivec2 xy_Spec = pixPrev_Spec + ivec2(xx, yy);
 
-                float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
-                vec3 normalPrev = texelFetchNormal_Prev(         xy);
+                float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy_Spec, 0).r;
+                vec3 normalPrev = texelFetchNormal_Prev(xy_Spec);
 
                 bool isConsistent = 
-                    testPixInRenderArea(xy, chRenderArea) &&
+                    testPixInRenderArea(xy_Spec, chRenderArea) &&
                     testReprojectedDepth(depth, depthPrev, motionZ) &&
                     testReprojectedNormal(normal, normalPrev);
 
@@ -176,9 +176,9 @@ void main()
                 {
                     const float weight = bilinearWeights_Spec[yy][xx];
 
-                    historyLengthDIS.b += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).b * weight;
+                    historyLengthDIS.b += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy_Spec, 0).b * weight;
                 
-                    specPrev += texelFetchSpecAccumColor_Prev(xy) * weight;
+                    specPrev += texelFetchSpecAccumColor_Prev(xy_Spec) * weight;
 
                     weightSum_Spec += weight;
                 }
@@ -203,47 +203,14 @@ void main()
 #endif
 
 
-    vec3 diffColorAccum;
-    vec2 diffMomentsAccum;
-    float diffHistoryLengthAccum;
-
     vec3 specColorAccum;
     float specHistoryLengthAccum;
 
-    SH indirSHAccum;
-    float indirHistoryLengthAccum;
-
     // found consistent info
-    if (weightSum > 0.0001)
+    if (weightSum_Spec > 0.0001)
     {
-        const float invWeightSum = 1.0 / weightSum;
-
-        historyLengthDIS  *= invWeightSum;
-        diffPrev          *= invWeightSum;
-        momentsPrev       *= invWeightSum;
-        specPrev          /= max(weightSum_Spec, 0.001);
-        multiplySH(indirPrev, invWeightSum);
-
-        float diffHistoryLength  = historyLengthDIS[0];
-        float indirHistoryLength = historyLengthDIS[1];
-        float specHistoryLength  = historyLengthDIS[2]; 
-        
-        // direct diffuse
-        {
-            diffHistoryLength *= pow(1.0 - antilagAlpha_Diff, 10);
-            diffHistoryLength = clamp(diffHistoryLength + 1.0, 1.0, 256.0);
-
-            const float minAlpha = 0.01;
-            float alphaColor   = max(minAlpha, 1.0 / diffHistoryLength);
-            float alphaMoments = max(minAlpha, 1.0 / diffHistoryLength);
-
-            alphaColor   = mix(alphaColor,   1.0, antilagAlpha_Diff);
-            alphaMoments = mix(alphaMoments, 1.0, antilagAlpha_Diff);
-
-            diffColorAccum   = mix(diffPrev, unfilteredDiff, alphaColor);
-            diffMomentsAccum = mix(momentsPrev, moments, alphaMoments);
-            diffHistoryLengthAccum = diffHistoryLength;
-        }
+        specPrev /= weightSum_Spec;
+        float specHistoryLength = historyLengthDIS[2] / weightSum_Spec; 
 
         // specular
         {
@@ -261,6 +228,49 @@ void main()
 
             specColorAccum = mix(specPrev, unfilteredSpec, alphaColor);
             specHistoryLengthAccum = specHistoryLength;
+        }
+    }
+    else
+    {
+        specColorAccum = unfilteredSpec;
+        specHistoryLengthAccum = 1.0;
+    }
+
+
+    vec3 diffColorAccum;
+    vec2 diffMomentsAccum;
+    float diffHistoryLengthAccum;
+
+    SH indirSHAccum;
+    float indirHistoryLengthAccum;
+
+    // found consistent info
+    if (weightSum > 0.0001)
+    {
+        const float invWeightSum = 1.0 / weightSum;
+
+        diffPrev          *= invWeightSum;
+        momentsPrev       *= invWeightSum;
+        multiplySH(indirPrev, invWeightSum);
+
+        float diffHistoryLength  = historyLengthDIS[0] * invWeightSum;
+        float indirHistoryLength = historyLengthDIS[1] * invWeightSum;
+        
+        // direct diffuse
+        {
+            diffHistoryLength *= pow(1.0 - antilagAlpha_Diff, 10);
+            diffHistoryLength = clamp(diffHistoryLength + 1.0, 1.0, 256.0);
+
+            const float minAlpha = 0.01;
+            float alphaColor   = max(minAlpha, 1.0 / diffHistoryLength);
+            float alphaMoments = max(minAlpha, 1.0 / diffHistoryLength);
+
+            alphaColor   = mix(alphaColor,   1.0, antilagAlpha_Diff);
+            alphaMoments = mix(alphaMoments, 1.0, antilagAlpha_Diff);
+
+            diffColorAccum   = mix(diffPrev, unfilteredDiff, alphaColor);
+            diffMomentsAccum = mix(momentsPrev, moments, alphaMoments);
+            diffHistoryLengthAccum = diffHistoryLength;
         }
 
         // indirect diffuse
@@ -282,9 +292,6 @@ void main()
         diffColorAccum = unfilteredDiff;
         diffMomentsAccum = moments;
         diffHistoryLengthAccum = 1.0;
-
-        specColorAccum = unfilteredSpec;
-        specHistoryLengthAccum = 1.0;
 
         indirSHAccum = unfilteredIndirSH;
         indirHistoryLengthAccum = 1.0;
