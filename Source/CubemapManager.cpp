@@ -25,6 +25,8 @@
 #include "TextureOverrides.h"
 #include "RgException.h"
 
+#include <algorithm>
+
 constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
 // use albedo-alpha texture data

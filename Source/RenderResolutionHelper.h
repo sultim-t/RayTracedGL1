@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cassert>
+#include <math.h>
 
 #include "DLSS.h"
 #include "RgException.h"

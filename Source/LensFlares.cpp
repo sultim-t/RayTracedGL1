@@ -21,7 +21,7 @@
 #include "LensFlares.h"
 
 #include "Generated/ShaderCommonC.h"
-
+#include <cmath>
 
 constexpr VkDeviceSize MAX_VERTEX_COUNT   = 1 << 16;
 constexpr VkDeviceSize MAX_INDEX_COUNT    = 1 << 18;
@@ -49,7 +49,7 @@ constexpr VkDeviceSize GetIndirectDrawCountOffset()
 }
 constexpr RTGL1::ShIndirectDrawCommand *GetIndirectDrawCommandsArrayStart(void *pCullingInputBuffer)
 {
-    return (RTGL1::ShIndirectDrawCommand *)((uint8_t*)pCullingInputBuffer + GetIndirectDrawCommandsOffset());
+    return (RTGL1::ShIndirectDrawCommand *)(const void *)((uint8_t*)pCullingInputBuffer + GetIndirectDrawCommandsOffset());
 }
 
 

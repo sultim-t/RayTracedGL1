@@ -21,6 +21,7 @@
 #include "TextureManager.h"
 
 #include <numeric>
+#include <algorithm>
 
 #include "Const.h"
 #include "Utils.h"
