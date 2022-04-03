@@ -93,13 +93,17 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
         r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice->Get(), surface, &presentModeCount, presentModes.data());
         VK_CHECKERROR(r);
 
+        // try to find mailbox / fifo-relaxed
         for (auto p : presentModes)
         {
-            // try to find mailbox
             if (p == VK_PRESENT_MODE_MAILBOX_KHR)
             {
                 presentModeImmediate = p;
-                break;
+            }
+
+            if (p == VK_PRESENT_MODE_FIFO_RELAXED_KHR)
+            {
+                presentModeVsync = p;
             }
         }
     }
