@@ -54,6 +54,7 @@
 
 layout(local_size_x = COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X, local_size_z = 1) in;
 
+#define ONLY_TEMPORAL_SPEC_REPROJECTION 1
 
 void main()
 {
@@ -93,6 +94,7 @@ void main()
     };
 
 
+#if !ONLY_TEMPORAL_SPEC_REPROJECTION
     ivec2 pixPrev_Spec; vec2 subPix_Spec;
     {
         vec4 rayInfo      = texelFetch(framebufViewDirection_Sampler,   pix, 0);
@@ -119,6 +121,7 @@ void main()
         { (1.0 - subPix_Spec.x) * (1.0 - subPix_Spec.y), subPix_Spec.x * (1.0 - subPix_Spec.y) },
         { (1.0 - subPix_Spec.x) * subPix_Spec.y,         subPix_Spec.x * subPix_Spec.y         },
     };
+#endif
 
 
     // history length for direct, indirect, specular
@@ -128,7 +131,11 @@ void main()
     vec3 specPrev = vec3(0.0);
     SH indirPrev = newSH();
     float weightSum = 0.0;
+#if !ONLY_TEMPORAL_SPEC_REPROJECTION
     float weightSum_Spec = 0.0;
+#else
+    #define weightSum_Spec weightSum
+#endif
 
     // 2x2 tap bilinear interpolation
     for (int yy = 0; yy <= 1; yy++)
@@ -150,7 +157,12 @@ void main()
                 {
                     const float weight = bilinearWeights[yy][xx];
 
-                    historyLengthDIS.rg += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rg * weight;
+#if !ONLY_TEMPORAL_SPEC_REPROJECTION
+                    historyLengthDIS.rg += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rg  * weight;
+#else
+                    historyLengthDIS    += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rgb * weight;
+                    specPrev            += texelFetchSpecAccumColor_Prev(xy)                              * weight;
+#endif
 
                     diffPrev            += texelFetch(framebufDiffColorHistory_Sampler,        xy, 0).rgb * weight;
                     momentsPrev         += texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg  * weight;    
@@ -161,6 +173,7 @@ void main()
                 }
             }
 
+#if !ONLY_TEMPORAL_SPEC_REPROJECTION
             {
                 ivec2 xy_Spec = pixPrev_Spec + ivec2(xx, yy);
 
@@ -183,6 +196,7 @@ void main()
                     weightSum_Spec += weight;
                 }
             }
+#endif
         }
     }
     
@@ -193,7 +207,7 @@ void main()
     {
         const vec4 gradDiffSpec = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
         antilagAlpha_Diff = getAntilagAlpha(gradDiffSpec[0], gradDiffSpec[1]);
-        antilagAlpha_Spec = 0;
+        antilagAlpha_Spec = getAntilagAlpha(gradDiffSpec[2] * 0.1, gradDiffSpec[3]);
         antilagAlpha_Indir = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).r;
     }
 #else
@@ -218,13 +232,13 @@ void main()
 
             // antilagAlpha_Spec *= (1 - roughness) * 0.9 + 0.1;
 
-            // specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
+            specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
             specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, 64.0);
 
             const float minAlpha = 0.01;
             float alphaColor = max(minAlpha, 1.0 / specHistoryLength);
 
-            // alphaColor = mix(alphaColor, 1.0, antilagAlpha_Spec);
+            alphaColor = mix(alphaColor, 1.0, antilagAlpha_Spec);
 
             specColorAccum = mix(specPrev, unfilteredSpec, alphaColor);
             specHistoryLengthAccum = specHistoryLength;
