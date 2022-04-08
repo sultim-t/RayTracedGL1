@@ -30,7 +30,7 @@ namespace RTGL1
 class ScratchBuffer
 {
 public:
-    explicit ScratchBuffer(std::shared_ptr<MemoryAllocator> allocator);
+    explicit ScratchBuffer(std::shared_ptr<MemoryAllocator> allocator, uint32_t alignment = 1);
 
     ScratchBuffer(const ScratchBuffer& other) = delete;
     ScratchBuffer(ScratchBuffer&& other) noexcept = delete;
@@ -53,6 +53,7 @@ private:
 
     std::weak_ptr<MemoryAllocator> allocator;
     std::list<ChunkBuffer> chunks;
+    uint32_t alignment = 1;
 };
 
 }

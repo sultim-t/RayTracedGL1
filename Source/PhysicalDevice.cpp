@@ -28,7 +28,7 @@
 using namespace RTGL1;
 
 PhysicalDevice::PhysicalDevice(VkInstance instance)
-    : physDevice(VK_NULL_HANDLE), memoryProperties{}, rtPipelineProperties{}
+    : physDevice(VK_NULL_HANDLE), memoryProperties{}, rtPipelineProperties{}, asProperties{}
 {
     VkResult r;
 
@@ -60,9 +60,11 @@ PhysicalDevice::PhysicalDevice(VkInstance instance)
             physDevice = p;
 
             rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
+            asProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
             VkPhysicalDeviceProperties2 deviceProp2 = {};
             deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
             deviceProp2.pNext = &rtPipelineProperties;
+            rtPipelineProperties.pNext = &asProperties;
 
             vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
             vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
@@ -130,4 +132,9 @@ const VkPhysicalDeviceMemoryProperties &PhysicalDevice::GetMemoryProperties() co
 const VkPhysicalDeviceRayTracingPipelinePropertiesKHR &PhysicalDevice::GetRTPipelineProperties() const
 {
     return rtPipelineProperties;
+}
+
+const VkPhysicalDeviceAccelerationStructurePropertiesKHR& PhysicalDevice::GetASProperties() const
+{
+    return asProperties;
 }

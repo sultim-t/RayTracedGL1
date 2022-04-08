@@ -27,6 +27,7 @@ using namespace RTGL1;
 
 Scene::Scene(
     VkDevice _device,
+    std::shared_ptr<PhysicalDevice> _physDevice,
     std::shared_ptr<MemoryAllocator> &_allocator,
     std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<TextureManager> &_textureManager,
@@ -46,7 +47,7 @@ Scene::Scene(
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
     triangleInfoMgr = std::make_shared<TriangleInfoManager>(_device, _allocator, sectorVisibility);
 
-    asManager = std::make_shared<ASManager>(_device, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, sectorVisibility, _properties);
+    asManager = std::make_shared<ASManager>(_device, _physDevice, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, sectorVisibility, _properties);
   
     vertPreproc = std::make_shared<VertexPreprocessing>(_device, _uniform, asManager, _shaderManager);
 }
