@@ -149,6 +149,7 @@ ASManager::ASManager(
 void ASManager::CreateDescriptors()
 {
     VkResult r;
+    std::array<VkDescriptorPoolSize, 2> poolSizes{};
 
     {
         std::array<VkDescriptorSetLayoutBinding, 9> bindings{};
@@ -209,6 +210,9 @@ void ASManager::CreateDescriptors()
 
         r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &buffersDescSetLayout);
         VK_CHECKERROR(r);
+
+        poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT * bindings.size();
     }
 
     {
@@ -225,15 +229,10 @@ void ASManager::CreateDescriptors()
 
         r = vkCreateDescriptorSetLayout(device, &layoutInfo, nullptr, &asDescSetLayout);
         VK_CHECKERROR(r);
+
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
+        poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
     }
-
-    std::array<VkDescriptorPoolSize, 2> poolSizes{};
-
-    poolSizes[0].type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-    poolSizes[0].descriptorCount = MAX_FRAMES_IN_FLIGHT * 8;
-
-    poolSizes[1].type = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-    poolSizes[1].descriptorCount = MAX_FRAMES_IN_FLIGHT;
 
     VkDescriptorPoolCreateInfo poolInfo = {};
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
