@@ -133,6 +133,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     scene               = std::make_shared<Scene>(
         device,
+        physDevice,
         memAllocator,
         cmdManager,
         textureManager,

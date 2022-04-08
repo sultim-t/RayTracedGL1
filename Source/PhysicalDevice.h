@@ -40,12 +40,14 @@ public:
     uint32_t GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags requirementsMask) const;
     const VkPhysicalDeviceMemoryProperties &GetMemoryProperties() const;
     const VkPhysicalDeviceRayTracingPipelinePropertiesKHR &GetRTPipelineProperties() const;
+    const VkPhysicalDeviceAccelerationStructurePropertiesKHR& GetASProperties() const;
 
 private:
     // selected physical device
     VkPhysicalDevice physDevice;
     VkPhysicalDeviceMemoryProperties memoryProperties;
     VkPhysicalDeviceRayTracingPipelinePropertiesKHR rtPipelineProperties;
+    VkPhysicalDeviceAccelerationStructurePropertiesKHR asProperties;
 };
 
 }

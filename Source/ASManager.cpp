@@ -31,6 +31,7 @@ using namespace RTGL1;
 
 ASManager::ASManager(
     VkDevice _device,
+    std::shared_ptr<PhysicalDevice> physDevice,
     std::shared_ptr<MemoryAllocator> _allocator,
     std::shared_ptr<CommandBufferManager> _cmdManager,
     std::shared_ptr<TextureManager> _textureManager,
@@ -76,8 +77,8 @@ ASManager::ASManager(
         tlas[i] = std::make_unique<TLASComponent>(device, "TLAS main");
     }
 
-
-    scratchBuffer = std::make_shared<ScratchBuffer>(allocator);
+    const uint32_t scratchOffsetAligment = physDevice->GetASProperties().minAccelerationStructureScratchOffsetAlignment;
+    scratchBuffer = std::make_shared<ScratchBuffer>(allocator, scratchOffsetAligment);
     asBuilder = std::make_shared<ASBuilder>(device, scratchBuffer);
 
 

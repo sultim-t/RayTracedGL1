@@ -33,6 +33,7 @@ class Scene
 public:
     explicit Scene(
         VkDevice device,
+        std::shared_ptr<PhysicalDevice> physDevice,
         std::shared_ptr<MemoryAllocator> &allocator,
         std::shared_ptr<CommandBufferManager> &cmdManager,
         std::shared_ptr<TextureManager> &textureManager,

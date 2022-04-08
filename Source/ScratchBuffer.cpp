@@ -26,28 +26,34 @@ using namespace RTGL1;
 
 constexpr VkDeviceSize SCRATCH_CHUNK_BUFFER_SIZE = (1 << 24);
 
-ScratchBuffer::ScratchBuffer(std::shared_ptr<MemoryAllocator> _allocator)
-    : allocator(_allocator)
+ScratchBuffer::ScratchBuffer(std::shared_ptr<MemoryAllocator> _allocator, uint32_t _alignment)
+:
+    allocator(_allocator),
+    alignment(_alignment)
 {
     AddChunk(SCRATCH_CHUNK_BUFFER_SIZE);
 }
 
 VkDeviceAddress ScratchBuffer::GetScratchAddress(VkDeviceSize scratchSize)
 {
+    // the fastest way to always return an aligned address is simply to align all allocation sizes
+    // note, vulkan resource alignment values are powers of two, which simplifies the calculation
+    const VkDeviceSize alignedSize = (scratchSize + (alignment - 1)) &~ (alignment - 1);
+
     // find chunk with appropriate size
     for (auto &c : chunks)
     {
-        if (scratchSize < c.buffer.GetSize() - c.currentOffset)
+        if (alignedSize < c.buffer.GetSize() - c.currentOffset)
         {
             VkDeviceAddress address = c.buffer.GetAddress() + c.currentOffset;
 
-            c.currentOffset += scratchSize;
+            c.currentOffset += alignedSize;
             return address;
         }
     }
 
     // couldn't find chunk, create new one
-    AddChunk(std::max(SCRATCH_CHUNK_BUFFER_SIZE, scratchSize));
+    AddChunk(std::max(SCRATCH_CHUNK_BUFFER_SIZE, alignedSize));
     return chunks.back().buffer.GetAddress();
 }
 
