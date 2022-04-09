@@ -71,9 +71,30 @@ void PathTracer::Bind(
                             0, nullptr);
 }
 
-void PathTracer::TracePrimaryRays(VkCommandBuffer cmd, uint32_t frameIndex, uint32_t width, uint32_t height)
+void PathTracer::TracePrimaryRays(VkCommandBuffer cmd, uint32_t frameIndex,
+                                  uint32_t width, uint32_t height,
+                                  const std::shared_ptr<Framebuffers>& framebuffers)
 {
     CmdLabel label(cmd, "Primary rays");
+
+    typedef FramebufferImageIndex FI;
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_RANDOM_SEED,
+        FI::FB_IMAGE_INDEX_ALBEDO,
+        FI::FB_IMAGE_INDEX_NORMAL,
+        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+        FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
+        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_MOTION,
+        FI::FB_IMAGE_INDEX_SURFACE_POSITION,
+        FI::FB_IMAGE_INDEX_VISIBILITY_BUFFER,
+        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+        FI::FB_IMAGE_INDEX_SECTOR_INDEX,
+        FI::FB_IMAGE_INDEX_THROUGHPUT,
+        FI::FB_IMAGE_INDEX_PRIMARY_TO_REFL_REFR,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 
     VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
