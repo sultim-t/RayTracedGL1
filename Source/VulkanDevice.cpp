@@ -818,7 +818,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             scene, uniform, textureManager, 
             framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
 
-        pathTracer->TracePrimaryRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height());
+        pathTracer->TracePrimaryRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
 
         // draw decals on top of primary surface
         decalManager->Draw(cmd, frameIndex, uniform, framebuffers, textureManager);
