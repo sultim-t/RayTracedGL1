@@ -157,11 +157,6 @@ void RTGL1::Utils::WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence 
     VK_CHECKERROR(r);
 }
 
-uint32_t Utils::Align(uint32_t value, uint32_t alignment)
-{
-    return (value + alignment - 1) & ~(alignment - 1);
-}
-
 bool Utils::AreViewportsSame(const VkViewport &a, const VkViewport &b)
 {
     // special epsilons for viewports

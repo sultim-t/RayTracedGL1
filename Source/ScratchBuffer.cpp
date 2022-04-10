@@ -22,6 +22,8 @@
 
 #include <algorithm>
 
+#include "Utils.h"
+
 using namespace RTGL1;
 
 constexpr VkDeviceSize SCRATCH_CHUNK_BUFFER_SIZE = (1 << 24);
@@ -37,8 +39,7 @@ ScratchBuffer::ScratchBuffer(std::shared_ptr<MemoryAllocator> _allocator, uint32
 VkDeviceAddress ScratchBuffer::GetScratchAddress(VkDeviceSize scratchSize)
 {
     // the fastest way to always return an aligned address is simply to align all allocation sizes
-    // note, vulkan resource alignment values are powers of two, which simplifies the calculation
-    const VkDeviceSize alignedSize = (scratchSize + (alignment - 1)) &~ (alignment - 1);
+    const VkDeviceSize alignedSize = Utils::Align(scratchSize, (VkDeviceSize)alignment);
 
     // find chunk with appropriate size
     for (auto &c : chunks)

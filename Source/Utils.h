@@ -61,7 +61,10 @@ namespace Utils
     void WaitAndResetFence(VkDevice device, VkFence fence);
     void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
 
-    uint32_t Align(uint32_t value, uint32_t alignment);
+    template<typename T>
+    T Align(const T &v, const T &alignment);
+    template<typename T>
+    bool IsPow2(const T &v);
 
     bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
 
@@ -82,6 +85,22 @@ constexpr T clamp(const T &v, const T &v_min, const T &v_max)
 {
     assert(v_min <= v_max);
     return std::min(v_max, std::max(v_min, v));
+}
+
+template <typename T>
+bool Utils::IsPow2(const T& v)
+{
+    static_assert(std::is_integral_v<T>);
+    return (v != 0) && ((v & (v - 1)) == 0);
+}
+
+template <typename T>
+T Utils::Align(const T& v, const T& alignment)
+{
+    static_assert(std::is_integral_v<T>);
+    assert(IsPow2(alignment));
+
+    return (v + alignment - 1) & ~(alignment - 1);
 }
 
 }
