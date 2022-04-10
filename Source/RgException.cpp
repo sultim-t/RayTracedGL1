@@ -22,7 +22,7 @@
 
 #include <cassert>
 
-static const char *GetRgResultName(RgResult r)
+const char* RTGL1::RgException::GetRgResultName(RgResult r)
 {
     switch (r)
     {
@@ -43,10 +43,10 @@ static const char *GetRgResultName(RgResult r)
         case RG_WRONG_FUNCTION_CALL: return "RG_WRONG_FUNCTION_CALL";
         case RG_TOO_MANY_SECTORS: return "RG_TOO_MANY_SECTORS";
         case RG_ERROR_INCORRECT_SECTOR: return "RG_ERROR_INCORRECT_SECTOR";
-        case RG_ERROR_INTERNAL: return "RG_ERROR_INTERNAL";
+        case RG_ERROR_CANT_FIND_BLUE_NOISE: return "RG_ERROR_CANT_FIND_BLUE_NOISE";
+        case RG_ERROR_CANT_FIND_WATER_TEXTURES: return "RG_ERROR_CANT_FIND_WATER_TEXTURES";
+        default: assert(0); return "Unknown RgResult";
     }
-
-    return "Unknown RgResult";
 }
 
 RTGL1::RgException::RgException(RgResult _errorCode)

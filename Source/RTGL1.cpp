@@ -331,6 +331,12 @@ RgResult rgIsRenderUpscaleTechniqueAvailable(RgInstance rgInstance, RgRenderUpsc
     CATCH_OR_RETURN;
 }
 
+
+const char *rgGetResultDescription(RgResult result)
+{
+    return RgException::GetRgResultName(result);
+}
+
 RgResult rgSetPotentialVisibility(RgInstance rgInstance, uint32_t sectorID_A, uint32_t sectorID_B)
 {
     try

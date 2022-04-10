@@ -100,7 +100,8 @@ typedef enum RgResult
     RG_WRONG_FUNCTION_CALL,
     RG_TOO_MANY_SECTORS,
     RG_ERROR_INCORRECT_SECTOR,
-    RG_ERROR_INTERNAL,
+    RG_ERROR_CANT_FIND_BLUE_NOISE,
+    RG_ERROR_CANT_FIND_WATER_TEXTURES,
 } RgResult;
 
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
@@ -1187,6 +1188,8 @@ RGAPI RgResult RGCONV rgIsRenderUpscaleTechniqueAvailable(
     RgInstance                          rgInstance,
     RgRenderUpscaleTechnique            technique,
     RgBool32                            *pOutResult);
+
+RGAPI const char* RGCONV rgGetResultDescription(RgResult result);
 
 #ifdef __cplusplus
 }

@@ -35,6 +35,7 @@ public:
     explicit RgException(RgResult errorCode, const char *_Message);
 
     RgResult GetErrorCode() const;
+    static const char* GetRgResultName(RgResult r);
 
 private:
     RgResult errorCode;
