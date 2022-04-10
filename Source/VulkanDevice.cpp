@@ -1406,6 +1406,14 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
         layerNames.push_back("VK_LAYER_LUNARG_monitor");
     }
 
+    std::vector<VkExtensionProperties> supportedInstanceExtensions;
+    uint32_t supportedExtensionsCount;
+
+    if (vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtensionsCount, nullptr) == VK_SUCCESS)
+    {
+        supportedInstanceExtensions.resize(supportedExtensionsCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtensionsCount, supportedInstanceExtensions.data());
+    }
 
     std::vector<const char *> extensions =
     {
@@ -1441,6 +1449,18 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
 
     for (const char *n : DLSS::GetDlssVulkanInstanceExtensions())
     {
+        const bool isSupported = std::any_of(supportedInstanceExtensions.cbegin(), supportedInstanceExtensions.cend(),
+            [&](const VkExtensionProperties& ext)
+            {
+                return !std::strcmp(ext.extensionName, n);
+            }
+        );
+
+        if (!isSupported)
+        {
+            continue;
+        }
+
         extensions.push_back(n);
     }
 
@@ -1580,6 +1600,14 @@ void VulkanDevice::CreateDevice()
     physicalDeviceFeatures2.pNext = &asFeatures;
     physicalDeviceFeatures2.features = features;
 
+    std::vector<VkExtensionProperties> supportedDeviceExtensions;
+    uint32_t supportedExtensionsCount;
+
+    if (vkEnumerateDeviceExtensionProperties(physDevice->Get(), nullptr, &supportedExtensionsCount, nullptr) == VK_SUCCESS)
+    {
+        supportedDeviceExtensions.resize(supportedExtensionsCount);
+        vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtensionsCount, supportedDeviceExtensions.data());
+    }
 
     std::vector<const char *> deviceExtensions = {
         VK_KHR_SWAPCHAIN_EXTENSION_NAME,
@@ -1593,6 +1621,18 @@ void VulkanDevice::CreateDevice()
 
     for (const char *n : DLSS::GetDlssVulkanDeviceExtensions())
     {
+        const bool isSupported = std::any_of(supportedDeviceExtensions.cbegin(), supportedDeviceExtensions.cend(),
+            [&](const VkExtensionProperties& ext)
+            {
+                return !std::strcmp(ext.extensionName, n);
+            }
+        );
+
+        if (!isSupported)
+        {
+            continue;
+        }
+
         deviceExtensions.push_back(n);
     }
 
