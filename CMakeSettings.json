@@ -20,6 +20,11 @@
           "name": "RG_WITH_EXAMPLES",
           "value": "True",
           "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_NVIDIA_DLSS",
+          "value": "True",
+          "type": "BOOL"
         }
       ]
     },
@@ -42,6 +47,11 @@
         {
           "name": "RG_WITH_EXAMPLES",
           "value": "True",
+          "type": "BOOL"
+        },
+        {
+          "name": "RG_WITH_NVIDIA_DLSS",
+          "value": "true",
           "type": "BOOL"
         }
       ]

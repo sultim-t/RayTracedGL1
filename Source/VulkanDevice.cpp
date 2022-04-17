@@ -1606,7 +1606,7 @@ void VulkanDevice::CreateDevice()
     if (vkEnumerateDeviceExtensionProperties(physDevice->Get(), nullptr, &supportedExtensionsCount, nullptr) == VK_SUCCESS)
     {
         supportedDeviceExtensions.resize(supportedExtensionsCount);
-        vkEnumerateInstanceExtensionProperties(nullptr, &supportedExtensionsCount, supportedDeviceExtensions.data());
+        vkEnumerateDeviceExtensionProperties(physDevice->Get(), nullptr, &supportedExtensionsCount, supportedDeviceExtensions.data());
     }
 
     std::vector<const char *> deviceExtensions = {
