@@ -590,7 +590,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
     else
     {
-        gu->bloomThreshold = 1.0f;
+        gu->bloomThreshold = 15.0f;
         gu->bloomThresholdLength = 0.25f;
         gu->bloomUpsampleRadius = 1.0f;
         gu->bloomIntensity = 1.0f;
