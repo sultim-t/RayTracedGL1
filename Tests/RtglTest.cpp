@@ -1,8 +1,13 @@
 #include <chrono>
 #include <iostream>
+#include <cstring>
 
 
-#define RG_USE_SURFACE_WIN32
+#ifdef _WIN32
+    #define RG_USE_SURFACE_WIN32
+#else
+    #define RG_USE_SURFACE_XLIB
+#endif
 #include <RTGL1/RTGL1.h>
 
 #define RG_CHECK(x) assert((x) == RG_SUCCESS)
@@ -10,7 +15,11 @@
 
 #pragma region BOILERPLATE
 #include <GLFW/glfw3.h>
-#define GLFW_EXPOSE_NATIVE_WIN32
+#ifdef _WIN32
+    #define GLFW_EXPOSE_NATIVE_WIN32
+#else
+    #define GLFW_EXPOSE_NATIVE_X11
+#endif
 #include <GLFW/glfw3native.h>
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
@@ -494,18 +503,30 @@ int main()
     RgResult r; 
     RgInstance instance;
 
+#ifdef _WIN32
     RgWin32SurfaceCreateInfo win32Info =
     {
         .hinstance = GetModuleHandle(NULL),
         .hwnd = glfwGetWin32Window(g_GlfwHandle),
     };
+#else
+    RgXlibSurfaceCreateInfo xlibInfo = 
+    {
+        .dpy = glfwGetX11Display(),
+        .window = glfwGetX11Window(g_GlfwHandle)
+    };
+#endif
 
     RgInstanceCreateInfo info = 
     {
         .pAppName                           = "RTGL1 Test",
         .pAppGUID                           = "459d6734-62a6-4d47-927a-bedcdb0445c5",
 
+#ifdef _WIN32
         .pWin32SurfaceInfo                  = &win32Info,
+#else
+        .pXlibSurfaceCreateInfo             = &xlibInfo,
+#endif
 
         .enableValidationLayer              = true,
         .pfnPrint                           = [] (const char *pMessage, void *pUserData)

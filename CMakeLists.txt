@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(RayTracedGL1 CXX C)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
 
 # Vulkan
 message(STATUS "Adding Vulkan. VulkanSDK: $ENV{VULKAN_SDK}")
@@ -186,7 +186,7 @@ option(RG_WITH_SURFACE_WAYLAND  "Build with Wayland VkSurfaceKHR support"   OFF)
 option(RG_WITH_SURFACE_XCB      "Build with Xcb VkSurfaceKHR support"       OFF)
 option(RG_WITH_SURFACE_XLIB     "Build with Xlib VkSurfaceKHR support"      OFF)
 
-option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"              ON)
+option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"              OFF)
 
 option(RG_WITH_EXAMPLES         "Add examples project"                      OFF)
 
@@ -258,7 +258,6 @@ if (RG_WITH_NVIDIA_DLSS)
         else()
             target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Linux_x86_64/libnvsdk_ngx.a")
             target_link_libraries(RayTracedGL1 PRIVATE ${CMAKE_DL_LIBS})
-            target_link_libraries(RayTracedGL1 PRIVATE libstdc++)
         endif()
     else()
         message(FATAL_ERROR 
@@ -273,6 +272,7 @@ target_include_directories(RayTracedGL1 PUBLIC "Include")
 
 
 if (RG_WITH_EXAMPLES)
+    message(STATUS "RG_WITH_EXAMPLES enabled")
     set(RTGL1_EXAMPLES_STANDALONE OFF CACHE BOOL "" FORCE)
     set(RTGL1_SDK_PATH "${CMAKE_SOURCE_DIR}")
     add_subdirectory(Tests)

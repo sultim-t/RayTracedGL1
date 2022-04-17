@@ -21,6 +21,7 @@
 #pragma once
 
 #include <cassert>
+#include <cmath>
 
 #include "DLSS.h"
 #include "RgException.h"
@@ -151,7 +152,7 @@ public:
     {
         // DLSS Programming Guide, Section 3.5
         float ratio = (float)Width() / (float)UpscaledWidth();
-        float bias =  nativeBias + log2f(std::max(0.01f, ratio)) - 1.0f;
+        float bias =  nativeBias + std::log2(std::max(0.01f, ratio)) - 1.0f;
 
         if (bias < 0)
         {

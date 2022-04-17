@@ -74,7 +74,7 @@ static std::wstring GetFolderPath()
 #elif defined(__linux__)
     wchar_t appPath[PATH_MAX];
     char appPath_c[PATH_MAX];
-    ssize_t count = readlink("/proc/self/exe", appPath, PATH_MAX);
+    ssize_t count = readlink("/proc/self/exe", appPath_c, PATH_MAX);
     std::mbstowcs(appPath, appPath_c, PATH_MAX);
 #endif
 
@@ -88,7 +88,13 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
     NVSDK_NGX_Result r;
 
     std::wstring dllPath = GetFolderPath() + (enableDebug ? L"/dev/" : L"/rel/") ;
+#ifdef NV_WINDOWS
     wchar_t *dllPath_c = (wchar_t *)dllPath.c_str();
+#else
+    char dllPath_c_buf[PATH_MAX];
+    char *dllPath_c = &dllPath_c_buf[0];
+    std::wcstombs(dllPath_c, dllPath.c_str(), PATH_MAX);
+#endif
 
     NVSDK_NGX_PathListInfo pathsInfo = {};
     pathsInfo.Path = &dllPath_c;

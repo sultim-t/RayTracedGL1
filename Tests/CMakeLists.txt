@@ -18,13 +18,23 @@ if (RTGL1_EXAMPLES_STANDALONE)
 endif()
 
 # link to RTGL1
-set_target_properties(RayTracedGL1 PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${RTGL1_SDK_PATH}/Include"
-    IMPORTED_LOCATION       "${RTGL1_SDK_PATH}/Build/x64-Release/RayTracedGL1.dll"
-    IMPORTED_LOCATION_DEBUG "${RTGL1_SDK_PATH}/Build/x64-Debug/RayTracedGL1.dll"
-    IMPORTED_IMPLIB         "${RTGL1_SDK_PATH}/Build/x64-Release/RayTracedGL1.lib"
-    IMPORTED_IMPLIB_DEBUG   "${RTGL1_SDK_PATH}/Build/x64-Debug/RayTracedGL1.lib"
-)
+if (WIN32)
+    set_target_properties(RayTracedGL1 PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${RTGL1_SDK_PATH}/Include"
+        IMPORTED_LOCATION       "${RTGL1_SDK_PATH}/Build/x64-Release/RayTracedGL1.dll"
+        IMPORTED_LOCATION_DEBUG "${RTGL1_SDK_PATH}/Build/x64-Debug/RayTracedGL1.dll"
+        IMPORTED_IMPLIB         "${RTGL1_SDK_PATH}/Build/x64-Release/RayTracedGL1.lib"
+        IMPORTED_IMPLIB_DEBUG   "${RTGL1_SDK_PATH}/Build/x64-Debug/RayTracedGL1.lib"
+    )
+else()
+    set_target_properties(RayTracedGL1 PROPERTIES
+        INTERFACE_INCLUDE_DIRECTORIES "${RTGL1_SDK_PATH}/Include"
+        IMPORTED_LOCATION       "${RTGL1_SDK_PATH}/Build/RelWithDebInfo/libRayTracedGL1.so"
+        IMPORTED_LOCATION_DEBUG "${RTGL1_SDK_PATH}/Build/Debug/libRayTracedGL1.so"
+        IMPORTED_IMPLIB         "${RTGL1_SDK_PATH}/Build/RelWithDebInfo/libRayTracedGL1.so"
+        IMPORTED_IMPLIB_DEBUG   "${RTGL1_SDK_PATH}/Build/Debug/libRayTracedGL1.so"
+    )
+endif()
 
 add_executable(RtglTest RtglTest.cpp)
 set_property(TARGET RtglTest PROPERTY CXX_STANDARD 20)
@@ -43,5 +53,5 @@ add_custom_command(TARGET RtglTest POST_BUILD
     "$<$<CONFIG:MinSizeRel>:${RTGL1_DLL_PATH}>"
     "$<$<CONFIG:RelWithDebInfo>:${RTGL1_DLL_PATH}>"
     "$<$<CONFIG:Release>:${RTGL1_DLL_PATH}>"
-    $<TARGET_FILE_DIR:RtglTest>/RayTracedGL1.dll
+    $<TARGET_FILE_DIR:RtglTest>/${CMAKE_SHARED_LIBRARY_PREFIX}RayTracedGL1${CMAKE_SHARED_LIBRARY_SUFFIX}
 )

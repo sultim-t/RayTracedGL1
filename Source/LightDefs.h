@@ -52,7 +52,7 @@ struct LightArrayIndex
         return _indexInGlobalArray == other._indexInGlobalArray;
     }
 };
-static_assert(std::is_pod_v<LightArrayIndex>, "");
+static_assert(std::is_trivial_v<LightArrayIndex>, "");
 
 
 // Passed to the library by user.
@@ -74,7 +74,7 @@ struct SectorID
         return _id != other._id;
     }
 };
-static_assert(std::is_pod_v<SectorID>, "");
+static_assert(std::is_trivial_v<SectorID>, "");
 
 
 // Used in shaders and in indexing, as SectorID can be any value.
@@ -97,7 +97,7 @@ struct SectorArrayIndex
         return _indexInArray != other._indexInArray;
     }
 };
-static_assert(std::is_pod_v<SectorArrayIndex>, "");
+static_assert(std::is_trivial_v<SectorArrayIndex>, "");
 
 
 }

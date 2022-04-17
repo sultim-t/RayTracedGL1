@@ -50,7 +50,7 @@ constexpr VkDeviceSize GetIndirectDrawCountOffset()
 }
 constexpr RTGL1::ShIndirectDrawCommand *GetIndirectDrawCommandsArrayStart(void *pCullingInputBuffer)
 {
-    return (RTGL1::ShIndirectDrawCommand *)((uint8_t*)pCullingInputBuffer + GetIndirectDrawCommandsOffset());
+    return (RTGL1::ShIndirectDrawCommand *)((void*)((uint8_t*)pCullingInputBuffer + GetIndirectDrawCommandsOffset()));
 }
 
 
