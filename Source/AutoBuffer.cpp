@@ -111,6 +111,17 @@ void RTGL1::AutoBuffer::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex
         cmd,
         staging[frameIndex].GetBuffer(), deviceLocal.GetBuffer(),
         1, &info);
+
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer = deviceLocal.GetBuffer();
+    barrier.offset = offset;
+    barrier.size = size;
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
 }
 
 void RTGL1::AutoBuffer::CopyFromStaging(
@@ -129,6 +140,21 @@ void RTGL1::AutoBuffer::CopyFromStaging(
         cmd,
         staging[frameIndex].GetBuffer(), deviceLocal.GetBuffer(),
         copyInfosCount, copyInfos);
+
+    VkBufferMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER;
+    barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
+    barrier.dstAccessMask = VK_ACCESS_MEMORY_READ_BIT;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.buffer = deviceLocal.GetBuffer();
+
+    for (uint32_t i = 0; i < copyInfosCount; ++i)
+    {
+        barrier.offset = copyInfos[i].dstOffset;
+        barrier.size = copyInfos[i].size;
+        vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_ALL_COMMANDS_BIT, 0, 0, nullptr, 1, &barrier, 0, nullptr);
+    }
 }
 
 void *RTGL1::AutoBuffer::GetMapped(uint32_t frameIndex)
