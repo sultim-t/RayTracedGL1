@@ -367,9 +367,12 @@ ShHitInfo getHitInfoBounce(
 
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
+        // less details in normal maps for better denoising
+        const float suppressDetails = 5.0;
+
         vec2 nrm = 
     #if defined(HITINFO_INL_PRIM)
-            getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0])
+            getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0] * suppressDetails, dTdy[0] * suppressDetails)
     #elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
             getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0)
     #elif defined(HITINFO_INL_INDIR)
@@ -379,7 +382,7 @@ ShHitInfo getHitInfoBounce(
         nrm.xy = nrm.xy * 2.0 - vec2(1.0);
 
         const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
-        h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom * nrm.z);
+        h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom);
 
         h.normal = mix(h.normalGeom, h.normal, globalUniform.normalMapStrength);
     }
