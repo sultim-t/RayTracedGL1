@@ -1174,7 +1174,7 @@ typedef struct RgDrawFrameInfo
     const RgDrawFrameTexturesParams             *pTexturesParams;
     const RgDrawFrameLensFlareParams            *pLensFlareParams;
     const RgDrawFrameDebugParams                *pDebugParams;
-    const RgDrawFramePostEffectsParams          postEffectParams;
+    RgDrawFramePostEffectsParams                postEffectParams;
 
 } RgDrawFrameInfo;
 
