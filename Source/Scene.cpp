@@ -118,7 +118,7 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
 
     asManager->BuildTLAS(cmd, frameIndex, prepare);
-    return true;
+    return !disableRayTracing;
 }
 
 bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
