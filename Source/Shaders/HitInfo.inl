@@ -367,16 +367,16 @@ ShHitInfo getHitInfoBounce(
 
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
-        vec3 nrm = 
+        vec2 nrm = 
     #if defined(HITINFO_INL_PRIM)
-            getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+            getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0], dTdy[0])
     #elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
-            getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0).xyz;
+            getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0)
     #elif defined(HITINFO_INL_INDIR)
-            getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod).xyz;
+            getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod)
     #endif
+            .xy;
         nrm.xy = nrm.xy * 2.0 - vec2(1.0);
-        nrm.z = 1.0;
 
         const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
         h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom * nrm.z);
