@@ -488,9 +488,15 @@ uvec4 textureGatherEncNormalGeometry_Prev(const vec2 uv)
     return textureGather(framebufNormalGeometry_Prev_Sampler, uv, 0);
 }
 
-uint texelFetchEncNormalGeometry(const ivec2 pix)
+uint texelFetchEncNormal(const ivec2 pix)
 {
     // fetch encoded normal
+    return texelFetch(framebufNormal_Sampler, pix, 0).r;
+}
+
+uint texelFetchEncNormalGeometry(const ivec2 pix)
+{
+    // fetch encoded geometry normal
     return texelFetch(framebufNormalGeometry_Sampler, pix, 0).r;
 }
 

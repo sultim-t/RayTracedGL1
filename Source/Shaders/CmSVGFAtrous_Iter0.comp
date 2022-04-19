@@ -107,7 +107,7 @@ void fillFilterData(
     //data.indirectDiffuseSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, globalPix);
     data.roughness          = texelFetch(framebufMetallicRoughness_Sampler, globalPix, 0).g;
     data.encSpecularColor   = texelFetch(samplerSpec,                       globalPix, 0).r;
-    data.encNormalGeometry  = texelFetchEncNormalGeometry(                  globalPix);     
+    data.encNormalGeometry  = texelFetchEncNormal(                          globalPix); 
 
     atrousData[sharedPix.y][sharedPix.x] = data;
 }
