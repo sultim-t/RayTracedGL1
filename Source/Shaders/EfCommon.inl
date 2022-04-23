@@ -60,6 +60,8 @@ ivec2 effect_getPixFromCentered(vec2 centered)
 
 vec3 effect_loadFromSource(ivec2 pix)
 {
+    pix = clamp(pix, ivec2(0), effect_getFramebufSize() - 1);
+
     if (EFFECT_SOURCE_IS_PING)
     {
         return imageLoad(framebufUpscaledPing, pix).rgb;
@@ -73,6 +75,8 @@ vec3 effect_loadFromSource(ivec2 pix)
 
 void effect_storeToTarget(const vec3 value, ivec2 pix)
 {
+    pix = clamp(pix, ivec2(0), effect_getFramebufSize() - 1);
+
     if (EFFECT_SOURCE_IS_PING)
     {
         imageStore(framebufUpscaledPong, pix, vec4(value, 0.0));
