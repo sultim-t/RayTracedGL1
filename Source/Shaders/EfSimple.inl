@@ -43,7 +43,7 @@ layout(push_constant) uniform EffectSimplePush_BT
 float getProgress()
 {
     float progress = 
-        max(globalUniform.time - push.transitionBeginTime, 0.0) / 
+        max(globalUniform.time - push.transitionBeginTime, 0.001) / 
         max(push.transitionDuration, 0.001);
 
     progress = clamp(progress, 0, 1);
