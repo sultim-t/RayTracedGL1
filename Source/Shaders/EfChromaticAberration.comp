@@ -28,21 +28,48 @@ struct EffectChromaticAberration_PushConst
 #define EFFECT_PUSH_CONST_T EffectChromaticAberration_PushConst
 #include "EfSimple.inl"
 
-const float baseRadius = 0.01;
+const float BASE_RADIUS = 0.05;
+const int MAX_ITERATIONS = 8;
+
+// Interpolate between a, b, c by t
+vec3 mix3(vec3 a, vec3 b, vec3 c, float t)
+{
+    return mix(
+        mix(a, b, clamp(t * 2, 0, 1)),
+        c,
+        clamp((t - 0.5) * 2, 0, 1));
+}
+
+vec3 getAberrationColor(float t)
+{
+    return mix3(
+        vec3(1,0,0), 
+        vec3(1,1,1), 
+        vec3(0,0,1), 
+        t);
+}
 
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
 
     vec2 c = effect_getCenteredFromPix(pix);
-    vec2 offset = baseRadius * getProgress() * push.custom.intensity * clamp(c, -1, 1);
+    vec2 offset = BASE_RADIUS * getProgress() * push.custom.intensity * c * dot(c, c);
 
-    vec3 color = 
+    int iterCount = MAX_ITERATIONS;
+    vec2 delta = offset / iterCount;
+
+    vec3 color = vec3(0);
+    vec3 weight = vec3(0);
+
+    for (int i = 0; i < iterCount; i++)
     {
-        effect_loadFromSource_Centered(c + vec2(-offset.x, 0       )).r,
-        effect_loadFromSource_Centered(c + vec2( offset.x, 0       )).g,
-        effect_loadFromSource_Centered(c + vec2(        0, offset.y)).b,
-    };
+        vec3 a = effect_loadFromSource_Centered(c + delta * i);
+        vec3 w = getAberrationColor((i + 0.5) / iterCount);
 
-    effect_storeToTarget(color, pix);
+        color += a * w;
+        weight += w;
+    }
+
+    effect_storeToTarget(color / weight, pix);
 }
