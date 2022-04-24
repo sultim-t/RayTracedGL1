@@ -25,6 +25,11 @@
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    
+    if (!effect_isPixValid(pix))
+    {
+        return;
+    }
 
     vec2 toCenter = effect_getCenteredFromPix(pix);
     float d = length(toCenter);

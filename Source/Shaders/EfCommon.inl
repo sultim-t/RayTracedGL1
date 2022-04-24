@@ -37,6 +37,18 @@ vec2 effect_getInverseFramebufSize()
 }
 
 
+ivec2 effect_clampPix(ivec2 pix)
+{
+    return clamp(pix, ivec2(0), effect_getFramebufSize() - 1);
+}
+
+
+bool effect_isPixValid(ivec2 pix)
+{
+    return pix == effect_clampPix(pix);
+}
+
+
 // get UV coords in [0..1] range
 vec2 effect_getFramebufUV(ivec2 pix)
 {
@@ -60,7 +72,7 @@ ivec2 effect_getPixFromCentered(vec2 centered)
 
 vec3 effect_loadFromSource(ivec2 pix)
 {
-    pix = clamp(pix, ivec2(0), effect_getFramebufSize() - 1);
+    pix = effect_clampPix(pix);
 
     if (EFFECT_SOURCE_IS_PING)
     {
@@ -75,7 +87,7 @@ vec3 effect_loadFromSource(ivec2 pix)
 
 void effect_storeToTarget(const vec3 value, ivec2 pix)
 {
-    pix = clamp(pix, ivec2(0), effect_getFramebufSize() - 1);
+    pix = effect_clampPix(pix);
 
     if (EFFECT_SOURCE_IS_PING)
     {
