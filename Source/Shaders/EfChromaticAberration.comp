@@ -52,6 +52,11 @@ vec3 getAberrationColor(float t)
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    
+    if (!effect_isPixValid(pix))
+    {
+        return;
+    }
 
     vec2 c = effect_getCenteredFromPix(pix);
     vec2 offset = BASE_RADIUS * getProgress() * push.custom.intensity * c * dot(c, c);

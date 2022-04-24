@@ -71,6 +71,11 @@ vec3 demodulateAndEncode(ivec2 pix)
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
+    
+    if (!effect_isPixValid(pix))
+    {
+        return;
+    }
 
     vec3 yiq = demodulateAndEncode(pix);
     effect_storeToTarget(encodeYiqForStorage(yiq), pix);
