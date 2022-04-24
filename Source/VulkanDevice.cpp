@@ -238,6 +238,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectColorTint             = CONSTRUCT_SIMPLE_EFFECT(EffectColorTint);
     effectCrtDemodulateEncode   = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDemodulateEncode);
     effectCrtDecode             = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDecode);
+    effectInterlacing           = CONSTRUCT_SIMPLE_EFFECT(EffectInterlacing);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
 
@@ -260,6 +261,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectColorTint);
     shaderManager->Subscribe(effectCrtDemodulateEncode);
     shaderManager->Subscribe(effectCrtDecode);
+    shaderManager->Subscribe(effectInterlacing);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -289,6 +291,7 @@ VulkanDevice::~VulkanDevice()
     effectColorTint.reset();
     effectCrtDemodulateEncode.reset();
     effectCrtDecode.reset();
+    effectInterlacing.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();
@@ -656,7 +659,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
             gu->waterTextureAreaScale = rr.waterTextureAreaScale;
         }
     
-        gu->noBackfaceReflForNoMediaChange = rr.disableBackfaceReflectionsForNoMediaChange;
+        gu->noBackfaceReflForNoMediaChange = !!rr.disableBackfaceReflectionsForNoMediaChange;
     }
     else
     {
@@ -866,6 +869,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         VkExtent2D extent = { renderResolution.Width(), renderResolution.Height() };
 
+
         // upscale finalized image
         if (renderResolution.IsNvDlssEnabled())
         {
@@ -879,6 +883,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
 
         currentResultImage = framebuffers->BlitForEffects(cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter());
+
+
+        // save for the next frame, if needed
+        if (drawInfo.pRenderResolutionParams != nullptr && drawInfo.pRenderResolutionParams->interlacing)
+        {
+            framebuffers->CopyToHistoryBuffer(cmd, frameIndex, currentResultImage);
+        }
     }
 
 
@@ -899,6 +910,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
     {
+        if (drawInfo.pRenderResolutionParams != nullptr && drawInfo.pRenderResolutionParams->interlacing)
+        {
+            if (effectInterlacing->Setup(args))
+            {
+                currentResultImage = effectInterlacing->Apply(args, currentResultImage);
+            }
+        }
         if (effectColorTint->Setup(args, drawInfo.postEffectParams.pColorTint))
         {
             currentResultImage = effectColorTint->Apply(args, currentResultImage);
@@ -938,7 +956,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         {
             currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
         }
-        if (drawInfo.postEffectParams.pCRT != NULL && drawInfo.postEffectParams.pCRT->isActive)
+        if (drawInfo.postEffectParams.pCRT != nullptr && drawInfo.postEffectParams.pCRT->isActive)
         {
             effectCrtDemodulateEncode->Setup(args);
             currentResultImage = effectCrtDemodulateEncode->Apply(args, currentResultImage);
