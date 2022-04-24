@@ -44,9 +44,11 @@ public:
     void Setup(const RgDrawFrameRenderResolutionParams *pParams, 
                uint32_t fullWidth, uint32_t fullHeight,
                const std::shared_ptr<DLSS> &dlss)
-    {   
+    {
+        const int interlacingDivisor = pParams != nullptr && pParams->interlacing ? 2 : 1;
+
         renderWidth = fullWidth;
-        renderHeight = fullHeight;
+        renderHeight = fullHeight / interlacingDivisor;
 
         upscaledWidth = fullWidth;
         upscaledHeight = fullHeight;
@@ -104,15 +106,6 @@ public:
         }
 
 
-        if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
-        {
-            renderWidth  = pParams->renderSize.width;
-            renderHeight = pParams->renderSize.height;
-
-            return;
-        }
-
-
         if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR)
         {
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE)
@@ -120,30 +113,54 @@ public:
                 resolutionMode = RG_RENDER_RESOLUTION_MODE_PERFORMANCE;
             }
 
-            float mult = 1.0f;
-
-            switch (resolutionMode)
+            if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
+                renderWidth = pParams->renderSize.width;
+                renderHeight = pParams->renderSize.height / interlacingDivisor;
+            }
+            else
+            {
+                float mult = 1.0f;
+
+                switch (resolutionMode)
+                {
                 case RG_RENDER_RESOLUTION_MODE_PERFORMANCE:     mult = 0.5f;  break;
                 case RG_RENDER_RESOLUTION_MODE_BALANCED:        mult = 0.59f; break;
                 case RG_RENDER_RESOLUTION_MODE_QUALITY:         mult = 0.67f; break;
                 case RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY:   mult = 0.77f; break;
                 default: assert(0); break;
-            }
+                }
 
-            renderWidth  = mult * fullWidth;
-            renderHeight = mult * fullHeight;
+                renderWidth = static_cast<uint32_t>(mult * static_cast<float>(fullWidth));
+                renderHeight = static_cast<uint32_t>(mult * static_cast<float>(fullHeight)) / interlacingDivisor;
+            }
         }
         else if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS)
         {
-            dlss->GetOptimalSettings(fullWidth, fullHeight, resolutionMode,
-                                     &renderWidth, &renderHeight, &dlssSharpness);
-
-            // ultra quality returns (0,0)
-            if (renderWidth == 0 || renderHeight == 0)
+            if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
-                renderWidth = fullWidth;
-                renderHeight = fullHeight;
+                renderWidth = pParams->renderSize.width;
+                renderHeight = pParams->renderSize.height / interlacingDivisor;
+            }
+            else
+            {
+                dlss->GetOptimalSettings(fullWidth, fullHeight, resolutionMode,
+                    &renderWidth, &renderHeight, &dlssSharpness);
+
+                // ultra quality returns (0,0)
+                if (renderWidth == 0 || renderHeight == 0)
+                {
+                    renderWidth = fullWidth;
+                    renderHeight = fullHeight / interlacingDivisor;
+                }
+            }
+        }
+        else
+        {
+            if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
+            {
+                renderWidth = pParams->renderSize.width;
+                renderHeight = pParams->renderSize.height / interlacingDivisor;
             }
         }
     }
