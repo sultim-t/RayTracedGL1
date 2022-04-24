@@ -893,29 +893,24 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    // sharpen
-    if (renderResolution.IsSharpeningEnabled())
-    {
-        currentResultImage = sharpening->Apply(
-            cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage,
-            renderResolution.GetSharpeningTechnique(), renderResolution.GetSharpeningIntensity());
-    }
-
-    // apply prepared bloom
-    if (enableBloom)
-    {
-        currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
-    }
-
-
     const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
     {
+        if (renderResolution.IsSharpeningEnabled())
+        {
+            currentResultImage = sharpening->Apply(
+                cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage,
+                renderResolution.GetSharpeningTechnique(), renderResolution.GetSharpeningIntensity());
+        }
         if (drawInfo.pRenderResolutionParams != nullptr && drawInfo.pRenderResolutionParams->interlacing)
         {
             if (effectInterlacing->Setup(args))
             {
                 currentResultImage = effectInterlacing->Apply(args, currentResultImage);
             }
+        }
+        if (enableBloom)
+        {
+            currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
         }
         if (effectColorTint->Setup(args, drawInfo.postEffectParams.pColorTint))
         {
