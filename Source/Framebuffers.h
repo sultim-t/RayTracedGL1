@@ -72,6 +72,8 @@ public:
         FramebufferImageIndex framebufImageIndex, VkFilter filter);
     FramebufferImageIndex BlitForEffects(
         VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex, VkFilter filter);
+    void CopyToHistoryBuffer(
+        VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex);
 
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;

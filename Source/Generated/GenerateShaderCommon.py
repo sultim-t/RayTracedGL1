@@ -521,7 +521,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "forceNoWaterRefraction",           1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 
-    (TYPE_FLOAT32,      1,      "noBackfaceReflForNoMediaChange",   1),
+    (TYPE_UINT32,       1,      "noBackfaceReflForNoMediaChange",   1),
     (TYPE_FLOAT32,      1,      "time",                             1),
     (TYPE_FLOAT32,      1,      "waterWaveSpeed",                   1),
     (TYPE_FLOAT32,      1,      "waterWaveStrength",                1),
@@ -768,6 +768,7 @@ FRAMEBUFFERS = {
 
     "UpscaledPing"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  # dst for DLSS and blitting in,
     "UpscaledPong"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  #       src for WipeEffectSource 
+    "UpscaledHistory"                   : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV    | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  # for storing prev frame
 
     "DepthDlss"                         : (TYPE_FLOAT32,    COMPONENT_R,    0),
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),

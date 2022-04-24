@@ -275,7 +275,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
     // set layout for blit
     Utils::BarrierImage(
         cmd, srcImage,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
         VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
 
     Utils::BarrierImage(
@@ -291,7 +291,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
     // restore layouts
     Utils::BarrierImage(
         cmd, srcImage,
-        VK_ACCESS_TRANSFER_WRITE_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+        VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
     Utils::BarrierImage(
@@ -300,6 +300,56 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 
     return dst;
+}
+
+void Framebuffers::CopyToHistoryBuffer(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex)
+{
+    FramebufferImageIndex src = FrameIndexToFBIndex(framebufImageIndex, frameIndex);
+    FramebufferImageIndex dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_HISTORY, frameIndex);
+
+    VkImage srcImage = images[src];
+    VkImage dstImage = images[dst];
+
+    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[src], currentResolution);
+    VkExtent2D dstExtent = GetFramebufSize(ShFramebuffers_Flags[dst], currentResolution);
+    assert(srcExtent.width == dstExtent.width && srcExtent.height == dstExtent.height);
+
+    VkImageCopy region = 
+    {
+        .srcSubresource = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1 },
+        .srcOffset      = { .x = 0, .y = 0, .z = 0 },
+        .dstSubresource = { .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel = 0, .baseArrayLayer = 0, .layerCount = 1 },
+        .dstOffset      = { .x = 0, .y = 0, .z = 0 },
+        .extent         = { .width = srcExtent.width, .height = srcExtent.height, .depth = 1 }
+    };
+
+    // set layout for blit
+    Utils::BarrierImage(
+        cmd, srcImage,
+        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
+
+    Utils::BarrierImage(
+        cmd, dstImage,
+        0, VK_ACCESS_TRANSFER_WRITE_BIT,
+        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+
+    vkCmdCopyImage(
+        cmd, 
+        srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &region);
+
+    // restore layouts
+    Utils::BarrierImage(
+        cmd, srcImage,
+        VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+
+    Utils::BarrierImage(
+        cmd, dstImage,
+        VK_ACCESS_TRANSFER_WRITE_BIT, 0,
+        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
 }
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const

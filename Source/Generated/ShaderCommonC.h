@@ -232,7 +232,7 @@ struct ShGlobalUniform
     uint32_t enableIndirectFromReflRefr;
     uint32_t forceNoWaterRefraction;
     uint32_t waterNormalTextureIndex;
-    float noBackfaceReflForNoMediaChange;
+    uint32_t noBackfaceReflForNoMediaChange;
     float time;
     float waterWaveSpeed;
     float waterWaveStrength;
