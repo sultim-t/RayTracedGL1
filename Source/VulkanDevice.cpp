@@ -1580,7 +1580,7 @@ void VulkanDevice::CreateDevice()
     vulkan12Features.shaderSampledImageArrayNonUniformIndexing = 1;
     vulkan12Features.shaderStorageBufferArrayNonUniformIndexing = 1;
     vulkan12Features.bufferDeviceAddress = 1;
-    vulkan12Features.shaderFloat16 = 1;
+    vulkan12Features.shaderFloat16 = 0;
     vulkan12Features.drawIndirectCount = 1;
 
     VkPhysicalDeviceMultiviewFeatures multiviewFeatures = {};
