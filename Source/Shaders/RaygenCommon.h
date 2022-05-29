@@ -422,14 +422,8 @@ void processDirectionalLight(
 float getGeometryFactor(const vec3 nSurf, const vec3 directionPtoPSurf, float distancePtoPSurf)
 {
     float dist2 = distancePtoPSurf * distancePtoPSurf;
+    dist2 = max(dist2, 1.0);
     return abs(-dot(nSurf, directionPtoPSurf)) / dist2;
-}
-
-
-float getGeometryFactorWoNormal(float distancePtoPSurf)
-{
-    float dist2 = distancePtoPSurf * distancePtoPSurf;
-    return 1.0 / dist2;
 }
 
 
@@ -452,33 +446,38 @@ float getSphericalLightWeight(
     uint plainLightListIndex)
 {
     const uint sphLightIndex = plainLightList_Sph[plainLightListIndex];
-    const ShLightSpherical light = lightSourcesSpherical[sphLightIndex];
+    const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
 
-    const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, light.position);
+    float r = max(sphLight.radius, 1.0); // TODO: should be used sphLight.radius, but there are artifacts, like if some samples are too small or large
+    float dist = length(sphLight.position - surfPosition);
 
     // solid angle here is the spherical cap area on a unit sphere
-    float sinTheta = clamp(max(light.radius, 0.001) / toLight.len, 0.0, 1.0);
+    float sinTheta = r / dist;
     float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
     float solidAngle = 2 * M_PI * (1.0 - cosTheta);
 
-    float nl = max(dot(surfNormal, toLight.dir), 0.0);
-
-    return solidAngle * getLuminance(light.color) * nl;
+    return solidAngle * getLuminance(sphLight.color);
 }
 
 
-vec3 getSphericalLightPosition(uint seed, const vec3 dirToCenter, const vec3 sphLightCenter, float sphLightRadius, out vec3 lightNormal)
+struct PointOnSphericalLight { vec3 position; vec3 normal; };
+
+PointOnSphericalLight getPointOnSphericalLight(uint seed, const ShLightSpherical sphLight, const vec3 surfPosition)
 {
+    PointOnSphericalLight r;
+    const vec3 dirToCenter = safeNormalize(sphLight.position - surfPosition);
+
     // sample hemisphere visible to the surface point
     const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
-
     float ltHsOneOverPdf;
-    lightNormal = sampleOrientedHemisphere(-dirToCenter, u[0], u[1], ltHsOneOverPdf);
+    r.normal = sampleOrientedHemisphere(-dirToCenter, u[0], u[1], ltHsOneOverPdf);
 
     //const float halfSphereArea = 2 * M_PI * sphLight.radius * sphLight.radius;
     //pdf /= max(halfSphereArea, 0.00001);
 
-    return sphLightCenter + lightNormal * sphLightRadius;
+    r.position = sphLight.position + r.normal * sphLight.radius;
+
+    return r;
 }
 
 
@@ -583,36 +582,19 @@ void processSphericalLight(
         sphLight = lightSourcesSpherical_Prev[sphLightIndex];
     }
 
-    const DirectionAndLength toLightCenter = calcDirectionAndLength(surfPosition, sphLight.position);
+    const PointOnSphericalLight pointOnLight = getPointOnSphericalLight(seed, sphLight, surfPosition);
+    const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, pointOnLight.position);
 
-    vec3 lightNormal;
-    const vec3 posOnSphere = getSphericalLightPosition(seed, toLightCenter.dir, sphLight.position, sphLight.radius, lightNormal);
+    float nl = max(dot(surfNormal, toLight.dir), 0.0);
 
-    const DirectionAndLength toLightPoint = calcDirectionAndLength(surfPosition, posOnSphere);
-
-    const float r = sphLight.radius;
-    const float z = sphLight.falloff;
-    
-    const float I = pow(clamp((z - toLightCenter.len) / max(z - r, 1), 0, 1), 2);
-    float irradiance = I * max(dot(surfNormal, toLightCenter.dir), 0.0);
-    
-#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
-    irradiance = min(irradiance, globalUniform.firefliesClamp);
-#endif
+    vec3 irradiance = sphLight.color * getGeometryFactor(pointOnLight.normal, toLight.dir, toLight.len);
 
     out_result.lightIndex = sphLightIndex;
     out_result.lightType = LIGHT_TYPE_SPHERICAL;
 
-    out_result.diffuse = 
-        evalBRDFLambertian(1.0) *
-        sphLight.color * 
-        M_PI * irradiance;
+    out_result.diffuse  = nl * irradiance * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = 
-        evalBRDFSmithGGX(surfNormal, toViewerDir, toLightPoint.dir, surfRoughness, surfSpecularColor) * 
-        sphLight.color * 
-        max(dot(surfNormal, toLightPoint.dir), 0.0) *
-        getGeometryFactor(lightNormal, toLightPoint.dir, toLightPoint.len);
+    out_result.specular = nl * irradiance * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  /= pdf;
@@ -625,7 +607,7 @@ void processSphericalLight(
     
     out_result.shadowRayEnable = true;
     out_result.shadowRayStart  = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;
-    out_result.shadowRayEnd    = posOnSphere;
+    out_result.shadowRayEnd    = pointOnLight.position;
 }
 
 
@@ -791,22 +773,15 @@ void processPolygonalLight(
         return;
     }
 
-    float irradiance = 
-        pow(ll, globalUniform.polyLightSpotlightFactor) * 
-        getGeometryFactor(triNormal, toLight.dir, toLight.len);
-
-#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
-    irradiance = min(irradiance, globalUniform.firefliesClamp);
-#endif
-
-    const vec3 s = polyLight.color * nl * irradiance;
+    vec3 irradiance = polyLight.color * getGeometryFactor(triNormal, toLight.dir, toLight.len);
+    irradiance *= pow(ll, globalUniform.polyLightSpotlightFactor);
     
     out_result.lightIndex = polyLightIndex;
     out_result.lightType = LIGHT_TYPE_POLYGONAL;
 
-    out_result.diffuse  = evalBRDFLambertian(1.0) * M_PI * s;
+    out_result.diffuse  = nl * irradiance * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor) * s;
+    out_result.specular = nl * irradiance * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  /= pdf;
