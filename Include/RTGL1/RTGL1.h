@@ -684,8 +684,6 @@ typedef struct RgSpotlightUploadInfo
     float angleOuter;
     // Outer cone angle. In radians.
     float angleInner;
-    // Distance at which light intensity is zero.
-    float falloffDistance;
 } RgSpotlightUploadInfo;
 
 RGAPI RgResult RGCONV rgUploadDirectionalLight(

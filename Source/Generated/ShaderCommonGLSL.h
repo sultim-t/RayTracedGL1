@@ -207,7 +207,7 @@ struct ShGlobalUniform
     float spotlightRadius;
     float spotlightCosAngleOuter;
     float spotlightCosAngleInner;
-    float spotlightFalloffDistance;
+    float bloomEmissionSaturationBias;
     uint maxBounceShadowsDirectionalLights;
     uint maxBounceShadowsSphereLights;
     uint maxBounceShadowsSpotlights;
@@ -261,10 +261,6 @@ struct ShGlobalUniform
     uint lensFlareCullingInputCount;
     uint applyViewProjToLensFlares;
     uint areFramebufsInitedByRT;
-    float bloomEmissionSaturationBias;
-    float _pad1;
-    float _pad2;
-    float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

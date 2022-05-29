@@ -138,7 +138,6 @@ static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobal
     gu->spotlightRadius = info.radius;
     gu->spotlightCosAngleOuter = std::cos(info.angleOuter);
     gu->spotlightCosAngleInner = std::cos(info.angleInner);
-    gu->spotlightFalloffDistance = info.falloffDistance;
 
     gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
 
@@ -295,7 +294,6 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_pt
 {
     if (IsColorTooDim(info.color) ||
         info.radius <= 0.0f ||
-        info.falloffDistance <= 0.0f ||
         info.angleOuter <= 0.0f)
     {
         return;

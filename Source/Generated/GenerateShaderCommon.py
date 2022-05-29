@@ -494,7 +494,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "spotlightRadius",              1),
     (TYPE_FLOAT32,      1,      "spotlightCosAngleOuter",       1),
     (TYPE_FLOAT32,      1,      "spotlightCosAngleInner",       1),
-    (TYPE_FLOAT32,      1,      "spotlightFalloffDistance",     1),
+    (TYPE_FLOAT32,      1,      "bloomEmissionSaturationBias",  1),
 
     (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",1),
     (TYPE_UINT32,       1,      "maxBounceShadowsSphereLights",     1),
@@ -563,11 +563,6 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
     (TYPE_UINT32,       1,      "applyViewProjToLensFlares",        1),
     (TYPE_UINT32,       1,      "areFramebufsInitedByRT",           1),
-
-    (TYPE_FLOAT32,      1,      "bloomEmissionSaturationBias",      1),
-    (TYPE_FLOAT32,      1,      "_pad1",                            1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
-    (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),
     #(TYPE_FLOAT32,      1,      "_pad1",                            1),
