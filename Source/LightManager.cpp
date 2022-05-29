@@ -94,7 +94,6 @@ static void FillInfoSpherical(const RgSphericalLightUploadInfo &info, RTGL1::ShL
     memcpy(lt.position, info.position.data, sizeof(float) * 3);
 
     lt.radius = std::max(0.0f, info.radius);
-    lt.falloff = std::max(lt.radius, std::max(0.0f, info.falloffDistance));
 
     memcpy(dst, &lt, sizeof(RTGL1::ShLightSpherical));
 }

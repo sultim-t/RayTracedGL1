@@ -399,9 +399,9 @@ void processDirectionalLight(
     out_result.lightIndex = 0;
     out_result.lightType = LIGHT_TYPE_DIRECTIONAL;
 
-    out_result.diffuse  = evalBRDFLambertian(1.0) * dirlightColor * nl * M_PI;
+    out_result.diffuse  = nl * dirlightColor * evalBRDFLambertian(1.0) * dirlightColor;
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor) * dirlightColor * nl;
+    out_result.specular = nl * dirlightColor * evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  *= oneOverPdf;
@@ -847,9 +847,9 @@ void processSpotLight(
     out_result.lightIndex = 0;
     out_result.lightType = LIGHT_TYPE_SPOTLIGHT;
 
-    out_result.diffuse  = evalBRDFLambertian(1.0) * spotColor * distWeight * nl * M_PI;
+    out_result.diffuse  = nl * spotColor * distWeight * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor) * spotColor * nl;
+    out_result.specular = nl * spotColor * evalBRDFSmithGGX(surfNormal, toViewerDir, dir, surfRoughness, surfSpecularColor);
 #endif
 
     const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));

@@ -310,7 +310,7 @@ struct ShLightSpherical
     vec3 position;
     float radius;
     vec3 color;
-    float falloff;
+    uint __pad0;
 };
 
 struct ShLightPolygonal

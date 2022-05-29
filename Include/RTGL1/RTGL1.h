@@ -35,7 +35,7 @@
     #define RGCONV
 #endif // defined(_WIN32)
 
-#define RG_RTGL_VERSION_API "1.01.0000"
+#define RG_RTGL_VERSION_API "1.02.0000"
 
 #ifdef RG_USE_SURFACE_WIN32
     #include <windows.h>
@@ -651,8 +651,6 @@ typedef struct RgSphericalLightUploadInfo
     uint32_t        sectorID;
     // Sphere radius.
     float           radius;
-    // There will be no light after this distance.
-    float           falloffDistance;
 } RgSphericalLightUploadInfo;
 
 typedef struct RgPolygonalLightUploadInfo

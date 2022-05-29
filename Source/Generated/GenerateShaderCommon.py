@@ -612,7 +612,6 @@ LIGHT_SPHERICAL_STRUCT = [
     (TYPE_FLOAT32,      3,      "position",             1),
     (TYPE_FLOAT32,      1,      "radius",               1),
     (TYPE_FLOAT32,      3,      "color",                1),
-    (TYPE_FLOAT32,      1,      "falloff",              1),
 ]
 
 # LIGHT_DIRECTIONAL_STRUCT = [

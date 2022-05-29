@@ -314,7 +314,7 @@ struct ShLightSpherical
     float position[3];
     float radius;
     float color[3];
-    float falloff;
+    uint32_t __pad0;
 };
 
 struct ShLightPolygonal
