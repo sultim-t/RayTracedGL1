@@ -36,6 +36,9 @@ void main()
 
     float prevFrameWeight = deinterlaced % 2 == 0 ? 0.75 : 0.25;
 
+    vec2 c = effect_getCenteredFromPix(pix);
+    prevFrameWeight *= clamp(dot(c, c), 0.2, 1);
+
     vec3 color = mix(
             imageLoad(framebufUpscaledHistory_Prev, effect_clampPix(pix)).rgb, 
             effect_loadFromSource(pix), 
