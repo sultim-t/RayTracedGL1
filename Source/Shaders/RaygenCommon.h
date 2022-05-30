@@ -349,12 +349,40 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 
 
 
+struct DirectionAndLength { vec3 dir; float len; };
+
+DirectionAndLength calcDirectionAndLength(const vec3 start, const vec3 end)
+{
+    DirectionAndLength r;
+    r.dir = end - start;
+    r.len = max(length(r.dir), 0.0001);
+    r.dir /= r.len;
+
+    return r;
+}
+
+
 float calcSphereSolidAngle(float sphereRadius, float distanceToSphereCenter)
 {
     // solid angle here is the spherical cap area on a unit sphere
     float sinTheta = sphereRadius / distanceToSphereCenter;
     float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
     return 2 * M_PI * (1.0 - cosTheta);
+}
+
+
+float calcAreaSolidAngle(float area, const vec3 areaCenter, const vec3 surfPosition, const vec3 surfNormal)
+{
+    // https://math.stackexchange.com/a/2700457
+    const DirectionAndLength surfToAreaCenter = calcDirectionAndLength(surfPosition, areaCenter);
+    float nl = clamp(dot(surfToAreaCenter.dir, surfNormal), 0.0, 1.0);
+    return area * nl / square(surfToAreaCenter.len);
+}
+
+
+float calcDiskSolidAngle(const vec3 diskCenter, float diskRadius, const vec3 surfPosition, const vec3 surfNormal)
+{
+    return calcAreaSolidAngle(M_PI * diskRadius * diskRadius, diskCenter, surfPosition, surfNormal);
 }
 
 
@@ -391,16 +419,14 @@ void processDirectionalLight(
     const vec3 dirlightColor            = globalUniform.directionalLightColor.xyz;
     const float dirlightAngularRadius   = max(0.01, globalUniform.directionalLightAngularRadius); 
 
-    float solidAngle = calcSphereSolidAngle(dirlightAngularRadius, 1.0);
-
-    float oneOverPdf = 1.0 / solidAngle;
+    float pdf = calcSphereSolidAngle(dirlightAngularRadius, 1.0);
 
     const vec3 l = getDirectionalLightVector(seed, dirlightDirection, dirlightAngularRadius);
 
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
 
-    if (nl <= 0 || ngl <= 0)
+    if (nl <= 0 || ngl <= 0 || pdf <= 0)
     {
         return;
     }
@@ -413,8 +439,8 @@ void processDirectionalLight(
     out_result.specular = nl * dirlightColor * evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor);
 #endif
 
-    out_result.diffuse  *= oneOverPdf;
-    out_result.specular *= oneOverPdf;
+    out_result.diffuse  /= pdf;
+    out_result.specular /= pdf;
 
     if (!castShadowRay)
     {
@@ -433,19 +459,6 @@ float getGeometryFactor(const vec3 lightNormal, const vec3 lightToSurfaceDirecti
     float dist2 = lightToSurfaceDistance * lightToSurfaceDistance;
     dist2 = max(dist2, 1.0);
     return abs(-dot(lightNormal, lightToSurfaceDirection)) / dist2;
-}
-
-
-struct DirectionAndLength { vec3 dir; float len; };
-
-DirectionAndLength calcDirectionAndLength(const vec3 start, const vec3 end)
-{
-    DirectionAndLength r;
-    r.dir = end - start;
-    r.len = max(length(r.dir), 0.0001);
-    r.dir /= r.len;
-
-    return r;
 }
 
 
@@ -582,6 +595,14 @@ void processSphericalLight(
 
         sphLight = lightSourcesSpherical_Prev[sphLightIndex];
     }
+
+    pdf *= calcSphereSolidAngle(sphLight.radius, length(sphLight.position - surfPosition));
+
+    if (pdf <= 0)
+    {
+        return;
+    }
+
 
     const PointOnSphericalLight pointOnLight = getPointOnSphericalLight(seed, sphLight, surfPosition);
     const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, pointOnLight.position);
@@ -755,7 +776,16 @@ void processPolygonalLight(
         return;
     }
     triNormal /= triArea * 2;
-    pdf /= triArea;
+    
+    {
+        const vec3 triCenter = (polyLight.position_0.xyz + polyLight.position_1.xyz + polyLight.position_2.xyz) / 3.0;
+        pdf *= calcAreaSolidAngle(triArea, triCenter, surfPosition, surfNormal);
+
+        if (pdf <= 0)
+        {
+            return;
+        }
+    }
 
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
@@ -826,7 +856,7 @@ void processSpotLight(
     const vec3 spotRight = cross(spotDir, spotUp);
     const vec3 posOnDisk = spotPos + spotRight * disk.x + spotUp * disk.y;
 
-    const float oneOverPdf = 1.0 / (M_PI * spotRadius * spotRadius);
+    const float pdf = calcDiskSolidAngle(spotPos, spotRadius, surfPosition, surfNormal);
 
     const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, posOnDisk);
 
@@ -853,8 +883,8 @@ void processSpotLight(
     out_result.diffuse  *= angleWeight;
     out_result.specular *= angleWeight;
 
-    out_result.diffuse  *= oneOverPdf;
-    out_result.specular *= oneOverPdf;
+    out_result.diffuse  /= pdf;
+    out_result.specular /= pdf;
 
     if (!castShadowRay)
     {
