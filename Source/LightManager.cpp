@@ -124,7 +124,7 @@ static void FillInfoDirectional(const RgDirectionalLightUploadInfo &info, RTGL1:
     dst->directionalLightDirection[2] = f > 0.001f ? -v[2] / f : 0;
     dst->directionalLightDirection[3] = 0.0f;
 
-    dst->directionalLightTanAngularRadius = (float)tan(std::max(0.0, 0.5 * (double)info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
+    dst->directionalLightAngularRadius = static_cast<float>(0.5 * static_cast<double>(info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
 }
 
 static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobalUniform *gu)

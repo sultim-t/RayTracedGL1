@@ -77,7 +77,7 @@ float G1GGX(const vec3 s, const vec3 n, float alpha)
     return 2 * dot(n, s) / (dot(n, s) * (2 - alpha) + alpha);
 }
 
-#define MIN_GGX_ROUGHNESS 0.02
+#define MIN_GGX_ROUGHNESS 0.001
 
 // n -- macrosurface normal
 // v -- direction to viewer

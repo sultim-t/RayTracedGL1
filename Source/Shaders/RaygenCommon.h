@@ -349,19 +349,26 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 
 
 
-vec3 getDirectionalLightVector(uint seed, const vec3 dirlightDirection, float dirlightTanAngularRadius)
+float calcSphereSolidAngle(float sphereRadius, float distanceToSphereCenter)
 {
-    const vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
-    const vec2 disk = sampleDisk(dirlightTanAngularRadius, u[0], u[1]);
-
-    const mat3 basis = getONB(dirlightDirection);
-
-    return normalize(dirlightDirection + basis[0] * disk.x + basis[1] * disk.y);
+    // solid angle here is the spherical cap area on a unit sphere
+    float sinTheta = sphereRadius / distanceToSphereCenter;
+    float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
+    return 2 * M_PI * (1.0 - cosTheta);
 }
 
 
+vec3 getDirectionalLightVector(uint seed, const vec3 direction, float angularRadius)
+{
+    float diskRadiusAtUnit = sin(angularRadius);
 
-#define MAX_SUBSET_LEN 8
+    vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
+    vec2 disk = sampleDisk(diskRadiusAtUnit, u[0], u[1]);
+
+    mat3 basis = getONB(direction);
+
+    return normalize(direction + basis[0] * disk.x + basis[1] * disk.y);
+}
 
 
 // toViewerDir -- is direction to viewer
@@ -380,13 +387,15 @@ void processDirectionalLight(
         return;
     }
 
-    const vec3 dirlightDirection            = globalUniform.directionalLightDirection.xyz;
-    const vec3 dirlightColor                = globalUniform.directionalLightColor.xyz;
-    const float dirlightTanAngularRadius    = globalUniform.directionalLightTanAngularRadius;
+    const vec3 dirlightDirection        = globalUniform.directionalLightDirection.xyz;
+    const vec3 dirlightColor            = globalUniform.directionalLightColor.xyz;
+    const float dirlightAngularRadius   = max(0.01, globalUniform.directionalLightAngularRadius); 
 
-    float oneOverPdf = 1.0;
+    float solidAngle = calcSphereSolidAngle(dirlightAngularRadius, 1.0);
 
-    const vec3 l = getDirectionalLightVector(seed, dirlightDirection, dirlightTanAngularRadius);
+    float oneOverPdf = 1.0 / solidAngle;
+
+    const vec3 l = getDirectionalLightVector(seed, dirlightDirection, dirlightAngularRadius);
 
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
@@ -451,12 +460,7 @@ float getSphericalLightWeight(
     float r = max(sphLight.radius, 1);
     float dist = max(length(sphLight.position - surfPosition), r);
 
-    // solid angle here is the spherical cap area on a unit sphere
-    float sinTheta = r / dist;
-    float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
-    float solidAngle = 2 * M_PI * (1.0 - cosTheta);
-
-    return solidAngle * getLuminance(sphLight.color);
+    return calcSphereSolidAngle(r, dist) * getLuminance(sphLight.color);
 }
 
 
@@ -849,8 +853,8 @@ void processSpotLight(
     out_result.diffuse  *= angleWeight;
     out_result.specular *= angleWeight;
 
-    // out_result.diffuse  *= oneOverPdf;
-    // out_result.specular *= oneOverPdf;
+    out_result.diffuse  *= oneOverPdf;
+    out_result.specular *= oneOverPdf;
 
     if (!castShadowRay)
     {

@@ -548,7 +548,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "maxBounceShadowsPolygonalLights",  1),
     (TYPE_FLOAT32,      1,      "polyLightSpotlightFactor",         1),
-    (TYPE_FLOAT32,      1,      "directionalLightTanAngularRadius", 1),
+    (TYPE_FLOAT32,      1,      "directionalLightAngularRadius",    1),
 
     (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
     (TYPE_FLOAT32,      4,      "directionalLightDirectionPrev",    1),

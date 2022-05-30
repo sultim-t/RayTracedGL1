@@ -253,7 +253,7 @@ struct ShGlobalUniform
     uint32_t rayCullBackFaces;
     uint32_t maxBounceShadowsPolygonalLights;
     float polyLightSpotlightFactor;
-    float directionalLightTanAngularRadius;
+    float directionalLightAngularRadius;
     float directionalLightDirection[4];
     float directionalLightDirectionPrev[4];
     float directionalLightColor[4];
