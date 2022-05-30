@@ -575,7 +575,7 @@ void processSphericalLight(
         return;
     }
 
-    float pdf = selected_mass / (weightsTotal * S);
+    float oneOverPdf = (weightsTotal * S) / selected_mass;
 
 
     ShLightSpherical sphLight;
@@ -620,8 +620,13 @@ void processSphericalLight(
     out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
-    out_result.diffuse  /= pdf;
-    out_result.specular /= pdf;
+    out_result.diffuse  *= oneOverPdf;
+    out_result.specular *= oneOverPdf;
+
+#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
+    out_result.diffuse  = min(out_result.diffuse,  vec3(globalUniform.firefliesClamp));
+    out_result.specular = min(out_result.specular, vec3(globalUniform.firefliesClamp));
+#endif
     
     if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
@@ -722,7 +727,7 @@ void processPolygonalLight(
         return;
     }
 
-    float pdf = selected_mass / (weightsTotal * S);
+    float oneOverPdf = (weightsTotal * S) / selected_mass;
 
 
     
@@ -789,8 +794,13 @@ void processPolygonalLight(
     out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
-    out_result.diffuse  /= pdf;
-    out_result.specular /= pdf;
+    out_result.diffuse  *= oneOverPdf;
+    out_result.specular *= oneOverPdf;
+
+#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
+    out_result.diffuse  = min(out_result.diffuse,  vec3(globalUniform.firefliesClamp));
+    out_result.specular = min(out_result.specular, vec3(globalUniform.firefliesClamp));
+#endif
 
     if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
