@@ -197,6 +197,25 @@ bool RTGL1::Utils::IsAlmostZero(const RgMatrix3D &m)
     return s < ALMOST_ZERO_THRESHOLD;
 }
 
+void RTGL1::Utils::Normalize(float inout[3])
+{
+    float dot = inout[0] * inout[0] + inout[1] * inout[1] + inout[2] * inout[2];
+    float len = sqrtf(dot);
+
+    if (len > 0.01f)
+    {
+        inout[0] /= len;
+        inout[1] /= len;
+        inout[2] /= len;
+    }
+    else
+    {
+        assert(0);
+        inout[0] = inout[1] = inout[2] = 0.0f;
+    }
+}
+
+
 void RTGL1::Utils::SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src)
 {
     const bool toColumnMajor = true;

@@ -400,11 +400,9 @@ float calcDiskSolidAngle(const vec3 diskCenter, float diskRadius, const vec3 sur
 }
 
 
-vec3 getDirectionalLightVector(uint seed, const vec3 direction, float angularRadius)
+vec3 getDirectionalLightVector(uint seed, const vec3 direction, float diskRadiusAtUnit)
 {
-    float diskRadiusAtUnit = sin(angularRadius);
-
-    vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;    
+    vec2 u = getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy;
     vec2 disk = sampleDisk(diskRadiusAtUnit, u[0], u[1]);
 
     mat3 basis = getONB(direction);
@@ -429,28 +427,27 @@ void processDirectionalLight(
         return;
     }
 
-    const vec3 dirlightDirection        = globalUniform.directionalLightDirection.xyz;
-    const vec3 dirlightColor            = globalUniform.directionalLightColor.xyz;
-    const float dirlightAngularRadius   = max(0.01, globalUniform.directionalLightAngularRadius); 
+    const vec3 dirlightDirection    = globalUniform.directionalLightDirection.xyz;
+    float dirlightDiskRadiusAtUnit  = sin(max(0.01, globalUniform.directionalLightAngularRadius));
 
-    float pdf = calcSphereSolidAngle(dirlightAngularRadius, 1.0);
-
-    const vec3 l = getDirectionalLightVector(seed, dirlightDirection, dirlightAngularRadius);
+    const vec3 l = getDirectionalLightVector(seed, dirlightDirection, dirlightDiskRadiusAtUnit);
 
     const float nl = dot(surfNormal, l);
     const float ngl = dot(surfNormalGeom, l);
 
-    if (nl <= 0 || ngl <= 0 || pdf <= 0)
+    if (nl <= 0 || ngl <= 0)
     {
         return;
     }
 
+    vec3 c = globalUniform.directionalLightColor.xyz;
+
     out_result.lightIndex = 0;
     out_result.lightType = LIGHT_TYPE_DIRECTIONAL;
 
-    out_result.diffuse  = nl * dirlightColor * evalBRDFLambertian(1.0) * dirlightColor;
+    out_result.diffuse  = nl * c * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = nl * dirlightColor * evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor);
+    out_result.specular = nl * c * evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor);
 #endif
 
     if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
@@ -610,15 +607,17 @@ void processSphericalLight(
     const PointOnSphericalLight pointOnLight = getPointOnSphericalLight(seed, sphLight, surfPosition);
     const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, pointOnLight.position);
 
-    float nl = max(dot(surfNormal, toLight.dir), 0.0);
-    float dw = nl * getGeometryFactor(pointOnLight.normal, toLight.dir, toLight.len);
+    const vec3 c = sphLight.color;
+    
+    const float nl = max(dot(surfNormal, toLight.dir), 0.0);
+    const float dw = nl * getGeometryFactor(pointOnLight.normal, toLight.dir, toLight.len);
 
     out_result.lightIndex = sphLightIndex;
     out_result.lightType = LIGHT_TYPE_SPHERICAL;
 
-    out_result.diffuse  = dw * nl * sphLight.color * evalBRDFLambertian(1.0);
+    out_result.diffuse  = dw * c * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = dw * nl * sphLight.color * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
+    out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  /= pdf;
@@ -778,15 +777,16 @@ void processPolygonalLight(
         return;
     }
 
-    float dw = nl * getGeometryFactor(triNormal, toLight.dir, toLight.len);
-    dw *= pow(ll, globalUniform.polyLightSpotlightFactor);
+    const vec3 c = polyLight.color * pow(ll, globalUniform.polyLightSpotlightFactor);
+
+    const float dw = nl * getGeometryFactor(triNormal, toLight.dir, toLight.len);
     
     out_result.lightIndex = polyLightIndex;
     out_result.lightType = LIGHT_TYPE_POLYGONAL;
 
-    out_result.diffuse  = dw * polyLight.color * evalBRDFLambertian(1.0);
+    out_result.diffuse  = dw * c * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = dw * polyLight.color * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
+    out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  /= pdf;
@@ -820,18 +820,16 @@ void processSpotLight(
 
     const vec3 spotPos      = globalUniform.spotlightPosition.xyz; 
     const vec3 spotDir      = globalUniform.spotlightDirection.xyz; 
-    const vec3 spotUp       = globalUniform.spotlightUpVector.xyz; 
-    const vec3 spotColor    = globalUniform.spotlightColor.xyz;
+    const vec3 spotUp       = globalUniform.spotlightUpVector.xyz;
     const float spotRadius  = max(globalUniform.spotlightRadius, 0.001);
     const float spotCosAngleOuter = globalUniform.spotlightCosAngleOuter;
     const float spotCosAngleInner = globalUniform.spotlightCosAngleInner;
+
 
     const vec2 u = getRandomSample(seed, RANDOM_SALT_SPOT_LIGHT_DISK).xy;    
     const vec2 disk = sampleDisk(spotRadius, u[0], u[1]);
     const vec3 spotRight = cross(spotDir, spotUp);
     const vec3 posOnDisk = spotPos + spotRight * disk.x + spotUp * disk.y;
-
-    const float pdf = calcDiskSolidAngle(spotPos, spotRadius, surfPosition, surfNormal);
 
     const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, posOnDisk);
 
@@ -839,24 +837,22 @@ void processSpotLight(
     const float ngl = dot(surfNormalGeom, toLight.dir);
     const float cosA = dot(-toLight.dir, spotDir);
 
-    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngleOuter || pdf <= 0)
+    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngleOuter)
     {
         return;
     }
 
-    float dw = nl * getGeometryFactor(spotDir, toLight.dir, toLight.len);
+    const vec3 c = globalUniform.spotlightColor.xyz * square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
+                
+    const float dw = nl * getGeometryFactor(spotDir, toLight.dir, toLight.len);
 
     out_result.lightIndex = 0;
     out_result.lightType = LIGHT_TYPE_SPOTLIGHT;
 
-    out_result.diffuse  = dw * spotColor * evalBRDFLambertian(1.0);
+    out_result.diffuse  = dw * c * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = dw * spotColor * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
+    out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
-
-    const float angleWeight = square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
-    out_result.diffuse  *= angleWeight;
-    out_result.specular *= angleWeight;
 
     if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {

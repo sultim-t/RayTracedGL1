@@ -26,6 +26,7 @@
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
 #include "RgException.h"
+#include "Utils.h"
 
 namespace RTGL1
 {
@@ -115,14 +116,14 @@ static void FillInfoDirectional(const RgDirectionalLightUploadInfo &info, RTGL1:
 {
     memcpy(dst->directionalLightColor, info.color.data, sizeof(float) * 3);
     dst->directionalLightColor[3] = 0.0f;
-
-    const float *v = info.direction.data;
-    float f = sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
-
-    dst->directionalLightDirection[0] = f > 0.001f ? -v[0] / f : 0;
-    dst->directionalLightDirection[1] = f > 0.001f ? -v[1] / f : -1;
-    dst->directionalLightDirection[2] = f > 0.001f ? -v[2] / f : 0;
+    
+    memcpy(dst->directionalLightDirection, info.direction.data, 3 * sizeof(float));
+    dst->directionalLightDirection[0] *= -1;
+    dst->directionalLightDirection[1] *= -1;
+    dst->directionalLightDirection[2] *= -1;
     dst->directionalLightDirection[3] = 0.0f;
+
+    RTGL1::Utils::Normalize(dst->directionalLightDirection);
 
     dst->directionalLightAngularRadius = static_cast<float>(0.5 * static_cast<double>(info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
 }
@@ -134,6 +135,9 @@ static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobal
     memcpy(gu->spotlightDirection, info.direction.data, 3 * sizeof(float));
     memcpy(gu->spotlightUpVector, info.upVector.data, 3 * sizeof(float));
     memcpy(gu->spotlightColor, info.color.data, 3 * sizeof(float));
+
+    RTGL1::Utils::Normalize(gu->spotlightDirection);
+    RTGL1::Utils::Normalize(gu->spotlightUpVector);
 
     gu->spotlightRadius = info.radius;
     gu->spotlightCosAngleOuter = std::cos(info.angleOuter);

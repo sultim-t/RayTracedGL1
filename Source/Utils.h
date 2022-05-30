@@ -70,6 +70,7 @@ namespace Utils
 
     bool IsAlmostZero(const RgFloat3D &v);
     bool IsAlmostZero(const RgMatrix3D &m);
+    void Normalize(float inout[3]);
     // In terms of GLSL: mat3(a), where a is mat4.
     // The remaining values are initialized with identity matrix.
     void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
