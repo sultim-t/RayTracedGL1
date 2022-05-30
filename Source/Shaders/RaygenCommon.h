@@ -387,7 +387,7 @@ float calcAreaSolidAngle(float area, const vec3 areaCenter, const vec3 surfPosit
 {
     // https://math.stackexchange.com/a/2700457
     const DirectionAndLength surfToAreaCenter = calcDirectionAndLength(surfPosition, areaCenter);
-    float nl = dot(surfToAreaCenter.dir, surfNormal);
+    float nl = max(dot(surfToAreaCenter.dir, surfNormal), 0.0);
     float solidAngle = area * nl / square(surfToAreaCenter.len);
 
     return solidAngle > 0.0 && !isnan(solidAngle) && !isinf(solidAngle) ? clamp(solidAngle, 0.0, 4.0 * M_PI) : 0.0;
@@ -453,10 +453,7 @@ void processDirectionalLight(
     out_result.specular = nl * dirlightColor * evalBRDFSmithGGX(surfNormal, toViewerDir, dirlightDirection, surfRoughness, surfSpecularColor);
 #endif
 
-    out_result.diffuse  /= pdf;
-    out_result.specular /= pdf;
-
-    if (!castShadowRay)
+    if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
         return;
     }
@@ -627,7 +624,7 @@ void processSphericalLight(
     out_result.diffuse  /= pdf;
     out_result.specular /= pdf;
     
-    if (!castShadowRay)
+    if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
         return;
     }
@@ -795,7 +792,7 @@ void processPolygonalLight(
     out_result.diffuse  /= pdf;
     out_result.specular /= pdf;
 
-    if (!castShadowRay)
+    if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
         return;
     }
@@ -861,10 +858,7 @@ void processSpotLight(
     out_result.diffuse  *= angleWeight;
     out_result.specular *= angleWeight;
 
-    out_result.diffuse  /= pdf;
-    out_result.specular /= pdf;
-
-    if (!castShadowRay)
+    if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
         return;
     }
