@@ -355,7 +355,17 @@ DirectionAndLength calcDirectionAndLength(const vec3 start, const vec3 end)
 {
     DirectionAndLength r;
     r.dir = end - start;
-    r.len = max(length(r.dir), 0.0001);
+    r.len = length(r.dir);
+    r.dir /= r.len;
+
+    return r;
+}
+
+DirectionAndLength calcDirectionAndLengthSafe(const vec3 start, const vec3 end)
+{
+    DirectionAndLength r;
+    r.dir = end - start;
+    r.len = max(length(r.dir), 0.001);
     r.dir /= r.len;
 
     return r;
@@ -365,9 +375,11 @@ DirectionAndLength calcDirectionAndLength(const vec3 start, const vec3 end)
 float calcSphereSolidAngle(float sphereRadius, float distanceToSphereCenter)
 {
     // solid angle here is the spherical cap area on a unit sphere
-    float sinTheta = sphereRadius / distanceToSphereCenter;
+    float sinTheta = clamp(sphereRadius / distanceToSphereCenter, 0.0, 1.0);
     float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
-    return 2 * M_PI * (1.0 - cosTheta);
+    float solidAngle = 2 * M_PI * (1.0 - cosTheta);
+
+    return solidAngle > 0.0 && !isnan(solidAngle) && !isinf(solidAngle) ? clamp(solidAngle, 0.0, 4.0 * M_PI) : 0.0;
 }
 
 
@@ -375,8 +387,10 @@ float calcAreaSolidAngle(float area, const vec3 areaCenter, const vec3 surfPosit
 {
     // https://math.stackexchange.com/a/2700457
     const DirectionAndLength surfToAreaCenter = calcDirectionAndLength(surfPosition, areaCenter);
-    float nl = clamp(dot(surfToAreaCenter.dir, surfNormal), 0.0, 1.0);
-    return area * nl / square(surfToAreaCenter.len);
+    float nl = dot(surfToAreaCenter.dir, surfNormal);
+    float solidAngle = area * nl / square(surfToAreaCenter.len);
+
+    return solidAngle > 0.0 && !isnan(solidAngle) && !isinf(solidAngle) ? clamp(solidAngle, 0.0, 4.0 * M_PI) : 0.0;
 }
 
 
@@ -470,10 +484,9 @@ float getSphericalLightWeight(
     const uint sphLightIndex = plainLightList_Sph[plainLightListIndex];
     const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
 
-    float r = max(sphLight.radius, 1);
-    float dist = max(length(sphLight.position - surfPosition), r);
-
-    return calcSphereSolidAngle(r, dist) * getLuminance(sphLight.color);
+    return 
+        calcSphereSolidAngle(sphLight.radius, length(sphLight.position - surfPosition)) * 
+        getLuminance(sphLight.color);
 }
 
 
@@ -596,16 +609,9 @@ void processSphericalLight(
         sphLight = lightSourcesSpherical_Prev[sphLightIndex];
     }
 
-    pdf *= calcSphereSolidAngle(sphLight.radius, length(sphLight.position - surfPosition));
-
-    if (pdf <= 0)
-    {
-        return;
-    }
-
 
     const PointOnSphericalLight pointOnLight = getPointOnSphericalLight(seed, sphLight, surfPosition);
-    const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, pointOnLight.position);
+    const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, pointOnLight.position);
 
     float nl = max(dot(surfNormal, toLight.dir), 0.0);
     float dw = nl * getGeometryFactor(pointOnLight.normal, toLight.dir, toLight.len);
@@ -632,36 +638,18 @@ void processSphericalLight(
 }
 
 
-float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormalGeom, uint plainLightListIndex)
+float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormal, uint plainLightListIndex)
 {
-    const uint polyLightIndex = plainLightList_Poly[plainLightListIndex];
-    const ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
+    uint polyLightIndex = plainLightList_Poly[plainLightListIndex];
+    ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
-    const vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
- 
-    const vec3 pointsOnUnitSphere[3] = 
-    {
-        normalize(polyLight.position_0.xyz - surfPosition),
-        normalize(polyLight.position_1.xyz - surfPosition),
-        normalize(polyLight.position_2.xyz - surfPosition),
-    };
+    vec3 triCenter = (polyLight.position_0.xyz + polyLight.position_1.xyz + polyLight.position_2.xyz) / 3.0;
+    vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
+    float triArea = length(triNormal) / 2.0;
 
-    if (-dot(pointsOnUnitSphere[0], triNormal) <= 0 && 
-        -dot(pointsOnUnitSphere[1], triNormal) <= 0 && 
-        -dot(pointsOnUnitSphere[2], triNormal) <= 0)
-    {
-        return 0;
-    }
-    
-    if (dot(pointsOnUnitSphere[0], surfNormalGeom) <= 0 &&
-        dot(pointsOnUnitSphere[1], surfNormalGeom) <= 0 &&
-        dot(pointsOnUnitSphere[2], surfNormalGeom) <= 0)
-    {
-        return 0;
-    }
-
-    const float projTriArea = length(cross(pointsOnUnitSphere[1] - pointsOnUnitSphere[0], pointsOnUnitSphere[2] - pointsOnUnitSphere[0])) / 2.0;
-    return getLuminance(polyLight.color) * projTriArea;
+    return
+        calcAreaSolidAngle(triArea, triCenter, surfPosition, surfNormal) * 
+        getLuminance(polyLight.color);
 }
 
 
@@ -708,7 +696,7 @@ void processPolygonalLight(
             break;
         }
 
-        const float w = getPolygonalLightWeight(surfPosition, surfNormalGeom, plainLightListIndex_iter);
+        const float w = getPolygonalLightWeight(surfPosition, surfNormal, plainLightListIndex_iter);
 
         if (w > 0)
         {
@@ -769,22 +757,12 @@ void processPolygonalLight(
 
 
     vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
-    const float triArea = length(triNormal) / 2.0;
+    const float triArea2 = length(triNormal);
+    triNormal /= triArea2;
 
-    if (triArea < 0.0001)
+    if (triArea2 < 0.0001)
     {
         return;
-    }
-    triNormal /= triArea * 2;
-    
-    {
-        const vec3 triCenter = (polyLight.position_0.xyz + polyLight.position_1.xyz + polyLight.position_2.xyz) / 3.0;
-        pdf *= calcAreaSolidAngle(triArea, triCenter, surfPosition, surfNormal);
-
-        if (pdf <= 0)
-        {
-            return;
-        }
     }
 
 
@@ -792,7 +770,7 @@ void processPolygonalLight(
     const vec3 triPoint = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, u[0], u[1]);
 
     
-    const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, triPoint);
+    const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, triPoint);
 
     const float nl = dot(surfNormal, toLight.dir);
     const float ngl = dot(surfNormalGeom, toLight.dir);
@@ -858,13 +836,13 @@ void processSpotLight(
 
     const float pdf = calcDiskSolidAngle(spotPos, spotRadius, surfPosition, surfNormal);
 
-    const DirectionAndLength toLight = calcDirectionAndLength(surfPosition, posOnDisk);
+    const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, posOnDisk);
 
     const float nl = dot(surfNormal, toLight.dir);
     const float ngl = dot(surfNormalGeom, toLight.dir);
     const float cosA = dot(-toLight.dir, spotDir);
 
-    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngleOuter)
+    if (nl <= 0 || ngl <= 0 || cosA < spotCosAngleOuter || pdf <= 0)
     {
         return;
     }
