@@ -390,7 +390,7 @@ float safeSolidAngle(float a)
 float calcSolidAngleForSphere(float sphereRadius, float distanceToSphereCenter)
 {
     // solid angle here is the spherical cap area on a unit sphere
-    float sinTheta = clamp(sphereRadius / distanceToSphereCenter, 0.0, 1.0);
+    float sinTheta = sphereRadius / distanceToSphereCenter;
     float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
     return safeSolidAngle(2 * M_PI * (1.0 - cosTheta));
 }
@@ -593,10 +593,6 @@ void processSphericalLight(
 
         dw = calcSolidAngleForSphere(sphLight.radius, toLightCenter.len);
     }
-
-
-
-    const vec3 c = sphLight.color;
     
     const float nl = max(dot(surfNormal, toLight.dir), 0.0);
     const float ngl = max(dot(surfNormalGeom, toLight.dir), 0.0);
@@ -606,12 +602,16 @@ void processSphericalLight(
         return;
     }
 
+    const vec3 c = sphLight.color;
+
+    dw = dw * nl;
+
     out_result.lightIndex = sphLightIndex;
     out_result.lightType = LIGHT_TYPE_SPHERICAL;
 
-    out_result.diffuse  = dw * nl * c * evalBRDFLambertian(1.0);
+    out_result.diffuse  = dw * c * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = dw * nl * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
+    out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  *= oneOverPdf;
@@ -768,7 +768,7 @@ void processPolygonalLight(
 
     const vec3 c = polyLight.color * pow(ll, globalUniform.polyLightSpotlightFactor);
 
-    const float dw = nl * getGeometryFactor(triNormal, toLight.dir, toLight.len);
+    const float dw = nl * calcSolidAngleForArea(polyLight.area, pointOnLight, triNormal, surfPosition);
     
     out_result.lightIndex = polyLightIndex;
     out_result.lightType = LIGHT_TYPE_POLYGONAL;

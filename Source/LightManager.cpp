@@ -97,6 +97,15 @@ static void ConvertSphereIntensity(float color[3], float radius)
     color[2] /= projectedArea;
 }
 
+static void ConvertTriangleIntensity(float color[3], float area)
+{
+    assert(area > 0.0f);
+
+    color[0] /= area;
+    color[1] /= area;
+    color[2] /= area;
+}
+
 static void ConvertDiskIntensity(float color[3], float radius)
 {
     assert(radius > 0.0f);
@@ -135,6 +144,7 @@ static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, const RgFl
     lt.area = area;
 
     memcpy(lt.color, info.color.data, sizeof(float) * 3);
+    ConvertTriangleIntensity(lt.color, lt.area);
 
     memcpy(dst, &lt, sizeof(RTGL1::ShLightPolygonal));
 }
