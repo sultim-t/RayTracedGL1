@@ -70,7 +70,10 @@ namespace Utils
 
     bool IsAlmostZero(const RgFloat3D &v);
     bool IsAlmostZero(const RgMatrix3D &m);
+    float Length(const float v[3]);
     void Normalize(float inout[3]);
+    void Cross(const float a[3], const float b[3], float r[3]);
+    bool GetNormalAndArea(const RgFloat3D positions[3], RgFloat3D &normal, float &area);
     // In terms of GLSL: mat3(a), where a is mat4.
     // The remaining values are initialized with identity matrix.
     void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);

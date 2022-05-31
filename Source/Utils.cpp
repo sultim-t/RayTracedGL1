@@ -197,10 +197,15 @@ bool RTGL1::Utils::IsAlmostZero(const RgMatrix3D &m)
     return s < ALMOST_ZERO_THRESHOLD;
 }
 
+float RTGL1::Utils::Length(const float v[3])
+{
+    return sqrtf(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
+}
+
+
 void RTGL1::Utils::Normalize(float inout[3])
 {
-    float dot = inout[0] * inout[0] + inout[1] * inout[1] + inout[2] * inout[2];
-    float len = sqrtf(dot);
+    float len = Length(inout);
 
     if (len > 0.01f)
     {
@@ -213,6 +218,34 @@ void RTGL1::Utils::Normalize(float inout[3])
         assert(0);
         inout[0] = inout[1] = inout[2] = 0.0f;
     }
+}
+
+
+void RTGL1::Utils::Cross(const float a[3], const float b[3], float r[3])
+{
+    r[0] = a[1] * b[2] - a[2] * b[1];
+    r[1] = a[2] * b[0] - a[0] * b[2];
+    r[2] = a[0] * b[1] - a[1] * b[0];
+}
+
+bool RTGL1::Utils::GetNormalAndArea(const RgFloat3D positions[3], RgFloat3D &normal, float &area)
+{
+    const float *a = positions[0].data;
+    const float *b = positions[1].data;
+    const float *c = positions[2].data;
+
+    float e1[3] = { b[0] - a[0], b[1] - a[1], b[2] - a[2] };
+    float e2[3] = { c[0] - a[0], c[1] - a[1], c[2] - a[2] };
+    
+    Cross(e1, e2, normal.data);
+
+    float len = Length(normal.data);
+    normal.data[0] /= len;
+    normal.data[1] /= len;
+    normal.data[2] /= len;
+
+    area = len * 0.5f;
+    return area > 0.01f;
 }
 
 

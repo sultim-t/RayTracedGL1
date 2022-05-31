@@ -87,6 +87,26 @@ RTGL1::LightManager::~LightManager()
     vkDestroyDescriptorPool(device, descPool, nullptr);
 }
 
+static void ConvertSphereIntensity(float color[3], float radius)
+{
+    assert(radius > 0.0f);
+    float projectedArea = static_cast<float>(RTGL1::RG_PI) * radius * radius;
+
+    color[0] /= projectedArea;
+    color[1] /= projectedArea;
+    color[2] /= projectedArea;
+}
+
+static void ConvertDiskIntensity(float color[3], float radius)
+{
+    assert(radius > 0.0f);
+    float projectedArea = static_cast<float>(RTGL1::RG_PI) * radius * radius;
+
+    color[0] /= projectedArea;
+    color[1] /= projectedArea;
+    color[2] /= projectedArea;
+}
+
 static void FillInfoSpherical(const RgSphericalLightUploadInfo &info, RTGL1::ShLightSpherical *dst)
 {
     RTGL1::ShLightSpherical lt = {};
@@ -94,18 +114,25 @@ static void FillInfoSpherical(const RgSphericalLightUploadInfo &info, RTGL1::ShL
     memcpy(lt.color, info.color.data, sizeof(float) * 3);
     memcpy(lt.position, info.position.data, sizeof(float) * 3);
 
-    lt.radius = std::max(0.0f, info.radius);
+    lt.radius = std::max(0.005f, info.radius);
+    ConvertSphereIntensity(lt.color, lt.radius);
 
     memcpy(dst, &lt, sizeof(RTGL1::ShLightSpherical));
 }
 
-static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, RTGL1::ShLightPolygonal *dst)
+static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, const RgFloat3D &normal, float area, RTGL1::ShLightPolygonal *dst)
 {
     RTGL1::ShLightPolygonal lt = {};
 
-    memcpy(lt.position_0, info.positions[0].data, sizeof(float) * 3);
-    memcpy(lt.position_1, info.positions[1].data, sizeof(float) * 3);
-    memcpy(lt.position_2, info.positions[2].data, sizeof(float) * 3);
+    memcpy(lt.pos_norm_0, info.positions[0].data, sizeof(float) * 3);
+    memcpy(lt.pos_norm_1, info.positions[1].data, sizeof(float) * 3);
+    memcpy(lt.pos_norm_2, info.positions[2].data, sizeof(float) * 3);
+
+    lt.pos_norm_0[3] = normal.data[0];
+    lt.pos_norm_1[3] = normal.data[1];
+    lt.pos_norm_2[3] = normal.data[2];
+
+    lt.area = area;
 
     memcpy(lt.color, info.color.data, sizeof(float) * 3);
 
@@ -132,14 +159,17 @@ static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobal
 {
     // use global uniform buffer for one spotlight instance
     memcpy(gu->spotlightPosition, info.position.data, 3 * sizeof(float));
-    memcpy(gu->spotlightDirection, info.direction.data, 3 * sizeof(float));
-    memcpy(gu->spotlightUpVector, info.upVector.data, 3 * sizeof(float));
     memcpy(gu->spotlightColor, info.color.data, 3 * sizeof(float));
 
+    memcpy(gu->spotlightDirection, info.direction.data, 3 * sizeof(float));
     RTGL1::Utils::Normalize(gu->spotlightDirection);
+
+    memcpy(gu->spotlightUpVector, info.upVector.data, 3 * sizeof(float));
     RTGL1::Utils::Normalize(gu->spotlightUpVector);
 
-    gu->spotlightRadius = info.radius;
+    gu->spotlightRadius = std::max(0.005f, info.radius);
+    ConvertDiskIntensity(gu->spotlightColor, gu->spotlightRadius);
+
     gu->spotlightCosAngleOuter = std::cos(info.angleOuter);
     gu->spotlightCosAngleInner = std::cos(info.angleInner);
 
@@ -270,6 +300,13 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
         return;
     }
 
+    RgFloat3D normal; float area;
+    if (!Utils::GetNormalAndArea(info.positions, normal, area))
+    {
+        assert(0);
+        return;
+    }
+
 
     const SectorID sectorId = SectorID{ info.sectorID };
     const SectorArrayIndex sectorArrayIndex = lightListsForPolygonal->SectorIDToArrayIndex(sectorId);
@@ -279,7 +316,7 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
     polyLightCount++;
 
     auto *dst = (ShLightPolygonal *)polygonalLights->GetMapped(frameIndex);
-    FillInfoPolygonal(info, &dst[index.GetArrayIndex()]);
+    FillInfoPolygonal(info, normal, area, &dst[index.GetArrayIndex()]);
 
     FillMatchPrev(polygonalUniqueIDToPrevIndex, polygonalLightMatchPrev, frameIndex, index, info.uniqueID);
 

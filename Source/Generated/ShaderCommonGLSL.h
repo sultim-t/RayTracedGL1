@@ -311,11 +311,11 @@ struct ShLightSpherical
 
 struct ShLightPolygonal
 {
-    vec4 position_0;
-    vec4 position_1;
-    vec4 position_2;
+    vec4 pos_norm_0;
+    vec4 pos_norm_1;
+    vec4 pos_norm_2;
     vec3 color;
-    uint __pad0;
+    float area;
 };
 
 struct ShVertPreprocessing

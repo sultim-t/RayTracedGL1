@@ -638,15 +638,11 @@ float getPolygonalLightWeight(const vec3 surfPosition, uint plainLightListIndex,
     uint polyLightIndex = plainLightList_Poly[plainLightListIndex];
     ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
-    const vec3 pointOnLight = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, triRnd[0], triRnd[1]);
-
-    vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
-    float triArea = length(triNormal);
-    triNormal /= triArea;
-    triArea *= 0.5;
+    const vec3 pointOnLight = sampleTriangle(polyLight.pos_norm_0.xyz, polyLight.pos_norm_1.xyz, polyLight.pos_norm_2.xyz, triRnd[0], triRnd[1]);
+    const vec3 triNormal = vec3(polyLight.pos_norm_0.w, polyLight.pos_norm_1.w, polyLight.pos_norm_2.w);
 
     return
-        calcSolidAngleForArea(triArea, pointOnLight, triNormal, surfPosition) * 
+        calcSolidAngleForArea(polyLight.area, pointOnLight, triNormal, surfPosition) * 
         getLuminance(polyLight.color);
 }
 
@@ -756,19 +752,10 @@ void processPolygonalLight(
     }
 
 
-    vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
-    float triArea = length(triNormal);
-    triNormal /= triArea;
-    triArea *= 0.5;
-
-    if (triArea < 0.0001)
-    {
-        return;
-    }
-
-
-    const vec3 pointOnLight = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, triRnd[0], triRnd[1]);
+    const vec3 pointOnLight = sampleTriangle(polyLight.pos_norm_0.xyz, polyLight.pos_norm_1.xyz, polyLight.pos_norm_2.xyz, triRnd[0], triRnd[1]);
     const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, pointOnLight);
+
+    const vec3 triNormal = vec3(polyLight.pos_norm_0.w, polyLight.pos_norm_1.w, polyLight.pos_norm_2.w);
 
     const float nl = max(dot(surfNormal, toLight.dir), 0.0);
     const float ngl = max(dot(surfNormalGeom, toLight.dir), 0.0);
@@ -851,7 +838,7 @@ void processSpotLight(
 
     const vec3 c = globalUniform.spotlightColor.xyz * square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
                 
-    const float dw = nl * calcSolidAngleForSphere(spotRadius, toLight.len);
+    const float dw = nl * calcSolidAngleForSphere(spotRadius, length(spotPos - surfPosition));
 
     out_result.lightIndex = 0;
     out_result.lightType = LIGHT_TYPE_SPOTLIGHT;

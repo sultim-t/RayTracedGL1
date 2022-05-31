@@ -616,10 +616,11 @@ LIGHT_SPHERICAL_STRUCT = [
 # ]
 
 LIGHT_POLYGONAL_STRUCT = [
-    (TYPE_FLOAT32,      4,      "position_0",           1),
-    (TYPE_FLOAT32,      4,      "position_1",           1),
-    (TYPE_FLOAT32,      4,      "position_2",           1),
+    (TYPE_FLOAT32,      4,      "pos_norm_0",           1),
+    (TYPE_FLOAT32,      4,      "pos_norm_1",           1),
+    (TYPE_FLOAT32,      4,      "pos_norm_2",           1),
     (TYPE_FLOAT32,      3,      "color",                1),
+    (TYPE_FLOAT32,      1,      "area",                 1),
 ]
 
 TONEMAPPING_STRUCT = [
