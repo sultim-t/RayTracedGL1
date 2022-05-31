@@ -372,31 +372,35 @@ DirectionAndLength calcDirectionAndLengthSafe(const vec3 start, const vec3 end)
 }
 
 
-float calcSphereSolidAngle(float sphereRadius, float distanceToSphereCenter)
+// Veach, E. Robust Monte Carlo Methods for Light Transport Simulation
+// The change of variables from solid angle measure to area integration measure
+// Note: but without |dot(surfNormal, surfaceToLight)|
+float getGeometryFactor(const vec3 lightNormal, const vec3 surfaceToLight, float surfaceToLightDistance)
+{
+    return abs(dot(lightNormal, -surfaceToLight)) / square(surfaceToLightDistance);
+}
+
+
+float safeSolidAngle(float a)
+{
+    return a > 0.0 && !isnan(a) && !isinf(a) ? clamp(a, 0.0, 4.0 * M_PI) : 0.0;
+}
+
+
+float calcSolidAngleForSphere(float sphereRadius, float distanceToSphereCenter)
 {
     // solid angle here is the spherical cap area on a unit sphere
     float sinTheta = clamp(sphereRadius / distanceToSphereCenter, 0.0, 1.0);
     float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
-    float solidAngle = 2 * M_PI * (1.0 - cosTheta);
-
-    return solidAngle > 0.0 && !isnan(solidAngle) && !isinf(solidAngle) ? clamp(solidAngle, 0.0, 4.0 * M_PI) : 0.0;
+    return safeSolidAngle(2 * M_PI * (1.0 - cosTheta));
 }
 
 
-float calcAreaSolidAngle(float area, const vec3 areaCenter, const vec3 surfPosition, const vec3 surfNormal)
+float calcSolidAngleForArea(float area, const vec3 areaPosition, const vec3 areaNormal, const vec3 surfPosition)
 {
-    // https://math.stackexchange.com/a/2700457
-    const DirectionAndLength surfToAreaCenter = calcDirectionAndLength(surfPosition, areaCenter);
-    float nl = max(dot(surfToAreaCenter.dir, surfNormal), 0.0);
-    float solidAngle = area * nl / square(surfToAreaCenter.len);
-
-    return solidAngle > 0.0 && !isnan(solidAngle) && !isinf(solidAngle) ? clamp(solidAngle, 0.0, 4.0 * M_PI) : 0.0;
-}
-
-
-float calcDiskSolidAngle(const vec3 diskCenter, float diskRadius, const vec3 surfPosition, const vec3 surfNormal)
-{
-    return calcAreaSolidAngle(M_PI * diskRadius * diskRadius, diskCenter, surfPosition, surfNormal);
+    const DirectionAndLength surfToAreaLight = calcDirectionAndLength(surfPosition, areaPosition);
+    // from area measure to solid angle measure
+    return safeSolidAngle(area * getGeometryFactor(areaNormal, surfToAreaLight.dir, surfToAreaLight.len));
 }
 
 
@@ -461,44 +465,14 @@ void processDirectionalLight(
 }
 
 
-// Ray Tracing Gems II. Chapter 20. Muliple Importance Sampling 101. 20.1.3 Light Sampling
-float getGeometryFactor(const vec3 lightNormal, const vec3 lightToSurfaceDirection, float lightToSurfaceDistance)
-{
-    float dist2 = lightToSurfaceDistance * lightToSurfaceDistance;
-    dist2 = max(dist2, 1.0);
-    return abs(-dot(lightNormal, lightToSurfaceDirection)) / dist2;
-}
-
-
-float getSphericalLightWeight(
-    const vec3 surfPosition, const vec3 surfNormal, float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 toViewerDir,
-    uint plainLightListIndex)
+float getSphericalLightWeight(const vec3 surfPosition, uint plainLightListIndex)
 {
     const uint sphLightIndex = plainLightList_Sph[plainLightListIndex];
     const ShLightSpherical sphLight = lightSourcesSpherical[sphLightIndex];
 
     return 
-        calcSphereSolidAngle(sphLight.radius, length(sphLight.position - surfPosition)) * 
+        calcSolidAngleForSphere(sphLight.radius, length(sphLight.position - surfPosition)) * 
         getLuminance(sphLight.color);
-}
-
-
-struct PointOnSphericalLight { vec3 position; vec3 normal; };
-
-PointOnSphericalLight getPointOnSphericalLight(uint seed, const ShLightSpherical sphLight, const vec3 surfPosition)
-{
-    PointOnSphericalLight r;
-    const vec3 dirToCenter = safeNormalize(sphLight.position - surfPosition);
-
-    // sample hemisphere visible to the surface point
-    const vec2 u = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
-    float ltHsOneOverPdf;
-    r.normal = sampleOrientedHemisphere(-dirToCenter, u[0], u[1], ltHsOneOverPdf);
-    
-    r.position = sphLight.position + r.normal * sphLight.radius;
-
-    return r;
 }
 
 
@@ -544,8 +518,7 @@ void processSphericalLight(
             break;
         }
 
-        const float w = getSphericalLightWeight(surfPosition, surfNormal, surfRoughness, surfSpecularColor, toViewerDir, 
-                                                plainLightListIndex_iter);
+        const float w = getSphericalLightWeight(surfPosition, plainLightListIndex_iter);
 
         if (w > 0)
         {
@@ -604,20 +577,41 @@ void processSphericalLight(
     }
 
 
-    const PointOnSphericalLight pointOnLight = getPointOnSphericalLight(seed, sphLight, surfPosition);
-    const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, pointOnLight.position);
+    DirectionAndLength toLight;
+    vec3 pointOnLight;
+    float dw;
+    {
+        const vec2 sphRnd = getRandomSample(seed, RANDOM_SALT_SPHERICAL_LIGHT_DISK).xy;
+        const DirectionAndLength toLightCenter = calcDirectionAndLengthSafe(surfPosition, sphLight.position);
+
+        // sample hemisphere visible to the surface point
+        float ltHsOneOverPdf;
+        const vec3 lightNormal = sampleOrientedHemisphere(-toLightCenter.dir, sphRnd[0], sphRnd[1], ltHsOneOverPdf);
+        pointOnLight = sphLight.position + lightNormal * sphLight.radius;
+
+        toLight = calcDirectionAndLengthSafe(surfPosition, pointOnLight);
+
+        dw = calcSolidAngleForSphere(sphLight.radius, toLightCenter.len);
+    }
+
+
 
     const vec3 c = sphLight.color;
     
     const float nl = max(dot(surfNormal, toLight.dir), 0.0);
-    const float dw = nl * getGeometryFactor(pointOnLight.normal, toLight.dir, toLight.len);
+    const float ngl = max(dot(surfNormalGeom, toLight.dir), 0.0);
+
+    if (nl <= 0.0 || ngl <= 0)
+    {
+        return;
+    }
 
     out_result.lightIndex = sphLightIndex;
     out_result.lightType = LIGHT_TYPE_SPHERICAL;
 
-    out_result.diffuse  = dw * c * evalBRDFLambertian(1.0);
+    out_result.diffuse  = dw * nl * c * evalBRDFLambertian(1.0);
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = dw * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
+    out_result.specular = dw * nl * c * evalBRDFSmithGGX(surfNormal, toViewerDir, toLight.dir, surfRoughness, surfSpecularColor);
 #endif
 
     out_result.diffuse  *= oneOverPdf;
@@ -635,21 +629,24 @@ void processSphericalLight(
     
     out_result.shadowRayEnable = true;
     out_result.shadowRayStart  = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;
-    out_result.shadowRayEnd    = pointOnLight.position;
+    out_result.shadowRayEnd    = pointOnLight;
 }
 
 
-float getPolygonalLightWeight(const vec3 surfPosition, const vec3 surfNormal, uint plainLightListIndex)
+float getPolygonalLightWeight(const vec3 surfPosition, uint plainLightListIndex, const vec2 triRnd)
 {
     uint polyLightIndex = plainLightList_Poly[plainLightListIndex];
     ShLightPolygonal polyLight = lightSourcesPolygonal[polyLightIndex];
 
-    vec3 triCenter = (polyLight.position_0.xyz + polyLight.position_1.xyz + polyLight.position_2.xyz) / 3.0;
+    const vec3 pointOnLight = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, triRnd[0], triRnd[1]);
+
     vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
-    float triArea = length(triNormal) / 2.0;
+    float triArea = length(triNormal);
+    triNormal /= triArea;
+    triArea *= 0.5;
 
     return
-        calcAreaSolidAngle(triArea, triCenter, surfPosition, surfNormal) * 
+        calcSolidAngleForArea(triArea, pointOnLight, triNormal, surfPosition) * 
         getLuminance(polyLight.color);
 }
 
@@ -669,6 +666,8 @@ void processPolygonalLight(
     {
         return;
     }
+
+    const vec2 triRnd = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
 
     // using Subset Importance Sampling
     // Ray Tracing Gems II, chapter 47
@@ -697,7 +696,7 @@ void processPolygonalLight(
             break;
         }
 
-        const float w = getPolygonalLightWeight(surfPosition, surfNormal, plainLightListIndex_iter);
+        const float w = getPolygonalLightWeight(surfPosition, plainLightListIndex_iter, triRnd);
 
         if (w > 0)
         {
@@ -758,24 +757,22 @@ void processPolygonalLight(
 
 
     vec3 triNormal = cross(polyLight.position_1.xyz - polyLight.position_0.xyz, polyLight.position_2.xyz - polyLight.position_0.xyz);
-    const float triArea2 = length(triNormal);
-    triNormal /= triArea2;
+    float triArea = length(triNormal);
+    triNormal /= triArea;
+    triArea *= 0.5;
 
-    if (triArea2 < 0.0001)
+    if (triArea < 0.0001)
     {
         return;
     }
 
 
-    const vec2 u = getRandomSample(seed, RANDOM_SALT_POLYGONAL_LIGHT_TRIANGLE_POINT).xy;    
-    const vec3 triPoint = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, u[0], u[1]);
+    const vec3 pointOnLight = sampleTriangle(polyLight.position_0.xyz, polyLight.position_1.xyz, polyLight.position_2.xyz, triRnd[0], triRnd[1]);
+    const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, pointOnLight);
 
-    
-    const DirectionAndLength toLight = calcDirectionAndLengthSafe(surfPosition, triPoint);
-
-    const float nl = dot(surfNormal, toLight.dir);
-    const float ngl = dot(surfNormalGeom, toLight.dir);
-    const float ll = -dot(triNormal, toLight.dir);
+    const float nl = max(dot(surfNormal, toLight.dir), 0.0);
+    const float ngl = max(dot(surfNormalGeom, toLight.dir), 0.0);
+    const float ll = max(-dot(triNormal, toLight.dir), 0.0);
 
     if (nl <= 0 || ngl <= 0 || ll <= 0)
     {
@@ -809,7 +806,7 @@ void processPolygonalLight(
 
     out_result.shadowRayEnable = true;
     out_result.shadowRayStart  = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;
-    out_result.shadowRayEnd    = triPoint;
+    out_result.shadowRayEnd    = pointOnLight;
 }
 
 
@@ -854,7 +851,7 @@ void processSpotLight(
 
     const vec3 c = globalUniform.spotlightColor.xyz * square(smoothstep(spotCosAngleOuter, spotCosAngleInner, cosA));
                 
-    const float dw = nl * getGeometryFactor(spotDir, toLight.dir, toLight.len);
+    const float dw = nl * calcSolidAngleForSphere(spotRadius, toLight.len);
 
     out_result.lightIndex = 0;
     out_result.lightType = LIGHT_TYPE_SPOTLIGHT;
