@@ -390,7 +390,7 @@ float safeSolidAngle(float a)
 float calcSolidAngleForSphere(float sphereRadius, float distanceToSphereCenter)
 {
     // solid angle here is the spherical cap area on a unit sphere
-    float sinTheta = sphereRadius / distanceToSphereCenter;
+    float sinTheta = sphereRadius / max(sphereRadius, distanceToSphereCenter);
     float cosTheta = sqrt(1.0 - sinTheta * sinTheta);
     return safeSolidAngle(2 * M_PI * (1.0 - cosTheta));
 }
