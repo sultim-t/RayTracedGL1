@@ -48,8 +48,7 @@ public:
     void PrepareForFrame();
     void Reset();
 
-    void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex, 
-                     PFN_rgIsLightVisibleFromSector pfnRgIsLightVisibleFromSector, void *pUserDataForPfn);
+    void InsertLight(LightArrayIndex lightIndex, SectorArrayIndex lightSectorIndex);
     void BuildAndCopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
     SectorArrayIndex SectorIDToArrayIndex(SectorID id) const;

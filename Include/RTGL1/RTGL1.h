@@ -107,7 +107,6 @@ typedef enum RgResult
 typedef void (*PFN_rgPrint)(const char *pMessage, void *pUserData);
 typedef void (*PFN_rgOpenFile)(const char *pFilePath, void *pUserData, const void **ppOutData, uint32_t *pOutDataSize, void **ppOutFileUserHandle);
 typedef void (*PFN_rgCloseFile)(void *pFileUserHandle, void *pUserData);
-typedef RgBool32 (*PFN_rgIsLightVisibleFromSector)(uint32_t sectorID, void *pUserData);
 
 typedef struct RgWin32SurfaceCreateInfo RgWin32SurfaceCreateInfo;
 typedef struct RgMetalSurfaceCreateInfo RgMetalSurfaceCreateInfo;
@@ -663,12 +662,6 @@ typedef struct RgPolygonalLightUploadInfo
     // If advanced sampling technique is not needed, leave the field with 0,
     // so all lights will use that one sector, but more noisy results should be expected.
     uint32_t        sectorID;
-    // If not null, points to a function to additionally check if light
-    // is visible from the sector. E.g. it can return false if
-    // sector's bounding box is completely behind poly light.
-    PFN_rgIsLightVisibleFromSector  pfnIsLightVisibleFromSector;
-    // Is passed to pfnIsLightVisibleFromSector.
-    void                            *pUserDataForPfn;
 } RgPolygonalLightUploadInfo;
 
 // Only one spotlight is available in a scene.

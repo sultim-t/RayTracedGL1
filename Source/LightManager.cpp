@@ -293,8 +293,7 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
     sphericalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 
 
-    lightListsForSpherical->InsertLight(index, sectorArrayIndex,
-                                        nullptr, nullptr);
+    lightListsForSpherical->InsertLight(index, sectorArrayIndex);
 }
 
 void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info)
@@ -337,8 +336,7 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
     polygonalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
 
 
-    lightListsForPolygonal->InsertLight(index, sectorArrayIndex,
-                                        info.pfnIsLightVisibleFromSector, info.pUserDataForPfn);
+    lightListsForPolygonal->InsertLight(index, sectorArrayIndex);
 }
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
