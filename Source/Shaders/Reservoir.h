@@ -47,7 +47,7 @@ Reservoir unpackReservoir(const uvec4 p)
     return r;
 }
 
-Reservoir newReservoir()
+Reservoir emptyReservoir()
 {
     Reservoir r;
     r.selected = UINT32_MAX;
@@ -65,5 +65,29 @@ void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd
         r.selected = lightIndex;
     }
 }
+
+float calcReservoirW(const Reservoir r, float targetPdf_selected)
+{
+    if (targetPdf_selected <= 0.00001 || r.M <= 0)
+    {
+        return 0.0;
+    }
+
+    return 1.0 / targetPdf_selected * (r.weightSum / r.M);
+}
+
+/*Reservoir combineReservoirs(const Reservoir a, const Reservoir b, const Surface surf, const vec2 pointRnd)
+{
+    Reservoir combined = emptyReservoir();
+
+    updateReservoir(combined, a.selected, targetPdfForLightSample(a.selected, surf, pointRnd) * a.W * a.M);
+    updateReservoir(combined, b.selected, targetPdfForLightSample(b.selected, surf, pointRnd) * b.W * b.M);
+    
+    combined.M = a.M + b.M;
+
+    combined.W = calcReservoirW(combined, targetPdfForLightSample(combined.selected));
+
+    return combined;
+}*/
 
 #endif // RESERVOIR_H_

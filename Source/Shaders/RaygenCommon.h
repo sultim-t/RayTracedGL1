@@ -344,21 +344,6 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 
 
 
-#define MAX_SUBSET_LEN 8
-
-
-struct Surface
-{
-    vec3 position;
-    uint instCustomIndex;
-    vec3 normalGeom;
-    float roughness;
-    vec3 normal;
-    uint sectorArrayIndex;
-    vec3 specularColor;
-    vec3 toViewerDir;
-};
-
 void shade(const Surface surf, const LightSample light, out vec3 diffuse, out vec3 specular)
 {
     vec3 l = safeNormalize(light.position - surf.position);
@@ -390,12 +375,7 @@ float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 po
 
 
 // toViewerDir -- is direction to viewer
-void processDirectionalLight(
-    uint seed, 
-    const Surface surf,
-    bool isGradientSample,
-    int bounceIndex,
-    inout LightResult out_result)
+void processDirectionalLight(uint seed, const Surface surf, bool isGradientSample, int bounceIndex, inout LightResult out_result)
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsDirectionalLights;
 
@@ -427,12 +407,7 @@ void processDirectionalLight(
 }
 
 
-void processLight(
-    uint seed,
-    const Surface surf,
-    bool isGradientSample,
-    int bounceIndex,
-    inout LightResult out_result)
+void processLight(uint seed, const Surface surf, bool isGradientSample, int bounceIndex, inout LightResult out_result)
 {
     uint lightCount = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
@@ -456,6 +431,7 @@ void processLight(
 
 #elif SAMPLE_METHOD == 1
 
+#define MAX_SUBSET_LEN 8
     // random in [0,1)
     float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x * 0.99;
 
@@ -519,7 +495,7 @@ void processLight(
 #elif SAMPLE_METHOD == 2
 
     const int M = 8;
-    Reservoir reservoir = newReservoir();
+    Reservoir reservoir = emptyReservoir();
     
     for (int i = 0; i < M; i++)
     {
@@ -539,7 +515,7 @@ void processLight(
         return;
     }
     float targetPdf_selected = targetPdfForLightSample(reservoir.selected, surf, pointRnd);
-    float r_W = targetPdf_selected <= 0.00001 ? 0.0 : 1.0 / targetPdf_selected * (reservoir.weightSum / reservoir.M);
+    float r_W = calcReservoirW(reservoir, targetPdf_selected);
 
     uint selectedLightIndex = reservoir.selected;
     float oneOverPdf = r_W;
@@ -593,12 +569,7 @@ void processLight(
 }
 
 
-void processDirectIllumination(
-    uint seed, 
-    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
-    const vec3 toViewerDir,
-    bool isGradientSample,
-    int bounceIndex,
+void processDirectIllumination(uint seed, const Surface surf, bool isGradientSample, int bounceIndex,
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
     out float outDistance,
 #endif
@@ -612,18 +583,6 @@ void processDirectIllumination(
 #else
     #define APPEND_DIST(x)
 #endif
-    
-
-    Surface surf;
-    surf.position = surfPosition;
-    surf.instCustomIndex = surfInstCustomIndex;
-    surf.normalGeom = surfNormalGeom;
-    surf.roughness = surfRoughness;
-    surf.normal = surfNormal;
-    surf.sectorArrayIndex = surfSectorArrayIndex;
-    surf.specularColor = surfSpecularColor;
-    surf.toViewerDir = toViewerDir;
-
 
     LightResult r;
 
@@ -642,8 +601,8 @@ void processDirectIllumination(
                                                                                 \
         if (r.shadowRayEnable)                                                  \
         {                                                                       \
-            const vec3 shadowRayStart = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;  \
-            isShadowed = traceShadowRay(surfInstCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);   \
+            const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;    \
+            isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);  \
             APPEND_DIST(shadowRayStart - r.shadowRayEnd);                       \
         }                                                                       \
                                                                                 \

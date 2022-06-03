@@ -63,4 +63,16 @@ struct ShHitInfo
     uint    sectorArrayIndex;
 };
 
+struct Surface
+{
+    vec3    position;
+    uint    instCustomIndex;
+    vec3    normalGeom;
+    float   roughness;
+    vec3    normal;
+    uint    sectorArrayIndex;
+    vec3    specularColor;
+    vec3    toViewerDir;
+};
+
 #endif // STRUCTS_H_

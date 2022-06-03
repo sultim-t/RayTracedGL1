@@ -514,10 +514,34 @@ vec4 texelFetchAlbedo(const ivec2 pix)
 {
     return texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0);
 }
+
+#ifdef DESC_SET_FRAMEBUFFERS
+Surface fetchGbufferSurface_A(const ivec2 pix, const vec3 albedo)
+{
+    Surface s;
+    vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
+    s.position              = posEnc.xyz;
+    s.instCustomIndex       = floatBitsToUint(posEnc.a);
+    s.normalGeom            = texelFetchNormalGeometry(pix);
+    s.normal                = texelFetchNormal(pix);
+    s.sectorArrayIndex      = texelFetch(framebufSectorIndex_Sampler, pix, 0).r;
+    vec2 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
+    s.specularColor         = getSpecularColor(albedo, metallicRoughness[0]);
+    s.roughness             = metallicRoughness[1];
+    s.toViewerDir           = -texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
+    return s;
+}
+
+Surface fetchGbufferSurface(const ivec2 pix)
+{
+    return fetchGbufferSurface_A(pix, texelFetchAlbedo(pix).rgb);
+}
+#endif
 #endif
 
 #endif // CHECKERBOARD_FULL_HEIGHT
 #endif // CHECKERBOARD_FULL_WIDTH
+
 
 #ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 vec4 textureLodAlbedo(const vec2 uv)
@@ -544,6 +568,20 @@ float getScreenEmissionFromAlbedo4_Sky(const vec4 albedo)
 bool isSky(const vec4 albedo)
 {
     return albedo.a < 0.0;
+}
+
+
+bool fetchAndCheckIsGradient(const ivec2 pix)
+{
+#if GRADIENT_ESTIMATION_ENABLED
+    const uint grFB = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
+
+    return 
+        (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
+        (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
+#else
+    return       = false;
+#endif
 }
 
 #endif // DESC_SET_FRAMEBUFFERS

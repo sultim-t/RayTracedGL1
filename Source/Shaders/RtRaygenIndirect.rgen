@@ -91,29 +91,35 @@ void getDiffuseBounce(const uint seed, const vec3 n, out vec3 bounceDirection, i
 #define SECOND_BOUNCE_MIP_BIAS 32
 
 vec3 processSecondBounce(
-    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
-    const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 v, const bool isGradientSample,
+    const uint seed, 
+    const Surface surf, 
+    const bool isGradientSample,
     const vec3 bounceDirection,
     inout vec3 throughput)
 {
     // got the bounce direction, trace ray
-    const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDirection); 
+    const ShPayload p = traceIndirectRay(surf.instCustomIndex, surf.position + surf.normalGeom * 0.01, bounceDirection); 
 
     if (doesPayloadContainHitInfo(p))
     {
         float hitDistance;
-        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, SECOND_BOUNCE_MIP_BIAS, hitDistance);
+        const ShHitInfo h = getHitInfoBounce(p, surf.position, surf.roughness, SECOND_BOUNCE_MIP_BIAS, hitDistance);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
-        processDirectIllumination(
-            seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic), h.sectorArrayIndex,
-            -bounceDirection,
-            isGradientSample, 
-            2,
-            diffuse, specular);
+        {
+            Surface hitSurf;
+            hitSurf.position = h.hitPosition;
+            hitSurf.instCustomIndex = h.instCustomIndex;
+            hitSurf.normalGeom = h.normalGeom;
+            hitSurf.roughness = h.roughness;
+            hitSurf.normal = h.normalGeom; // ignore precise normals
+            hitSurf.sectorArrayIndex = h.sectorArrayIndex;
+            hitSurf.specularColor = getSpecularColor(h.albedo, h.metallic);
+            hitSurf.toViewerDir = -bounceDirection;
+            
+            processDirectIllumination(seed, hitSurf, isGradientSample, 2, diffuse, specular);
+        }
         throughput *= h.albedo;
 
         return h.emission * h.albedo + diffuse * throughput;
@@ -126,43 +132,46 @@ vec3 processSecondBounce(
 
 // Traces bounce ray, computes direct illumination in hit point
 vec3 processBounce(
-    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
-    const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 v, const bool isGradientSample,
+    const uint seed, 
+    const Surface surf, 
+    const bool isGradientSample,
     const vec3 bounceDir_First, 
     inout vec3 throughput_First,
     out float rayHitDistance)
 {
     // got the bounce direction, trace ray
-    const ShPayload p = traceIndirectRay(surfInstCustomIndex, surfPosition + surfNormalGeom * 0.01, bounceDir_First); 
+    const ShPayload p = traceIndirectRay(surf.instCustomIndex, surf.position + surf.normalGeom * 0.01, bounceDir_First); 
 
     if (doesPayloadContainHitInfo(p))
     {
         float hitDistance;
-        const ShHitInfo h = getHitInfoBounce(p, surfPosition, surfRoughness, FIRST_BOUNCE_MIP_BIAS, hitDistance);
+        const ShHitInfo h = getHitInfoBounce(p, surf.position, surf.roughness, FIRST_BOUNCE_MIP_BIAS, hitDistance);
+
+        Surface hitSurf;
+        hitSurf.position = h.hitPosition;
+        hitSurf.instCustomIndex = h.instCustomIndex;
+        hitSurf.normalGeom = h.normalGeom;
+        hitSurf.roughness = h.roughness;
+        hitSurf.normal = h.normalGeom; // ignore precise normals
+        hitSurf.sectorArrayIndex = h.sectorArrayIndex;
+        hitSurf.specularColor = getSpecularColor(h.albedo, h.metallic);
+        hitSurf.toViewerDir = -bounceDir_First;
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
-        processDirectIllumination(
-            seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, getSpecularColor(h.albedo, h.metallic), h.sectorArrayIndex,
-            -bounceDir_First,
-            isGradientSample, 
-            1,
-            diffuse, specular);
+        processDirectIllumination(seed, hitSurf, isGradientSample, 1, diffuse, specular);
         throughput_First *= h.albedo;
-        rayHitDistance = length(h.hitPosition - surfPosition);
+        rayHitDistance = length(h.hitPosition - surf.position);
 
 
         vec3 bounceDir_Second;
         vec3 throughput_Second = vec3(1.0);
-        getDiffuseBounce(seed, h.normal, bounceDir_Second, throughput_Second);
-        //bounceDir_Second = h.normal; throughput_Second = vec3(M_PI);
+        getDiffuseBounce(seed, h.normalGeom, bounceDir_Second, throughput_Second);
 
         vec3 contrib_Second = processSecondBounce(
             seed, 
-            h.instCustomIndex, h.hitPosition, h.normal, h.normalGeom, h.roughness, 
-            -bounceDir_First, isGradientSample,
+            hitSurf,
+            isGradientSample,
             bounceDir_Second,
             throughput_Second);
 
@@ -177,40 +186,32 @@ vec3 processBounce(
 }
 
 
-vec3 processSpecular(
-    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
-    const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 surfSpecularColor,
-    const vec3 v, const bool isGradientSample,
-    out float rayHitDistance)
+vec3 processSpecular(const uint seed, const Surface surf, const bool isGradientSample, out float rayHitDistance)
 {
     vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
-    getSpecularBounce(seed, surfNormal, surfRoughness, surfSpecularColor, v, bounceDirection, throughput);
+    getSpecularBounce(seed, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, bounceDirection, throughput);
 
     return processBounce(
-        seed, surfInstCustomIndex, surfPosition, 
-        surfNormal, surfNormalGeom, surfRoughness, 
-        v, isGradientSample,
+        seed, 
+        surf, 
+        isGradientSample,
         bounceDirection,
         throughput,
         rayHitDistance);
 }
 
-SH processIndirectDiffuse(
-    const uint seed, const uint surfInstCustomIndex, const vec3 surfPosition, 
-    const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 v, const bool isGradientSample)
+SH processIndirectDiffuse(const uint seed, const Surface surf, const bool isGradientSample)
 {
     vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
-    getDiffuseBounce(seed, surfNormalGeom, bounceDirection, throughput);
+    getDiffuseBounce(seed, surf.normalGeom, bounceDirection, throughput);
     float rayHitDistance;
 
     const vec3 contrib = processBounce(
-        seed, surfInstCustomIndex, surfPosition, 
-        surfNormal, surfNormalGeom, surfRoughness, 
-        v, isGradientSample,
+        seed, 
+        surf, 
+        isGradientSample,
         bounceDirection,
         throughput,
         rayHitDistance);
@@ -220,36 +221,25 @@ SH processIndirectDiffuse(
 
 
 // v -- direction to viewer
-void processIndirectIllumination(
-    const ivec2 pix, const uint seed, 
-    const uint surfInstCustomIndex, const vec3 surfPosition, 
-    const vec3 surfNormal, const vec3 surfNormalGeom,
-    const float surfRoughness, const vec3 surfSpecularColor, 
-    const vec3 v, const bool isGradientSample)
+void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf, const bool isGradientSample)
 {
-    if (surfRoughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
+    if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
     {
         const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
         float rayHitDistance = 0;
 
-        const vec3 contribution = processSpecular(
-            seed, surfInstCustomIndex, surfPosition, 
-            surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor,
-            v, isGradientSample, rayHitDistance);
+        const vec3 contribution = processSpecular(seed, surf, isGradientSample, rayHitDistance);
 
         imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
 
         if (getLuminance(directSpecular) < getLuminance(contribution))
         {
-            imageStore(framebufViewDirection, pix, vec4(-v, rayHitDistance));
+            imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, rayHitDistance));
         }
     }
 
     {
-        const SH bounceSH = processIndirectDiffuse(
-            seed, surfInstCustomIndex, surfPosition, 
-            surfNormal, surfNormalGeom, surfRoughness, 
-            v, isGradientSample);
+        const SH bounceSH = processIndirectDiffuse(seed, surf, isGradientSample);
 
         imageStoreUnfilteredIndirectSH(pix, bounceSH);
     }
@@ -269,26 +259,8 @@ void main()
     
     const uint seed = getCurrentRandomSeed(pix);
 
-    const vec4 surfPosition           = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
-    const vec3 surfNormal             = texelFetchNormal(pix);
-    const vec3 surfNormalGeom         = texelFetchNormalGeometry(pix);
-    const vec4 surfMetallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0);
-    const vec3 viewDirection          = texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
+    Surface surf = fetchGbufferSurface_A(pix, albedo4.rgb);
+    surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
 
-    const float surfRoughness         = surfMetallicRoughness.g;
-    const float surfMetallic          = surfMetallicRoughness.r;
-    const vec3 surfSpecularColor      = getSpecularColor(albedo4.rgb, surfMetallic);
-
-    const uint surfInstCustomIndex    = floatBitsToUint(surfPosition.a);
-  
-
-#if GRADIENT_ESTIMATION_ENABLED
-    const uint grFB                   = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
-    const bool isGradientSample       = (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
-                                        (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
-#else
-    const bool isGradientSample       = false;
-#endif
-
-    processIndirectIllumination(pix, seed, surfInstCustomIndex, surfPosition.xyz - viewDirection * RAY_ORIGIN_LEAK_BIAS, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, -viewDirection, isGradientSample);        
+    processIndirectIllumination(pix, seed, surf, fetchAndCheckIsGradient(pix));        
 }
