@@ -23,9 +23,47 @@
 
 struct Reservoir
 {
-    int selected;
+    uint selected;
     float weightSum;
     float M;
+};
+
+uvec4 packReservoir(const Reservoir r)
+{
+    return uvec4(
+        r.selected,
+        floatBitsToUint(r.weightSum),
+        floatBitsToUint(r.M),
+        0
+    );
+}
+
+Reservoir unpackReservoir(const uvec4 p)
+{
+    Reservoir r;
+    r.selected = p.x;
+    r.weightSum = uintBitsToFloat(p.y);
+    r.M = uintBitsToFloat(p.z);
+    return r;
+}
+
+Reservoir newReservoir()
+{
+    Reservoir r;
+    r.selected = UINT32_MAX;
+    r.weightSum = 0.0;
+    r.M = 0.0;
+    return r;
+}
+
+void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
+{
+    r.weightSum += weight;
+    r.M += 1;
+    if (rnd * r.weightSum < weight)
+    {
+        r.selected = lightIndex;
+    }
 }
 
 #endif // RESERVOIR_H_

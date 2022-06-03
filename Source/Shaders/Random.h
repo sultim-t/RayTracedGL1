@@ -23,12 +23,11 @@
 
 #define RANDOM_SALT_LIGHT_TYPE_CHOOSE 1
 #define RANDOM_SALT_DIRECTIONAL_LIGHT_DISK 2
-#define RANDOM_SALT_LIGHT_CHOOSE 3
 #define RANDOM_SALT_LIGHT_POINT 4
-#define RANDOM_BOUNCE_DIFF_BASE_INDEX 8
-#define RANDOM_SALT_DIFF_BOUNCE(bounceIndex) (RANDOM_BOUNCE_DIFF_BASE_INDEX + bounceIndex)
-#define RANDOM_BOUNCE_SPEC_BASE_INDEX 16
-#define RANDOM_SALT_SPEC_BOUNCE(bounceIndex) (RANDOM_BOUNCE_SPEC_BASE_INDEX + bounceIndex)
+#define RANDOM_SALT_DIFF_BOUNCE(bounceIndex) (8 + bounceIndex)
+#define RANDOM_SALT_SPEC_BOUNCE(bounceIndex) (16 + bounceIndex)
+#define RANDOM_SALT_LIGHT_CHOOSE(i) (32 + i)
+#define RANDOM_SALT_RIS(i) (64 + i)
 
 // Sample disk uniformly
 // u1, u2 -- uniform random numbers

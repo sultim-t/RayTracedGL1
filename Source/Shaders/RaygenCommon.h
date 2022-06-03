@@ -46,6 +46,7 @@
 #include "Light.h"
 #include "Media.h"
 #include "RayCone.h"
+#include "Reservoir.h"
 
 #define HITINFO_INL_PRIM
     #include "HitInfo.inl"
@@ -346,14 +347,52 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 #define MAX_SUBSET_LEN 8
 
 
+struct Surface
+{
+    vec3 position;
+    uint instCustomIndex;
+    vec3 normalGeom;
+    float roughness;
+    vec3 normal;
+    uint sectorArrayIndex;
+    vec3 specularColor;
+    vec3 toViewerDir;
+};
+
+void shade(const Surface surf, const LightSample light, out vec3 diffuse, out vec3 specular)
+{
+    vec3 l = safeNormalize(light.position - surf.position);
+    float nl = dot(surf.normal, l);
+    float ngl = dot(surf.normalGeom, l);
+
+    if (nl <= 0 || ngl <= 0)
+    {
+        diffuse = specular = vec3(0);
+        return;
+    }
+
+    diffuse  = light.dw * nl * light.color * evalBRDFLambertian(1.0);
+#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+    specular = light.dw * nl * light.color * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
+#endif
+}
+
+float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 pointRnd)
+{
+    const LightSample light = sampleLight(lightSources[lightIndex], surf.position, pointRnd);
+
+    vec3 d, s;
+    shade(surf, light, d, s);
+
+    return getLuminance(d + s);
+}
 
 
 
 // toViewerDir -- is direction to viewer
 void processDirectionalLight(
     uint seed, 
-    uint surfInstCustomIndex, const vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
-    const vec3 toViewerDir,
+    const Surface surf,
     bool isGradientSample,
     int bounceIndex,
     inout LightResult out_result)
@@ -373,21 +412,9 @@ void processDirectionalLight(
         encLight.data_0 = globalUniform.directionalLight_data_0;
     }
 
-    LightSample s = sampleLight(encLight, surfPosition, getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy);
+    const LightSample light = sampleLight(encLight, surf.position, getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy);
 
-    const vec3 l = safeNormalize(s.position - surfPosition);
-    const float nl = dot(surfNormal, l);
-    const float ngl = dot(surfNormalGeom, l);
-
-    if (nl <= 0 || ngl <= 0)
-    {
-        return;
-    }
-
-    out_result.diffuse  = s.dw * nl * s.color * evalBRDFLambertian(1.0);
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = s.dw * nl * s.color * evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor);
-#endif
+    shade(surf, light, out_result.diffuse, out_result.specular);
 
     if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
     {
@@ -395,15 +422,14 @@ void processDirectionalLight(
     }
 
     out_result.shadowRayEnable = true;
-    out_result.shadowRayEnd = s.position;
+    out_result.shadowRayEnd = light.position;
     out_result.shadowRayIgnoreFirstPersonViewer = false;
 }
 
 
 void processLight(
     uint seed,
-    uint surfInstCustomIndex, vec3 surfPosition, const vec3 surfNormal, const vec3 surfNormalGeom, float surfRoughness, const vec3 surfSpecularColor, uint surfSectorArrayIndex,
-    const vec3 toViewerDir, 
+    const Surface surf,
     bool isGradientSample,
     int bounceIndex,
     inout LightResult out_result)
@@ -411,7 +437,7 @@ void processLight(
     uint lightCount = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
 
-    if (lightCount == 0 || (!castShadowRay && bounceIndex != 0) || surfSectorArrayIndex == SECTOR_INDEX_NONE)
+    if (lightCount == 0 || (!castShadowRay && bounceIndex != 0) || surf.sectorArrayIndex == SECTOR_INDEX_NONE)
     {
         return;
     }
@@ -420,11 +446,21 @@ void processLight(
 
     const vec2 pointRnd = getRandomSample(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
 
-    // random in [0,1)
-    float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE).x * 0.99;
+#define SAMPLE_METHOD 2
 
-    const uint lightListBegin = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 0];
-    const uint lightListEnd   = sectorToLightListRegion_StartEnd[surfSectorArrayIndex * 2 + 1];
+#if SAMPLE_METHOD == 0 || defined(RAYGEN_ALLOW_FIREFLIES_CLAMP)
+  
+    float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x;
+    float oneOverPdf = lightCount;
+    uint selectedLightIndex = clamp(uint(rnd * lightCount), 0, lightCount - 1);
+
+#elif SAMPLE_METHOD == 1
+
+    // random in [0,1)
+    float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x * 0.99;
+
+    const uint lightListBegin = sectorToLightListRegion_StartEnd[surf.sectorArrayIndex * 2 + 0];
+    const uint lightListEnd   = sectorToLightListRegion_StartEnd[surf.sectorArrayIndex * 2 + 1];
 
     const uint S = uint(ceil(float(lightListEnd - lightListBegin) / MAX_SUBSET_LEN));
     const uint subsetStride = S;
@@ -446,7 +482,7 @@ void processLight(
 
         const float w = getLightWeight(
             lightSources[plainLightList[plainLightListIndex_iter]], 
-            surfPosition,
+            surf.position,
             pointRnd);
 
         if (w > 0)
@@ -478,10 +514,38 @@ void processLight(
     }
 
     float oneOverPdf = (weightsTotal * S) / selected_mass;
+    uint selectedLightIndex = plainLightList[selected_plainLightListIndex];
 
+#elif SAMPLE_METHOD == 2
+
+    const int M = 8;
+    Reservoir reservoir = newReservoir();
+    
+    for (int i = 0; i < M; i++)
+    {
+        // uniform distribution as a coarse source pdf
+        float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
+        uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
+        float oneOverSourcePdf_xi = lightCount;
+
+        float targetPdf_xi = targetPdfForLightSample(xi, surf, pointRnd);
+
+        float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
+        updateReservoir(reservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+    }
+    
+    if (reservoir.weightSum <= 0.0)
+    {
+        return;
+    }
+    float targetPdf_selected = targetPdfForLightSample(reservoir.selected, surf, pointRnd);
+    float r_W = targetPdf_selected <= 0.00001 ? 0.0 : 1.0 / targetPdf_selected * (reservoir.weightSum / reservoir.M);
+
+    uint selectedLightIndex = reservoir.selected;
+    float oneOverPdf = r_W;
+#endif
 
     ShLightEncoded encLight;
-    uint selectedLightIndex = plainLightList[selected_plainLightListIndex];
 
     if (!isGradientSample)
     {
@@ -505,21 +569,9 @@ void processLight(
         encLight = lightSources_Prev[selectedLightIndex];
     }
 
-    LightSample s = sampleLight(encLight, surfPosition, pointRnd);
+    LightSample light = sampleLight(encLight, surf.position, pointRnd);
 
-    const vec3 l = safeNormalize(s.position - surfPosition);
-    const float nl = dot(surfNormal, l);
-    const float ngl = dot(surfNormalGeom, l);
-
-    if (nl <= 0.0 || ngl <= 0)
-    {
-        return;
-    }
-
-    out_result.diffuse  = s.dw * nl * s.color * evalBRDFLambertian(1.0);
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
-    out_result.specular = s.dw * nl * s.color * evalBRDFSmithGGX(surfNormal, toViewerDir, l, surfRoughness, surfSpecularColor);
-#endif
+    shade(surf, light, out_result.diffuse, out_result.specular);
 
     out_result.diffuse  *= oneOverPdf;
     out_result.specular *= oneOverPdf;
@@ -535,7 +587,7 @@ void processLight(
     }
     
     out_result.shadowRayEnable = true;
-    out_result.shadowRayEnd = s.position;
+    out_result.shadowRayEnd = light.position;
     // TODO: ignore shadows from first-person viewer if requested (for example, player flaslight)
     out_result.shadowRayIgnoreFirstPersonViewer = false;
 }
@@ -561,31 +613,42 @@ void processDirectIllumination(
     #define APPEND_DIST(x)
 #endif
     
-    LightResult selected;
+
+    Surface surf;
+    surf.position = surfPosition;
+    surf.instCustomIndex = surfInstCustomIndex;
+    surf.normalGeom = surfNormalGeom;
+    surf.roughness = surfRoughness;
+    surf.normal = surfNormal;
+    surf.sectorArrayIndex = surfSectorArrayIndex;
+    surf.specularColor = surfSpecularColor;
+    surf.toViewerDir = toViewerDir;
+
+
+    LightResult r;
 
 #define PROCESS_SEPARATELY(pfnProcessLight)                                     \
     {                                                                           \
-        selected = newLightResult();                                            \
+        r = newLightResult();                                                   \
                                                                                 \
         pfnProcessLight(                                                        \
             seed,                                                               \
-            surfInstCustomIndex, surfPosition, surfNormal, surfNormalGeom, surfRoughness, surfSpecularColor, surfSectorArrayIndex,  \
-            toViewerDir,                                                        \
+            surf,                                                               \
             isGradientSample,                                                   \
             bounceIndex, /* TODO: remove 'castShadowRay'? */                    \
-            selected);                                                          \
+            r);                                                                 \
                                                                                 \
         bool isShadowed = false;                                                \
                                                                                 \
-        if (selected.shadowRayEnable)                                           \
+        if (r.shadowRayEnable)                                                  \
         {                                                                       \
             const vec3 shadowRayStart = surfPosition + toViewerDir * RAY_ORIGIN_LEAK_BIAS;  \
-            isShadowed = traceShadowRay(surfInstCustomIndex, shadowRayStart, selected.shadowRayEnd, selected.shadowRayIgnoreFirstPersonViewer);    \
-            APPEND_DIST(shadowRayStart - selected.shadowRayEnd);                \
+            isShadowed = traceShadowRay(surfInstCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);   \
+            APPEND_DIST(shadowRayStart - r.shadowRayEnd);                       \
         }                                                                       \
                                                                                 \
-        outDiffuse  += selected.diffuse  * float(!isShadowed);                  \
-        outSpecular += selected.specular * float(!isShadowed);                  \
+        outDiffuse  += r.diffuse  * float(!isShadowed);                         \
+        outSpecular += r.specular * float(!isShadowed);                         \
     }
 
     PROCESS_SEPARATELY(processDirectionalLight);

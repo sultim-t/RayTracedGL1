@@ -62,7 +62,7 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex);
 
 private:
-    void AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const ShLightEncoded &info);
+    void AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const ShLightEncoded &encodedLight);
 
     void FillMatchPrev(
         const rgl::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,

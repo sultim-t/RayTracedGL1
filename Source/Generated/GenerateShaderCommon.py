@@ -590,9 +590,9 @@ LIGHT_ENCODED_STRUCT = [
     (TYPE_FLOAT32,      3,      "color",                1),
     (TYPE_UINT32,       1,      "lightType",            1),
 
-    (TYPE_FLOAT32,      4,      "data_0",   1),
-    (TYPE_FLOAT32,      4,      "data_1",   1),
-    (TYPE_FLOAT32,      4,      "data_2",   1),
+    (TYPE_FLOAT32,      4,      "data_0",               1),
+    (TYPE_FLOAT32,      4,      "data_1",               1),
+    (TYPE_FLOAT32,      4,      "data_2",               1),
 ]
 
 TONEMAPPING_STRUCT = [
@@ -601,8 +601,8 @@ TONEMAPPING_STRUCT = [
 ]
 
 VERT_PREPROC_PUSH_STRUCT = [
-    (TYPE_UINT32,       1,      "tlasInstanceCount",                1),
-    (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",        align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
+    (TYPE_UINT32,       1,      "tlasInstanceCount",            1),
+    (TYPE_UINT32,       1,      "tlasInstanceIsDynamicBits",    align(CONST["MAX_TOP_LEVEL_INSTANCE_COUNT"], 32) // 32),
 ]
 
 INDIRECT_DRAW_CMD_STRUCT = [
@@ -770,6 +770,8 @@ FRAMEBUFFERS = {
     "Bloom_Result"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     
     "WipeEffectSource"                  : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER), # dst to copy in
+    
+    "Reservoirs"                        : (TYPE_UINT32,     COMPONENT_RGBA, 0),
 }
 
 if GRADIENT_ESTIMATION_ENABLED:

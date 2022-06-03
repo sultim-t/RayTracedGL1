@@ -46,7 +46,7 @@ RTGL1::LightLists::LightLists(
     plainLightList_Raw.resize(MAX_SECTOR_COUNT * MAX_LIGHT_LIST_SIZE);
 
     plainLightList = std::make_shared<AutoBuffer>(_device, _memoryAllocator);
-    plainLightList->Create(plainLightList_Raw.size() * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Light list buffer ");
+    plainLightList->Create(plainLightList_Raw.size() * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Light list buffer");
 
 
     // contains tuples (begin, end) for each sector
