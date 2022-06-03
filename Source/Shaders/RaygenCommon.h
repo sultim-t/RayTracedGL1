@@ -18,6 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#ifndef RAYGEN_COMMON_H_
+#define RAYGEN_COMMON_H_
+
 #extension GL_EXT_ray_tracing : require
 
 
@@ -1001,3 +1004,5 @@ void processDirectIllumination(
 
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
+
+#endif // RAYGEN_COMMON_H_

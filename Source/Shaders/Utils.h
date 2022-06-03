@@ -18,6 +18,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#ifndef UTILS_H_
+#define UTILS_H_
+
+
+
 #define M_PI        3.14159265358979323846
 #define UINT32_MAX  0xFFFFFFFF
 
@@ -170,3 +175,5 @@ vec4 decodeTangent4(const vec3 _packed)
 
     return vec4(_packed / (1.0 + h * TANGENT_HANDEDNESS_ENCODING_CONST), handedness);
 }
+
+#endif // UTILS_H_

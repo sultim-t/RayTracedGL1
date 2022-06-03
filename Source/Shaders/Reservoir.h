@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Sultim Tsyrendashiev
+// Copyright (c) 2022 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,55 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#ifndef STRUCTS_H_
-#define STRUCTS_H_
+#ifndef RESERVOIR_H_
+#define RESERVOIR_H_
 
-#define LIGHT_TYPE_NONE        0
-#define LIGHT_TYPE_DIRECTIONAL 1
-#define LIGHT_TYPE_SPHERICAL   2
-#define LIGHT_TYPE_POLYGONAL   3
-#define LIGHT_TYPE_SPOTLIGHT   4
 
-struct ShTriangle
-{
-    mat3    positions;
-    mat3    prevPositions;
-    mat3    normals;
-    mat3x2  layerTexCoord[3];
-    vec4    materialColors[3];
-    uvec3   materials[3];
-    uint    geometryInstanceFlags;
-    vec4    tangent;
-    float   geomRoughness;
-    float   geomEmission;
-    float   geomMetallicity;
-    uint    sectorArrayIndex;
-};
 
-struct ShPayload
-{
-    vec2    baryCoords;
-    uint    instIdAndIndex;
-    uint    geomAndPrimIndex;
-};
-
-struct ShPayloadShadow
-{
-    uint    isShadowed;
-};
-
-struct ShHitInfo
-{
-    vec3    albedo;
-    float   metallic;
-    vec3    normal;
-    float   roughness;
-    vec3    normalGeom;
-    float   emission;
-    vec3    hitPosition;
-    uint    instCustomIndex;
-    uint    geometryInstanceFlags;
-    uint    sectorArrayIndex;
-};
-
-#endif // STRUCTS_H_
+#endif // RESERVOIR_H_

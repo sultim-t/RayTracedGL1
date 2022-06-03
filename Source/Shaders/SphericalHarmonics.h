@@ -19,6 +19,10 @@
 // SOFTWARE.
 
 
+#ifndef SPHERICAL_HARMONICS_H_
+#define SPHERICAL_HARMONICS_H_
+
+
 // "An Efficient Representation for Irradiance Environment Maps", Ravi Ramamoorthi, Pat Hanrahan
 
 
@@ -127,3 +131,5 @@ void multiplySH(inout SH x, float a)
     x.g *= a;
     x.b *= a;
 }
+
+#endif // SPHERICAL_HARMONICS_H_

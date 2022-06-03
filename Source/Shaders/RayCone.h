@@ -18,7 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-
+#ifndef RAY_CONE_H_
+#define RAY_CONE_H_
 
 // Ray Tracing Gems 2. Chapter 7: Texture Coordinate Gradients Estimation for Ray Cones
 
@@ -126,3 +127,5 @@ vec4 getTextureSampleDerivSet(uint textureIndex, const vec2 texCoord, const Deri
 {
     return getTextureSampleDerivU(textureIndex, texCoord, derivSet.u[index]);
 }
+
+#endif // RAY_CONE_H_

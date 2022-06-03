@@ -18,6 +18,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#ifndef BRDF_H_
+#define BRDF_H_
+
 #include "Random.h"
 
 float square(float x)
@@ -176,3 +179,5 @@ vec3 sampleSmithGGX(const vec3 n, const vec3 v, float alpha, float u1, float u2)
     // m to world space
     return basis * me; 
 }
+
+#endif // BRDF_H_

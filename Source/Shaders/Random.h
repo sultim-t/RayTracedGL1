@@ -18,7 +18,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-
+#ifndef RANDOM_H_
+#define RANDOM_H_
 
 #define RANDOM_SALT_LIGHT_TYPE_CHOOSE 1
 #define RANDOM_SALT_DIRECTIONAL_LIGHT_DISK 2
@@ -261,3 +262,5 @@ uint getRandomSeed(const ivec2 pix, uint frameIndex, float screenWidth, float sc
     return packRandomSeed(texIndex, offset);
 }
 #endif // DESC_SET_RANDOM
+
+#endif // RANDOM_H_

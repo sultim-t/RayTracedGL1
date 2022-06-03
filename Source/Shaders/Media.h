@@ -19,6 +19,10 @@
 // SOFTWARE.
 
 
+#ifndef MEDIA_H_
+#define MEDIA_H_
+
+
 #ifndef DESC_SET_GLOBAL_UNIFORM
     #error DESC_SET_GLOBAL_UNIFORM must be defined
 #endif
@@ -105,3 +109,5 @@ bool isReflectFromFlags(uint geometryInstanceFlags)
 {
     return (geometryInstanceFlags & GEOM_INST_FLAG_REFLECT) != 0;
 }
+
+#endif // MEDIA_H_
