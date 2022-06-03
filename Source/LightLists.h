@@ -36,8 +36,7 @@ class LightLists
 public:
     LightLists(VkDevice device, 
                const std::shared_ptr<MemoryAllocator> &memoryAllocator,
-               std::shared_ptr<SectorVisibility> sectorVisibility,
-               const char *pDebugName);
+               std::shared_ptr<SectorVisibility> sectorVisibility);
     ~LightLists() = default;
 
     LightLists(const LightLists &other) = delete;

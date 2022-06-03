@@ -241,16 +241,11 @@ CONST = {
     "BINDING_RENDER_CUBEMAP"                    : 0,
     "BINDING_BLUE_NOISE"                        : 0,
     "BINDING_LUM_HISTOGRAM"                     : 0,
-    "BINDING_LIGHT_SOURCES_SPHERICAL"           : 0,
-    "BINDING_LIGHT_SOURCES_SPHERICAL_PREV"      : 1,
-    "BINDING_LIGHT_SOURCES_POLYGONAL"           : 2,
-    "BINDING_LIGHT_SOURCES_POLYGONAL_PREV"      : 3,
-    "BINDING_LIGHT_SOURCES_SPH_MATCH_PREV"      : 4,
-    "BINDING_LIGHT_SOURCES_POLY_MATCH_PREV"     : 5,
-    "BINDING_PLAIN_LIGHT_LIST_POLY"             : 6,
-    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY"  : 7,
-    "BINDING_PLAIN_LIGHT_LIST_SPH"              : 8,
-    "BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH"   : 9,
+    "BINDING_LIGHT_SOURCES"                     : 0,
+    "BINDING_LIGHT_SOURCES_PREV"                : 1,
+    "BINDING_LIGHT_SOURCES_MATCH_PREV"          : 2,
+    "BINDING_PLAIN_LIGHT_LIST"                  : 3,
+    "BINDING_SECTOR_TO_LIGHT_LIST_REGION"       : 4,
     "BINDING_LENS_FLARES_CULLING_INPUT"         : 0,
     "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
     "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
@@ -380,6 +375,12 @@ CONST = {
 
     "GEOM_INST_NO_TRIANGLE_INFO"            : "UINT32_MAX",
     "SECTOR_INDEX_NONE"                     : ((1 << 15) - 1),
+
+    "LIGHT_TYPE_NONE"                       : 0,
+    "LIGHT_TYPE_DIRECTIONAL"                : 1,
+    "LIGHT_TYPE_SPHERE"                     : 2,
+    "LIGHT_TYPE_TRIANGLE"                   : 3,
+    "LIGHT_TYPE_SPOT"                       : 4,
 }
 
 CONST_GLSL_ONLY = {
@@ -460,9 +461,9 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "luminanceWhitePoint",          1),
     (TYPE_UINT32,       1,      "stopEyeAdaptation",            1),
-    (TYPE_UINT32,       1,      "lightCountSpherical",          1),
-    
     (TYPE_UINT32,       1,      "lightCountDirectional",        1),
+    
+    (TYPE_FLOAT32,      1,      "polyLightSpotlightFactor",     1),
     (TYPE_UINT32,       1,      "skyType",                      1),
     (TYPE_FLOAT32,      1,      "skyColorMultiplier",           1),
     (TYPE_UINT32,       1,      "skyCubemapIndex",              1),
@@ -475,30 +476,22 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "debugShowFlags",               1),
     (TYPE_FLOAT32,      1,      "firefliesClamp",               1),
-    (TYPE_UINT32,       1,      "lightCountSphericalPrev",      1),
-    (TYPE_UINT32,       1,      "lightCountDirectionalPrev",    1),
+    (TYPE_UINT32,       1,      "lightCount",                   1),
+    (TYPE_UINT32,       1,      "lightCountPrev",               1),
 
     (TYPE_FLOAT32,      1,      "emissionMapBoost",             1),
     (TYPE_FLOAT32,      1,      "emissionMaxScreenColor",       1),
     (TYPE_FLOAT32,      1,      "normalMapStrength",            1),
     (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
-    (TYPE_FLOAT32,      4,      "spotlightPosition",            1),
-    (TYPE_FLOAT32,      4,      "spotlightPositionPrev",        1),
-    (TYPE_FLOAT32,      4,      "spotlightDirection",           1),
-    (TYPE_FLOAT32,      4,      "spotlightDirectionPrev",       1),
-    (TYPE_FLOAT32,      4,      "spotlightUpVector",            1),
-    (TYPE_FLOAT32,      4,      "spotlightUpVectorPrev",        1),
-    (TYPE_FLOAT32,      4,      "spotlightColor",               1),
-
-    (TYPE_FLOAT32,      1,      "spotlightRadius",              1),
-    (TYPE_FLOAT32,      1,      "spotlightCosAngleOuter",       1),
-    (TYPE_FLOAT32,      1,      "spotlightCosAngleInner",       1),
+    (TYPE_FLOAT32,      1,      "_unused0",                     1),
+    (TYPE_FLOAT32,      1,      "_unused1",                     1),
+    (TYPE_FLOAT32,      1,      "_unused2",                     1),
     (TYPE_FLOAT32,      1,      "bloomEmissionSaturationBias",  1),
 
     (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",1),
-    (TYPE_UINT32,       1,      "maxBounceShadowsSphereLights",     1),
-    (TYPE_UINT32,       1,      "maxBounceShadowsSpotlights",       1),
+    (TYPE_UINT32,       1,      "maxBounceShadowsLights",           1),
+    (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "rayCullMaskWorld",                 1),
 
     (TYPE_FLOAT32,      1,      "bloomThreshold",                   1),
@@ -545,19 +538,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "jitterY",                          1),
     (TYPE_FLOAT32,      1,      "primaryRayMinDist",                1),
 
-    (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
-    (TYPE_UINT32,       1,      "maxBounceShadowsPolygonalLights",  1),
-    (TYPE_FLOAT32,      1,      "polyLightSpotlightFactor",         1),
-    (TYPE_FLOAT32,      1,      "directionalLightAngularRadius",    1),
-
-    (TYPE_FLOAT32,      4,      "directionalLightDirection",        1),
-    (TYPE_FLOAT32,      4,      "directionalLightDirectionPrev",    1),
-    (TYPE_FLOAT32,      4,      "directionalLightColor",            1),
-
-    (TYPE_UINT32,       1,      "lightCountSpotlight",              1),
-    (TYPE_UINT32,       1,      "lightCountSpotlightPrev",          1),
-    (TYPE_UINT32,       1,      "lightCountPolygonal",              1),
-    (TYPE_UINT32,       1,      "lightCountPolygonalPrev",          1),
+    (TYPE_FLOAT32,      4,      "directionalLight_color",           1),
+    (TYPE_FLOAT32,      4,      "directionalLight_data_0",          1),
 
     (TYPE_UINT32,       1,      "rayCullMaskWorld_Shadow",          1),
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
@@ -603,24 +585,14 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "triangleArrayIndex",   1),
 ]
 
-LIGHT_SPHERICAL_STRUCT = [
-    (TYPE_FLOAT32,      3,      "position",             1),
-    (TYPE_FLOAT32,      1,      "radius",               1),
+# TODO: make more compact
+LIGHT_ENCODED_STRUCT = [
     (TYPE_FLOAT32,      3,      "color",                1),
-]
+    (TYPE_UINT32,       1,      "lightType",            1),
 
-# LIGHT_DIRECTIONAL_STRUCT = [
-#     (TYPE_FLOAT32,      3,      "direction",            1),
-#     (TYPE_FLOAT32,      1,      "tanAngularRadius",     1),
-#     (TYPE_FLOAT32,      3,      "color",                1),
-# ]
-
-LIGHT_POLYGONAL_STRUCT = [
-    (TYPE_FLOAT32,      4,      "pos_norm_0",           1),
-    (TYPE_FLOAT32,      4,      "pos_norm_1",           1),
-    (TYPE_FLOAT32,      4,      "pos_norm_2",           1),
-    (TYPE_FLOAT32,      3,      "color",                1),
-    (TYPE_FLOAT32,      1,      "area",                 1),
+    (TYPE_FLOAT32,      4,      "data_0",   1),
+    (TYPE_FLOAT32,      4,      "data_1",   1),
+    (TYPE_FLOAT32,      4,      "data_2",   1),
 ]
 
 TONEMAPPING_STRUCT = [
@@ -673,9 +645,7 @@ STRUCTS = {
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,         False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,          False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,            False,  0,                          0),
-    "ShLightSpherical":         (LIGHT_SPHERICAL_STRUCT,        False,  STRUCT_ALIGNMENT_STD430,    0),
-    # "ShLightDirectional":     (LIGHT_DIRECTIONAL_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
-    "ShLightPolygonal":         (LIGHT_POLYGONAL_STRUCT,        False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShLightEncoded":           (LIGHT_ENCODED_STRUCT,          False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,      False,  0,                          0),
     "ShIndirectDrawCommand":    (INDIRECT_DRAW_CMD_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
     # TODO: should be STRUCT_ALIGNMENT_STD430, but current generator is not great as it just adds pads at the end, so it's 0

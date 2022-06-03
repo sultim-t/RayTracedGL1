@@ -644,10 +644,10 @@ typedef struct RgSphericalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    RgFloat3D       color;
-    RgFloat3D       position;
     // Look notes in RgPolygonalLightUploadInfo::sectorID
     uint32_t        sectorID;
+    RgFloat3D       color;
+    RgFloat3D       position;
     // Sphere radius.
     float           radius;
 } RgSphericalLightUploadInfo;
@@ -656,27 +656,30 @@ typedef struct RgPolygonalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    RgFloat3D       positions[3];
-    RgFloat3D       color;
     // ID of the sector this light belongs to. Can be any uint32_t value.
     // If advanced sampling technique is not needed, leave the field with 0,
     // so all lights will use that one sector, but more noisy results should be expected.
     uint32_t        sectorID;
+    RgFloat3D       color;
+    RgFloat3D       positions[3];
 } RgPolygonalLightUploadInfo;
 
 // Only one spotlight is available in a scene.
 typedef struct RgSpotlightUploadInfo
 {
-    RgFloat3D position;
-    RgFloat3D direction;
-    RgFloat3D upVector;
-    RgFloat3D color;
+    // Used to match the same light source from the previous frame.
+    uint64_t        uniqueID;
+    // Look notes in RgPolygonalLightUploadInfo::sectorID
+    uint32_t        sectorID;
+    RgFloat3D       color;
+    RgFloat3D       position;
+    RgFloat3D       direction;
+    float           radius;
     // Light source disk radius.
-    float radius;
     // Inner cone angle. In radians.
-    float angleOuter;
+    float           angleOuter;
     // Outer cone angle. In radians.
-    float angleInner;
+    float           angleInner;
 } RgSpotlightUploadInfo;
 
 RGAPI RgResult RGCONV rgUploadDirectionalLight(
@@ -943,10 +946,8 @@ typedef struct RgDrawFrameDebugParams
 typedef struct RgDrawFrameShadowParams
 {
     // Shadow rays are cast, if illumination bounce index is in [0, maxBounceShadows).
-    uint32_t    maxBounceShadowsDirectionalLights;
-    uint32_t    maxBounceShadowsSphereLights;
-    uint32_t    maxBounceShadowsSpotlights;
-    uint32_t    maxBounceShadowsPolygonalLights;
+    uint32_t    maxBounceShadowsDirectional;
+    uint32_t    maxBounceShadows;
     // The higher the value, the more polygonal lights act like a spotlight. 
     // Default: 2
     float       polygonalLightSpotlightFactor;

@@ -32,16 +32,11 @@ namespace RTGL1
 #define BINDING_RENDER_CUBEMAP (0)
 #define BINDING_BLUE_NOISE (0)
 #define BINDING_LUM_HISTOGRAM (0)
-#define BINDING_LIGHT_SOURCES_SPHERICAL (0)
-#define BINDING_LIGHT_SOURCES_SPHERICAL_PREV (1)
-#define BINDING_LIGHT_SOURCES_POLYGONAL (2)
-#define BINDING_LIGHT_SOURCES_POLYGONAL_PREV (3)
-#define BINDING_LIGHT_SOURCES_SPH_MATCH_PREV (4)
-#define BINDING_LIGHT_SOURCES_POLY_MATCH_PREV (5)
-#define BINDING_PLAIN_LIGHT_LIST_POLY (6)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY (7)
-#define BINDING_PLAIN_LIGHT_LIST_SPH (8)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH (9)
+#define BINDING_LIGHT_SOURCES (0)
+#define BINDING_LIGHT_SOURCES_PREV (1)
+#define BINDING_LIGHT_SOURCES_MATCH_PREV (2)
+#define BINDING_PLAIN_LIGHT_LIST (3)
+#define BINDING_SECTOR_TO_LIGHT_LIST_REGION (4)
 #define BINDING_LENS_FLARES_CULLING_INPUT (0)
 #define BINDING_LENS_FLARES_DRAW_CMDS (1)
 #define BINDING_DRAW_LENS_FLARES_INSTANCES (0)
@@ -149,6 +144,11 @@ namespace RTGL1
 #define MEDIA_TYPE_COUNT (3)
 #define GEOM_INST_NO_TRIANGLE_INFO (UINT32_MAX)
 #define SECTOR_INDEX_NONE (32767)
+#define LIGHT_TYPE_NONE (0)
+#define LIGHT_TYPE_DIRECTIONAL (1)
+#define LIGHT_TYPE_SPHERE (2)
+#define LIGHT_TYPE_TRIANGLE (3)
+#define LIGHT_TYPE_SPOT (4)
 
 struct ShVertexBufferStatic
 {
@@ -185,8 +185,8 @@ struct ShGlobalUniform
     float maxLogLuminance;
     float luminanceWhitePoint;
     uint32_t stopEyeAdaptation;
-    uint32_t lightCountSpherical;
     uint32_t lightCountDirectional;
+    float polyLightSpotlightFactor;
     uint32_t skyType;
     float skyColorMultiplier;
     uint32_t skyCubemapIndex;
@@ -195,26 +195,19 @@ struct ShGlobalUniform
     float cameraPosition[4];
     uint32_t debugShowFlags;
     float firefliesClamp;
-    uint32_t lightCountSphericalPrev;
-    uint32_t lightCountDirectionalPrev;
+    uint32_t lightCount;
+    uint32_t lightCountPrev;
     float emissionMapBoost;
     float emissionMaxScreenColor;
     float normalMapStrength;
     float skyColorSaturation;
-    float spotlightPosition[4];
-    float spotlightPositionPrev[4];
-    float spotlightDirection[4];
-    float spotlightDirectionPrev[4];
-    float spotlightUpVector[4];
-    float spotlightUpVectorPrev[4];
-    float spotlightColor[4];
-    float spotlightRadius;
-    float spotlightCosAngleOuter;
-    float spotlightCosAngleInner;
+    float _unused0;
+    float _unused1;
+    float _unused2;
     float bloomEmissionSaturationBias;
     uint32_t maxBounceShadowsDirectionalLights;
-    uint32_t maxBounceShadowsSphereLights;
-    uint32_t maxBounceShadowsSpotlights;
+    uint32_t maxBounceShadowsLights;
+    uint32_t rayCullBackFaces;
     uint32_t rayCullMaskWorld;
     float bloomThreshold;
     float bloomThresholdLength;
@@ -250,17 +243,8 @@ struct ShGlobalUniform
     float jitterX;
     float jitterY;
     float primaryRayMinDist;
-    uint32_t rayCullBackFaces;
-    uint32_t maxBounceShadowsPolygonalLights;
-    float polyLightSpotlightFactor;
-    float directionalLightAngularRadius;
-    float directionalLightDirection[4];
-    float directionalLightDirectionPrev[4];
-    float directionalLightColor[4];
-    uint32_t lightCountSpotlight;
-    uint32_t lightCountSpotlightPrev;
-    uint32_t lightCountPolygonal;
-    uint32_t lightCountPolygonalPrev;
+    float directionalLight_color[4];
+    float directionalLight_data_0[4];
     uint32_t rayCullMaskWorld_Shadow;
     uint32_t lensFlareCullingInputCount;
     uint32_t applyViewProjToLensFlares;
@@ -305,21 +289,13 @@ struct ShTonemapping
     float avgLuminance;
 };
 
-struct ShLightSpherical
+struct ShLightEncoded
 {
-    float position[3];
-    float radius;
     float color[3];
-    uint32_t __pad0;
-};
-
-struct ShLightPolygonal
-{
-    float pos_norm_0[4];
-    float pos_norm_1[4];
-    float pos_norm_2[4];
-    float color[3];
-    float area;
+    uint32_t lightType;
+    float data_0[4];
+    float data_1[4];
+    float data_2[4];
 };
 
 struct ShVertPreprocessing

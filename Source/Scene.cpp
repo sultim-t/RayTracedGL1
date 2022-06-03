@@ -285,9 +285,9 @@ void RTGL1::Scene::UploadLight(uint32_t frameIndex, const RgPolygonalLightUpload
     lightManager->AddPolygonalLight(frameIndex, lightInfo);
 }
 
-void Scene::UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &lightInfo)
+void Scene::UploadLight(uint32_t frameIndex,const RgSpotlightUploadInfo &lightInfo)
 {
-    lightManager->AddSpotlight(frameIndex, uniform, lightInfo);
+    lightManager->AddSpotlight(frameIndex, lightInfo);
 }
 
 void RTGL1::Scene::SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B)

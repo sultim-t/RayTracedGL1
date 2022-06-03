@@ -21,6 +21,11 @@
 #ifndef RESERVOIR_H_
 #define RESERVOIR_H_
 
-
+struct Reservoir
+{
+    int selected;
+    float weightSum;
+    float M;
+}
 
 #endif // RESERVOIR_H_

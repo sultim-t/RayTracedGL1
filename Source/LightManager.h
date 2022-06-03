@@ -30,6 +30,8 @@
 namespace RTGL1
 {
 
+struct ShLightEncoded;
+
 class LightManager
 {
 public:
@@ -44,19 +46,15 @@ public:
     void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void Reset();
 
-    uint32_t GetSpotlightCount() const;
-    uint32_t GetSpotlightCountPrev() const;
-    uint32_t GetSphericalLightCount() const;
-    uint32_t GetSphericalLightCountPrev() const;
+    uint32_t GetLightCount() const;
+    uint32_t GetLightCountPrev() const;
+    // Will be deprecated
     uint32_t GetDirectionalLightCount() const;
-    uint32_t GetDirectionalLightCountPrev() const;
-    uint32_t GetPolygonalLightCount() const;
-    uint32_t GetPolygonalLightCountPrev() const;
 
     void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info);
     void AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info);
-    void AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info);
+    void AddSpotlight(uint32_t frameIndex, const RgSpotlightUploadInfo &info);
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
 
@@ -64,6 +62,8 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex);
 
 private:
+    void AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const ShLightEncoded &info);
+
     void FillMatchPrev(
         const rgl::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
         const std::shared_ptr<AutoBuffer> &matchPrev,
@@ -75,38 +75,25 @@ private:
 private:
     VkDevice device;
 
-    std::shared_ptr<LightLists> lightListsForPolygonal;
-    std::shared_ptr<LightLists> lightListsForSpherical;
+    std::shared_ptr<AutoBuffer> lightsBuffer;
+    Buffer lightsBuffer_Prev;
 
-    std::shared_ptr<AutoBuffer> sphericalLights;
-    std::shared_ptr<AutoBuffer> polygonalLights;
-    Buffer sphericalLightsPrev;
-    Buffer polygonalLightsPrev;
+    std::shared_ptr<LightLists> lightLists;
 
     // The light was uploaded in previous frame with LightArrayIndex==i.
     // We need to access the same light, but in current frame it has other LightArrayIndex==k.
     // These arrays are used to access 'k' by 'i'.
-    std::shared_ptr<AutoBuffer> sphericalLightMatchPrev;
-    std::shared_ptr<AutoBuffer> polygonalLightMatchPrev;
+    std::shared_ptr<AutoBuffer> matchPrev;
 
-    rgl::unordered_map<UniqueLightID, LightArrayIndex> sphericalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
-    rgl::unordered_map<UniqueLightID, LightArrayIndex> polygonalUniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    rgl::unordered_map<UniqueLightID, LightArrayIndex> uniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
-    uint32_t sphLightCount;
-    uint32_t sphLightCountPrev;
+    uint32_t allLightCount;
+    uint32_t allLightCount_Prev;
 
-    uint32_t dirLightCount;
-    uint32_t dirLightCountPrev;
-    RgFloat3D dirLightDirectionPrev;
-
-    uint32_t spotLightCount;
-    uint32_t spotLightCountPrev;
-    RgFloat3D spotLightPositionPrev;
-    RgFloat3D spotLightDirectionPrev;
-    RgFloat3D spotLightUpVectorPrev;
-
-    uint32_t polyLightCount;
-    uint32_t polyLightCountPrev;
+    struct
+    {
+        uint32_t dirLightCount;
+    } dirLightSingleton;
 
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;

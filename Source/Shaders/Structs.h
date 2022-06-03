@@ -21,12 +21,6 @@
 #ifndef STRUCTS_H_
 #define STRUCTS_H_
 
-#define LIGHT_TYPE_NONE        0
-#define LIGHT_TYPE_DIRECTIONAL 1
-#define LIGHT_TYPE_SPHERICAL   2
-#define LIGHT_TYPE_POLYGONAL   3
-#define LIGHT_TYPE_SPOTLIGHT   4
-
 struct ShTriangle
 {
     mat3    positions;

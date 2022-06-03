@@ -38,25 +38,22 @@ static_assert(RTGL1::MAX_SECTOR_COUNT < SECTOR_INDEX_NONE, "");
 RTGL1::LightLists::LightLists(
     VkDevice _device, 
     const std::shared_ptr<MemoryAllocator> &_memoryAllocator, 
-    std::shared_ptr<SectorVisibility> _sectorVisibility,
-    const char *_pDebugName)
+    std::shared_ptr<SectorVisibility> _sectorVisibility)
 :
     sectorVisibility(std::move(_sectorVisibility))
 {
-    using namespace std::string_literals;
-
     // plain global light list, to use in shaders
     plainLightList_Raw.resize(MAX_SECTOR_COUNT * MAX_LIGHT_LIST_SIZE);
 
     plainLightList = std::make_shared<AutoBuffer>(_device, _memoryAllocator);
-    plainLightList->Create(plainLightList_Raw.size() * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Light list buffer - "s + _pDebugName);
+    plainLightList->Create(plainLightList_Raw.size() * PLAIN_LIGHT_LIST_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Light list buffer ");
 
 
     // contains tuples (begin, end) for each sector
     sectorToLightListRegion_Raw.resize(MAX_SECTOR_COUNT * 2);
 
     sectorToLightListRegion = std::make_shared<AutoBuffer>(_device, _memoryAllocator);
-    sectorToLightListRegion->Create(sectorToLightListRegion_Raw.size() * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Sector to light list region buffer - "s + _pDebugName);
+    sectorToLightListRegion->Create(sectorToLightListRegion_Raw.size() * SECTOR_TO_LIGHT_LIST_REGION_SIZEOF_ELEMENT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Sector to light list region buffer");
 }
 
 void RTGL1::LightLists::PrepareForFrame()

@@ -473,17 +473,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
-        gu->lightCountSpherical         = scene->GetLightManager()->GetSphericalLightCount();
-        gu->lightCountSphericalPrev     = scene->GetLightManager()->GetSphericalLightCountPrev();
+        gu->lightCount         = scene->GetLightManager()->GetLightCount();
+        gu->lightCountPrev     = scene->GetLightManager()->GetLightCountPrev();
 
         gu->lightCountDirectional       = scene->GetLightManager()->GetDirectionalLightCount();
-        gu->lightCountDirectionalPrev   = scene->GetLightManager()->GetDirectionalLightCountPrev();
-
-        gu->lightCountSpotlight         = scene->GetLightManager()->GetSpotlightCount();
-        gu->lightCountSpotlightPrev     = scene->GetLightManager()->GetSpotlightCountPrev();
-
-        gu->lightCountPolygonal         = scene->GetLightManager()->GetPolygonalLightCount();
-        gu->lightCountPolygonalPrev     = scene->GetLightManager()->GetPolygonalLightCountPrev();
     }
 
     {
@@ -564,19 +557,15 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     if (drawInfo.pShadowParams != nullptr)
     {
-        gu->maxBounceShadowsDirectionalLights   = drawInfo.pShadowParams->maxBounceShadowsDirectionalLights;
-        gu->maxBounceShadowsSphereLights        = drawInfo.pShadowParams->maxBounceShadowsSphereLights;
-        gu->maxBounceShadowsSpotlights          = drawInfo.pShadowParams->maxBounceShadowsSpotlights;
-        gu->maxBounceShadowsPolygonalLights     = drawInfo.pShadowParams->maxBounceShadowsPolygonalLights;
+        gu->maxBounceShadowsDirectionalLights   = drawInfo.pShadowParams->maxBounceShadowsDirectional;
+        gu->maxBounceShadowsLights              = drawInfo.pShadowParams->maxBounceShadows;
         gu->polyLightSpotlightFactor            = std::max(0.0f, drawInfo.pShadowParams->polygonalLightSpotlightFactor);
         gu->firefliesClamp                      = std::max(0.0f, drawInfo.pShadowParams->sphericalPolygonalLightsFirefliesClamp);
     }
     else
     {
         gu->maxBounceShadowsDirectionalLights = 8;
-        gu->maxBounceShadowsSphereLights = 2;
-        gu->maxBounceShadowsSpotlights = 2;
-        gu->maxBounceShadowsPolygonalLights = 2;
+        gu->maxBounceShadowsLights = 2;
         gu->polyLightSpotlightFactor = 2.0f;
         gu->firefliesClamp = 3.0f;
     }
@@ -1250,7 +1239,7 @@ void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameState.GetFrameIndex(), uniform, *pLightInfo);
+    scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
 void RTGL1::VulkanDevice::UploadLight(const RgPolygonalLightUploadInfo *pLightInfo)

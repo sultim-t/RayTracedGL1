@@ -33,11 +33,10 @@ namespace RTGL1
 constexpr double RG_PI = 3.1415926535897932384626433;
 
 constexpr float MIN_COLOR_SUM = 0.0001f;
+constexpr float MIN_SPHERE_RADIUS = 0.005f;
 
-constexpr uint32_t MAX_LIGHT_COUNT_SPHERICAL = 1024;
+constexpr uint32_t MAX_LIGHT_COUNT = 4096;
 constexpr uint32_t MAX_LIGHT_COUNT_DIRECTIONAL = 1;
-constexpr uint32_t MAX_LIGHT_COUNT_SPOT = 1;
-constexpr uint32_t MAX_LIGHT_COUNT_POLYGONAL = 1024;
 }
 
 RTGL1::LightManager::LightManager(
@@ -46,37 +45,23 @@ RTGL1::LightManager::LightManager(
     std::shared_ptr<SectorVisibility> &_sectorVisibility)
 :
     device(_device),
-    sphLightCount(0),
-    sphLightCountPrev(0),
-    dirLightCount(0),
-    dirLightCountPrev(0),
-    spotLightCount(0),
-    spotLightCountPrev(0),
-    polyLightCount(0),
-    polyLightCountPrev(0),
+    allLightCount(0),
+    allLightCount_Prev(0),
+    dirLightSingleton{},
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSets{},
     needDescSetUpdate{}
 {
-    lightListsForPolygonal  = std::make_shared<LightLists>(device, _allocator, _sectorVisibility, "polygonal");
-    lightListsForSpherical  = std::make_shared<LightLists>(device, _allocator, _sectorVisibility, "spherical");
+    lightLists      = std::make_shared<LightLists>(device, _allocator, _sectorVisibility);
 
-    sphericalLights         = std::make_shared<AutoBuffer>(device, _allocator);
-    polygonalLights         = std::make_shared<AutoBuffer>(device, _allocator);
-    sphericalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator);
-    polygonalLightMatchPrev = std::make_shared<AutoBuffer>(device, _allocator);
+    lightsBuffer    = std::make_shared<AutoBuffer>(device, _allocator);
+    lightsBuffer->Create(sizeof(ShLightEncoded) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights buffer");
 
+    lightsBuffer_Prev.Init(_allocator, sizeof(ShLightEncoded) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lights buffer - prev");
 
-    sphericalLights->Create(sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights spherical");
-    polygonalLights->Create(sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights polygonal");
-
-    sphericalLightsPrev.Init(_allocator, sizeof(ShLightSpherical) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-    polygonalLightsPrev.Init(_allocator, sizeof(ShLightPolygonal) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    sphericalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_SPHERICAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Match previous Lights spherical");
-    polygonalLightMatchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT_POLYGONAL, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Match previous Lights polygonal");
-
+    matchPrev = std::make_shared<AutoBuffer>(device, _allocator);
+    matchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - match previous");
 
     CreateDescriptors();
 }
@@ -87,328 +72,267 @@ RTGL1::LightManager::~LightManager()
     vkDestroyDescriptorPool(device, descPool, nullptr);
 }
 
-static void ConvertSphereIntensity(float color[3], float radius)
+static RTGL1::ShLightEncoded EncodeAsDirectionalLight(const RgDirectionalLightUploadInfo &info)
 {
-    assert(radius > 0.0f);
-    float projectedArea = static_cast<float>(RTGL1::RG_PI) * radius * radius;
+    RgFloat3D direction = info.direction;
+    RTGL1::Utils::Normalize(direction.data);
 
-    color[0] /= projectedArea;
-    color[1] /= projectedArea;
-    color[2] /= projectedArea;
+    float angularRadius = static_cast<float>(0.5 * static_cast<double>(info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);;
+
+
+    RTGL1::ShLightEncoded lt = {};
+    lt.lightType = LIGHT_TYPE_DIRECTIONAL;
+
+    lt.color[0] = info.color.data[0];
+    lt.color[1] = info.color.data[1];
+    lt.color[2] = info.color.data[2];
+
+    lt.data_0[0] = direction.data[0];
+    lt.data_0[1] = direction.data[1];
+    lt.data_0[2] = direction.data[2];
+
+    lt.data_0[3] = angularRadius;
+
+    return lt;
 }
 
-static void ConvertTriangleIntensity(float color[3], float area)
+static RTGL1::ShLightEncoded EncodeAsSphereLight(const RgSphericalLightUploadInfo &info)
 {
+    float radius = std::max(RTGL1::MIN_SPHERE_RADIUS, info.radius);
+    // disk is visible from the point
+    float area = static_cast<float>(RTGL1::RG_PI) * radius * radius;
+
+
+    RTGL1::ShLightEncoded lt = {};
+    lt.lightType = LIGHT_TYPE_SPHERE;
+
+    lt.color[0] = info.color.data[0] / area;
+    lt.color[1] = info.color.data[1] / area;
+    lt.color[2] = info.color.data[2] / area;
+
+    lt.data_0[0] = info.position.data[0];
+    lt.data_0[1] = info.position.data[1];
+    lt.data_0[2] = info.position.data[2];
+
+    lt.data_0[3] = radius;
+
+    return lt;
+}
+
+static RTGL1::ShLightEncoded EncodeAsTriangleLight(const RgPolygonalLightUploadInfo &info, const RgFloat3D &unnormalizedNormal)
+{
+    RgFloat3D n = unnormalizedNormal;
+    float len = RTGL1::Utils::Length(n.data);
+    n.data[0] /= len;
+    n.data[1] /= len;
+    n.data[2] /= len;
+
+    float area = len * 0.5f;
     assert(area > 0.0f);
 
-    color[0] /= area;
-    color[1] /= area;
-    color[2] /= area;
+
+    RTGL1::ShLightEncoded lt = {};
+    lt.lightType = LIGHT_TYPE_TRIANGLE;
+
+    lt.color[0] = info.color.data[0] / area;
+    lt.color[1] = info.color.data[1] / area;
+    lt.color[2] = info.color.data[2] / area;
+
+    lt.data_0[0] = info.positions[0].data[0];
+    lt.data_0[1] = info.positions[0].data[1];
+    lt.data_0[2] = info.positions[0].data[2];
+
+    lt.data_1[0] = info.positions[1].data[0];
+    lt.data_1[1] = info.positions[1].data[1];
+    lt.data_1[2] = info.positions[1].data[2];
+
+    lt.data_2[0] = info.positions[2].data[0];
+    lt.data_2[1] = info.positions[2].data[1];
+    lt.data_2[2] = info.positions[2].data[2];
+
+    lt.data_0[3] = unnormalizedNormal.data[0];
+    lt.data_1[3] = unnormalizedNormal.data[1];
+    lt.data_2[3] = unnormalizedNormal.data[2];
+
+    return lt;
 }
 
-static void ConvertDiskIntensity(float color[3], float radius)
+static RTGL1::ShLightEncoded EncodeAsSpotLight(const RgSpotlightUploadInfo &info)
 {
-    assert(radius > 0.0f);
-    float projectedArea = static_cast<float>(RTGL1::RG_PI) * radius * radius;
+    RgFloat3D direction = info.direction;
+    RTGL1::Utils::Normalize(direction.data);
 
-    color[0] /= projectedArea;
-    color[1] /= projectedArea;
-    color[2] /= projectedArea;
-}
+    float radius = std::max(RTGL1::MIN_SPHERE_RADIUS, info.radius);
+    float area = static_cast<float>(RTGL1::RG_PI) * radius * radius;
 
-static void FillInfoSpherical(const RgSphericalLightUploadInfo &info, RTGL1::ShLightSpherical *dst)
-{
-    RTGL1::ShLightSpherical lt = {};
+    float cosAngleInner = std::cos(std::min(info.angleInner, info.angleOuter));
+    float cosAngleOuter = std::cos(info.angleOuter);
 
-    memcpy(lt.color, info.color.data, sizeof(float) * 3);
-    memcpy(lt.position, info.position.data, sizeof(float) * 3);
 
-    lt.radius = std::max(0.005f, info.radius);
-    ConvertSphereIntensity(lt.color, lt.radius);
+    RTGL1::ShLightEncoded lt = {};
+    lt.lightType = LIGHT_TYPE_SPOT;
 
-    memcpy(dst, &lt, sizeof(RTGL1::ShLightSpherical));
-}
+    lt.color[0] = info.color.data[0] / area;
+    lt.color[1] = info.color.data[1] / area;
+    lt.color[2] = info.color.data[2] / area;
 
-static void FillInfoPolygonal(const RgPolygonalLightUploadInfo &info, const RgFloat3D &normal, float area, RTGL1::ShLightPolygonal *dst)
-{
-    RTGL1::ShLightPolygonal lt = {};
+    lt.data_0[0] = info.position.data[0];
+    lt.data_0[1] = info.position.data[1];
+    lt.data_0[2] = info.position.data[2];
 
-    memcpy(lt.pos_norm_0, info.positions[0].data, sizeof(float) * 3);
-    memcpy(lt.pos_norm_1, info.positions[1].data, sizeof(float) * 3);
-    memcpy(lt.pos_norm_2, info.positions[2].data, sizeof(float) * 3);
+    lt.data_0[3] = radius;
 
-    lt.pos_norm_0[3] = normal.data[0];
-    lt.pos_norm_1[3] = normal.data[1];
-    lt.pos_norm_2[3] = normal.data[2];
+    lt.data_1[0] = direction.data[0];
+    lt.data_1[1] = direction.data[1];
+    lt.data_1[2] = direction.data[2];
 
-    lt.area = area;
+    lt.data_2[0] = cosAngleInner;
+    lt.data_2[1] = cosAngleOuter;
 
-    memcpy(lt.color, info.color.data, sizeof(float) * 3);
-    ConvertTriangleIntensity(lt.color, lt.area);
-
-    memcpy(dst, &lt, sizeof(RTGL1::ShLightPolygonal));
-}
-
-static void FillInfoDirectional(const RgDirectionalLightUploadInfo &info, RTGL1::ShGlobalUniform *dst)
-{
-    memcpy(dst->directionalLightColor, info.color.data, sizeof(float) * 3);
-    dst->directionalLightColor[3] = 0.0f;
-    
-    memcpy(dst->directionalLightDirection, info.direction.data, 3 * sizeof(float));
-    dst->directionalLightDirection[0] *= -1;
-    dst->directionalLightDirection[1] *= -1;
-    dst->directionalLightDirection[2] *= -1;
-    dst->directionalLightDirection[3] = 0.0f;
-
-    RTGL1::Utils::Normalize(dst->directionalLightDirection);
-
-    dst->directionalLightAngularRadius = static_cast<float>(0.5 * static_cast<double>(info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
-}
-
-static void FillInfoSpotlight(const RgSpotlightUploadInfo &info, RTGL1::ShGlobalUniform *gu)
-{
-    // use global uniform buffer for one spotlight instance
-    memcpy(gu->spotlightPosition, info.position.data, 3 * sizeof(float));
-    memcpy(gu->spotlightColor, info.color.data, 3 * sizeof(float));
-
-    memcpy(gu->spotlightDirection, info.direction.data, 3 * sizeof(float));
-    RTGL1::Utils::Normalize(gu->spotlightDirection);
-
-    memcpy(gu->spotlightUpVector, info.upVector.data, 3 * sizeof(float));
-    RTGL1::Utils::Normalize(gu->spotlightUpVector);
-
-    gu->spotlightRadius = std::max(0.005f, info.radius);
-    ConvertDiskIntensity(gu->spotlightColor, gu->spotlightRadius);
-
-    gu->spotlightCosAngleOuter = std::cos(info.angleOuter);
-    gu->spotlightCosAngleInner = std::cos(info.angleInner);
-
-    gu->spotlightCosAngleInner = std::max(gu->spotlightCosAngleOuter, gu->spotlightCosAngleInner);
-
+    return lt;
 }
 
 void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    sphLightCountPrev = sphLightCount;
-    dirLightCountPrev = dirLightCount;
-    spotLightCountPrev = spotLightCount;
-    polyLightCountPrev = polyLightCount;
+    allLightCount_Prev = allLightCount;
 
-    sphLightCount = 0;
-    dirLightCount = 0;
-    spotLightCount = 0;
-    polyLightCount = 0;
+    allLightCount = 0;
+    dirLightSingleton.dirLightCount = 0;
 
-    // TODO: similar system to just swap desc sets, instead of copying
-    if (sphLightCountPrev > 0)
+    // TODO: similar system to just swap desc sets, instead of actual copying
+    if (allLightCount_Prev > 0)
     {
         VkBufferCopy info = {};
         info.srcOffset = 0;
         info.dstOffset = 0;
-        info.size = sphLightCountPrev * sizeof(ShLightSpherical);
+        info.size = allLightCount_Prev * sizeof(ShLightEncoded);
 
         vkCmdCopyBuffer(
             cmd,
-            sphericalLights->GetDeviceLocal(), sphericalLightsPrev.GetBuffer(),
-            1, &info);
-    }
-    if (polyLightCountPrev > 0)
-    {
-        VkBufferCopy info = {};
-        info.srcOffset = 0;
-        info.dstOffset = 0;
-        info.size = polyLightCountPrev * sizeof(ShLightPolygonal);
-
-        vkCmdCopyBuffer(
-            cmd,
-            polygonalLights->GetDeviceLocal(), polygonalLightsPrev.GetBuffer(),
+            lightsBuffer->GetDeviceLocal(), lightsBuffer_Prev.GetBuffer(),
             1, &info);
     }
 
-    memset(sphericalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * sphLightCountPrev);
-    memset(polygonalLightMatchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * polyLightCountPrev);
+    memset(matchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * allLightCount_Prev);
 
-    sphericalUniqueIDToPrevIndex[frameIndex].clear();
-    polygonalUniqueIDToPrevIndex[frameIndex].clear();
+    uniqueIDToPrevIndex[frameIndex].clear();
 
-    lightListsForSpherical->PrepareForFrame();
-    lightListsForPolygonal->PrepareForFrame();
+    lightLists->PrepareForFrame();
 }
 
 void RTGL1::LightManager::Reset()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        memset(sphericalLightMatchPrev->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(sphLightCount, sphLightCountPrev));
-        memset(polygonalLightMatchPrev->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(polyLightCount, polyLightCountPrev));
+        memset(matchPrev->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(allLightCount, allLightCount_Prev));
 
-        sphericalUniqueIDToPrevIndex[i].clear();
-        polygonalUniqueIDToPrevIndex[i].clear();
+        uniqueIDToPrevIndex[i].clear();
     }
 
-    sphLightCount = sphLightCountPrev = 0;
-    dirLightCount = dirLightCountPrev = 0;
-    spotLightCount = spotLightCountPrev = 0;
-    polyLightCount = polyLightCountPrev = 0;
+    allLightCount = allLightCount_Prev = 0;
+    dirLightSingleton.dirLightCount = 0;
 
-    lightListsForSpherical->Reset();
-    lightListsForPolygonal->Reset();
+    lightLists->Reset();
 }
 
-static bool IsColorTooDim(const RgFloat3D &c)
+static bool IsColorTooDim(const float c[3])
 {
-    return c.data[0] + c.data[1] + c.data[2] < RTGL1::MIN_COLOR_SUM;
+    return std::abs(c[0]) + std::abs(c[1]) + std::abs(c[2]) < RTGL1::MIN_COLOR_SUM;
+}
+
+void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const RTGL1::ShLightEncoded &encodedLight)
+{
+    if (allLightCount >= MAX_LIGHT_COUNT)
+    {
+        assert(0);
+        return;
+    }
+
+    const LightArrayIndex index = LightArrayIndex{ allLightCount };
+    allLightCount++;
+
+
+    auto *dst = (ShLightEncoded *)lightsBuffer->GetMapped(frameIndex);
+    memcpy(&dst[index.GetArrayIndex()], &encodedLight, sizeof(RTGL1::ShLightEncoded));
+
+
+    FillMatchPrev(uniqueIDToPrevIndex, matchPrev, frameIndex, index, uniqueId);
+    // must be unique
+    assert(uniqueIDToPrevIndex[frameIndex].find(uniqueId) == uniqueIDToPrevIndex[frameIndex].end());
+    // save index for the next frame
+    uniqueIDToPrevIndex[frameIndex][uniqueId] = index;
+
+
+    lightLists->InsertLight(index, lightLists->SectorIDToArrayIndex(sectorId));
 }
 
 void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info)
 {
-    if (IsColorTooDim(info.color))
+    if (IsColorTooDim(info.color.data))
     {
         return;
     }
 
-    if (sphLightCount >= MAX_LIGHT_COUNT_SPHERICAL)
-    {
-        assert(0);
-        return;
-    }
-
-
-    const SectorID sectorId = SectorID{ info.sectorID };
-    const SectorArrayIndex sectorArrayIndex = lightListsForSpherical->SectorIDToArrayIndex(sectorId);
-
-
-    const LightArrayIndex index = LightArrayIndex{ sphLightCount };
-    sphLightCount++;
-
-    auto *dst = (ShLightSpherical*)sphericalLights->GetMapped(frameIndex);
-    FillInfoSpherical(info, &dst[index.GetArrayIndex()]);
-
-    FillMatchPrev(sphericalUniqueIDToPrevIndex, sphericalLightMatchPrev, frameIndex, index, info.uniqueID);
-
-    // must be unique
-    assert(sphericalUniqueIDToPrevIndex[frameIndex].find(info.uniqueID) == sphericalUniqueIDToPrevIndex[frameIndex].end());
-
-    // save index for the next frame
-    sphericalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
-
-
-    lightListsForSpherical->InsertLight(index, sectorArrayIndex);
+    AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsSphereLight(info));
 }
 
 void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info)
 {
-    if (IsColorTooDim(info.color))
+    if (IsColorTooDim(info.color.data))
     {
         return;
     }
 
-    if (polyLightCount >= MAX_LIGHT_COUNT_POLYGONAL)
+    RgFloat3D unnormalizedNormal = Utils::GetUnnormalizedNormal(info.positions);
+    if (Utils::Dot(unnormalizedNormal.data, unnormalizedNormal.data) <= 0.0f)
     {
-        assert(0);
         return;
     }
 
-    RgFloat3D normal; float area;
-    if (!Utils::GetNormalAndArea(info.positions, normal, area))
-    {
-        assert(0);
-        return;
-    }
-
-
-    const SectorID sectorId = SectorID{ info.sectorID };
-    const SectorArrayIndex sectorArrayIndex = lightListsForPolygonal->SectorIDToArrayIndex(sectorId);
-
-
-    const LightArrayIndex index = LightArrayIndex{ polyLightCount };
-    polyLightCount++;
-
-    auto *dst = (ShLightPolygonal *)polygonalLights->GetMapped(frameIndex);
-    FillInfoPolygonal(info, normal, area, &dst[index.GetArrayIndex()]);
-
-    FillMatchPrev(polygonalUniqueIDToPrevIndex, polygonalLightMatchPrev, frameIndex, index, info.uniqueID);
-
-    // must be unique
-    assert(polygonalUniqueIDToPrevIndex[frameIndex].find(info.uniqueID) == polygonalUniqueIDToPrevIndex[frameIndex].end());
-
-    // save index for the next frame
-    polygonalUniqueIDToPrevIndex[frameIndex][info.uniqueID] = index;
-
-
-    lightListsForPolygonal->InsertLight(index, sectorArrayIndex);
+    AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsTriangleLight(info, unnormalizedNormal));
 }
 
-void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgSpotlightUploadInfo &info)
+void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const RgSpotlightUploadInfo &info)
 {
-    if (IsColorTooDim(info.color) ||
-        info.radius <= 0.0f ||
-        info.angleOuter <= 0.0f)
+    if (IsColorTooDim(info.color.data) || info.radius < 0.0f || info.angleOuter <= 0.0f)
     {
         return;
     }
 
-    if (spotLightCount >= MAX_LIGHT_COUNT_SPOT)
-    {
-        assert(0);
-        throw RgException(RG_WRONG_ARGUMENT, "Only one spotlight can be added");
-    }
-
-    FillInfoSpotlight(info, uniform->GetData());
-    spotLightCount++;
-
-
-    // handle prev frame info
-    if (spotLightCountPrev > 0)
-    {
-        memcpy(uniform->GetData()->spotlightPositionPrev,  spotLightPositionPrev.data,  3 * sizeof(float));
-        memcpy(uniform->GetData()->spotlightDirectionPrev, spotLightDirectionPrev.data, 3 * sizeof(float));
-        memcpy(uniform->GetData()->spotlightUpVectorPrev,  spotLightUpVectorPrev.data,  3 * sizeof(float));
-    }
-    memcpy(spotLightPositionPrev.data,  info.position.data,  3 * sizeof(float));
-    memcpy(spotLightDirectionPrev.data, info.direction.data, 3 * sizeof(float));
-    memcpy(spotLightUpVectorPrev.data,  info.upVector.data,  3 * sizeof(float));
+    AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsSpotLight(info));
 }
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info)
 {
-    if (IsColorTooDim(info.color))
+    if (IsColorTooDim(info.color.data))
     {
         return;
     }
 
-    if (dirLightCount >= MAX_LIGHT_COUNT_DIRECTIONAL)
+    if (dirLightSingleton.dirLightCount >= MAX_LIGHT_COUNT_DIRECTIONAL)
     {
         assert(0);
         throw RgException(RG_WRONG_ARGUMENT, "Only one directional light can be added");
     }
     
-    FillInfoDirectional(info, uniform->GetData());
-    dirLightCount++;
-
-
-    // handle prev frame info
-    if (dirLightCountPrev > 0)
+    auto enc = EncodeAsDirectionalLight(info);
+    // TODO: move from uniform to the lightBuffer
     {
-        memcpy(uniform->GetData()->directionalLightDirectionPrev, dirLightDirectionPrev.data, 3 * sizeof(float));
+        memcpy(uniform->GetData()->directionalLight_color, enc.color, 3 * sizeof(float));
+        memcpy(uniform->GetData()->directionalLight_data_0, enc.data_0, 4 * sizeof(float));
     }
-    dirLightDirectionPrev.data[0] = -info.direction.data[0];
-    dirLightDirectionPrev.data[1] = -info.direction.data[1];
-    dirLightDirectionPrev.data[2] = -info.direction.data[2];
+    dirLightSingleton.dirLightCount++;
 }
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     CmdLabel label(cmd, "Copying lights");
 
-    sphericalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightSpherical) * sphLightCount);
-    polygonalLights->CopyFromStaging(cmd, frameIndex, sizeof(ShLightPolygonal) * polyLightCount);
+    lightsBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShLightEncoded) * allLightCount);
 
-    sphericalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * sphLightCountPrev);
-    polygonalLightMatchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * polyLightCountPrev);
+    matchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * allLightCount_Prev);
 
-    lightListsForSpherical->BuildAndCopyFromStaging(cmd, frameIndex);
-    lightListsForPolygonal->BuildAndCopyFromStaging(cmd, frameIndex);
+    lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
 
     // should be used when buffers changed
     if (needDescSetUpdate[frameIndex])
@@ -450,16 +374,11 @@ void RTGL1::LightManager::FillMatchPrev(
 
 constexpr uint32_t BINDINGS[] =
 {
-    BINDING_LIGHT_SOURCES_SPHERICAL,
-    BINDING_LIGHT_SOURCES_SPHERICAL_PREV,
-    BINDING_LIGHT_SOURCES_POLYGONAL,
-    BINDING_LIGHT_SOURCES_POLYGONAL_PREV,
-    BINDING_LIGHT_SOURCES_SPH_MATCH_PREV,
-    BINDING_LIGHT_SOURCES_POLY_MATCH_PREV,
-    BINDING_PLAIN_LIGHT_LIST_POLY,
-    BINDING_SECTOR_TO_LIGHT_LIST_REGION_POLY,
-    BINDING_PLAIN_LIGHT_LIST_SPH,
-    BINDING_SECTOR_TO_LIGHT_LIST_REGION_SPH,
+    BINDING_LIGHT_SOURCES,
+    BINDING_LIGHT_SOURCES_PREV,
+    BINDING_LIGHT_SOURCES_MATCH_PREV,
+    BINDING_PLAIN_LIGHT_LIST,
+    BINDING_SECTOR_TO_LIGHT_LIST_REGION,
 };
 
 void RTGL1::LightManager::CreateDescriptors()
@@ -529,16 +448,11 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
 {
     const VkBuffer buffers[] =
     {
-        sphericalLights->GetDeviceLocal(),
-        sphericalLightsPrev.GetBuffer(),
-        polygonalLights->GetDeviceLocal(),
-        polygonalLightsPrev.GetBuffer(),
-        sphericalLightMatchPrev->GetDeviceLocal(),
-        polygonalLightMatchPrev->GetDeviceLocal(),
-        lightListsForPolygonal->GetPlainLightListDeviceLocalBuffer(),
-        lightListsForPolygonal->GetSectorToLightListRegionDeviceLocalBuffer(),
-        lightListsForSpherical->GetPlainLightListDeviceLocalBuffer(),
-        lightListsForSpherical->GetSectorToLightListRegionDeviceLocalBuffer(),
+        lightsBuffer->GetDeviceLocal(),
+        lightsBuffer_Prev.GetBuffer(),
+        matchPrev->GetDeviceLocal(),
+        lightLists->GetPlainLightListDeviceLocalBuffer(),
+        lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
     };
     static_assert(std::size(BINDINGS) == std::size(buffers), "");
 
@@ -569,44 +483,20 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
     vkUpdateDescriptorSets(device, wrts.size(), wrts.data(), 0, nullptr);
 }
 
-uint32_t RTGL1::LightManager::GetSpotlightCount() const
+uint32_t RTGL1::LightManager::GetLightCount() const
 {
-    return spotLightCount;
+    return allLightCount;
 }
 
-uint32_t RTGL1::LightManager::GetSpotlightCountPrev() const
+uint32_t RTGL1::LightManager::GetLightCountPrev() const
 {
-    return spotLightCountPrev;
+    return allLightCount_Prev;
 }
 
-uint32_t RTGL1::LightManager::GetSphericalLightCount() const
-{
-    return sphLightCount;
-}
 
 uint32_t RTGL1::LightManager::GetDirectionalLightCount() const
 {
-    return dirLightCount;
-}
-
-uint32_t RTGL1::LightManager::GetSphericalLightCountPrev() const
-{
-    return sphLightCountPrev;
-}
-
-uint32_t RTGL1::LightManager::GetDirectionalLightCountPrev() const
-{
-    return dirLightCountPrev;
-}
-
-uint32_t RTGL1::LightManager::GetPolygonalLightCount() const
-{
-    return polyLightCount;
-}
-
-uint32_t RTGL1::LightManager::GetPolygonalLightCountPrev() const
-{
-    return polyLightCountPrev;
+    return dirLightSingleton.dirLightCount;
 }
 
 static_assert(RTGL1::MAX_FRAMES_IN_FLIGHT == 2, "");
