@@ -92,6 +92,24 @@ vec3 getDiffuseBounce(const uint seed, const vec3 n, inout vec3 throughput)
 #define FIRST_BOUNCE_MIP_BIAS 0
 #define SECOND_BOUNCE_MIP_BIAS 32
 
+Surface traceBounce(
+    const vec3 originPosition, float originRoughness, uint originInstCustomIndex, 
+    const vec3 bounceDirection, float bounceMipBias)
+{
+    const ShPayload p = traceIndirectRay(originInstCustomIndex, originPosition, bounceDirection); 
+
+    if (!doesPayloadContainHitInfo(p))
+    {
+        Surface s;
+        s.isSky = true;
+        return s;
+    }
+
+    return hitInfoToSurface_Indirect(
+        getHitInfoBounce(p, originPosition, originRoughness, bounceMipBias), 
+        bounceDirection);
+}
+
 vec3 processSecondBounce(
     const uint seed, 
     const Surface surf, 
@@ -99,16 +117,12 @@ vec3 processSecondBounce(
     const vec3 bounceDirection,
     inout vec3 throughput)
 {
-    // got the bounce direction, trace ray
-    const ShPayload p = traceIndirectRay(surf.instCustomIndex, surf.position + surf.normalGeom * 0.01, bounceDirection); 
+    const Surface hitSurf = traceBounce(
+        surf.position + surf.normalGeom * 0.01, surf.roughness, surf.instCustomIndex, 
+        bounceDirection, SECOND_BOUNCE_MIP_BIAS); 
 
-    if (doesPayloadContainHitInfo(p))
+    if (!hitSurf.isSky)
     {
-        float hitDistance;
-        Surface hitSurf = hitInfoToSurface_Indirect(
-            getHitInfoBounce(p, surf.position, surf.roughness, SECOND_BOUNCE_MIP_BIAS, hitDistance), 
-            bounceDirection);
-
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
         processDirectIllumination(seed, hitSurf, isGradientSample, 2, diffuse, specular);
@@ -131,16 +145,12 @@ vec3 processBounce(
     inout vec3 throughput_First,
     out float rayHitDistance)
 {
-    // got the bounce direction, trace ray
-    const ShPayload p = traceIndirectRay(surf.instCustomIndex, surf.position + surf.normalGeom * 0.01, bounceDir_First); 
+    const Surface hitSurf = traceBounce(
+        surf.position + surf.normalGeom * 0.01, surf.roughness, surf.instCustomIndex, 
+        bounceDir_First, FIRST_BOUNCE_MIP_BIAS); 
 
-    if (doesPayloadContainHitInfo(p))
+    if (!hitSurf.isSky)
     {
-        float hitDistance;
-        Surface hitSurf = hitInfoToSurface_Indirect(
-            getHitInfoBounce(p, surf.position, surf.roughness, FIRST_BOUNCE_MIP_BIAS, hitDistance), 
-            bounceDir_First);
-
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
         processDirectIllumination(seed, hitSurf, isGradientSample, 1, diffuse, specular);

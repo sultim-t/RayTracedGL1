@@ -189,8 +189,7 @@ ShHitInfo getHitInfoWithRayCone_Refraction(
 #elif defined(HITINFO_INL_INDIR)
 
 ShHitInfo getHitInfoBounce(
-    const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias,
-    out float hitDistance)
+    const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias)
 
 #endif
 {
@@ -327,7 +326,7 @@ ShHitInfo getHitInfoBounce(
 
 #if defined(HITINFO_INL_INDIR)
     const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
-    hitDistance = length(h.hitPosition - originPosition);
+    const float hitDistance = length(h.hitPosition - originPosition);
 
     const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
