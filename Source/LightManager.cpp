@@ -60,8 +60,11 @@ RTGL1::LightManager::LightManager(
 
     lightsBuffer_Prev.Init(_allocator, sizeof(ShLightEncoded) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lights buffer - prev");
 
-    matchPrev = std::make_shared<AutoBuffer>(device, _allocator);
-    matchPrev->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - match previous");
+    prevToCurIndex = std::make_shared<AutoBuffer>(device, _allocator);
+    prevToCurIndex->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - prev to cur");
+
+    curToPrevIndex = std::make_shared<AutoBuffer>(device, _allocator);
+    curToPrevIndex->Create(sizeof(uint32_t) *MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - cur to prev");
 
     CreateDescriptors();
 }
@@ -213,7 +216,8 @@ void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameInd
             1, &info);
     }
 
-    memset(matchPrev->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * allLightCount_Prev);
+    memset(prevToCurIndex->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * allLightCount_Prev);
+    // no need to clear curToPrevIndex, as it'll be filled in the cur frame
 
     uniqueIDToPrevIndex[frameIndex].clear();
 
@@ -224,7 +228,8 @@ void RTGL1::LightManager::Reset()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        memset(matchPrev->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(allLightCount, allLightCount_Prev));
+        memset(prevToCurIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(allLightCount, allLightCount_Prev));
+        memset(curToPrevIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(allLightCount, allLightCount_Prev));
 
         uniqueIDToPrevIndex[i].clear();
     }
@@ -256,7 +261,7 @@ void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const
     memcpy(&dst[index.GetArrayIndex()], &encodedLight, sizeof(RTGL1::ShLightEncoded));
 
 
-    FillMatchPrev(uniqueIDToPrevIndex, matchPrev, frameIndex, index, uniqueId);
+    FillMatchPrev(frameIndex, index, uniqueId);
     // must be unique
     assert(uniqueIDToPrevIndex[frameIndex].find(uniqueId) == uniqueIDToPrevIndex[frameIndex].end());
     // save index for the next frame
@@ -330,7 +335,8 @@ void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameInd
 
     lightsBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShLightEncoded) * allLightCount);
 
-    matchPrev->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * allLightCount_Prev);
+    prevToCurIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * allLightCount_Prev);
+    curToPrevIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * allLightCount);
 
     lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
 
@@ -352,13 +358,10 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
     return descSets[frameIndex];
 }
 
-void RTGL1::LightManager::FillMatchPrev(
-    const rgl::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
-    const std::shared_ptr<AutoBuffer> &matchPrev,
-    uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID)
+void RTGL1::LightManager::FillMatchPrev(uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-    const rgl::unordered_map<UniqueLightID, LightArrayIndex> &uniqueToPrevIndex = pUniqueToPrevIndex[prevFrame];
+    const rgl::unordered_map<UniqueLightID, LightArrayIndex> &uniqueToPrevIndex = uniqueIDToPrevIndex[prevFrame];
 
     auto found = uniqueToPrevIndex.find(uniqueID);
     if (found == uniqueToPrevIndex.end())
@@ -368,15 +371,19 @@ void RTGL1::LightManager::FillMatchPrev(
 
     LightArrayIndex lightIndexInPrevFrame = found->second;
 
-    uint32_t *dst = (uint32_t*)matchPrev->GetMapped(curFrameIndex);
-    dst[lightIndexInPrevFrame.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();
+    uint32_t *prev2cur = static_cast<uint32_t *>(prevToCurIndex->GetMapped(curFrameIndex));
+    prev2cur[lightIndexInPrevFrame.GetArrayIndex()] = lightIndexInCurFrame.GetArrayIndex();
+
+    uint32_t *cur2prev = static_cast<uint32_t *>(curToPrevIndex->GetMapped(curFrameIndex));
+    cur2prev[lightIndexInCurFrame.GetArrayIndex()] = lightIndexInPrevFrame.GetArrayIndex();
 }
 
 constexpr uint32_t BINDINGS[] =
 {
     BINDING_LIGHT_SOURCES,
     BINDING_LIGHT_SOURCES_PREV,
-    BINDING_LIGHT_SOURCES_MATCH_PREV,
+    BINDING_LIGHT_SOURCES_INDEX_PREV_TO_CUR,
+    BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV,
     BINDING_PLAIN_LIGHT_LIST,
     BINDING_SECTOR_TO_LIGHT_LIST_REGION,
 };
@@ -450,7 +457,8 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
     {
         lightsBuffer->GetDeviceLocal(),
         lightsBuffer_Prev.GetBuffer(),
-        matchPrev->GetDeviceLocal(),
+        prevToCurIndex->GetDeviceLocal(),
+        curToPrevIndex->GetDeviceLocal(),
         lightLists->GetPlainLightListDeviceLocalBuffer(),
         lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
     };

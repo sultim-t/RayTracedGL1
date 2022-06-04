@@ -64,10 +64,7 @@ public:
 private:
     void AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const ShLightEncoded &encodedLight);
 
-    void FillMatchPrev(
-        const rgl::unordered_map<UniqueLightID, LightArrayIndex> *pUniqueToPrevIndex,
-        const std::shared_ptr<AutoBuffer> &matchPrev,
-        uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID);
+    void FillMatchPrev(uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID);
 
     void CreateDescriptors();
     void UpdateDescriptors(uint32_t frameIndex);
@@ -80,10 +77,9 @@ private:
 
     std::shared_ptr<LightLists> lightLists;
 
-    // The light was uploaded in previous frame with LightArrayIndex==i.
-    // We need to access the same light, but in current frame it has other LightArrayIndex==k.
-    // These arrays are used to access 'k' by 'i'.
-    std::shared_ptr<AutoBuffer> matchPrev;
+    // Match light indices between current and previous frames
+    std::shared_ptr<AutoBuffer> prevToCurIndex;
+    std::shared_ptr<AutoBuffer> curToPrevIndex;
 
     rgl::unordered_map<UniqueLightID, LightArrayIndex> uniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 

@@ -180,9 +180,14 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_PREV) reado
     ShLightEncoded lightSources_Prev[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_MATCH_PREV) readonly buffer LightSourcesMatchPrev_BT
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_INDEX_PREV_TO_CUR) readonly buffer LightSourcesIndexPrevToCur_BT
 {
-    uint lightSourcesMatchPrev[];
+    uint lightSources_Index_PrevToCur[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV) readonly buffer LightSourcesIndexCurToPrev_BT
+{
+    uint lightSources_Index_CurToPrev[];
 };
 
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_PLAIN_LIGHT_LIST) readonly buffer PlainLightList_BT
