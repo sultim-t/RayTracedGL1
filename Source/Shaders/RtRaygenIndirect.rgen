@@ -105,18 +105,16 @@ vec3 processSecondBounce(
     if (doesPayloadContainHitInfo(p))
     {
         float hitDistance;
-        const ShHitInfo h = getHitInfoBounce(p, surf.position, surf.roughness, SECOND_BOUNCE_MIP_BIAS, hitDistance);
+        Surface hitSurf = hitInfoToSurface_Indirect(
+            getHitInfoBounce(p, surf.position, surf.roughness, SECOND_BOUNCE_MIP_BIAS, hitDistance), 
+            bounceDirection);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
-        {
-            Surface hitSurf = hitInfoToSurface_Indirect(h, bounceDirection);
-            
-            processDirectIllumination(seed, hitSurf, isGradientSample, 2, diffuse, specular);
-        }
-        throughput *= h.albedo;
+        processDirectIllumination(seed, hitSurf, isGradientSample, 2, diffuse, specular);
+        throughput *= hitSurf.albedo;
 
-        return h.emission * h.albedo + diffuse * throughput;
+        return hitSurf.emission * hitSurf.albedo + diffuse * throughput;
     }
     else
     {
@@ -139,19 +137,19 @@ vec3 processBounce(
     if (doesPayloadContainHitInfo(p))
     {
         float hitDistance;
-        const ShHitInfo h = getHitInfoBounce(p, surf.position, surf.roughness, FIRST_BOUNCE_MIP_BIAS, hitDistance);
-
-        Surface hitSurf = hitInfoToSurface_Indirect(h, bounceDir_First);
+        Surface hitSurf = hitInfoToSurface_Indirect(
+            getHitInfoBounce(p, surf.position, surf.roughness, FIRST_BOUNCE_MIP_BIAS, hitDistance), 
+            bounceDir_First);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
         processDirectIllumination(seed, hitSurf, isGradientSample, 1, diffuse, specular);
-        throughput_First *= h.albedo;
-        rayHitDistance = length(h.hitPosition - surf.position);
+        throughput_First *= hitSurf.albedo;
+        rayHitDistance = length(hitSurf.position - surf.position);
 
 
         vec3 throughput_Second = vec3(1.0);
-        vec3 bounceDir_Second = getDiffuseBounce(seed, h.normalGeom, throughput_Second);
+        vec3 bounceDir_Second = getDiffuseBounce(seed, hitSurf.normalGeom, throughput_Second);
 
         vec3 contrib_Second = processSecondBounce(
             seed, 
@@ -161,7 +159,7 @@ vec3 processBounce(
             throughput_Second);
 
 
-        return h.emission * h.albedo + (diffuse + contrib_Second) * throughput_First;
+        return hitSurf.emission * hitSurf.albedo + (diffuse + contrib_Second) * throughput_First;
     }
     else
     {
@@ -232,18 +230,15 @@ void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface
 void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    const uint seed = getCurrentRandomSeed(pix);
 
-    const vec4 albedo4 = texelFetchAlbedo(pix);
+    Surface surf = fetchGbufferSurface(pix);
+    surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
 
-    if (isSky(albedo4))
+    if (surf.isSky)
     {
         return;
     }
-    
-    const uint seed = getCurrentRandomSeed(pix);
-
-    Surface surf = fetchGbufferSurface_A(pix, albedo4.rgb);
-    surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
 
     processIndirectIllumination(pix, seed, surf, fetchAndCheckIsGradient(pix));        
 }

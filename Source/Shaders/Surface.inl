@@ -28,35 +28,46 @@ struct Surface
     float   roughness;
     vec3    normal;
     uint    sectorArrayIndex;
+    vec3    albedo;
+    bool    isSky;
     vec3    specularColor;
+    float   emission;
     vec3    toViewerDir;
 };
 
 
-#ifdef DESC_SET_FRAMEBUFFERS
-Surface fetchGbufferSurface_A(const ivec2 pix, const vec3 albedo)
-{
-    Surface s;
-    vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
-    s.position              = posEnc.xyz;
-    s.instCustomIndex       = floatBitsToUint(posEnc.a);
-    s.normalGeom            = texelFetchNormalGeometry(pix);
-    s.normal                = texelFetchNormal(pix);
-    s.sectorArrayIndex      = texelFetch(framebufSectorIndex_Sampler, pix, 0).r;
-    vec2 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
-    s.specularColor         = getSpecularColor(albedo, metallicRoughness[0]);
-    s.roughness             = metallicRoughness[1];
-    s.toViewerDir           = -texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
-    return s;
-}
-
 #ifdef IMAGE_ALBEDO_AVAILABLE
 Surface fetchGbufferSurface(const ivec2 pix)
 {
-    return fetchGbufferSurface_A(pix, texelFetchAlbedo(pix).rgb);
+    Surface s;
+    {
+        vec4 albedo4Enc = texelFetchAlbedo(pix);
+        s.albedo = albedo4Enc.rgb;
+        s.emission = getScreenEmissionFromAlbedo4(albedo4Enc);
+        s.isSky = isSky(albedo4Enc);
+
+        if (s.isSky)
+        {
+            return s;
+        }
+    }
+    {
+        vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
+        s.position              = posEnc.xyz;
+        s.instCustomIndex       = floatBitsToUint(posEnc.a);
+    }
+    {
+        vec2 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
+        s.specularColor         = getSpecularColor(s.albedo, metallicRoughness[0]);
+        s.roughness             = metallicRoughness[1];
+    }
+    s.normalGeom                = texelFetchNormalGeometry(pix);
+    s.normal                    = texelFetchNormal(pix);
+    s.sectorArrayIndex          = texelFetch(framebufSectorIndex_Sampler, pix, 0).r;
+    s.toViewerDir               = -texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
+    return s;
 }
 #endif // IMAGE_ALBEDO_AVAILABLE
-#endif // DESC_SET_FRAMEBUFFERS
        
 Surface hitInfoToSurface_Indirect(const ShHitInfo h, const vec3 rayDirection)
 {
@@ -67,7 +78,10 @@ Surface hitInfoToSurface_Indirect(const ShHitInfo h, const vec3 rayDirection)
     s.roughness = h.roughness;
     s.normal = h.normalGeom; // ignore precise normals for indirect
     s.sectorArrayIndex = h.sectorArrayIndex;
+    s.albedo = h.albedo;
+    s.isSky = false;
     s.specularColor = getSpecularColor(h.albedo, h.metallic);
+    s.emission = h.emission;
     s.toViewerDir = -rayDirection;
     return s;
 }

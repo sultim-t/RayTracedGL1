@@ -37,19 +37,16 @@
 void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    const uint seed = getCurrentRandomSeed(pix);
 
-    const vec4 albedo4 = texelFetchAlbedo(pix);
+    const Surface surf = fetchGbufferSurface(pix);
 
-    if (isSky(albedo4))
+    if (surf.isSky)
     {
         imageStore(framebufUnfilteredDirect, pix, uvec4(0));
         imageStore(framebufUnfilteredSpecular, pix, uvec4(0));
         return;
     }
-
-    const uint seed = getCurrentRandomSeed(pix);
-
-    const Surface surf = fetchGbufferSurface_A(pix, albedo4.rgb);
 
     vec3 diffuse, specular;
     float distToLight;
