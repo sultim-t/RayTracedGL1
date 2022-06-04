@@ -35,6 +35,7 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define RAYGEN_SHADOW_PAYLOAD
 #define RAYGEN_COMMON_ONLY_DIFFUSE
 #define RAYGEN_ALLOW_FIREFLIES_CLAMP
+#define RAYGEN_FORCE_SIMPLE_LIGHT_SAMPLE_METHOD
 #include "RaygenCommon.h"
 
 float getModifiedIndirRoughness(float r)

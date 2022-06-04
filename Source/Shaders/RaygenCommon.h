@@ -46,6 +46,8 @@
 #include "Light.h"
 #include "Media.h"
 #include "RayCone.h"
+
+#define GET_TARGET_PDF targetPdfForLightSample
 #include "Reservoir.h"
 
 #define HITINFO_INL_PRIM
@@ -421,17 +423,20 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 
     const vec2 pointRnd = getRandomSample(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
 
-#define SAMPLE_METHOD 2
+#define LIGHT_SAMPLE_METHOD 2
+#ifdef RAYGEN_FORCE_SIMPLE_LIGHT_SAMPLE_METHOD
+    #define LIGHT_SAMPLE_METHOD 0
+#else
 
-#if SAMPLE_METHOD == 0 || defined(RAYGEN_ALLOW_FIREFLIES_CLAMP)
+#if LIGHT_SAMPLE_METHOD == 0
   
     float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x;
     float oneOverPdf = lightCount;
     uint selectedLightIndex = clamp(uint(rnd * lightCount), 0, lightCount - 1);
 
-#elif SAMPLE_METHOD == 1
+#elif LIGHT_SAMPLE_METHOD == 1
 
-#define MAX_SUBSET_LEN 8
+    #define MAX_SUBSET_LEN 8
     // random in [0,1)
     float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x * 0.99;
 
@@ -492,12 +497,12 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
     float oneOverPdf = (weightsTotal * S) / selected_mass;
     uint selectedLightIndex = plainLightList[selected_plainLightListIndex];
 
-#elif SAMPLE_METHOD == 2
+#elif LIGHT_SAMPLE_METHOD == 2
 
-    const int M = 8;
-    Reservoir reservoir = emptyReservoir();
+    #define INITIAL_SAMPLES 8
+    Reservoir initReservoir = emptyReservoir();
     
-    for (int i = 0; i < M; i++)
+    for (int i = 0; i < INITIAL_SAMPLES; i++)
     {
         // uniform distribution as a coarse source pdf
         float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
@@ -507,17 +512,17 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
         float targetPdf_xi = targetPdfForLightSample(xi, surf, pointRnd);
 
         float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
-        updateReservoir(reservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+        updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
     }
     
-    if (reservoir.weightSum <= 0.0)
+    if (initReservoir.weightSum <= 0.0)
     {
         return;
     }
-    calcReservoirW(reservoir, surf, pointRnd);
+    calcReservoirW(initReservoir, surf, pointRnd);
 
-    uint selectedLightIndex = reservoir.selected;
-    float oneOverPdf = reservoir.W;
+    uint selectedLightIndex = initReservoir.selected;
+    float oneOverPdf = initReservoir.W;
 #endif
 
     ShLightEncoded encLight;

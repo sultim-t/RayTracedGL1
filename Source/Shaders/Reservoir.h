@@ -21,6 +21,14 @@
 #ifndef RESERVOIR_H_
 #define RESERVOIR_H_
 
+
+#ifndef GET_TARGET_PDF
+    #error Set GET_TARGET_PDF to a function that calculates target pdf
+#endif
+// prototype
+float GET_TARGET_PDF(uint lightIndex, const Surface surf, const vec2 pointRnd);
+
+
 struct Reservoir
 {
     uint selected;
@@ -29,6 +37,59 @@ struct Reservoir
     float W;
 };
 
+
+Reservoir emptyReservoir()
+{
+    Reservoir r;
+    r.selected = UINT32_MAX;
+    r.weightSum = 0.0;
+    r.M = 0.0;
+    r.W = 0.0;
+    return r;
+}
+
+
+void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
+{
+    r.weightSum += weight;
+    r.M += 1;
+    if (rnd * r.weightSum < weight)
+    {
+        r.selected = lightIndex;
+    }
+}
+
+
+void calcReservoirW(inout Reservoir r, const Surface surf, const vec2 pointRnd)
+{
+    float targetPdf_selected = GET_TARGET_PDF(r.selected, surf, pointRnd);
+
+    if (targetPdf_selected <= 0.00001 || r.M <= 0)
+    {
+        r.W = 0.0;
+        return;
+    }
+
+    r.W = 1.0 / targetPdf_selected * (r.weightSum / r.M);
+}
+
+
+Reservoir combineReservoirs(const Reservoir a, const Reservoir b, const Surface surf, float rnd, const vec2 pointRnd)
+{
+    Reservoir combined = emptyReservoir();
+
+    updateReservoir(combined, a.selected, GET_TARGET_PDF(a.selected, surf, pointRnd) * a.W * a.M, rnd);
+    updateReservoir(combined, b.selected, GET_TARGET_PDF(b.selected, surf, pointRnd) * b.W * b.M, rnd);
+    
+    combined.M = a.M + b.M;
+
+    calcReservoirW(combined, surf, pointRnd);
+
+    return combined;
+}
+
+
+#ifdef DESC_SET_FRAMEBUFFERS
 uvec4 packReservoir(const Reservoir r)
 {
     return uvec4(
@@ -49,53 +110,17 @@ Reservoir unpackReservoir(const uvec4 p)
     return r;
 }
 
-Reservoir emptyReservoir()
+void imageStoreReservoir(const Reservoir r, const ivec2 pix)
 {
-    Reservoir r;
-    r.selected = UINT32_MAX;
-    r.weightSum = 0.0;
-    r.M = 0.0;
-    r.W = 0.0;
-    return r;
+    imageStore(framebufReservoirs, pix, packReservoir(r));
 }
 
-void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
+// "Rearchitecting spatiotemporal resampling for production" C. Wyman, Alexey Panteleev
+// To avoid a mid-frame global barrier, use previous frame reservoirs for reading
+Reservoir imageLoadReservoir_Prev(const ivec2 pix)
 {
-    r.weightSum += weight;
-    r.M += 1;
-    if (rnd * r.weightSum < weight)
-    {
-        r.selected = lightIndex;
-    }
+    return unpackReservoir(imageLoad(framebufReservoirs, pix));
 }
-
-float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 pointRnd);
-
-void calcReservoirW(inout Reservoir r, const Surface surf, const vec2 pointRnd)
-{
-    float targetPdf_selected = targetPdfForLightSample(r.selected, surf, pointRnd);
-
-    if (targetPdf_selected <= 0.00001 || r.M <= 0)
-    {
-        r.W = 0.0;
-        return;
-    }
-
-    r.W = 1.0 / targetPdf_selected * (r.weightSum / r.M);
-}
-
-Reservoir combineReservoirs(const Reservoir a, const Reservoir b, const Surface surf, float rnd, const vec2 pointRnd)
-{
-    Reservoir combined = emptyReservoir();
-
-    updateReservoir(combined, a.selected, targetPdfForLightSample(a.selected, surf, pointRnd) * a.W * a.M, rnd);
-    updateReservoir(combined, b.selected, targetPdfForLightSample(b.selected, surf, pointRnd) * b.W * b.M, rnd);
-    
-    combined.M = a.M + b.M;
-
-    calcReservoirW(combined, surf, pointRnd);
-
-    return combined;
-}
+#endif // DESC_SET_FRAMEBUFFERS
 
 #endif // RESERVOIR_H_

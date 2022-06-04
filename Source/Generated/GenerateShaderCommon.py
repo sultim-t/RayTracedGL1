@@ -771,7 +771,7 @@ FRAMEBUFFERS = {
     
     "WipeEffectSource"                  : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER), # dst to copy in
     
-    "Reservoirs"                        : (TYPE_UINT32,     COMPONENT_RGBA, 0),
+    "Reservoirs"                        : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
 }
 
 if GRADIENT_ESTIMATION_ENABLED:
