@@ -514,11 +514,10 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
     {
         return;
     }
-    float targetPdf_selected = targetPdfForLightSample(reservoir.selected, surf, pointRnd);
-    float r_W = calcReservoirW(reservoir, targetPdf_selected);
+    calcReservoirW(reservoir, surf, pointRnd);
 
     uint selectedLightIndex = reservoir.selected;
-    float oneOverPdf = r_W;
+    float oneOverPdf = reservoir.W;
 #endif
 
     ShLightEncoded encLight;

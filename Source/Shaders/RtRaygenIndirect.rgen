@@ -44,9 +44,9 @@ float getModifiedIndirRoughness(float r)
 
 // v -- direction to viewer
 // n -- surface normal
-void getSpecularBounce(
+vec3 getSpecularBounce(
     const uint seed, const vec3 n, const float roughness, const vec3 surfSpecularColor,
-    const vec3 v, out vec3 bounceDirection, inout vec3 throughput)
+    const vec3 v, inout vec3 throughput)
 {
     const vec4 u = getRandomSample(seed, RANDOM_SALT_SPEC_BOUNCE(0));
 
@@ -58,8 +58,6 @@ void getSpecularBounce(
 
     const float nl = max(dot(n, l), 0.0);
     const float nv = max(dot(n, v), 0.0);
-
-    bounceDirection = l;
 
     if (nl > 0 && nv > 0)
     {
@@ -74,16 +72,20 @@ void getSpecularBounce(
 
         throughput *= F * G1;
     }
+
+    return l;
 }
 
 // n -- surface normal
-void getDiffuseBounce(const uint seed, const vec3 n, out vec3 bounceDirection, inout vec3 throughput)
+vec3 getDiffuseBounce(const uint seed, const vec3 n, inout vec3 throughput)
 {
     const vec4 u = getRandomSample(seed, RANDOM_SALT_DIFF_BOUNCE(0));
 
     float oneOverPdf;
-    bounceDirection = sampleLambertian(n, u[0], u[1], oneOverPdf);
+    vec3 l = sampleLambertian(n, u[0], u[1], oneOverPdf);
     throughput *= evalBRDFLambertian(1.0) * oneOverPdf;
+
+    return l;
 }
 
 
@@ -108,15 +110,7 @@ vec3 processSecondBounce(
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
         {
-            Surface hitSurf;
-            hitSurf.position = h.hitPosition;
-            hitSurf.instCustomIndex = h.instCustomIndex;
-            hitSurf.normalGeom = h.normalGeom;
-            hitSurf.roughness = h.roughness;
-            hitSurf.normal = h.normalGeom; // ignore precise normals
-            hitSurf.sectorArrayIndex = h.sectorArrayIndex;
-            hitSurf.specularColor = getSpecularColor(h.albedo, h.metallic);
-            hitSurf.toViewerDir = -bounceDirection;
+            Surface hitSurf = hitInfoToSurface_Indirect(h, bounceDirection);
             
             processDirectIllumination(seed, hitSurf, isGradientSample, 2, diffuse, specular);
         }
@@ -147,15 +141,7 @@ vec3 processBounce(
         float hitDistance;
         const ShHitInfo h = getHitInfoBounce(p, surf.position, surf.roughness, FIRST_BOUNCE_MIP_BIAS, hitDistance);
 
-        Surface hitSurf;
-        hitSurf.position = h.hitPosition;
-        hitSurf.instCustomIndex = h.instCustomIndex;
-        hitSurf.normalGeom = h.normalGeom;
-        hitSurf.roughness = h.roughness;
-        hitSurf.normal = h.normalGeom; // ignore precise normals
-        hitSurf.sectorArrayIndex = h.sectorArrayIndex;
-        hitSurf.specularColor = getSpecularColor(h.albedo, h.metallic);
-        hitSurf.toViewerDir = -bounceDir_First;
+        Surface hitSurf = hitInfoToSurface_Indirect(h, bounceDir_First);
 
         // calculate direct illumination only for directional lights in hit position
         vec3 diffuse, specular;
@@ -164,9 +150,8 @@ vec3 processBounce(
         rayHitDistance = length(h.hitPosition - surf.position);
 
 
-        vec3 bounceDir_Second;
         vec3 throughput_Second = vec3(1.0);
-        getDiffuseBounce(seed, h.normalGeom, bounceDir_Second, throughput_Second);
+        vec3 bounceDir_Second = getDiffuseBounce(seed, h.normalGeom, throughput_Second);
 
         vec3 contrib_Second = processSecondBounce(
             seed, 
@@ -188,9 +173,8 @@ vec3 processBounce(
 
 vec3 processSpecular(const uint seed, const Surface surf, const bool isGradientSample, out float rayHitDistance)
 {
-    vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
-    getSpecularBounce(seed, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, bounceDirection, throughput);
+    vec3 bounceDirection = getSpecularBounce(seed, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, throughput);
 
     return processBounce(
         seed, 
@@ -203,9 +187,8 @@ vec3 processSpecular(const uint seed, const Surface surf, const bool isGradientS
 
 SH processIndirectDiffuse(const uint seed, const Surface surf, const bool isGradientSample)
 {
-    vec3 bounceDirection;
     vec3 throughput = vec3(1.0);
-    getDiffuseBounce(seed, surf.normalGeom, bounceDirection, throughput);
+    vec3 bounceDirection = getDiffuseBounce(seed, surf.normalGeom, throughput);
     float rayHitDistance;
 
     const vec3 contrib = processBounce(

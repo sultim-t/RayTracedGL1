@@ -26,6 +26,7 @@ struct Reservoir
     uint selected;
     float weightSum;
     float M;
+    float W;
 };
 
 uvec4 packReservoir(const Reservoir r)
@@ -34,7 +35,7 @@ uvec4 packReservoir(const Reservoir r)
         r.selected,
         floatBitsToUint(r.weightSum),
         floatBitsToUint(r.M),
-        0
+        floatBitsToUint(r.W)
     );
 }
 
@@ -44,6 +45,7 @@ Reservoir unpackReservoir(const uvec4 p)
     r.selected = p.x;
     r.weightSum = uintBitsToFloat(p.y);
     r.M = uintBitsToFloat(p.z);
+    r.W = uintBitsToFloat(p.w);
     return r;
 }
 
@@ -53,6 +55,7 @@ Reservoir emptyReservoir()
     r.selected = UINT32_MAX;
     r.weightSum = 0.0;
     r.M = 0.0;
+    r.W = 0.0;
     return r;
 }
 
@@ -66,28 +69,33 @@ void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd
     }
 }
 
-float calcReservoirW(const Reservoir r, float targetPdf_selected)
+float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 pointRnd);
+
+void calcReservoirW(inout Reservoir r, const Surface surf, const vec2 pointRnd)
 {
+    float targetPdf_selected = targetPdfForLightSample(r.selected, surf, pointRnd);
+
     if (targetPdf_selected <= 0.00001 || r.M <= 0)
     {
-        return 0.0;
+        r.W = 0.0;
+        return;
     }
 
-    return 1.0 / targetPdf_selected * (r.weightSum / r.M);
+    r.W = 1.0 / targetPdf_selected * (r.weightSum / r.M);
 }
 
-/*Reservoir combineReservoirs(const Reservoir a, const Reservoir b, const Surface surf, const vec2 pointRnd)
+Reservoir combineReservoirs(const Reservoir a, const Reservoir b, const Surface surf, float rnd, const vec2 pointRnd)
 {
     Reservoir combined = emptyReservoir();
 
-    updateReservoir(combined, a.selected, targetPdfForLightSample(a.selected, surf, pointRnd) * a.W * a.M);
-    updateReservoir(combined, b.selected, targetPdfForLightSample(b.selected, surf, pointRnd) * b.W * b.M);
+    updateReservoir(combined, a.selected, targetPdfForLightSample(a.selected, surf, pointRnd) * a.W * a.M, rnd);
+    updateReservoir(combined, b.selected, targetPdfForLightSample(b.selected, surf, pointRnd) * b.W * b.M, rnd);
     
     combined.M = a.M + b.M;
 
-    combined.W = calcReservoirW(combined, targetPdfForLightSample(combined.selected));
+    calcReservoirW(combined, surf, pointRnd);
 
     return combined;
-}*/
+}
 
 #endif // RESERVOIR_H_

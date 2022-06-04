@@ -514,30 +514,8 @@ vec4 texelFetchAlbedo(const ivec2 pix)
 {
     return texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0);
 }
-
-#ifdef DESC_SET_FRAMEBUFFERS
-Surface fetchGbufferSurface_A(const ivec2 pix, const vec3 albedo)
-{
-    Surface s;
-    vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
-    s.position              = posEnc.xyz;
-    s.instCustomIndex       = floatBitsToUint(posEnc.a);
-    s.normalGeom            = texelFetchNormalGeometry(pix);
-    s.normal                = texelFetchNormal(pix);
-    s.sectorArrayIndex      = texelFetch(framebufSectorIndex_Sampler, pix, 0).r;
-    vec2 metallicRoughness  = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
-    s.specularColor         = getSpecularColor(albedo, metallicRoughness[0]);
-    s.roughness             = metallicRoughness[1];
-    s.toViewerDir           = -texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
-    return s;
-}
-
-Surface fetchGbufferSurface(const ivec2 pix)
-{
-    return fetchGbufferSurface_A(pix, texelFetchAlbedo(pix).rgb);
-}
-#endif
-#endif
+#define IMAGE_ALBEDO_AVAILABLE
+#endif // FRAMEBUF_IGNORE_ATTACHMENTS
 
 #endif // CHECKERBOARD_FULL_HEIGHT
 #endif // CHECKERBOARD_FULL_WIDTH
@@ -585,3 +563,6 @@ bool fetchAndCheckIsGradient(const ivec2 pix)
 }
 
 #endif // DESC_SET_FRAMEBUFFERS
+
+
+#include "Surface.inl"
