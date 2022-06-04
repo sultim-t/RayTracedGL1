@@ -409,12 +409,18 @@ void processDirectionalLight(uint seed, const Surface surf, bool isGradientSampl
 }
 
 
+
+#ifdef RAYGEN_FORCE_SIMPLE_LIGHT_SAMPLE_METHOD
+    #define LIGHT_SAMPLE_METHOD 0
+#else
+    #define LIGHT_SAMPLE_METHOD 2
+#endif
+
 void processLight(uint seed, const Surface surf, bool isGradientSample, int bounceIndex, inout LightResult out_result)
 {
-    uint lightCount = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
 
-    if (lightCount == 0 || (!castShadowRay && bounceIndex != 0) || surf.sectorArrayIndex == SECTOR_INDEX_NONE)
+    if (globalUniform.lightCount == 0 || (!castShadowRay && bounceIndex != 0) || surf.sectorArrayIndex == SECTOR_INDEX_NONE)
     {
         return;
     }
@@ -423,16 +429,12 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 
     const vec2 pointRnd = getRandomSample(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
 
-#define LIGHT_SAMPLE_METHOD 2
-#ifdef RAYGEN_FORCE_SIMPLE_LIGHT_SAMPLE_METHOD
-    #define LIGHT_SAMPLE_METHOD 0
-#else
-
 #if LIGHT_SAMPLE_METHOD == 0
   
     float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x;
-    float oneOverPdf = lightCount;
-    uint selectedLightIndex = clamp(uint(rnd * lightCount), 0, lightCount - 1);
+    uint lt = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
+    uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
+    float oneOverPdf = lt;
 
 #elif LIGHT_SAMPLE_METHOD == 1
 
@@ -532,21 +534,20 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
         encLight = lightSources[selectedLightIndex];
     }
     else
-    {        
-        // the seed and other input params were replaced by prev frame's data,
-        // so in some degree, lightIndex is the same as it was chosen in prev frame
-        const uint prevFrameLightIndex = selectedLightIndex;
-
-        // get cur frame match for the chosen light
-        selectedLightIndex = lightSourcesMatchPrev[prevFrameLightIndex];
+    {
+#if LIGHT_SAMPLE_METHOD == 0
+        uint selectedIndexInPrevBuffer = lightSources_Index_CurToPrev[selectedLightIndex];
+#else
+        uint selectedIndexInPrevBuffer = selectedLightIndex;
+#endif
 
         // if light disappeared
-        if (selectedLightIndex == UINT32_MAX)
+        if (selectedIndexInPrevBuffer == UINT32_MAX)
         {
             return;
         }
 
-        encLight = lightSources_Prev[selectedLightIndex];
+        encLight = lightSources_Prev[selectedIndexInPrevBuffer];
     }
 
     LightSample light = sampleLight(encLight, surf.position, pointRnd);
