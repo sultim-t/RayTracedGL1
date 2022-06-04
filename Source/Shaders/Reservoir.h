@@ -22,13 +22,6 @@
 #define RESERVOIR_H_
 
 
-#ifndef GET_TARGET_PDF
-    #error Set GET_TARGET_PDF to a function that calculates target pdf
-#endif
-// prototype
-float GET_TARGET_PDF(uint lightIndex, const Surface surf, const vec2 pointRnd);
-
-
 struct Reservoir
 {
     uint selected;
@@ -36,7 +29,6 @@ struct Reservoir
     float M;
     float W;
 };
-
 
 Reservoir emptyReservoir()
 {
@@ -48,7 +40,19 @@ Reservoir emptyReservoir()
     return r;
 }
 
+void calcReservoirW(inout Reservoir r, float targetPdf_selected)
+{
+    if (targetPdf_selected > 0.00001 && r.M > 0)
+    {
+        r.W = 1.0 / targetPdf_selected * (r.weightSum / r.M);
+    }
+    else
+    {
+        r.W = 0.0;
+    }
+}
 
+// Note: W must be recalculated after a sequence of updates
 void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
 {
     r.weightSum += weight;
@@ -59,39 +63,33 @@ void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd
     }
 }
 
-
-void calcReservoirW(inout Reservoir r, const Surface surf, const vec2 pointRnd)
+// Note: W must be recalculated for combined reservoir after a sequence of updates
+void updateCombinedReservoir(inout Reservoir combined, const Reservoir b, float targetPdf_b, float rnd)
 {
-    float targetPdf_selected = GET_TARGET_PDF(r.selected, surf, pointRnd);
+    float weight = targetPdf_b * b.W * b.M;
 
-    if (targetPdf_selected <= 0.00001 || r.M <= 0)
+    combined.weightSum += weight;
+    combined.M += b.M;
+    if (rnd * combined.weightSum < weight)
     {
-        r.W = 0.0;
-        return;
+        combined.selected = b.selected;
     }
-
-    r.W = 1.0 / targetPdf_selected * (r.weightSum / r.M);
-}
-
-
-Reservoir combineReservoirs(const Reservoir a, const Reservoir b, const Surface surf, float rnd, const vec2 pointRnd)
-{
-    Reservoir combined = emptyReservoir();
-
-    updateReservoir(combined, a.selected, GET_TARGET_PDF(a.selected, surf, pointRnd) * a.W * a.M, rnd);
-    updateReservoir(combined, b.selected, GET_TARGET_PDF(b.selected, surf, pointRnd) * b.W * b.M, rnd);
-    
-    combined.M = a.M + b.M;
-
-    calcReservoirW(combined, surf, pointRnd);
-
-    return combined;
 }
 
 
 #ifdef DESC_SET_FRAMEBUFFERS
 uvec4 packReservoir(const Reservoir r)
 {
+    if (isinf(r.weightSum) || isnan(r.weightSum))
+    {
+        return uvec4(
+            UINT32_MAX,
+            floatBitsToUint(0.0),
+            floatBitsToUint(0.0),
+            floatBitsToUint(0.0)
+        );
+    }
+
     return uvec4(
         r.selected,
         floatBitsToUint(r.weightSum),
@@ -119,7 +117,7 @@ void imageStoreReservoir(const Reservoir r, const ivec2 pix)
 // To avoid a mid-frame global barrier, use previous frame reservoirs for reading
 Reservoir imageLoadReservoir_Prev(const ivec2 pix)
 {
-    return unpackReservoir(imageLoad(framebufReservoirs, pix));
+    return unpackReservoir(imageLoad(framebufReservoirs_Prev, pix));
 }
 #endif // DESC_SET_FRAMEBUFFERS
 

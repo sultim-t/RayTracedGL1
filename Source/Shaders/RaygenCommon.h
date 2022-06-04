@@ -415,6 +415,93 @@ void processDirectionalLight(uint seed, const Surface surf, bool isGradientSampl
 #else
     #define LIGHT_SAMPLE_METHOD 2
 #endif
+// TODO: remove from here
+bool chooseLight(
+    uint seed, uint lightCount, const Surface surf, const vec2 pointRnd, 
+    out uint selectedLightIndex, out float oneOverPdf)
+{
+    #define INITIAL_SAMPLES 8
+    #define SPATIAL_SAMPLES_PIXRAD 2
+
+    Reservoir initreservoir = emptyReservoir();
+    
+    for (int i = 0; i < INITIAL_SAMPLES; i++)
+    {
+        // uniform distribution as a coarse source pdf
+        float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
+        uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
+        float oneOverSourcePdf_xi = lightCount;
+
+        float targetPdf_xi = targetPdfForLightSample(xi, surf, pointRnd);
+
+        float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
+        updateReservoir(initreservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+    }
+    calcReservoirW(initreservoir, targetPdfForLightSample(initreservoir.selected, surf, pointRnd));
+        
+
+    // TODO: remove from here! for now, assume that processLight is called once per each pixel
+    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    ivec2 pixPrev;
+    {
+        const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
+        pixPrev = ivec2(floor(posPrev - 0.5));
+    }
+
+
+    // todo: temporal 
+
+
+
+    Reservoir combined = initreservoir;
+
+    // spatial
+    for (int yy = -SPATIAL_SAMPLES_PIXRAD; yy <= SPATIAL_SAMPLES_PIXRAD; yy++)
+    {
+        for (int xx = -SPATIAL_SAMPLES_PIXRAD; xx <= SPATIAL_SAMPLES_PIXRAD; xx++)
+        {
+            if (xx == 0 && yy == 0)
+            {
+                continue;
+            }
+            ivec2 pp = pixPrev + ivec2(xx * 3, yy * 3);
+
+            Reservoir spatial = imageLoadReservoir_Prev(pp);
+            spatial.M = min(spatial.M, initreservoir.M * 20);
+
+            float spatialTargetPdf = 0.0;
+            if (spatial.selected != UINT32_MAX)
+            {
+                uint selected_curFrame = lightSources_Index_PrevToCur[spatial.selected];
+
+                if (selected_curFrame != UINT32_MAX)
+                {
+                    spatialTargetPdf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
+                    spatial.selected = selected_curFrame;
+                }
+            }
+
+            float rnd = getRandomSample(seed, 96 + (yy + SPATIAL_SAMPLES_PIXRAD) * (SPATIAL_SAMPLES_PIXRAD * 2 + 1) + xx + SPATIAL_SAMPLES_PIXRAD).x;
+            updateCombinedReservoir(
+                combined, spatial,
+                spatialTargetPdf,
+                rnd);
+        }
+    }
+
+    if (combined.weightSum <= 0.0)
+    {
+        combined = initreservoir;
+    }
+    calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
+    imageStoreReservoir(combined, pix);
+
+    selectedLightIndex = combined.selected;
+    oneOverPdf = combined.W;
+
+    return oneOverPdf > 0.0 && !isnan(oneOverPdf) && !isinf(oneOverPdf);
+}
+
 
 void processLight(uint seed, const Surface surf, bool isGradientSample, int bounceIndex, inout LightResult out_result)
 {
@@ -501,30 +588,14 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 
 #elif LIGHT_SAMPLE_METHOD == 2
 
-    #define INITIAL_SAMPLES 8
-    Reservoir initReservoir = emptyReservoir();
-    
-    for (int i = 0; i < INITIAL_SAMPLES; i++)
-    {
-        // uniform distribution as a coarse source pdf
-        float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
-        uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
-        float oneOverSourcePdf_xi = lightCount;
-
-        float targetPdf_xi = targetPdfForLightSample(xi, surf, pointRnd);
-
-        float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
-        updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
-    }
-    
-    if (initReservoir.weightSum <= 0.0)
+    uint selectedLightIndex;
+    float oneOverPdf;
+    if (!chooseLight(
+        seed, globalUniform.lightCount, surf, pointRnd,
+        selectedLightIndex, oneOverPdf))
     {
         return;
     }
-    calcReservoirW(initReservoir, surf, pointRnd);
-
-    uint selectedLightIndex = initReservoir.selected;
-    float oneOverPdf = initReservoir.W;
 #endif
 
     ShLightEncoded encLight;
