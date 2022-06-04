@@ -53,14 +53,16 @@ void calcReservoirW(inout Reservoir r, float targetPdf_selected)
 }
 
 // Note: W must be recalculated after a sequence of updates
-void updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
+bool updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
 {
     r.weightSum += weight;
     r.M += 1;
     if (rnd * r.weightSum < weight)
     {
         r.selected = lightIndex;
+        return true;
     }
+    return false;
 }
 
 // Note: W must be recalculated for combined reservoir after a sequence of updates

@@ -364,14 +364,18 @@ void shade(const Surface surf, const LightSample light, out vec3 diffuse, out ve
 #endif
 }
 
-float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 pointRnd)
+float targetPdfForLightSample(const LightSample light, const Surface surf)
 {
-    const LightSample light = sampleLight(lightSources[lightIndex], surf.position, pointRnd);
-
     vec3 d, s;
     shade(surf, light, d, s);
 
     return getLuminance(d + s);
+}
+
+float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 pointRnd)
+{
+    const LightSample light = sampleLight(lightSources[lightIndex], surf.position, pointRnd);
+    return targetPdfForLightSample(light, surf);
 }
 
 
@@ -421,10 +425,12 @@ bool chooseLight(
     out uint selectedLightIndex, out float oneOverPdf)
 {
     #define INITIAL_SAMPLES 8
+    #define INITIAL_VISIBILITY 0
     #define SPATIAL_SAMPLES_PIXRAD 2
 
-    Reservoir initreservoir = emptyReservoir();
-    
+    Reservoir initReservoir = emptyReservoir();
+    LightSample initSelected_sample;
+
     for (int i = 0; i < INITIAL_SAMPLES; i++)
     {
         // uniform distribution as a coarse source pdf
@@ -432,12 +438,27 @@ bool chooseLight(
         uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
         float oneOverSourcePdf_xi = lightCount;
 
-        float targetPdf_xi = targetPdfForLightSample(xi, surf, pointRnd);
+        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
 
         float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
-        updateReservoir(initreservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+        if (updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+        {
+            initSelected_sample = lightSample;
+        }
     }
-    calcReservoirW(initreservoir, targetPdfForLightSample(initreservoir.selected, surf, pointRnd));
+    calcReservoirW(initReservoir, targetPdfForLightSample(initSelected_sample, surf));
+   
+#if INITIAL_VISIBILITY
+    if (initReservoir.selected != UINT32_MAX)
+    {
+        if (traceShadowRay(surf.instCustomIndex, surf.position, initSelected_sample.position, true))
+        {
+            initReservoir.selected = UINT32_MAX;
+            initReservoir.weightSum = 0.0;
+        }
+    }
+#endif
         
 
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
@@ -456,7 +477,7 @@ bool chooseLight(
 
 
 
-    Reservoir combined = initreservoir;
+    Reservoir combined = initReservoir;
 
     // spatial
     for (int yy = -SPATIAL_SAMPLES_PIXRAD; yy <= SPATIAL_SAMPLES_PIXRAD; yy++)
@@ -467,20 +488,25 @@ bool chooseLight(
             {
                 continue;
             }
-            ivec2 pp = pixPrev + ivec2(xx * 3, yy * 3);
+            ivec2 pp = pixPrev + ivec2(xx, yy) * 1;
 
-            float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
-            vec3 normalPrev = texelFetchNormal_Prev(pp);
-
-            if (!testPixInRenderArea(pp, chRenderArea) ||
-                !testReprojectedDepth(depthCur, depthPrev, motionZ) ||
-                !testReprojectedNormal(surf.normal, normalPrev))
             {
-                continue;
+                const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
+                const vec3 normalPrev = texelFetchNormal_Prev(pp);
+
+                if (!testPixInRenderArea(pp, chRenderArea) ||
+                    !testReprojectedDepth(depthCur, depthPrev, motionZ) ||
+                    !testReprojectedNormal(surf.normal, normalPrev))
+                {
+                    continue;
+                }
             }
 
             Reservoir spatial = imageLoadReservoir_Prev(pp);
-            spatial.M = min(spatial.M, initreservoir.M * 20);
+            // renormalize according to M, so weightSum won't grow to inf
+            spatial.weightSum /= spatial.M;
+            spatial.M = min(spatial.M, initReservoir.M * 20);
+            spatial.weightSum *= spatial.M;
 
             float spatialTargetPdf = 0.0;
             if (spatial.selected != UINT32_MAX)
@@ -491,6 +517,8 @@ bool chooseLight(
                 {
                     spatialTargetPdf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
                     spatial.selected = selected_curFrame;
+
+                    calcReservoirW(spatial, spatialTargetPdf);
                 }
             }
 
@@ -504,6 +532,7 @@ bool chooseLight(
 
     if (combined.weightSum <= 0.0 || combined.selected == UINT32_MAX)
     {
+        imageStoreReservoir(emptyReservoir(), pix);
         return false;
     }
     calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
@@ -619,7 +648,7 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
     }
     else
     {
-#if LIGHT_SAMPLE_METHOD == 0
+#if LIGHT_SAMPLE_METHOD != 0
         uint selectedIndexInPrevBuffer = lightSources_Index_CurToPrev[selectedLightIndex];
 #else
         uint selectedIndexInPrevBuffer = selectedLightIndex;
