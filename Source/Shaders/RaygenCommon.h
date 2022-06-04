@@ -441,7 +441,10 @@ bool chooseLight(
         
 
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
-    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy); // so pix is checkerboarded
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
+    const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
+    const float depthCur = texelFetch(framebufDepth_Sampler, pix, 0).r;
     ivec2 pixPrev;
     {
         const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
@@ -466,6 +469,16 @@ bool chooseLight(
             }
             ivec2 pp = pixPrev + ivec2(xx * 3, yy * 3);
 
+            float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
+            vec3 normalPrev = texelFetchNormal_Prev(pp);
+
+            if (!testPixInRenderArea(pp, chRenderArea) ||
+                !testReprojectedDepth(depthCur, depthPrev, motionZ) ||
+                !testReprojectedNormal(surf.normal, normalPrev))
+            {
+                continue;
+            }
+
             Reservoir spatial = imageLoadReservoir_Prev(pp);
             spatial.M = min(spatial.M, initreservoir.M * 20);
 
@@ -489,9 +502,9 @@ bool chooseLight(
         }
     }
 
-    if (combined.weightSum <= 0.0)
+    if (combined.weightSum <= 0.0 || combined.selected == UINT32_MAX)
     {
-        combined = initreservoir;
+        return false;
     }
     calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
     imageStoreReservoir(combined, pix);
