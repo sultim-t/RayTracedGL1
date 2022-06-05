@@ -425,8 +425,9 @@ bool chooseLight(
     out uint selectedLightIndex, out float oneOverPdf)
 {
     #define INITIAL_SAMPLES 8
-    #define INITIAL_VISIBILITY 0
-    #define SPATIAL_SAMPLES_PIXRAD 2
+    #define INITIAL_VISIBILITY 1
+    #define SPATIAL_SAMPLES 16
+    #define SPATIAL_RADIUS 2.0 * sqrt(SPATIAL_SAMPLES)
 
     Reservoir initReservoir = emptyReservoir();
     LightSample initSelected_sample;
@@ -480,15 +481,10 @@ bool chooseLight(
     Reservoir combined = initReservoir;
 
     // spatial
-    for (int yy = -SPATIAL_SAMPLES_PIXRAD; yy <= SPATIAL_SAMPLES_PIXRAD; yy++)
+    for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
     {
-        for (int xx = -SPATIAL_SAMPLES_PIXRAD; xx <= SPATIAL_SAMPLES_PIXRAD; xx++)
-        {
-            if (xx == 0 && yy == 0)
-            {
-                continue;
-            }
-            ivec2 pp = pixPrev + ivec2(xx, yy) * 1;
+            vec2 rndOffset = getRandomSample(seed, 85 + pixIndex).xy * 2.0 - 1.0;
+            ivec2 pp = pixPrev + ivec2(rndOffset * SPATIAL_RADIUS);
 
             {
                 const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
@@ -522,12 +518,11 @@ bool chooseLight(
                 }
             }
 
-            float rnd = getRandomSample(seed, 96 + (yy + SPATIAL_SAMPLES_PIXRAD) * (SPATIAL_SAMPLES_PIXRAD * 2 + 1) + xx + SPATIAL_SAMPLES_PIXRAD).x;
+            float rnd = getRandomSample(seed, 105 + pixIndex).x;
             updateCombinedReservoir(
                 combined, spatial,
                 spatialTargetPdf,
                 rnd);
-        }
     }
 
     if (combined.weightSum <= 0.0 || combined.selected == UINT32_MAX)
