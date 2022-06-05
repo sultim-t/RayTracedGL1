@@ -425,41 +425,47 @@ bool chooseLight(
     out uint selectedLightIndex, out float oneOverPdf)
 {
     #define INITIAL_SAMPLES 8
-    #define INITIAL_VISIBILITY 1
-    #define SPATIAL_SAMPLES 16
-    #define SPATIAL_RADIUS 2.0 * sqrt(SPATIAL_SAMPLES)
+    #define INITIAL_VISIBILITY 0
+    #define TEMPORAL_ENABLE 1
+    #define TEMPORAL_RENORMALIZE_SUM 0
+    #define SPATIAL_SAMPLES 5
+    #define SPATIAL_RADIUS 30
 
     Reservoir initReservoir = emptyReservoir();
-    LightSample initSelected_sample;
-
-    for (int i = 0; i < INITIAL_SAMPLES; i++)
+    // remove from here to separate 'init' pass
     {
-        // uniform distribution as a coarse source pdf
-        float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
-        uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
-        float oneOverSourcePdf_xi = lightCount;
+        LightSample initSelected_sample;
 
-        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+        for (int i = 0; i < INITIAL_SAMPLES; i++)
+        {
+            // uniform distribution as a coarse source pdf
+            float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
+            uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
+            float oneOverSourcePdf_xi = lightCount;
 
-        float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
-        if (updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-        {
-            initSelected_sample = lightSample;
+            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+            float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
+            if (updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+            {
+                initSelected_sample = lightSample;
+            }
         }
-    }
-    calcReservoirW(initReservoir, targetPdfForLightSample(initSelected_sample, surf));
-   
-#if INITIAL_VISIBILITY
-    if (initReservoir.selected != UINT32_MAX)
-    {
-        if (traceShadowRay(surf.instCustomIndex, surf.position, initSelected_sample.position, true))
+        calcReservoirW(initReservoir, targetPdfForLightSample(initSelected_sample, surf));
+    
+    #if INITIAL_VISIBILITY
+        if (initReservoir.selected != UINT32_MAX)
         {
-            initReservoir.selected = UINT32_MAX;
-            initReservoir.weightSum = 0.0;
+            if (traceShadowRay(surf.instCustomIndex, surf.position, initSelected_sample.position, true))
+            {
+                initReservoir.selected = UINT32_MAX;
+                initReservoir.weightSum = 0.0;
+                initReservoir.W = 0.0;
+            }
         }
+    #endif
     }
-#endif
         
 
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
@@ -467,63 +473,118 @@ bool chooseLight(
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepth_Sampler, pix, 0).r;
-    ivec2 pixPrev;
-    {
-        const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
-        pixPrev = ivec2(floor(posPrev - 0.5));
-    }
-
-
-    // todo: temporal 
-
+    const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
 
 
     Reservoir combined = initReservoir;
 
-    // spatial
+
+    // temporal
+    #if TEMPORAL_ENABLE
+    do
+    {
+        vec2 rndOffset = getRandomSample(seed, 0).xy - 0.5;
+        ivec2 pp = ivec2(floor(posPrev + rndOffset * 4));
+
+        {
+            const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
+            const vec3 normalPrev = texelFetchNormal_Prev(pp);
+
+            if (!testPixInRenderArea(pp, chRenderArea) ||
+                !testReprojectedDepth(depthCur, depthPrev, motionZ) ||
+                !testReprojectedNormal(surf.normal, normalPrev))
+            {
+                continue;
+            }
+        }
+
+        Reservoir temporal = imageLoadReservoir_Prev(pp);
+        #if TEMPORAL_RENORMALIZE_SUM
+            // renormalize according to M, so weightSum won't grow to inf
+            temporal.weightSum /= temporal.M;
+        #endif
+        temporal.M = min(temporal.M, initReservoir.M * 20);
+        #if TEMPORAL_RENORMALIZE_SUM
+            temporal.weightSum *= temporal.M;
+        #endif
+
+        float temporalTargetPdf_curSurf = 0.0;
+        if (temporal.selected != UINT32_MAX)
+        {
+            uint selected_curFrame = lightSources_Index_PrevToCur[temporal.selected];
+
+            if (selected_curFrame != UINT32_MAX)
+            {
+                temporalTargetPdf_curSurf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
+                temporal.selected = selected_curFrame;
+
+                #if TEMPORAL_RENORMALIZE_SUM
+                    calcReservoirW(temporal, temporalTargetPdf_curSurf);
+                #endif
+            }
+        }
+
+        float rnd = getRandomSample(seed, 12).x;
+        updateCombinedReservoir(
+            combined, temporal,
+            temporalTargetPdf_curSurf,
+            rnd);
+    } 
+    while (false);
+    #endif
+
     for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
     {
-            vec2 rndOffset = getRandomSample(seed, 85 + pixIndex).xy * 2.0 - 1.0;
-            ivec2 pp = pixPrev + ivec2(rndOffset * SPATIAL_RADIUS);
+        vec2 rndOffset = getRandomSample(seed, 85 + pixIndex).xy * 2.0 - 1.0;
+        ivec2 pp = pix + ivec2(rndOffset * SPATIAL_RADIUS);
 
+        {
+            const float depthOther = texelFetch(framebufDepth_Sampler, pp, 0).r;
+            const vec3 normalOther = texelFetchNormal(pp);
+
+            if (!testPixInRenderArea(pp, chRenderArea) ||
+                !testReprojectedDepth(depthCur, depthOther, 0) ||
+                !testReprojectedNormal(surf.normal, normalOther))
             {
-                const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
-                const vec3 normalPrev = texelFetchNormal_Prev(pp);
+                continue;
+            }
+        }
 
-                if (!testPixInRenderArea(pp, chRenderArea) ||
-                    !testReprojectedDepth(depthCur, depthPrev, motionZ) ||
-                    !testReprojectedNormal(surf.normal, normalPrev))
-                {
-                    continue;
-                }
+        Reservoir spatial = emptyReservoir();
+        // remove from here to separate 'init' pass
+        {
+            Surface surf_other = fetchGbufferSurface(pp);
+            if (surf_other.isSky)
+            {
+                continue;
             }
 
-            Reservoir spatial = imageLoadReservoir_Prev(pp);
-            // renormalize according to M, so weightSum won't grow to inf
-            spatial.weightSum /= spatial.M;
-            spatial.M = min(spatial.M, initReservoir.M * 20);
-            spatial.weightSum *= spatial.M;
-
-            float spatialTargetPdf = 0.0;
-            if (spatial.selected != UINT32_MAX)
+            for (int i = 0; i < INITIAL_SAMPLES; i++)
             {
-                uint selected_curFrame = lightSources_Index_PrevToCur[spatial.selected];
+                // uniform distribution as a coarse source pdf
+                float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(pixIndex * 16 + i)).x;
+                uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
+                float oneOverSourcePdf_xi = lightCount;
 
-                if (selected_curFrame != UINT32_MAX)
-                {
-                    spatialTargetPdf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
-                    spatial.selected = selected_curFrame;
+                LightSample lightSample = sampleLight(lightSources[xi], surf_other.position, pointRnd);
+                float targetPdf_xi = targetPdfForLightSample(lightSample, surf_other);
 
-                    calcReservoirW(spatial, spatialTargetPdf);
-                }
+                float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
+                updateReservoir(spatial, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
             }
+            calcReservoirW(spatial, targetPdfForLightSample(spatial.selected, surf_other, pointRnd));
+        }
 
-            float rnd = getRandomSample(seed, 105 + pixIndex).x;
-            updateCombinedReservoir(
-                combined, spatial,
-                spatialTargetPdf,
-                rnd);
+
+        float spatialTargetPdf_curSurf = targetPdfForLightSample(spatial.selected, surf, pointRnd);
+
+        float rnd = getRandomSample(seed, 105 + pixIndex).x;
+        updateCombinedReservoir(
+            combined, spatial,
+            spatialTargetPdf_curSurf,
+            rnd);
     }
+
 
     if (combined.weightSum <= 0.0 || combined.selected == UINT32_MAX)
     {
