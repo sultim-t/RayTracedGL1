@@ -419,6 +419,21 @@ void processDirectionalLight(uint seed, const Surface surf, bool isGradientSampl
 #else
     #define LIGHT_SAMPLE_METHOD 2
 #endif
+
+bool testSurfaceForReuse(
+    const ivec3 curChRenderArea, const ivec2 otherPix,
+    float curDepth, float otherDepth,
+    const vec3 curNormal, const vec3 otherNormal)
+{
+    #define DEPTH_THRESHOLD 0.1
+    #define NORMAL_THRESHOLD 0.5
+
+    return 
+        testPixInRenderArea(otherPix, curChRenderArea) &&
+        (abs(curDepth - otherDepth) / abs(curDepth) < DEPTH_THRESHOLD) &&
+        (dot(curNormal, otherNormal) > NORMAL_THRESHOLD);
+}
+
 // TODO: remove from here
 bool chooseLight(
     uint seed, uint lightCount, const Surface surf, const vec2 pointRnd, 
@@ -490,9 +505,9 @@ bool chooseLight(
             const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
             const vec3 normalPrev = texelFetchNormal_Prev(pp);
 
-            if (!testPixInRenderArea(pp, chRenderArea) ||
-                !testReprojectedDepth(depthCur, depthPrev, motionZ) ||
-                !testReprojectedNormal(surf.normal, normalPrev))
+            if (!testSurfaceForReuse(chRenderArea, pp, 
+                                     depthCur, depthPrev - motionZ,
+                                     surf.normal, normalPrev))
             {
                 continue;
             }
@@ -519,7 +534,9 @@ bool chooseLight(
                 temporal.selected = selected_curFrame;
 
                 #if TEMPORAL_RENORMALIZE_SUM
-                    calcReservoirW(temporal, temporalTargetPdf_curSurf);
+                    const Surface prevSurf = fetchGbufferSurface_Prev(pp);
+                    float temporalTargetPdf_prevSurf = targetPdfForLightSample_Prev(temporal.selected, prevSurf, pointRnd_Prev);
+                    calcReservoirW(temporal, temporalTargetPdf_prevSurf);
                 #endif
             }
         }
@@ -542,9 +559,9 @@ bool chooseLight(
             const float depthOther = texelFetch(framebufDepth_Sampler, pp, 0).r;
             const vec3 normalOther = texelFetchNormal(pp);
 
-            if (!testPixInRenderArea(pp, chRenderArea) ||
-                !testReprojectedDepth(depthCur, depthOther, 0) ||
-                !testReprojectedNormal(surf.normal, normalOther))
+            if (!testSurfaceForReuse(chRenderArea, pp, 
+                                     depthCur, depthOther,
+                                     surf.normal, normalOther))
             {
                 continue;
             }
