@@ -56,6 +56,15 @@ layout(local_size_x = COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X, local_size_y = COMPUTE
 
 #define ONLY_TEMPORAL_SPEC_REPROJECTION 1
 
+// Ray Tracing Gems II. Chapter 49: ReBLUR: A Hierarchical Recurrent Denoiser
+float getSpecularDominantFactor(float nv, float roughness)
+{
+    float a = 0.298475 * log(39.4115 - 39.0029 * roughness);
+    float f = pow(clamp(1.0 - nv, 0.0, 1.0), 10.8649)*(1.0 - a) + a;
+
+    return clamp(f, 0.0, 1.0);
+}
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
@@ -65,16 +74,15 @@ void main()
         return;
     }
 
-    const ivec3 chRenderArea   = getCheckerboardedRenderArea(   pix);
+    const vec3 unfilteredDiff   = texelFetchUnfilteredDirect(       pix);
+    const SH unfilteredIndirSH  = texelFetchUnfilteredIndirectSH(   pix);
+    const vec3 unfilteredSpec   = texelFetchUnfilteredSpecular(     pix);
 
-    const vec3 unfilteredDiff  = texelFetchUnfilteredDirect(    pix);
-    const SH unfilteredIndirSH = texelFetchUnfilteredIndirectSH(pix);
-    const vec3 unfilteredSpec  = texelFetchUnfilteredSpecular(  pix);
-
-    const float motionZ = texelFetch(framebufMotion_Sampler,    pix, 0).z;
-
-    const float depth   = texelFetch(framebufDepth_Sampler,     pix, 0).r;
-    const vec3 normal   = texelFetchNormal(                     pix);
+    const ivec3 chRenderArea    = getCheckerboardedRenderArea(      pix);
+    const float motionZ         = texelFetch(framebufMotion_Sampler,pix, 0).z;
+    const float depth           = texelFetch(framebufDepth_Sampler, pix, 0).r;
+    const vec3 normal           = texelFetchNormal(                 pix);
+    const float roughness       = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
 
     const float l = getLuminance(unfilteredDiff);
     const vec2 moments = vec2(l, l * l);
@@ -97,10 +105,13 @@ void main()
 #if !ONLY_TEMPORAL_SPEC_REPROJECTION
     ivec2 pixPrev_Spec; vec2 subPix_Spec;
     {
-        vec4 rayInfo      = texelFetch(framebufViewDirection_Sampler,   pix, 0);
-        vec3 virtualPos   = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz
-                            + rayInfo.xyz * rayInfo.a;
-                        
+        vec4 rayInfo    = texelFetch(framebufViewDirection_Sampler, pix, 0);
+        vec3 virtualPos = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
+        {
+            float rayLength = rayInfo.a * getSpecularDominantFactor(max(0, dot(normal, -rayInfo.xyz)), roughness);
+            virtualPos += rayInfo.xyz * rayLength;
+        }
+
         const vec4 viewSpacePosCur   = globalUniform.view     * vec4(virtualPos, 1.0);
         const vec4 viewSpacePosPrev  = globalUniform.viewPrev * vec4(virtualPos, 1.0);
         const vec4 clipSpacePosCur   = globalUniform.projection     * viewSpacePosCur;
@@ -158,14 +169,14 @@ void main()
                     const float weight = bilinearWeights[yy][xx];
 
 #if !ONLY_TEMPORAL_SPEC_REPROJECTION
-                    historyLengthDIS.rg += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rg  * weight;
+                    historyLengthDIS.rg += weight * texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rg;
 #else
-                    historyLengthDIS    += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rgb * weight;
-                    specPrev            += texelFetchSpecAccumColor_Prev(xy)                              * weight;
+                    historyLengthDIS    += weight * texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rgb;
+                    specPrev            += weight * texelFetchSpecAccumColor_Prev(xy);
 #endif
 
-                    diffPrev            += texelFetch(framebufDiffColorHistory_Sampler,        xy, 0).rgb * weight;
-                    momentsPrev         += texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg  * weight;    
+                    diffPrev            += weight * texelFetch(framebufDiffColorHistory_Sampler,        xy, 0).rgb;
+                    momentsPrev         += weight * texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg;    
                     
                     accumulateSH(indirPrev, texelFetchIndirAccumSH_Prev(xy), weight);
 
@@ -189,11 +200,9 @@ void main()
                 {
                     const float weight = bilinearWeights_Spec[yy][xx];
 
-                    historyLengthDIS.b += texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy_Spec, 0).b * weight;
-                
-                    specPrev += texelFetchSpecAccumColor_Prev(xy_Spec) * weight;
-
-                    weightSum_Spec += weight;
+                    historyLengthDIS.b += weight * texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy_Spec, 0).b;
+                    specPrev           += weight * texelFetchSpecAccumColor_Prev(xy_Spec);
+                    weightSum_Spec     += weight;
                 }
             }
 #endif
@@ -228,8 +237,6 @@ void main()
 
         // specular
         {
-            const float roughness = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
-
             // antilagAlpha_Spec *= (1 - roughness) * 0.9 + 0.1;
 
             specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);

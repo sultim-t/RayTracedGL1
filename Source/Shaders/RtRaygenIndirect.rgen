@@ -216,14 +216,16 @@ void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface
         const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
         float rayHitDistance = 0;
 
-        const vec3 contribution = processSpecular(seed, surf, isGradientSample, rayHitDistance);
-
-        imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
+        vec3 contribution = processSpecular(seed, surf, isGradientSample, rayHitDistance);
 
         if (getLuminance(directSpecular) < getLuminance(contribution))
         {
             imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, rayHitDistance));
         }
+
+        // demodulate for denoising
+        contribution /= max(vec3(0.01), surf.specularColor);
+        imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
     }
 
     {
