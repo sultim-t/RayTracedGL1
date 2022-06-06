@@ -441,9 +441,9 @@ bool chooseLight(
 {
     #define INITIAL_SAMPLES 8
     #define INITIAL_VISIBILITY 0
-    #define TEMPORAL_ENABLE 1
-    #define TEMPORAL_RENORMALIZE_SUM 0
-    #define SPATIAL_SAMPLES 5
+    #define TEMPORAL_SAMPLES 1
+    #define TEMPORAL_RADIUS 2
+    #define SPATIAL_SAMPLES 8
     #define SPATIAL_RADIUS 30
 
     Reservoir initReservoir = emptyReservoir();
@@ -495,11 +495,10 @@ bool chooseLight(
 
 
     // temporal
-    #if TEMPORAL_ENABLE
-    do
+    for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = getRandomSample(seed, 0).xy - 0.5;
-        ivec2 pp = ivec2(floor(posPrev + rndOffset * 4));
+        vec2 rndOffset = getRandomSample(seed, 0 + pixIndex).xy * 2.0 - 1.0;
+        ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
 
         {
             const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
@@ -514,14 +513,9 @@ bool chooseLight(
         }
 
         Reservoir temporal = imageLoadReservoir_Prev(pp);
-        #if TEMPORAL_RENORMALIZE_SUM
-            // renormalize according to M, so weightSum won't grow to inf
-            temporal.weightSum /= temporal.M;
-        #endif
+        // renormalize to prevent precision problems
         temporal.M = min(temporal.M, initReservoir.M * 20);
-        #if TEMPORAL_RENORMALIZE_SUM
-            temporal.weightSum *= temporal.M;
-        #endif
+        temporal.W = isnan(temporal.W) || isinf(temporal.W) || temporal.W < 0.0 ? 0 : clamp(temporal.W, 0.0, RESERVOIR_W_MAX);
 
         float temporalTargetPdf_curSurf = 0.0;
         if (temporal.selected != UINT32_MAX)
@@ -532,23 +526,15 @@ bool chooseLight(
             {
                 temporalTargetPdf_curSurf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
                 temporal.selected = selected_curFrame;
-
-                #if TEMPORAL_RENORMALIZE_SUM
-                    const Surface prevSurf = fetchGbufferSurface_Prev(pp);
-                    float temporalTargetPdf_prevSurf = targetPdfForLightSample_Prev(temporal.selected, prevSurf, pointRnd_Prev);
-                    calcReservoirW(temporal, temporalTargetPdf_prevSurf);
-                #endif
             }
         }
 
-        float rnd = getRandomSample(seed, 12).x;
+        float rnd = getRandomSample(seed, 12 + pixIndex).x;
         updateCombinedReservoir(
             combined, temporal,
             temporalTargetPdf_curSurf,
             rnd);
     } 
-    while (false);
-    #endif
 
     for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
     {

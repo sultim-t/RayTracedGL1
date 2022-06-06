@@ -22,6 +22,9 @@
 #define RESERVOIR_H_
 
 
+#define RESERVOIR_W_MAX (1.0 / 0.0001)
+
+
 struct Reservoir
 {
     uint selected;
@@ -68,6 +71,9 @@ bool updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd
 // Note: W must be recalculated for combined reservoir after a sequence of updates
 void updateCombinedReservoir(inout Reservoir combined, const Reservoir b, float targetPdf_b, float rnd)
 {
+    // targetPdf_b is for pixel q,
+    // but b.W was calculated for pixel q'
+    // so need to renormalize weight
     float weight = targetPdf_b * b.W * b.M;
 
     combined.weightSum += weight;
