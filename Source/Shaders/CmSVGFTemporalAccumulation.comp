@@ -210,19 +210,19 @@ void main()
     }
     
 
-    float antilagAlpha_Diff, antilagAlpha_Spec, antilagAlpha_Indir;
+    float antilagAlpha_Diff, antilagAlpha_Indir, antilagAlpha_Spec;
 
 #if GRADIENT_ESTIMATION_ENABLED
     {
-        const vec4 gradDiffSpec = texelFetch(framebufDiffAndSpecPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        antilagAlpha_Diff = getAntilagAlpha(gradDiffSpec[0], gradDiffSpec[1]);
-        antilagAlpha_Spec = getAntilagAlpha(gradDiffSpec[2] * 0.1, gradDiffSpec[3]);
-        antilagAlpha_Indir = texelFetch(framebufIndirPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).r;
+        const vec3 gradDIS = texelFetch(framebufDISPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).xyz;
+        antilagAlpha_Diff  = gradDIS[0];
+        antilagAlpha_Indir = gradDIS[1];
+        antilagAlpha_Spec  = gradDIS[2];
     }
 #else
     antilagAlpha_Diff  = 0.0;
-    antilagAlpha_Spec  = 0.0;
     antilagAlpha_Indir = 0.0;
+    antilagAlpha_Spec  = 0.0;
 #endif
 
 

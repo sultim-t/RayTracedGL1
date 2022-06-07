@@ -39,13 +39,12 @@ const int STEP_SIZE = 1 << atrousIteration;
 // Current implementation of a-trous itearation for gradients doesn't use edge-avoiding
 // samplerGradient[0] -- temporal gradient (eq. 2)
 // samplerGradient[1] -- normalization factor (eq. 13)
-void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 outGradient, out float outGradientIndir)
+void atrous(sampler2D samplerDISGradient, out vec3 outDISGradient)
 {
     const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
     const ivec3 gradArea = getCheckerboardedRenderArea(gradPix * COMPUTE_ASVGF_STRATA_SIZE) / COMPUTE_ASVGF_STRATA_SIZE;
     
-    vec4 sum = vec4(0.0);
-    float sumIndir = 0.0;
+    outDISGradient = vec3(0.0);
     float weightSum = 0.0;
 
     const int FilterSize = 1;
@@ -62,20 +61,17 @@ void atrous(sampler2D samplerGradient, sampler2D samplerGradientIndir, out vec4 
             const ivec2 offset = ivec2(xx * STEP_SIZE, yy * STEP_SIZE);
             const ivec2 gradPix_q = gradPix + offset;
 
-            const vec4 grad_q = texelFetch(samplerGradient, gradPix_q, 0);
-            const float gradIndir_q = texelFetch(samplerGradientIndir, gradPix_q, 0).x;
+            const vec3 grad_q = texelFetch(samplerDISGradient, gradPix_q, 0).xyz;
 
             const float w = waveletKernel[abs(yy)][abs(xx)] *
                             float(testPixInRenderArea(gradPix_q, gradArea));
 
-            sum += grad_q * w;
-            sumIndir += gradIndir_q * w;
+            outDISGradient += grad_q * w;
             weightSum += w;
         }
     }
 
-    outGradient = sum / weightSum;
-    outGradientIndir = sumIndir / weightSum;
+    outDISGradient /= weightSum;
 }
 
 void main()
@@ -88,31 +84,22 @@ void main()
         return;
     }
     
-    vec4 filteredDiffSpec;
-    float filteredIndir;
+    vec3 filteredDIS;
 
     switch (atrousIteration)
     {
-         case 0: atrous(framebufDiffAndSpecPingGradient_Sampler, framebufIndirPingGradient_Sampler, filteredDiffSpec, filteredIndir); break;
-         case 1: atrous(framebufDiffAndSpecPongGradient_Sampler, framebufIndirPongGradient_Sampler, filteredDiffSpec, filteredIndir); break;
-         case 2: atrous(framebufDiffAndSpecPingGradient_Sampler, framebufIndirPingGradient_Sampler, filteredDiffSpec, filteredIndir); break;
-         case 3: atrous(framebufDiffAndSpecPongGradient_Sampler, framebufIndirPongGradient_Sampler, filteredDiffSpec, filteredIndir); break;
+         case 0: atrous(framebufDISPingGradient_Sampler, filteredDIS); break;
+         case 1: atrous(framebufDISPongGradient_Sampler, filteredDIS); break;
+         case 2: atrous(framebufDISPingGradient_Sampler, filteredDIS); break;
+         case 3: atrous(framebufDISPongGradient_Sampler, filteredDIS); break;
     }
     
     switch (atrousIteration)
     {
-         case 0: imageStore(framebufDiffAndSpecPongGradient, gradPix, filteredDiffSpec); 
-                 imageStore(framebufIndirPongGradient,       gradPix, vec4(filteredIndir)); 
-                 break;
-         case 1: imageStore(framebufDiffAndSpecPingGradient, gradPix, filteredDiffSpec);
-                 imageStore(framebufIndirPingGradient,       gradPix, vec4(filteredIndir)); 
-                 break;
-         case 2: imageStore(framebufDiffAndSpecPongGradient, gradPix, filteredDiffSpec); 
-                 imageStore(framebufIndirPongGradient,       gradPix, vec4(filteredIndir)); 
-                 break;
-         case 3: imageStore(framebufDiffAndSpecPingGradient, gradPix, filteredDiffSpec);
-                 imageStore(framebufIndirPingGradient,       gradPix, vec4(filteredIndir)); 
-                 break;
+         case 0: imageStore(framebufDISPongGradient, gradPix, vec4(filteredDIS, 0.0)); break;
+         case 1: imageStore(framebufDISPingGradient, gradPix, vec4(filteredDIS, 0.0)); break;
+         case 2: imageStore(framebufDISPongGradient, gradPix, vec4(filteredDIS, 0.0)); break;
+         case 3: imageStore(framebufDISPingGradient, gradPix, vec4(filteredDIS, 0.0)); break;
     }
 }
 

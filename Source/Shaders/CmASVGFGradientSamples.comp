@@ -49,8 +49,7 @@ void main()
 
     if (!hasSample)
     {
-        imageStore(framebufDiffAndSpecPingGradient, gradPix, vec4(0.0));
-        imageStore(framebufIndirPingGradient, gradPix, vec4(0.0));
+        imageStore(framebufDISPingGradient, gradPix, vec4(0.0));
         return;
     }
 
@@ -63,7 +62,7 @@ void main()
     const ivec2 posInStrata = ivec2(grFB.x % COMPUTE_ASVGF_STRATA_SIZE, grFB.x / COMPUTE_ASVGF_STRATA_SIZE);
     const ivec2 shadingSamplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + posInStrata;
 
-    vec4 directAndSpec = vec4(0.0);
+    vec3 gradDIS = vec3(0.0);
 
     {
         const vec3 color = texelFetchUnfilteredDirect(shadingSamplePix);
@@ -72,23 +71,8 @@ void main()
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
         const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminance);
 
-        directAndSpec.x = gradSample;
-        directAndSpec.y = normFactor;
+        gradDIS[0] = getAntilagAlpha(gradSample, normFactor);
     }
-
-    {
-        const vec3 color = texelFetchUnfilteredSpecular(shadingSamplePix);
-        const float shadingSampleLuminance = getLuminance(color);
-
-        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;
-        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceSpec);
-
-        directAndSpec.z = gradSample;
-        directAndSpec.w = normFactor;
-    }
-
-    imageStore(framebufDiffAndSpecPingGradient, gradPix, directAndSpec);
-
     {
         const vec3 color = getSHColor(texelFetchUnfilteredIndirectSH(shadingSamplePix));
         const float shadingSampleLuminance = getLuminance(color);
@@ -96,11 +80,19 @@ void main()
         const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceIndir;
         const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceIndir);
 
-        // blurring antilag alpha directly gives better results
-        const float a = getAntilagAlpha(gradSample * 0.1, normFactor);
-
-        imageStore(framebufIndirPingGradient, gradPix, vec4(a));
+        gradDIS[1] = getAntilagAlpha(gradSample * 0.1, normFactor);
     }
+    {
+        const vec3 color = texelFetchUnfilteredSpecular(shadingSamplePix);
+        const float shadingSampleLuminance = getLuminance(color);
+
+        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;
+        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceSpec);
+
+        gradDIS[2] = getAntilagAlpha(gradSample, normFactor);
+    }
+
+    imageStore(framebufDISPingGradient, gradPix, vec4(gradDIS, 0.0));
 }
 
 

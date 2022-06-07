@@ -149,12 +149,7 @@ void main()
 #if GRADIENT_ESTIMATION_ENABLED
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_GRADIENTS) != 0)
     {
-        const vec4 gradDS = texelFetch(framebufDiffAndSpecPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const vec4 gradI = texelFetch(framebufIndirPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0);
-        const float lambda = getAntilagAlpha(gradDS.r, gradDS.g);
-        const float lambdaSpec = getAntilagAlpha(gradDS.b, gradDS.a);
-        const float lambdaIndir = clamp(gradI.r, 0.0, 1.0);
-        color.rgb = vec3(lambda, lambdaSpec, lambdaIndir);
+        color.rgb = texelFetch(framebufDISPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0).xyz;
     }
 #endif
 

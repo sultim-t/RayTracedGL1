@@ -183,8 +183,7 @@ void RTGL1::Denoiser::Denoise(
             {
                 FI fs[] =
                 {
-                    FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT,
-                    FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT
+                    FI::FB_IMAGE_INDEX_D_I_S_PING_GRADIENT,
                 };
                 framebuffers->BarrierMultiple(cmd, frameIndex, fs);
             }
@@ -192,8 +191,7 @@ void RTGL1::Denoiser::Denoise(
             {
                 FI fs[] =
                 {
-                    FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PONG_GRADIENT,
-                    FI::FB_IMAGE_INDEX_INDIR_PONG_GRADIENT
+                    FI::FB_IMAGE_INDEX_D_I_S_PONG_GRADIENT,
                 };
                 framebuffers->BarrierMultiple(cmd, frameIndex, fs);
             }
@@ -220,8 +218,7 @@ void RTGL1::Denoiser::Denoise(
             FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
             FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY,
 #if GRADIENT_ESTIMATION_ENABLED
-            FI::FB_IMAGE_INDEX_DIFF_AND_SPEC_PING_GRADIENT,
-            FI::FB_IMAGE_INDEX_INDIR_PING_GRADIENT
+            FI::FB_IMAGE_INDEX_D_I_S_PING_GRADIENT,
 #endif
         };
         framebuffers->BarrierMultiple(cmd, frameIndex, fs);
