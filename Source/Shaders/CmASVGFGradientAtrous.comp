@@ -88,18 +88,19 @@ void main()
 
     switch (atrousIteration)
     {
-         case 0: atrous(framebufDISPingGradient_Sampler, filteredDIS); break;
-         case 1: atrous(framebufDISPongGradient_Sampler, filteredDIS); break;
-         case 2: atrous(framebufDISPingGradient_Sampler, filteredDIS); break;
-         case 3: atrous(framebufDISPongGradient_Sampler, filteredDIS); break;
+        case 0: atrous(framebufDISPingGradient_Sampler, filteredDIS); break;
+        case 1: atrous(framebufDISPongGradient_Sampler, filteredDIS); break;
+        case 2: atrous(framebufDISPingGradient_Sampler, filteredDIS); break;
+        case 3: atrous(framebufDISPongGradient_Sampler, filteredDIS); break;
     }
     
     switch (atrousIteration)
     {
-         case 0: imageStore(framebufDISPongGradient, gradPix, vec4(filteredDIS, 0.0)); break;
-         case 1: imageStore(framebufDISPingGradient, gradPix, vec4(filteredDIS, 0.0)); break;
-         case 2: imageStore(framebufDISPongGradient, gradPix, vec4(filteredDIS, 0.0)); break;
-         case 3: imageStore(framebufDISPingGradient, gradPix, vec4(filteredDIS, 0.0)); break;
+        case 0: imageStore(framebufDISPongGradient,    gradPix, vec4(filteredDIS, 0.0)); 
+                imageStore(framebufDISGradientHistory, gradPix, vec4(filteredDIS, 0.0)); break;
+        case 1: imageStore(framebufDISPingGradient,    gradPix, vec4(filteredDIS, 0.0)); break;
+        case 2: imageStore(framebufDISPongGradient,    gradPix, vec4(filteredDIS, 0.0)); break;
+        case 3: imageStore(framebufDISPingGradient,    gradPix, vec4(filteredDIS, 0.0)); break;
     }
 }
 

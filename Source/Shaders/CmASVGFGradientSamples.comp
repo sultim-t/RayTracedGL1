@@ -92,6 +92,15 @@ void main()
         gradDIS[2] = getAntilagAlpha(gradSample, normFactor);
     }
 
+    // smooth temporally, to make antilag less aggressive over a small period of time
+    {
+        const ivec2 shadingSamplePixPrev = ivec2(floor(getPrevScreenPos(framebufMotion_Sampler, shadingSamplePix)));
+        const ivec2 gradPixPrev = shadingSamplePixPrev / COMPUTE_ASVGF_STRATA_SIZE;
+
+        const vec3 gradDISPrev = imageLoad(framebufDISGradientHistory, gradPixPrev).xyz;
+        gradDIS = mix(gradDIS, gradDISPrev, 0.5);
+    }
+
     imageStore(framebufDISPingGradient, gradPix, vec4(gradDIS, 0.0));
 }
 
