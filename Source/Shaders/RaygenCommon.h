@@ -380,45 +380,17 @@ float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 po
 
 
 
-// toViewerDir -- is direction to viewer
-void processDirectionalLight(uint seed, const Surface surf, bool isGradientSample, int bounceIndex, inout LightResult out_result)
-{
-    bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsDirectionalLights;
-
-    if (globalUniform.lightCountDirectional == 0 || (!castShadowRay && bounceIndex != 0))
-    {
-        return;
-    }
-
-    // done here, just to make compatible with sampleLight
-    ShLightEncoded encLight;
-    {
-        encLight.lightType = LIGHT_TYPE_DIRECTIONAL;
-        encLight.color = globalUniform.directionalLight_color.xyz;
-        encLight.data_0 = globalUniform.directionalLight_data_0;
-    }
-
-    const LightSample light = sampleLight(encLight, surf.position, rndBlueNoise8(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy);
-
-    shade(surf, light, out_result.diffuse, out_result.specular);
-
-    if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
-    {
-        return;
-    }
-
-    out_result.shadowRayEnable = true;
-    out_result.shadowRayEnd = light.position;
-    out_result.shadowRayIgnoreFirstPersonViewer = false;
-}
-
-
-
 #ifdef RAYGEN_FORCE_SIMPLE_LIGHT_SAMPLE_METHOD
     #define LIGHT_SAMPLE_METHOD 0
 #else
     #define LIGHT_SAMPLE_METHOD 2
 #endif
+
+#define INITIAL_SAMPLES 8
+#define TEMPORAL_SAMPLES 1
+#define TEMPORAL_RADIUS 2
+#define SPATIAL_SAMPLES 8
+#define SPATIAL_RADIUS 30
 
 bool testSurfaceForReuse(
     const ivec3 curChRenderArea, const ivec2 otherPix,
@@ -434,55 +406,63 @@ bool testSurfaceForReuse(
         (dot(curNormal, otherNormal) > NORMAL_THRESHOLD);
 }
 
+// TODO: separate pass for init reservoirs
+Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 pointRnd)
+{
+    Reservoir regularReservoir = emptyReservoir();
+    for (int i = 0; i < INITIAL_SAMPLES; i++)
+    {
+        // uniform distribution as a coarse source pdf
+        float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
+        uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
+        float oneOverSourcePdf_xi = globalUniform.lightCount;
+
+        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+        float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
+        updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+    }
+    calcReservoirW(regularReservoir, targetPdfForLightSample(regularReservoir.selected, surf, pointRnd));
+    regularReservoir.M = 1;
+
+    Reservoir dirLightReservoir = emptyReservoir();
+    if (globalUniform.directionalLightExists != 0)
+    {
+        uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
+        float oneOverSourcePdf_xi = 1;
+
+        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+        float rndRis = rnd16(seed, RANDOM_SALT_RIS(INITIAL_SAMPLES + salt));
+        updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+        calcReservoirW(dirLightReservoir, targetPdfForLightSample(dirLightReservoir.selected, surf, pointRnd));
+        dirLightReservoir.M = 1;
+    }
+
+    float rnd = rnd16(seed, 8 + salt); 
+    Reservoir combined = regularReservoir;
+    updateCombinedReservoir(
+        combined, dirLightReservoir,
+        targetPdfForLightSample(dirLightReservoir.selected, surf, pointRnd),
+        rnd);
+    
+    if (combined.weightSum <= 0.0 || combined.selected == UINT32_MAX)
+    {
+        return emptyReservoir();
+    }
+    calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
+    combined.M = 1;
+
+    return combined;
+}
+
 // TODO: remove from here
 bool chooseLight(
-    uint seed, uint lightCount, const Surface surf, const vec2 pointRnd, 
+    uint seed, const Surface surf, const vec2 pointRnd, 
     out uint selectedLightIndex, out float oneOverPdf)
 {
-    #define INITIAL_SAMPLES 8
-    #define INITIAL_VISIBILITY 0
-    #define TEMPORAL_SAMPLES 1
-    #define TEMPORAL_RADIUS 2
-    #define SPATIAL_SAMPLES 8
-    #define SPATIAL_RADIUS 30
-
-    Reservoir initReservoir = emptyReservoir();
-    // remove from here to separate 'init' pass
-    {
-        LightSample initSelected_sample;
-
-        for (int i = 0; i < INITIAL_SAMPLES; i++)
-        {
-            // uniform distribution as a coarse source pdf
-            float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i));
-            uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
-            float oneOverSourcePdf_xi = lightCount;
-
-            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-            float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
-            if (updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-            {
-                initSelected_sample = lightSample;
-            }
-        }
-        calcReservoirW(initReservoir, targetPdfForLightSample(initSelected_sample, surf));
-    
-    #if INITIAL_VISIBILITY
-        if (initReservoir.selected != UINT32_MAX)
-        {
-            if (traceShadowRay(surf.instCustomIndex, surf.position, initSelected_sample.position, true))
-            {
-                initReservoir.selected = UINT32_MAX;
-                initReservoir.weightSum = 0.0;
-                initReservoir.W = 0.0;
-            }
-        }
-    #endif
-    }
-        
-
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy); // so pix is checkerboarded
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
@@ -491,6 +471,7 @@ bool chooseLight(
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
 
 
+    Reservoir initReservoir = getInitReservoir(seed, 0, surf, pointRnd);
     Reservoir combined = initReservoir;
 
 
@@ -562,20 +543,7 @@ bool chooseLight(
                 continue;
             }
 
-            for (int i = 0; i < INITIAL_SAMPLES; i++)
-            {
-                // uniform distribution as a coarse source pdf
-                float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(pixIndex * 16 + i));
-                uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
-                float oneOverSourcePdf_xi = lightCount;
-
-                LightSample lightSample = sampleLight(lightSources[xi], surf_other.position, pointRnd);
-                float targetPdf_xi = targetPdfForLightSample(lightSample, surf_other);
-
-                float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
-                updateReservoir(spatial, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
-            }
-            calcReservoirW(spatial, targetPdfForLightSample(spatial.selected, surf_other, pointRnd));
+            spatial = getInitReservoir(seed, pixIndex * 16, surf_other, pointRnd);
         }
 
 
@@ -621,6 +589,7 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
   
     float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(0));
     uint lt = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
+    lt += globalUniform.directionalLightExists != 0 ? 1 : 0;
     uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
     float oneOverPdf = lt;
 
@@ -692,7 +661,7 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
     uint selectedLightIndex;
     float oneOverPdf;
     if (!chooseLight(
-        seed, globalUniform.lightCount, surf, pointRnd,
+        seed, surf, pointRnd,
         selectedLightIndex, oneOverPdf))
     {
         return;
@@ -761,34 +730,26 @@ void processDirectIllumination(uint seed, const Surface surf, bool isGradientSam
     #define APPEND_DIST(x)
 #endif
 
-    LightResult r;
+    LightResult r = newLightResult();
 
-#define PROCESS_SEPARATELY(pfnProcessLight)                                     \
-    {                                                                           \
-        r = newLightResult();                                                   \
-                                                                                \
-        pfnProcessLight(                                                        \
-            seed,                                                               \
-            surf,                                                               \
-            isGradientSample,                                                   \
-            bounceIndex, /* TODO: remove 'castShadowRay'? */                    \
-            r);                                                                 \
-                                                                                \
-        bool isShadowed = false;                                                \
-                                                                                \
-        if (r.shadowRayEnable)                                                  \
-        {                                                                       \
-            const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;    \
-            isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);  \
-            APPEND_DIST(shadowRayStart - r.shadowRayEnd);                       \
-        }                                                                       \
-                                                                                \
-        outDiffuse  += r.diffuse  * float(!isShadowed);                         \
-        outSpecular += r.specular * float(!isShadowed);                         \
+    processLight(
+        seed,
+        surf,
+        isGradientSample,
+        bounceIndex, /* TODO: remove 'castShadowRay'? */
+        r);
+
+    bool isShadowed = false;
+
+    if (r.shadowRayEnable)
+    {
+        const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
+        isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);
+        APPEND_DIST(shadowRayStart - r.shadowRayEnd);
     }
 
-    PROCESS_SEPARATELY(processDirectionalLight);
-    PROCESS_SEPARATELY(processLight);
+    outDiffuse += r.diffuse * float(!isShadowed);
+    outSpecular += r.specular * float(!isShadowed);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
 

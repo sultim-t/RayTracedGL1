@@ -635,6 +635,8 @@ RGAPI RgResult RGCONV rgUploadDecal(
 
 typedef struct RgDirectionalLightUploadInfo
 {
+    // Used to match the same light source from the previous frame.
+    uint64_t        uniqueID;
     RgFloat3D       color;
     RgFloat3D       direction;
     float           angularDiameterDegrees;
@@ -946,7 +948,6 @@ typedef struct RgDrawFrameDebugParams
 typedef struct RgDrawFrameShadowParams
 {
     // Shadow rays are cast, if illumination bounce index is in [0, maxBounceShadows).
-    uint32_t    maxBounceShadowsDirectional;
     uint32_t    maxBounceShadows;
     // The higher the value, the more polygonal lights act like a spotlight. 
     // Default: 2

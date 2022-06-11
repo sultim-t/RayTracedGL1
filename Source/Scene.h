@@ -59,7 +59,7 @@ public:
 
     void UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &lightInfo);
-    void UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &lightInfo);
+    void UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo);
     void UploadLight(uint32_t frameIndex, const RgSpotlightUploadInfo &lightInfo);
 
     void SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B);

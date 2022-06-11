@@ -143,6 +143,8 @@
 #define LIGHT_TYPE_SPHERE (2)
 #define LIGHT_TYPE_TRIANGLE (3)
 #define LIGHT_TYPE_SPOT (4)
+#define LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET (0)
+#define LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET (1)
 
 #define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
 #define SURFACE_POSITION_INCORRECT (10000000.0)
@@ -182,7 +184,7 @@ struct ShGlobalUniform
     float maxLogLuminance;
     float luminanceWhitePoint;
     uint stopEyeAdaptation;
-    uint lightCountDirectional;
+    uint directionalLightExists;
     float polyLightSpotlightFactor;
     uint skyType;
     float skyColorMultiplier;
@@ -199,11 +201,7 @@ struct ShGlobalUniform
     float emissionMaxScreenColor;
     float normalMapStrength;
     float skyColorSaturation;
-    float _unused0;
-    float _unused1;
-    float _unused2;
     float bloomEmissionSaturationBias;
-    uint maxBounceShadowsDirectionalLights;
     uint maxBounceShadowsLights;
     uint rayCullBackFaces;
     uint rayCullMaskWorld;
@@ -241,8 +239,6 @@ struct ShGlobalUniform
     float jitterX;
     float jitterY;
     float primaryRayMinDist;
-    vec4 directionalLight_color;
-    vec4 directionalLight_data_0;
     uint rayCullMaskWorld_Shadow;
     uint lensFlareCullingInputCount;
     uint applyViewProjToLensFlares;

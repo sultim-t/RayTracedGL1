@@ -382,6 +382,9 @@ CONST = {
     "LIGHT_TYPE_SPHERE"                     : 2,
     "LIGHT_TYPE_TRIANGLE"                   : 3,
     "LIGHT_TYPE_SPOT"                       : 4,
+
+    "LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET"  : 0,
+    "LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET"     : 1,
 }
 
 CONST_GLSL_ONLY = {
@@ -462,7 +465,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "maxLogLuminance",              1),
     (TYPE_FLOAT32,      1,      "luminanceWhitePoint",          1),
     (TYPE_UINT32,       1,      "stopEyeAdaptation",            1),
-    (TYPE_UINT32,       1,      "lightCountDirectional",        1),
+    (TYPE_UINT32,       1,      "directionalLightExists",       1),
     
     (TYPE_FLOAT32,      1,      "polyLightSpotlightFactor",     1),
     (TYPE_UINT32,       1,      "skyType",                      1),
@@ -486,12 +489,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "normalMapStrength",            1),
     (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
-    (TYPE_FLOAT32,      1,      "_unused0",                     1),
-    (TYPE_FLOAT32,      1,      "_unused1",                     1),
-    (TYPE_FLOAT32,      1,      "_unused2",                     1),
-    (TYPE_FLOAT32,      1,      "bloomEmissionSaturationBias",  1),
-
-    (TYPE_UINT32,       1,      "maxBounceShadowsDirectionalLights",1),
+    (TYPE_FLOAT32,      1,      "bloomEmissionSaturationBias",      1),
     (TYPE_UINT32,       1,      "maxBounceShadowsLights",           1),
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "rayCullMaskWorld",                 1),
@@ -539,9 +537,6 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "jitterX",                          1),
     (TYPE_FLOAT32,      1,      "jitterY",                          1),
     (TYPE_FLOAT32,      1,      "primaryRayMinDist",                1),
-
-    (TYPE_FLOAT32,      4,      "directionalLight_color",           1),
-    (TYPE_FLOAT32,      4,      "directionalLight_data_0",          1),
 
     (TYPE_UINT32,       1,      "rayCullMaskWorld_Shadow",          1),
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),

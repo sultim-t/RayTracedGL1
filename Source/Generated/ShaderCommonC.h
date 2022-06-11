@@ -150,6 +150,8 @@ namespace RTGL1
 #define LIGHT_TYPE_SPHERE (2)
 #define LIGHT_TYPE_TRIANGLE (3)
 #define LIGHT_TYPE_SPOT (4)
+#define LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET (0)
+#define LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET (1)
 
 struct ShVertexBufferStatic
 {
@@ -186,7 +188,7 @@ struct ShGlobalUniform
     float maxLogLuminance;
     float luminanceWhitePoint;
     uint32_t stopEyeAdaptation;
-    uint32_t lightCountDirectional;
+    uint32_t directionalLightExists;
     float polyLightSpotlightFactor;
     uint32_t skyType;
     float skyColorMultiplier;
@@ -203,11 +205,7 @@ struct ShGlobalUniform
     float emissionMaxScreenColor;
     float normalMapStrength;
     float skyColorSaturation;
-    float _unused0;
-    float _unused1;
-    float _unused2;
     float bloomEmissionSaturationBias;
-    uint32_t maxBounceShadowsDirectionalLights;
     uint32_t maxBounceShadowsLights;
     uint32_t rayCullBackFaces;
     uint32_t rayCullMaskWorld;
@@ -245,8 +243,6 @@ struct ShGlobalUniform
     float jitterX;
     float jitterY;
     float primaryRayMinDist;
-    float directionalLight_color[4];
-    float directionalLight_data_0[4];
     uint32_t rayCullMaskWorld_Shadow;
     uint32_t lensFlareCullingInputCount;
     uint32_t applyViewProjToLensFlares;

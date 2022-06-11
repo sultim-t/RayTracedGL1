@@ -48,12 +48,11 @@ public:
 
     uint32_t GetLightCount() const;
     uint32_t GetLightCountPrev() const;
-    // Will be deprecated
-    uint32_t GetDirectionalLightCount() const;
+    uint32_t DoesDirectionalLightExist() const;
 
     void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info);
-    void AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info);
+    void AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info);
     void AddSpotlight(uint32_t frameIndex, const RgSpotlightUploadInfo &info);
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
@@ -62,6 +61,8 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex);
 
 private:
+    LightArrayIndex GetIndex(const ShLightEncoded &encodedLight) const;
+    void IncrementCount(const ShLightEncoded &encodedLight);
     void AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const ShLightEncoded &encodedLight);
 
     void FillMatchPrev(uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID);
@@ -83,13 +84,10 @@ private:
 
     rgl::unordered_map<UniqueLightID, LightArrayIndex> uniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
 
-    uint32_t allLightCount;
-    uint32_t allLightCount_Prev;
-
-    struct
-    {
-        uint32_t dirLightCount;
-    } dirLightSingleton;
+    uint32_t regLightCount;
+    uint32_t regLightCount_Prev;
+    uint32_t dirLightCount;
+    uint32_t dirLightCount_Prev;
 
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool descPool;

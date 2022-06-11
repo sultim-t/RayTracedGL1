@@ -35,8 +35,7 @@ constexpr double RG_PI = 3.1415926535897932384626433;
 constexpr float MIN_COLOR_SUM = 0.0001f;
 constexpr float MIN_SPHERE_RADIUS = 0.005f;
 
-constexpr uint32_t MAX_LIGHT_COUNT = 4096;
-constexpr uint32_t MAX_LIGHT_COUNT_DIRECTIONAL = 1;
+constexpr uint32_t LIGHT_ARRAY_MAX_SIZE = 4096;
 }
 
 RTGL1::LightManager::LightManager(
@@ -45,9 +44,10 @@ RTGL1::LightManager::LightManager(
     std::shared_ptr<SectorVisibility> &_sectorVisibility)
 :
     device(_device),
-    allLightCount(0),
-    allLightCount_Prev(0),
-    dirLightSingleton{},
+    regLightCount(0),
+    regLightCount_Prev(0),
+    dirLightCount(0),
+    dirLightCount_Prev(0),
     descSetLayout(VK_NULL_HANDLE),
     descPool(VK_NULL_HANDLE),
     descSets{},
@@ -56,15 +56,15 @@ RTGL1::LightManager::LightManager(
     lightLists      = std::make_shared<LightLists>(device, _allocator, _sectorVisibility);
 
     lightsBuffer    = std::make_shared<AutoBuffer>(device, _allocator);
-    lightsBuffer->Create(sizeof(ShLightEncoded) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights buffer");
+    lightsBuffer->Create(sizeof(ShLightEncoded) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights buffer");
 
-    lightsBuffer_Prev.Init(_allocator, sizeof(ShLightEncoded) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lights buffer - prev");
+    lightsBuffer_Prev.Init(_allocator, sizeof(ShLightEncoded) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lights buffer - prev");
 
     prevToCurIndex = std::make_shared<AutoBuffer>(device, _allocator);
-    prevToCurIndex->Create(sizeof(uint32_t) * MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - prev to cur");
+    prevToCurIndex->Create(sizeof(uint32_t) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - prev to cur");
 
     curToPrevIndex = std::make_shared<AutoBuffer>(device, _allocator);
-    curToPrevIndex->Create(sizeof(uint32_t) *MAX_LIGHT_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - cur to prev");
+    curToPrevIndex->Create(sizeof(uint32_t) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - cur to prev");
 
     CreateDescriptors();
 }
@@ -80,7 +80,7 @@ static RTGL1::ShLightEncoded EncodeAsDirectionalLight(const RgDirectionalLightUp
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize(direction.data);
 
-    float angularRadius = static_cast<float>(0.5 * static_cast<double>(info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);;
+    float angularRadius = static_cast<float>(0.5 * static_cast<double>(info.angularDiameterDegrees) * RTGL1::RG_PI / 180.0);
 
 
     RTGL1::ShLightEncoded lt = {};
@@ -197,18 +197,19 @@ static RTGL1::ShLightEncoded EncodeAsSpotLight(const RgSpotlightUploadInfo &info
 
 void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
-    allLightCount_Prev = allLightCount;
+    regLightCount_Prev = regLightCount;
+    dirLightCount_Prev = dirLightCount;
 
-    allLightCount = 0;
-    dirLightSingleton.dirLightCount = 0;
+    regLightCount = 0;
+    dirLightCount = 0;
 
     // TODO: similar system to just swap desc sets, instead of actual copying
-    if (allLightCount_Prev > 0)
+    if (regLightCount_Prev + dirLightCount_Prev > 0)
     {
         VkBufferCopy info = {};
         info.srcOffset = 0;
         info.dstOffset = 0;
-        info.size = allLightCount_Prev * sizeof(ShLightEncoded);
+        info.size = (regLightCount_Prev + dirLightCount_Prev) * sizeof(ShLightEncoded);
 
         vkCmdCopyBuffer(
             cmd,
@@ -216,7 +217,7 @@ void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameInd
             1, &info);
     }
 
-    memset(prevToCurIndex->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * allLightCount_Prev);
+    memset(prevToCurIndex->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * (regLightCount_Prev + dirLightCount_Prev));
     // no need to clear curToPrevIndex, as it'll be filled in the cur frame
 
     uniqueIDToPrevIndex[frameIndex].clear();
@@ -228,14 +229,14 @@ void RTGL1::LightManager::Reset()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        memset(prevToCurIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(allLightCount, allLightCount_Prev));
-        memset(curToPrevIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(allLightCount, allLightCount_Prev));
+        memset(prevToCurIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(regLightCount + dirLightCount, regLightCount_Prev + dirLightCount_Prev));
+        memset(curToPrevIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(regLightCount + dirLightCount, regLightCount_Prev + dirLightCount_Prev));
 
         uniqueIDToPrevIndex[i].clear();
     }
 
-    allLightCount = allLightCount_Prev = 0;
-    dirLightSingleton.dirLightCount = 0;
+    regLightCount_Prev = regLightCount = 0;
+    dirLightCount_Prev = dirLightCount = 0;
 
     lightLists->Reset();
 }
@@ -245,17 +246,49 @@ static bool IsColorTooDim(const float c[3])
     return std::abs(c[0]) + std::abs(c[1]) + std::abs(c[2]) < RTGL1::MIN_COLOR_SUM;
 }
 
+RTGL1::LightArrayIndex RTGL1::LightManager::GetIndex(const RTGL1::ShLightEncoded &encodedLight) const
+{
+    switch (encodedLight.lightType)
+    {
+    case LIGHT_TYPE_DIRECTIONAL:
+        return LightArrayIndex{ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET + dirLightCount };
+    case LIGHT_TYPE_SPHERE:
+    case LIGHT_TYPE_TRIANGLE:
+    case LIGHT_TYPE_SPOT:
+        return LightArrayIndex{ LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + regLightCount };
+    default:
+        assert(0);
+        return LightArrayIndex{ 0 };
+    }
+}
+
+void RTGL1::LightManager::IncrementCount(const ShLightEncoded& encodedLight)
+{
+    switch (encodedLight.lightType)
+    {
+        case LIGHT_TYPE_DIRECTIONAL:
+            dirLightCount++;
+            break;
+        case LIGHT_TYPE_SPHERE:
+        case LIGHT_TYPE_TRIANGLE:
+        case LIGHT_TYPE_SPOT:
+            regLightCount++;
+            break;
+        default:
+            assert(0);
+    }
+}
+
 void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const RTGL1::ShLightEncoded &encodedLight)
 {
-    if (allLightCount >= MAX_LIGHT_COUNT)
+    if (regLightCount + dirLightCount >= LIGHT_ARRAY_MAX_SIZE)
     {
         assert(0);
         return;
     }
 
-    const LightArrayIndex index = LightArrayIndex{ allLightCount };
-    allLightCount++;
-
+    const LightArrayIndex index = GetIndex(encodedLight);
+    IncrementCount(encodedLight);
 
     auto *dst = (ShLightEncoded *)lightsBuffer->GetMapped(frameIndex);
     memcpy(&dst[index.GetArrayIndex()], &encodedLight, sizeof(RTGL1::ShLightEncoded));
@@ -268,7 +301,10 @@ void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const
     uniqueIDToPrevIndex[frameIndex][uniqueId] = index;
 
 
-    lightLists->InsertLight(index, lightLists->SectorIDToArrayIndex(sectorId));
+    if (encodedLight.lightType != LIGHT_TYPE_DIRECTIONAL)
+    {
+        lightLists->InsertLight(index, lightLists->SectorIDToArrayIndex(sectorId));
+    }
 }
 
 void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info)
@@ -307,36 +343,29 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const RgSpotlightUpl
     AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsSpotLight(info));
 }
 
-void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &info)
+void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info)
 {
-    if (IsColorTooDim(info.color.data))
+    if (dirLightCount > 0)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Only one directional light is allowed");
+    }
+
+    if (IsColorTooDim(info.color.data) || info.angularDiameterDegrees < 0.0f)
     {
         return;
     }
-
-    if (dirLightSingleton.dirLightCount >= MAX_LIGHT_COUNT_DIRECTIONAL)
-    {
-        assert(0);
-        throw RgException(RG_WRONG_ARGUMENT, "Only one directional light can be added");
-    }
     
-    auto enc = EncodeAsDirectionalLight(info);
-    // TODO: move from uniform to the lightBuffer
-    {
-        memcpy(uniform->GetData()->directionalLight_color, enc.color, 3 * sizeof(float));
-        memcpy(uniform->GetData()->directionalLight_data_0, enc.data_0, 4 * sizeof(float));
-    }
-    dirLightSingleton.dirLightCount++;
+    AddLight(frameIndex, info.uniqueID, SectorID{ 0 } /* ignored */, EncodeAsDirectionalLight(info));
 }
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     CmdLabel label(cmd, "Copying lights");
 
-    lightsBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShLightEncoded) * allLightCount);
+    lightsBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShLightEncoded) * (regLightCount + dirLightCount));
 
-    prevToCurIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * allLightCount_Prev);
-    curToPrevIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * allLightCount);
+    prevToCurIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * (regLightCount_Prev + dirLightCount_Prev));
+    curToPrevIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * (regLightCount + dirLightCount));
 
     lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
 
@@ -493,18 +522,18 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
 
 uint32_t RTGL1::LightManager::GetLightCount() const
 {
-    return allLightCount;
+    return regLightCount;
 }
 
 uint32_t RTGL1::LightManager::GetLightCountPrev() const
 {
-    return allLightCount_Prev;
+    return regLightCount_Prev;
 }
 
 
-uint32_t RTGL1::LightManager::GetDirectionalLightCount() const
+uint32_t RTGL1::LightManager::DoesDirectionalLightExist() const
 {
-    return dirLightSingleton.dirLightCount;
+    return dirLightCount > 0 ? 1 : 0;
 }
 
 static_assert(RTGL1::MAX_FRAMES_IN_FLIGHT == 2, "");

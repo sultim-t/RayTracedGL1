@@ -270,9 +270,9 @@ bool Scene::TryGetStaticSimpleIndex(uint64_t uniqueID, uint32_t *result) const
     return false;
 }
 
-void Scene::UploadLight(uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, const RgDirectionalLightUploadInfo &lightInfo)
+void Scene::UploadLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &lightInfo)
 {
-    lightManager->AddDirectionalLight(frameIndex, uniform, lightInfo);
+    lightManager->AddDirectionalLight(frameIndex, lightInfo);
 }
 
 void Scene::UploadLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &lightInfo)

@@ -477,7 +477,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->lightCount         = scene->GetLightManager()->GetLightCount();
         gu->lightCountPrev     = scene->GetLightManager()->GetLightCountPrev();
 
-        gu->lightCountDirectional       = scene->GetLightManager()->GetDirectionalLightCount();
+        gu->directionalLightExists = scene->GetLightManager()->DoesDirectionalLightExist();
     }
 
     {
@@ -558,14 +558,12 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     if (drawInfo.pShadowParams != nullptr)
     {
-        gu->maxBounceShadowsDirectionalLights   = drawInfo.pShadowParams->maxBounceShadowsDirectional;
         gu->maxBounceShadowsLights              = drawInfo.pShadowParams->maxBounceShadows;
         gu->polyLightSpotlightFactor            = std::max(0.0f, drawInfo.pShadowParams->polygonalLightSpotlightFactor);
         gu->firefliesClamp                      = std::max(0.0f, drawInfo.pShadowParams->sphericalPolygonalLightsFirefliesClamp);
     }
     else
     {
-        gu->maxBounceShadowsDirectionalLights = 8;
         gu->maxBounceShadowsLights = 2;
         gu->polyLightSpotlightFactor = 2.0f;
         gu->firefliesClamp = 3.0f;
@@ -1220,7 +1218,7 @@ void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *pLightInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    scene->UploadLight(currentFrameState.GetFrameIndex(), uniform, *pLightInfo);
+    scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
 void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
