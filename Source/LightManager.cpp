@@ -195,6 +195,12 @@ static RTGL1::ShLightEncoded EncodeAsSpotLight(const RgSpotlightUploadInfo &info
     return lt;
 }
 
+static uint32_t GetLightArrayEnd(uint32_t regCount, uint32_t dirCount)
+{
+    // assuming that reg lights are always after directional ones
+    return LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + regCount;
+}
+
 void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 {
     regLightCount_Prev = regLightCount;
@@ -204,12 +210,12 @@ void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameInd
     dirLightCount = 0;
 
     // TODO: similar system to just swap desc sets, instead of actual copying
-    if (regLightCount_Prev + dirLightCount_Prev > 0)
+    if (GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev) > 0)
     {
         VkBufferCopy info = {};
         info.srcOffset = 0;
         info.dstOffset = 0;
-        info.size = (regLightCount_Prev + dirLightCount_Prev) * sizeof(ShLightEncoded);
+        info.size = GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev) * sizeof(ShLightEncoded);
 
         vkCmdCopyBuffer(
             cmd,
@@ -217,7 +223,7 @@ void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameInd
             1, &info);
     }
 
-    memset(prevToCurIndex->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * (regLightCount_Prev + dirLightCount_Prev));
+    memset(prevToCurIndex->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev));
     // no need to clear curToPrevIndex, as it'll be filled in the cur frame
 
     uniqueIDToPrevIndex[frameIndex].clear();
@@ -229,8 +235,8 @@ void RTGL1::LightManager::Reset()
 {
     for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
     {
-        memset(prevToCurIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(regLightCount + dirLightCount, regLightCount_Prev + dirLightCount_Prev));
-        memset(curToPrevIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(regLightCount + dirLightCount, regLightCount_Prev + dirLightCount_Prev));
+        memset(prevToCurIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(GetLightArrayEnd(regLightCount, dirLightCount), GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev)));
+        memset(curToPrevIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(GetLightArrayEnd(regLightCount, dirLightCount), GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev)));
 
         uniqueIDToPrevIndex[i].clear();
     }
@@ -281,7 +287,7 @@ void RTGL1::LightManager::IncrementCount(const ShLightEncoded& encodedLight)
 
 void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const RTGL1::ShLightEncoded &encodedLight)
 {
-    if (regLightCount + dirLightCount >= LIGHT_ARRAY_MAX_SIZE)
+    if (GetLightArrayEnd(regLightCount, dirLightCount) >= LIGHT_ARRAY_MAX_SIZE)
     {
         assert(0);
         return;
@@ -362,10 +368,10 @@ void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameInd
 {
     CmdLabel label(cmd, "Copying lights");
 
-    lightsBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShLightEncoded) * (regLightCount + dirLightCount));
+    lightsBuffer->CopyFromStaging(cmd, frameIndex, sizeof(ShLightEncoded) * GetLightArrayEnd(regLightCount, dirLightCount));
 
-    prevToCurIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * (regLightCount_Prev + dirLightCount_Prev));
-    curToPrevIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * (regLightCount + dirLightCount));
+    prevToCurIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev));
+    curToPrevIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * GetLightArrayEnd(regLightCount, dirLightCount));
 
     lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
 

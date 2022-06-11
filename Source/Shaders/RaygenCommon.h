@@ -576,7 +576,9 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
 
-    if (globalUniform.lightCount == 0 || (!castShadowRay && bounceIndex != 0) || surf.sectorArrayIndex == SECTOR_INDEX_NONE)
+    if ((globalUniform.lightCount == 0 && globalUniform.directionalLightExists == 0) || 
+        (!castShadowRay && bounceIndex != 0) || 
+        surf.sectorArrayIndex == SECTOR_INDEX_NONE)
     {
         return;
     }
