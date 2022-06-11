@@ -409,6 +409,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         Matrix::Inverse(gu->invView, drawInfo.view);
         Matrix::Inverse(gu->invProjection, drawInfo.projection);
 
+        memcpy(gu->cameraPositionPrev, gu->cameraPosition, 3 * sizeof(float));
         gu->cameraPosition[0] = gu->invView[12];
         gu->cameraPosition[1] = gu->invView[13];
         gu->cameraPosition[2] = gu->invView[14];

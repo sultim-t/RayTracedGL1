@@ -43,6 +43,11 @@ float getLuminance(vec3 c)
     return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;
 }
 
+float saturate(float a)
+{
+    return clamp(a, 0.0, 1.0);
+}
+
 
 
 #define ENCODE_NORMAL_N_PHI 1 << 16

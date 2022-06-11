@@ -474,6 +474,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      4,      "skyViewerPosition",            1),
 
     (TYPE_FLOAT32,      4,      "cameraPosition",               1),
+    (TYPE_FLOAT32,      4,      "cameraPositionPrev",           1),
 
     (TYPE_UINT32,       1,      "debugShowFlags",               1),
     (TYPE_FLOAT32,      1,      "firefliesClamp",               1),
@@ -722,10 +723,10 @@ FRAMEBUFFERS = {
     "UnfilteredIndirectSH_R"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredIndirectSH_G"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredIndirectSH_B"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
-    "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, 0),
+    "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "SectorIndex"                       : (TYPE_UINT16,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
-    "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
+    "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "PrimaryToReflRefr"                 : (TYPE_UINT32,     COMPONENT_RG,   0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     # bilinear for bloom
