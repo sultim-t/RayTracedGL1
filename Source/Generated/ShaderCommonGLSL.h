@@ -487,8 +487,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 68, rgba32ui) uniform uimage2D fra
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 69, rgba32ui) uniform uimage2D framebufReservoirs_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 70, rgba32ui) uniform uimage2D framebufGradientSamples;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 71, rgba32ui) uniform uimage2D framebufGradientSamples_Prev;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 72, rgba16f) uniform image2D framebufDISPingGradient;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 73, rgba16f) uniform image2D framebufDISPongGradient;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 72, rgba8) uniform image2D framebufDISPingGradient;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 73, rgba8) uniform image2D framebufDISPongGradient;
 
 // samplers
 #ifndef FRAMEBUF_IGNORE_ATTACHMENTS
