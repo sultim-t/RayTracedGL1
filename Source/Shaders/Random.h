@@ -223,8 +223,8 @@ void unpackRandomSeed(uint seed, out uint textureIndex, out uvec2 offset)
     offset.x     = seed                                  & (BLUE_NOISE_TEXTURE_SIZE - 1);
 }
 
-// get blue noise sample
-vec4 getRandomSample(uint seed, uint salt)
+// Blue noise random in [0..1] with 1/255 precision
+vec4 rndBlueNoise8(uint seed, uint salt)
 {
     uint texIndex;
     uvec2 offset;
@@ -235,10 +235,26 @@ vec4 getRandomSample(uint seed, uint salt)
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
+// Random in [0..1] with 1/65535 precision
+float rnd16(uint seed, uint salt)
+{
+    vec2 rnd255flt = rndBlueNoise8(seed, salt).xy;
+    
+    uvec2 rnd255 = uvec2(
+        clamp(uint(rnd255flt.x * 255), 0, 255),
+        clamp(uint(rnd255flt.y * 255), 0, 255)
+    );
+
+    uint rnd = 
+        (rnd255.x) << 0 |
+        (rnd255.y) << 8;
+
+    return float(rnd) / float((1 << 16) - 1);
+}
+
 uint getCurrentRandomSeed(const ivec2 pix)
 {
-    uvec4 seed = texelFetch(framebufRandomSeed_Sampler, pix, 0);
-    return seed.x;
+    return texelFetch(framebufRandomSeed_Sampler, pix, 0).x;
 }
 
 uint getRandomSeed(const ivec2 pix, uint frameIndex, float screenWidth, float screenHeight)

@@ -398,7 +398,7 @@ void processDirectionalLight(uint seed, const Surface surf, bool isGradientSampl
         encLight.data_0 = globalUniform.directionalLight_data_0;
     }
 
-    const LightSample light = sampleLight(encLight, surf.position, getRandomSample(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy);
+    const LightSample light = sampleLight(encLight, surf.position, rndBlueNoise8(seed, RANDOM_SALT_DIRECTIONAL_LIGHT_DISK).xy);
 
     shade(surf, light, out_result.diffuse, out_result.specular);
 
@@ -454,14 +454,14 @@ bool chooseLight(
         for (int i = 0; i < INITIAL_SAMPLES; i++)
         {
             // uniform distribution as a coarse source pdf
-            float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(i)).x;
+            float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i));
             uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
             float oneOverSourcePdf_xi = lightCount;
 
             LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
             float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
 
-            float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
+            float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
             if (updateReservoir(initReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
             {
                 initSelected_sample = lightSample;
@@ -497,7 +497,7 @@ bool chooseLight(
     // temporal
     for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = getRandomSample(seed, 0 + pixIndex).xy * 2.0 - 1.0;
+        vec2 rndOffset = rndBlueNoise8(seed, 0 + pixIndex).xy * 2.0 - 1.0;
         ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
 
         {
@@ -529,7 +529,7 @@ bool chooseLight(
             }
         }
 
-        float rnd = getRandomSample(seed, 12 + pixIndex).x;
+        float rnd = rnd16(seed, 12 + pixIndex);
         updateCombinedReservoir(
             combined, temporal,
             temporalTargetPdf_curSurf,
@@ -538,7 +538,7 @@ bool chooseLight(
 
     for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = getRandomSample(seed, 85 + pixIndex).xy * 2.0 - 1.0;
+        vec2 rndOffset = rndBlueNoise8(seed, 85 + pixIndex).xy * 2.0 - 1.0;
         ivec2 pp = pix + ivec2(rndOffset * SPATIAL_RADIUS);
 
         {
@@ -565,14 +565,14 @@ bool chooseLight(
             for (int i = 0; i < INITIAL_SAMPLES; i++)
             {
                 // uniform distribution as a coarse source pdf
-                float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(pixIndex * 16 + i)).x;
+                float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(pixIndex * 16 + i));
                 uint xi = clamp(uint(rnd * lightCount), 0, lightCount - 1);
                 float oneOverSourcePdf_xi = lightCount;
 
                 LightSample lightSample = sampleLight(lightSources[xi], surf_other.position, pointRnd);
                 float targetPdf_xi = targetPdfForLightSample(lightSample, surf_other);
 
-                float rndRis = getRandomSample(seed, RANDOM_SALT_RIS(i)).x;
+                float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
                 updateReservoir(spatial, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
             }
             calcReservoirW(spatial, targetPdfForLightSample(spatial.selected, surf_other, pointRnd));
@@ -581,7 +581,7 @@ bool chooseLight(
 
         float spatialTargetPdf_curSurf = targetPdfForLightSample(spatial.selected, surf, pointRnd);
 
-        float rnd = getRandomSample(seed, 105 + pixIndex).x;
+        float rnd = rnd16(seed, 105 + pixIndex);
         updateCombinedReservoir(
             combined, spatial,
             spatialTargetPdf_curSurf,
@@ -615,11 +615,11 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 
     // note: if it's a gradient sample, then the seed is from previous frame
 
-    const vec2 pointRnd = getRandomSample(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
+    const vec2 pointRnd = rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
 
 #if LIGHT_SAMPLE_METHOD == 0
   
-    float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x;
+    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(0));
     uint lt = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
     uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
     float oneOverPdf = lt;
@@ -628,7 +628,7 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 
     #define MAX_SUBSET_LEN 8
     // random in [0,1)
-    float rnd = getRandomSample(seed, RANDOM_SALT_LIGHT_CHOOSE(0)).x * 0.99;
+    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(0)) * 0.99;
 
     const uint lightListBegin = sectorToLightListRegion_StartEnd[surf.sectorArrayIndex * 2 + 0];
     const uint lightListEnd   = sectorToLightListRegion_StartEnd[surf.sectorArrayIndex * 2 + 1];
