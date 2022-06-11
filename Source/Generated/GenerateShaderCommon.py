@@ -740,7 +740,7 @@ FRAMEBUFFERS = {
     "DepthDlss"                         : (TYPE_FLOAT32,    COMPONENT_R,    0),
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),
 
-    "AccumHistoryLength"                : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
+    "AccumHistoryLength"                : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     
     "DiffAccumColor"                    : (TYPE_PACK_E5,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAccumMoments"                  : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),

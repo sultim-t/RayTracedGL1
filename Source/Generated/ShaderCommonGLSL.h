@@ -450,8 +450,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 31, r11f_g11f_b10f) uniform image2
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 32, r11f_g11f_b10f) uniform image2D framebufUpscaledHistory_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 33, r32f) uniform image2D framebufDepthDlss;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 34, rg16f) uniform image2D framebufMotionDlss;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 35, r11f_g11f_b10f) uniform image2D framebufAccumHistoryLength;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 36, r11f_g11f_b10f) uniform image2D framebufAccumHistoryLength_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 35, rgba16f) uniform image2D framebufAccumHistoryLength;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 36, rgba16f) uniform image2D framebufAccumHistoryLength_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 37, r32ui) uniform uimage2D framebufDiffAccumColor;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 38, r32ui) uniform uimage2D framebufDiffAccumColor_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 39, rg16f) uniform image2D framebufDiffAccumMoments;

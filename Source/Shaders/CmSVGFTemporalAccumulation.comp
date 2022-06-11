@@ -54,8 +54,6 @@
 
 layout(local_size_x = COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X, local_size_z = 1) in;
 
-#define ENABLE_SPEC_REPROJECTION 1
-
 // Ray Tracing Gems II. Chapter 49: ReBLUR: A Hierarchical Recurrent Denoiser
 float getParallax(vec3 pos, vec3 posPrev)
 {
@@ -69,6 +67,7 @@ float getParallax(vec3 pos, vec3 posPrev)
 
     return parallax;
 }
+#define SPEC_MAX_HITDISTANCE_ACCUM_FRAMES 16
 #define SPEC_MAX_ACCUM_FRAMES 64
 #define SPEC_ACCUM_BASE_POWER 0.5   // [0.5, 1] greater values - less aggressive accumulation
 #define SPEC_ACCUM_CURVE      0.66  // [1 low, 0.5 high] aggressiveness of history rejection depending on viewing angle
@@ -105,6 +104,8 @@ void main()
     const vec3 unfilteredDiff   = texelFetchUnfilteredDirect(       pix);
     const SH unfilteredIndirSH  = texelFetchUnfilteredIndirectSH(   pix);
     const vec3 unfilteredSpec   = texelFetchUnfilteredSpecular(     pix);
+    // xyz - direction, w - hit distance
+    const vec4 unfilteredRayInfo= texelFetch(framebufViewDirection_Sampler, pix, 0);
 
     const ivec3 chRenderArea    = getCheckerboardedRenderArea(      pix);
     const float motionZ         = texelFetch(framebufMotion_Sampler,pix, 0).z;
@@ -130,8 +131,8 @@ void main()
     };
 
 
-    // history length for direct, indirect, specular
-    vec3 historyLengthDIS = vec3(0.0);
+    // history length for direct, indirect, specular, hit distance for specular
+    vec4 historyLengthDIS = vec4(0.0);
     vec3 diffPrev = vec3(0.0);
     vec2 momentsPrev = vec2(0.0);
     vec3 specPrevOnSurf = vec3(0.0);
@@ -160,7 +161,7 @@ void main()
 
                     diffPrev            += weight * texelFetch(framebufDiffColorHistory_Sampler,        xy, 0).rgb;
                     momentsPrev         += weight * texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg;    
-                    historyLengthDIS    += weight * texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0).rgb;
+                    historyLengthDIS    += weight * texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0);
                     specPrevOnSurf      += weight * texelFetchSpecAccumColor_Prev(xy);
                     accumulateSH(indirPrev, texelFetchIndirAccumSH_Prev(xy), weight);
 
@@ -189,40 +190,34 @@ void main()
 
     vec3 specColorAccum;
     float specHistoryLengthAccum;
+    float specHitDistanceAccum;
 
     // found consistent info
     if (weightSum > 0.0001)
     {
         specPrevOnSurf /= weightSum;
-        float specHistoryLength = historyLengthDIS[2] / weightSum;
+        const float specHistoryLength   = historyLengthDIS[2] / weightSum;
+        const float specHitDistancePrev = historyLengthDIS[3] / weightSum;
 
         const vec3 surfPos = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
         const vec3 surfPosPrev = texelFetch(framebufSurfacePosition_Prev_Sampler, pixPrev, 0).xyz;
+        float nv = max(0, dot(normal, -unfilteredRayInfo.xyz));
 
-        vec3 virtualPos = surfPos;
-        float nv;
-        {
-            vec4 rayInfo = texelFetch(framebufViewDirection_Sampler, pix, 0);
-            nv = max(0, dot(normal, -rayInfo.xyz));
+        const float A = clamp(specHistoryLength, 1.0, 256.0);
 
-            // rayInfo.a is a ray length, and should be filtered too
-            float rayLength = rayInfo.a * getSpecularDominantFactor(nv, roughness);
-            virtualPos += rayInfo.xyz * rayLength;
-        }
+        const float parallax = getParallax(surfPos, surfPosPrev);
+        float AOnSurf = getSpecAccumSpeed(A, roughness, nv, parallax);
 
-        const float A = SPEC_MAX_ACCUM_FRAMES;
-
-        float parallax = getParallax(surfPos, surfPosPrev);
-        float Asurf = getSpecAccumSpeed(A, roughness, nv, parallax);
-
-        const vec3 specOnSurf = mix(specPrevOnSurf, unfilteredSpec, 1.0 / (1.0 + Asurf));
+        const vec3 specOnSurf = mix(specPrevOnSurf, unfilteredSpec, 1.0 / (1.0 + AOnSurf));
+        const float hitDistOnSurf = mix(specHitDistancePrev, unfilteredRayInfo.w, 1.0 / (1.0 + AOnSurf));
 
         specColorAccum = specOnSurf;
-        specHistoryLengthAccum = Asurf;
+        specHistoryLengthAccum = AOnSurf;
+        specHitDistanceAccum = hitDistOnSurf;
+        const vec3 virtualPos = surfPos + unfilteredRayInfo.xyz * hitDistOnSurf * getSpecularDominantFactor(nv, roughness);
 
         // specular
         {
-#if ENABLE_SPEC_REPROJECTION
             ivec2 pixPrev_Spec;
             vec2 subPix_Spec;
             {
@@ -285,20 +280,21 @@ void main()
                 #define MIP_NUM 3
                 float Amin = min(Avirt, MIP_NUM * sqrt(roughness));
                 float a = mix(1.0 / (1.0 + Amin), 1.0 / (1.0 + Avirt), confidence);
+
                 Avirt = 1.0 / a - 1.0;
+                float Ahitdist = min(Avirt, SPEC_MAX_HITDISTANCE_ACCUM_FRAMES);
 
                 vec3 specVirt = mix(specPrevOnSurf, unfilteredSpec, 1.0 / (1.0 + Avirt));
+                specHitDistanceAccum = mix(specHitDistancePrev, unfilteredRayInfo.w, 1.0 / (1.0 + Ahitdist));
 
                 {
                     float amount = getSpecularDominantFactor(nv, roughness);
                     specColorAccum = mix(specOnSurf, specVirt, amount);
 
-                    a = mix( 1/(1 + Asurf), 1/(1 + Avirt), amount );
+                    a = mix(1.0 / (1.0 + AOnSurf), 1.0 / (1.0 + Avirt), amount);
                     specHistoryLengthAccum = 1.0 / a - 1.0;
                 }
             }
-
-#endif // ENABLE_SPEC_REPROJECTION
 
             /*specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
             specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, mix(8.0, 64.0, roughness));
@@ -316,6 +312,7 @@ void main()
     {
         specColorAccum = unfilteredSpec;
         specHistoryLengthAccum = 1.0;
+        specHitDistanceAccum = unfilteredRayInfo.w;
     }
 
 
@@ -381,7 +378,7 @@ void main()
 
     imageStoreDiffAccumColor(               pix, diffColorAccum);
     imageStore(framebufDiffAccumMoments,    pix, vec4(diffMomentsAccum, 0.0, 0.0));
-    imageStore(framebufAccumHistoryLength,  pix, vec4(diffHistoryLengthAccum, indirHistoryLengthAccum, specHistoryLengthAccum, 0.0));
+    imageStore(framebufAccumHistoryLength,  pix, vec4(diffHistoryLengthAccum, indirHistoryLengthAccum, specHistoryLengthAccum, specHitDistanceAccum));
 
     imageStoreSpecAccumColor(               pix, specColorAccum);
     imageStoreSpecPingColor(                pix, specColorAccum);
