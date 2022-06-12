@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Sultim Tsyrendashiev
+// Copyright (c) 2021-2022 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -23,11 +23,19 @@
 
 // "Gradient Estimation for Real-Time Adaptive Temporal Filtering", C.Schied et al.
 
-#define DESC_SET_FRAMEBUFFERS 0
-#define DESC_SET_GLOBAL_UNIFORM 1
-#include "ShaderCommonGLSLFunc.h"
+// Don't need albedo as gradients are calculated on demodulated direct illumination
+#define MATERIAL_MAX_ALBEDO_LAYERS 0
 
-layout(local_size_x = COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X, local_size_y = COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X, local_size_z = 1) in;
+#define DESC_SET_TLAS 0
+#define DESC_SET_FRAMEBUFFERS 1
+#define DESC_SET_GLOBAL_UNIFORM 2
+#define DESC_SET_VERTEX_DATA 3
+#define DESC_SET_TEXTURES 4
+#define DESC_SET_RANDOM 5
+#define DESC_SET_LIGHT_SOURCES 6
+#define RAYGEN_SHADOW_PAYLOAD
+#define RAYGEN_COMMON_GRADIENTS
+#include "RaygenCommon.h"
 
 
 #if GRADIENT_ESTIMATION_ENABLED
@@ -35,35 +43,73 @@ layout(local_size_x = COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X, local_size_y = COMP
 
 void main()
 {
-    const ivec2 gradPix = ivec2(gl_GlobalInvocationID);
+    const ivec2 gradPix = ivec2(gl_LaunchIDEXT.xy);
     const ivec2 screenSize = ivec2(globalUniform.renderWidth, globalUniform.renderHeight);
 
     if (gradPix.x * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.x || gradPix.y * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.y)
     {
         return;
+    } 
+    
+    // (a) instead of choosing random sample in strata, choose the brightest
+    ivec2 prevShadingPix = ivec2(0);
+    ivec2 curShadingPix = ivec2(0);
+    vec2 prevLuminance = vec2(0);
+    for (int yy = 0; yy < COMPUTE_ASVGF_STRATA_SIZE; yy++)
+    {
+        for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
+        {
+            // TODO: do not use same pos in strata for more than 1 frame, otherwise stale 
+            /*if (prevStrataPos.x == xx && prevStrataPos.y == yy)
+            {
+                continue;
+            }*/
+
+            // done this way, so there are no duplicates in a strata (b)
+            const ivec2 iter_curPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
+            const ivec2 iter_prevPix = ivec2(floor(getPrevScreenPos(framebufMotion_Sampler, iter_curPix)));
+
+            const vec2 iter_prevLuminance = imageLoad(framebufGradientInputs, iter_prevPix).xy;
+
+            if (max(iter_prevLuminance.x, iter_prevLuminance.y) > max(prevLuminance.x, prevLuminance.y))
+            {
+                // (b) prevShadingPix is a forward-projected pixel of curShadingPix
+                prevShadingPix = iter_prevPix;
+                curShadingPix = iter_curPix;
+                // (e) luminance of a shading sample from previous frame
+                prevLuminance = iter_prevLuminance;
+            }
+        }
     }
 
-    // surface samples were shaded, prepare gradient samples
-    const uvec4 grFB = texelFetch(framebufGradientSamples_Sampler, gradPix, 0);
-    const bool hasSample = grFB.x != UINT32_MAX;
-
-    if (!hasSample)
+    if (!testPixInRenderArea(prevShadingPix, getCheckerboardedRenderArea(curShadingPix)) || 
+        isSky(texelFetchAlbedo(curShadingPix)))
     {
         imageStore(framebufDISPingGradient, gradPix, vec4(0.0));
         return;
     }
 
-    // (e) get luminance of shading sample from previous frame
-    const float prevShadingSampleLuminance = uintBitsToFloat(grFB.y);
-    const float prevShadingSampleLuminanceSpec = uintBitsToFloat(grFB.z);
-    const float prevShadingSampleLuminanceIndir = uintBitsToFloat(grFB.w);
-
     // (f) get shading sample from current frame
-    const ivec2 posInStrata = ivec2(grFB.x % COMPUTE_ASVGF_STRATA_SIZE, grFB.x / COMPUTE_ASVGF_STRATA_SIZE);
-    const ivec2 shadingSamplePix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + posInStrata;
+    const uint oldSeed = texelFetch(framebufRandomSeed_Prev_Sampler, prevShadingPix, 0).r;
+
+    Surface prevSurf = fetchGbufferSurface_NoAlbedoViewDir_Prev(prevShadingPix);
+
+    // get exact position from visibility buffer, and fix up prevSurf
+    // to account subpix imprecision of G-buffer's surfacePosition
+    const vec4 visBufPrev = texelFetch(framebufVisibilityBuffer_Prev_Sampler, prevShadingPix, 0);
+    const bool matchedSurface = unpackPrevVisibilityBuffer(visBufPrev, prevSurf.position);
+    prevSurf.toViewerDir = normalize(globalUniform.cameraPositionPrev.xyz - prevSurf.position);
+
+    if (matchedSurface)
+    {
+        //processDirectIllumination(oldSeed, prevSurf, 0,  )
+
+    }
+
 
     vec3 gradDIS = vec3(0.0);
 
+    /*
     {
         const vec3 color = texelFetchUnfilteredDirect(shadingSamplePix);
         const float shadingSampleLuminance = getLuminance(color);
@@ -91,6 +137,7 @@ void main()
 
         gradDIS[2] = getAntilagAlpha(gradSample, normFactor);
     }
+    
 
     // smooth temporally, to make antilag less aggressive over a small period of time
     {
@@ -99,7 +146,7 @@ void main()
 
         const vec3 gradDISPrev = imageLoad(framebufDISGradientHistory, gradPixPrev).xyz;
         gradDIS = mix(gradDIS, gradDISPrev, 0.5);
-    }
+    }*/
 
     imageStore(framebufDISPingGradient, gradPix, vec4(gradDIS, 0.0));
 }

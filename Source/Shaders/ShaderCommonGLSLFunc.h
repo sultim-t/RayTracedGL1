@@ -553,20 +553,6 @@ bool isSky(const vec4 albedo)
     return albedo.a < 0.0;
 }
 
-
-bool fetchAndCheckIsGradient(const ivec2 pix)
-{
-#if GRADIENT_ESTIMATION_ENABLED
-    const uint grFB = texelFetch(framebufGradientSamples_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).x;
-
-    return 
-        (pix.x % COMPUTE_ASVGF_STRATA_SIZE) == (grFB % COMPUTE_ASVGF_STRATA_SIZE) &&
-        (pix.y % COMPUTE_ASVGF_STRATA_SIZE) == (grFB / COMPUTE_ASVGF_STRATA_SIZE);
-#else
-    return       = false;
-#endif
-}
-
 #endif // DESC_SET_FRAMEBUFFERS
 
 

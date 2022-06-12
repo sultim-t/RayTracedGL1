@@ -67,6 +67,31 @@ Surface fetchGbufferSurface(const ivec2 pix)
     s.toViewerDir               = -texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
     return s;
 }
+
+Surface fetchGbufferSurface_NoAlbedoViewDir_Prev(const ivec2 pix)
+{
+    Surface s;
+    {
+        s.albedo = vec3(1.0);
+        s.emission = 0.0;
+        s.isSky = false;
+    }
+    {
+        vec4 posEnc             = texelFetch(framebufSurfacePosition_Prev_Sampler, pix, 0);
+        s.position              = posEnc.xyz;
+        s.instCustomIndex       = floatBitsToUint(posEnc.a);
+    }
+    {
+        vec2 metallicRoughness  = texelFetch(framebufMetallicRoughness_Prev_Sampler, pix, 0).xy;
+        s.specularColor         = getSpecularColor(s.albedo, metallicRoughness[0]);
+        s.roughness             = metallicRoughness[1];
+    }
+    s.normalGeom                = texelFetchNormalGeometry_Prev(pix);
+    s.normal                    = texelFetchNormal_Prev(pix);
+    s.sectorArrayIndex          = texelFetch(framebufSectorIndex_Prev_Sampler, pix, 0).r;
+    s.toViewerDir               = vec3(0.0);
+    return s;
+}
 #endif // IMAGE_ALBEDO_AVAILABLE
        
 Surface hitInfoToSurface_Indirect(const ShHitInfo h, const vec3 rayDirection)

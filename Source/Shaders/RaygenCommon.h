@@ -364,6 +364,22 @@ void shade(const Surface surf, const LightSample light, out vec3 diffuse, out ve
 #endif
 }
 
+void shade(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, out vec3 diffuse, out vec3 specular)
+{
+    if (reservoir.selected == UINT32_MAX || reservoir.selected == LIGHT_INDEX_NONE ||
+        reservoir.W <= 0.0 || isnan(reservoir.W) || isinf(reservoir.W))
+    {
+        diffuse = specular = vec3(0.0);
+        return;
+    }
+
+    const LightSample l = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
+    shade(surf, l, diffuse, specular);
+
+    diffuse  *= reservoir.W;
+    specular *= reservoir.W;
+}
+
 float targetPdfForLightSample(const LightSample light, const Surface surf)
 {
     vec3 d, s;
@@ -459,13 +475,9 @@ Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 
 }
 
 // TODO: remove from here
-bool chooseLight(
-    uint seed, const Surface surf, const vec2 pointRnd, 
-    out uint selectedLightIndex, out float oneOverPdf)
+Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2 pointRnd)
 {
-    // TODO: remove from here! for now, assume that processLight is called once per each pixel
-    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy); // so pix is checkerboarded
-    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepth_Sampler, pix, 0).r;
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
@@ -559,20 +571,15 @@ bool chooseLight(
 
     if (combined.weightSum <= 0.0 || combined.selected == UINT32_MAX)
     {
-        imageStoreReservoir(emptyReservoir(), pix);
-        return false;
+        return emptyReservoir();
     }
     calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
-    imageStoreReservoir(combined, pix);
 
-    selectedLightIndex = combined.selected;
-    oneOverPdf = combined.W;
-
-    return oneOverPdf > 0.0 && !isnan(oneOverPdf) && !isinf(oneOverPdf);
+    return combined;
 }
 
 
-void processLight(uint seed, const Surface surf, bool isGradientSample, int bounceIndex, inout LightResult out_result)
+void processLight(uint seed, const Surface surf, int bounceIndex, inout LightResult out_result)
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
 
@@ -590,10 +597,16 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 #if LIGHT_SAMPLE_METHOD == 0
   
     float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(0));
-    uint lt = isGradientSample ? globalUniform.lightCountPrev : globalUniform.lightCount;
+    uint lt = globalUniform.lightCount;
     lt += globalUniform.directionalLightExists != 0 ? 1 : 0;
     uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
     float oneOverPdf = lt;
+
+    LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
+    shade(surf, light, out_result.diffuse, out_result.specular);
+
+    out_result.diffuse  *= oneOverPdf;
+    out_result.specular *= oneOverPdf;
 
 #elif LIGHT_SAMPLE_METHOD == 1
 
@@ -658,47 +671,27 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
     float oneOverPdf = (weightsTotal * S) / selected_mass;
     uint selectedLightIndex = plainLightList[selected_plainLightListIndex];
 
-#elif LIGHT_SAMPLE_METHOD == 2
-
-    uint selectedLightIndex;
-    float oneOverPdf;
-    if (!chooseLight(
-        seed, surf, pointRnd,
-        selectedLightIndex, oneOverPdf))
-    {
-        return;
-    }
-#endif
-
-    ShLightEncoded encLight;
-
-    if (!isGradientSample)
-    {
-        encLight = lightSources[selectedLightIndex];
-    }
-    else
-    {
-#if LIGHT_SAMPLE_METHOD != 0
-        uint selectedIndexInPrevBuffer = lightSources_Index_CurToPrev[selectedLightIndex];
-#else
-        uint selectedIndexInPrevBuffer = selectedLightIndex;
-#endif
-
-        // if light disappeared
-        if (selectedIndexInPrevBuffer == UINT32_MAX)
-        {
-            return;
-        }
-
-        encLight = lightSources_Prev[selectedIndexInPrevBuffer];
-    }
-
-    LightSample light = sampleLight(encLight, surf.position, pointRnd);
-
+    LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
     shade(surf, light, out_result.diffuse, out_result.specular);
 
     out_result.diffuse  *= oneOverPdf;
     out_result.specular *= oneOverPdf;
+
+#elif LIGHT_SAMPLE_METHOD == 2
+
+    // TODO: remove from here! for now, assume that processLight is called once per each pixel
+    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+
+    Reservoir reservoir = chooseLight(pix, seed, surf, pointRnd);
+    shade(surf, reservoir, pointRnd, out_result.diffuse, out_result.specular);
+
+    imageStoreReservoir(reservoir, pix);
+
+
+    // TODO: remove, exists for compatibility
+    const uint selectedLightIndex = reservoir.selected;
+    const LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
+#endif
 
 #ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
     out_result.diffuse  = min(out_result.diffuse,  vec3(globalUniform.firefliesClamp));
@@ -716,41 +709,37 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
 }
 
 
-void processDirectIllumination(uint seed, const Surface surf, bool isGradientSample, int bounceIndex,
+void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
     out float outDistance,
 #endif
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     outDiffuse = outSpecular = vec3(0.0);
-
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
     outDistance = MAX_RAY_LENGTH;
-    #define APPEND_DIST(x) outDistance = min(outDistance, length(x)) 
-#else
-    #define APPEND_DIST(x)
 #endif
 
     LightResult r = newLightResult();
-
     processLight(
         seed,
         surf,
-        isGradientSample,
         bounceIndex, /* TODO: remove 'castShadowRay'? */
         r);
 
     bool isShadowed = false;
-
     if (r.shadowRayEnable)
     {
         const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
         isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);
-        APPEND_DIST(shadowRayStart - r.shadowRayEnd);
+
+#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
+        outDistance = length(shadowRayStart - r.shadowRayEnd); 
+#endif
     }
 
-    outDiffuse += r.diffuse * float(!isShadowed);
-    outSpecular += r.specular * float(!isShadowed);
+    outDiffuse  = r.diffuse  * float(!isShadowed);
+    outSpecular = r.specular * float(!isShadowed);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
 

@@ -53,12 +53,12 @@ void main()
     processDirectIllumination(
         seed, 
         surf,
-        fetchAndCheckIsGradient(pix), 
         0,
         distToLight,
         diffuse, specular);
 
     imageStoreUnfilteredDirect(pix, diffuse);
-    imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, distToLight));
     imageStoreUnfilteredSpecular(pix, specular);
+    imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, distToLight));
+    imageStore(framebufGradientInputs, pix, vec4(getLuminance(diffuse), getLuminance(specular), 0, 0));
 }
