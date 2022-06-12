@@ -45,6 +45,8 @@ void main()
     {
         imageStore(framebufUnfilteredDirect, pix, uvec4(0));
         imageStore(framebufUnfilteredSpecular, pix, uvec4(0));
+        imageStore(framebufGradientInputs, pix, vec4(0.0));
+        imageStoreReservoir(emptyReservoir(), pix);
         return;
     }
 

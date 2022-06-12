@@ -43,6 +43,13 @@ Reservoir emptyReservoir()
     return r;
 }
 
+bool isReservoirValid(const Reservoir r)
+{
+    return 
+        r.selected != UINT32_MAX && r.selected != LIGHT_INDEX_NONE &&
+        r.W > 0.0 && !isnan(r.W) && !isinf(r.W);
+}
+
 void calcReservoirW(inout Reservoir r, float targetPdf_selected)
 {
     if (targetPdf_selected > 0.00001 && r.M > 0)

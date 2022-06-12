@@ -346,7 +346,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 
 
 
-void shade(const Surface surf, const LightSample light, out vec3 diffuse, out vec3 specular)
+void shade(const Surface surf, const LightSample light, float oneOverPdf, out vec3 diffuse, out vec3 specular)
 {
     vec3 l = safeNormalize(light.position - surf.position);
     float nl = dot(surf.normal, l);
@@ -362,28 +362,27 @@ void shade(const Surface surf, const LightSample light, out vec3 diffuse, out ve
 #ifndef RAYGEN_COMMON_ONLY_DIFFUSE
     specular = light.dw * nl * light.color * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
 #endif
+
+    diffuse  *= oneOverPdf;
+    specular *= oneOverPdf;
 }
 
 void shade(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, out vec3 diffuse, out vec3 specular)
 {
-    if (reservoir.selected == UINT32_MAX || reservoir.selected == LIGHT_INDEX_NONE ||
-        reservoir.W <= 0.0 || isnan(reservoir.W) || isinf(reservoir.W))
+    if (!isReservoirValid(reservoir))
     {
         diffuse = specular = vec3(0.0);
         return;
     }
 
     const LightSample l = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
-    shade(surf, l, diffuse, specular);
-
-    diffuse  *= reservoir.W;
-    specular *= reservoir.W;
+    shade(surf, l, reservoir.W, diffuse, specular);
 }
 
 float targetPdfForLightSample(const LightSample light, const Surface surf)
 {
     vec3 d, s;
-    shade(surf, light, d, s);
+    shade(surf, light, 1.0, d, s);
 
     return getLuminance(d + s);
 }
@@ -579,7 +578,11 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 }
 
 
-void processLight(uint seed, const Surface surf, int bounceIndex, inout LightResult out_result)
+void processLight(uint seed, const Surface surf, int bounceIndex, inout LightResult out_result
+#ifdef RAYGEN_COMMON_GRADIENTS
+    , const Reservoir reservoir
+#endif
+)
 {
     bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
 
@@ -603,10 +606,7 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
     float oneOverPdf = lt;
 
     LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
-    shade(surf, light, out_result.diffuse, out_result.specular);
-
-    out_result.diffuse  *= oneOverPdf;
-    out_result.specular *= oneOverPdf;
+    shade(surf, light, oneOverPdf, out_result.diffuse, out_result.specular);
 
 #elif LIGHT_SAMPLE_METHOD == 1
 
@@ -672,25 +672,28 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
     uint selectedLightIndex = plainLightList[selected_plainLightListIndex];
 
     LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
-    shade(surf, light, out_result.diffuse, out_result.specular);
-
-    out_result.diffuse  *= oneOverPdf;
-    out_result.specular *= oneOverPdf;
+    shade(surf, light, oneOverPdf, out_result.diffuse, out_result.specular);
 
 #elif LIGHT_SAMPLE_METHOD == 2
 
+#if !defined(RAYGEN_COMMON_GRADIENTS)
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
     Reservoir reservoir = chooseLight(pix, seed, surf, pointRnd);
-    shade(surf, reservoir, pointRnd, out_result.diffuse, out_result.specular);
-
     imageStoreReservoir(reservoir, pix);
+#endif
+
+    shade(surf, reservoir, pointRnd, out_result.diffuse, out_result.specular);
 
 
     // TODO: remove, exists for compatibility
-    const uint selectedLightIndex = reservoir.selected;
-    const LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
+    uint selectedLightIndex; LightSample light;
+    if (isReservoirValid(reservoir))
+    {
+        selectedLightIndex = reservoir.selected;
+        light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
+    } 
 #endif
 
 #ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
@@ -713,6 +716,9 @@ void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
     out float outDistance,
 #endif
+#ifdef RAYGEN_COMMON_GRADIENTS
+    const Reservoir reservoir,
+#endif
     out vec3 outDiffuse, out vec3 outSpecular)
 {
     outDiffuse = outSpecular = vec3(0.0);
@@ -725,7 +731,11 @@ void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
         seed,
         surf,
         bounceIndex, /* TODO: remove 'castShadowRay'? */
-        r);
+        r
+#ifdef RAYGEN_COMMON_GRADIENTS
+        , reservoir
+#endif
+    );
 
     bool isShadowed = false;
     if (r.shadowRayEnable)

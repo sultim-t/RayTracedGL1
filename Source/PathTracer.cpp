@@ -183,10 +183,11 @@ void PathTracer::CalculateGradientsSamples(
     typedef FramebufferImageIndex FI;
     FI fs[] =
     {
+        FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_GRADIENT_INPUTS,
-        FI::FB_IMAGE_INDEX_D_I_S_GRADIENT_HISTORY,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
         FI::FB_IMAGE_INDEX_RESERVOIRS,
+        FI::FB_IMAGE_INDEX_VISIBILITY_BUFFER,
     };
     framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 

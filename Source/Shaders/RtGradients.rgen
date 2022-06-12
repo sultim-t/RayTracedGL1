@@ -100,40 +100,47 @@ void main()
     const bool matchedSurface = unpackPrevVisibilityBuffer(visBufPrev, prevSurf.position);
     prevSurf.toViewerDir = normalize(globalUniform.cameraPositionPrev.xyz - prevSurf.position);
 
+    vec2 forwardProjectedLuminance = vec2(0.0);
+
     if (matchedSurface)
     {
-        //processDirectIllumination(oldSeed, prevSurf, 0,  )
+        Reservoir prevReservoir = imageLoadReservoir_Prev(prevShadingPix);
 
+        if (isReservoirValid(prevReservoir))
+        {
+            prevReservoir.selected = lightSources_Index_PrevToCur[prevReservoir.selected];
+
+            if (prevReservoir.selected != UINT32_MAX)
+            {
+                vec3 diffuse, specular;
+                processDirectIllumination(oldSeed, prevSurf, 0, prevReservoir, diffuse, specular);
+
+                forwardProjectedLuminance = vec2(getLuminance(diffuse), getLuminance(specular));
+            }
+        }
     }
 
 
     vec3 gradDIS = vec3(0.0);
 
-    /*
     {
-        const vec3 color = texelFetchUnfilteredDirect(shadingSamplePix);
-        const float shadingSampleLuminance = getLuminance(color);
-
-        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminance;
-        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminance);
+        const float gradSample = forwardProjectedLuminance.x - prevLuminance.x;
+        const float normFactor = max(forwardProjectedLuminance.x, prevLuminance.x);
 
         gradDIS[0] = getAntilagAlpha(gradSample, normFactor);
     }
     {
-        const vec3 color = getSHColor(texelFetchUnfilteredIndirectSH(shadingSamplePix));
-        const float shadingSampleLuminance = getLuminance(color);
+        /*
+        const float gradSample = ;
+        const float normFactor = ;
 
-        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceIndir;
-        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceIndir);
-
-        gradDIS[1] = getAntilagAlpha(gradSample * 0.1, normFactor);
+        gradDIS[1] = getAntilagAlpha(gradSample, normFactor);
+        */
+        gradDIS[1] = 0.0;
     }
     {
-        const vec3 color = texelFetchUnfilteredSpecular(shadingSamplePix);
-        const float shadingSampleLuminance = getLuminance(color);
-
-        const float gradSample = shadingSampleLuminance - prevShadingSampleLuminanceSpec;
-        const float normFactor = max(shadingSampleLuminance, prevShadingSampleLuminanceSpec);
+        const float gradSample = forwardProjectedLuminance.y - prevLuminance.y;
+        const float normFactor = max(forwardProjectedLuminance.y, prevLuminance.y);
 
         gradDIS[2] = getAntilagAlpha(gradSample, normFactor);
     }
@@ -141,12 +148,11 @@ void main()
 
     // smooth temporally, to make antilag less aggressive over a small period of time
     {
-        const ivec2 shadingSamplePixPrev = ivec2(floor(getPrevScreenPos(framebufMotion_Sampler, shadingSamplePix)));
-        const ivec2 gradPixPrev = shadingSamplePixPrev / COMPUTE_ASVGF_STRATA_SIZE;
+        const ivec2 gradPixPrev = prevShadingPix / COMPUTE_ASVGF_STRATA_SIZE;
 
         const vec3 gradDISPrev = imageLoad(framebufDISGradientHistory, gradPixPrev).xyz;
         gradDIS = mix(gradDIS, gradDISPrev, 0.5);
-    }*/
+    }
 
     imageStore(framebufDISPingGradient, gradPix, vec4(gradDIS, 0.0));
 }
