@@ -54,6 +54,7 @@
 #define SBT_INDEX_RAYGEN_REFL_REFR (1)
 #define SBT_INDEX_RAYGEN_DIRECT (2)
 #define SBT_INDEX_RAYGEN_INDIRECT (3)
+#define SBT_INDEX_RAYGEN_GRADIENTS (4)
 #define SBT_INDEX_MISS_DEFAULT (0)
 #define SBT_INDEX_MISS_SHADOW (1)
 #define SBT_INDEX_HITGROUP_FULLY_OPAQUE (0)
@@ -114,8 +115,6 @@
 #define VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE (1)
 #define VERT_PREPROC_MODE_ALL (2)
 #define GRADIENT_ESTIMATION_ENABLED (1)
-#define COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X (16)
-#define COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X (16)
 #define COMPUTE_GRADIENT_ATROUS_GROUP_SIZE_X (16)
 #define COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X (16)
 #define COMPUTE_SVGF_VARIANCE_GROUP_SIZE_X (16)
@@ -402,8 +401,8 @@ struct ShDecalInstance
 #define FB_IMAGE_INDEX_WIPE_EFFECT_SOURCE 67
 #define FB_IMAGE_INDEX_RESERVOIRS 68
 #define FB_IMAGE_INDEX_RESERVOIRS_PREV 69
-#define FB_IMAGE_INDEX_GRADIENT_SAMPLES 70
-#define FB_IMAGE_INDEX_GRADIENT_SAMPLES_PREV 71
+#define FB_IMAGE_INDEX_GRADIENT_INPUTS 70
+#define FB_IMAGE_INDEX_GRADIENT_INPUTS_PREV 71
 #define FB_IMAGE_INDEX_D_I_S_PING_GRADIENT 72
 #define FB_IMAGE_INDEX_D_I_S_PONG_GRADIENT 73
 #define FB_IMAGE_INDEX_D_I_S_GRADIENT_HISTORY 74
@@ -487,8 +486,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 66, r11f_g11f_b10f) uniform image2
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 67, r11f_g11f_b10f) uniform image2D framebufWipeEffectSource;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 68, rgba32ui) uniform uimage2D framebufReservoirs;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 69, rgba32ui) uniform uimage2D framebufReservoirs_Prev;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 70, rgba32ui) uniform uimage2D framebufGradientSamples;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 71, rgba32ui) uniform uimage2D framebufGradientSamples_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 70, rg16f) uniform image2D framebufGradientInputs;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 71, rg16f) uniform image2D framebufGradientInputs_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 72, rgba8) uniform image2D framebufDISPingGradient;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 73, rgba8) uniform image2D framebufDISPongGradient;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 74, rgba8) uniform image2D framebufDISGradientHistory;
@@ -572,8 +571,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 141) uniform sampler2D framebufBlo
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 142) uniform sampler2D framebufWipeEffectSource_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 143) uniform usampler2D framebufReservoirs_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 144) uniform usampler2D framebufReservoirs_Prev_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 145) uniform usampler2D framebufGradientSamples_Sampler;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 146) uniform usampler2D framebufGradientSamples_Prev_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 145) uniform sampler2D framebufGradientInputs_Sampler;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 146) uniform sampler2D framebufGradientInputs_Prev_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 147) uniform sampler2D framebufDISPingGradient_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 148) uniform sampler2D framebufDISPongGradient_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 149) uniform sampler2D framebufDISGradientHistory_Sampler;

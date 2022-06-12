@@ -65,6 +65,11 @@ public:
         uint32_t width, uint32_t height,
         const std::shared_ptr<Framebuffers> &framebuffers);
 
+    void CalculateGradientsSamples(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        uint32_t width, uint32_t height,
+        const std::shared_ptr<Framebuffers> &framebuffers);
+
     void TraceIndirectllumination(
         VkCommandBuffer cmd, uint32_t frameIndex,
         uint32_t width, uint32_t height,

@@ -821,13 +821,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             pathTracer->TraceReflectionRefractionRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
         }
 
-        // save and merge samples from previous illumination results
-        denoiser->MergeSamples(cmd, frameIndex, uniform, scene->GetASManager());
-
         // update the illumination
-        pathTracer->TraceDirectllumination(  cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+        pathTracer->TraceDirectllumination(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
         pathTracer->TraceIndirectllumination(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
 
+        pathTracer->CalculateGradientsSamples(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
         denoiser->Denoise(cmd, frameIndex, uniform);
 
         // tonemapping

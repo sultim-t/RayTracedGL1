@@ -44,11 +44,6 @@ public:
     Denoiser & operator=(const Denoiser &other) = delete;
     Denoiser & operator=(Denoiser &&other) noexcept = delete;
 
-    void MergeSamples(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const ASManager> &asManager);
-
     void Denoise(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
@@ -56,7 +51,6 @@ public:
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void CreateMergingPipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
@@ -67,10 +61,7 @@ private:
     std::shared_ptr<Framebuffers> framebuffers;
 
     VkPipelineLayout pipelineLayout;
-    VkPipelineLayout pipelineVerticesLayout;
-
-    VkPipeline merging;
-    VkPipeline gradientSamples;
+    
     VkPipeline gradientAtrous[4];
 
     VkPipeline temporalAccumulation;

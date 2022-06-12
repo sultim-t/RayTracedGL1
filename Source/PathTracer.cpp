@@ -159,9 +159,6 @@ void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex
         FI::FB_IMAGE_INDEX_RANDOM_SEED,
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
-#if GRADIENT_ESTIMATION_ENABLED
-        FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES,
-#endif
     };
     framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 
@@ -173,6 +170,38 @@ void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex
         cmd,
         &raygenEntry, &missEntry, &hitEntry, &callableEntry,
         width, height, 1);
+}
+
+void PathTracer::CalculateGradientsSamples(
+    VkCommandBuffer cmd, uint32_t frameIndex,
+    uint32_t width, uint32_t height,
+    const std::shared_ptr<Framebuffers> &framebuffers)
+{
+    CmdLabel label(cmd, "Gradient samples");
+
+
+    typedef FramebufferImageIndex FI;
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_GRADIENT_INPUTS,
+        FI::FB_IMAGE_INDEX_D_I_S_GRADIENT_HISTORY,
+        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+        FI::FB_IMAGE_INDEX_RESERVOIRS,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+
+
+    uint32_t gradWidth  = (width  + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
+    uint32_t gradHeight = (height + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
+
+
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
+    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_GRADIENTS, raygenEntry, missEntry, hitEntry, callableEntry);
+
+    svkCmdTraceRaysKHR(
+        cmd,
+        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+        gradWidth, gradHeight, 1);
 }
 
 void PathTracer::TraceIndirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, 

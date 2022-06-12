@@ -35,9 +35,6 @@ RTGL1::Denoiser::Denoiser(
     device(_device),
     framebuffers(std::move(_framebuffers)),
     pipelineLayout(VK_NULL_HANDLE),
-    pipelineVerticesLayout(VK_NULL_HANDLE),
-    merging(VK_NULL_HANDLE),
-    gradientSamples(VK_NULL_HANDLE),
     gradientAtrous{},
     temporalAccumulation(VK_NULL_HANDLE),
     varianceEstimation(VK_NULL_HANDLE),
@@ -47,83 +44,21 @@ RTGL1::Denoiser::Denoiser(
     static_assert(sizeof(gradientAtrous) / sizeof(VkPipeline) == COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT, "Wrong gradient atrous pipeline count");
 
 
-    std::vector<VkDescriptorSetLayout> setLayouts =
+    VkDescriptorSetLayout setLayouts[] =
     {
         framebuffers->GetDescSetLayout(),
         _uniform->GetDescSetLayout(),
     };
 
-    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
-
-    setLayouts.push_back(
-        _asManager->GetBuffersDescSetLayout()
-    );
-
-    CreateMergingPipelineLayout(setLayouts.data(), setLayouts.size());
-
+    CreatePipelineLayout(setLayouts, std::size(setLayouts));
     CreatePipelines(_shaderManager.get());
 }
 
 RTGL1::Denoiser::~Denoiser()
 {
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
-    vkDestroyPipelineLayout(device, pipelineVerticesLayout, nullptr);
 
     DestroyPipelines();
-}
-
-void RTGL1::Denoiser::MergeSamples(
-    VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<const GlobalUniform> &uniform,
-    const std::shared_ptr<const ASManager> &asManager)
-{
-    typedef FramebufferImageIndex FI;
-
-#if GRADIENT_ESTIMATION_ENABLED
- 
-    CmdLabel label(cmd, "Gradient Merging");
-
-
-    // bind desc sets
-    VkDescriptorSet sets[] =
-    {
-        framebuffers->GetDescSet(frameIndex),
-        uniform->GetDescSet(frameIndex),
-        asManager->GetBuffersDescSet(frameIndex)
-    };
-    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
-
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                    pipelineVerticesLayout,
-                    0, setCount, sets,
-                    0, nullptr);
-
-    uint32_t wgGradCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, COMPUTE_ASVGF_STRATA_SIZE);
-    uint32_t wgGradCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / COMPUTE_GRADIENT_MERGING_GROUP_SIZE_X, COMPUTE_ASVGF_STRATA_SIZE);
-
-    FI fs[] =
-    {
-        FI::FB_IMAGE_INDEX_MOTION,
-        FI::FB_IMAGE_INDEX_DEPTH,
-        FI::FB_IMAGE_INDEX_NORMAL,
-        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
-        FI::FB_IMAGE_INDEX_RANDOM_SEED,
-        FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT,
-        FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
-        FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R,
-        FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G,
-        FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B,
-        FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
-        FI::FB_IMAGE_INDEX_SURFACE_POSITION,
-        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
-        FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES
-    };
-    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
-
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, merging);
-    vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
-
-#endif // GRADIENT_ESTIMATION_ENABLED 
 }
 
 void RTGL1::Denoiser::Denoise(
@@ -146,31 +81,8 @@ void RTGL1::Denoiser::Denoise(
                         0, nullptr);
 
 
-#if GRADIENT_ESTIMATION_ENABLED
-    // gradient samples
-    {
-        uint32_t wgGradCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth / COMPUTE_ASVGF_STRATA_SIZE, COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
-        uint32_t wgGradCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight / COMPUTE_ASVGF_STRATA_SIZE, COMPUTE_GRADIENT_SAMPLES_GROUP_SIZE_X);
-
-        CmdLabel label(cmd, "Gradient Samples");
-
-        FI fs[] =
-        {
-            FI::FB_IMAGE_INDEX_GRADIENT_SAMPLES,
-            FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT,
-            FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B,
-        };
-        framebuffers->BarrierMultiple(cmd, frameIndex, fs);
-
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gradientSamples);
-        vkCmdDispatch(cmd, wgGradCountX, wgGradCountY, 1);
-    }
-    
+#if GRADIENT_ESTIMATION_ENABLED    
     // gradient atrous
-
     {
         CmdLabel label(cmd, "Gradient Atrous");
 
@@ -209,13 +121,21 @@ void RTGL1::Denoiser::Denoise(
         uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
 
         CmdLabel label(cmd, "SVGF Temporal accumulation");
-
+        
         FI fs[] =
         {
             FI::FB_IMAGE_INDEX_MOTION,
             FI::FB_IMAGE_INDEX_DEPTH,
             FI::FB_IMAGE_INDEX_NORMAL,
             FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+            FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
+            FI::FB_IMAGE_INDEX_SURFACE_POSITION,
+            FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+            FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT,
+            FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
+            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R,
+            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G,
+            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B,
             FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY,
 #if GRADIENT_ESTIMATION_ENABLED
             FI::FB_IMAGE_INDEX_D_I_S_PING_GRADIENT,
@@ -338,19 +258,6 @@ void RTGL1::Denoiser::OnShaderReload(const ShaderManager *shaderManager)
     CreatePipelines(shaderManager);
 }
 
-void RTGL1::Denoiser::CreateMergingPipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount)
-{
-    VkPipelineLayoutCreateInfo plLayoutInfo = {};
-    plLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    plLayoutInfo.setLayoutCount = setLayoutCount;
-    plLayoutInfo.pSetLayouts = pSetLayouts;
-
-    VkResult r = vkCreatePipelineLayout(device, &plLayoutInfo, nullptr, &pipelineVerticesLayout);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Denoiser with vertices pipeline layout");
-}
-
 void RTGL1::Denoiser::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, uint32_t setLayoutCount)
 {
     VkPipelineLayoutCreateInfo plLayoutInfo = {};
@@ -366,8 +273,6 @@ void RTGL1::Denoiser::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, ui
 
 void RTGL1::Denoiser::DestroyPipelines()
 {
-    vkDestroyPipeline(device, merging, nullptr);
-    vkDestroyPipeline(device, gradientSamples, nullptr);
     vkDestroyPipeline(device, temporalAccumulation, nullptr);
     vkDestroyPipeline(device, varianceEstimation, nullptr);
     
@@ -382,9 +287,7 @@ void RTGL1::Denoiser::DestroyPipelines()
         vkDestroyPipeline(device, p, nullptr);
         p = VK_NULL_HANDLE;
     }
-
-    merging = VK_NULL_HANDLE;
-    gradientSamples = VK_NULL_HANDLE;
+    
     temporalAccumulation = VK_NULL_HANDLE;
     varianceEstimation = VK_NULL_HANDLE;
 }
@@ -406,31 +309,6 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
     specInfo.dataSize = sizeof(uint32_t);
     specInfo.pData = &atrousIteration;
 
-    {  
-        VkComputePipelineCreateInfo plInfo = {};
-        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-        plInfo.layout = pipelineVerticesLayout;
-        plInfo.stage = shaderManager->GetStageInfo("CASVGFMerging");
-
-        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &merging);
-        VK_CHECKERROR(r);
-
-        SET_DEBUG_NAME(device, merging, VK_OBJECT_TYPE_PIPELINE, "ASVGF Merging pipeline");
-    }
-    
-    VkComputePipelineCreateInfo plInfo = {};
-    plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-    plInfo.layout = pipelineLayout;
-
-    {
-        plInfo.stage = shaderManager->GetStageInfo("CASVGFGradientSamples");
-
-        r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &gradientSamples);
-        VK_CHECKERROR(r);
-
-        SET_DEBUG_NAME(device, gradientSamples, VK_OBJECT_TYPE_PIPELINE, "ASVGF Create gradient samples pipeline");
-    }
-
     {
         const char *debugNames[COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT] = 
         {
@@ -440,10 +318,13 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
             "ASVGF Gradient atrous iteration #3 pipeline",
         };
 
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = pipelineLayout;
         plInfo.stage = shaderManager->GetStageInfo("CASVGFGradientAtrous");
         plInfo.stage.pSpecializationInfo = &specInfo;
 
-        for (uint32_t i = 0; i < COMPUTE_SVGF_ATROUS_ITERATION_COUNT; i++)
+        for (uint32_t i = 0; i < COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT; i++)
         {
             atrousIteration = i;
 
@@ -455,6 +336,9 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
     }
 
     {
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = pipelineLayout;
         plInfo.stage = shaderManager->GetStageInfo("CSVGFTemporalAccum");
 
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &temporalAccumulation);
@@ -464,6 +348,9 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
     }
 
     {
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = pipelineLayout;
         plInfo.stage = shaderManager->GetStageInfo("CSVGFVarianceEstim");
 
         r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &varianceEstimation);
@@ -482,6 +369,9 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
         };
 
         {
+            VkComputePipelineCreateInfo plInfo = {};
+            plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+            plInfo.layout = pipelineLayout;
             plInfo.stage = shaderManager->GetStageInfo("CSVGFAtrous_Iter0");
 
             r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &atrous[0]);
@@ -490,6 +380,9 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
             SET_DEBUG_NAME(device, atrous[0], VK_OBJECT_TYPE_PIPELINE, debugNames[0]);
         }
 
+        VkComputePipelineCreateInfo plInfo = {};
+        plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+        plInfo.layout = pipelineLayout;
         plInfo.stage = shaderManager->GetStageInfo("CSVGFAtrous");
         plInfo.stage.pSpecializationInfo = &specInfo;
 
