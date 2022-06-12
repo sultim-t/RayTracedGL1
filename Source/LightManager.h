@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include <optional>
+
 #include "RTGL1/RTGL1.h"
 #include "Common.h"
 #include "Containers.h"
@@ -49,6 +51,8 @@ public:
     uint32_t GetLightCount() const;
     uint32_t GetLightCountPrev() const;
     uint32_t DoesDirectionalLightExist() const;
+
+    uint32_t GetLightIndexIgnoreFPVShadows(uint32_t frameIndex, uint64_t *pLightUniqueId) const;
 
     void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info);
@@ -82,7 +86,7 @@ private:
     std::shared_ptr<AutoBuffer> prevToCurIndex;
     std::shared_ptr<AutoBuffer> curToPrevIndex;
 
-    rgl::unordered_map<UniqueLightID, LightArrayIndex> uniqueIDToPrevIndex[MAX_FRAMES_IN_FLIGHT];
+    rgl::unordered_map<UniqueLightID, LightArrayIndex> uniqueIDToArrayIndex[MAX_FRAMES_IN_FLIGHT];
 
     uint32_t regLightCount;
     uint32_t regLightCount_Prev;

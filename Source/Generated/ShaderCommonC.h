@@ -152,6 +152,7 @@ namespace RTGL1
 #define LIGHT_TYPE_SPOT (4)
 #define LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET (0)
 #define LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET (1)
+#define LIGHT_INDEX_NONE (32767)
 
 struct ShVertexBufferStatic
 {
@@ -247,6 +248,10 @@ struct ShGlobalUniform
     uint32_t lensFlareCullingInputCount;
     uint32_t applyViewProjToLensFlares;
     uint32_t areFramebufsInitedByRT;
+    uint32_t lightIndexIgnoreFPVShadows;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

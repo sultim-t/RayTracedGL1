@@ -226,7 +226,7 @@ void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameInd
     memset(prevToCurIndex->GetMapped(frameIndex), 0xFF, sizeof(uint32_t) * GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev));
     // no need to clear curToPrevIndex, as it'll be filled in the cur frame
 
-    uniqueIDToPrevIndex[frameIndex].clear();
+    uniqueIDToArrayIndex[frameIndex].clear();
 
     lightLists->PrepareForFrame();
 }
@@ -238,7 +238,7 @@ void RTGL1::LightManager::Reset()
         memset(prevToCurIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(GetLightArrayEnd(regLightCount, dirLightCount), GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev)));
         memset(curToPrevIndex->GetMapped(i), 0xFF, sizeof(uint32_t) * std::max(GetLightArrayEnd(regLightCount, dirLightCount), GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev)));
 
-        uniqueIDToPrevIndex[i].clear();
+        uniqueIDToArrayIndex[i].clear();
     }
 
     regLightCount_Prev = regLightCount = 0;
@@ -302,9 +302,9 @@ void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const
 
     FillMatchPrev(frameIndex, index, uniqueId);
     // must be unique
-    assert(uniqueIDToPrevIndex[frameIndex].find(uniqueId) == uniqueIDToPrevIndex[frameIndex].end());
+    assert(uniqueIDToArrayIndex[frameIndex].find(uniqueId) == uniqueIDToArrayIndex[frameIndex].end());
     // save index for the next frame
-    uniqueIDToPrevIndex[frameIndex][uniqueId] = index;
+    uniqueIDToArrayIndex[frameIndex][uniqueId] = index;
 
 
     if (encodedLight.lightType != LIGHT_TYPE_DIRECTIONAL)
@@ -396,7 +396,7 @@ VkDescriptorSet RTGL1::LightManager::GetDescSet(uint32_t frameIndex)
 void RTGL1::LightManager::FillMatchPrev(uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID)
 {
     uint32_t prevFrame = (curFrameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-    const rgl::unordered_map<UniqueLightID, LightArrayIndex> &uniqueToPrevIndex = uniqueIDToPrevIndex[prevFrame];
+    const rgl::unordered_map<UniqueLightID, LightArrayIndex> &uniqueToPrevIndex = uniqueIDToArrayIndex[prevFrame];
 
     auto found = uniqueToPrevIndex.find(uniqueID);
     if (found == uniqueToPrevIndex.end())
@@ -497,7 +497,7 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
         lightLists->GetPlainLightListDeviceLocalBuffer(),
         lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
     };
-    static_assert(std::size(BINDINGS) == std::size(buffers), "");
+    static_assert(std::size(BINDINGS) == std::size(buffers));
 
     std::array<VkDescriptorBufferInfo, std::size(BINDINGS)> bufs = {};
     std::array<VkWriteDescriptorSet, std::size(BINDINGS)> wrts = {};
@@ -542,4 +542,21 @@ uint32_t RTGL1::LightManager::DoesDirectionalLightExist() const
     return dirLightCount > 0 ? 1 : 0;
 }
 
-static_assert(RTGL1::MAX_FRAMES_IN_FLIGHT == 2, "");
+uint32_t RTGL1::LightManager::GetLightIndexIgnoreFPVShadows(uint32_t frameIndex, uint64_t *pLightUniqueId) const
+{
+    if (pLightUniqueId == nullptr)
+    {
+        return LIGHT_INDEX_NONE;
+    }
+    UniqueLightID uniqueId = { *pLightUniqueId };
+
+    const auto f = uniqueIDToArrayIndex[frameIndex].find(uniqueId);
+    if (f == uniqueIDToArrayIndex[frameIndex].end())
+    {
+        return LIGHT_INDEX_NONE;
+    }
+
+    return f->second.GetArrayIndex();
+}
+
+static_assert(RTGL1::MAX_FRAMES_IN_FLIGHT == 2);

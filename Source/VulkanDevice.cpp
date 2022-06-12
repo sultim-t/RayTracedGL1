@@ -561,12 +561,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->maxBounceShadowsLights              = drawInfo.pShadowParams->maxBounceShadows;
         gu->polyLightSpotlightFactor            = std::max(0.0f, drawInfo.pShadowParams->polygonalLightSpotlightFactor);
         gu->firefliesClamp                      = std::max(0.0f, drawInfo.pShadowParams->sphericalPolygonalLightsFirefliesClamp);
+        gu->lightIndexIgnoreFPVShadows          = scene->GetLightManager()->GetLightIndexIgnoreFPVShadows(currentFrameState.GetFrameIndex(), drawInfo.pShadowParams->lightUniqueIdIgnoreFirstPersonViewerShadows);
     }
     else
     {
         gu->maxBounceShadowsLights = 2;
         gu->polyLightSpotlightFactor = 2.0f;
         gu->firefliesClamp = 3.0f;
+        gu->lightIndexIgnoreFPVShadows = LIGHT_INDEX_NONE;
     }
 
     if (drawInfo.pBloomParams != nullptr)

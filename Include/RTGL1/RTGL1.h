@@ -955,6 +955,10 @@ typedef struct RgDrawFrameShadowParams
     // Clamp indirect diffuse with this value to prevent fireflies.
     // Default: 3.0
     float       sphericalPolygonalLightsFirefliesClamp;
+    // For which light first-person viewer shadows should be ignored.
+    // E.g. first-person flashlight.
+    // Null, if none.
+    uint64_t    *lightUniqueIdIgnoreFirstPersonViewerShadows;
 } RgDrawFrameShadowParams;
 
 typedef struct RgDrawFrameBloomParams

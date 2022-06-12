@@ -385,6 +385,8 @@ CONST = {
 
     "LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET"  : 0,
     "LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET"     : 1,
+
+    "LIGHT_INDEX_NONE"                     : ((1 << 15) - 1),
 }
 
 CONST_GLSL_ONLY = {
@@ -542,6 +544,11 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
     (TYPE_UINT32,       1,      "applyViewProjToLensFlares",        1),
     (TYPE_UINT32,       1,      "areFramebufsInitedByRT",           1),
+
+    (TYPE_UINT32,       1,      "lightIndexIgnoreFPVShadows",       1),
+    (TYPE_FLOAT32,      1,      "_pad1",                            1),
+    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),
     #(TYPE_FLOAT32,      1,      "_pad1",                            1),

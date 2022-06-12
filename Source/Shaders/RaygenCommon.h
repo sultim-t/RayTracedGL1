@@ -712,8 +712,7 @@ void processLight(uint seed, const Surface surf, bool isGradientSample, int boun
     
     out_result.shadowRayEnable = true;
     out_result.shadowRayEnd = light.position;
-    // TODO: ignore shadows from first-person viewer if requested (for example, player flaslight)
-    out_result.shadowRayIgnoreFirstPersonViewer = false;
+    out_result.shadowRayIgnoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == selectedLightIndex);
 }
 
 

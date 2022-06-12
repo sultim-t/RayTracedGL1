@@ -145,6 +145,7 @@
 #define LIGHT_TYPE_SPOT (4)
 #define LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET (0)
 #define LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET (1)
+#define LIGHT_INDEX_NONE (32767)
 
 #define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
 #define SURFACE_POSITION_INCORRECT (10000000.0)
@@ -243,6 +244,10 @@ struct ShGlobalUniform
     uint lensFlareCullingInputCount;
     uint applyViewProjToLensFlares;
     uint areFramebufsInitedByRT;
+    uint lightIndexIgnoreFPVShadows;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];
