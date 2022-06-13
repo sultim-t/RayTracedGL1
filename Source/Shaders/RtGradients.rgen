@@ -69,7 +69,7 @@ void main()
             const ivec2 iter_curPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
             const ivec2 iter_prevPix = ivec2(floor(getPrevScreenPos(framebufMotion_Sampler, iter_curPix)));
 
-            const vec2 iter_prevLuminance = imageLoad(framebufGradientInputs, iter_prevPix).xy;
+            const vec2 iter_prevLuminance = imageLoad(framebufGradientInputs_Prev, iter_prevPix).xy;
 
             if (max(iter_prevLuminance.x, iter_prevLuminance.y) > max(prevLuminance.x, prevLuminance.y))
             {
@@ -83,7 +83,8 @@ void main()
     }
 
     if (!testPixInRenderArea(prevShadingPix, getCheckerboardedRenderArea(curShadingPix)) || 
-        isSky(texelFetchAlbedo(curShadingPix)))
+        isSky(texelFetchAlbedo(curShadingPix)) ||
+        (prevLuminance.x <= 0.0 && prevLuminance.y <= 0.0))
     {
         imageStore(framebufDISPingGradient, gradPix, vec4(0.0));
         return;
