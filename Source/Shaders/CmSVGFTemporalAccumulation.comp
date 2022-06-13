@@ -68,6 +68,7 @@ float getParallax(vec3 pos, vec3 posPrev)
     return parallax;
 }
 #define SPEC_MAX_HITDISTANCE_ACCUM_FRAMES 16
+#define SPEC_MIN_ACCUM_FRAMES 0
 #define SPEC_MAX_ACCUM_FRAMES 64
 #define SPEC_ACCUM_BASE_POWER 0.5   // [0.5, 1] greater values - less aggressive accumulation
 #define SPEC_ACCUM_CURVE      0.66  // [1 low, 0.5 high] aggressiveness of history rejection depending on viewing angle
@@ -82,7 +83,7 @@ float getSpecAccumSpeed(float Amax, float roughness, float NoV, float parallax)
     f *= pow(saturate(roughness), SPEC_ACCUM_BASE_POWER * powerScale);
     float A = SPEC_MAX_ACCUM_FRAMES * f;
 
-    return min(A, Amax);
+    return clamp(A, SPEC_MIN_ACCUM_FRAMES, Amax);
 }
 float getSpecularDominantFactor(float nv, float roughness)
 {
@@ -203,7 +204,10 @@ void main()
         const vec3 surfPosPrev = texelFetch(framebufSurfacePosition_Prev_Sampler, pixPrev, 0).xyz;
         float nv = max(0, dot(normal, -unfilteredRayInfo.xyz));
 
-        const float A = clamp(specHistoryLength, 1.0, 256.0);
+        const float A = clamp(
+            specHistoryLength * pow(1.0 - antilagAlpha_Spec, 5), 
+            SPEC_MIN_ACCUM_FRAMES, 
+            SPEC_MAX_ACCUM_FRAMES);
 
         const float parallax = getParallax(surfPos, surfPosPrev);
         float AOnSurf = getSpecAccumSpeed(A, roughness, nv, parallax);
@@ -211,9 +215,11 @@ void main()
         const vec3 specOnSurf = mix(specPrevOnSurf, unfilteredSpec, 1.0 / (1.0 + AOnSurf));
         const float hitDistOnSurf = mix(specHitDistancePrev, unfilteredRayInfo.w, 1.0 / (1.0 + AOnSurf));
 
-        specColorAccum = specOnSurf;
-        specHistoryLengthAccum = AOnSurf;
-        specHitDistanceAccum = hitDistOnSurf;
+        {
+            specColorAccum = specOnSurf;
+            specHistoryLengthAccum = AOnSurf;
+            specHitDistanceAccum = hitDistOnSurf;
+        }
         const vec3 virtualPos = surfPos + unfilteredRayInfo.xyz * hitDistOnSurf * getSpecularDominantFactor(nv, roughness);
 
         // specular
@@ -285,27 +291,15 @@ void main()
                 float Ahitdist = min(Avirt, SPEC_MAX_HITDISTANCE_ACCUM_FRAMES);
 
                 vec3 specVirt = mix(specPrevOnSurf, unfilteredSpec, 1.0 / (1.0 + Avirt));
-                specHitDistanceAccum = mix(specHitDistancePrev, unfilteredRayInfo.w, 1.0 / (1.0 + Ahitdist));
-
+                
+                float amount = getSpecularDominantFactor(nv, roughness);
+                a = mix(1.0 / (1.0 + AOnSurf), 1.0 / (1.0 + Avirt), amount);
                 {
-                    float amount = getSpecularDominantFactor(nv, roughness);
                     specColorAccum = mix(specOnSurf, specVirt, amount);
-
-                    a = mix(1.0 / (1.0 + AOnSurf), 1.0 / (1.0 + Avirt), amount);
                     specHistoryLengthAccum = 1.0 / a - 1.0;
+                    specHitDistanceAccum = mix(specHitDistancePrev, unfilteredRayInfo.w, 1.0 / (1.0 + Ahitdist));
                 }
             }
-
-            /*specHistoryLength *= pow(1.0 - antilagAlpha_Spec, 5);
-            specHistoryLength = clamp(specHistoryLength + 1.0, 1.0, mix(8.0, 64.0, roughness));
-
-            const float minAlpha = 0.01;
-            float alphaColor = max(minAlpha, 1.0 / specHistoryLength);
-
-            alphaColor = mix(alphaColor, 1.0, antilagAlpha_Spec);
-
-            specColorAccum = mix(specPrev, unfilteredSpec, alphaColor);
-            specHistoryLengthAccum = specHistoryLength;*/
         }
     }
     else
@@ -354,6 +348,8 @@ void main()
 
         // indirect diffuse
         {
+            antilagAlpha_Indir = 0.0;
+
             indirHistoryLength *= pow(1.0 - antilagAlpha_Indir, 10);
             indirHistoryLength = clamp(indirHistoryLength + 1.0, 1.0, 256.0);
 
