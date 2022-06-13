@@ -383,7 +383,7 @@ ShHitInfo getHitInfoBounce(
         const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
         h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom);
 
-        h.normal = mix(h.normalGeom, h.normal, globalUniform.normalMapStrength);
+        h.normal = safeNormalize(mix(h.normalGeom, h.normal, globalUniform.normalMapStrength));
     }
     else
     {
