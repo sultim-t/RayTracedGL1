@@ -32,16 +32,30 @@ namespace RTGL1
 class PathTracer
 {
 public:
+    struct TraceParams
+    {
+    private:
+        friend class PathTracer;
+
+        VkCommandBuffer cmd = VK_NULL_HANDLE;
+        uint32_t frameIndex = 0;
+        uint32_t width = 0;
+        uint32_t height = 0;
+        std::shared_ptr<Framebuffers> framebuffers;
+    };
+
+public:
     explicit PathTracer(VkDevice device, std::shared_ptr<RayTracingPipeline> rtPipeline);
-    ~PathTracer();
+    ~PathTracer() = default;
 
     PathTracer(const PathTracer& other) = delete;
     PathTracer(PathTracer&& other) noexcept = delete;
     PathTracer& operator=(const PathTracer& other) = delete;
     PathTracer& operator=(PathTracer&& other) noexcept = delete;
 
-    void Bind(
+    TraceParams Bind(
         VkCommandBuffer cmd, uint32_t frameIndex,
+        uint32_t width, uint32_t height,
         const std::shared_ptr<Scene> &scene,
         const std::shared_ptr<GlobalUniform> &uniform,
         const std::shared_ptr<TextureManager> &textureManager,
@@ -50,33 +64,20 @@ public:
         const std::shared_ptr<CubemapManager> &cubemapManager,
         const std::shared_ptr<RenderCubemap> &renderCubemap);
     
-    void TracePrimaryRays(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Framebuffers>& framebuffers);
-
-    void TraceReflectionRefractionRays(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Framebuffers> &framebuffers);
-
-    void TraceDirectllumination(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Framebuffers> &framebuffers);
-
-    void CalculateGradientsSamples(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Framebuffers> &framebuffers);
-
-    void TraceIndirectllumination(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Framebuffers> &framebuffers);
+    void TracePrimaryRays(const TraceParams &params);
+    void TraceReflectionRefractionRays(const TraceParams &params);
+    void CalculateInitialReservoirs(const TraceParams &params);
+    void TraceDirectllumination(const TraceParams &params);
+    void CalculateGradientsSamples(const TraceParams &params);
+    void TraceIndirectllumination(const TraceParams &params);
 
 private:
-    VkDevice device;
+    void TraceRays(
+        VkCommandBuffer cmd,
+        uint32_t sbtRayGenIndex,
+        uint32_t width, uint32_t height, uint32_t depth = 1);
+
+private:
     std::shared_ptr<RayTracingPipeline> rtPipeline;
 };
 

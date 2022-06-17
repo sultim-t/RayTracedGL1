@@ -88,15 +88,16 @@ RayTracingPipeline::RayTracingPipeline(
     // shader modules in the pipeline will have the exact order
     shaderStageInfos =
     {
-        { "RGenPrimary",    &primaryRaysMaxAlbedoLayers },
-        { "RGenReflRefr",   &primaryRaysMaxAlbedoLayers },
-        { "RGenDirect",     nullptr },
-        { "RGenIndirect",   &indirectIlluminationMaxAlbedoLayers },
-        { "RGenGradients",  nullptr },
-        { "RMiss",          nullptr },
-        { "RMissShadow",    nullptr },
-        { "RClsOpaque",     nullptr },
-        { "RAlphaTest",     nullptr },
+        { "RGenPrimary",            &primaryRaysMaxAlbedoLayers },
+        { "RGenReflRefr",           &primaryRaysMaxAlbedoLayers },
+        { "RGenDirect",             nullptr },
+        { "RGenIndirect",           &indirectIlluminationMaxAlbedoLayers },
+        { "RGenGradients",          nullptr },
+        { "RGenInitialReservoirs",  nullptr },
+        { "RMiss",                  nullptr },
+        { "RMissShadow",            nullptr },
+        { "RClsOpaque",             nullptr },
+        { "RAlphaTest",             nullptr },
     };
 
 #pragma region Utilities
@@ -124,6 +125,7 @@ RayTracingPipeline::RayTracingPipeline(
     AddRayGenGroup(toIndex("RGenDirect"));                          assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_DIRECT);
     AddRayGenGroup(toIndex("RGenIndirect"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT);
     AddRayGenGroup(toIndex("RGenGradients"));                       assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_GRADIENTS);
+    AddRayGenGroup(toIndex("RGenInitialReservoirs"));               assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS);
 
     AddMissGroup(toIndex("RMiss"));                                 assert(missShaderCount - 1 == SBT_INDEX_MISS_DEFAULT);
     AddMissGroup(toIndex("RMissShadow"));                           assert(missShaderCount - 1 == SBT_INDEX_MISS_SHADOW);
@@ -273,7 +275,8 @@ void RayTracingPipeline::GetEntries(
            sbtRayGenIndex == SBT_INDEX_RAYGEN_REFL_REFR ||
            sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT    ||
            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT  ||
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_GRADIENTS);
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_GRADIENTS ||
+           sbtRayGenIndex == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS);
 
     VkDeviceAddress bufferAddress = shaderBindingTable->GetDeviceAddress();
 

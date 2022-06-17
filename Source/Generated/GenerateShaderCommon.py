@@ -275,6 +275,7 @@ CONST = {
     "SBT_INDEX_RAYGEN_DIRECT"               : 2,
     "SBT_INDEX_RAYGEN_INDIRECT"             : 3,
     "SBT_INDEX_RAYGEN_GRADIENTS"            : 4,
+    "SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS"   : 5,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
     "SBT_INDEX_MISS_SHADOW"                 : 1,
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
@@ -385,7 +386,11 @@ CONST = {
     "LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET"  : 0,
     "LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET"     : 1,
 
-    "LIGHT_INDEX_NONE"                     : ((1 << 15) - 1),
+    "LIGHT_INDEX_NONE"                      : ((1 << 15) - 1),
+
+    "INITIAL_RESERVOIRS_WORLD_HORIZONTAL_X" : 20,
+    "INITIAL_RESERVOIRS_WORLD_HORIZONTAL_Z" : 20,
+    "INITIAL_RESERVOIRS_WORLD_VERTICAL_Y"   : 10,
 }
 
 CONST_GLSL_ONLY = {

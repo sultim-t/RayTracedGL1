@@ -806,26 +806,27 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         decalManager->SubmitForFrame(cmd, frameIndex);
 
-        pathTracer->Bind(
-            cmd, frameIndex, 
+        const auto params = pathTracer->Bind(
+            cmd, frameIndex,
+            renderResolution.Width(), renderResolution.Height(),
             scene, uniform, textureManager, 
             framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
 
-        pathTracer->TracePrimaryRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+        pathTracer->TracePrimaryRays(params);
 
         // draw decals on top of primary surface
         decalManager->Draw(cmd, frameIndex, uniform, framebuffers, textureManager);
 
         if (uniform->GetData()->reflectRefractMaxDepth > 0)
         {
-            pathTracer->TraceReflectionRefractionRays(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+            pathTracer->TraceReflectionRefractionRays(params);
         }
 
         // update the illumination
-        pathTracer->TraceDirectllumination(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
-        pathTracer->TraceIndirectllumination(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+        pathTracer->TraceDirectllumination(params);
+        pathTracer->TraceIndirectllumination(params);
 
-        pathTracer->CalculateGradientsSamples(cmd, frameIndex, renderResolution.Width(), renderResolution.Height(), framebuffers);
+        pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);
 
         // tonemapping

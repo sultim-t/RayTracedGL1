@@ -25,20 +25,18 @@
 using namespace RTGL1;
 
 PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rtPipeline)
-    : device(_device), rtPipeline(std::move(_rtPipeline))
+    : rtPipeline(std::move(_rtPipeline))
 {}
 
-PathTracer::~PathTracer()
-{}
-
-void PathTracer::Bind(
-    VkCommandBuffer cmd, uint32_t frameIndex, 
+PathTracer::TraceParams PathTracer::Bind(
+    VkCommandBuffer cmd, uint32_t frameIndex,
+    uint32_t width, uint32_t height,
     const std::shared_ptr<Scene> &scene, 
     const std::shared_ptr<GlobalUniform> &uniform,
-    const std::shared_ptr<TextureManager> &textureMgr,
+    const std::shared_ptr<TextureManager> &textureManager,
     const std::shared_ptr<Framebuffers> &framebuffers,
     const std::shared_ptr<BlueNoise> &blueNoise,
-    const std::shared_ptr<CubemapManager> &cubemapMgr,
+    const std::shared_ptr<CubemapManager> &cubemapManager,
     const std::shared_ptr<RenderCubemap> &renderCubemap)
 {
     rtPipeline->Bind(cmd);
@@ -53,13 +51,13 @@ void PathTracer::Bind(
         // vertex data
         scene->GetASManager()->GetBuffersDescSet(frameIndex),
         // textures
-        textureMgr->GetDescSet(frameIndex),
+        textureManager->GetDescSet(frameIndex),
         // uniform random
         blueNoise->GetDescSet(),
         // light sources
         scene->GetLightManager()->GetDescSet(frameIndex),
         // cubemaps
-        cubemapMgr->GetDescSet(frameIndex),
+        cubemapManager->GetDescSet(frameIndex),
         // dynamic cubemaps
         renderCubemap->GetDescSet()
     };
@@ -69,13 +67,31 @@ void PathTracer::Bind(
                             rtPipeline->GetLayout(),
                             0, setCount, sets,
                             0, nullptr);
+
+    TraceParams p = {};
+    p.cmd = cmd;
+    p.frameIndex = frameIndex;
+    p.width = width;
+    p.height = height;
+    p.framebuffers = framebuffers;
+
+    return p;
 }
 
-void PathTracer::TracePrimaryRays(VkCommandBuffer cmd, uint32_t frameIndex,
-                                  uint32_t width, uint32_t height,
-                                  const std::shared_ptr<Framebuffers>& framebuffers)
+void PathTracer::TraceRays(VkCommandBuffer cmd, uint32_t sbtRayGenIndex, uint32_t width, uint32_t height, uint32_t depth)
 {
-    CmdLabel label(cmd, "Primary rays");
+    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
+    rtPipeline->GetEntries(sbtRayGenIndex, raygenEntry, missEntry, hitEntry, callableEntry);
+
+    svkCmdTraceRaysKHR(
+        cmd,
+        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
+        width, height, depth);
+}
+
+void PathTracer::TracePrimaryRays(const TraceParams &params)
+{
+    CmdLabel label(params.cmd, "Primary rays");
 
     typedef FramebufferImageIndex FI;
     FI fs[] =
@@ -94,24 +110,15 @@ void PathTracer::TracePrimaryRays(VkCommandBuffer cmd, uint32_t frameIndex,
         FI::FB_IMAGE_INDEX_THROUGHPUT,
         FI::FB_IMAGE_INDEX_PRIMARY_TO_REFL_REFR,
     };
-    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
 
-    // primary
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_PRIMARY, raygenEntry, missEntry, hitEntry, callableEntry);
-
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        width, height, 1);
+    TraceRays(params.cmd, SBT_INDEX_RAYGEN_PRIMARY, params.width, params.height);
 }
 
-void PathTracer::TraceReflectionRefractionRays(VkCommandBuffer cmd, uint32_t frameIndex,
-                                               uint32_t width, uint32_t height,
-                                               const std::shared_ptr<Framebuffers> &framebuffers)
+void PathTracer::TraceReflectionRefractionRays(const TraceParams &params)
 {
-    CmdLabel label(cmd, "Reflection/refraction rays");
+    CmdLabel label(params.cmd, "Reflection/refraction rays");
 
     typedef FramebufferImageIndex FI;
     FI fs[] =
@@ -130,22 +137,15 @@ void PathTracer::TraceReflectionRefractionRays(VkCommandBuffer cmd, uint32_t fra
         FI::FB_IMAGE_INDEX_THROUGHPUT,
         FI::FB_IMAGE_INDEX_PRIMARY_TO_REFL_REFR,
     };
-    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_REFL_REFR, raygenEntry, missEntry, hitEntry, callableEntry);
 
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        width, height, 1);
+    TraceRays(params.cmd, SBT_INDEX_RAYGEN_REFL_REFR, params.width, params.height);
 }
 
-void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, 
-                                        uint32_t width, uint32_t height,
-                                        const std::shared_ptr<Framebuffers> &framebuffers)
+void PathTracer::CalculateInitialReservoirs(const TraceParams &params)
 {
-    CmdLabel label(cmd, "Direct illumination");
+    CmdLabel label(params.cmd, "Initial reservoirs");
 
 
     typedef FramebufferImageIndex FI;
@@ -160,24 +160,40 @@ void PathTracer::TraceDirectllumination(VkCommandBuffer cmd, uint32_t frameIndex
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
     };
-    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_DIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
-
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        width, height, 1);
+    TraceRays(
+        params.cmd, SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS,
+        INITIAL_RESERVOIRS_WORLD_HORIZONTAL_X, INITIAL_RESERVOIRS_WORLD_VERTICAL_Y, INITIAL_RESERVOIRS_WORLD_HORIZONTAL_Z);
 }
 
-void PathTracer::CalculateGradientsSamples(
-    VkCommandBuffer cmd, uint32_t frameIndex,
-    uint32_t width, uint32_t height,
-    const std::shared_ptr<Framebuffers> &framebuffers)
+void PathTracer::TraceDirectllumination(const TraceParams &params)
 {
-    CmdLabel label(cmd, "Gradient samples");
+    CmdLabel label(params.cmd, "Direct illumination");
+
+
+    typedef FramebufferImageIndex FI;
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_ALBEDO,
+        FI::FB_IMAGE_INDEX_NORMAL,
+        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
+        FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
+        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_RANDOM_SEED,
+        FI::FB_IMAGE_INDEX_SURFACE_POSITION,
+        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
+    };
+    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
+
+
+    TraceRays(params.cmd, SBT_INDEX_RAYGEN_DIRECT, params.width, params.height);
+}
+
+void PathTracer::CalculateGradientsSamples(const TraceParams &params)
+{
+    CmdLabel label(params.cmd, "Gradient samples");
 
 
     typedef FramebufferImageIndex FI;
@@ -189,27 +205,19 @@ void PathTracer::CalculateGradientsSamples(
         FI::FB_IMAGE_INDEX_RESERVOIRS,
         FI::FB_IMAGE_INDEX_VISIBILITY_BUFFER,
     };
-    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    uint32_t gradWidth  = (width  + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
-    uint32_t gradHeight = (height + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
+    uint32_t gradWidth  = (params.width  + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
+    uint32_t gradHeight = (params.height + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
 
 
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_GRADIENTS, raygenEntry, missEntry, hitEntry, callableEntry);
-
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        gradWidth, gradHeight, 1);
+    TraceRays(params.cmd, SBT_INDEX_RAYGEN_GRADIENTS, gradWidth, gradHeight);
 }
 
-void PathTracer::TraceIndirectllumination(VkCommandBuffer cmd, uint32_t frameIndex, 
-                                          uint32_t width, uint32_t height,
-                                          const std::shared_ptr<Framebuffers> &framebuffers)
+void PathTracer::TraceIndirectllumination(const TraceParams &params)
 {
-    CmdLabel label(cmd, "Indirect illumination");
+    CmdLabel label(params.cmd, "Indirect illumination");
     
 
     typedef FramebufferImageIndex FI;
@@ -217,14 +225,8 @@ void PathTracer::TraceIndirectllumination(VkCommandBuffer cmd, uint32_t frameInd
     {
         FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
     };
-    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
+    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    VkStridedDeviceAddressRegionKHR raygenEntry, missEntry, hitEntry, callableEntry;
-    rtPipeline->GetEntries(SBT_INDEX_RAYGEN_INDIRECT, raygenEntry, missEntry, hitEntry, callableEntry);
-
-    svkCmdTraceRaysKHR(
-        cmd,
-        &raygenEntry, &missEntry, &hitEntry, &callableEntry,
-        width, height, 1);
+    TraceRays(params.cmd, SBT_INDEX_RAYGEN_INDIRECT, params.width, params.height);
 }
