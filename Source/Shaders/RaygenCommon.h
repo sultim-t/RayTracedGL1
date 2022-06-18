@@ -431,14 +431,6 @@ Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 
         vec3 gridWorldPos = surf.position + (rndBlueNoise8(seed, 43).xyz * 2.0 - 1.0) * getCellRadius() * 1.6;
         int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
 
-        // TODO: separate pass
-        float reservoirAverageWeight = 0.0;
-        for (int i = 0; i < LIGHT_GRID_CELL_SIZE; i++)
-        {
-            reservoirAverageWeight += unpackReservoirFromLightGrid(initialLightsGrid[lightGridBase + i]).weightSum;
-        }
-        reservoirAverageWeight /= LIGHT_GRID_CELL_SIZE;
-
         for (int i = 0; i < INITIAL_SAMPLES; i++)
         {
             // uniform distribution as a coarse source pdf
@@ -448,7 +440,7 @@ Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 
             Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid[lightGridArrayIndex]);
 
             uint xi = r.selected;
-            float oneOverSourcePdf_xi = reservoirAverageWeight / r.selected_targetPdf;
+            float oneOverSourcePdf_xi = r.weightSum / r.selected_targetPdf;
 
             LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
             float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
