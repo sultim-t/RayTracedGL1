@@ -79,6 +79,7 @@ private:
 
     std::shared_ptr<AutoBuffer> lightsBuffer;
     Buffer lightsBuffer_Prev;
+    Buffer initialLightsGrid[MAX_FRAMES_IN_FLIGHT];
 
     std::shared_ptr<LightLists> lightLists;
 

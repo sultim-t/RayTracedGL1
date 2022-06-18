@@ -202,6 +202,16 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGI
     // [sectorArrayIndex * 2 + 1] is the end (excluding) index in 'plainLightList'
     uint sectorToLightListRegion_StartEnd[];
 };
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_INITIAL_LIGHTS_GRID) readonly buffer InitialLightsGrid_BT
+{
+    ShLightInCell initialLightsGrid[];
+};
+
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_INITIAL_LIGHTS_GRID_PREV) readonly buffer InitialLightsGridPrev_BT
+{
+    ShLightInCell initialLightsGrid_Prev[];
+};
 #endif
 
 

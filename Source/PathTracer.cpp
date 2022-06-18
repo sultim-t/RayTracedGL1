@@ -123,7 +123,6 @@ void PathTracer::TraceReflectionRefractionRays(const TraceParams &params)
     typedef FramebufferImageIndex FI;
     FI fs[] =
     {
-        FI::FB_IMAGE_INDEX_RANDOM_SEED,
         FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_NORMAL,
         FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
@@ -151,21 +150,14 @@ void PathTracer::CalculateInitialReservoirs(const TraceParams &params)
     typedef FramebufferImageIndex FI;
     FI fs[] =
     {
-        FI::FB_IMAGE_INDEX_ALBEDO,
-        FI::FB_IMAGE_INDEX_NORMAL,
-        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
-        FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_DEPTH,
-        FI::FB_IMAGE_INDEX_RANDOM_SEED,
-        FI::FB_IMAGE_INDEX_SURFACE_POSITION,
-        FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
     };
     params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
     TraceRays(
         params.cmd, SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS,
-        INITIAL_RESERVOIRS_WORLD_HORIZONTAL_X, INITIAL_RESERVOIRS_WORLD_VERTICAL_Y, INITIAL_RESERVOIRS_WORLD_HORIZONTAL_Z);
+        INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_X, INITIAL_RESERVOIRS_GRID_SIZE_VERTICAL_Y, INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_Z);
 }
 
 void PathTracer::TraceDirectllumination(const TraceParams &params)
@@ -181,7 +173,6 @@ void PathTracer::TraceDirectllumination(const TraceParams &params)
         FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_DEPTH,
-        FI::FB_IMAGE_INDEX_RANDOM_SEED,
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
     };

@@ -247,6 +247,8 @@ CONST = {
     "BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV"   : 3,
     "BINDING_PLAIN_LIGHT_LIST"                  : 4,
     "BINDING_SECTOR_TO_LIGHT_LIST_REGION"       : 5,
+    "BINDING_INITIAL_LIGHTS_GRID"               : 6,
+    "BINDING_INITIAL_LIGHTS_GRID_PREV"          : 7,
     "BINDING_LENS_FLARES_CULLING_INPUT"         : 0,
     "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
     "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
@@ -388,9 +390,10 @@ CONST = {
 
     "LIGHT_INDEX_NONE"                      : ((1 << 15) - 1),
 
-    "INITIAL_RESERVOIRS_WORLD_HORIZONTAL_X" : 20,
-    "INITIAL_RESERVOIRS_WORLD_HORIZONTAL_Z" : 20,
-    "INITIAL_RESERVOIRS_WORLD_VERTICAL_Y"   : 10,
+    "INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_X"     : 20,
+    "INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_Z"     : 20,
+    "INITIAL_RESERVOIRS_GRID_SIZE_VERTICAL_Y"       : 10,
+    "INITIAL_RESERVOIRS_CELL_SIZE"                  : 64,
 }
 
 CONST_GLSL_ONLY = {
@@ -603,6 +606,13 @@ LIGHT_ENCODED_STRUCT = [
     (TYPE_FLOAT32,      4,      "data_2",               1),
 ]
 
+# TODO: light index / target pdf - 16 bits
+LIGHT_IN_CELL = [
+    (TYPE_UINT32,       1,      "weightSum",            1),
+    (TYPE_FLOAT32,      1,      "selected_lightIndex",  1),
+    (TYPE_FLOAT32,      1,      "selected_targetPdf",   1),
+]
+
 TONEMAPPING_STRUCT = [
     (TYPE_UINT32,       1,      "histogram",            CONST["COMPUTE_LUM_HISTOGRAM_BIN_COUNT"]),
     (TYPE_FLOAT32,      1,      "avgLuminance",         1),
@@ -654,6 +664,7 @@ STRUCTS = {
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,          False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,            False,  0,                          0),
     "ShLightEncoded":           (LIGHT_ENCODED_STRUCT,          False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShLightInCell":            (LIGHT_IN_CELL,                 False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShVertPreprocessing":      (VERT_PREPROC_PUSH_STRUCT,      False,  0,                          0),
     "ShIndirectDrawCommand":    (INDIRECT_DRAW_CMD_STRUCT,      False,  STRUCT_ALIGNMENT_STD430,    0),
     # TODO: should be STRUCT_ALIGNMENT_STD430, but current generator is not great as it just adds pads at the end, so it's 0

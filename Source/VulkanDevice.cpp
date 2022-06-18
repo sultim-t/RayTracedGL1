@@ -821,8 +821,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         {
             pathTracer->TraceReflectionRefractionRays(params);
         }
-
-        // update the illumination
+        
+        pathTracer->CalculateInitialReservoirs(params);
+        
         pathTracer->TraceDirectllumination(params);
         pathTracer->TraceIndirectllumination(params);
 

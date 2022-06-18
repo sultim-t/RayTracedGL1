@@ -36,6 +36,11 @@ constexpr float MIN_COLOR_SUM = 0.0001f;
 constexpr float MIN_SPHERE_RADIUS = 0.005f;
 
 constexpr uint32_t LIGHT_ARRAY_MAX_SIZE = 4096;
+
+constexpr VkDeviceSize GRID_LIGHTS_COUNT =
+    INITIAL_RESERVOIRS_CELL_SIZE *
+    (INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_X * INITIAL_RESERVOIRS_GRID_SIZE_VERTICAL_Y * INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_Z);
+
 }
 
 RTGL1::LightManager::LightManager(
@@ -59,6 +64,11 @@ RTGL1::LightManager::LightManager(
     lightsBuffer->Create(sizeof(ShLightEncoded) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights buffer");
 
     lightsBuffer_Prev.Init(_allocator, sizeof(ShLightEncoded) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lights buffer - prev");
+
+    for (auto &buf : initialLightsGrid)
+    {
+        buf.Init(_allocator, sizeof(ShLightInCell) * GRID_LIGHTS_COUNT, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lights grid");
+    }
 
     prevToCurIndex = std::make_shared<AutoBuffer>(device, _allocator);
     prevToCurIndex->Create(sizeof(uint32_t) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, "Lights buffer - prev to cur");
@@ -421,6 +431,8 @@ constexpr uint32_t BINDINGS[] =
     BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV,
     BINDING_PLAIN_LIGHT_LIST,
     BINDING_SECTOR_TO_LIGHT_LIST_REGION,
+    BINDING_INITIAL_LIGHTS_GRID,
+    BINDING_INITIAL_LIGHTS_GRID_PREV,
 };
 
 void RTGL1::LightManager::CreateDescriptors()
@@ -438,7 +450,7 @@ void RTGL1::LightManager::CreateDescriptors()
         b.binding = bnd;
         b.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         b.descriptorCount = 1;
-        b.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
+        b.stageFlags = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT;
     }
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
@@ -496,6 +508,8 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
         curToPrevIndex->GetDeviceLocal(),
         lightLists->GetPlainLightListDeviceLocalBuffer(),
         lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
+        initialLightsGrid[frameIndex].GetBuffer(),
+        initialLightsGrid[Utils::GetPreviousByModulo(frameIndex, MAX_FRAMES_IN_FLIGHT)].GetBuffer(),
     };
     static_assert(std::size(BINDINGS) == std::size(buffers));
 
