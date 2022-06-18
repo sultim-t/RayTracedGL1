@@ -36,7 +36,7 @@ struct Reservoir
 Reservoir emptyReservoir()
 {
     Reservoir r;
-    r.selected = UINT32_MAX;
+    r.selected = LIGHT_INDEX_NONE;
     r.weightSum = 0.0;
     r.M = 0.0;
     r.W = 0.0;
@@ -46,7 +46,7 @@ Reservoir emptyReservoir()
 bool isReservoirValid(const Reservoir r)
 {
     return 
-        r.selected != UINT32_MAX && r.selected != LIGHT_INDEX_NONE &&
+        r.selected != LIGHT_INDEX_NONE && 
         r.W > 0.0 && !isnan(r.W) && !isinf(r.W);
 }
 
@@ -60,6 +60,12 @@ void calcReservoirW(inout Reservoir r, float targetPdf_selected)
     {
         r.W = 0.0;
     }
+}
+
+void normalizeReservoir(inout Reservoir r)
+{
+    r.weightSum /= float(max(r.M, 1));
+    r.M = 1;
 }
 
 // Note: W must be recalculated after a sequence of updates
@@ -98,7 +104,7 @@ uvec4 packReservoir(const Reservoir r)
     if (isinf(r.weightSum) || isnan(r.weightSum))
     {
         return uvec4(
-            UINT32_MAX,
+            LIGHT_INDEX_NONE,
             floatBitsToUint(0.0),
             floatBitsToUint(0.0),
             floatBitsToUint(0.0)
