@@ -161,6 +161,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers,
         textureManager);
 
+    lightGrid           = std::make_shared<LightGrid>(
+        device,
+        shaderManager,
+        uniform,
+        framebuffers,
+        blueNoise,
+        scene->GetLightManager());
+
     rtPipeline          = std::make_shared<RayTracingPipeline>(
         device, 
         physDevice, 
@@ -247,6 +255,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(rasterizer);
     shaderManager->Subscribe(decalManager);
     shaderManager->Subscribe(rtPipeline);
+    shaderManager->Subscribe(lightGrid);
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
     shaderManager->Subscribe(bloom);
@@ -300,6 +309,7 @@ VulkanDevice::~VulkanDevice()
     pathTracer.reset();
     rasterizer.reset();
     decalManager.reset();
+    lightGrid.reset();
     worldSamplerManager.reset();
     genericSamplerManager.reset();
     blueNoise.reset();
@@ -804,6 +814,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (raysCanBeTraced)
     {
+        lightGrid->Build(cmd, frameIndex, uniform, framebuffers, blueNoise, scene->GetLightManager());
+
         decalManager->SubmitForFrame(cmd, frameIndex);
 
         const auto params = pathTracer->Bind(
@@ -821,9 +833,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         {
             pathTracer->TraceReflectionRefractionRays(params);
         }
-        
-        pathTracer->CalculateInitialReservoirs(params);
-        
+
+        scene->GetLightManager()->BarrierLightGrid(cmd, frameIndex);
         pathTracer->TraceDirectllumination(params);
         pathTracer->TraceIndirectllumination(params);
 

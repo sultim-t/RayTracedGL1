@@ -112,6 +112,7 @@ void RTGL1::AutoBuffer::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex
         staging[frameIndex].GetBuffer(), deviceLocal.GetBuffer(),
         1, &info);
 
+    // TODO: remove a barrier kludge
     VkBufferMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;
@@ -141,6 +142,7 @@ void RTGL1::AutoBuffer::CopyFromStaging(
         staging[frameIndex].GetBuffer(), deviceLocal.GetBuffer(),
         copyInfosCount, copyInfos);
 
+    // TODO: remove a barrier kludge
     VkBufferMemoryBarrier barrier{};
     barrier.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
     barrier.srcAccessMask = VK_ACCESS_MEMORY_WRITE_BIT;

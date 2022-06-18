@@ -51,6 +51,7 @@
 #include "DecalManager.h"
 #include "EffectWipe.h"
 #include "EffectSimple_Instances.h"
+#include "LightGrid.h"
 
 namespace RTGL1
 {
@@ -268,6 +269,7 @@ private:
     std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
     std::shared_ptr<DecalManager>           decalManager;
+    std::shared_ptr<LightGrid>              lightGrid;
     std::shared_ptr<Denoiser>               denoiser;
     std::shared_ptr<Tonemapping>            tonemapping;
     std::shared_ptr<ImageComposition>       imageComposition;

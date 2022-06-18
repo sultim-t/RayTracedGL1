@@ -277,7 +277,6 @@ CONST = {
     "SBT_INDEX_RAYGEN_DIRECT"               : 2,
     "SBT_INDEX_RAYGEN_INDIRECT"             : 3,
     "SBT_INDEX_RAYGEN_GRADIENTS"            : 4,
-    "SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS"   : 5,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
     "SBT_INDEX_MISS_SHADOW"                 : 1,
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
@@ -390,10 +389,11 @@ CONST = {
 
     "LIGHT_INDEX_NONE"                      : ((1 << 15) - 1),
 
-    "INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_X"     : 20,
-    "INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_Z"     : 20,
-    "INITIAL_RESERVOIRS_GRID_SIZE_VERTICAL_Y"       : 10,
-    "INITIAL_RESERVOIRS_CELL_SIZE"                  : 64,
+    "LIGHT_GRID_SIZE_HORIZONTAL_X"     : 20,
+    "LIGHT_GRID_SIZE_HORIZONTAL_Z"     : 20,
+    "LIGHT_GRID_SIZE_VERTICAL_Y"       : 10,
+    "LIGHT_GRID_CELL_SIZE"             : 64,
+    "COMPUTE_LIGHT_GRID_GROUP_SIZE_X"  : 256,
 }
 
 CONST_GLSL_ONLY = {
@@ -608,9 +608,9 @@ LIGHT_ENCODED_STRUCT = [
 
 # TODO: light index / target pdf - 16 bits
 LIGHT_IN_CELL = [
-    (TYPE_UINT32,       1,      "weightSum",            1),
-    (TYPE_FLOAT32,      1,      "selected_lightIndex",  1),
+    (TYPE_UINT32,       1,      "selected_lightIndex",  1),
     (TYPE_FLOAT32,      1,      "selected_targetPdf",   1),
+    (TYPE_FLOAT32,      1,      "weightSum",            1),
 ]
 
 TONEMAPPING_STRUCT = [

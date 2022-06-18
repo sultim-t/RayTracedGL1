@@ -88,6 +88,7 @@ set(PrivateHeaders
     "Source/EffectWipe.h"
     "Source/EffectSimple.h"
     "Source/EffectSimple_Instances.h"
+    "Source/LightGrid.h"
 )
 
 set(Sources
@@ -154,6 +155,7 @@ set(Sources
     "Source/LensFlares.cpp"
     "Source/DecalManager.cpp"
     "Source/EffectBase.cpp"
+    "Source/LightGrid.cpp"
 )
 
 

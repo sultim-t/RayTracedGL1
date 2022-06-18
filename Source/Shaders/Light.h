@@ -186,10 +186,9 @@ float getDirectionalLightWeight(const SphereLight l, const vec3 cellCenter, floa
 
 float getSphereLightWeight(const SphereLight l, const vec3 cellCenter, float cellRadius)
 {
-    // assuming that sampleLight uses distance-squared attenuation 
-    float distSq = max(cellRadius * cellRadius, lengthSquared(l.center - cellCenter) - l.radius * l.radius);
-
-    return getLuminance(l.color) / distSq;
+    return 
+        getLuminance(l.color) * 
+        calcSolidAngleForSphere(l.radius, max(length(l.center - cellCenter), cellRadius));
 }
 
 float getTriangleLightWeight(const TriangleLight l, const vec3 cellCenter, float cellRadius)
@@ -199,23 +198,23 @@ float getTriangleLightWeight(const TriangleLight l, const vec3 cellCenter, float
         l.position[1] / 3.0 +
         l.position[2] / 3.0;
 
-    const float aprxTriRadiusSq = 
-        lengthSquared(l.position[0] - triCenter) / 3.0 +
-        lengthSquared(l.position[1] - triCenter) / 3.0 +
-        lengthSquared(l.position[2] - triCenter) / 3.0;
+    const float aprxTriRadius = 
+        length(l.position[0] - triCenter) / 3.0 +
+        length(l.position[1] - triCenter) / 3.0 +
+        length(l.position[2] - triCenter) / 3.0;
 
-    // assuming that sampleLight uses distance-squared attenuation 
-    float distSq = max(cellRadius * cellRadius, lengthSquared(triCenter - cellCenter) - aprxTriRadiusSq);
-
-    return getLuminance(l.color) / distSq * isSphereInFront(l.normal, triCenter, cellCenter, cellRadius);
+    return 
+        getLuminance(l.color) * 
+        calcSolidAngleForSphere(aprxTriRadius, max(length(triCenter - cellCenter), cellRadius)) *
+        isSphereInFront(l.normal, triCenter, cellCenter, cellRadius);
 }
 
 float getSpotLightWeight(const SpotLight l, const vec3 cellCenter, float cellRadius)
 {
-    // assuming that sampleLight uses distance-squared attenuation 
-    float distSq = max(cellRadius * cellRadius, lengthSquared(l.center - cellCenter) - l.radius * l.radius);
-
-    return getLuminance(l.color) / distSq * isSphereInFront(l.direction, l.center, cellCenter, cellRadius);
+    return 
+        getLuminance(l.color) * 
+        calcSolidAngleForSphere(l.radius, max(length(l.center - cellCenter), cellRadius)) *
+        isSphereInFront(l.direction, l.center, cellCenter, cellRadius);
 }
 
 

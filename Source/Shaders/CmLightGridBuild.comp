@@ -1,0 +1,138 @@
+// Copyright (c) 2021-2022 Sultim Tsyrendashiev
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+#define DESC_SET_GLOBAL_UNIFORM 0
+#define DESC_SET_FRAMEBUFFERS 1
+#define DESC_SET_RANDOM 2
+#define DESC_SET_LIGHT_SOURCES 3
+#define LIGHT_GRID_WRITE
+#include "ShaderCommonGLSLFunc.h"
+#include "Reservoir.h"
+#include "Light.h"
+#include "LightGrid.h"
+
+layout(local_size_x = COMPUTE_LIGHT_GRID_GROUP_SIZE_X, local_size_y = 1, local_size_z = 1) in;
+
+void storeLightSample(const Reservoir normalized, int arrayIndex)
+{
+    initialLightsGrid[arrayIndex] = packReservoirToLightGrid(normalized);
+}
+
+Reservoir loadLightSample_Prev(int arrayIndex)
+{
+    Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid_Prev[arrayIndex]);
+    calcReservoirW(r, r.selected_targetPdf);
+    return r;
+}
+
+void main()
+{
+    const int arrayIndex = int(gl_GlobalInvocationID.x);
+    const ivec3 cellIndex = arrayIndexToCell(arrayIndex);
+
+    const vec3 cellCenter = cellToWorld(cellIndex);
+    const float cellRadius = getCellRadius();
+
+    // TODO: change seed generation!
+    uint seed, salt;
+    { 
+        ivec2 p;
+
+        p.x = arrayIndex % int(globalUniform.renderWidth);
+        p.y = arrayIndex / int(globalUniform.renderHeight);
+        seed = texelFetch(framebufRandomSeed_Sampler, p, 0).x;
+        salt = uint(3);
+    }
+
+    Reservoir regularReservoir = emptyReservoir();
+    for (int i = 0; i < LIGHT_GRID_INITIAL_SAMPLES; i++)
+    {
+        // uniform distribution as a coarse source pdf
+        float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
+        uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
+        float oneOverSourcePdf_xi = globalUniform.lightCount;
+
+        float targetPdf_xi = getLightWeight(lightSources[xi], cellCenter, cellRadius);
+
+        float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
+        if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+        {
+            regularReservoir.selected_targetPdf = targetPdf_xi;
+        }
+    }
+    calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
+
+
+#if LIGHT_GRID_TEMPORAL
+    Reservoir temporal = loadLightSample_Prev(arrayIndex);
+    temporal.M = min(temporal.M, regularReservoir.M * 20);
+    temporal.W = isnan(temporal.W) || isinf(temporal.W) || temporal.W < 0.0 ? 0 : clamp(temporal.W, 0.0, RESERVOIR_W_MAX);
+
+    float temporalTargetPdf_curSurf = 0.0;
+    if (temporal.selected != LIGHT_INDEX_NONE)
+    {
+        uint selected_curFrame = lightSources_Index_PrevToCur[temporal.selected];
+
+        if (selected_curFrame != UINT32_MAX)
+        {
+            temporalTargetPdf_curSurf = getLightWeight(lightSources[selected_curFrame], cellCenter, cellRadius);
+            temporal.selected = selected_curFrame;
+        }
+    }
+
+    float rndRis = rnd16(seed, RANDOM_SALT_RIS(77 + salt));
+
+    Reservoir combined = emptyReservoir();
+    updateCombinedReservoir(
+        combined,
+        regularReservoir, regularReservoir.selected_targetPdf, 0.0);
+    updateCombinedReservoir(
+        combined,
+        temporal, temporalTargetPdf_curSurf, rndRis);
+#else
+    Reservoir combined = regularReservoir;
+#endif
+    calcReservoirW(combined, combined.selected_targetPdf);
+    normalizeReservoir(combined);
+
+
+    /*Reservoir dirLightReservoir = emptyReservoir();
+    float targetPdfForDirLight = 0.0;
+    if (globalUniform.directionalLightExists != 0)
+    {
+        uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
+        float oneOverSourcePdf_xi = 1;
+
+        float targetPdf_xi = getLightWeight(lightSources[xi], cellCenter, cellRadius);
+
+        float rndRis = rnd16(seed, RANDOM_SALT_RIS(LIGHT_GRID_INITIAL_SAMPLES + salt));
+        if (updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+        {
+            targetPdfForDirLight = targetPdf_xi;
+        }
+    }
+    calcReservoirW(dirLightReservoir, targetPdfForDirLight);
+    normalizeReservoir(dirLightReservoir);*/
+
+
+    storeLightSample(combined, arrayIndex);
+}

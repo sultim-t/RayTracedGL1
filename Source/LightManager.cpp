@@ -38,8 +38,7 @@ constexpr float MIN_SPHERE_RADIUS = 0.005f;
 constexpr uint32_t LIGHT_ARRAY_MAX_SIZE = 4096;
 
 constexpr VkDeviceSize GRID_LIGHTS_COUNT =
-    INITIAL_RESERVOIRS_CELL_SIZE *
-    (INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_X * INITIAL_RESERVOIRS_GRID_SIZE_VERTICAL_Y * INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_Z);
+    LIGHT_GRID_CELL_SIZE * (LIGHT_GRID_SIZE_HORIZONTAL_X * LIGHT_GRID_SIZE_VERTICAL_Y * LIGHT_GRID_SIZE_HORIZONTAL_Z);
 
 }
 
@@ -391,6 +390,33 @@ void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameInd
         UpdateDescriptors(frameIndex);
         needDescSetUpdate[frameIndex] = false;
     }
+}
+
+void RTGL1::LightManager::BarrierLightGrid(VkCommandBuffer cmd, uint32_t frameIndex)
+{
+    VkBufferMemoryBarrier2 barrier =
+    {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+        .pNext = nullptr,
+        .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+        .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .srcQueueFamilyIndex = 0,
+        .dstQueueFamilyIndex = 0,
+        .buffer = initialLightsGrid[frameIndex].GetBuffer(),
+        .offset = 0,
+        .size = VK_WHOLE_SIZE
+    };
+
+    VkDependencyInfo dependency =
+    {
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .bufferMemoryBarrierCount = 1,
+        .pBufferMemoryBarriers = &barrier
+    };
+
+    svkCmdPipelineBarrier2KHR(cmd, &dependency);
 }
 
 VkDescriptorSetLayout RTGL1::LightManager::GetDescSetLayout()

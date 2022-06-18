@@ -28,6 +28,7 @@
 struct Reservoir
 {
     uint selected;
+    float selected_targetPdf; /* TODO: store/load; used for grid ONLY for now */
     float weightSum;
     float M;
     float W;
@@ -37,6 +38,7 @@ Reservoir emptyReservoir()
 {
     Reservoir r;
     r.selected = LIGHT_INDEX_NONE;
+    r.selected_targetPdf = 0.0;
     r.weightSum = 0.0;
     r.M = 0.0;
     r.W = 0.0;
@@ -54,7 +56,7 @@ void calcReservoirW(inout Reservoir r, float targetPdf_selected)
 {
     if (targetPdf_selected > 0.00001 && r.M > 0)
     {
-        r.W = 1.0 / targetPdf_selected * (r.weightSum / r.M);
+        r.W = (1.0 / targetPdf_selected) * (r.weightSum / r.M);
     }
     else
     {
@@ -94,6 +96,7 @@ void updateCombinedReservoir(inout Reservoir combined, const Reservoir b, float 
     if (rnd * combined.weightSum < weight)
     {
         combined.selected = b.selected;
+        combined.selected_targetPdf = targetPdf_b;
     }
 }
 

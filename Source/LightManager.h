@@ -60,6 +60,7 @@ public:
     void AddSpotlight(uint32_t frameIndex, const RgSpotlightUploadInfo &info);
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
+    void BarrierLightGrid(VkCommandBuffer cmd, uint32_t frameIndex);
 
     VkDescriptorSetLayout GetDescSetLayout();
     VkDescriptorSet GetDescSet(uint32_t frameIndex);

@@ -64,7 +64,6 @@ namespace RTGL1
 #define SBT_INDEX_RAYGEN_DIRECT (2)
 #define SBT_INDEX_RAYGEN_INDIRECT (3)
 #define SBT_INDEX_RAYGEN_GRADIENTS (4)
-#define SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS (5)
 #define SBT_INDEX_MISS_DEFAULT (0)
 #define SBT_INDEX_MISS_SHADOW (1)
 #define SBT_INDEX_HITGROUP_FULLY_OPAQUE (0)
@@ -155,10 +154,11 @@ namespace RTGL1
 #define LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET (0)
 #define LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET (1)
 #define LIGHT_INDEX_NONE (32767)
-#define INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_X (20)
-#define INITIAL_RESERVOIRS_GRID_SIZE_HORIZONTAL_Z (20)
-#define INITIAL_RESERVOIRS_GRID_SIZE_VERTICAL_Y (10)
-#define INITIAL_RESERVOIRS_CELL_SIZE (64)
+#define LIGHT_GRID_SIZE_HORIZONTAL_X (20)
+#define LIGHT_GRID_SIZE_HORIZONTAL_Z (20)
+#define LIGHT_GRID_SIZE_VERTICAL_Y (10)
+#define LIGHT_GRID_CELL_SIZE (64)
+#define COMPUTE_LIGHT_GRID_GROUP_SIZE_X (256)
 
 struct ShVertexBufferStatic
 {
@@ -309,9 +309,9 @@ struct ShLightEncoded
 
 struct ShLightInCell
 {
-    uint32_t weightSum;
-    float selected_lightIndex;
+    uint32_t selected_lightIndex;
     float selected_targetPdf;
+    float weightSum;
     uint32_t __pad0;
 };
 

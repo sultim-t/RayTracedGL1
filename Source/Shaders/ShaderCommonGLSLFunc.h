@@ -203,7 +203,11 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGI
     uint sectorToLightListRegion_StartEnd[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_INITIAL_LIGHTS_GRID) readonly buffer InitialLightsGrid_BT
+layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_INITIAL_LIGHTS_GRID) 
+#ifndef LIGHT_GRID_WRITE
+readonly
+#endif
+buffer InitialLightsGrid_BT
 {
     ShLightInCell initialLightsGrid[];
 };

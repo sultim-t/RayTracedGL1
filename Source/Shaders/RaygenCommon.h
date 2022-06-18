@@ -44,6 +44,7 @@
 
 
 #include "Light.h"
+#include "LightGrid.h"
 #include "Media.h"
 #include "RayCone.h"
 
@@ -425,24 +426,64 @@ bool testSurfaceForReuse(
 Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 pointRnd)
 {
     Reservoir regularReservoir = emptyReservoir();
-    for (int i = 0; i < INITIAL_SAMPLES; i++)
+    if (isInsideCell(surf.position))
     {
-        // uniform distribution as a coarse source pdf
-        float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
-        uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
-        float oneOverSourcePdf_xi = globalUniform.lightCount;
+        vec3 gridWorldPos = surf.position + (rndBlueNoise8(seed, 43).xyz * 2.0 - 1.0) * getCellRadius() * 1.6;
+        int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
 
-        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+        // TODO: separate pass
+        float reservoirAverageWeight = 0.0;
+        for (int i = 0; i < LIGHT_GRID_CELL_SIZE; i++)
+        {
+            reservoirAverageWeight += unpackReservoirFromLightGrid(initialLightsGrid[lightGridBase + i]).weightSum;
+        }
+        reservoirAverageWeight /= LIGHT_GRID_CELL_SIZE;
 
-        float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
-        updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
+        for (int i = 0; i < INITIAL_SAMPLES; i++)
+        {
+            // uniform distribution as a coarse source pdf
+            float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
+            int lightGridArrayIndex = lightGridBase + 
+                clamp(int(rnd * LIGHT_GRID_CELL_SIZE), 0, LIGHT_GRID_CELL_SIZE - 1);
+            Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid[lightGridArrayIndex]);
+
+            uint xi = r.selected;
+            float oneOverSourcePdf_xi = reservoirAverageWeight / r.selected_targetPdf;
+
+            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+            float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
+            if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+            {
+                regularReservoir.selected_targetPdf = targetPdf_xi;
+            }
+        }
     }
-    calcReservoirW(regularReservoir, targetPdfForLightSample(regularReservoir.selected, surf, pointRnd));
+    else
+    {      
+        for (int i = 0; i < INITIAL_SAMPLES; i++)
+        {
+            // uniform distribution as a coarse source pdf
+            float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
+            uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
+            float oneOverSourcePdf_xi = globalUniform.lightCount;
+
+            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+            float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
+            if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+            {
+                regularReservoir.selected_targetPdf = targetPdf_xi;
+            }
+        }
+    }
+    calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
     normalizeReservoir(regularReservoir);
 
+
     Reservoir dirLightReservoir = emptyReservoir();
-    float targetPdfForDirLight = 0.0;
     if (globalUniform.directionalLightExists != 0)
     {
         uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
@@ -452,22 +493,24 @@ Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 
         float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
 
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(INITIAL_SAMPLES + salt));
-        updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis);
-
-        targetPdfForDirLight = targetPdfForLightSample(dirLightReservoir.selected, surf, pointRnd);
-        
-        calcReservoirW(dirLightReservoir, targetPdfForDirLight);
-        normalizeReservoir(dirLightReservoir);
+        if (updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
+        {
+            dirLightReservoir.selected_targetPdf = targetPdf_xi;
+        }
     }
+    calcReservoirW(dirLightReservoir, dirLightReservoir.selected_targetPdf);
+    normalizeReservoir(dirLightReservoir);
 
     float rnd = rnd16(seed, 8 + salt); 
-    Reservoir combined = regularReservoir;
+    Reservoir combined = emptyReservoir();
     updateCombinedReservoir(
-        combined, dirLightReservoir,
-        targetPdfForDirLight,
-        rnd);
+        combined, 
+        regularReservoir, regularReservoir.selected_targetPdf, 0.0);
+    updateCombinedReservoir(
+        combined, 
+        dirLightReservoir, dirLightReservoir.selected_targetPdf, rnd);
     
-    calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
+    calcReservoirW(combined, combined.selected_targetPdf);
     normalizeReservoir(combined);
 
     return combined;
@@ -483,7 +526,11 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 
 
     Reservoir initReservoir = getInitReservoir(seed, 0, surf, pointRnd);
-    Reservoir combined = initReservoir;
+    
+    Reservoir combined = emptyReservoir();
+    updateCombinedReservoir(
+        combined,
+        initReservoir, initReservoir.selected_targetPdf, 0.0);
 
 
     // temporal
@@ -514,7 +561,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
         {
             uint selected_curFrame = lightSources_Index_PrevToCur[temporal.selected];
 
-            if (selected_curFrame != LIGHT_INDEX_NONE)
+            if (selected_curFrame != UINT32_MAX)
             {
                 temporalTargetPdf_curSurf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
                 temporal.selected = selected_curFrame;
@@ -523,9 +570,8 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 
         float rnd = rnd16(seed, 12 + pixIndex);
         updateCombinedReservoir(
-            combined, temporal,
-            temporalTargetPdf_curSurf,
-            rnd);
+            combined, 
+            temporal, temporalTargetPdf_curSurf, rnd);
     } 
 
     for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
@@ -558,13 +604,10 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
         }
 
 
-        float spatialTargetPdf_curSurf = targetPdfForLightSample(spatial.selected, surf, pointRnd);
-
         float rnd = rnd16(seed, 105 + pixIndex);
         updateCombinedReservoir(
-            combined, spatial,
-            spatialTargetPdf_curSurf,
-            rnd);
+            combined, 
+            spatial, spatial.selected_targetPdf, rnd);
     }
 
 
@@ -572,7 +615,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
     {
         return emptyReservoir();
     }
-    calcReservoirW(combined, targetPdfForLightSample(combined.selected, surf, pointRnd));
+    calcReservoirW(combined, combined.selected_targetPdf);
 
     return combined;
 }
@@ -604,72 +647,6 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
     lt += globalUniform.directionalLightExists != 0 ? 1 : 0;
     uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
     float oneOverPdf = lt;
-
-    LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
-    shade(surf, light, oneOverPdf, out_result.diffuse, out_result.specular);
-
-#elif LIGHT_SAMPLE_METHOD == 1
-
-    #define MAX_SUBSET_LEN 8
-    // random in [0,1)
-    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(0)) * 0.99;
-
-    const uint lightListBegin = sectorToLightListRegion_StartEnd[surf.sectorArrayIndex * 2 + 0];
-    const uint lightListEnd   = sectorToLightListRegion_StartEnd[surf.sectorArrayIndex * 2 + 1];
-
-    const uint S = uint(ceil(float(lightListEnd - lightListBegin) / MAX_SUBSET_LEN));
-    const uint subsetStride = S;
-    const uint subsetOffset = uint(floor(rnd * S));
-    rnd = rnd * S - subsetOffset;
-
-    uint  selected_plainLightListIndex = LIGHT_INDEX_NONE;
-    float selected_mass = 0;
-
-    float weightsTotal = 0;
-    uint plainLightListIndex_iter = lightListBegin + subsetOffset;
-
-    for (int i = 0; i < MAX_SUBSET_LEN; ++i) 
-    {
-        if (plainLightListIndex_iter >= lightListEnd) 
-        {
-            break;
-        }
-
-        const float w = getLightWeight(
-            lightSources[plainLightList[plainLightListIndex_iter]], 
-            surf.position,
-            pointRnd);
-
-        if (w > 0)
-        {
-            const float tau = weightsTotal / (weightsTotal + w);
-            weightsTotal += w;
-
-            if (rnd < tau)
-            {
-                rnd /= tau;
-            }
-            else
-            {
-                selected_plainLightListIndex = plainLightListIndex_iter;
-                selected_mass = w;
-
-                rnd = (rnd - tau) / (1 - tau);
-            }
-
-            rnd = clamp(rnd, 0, 0.999);
-        }
-
-        plainLightListIndex_iter += subsetStride;
-    }
-
-    if (weightsTotal <= 0.0 || selected_mass <= 0.0 || selected_plainLightListIndex == LIGHT_INDEX_NONE)
-    {
-        return;
-    }
-
-    float oneOverPdf = (weightsTotal * S) / selected_mass;
-    uint selectedLightIndex = plainLightList[selected_plainLightListIndex];
 
     LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
     shade(surf, light, oneOverPdf, out_result.diffuse, out_result.specular);

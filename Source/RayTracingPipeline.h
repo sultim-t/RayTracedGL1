@@ -47,7 +47,7 @@ public:
         const std::shared_ptr<CubemapManager> &cubemapManager,
         const std::shared_ptr<RenderCubemap> &renderCubemap,
         const RgInstanceCreateInfo &rgInfo);
-    ~RayTracingPipeline();
+    ~RayTracingPipeline() override;
 
     RayTracingPipeline(const RayTracingPipeline& other) = delete;
     RayTracingPipeline(RayTracingPipeline&& other) noexcept = delete;
