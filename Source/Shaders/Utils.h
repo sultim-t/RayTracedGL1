@@ -48,6 +48,11 @@ float saturate(float a)
     return clamp(a, 0.0, 1.0);
 }
 
+float lengthSquared(const vec3 v)
+{
+    return dot(v, v);
+}
+
 
 
 #define ENCODE_NORMAL_N_PHI 1 << 16

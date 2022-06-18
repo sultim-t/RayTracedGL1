@@ -118,6 +118,11 @@ float getSpotFactor(float cosA, float cosAInner, float cosAOuter)
     return square(smoothstep(cosAOuter, cosAInner, cosA));
 }
 
+float isSphereInFront(const vec3 planeNormal, const vec3 planePos, const vec3 sphereCenter, float sphereRadius)
+{
+    return float(dot(planeNormal, sphereCenter - planePos) > -sphereRadius);
+}
+
 
 
 struct DirectionAndLength { vec3 dir; float len; };
@@ -174,32 +179,43 @@ float calcSolidAngleForArea(float area, const vec3 areaPosition, const vec3 area
 
 
 
-float getSphereLightWeight(const SphereLight l, const vec3 surfPosition)
+float getDirectionalLightWeight(const SphereLight l, const vec3 cellCenter, float cellRadius)
 {
-    return 
-        calcSolidAngleForSphere(l.radius, length(l.center - surfPosition)) * 
-        getLuminance(l.color);
+    return getLuminance(l.color);
 }
 
-float getTriangleLightWeight(const TriangleLight l, const vec3 surfPosition, const vec2 pointRnd)
+float getSphereLightWeight(const SphereLight l, const vec3 cellCenter, float cellRadius)
 {
-    const vec3 pointOnLight = sampleTriangle(l.position[0], l.position[1], l.position[2], pointRnd[0], pointRnd[1]);
+    // assuming that sampleLight uses distance-squared attenuation 
+    float distSq = max(cellRadius * cellRadius, lengthSquared(l.center - cellCenter) - l.radius * l.radius);
 
-    return
-        calcSolidAngleForArea(l.area, pointOnLight, l.normal, surfPosition) * 
-        getLuminance(l.color) *
-        getPolySpotFactor(l.normal, normalize(surfPosition - pointOnLight));
+    return getLuminance(l.color) / distSq;
 }
 
-float getSpotLightWeight(const SpotLight l, const vec3 surfPosition)
+float getTriangleLightWeight(const TriangleLight l, const vec3 cellCenter, float cellRadius)
 {
-    const DirectionAndLength toLightCenter = calcDirectionAndLength(surfPosition, l.center);
-    const float cosA = max(dot(l.direction, -toLightCenter.dir), 0.0);
+    const vec3 triCenter = 
+        l.position[0] / 3.0 +
+        l.position[1] / 3.0 +
+        l.position[2] / 3.0;
 
-    return 
-        calcSolidAngleForSphere(l.radius, toLightCenter.len) * 
-        getLuminance(l.color) *
-        getSpotFactor(cosA, l.cosAngleInner, l.cosAngleOuter);
+    const float aprxTriRadiusSq = 
+        lengthSquared(l.position[0] - triCenter) / 3.0 +
+        lengthSquared(l.position[1] - triCenter) / 3.0 +
+        lengthSquared(l.position[2] - triCenter) / 3.0;
+
+    // assuming that sampleLight uses distance-squared attenuation 
+    float distSq = max(cellRadius * cellRadius, lengthSquared(triCenter - cellCenter) - aprxTriRadiusSq);
+
+    return getLuminance(l.color) / distSq * isSphereInFront(l.normal, triCenter, cellCenter, cellRadius);
+}
+
+float getSpotLightWeight(const SpotLight l, const vec3 cellCenter, float cellRadius)
+{
+    // assuming that sampleLight uses distance-squared attenuation 
+    float distSq = max(cellRadius * cellRadius, lengthSquared(l.center - cellCenter) - l.radius * l.radius);
+
+    return getLuminance(l.color) / distSq * isSphereInFront(l.direction, l.center, cellCenter, cellRadius);
 }
 
 
@@ -287,14 +303,14 @@ LightSample sampleSpotLight(const SpotLight l, const vec3 surfPosition, const ve
 
 
 
-float getLightWeight(const ShLightEncoded encoded, const vec3 surfPosition, const vec2 pointRnd)
+float getLightWeight(const ShLightEncoded encoded, const vec3 cellCenter, float cellRadius)
 {
     switch (encoded.lightType)
     {
-        case LIGHT_TYPE_DIRECTIONAL:    return 1.0; // TODO: make directional light choosing with others?
-        case LIGHT_TYPE_SPHERE:         return getSphereLightWeight     (decodeAsSphereLight        (encoded), surfPosition);
-        case LIGHT_TYPE_TRIANGLE:       return getTriangleLightWeight   (decodeAsTriangleLight      (encoded), surfPosition, pointRnd);
-        case LIGHT_TYPE_SPOT:           return getSpotLightWeight       (decodeAsSpotLight          (encoded), surfPosition);
+        case LIGHT_TYPE_DIRECTIONAL:    return getDirectionalLightWeight(decodeAsSphereLight        (encoded), cellCenter, cellRadius);
+        case LIGHT_TYPE_SPHERE:         return getSphereLightWeight     (decodeAsSphereLight        (encoded), cellCenter, cellRadius);
+        case LIGHT_TYPE_TRIANGLE:       return getTriangleLightWeight   (decodeAsTriangleLight      (encoded), cellCenter, cellRadius);
+        case LIGHT_TYPE_SPOT:           return getSpotLightWeight       (decodeAsSpotLight          (encoded), cellCenter, cellRadius);
         default:                        return 0.0;
     }
 }
