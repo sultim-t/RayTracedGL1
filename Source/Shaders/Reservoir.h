@@ -143,6 +143,49 @@ Reservoir imageLoadReservoir_Prev(const ivec2 pix)
 {
     return unpackReservoir(imageLoad(framebufReservoirs_Prev, pix));
 }
+
+
+// Assuming that M=1
+uvec4 packReservoir_Initial(const Reservoir r)
+{
+    if (isinf(r.weightSum) || isnan(r.weightSum))
+    {
+        return uvec4(
+            LIGHT_INDEX_NONE,
+            floatBitsToUint(0.0),
+            floatBitsToUint(0.0),
+            floatBitsToUint(0.0)
+        );
+    }
+
+    return uvec4(
+        r.selected,
+        floatBitsToUint(r.weightSum),
+        floatBitsToUint(r.selected_targetPdf),
+        floatBitsToUint(r.W)
+    );
+}
+
+Reservoir unpackReservoir_Initial(const uvec4 p)
+{
+    Reservoir r;
+    r.selected = p.x;
+    r.weightSum = uintBitsToFloat(p.y);
+    r.selected_targetPdf = uintBitsToFloat(p.z);
+    r.W = uintBitsToFloat(p.w);
+    r.M = 1;
+    return r;
+}
+
+void imageStoreReservoirInitial(const Reservoir normalized, const ivec2 pix)
+{
+    imageStore(framebufReservoirsInitial, pix, packReservoir_Initial(normalized));
+}
+
+Reservoir imageLoadReservoirInitial(const ivec2 pix)
+{
+    return unpackReservoir_Initial(imageLoad(framebufReservoirsInitial, pix));
+}
 #endif // DESC_SET_FRAMEBUFFERS
 
 #endif // RESERVOIR_H_

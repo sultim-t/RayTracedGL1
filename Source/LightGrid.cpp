@@ -61,6 +61,7 @@ RTGL1::LightGrid::LightGrid(
 RTGL1::LightGrid::~LightGrid()
 {
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    DestroyPipelines();
 }
 
 void RTGL1::LightGrid::Build(

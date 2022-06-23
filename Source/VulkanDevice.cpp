@@ -835,6 +835,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
 
         scene->GetLightManager()->BarrierLightGrid(cmd, frameIndex);
+        pathTracer->CalculateInitialReservoirs(params);
         pathTracer->TraceDirectllumination(params);
         pathTracer->TraceIndirectllumination(params);
 

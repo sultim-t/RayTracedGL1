@@ -277,6 +277,7 @@ CONST = {
     "SBT_INDEX_RAYGEN_DIRECT"               : 2,
     "SBT_INDEX_RAYGEN_INDIRECT"             : 3,
     "SBT_INDEX_RAYGEN_GRADIENTS"            : 4,
+    "SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS"   : 5,
     "SBT_INDEX_MISS_DEFAULT"                : 0,
     "SBT_INDEX_MISS_SHADOW"                 : 1,
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
@@ -791,6 +792,7 @@ FRAMEBUFFERS = {
     "WipeEffectSource"                  : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER), # dst to copy in
     
     "Reservoirs"                        : (TYPE_UINT32,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "ReservoirsInitial"                 : (TYPE_UINT32,     COMPONENT_RGBA, 0),
 }
 
 if GRADIENT_ESTIMATION_ENABLED:

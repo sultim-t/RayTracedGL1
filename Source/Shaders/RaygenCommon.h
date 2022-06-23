@@ -422,92 +422,6 @@ bool testSurfaceForReuse(
         (dot(curNormal, otherNormal) > NORMAL_THRESHOLD);
 }
 
-// TODO: separate pass for init reservoirs
-Reservoir getInitReservoir(uint seed, uint salt, const Surface surf, const vec2 pointRnd)
-{
-    Reservoir regularReservoir = emptyReservoir();
-    if (isInsideCell(surf.position))
-    {
-        vec3 gridWorldPos = surf.position + (rndBlueNoise8(seed, 43).xyz * 2.0 - 1.0) * getCellRadius() * 1.6;
-        int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
-
-        for (int i = 0; i < INITIAL_SAMPLES; i++)
-        {
-            // uniform distribution as a coarse source pdf
-            float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
-            int lightGridArrayIndex = lightGridBase + 
-                clamp(int(rnd * LIGHT_GRID_CELL_SIZE), 0, LIGHT_GRID_CELL_SIZE - 1);
-            Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid[lightGridArrayIndex]);
-
-            uint xi = r.selected;
-            float oneOverSourcePdf_xi = r.weightSum / r.selected_targetPdf;
-
-            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-            float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
-            if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-            {
-                regularReservoir.selected_targetPdf = targetPdf_xi;
-            }
-        }
-    }
-    else
-    {      
-        for (int i = 0; i < INITIAL_SAMPLES; i++)
-        {
-            // uniform distribution as a coarse source pdf
-            float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(i + salt));
-            uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
-            float oneOverSourcePdf_xi = globalUniform.lightCount;
-
-            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-            float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
-            if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-            {
-                regularReservoir.selected_targetPdf = targetPdf_xi;
-            }
-        }
-    }
-    calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
-    normalizeReservoir(regularReservoir);
-
-
-    Reservoir dirLightReservoir = emptyReservoir();
-    if (globalUniform.directionalLightExists != 0)
-    {
-        uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
-        float oneOverSourcePdf_xi = 1;
-
-        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-        float rndRis = rnd16(seed, RANDOM_SALT_RIS(INITIAL_SAMPLES + salt));
-        if (updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-        {
-            dirLightReservoir.selected_targetPdf = targetPdf_xi;
-        }
-    }
-    calcReservoirW(dirLightReservoir, dirLightReservoir.selected_targetPdf);
-    normalizeReservoir(dirLightReservoir);
-
-    float rnd = rnd16(seed, 8 + salt); 
-    Reservoir combined = emptyReservoir();
-    updateCombinedReservoir(
-        combined, 
-        regularReservoir, regularReservoir.selected_targetPdf, 0.0);
-    updateCombinedReservoir(
-        combined, 
-        dirLightReservoir, dirLightReservoir.selected_targetPdf, rnd);
-    
-    calcReservoirW(combined, combined.selected_targetPdf);
-    normalizeReservoir(combined);
-
-    return combined;
-}
-
 // TODO: remove from here
 Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2 pointRnd)
 {
@@ -517,7 +431,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
 
 
-    Reservoir initReservoir = getInitReservoir(seed, 0, surf, pointRnd);
+    Reservoir initReservoir = imageLoadReservoirInitial(pix);
     
     Reservoir combined = emptyReservoir();
     updateCombinedReservoir(
@@ -592,7 +506,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
                 continue;
             }
 
-            spatial = getInitReservoir(seed, pixIndex * 16, surf_other, pointRnd);
+            spatial = imageLoadReservoirInitial(pp);
         }
 
 
