@@ -462,7 +462,7 @@ static void MainLoop(RgInstance instance)
 
         RgDrawFrameDebugParams debugParams = 
         {
-            .showGradients = ctl_ShowGradients
+            .drawFlags = ctl_ShowGradients != 0 ? RG_DEBUG_DRAW_GRADIENTS_BIT : 0u
         };
 
         RgDrawFrameRenderResolutionParams resolutionParams = 

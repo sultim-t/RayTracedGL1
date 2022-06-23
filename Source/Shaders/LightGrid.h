@@ -66,12 +66,12 @@ bool isInsideCell(const vec3 worldPos)
 
 vec3 cellToWorld(const ivec3 cellIndex)
 {
-    return BASE + DELTA * (vec3(cellIndex) + 0.5);
+    return BASE + DELTA * (vec3(cellIndex));
 }
 
 ivec3 worldToCell(const vec3 worldPos)
 {
-    return ivec3((worldPos - BASE) / DELTA - 0.5);
+    return ivec3((worldPos - BASE) / DELTA);
 }
 
 Reservoir unpackReservoirFromLightGrid(const ShLightInCell s)

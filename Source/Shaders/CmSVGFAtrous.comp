@@ -278,7 +278,13 @@ void main()
 
     if (atrousIteration == 3)
     {
-        const vec3 albedo = texelFetchAlbedo(pix).rgb;
+        vec3 albedo = texelFetchAlbedo(pix).rgb;
+
+        if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ALBEDO_WHITE) != 0)
+        {
+            albedo = vec3(1.0);
+        }
+
         const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
         const vec3 normal = texelFetchNormal(pix);
         const vec3 throughput = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
@@ -298,6 +304,19 @@ void main()
         vec3 illuminated = 
             (diffuse + indirect) * albedo * (1 - metallic) + 
             specular * getSpecularColor(albedo, metallic);
+
+        if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE) != 0)
+        {
+            illuminated = diffuse * albedo;
+        }
+        else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_SPECULAR) != 0)
+        {
+            illuminated = specular * getSpecularColor(albedo, metallic);
+        }
+        else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE) != 0)
+        {
+            illuminated = indirect;
+        }
 
         illuminated *= throughput;
 

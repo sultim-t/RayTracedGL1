@@ -539,17 +539,48 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     if (drawInfo.pDebugParams != nullptr)
     {
-        if (drawInfo.pDebugParams->showGradients)
+        RgDebugDrawFlags fs = drawInfo.pDebugParams->drawFlags;
+        
+        if (fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_DIRECT_BIT)
         {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_GRADIENTS;
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE;
         }
-        if (drawInfo.pDebugParams->showMotionVectors)
+        else if (fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_INDIRECT_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE;
+        }
+        else if (fs & RG_DEBUG_DRAW_ONLY_SPECULAR_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_SPECULAR;
+        }
+        else if (fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_DIRECT_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE;
+        }
+        else if (fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_INDIRECT_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT;
+        }
+        else if (fs & RG_DEBUG_DRAW_UNFILTERED_SPECULAR_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR;
+        }
+
+        if (fs & RG_DEBUG_DRAW_ALBEDO_WHITE_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ALBEDO_WHITE;
+        }
+        if (fs & RG_DEBUG_DRAW_MOTION_VECTORS_BIT)
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_MOTION_VECTORS;
         }
-        if (drawInfo.pDebugParams->showSectors)
+        if (fs & RG_DEBUG_DRAW_GRADIENTS_BIT)
         {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_SECTORS;
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_GRADIENTS;
+        }
+        if (fs & RG_DEBUG_DRAW_LIGHT_GRID_BIT)
+        {
+            gu->debugShowFlags |= DEBUG_SHOW_FLAG_LIGHT_GRID;
         }
     }
 

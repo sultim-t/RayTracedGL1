@@ -24,6 +24,7 @@
 #define DESC_SET_GLOBAL_UNIFORM 1
 #define DESC_SET_TONEMAPPING 2
 #include "ShaderCommonGLSLFunc.h"
+#include "LightGrid.h"
 
 layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
 
@@ -115,7 +116,7 @@ void main()
         color.g = abs(m.g);
         color.b = 0;
     }
-    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_SECTORS) != 0)
+    /*else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_SECTORS) != 0)
     {
         uint sectorArrayIndex = texelFetch(framebufSectorIndex_Sampler, getCheckerboardPix(pix), 0).r; 
         if (sectorArrayIndex != SECTOR_INDEX_NONE)
@@ -132,20 +133,35 @@ void main()
         {
             color = vec3(1,0,0);
         }
-    }
-#if 0
-    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_DIFF) != 0)
+    }*/
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE) != 0)
     {
         color = texelFetchUnfilteredDirect(getCheckerboardPix(pix));
     }
-    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_SPEC) != 0)
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR) != 0)
     {
         color = texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
     }
-    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_INDIR) != 0)
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT) != 0)
     {
+        const SH sh = imageLoadUnfilteredIndirectSH(getCheckerboardPix(pix));
+        const vec3 normal = texelFetchNormal(getCheckerboardPix(pix));
+        color = SHToIrradiance(sh, normal);
     }
-#endif
+    else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_LIGHT_GRID) != 0)
+    {
+        vec3 surfPos = texelFetch(framebufSurfacePosition_Sampler, getCheckerboardPix(pix), 0).xyz;
+       
+        vec3 cell = vec3(worldToCell(surfPos));
+        cell /= vec3(LIGHT_GRID_SIZE_HORIZONTAL_X, LIGHT_GRID_SIZE_VERTICAL_Y, LIGHT_GRID_SIZE_HORIZONTAL_Z);
+
+        color = mod(cell.xyz * 8, vec3(1.0));
+
+        if (!isInsideCell(surfPos))
+        {
+            color = vec3(getLuminance(color) * 0.2 + 0.4);
+        }
+    }
 #if GRADIENT_ESTIMATION_ENABLED
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_GRADIENTS) != 0)
     {

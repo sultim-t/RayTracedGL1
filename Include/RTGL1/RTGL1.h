@@ -938,11 +938,24 @@ typedef struct RgDrawFrameTexturesParams
     float           emissionMaxScreenColor;
 } RgDrawFrameTexturesParams;
 
+typedef enum RgDebugDrawFlagBits
+{
+    RG_DEBUG_DRAW_ONLY_DIFFUSE_DIRECT_BIT = 1,
+    RG_DEBUG_DRAW_ONLY_DIFFUSE_INDIRECT_BIT = 2,
+    RG_DEBUG_DRAW_ONLY_SPECULAR_BIT = 4,
+    RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_DIRECT_BIT = 8,
+    RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_INDIRECT_BIT = 16,
+    RG_DEBUG_DRAW_UNFILTERED_SPECULAR_BIT = 32,
+    RG_DEBUG_DRAW_ALBEDO_WHITE_BIT = 64,
+    RG_DEBUG_DRAW_MOTION_VECTORS_BIT = 128,
+    RG_DEBUG_DRAW_GRADIENTS_BIT = 256,
+    RG_DEBUG_DRAW_LIGHT_GRID_BIT = 512,
+} RgDebugDrawFlagBits;
+typedef RgFlags RgDebugDrawFlags;
+
 typedef struct RgDrawFrameDebugParams
 {
-    RgBool32    showMotionVectors;
-    RgBool32    showGradients;
-    RgBool32    showSectors;
+    RgDebugDrawFlags drawFlags;
 } RgDrawFrameDebugParams;
 
 typedef struct RgDrawFrameShadowParams

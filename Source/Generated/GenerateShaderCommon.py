@@ -364,10 +364,14 @@ CONST = {
 
     "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : "1 << 0",
     "DEBUG_SHOW_FLAG_GRADIENTS"             : "1 << 1",
-    "DEBUG_SHOW_FLAG_SECTORS"               : "1 << 2",
-    "DEBUG_SHOW_FLAG_UNFILTERED_DIFF"       : "1 << 3",
-    "DEBUG_SHOW_FLAG_UNFILTERED_SPEC"       : "1 << 4",
-    "DEBUG_SHOW_FLAG_UNFILTERED_INDIR"      : "1 << 5",
+    "DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE"    : "1 << 2",
+    "DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR"   : "1 << 3",
+    "DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT"   : "1 << 4",
+    "DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE"   : "1 << 5",
+    "DEBUG_SHOW_FLAG_ONLY_SPECULAR"         : "1 << 6",
+    "DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE" : "1 << 7",
+    "DEBUG_SHOW_FLAG_LIGHT_GRID"            : "1 << 8",
+    "DEBUG_SHOW_FLAG_ALBEDO_WHITE"          : "1 << 9",
     
     "MAX_RAY_LENGTH"                        : "10000.0",
 
