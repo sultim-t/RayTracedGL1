@@ -58,7 +58,7 @@ void normalizeReservoir(inout Reservoir r, uint maxM)
 {
     r.weightSum /= float(max(r.M, 1));
 
-    r.M = clamp(r.M, 1, maxM);
+    r.M = clamp(r.M, 0, maxM);
     r.weightSum *= r.M;
 }
 
