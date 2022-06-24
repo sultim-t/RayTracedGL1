@@ -377,7 +377,7 @@ void shade(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, o
     }
 
     const LightSample l = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
-    shade(surf, l, reservoir.W, diffuse, specular);
+    shade(surf, l, calcSelectedSampleWeight(reservoir), diffuse, specular);
 }
 
 float targetPdfForLightSample(const LightSample light, const Surface surf)
@@ -433,10 +433,10 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 
     Reservoir initReservoir = imageLoadReservoirInitial(pix);
     
-    Reservoir combined = emptyReservoir();
-    updateCombinedReservoir(
-        combined,
-        initReservoir, initReservoir.selected_targetPdf, 0.0);
+    Reservoir combined;
+    initCombinedReservoir(
+        combined, 
+        initReservoir);
 
 
     // temporal
@@ -459,15 +459,14 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 
         Reservoir temporal = imageLoadReservoir_Prev(pp);
         // renormalize to prevent precision problems
-        temporal.M = min(temporal.M, initReservoir.M * 20);
-        temporal.W = isnan(temporal.W) || isinf(temporal.W) || temporal.W < 0.0 ? 0 : clamp(temporal.W, 0.0, RESERVOIR_W_MAX);
+        normalizeReservoir(temporal, initReservoir.M * 20);
 
         float temporalTargetPdf_curSurf = 0.0;
         if (temporal.selected != LIGHT_INDEX_NONE)
         {
             uint selected_curFrame = lightSources_Index_PrevToCur[temporal.selected];
 
-            if (selected_curFrame != UINT32_MAX)
+            if (selected_curFrame != UINT32_MAX && selected_curFrame != LIGHT_INDEX_NONE)
             {
                 temporalTargetPdf_curSurf = targetPdfForLightSample(selected_curFrame, surf, pointRnd);
                 temporal.selected = selected_curFrame;
@@ -475,7 +474,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
         }
 
         float rnd = rnd16(seed, 12 + pixIndex);
-        updateCombinedReservoir(
+        updateCombinedReservoir_newSurf(
             combined, 
             temporal, temporalTargetPdf_curSurf, rnd);
     } 
@@ -513,7 +512,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
         float rnd = rnd16(seed, 105 + pixIndex);
         updateCombinedReservoir(
             combined, 
-            spatial, spatial.selected_targetPdf, rnd);
+            spatial, rnd);
     }
 
 
@@ -521,7 +520,6 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
     {
         return emptyReservoir();
     }
-    calcReservoirW(combined, combined.selected_targetPdf);
 
     return combined;
 }

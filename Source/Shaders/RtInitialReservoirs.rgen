@@ -33,7 +33,7 @@
 #define RAYGEN_SHADOW_PAYLOAD
 #include "RaygenCommon.h"
 
-#define GRID_CELL_OFFSET_MULTIPLIER 1.0
+#define GRID_CELL_OFFSET_MULTIPLIER 1.5
 
 Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 pointRnd)
 {
@@ -82,8 +82,7 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
             updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
         }
     }
-    calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
-    normalizeReservoir(regularReservoir);
+    normalizeReservoir(regularReservoir, 1);
 
 
     Reservoir dirLightReservoir = emptyReservoir();
@@ -98,21 +97,18 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(INITIAL_SAMPLES + 0));
         updateReservoir(dirLightReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
     }
-    calcReservoirW(dirLightReservoir, dirLightReservoir.selected_targetPdf);
-    normalizeReservoir(dirLightReservoir);
+    normalizeReservoir(dirLightReservoir, 1);
 
 
     float rnd = rnd16(seed, RANDOM_SALT_RIS(INITIAL_SAMPLES + 1)); 
-    Reservoir combined = emptyReservoir();
+    Reservoir combined;
+    initCombinedReservoir(
+        combined, 
+        regularReservoir);
     updateCombinedReservoir(
         combined, 
-        regularReservoir, regularReservoir.selected_targetPdf, 0.0);
-    updateCombinedReservoir(
-        combined, 
-        dirLightReservoir, dirLightReservoir.selected_targetPdf, rnd);
-    
-    calcReservoirW(combined, combined.selected_targetPdf);
-    normalizeReservoir(combined);
+        dirLightReservoir, rnd);
+    normalizeReservoir(combined, 1);
 
     return combined;
 }

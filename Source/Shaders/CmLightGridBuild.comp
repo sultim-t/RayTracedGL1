@@ -40,7 +40,6 @@ void storeLightSample(const Reservoir normalized, int arrayIndex)
 Reservoir loadLightSample_Prev(int arrayIndex)
 {
     Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid_Prev[arrayIndex]);
-    calcReservoirW(r, r.selected_targetPdf);
     return r;
 }
 
@@ -76,20 +75,19 @@ void main()
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
         updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
     }
-    calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
 
 
 #if LIGHT_GRID_TEMPORAL
     Reservoir temporal = loadLightSample_Prev(arrayIndex);
-    temporal.M = min(temporal.M, regularReservoir.M * 20);
-    temporal.W = isnan(temporal.W) || isinf(temporal.W) || temporal.W < 0.0 ? 0 : clamp(temporal.W, 0.0, RESERVOIR_W_MAX);
+    // renormalize to prevent precision problems
+    normalizeReservoir(temporal, regularReservoir.M * 20);
 
     float temporalTargetPdf_curSurf = 0.0;
     if (temporal.selected != LIGHT_INDEX_NONE)
     {
         uint selected_curFrame = lightSources_Index_PrevToCur[temporal.selected];
 
-        if (selected_curFrame != UINT32_MAX)
+        if (selected_curFrame != UINT32_MAX && selected_curFrame != LIGHT_INDEX_NONE)
         {
             temporalTargetPdf_curSurf = getLightWeight(lightSources[selected_curFrame], cellCenter, cellRadius);
             temporal.selected = selected_curFrame;
@@ -98,18 +96,17 @@ void main()
 
     float rndRis = rnd16(seed, RANDOM_SALT_RIS(77 + salt));
 
-    Reservoir combined = emptyReservoir();
-    updateCombinedReservoir(
-        combined,
-        regularReservoir, regularReservoir.selected_targetPdf, 0.0);
-    updateCombinedReservoir(
+    Reservoir combined;
+    initCombinedReservoir(
+        combined, 
+        regularReservoir);
+    updateCombinedReservoir_newSurf(
         combined,
         temporal, temporalTargetPdf_curSurf, rndRis);
 #else
     Reservoir combined = regularReservoir;
 #endif
-    calcReservoirW(combined, combined.selected_targetPdf);
-    normalizeReservoir(combined);
+    normalizeReservoir(combined, 1);
 
 
     /*Reservoir dirLightReservoir = emptyReservoir();
@@ -123,8 +120,7 @@ void main()
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(LIGHT_GRID_INITIAL_SAMPLES + salt));
         updateReservoir(dirLightReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
     }
-    calcReservoirW(dirLightReservoir, dirLightReservoir.selected_targetPdf);
-    normalizeReservoir(dirLightReservoir);*/
+    normalizeReservoir(dirLightReservoir, 1);*/
 
 
     storeLightSample(combined, arrayIndex);

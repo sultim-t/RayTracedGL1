@@ -21,17 +21,12 @@
 #ifndef RESERVOIR_H_
 #define RESERVOIR_H_
 
-
-#define RESERVOIR_W_MAX (1.0 / 0.0001)
-
-
 struct Reservoir
 {
     uint    selected;
     float   selected_targetPdf;
     float   weightSum;
     uint    M;
-    float   W;
 };
 
 Reservoir emptyReservoir()
@@ -41,36 +36,32 @@ Reservoir emptyReservoir()
     r.selected_targetPdf = 0.0;
     r.weightSum = 0.0;
     r.M = 0;
-    r.W = 0.0;
     return r;
 }
 
 bool isReservoirValid(const Reservoir r)
 {
-    return 
-        r.selected != LIGHT_INDEX_NONE && 
-        r.W > 0.0 && !isnan(r.W) && !isinf(r.W);
+    return r.selected != LIGHT_INDEX_NONE;
 }
 
-void calcReservoirW(inout Reservoir r, float targetPdf_selected)
+float calcSelectedSampleWeight(const Reservoir r)
 {
-    if (targetPdf_selected > 0.00001 && r.M > 0)
+    if (r.selected_targetPdf <= 0.0 || r.M == 0)
     {
-        r.W = (1.0 / targetPdf_selected) * (r.weightSum / float(r.M));
+        return 0.0;
     }
-    else
-    {
-        r.W = 0.0;
-    }
+    
+    return (1.0 / r.selected_targetPdf) * (r.weightSum / float(r.M));
 }
 
-void normalizeReservoir(inout Reservoir r)
+void normalizeReservoir(inout Reservoir r, uint maxM)
 {
     r.weightSum /= float(max(r.M, 1));
-    r.M = 1;
+
+    r.M = clamp(r.M, 1, maxM);
+    r.weightSum *= r.M;
 }
 
-// Note: W must be recalculated after a sequence of updates
 void updateReservoir(
     inout Reservoir r, 
     uint lightIndex, float targetPdf, 
@@ -88,13 +79,33 @@ void updateReservoir(
     }
 }
 
-// Note: W must be recalculated for combined reservoir after a sequence of updates
-void updateCombinedReservoir(inout Reservoir combined, const Reservoir b, float targetPdf_b, float rnd)
+void initCombinedReservoir(out Reservoir combined, const Reservoir base)
 {
-    // targetPdf_b is for pixel q,
-    // but b.W was calculated for pixel q'
+    combined.selected = base.selected;
+    combined.selected_targetPdf = base.selected_targetPdf;
+    combined.weightSum = base.weightSum;
+    combined.M = base.M;
+}
+
+void updateCombinedReservoir(inout Reservoir combined, const Reservoir b, float rnd)
+{
+    float weight = b.weightSum;
+
+    combined.weightSum += weight;
+    combined.M += b.M;
+    if (rnd * combined.weightSum < weight)
+    {
+        combined.selected = b.selected;
+        combined.selected_targetPdf = b.selected_targetPdf;
+    }
+}
+
+void updateCombinedReservoir_newSurf(inout Reservoir combined, const Reservoir b, float targetPdf_b, float rnd)
+{
+    // targetPdf_b is targetPdf(b.selected) for pixel q
+    // but b.selected_targetPdf was calculated for pixel q'
     // so need to renormalize weight
-    float weight = targetPdf_b * b.W * b.M;
+    float weight = targetPdf_b / b.selected_targetPdf * b.weightSum;
 
     combined.weightSum += weight;
     combined.M += b.M;
@@ -115,7 +126,7 @@ uvec4 packReservoir(const Reservoir r)
             (min(r.M, 65535u) << 16u) | min(r.selected, 65535u),
             floatBitsToUint(r.selected_targetPdf),
             floatBitsToUint(r.weightSum),
-            floatBitsToUint(r.W)
+            0
         );
     }
     else
@@ -124,7 +135,7 @@ uvec4 packReservoir(const Reservoir r)
             min(LIGHT_INDEX_NONE, 65535u),
             floatBitsToUint(0.0),
             floatBitsToUint(0.0),
-            floatBitsToUint(0.0)
+            0
         );
     }
 }
@@ -136,7 +147,6 @@ Reservoir unpackReservoir(const uvec4 p)
     r.M                     = (p[0] >> 16u) & 65535u;
     r.selected_targetPdf    = uintBitsToFloat(p[1]);
     r.weightSum             = uintBitsToFloat(p[2]);
-    r.W                     = uintBitsToFloat(p[3]);
     return r;
 }
 
