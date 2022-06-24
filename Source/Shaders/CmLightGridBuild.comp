@@ -74,10 +74,7 @@ void main()
         float targetPdf_xi = getLightWeight(lightSources[xi], cellCenter, cellRadius);
 
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(i + salt));
-        if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-        {
-            regularReservoir.selected_targetPdf = targetPdf_xi;
-        }
+        updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
     }
     calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
 
@@ -116,7 +113,6 @@ void main()
 
 
     /*Reservoir dirLightReservoir = emptyReservoir();
-    float targetPdfForDirLight = 0.0;
     if (globalUniform.directionalLightExists != 0)
     {
         uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
@@ -125,12 +121,9 @@ void main()
         float targetPdf_xi = getLightWeight(lightSources[xi], cellCenter, cellRadius);
 
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(LIGHT_GRID_INITIAL_SAMPLES + salt));
-        if (updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-        {
-            targetPdfForDirLight = targetPdf_xi;
-        }
+        updateReservoir(dirLightReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
     }
-    calcReservoirW(dirLightReservoir, targetPdfForDirLight);
+    calcReservoirW(dirLightReservoir, dirLightReservoir.selected_targetPdf);
     normalizeReservoir(dirLightReservoir);*/
 
 

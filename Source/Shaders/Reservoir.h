@@ -27,11 +27,11 @@
 
 struct Reservoir
 {
-    uint selected;
-    float selected_targetPdf; /* TODO: store/load; used for grid ONLY for now */
-    float weightSum;
-    float M;
-    float W;
+    uint    selected;
+    float   selected_targetPdf;
+    float   weightSum;
+    uint    M;
+    float   W;
 };
 
 Reservoir emptyReservoir()
@@ -40,7 +40,7 @@ Reservoir emptyReservoir()
     r.selected = LIGHT_INDEX_NONE;
     r.selected_targetPdf = 0.0;
     r.weightSum = 0.0;
-    r.M = 0.0;
+    r.M = 0;
     r.W = 0.0;
     return r;
 }
@@ -56,7 +56,7 @@ void calcReservoirW(inout Reservoir r, float targetPdf_selected)
 {
     if (targetPdf_selected > 0.00001 && r.M > 0)
     {
-        r.W = (1.0 / targetPdf_selected) * (r.weightSum / r.M);
+        r.W = (1.0 / targetPdf_selected) * (r.weightSum / float(r.M));
     }
     else
     {
@@ -71,16 +71,21 @@ void normalizeReservoir(inout Reservoir r)
 }
 
 // Note: W must be recalculated after a sequence of updates
-bool updateReservoir(inout Reservoir r, uint lightIndex, float weight, float rnd)
+void updateReservoir(
+    inout Reservoir r, 
+    uint lightIndex, float targetPdf, 
+    float oneOverSourcePdf, float rnd)
 {
+    float weight = targetPdf * oneOverSourcePdf;
+
     r.weightSum += weight;
     r.M += 1;
+    
     if (rnd * r.weightSum < weight)
     {
         r.selected = lightIndex;
-        return true;
+        r.selected_targetPdf = targetPdf;
     }
-    return false;
 }
 
 // Note: W must be recalculated for combined reservoir after a sequence of updates
@@ -104,31 +109,34 @@ void updateCombinedReservoir(inout Reservoir combined, const Reservoir b, float 
 #ifdef DESC_SET_FRAMEBUFFERS
 uvec4 packReservoir(const Reservoir r)
 {
-    if (isinf(r.weightSum) || isnan(r.weightSum))
+    if (!isinf(r.weightSum) && !isnan(r.weightSum))
+    {        
+        return uvec4(
+            (min(r.M, 65535u) << 16u) | min(r.selected, 65535u),
+            floatBitsToUint(r.selected_targetPdf),
+            floatBitsToUint(r.weightSum),
+            floatBitsToUint(r.W)
+        );
+    }
+    else
     {
         return uvec4(
-            LIGHT_INDEX_NONE,
+            min(LIGHT_INDEX_NONE, 65535u),
             floatBitsToUint(0.0),
             floatBitsToUint(0.0),
             floatBitsToUint(0.0)
         );
     }
-
-    return uvec4(
-        r.selected,
-        floatBitsToUint(r.weightSum),
-        floatBitsToUint(r.M),
-        floatBitsToUint(r.W)
-    );
 }
 
 Reservoir unpackReservoir(const uvec4 p)
 {
     Reservoir r;
-    r.selected = p.x;
-    r.weightSum = uintBitsToFloat(p.y);
-    r.M = uintBitsToFloat(p.z);
-    r.W = uintBitsToFloat(p.w);
+    r.selected              = (p[0]       ) & 65535u;
+    r.M                     = (p[0] >> 16u) & 65535u;
+    r.selected_targetPdf    = uintBitsToFloat(p[1]);
+    r.weightSum             = uintBitsToFloat(p[2]);
+    r.W                     = uintBitsToFloat(p[3]);
     return r;
 }
 
@@ -144,47 +152,14 @@ Reservoir imageLoadReservoir_Prev(const ivec2 pix)
     return unpackReservoir(imageLoad(framebufReservoirs_Prev, pix));
 }
 
-
-// Assuming that M=1
-uvec4 packReservoir_Initial(const Reservoir r)
-{
-    if (isinf(r.weightSum) || isnan(r.weightSum))
-    {
-        return uvec4(
-            LIGHT_INDEX_NONE,
-            floatBitsToUint(0.0),
-            floatBitsToUint(0.0),
-            floatBitsToUint(0.0)
-        );
-    }
-
-    return uvec4(
-        r.selected,
-        floatBitsToUint(r.weightSum),
-        floatBitsToUint(r.selected_targetPdf),
-        floatBitsToUint(r.W)
-    );
-}
-
-Reservoir unpackReservoir_Initial(const uvec4 p)
-{
-    Reservoir r;
-    r.selected = p.x;
-    r.weightSum = uintBitsToFloat(p.y);
-    r.selected_targetPdf = uintBitsToFloat(p.z);
-    r.W = uintBitsToFloat(p.w);
-    r.M = 1;
-    return r;
-}
-
 void imageStoreReservoirInitial(const Reservoir normalized, const ivec2 pix)
 {
-    imageStore(framebufReservoirsInitial, pix, packReservoir_Initial(normalized));
+    imageStore(framebufReservoirsInitial, pix, packReservoir(normalized));
 }
 
 Reservoir imageLoadReservoirInitial(const ivec2 pix)
 {
-    return unpackReservoir_Initial(imageLoad(framebufReservoirsInitial, pix));
+    return unpackReservoir(imageLoad(framebufReservoirsInitial, pix));
 }
 #endif // DESC_SET_FRAMEBUFFERS
 

@@ -33,6 +33,8 @@
 #define RAYGEN_SHADOW_PAYLOAD
 #include "RaygenCommon.h"
 
+#define GRID_CELL_OFFSET_MULTIPLIER 1.0
+
 Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 pointRnd)
 {
     if (surf.isSky)
@@ -43,7 +45,7 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
     Reservoir regularReservoir = emptyReservoir();
     if (isInsideCell(surf.position))
     {
-        vec3 gridWorldPos = surf.position + (rndBlueNoise8(seed, 43).xyz * 2.0 - 1.0) * getCellRadius() * 1.6;
+        vec3 gridWorldPos = surf.position + (rndBlueNoise8(seed, 43).xyz * 2.0 - 1.0) * getCellRadius() * GRID_CELL_OFFSET_MULTIPLIER;
         int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
 
         for (int i = 0; i < INITIAL_SAMPLES; i++)
@@ -61,10 +63,7 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
             float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
 
             float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
-            if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-            {
-                regularReservoir.selected_targetPdf = targetPdf_xi;
-            }
+            updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
         }
     }
     else
@@ -80,10 +79,7 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
             float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
 
             float rndRis = rnd16(seed, RANDOM_SALT_RIS(i));
-            if (updateReservoir(regularReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-            {
-                regularReservoir.selected_targetPdf = targetPdf_xi;
-            }
+            updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
         }
     }
     calcReservoirW(regularReservoir, regularReservoir.selected_targetPdf);
@@ -100,10 +96,7 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
         float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
 
         float rndRis = rnd16(seed, RANDOM_SALT_RIS(INITIAL_SAMPLES + 0));
-        if (updateReservoir(dirLightReservoir, xi, targetPdf_xi * oneOverSourcePdf_xi, rndRis))
-        {
-            dirLightReservoir.selected_targetPdf = targetPdf_xi;
-        }
+        updateReservoir(dirLightReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
     }
     calcReservoirW(dirLightReservoir, dirLightReservoir.selected_targetPdf);
     normalizeReservoir(dirLightReservoir);
