@@ -46,10 +46,11 @@ float getModifiedIndirRoughness(float r)
 // v -- direction to viewer
 // n -- surface normal
 vec3 getSpecularBounce(
-    const uint seed, const vec3 n, const float roughness, const vec3 surfSpecularColor,
+    const uint seed, uint bounceIndex,
+    const vec3 n, const float roughness, const vec3 surfSpecularColor,
     const vec3 v, inout vec3 throughput)
 {
-    const vec2 u = rndBlueNoise8(seed, RANDOM_SALT_SPEC_BOUNCE(0)).xy;
+    const vec2 u = rndBlueNoise8(seed, RANDOM_SALT_SPEC_BOUNCE(bounceIndex)).xy;
 
     // sample microfacet normal
     const vec3 m = sampleSmithGGX(n, v, getModifiedIndirRoughness(roughness), u[0], u[1]);
@@ -78,9 +79,9 @@ vec3 getSpecularBounce(
 }
 
 // n -- surface normal
-vec3 getDiffuseBounce(const uint seed, const vec3 n, inout vec3 throughput)
+vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, inout vec3 throughput)
 {
-    const vec2 u = rndBlueNoise8(seed, RANDOM_SALT_DIFF_BOUNCE(0)).xy;
+    const vec2 u = rndBlueNoise8(seed, RANDOM_SALT_DIFF_BOUNCE(bounceIndex)).xy;
 
     float oneOverPdf;
     vec3 l = sampleLambertian(n, u[0], u[1], oneOverPdf);
@@ -134,7 +135,7 @@ vec3 processSecondBounce(
     return hitSurf.emission * hitSurf.albedo + diffuse * throughput;
 }
 
-// Traces bounce ray, computes direct illumination in hit point
+// Traces bounce ray, computes direct illumination in a hit point
 vec3 processBounce(
     const uint seed, 
     const Surface surf, 
@@ -160,7 +161,7 @@ vec3 processBounce(
 
 
     vec3 throughput_Second = vec3(1.0);
-    vec3 bounceDir_Second = getDiffuseBounce(seed, hitSurf.normalGeom, throughput_Second);
+    vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, throughput_Second);
 
     vec3 contrib_Second = processSecondBounce(
         seed, 
@@ -176,7 +177,7 @@ vec3 processBounce(
 vec3 processSpecular(const uint seed, const Surface surf, out float rayHitDistance)
 {
     vec3 throughput = vec3(1.0);
-    vec3 bounceDirection = getSpecularBounce(seed, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, throughput);
+    vec3 bounceDirection = getSpecularBounce(seed, 1, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, throughput);
 
     return processBounce(
         seed, 
@@ -189,7 +190,7 @@ vec3 processSpecular(const uint seed, const Surface surf, out float rayHitDistan
 SH processIndirectDiffuse(const uint seed, const Surface surf)
 {
     vec3 throughput = vec3(1.0);
-    vec3 bounceDirection = getDiffuseBounce(seed, surf.normalGeom, throughput);
+    vec3 bounceDirection = getDiffuseBounce(seed, 1, surf.normalGeom, throughput);
     float rayHitDistance;
 
     const vec3 contrib = processBounce(

@@ -21,13 +21,14 @@
 #ifndef RANDOM_H_
 #define RANDOM_H_
 
-#define RANDOM_SALT_LIGHT_TYPE_CHOOSE 1
-#define RANDOM_SALT_DIRECTIONAL_LIGHT_DISK 2
-#define RANDOM_SALT_LIGHT_POINT 4
-#define RANDOM_SALT_DIFF_BOUNCE(bounceIndex) (8 + bounceIndex)
-#define RANDOM_SALT_SPEC_BOUNCE(bounceIndex) (16 + bounceIndex)
-#define RANDOM_SALT_LIGHT_CHOOSE(i) (32 + i)
-#define RANDOM_SALT_RIS(i) (64 + i)
+#define RANDOM_SALT_DIFF_BOUNCE(bounceIndex) (8 + (bounceIndex))
+#define RANDOM_SALT_SPEC_BOUNCE(bounceIndex) (12 + (bounceIndex))
+#define RANDOM_SALT_POSTEFFECT 16
+#define RANDOM_SALT_LIGHT_POINT 20
+#define RANDOM_SALT_LIGHT_GRID_BASE 24
+#define RANDOM_SALT_INITIAL_RESERVOIRS_BASE 48
+#define RANDOM_SALT_LIGHT_CHOOSE_DIRECT_BASE 72
+#define RANDOM_SALT_LIGHT_CHOOSE_INDIRECT_BASE 96
 
 // Sample disk uniformly
 // u1, u2 -- uniform random numbers

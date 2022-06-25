@@ -429,6 +429,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepth_Sampler, pix, 0).r;
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
+    uint salt = RANDOM_SALT_LIGHT_CHOOSE_DIRECT_BASE;
 
 
     Reservoir initReservoir = imageLoadReservoirInitial(pix);
@@ -442,7 +443,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
     // temporal
     for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = rndBlueNoise8(seed, 0 + pixIndex).xy * 2.0 - 1.0;
+        vec2 rndOffset = rndBlueNoise8(seed, salt++).xy * 2.0 - 1.0;
         ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
 
         {
@@ -473,7 +474,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
             }
         }
 
-        float rnd = rnd16(seed, 12 + pixIndex);
+        float rnd = rnd16(seed, salt++);
         updateCombinedReservoir_newSurf(
             combined, 
             temporal, temporalTargetPdf_curSurf, rnd);
@@ -481,7 +482,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 
     for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = rndBlueNoise8(seed, 85 + pixIndex).xy * 2.0 - 1.0;
+        vec2 rndOffset = rndBlueNoise8(seed, salt++).xy * 2.0 - 1.0;
         ivec2 pp = pix + ivec2(rndOffset * SPATIAL_RADIUS);
 
         {
@@ -509,7 +510,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
         }
 
 
-        float rnd = rnd16(seed, 105 + pixIndex);
+        float rnd = rnd16(seed, salt++);
         updateCombinedReservoir(
             combined, 
             spatial, rnd);
@@ -546,7 +547,7 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
 
 #if LIGHT_SAMPLE_METHOD == 0
   
-    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE(0));
+    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE_DIRECT_BASE);
     uint lt = globalUniform.lightCount;
     lt += globalUniform.directionalLightExists != 0 ? 1 : 0;
     uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
