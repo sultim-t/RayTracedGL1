@@ -44,7 +44,7 @@
 
 #define LIGHT_SAMPLE_METHOD_NONE 0
 #define LIGHT_SAMPLE_METHOD_DIRECT 1
-#define LIGHT_SAMPLE_METHOD_INDIRECT 2
+#define LIGHT_SAMPLE_METHOD_INDIR 2
 #define LIGHT_SAMPLE_METHOD_GRADIENTS 3
 #if !defined(LIGHT_SAMPLE_METHOD)
     #error Light sampling method must be defined
@@ -343,7 +343,7 @@ void shade(const Surface surf, const LightSample light, float oneOverPdf, out ve
     }
 
     diffuse  = light.dw * nl * light.color * evalBRDFLambertian(1.0);
-#ifndef RAYGEN_COMMON_ONLY_DIFFUSE
+#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_INDIR 
     specular = light.dw * nl * light.color * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
 #endif
 
@@ -493,55 +493,26 @@ Reservoir selectLight_Uniform(uint seed)
     return r;
 }
 
-#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
-
-void processDirectIllumination(
-    uint seed, const Surface surf, int bounceIndex,
-#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
-    out float out_distance,
-#endif
-#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_GRADIENTS
-    const Reservoir reservoir,
-#endif
-    out vec3 out_diffuse, out vec3 out_specular)
+vec2 getLightPointRnd(uint seed)
 {
-    out_diffuse = out_specular = vec3(0.0);
-#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
-    out_distance = MAX_RAY_LENGTH;
-#endif
-    const bool shadowRayEnable = bounceIndex < globalUniform.maxBounceShadowsLights;
+    return rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
+}
 
-    if (!(shadowRayEnable || globalUniform.maxBounceShadowsLights == 0) || 
-        !(globalUniform.lightCount > 0 || globalUniform.directionalLightExists > 0) || surf.sectorArrayIndex == SECTOR_INDEX_NONE)
-    {
-        return;
-    }
-
-    const vec2 pointRnd = rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
+#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
+bool isDirectIlluminationValid(int bounceIndex)
+{
+    bool v = true;
+    v = v && (bounceIndex < globalUniform.maxBounceShadowsLights || globalUniform.maxBounceShadowsLights == 0);
+    v = v && (globalUniform.lightCount > 0 || globalUniform.directionalLightExists > 0);
+    // v = v && (surf.sectorArrayIndex != SECTOR_INDEX_NONE);
     
-#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INDIRECT
-    const Reservoir reservoir = selectLight_Uniform(seed);
-    
-#elif LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
-    // TODO: remove from here! for now, assume that processLight is called once per each pixel
-    const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
+    return v;
+}
 
-    const Reservoir reservoir = selectLight_Direct(pix, seed, surf, pointRnd);
-    imageStoreReservoir(reservoir, pix);
-#endif
-
-    if (!isReservoirValid(reservoir))
-    {
-        return;
-    } 
-
+void traceDirectIllumination(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, int bounceIndex, out float out_distance, out vec3 out_diffuse, out vec3 out_specular)
+{    
     LightSample light = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
     shade(surf, light, calcSelectedSampleWeight(reservoir), out_diffuse, out_specular);
-
-#ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
-    out_diffuse  = min(out_diffuse,  vec3(globalUniform.firefliesClamp));
-    out_specular = min(out_specular, vec3(globalUniform.firefliesClamp));
-#endif
     
     if (getLuminance(out_diffuse + out_specular) <= 0.0)
     {
@@ -553,17 +524,85 @@ void processDirectIllumination(
     const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
     const vec3 shadowRayEnd = light.position;
 
-    if (shadowRayEnable)
+    if (bounceIndex < globalUniform.maxBounceShadowsLights)
     {
         const bool isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, shadowRayEnd, shadowRayIgnoreFirstPersonViewer);
         out_diffuse  *= float(!isShadowed);
         out_specular *= float(!isShadowed);
 
-#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
-        out_distance = length(shadowRayStart - shadowRayEnd); 
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
+        out_distance = length(shadowRayStart - shadowRayEnd);
 #endif
     }
 }
 #endif // LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
+
+
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
+Reservoir processDirectIllumination(uint seed, const ivec2 pix, const Surface surf, out float out_distance, out vec3 out_diffuse, out vec3 out_specular)
+{
+    out_diffuse = out_specular = vec3(0.0);
+    out_distance = MAX_RAY_LENGTH;
+
+    if (!isDirectIlluminationValid(0))
+    {
+        return emptyReservoir();
+    }
+    const vec2 pointRnd = getLightPointRnd(seed);
+    
+    const Reservoir reservoir = selectLight_Direct(pix, seed, surf, pointRnd);
+    if (!isReservoirValid(reservoir))
+    {
+        return emptyReservoir();
+    } 
+
+    traceDirectIllumination(surf, reservoir, pointRnd, 0, out_distance, out_diffuse, out_specular);
+    return reservoir;
+}
+#endif
+
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INDIR
+vec3 processDirectIllumination(uint seed, const Surface surf, int bounceIndex)
+{
+    if (!isDirectIlluminationValid(bounceIndex))
+    {
+        return vec3(0.0);
+    }
+    const vec2 pointRnd = getLightPointRnd(seed);
+    
+    const Reservoir reservoir = selectLight_Uniform(seed);
+    if (!isReservoirValid(reservoir))
+    {
+        return vec3(0.0);
+    } 
+
+    vec3 out_diffuse;
+    vec3 unusedv; float unusedf;
+    traceDirectIllumination(surf, reservoir, pointRnd, bounceIndex, unusedf, out_diffuse, unusedv);
+    
+    return min(out_diffuse, vec3(globalUniform.firefliesClamp));
+}
+#endif
+
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_GRADIENTS
+void processDirectIllumination(uint seed, const Surface surf, const Reservoir reservoir, out vec3 out_diffuse, out vec3 out_specular)
+{
+    out_diffuse = out_specular = vec3(0.0);
+
+    if (!isDirectIlluminationValid(0))
+    {
+        return;
+    }
+    const vec2 pointRnd = getLightPointRnd(seed);
+
+    if (!isReservoirValid(reservoir))
+    {
+        return;
+    } 
+    
+    float unusedf;
+    traceDirectIllumination(surf, reservoir, pointRnd, 0, unusedf, out_diffuse, out_specular);
+}
+#endif
 
 #endif // RAYGEN_COMMON_H_

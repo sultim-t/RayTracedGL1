@@ -30,7 +30,6 @@
 #define DESC_SET_TEXTURES 4
 #define DESC_SET_RANDOM 5
 #define DESC_SET_LIGHT_SOURCES 6
-#define RAYGEN_COMMON_DISTANCE_TO_LIGHT
 #define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_DIRECT)
 #include "RaygenCommon.h"
 
@@ -52,10 +51,10 @@ void main()
 
     vec3 diffuse, specular;
     float distToLight;
-    processDirectIllumination(
-        seed, 
+    Reservoir r = processDirectIllumination(
+        seed,
+        pix, 
         surf,
-        0,
         distToLight,
         diffuse, specular);
 
@@ -63,4 +62,5 @@ void main()
     imageStoreUnfilteredSpecular(pix, specular);
     imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, distToLight));
     imageStore(framebufGradientInputs, pix, vec4(getLuminance(diffuse), getLuminance(specular), 0, 0));
+    imageStoreReservoir(r, pix);
 }

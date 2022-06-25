@@ -120,8 +120,7 @@ void main()
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
     const uint seed = getCurrentRandomSeed(pix);
     const Surface surf = fetchGbufferSurface(pix);
-    const vec2 pointRnd = rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
 
-    Reservoir normalizedInitial = calculateInitialReservoir(seed, surf, pointRnd);
+    Reservoir normalizedInitial = calculateInitialReservoir(seed, surf, getLightPointRnd(seed));
     imageStoreReservoirInitial(normalizedInitial, pix);
 }

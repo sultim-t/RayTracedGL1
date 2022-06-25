@@ -113,7 +113,7 @@ void main()
             if (prevReservoir.selected != UINT32_MAX)
             {
                 vec3 diffuse, specular;
-                processDirectIllumination(oldSeed, prevSurf, 0, prevReservoir, diffuse, specular);
+                processDirectIllumination(oldSeed, prevSurf, prevReservoir, diffuse, specular);
 
                 forwardProjectedLuminance = vec2(getLuminance(diffuse), getLuminance(specular));
             }

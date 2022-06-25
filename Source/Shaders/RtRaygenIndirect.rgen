@@ -32,9 +32,7 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define DESC_SET_LIGHT_SOURCES 6
 #define DESC_SET_CUBEMAPS 7
 #define DESC_SET_RENDER_CUBEMAP 8
-#define RAYGEN_COMMON_ONLY_DIFFUSE
-#define RAYGEN_ALLOW_FIREFLIES_CLAMP
-#define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_INDIRECT)
+#define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_INDIR)
 #include "RaygenCommon.h"
 
 float getModifiedIndirRoughness(float r)
@@ -127,8 +125,7 @@ vec3 processSecondBounce(
     }
 
     // calculate direct illumination only for directional lights in hit position
-    vec3 diffuse, specular;
-    processDirectIllumination(seed, hitSurf, 2, diffuse, specular);
+    const vec3 diffuse = processDirectIllumination(seed, hitSurf, 2);
     throughput *= hitSurf.albedo;
 
     return hitSurf.emission * hitSurf.albedo + diffuse * throughput;
@@ -153,8 +150,7 @@ vec3 processBounce(
     }
     
     // calculate direct illumination only for directional lights in hit position
-    vec3 diffuse, specular;
-    processDirectIllumination(seed, hitSurf, 1, diffuse, specular);
+    const vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
     throughput_First *= hitSurf.albedo;
     rayHitDistance = length(hitSurf.position - surf.position);
 
