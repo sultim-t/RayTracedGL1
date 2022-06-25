@@ -345,18 +345,6 @@ void shade(const Surface surf, const LightSample light, float oneOverPdf, out ve
     specular *= oneOverPdf;
 }
 
-void shade(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, out vec3 diffuse, out vec3 specular)
-{
-    if (!isReservoirValid(reservoir))
-    {
-        diffuse = specular = vec3(0.0);
-        return;
-    }
-
-    const LightSample l = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
-    shade(surf, l, calcSelectedSampleWeight(reservoir), diffuse, specular);
-}
-
 float targetPdfForLightSample(const LightSample light, const Surface surf)
 {
     vec3 d, s;
@@ -399,8 +387,8 @@ bool testSurfaceForReuse(
         (dot(curNormal, otherNormal) > NORMAL_THRESHOLD);
 }
 
-// TODO: remove from here
-Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2 pointRnd)
+// Select light in screen-space for direct illumination
+Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, const vec2 pointRnd)
 {
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
@@ -474,18 +462,7 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
             }
         }
 
-        Reservoir spatial = emptyReservoir();
-        // remove from here to separate 'init' pass
-        {
-            Surface surf_other = fetchGbufferSurface(pp);
-            if (surf_other.isSky)
-            {
-                continue;
-            }
-
-            spatial = imageLoadReservoirInitial(pp);
-        }
-
+        Reservoir spatial = imageLoadReservoirInitial(pp);
 
         float rnd = rnd16(seed, salt++);
         updateCombinedReservoir(
@@ -502,13 +479,29 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
     return combined;
 }
 
+Reservoir selectLight_Uniform(uint seed)
+{
+    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE_DIRECT_BASE);
+
+    uint lt = globalUniform.lightCount;
+    lt += globalUniform.directionalLightExists != 0 ? 1 : 0;
+
+    Reservoir r = emptyReservoir();
+
+    r.selected = clamp(uint(rnd * lt), 0, lt - 1);
+    r.selected_targetPdf = 1.0 / float(lt);
+    r.weightSum = 1.0;
+    r.M = 1;
+
+    return r;
+}
 
 void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
     out float out_distance,
 #endif
 #ifdef RAYGEN_COMMON_GRADIENTS
-    const Reservoir reservoir,
+    const Reservoir gradReservoir,
 #endif
     out vec3 out_diffuse, out vec3 out_specular)
 {
@@ -524,42 +517,29 @@ void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
         return;
     }
 
-    // note: if it's a gradient sample, then the seed is from previous frame
-
     const vec2 pointRnd = rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
-
-#if LIGHT_SAMPLE_METHOD == 0
-  
-    float rnd = rnd16(seed, RANDOM_SALT_LIGHT_CHOOSE_DIRECT_BASE);
-    uint lt = globalUniform.lightCount;
-    lt += globalUniform.directionalLightExists != 0 ? 1 : 0;
-    uint selectedLightIndex = clamp(uint(rnd * lt), 0, lt - 1);
-    float oneOverPdf = lt;
-
-    LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
-    shade(surf, light, oneOverPdf, out_diffuse, out_specular);
-
+    
+#if defined(RAYGEN_COMMON_GRADIENTS)
+    const Reservoir reservoir = gradReservoir;
+    
+#elif LIGHT_SAMPLE_METHOD == 0
+    const Reservoir reservoir = selectLight_Uniform(seed);
+    
 #elif LIGHT_SAMPLE_METHOD == 2
-
-#if !defined(RAYGEN_COMMON_GRADIENTS)
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
-    Reservoir reservoir = chooseLight(pix, seed, surf, pointRnd);
+    const Reservoir reservoir = selectLight_Direct(pix, seed, surf, pointRnd);
     imageStoreReservoir(reservoir, pix);
 #endif
 
-    shade(surf, reservoir, pointRnd, out_diffuse, out_specular);
-
-
-    // TODO: remove, exists for compatibility
-    uint selectedLightIndex; LightSample light;
-    if (isReservoirValid(reservoir))
+    if (!isReservoirValid(reservoir))
     {
-        selectedLightIndex = reservoir.selected;
-        light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
+        return;
     } 
-#endif
+
+    LightSample light = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
+    shade(surf, light, calcSelectedSampleWeight(reservoir), out_diffuse, out_specular);
 
 #ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
     out_diffuse  = min(out_diffuse,  vec3(globalUniform.firefliesClamp));
@@ -572,7 +552,7 @@ void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
         return;
     }
 
-    const bool shadowRayIgnoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == selectedLightIndex);
+    const bool shadowRayIgnoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == reservoir.selected);
     const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
     const vec3 shadowRayEnd = light.position;
 
