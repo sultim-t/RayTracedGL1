@@ -26,6 +26,7 @@
 
 #define LIGHT_GRID_INITIAL_SAMPLES 8
 #define LIGHT_GRID_TEMPORAL 1
+#define LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER 1.5
 
 
 int cellToArrayIndex(const ivec3 cellIndex)
@@ -92,6 +93,11 @@ ShLightInCell packReservoirToLightGrid(const Reservoir normalized)
     s.selected_targetPdf = normalized.selected_targetPdf;
     s.weightSum = normalized.weightSum;
     return s;
+}
+
+vec3 jitterPositionForLightGrid(const vec3 surfPosition, const vec3 rnd)
+{
+    return surfPosition + (rnd * 2.0 - 1.0) * getCellRadius() * LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER;
 }
 
 #endif // LIGHT_GRID_H_

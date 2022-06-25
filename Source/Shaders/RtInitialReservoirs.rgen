@@ -34,7 +34,6 @@
 #include "RaygenCommon.h"
 
 #define INITIAL_SAMPLES 8
-#define GRID_CELL_OFFSET_MULTIPLIER 1.5
 
 Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 pointRnd)
 {
@@ -47,7 +46,7 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
     Reservoir regularReservoir = emptyReservoir();
     if (isInsideCell(surf.position))
     {
-        vec3 gridWorldPos = surf.position + (rndBlueNoise8(seed, salt++).xyz * 2.0 - 1.0) * getCellRadius() * GRID_CELL_OFFSET_MULTIPLIER;
+        vec3 gridWorldPos = jitterPositionForLightGrid(surf.position, rndBlueNoise8(seed, salt++).xyz);
         int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
 
         for (int i = 0; i < INITIAL_SAMPLES; i++)
