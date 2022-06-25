@@ -33,98 +33,18 @@
 #define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_NONE)
 #include "RaygenCommon.h"
 
-#define INITIAL_SAMPLES 8
-
-Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 pointRnd)
-{
-    if (surf.isSky)
-    {
-        return emptyReservoir();
-    }
-    uint salt = RANDOM_SALT_INITIAL_RESERVOIRS_BASE;
-
-    Reservoir regularReservoir = emptyReservoir();
-    if (isInsideCell(surf.position))
-    {
-        vec3 gridWorldPos = jitterPositionForLightGrid(surf.position, rndBlueNoise8(seed, salt++).xyz);
-        int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
-
-        for (int i = 0; i < INITIAL_SAMPLES; i++)
-        {
-            // uniform distribution as a coarse source pdf
-            float rnd = rnd16(seed, salt++);
-            int lightGridArrayIndex = lightGridBase + 
-                clamp(int(rnd * LIGHT_GRID_CELL_SIZE), 0, LIGHT_GRID_CELL_SIZE - 1);
-            Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid[lightGridArrayIndex]);
-
-            if (!isReservoirValid(r))
-            {
-                continue;
-            }
-
-            uint xi = r.selected;
-            float oneOverSourcePdf_xi = r.weightSum * safePositiveRcp(r.selected_targetPdf);
-
-            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-            float rndRis = rnd16(seed, salt++);
-            updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
-        }
-    }
-    else
-    {      
-        for (int i = 0; i < INITIAL_SAMPLES; i++)
-        {
-            // uniform distribution as a coarse source pdf
-            float rnd = rnd16(seed, salt++);
-            uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
-            float oneOverSourcePdf_xi = globalUniform.lightCount;
-
-            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-            float rndRis = rnd16(seed, salt++);
-            updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
-        }
-    }
-    normalizeReservoir(regularReservoir, 1);
-
-
-    Reservoir dirLightReservoir = emptyReservoir();
-    if (globalUniform.directionalLightExists != 0)
-    {
-        uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
-        float oneOverSourcePdf_xi = 1;
-
-        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
-        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
-
-        float rndRis = rnd16(seed, salt++);
-        updateReservoir(dirLightReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
-    }
-    normalizeReservoir(dirLightReservoir, 1);
-
-
-    float rnd = rnd16(seed, salt++); 
-    Reservoir combined;
-    initCombinedReservoir(
-        combined, 
-        regularReservoir);
-    updateCombinedReservoir(
-        combined, 
-        dirLightReservoir, rnd);
-    normalizeReservoir(combined, 1);
-
-    return combined;
-}
-
 void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
     const uint seed = getCurrentRandomSeed(pix);
     const Surface surf = fetchGbufferSurface(pix);
 
-    Reservoir normalizedInitial = calculateInitialReservoir(seed, surf, getLightPointRnd(seed));
+    if (surf.isSky)
+    {
+        imageStoreReservoirInitial(emptyReservoir(), pix);
+        return;
+    }
+
+    Reservoir normalizedInitial = calcInitialReservoir(seed, RANDOM_SALT_INITIAL_RESERVOIRS_BASE, surf, getLightPointRnd(seed));
     imageStoreReservoirInitial(normalizedInitial, pix);
 }

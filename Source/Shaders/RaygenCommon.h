@@ -343,9 +343,7 @@ void shade(const Surface surf, const LightSample light, float oneOverPdf, out ve
     }
 
     diffuse  = light.dw * nl * light.color * evalBRDFLambertian(1.0);
-#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_INDIR 
     specular = light.dw * nl * light.color * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
-#endif
 
     diffuse  *= oneOverPdf;
     specular *= oneOverPdf;
@@ -363,6 +361,86 @@ float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 po
 {
     const LightSample light = sampleLight(lightSources[lightIndex], surf.position, pointRnd);
     return targetPdfForLightSample(light, surf);
+}
+
+#define INITIAL_SAMPLES 8
+
+Reservoir calcInitialReservoir(uint seed, uint salt, const Surface surf, const vec2 pointRnd)
+{
+    Reservoir regularReservoir = emptyReservoir();
+    if (isInsideCell(surf.position))
+    {
+        vec3 gridWorldPos = jitterPositionForLightGrid(surf.position, rndBlueNoise8(seed, salt++).xyz);
+        int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
+
+        for (int i = 0; i < INITIAL_SAMPLES; i++)
+        {
+            // uniform distribution as a coarse source pdf
+            float rnd = rnd16(seed, salt++);
+            int lightGridArrayIndex = lightGridBase + 
+                clamp(int(rnd * LIGHT_GRID_CELL_SIZE), 0, LIGHT_GRID_CELL_SIZE - 1);
+            Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid[lightGridArrayIndex]);
+
+            if (!isReservoirValid(r))
+            {
+                continue;
+            }
+
+            uint xi = r.selected;
+            float oneOverSourcePdf_xi = r.weightSum * safePositiveRcp(r.selected_targetPdf);
+
+            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+            float rndRis = rnd16(seed, salt++);
+            updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
+        }
+    }
+    else
+    {      
+        for (int i = 0; i < INITIAL_SAMPLES; i++)
+        {
+            // uniform distribution as a coarse source pdf
+            float rnd = rnd16(seed, salt++);
+            uint xi = LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + clamp(uint(rnd * globalUniform.lightCount), 0, globalUniform.lightCount - 1);
+            float oneOverSourcePdf_xi = globalUniform.lightCount;
+
+            LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+            float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+            float rndRis = rnd16(seed, salt++);
+            updateReservoir(regularReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
+        }
+    }
+    normalizeReservoir(regularReservoir, 1);
+
+
+    Reservoir dirLightReservoir = emptyReservoir();
+    if (globalUniform.directionalLightExists != 0)
+    {
+        uint xi = LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET;
+        float oneOverSourcePdf_xi = 1;
+
+        LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
+        float targetPdf_xi = targetPdfForLightSample(lightSample, surf);
+
+        float rndRis = rnd16(seed, salt++);
+        updateReservoir(dirLightReservoir, xi, targetPdf_xi, oneOverSourcePdf_xi, rndRis);
+    }
+    normalizeReservoir(dirLightReservoir, 1);
+
+
+    float rnd = rnd16(seed, salt++); 
+    Reservoir combined;
+    initCombinedReservoir(
+        combined, 
+        regularReservoir);
+    updateCombinedReservoir(
+        combined, 
+        dirLightReservoir, rnd);
+    normalizeReservoir(combined, 1);
+
+    return combined;
 }
 
 bool testSurfaceForReuse(
@@ -493,6 +571,12 @@ Reservoir selectLight_Uniform(uint seed)
     return r;
 }
 
+// Select light in world-space for light bounces
+Reservoir selectLight_Indir(uint seed, const Surface surf, const vec2 pointRnd)
+{
+    return calcInitialReservoir(seed, RANDOM_SALT_LIGHT_CHOOSE_INDIRECT_BASE, surf, pointRnd);
+}
+
 vec2 getLightPointRnd(uint seed)
 {
     return rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
@@ -503,7 +587,7 @@ bool isDirectIlluminationValid(int bounceIndex)
 {
     bool v = true;
     v = v && (bounceIndex < globalUniform.maxBounceShadowsLights || globalUniform.maxBounceShadowsLights == 0);
-    v = v && (globalUniform.lightCount > 0 || globalUniform.directionalLightExists > 0);
+    v = v && (globalUniform.lightCount + globalUniform.directionalLightExists > 0);
     // v = v && (surf.sectorArrayIndex != SECTOR_INDEX_NONE);
     
     return v;
@@ -570,7 +654,7 @@ vec3 processDirectIllumination(uint seed, const Surface surf, int bounceIndex)
     }
     const vec2 pointRnd = getLightPointRnd(seed);
     
-    const Reservoir reservoir = selectLight_Uniform(seed);
+    const Reservoir reservoir = selectLight_Indir(seed, surf, pointRnd);
     if (!isReservoirValid(reservoir))
     {
         return vec3(0.0);
