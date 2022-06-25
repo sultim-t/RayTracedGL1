@@ -289,29 +289,6 @@ vec3 getSky(vec3 direction)
 
 
 
-struct LightResult
-{
-    vec3    diffuse;
-    bool    shadowRayEnable;
-    vec3    specular;
-    bool    shadowRayIgnoreFirstPersonViewer;
-    vec3    shadowRayEnd;
-};
-
-LightResult newLightResult()
-{
-    LightResult r;
-    r.diffuse           = vec3(0);
-    r.specular          = vec3(0);
-    r.shadowRayEnd      = vec3(0);
-    r.shadowRayEnable   = false;
-    r.shadowRayIgnoreFirstPersonViewer = false;
-    
-    return r;
-}
-
-
-
 #define SHADOW_RAY_EPS       0.01
 #define RAY_ORIGIN_LEAK_BIAS 0.01    // offset a bit towards a viewer to prevent light leaks from the other side of polygons
 
@@ -526,17 +503,23 @@ Reservoir chooseLight(const ivec2 pix, uint seed, const Surface surf, const vec2
 }
 
 
-void processLight(uint seed, const Surface surf, int bounceIndex, inout LightResult out_result
-#ifdef RAYGEN_COMMON_GRADIENTS
-    , const Reservoir reservoir
+void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
+#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
+    out float out_distance,
 #endif
-)
+#ifdef RAYGEN_COMMON_GRADIENTS
+    const Reservoir reservoir,
+#endif
+    out vec3 out_diffuse, out vec3 out_specular)
 {
-    bool castShadowRay = bounceIndex < globalUniform.maxBounceShadowsLights;
+    out_diffuse = out_specular = vec3(0.0);
+#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
+    out_distance = MAX_RAY_LENGTH;
+#endif
+    const bool shadowRayEnable = bounceIndex < globalUniform.maxBounceShadowsLights;
 
-    if ((globalUniform.lightCount == 0 && globalUniform.directionalLightExists == 0) || 
-        (!castShadowRay && bounceIndex != 0) || 
-        surf.sectorArrayIndex == SECTOR_INDEX_NONE)
+    if (!(shadowRayEnable || globalUniform.maxBounceShadowsLights == 0) || 
+        !(globalUniform.lightCount > 0 || globalUniform.directionalLightExists > 0) || surf.sectorArrayIndex == SECTOR_INDEX_NONE)
     {
         return;
     }
@@ -554,7 +537,7 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
     float oneOverPdf = lt;
 
     LightSample light = sampleLight(lightSources[selectedLightIndex], surf.position, pointRnd);
-    shade(surf, light, oneOverPdf, out_result.diffuse, out_result.specular);
+    shade(surf, light, oneOverPdf, out_diffuse, out_specular);
 
 #elif LIGHT_SAMPLE_METHOD == 2
 
@@ -566,7 +549,7 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
     imageStoreReservoir(reservoir, pix);
 #endif
 
-    shade(surf, reservoir, pointRnd, out_result.diffuse, out_result.specular);
+    shade(surf, reservoir, pointRnd, out_diffuse, out_specular);
 
 
     // TODO: remove, exists for compatibility
@@ -579,59 +562,30 @@ void processLight(uint seed, const Surface surf, int bounceIndex, inout LightRes
 #endif
 
 #ifdef RAYGEN_ALLOW_FIREFLIES_CLAMP
-    out_result.diffuse  = min(out_result.diffuse,  vec3(globalUniform.firefliesClamp));
-    out_result.specular = min(out_result.specular, vec3(globalUniform.firefliesClamp));
+    out_diffuse  = min(out_diffuse,  vec3(globalUniform.firefliesClamp));
+    out_specular = min(out_specular, vec3(globalUniform.firefliesClamp));
 #endif
     
-    if (!castShadowRay || getLuminance(out_result.diffuse + out_result.specular) <= 0.0)
+    if (getLuminance(out_diffuse + out_specular) <= 0.0)
     {
+        out_diffuse = out_specular = vec3(0.0);
         return;
     }
-    
-    out_result.shadowRayEnable = true;
-    out_result.shadowRayEnd = light.position;
-    out_result.shadowRayIgnoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == selectedLightIndex);
-}
 
+    const bool shadowRayIgnoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == selectedLightIndex);
+    const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
+    const vec3 shadowRayEnd = light.position;
 
-void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
-#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
-    out float outDistance,
-#endif
-#ifdef RAYGEN_COMMON_GRADIENTS
-    const Reservoir reservoir,
-#endif
-    out vec3 outDiffuse, out vec3 outSpecular)
-{
-    outDiffuse = outSpecular = vec3(0.0);
-#ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
-    outDistance = MAX_RAY_LENGTH;
-#endif
-
-    LightResult r = newLightResult();
-    processLight(
-        seed,
-        surf,
-        bounceIndex, /* TODO: remove 'castShadowRay'? */
-        r
-#ifdef RAYGEN_COMMON_GRADIENTS
-        , reservoir
-#endif
-    );
-
-    bool isShadowed = false;
-    if (r.shadowRayEnable)
+    if (shadowRayEnable)
     {
-        const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
-        isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, r.shadowRayEnd, r.shadowRayIgnoreFirstPersonViewer);
+        const bool isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, shadowRayEnd, shadowRayIgnoreFirstPersonViewer);
+        out_diffuse  *= float(!isShadowed);
+        out_specular *= float(!isShadowed);
 
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
-        outDistance = length(shadowRayStart - r.shadowRayEnd); 
+        out_distance = length(shadowRayStart - shadowRayEnd); 
 #endif
     }
-
-    outDiffuse  = r.diffuse  * float(!isShadowed);
-    outSpecular = r.specular * float(!isShadowed);
 }
 #endif // RAYGEN_SHADOW_PAYLOAD
 
