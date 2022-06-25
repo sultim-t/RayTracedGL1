@@ -49,6 +49,7 @@
 #define DESC_SET_LIGHT_SOURCES 6
 #define DESC_SET_CUBEMAPS 7
 #define DESC_SET_RENDER_CUBEMAP 8
+#define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_NONE)
 #include "RaygenCommon.h"
 
 vec3 getRayDir(vec2 inUV)

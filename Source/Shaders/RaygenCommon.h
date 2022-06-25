@@ -42,6 +42,15 @@
         #error Descriptor set indices must be set!
 #endif
 
+#define LIGHT_SAMPLE_METHOD_NONE 0
+#define LIGHT_SAMPLE_METHOD_DIRECT 1
+#define LIGHT_SAMPLE_METHOD_INDIRECT 2
+#define LIGHT_SAMPLE_METHOD_GRADIENTS 3
+#if !defined(LIGHT_SAMPLE_METHOD)
+    #error Light sampling method must be defined
+#endif
+
+
 
 #include "Light.h"
 #include "LightGrid.h"
@@ -81,9 +90,9 @@ layout(set = DESC_SET_RENDER_CUBEMAP, binding = BINDING_RENDER_CUBEMAP) uniform 
 
 layout(location = PAYLOAD_INDEX_DEFAULT) rayPayloadEXT ShPayload g_payload;
 
-#ifdef RAYGEN_SHADOW_PAYLOAD
+#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
 layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow g_payloadShadow;
-#endif // RAYGEN_SHADOW_PAYLOAD
+#endif
 
 
 
@@ -285,14 +294,10 @@ vec3 getSky(vec3 direction)
 
 
 
-#ifdef RAYGEN_SHADOW_PAYLOAD
-
-
+#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
 
 #define SHADOW_RAY_EPS       0.01
 #define RAY_ORIGIN_LEAK_BIAS 0.01    // offset a bit towards a viewer to prevent light leaks from the other side of polygons
-
-
 
 bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreFirstPersonViewer /* = false */)
 {
@@ -321,6 +326,7 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 
     return g_payloadShadow.isShadowed == 1;
 }
+#endif // LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
 
 
 
@@ -359,20 +365,6 @@ float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 po
     return targetPdfForLightSample(light, surf);
 }
 
-
-
-#ifdef RAYGEN_FORCE_SIMPLE_LIGHT_SAMPLE_METHOD
-    #define LIGHT_SAMPLE_METHOD 0
-#else
-    #define LIGHT_SAMPLE_METHOD 2
-#endif
-
-#define INITIAL_SAMPLES 8
-#define TEMPORAL_SAMPLES 1
-#define TEMPORAL_RADIUS 2
-#define SPATIAL_SAMPLES 8
-#define SPATIAL_RADIUS 30
-
 bool testSurfaceForReuse(
     const ivec3 curChRenderArea, const ivec2 otherPix,
     float curDepth, float otherDepth,
@@ -390,6 +382,11 @@ bool testSurfaceForReuse(
 // Select light in screen-space for direct illumination
 Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, const vec2 pointRnd)
 {
+    #define TEMPORAL_SAMPLES 1
+    #define TEMPORAL_RADIUS 2
+    #define SPATIAL_SAMPLES 8
+    #define SPATIAL_RADIUS 30
+
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepth_Sampler, pix, 0).r;
@@ -496,12 +493,15 @@ Reservoir selectLight_Uniform(uint seed)
     return r;
 }
 
-void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
+#if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
+
+void processDirectIllumination(
+    uint seed, const Surface surf, int bounceIndex,
 #ifdef RAYGEN_COMMON_DISTANCE_TO_LIGHT
     out float out_distance,
 #endif
-#ifdef RAYGEN_COMMON_GRADIENTS
-    const Reservoir gradReservoir,
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_GRADIENTS
+    const Reservoir reservoir,
 #endif
     out vec3 out_diffuse, out vec3 out_specular)
 {
@@ -519,13 +519,10 @@ void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
 
     const vec2 pointRnd = rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
     
-#if defined(RAYGEN_COMMON_GRADIENTS)
-    const Reservoir reservoir = gradReservoir;
-    
-#elif LIGHT_SAMPLE_METHOD == 0
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INDIRECT
     const Reservoir reservoir = selectLight_Uniform(seed);
     
-#elif LIGHT_SAMPLE_METHOD == 2
+#elif LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
     // TODO: remove from here! for now, assume that processLight is called once per each pixel
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
 
@@ -567,6 +564,6 @@ void processDirectIllumination(uint seed, const Surface surf, int bounceIndex,
 #endif
     }
 }
-#endif // RAYGEN_SHADOW_PAYLOAD
+#endif // LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
 
 #endif // RAYGEN_COMMON_H_
