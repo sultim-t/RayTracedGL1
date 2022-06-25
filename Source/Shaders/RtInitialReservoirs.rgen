@@ -57,8 +57,13 @@ Reservoir calculateInitialReservoir(uint seed, const Surface surf, const vec2 po
                 clamp(int(rnd * LIGHT_GRID_CELL_SIZE), 0, LIGHT_GRID_CELL_SIZE - 1);
             Reservoir r = unpackReservoirFromLightGrid(initialLightsGrid[lightGridArrayIndex]);
 
+            if (!isReservoirValid(r))
+            {
+                continue;
+            }
+
             uint xi = r.selected;
-            float oneOverSourcePdf_xi = r.weightSum / r.selected_targetPdf;
+            float oneOverSourcePdf_xi = r.weightSum * safePositiveRcp(r.selected_targetPdf);
 
             LightSample lightSample = sampleLight(lightSources[xi], surf.position, pointRnd);
             float targetPdf_xi = targetPdfForLightSample(lightSample, surf);

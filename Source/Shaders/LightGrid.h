@@ -97,7 +97,10 @@ ShLightInCell packReservoirToLightGrid(const Reservoir normalized)
 
 vec3 jitterPositionForLightGrid(const vec3 surfPosition, const vec3 rnd)
 {
-    return surfPosition + (rnd * 2.0 - 1.0) * getCellRadius() * LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER;
+    return clamp(
+        surfPosition + (rnd * 2.0 - 1.0) * getCellRadius() * LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER,
+        BASE,
+        BASE + SIZE);
 }
 
 #endif // LIGHT_GRID_H_
