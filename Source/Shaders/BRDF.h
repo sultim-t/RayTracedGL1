@@ -58,6 +58,11 @@ vec3 getSpecularColor(const vec3 albedo, float metallic)
     return mix(minSpec, albedo, metallic);
 }
 
+vec3 demodulateSpecular(const vec3 contrib, const vec3 surfSpecularColor)
+{
+    return contrib / max(vec3(0.01), surfSpecularColor);
+}
+
 // nl -- cos between surface normal and light direction
 // specularColor -- reflectance color at zero angle
 vec3 getFresnelSchlick(float nl, const vec3 specularColor)

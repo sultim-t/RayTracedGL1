@@ -215,8 +215,7 @@ void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface
         }
 
         // demodulate for denoising
-        contribution /= max(vec3(0.01), surf.specularColor);
-        imageStoreUnfilteredSpecular(pix, directSpecular + contribution);
+        imageStoreUnfilteredSpecular(pix, directSpecular + demodulateSpecular(contribution, surf.specularColor));
     }
 
     {
