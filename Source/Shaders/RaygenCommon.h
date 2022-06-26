@@ -326,6 +326,17 @@ bool traceShadowRay(uint surfInstCustomIndex, vec3 start, vec3 end, bool ignoreF
 
     return g_payloadShadow.isShadowed == 1;
 }
+
+float traceVisibility(const Surface surf, const vec3 lightPosition, uint lightIndex)
+{
+    const vec3 start = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
+    const vec3 end = lightPosition;
+
+    const bool ignoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == lightIndex);
+
+    const bool isShadowed = traceShadowRay(surf.instCustomIndex, start, end, ignoreFirstPersonViewer);
+    return float(!isShadowed);
+}
 #endif // LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
 
 
@@ -595,7 +606,7 @@ bool isDirectIlluminationValid(int bounceIndex)
 
 void traceDirectIllumination(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, int bounceIndex, out float out_distance, out vec3 out_diffuse, out vec3 out_specular)
 {    
-    LightSample light = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
+    const LightSample light = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
     shade(surf, light, calcSelectedSampleWeight(reservoir), out_diffuse, out_specular);
     
     if (getLuminance(out_diffuse + out_specular) <= 0.0)
@@ -604,19 +615,16 @@ void traceDirectIllumination(const Surface surf, const Reservoir reservoir, cons
         return;
     }
 
-    const bool shadowRayIgnoreFirstPersonViewer = (globalUniform.lightIndexIgnoreFPVShadows == reservoir.selected);
-    const vec3 shadowRayStart = surf.position + surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
-    const vec3 shadowRayEnd = light.position;
-
     if (bounceIndex < globalUniform.maxBounceShadowsLights)
     {
-        const bool isShadowed = traceShadowRay(surf.instCustomIndex, shadowRayStart, shadowRayEnd, shadowRayIgnoreFirstPersonViewer);
-        out_diffuse  *= float(!isShadowed);
-        out_specular *= float(!isShadowed);
+        float visibility = traceVisibility(surf, light.position, reservoir.selected);
 
-#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
-        out_distance = length(shadowRayStart - shadowRayEnd);
-#endif
+        out_diffuse  *= visibility;
+        out_specular *= visibility;
+
+    #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
+        out_distance = length(light.position - surf.position);
+    #endif
     }
 }
 #endif // LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE
