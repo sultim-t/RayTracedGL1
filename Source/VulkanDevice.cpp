@@ -206,10 +206,9 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         tonemapping);
 
-    amdFsr              = std::make_shared<SuperResolution>(
+    amdFsr2             = std::make_shared<FSR2>(
         device,
-        framebuffers,
-        shaderManager);
+        physDevice->Get());
 
     nvDlss              = std::make_shared<DLSS>(
         instance, 
@@ -259,7 +258,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(tonemapping);
     shaderManager->Subscribe(scene->GetVertexPreprocessing());
     shaderManager->Subscribe(bloom);
-    shaderManager->Subscribe(amdFsr);
     shaderManager->Subscribe(sharpening);
     shaderManager->Subscribe(effectWipe);
     shaderManager->Subscribe(effectRadialBlur);
@@ -274,6 +272,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
+    framebuffers->Subscribe(amdFsr2);
 }
 
 VulkanDevice::~VulkanDevice()
@@ -288,7 +287,7 @@ VulkanDevice::~VulkanDevice()
     tonemapping.reset();
     imageComposition.reset();
     bloom.reset();
-    amdFsr.reset();
+    amdFsr2.reset();
     nvDlss.reset();
     sharpening.reset();
     effectWipe.reset();
@@ -810,7 +809,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     
     bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(frameIndex, renderResolution.GetMipLodBias());
-    const RgFloat2D jitter = renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) : RgFloat2D{ 0, 0 };
+    const RgFloat2D jitter = 
+        renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) :
+        renderResolution.IsAmdFsr2Enabled() ? FSR2::GetJitter(renderResolution.GetResolutionState(), frameId) :
+        RgFloat2D{ 0, 0 };
 
     textureManager->SubmitDescriptors(frameIndex, drawInfo.pTexturesParams, mipLodBiasUpdated);
     cubemapManager->SubmitDescriptors(frameIndex);
@@ -909,9 +911,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
             extent = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight() };
         }
-        else if (renderResolution.IsAmdFsrEnabled())
+        else if (renderResolution.IsAmdFsr2Enabled())
         {
-            currentResultImage = amdFsr->Apply(cmd, frameIndex, framebuffers, renderResolution);
+            currentResultImage = amdFsr2->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter, uniform->GetData()->timeDelta, drawInfo.cameraNear, drawInfo.cameraFar, drawInfo.fovYRadians );
             extent = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight() };
         }
 
@@ -928,7 +930,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
     {
-        if (renderResolution.IsSharpeningEnabled())
+        if (renderResolution.IsDedicatedSharpeningEnabled())
         {
             currentResultImage = sharpening->Apply(
                 cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage,
@@ -1080,7 +1082,7 @@ bool RTGL1::VulkanDevice::IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechn
     {
         case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
         case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
-        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR:
+        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2:
             return true;
         case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:
             return nvDlss->IsDlssAvailable();

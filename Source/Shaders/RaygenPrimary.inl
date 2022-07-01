@@ -84,10 +84,9 @@ vec3 getRayDirAY(vec2 inUV)
     return getRayDir(inUV + vec2(0, AY));
 }
 
-vec2 getDlssMotionVector(const vec2 motionCurToPrev)
+vec2 getMotionVectorForUpscaler(const vec2 motionCurToPrev)
 {
-    float c = FRONT_FACE_IS_PRIMARY ? 1.0 : -1.0;
-    return c * vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
+    return vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
 }
 
 vec2 getMotionForInfinitePoint(const ivec2 pix)
@@ -144,7 +143,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
-    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(m), 0.0, 0.0));
+    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(m), 0.0, 0.0));
 #endif
 }
 
@@ -309,7 +308,7 @@ void main()
 
     // save info for DLSS, but only about primary surface 
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
-    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getDlssMotionVector(motionCurToPrev), 0.0, 0.0));
+    imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(motionCurToPrev), 0.0, 0.0));
 }
 #endif
 

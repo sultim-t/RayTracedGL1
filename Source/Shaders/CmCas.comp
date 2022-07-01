@@ -37,8 +37,6 @@ layout(push_constant) uniform CasPush_BT
     // CAS impl
     #define A_GPU 1
     #define A_GLSL 1
-    #define A_HALF 1
-    #define CAS_PACKED_ONLY 1
     #include "CAS/ffx_a.h"
 
     // CAS should operate in linear space 
@@ -66,31 +64,34 @@ layout(push_constant) uniform CasPush_BT
         }            
     }
 
-    AH3 CasLoadH(const ASW2 p) 
+    AF3 CasLoad(const ASU2 p) 
     {
-        return AH3(loadInput(ASU2(p)));
+        return loadInput(p);
     }
-    void CasInputH(inout AH2 r, inout AH2 g, inout AH2 b) {}
+    void CasInput(inout AF1 r,inout AF1 g,inout AF1 b){}
     #include "CAS/ffx_cas.h"
 
 void applyCas()
 {
     const bool sharpenOnly = true;
-    AU2 gxy = ARmp8x8(gl_LocalInvocationID.x) + AU2(gl_WorkGroupID.x << 4u, gl_WorkGroupID.y << 4u);
 
-    AH4 c0,c1;
-    AH2 cR, cG, cB;
+    AU2 gxy=ARmp8x8(gl_LocalInvocationID.x)+AU2(gl_WorkGroupID.x<<4u,gl_WorkGroupID.y<<4u);
 
-    CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
-    CasDepack(c0, c1, cR, cG, cB);
-    storeOutput(ASU2(gxy)             , AF4(c0));
-    storeOutput(ASU2(gxy) + ASU2(8, 0), AF4(c1));
+    AF4 c;
+    CasFilter(c.r,c.g,c.b,gxy,push.con0,push.con1,sharpenOnly);
+    storeOutput(ASU2(gxy), c);
 
-    gxy.y += 8u;
-    CasFilterH(cR, cG, cB, gxy, push.con0, push.con1, sharpenOnly);
-    CasDepack(c0, c1, cR, cG, cB);
-    storeOutput(ASU2(gxy)             , AF4(c0));
-    storeOutput(ASU2(gxy) + ASU2(8, 0), AF4(c1));
+    gxy.x+=8u;
+    CasFilter(c.r,c.g,c.b,gxy,push.con0,push.con1,sharpenOnly);
+    storeOutput(ASU2(gxy), c);
+
+    gxy.y+=8u;
+    CasFilter(c.r,c.g,c.b,gxy,push.con0,push.con1,sharpenOnly);
+    storeOutput(ASU2(gxy), c);
+
+    gxy.x-=8u;
+    CasFilter(c.r,c.g,c.b,gxy,push.con0,push.con1,sharpenOnly);
+    storeOutput(ASU2(gxy), c);
 }
 
 AF4 sharp(const ASU2 p)

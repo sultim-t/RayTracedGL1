@@ -25,10 +25,6 @@
 
 
 
-#define FRONT_FACE_IS_PRIMARY true
-
-
-
 #include "ShaderCommonGLSLFunc.h"
 
 

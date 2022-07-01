@@ -447,7 +447,9 @@ static void MainLoop(RgInstance instance)
 #endif
 
 
-        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, 0.1f, 10000.0f); persp[1][1] *= -1;
+        float cameraNear = 0.1f;
+        float cameraFar = 10000.0f;
+        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, cameraNear, cameraFar); persp[1][1] *= -1;
         glm::mat4 view = glm::lookAt(ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0,1,0 });
 
 
@@ -467,15 +469,18 @@ static void MainLoop(RgInstance instance)
 
         RgDrawFrameRenderResolutionParams resolutionParams = 
         {
-            .upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR,
+            .upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
             .resolutionMode = RG_RENDER_RESOLUTION_MODE_BALANCED,
         };
 
-        RgDrawFrameInfo frameInfo = 
+        RgDrawFrameInfo frameInfo =
         {
             .fovYRadians = glm::radians(75.0f),
+            .cameraNear = cameraNear,
+            .cameraFar = cameraFar,
             .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
-            .rayLength = 10000.0f,
+            .rayLength = cameraFar,
+            .primaryRayMinDist = cameraNear,
             .currentTime = GetCurrentTimeInSeconds(),
             .pRenderResolutionParams = &resolutionParams,
             .pSkyParams = &skyParams,

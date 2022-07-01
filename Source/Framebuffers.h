@@ -78,10 +78,10 @@ public:
     VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
 
-    VkImage GetImage(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const;
-    VkImageView GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const;
-    void GetImageHandles(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex,
-                         VkImage *pOutImage, VkImageView *pOutView, VkFormat *pOutFormat) const;
+    VkImage GetImage(FramebufferImageIndex fbImageIndex, uint32_t frameIndex) const;
+    VkImageView GetImageView(FramebufferImageIndex fbImageIndex, uint32_t frameIndex) const;
+    std::tuple<VkImage, VkImageView, VkFormat> GetImageHandles(FramebufferImageIndex fbImageIndex, uint32_t frameIndex) const;
+    std::tuple<VkImage, VkImageView, VkFormat, VkExtent2D> GetImageHandles(FramebufferImageIndex fbImageIndex, uint32_t frameIndex, const ResolutionState &resolutionState) const;
 
     // Subscribe to framebuffers' size change event.
     // shared_ptr will be transformed to weak_ptr

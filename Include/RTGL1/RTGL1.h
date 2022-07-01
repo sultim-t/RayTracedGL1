@@ -1105,7 +1105,7 @@ typedef enum RgRenderUpscaleTechnique
 {
     RG_RENDER_UPSCALE_TECHNIQUE_LINEAR,
     RG_RENDER_UPSCALE_TECHNIQUE_NEAREST,
-    RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR,
+    RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
     RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS,
 } RgRenderUpscaleTechnique;
 
@@ -1119,11 +1119,11 @@ typedef enum RgRenderSharpenTechnique
 typedef enum RgRenderResolutionMode
 {
     RG_RENDER_RESOLUTION_MODE_CUSTOM,
-    RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE,    // with AMD_FSR, same as PERFORMANCE
+    RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE,
     RG_RENDER_RESOLUTION_MODE_PERFORMANCE,
     RG_RENDER_RESOLUTION_MODE_BALANCED,
     RG_RENDER_RESOLUTION_MODE_QUALITY,
-    RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY,
+    RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY,    // with AMD_FSR, same as QUALITY
 } RgRenderResolutionMode;
 
 typedef struct RgDrawFrameRenderResolutionParams
@@ -1159,8 +1159,11 @@ typedef struct RgDrawFrameInfo
     // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
     // If the length is close to 0.0, then (0, 1, 0) is used.
     RgFloat3D               worldUpVector;
-    // Additional info for ray cones, it's used to calculate differentials for texture sampling.
+    // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
     float                   fovYRadians;
+    // Camera's near and far planes are used for FSR2.
+    float                   cameraNear;
+    float                   cameraFar;
     // What world parts to render. First-person related geometry is always enabled.
     RgDrawFrameRayCullFlags rayCullMaskWorld;
     // Max value: 10000.0

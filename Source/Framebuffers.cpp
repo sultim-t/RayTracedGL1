@@ -362,36 +362,31 @@ VkDescriptorSetLayout Framebuffers::GetDescSetLayout() const
     return descSetLayout;
 }
 
-VkImage Framebuffers::GetImage(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const
+VkImage Framebuffers::GetImage(FramebufferImageIndex fbImageIndex, uint32_t frameIndex) const
 {
-    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
-    return images[framebufferImageIndex];
+    fbImageIndex = FrameIndexToFBIndex(fbImageIndex, frameIndex);
+    return images[fbImageIndex];
 }
 
-VkImageView Framebuffers::GetImageView(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex) const
+VkImageView Framebuffers::GetImageView(FramebufferImageIndex fbImageIndex, uint32_t frameIndex) const
 {
-    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
-    return imageViews[framebufferImageIndex];
+    fbImageIndex = FrameIndexToFBIndex(fbImageIndex, frameIndex);
+    return imageViews[fbImageIndex];
 }
 
-void RTGL1::Framebuffers::GetImageHandles(FramebufferImageIndex framebufferImageIndex, uint32_t frameIndex, VkImage *pOutImage, VkImageView *pOutView, VkFormat *pOutFormat) const
+std::tuple<VkImage, VkImageView, VkFormat> RTGL1::Framebuffers::GetImageHandles(FramebufferImageIndex fbImageIndex, uint32_t frameIndex) const
 {
-    framebufferImageIndex = FrameIndexToFBIndex(framebufferImageIndex, frameIndex);
+    fbImageIndex = FrameIndexToFBIndex(fbImageIndex, frameIndex);
 
-    if (pOutImage)
-    {
-        *pOutImage = images[framebufferImageIndex];
-    }
+    return std::make_tuple(images[fbImageIndex], imageViews[fbImageIndex], ShFramebuffers_Formats[fbImageIndex]);
+}
 
-    if (pOutView)
-    {
-        *pOutView = imageViews[framebufferImageIndex];
-    }
+std::tuple<VkImage, VkImageView, VkFormat, VkExtent2D> Framebuffers::GetImageHandles(
+    FramebufferImageIndex fbImageIndex, uint32_t frameIndex, const ResolutionState&resolutionState) const
+{
+    auto [image, view, format] = GetImageHandles(fbImageIndex, frameIndex);
     
-    if (pOutFormat)
-    {
-        *pOutFormat = ShFramebuffers_Formats[framebufferImageIndex];
-    }
+    return std::make_tuple(image, view, format, GetFramebufSize(ShFramebuffers_Flags[fbImageIndex], resolutionState));
 }
 
 VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags, const ResolutionState &resolutionState)

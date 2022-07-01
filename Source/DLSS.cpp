@@ -336,10 +336,7 @@ bool RTGL1::DLSS::ValidateDlssFeature(VkCommandBuffer cmd, const RenderResolutio
 static NVSDK_NGX_Resource_VK ToNGXResource(const std::shared_ptr<RTGL1::Framebuffers> &framebuffers, uint32_t frameIndex,
                                            RTGL1::FramebufferImageIndex imageIndex, NVSDK_NGX_Dimensions size, bool withWriteAccess = false)
 {
-    VkImage image; VkImageView view; VkFormat format;
-
-    framebuffers->GetImageHandles(imageIndex, frameIndex,
-                                  &image, &view, &format);
+    auto [image, view, format] = framebuffers->GetImageHandles(imageIndex, frameIndex);
 
     VkImageSubresourceRange subresourceRange = {};
     subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;

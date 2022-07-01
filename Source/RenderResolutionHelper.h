@@ -76,7 +76,7 @@ public:
             {
                 case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
                 case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
-                case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR:
+                case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2:
                 case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:
                     break;
                 default:
@@ -106,11 +106,12 @@ public:
         }
 
 
-        if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR)
+        if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2)
         {
-            if (resolutionMode == RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE)
+            if (resolutionMode == RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY)
             {
-                resolutionMode = RG_RENDER_RESOLUTION_MODE_PERFORMANCE;
+                resolutionMode = RG_RENDER_RESOLUTION_MODE_QUALITY;
+                assert(0 && "Ultra quality should not be used with FSR2");
             }
 
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
@@ -120,19 +121,19 @@ public:
             }
             else
             {
-                float mult = 1.0f;
+                float div = 1.0f;
 
                 switch (resolutionMode)
                 {
-                case RG_RENDER_RESOLUTION_MODE_PERFORMANCE:     mult = 0.5f;  break;
-                case RG_RENDER_RESOLUTION_MODE_BALANCED:        mult = 0.59f; break;
-                case RG_RENDER_RESOLUTION_MODE_QUALITY:         mult = 0.67f; break;
-                case RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY:   mult = 0.77f; break;
+                case RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE:   div = 3.0f; break;
+                case RG_RENDER_RESOLUTION_MODE_PERFORMANCE:         div = 2.0f; break;
+                case RG_RENDER_RESOLUTION_MODE_BALANCED:            div = 1.7f; break;
+                case RG_RENDER_RESOLUTION_MODE_QUALITY:             div = 1.5f; break;
                 default: assert(0); break;
                 }
 
-                renderWidth = static_cast<uint32_t>(mult * static_cast<float>(fullWidth));
-                renderHeight = static_cast<uint32_t>(mult * static_cast<float>(fullHeight)) / interlacingDivisor;
+                renderWidth = static_cast<uint32_t>(static_cast<float>(fullWidth) / div);
+                renderHeight = static_cast<uint32_t>(static_cast<float>(fullHeight) / div) / interlacingDivisor;
             }
         }
         else if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS)
@@ -190,16 +191,18 @@ public:
     uint32_t UpscaledWidth()    const { return upscaledWidth; }
     uint32_t UpscaledHeight()   const { return upscaledHeight; }
 
-    bool IsAmdFsrEnabled()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR; }
+    bool IsAmdFsr2Enabled()     const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2; }
     bool IsNvDlssEnabled()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS; }
-    bool IsUpscaleEnabled()     const { return IsAmdFsrEnabled() || IsNvDlssEnabled(); }
+    bool IsUpscaleEnabled()     const { return IsAmdFsr2Enabled() || IsNvDlssEnabled(); }
 
     float GetAmdFsrSharpness()  const { return 1.0f; }          // 0.0 - max, 1.0 - min
     float GetNvDlssSharpness()  const { return dlssSharpness; } 
 
+    bool IsCASInsideFSR2()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 && sharpenTechnique == RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS; }
+
     // For the additional sharpening pass
+    bool                     IsDedicatedSharpeningEnabled() const { return IsCASInsideFSR2() ? false : sharpenTechnique != RG_RENDER_SHARPEN_TECHNIQUE_NONE; }
     RgRenderSharpenTechnique GetSharpeningTechnique() const { return sharpenTechnique; }
-    bool                     IsSharpeningEnabled()    const { return sharpenTechnique != RG_RENDER_SHARPEN_TECHNIQUE_NONE; }
     float                    GetSharpeningIntensity() const { return 1.0f; }
 
     VkFilter                 GetBlitFilter() const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NEAREST ? VK_FILTER_NEAREST : VK_FILTER_LINEAR; }

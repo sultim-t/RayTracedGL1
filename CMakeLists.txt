@@ -89,6 +89,7 @@ set(PrivateHeaders
     "Source/EffectSimple.h"
     "Source/EffectSimple_Instances.h"
     "Source/LightGrid.h"
+    "Source/FSR2.h"
 )
 
 set(Sources
@@ -156,6 +157,7 @@ set(Sources
     "Source/DecalManager.cpp"
     "Source/EffectBase.cpp"
     "Source/LightGrid.cpp"
+    "Source/FSR2.cpp"
 )
 
 
@@ -271,6 +273,20 @@ endif()
 # Vulkan
 target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
+
+# FSR2
+target_include_directories(RayTracedGL1 PRIVATE "Source/FSR2/include" )
+if (WIN32)
+    if (BUILD_TYPE STREQUAL "DEBUG")
+        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/ffx_fsr2_api_x64d.lib" )
+        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/ffx_fsr2_api_vk_x64d.lib" )
+    else()
+        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/ffx_fsr2_api_x64.lib" )
+        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/ffx_fsr2_api_vk_x64.lib" )
+    endif()
+else()
+    message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
+endif()
 
 
 if (RG_WITH_EXAMPLES)
