@@ -46,6 +46,7 @@
 #define LIGHT_SAMPLE_METHOD_DIRECT 1
 #define LIGHT_SAMPLE_METHOD_INDIR 2
 #define LIGHT_SAMPLE_METHOD_GRADIENTS 3
+#define LIGHT_SAMPLE_METHOD_INITIAL 4
 #if !defined(LIGHT_SAMPLE_METHOD)
     #error Light sampling method must be defined
 #endif
@@ -374,10 +375,10 @@ float targetPdfForLightSample(uint lightIndex, const Surface surf, const vec2 po
     return targetPdfForLightSample(light, surf);
 }
 
-#define INITIAL_SAMPLES 8
-
 Reservoir calcInitialReservoir(uint seed, uint salt, const Surface surf, const vec2 pointRnd)
 {
+    #define INITIAL_SAMPLES 8
+    
     Reservoir regularReservoir = emptyReservoir();
     if (isInsideCell(surf.position))
     {
@@ -440,6 +441,18 @@ Reservoir calcInitialReservoir(uint seed, uint salt, const Surface surf, const v
     }
     normalizeReservoir(dirLightReservoir, 1);
 
+    #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INITIAL
+    if (isReservoirValid(dirLightReservoir))
+    {
+        LightSample lightSample = sampleLight(lightSources[dirLightReservoir.selected], surf.position, pointRnd);
+        float v = traceVisibility(surf, lightSample.position, dirLightReservoir.selected);
+
+        if (v < 0.5)
+        {
+            dirLightReservoir = emptyReservoir();
+        }
+    }
+    #endif // LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INITIAL
 
     float rnd = rnd16(seed, salt++); 
     Reservoir combined;
