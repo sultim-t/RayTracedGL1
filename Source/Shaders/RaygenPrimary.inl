@@ -86,7 +86,7 @@ vec3 getRayDirAY(vec2 inUV)
 
 vec2 getMotionVectorForUpscaler(const vec2 motionCurToPrev)
 {
-    return vec2(motionCurToPrev.x * globalUniform.renderWidth, motionCurToPrev.y * globalUniform.renderHeight);
+    return motionCurToPrev;
 }
 
 vec2 getMotionForInfinitePoint(const ivec2 pix)

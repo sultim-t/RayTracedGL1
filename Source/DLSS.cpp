@@ -398,8 +398,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     evalParams.InJitterOffsetY = jitterOffset.data[1] * (-1);
     evalParams.Feature.InSharpness = renderResolution.GetNvDlssSharpness();
     evalParams.InReset = resetAccumulation;
-    evalParams.InMVScaleX = 1.0f;
-    evalParams.InMVScaleY = 1.0f;
+    evalParams.InMVScaleX = static_cast<float>(sourceSize.Width);
+    evalParams.InMVScaleY = static_cast<float>(sourceSize.Height);
     evalParams.InColorSubrectBase = sourceOffset;
     evalParams.InDepthSubrectBase = sourceOffset;
     evalParams.InTranslucencySubrectBase = sourceOffset;

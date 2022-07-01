@@ -117,16 +117,15 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
     info.commandList = ffxGetCommandListVK(cmd);
     info.color = ToFSRResource(FI::FB_IMAGE_INDEX_FINAL, frameIndex, pCtx, framebuffers, renderResolution.GetResolutionState());
     info.depth = ToFSRResource(FI::FB_IMAGE_INDEX_DEPTH_DLSS, frameIndex, pCtx, framebuffers, renderResolution.GetResolutionState());
-    info.motionVectors = ToFSRResource(FI::FB_IMAGE_INDEX_DEPTH_DLSS, frameIndex, pCtx, framebuffers, renderResolution.GetResolutionState());
+    info.motionVectors = ToFSRResource(FI::FB_IMAGE_INDEX_MOTION_DLSS, frameIndex, pCtx, framebuffers, renderResolution.GetResolutionState());
     info.exposure = {};
     info.reactive = {};
     info.transparencyAndComposition = {};
     info.output = ToFSRResource(outputImage, frameIndex, pCtx, framebuffers, renderResolution.GetResolutionState());
     info.jitterOffset.x = jitterOffset.data[0];
     info.jitterOffset.y = jitterOffset.data[1];
-    // input motion vectors are CurToPrev, but FSR2 requires PrevToCur, so -1 multiplier
-    info.motionVectorScale.x = -1 * static_cast<float>(renderResolution.GetResolutionState().renderWidth);
-    info.motionVectorScale.y = -1 * static_cast<float>(renderResolution.GetResolutionState().renderHeight);
+    info.motionVectorScale.x = static_cast<float>(renderResolution.GetResolutionState().renderWidth);
+    info.motionVectorScale.y = static_cast<float>(renderResolution.GetResolutionState().renderHeight);
     info.reset = false;
     info.enableSharpening = renderResolution.IsCASInsideFSR2();
     info.sharpness = renderResolution.GetSharpeningIntensity();
