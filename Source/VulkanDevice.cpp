@@ -451,18 +451,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->upscaledRenderWidth = (float)renderResolution.UpscaledWidth();
         gu->upscaledRenderHeight = (float)renderResolution.UpscaledHeight();
 
-        if (renderResolution.IsNvDlssEnabled())
-        {
-            RgFloat2D jitter = HaltonSequence::GetJitter_Halton23(frameId);
+        RgFloat2D jitter =
+            renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) :
+            renderResolution.IsAmdFsr2Enabled() ? FSR2::GetJitter(renderResolution.GetResolutionState(), frameId) :
+            RgFloat2D{ 0, 0 };
 
-            gu->jitterX = jitter.data[0];
-            gu->jitterY = jitter.data[1];
-        }
-        else
-        {
-            gu->jitterX = 0.0f;
-            gu->jitterY = 0.0f;
-        }
+        gu->jitterX = jitter.data[0];
+        gu->jitterY = jitter.data[1];
     }
 
     {
@@ -809,10 +804,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     
     bool mipLodBiasUpdated = worldSamplerManager->TryChangeMipLodBias(frameIndex, renderResolution.GetMipLodBias());
-    const RgFloat2D jitter = 
-        renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) :
-        renderResolution.IsAmdFsr2Enabled() ? FSR2::GetJitter(renderResolution.GetResolutionState(), frameId) :
-        RgFloat2D{ 0, 0 };
+    const RgFloat2D jitter = { uniform->GetData()->jitterX, uniform->GetData()->jitterY };
 
     textureManager->SubmitDescriptors(frameIndex, drawInfo.pTexturesParams, mipLodBiasUpdated);
     cubemapManager->SubmitDescriptors(frameIndex);
