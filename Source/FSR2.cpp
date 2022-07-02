@@ -182,8 +182,8 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
     info.reactive = {};
     info.transparencyAndComposition = {};
     info.output = ToFSRResource(OUTPUT_IMAGE_INDEX, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState());
-    info.jitterOffset.x = jitterOffset.data[0];
-    info.jitterOffset.y = jitterOffset.data[1];
+    info.jitterOffset.x = -jitterOffset.data[0];
+    info.jitterOffset.y = -jitterOffset.data[1];
     info.motionVectorScale.x = static_cast<float>(renderResolution.GetResolutionState().renderWidth);
     info.motionVectorScale.y = static_cast<float>(renderResolution.GetResolutionState().renderHeight);
     info.reset = false;
