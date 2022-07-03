@@ -179,7 +179,7 @@ void main()
     {
         const vec3 gradDIS = texelFetch(framebufDISPingGradient_Sampler, pix / COMPUTE_ASVGF_STRATA_SIZE, 0).xyz;
         antilagAlpha_Diff  = gradDIS[0];
-        antilagAlpha_Indir = gradDIS[1];
+        antilagAlpha_Indir = antilagAlpha_Diff * 0.25; // gradDIS[1];
         antilagAlpha_Spec  = gradDIS[2];
     }
 #else
@@ -348,8 +348,6 @@ void main()
 
         // indirect diffuse
         {
-            antilagAlpha_Indir = 0.0;
-
             indirHistoryLength *= pow(1.0 - antilagAlpha_Indir, 10);
             indirHistoryLength = clamp(indirHistoryLength + 1.0, 1.0, 256.0);
 
