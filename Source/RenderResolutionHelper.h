@@ -174,8 +174,8 @@ public:
 
         if (bias < 0)
         {
-            // softer for non-dlss
-            if (!IsNvDlssEnabled())
+            // softer if none
+            if (!IsUpscaleEnabled())
             {
                 bias *= 0.5f;
             }
