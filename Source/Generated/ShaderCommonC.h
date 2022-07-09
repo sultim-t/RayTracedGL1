@@ -165,20 +165,15 @@ namespace RTGL1
 #define LIGHT_GRID_CELL_SIZE (64)
 #define COMPUTE_LIGHT_GRID_GROUP_SIZE_X (256)
 
-struct ShVertexBufferStatic
+struct ShVertex
 {
-    float positions[3145728];
-    float normals[3145728];
-    float texCoords[2097152];
-    float texCoordsLayer1[2097152];
-    float texCoordsLayer2[2097152];
-};
-
-struct ShVertexBufferDynamic
-{
-    float positions[6291456];
-    float normals[6291456];
-    float texCoords[4194304];
+    float position[4];
+    float normal[4];
+    float texCoord[2];
+    float texCoordLayer1[2];
+    float texCoordLayer2[2];
+    uint32_t packedColor;
+    uint32_t __pad0;
 };
 
 struct ShGlobalUniform
@@ -189,9 +184,9 @@ struct ShGlobalUniform
     float projection[16];
     float invProjection[16];
     float projectionPrev[16];
-    uint32_t positionsStride;
-    uint32_t normalsStride;
-    uint32_t texCoordsStride;
+    uint32_t _unused0;
+    uint32_t _unused1;
+    uint32_t _unused2;
     float renderWidth;
     float renderHeight;
     uint32_t frameId;

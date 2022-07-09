@@ -28,7 +28,7 @@ layout(
     #endif
     buffer VertexBufferStatic_BT
 {
-    ShVertexBufferStatic staticVertices;
+    ShVertex g_staticVertices[];
 };
 
 layout(
@@ -39,7 +39,7 @@ layout(
     #endif
     buffer VertexBufferDynamic_BT
 {
-    ShVertexBufferDynamic dynamicVertices;
+    ShVertex g_dynamicVertices[];
 };
 
 layout(
@@ -84,9 +84,9 @@ layout(
     #ifndef VERTEX_BUFFER_WRITEABLE
     readonly 
     #endif
-    buffer PrevPositionsBufferStatic_BT
+    buffer PrevPositionsBufferDynamic_BT
 {
-    float prevDynamicPositions[];
+    ShVertex g_dynamicVertices_Prev[];
 };
 
 layout(
@@ -111,115 +111,83 @@ layout(
 
 vec3 getStaticVerticesPositions(uint index)
 {
-    return vec3(
-        staticVertices.positions[index * globalUniform.positionsStride + 0],
-        staticVertices.positions[index * globalUniform.positionsStride + 1],
-        staticVertices.positions[index * globalUniform.positionsStride + 2]);
+    return g_staticVertices[index].position.xyz;
 }
 
 vec3 getStaticVerticesNormals(uint index)
 {
-    return vec3(
-        staticVertices.normals[index * globalUniform.normalsStride + 0],
-        staticVertices.normals[index * globalUniform.normalsStride + 1],
-        staticVertices.normals[index * globalUniform.normalsStride + 2]);
+    return g_staticVertices[index].normal.xyz;
 }
 
 vec2 getStaticVerticesTexCoords(uint index)
 {
-    return vec2(
-        staticVertices.texCoords[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
+    return g_staticVertices[index].texCoord;
 }
 
 vec2 getStaticVerticesTexCoordsLayer1(uint index)
 {
-    return vec2(
-        staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 1]);
+    return g_staticVertices[index].texCoordLayer1;
 }
 
 vec2 getStaticVerticesTexCoordsLayer2(uint index)
 {
-    return vec2(
-        staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 0],
-        staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 1]);
+    return g_staticVertices[index].texCoordLayer2;
 }
 
 vec3 getDynamicVerticesPositions(uint index)
 {
-    return vec3(
-        dynamicVertices.positions[index * globalUniform.positionsStride + 0],
-        dynamicVertices.positions[index * globalUniform.positionsStride + 1],
-        dynamicVertices.positions[index * globalUniform.positionsStride + 2]);
+    return g_dynamicVertices[index].position.xyz;
 }
 
 vec3 getDynamicVerticesNormals(uint index)
 {
-    return vec3(
-        dynamicVertices.normals[index * globalUniform.normalsStride + 0],
-        dynamicVertices.normals[index * globalUniform.normalsStride + 1],
-        dynamicVertices.normals[index * globalUniform.normalsStride + 2]);
+    return g_dynamicVertices[index].normal.xyz;
 }
 
 vec2 getDynamicVerticesTexCoords(uint index)
 {
-    return vec2(
-        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0],
-        dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1]);
+    return g_dynamicVertices[index].texCoord;
 }
 
 #ifdef VERTEX_BUFFER_WRITEABLE
 void setStaticVerticesPositions(uint index, vec3 value)
 {
-    staticVertices.positions[index * globalUniform.positionsStride + 0] = value[0];
-    staticVertices.positions[index * globalUniform.positionsStride + 1] = value[1];
-    staticVertices.positions[index * globalUniform.positionsStride + 2] = value[2];
+    g_staticVertices[index].position = vec4(value, 1.0);
 }
 
 void setStaticVerticesNormals(uint index, vec3 value)
 {
-    staticVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
-    staticVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
-    staticVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
+    g_staticVertices[index].normal = vec4(value, 0.0);
 }
 
 void setStaticVerticesTexCoords(uint index, vec2 value)
 {
-    staticVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
-    staticVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
+    g_staticVertices[index].texCoord = value;
 }
 
 void setStaticVerticesTexCoordsLayer1(uint index, vec2 value)
 {
-    staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 0] = value[0];
-    staticVertices.texCoordsLayer1[index * globalUniform.texCoordsStride + 1] = value[1];
+    g_staticVertices[index].texCoordLayer1 = value;
 }
 
 void setStaticVerticesTexCoordsLayer2(uint index, vec2 value)
 {
-    staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 0] = value[0];
-    staticVertices.texCoordsLayer2[index * globalUniform.texCoordsStride + 1] = value[1];
+    g_staticVertices[index].texCoordLayer2 = value;
 }
 
 void setDynamicVerticesPositions(uint index, vec3 value)
 {
-    dynamicVertices.positions[index * globalUniform.positionsStride + 0] = value[0];
-    dynamicVertices.positions[index * globalUniform.positionsStride + 1] = value[1];
-    dynamicVertices.positions[index * globalUniform.positionsStride + 2] = value[2];
+    g_dynamicVertices[index].position = vec4(value, 1.0);
 }
 
 void setDynamicVerticesNormals(uint index, vec3 value)
 {
-    dynamicVertices.normals[index * globalUniform.normalsStride + 0] = value[0];
-    dynamicVertices.normals[index * globalUniform.normalsStride + 1] = value[1];
-    dynamicVertices.normals[index * globalUniform.normalsStride + 2] = value[2];
+    g_dynamicVertices[index].normal = vec4(value, 0.0);
 }
 
 void setDynamicVerticesTexCoords(uint index, vec2 value)
 {
-    dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 0] = value[0];
-    dynamicVertices.texCoords[index * globalUniform.texCoordsStride + 1] = value[1];
+    g_dynamicVertices[index].texCoord = value;
 }
 #endif // VERTEX_BUFFER_WRITEABLE
 
@@ -284,10 +252,7 @@ uvec3 getPrevVertIndicesDynamic(uint prevBaseVertexIndex, uint prevBaseIndexInde
 
 vec3 getPrevDynamicVerticesPositions(uint index)
 {
-    return vec3(
-        prevDynamicPositions[index * globalUniform.positionsStride + 0],
-        prevDynamicPositions[index * globalUniform.positionsStride + 1],
-        prevDynamicPositions[index * globalUniform.positionsStride + 2]);
+    return g_dynamicVertices_Prev[index].position.xyz;
 }
 
 vec4 getTangent(const mat3 localPos, const vec3 normal, const mat3x2 texCoord)
@@ -523,93 +488,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     }
 
     return tr;
-}
-
-// Copy of getTriangle but only get surf pos/normal info
-void getTriangle_PositionAndNormal(
-    int instanceID, int instanceCustomIndex, int localGeometryIndex, int primitiveId, const vec2 bary,
-    out vec3 position, out vec3 position_Prev,
-    out vec3 normal, out vec3 normal_Prev)
-{
-    const vec3 baryCoords = vec3(1.0 - bary.x - bary.y, bary.x, bary.y);
-
-    ShTriangle tr;
-
-    // get info about geometry by the index in pGeometries in BLAS with index "instanceID"
-    const int globalGeometryIndex = getGeometryIndex(instanceID, localGeometryIndex);
-    const ShGeometryInstance inst = geometryInstances[globalGeometryIndex];
-
-    const bool isDynamic = (instanceCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC) == INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC;
-
-    if (isDynamic)
-    {
-        const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        // to local and then to world space
-        position = tr.positions * baryCoords;
-        position = (inst.model * vec4(position, 1.0)).xyz;
-
-        const vec3 localNormal = tr.normals * baryCoords;
-        normal = mat3(inst.model) * localNormal;
-        
-        
-        // dynamic     -- use prev model matrix and prev positions if exist
-        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
-
-        if (hasPrevInfo)
-        {
-            const uvec3 prevVertIndices = getPrevVertIndicesDynamic(inst.prevBaseVertexIndex, inst.prevBaseIndexIndex, primitiveId);
-
-            position_Prev =
-                getPrevDynamicVerticesPositions(prevVertIndices[0]) * baryCoords[0] +
-                getPrevDynamicVerticesPositions(prevVertIndices[1]) * baryCoords[1] +
-                getPrevDynamicVerticesPositions(prevVertIndices[2]) * baryCoords[2];
-                
-            position_Prev = (inst.prevModel * vec4(position_Prev, 1.0)).xyz;
-
-            // TODO: prev normals array, like with prevDynamicPositions
-            normal_Prev = mat3(inst.prevModel) * localNormal;
-        }
-        else
-        {
-            position_Prev = position;
-            normal_Prev = normal;
-        }
-    }
-    else
-    {
-        const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        // to local and then to world space
-        const vec3 localPosition = tr.positions * baryCoords;
-        const vec3 localNormal = tr.normals * baryCoords;
-        
-        position = (inst.model * vec4(localPosition, 1.0)).xyz;
-        normal = mat3(inst.model) * localNormal;
-
-        
-        const bool isMovable = (inst.flags & GEOM_INST_FLAG_IS_MOVABLE) != 0;
-        const bool hasPrevInfo = inst.prevBaseVertexIndex != UINT32_MAX;
-
-        // movable     -- use prev model matrix if exist
-        // non-movable -- use current model matrix
-        if (isMovable && hasPrevInfo)
-        {
-            // static geoms' local positions are constant, 
-            // only model matrices are changing
-            position_Prev = (inst.prevModel * vec4(localPosition, 1.0)).xyz;
-            normal_Prev = mat3(inst.prevModel) * localNormal;
-        }
-        else
-        {
-            position_Prev = position;
-            normal_Prev = normal;
-        }
-    }
 }
 
 mat3 getOnlyCurPositions(int globalGeometryIndex, int instanceCustomIndex, int primitiveId)

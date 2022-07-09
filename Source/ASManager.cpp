@@ -37,8 +37,7 @@ ASManager::ASManager(
     std::shared_ptr<TextureManager> _textureManager,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
     std::shared_ptr<TriangleInfoManager> _triangleInfoMgr,
-    std::shared_ptr<SectorVisibility> &_sectorVisibility,
-    const VertexBufferProperties &_properties)
+    std::shared_ptr<SectorVisibility> &_sectorVisibility)
 :
     device(_device),
     allocator(std::move(_allocator)),
@@ -49,8 +48,7 @@ ASManager::ASManager(
     triangleInfoMgr(std::move(_triangleInfoMgr)),
     descPool(VK_NULL_HANDLE),
     buffersDescSetLayout(VK_NULL_HANDLE),
-    asDescSetLayout(VK_NULL_HANDLE),
-    properties(_properties)
+    asDescSetLayout(VK_NULL_HANDLE)
 {
     typedef VertexCollectorFilterTypeFlags FL;
     typedef VertexCollectorFilterTypeFlagBits FT;
@@ -85,7 +83,7 @@ ASManager::ASManager(
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared<VertexCollector>(
         device, allocator, geomInfoMgr, triangleInfoMgr, _sectorVisibility,
-        sizeof(ShVertexBufferStatic), properties,
+        MAX_STATIC_VERTEX_COUNT * sizeof(ShVertex),
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | 
         FT::MASK_PASS_THROUGH_GROUP | 
         FT::MASK_PRIMARY_VISIBILITY_GROUP);
@@ -99,7 +97,7 @@ ASManager::ASManager(
     // dynamic vertices
     collectorDynamic[0] = std::make_shared<VertexCollector>(
         device, allocator, geomInfoMgr, triangleInfoMgr, _sectorVisibility,
-        sizeof(ShVertexBufferDynamic), properties,
+        MAX_DYNAMIC_VERTEX_COUNT * sizeof(ShVertex),
         FT::CF_DYNAMIC | 
         FT::MASK_PASS_THROUGH_GROUP | 
         FT::MASK_PRIMARY_VISIBILITY_GROUP);
@@ -111,11 +109,11 @@ ASManager::ASManager(
     }
 
     previousDynamicPositions.Init(
-        allocator, sizeof(ShVertexBufferDynamic::positions),
+        allocator, MAX_DYNAMIC_VERTEX_COUNT * sizeof(ShVertex),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Previous frame's vertex data");
     previousDynamicIndices.Init(
-        allocator, sizeof(ShVertexBufferDynamic::positions),
+        allocator, MAX_DYNAMIC_VERTEX_COUNT * sizeof(uint32_t),
         VK_BUFFER_USAGE_TRANSFER_DST_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, 
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Previous frame's index data");
 
@@ -613,7 +611,7 @@ void ASManager::SubmitStaticGeometry()
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
     // copy from staging with barrier
-    collectorStatic->CopyFromStaging(cmd, true);
+    collectorStatic->CopyFromStaging(cmd);
 
     // setup static blas
     for (auto &staticBlas : allStaticBlas)
@@ -663,7 +661,7 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     const auto &colDyn = collectorDynamic[frameIndex];
 
     colDyn->EndCollecting();
-    colDyn->CopyFromStaging(cmd, false);
+    colDyn->CopyFromStaging(cmd);
 
     assert(asBuilder->IsEmpty());
 
@@ -697,7 +695,7 @@ void ASManager::UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdat
 
 void RTGL1::ASManager::UpdateStaticTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
 {
-    collectorStatic->UpdateTexCoords(simpleIndex, texCoordsInfo);
+    collectorStatic->UpdateTexCoords(simpleIndex, texCoordsInfo, true);
 }
 
 void RTGL1::ASManager::ResubmitStaticTexCoords(VkCommandBuffer cmd)
@@ -1041,7 +1039,7 @@ void ASManager::CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frame
         VkBufferCopy vertRegion = {};
         vertRegion.srcOffset = 0;
         vertRegion.dstOffset = 0;
-        vertRegion.size = (uint64_t)vertCount * properties.positionStride;
+        vertRegion.size = vertCount * sizeof(ShVertex);
 
         vkCmdCopyBuffer(
             cmd, 
@@ -1055,7 +1053,7 @@ void ASManager::CopyDynamicDataToPrevBuffers(VkCommandBuffer cmd, uint32_t frame
         VkBufferCopy indexRegion = {};
         indexRegion.srcOffset = 0;
         indexRegion.dstOffset = 0;
-        indexRegion.size = (uint64_t)indexCount * sizeof(uint32_t);
+        indexRegion.size = indexCount * sizeof(uint32_t);
 
         vkCmdCopyBuffer(
             cmd, 

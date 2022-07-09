@@ -32,8 +32,7 @@ Scene::Scene(
     std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<TextureManager> &_textureManager,
     const std::shared_ptr<const GlobalUniform> &_uniform,
-    const std::shared_ptr<const ShaderManager> &_shaderManager,
-    const VertexBufferProperties &_properties)
+    const std::shared_ptr<const ShaderManager> &_shaderManager)
 :
     toResubmitMovable(false),
     isRecordingStatic(false),
@@ -47,7 +46,7 @@ Scene::Scene(
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
     triangleInfoMgr = std::make_shared<TriangleInfoManager>(_device, _allocator, sectorVisibility);
 
-    asManager = std::make_shared<ASManager>(_device, _physDevice, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, sectorVisibility, _properties);
+    asManager = std::make_shared<ASManager>(_device, _physDevice, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, sectorVisibility);
   
     vertPreproc = std::make_shared<VertexPreprocessing>(_device, _uniform, asManager, _shaderManager);
 }

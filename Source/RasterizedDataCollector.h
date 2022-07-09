@@ -29,6 +29,7 @@
 
 namespace RTGL1
 {
+    struct ShVertex;
 
 // This class collects vertex and draw info for further rasterization.
 class RasterizedDataCollector
@@ -90,11 +91,7 @@ protected:
     virtual DrawInfo *PushInfo(RgRasterizedGeometryRenderType renderType) = 0;
 
 private:
-    struct RasterizerVertex;
-
-private:
-    static void CopyFromSeparateArrays(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts);
-    static void CopyFromArrayOfStructs(const RgRasterizedGeometryUploadInfo &info, RasterizerVertex *dstVerts);
+    static void CopyFromArrayOfStructs(const RgRasterizedGeometryUploadInfo &info, ShVertex *dstVerts);
 
 private:
     VkDevice device;

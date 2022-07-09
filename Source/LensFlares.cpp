@@ -31,14 +31,6 @@ constexpr const char *VERT_SHADER = "VertLensFlare";
 constexpr const char *FRAG_SHADER = "FragLensFlare";
 
 
-struct RasterizerVertex
-{
-    float       position[3];
-    uint32_t    color;
-    float       texCoord[2];
-};
-
-
 // indirectDrawCommands: one uint32_t - for count, the rest - cmds
 constexpr VkDeviceSize GetIndirectDrawCommandsOffset()
 {
@@ -53,11 +45,6 @@ constexpr RTGL1::ShIndirectDrawCommand *GetIndirectDrawCommandsArrayStart(void *
     return (RTGL1::ShIndirectDrawCommand *)((void*)((uint8_t*)pCullingInputBuffer + GetIndirectDrawCommandsOffset()));
 }
 
-
-static_assert(sizeof(RasterizerVertex) == sizeof(RgRasterizedGeometryVertexStruct), "");
-static_assert(offsetof(RasterizerVertex, position) == offsetof(RgRasterizedGeometryVertexStruct, position),    "");
-static_assert(offsetof(RasterizerVertex, color)    == offsetof(RgRasterizedGeometryVertexStruct, packedColor), "");
-static_assert(offsetof(RasterizerVertex, texCoord) == offsetof(RgRasterizedGeometryVertexStruct, texCoord),    "");
 
 static_assert(offsetof(RTGL1::ShIndirectDrawCommand, indexCount)    == offsetof(VkDrawIndexedIndirectCommand, indexCount),    "ShIndirectDrawCommand mismatches VkDrawIndexedIndirectCommand");
 static_assert(offsetof(RTGL1::ShIndirectDrawCommand, instanceCount) == offsetof(VkDrawIndexedIndirectCommand, instanceCount), "ShIndirectDrawCommand mismatches VkDrawIndexedIndirectCommand");
@@ -112,7 +99,7 @@ RTGL1::LensFlares::LensFlares(
         VK_BUFFER_USAGE_INDIRECT_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, "Lens flares draw cmds");
 
     vertexBuffer->Create(
-        MAX_VERTEX_COUNT * sizeof(RasterizerVertex),
+        MAX_VERTEX_COUNT * sizeof(ShVertex),
         VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "Lens flares vertex buffer");
     
     indexBuffer->Create(
@@ -187,15 +174,25 @@ void RTGL1::LensFlares::Upload(uint32_t frameIndex, const RgLensFlareUploadInfo 
 
     // vertices
     {
-        RasterizerVertex *dst = (RasterizerVertex *)vertexBuffer->GetMapped(frameIndex);
-        memcpy(&dst[vertexIndex], uploadInfo.pVertexData, uploadInfo.vertexCount * sizeof(RasterizerVertex));
+        // must be same to copy
+        static_assert(std::is_same_v<decltype(uploadInfo.pVertices), const RgVertex * >);
+        static_assert(sizeof(ShVertex)                      == sizeof(RgVertex));
+        static_assert(offsetof(ShVertex, position)          == offsetof(RgVertex, position));
+        static_assert(offsetof(ShVertex, normal)            == offsetof(RgVertex, normal));
+        static_assert(offsetof(ShVertex, texCoord)          == offsetof(RgVertex, texCoord));
+        static_assert(offsetof(ShVertex, texCoordLayer1)    == offsetof(RgVertex, texCoordLayer1));
+        static_assert(offsetof(ShVertex, texCoordLayer2)    == offsetof(RgVertex, texCoordLayer2));
+        static_assert(offsetof(ShVertex, packedColor)       == offsetof(RgVertex, packedColor));
+
+        ShVertex *dst = (ShVertex *)vertexBuffer->GetMapped(frameIndex);
+        memcpy(&dst[vertexIndex], uploadInfo.pVertices, uploadInfo.vertexCount * sizeof(ShVertex));
     }
 
 
     // indices
     {
         uint32_t *dst = (uint32_t *)indexBuffer->GetMapped(frameIndex);
-        memcpy(&dst[indexIndex], uploadInfo.pIndexData, uploadInfo.indexCount * sizeof(uint32_t));
+        memcpy(&dst[indexIndex], uploadInfo.pIndices, uploadInfo.indexCount * sizeof(uint32_t));
     }
 
 
@@ -234,7 +231,7 @@ void RTGL1::LensFlares::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     }
 
       cullingInput->CopyFromStaging(cmd, frameIndex, cullingInputCount * sizeof(ShIndirectDrawCommand));
-      vertexBuffer->CopyFromStaging(cmd, frameIndex, vertexCount       * sizeof(RasterizerVertex));
+      vertexBuffer->CopyFromStaging(cmd, frameIndex, vertexCount       * sizeof(ShVertex));
        indexBuffer->CopyFromStaging(cmd, frameIndex, indexCount        * sizeof(uint32_t));
     instanceBuffer->CopyFromStaging(cmd, frameIndex, cullingInputCount * sizeof(ShLensFlareInstance));
 }
@@ -352,7 +349,7 @@ void RTGL1::LensFlares::SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex)
         b.dstAccessMask = VK_ACCESS_2_VERTEX_ATTRIBUTE_READ_BIT_KHR;
         b.buffer = vertexBuffer->GetDeviceLocal();
         b.offset = 0;
-        b.size = vertexCount * sizeof(RasterizerVertex);
+        b.size = vertexCount * sizeof(ShVertex);
     }
     {
         VkBufferMemoryBarrier2KHR &b = bs[4];

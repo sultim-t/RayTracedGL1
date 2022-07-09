@@ -56,8 +56,7 @@ public:
               std::shared_ptr<TextureManager> textureManager,
               std::shared_ptr<GeomInfoManager> geomInfoManager,
               std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
-              std::shared_ptr<SectorVisibility> &_sectorVisibility,
-              const VertexBufferProperties &properties);
+              std::shared_ptr<SectorVisibility> &_sectorVisibility);
     ~ASManager();
 
     ASManager(const ASManager& other) = delete;
@@ -179,8 +178,6 @@ private:
 
     VkDescriptorSetLayout asDescSetLayout;
     VkDescriptorSet asDescSets[MAX_FRAMES_IN_FLIGHT];
-
-    VertexBufferProperties properties;
 };
 
 }

@@ -300,7 +300,6 @@ private:
     std::unique_ptr<UserPrint>              userPrint;
     std::shared_ptr<UserFileLoad>           userFileLoad;
 
-    VertexBufferProperties                  vbProperties = {};
     bool                                    rayCullBackFacingTriangles;
     bool                                    allowGeometryWithSkyFlag;
     bool                                    lensFlareVerticesInScreenSpace;

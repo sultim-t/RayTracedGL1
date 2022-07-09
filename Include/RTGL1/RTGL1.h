@@ -35,7 +35,7 @@
     #define RGCONV
 #endif // defined(_WIN32)
 
-#define RG_RTGL_VERSION_API "1.02.0000"
+#define RG_RTGL_VERSION_API "1.03.0000"
 
 #ifdef RG_USE_SURFACE_WIN32
     #include <windows.h>
@@ -235,18 +235,6 @@ typedef struct RgInstanceCreateInfo
     // Path to normal texture path. Ignores pOverridenTexturesFolderPath and pOverridenNormalTexturePostfix
     const char                  *pWaterNormalTexturePath;
 
-    // Vertex data strides in bytes. Must be 4-byte aligned.
-    uint32_t                    vertexPositionStride;
-    uint32_t                    vertexNormalStride;
-    uint32_t                    vertexTexCoordStride;
-    uint32_t                    vertexColorStride;
-
-    // Each attribute has its own stride for ability to describe vertices 
-    // that are represented as separated arrays of attribute values (i.e. Positions[], Normals[], ...)
-    // or packed into array of structs (i.e. Vertex[] where Vertex={Position, Normal, ...}).
-    // Note: array of structs will cause a lot of unused memory as RTGL1 uses separated arrays
-    RgBool32                    vertexArrayOfStructs;
-
     RgBool32                    lensFlareVerticesInScreenSpace;
     // If true, 'pointToCheck' XY are screen space [0..1] coordinates to check NDC depth [0..1] which is specified in Z.
     // Otherwise, XYZ specify a world point to which view-projection will be applied to determine its
@@ -333,19 +321,34 @@ typedef struct RgFloat4D
     float       data[4];
 } RgFloat4D;
 
+typedef struct RgVertex
+{
+    RgFloat3D   position;
+    uint32_t    _padding0;
+    RgFloat3D   normal;
+    uint32_t    _padding1;
+    RgFloat2D   texCoord;
+    RgFloat2D   texCoordLayer1;
+    RgFloat2D   texCoordLayer2;
+    // RGBA packed into 32-bit uint. R component is at the little end, i.e. (a<<24 | b<<16 | g<<8 | r)
+    uint32_t    packedColor;
+    uint32_t    _padding2;
+} RgVertex;
+
 typedef enum RgGeometryUploadFlagBits
 {
-    RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT = 1,
+    RG_GEOMETRY_UPLOAD_GENERATE_NORMALS_BIT = 1,
+    RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT = 2,
     // Set this flag if on the both sides of polygons the media is the same.
     // For example, waterfall geometry represented by one flat square,
     // so on both sides is air media.
-    RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 2,
+    RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 4,
     // Multiply the thoughput by albedo on reflection / refraction.
     // E.g. mirror has some texture on it. 
-    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 4,
-    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 8,
+    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 8,
+    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 16,
     // Ignore refl/refr geometry after one refl/refr hit.
-    RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT = 16,
+    RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT = 32,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 
@@ -359,27 +362,16 @@ typedef struct RgGeometryUploadInfo
     RgGeometryPrimaryVisibilityType visibilityType;
 
     uint32_t                        vertexCount;
-    // Strides are set in RgInstanceUploadInfo.
-    // 3 first floats will be used
-    const void                      *pVertexData;
-    // 3 first floats will be used
-    // If null, then the normals will be generated.
-    // If null and RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT is set,
-    // generated normals will be inverted.
-    const void                      *pNormalData;
-    // Up to 3 texture coordinated per vertex for static geometry.
-    // Dynamic geometry uses only 1 layer.
-    // 2 first floats will be used
-    const void                      *pTexCoordLayerData[3];
+    const RgVertex                  *pVertices;
     
     // Can be null, if indices are not used.
-    // indexData is an array of uint32_t of size indexCount.
+    // pIndices is an array of uint32_t of size indexCount.
     uint32_t                        indexCount;
-    const void                      *pIndexData;
+    const uint32_t                  *pIndices;
 
     // Sector ID per triangle. If null, sector IDs are ignored.
     // Otherwise, must point to an array of (vertexCount/3) or
-    // (indexCount/3) elements (if pIndexData is not null)
+    // (indexCount/3) elements (if pIndices is not null)
     const uint32_t                  *pTriangleSectorIDs;
     // If per triangle sector IDs are not provided,
     // use this for whole geometry.
@@ -508,43 +500,17 @@ typedef enum RgRasterizedGeometryStateFlagBits
 } RgRasterizedGeometryStateFlagBits;
 typedef uint32_t RgRasterizedGeometryStateFlags;
 
-typedef struct RgRasterizedGeometryVertexArrays
-{
-    // 3 first floats are used.
-    const void          *pVertexData;
-    // 2 first floats are used. Can be null.
-    const void          *pTexCoordData;
-    // RGBA packed into 32-bit uint. Little-endian. Can be null.
-    const void          *pColorData;
-    uint32_t            vertexStride;
-    uint32_t            texCoordStride;
-    uint32_t            colorStride;
-} RgRasterizedGeometryVertexArrays;
-
-typedef struct RgRasterizedGeometryVertexStruct
-{
-    float               position[3];
-    // RGBA packed into 32-bit uint. R component is at the little end, i.e. (a<<24 | b<<16 | g<<8 | r)
-    uint32_t            packedColor;
-    float               texCoord[2];
-} RgRasterizedGeometryVertexStruct;
-
 typedef struct RgRasterizedGeometryUploadInfo
 {
-    RgRasterizedGeometryRenderType renderType;
+    RgRasterizedGeometryRenderType          renderType;
 
     uint32_t                                vertexCount;
-    // Exactly one must be not null.
-    // "pArrays"  -- pointer to a struct that defines separate arrays
-    //               for position and texCoord data.
-    // "pStructs" -- is an array of packed vertices.
-    const RgRasterizedGeometryVertexArrays  *pArrays;
-    const RgRasterizedGeometryVertexStruct  *pStructs;
+    const RgVertex                          *pVertices;
     
     // Can be 0/null.
     // indexData is an array of uint32_t of size indexCount.
     uint32_t                                indexCount;
-    const void                              *pIndexData;
+    const void                              *pIndices;
 
     RgTransform                             transform;
 
@@ -604,10 +570,10 @@ typedef struct RgLensFlareUploadInfo
 {
     // Must be in world space.
     uint32_t                                vertexCount;
-    const RgRasterizedGeometryVertexStruct  *pVertexData;
+    const RgVertex                          *pVertices;
     // Must not be null.
     uint32_t                                indexCount;
-    const void                              *pIndexData;
+    const uint32_t                          *pIndices;
     RgMaterial                              material;
     // Format is defined by 'lensFlarePointToCheckIsInScreenSpace'
     RgFloat3D                               pointToCheck;

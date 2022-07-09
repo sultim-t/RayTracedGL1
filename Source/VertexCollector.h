@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "Buffer.h"
@@ -36,6 +37,7 @@ namespace RTGL1
 {
 
 struct ShGeometryInstance;
+struct ShVertex;
 
 // The class collects vertex data to buffers with shader struct types.
 // Geometries are passed to the class by chunks and the result of collecting
@@ -49,8 +51,7 @@ public:
         std::shared_ptr<GeomInfoManager> geomInfoManager,
         std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
         std::shared_ptr<SectorVisibility> sectorVisibility,
-        VkDeviceSize bufferSize, 
-        const VertexBufferProperties &properties,
+        VkDeviceSize bufferSize,
         VertexCollectorFilterTypeFlags filters);
 
     // Create new vertex collector, but with shared device local buffers
@@ -76,7 +77,7 @@ public:
     virtual void Reset();
     // Copy buffer from staging and set barrier for processing in compute shader
     // "isStaticVertexData" is required to determine what GLSL struct to use for copying
-    bool CopyFromStaging(VkCommandBuffer cmd, bool isStaticVertexData);
+    bool CopyFromStaging(VkCommandBuffer cmd);
     // Returns false, if wasn't copied
     bool RecopyTransformsFromStaging(VkCommandBuffer cmd);
     bool RecopyTexCoordsFromStaging(VkCommandBuffer cmd);
@@ -86,7 +87,7 @@ public:
     // will be updated every frame and thus their transforms.
     void UpdateTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo);
     // Update texture coordinates 
-    void UpdateTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo);
+    void UpdateTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo, bool isStatic);
 
 
     // When material data is changed, this function is called
@@ -123,14 +124,9 @@ public:
 private:
     void InitStagingBuffers(const std::shared_ptr<MemoryAllocator> &allocator);
 
-    void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex, bool isStatic);
-    void CopyTexCoordsToStaging(
-        bool isStatic, uint32_t globalVertIndex, uint32_t vertexCount, 
-        const void *const texCoordLayerData[3], bool addToCopy = false);
-
-    bool GetVertBufferCopyInfos(bool isStatic, std::vector<VkBufferCopy> &outInfos) const;
+    void CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex);
     
-    std::vector<VkBufferCopy> CopyVertexDataFromStaging(VkCommandBuffer cmd, bool isStatic);
+    bool CopyVertexDataFromStaging(VkCommandBuffer cmd);
     bool CopyIndexDataFromStaging(VkCommandBuffer cmd);
     bool CopyTransformsFromStaging(VkCommandBuffer cmd, bool insertMemBarrier);
 
@@ -158,7 +154,6 @@ private:
 
 private:
     VkDevice device;
-    VertexBufferProperties properties;
     VertexCollectorFilterTypeFlags filtersFlags;
 
     Buffer stagingVertBuffer;
@@ -179,7 +174,7 @@ private:
     uint32_t curPrimitiveCount;
     uint32_t curTransformCount;
 
-    uint8_t *mappedVertexData;
+    ShVertex *mappedVertexData;
     uint32_t *mappedIndexData;
     VkTransformMatrixKHR *mappedTransformData;
 
@@ -190,8 +185,6 @@ private:
     // if some static geometries changed their tex coords, then they should be copied 
     // from staging to device-local; this array holds copy ranges; freed after vkCmdCopy call
     std::vector<VkBufferCopy> texCoordsToCopy;
-    VkDeviceSize texCoordsToCopyLowerBound;
-    VkDeviceSize texCoordsToCopyUpperBound;
 
     rgl::unordered_map<uint32_t, uint32_t> simpleIndexToTransformIndex;
 };

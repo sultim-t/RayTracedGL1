@@ -442,18 +442,13 @@ def evalConst():
 # If count > 1 and dimensions is 2, 3 or 4 (matrices are not supported)
 # then it'll be represented as an array with size (count*dimensions).
 
-STATIC_BUFFER_STRUCT = [
-    (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      2,     "texCoordsLayer1",       CONST["MAX_STATIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      2,     "texCoordsLayer2",       CONST["MAX_STATIC_VERTEX_COUNT"]),
-]
-
-DYNAMIC_BUFFER_STRUCT = [
-    (TYPE_FLOAT32,      3,     "positions",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      3,     "normals",               CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
-    (TYPE_FLOAT32,      2,     "texCoords",             CONST["MAX_DYNAMIC_VERTEX_COUNT"]),
+VERTEX_STRUCT = [
+    (TYPE_FLOAT32,      4,     "position",              1),
+    (TYPE_FLOAT32,      4,     "normal",                1),
+    (TYPE_FLOAT32,      2,     "texCoord",              1),
+    (TYPE_FLOAT32,      2,     "texCoordLayer1",        1),
+    (TYPE_FLOAT32,      2,     "texCoordLayer2",        1),
+    (TYPE_UINT32,       1,     "packedColor",           1),
 ]
 
 # Must be careful with std140 offsets! They are set manually.
@@ -466,9 +461,9 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,     44,      "invProjection",                1),
     (TYPE_FLOAT32,     44,      "projectionPrev",               1),
 
-    (TYPE_UINT32,       1,      "positionsStride",              1),
-    (TYPE_UINT32,       1,      "normalsStride",                1),
-    (TYPE_UINT32,       1,      "texCoordsStride",              1),
+    (TYPE_UINT32,       1,      "_unused0",                     1),
+    (TYPE_UINT32,       1,      "_unused1",                     1),
+    (TYPE_UINT32,       1,      "_unused2",                     1),
     (TYPE_FLOAT32,      1,      "renderWidth",                  1),
 
     (TYPE_FLOAT32,      1,      "renderHeight",                 1),
@@ -663,8 +658,7 @@ STRUCT_BREAK_TYPE_ONLY_C    = 2
 # breakType         -- if member's type is not primitive and its count>0 then
 #                      it'll be represented as an array of primitive types
 STRUCTS = {
-    "ShVertexBufferStatic":     (STATIC_BUFFER_STRUCT,          False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
-    "ShVertexBufferDynamic":    (DYNAMIC_BUFFER_STRUCT,         False,  0,                          STRUCT_BREAK_TYPE_COMPLEX),
+    "ShVertex":                 (VERTEX_STRUCT,                 False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShGlobalUniform":          (GLOBAL_UNIFORM_STRUCT,         False,  STRUCT_ALIGNMENT_STD140,    STRUCT_BREAK_TYPE_ONLY_C),
     "ShGeometryInstance":       (GEOM_INSTANCE_STRUCT,          False,  STRUCT_ALIGNMENT_STD430,    0),
     "ShTonemapping":            (TONEMAPPING_STRUCT,            False,  0,                          0),
@@ -681,11 +675,7 @@ STRUCTS = {
 # User defined buffers: uniform, storage buffer
 # --------------------------------------------------------------------------------------------- #
 
-GETTERS = {
-    # (struct type): (member to access with)
-    "ShVertexBufferStatic": "staticVertices",
-    "ShVertexBufferDynamic": "dynamicVertices",
-}
+
 
 
 
@@ -935,72 +925,6 @@ def getAllStructDefs(typeNames):
 def capitalizeFirstLetter(s):
     return s[:1].upper() + s[1:]
 
-
-# Get getter for a member with variable stride.
-# Currently, stride is defined as a member in GlobalUniform
-def getGLSLGetter(baseMember, baseType, dim, memberName):
-    assert(2 <= dim <= 4)
-    if USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE:
-        strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
-    else:
-        strideVar = "globalUniform." + memberName + "Stride"
-
-    ret = GLSL_TYPE_NAMES[(baseType, dim)] + "(\n        "
-    for i in range(dim):
-        ret += "%s.%s[index * %s + %d]" % (baseMember, memberName, strideVar, i)
-        if i != dim - 1:
-            ret += ",\n        "
-    ret += ");"
-
-    res = "%s get%s%s(uint index)\n{\n" \
-        "    return " + ret + "\n}\n"
-
-    return res % (
-        GLSL_TYPE_NAMES[(baseType, dim)],
-        capitalizeFirstLetter(baseMember), capitalizeFirstLetter(memberName),
-    )
-
-
-def getAllGLSLGetters():
-    return "\n".join(
-        getGLSLGetter(baseMember, baseType, dim, mname)
-        for structType, baseMember in GETTERS.items()
-        # for each member in struct
-        for baseType, dim, mname, count in STRUCTS[structType][0]
-        # if using variableStride
-        if count > 1 and dim > 1
-    ) + "\n"
-
-
-def getGLSLSetter(baseMember, baseType, dim, memberName):
-    assert(2 <= dim <= 4)
-    if USE_BASE_STRUCT_NAME_IN_VARIABLE_STRIDE:
-        strideVar = "globalUniform." + baseMember + capitalizeFirstLetter(memberName) + "Stride"
-    else:
-        strideVar = "globalUniform." + memberName + "Stride"
-
-    st = ""
-    for i in range(dim):
-        st += "    %s.%s[index * %s + %d] = value[%d];\n" % (baseMember, memberName, strideVar, i, i)
-
-    res = "void set%s%s(uint index, %s value)\n{\n%s}\n"
-
-    return res % (
-        capitalizeFirstLetter(baseMember), capitalizeFirstLetter(memberName),
-        GLSL_TYPE_NAMES[(baseType, dim)],
-        st
-    )
-
-
-def getAllGLSLSetters():
-    return "\n".join(
-        getGLSLSetter(baseMember, baseType, dim, mname)
-        for structType, baseMember in GETTERS.items()
-        # for each member in struct
-        for baseType, dim, mname, count in STRUCTS[structType][0]
-        # if using variableStride
-        if count > 1 and dim > 1
-    ) + "\n"
 
 
 CURRENT_FRAMEBUF_BINDING_COUNT = 0
@@ -1259,28 +1183,21 @@ def writeToC(commonHeaderFile, fbHeaderFile, fbSourceFile):
     fbSourceFile.write(getAllVulkanFramebufDefinitions())
 
 
-def writeToGLSL(f, generateGetSet):
+def writeToGLSL(f):
     f.write(FILE_HEADER)
     f.write(getAllConstDefs(CONST))
     f.write(getAllConstDefs(CONST_GLSL_ONLY))
     f.write(getAllStructDefs(GLSL_TYPE_NAMES))
-    if generateGetSet:
-        f.write(getAllGLSLGetters())
-        f.write(getAllGLSLSetters())
     f.write(getAllGLSLFramebufDeclarations())
 
 
 def main():
-    generateGetSet = False
     basePath = ""
 
     for i in range(len(sys.argv)):
         if "--help" == sys.argv[i] or "-help" == sys.argv[i]:
-            print("--getset   : generate getters and setters for non-trivial members")
             print("--path     : specify path to target folder in the next argument")
             return
-        if "--getset" == sys.argv[i]:
-            generateGetSet = True
         if "--path" == sys.argv[i]:
             if i + 1 < len(sys.argv):
                 basePath = sys.argv[i + 1]
@@ -1298,7 +1215,7 @@ def main():
             with open(basePath + "ShaderCommonCFramebuf.cpp", "w") as fbSourceFile:
                 writeToC(commonHeaderFile, fbHeaderFile, fbSourceFile)
     with open(basePath + "ShaderCommonGLSL.h", "w") as f:
-        writeToGLSL(f, generateGetSet)
+        writeToGLSL(f)
 
 # main
 if __name__ == "__main__":

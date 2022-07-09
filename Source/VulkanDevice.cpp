@@ -56,14 +56,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
 
 
-    vbProperties.vertexArrayOfStructs = info->vertexArrayOfStructs == RG_TRUE;
-    vbProperties.positionStride = info->vertexPositionStride;
-    vbProperties.normalStride = info->vertexNormalStride;
-    vbProperties.texCoordStride = info->vertexTexCoordStride;
-    vbProperties.colorStride = info->vertexColorStride;
-
-
-
     // init vulkan instance 
     CreateInstance(*info);
 
@@ -138,8 +130,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         cmdManager,
         textureManager,
         uniform,
-        shaderManager,
-        vbProperties);
+        shaderManager);
    
     rasterizer          = std::make_shared<Rasterizer>(
         device,
@@ -427,13 +418,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         static_assert(sizeof(gu->instanceGeomInfoOffset) == sizeof(gu->instanceGeomInfoOffsetPrev), "");
         memcpy(gu->instanceGeomInfoOffsetPrev, gu->instanceGeomInfoOffset, sizeof(gu->instanceGeomInfoOffset));
-    }
-
-    { 
-        // to remove additional division by 4 bytes in shaders
-        gu->positionsStride = vbProperties.positionStride / 4;
-        gu->normalsStride = vbProperties.normalStride / 4;
-        gu->texCoordsStride = vbProperties.texCoordStride / 4;
     }
 
     {
@@ -1098,13 +1082,13 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    if (uploadInfo->pVertexData == nullptr || uploadInfo->vertexCount == 0)
+    if (uploadInfo->pVertices == nullptr || uploadInfo->vertexCount == 0)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect vertex data");
     }
 
-    if ((uploadInfo->pIndexData == nullptr && uploadInfo->indexCount != 0) ||
-        (uploadInfo->pIndexData != nullptr && uploadInfo->indexCount == 0))
+    if ((uploadInfo->pIndices == nullptr && uploadInfo->indexCount != 0) ||
+        (uploadInfo->pIndices != nullptr && uploadInfo->indexCount == 0))
     {
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect index data");
     }
@@ -1195,16 +1179,15 @@ void VulkanDevice::UploadRasterizedGeometry(const RgRasterizedGeometryUploadInfo
         throw RgException(RG_WRONG_ARGUMENT, "Incorrect render type of rasterized geometry");
     }
 
-    if ((pUploadInfo->pArrays != nullptr && pUploadInfo->pStructs != nullptr) || 
-        (pUploadInfo->pArrays == nullptr && pUploadInfo->pStructs == nullptr))
+    if (pUploadInfo->pVertices == nullptr || pUploadInfo->vertexCount == 0)
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Exactly one of pArrays and pStructs must be not null");
+        throw RgException(RG_WRONG_ARGUMENT, "Vertex data / count is null");
     }
 
-    if ((pUploadInfo->pIndexData == nullptr && pUploadInfo->indexCount != 0) ||
-        (pUploadInfo->pIndexData != nullptr && pUploadInfo->indexCount == 0))
+    if ((pUploadInfo->pIndices == nullptr && pUploadInfo->indexCount != 0) ||
+        (pUploadInfo->pIndices != nullptr && pUploadInfo->indexCount == 0))
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Incorrect index data");
+        throw RgException(RG_WRONG_ARGUMENT, "Index data / count must be both not null or null");
     }
 
     rasterizer->Upload(currentFrameState.GetFrameIndex(), *pUploadInfo, pViewProjection, pViewport);
@@ -1217,12 +1200,12 @@ void RTGL1::VulkanDevice::UploadLensFlare(const RgLensFlareUploadInfo *pUploadIn
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    if (pUploadInfo->indexCount == 0 || pUploadInfo->pIndexData == 0)
+    if (pUploadInfo->indexCount == 0 || pUploadInfo->pIndices == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Lens flare index data and count must not be null");
     }
 
-    if (pUploadInfo->vertexCount == 0 || pUploadInfo->pVertexData == 0)
+    if (pUploadInfo->vertexCount == 0 || pUploadInfo->pVertices == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Lens flare vertex data and count must not be null");
     }

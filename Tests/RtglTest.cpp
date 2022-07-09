@@ -120,6 +120,11 @@ static double GetCurrentTimeInSeconds()
 
 #define CUBEMAP_DIRECTORY ASSET_DIRECTORY"Cubemap/"
 
+static uint32_t PackColorToUint32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+{
+    return (static_cast<uint32_t>(a) << 24) | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(r);
+}
+
 static const RgFloat3D s_CubePositions[] = { 
     {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, 
     { 0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, 
@@ -136,6 +141,17 @@ static const RgFloat2D s_CubeTexCoords[] = {
     {0,0}, {1,0}, {0,1}, {0,1}, {0,0}, {1,0}, 
     {0,1}, {0,1}, {0,0}, {1,0}, {0,1}, {0,1}, 
 };
+static const RgVertex *GetCubeVertices()
+{
+    static RgVertex verts[std::size(s_CubePositions)] = {};
+    for (size_t i = 0; i < std::size(s_CubePositions); i++)
+    {
+        verts[i].position = s_CubePositions[i];
+        verts[i].texCoord = s_CubeTexCoords[i];
+        verts[i].packedColor = PackColorToUint32(255, 255, 255, 255);
+    }
+    return verts;
+}
 
 static const RgFloat3D s_QuadPositions[] = {
     {0,0,0}, {0,1,0}, {1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0},
@@ -146,6 +162,17 @@ static const RgFloat2D s_QuadTexCoords[] = {
 static const uint32_t s_QuadColorsABGR[] = {
     0xF0FF0000, 0xF0FFFFFF, 0xF0FFFFFF, 0xF0FFFFFF, 0xFFFFFFFF, 0xFF00FF00,
 };
+static const RgVertex *GetQuadVertices()
+{
+    static RgVertex verts[std::size(s_QuadPositions)] = {};
+    for (size_t i = 0; i < std::size(s_QuadPositions); i++)
+    {
+        verts[i].position = s_QuadPositions[i];
+        verts[i].texCoord = s_QuadTexCoords[i];
+        verts[i].packedColor = s_QuadColorsABGR[i];
+    }
+    return verts;
+}
 #pragma endregion BOILERPLATE
 
 
@@ -195,11 +222,9 @@ static void MainLoop(RgInstance instance)
             {
                 .flags                  = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
                 .vertexCount            = std::size(s_CubePositions),
-                .pVertexData            = s_CubePositions,
-                .pNormalData            = nullptr,
-                .pTexCoordLayerData     = { s_CubeTexCoords },
+                .pVertices              = GetCubeVertices(),
                 .indexCount             = 0,
-                .pIndexData             = nullptr,
+                .pIndices               = nullptr,
                 .layerColors            = { { 1.0f, 1.0f, 1.0f, 1.0f } },
                 .defaultRoughness       = 1.0f,
                 .defaultMetallicity     = 0.0f,
@@ -353,11 +378,9 @@ static void MainLoop(RgInstance instance)
             .flags                  = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
             .geomType               = RG_GEOMETRY_TYPE_DYNAMIC,
             .vertexCount            = std::size(s_CubePositions),
-            .pVertexData            = s_CubePositions,
-            .pNormalData            = nullptr,
-            .pTexCoordLayerData     = { s_CubeTexCoords },
+            .pVertices              = GetCubeVertices(),
             .indexCount             = 0,
-            .pIndexData             = nullptr,
+            .pIndices               = nullptr,
             .layerColors            = { { 1.0f, 1.0f, 1.0f, 1.0f } },
             .defaultRoughness       = ctl_Roughness,
             .defaultMetallicity     = ctl_Metallicity,
@@ -373,21 +396,12 @@ static void MainLoop(RgInstance instance)
 
 
         // upload rasterized geometry
-        RgRasterizedGeometryVertexArrays rasterVertData = 
-        {
-            .pVertexData    = s_QuadPositions,
-            .pTexCoordData  = s_QuadTexCoords,
-            .pColorData     = s_QuadColorsABGR,
-            .vertexStride   = 3 * sizeof(float),
-            .texCoordStride = 2 * sizeof(float),
-            .colorStride    = sizeof(uint32_t),
-        };
         RgRasterizedGeometryUploadInfo raster = 
         {
             // world-space
             .renderType     = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
-            .vertexCount    = 6,
-            .pArrays        = &rasterVertData,
+            .vertexCount    = std::size(s_QuadPositions),
+            .pVertices      = GetQuadVertices(),
             .transform = {
                 1, 0, 0, 0,
                 0, 1, 0, 0,
@@ -473,6 +487,14 @@ static void MainLoop(RgInstance instance)
             .resolutionMode = RG_RENDER_RESOLUTION_MODE_BALANCED,
         };
 
+        RgPostEffectChromaticAberration chromaticAberration =
+        {
+            .isActive = true,
+            .transitionDurationIn = 0,
+            .transitionDurationOut = 0,
+            .intensity = 0.3f,
+        };
+
         RgDrawFrameInfo frameInfo =
         {
             .fovYRadians = glm::radians(75.0f),
@@ -485,6 +507,9 @@ static void MainLoop(RgInstance instance)
             .pRenderResolutionParams = &resolutionParams,
             .pSkyParams = &skyParams,
             .pDebugParams = &debugParams,
+            .postEffectParams = {
+                .pChromaticAberration = &chromaticAberration,
+            },
         };
         // GLM is column major, copy matrix data directly
         memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
@@ -557,11 +582,6 @@ int main()
         .maxTextureCount                    = 1024,
         .overridenAlbedoAlphaTextureIsSRGB  = true,
         .pWaterNormalTexturePath            = ASSET_DIRECTORY"WaterNormal_n.ktx2",
-
-        .vertexPositionStride               = 3 * sizeof(float),
-        .vertexNormalStride                 = 3 * sizeof(float),
-        .vertexTexCoordStride               = 2 * sizeof(float),
-        .vertexColorStride                  = sizeof(uint32_t),
     };
 
     r = rgCreateInstance(&info, &instance);

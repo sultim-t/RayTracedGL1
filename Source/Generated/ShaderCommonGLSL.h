@@ -161,20 +161,15 @@
 #define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
 #define SURFACE_POSITION_INCORRECT (10000000.0)
 
-struct ShVertexBufferStatic
+struct ShVertex
 {
-    float positions[3145728];
-    float normals[3145728];
-    float texCoords[2097152];
-    float texCoordsLayer1[2097152];
-    float texCoordsLayer2[2097152];
-};
-
-struct ShVertexBufferDynamic
-{
-    float positions[6291456];
-    float normals[6291456];
-    float texCoords[4194304];
+    vec4 position;
+    vec4 normal;
+    vec2 texCoord;
+    vec2 texCoordLayer1;
+    vec2 texCoordLayer2;
+    uint packedColor;
+    uint __pad0;
 };
 
 struct ShGlobalUniform
@@ -185,9 +180,9 @@ struct ShGlobalUniform
     mat4 projection;
     mat4 invProjection;
     mat4 projectionPrev;
-    uint positionsStride;
-    uint normalsStride;
-    uint texCoordsStride;
+    uint _unused0;
+    uint _unused1;
+    uint _unused2;
     float renderWidth;
     float renderHeight;
     uint frameId;

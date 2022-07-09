@@ -38,8 +38,7 @@ public:
         std::shared_ptr<CommandBufferManager> &cmdManager,
         std::shared_ptr<TextureManager> &textureManager,
         const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const ShaderManager> &shaderManager,
-        const VertexBufferProperties &properties);
+        const std::shared_ptr<const ShaderManager> &shaderManager);
 
     ~Scene();
 
