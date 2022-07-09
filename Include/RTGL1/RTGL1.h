@@ -323,16 +323,13 @@ typedef struct RgFloat4D
 
 typedef struct RgVertex
 {
-    RgFloat3D   position;
-    uint32_t    _padding0;
-    RgFloat3D   normal;
-    uint32_t    _padding1;
-    RgFloat2D   texCoord;
-    RgFloat2D   texCoordLayer1;
-    RgFloat2D   texCoordLayer2;
+    float       position[3];        uint32_t _padding0;
+    float       normal[3];          uint32_t _padding1;
+    float       texCoord[2];
+    float       texCoordLayer1[2];
+    float       texCoordLayer2[2];
     // RGBA packed into 32-bit uint. R component is at the little end, i.e. (a<<24 | b<<16 | g<<8 | r)
-    uint32_t    packedColor;
-    uint32_t    _padding2;
+    uint32_t    packedColor;        uint32_t _padding2;
 } RgVertex;
 
 typedef enum RgGeometryUploadFlagBits

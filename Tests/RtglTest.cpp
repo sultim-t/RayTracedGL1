@@ -146,8 +146,8 @@ static const RgVertex *GetCubeVertices()
     static RgVertex verts[std::size(s_CubePositions)] = {};
     for (size_t i = 0; i < std::size(s_CubePositions); i++)
     {
-        verts[i].position = s_CubePositions[i];
-        verts[i].texCoord = s_CubeTexCoords[i];
+        memcpy(verts[i].position, &s_CubePositions[i], 3 * sizeof(float));
+        memcpy(verts[i].texCoord, &s_CubeTexCoords[i], 2 * sizeof(float));
         verts[i].packedColor = PackColorToUint32(255, 255, 255, 255);
     }
     return verts;
@@ -167,8 +167,8 @@ static const RgVertex *GetQuadVertices()
     static RgVertex verts[std::size(s_QuadPositions)] = {};
     for (size_t i = 0; i < std::size(s_QuadPositions); i++)
     {
-        verts[i].position = s_QuadPositions[i];
-        verts[i].texCoord = s_QuadTexCoords[i];
+        memcpy(verts[i].position, &s_QuadPositions[i], 3 * sizeof(float));
+        memcpy(verts[i].texCoord, &s_QuadTexCoords[i], 2 * sizeof(float));
         verts[i].packedColor = s_QuadColorsABGR[i];
     }
     return verts;
