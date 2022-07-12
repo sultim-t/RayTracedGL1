@@ -21,43 +21,61 @@
 #include "Swapchain.h"
 
 #include <algorithm>
+#include <utility>
 
+#include "RgException.h"
 #include "Utils.h"
 
 using namespace RTGL1;
 
-Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
-                     std::shared_ptr<PhysicalDevice> physDevice,
-                     std::shared_ptr<CommandBufferManager> cmdManager) :
-    surfaceFormat{},
-    surfCapabilities{},
-    // default
-    presentModeVsync(VK_PRESENT_MODE_FIFO_KHR),
-    presentModeImmediate(VK_PRESENT_MODE_FIFO_KHR),
-    requestedExtent({ 0, 0 }),
-    requestedVsync(true),
-    surfaceExtent{ UINT32_MAX, UINT32_MAX },
-    isVsync(true),
-    swapchain(VK_NULL_HANDLE),
-    currentSwapchainIndex(UINT32_MAX)
+namespace
 {
-    this->device = device;
-    this->surface = surface;
-    this->physDevice = physDevice;
-    this->cmdManager = cmdManager;
+    bool IsNullExtent(const VkExtent2D &a)
+    {
+        return a.width == 0 || a.height == 0;
+    }
+    
+    bool operator==(const VkExtent2D &a, const VkExtent2D &b)
+    {
+        return a.width == b.width && a.height == b.height;
+    }
 
+    bool operator!=(const VkExtent2D &a, const VkExtent2D &b)
+    {
+        return !(a == b);
+    }
+}
+
+Swapchain::Swapchain(VkDevice _device, 
+    VkSurfaceKHR _surface,
+    VkPhysicalDevice _physDevice,
+    std::shared_ptr<CommandBufferManager> _cmdManager
+)
+    : device(_device)
+    , surface(_surface)
+    , physDevice(_physDevice)
+    , cmdManager(std::move(_cmdManager))
+    , surfaceFormat{}
+    , presentModeVsync(VK_PRESENT_MODE_FIFO_KHR)
+    , presentModeImmediate(VK_PRESENT_MODE_FIFO_KHR)
+    , requestedVsync(true)
+    , surfaceExtent{ UINT32_MAX, UINT32_MAX }
+    , isVsync(true)
+    , swapchain(VK_NULL_HANDLE)
+    , currentSwapchainIndex(UINT32_MAX)
+{
     VkResult r;
 
     // find surface format
     {
         uint32_t formatCount = 0;
-        r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice->Get(), surface, &formatCount, nullptr);
+        r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &formatCount, nullptr);
         VK_CHECKERROR(r);
 
         std::vector<VkSurfaceFormatKHR> surfaceFormats;
         surfaceFormats.resize(formatCount);
 
-        r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice->Get(), surface, &formatCount, surfaceFormats.data());
+        r = vkGetPhysicalDeviceSurfaceFormatsKHR(physDevice, surface, &formatCount, surfaceFormats.data());
         VK_CHECKERROR(r);
 
         std::vector<VkFormat> acceptFormats =
@@ -86,11 +104,11 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
     // find present modes
     {
         uint32_t presentModeCount = 0;
-        r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice->Get(), surface, &presentModeCount, nullptr);
+        r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice, surface, &presentModeCount, nullptr);
         VK_CHECKERROR(r);
 
         std::vector<VkPresentModeKHR> presentModes(presentModeCount);
-        r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice->Get(), surface, &presentModeCount, presentModes.data());
+        r = vkGetPhysicalDeviceSurfacePresentModesKHR(physDevice, surface, &presentModeCount, presentModes.data());
         VK_CHECKERROR(r);
 
         // try to find mailbox / fifo-relaxed
@@ -109,13 +127,25 @@ Swapchain::Swapchain(VkDevice device, VkSurfaceKHR surface,
     }
 }
 
-bool Swapchain::RequestNewSize(uint32_t newWidth, uint32_t newHeight)
+VkExtent2D Swapchain::GetOptimalExtent() const
 {
-    requestedExtent.width = newWidth;
-    requestedExtent.height = newHeight;
+    VkSurfaceCapabilitiesKHR surfCapabilities;
 
-    return requestedExtent.width != surfaceExtent.width
-        || requestedExtent.height != surfaceExtent.height;
+    VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice, surface, &surfCapabilities);
+    VK_CHECKERROR(r);
+
+    if (IsNullExtent(surfCapabilities.maxImageExtent) ||
+        IsNullExtent(surfCapabilities.currentExtent))
+    {
+        throw RgException(RG_WRONG_FUNCTION_CALL, "Surface has 0 extent. Prevent calling RTGL1 functions in that case");
+    }
+
+    if (surfCapabilities.currentExtent.width == UINT32_MAX || surfCapabilities.currentExtent.height == UINT32_MAX)
+    {
+        return surfCapabilities.maxImageExtent;
+    }
+
+    return surfCapabilities.currentExtent;
 }
 
 bool Swapchain::RequestVsync(bool enable)
@@ -126,12 +156,12 @@ bool Swapchain::RequestVsync(bool enable)
 
 void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
 {
+    VkExtent2D requestedExtent = GetOptimalExtent();
+
     // if requested params are different
-    if (requestedExtent.width != surfaceExtent.width || 
-        requestedExtent.height != surfaceExtent.height || 
-        requestedVsync != isVsync)
+    if (requestedExtent != surfaceExtent || requestedVsync != isVsync)
     {
-        TryRecreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+        TryRecreate(requestedExtent, requestedVsync);
     }
 
     while (true)
@@ -147,7 +177,7 @@ void Swapchain::AcquireImage(VkSemaphore imageAvailableSemaphore)
         }
         else if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
         {
-            TryRecreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+            TryRecreate(requestedExtent, requestedVsync);
         }
         else
         {
@@ -223,28 +253,13 @@ void Swapchain::Present(const std::shared_ptr<Queues> &queues, VkSemaphore rende
 
     if (r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR)
     {
-        TryRecreate(requestedExtent.width, requestedExtent.height, requestedVsync);
+        TryRecreate(GetOptimalExtent(), requestedVsync);
     }
 }
 
-bool Swapchain::TryRecreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
+bool Swapchain::TryRecreate(const VkExtent2D &newExtent, bool vsync)
 {
-    VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
-    VK_CHECKERROR(r);
-
-    // normalize new extent
-    if (surfCapabilities.currentExtent.width != UINT32_MAX && surfCapabilities.currentExtent.height != UINT32_MAX)
-    {
-        newWidth  = surfCapabilities.currentExtent.width;
-        newHeight = surfCapabilities.currentExtent.height;
-    }
-    else
-    {
-        newWidth  = clamp(newWidth,  surfCapabilities.minImageExtent.width,  surfCapabilities.maxImageExtent.width);
-        newHeight = clamp(newHeight, surfCapabilities.minImageExtent.height, surfCapabilities.maxImageExtent.height);
-    }
-
-    if (surfaceExtent.width == newWidth && surfaceExtent.height == newHeight && isVsync == vsync)
+    if (surfaceExtent == newExtent && isVsync == vsync)
     {
         return false;
     }
@@ -252,7 +267,7 @@ bool Swapchain::TryRecreate(uint32_t newWidth, uint32_t newHeight, bool vsync)
     cmdManager->WaitDeviceIdle();
 
     VkSwapchainKHR old = DestroyWithoutSwapchain();
-    Create(newWidth, newHeight, vsync, old);
+    Create(newExtent.width, newExtent.height, vsync, old);
 
     return true;
 }
@@ -262,23 +277,19 @@ void Swapchain::Create(uint32_t newWidth, uint32_t newHeight, bool vsync, VkSwap
     this->isVsync = vsync;
     this->surfaceExtent = { newWidth, newHeight };
 
-    VkResult r;
-
-#ifndef NDEBUG
-    r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice->Get(), surface, &surfCapabilities);
+    VkSurfaceCapabilitiesKHR surfCapabilities;
+    VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice, surface, &surfCapabilities);
     VK_CHECKERROR(r);
 
-    if (surfCapabilities.currentExtent.width  != UINT32_MAX && surfCapabilities.currentExtent.height != UINT32_MAX)
+    if (surfCapabilities.currentExtent.width != UINT32_MAX && surfCapabilities.currentExtent.height != UINT32_MAX)
     {
-        assert(surfaceExtent.width  == surfCapabilities.currentExtent.width && 
-               surfaceExtent.height == surfCapabilities.currentExtent.height);
+        assert(surfaceExtent == surfCapabilities.currentExtent);
     }
     else
     {
         assert(surfCapabilities.minImageExtent.width  <= surfaceExtent.width  && surfaceExtent.width  <= surfCapabilities.maxImageExtent.width);
         assert(surfCapabilities.minImageExtent.height <= surfaceExtent.height && surfaceExtent.height <= surfCapabilities.maxImageExtent.height);
     }
-#endif
 
     assert(swapchain == VK_NULL_HANDLE);
     assert(swapchainImages.empty());

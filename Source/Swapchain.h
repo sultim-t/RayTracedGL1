@@ -37,7 +37,7 @@ public:
     Swapchain(
         VkDevice device, 
         VkSurfaceKHR surface, 
-        std::shared_ptr<PhysicalDevice> physDevice, 
+        VkPhysicalDevice physDevice,
         std::shared_ptr<CommandBufferManager> cmdManager);
     ~Swapchain();
 
@@ -46,10 +46,6 @@ public:
     Swapchain &operator=(const Swapchain &other) = delete;
     Swapchain &operator=(Swapchain &&other) noexcept = delete;
 
-    // Request new surface size. Swapchain will be recreated when the inconsitency
-    // will be found. Returns true, if new extent is different from the previous one.
-    // Should be called every frame change.
-    bool RequestNewSize(uint32_t newWidth, uint32_t newHeight);
     bool RequestVsync(bool enable);
 
     void AcquireImage(VkSemaphore imageAvailableSemaphore);
@@ -71,8 +67,10 @@ public:
     const VkImageView *GetImageViews() const;
 
 private:
+    VkExtent2D GetOptimalExtent() const;
+
     // Safe to call even if swapchain wasn't created
-    bool TryRecreate(uint32_t newWidth, uint32_t newHeight, bool vsync);
+    bool TryRecreate(const VkExtent2D &newExtent, bool vsync);
 
     void Create(uint32_t newWidth, uint32_t newHeight, bool vsync, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
     void Destroy();
@@ -85,16 +83,13 @@ private:
 private:
     VkDevice device;
     VkSurfaceKHR surface;
-    std::shared_ptr<PhysicalDevice> physDevice;
+    VkPhysicalDevice physDevice;
     std::shared_ptr<CommandBufferManager> cmdManager;
 
     VkSurfaceFormatKHR surfaceFormat;
-    VkSurfaceCapabilitiesKHR surfCapabilities;
     VkPresentModeKHR presentModeVsync;
     VkPresentModeKHR presentModeImmediate;
 
-    // user requests this extent
-    VkExtent2D requestedExtent;
     bool requestedVsync;
     // current surface's size
     VkExtent2D surfaceExtent;

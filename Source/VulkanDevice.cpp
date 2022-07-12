@@ -83,7 +83,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
 
     uniform             = std::make_shared<GlobalUniform>(device, memAllocator);
 
-    swapchain           = std::make_shared<Swapchain>(device, surface, physDevice, cmdManager);
+    swapchain           = std::make_shared<Swapchain>(device, surface, physDevice->Get(), cmdManager);
 
     // for world samplers with modifyable lod biad
     worldSamplerManager     = std::make_shared<SamplerManager>(device, 8, info->textureSamplerForceMinificationFilterLinear);
@@ -328,7 +328,6 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
         Utils::WaitAndResetFences(device, frameFences[frameIndex], outOfFrameFences[frameIndex]);
     }
 
-    swapchain->RequestNewSize(startInfo.surfaceSize.width, startInfo.surfaceSize.height);
     swapchain->RequestVsync(startInfo.requestVSync);
     swapchain->AcquireImage(imageAvailableSemaphores[frameIndex]);
 
@@ -1011,11 +1010,6 @@ void VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
     if (startInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
-    }
-
-    if (startInfo->surfaceSize.width == 0 || startInfo->surfaceSize.height == 0)
-    {
-        throw RgException(RG_WRONG_ARGUMENT, "surfaceSize dimensions must be >0");
     }
 
     VkCommandBuffer newFrameCmd = BeginFrame(*startInfo);

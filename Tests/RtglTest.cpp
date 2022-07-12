@@ -345,10 +345,7 @@ static void MainLoop(RgInstance instance)
         ProcessInput();
 
         {
-            int width, height; glfwGetWindowSize(g_GlfwHandle, &width, &height);
-
             RgStartFrameInfo startInfo = {
-                .surfaceSize = { (uint32_t)width, (uint32_t)height },
                 .requestVSync = true,
                 .requestShaderReload = ctl_ReloadShaders
             };
@@ -463,7 +460,9 @@ static void MainLoop(RgInstance instance)
 
         float cameraNear = 0.1f;
         float cameraFar = 10000.0f;
-        glm::mat4 persp = glm::perspective(glm::radians(75.0f), 16.0f / 9.0f, cameraNear, cameraFar); persp[1][1] *= -1;
+        int width, height; glfwGetWindowSize(g_GlfwHandle, &width, &height);
+        float aspect = static_cast<float>(width) / static_cast<float>(height);
+        glm::mat4 persp = glm::perspective(glm::radians(75.0f), aspect, cameraNear, cameraFar); persp[1][1] *= -1;
         glm::mat4 view = glm::lookAt(ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0,1,0 });
 
 
@@ -526,7 +525,7 @@ static void MainLoop(RgInstance instance)
 
 int main()
 {
-    glfwInit(); glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwInit(); glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
     g_GlfwHandle = glfwCreateWindow(1600, 900, "RTGL1 Test", nullptr, nullptr);
 
 

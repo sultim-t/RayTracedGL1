@@ -845,7 +845,6 @@ RGAPI RgResult RGCONV rgDestroyCubemap(
 
 typedef struct RgStartFrameInfo
 {
-    RgExtent2D      surfaceSize;
     RgBool32        requestVSync;
     RgBool32        requestShaderReload;
     // Reuse sky geometry from the previous frames.
