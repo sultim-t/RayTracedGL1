@@ -482,8 +482,6 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "skyCubemapIndex",              1),
     
     (TYPE_FLOAT32,      4,      "skyColorDefault",              1),
-    
-    (TYPE_FLOAT32,      4,      "skyViewerPosition",            1),
 
     (TYPE_FLOAT32,      4,      "cameraPosition",               1),
     (TYPE_FLOAT32,      4,      "cameraPositionPrev",           1),

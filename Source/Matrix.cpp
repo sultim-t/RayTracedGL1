@@ -45,6 +45,7 @@
 #include "Matrix.h"
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <cstring>
 
@@ -313,7 +314,7 @@ void Matrix::GetViewMatrix(float *result, const float *pos, float pitch, float y
     Matrix::Transpose(result, (float*)m);
 }
 
-void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position)
+void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position, float zNear, float zFar)
 {
     float view[16];
 
@@ -348,14 +349,15 @@ void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const floa
     case 5:
         GetViewMatrix(view, position, 0, M_PI, 0);
         break;
+
+    default:
+        assert(0);
+        return;
     }
 
     // tan(90/2)
     const float tanHalfFovy = 1.0f;
     const float aspect = 1.0f;
-
-    const float zNear = 0.01f;
-    const float zFar = 1000.0f;
 
     // perspective matrix, depth [0..1],
     // column-major 

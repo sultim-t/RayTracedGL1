@@ -480,8 +480,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
             gu->skyColorMultiplier = sp.skyColorMultiplier;
             gu->skyColorSaturation = std::max(sp.skyColorSaturation, 0.0f);
 
-            memcpy(gu->skyViewerPosition, sp.skyViewerPosition.data, sizeof(float) * 3);
-
             gu->skyType =
                 sp.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
                 sp.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY :
@@ -499,16 +497,17 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
             gu->skyColorDefault[0] = gu->skyColorDefault[1] = gu->skyColorDefault[2] = gu->skyColorDefault[3] = 1.0f;
             gu->skyColorMultiplier = 1.0f;
             gu->skyColorSaturation = 1.0f;
-            memset(gu->skyViewerPosition, 0, sizeof(gu->skyViewerPosition));
             gu->skyType = SKY_TYPE_COLOR;
             gu->skyCubemapIndex = RG_EMPTY_CUBEMAP;
         }
+
+        RgFloat3D skyViewerPosition = drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0,0,0 };
 
         for (uint32_t i = 0; i < 6; i++)
         {
             float *viewProjDst = &gu->viewProjCubemap[16 * i];
 
-            Matrix::GetCubemapViewProjMat(viewProjDst, i, gu->skyViewerPosition);
+            Matrix::GetCubemapViewProjMat(viewProjDst, i, skyViewerPosition.data, drawInfo.cameraNear, drawInfo.cameraFar);
         }
     }
 
@@ -811,8 +810,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         // draw rasterized sky to albedo before tracing primary rays
         if (uniform->GetData()->skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY)
         {
+            RgFloat3D skyViewerPosition = drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0,0,0 };
+
             rasterizer->DrawSkyToCubemap(cmd, frameIndex, textureManager, uniform);
-            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, uniform->GetData()->skyViewerPosition, uniform->GetData()->projection, jitter, renderResolution);
+            rasterizer->DrawSkyToAlbedo(cmd, frameIndex, textureManager, uniform->GetData()->view, skyViewerPosition.data, uniform->GetData()->projection, jitter, renderResolution);
         }
     }
 

@@ -197,7 +197,6 @@ struct ShGlobalUniform
     float skyColorMultiplier;
     uint skyCubemapIndex;
     vec4 skyColorDefault;
-    vec4 skyViewerPosition;
     vec4 cameraPosition;
     vec4 cameraPositionPrev;
     uint debugShowFlags;
