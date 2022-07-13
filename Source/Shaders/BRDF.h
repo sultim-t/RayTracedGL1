@@ -58,6 +58,17 @@ vec3 getSpecularColor(const vec3 albedo, float metallic)
     return mix(minSpec, albedo, metallic);
 }
 
+#define AO_ALBEDO_THRESHOLD 0.02
+
+float getMaterialAmbient(const vec3 albedo)
+{
+    float l = getLuminance(albedo);
+
+    return l > AO_ALBEDO_THRESHOLD ? 
+        1.0 :
+        1.0 - square((l - AO_ALBEDO_THRESHOLD) / AO_ALBEDO_THRESHOLD);
+}
+
 vec3 demodulateSpecular(const vec3 contrib, const vec3 surfSpecularColor)
 {
     return contrib / max(vec3(0.01), surfSpecularColor);

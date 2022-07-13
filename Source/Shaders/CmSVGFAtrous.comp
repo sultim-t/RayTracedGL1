@@ -301,9 +301,12 @@ void main()
             indirect,
             smoothstep(FAKE_ROUGH_SPECULAR_THRESHOLD, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, roughness));
 
+        const vec3 ro_s = getSpecularColor(albedo, metallic);
+        const vec3 ro_d = albedo * (1.0 - metallic);
+
         vec3 illuminated = 
-            (diffuse + indirect) * albedo * (1 - metallic) + 
-            specular * getSpecularColor(albedo, metallic);
+            (diffuse + indirect) * ro_d + 
+            specular * ro_s;
 
         if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE) != 0)
         {
@@ -319,6 +322,7 @@ void main()
         }
 
         illuminated *= throughput;
+        illuminated *= getMaterialAmbient(albedo);
 
         imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }
