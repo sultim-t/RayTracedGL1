@@ -1228,7 +1228,7 @@ void VulkanDevice::StartNewStaticScene()
     scene->StartNewStatic();
 }
 
-void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *pLightInfo)
+void VulkanDevice::UploadDirectionalLight(const RgDirectionalLightUploadInfo *pLightInfo)
 {
     if (pLightInfo == nullptr)
     {
@@ -1238,7 +1238,7 @@ void VulkanDevice::UploadLight(const RgDirectionalLightUploadInfo *pLightInfo)
     scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
-void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
+void VulkanDevice::UploadSphericalLight(const RgSphericalLightUploadInfo *pLightInfo)
 {
     if (pLightInfo == nullptr)
     {
@@ -1248,7 +1248,7 @@ void VulkanDevice::UploadLight(const RgSphericalLightUploadInfo *pLightInfo)
     scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
-void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
+void VulkanDevice::UploadSpotlight(const RgSpotLightUploadInfo *pLightInfo)
 {
     if (pLightInfo == nullptr)
     {
@@ -1258,7 +1258,7 @@ void VulkanDevice::UploadLight(const RgSpotlightUploadInfo *pLightInfo)
     scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
 }
 
-void RTGL1::VulkanDevice::UploadLight(const RgPolygonalLightUploadInfo *pLightInfo)
+void RTGL1::VulkanDevice::UploadPolygonalLight(const RgPolygonalLightUploadInfo *pLightInfo)
 {
     if (pLightInfo == nullptr)
     {

@@ -23,19 +23,6 @@
 
 using namespace RTGL1;
 
-
-
-#define CATCH_OR_RETURN \
-    catch (RTGL1::RgException &e) \
-    { \
-        TryPrintError(rgInstance, e.what()); \
-        return e.GetErrorCode(); \
-    } \
-    return RG_SUCCESS \
-
-
-
-
 constexpr uint32_t MAX_DEVICE_COUNT = 8;
 static rgl::unordered_map<RgInstance, std::unique_ptr<VulkanDevice>> G_DEVICES;
 
@@ -44,7 +31,7 @@ static RgInstance GetNextID()
     return reinterpret_cast<RgInstance>(G_DEVICES.size() + 1024);
 }
 
-static const std::unique_ptr<VulkanDevice> &GetDevice(RgInstance rgInstance)
+static VulkanDevice &GetDevice(RgInstance rgInstance)
 {
     auto it = G_DEVICES.find(rgInstance); 
 
@@ -53,7 +40,7 @@ static const std::unique_ptr<VulkanDevice> &GetDevice(RgInstance rgInstance)
         throw RTGL1::RgException(RG_WRONG_INSTANCE);
     }
 
-    return it->second;
+    return *(it->second);
 }
 
 static void TryPrintError(RgInstance rgInstance, const char *pMessage)
@@ -112,223 +99,152 @@ RgResult rgDestroyInstance(RgInstance rgInstance)
     {
         G_DEVICES.erase(rgInstance);
     }
-    CATCH_OR_RETURN;
+    catch (RTGL1::RgException &e) 
+    { 
+        TryPrintError(rgInstance, e.what()); 
+        return e.GetErrorCode(); 
+    } 
+    return RG_SUCCESS;
+}
+
+template<typename Func, typename... Args>
+static auto Call(RgInstance rgInstance, Func f, Args&&... args)
+{
+    try
+    {
+        VulkanDevice &dev = GetDevice(rgInstance);
+        (dev.*f)(std::forward<Args>(args)...);
+    }
+    catch (RTGL1::RgException &e) 
+    {
+        TryPrintError(rgInstance, e.what());
+        return e.GetErrorCode();
+    }
+    return RG_SUCCESS;
 }
 
 RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadGeometry(pUploadInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadGeometry, pUploadInfo );
 }
 
 RgResult rgUpdateGeometryTransform(RgInstance rgInstance, const RgUpdateTransformInfo* pUpdateInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UpdateGeometryTransform(pUpdateInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UpdateGeometryTransform, pUpdateInfo);
 }
 
 RgResult rgUpdateGeometryTexCoords(RgInstance rgInstance, const RgUpdateTexCoordsInfo *pUpdateInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UpdateGeometryTexCoords(pUpdateInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UpdateGeometryTexCoords, pUpdateInfo);
 }
 
 RgResult rgUploadRasterizedGeometry(RgInstance rgInstance, const RgRasterizedGeometryUploadInfo *pUploadInfo, 
                                     const float *pViewProjection, const RgViewport *pViewport)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadRasterizedGeometry(pUploadInfo, pViewProjection, pViewport);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadRasterizedGeometry, pUploadInfo, pViewProjection, pViewport);
 }
 
 RgResult rgUploadLensFlare(RgInstance rgInstance, const RgLensFlareUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadLensFlare(pUploadInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadLensFlare, pUploadInfo);
 }
 
 RgResult rgUploadDecal(RgInstance rgInstance, const RgDecalUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadDecal(pUploadInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadDecal, pUploadInfo);
 }
 
+RgResult rgBeginStaticGeometries(RgInstance rgInstance)
+{
+    return Call(rgInstance, &VulkanDevice::StartNewStaticScene);
+}
 
 RgResult rgSubmitStaticGeometries(RgInstance rgInstance)
 {
-    try
-    {
-        GetDevice(rgInstance)->SubmitStaticGeometries();
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::SubmitStaticGeometries);
 }
 
-RgResult rgStartNewScene(RgInstance rgInstance)
+RgResult rgUploadDirectionalLight(RgInstance rgInstance, const RgDirectionalLightUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->StartNewStaticScene();
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadDirectionalLight, pUploadInfo);
 }
 
-RgResult rgUploadDirectionalLight(RgInstance rgInstance, const RgDirectionalLightUploadInfo *pLightInfo)
+RgResult rgUploadSphericalLight(RgInstance rgInstance, const RgSphericalLightUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadLight(pLightInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadSphericalLight, pUploadInfo);
 }
 
-RgResult rgUploadSphericalLight(RgInstance rgInstance, const RgSphericalLightUploadInfo *pLightInfo)
+RgResult rgUploadSpotLight(RgInstance rgInstance, const RgSpotLightUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadLight(pLightInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadSpotlight, pUploadInfo);
 }
 
-RgResult rgUploadSpotlightLight(RgInstance rgInstance, const RgSpotlightUploadInfo *pLightInfo)
+RgResult rgUploadPolygonalLight(RgInstance rgInstance, const RgPolygonalLightUploadInfo *pUploadInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UploadLight(pLightInfo);
-    }
-    CATCH_OR_RETURN;
-}
-
-RgResult rgUploadPolygonalLight(RgInstance rgInstance, const RgPolygonalLightUploadInfo *pLightInfo)
-{
-    try
-    {
-        GetDevice(rgInstance)->UploadLight(pLightInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UploadPolygonalLight, pUploadInfo);
 }
 
 RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *pCreateInfo,
                                RgMaterial *pResult)
 {
     *pResult = RG_NO_MATERIAL;
-    try
-    {
-        GetDevice(rgInstance)->CreateStaticMaterial(pCreateInfo, pResult);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::CreateStaticMaterial, pCreateInfo, pResult);
 }
 
 RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *pCreateInfo,
                                  RgMaterial *pResult)
 {
     *pResult = RG_NO_MATERIAL;
-    try
-    {
-        GetDevice(rgInstance)->CreateAnimatedMaterial(pCreateInfo, pResult);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::CreateAnimatedMaterial, pCreateInfo, pResult);
 }
 
 RgResult rgChangeAnimatedMaterialFrame(RgInstance rgInstance, RgMaterial animatedMaterial, uint32_t frameIndex)
 {
-    try
-    {
-        GetDevice(rgInstance)->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::ChangeAnimatedMaterialFrame, animatedMaterial, frameIndex);
 }
 
 RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialCreateInfo *pCreateInfo,
                                 RgMaterial *pResult)
 {
     *pResult = RG_NO_MATERIAL;
-    try
-    {
-        GetDevice(rgInstance)->CreateDynamicMaterial(pCreateInfo, pResult);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::CreateDynamicMaterial, pCreateInfo, pResult);
 }
 
 RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialUpdateInfo *pUpdateInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->UpdateDynamicMaterial(pUpdateInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::UpdateDynamicMaterial, pUpdateInfo);
 }
 
 RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)
 {
-    try
-    {
-        GetDevice(rgInstance)->DestroyMaterial(material);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::DestroyMaterial, material);
 }
 
 RgResult rgCreateCubemap(RgInstance rgInstance, const RgCubemapCreateInfo *pCreateInfo, RgCubemap *pResult)
 {
     *pResult = RG_EMPTY_CUBEMAP;
-    try
-    {
-        GetDevice(rgInstance)->CreateSkyboxCubemap(pCreateInfo, pResult);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::CreateSkyboxCubemap, pCreateInfo, pResult);
 }
 
 RgResult rgDestroyCubemap(RgInstance rgInstance, RgCubemap cubemap)
 {
-    try
-    {
-        GetDevice(rgInstance)->DestroyCubemap(cubemap);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::DestroyCubemap, cubemap);
 }
 
 RgResult rgStartFrame(RgInstance rgInstance, const RgStartFrameInfo *pStartInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->StartFrame(pStartInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::StartFrame, pStartInfo);
 }
 
 RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *pDrawInfo)
 {
-    try
-    {
-        GetDevice(rgInstance)->DrawFrame(pDrawInfo);
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::DrawFrame, pDrawInfo);
 }
 
 RgResult rgIsRenderUpscaleTechniqueAvailable(RgInstance rgInstance, RgRenderUpscaleTechnique technique, RgBool32 *pOutResult)
 {
-    try
-    {
-        *pOutResult = GetDevice(rgInstance)->IsRenderUpscaleTechniqueAvailable(technique);
-    }
-    CATCH_OR_RETURN;
+    *pOutResult = Call(rgInstance, &VulkanDevice::IsRenderUpscaleTechniqueAvailable, technique);
+    return RG_SUCCESS;
 }
 
 
@@ -339,9 +255,5 @@ const char *rgGetResultDescription(RgResult result)
 
 RgResult rgSetPotentialVisibility(RgInstance rgInstance, uint32_t sectorID_A, uint32_t sectorID_B)
 {
-    try
-    {
-        GetDevice(rgInstance)->SetPotentialVisibility(RTGL1::SectorID{ sectorID_A }, RTGL1::SectorID{ sectorID_B });
-    }
-    CATCH_OR_RETURN;
+    return Call(rgInstance, &VulkanDevice::SetPotentialVisibility, RTGL1::SectorID{ sectorID_A }, RTGL1::SectorID{ sectorID_B });
 }

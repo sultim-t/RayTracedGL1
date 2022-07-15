@@ -284,7 +284,7 @@ void RTGL1::Scene::UploadLight(uint32_t frameIndex, const RgPolygonalLightUpload
     lightManager->AddPolygonalLight(frameIndex, lightInfo);
 }
 
-void Scene::UploadLight(uint32_t frameIndex,const RgSpotlightUploadInfo &lightInfo)
+void Scene::UploadLight(uint32_t frameIndex,const RgSpotLightUploadInfo &lightInfo)
 {
     lightManager->AddSpotlight(frameIndex, lightInfo);
 }

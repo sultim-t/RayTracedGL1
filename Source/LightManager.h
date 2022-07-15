@@ -57,7 +57,7 @@ public:
     void AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info);
     void AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info);
     void AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info);
-    void AddSpotlight(uint32_t frameIndex, const RgSpotlightUploadInfo &info);
+    void AddSpotlight(uint32_t frameIndex, const RgSpotLightUploadInfo &info);
 
     void CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex);
     void BarrierLightGrid(VkCommandBuffer cmd, uint32_t frameIndex);

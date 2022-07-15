@@ -215,7 +215,7 @@ static void MainLoop(RgInstance instance)
 
 
         // upload static scene
-        r = rgStartNewScene(instance);
+        r = rgBeginStaticGeometries(instance);
         RG_CHECK(r);
         {
             const RgGeometryUploadInfo staticCubeGeomTemplate = 

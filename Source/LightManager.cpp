@@ -169,7 +169,7 @@ static RTGL1::ShLightEncoded EncodeAsTriangleLight(const RgPolygonalLightUploadI
     return lt;
 }
 
-static RTGL1::ShLightEncoded EncodeAsSpotLight(const RgSpotlightUploadInfo &info)
+static RTGL1::ShLightEncoded EncodeAsSpotLight(const RgSpotLightUploadInfo &info)
 {
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize(direction.data);
@@ -348,7 +348,7 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
     AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsTriangleLight(info, unnormalizedNormal));
 }
 
-void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const RgSpotlightUploadInfo &info)
+void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const RgSpotLightUploadInfo &info)
 {
     if (IsColorTooDim(info.color.data) || info.radius < 0.0f || info.angleOuter <= 0.0f)
     {

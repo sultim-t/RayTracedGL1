@@ -410,8 +410,8 @@ typedef struct RgUpdateTexCoordsInfo
 // dynamic geometry must be uploaded each frame.
 // Uploaded static geometriy can only be visible after submitting them using rgSubmitStaticGeometries.
 // Dynamic geometry can be uploaded only between rgStartFrame - rgDrawFrame.
-// Static geometry can be uploaded only between rgStartNewScene - rgSubmitStaticGeometries.
-// Uploading dynamic geometries and then calling rgStartNewScene will erase them.
+// Static geometry can be uploaded only between rgBeginStaticGeometries - rgSubmitStaticGeometries.
+// Uploading dynamic geometries and then calling rgBeginStaticGeometries will erase them.
 RGAPI RgResult RGCONV rgUploadGeometry(
     RgInstance                              rgInstance,
     const RgGeometryUploadInfo              *pUploadInfo);
@@ -431,16 +431,16 @@ RGAPI RgResult RGCONV rgUpdateGeometryTexCoords(
 
 // Clear current scene from all static geometries and make it available for recording new geometries.
 // New scene can be visible only after the submission using rgSubmitStaticGeometries.
-RGAPI RgResult RGCONV rgStartNewScene(
+RGAPI RgResult RGCONV rgBeginStaticGeometries(
     RgInstance                          rgInstance);
 
 // After uploading all static geometry, scene must be submitted before rendering.
 // Note that movable static geometry can be still moved using rgUpdateGeometryTransform.
-// If the static scene geometry should be changed, it must be cleared using rgStartNewScene
+// If the static scene geometry should be changed, it must be cleared using rgBeginStaticGeometries
 // and new static geometries must be uploaded.
-// To clear static scene, call rgStartNewScene and then rgSubmitStaticGeometries
+// To clear static scene, call rgBeginStaticGeometries and then rgSubmitStaticGeometries
 // without uploading any geometry.
-// rgStartNewScene and rgSubmitStaticGeometries can be called outside of rgStartFrame-rgDrawFrame.
+// rgBeginStaticGeometries and rgSubmitStaticGeometries can be called outside of rgStartFrame-rgDrawFrame.
 RGAPI RgResult RGCONV rgSubmitStaticGeometries(
     RgInstance                          rgInstance);
 
@@ -449,7 +449,7 @@ RGAPI RgResult RGCONV rgSubmitStaticGeometries(
 // Set mutual potential visibility between sectors A and B.
 // It improves the light sampling by using specific light lists for each sector.
 // If none was set, light sources are chosen uniformly.
-// Note: visibility data is being cleared after calling rgStartNewScene.
+// Note: visibility data is being cleared after calling rgBeginStaticGeometries.
 // Note: sector can be registered by just specifiying the same value for sectorID_A and sectorID_B.
 RGAPI RgResult RGCONV rgSetPotentialVisibility(
     RgInstance                          rgInstance,
@@ -630,7 +630,7 @@ typedef struct RgPolygonalLightUploadInfo
 } RgPolygonalLightUploadInfo;
 
 // Only one spotlight is available in a scene.
-typedef struct RgSpotlightUploadInfo
+typedef struct RgSpotLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
@@ -645,23 +645,23 @@ typedef struct RgSpotlightUploadInfo
     float           angleOuter;
     // Outer cone angle. In radians.
     float           angleInner;
-} RgSpotlightUploadInfo;
+} RgSpotLightUploadInfo;
 
 RGAPI RgResult RGCONV rgUploadDirectionalLight(
     RgInstance                          rgInstance,
-    const RgDirectionalLightUploadInfo  *pLightInfo);
+    const RgDirectionalLightUploadInfo  *pUploadInfo);
 
 RGAPI RgResult RGCONV rgUploadSphericalLight(
     RgInstance                          rgInstance,
-    const RgSphericalLightUploadInfo    *pLightInfo);
+    const RgSphericalLightUploadInfo    *pUploadInfo);
 
-RGAPI RgResult RGCONV rgUploadSpotlightLight(
+RGAPI RgResult RGCONV rgUploadSpotLight(
     RgInstance                          rgInstance,
-    const RgSpotlightUploadInfo         *pLightInfo);
+    const RgSpotLightUploadInfo         *pUploadInfo);
 
 RGAPI RgResult RGCONV rgUploadPolygonalLight(
     RgInstance                          rgInstance,
-    const RgPolygonalLightUploadInfo    *pLightInfo);
+    const RgPolygonalLightUploadInfo    *pUploadInfo);
 
 
 

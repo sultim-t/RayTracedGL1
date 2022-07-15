@@ -80,10 +80,10 @@ public:
     void SubmitStaticGeometries();
     void StartNewStaticScene();
 
-    void UploadLight(const RgDirectionalLightUploadInfo *pLightInfo);
-    void UploadLight(const RgSphericalLightUploadInfo *pLightInfo);
-    void UploadLight(const RgSpotlightUploadInfo *pLightInfo);
-    void UploadLight(const RgPolygonalLightUploadInfo *pLightInfo);
+    void UploadDirectionalLight(const RgDirectionalLightUploadInfo *pLightInfo);
+    void UploadSphericalLight(const RgSphericalLightUploadInfo *pLightInfo);
+    void UploadSpotlight(const RgSpotLightUploadInfo *pLightInfo);
+    void UploadPolygonalLight(const RgPolygonalLightUploadInfo *pLightInfo);
 
     void SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B);
 
