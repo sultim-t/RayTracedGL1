@@ -107,7 +107,7 @@ RgResult rgDestroyInstance(RgInstance rgInstance)
     return RG_SUCCESS;
 }
 
-template<typename Func, typename... Args>
+template<typename Func, typename... Args> requires (std::is_same_v< std::invoke_result_t<Func, VulkanDevice, Args...>, void>)
 static auto Call(RgInstance rgInstance, Func f, Args&&... args)
 {
     try
@@ -121,6 +121,20 @@ static auto Call(RgInstance rgInstance, Func f, Args&&... args)
         return e.GetErrorCode();
     }
     return RG_SUCCESS;
+}
+
+template<typename Func, typename... Args> requires (!std::is_same_v< std::invoke_result_t<Func, VulkanDevice, Args...>, void>)
+static auto Call(RgInstance rgInstance, Func f, Args&&... args)
+{
+    try
+    {
+        VulkanDevice &dev = GetDevice(rgInstance);
+        return (dev.*f)(std::forward<Args>(args)...);
+    }
+    catch (RTGL1::RgException &e)
+    {
+        TryPrintError(rgInstance, e.what());
+    }
 }
 
 RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *pUploadInfo)
@@ -241,10 +255,9 @@ RgResult rgDrawFrame(RgInstance rgInstance, const RgDrawFrameInfo *pDrawInfo)
     return Call(rgInstance, &VulkanDevice::DrawFrame, pDrawInfo);
 }
 
-RgResult rgIsRenderUpscaleTechniqueAvailable(RgInstance rgInstance, RgRenderUpscaleTechnique technique, RgBool32 *pOutResult)
+RgBool32 rgIsRenderUpscaleTechniqueAvailable(RgInstance rgInstance, RgRenderUpscaleTechnique technique)
 {
-    *pOutResult = Call(rgInstance, &VulkanDevice::IsRenderUpscaleTechniqueAvailable, technique);
-    return RG_SUCCESS;
+    return Call(rgInstance, &VulkanDevice::IsRenderUpscaleTechniqueAvailable, technique);
 }
 
 

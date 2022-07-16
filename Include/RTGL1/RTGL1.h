@@ -1158,10 +1158,9 @@ RGAPI RgResult RGCONV rgDrawFrame(
 
 
 
-RGAPI RgResult RGCONV rgIsRenderUpscaleTechniqueAvailable(
+RGAPI RgBool32 RGCONV rgIsRenderUpscaleTechniqueAvailable(
     RgInstance                          rgInstance,
-    RgRenderUpscaleTechnique            technique,
-    RgBool32                            *pOutResult);
+    RgRenderUpscaleTechnique            technique);
 
 RGAPI const char* RGCONV rgGetResultDescription(RgResult result);
 
