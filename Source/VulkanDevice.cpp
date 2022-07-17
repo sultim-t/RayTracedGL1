@@ -233,6 +233,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectInverseBW             = CONSTRUCT_SIMPLE_EFFECT(EffectInverseBW);
     effectHueShift              = CONSTRUCT_SIMPLE_EFFECT(EffectHueShift);
     effectDistortedSides        = CONSTRUCT_SIMPLE_EFFECT(EffectDistortedSides);
+    effectWaves                 = CONSTRUCT_SIMPLE_EFFECT(EffectWaves);
     effectColorTint             = CONSTRUCT_SIMPLE_EFFECT(EffectColorTint);
     effectCrtDemodulateEncode   = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDemodulateEncode);
     effectCrtDecode             = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDecode);
@@ -256,6 +257,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectInverseBW);
     shaderManager->Subscribe(effectHueShift);
     shaderManager->Subscribe(effectDistortedSides);
+    shaderManager->Subscribe(effectWaves);
     shaderManager->Subscribe(effectColorTint);
     shaderManager->Subscribe(effectCrtDemodulateEncode);
     shaderManager->Subscribe(effectCrtDecode);
@@ -287,6 +289,7 @@ VulkanDevice::~VulkanDevice()
     effectInverseBW.reset();
     effectHueShift.reset();
     effectDistortedSides.reset();
+    effectWaves.reset();
     effectColorTint.reset();
     effectCrtDemodulateEncode.reset();
     effectCrtDecode.reset();
@@ -942,6 +945,10 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         if (effectDistortedSides->Setup(args, drawInfo.postEffectParams.pDistortedSides))
         {
             currentResultImage = effectDistortedSides->Apply(args, currentResultImage);
+        }
+        if (effectWaves->Setup(args, drawInfo.postEffectParams.pWaves))
+        {
+            currentResultImage = effectWaves->Apply(args, currentResultImage);
         }
         if (effectRadialBlur->Setup(args, drawInfo.postEffectParams.pRadialBlur))
         {

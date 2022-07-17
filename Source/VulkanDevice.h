@@ -284,6 +284,7 @@ private:
     std::shared_ptr<EffectInverseBW>            effectInverseBW;
     std::shared_ptr<EffectHueShift>             effectHueShift;
     std::shared_ptr<EffectDistortedSides>       effectDistortedSides;
+    std::shared_ptr<EffectWaves>                effectWaves;
     std::shared_ptr<EffectColorTint>            effectColorTint;
     std::shared_ptr<EffectCrtDemodulateEncode>  effectCrtDemodulateEncode;
     std::shared_ptr<EffectCrtDecode>            effectCrtDecode;

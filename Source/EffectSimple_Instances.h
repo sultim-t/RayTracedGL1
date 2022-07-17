@@ -207,4 +207,36 @@ struct EffectInterlacing final : public EffectSimple<EffectInterlacing_PushConst
     }
 };
 
+
+// ------------------ //
+
+
+struct EffectWaves_PushConst
+{
+    float amplitude;
+    float speed;
+    float multX;
+};
+
+struct EffectWaves final : public EffectSimple<EffectWaves_PushConst>
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectWaves, "EffectWaves")
+
+    bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectWaves *params)
+    {
+        if (params == nullptr || params->amplitude <= 0.0f)
+        {
+            return SetupNull();
+        }
+
+        GetPush() = EffectWaves_PushConst{
+            .amplitude = params->amplitude,
+            .speed = params->speed,
+            .multX = params->xMultiplier,
+        };
+
+        return EffectSimple::Setup(args, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
 }
