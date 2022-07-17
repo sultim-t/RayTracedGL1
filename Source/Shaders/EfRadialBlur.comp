@@ -34,25 +34,20 @@ void main()
     vec2 toCenter = effect_getCenteredFromPix(pix);
     float d = length(toCenter);
 
-    float progress = getProgress();
+    vec2 c = effect_getCenteredFromPix(pix);
+    vec2 offset = 0.1 * getProgress() * c * length(c);
 
-    float bend      = mix(1.0, 0.85, progress);
-    float threshold = mix(1.0, 0.15, progress);
+    int iterCount = 4;
+    vec2 delta = offset / iterCount;
 
+    vec3 color = vec3(0);
 
-    if (d > threshold)
+    for (int i = 0; i < iterCount; i++)
     {
-        float b = mix(1, bend, d - threshold);
-        
-        vec3 c = 
-            effect_loadFromSource(pix) +
-            effect_loadFromSource(effect_getPixFromCentered(toCenter * b)) + 
-            effect_loadFromSource(effect_getPixFromCentered(toCenter * b * b));
+        vec3 a = effect_loadFromSource_Centered(c + delta * i);
 
-        effect_storeToTarget(c / 3, pix);
+        color += a / float(iterCount);
     }
-    else
-    {
-        effect_storeUnmodifiedToTarget(pix);
-    }
+
+    effect_storeToTarget(color, pix);
 }
