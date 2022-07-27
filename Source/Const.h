@@ -36,8 +36,10 @@ constexpr uint32_t      EMPTY_TEXTURE_INDEX                     = 0;
 constexpr uint32_t      MATERIALS_MAX_LAYER_COUNT               = 3;
 constexpr uint32_t      TEXTURES_PER_MATERIAL_COUNT             = 3;
 
-constexpr const char    *DEFAULT_TEXTURES_PATH                  = "";
-constexpr const char    *DEFAULT_TEXTURES_POSTFIXES[TEXTURES_PER_MATERIAL_COUNT] = { "", "_rme", "_n" };
+constexpr const char    *DEFAULT_TEXTURES_PATH                              = "";
+constexpr const char    *DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA               = "";
+constexpr const char    *DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION = "_rme";
+constexpr const char    *DEFAULT_TEXTURE_POSTFIX_NORMAL                     = "_n";
 
 constexpr uint32_t      MAX_PREGENERATED_MIPMAP_LEVELS          = 20;
 

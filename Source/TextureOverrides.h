@@ -43,6 +43,7 @@ public:
         // isn't overriden, RgTextureData::isSRGB value is used
         // instead of one of these params.
         bool overridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT] = {};
+        bool originalIsSRGB[TEXTURES_PER_MATERIAL_COUNT] = {};
     };
 
 public:
@@ -51,14 +52,13 @@ public:
         const RgTextureSet &defaultTextures,
         const RgExtent2D &defaultSize,
         const OverrideInfo &overrideInfo,
-        std::shared_ptr<ImageLoader> imageLoader);
+        const std::shared_ptr<ImageLoader> &imageLoader);
     explicit TextureOverrides(
         const char *relativePath,
         const void *defaultData,
-        bool isSRGB,
         const RgExtent2D &defaultSize,
         const OverrideInfo &overrideInfo,
-        std::shared_ptr<ImageLoader> imageLoader);
+        const std::shared_ptr<ImageLoader> &imageLoader);
     ~TextureOverrides();
 
     TextureOverrides(const TextureOverrides &other) = delete;

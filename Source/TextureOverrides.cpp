@@ -20,7 +20,7 @@
 
 #include "TextureOverrides.h"
 #include "Const.h"
-#include <stdio.h>
+#include <cstdio>
 
 using namespace RTGL1;
 
@@ -68,38 +68,41 @@ static VkFormat ConvertToSRGB(VkFormat f)
 
 TextureOverrides::TextureOverrides(
     const char *_relativePath,
-    const void *_defaultData,     
-    bool _isSRGB,
+    const void *_defaultData,
     const RgExtent2D &_defaultSize,
     const OverrideInfo &_overrideInfo,
-    std::shared_ptr<ImageLoader> _imageLoader)
-:
-    TextureOverrides(_relativePath, 
-                     RgTextureSet{ { _defaultData, _isSRGB }, {}, {} }, _defaultSize, 
-                     _overrideInfo, std::move(_imageLoader))
+    const std::shared_ptr<ImageLoader> &_imageLoader
+)
+    : TextureOverrides(
+        _relativePath,
+        RgTextureSet{ .pDataAlbedoAlpha = _defaultData }, 
+        _defaultSize,
+        _overrideInfo,
+        _imageLoader
+    )
 {}
 
 TextureOverrides::TextureOverrides(
-    const char *_relativePath, 
+    const char *_relativePath,
     const RgTextureSet &_defaultTextures,
     const RgExtent2D &_defaultSize,
-    const OverrideInfo &_overrideInfo, 
-    std::shared_ptr<ImageLoader> _imageLoader) 
-:
-    results{},
-    debugName{},
-    imageLoader(_imageLoader)
+    const OverrideInfo &_overrideInfo,
+    const std::shared_ptr<ImageLoader> &_imageLoader
+)
+    : results{}
+    , debugName{}
+    , imageLoader(_imageLoader)
 {
-    const RgTextureData *defaultData[TEXTURES_PER_MATERIAL_COUNT] =
+    const void *defaultData[TEXTURES_PER_MATERIAL_COUNT] =
     {
-        &_defaultTextures.albedoAlpha,
-        &_defaultTextures.roughnessMetallicEmission,
-        &_defaultTextures.normal,
+        _defaultTextures.pDataAlbedoAlpha,
+        _defaultTextures.pDataRoughnessMetallicEmission,
+        _defaultTextures.pDataNormal,
     };
 
-    const VkFormat defaultSRGBFormat = VK_FORMAT_R8G8B8A8_SRGB;
-    const VkFormat defaultLinearFormat = VK_FORMAT_R8G8B8A8_UNORM;
-    const uint32_t defaultBytesPerPixel = 4;
+    constexpr VkFormat defaultSRGBFormat = VK_FORMAT_R8G8B8A8_SRGB;
+    constexpr VkFormat defaultLinearFormat = VK_FORMAT_R8G8B8A8_UNORM;
+    constexpr uint32_t defaultBytesPerPixel = 4;
 
 
     if (!_overrideInfo.disableOverride)
@@ -129,16 +132,16 @@ TextureOverrides::TextureOverrides(
     for (uint32_t i = 0; i < 3; i++)
     {
         // if file wasn't found, use default data instead
-        if (defaultData[i]->pData != nullptr && results[i].pData == nullptr)
+        if (defaultData[i] != nullptr && results[i].pData == nullptr)
         {
-            results[i].pData = static_cast<const uint8_t *>(defaultData[i]->pData);
+            results[i].pData = static_cast<const uint8_t *>(defaultData[i]);
             results[i].dataSize = defaultDataSize;
             results[i].levelCount = 1;
             results[i].isPregenerated = false;
             results[i].levelOffsets[0] = 0;
             results[i].levelSizes[0] = defaultDataSize;
             results[i].baseSize = _defaultSize;
-            results[i].format = defaultData[i]->isSRGB ? defaultSRGBFormat : defaultLinearFormat;
+            results[i].format = _overrideInfo.originalIsSRGB[i] ? defaultSRGBFormat : defaultLinearFormat;
         }
     }
 }

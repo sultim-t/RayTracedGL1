@@ -130,6 +130,7 @@ private:
     std::string defaultTexturesPath;
     std::string postfixes[TEXTURES_PER_MATERIAL_COUNT];
     bool overridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT];
+    bool originalIsSRGB[TEXTURES_PER_MATERIAL_COUNT];
 
     std::list<std::weak_ptr<IMaterialDependency>> subscribers;
 };

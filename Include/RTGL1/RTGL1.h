@@ -227,7 +227,11 @@ typedef struct RgInstanceCreateInfo
     const char                  *pOverridenRoughnessMetallicEmissionTexturePostfix;
     // If null, then "_n" will be used.
     const char                  *pOverridenNormalTexturePostfix;
-    // Overriden textures 
+
+    RgBool32                    originalAlbedoAlphaTextureIsSRGB;
+    RgBool32                    originalRoughnessMetallicEmissionTextureIsSRGB;
+    RgBool32                    originalNormalTextureIsSRGB;
+
     RgBool32                    overridenAlbedoAlphaTextureIsSRGB;
     RgBool32                    overridenRoughnessMetallicEmissionTextureIsSRGB;
     RgBool32                    overridenNormalTextureIsSRGB;
@@ -680,17 +684,11 @@ typedef enum RgSamplerFilter
     RG_SAMPLER_FILTER_NEAREST,
 } RgSamplerFilter;
 
-typedef struct RgTextureData
-{
-    const void              *pData;
-    RgBool32                isSRGB;
-} RgTextureData;
-
 typedef struct RgTextureSet
 {
-    RgTextureData           albedoAlpha;
-    RgTextureData           roughnessMetallicEmission;
-    RgTextureData           normal;
+    const void *pDataAlbedoAlpha;
+    const void *pDataRoughnessMetallicEmission;
+    const void *pDataNormal;
 } RgTextureSet;
 
 typedef enum RgMaterialCreateFlagBits
@@ -827,7 +825,6 @@ typedef struct RgCubemapCreateInfo
     // width = height = sideSize
     uint32_t                sideSize;
     RgBool32                useMipmaps;
-    RgBool32                isSRGB;
     RgBool32                disableOverride;
     RgSamplerFilter         filter;
 } RgCubemapCreateInfo;

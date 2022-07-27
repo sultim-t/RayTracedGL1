@@ -30,11 +30,22 @@
 
 
 using namespace RTGL1;
-static_assert(TEXTURES_PER_MATERIAL_COUNT == sizeof(RgTextureSet) / sizeof(RgTextureData), "TEXTURES_PER_MATERIAL_COUNT must be same as in RgTextureSet");
 
-constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
 
-constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
+namespace
+{
+    static_assert(TEXTURES_PER_MATERIAL_COUNT == sizeof(RgTextureSet) / sizeof(const void *), "TEXTURES_PER_MATERIAL_COUNT must be same as in RgTextureSet");
+
+    constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
+
+    constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
+
+    template <typename T>
+    constexpr const T *DefaultIfNull(const T *pData, const T *pDefault)
+    {
+        return pData != nullptr ? pData : pDefault;
+    }
+}
 
 
 TextureManager::TextureManager(
@@ -43,35 +54,35 @@ TextureManager::TextureManager(
     std::shared_ptr<SamplerManager> _samplerMgr,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<UserFileLoad> _userFileLoad,
-    const RgInstanceCreateInfo &_info)
-:
-    device(_device),
-    samplerMgr(std::move(_samplerMgr)),
-    currentDynamicSamplerFilter(DefaultDynamicSamplerFilter)
-{
-    this->defaultTexturesPath = _info.pOverridenTexturesFolderPath != nullptr ? _info.pOverridenTexturesFolderPath : DEFAULT_TEXTURES_PATH;
-
-    const char *userPostfixes[TEXTURES_PER_MATERIAL_COUNT] =
-    {
-        _info.pOverridenAlbedoAlphaTexturePostfix,
-        _info.pOverridenRoughnessMetallicEmissionTexturePostfix,
-        _info.pOverridenNormalTexturePostfix,
-    };
-
-    bool userOverridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT] =
-    {
-        !!_info.overridenAlbedoAlphaTextureIsSRGB,
-        !!_info.overridenRoughnessMetallicEmissionTextureIsSRGB,
-        !!_info.overridenNormalTextureIsSRGB
-    };
-
-    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
-    {
-        this->postfixes[i] = userPostfixes[i] != nullptr ? userPostfixes[i] : DEFAULT_TEXTURES_POSTFIXES[i];
-        this->overridenIsSRGB[i] = userOverridenIsSRGB[i];
-    }
-
-    const uint32_t maxTextureCount = std::max<uint32_t>(TEXTURE_COUNT_MIN, std::min<uint32_t>(_info.maxTextureCount, TEXTURE_COUNT_MAX));
+    const RgInstanceCreateInfo &_info
+)
+    : device(_device)
+    , samplerMgr(std::move(_samplerMgr))
+    , waterNormalTextureIndex(0)
+    , currentDynamicSamplerFilter(DefaultDynamicSamplerFilter)
+    , defaultTexturesPath(
+        DefaultIfNull(_info.pOverridenTexturesFolderPath, DEFAULT_TEXTURES_PATH)
+        )
+    , postfixes
+        {
+            DefaultIfNull(_info.pOverridenAlbedoAlphaTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA),
+            DefaultIfNull(_info.pOverridenRoughnessMetallicEmissionTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION),
+            DefaultIfNull(_info.pOverridenNormalTexturePostfix, DEFAULT_TEXTURE_POSTFIX_NORMAL),
+        }
+    , overridenIsSRGB
+        {
+            !!_info.overridenAlbedoAlphaTextureIsSRGB,
+            !!_info.overridenRoughnessMetallicEmissionTextureIsSRGB,
+            !!_info.overridenNormalTextureIsSRGB,
+        }
+    , originalIsSRGB
+        {
+            !!_info.originalAlbedoAlphaTextureIsSRGB,
+            !!_info.originalRoughnessMetallicEmissionTextureIsSRGB,
+            !!_info.originalNormalTextureIsSRGB,
+        }
+{   
+    const uint32_t maxTextureCount = std::clamp(_info.maxTextureCount, TEXTURE_COUNT_MIN, TEXTURE_COUNT_MAX);
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     textureDesc = std::make_shared<TextureDescriptors>(device, samplerMgr, maxTextureCount, BINDING_TEXTURES);
@@ -136,13 +147,14 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         parseInfo.postfixes[i] = "";
+        parseInfo.originalIsSRGB[i] = false;
         parseInfo.overridenIsSRGB[i] = false;
     }
 
     const uint32_t defaultData[] = { 0x7F7FFFFF };
     const RgExtent2D defaultSize = { 1, 1 };
     // try to load image file
-    TextureOverrides ovrd(pFilePath, defaultData, false, defaultSize, parseInfo, imageLoader);
+    TextureOverrides ovrd(pFilePath, defaultData, defaultSize, parseInfo, imageLoader);
 
     this->waterNormalTextureIndex = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(0), samplerHandle, true, "Water normal");
 }
@@ -225,9 +237,9 @@ void TextureManager::SubmitDescriptors(uint32_t frameIndex,
 uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
 {
     if (createInfo.pRelativePath == nullptr && 
-        createInfo.textures.albedoAlpha.pData == nullptr &&
-        createInfo.textures.roughnessMetallicEmission.pData == nullptr &&
-        createInfo.textures.normal.pData == nullptr)
+        createInfo.textures.pDataAlbedoAlpha == nullptr &&
+        createInfo.textures.pDataRoughnessMetallicEmission == nullptr &&
+        createInfo.textures.pDataNormal == nullptr)
     {
         throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
     }
@@ -241,6 +253,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     {
         parseInfo.postfixes[i] = postfixes[i].c_str();
         parseInfo.overridenIsSRGB[i] = overridenIsSRGB[i];
+        parseInfo.originalIsSRGB[i] = originalIsSRGB[i];
     }
 
     // load additional textures, they'll be freed after leaving the scope
@@ -263,11 +276,11 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
 {
     SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags);
 
-    const RgTextureData *tds[TEXTURES_PER_MATERIAL_COUNT] =
+    const void *textureData[TEXTURES_PER_MATERIAL_COUNT] =
     { 
-        &createInfo.textures.albedoAlpha,
-        &createInfo.textures.roughnessMetallicEmission,
-        &createInfo.textures.normal,
+        createInfo.textures.pDataAlbedoAlpha,
+        createInfo.textures.pDataRoughnessMetallicEmission,
+        createInfo.textures.pDataNormal,
     };
 
     const uint32_t bytesPerPixel = 4;
@@ -279,8 +292,8 @@ uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t fra
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        VkFormat format = tds[i]->isSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
-        mtextures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, tds[i]->pData, dataSize, createInfo.size, samplerHandle, format,
+        VkFormat format = originalIsSRGB[i] ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
+        mtextures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, textureData[i], dataSize, createInfo.size, samplerHandle, format,
                                                     !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), nullptr);
     }
 
@@ -303,9 +316,9 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 
         const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
         {
-            updateInfo.textures.albedoAlpha.pData,
-            updateInfo.textures.roughnessMetallicEmission.pData,
-            updateInfo.textures.normal.pData,
+            updateInfo.textures.pDataAlbedoAlpha,
+            updateInfo.textures.pDataRoughnessMetallicEmission,
+            updateInfo.textures.pDataNormal,
         };
 
         auto &textureIndices = it->second.textures.indices;

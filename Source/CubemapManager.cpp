@@ -46,7 +46,7 @@ RTGL1::CubemapManager::CubemapManager(
     cubemaps(MAX_CUBEMAP_COUNT)
 {
     defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
-    overridenTexturePostfix = _overridenTexturePostfix != nullptr ? _overridenTexturePostfix : DEFAULT_TEXTURES_POSTFIXES[MATERIAL_COLOR_TEXTURE_INDEX];
+    overridenTexturePostfix = _overridenTexturePostfix != nullptr ? _overridenTexturePostfix : DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA;
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     cubemapDesc = std::make_shared<TextureDescriptors>(device, samplerManager, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
@@ -65,7 +65,6 @@ void RTGL1::CubemapManager::CreateEmptyCubemap(VkCommandBuffer cmd)
     RgCubemapCreateInfo info = {};
     info.sideSize = 1;
     info.useMipmaps = 0;
-    info.isSRGB = false;
     info.disableOverride = true;
     info.filter = RG_SAMPLER_FILTER_NEAREST;
 
@@ -136,12 +135,12 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     // must be '0' to use special TextureOverrides constructor 
     assert(MATERIAL_COLOR_TEXTURE_INDEX == 0);
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd0(info.pRelativePaths[0], info.pData[0], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd1(info.pRelativePaths[1], info.pData[1], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd2(info.pRelativePaths[2], info.pData[2], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd3(info.pRelativePaths[3], info.pData[3], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd4(info.pRelativePaths[4], info.pData[4], info.isSRGB, size, parseInfo, imageLoader);
-    TextureOverrides ovrd5(info.pRelativePaths[5], info.pData[5], info.isSRGB, size, parseInfo, imageLoader);
+    TextureOverrides ovrd0(info.pRelativePaths[0], info.pData[0], size, parseInfo, imageLoader);
+    TextureOverrides ovrd1(info.pRelativePaths[1], info.pData[1], size, parseInfo, imageLoader);
+    TextureOverrides ovrd2(info.pRelativePaths[2], info.pData[2], size, parseInfo, imageLoader);
+    TextureOverrides ovrd3(info.pRelativePaths[3], info.pData[3], size, parseInfo, imageLoader);
+    TextureOverrides ovrd4(info.pRelativePaths[4], info.pData[4], size, parseInfo, imageLoader);
+    TextureOverrides ovrd5(info.pRelativePaths[5], info.pData[5], size, parseInfo, imageLoader);
 
     TextureOverrides *ovrd[] =
     {
