@@ -67,15 +67,12 @@ bool ImageLoader::LoadTextureFile(const char *pFilePath, ktxTexture **ppTexture)
     return r == KTX_SUCCESS;
 }
 
-bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
+std::optional<ImageLoader::ResultInfo> ImageLoader::Load(const char *pFilePath)
 {
-    assert(pResultInfo != nullptr);
-    *pResultInfo = {};
-
     // if null ptr or empty string
     if (pFilePath == nullptr || pFilePath[0] == '\0')
     {
-        return false;
+        return std::nullopt;
     }
 
     ktxTexture *pTexture = nullptr;
@@ -83,7 +80,7 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
 
     if (!loaded)
     {
-        return false;
+        return std::nullopt;
     }
 
     assert(pTexture->numDimensions == 2);
@@ -92,17 +89,20 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
     assert(pTexture->numFaces == 1);
 
 
-    pResultInfo->baseSize = { pTexture->baseWidth, pTexture->baseHeight };
-    pResultInfo->format = ktxTexture_GetVkFormat(pTexture);
-    pResultInfo->pData = ktxTexture_GetData(pTexture);
-    pResultInfo->dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture));
-    pResultInfo->isPregenerated = true;
+    ResultInfo result = 
+    {
+        .levelOffsets = {},
+        .levelSizes = {},
+        .levelCount = std::min(pTexture->numLevels, MAX_PREGENERATED_MIPMAP_LEVELS),
+        .isPregenerated = true,
+        .pData = ktxTexture_GetData(pTexture),
+        .dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture)),
+        .baseSize = { pTexture->baseWidth, pTexture->baseHeight },
+        .format = ktxTexture_GetVkFormat(pTexture),
+    };
 
-    
-    // get mipmap offsets
-    pResultInfo->levelCount = std::min(pTexture->numLevels, MAX_PREGENERATED_MIPMAP_LEVELS);
-
-    for (uint32_t level = 0; level < pResultInfo->levelCount; level++)
+    // get mipmap offsets / sizes
+    for (uint32_t level = 0; level < result.levelCount; level++)
     {
         ktx_size_t offset = 0;
         auto r = ktxTexture_GetImageOffset(pTexture, level, 0, 0, &offset);
@@ -111,26 +111,24 @@ bool ImageLoader::Load(const char *pFilePath, ResultInfo *pResultInfo)
 
         if (r != KTX_SUCCESS || size == 0)
         {
-            pResultInfo->levelCount = level + 1;
+            result.levelCount = level + 1;
             break;
         }
 
-        pResultInfo->levelOffsets[level] = static_cast<uint32_t>(offset);
-        pResultInfo->levelSizes[level] = static_cast<uint32_t>(size);
+        result.levelOffsets[level] = static_cast<uint32_t>(offset);
+        result.levelSizes[level] = static_cast<uint32_t>(size);
     }
 
 
     loadedImages.push_back(static_cast<void*>(pTexture));
-    return true;
+    return result;
 }
 
-bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultInfo)
+std::optional<ImageLoader::LayeredResultInfo> ImageLoader::LoadLayered(const char *pFilePath)
 {
-    assert(pResultInfo != nullptr);
-
     if (pFilePath == nullptr)
     {
-        return false;
+        return std::nullopt;
     }
 
     ktxTexture *pTexture = nullptr;
@@ -138,7 +136,7 @@ bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultI
 
     if (!loaded)
     {
-        return false;
+        return std::nullopt;
     }
 
     assert(pTexture->numDimensions == 2);
@@ -146,11 +144,12 @@ bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultI
     assert(pTexture->numFaces == 1);
 
 
-    pResultInfo->baseSize = { pTexture->baseWidth, pTexture->baseHeight };
-    pResultInfo->format = ktxTexture_GetVkFormat(pTexture);
-    pResultInfo->dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture));
-
-    pResultInfo->layerData.clear();
+    LayeredResultInfo result = {
+        .layerData = {},
+        .dataSize = static_cast<uint32_t>(ktxTexture_GetDataSize(pTexture)),
+        .baseSize = { pTexture->baseWidth, pTexture->baseHeight },
+        .format = ktxTexture_GetVkFormat(pTexture),
+    };
 
     uint8_t *pData = ktxTexture_GetData(pTexture);
 
@@ -164,11 +163,11 @@ bool ImageLoader::LoadLayered(const char *pFilePath, LayeredResultInfo *pResultI
             continue;
         }
 
-        pResultInfo->layerData.push_back(pData + offset);
+        result.layerData.push_back(pData + offset);
     }
 
     loadedImages.push_back(static_cast<void *>(pTexture));
-    return true;
+    return result;
 }
 
 void ImageLoader::FreeLoaded()

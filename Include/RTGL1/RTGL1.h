@@ -173,6 +173,9 @@ typedef struct RgInstanceCreateInfo
     // Custom user data that is passed to pfnUserPrint.
     void                        *pUserPrintData;
 
+    // If true, raw .png files can be loaded.
+    RgBool32                    isDeveloperMode;
+
     const char                  *pShaderFolderPath;
     // Path to the file with 128 layers of uncompressed 128x128 blue noise images.
     const char                  *pBlueNoiseFilePath;

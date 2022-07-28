@@ -135,13 +135,13 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     // must be '0' to use special TextureOverrides constructor 
     assert(MATERIAL_COLOR_TEXTURE_INDEX == 0);
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd0(info.pRelativePaths[0], info.pData[0], size, parseInfo, imageLoader);
-    TextureOverrides ovrd1(info.pRelativePaths[1], info.pData[1], size, parseInfo, imageLoader);
-    TextureOverrides ovrd2(info.pRelativePaths[2], info.pData[2], size, parseInfo, imageLoader);
-    TextureOverrides ovrd3(info.pRelativePaths[3], info.pData[3], size, parseInfo, imageLoader);
-    TextureOverrides ovrd4(info.pRelativePaths[4], info.pData[4], size, parseInfo, imageLoader);
-    TextureOverrides ovrd5(info.pRelativePaths[5], info.pData[5], size, parseInfo, imageLoader);
-
+    TextureOverrides ovrd0(info.pRelativePaths[0], RgTextureSet{ .pDataAlbedoAlpha = info.pData[0] }, size, parseInfo, imageLoader.get());
+    TextureOverrides ovrd1(info.pRelativePaths[1], RgTextureSet{ .pDataAlbedoAlpha = info.pData[1] }, size, parseInfo, imageLoader.get());
+    TextureOverrides ovrd2(info.pRelativePaths[2], RgTextureSet{ .pDataAlbedoAlpha = info.pData[2] }, size, parseInfo, imageLoader.get());
+    TextureOverrides ovrd3(info.pRelativePaths[3], RgTextureSet{ .pDataAlbedoAlpha = info.pData[3] }, size, parseInfo, imageLoader.get());
+    TextureOverrides ovrd4(info.pRelativePaths[4], RgTextureSet{ .pDataAlbedoAlpha = info.pData[4] }, size, parseInfo, imageLoader.get());
+    TextureOverrides ovrd5(info.pRelativePaths[5], RgTextureSet{ .pDataAlbedoAlpha = info.pData[5] }, size, parseInfo, imageLoader.get());
+    
     TextureOverrides *ovrd[] =
     {
         &ovrd0,
@@ -155,14 +155,35 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     // all overrides must have albedo data and the same and square size
     bool useOvrd = true;
 
-    RgExtent2D commonSize = { ovrd[0]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize.width, ovrd[0]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize.height };
-    VkFormat commonFormat = ovrd0.GetResult(MATERIAL_COLOR_TEXTURE_INDEX).format;
+
+    RgExtent2D commonSize = {}; 
+    VkFormat commonFormat = VK_FORMAT_UNDEFINED; 
+    {
+        if (const auto &firstAlbedo = ovrd[0]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX))
+        {
+            commonSize = { firstAlbedo->baseSize.width, firstAlbedo->baseSize.height };
+            commonFormat = firstAlbedo->format;
+        }
+        else
+        {
+            useOvrd = false;
+        }
+    }
+
 
     for (auto &o : ovrd)
     {
-        const auto &faceSize = o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).baseSize;
+        const auto &albedo = o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX);
 
-        if (o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).format != commonFormat)
+        if (!albedo)
+        {
+            useOvrd = false;
+            break;
+        }
+
+        const auto &faceSize = albedo->baseSize;
+
+        if (albedo->format != commonFormat)
         {
             throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have the same format on each face. Failed on: "s + o->GetDebugName());
         }
@@ -180,12 +201,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
                               "but expected (" + std::to_string(commonSize.width) + ", " + std::to_string(commonSize.height) + ") like on " + ovrd[0]->GetDebugName());
         }
 
-        // albedo must data exist
-        if (o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).pData == nullptr)
-        {
-            useOvrd = false;
-            break;
-        }
+        assert(albedo->pData != nullptr);
     }
 
     if (useOvrd)
@@ -194,7 +210,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
 
         for (uint32_t i = 0; i < 6; i++)
         {
-            upload.cubemap.pFaces[i] = ovrd[i]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX).pData;
+            upload.cubemap.pFaces[i] = ovrd[i]->GetResult(MATERIAL_COLOR_TEXTURE_INDEX)->pData;
         }
     }
     else

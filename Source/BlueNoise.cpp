@@ -56,25 +56,24 @@ BlueNoise::BlueNoise(
 
 
     ImageLoader imageLoader(std::move(_userFileLoad));
-    ImageLoader::LayeredResultInfo resultInfo = {};
-    bool loaded = imageLoader.LoadLayered(_blueNoiseFilePath, &resultInfo);
+    auto resultInfo = imageLoader.LoadLayered(_blueNoiseFilePath);
 
-    if (!loaded)
+    if (!resultInfo)
     {
         throw RgException(RG_ERROR_CANT_FIND_BLUE_NOISE, "Can't find blue noise file: "s + _blueNoiseFilePath);
     }
 
-    if (resultInfo.baseSize.width != BLUE_NOISE_TEXTURE_SIZE || resultInfo.baseSize.height != BLUE_NOISE_TEXTURE_SIZE)
+    if (resultInfo->baseSize.width != BLUE_NOISE_TEXTURE_SIZE || resultInfo->baseSize.height != BLUE_NOISE_TEXTURE_SIZE)
     {
         throw RgException(RG_ERROR_CANT_FIND_BLUE_NOISE, "Blue noise image size must be " + std::to_string(BLUE_NOISE_TEXTURE_SIZE));
     }
 
-    if (resultInfo.layerData.size() != BLUE_NOISE_TEXTURE_COUNT)
+    if (resultInfo->layerData.size() != BLUE_NOISE_TEXTURE_COUNT)
     {
         throw RgException(RG_ERROR_CANT_FIND_BLUE_NOISE, "Blue noise image must have " + std::to_string(BLUE_NOISE_TEXTURE_COUNT) + " layers");
     }
 
-    if (resultInfo.format != imageFormat)
+    if (resultInfo->format != imageFormat)
     {
         throw RgException(RG_ERROR_CANT_FIND_BLUE_NOISE, "Blue noise image must have R8G8B8A8_UNORM format");
     }
@@ -96,7 +95,7 @@ BlueNoise::BlueNoise(
     {
         void *dst = static_cast<uint8_t*>(mappedData) + oneLayerSize * i;
         
-        memcpy(dst, resultInfo.layerData[i], oneLayerSize);
+        memcpy(dst, resultInfo->layerData[i], oneLayerSize);
     }
 
     imageLoader.FreeLoaded();

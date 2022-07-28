@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "Common.h"
@@ -32,7 +33,7 @@ namespace RTGL1
 {
 
 // Loading images from files.
-class ImageLoader
+class ImageLoader final
 {
 public:
     struct ResultInfo
@@ -41,7 +42,7 @@ public:
         uint32_t        levelSizes[MAX_PREGENERATED_MIPMAP_LEVELS];
         uint32_t        levelCount;
         bool            isPregenerated;
-        const uint8_t *pData;
+        const uint8_t   *pData;
         uint32_t        dataSize;
         RgExtent2D      baseSize;
         VkFormat        format;
@@ -64,8 +65,8 @@ public:
     ImageLoader &operator=(const ImageLoader &other) = delete;
     ImageLoader &operator=(ImageLoader &&other) noexcept = delete;
 
-    bool Load(const char *pFilePath, ResultInfo *pResultInfo);
-    bool LoadLayered(const char *pFilePath, LayeredResultInfo *pResultInfo);
+    std::optional<ResultInfo> Load(const char *pFilePath);
+    std::optional<LayeredResultInfo> LoadLayered(const char *pFilePath);
 
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();

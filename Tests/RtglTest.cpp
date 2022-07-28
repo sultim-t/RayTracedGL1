@@ -118,7 +118,7 @@ static double GetCurrentTimeInSeconds()
     return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - s_TimeStart).count() / 1000.0;
 }
 
-#define CUBEMAP_DIRECTORY ASSET_DIRECTORY"Cubemap/"
+#define CUBEMAP_DIRECTORY "Cubemap/"
 
 static uint32_t PackColorToUint32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
@@ -193,7 +193,7 @@ static void MainLoop(RgInstance instance)
     {
         RgStaticMaterialCreateInfo textureInfo =
         {
-            .pRelativePath = ASSET_DIRECTORY"TestImage.ktx2"
+            .pRelativePath = "Door.ktx2"
         };
         r = rgCreateStaticMaterial(instance, &textureInfo, &material);
         RG_CHECK(r);
@@ -563,6 +563,8 @@ int main()
                                                 std::cout << pMessage << std::endl;
                                             },
 
+        .isDeveloperMode                    = true,
+
         .pShaderFolderPath                  = ASSET_DIRECTORY,
         .pBlueNoiseFilePath                 = ASSET_DIRECTORY"BlueNoise_LDR_RGBA_128.ktx2",
 
@@ -579,8 +581,9 @@ int main()
         .rasterizedSkyCubemapSize           = 256,
 
         .maxTextureCount                    = 1024,
+        .pOverridenTexturesFolderPath       = ASSET_DIRECTORY,
         .overridenAlbedoAlphaTextureIsSRGB  = true,
-        .pWaterNormalTexturePath            = ASSET_DIRECTORY"WaterNormal_n.ktx2",
+        .pWaterNormalTexturePath            = "WaterNormal_n.ktx2",
     };
 
     r = rgCreateInstance(&info, &instance);

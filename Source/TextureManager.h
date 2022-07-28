@@ -27,6 +27,7 @@
 #include "CommandBufferManager.h"
 #include "Material.h"
 #include "ImageLoader.h"
+#include "ImageLoaderDev.h"
 #include "IMaterialDependency.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
@@ -86,7 +87,7 @@ private:
     void CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath);
 
     uint32_t PrepareStaticTexture(
-        VkCommandBuffer cmd, uint32_t frameIndex, const ImageLoader::ResultInfo &info,
+        VkCommandBuffer cmd, uint32_t frameIndex, const std::optional<ImageLoader::ResultInfo> &info,
         SamplerManager::Handle samplerHandle, bool useMipmaps, const char *debugName);
 
     uint32_t PrepareDynamicTexture(
@@ -110,6 +111,7 @@ private:
     VkDevice device;
 
     std::shared_ptr<ImageLoader> imageLoader;
+    std::shared_ptr<ImageLoaderDev> imageLoaderDev;
 
     std::shared_ptr<SamplerManager> samplerMgr;
     std::shared_ptr<TextureDescriptors> textureDesc;

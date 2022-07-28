@@ -45,6 +45,11 @@ namespace
     {
         return pData != nullptr ? pData : pDefault;
     }
+
+    TextureOverrides::Loader GetLoader(const std::shared_ptr<ImageLoader> &defaultLoader, const std::shared_ptr<ImageLoaderDev> devLoader)
+    {
+        return devLoader ? TextureOverrides::Loader(devLoader.get()) : TextureOverrides::Loader(defaultLoader.get());
+    }
 }
 
 
@@ -85,6 +90,12 @@ TextureManager::TextureManager(
     const uint32_t maxTextureCount = std::clamp(_info.maxTextureCount, TEXTURE_COUNT_MIN, TEXTURE_COUNT_MAX);
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
+    if (_info.isDeveloperMode)
+    {
+        imageLoaderDev = std::make_shared<ImageLoaderDev>(imageLoader);
+    }
+
+
     textureDesc = std::make_shared<TextureDescriptors>(device, samplerMgr, maxTextureCount, BINDING_TEXTURES);
     textureUploader = std::make_shared<TextureUploader>(device, std::move(_memAllocator));
 
@@ -151,10 +162,10 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
         parseInfo.overridenIsSRGB[i] = false;
     }
 
-    const uint32_t defaultData[] = { 0x7F7FFFFF };
-    const RgExtent2D defaultSize = { 1, 1 };
+    constexpr uint32_t defaultData[] = { 0x7F7FFFFF };
+    constexpr RgExtent2D defaultSize = { 1, 1 };
     // try to load image file
-    TextureOverrides ovrd(pFilePath, defaultData, defaultSize, parseInfo, imageLoader);
+    TextureOverrides ovrd(pFilePath, RgTextureSet{ .pDataAlbedoAlpha = defaultData }, defaultSize, parseInfo, imageLoader.get());
 
     this->waterNormalTextureIndex = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(0), samplerHandle, true, "Water normal");
 }
@@ -257,7 +268,7 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
     }
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd(createInfo.pRelativePath, createInfo.textures, createInfo.size, parseInfo, imageLoader);
+    TextureOverrides ovrd(createInfo.pRelativePath, createInfo.textures, createInfo.size, parseInfo, GetLoader(imageLoader, imageLoaderDev));
 
 
     MaterialTextures mtextures = {};
@@ -359,15 +370,16 @@ bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicM
 
 uint32_t TextureManager::PrepareStaticTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, 
-    const ImageLoader::ResultInfo &imageInfo,
+    const std::optional<ImageLoader::ResultInfo> &optImageInfo,
     SamplerManager::Handle samplerHandle, bool useMipmaps,
     const char *debugName)
 {
     // only dynamic textures can have null data
-    if (imageInfo.pData == nullptr)
+    if (!optImageInfo.has_value())
     {
         return EMPTY_TEXTURE_INDEX;
     }
+    const auto &imageInfo = optImageInfo.value();
 
     if (imageInfo.baseSize.width == 0 || imageInfo.baseSize.height == 0)
     {

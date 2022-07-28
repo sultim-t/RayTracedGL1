@@ -22,76 +22,99 @@
 #include "Const.h"
 #include <cstdio>
 
+#include "ImageLoader.h"
+
 using namespace RTGL1;
 
-
-static VkFormat ConvertToUnorm(VkFormat f)
+namespace
 {
-    switch (f)
+    VkFormat ToUnorm(VkFormat f)
     {
-        case VK_FORMAT_R8_SRGB: return VK_FORMAT_R8_UNORM;
-        case VK_FORMAT_R8G8_SRGB: return VK_FORMAT_R8G8_UNORM;
-        case VK_FORMAT_R8G8B8_SRGB: return VK_FORMAT_R8G8B8_UNORM;
-        case VK_FORMAT_B8G8R8_SRGB: return VK_FORMAT_B8G8R8_UNORM;
-        case VK_FORMAT_R8G8B8A8_SRGB: return VK_FORMAT_R8G8B8A8_UNORM;
-        case VK_FORMAT_B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_UNORM;
-        case VK_FORMAT_A8B8G8R8_SRGB_PACK32: return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-        case VK_FORMAT_BC1_RGB_SRGB_BLOCK: return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-        case VK_FORMAT_BC2_SRGB_BLOCK: return VK_FORMAT_BC2_UNORM_BLOCK;
-        case VK_FORMAT_BC3_SRGB_BLOCK: return VK_FORMAT_BC3_UNORM_BLOCK;
-        case VK_FORMAT_BC7_SRGB_BLOCK: return VK_FORMAT_BC7_UNORM_BLOCK;
-        default: return f;
+        switch (f)
+        {
+            case VK_FORMAT_R8_SRGB: return VK_FORMAT_R8_UNORM;
+            case VK_FORMAT_R8G8_SRGB: return VK_FORMAT_R8G8_UNORM;
+            case VK_FORMAT_R8G8B8_SRGB: return VK_FORMAT_R8G8B8_UNORM;
+            case VK_FORMAT_B8G8R8_SRGB: return VK_FORMAT_B8G8R8_UNORM;
+            case VK_FORMAT_R8G8B8A8_SRGB: return VK_FORMAT_R8G8B8A8_UNORM;
+            case VK_FORMAT_B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_UNORM;
+            case VK_FORMAT_A8B8G8R8_SRGB_PACK32: return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
+            case VK_FORMAT_BC1_RGB_SRGB_BLOCK: return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
+            case VK_FORMAT_BC1_RGBA_SRGB_BLOCK: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+            case VK_FORMAT_BC2_SRGB_BLOCK: return VK_FORMAT_BC2_UNORM_BLOCK;
+            case VK_FORMAT_BC3_SRGB_BLOCK: return VK_FORMAT_BC3_UNORM_BLOCK;
+            case VK_FORMAT_BC7_SRGB_BLOCK: return VK_FORMAT_BC7_UNORM_BLOCK;
+            default: return f;
+        }
+    }
+
+    VkFormat ToSRGB(VkFormat f)
+    {
+        switch (f)
+        {
+            case VK_FORMAT_R8_UNORM: return VK_FORMAT_R8_SRGB;
+            case VK_FORMAT_R8G8_UNORM: return VK_FORMAT_R8G8_SRGB;
+            case VK_FORMAT_R8G8B8_UNORM: return VK_FORMAT_R8G8B8_SRGB;
+            case VK_FORMAT_B8G8R8_UNORM: return VK_FORMAT_B8G8R8_SRGB;
+            case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SRGB;
+            case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SRGB;
+            case VK_FORMAT_A8B8G8R8_UNORM_PACK32: return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
+            case VK_FORMAT_BC1_RGB_UNORM_BLOCK: return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
+            case VK_FORMAT_BC1_RGBA_UNORM_BLOCK: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
+            case VK_FORMAT_BC2_UNORM_BLOCK: return VK_FORMAT_BC2_SRGB_BLOCK;
+            case VK_FORMAT_BC3_UNORM_BLOCK: return VK_FORMAT_BC3_SRGB_BLOCK;
+            case VK_FORMAT_BC7_UNORM_BLOCK: return VK_FORMAT_BC7_SRGB_BLOCK;
+            default: return f;
+        }
+    }
+
+    auto Loader_Load(TextureOverrides::Loader loader, const char *pFilePath)
+    {
+        if (std::holds_alternative<ImageLoaderDev *>(loader))
+        {
+            return std::get<ImageLoaderDev *>(loader)->Load(pFilePath);
+        }
+        else
+        {
+            return std::get<ImageLoader *>(loader)->Load(pFilePath);
+        }
+    }
+
+    void Loader_FreeLoaded(TextureOverrides::Loader loader)
+    {
+        if (std::holds_alternative<ImageLoaderDev *>(loader))
+        {
+            std::get<ImageLoaderDev *>(loader)->FreeLoaded();
+        }
+        else
+        {
+            std::get<ImageLoader *>(loader)->FreeLoaded();
+        }
+    }
+
+    constexpr const char *Loader_GetExtension(TextureOverrides::Loader loader)
+    {
+        if (std::holds_alternative<ImageLoaderDev *>(loader))
+        {
+            return ".png";
+        }
+        else
+        {
+            return ".ktx2";
+        }
     }
 }
-
-static VkFormat ConvertToSRGB(VkFormat f)
-{
-    switch (f)
-    {
-    case VK_FORMAT_R8_UNORM: return VK_FORMAT_R8_SRGB;
-    case VK_FORMAT_R8G8_UNORM: return VK_FORMAT_R8G8_SRGB;
-    case VK_FORMAT_R8G8B8_UNORM: return VK_FORMAT_R8G8B8_SRGB;
-    case VK_FORMAT_B8G8R8_UNORM: return VK_FORMAT_B8G8R8_SRGB;
-    case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SRGB;
-    case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SRGB;
-    case VK_FORMAT_A8B8G8R8_UNORM_PACK32: return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
-    case VK_FORMAT_BC1_RGB_UNORM_BLOCK: return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
-    case VK_FORMAT_BC1_RGBA_UNORM_BLOCK: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
-    case VK_FORMAT_BC2_UNORM_BLOCK: return VK_FORMAT_BC2_SRGB_BLOCK;
-    case VK_FORMAT_BC3_UNORM_BLOCK: return VK_FORMAT_BC3_SRGB_BLOCK;
-    case VK_FORMAT_BC7_UNORM_BLOCK: return VK_FORMAT_BC7_SRGB_BLOCK;
-    default: return f;
-    }
-}
-
-
-TextureOverrides::TextureOverrides(
-    const char *_relativePath,
-    const void *_defaultData,
-    const RgExtent2D &_defaultSize,
-    const OverrideInfo &_overrideInfo,
-    const std::shared_ptr<ImageLoader> &_imageLoader
-)
-    : TextureOverrides(
-        _relativePath,
-        RgTextureSet{ .pDataAlbedoAlpha = _defaultData }, 
-        _defaultSize,
-        _overrideInfo,
-        _imageLoader
-    )
-{}
 
 TextureOverrides::TextureOverrides(
     const char *_relativePath,
     const RgTextureSet &_defaultTextures,
     const RgExtent2D &_defaultSize,
     const OverrideInfo &_overrideInfo,
-    const std::shared_ptr<ImageLoader> &_imageLoader
+    Loader _loader
 )
     : results{}
     , debugName{}
-    , imageLoader(_imageLoader)
+    , loader(_loader)
 {
     const void *defaultData[TEXTURES_PER_MATERIAL_COUNT] =
     {
@@ -108,18 +131,19 @@ TextureOverrides::TextureOverrides(
     if (!_overrideInfo.disableOverride)
     {
         char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH];
-        const bool hasOverrides = ParseOverrideTexturePaths(paths, _relativePath, _overrideInfo);
 
-        if (hasOverrides)
+        // TODO: try to load with different loaders with their own extensions
+        if (ParseOverrideTexturePaths(paths, _relativePath, _overrideInfo))
         {
             for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
             {
-                _imageLoader->Load(paths[i], &results[i]);
-
-                // fix format, if needed
-                results[i].format = _overrideInfo.overridenIsSRGB[i] ?
-                    ConvertToSRGB(results[i].format) :
-                    ConvertToUnorm(results[i].format);
+                results[i] = Loader_Load(loader, paths[i]);
+                
+                if (results[i])
+                {
+                    results[i]->format =
+                        _overrideInfo.overridenIsSRGB[i] ? ToSRGB(results[i]->format) : ToUnorm(results[i]->format);
+                }
             }
 
             // don't check if wasn't loaded from file, pData might be provided by a user
@@ -129,29 +153,29 @@ TextureOverrides::TextureOverrides(
 
     const uint32_t defaultDataSize = defaultBytesPerPixel * _defaultSize.width * _defaultSize.height;
 
-    for (uint32_t i = 0; i < 3; i++)
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         // if file wasn't found, use default data instead
-        if (defaultData[i] != nullptr && results[i].pData == nullptr)
+        if ( !results[i] && defaultData[i] )
         {
-            results[i].pData = static_cast<const uint8_t *>(defaultData[i]);
-            results[i].dataSize = defaultDataSize;
-            results[i].levelCount = 1;
-            results[i].isPregenerated = false;
-            results[i].levelOffsets[0] = 0;
-            results[i].levelSizes[0] = defaultDataSize;
-            results[i].baseSize = _defaultSize;
-            results[i].format = _overrideInfo.originalIsSRGB[i] ? defaultSRGBFormat : defaultLinearFormat;
+            results[i] = ImageLoader::ResultInfo
+            {
+                .levelOffsets = {0},
+                .levelSizes = {defaultDataSize},
+                .levelCount = 1,
+                .isPregenerated = false,
+                .pData = static_cast<const uint8_t *>(defaultData[i]) ,
+                .dataSize = defaultDataSize,
+                .baseSize = _defaultSize,
+                .format = _overrideInfo.originalIsSRGB[i] ? defaultSRGBFormat : defaultLinearFormat,
+            };
         }
     }
 }
 
 TextureOverrides::~TextureOverrides()
 {
-    if (auto p = imageLoader.lock())
-    {
-        p->FreeLoaded();
-    }
+    Loader_FreeLoaded(loader);
 }
 
 static void ParseFilePath(const char *filePath, char *folderPath, char *name, char *extension)
@@ -197,7 +221,7 @@ static void ParseFilePath(const char *filePath, char *folderPath, char *name, ch
         extStart = len;
     }
 
-    const uint32_t folderPathLen = folderPathEnd + 1;
+    const uint32_t folderPathLen = nameStart > 0 ? folderPathEnd + 1 : 0;
     const uint32_t nameLen = nameEnd - nameStart + 1;
     const uint32_t extLen = extStart < len ? len - extStart : 0;
 
@@ -232,7 +256,7 @@ static void SPrintfIfNotNull(
     }
 }
 
-const ImageLoader::ResultInfo &RTGL1::TextureOverrides::GetResult(uint32_t index) const
+const std::optional<ImageLoader::ResultInfo> &RTGL1::TextureOverrides::GetResult(uint32_t index) const
 {
     assert(index < TEXTURES_PER_MATERIAL_COUNT);
     return results[index];
@@ -262,7 +286,7 @@ bool TextureOverrides::ParseOverrideTexturePaths(
     }
 
     // ignore original extension, and force KTX2
-    const char *newExtension = ".ktx2";
+    const char *newExtension = Loader_GetExtension(loader);
 
     SPrintfIfNotNull(paths[0], overrideInfo.postfixes[0], overrideInfo.texturesPath, folderPath, name, newExtension);
     SPrintfIfNotNull(paths[1], overrideInfo.postfixes[1], overrideInfo.texturesPath, folderPath, name, newExtension);

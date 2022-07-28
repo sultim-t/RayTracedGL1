@@ -20,9 +20,12 @@
 
 #pragma once
 
+#include <variant>
+
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
 #include "ImageLoader.h"
+#include "ImageLoaderDev.h"
 
 namespace RTGL1
 {
@@ -46,19 +49,15 @@ public:
         bool originalIsSRGB[TEXTURES_PER_MATERIAL_COUNT] = {};
     };
 
+    using Loader = std::variant<ImageLoader *, ImageLoaderDev *>;
+
 public:
     explicit TextureOverrides(
         const char *relativePath,
         const RgTextureSet &defaultTextures,
         const RgExtent2D &defaultSize,
         const OverrideInfo &overrideInfo,
-        const std::shared_ptr<ImageLoader> &imageLoader);
-    explicit TextureOverrides(
-        const char *relativePath,
-        const void *defaultData,
-        const RgExtent2D &defaultSize,
-        const OverrideInfo &overrideInfo,
-        const std::shared_ptr<ImageLoader> &imageLoader);
+        Loader loader);
     ~TextureOverrides();
 
     TextureOverrides(const TextureOverrides &other) = delete;
@@ -66,8 +65,8 @@ public:
     TextureOverrides &operator=(const TextureOverrides &other) = delete;
     TextureOverrides &operator=(TextureOverrides &&other) noexcept = delete;
 
-    const ImageLoader::ResultInfo &GetResult(uint32_t index) const;
-    const char *GetDebugName() const;
+    [[nodiscard]] const std::optional<ImageLoader::ResultInfo> &GetResult(uint32_t index) const;
+    [[nodiscard]] const char *GetDebugName() const;
 
 private:
     bool ParseOverrideTexturePaths(
@@ -76,10 +75,11 @@ private:
         const OverrideInfo &overrideInfo);
 
 private:
-    ImageLoader::ResultInfo results[TEXTURES_PER_MATERIAL_COUNT];
+    std::optional<ImageLoader::ResultInfo> results[TEXTURES_PER_MATERIAL_COUNT];
+
     char debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
 
-    std::weak_ptr<ImageLoader> imageLoader;
+    Loader loader;
 };
 
 }
