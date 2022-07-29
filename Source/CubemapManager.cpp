@@ -171,38 +171,40 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     }
 
 
+    // check if all entries are correct
     for (auto &o : ovrd)
     {
-        const auto &albedo = o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX);
+        if (const auto &albedo = o->GetResult(MATERIAL_COLOR_TEXTURE_INDEX))
+        {
+            const char *debugName = o->GetDebugName();
+            assert(albedo->pData != nullptr);
 
-        if (!albedo)
+            const auto &faceSize = albedo->baseSize;
+
+            if (albedo->format != commonFormat)
+            {
+                throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have the same format on each face. Failed on: "s + debugName);
+            }
+
+            if (faceSize.width != faceSize.height)
+            {
+                throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have square face size: "s + debugName + " has (" + std::to_string(faceSize.width) + ", " + std::to_string(faceSize.height) + ")");
+            }
+
+            if (faceSize.width != commonSize.width || faceSize.height != commonSize.height)
+            {
+                throw RgException(RG_WRONG_ARGUMENT,
+                    "Cubemap faces must have the same size: "s +
+                    debugName + " has (" + std::to_string(faceSize.width) + ", " + std::to_string(faceSize.height) + ")"
+                    "but expected (" + std::to_string(commonSize.width) + ", " + std::to_string(commonSize.height) + ") like on " + debugName);
+            }
+        }
+        else
         {
             useOvrd = false;
-            break;
         }
-
-        const auto &faceSize = albedo->baseSize;
-
-        if (albedo->format != commonFormat)
-        {
-            throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have the same format on each face. Failed on: "s + o->GetDebugName());
-        }
-
-        if (faceSize.width != faceSize.height)
-        {
-            throw RgException(RG_WRONG_ARGUMENT, "Cubemap must have square face size: "s + o->GetDebugName() + " has (" + std::to_string(faceSize.width) + ", " + std::to_string(faceSize.height) + ")");
-        }
-
-        if (faceSize.width != commonSize.width || faceSize.height != commonSize.height)
-        {
-            throw RgException(RG_WRONG_ARGUMENT,
-                              "Cubemap faces must have the same size: "s +
-                              o->GetDebugName() + " has (" + std::to_string(faceSize.width) + ", " + std::to_string(faceSize.height) + ")"
-                              "but expected (" + std::to_string(commonSize.width) + ", " + std::to_string(commonSize.height) + ") like on " + ovrd[0]->GetDebugName());
-        }
-
-        assert(albedo->pData != nullptr);
     }
+
 
     if (useOvrd)
     {

@@ -126,7 +126,7 @@ namespace
 
     std::optional<std::filesystem::path> GetTexturePath(const char *commonFolderPath, const char *relativePath, const char *postfix, const char *extension)
     {
-        if (relativePath == nullptr)
+        if (relativePath == nullptr || relativePath[0] == '\0')
         {
             return std::nullopt;
         }
