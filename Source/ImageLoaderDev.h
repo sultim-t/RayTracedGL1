@@ -37,7 +37,7 @@ public:
     ImageLoaderDev &operator=(const ImageLoaderDev &other) = delete;
     ImageLoaderDev &operator=(ImageLoaderDev &&other) noexcept = delete;
 
-    std::optional<ImageLoader::ResultInfo> Load(const char *pFilePath);
+    std::optional<ImageLoader::ResultInfo> Load(const std::filesystem::path &path);
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();
 

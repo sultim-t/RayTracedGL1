@@ -583,7 +583,7 @@ int main()
         .maxTextureCount                    = 1024,
         .pOverridenTexturesFolderPath       = ASSET_DIRECTORY,
         .overridenAlbedoAlphaTextureIsSRGB  = true,
-        .pWaterNormalTexturePath            = "WaterNormal_n.ktx2",
+        .pWaterNormalTexturePath            = ASSET_DIRECTORY"WaterNormal_n.ktx2",
     };
 
     r = rgCreateInstance(&info, &instance);

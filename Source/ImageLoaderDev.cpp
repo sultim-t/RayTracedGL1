@@ -38,23 +38,22 @@ ImageLoaderDev::~ImageLoaderDev()
     assert(loadedImages.empty());
 }
 
-std::optional<ImageLoader::ResultInfo> ImageLoaderDev::Load(const char *pFilePath)
+std::optional<ImageLoader::ResultInfo> ImageLoaderDev::Load(const std::filesystem::path &path)
 {
-    // if null ptr or empty string
-    if (pFilePath == nullptr || pFilePath[0] == '\0')
+    if (path.empty())
     {
-        return fallback->Load(pFilePath);
+        return std::nullopt;
     }
 
     int x = 0, y = 0;
     constexpr uint32_t Channels = 4;
 
-    stbi_uc *pData = stbi_load(pFilePath, &x, &y, nullptr, Channels);
+    stbi_uc *pData = stbi_load(path.string().c_str(), &x, &y, nullptr, Channels);
     if (pData == nullptr)
     {
         const char *reason = stbi_failure_reason();
 
-        return fallback->Load(pFilePath);
+        return fallback->Load(path);
     }
 
     const uint32_t width = x;

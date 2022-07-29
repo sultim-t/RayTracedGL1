@@ -36,13 +36,13 @@ ImageLoader::~ImageLoader()
     assert(loadedImages.empty());
 }
 
-bool ImageLoader::LoadTextureFile(const char *pFilePath, ktxTexture **ppTexture)
+bool ImageLoader::LoadTextureFile(const std::filesystem::path &path, ktxTexture **ppTexture)
 {
     KTX_error_code r;
 
     if (userFileLoad->Exists())
     {
-        auto fileHandle = userFileLoad->Open(pFilePath);
+        auto fileHandle = userFileLoad->Open(path.string().c_str());
 
         if (!fileHandle.Contains())
         {
@@ -58,7 +58,7 @@ bool ImageLoader::LoadTextureFile(const char *pFilePath, ktxTexture **ppTexture)
     else
     {
         r = ktxTexture_CreateFromNamedFile(
-            pFilePath,
+            path.string().c_str(),
             KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
             ppTexture);
        
@@ -67,16 +67,15 @@ bool ImageLoader::LoadTextureFile(const char *pFilePath, ktxTexture **ppTexture)
     return r == KTX_SUCCESS;
 }
 
-std::optional<ImageLoader::ResultInfo> ImageLoader::Load(const char *pFilePath)
+std::optional<ImageLoader::ResultInfo> ImageLoader::Load(const std::filesystem::path &path)
 {
-    // if null ptr or empty string
-    if (pFilePath == nullptr || pFilePath[0] == '\0')
+    if (path.empty())
     {
         return std::nullopt;
     }
 
     ktxTexture *pTexture = nullptr;
-    bool loaded = LoadTextureFile(pFilePath, &pTexture);
+    bool loaded = LoadTextureFile(path, &pTexture);
 
     if (!loaded)
     {
@@ -120,19 +119,19 @@ std::optional<ImageLoader::ResultInfo> ImageLoader::Load(const char *pFilePath)
     }
 
 
-    loadedImages.push_back(static_cast<void*>(pTexture));
+    loadedImages.push_back(pTexture);
     return result;
 }
 
-std::optional<ImageLoader::LayeredResultInfo> ImageLoader::LoadLayered(const char *pFilePath)
+std::optional<ImageLoader::LayeredResultInfo> ImageLoader::LoadLayered(const std::filesystem::path &path)
 {
-    if (pFilePath == nullptr)
+    if (path.empty())
     {
         return std::nullopt;
     }
 
     ktxTexture *pTexture = nullptr;
-    bool loaded = LoadTextureFile(pFilePath, &pTexture);
+    bool loaded = LoadTextureFile(path, &pTexture);
 
     if (!loaded)
     {
@@ -166,16 +165,14 @@ std::optional<ImageLoader::LayeredResultInfo> ImageLoader::LoadLayered(const cha
         result.layerData.push_back(pData + offset);
     }
 
-    loadedImages.push_back(static_cast<void *>(pTexture));
+    loadedImages.push_back(pTexture);
     return result;
 }
 
 void ImageLoader::FreeLoaded()
 {
-    for (void *pp : loadedImages)
+    for (ktxTexture *p : loadedImages)
     {
-        ktxTexture *p = static_cast<ktxTexture*>(pp);
-
         ktxTexture_Destroy(p);
     }
 

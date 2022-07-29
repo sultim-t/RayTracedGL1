@@ -69,17 +69,10 @@ public:
     [[nodiscard]] const char *GetDebugName() const;
 
 private:
-    bool ParseOverrideTexturePaths(
-        char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH],
-        const char *relativePath,
-        const OverrideInfo &overrideInfo);
-
-private:
-    std::optional<ImageLoader::ResultInfo> results[TEXTURES_PER_MATERIAL_COUNT];
-
-    char debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH];
-
     Loader loader;
+
+    std::optional<ImageLoader::ResultInfo> results[TEXTURES_PER_MATERIAL_COUNT];
+    char debugname[32];
 };
 
 }

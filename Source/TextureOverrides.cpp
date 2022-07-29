@@ -19,9 +19,10 @@
 // SOFTWARE.
 
 #include "TextureOverrides.h"
-#include "Const.h"
-#include <cstdio>
 
+#include <filesystem>
+
+#include "Const.h"
 #include "ImageLoader.h"
 
 using namespace RTGL1;
@@ -68,15 +69,34 @@ namespace
         }
     }
 
-    auto Loader_Load(TextureOverrides::Loader loader, const char *pFilePath)
+    template<uint32_t N>
+    void SafeCopy(char (&dst)[N], const char *src)
+    {
+        memset(dst, 0, N);
+
+        if (src != nullptr)
+        {
+            for (uint32_t i = 0; i < N - 1; i++)
+            {
+                if (src[i] == '\0')
+                {
+                    break;
+                }
+
+                dst[i] = src[i];
+            }
+        }
+    }
+
+    auto Loader_Load(TextureOverrides::Loader loader, const std::filesystem::path &filepath)
     {
         if (std::holds_alternative<ImageLoaderDev *>(loader))
         {
-            return std::get<ImageLoaderDev *>(loader)->Load(pFilePath);
+            return std::get<ImageLoaderDev *>(loader)->Load(filepath);
         }
         else
         {
-            return std::get<ImageLoader *>(loader)->Load(pFilePath);
+            return std::get<ImageLoader *>(loader)->Load(filepath);
         }
     }
 
@@ -103,6 +123,19 @@ namespace
             return ".ktx2";
         }
     }
+
+    std::optional<std::filesystem::path> GetTexturePath(const char *commonFolderPath, const char *relativePath, const char *postfix, const char *extension)
+    {
+        if (relativePath == nullptr)
+        {
+            return std::nullopt;
+        }
+
+        return std::filesystem::path(commonFolderPath)
+            .append(relativePath)
+            .replace_extension("").concat(postfix)
+            .replace_extension(extension);
+    }
 }
 
 TextureOverrides::TextureOverrides(
@@ -112,10 +145,12 @@ TextureOverrides::TextureOverrides(
     const OverrideInfo &_overrideInfo,
     Loader _loader
 )
-    : results{}
-    , debugName{}
-    , loader(_loader)
+    : loader(_loader)
+    , results{}
+    , debugname{}
 {
+    SafeCopy(debugname, _relativePath);
+
     const void *defaultData[TEXTURES_PER_MATERIAL_COUNT] =
     {
         _defaultTextures.pDataAlbedoAlpha,
@@ -130,14 +165,12 @@ TextureOverrides::TextureOverrides(
 
     if (!_overrideInfo.disableOverride)
     {
-        char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH];
-
-        // TODO: try to load with different loaders with their own extensions
-        if (ParseOverrideTexturePaths(paths, _relativePath, _overrideInfo))
+        for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
         {
-            for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+            // TODO: try to load with different loaders with their own extensions
+            if (auto path = GetTexturePath(_overrideInfo.texturesPath, _relativePath, _overrideInfo.postfixes[i], Loader_GetExtension(loader)))
             {
-                results[i] = Loader_Load(loader, paths[i]);
+                results[i] = Loader_Load(loader, path.value());
                 
                 if (results[i])
                 {
@@ -145,8 +178,6 @@ TextureOverrides::TextureOverrides(
                         _overrideInfo.overridenIsSRGB[i] ? ToSRGB(results[i]->format) : ToUnorm(results[i]->format);
                 }
             }
-
-            // don't check if wasn't loaded from file, pData might be provided by a user
         }
     }
 
@@ -178,84 +209,6 @@ TextureOverrides::~TextureOverrides()
     Loader_FreeLoaded(loader);
 }
 
-static void ParseFilePath(const char *filePath, char *folderPath, char *name, char *extension)
-{
-    uint32_t folderPathEnd = 0;
-    uint32_t nameStart = 0;
-    uint32_t nameEnd = 0;
-    uint32_t extStart = 0;
-
-    const char *str = filePath;
-    uint32_t len = 0;
-
-    while (str[len] != '\0')
-    {
-        const char c = str[len];
-
-        // find last folder delimiter
-        if (c == '\\' || c == '/')
-        {
-            folderPathEnd = len;
-            nameStart = len + 1;
-            // reset, find new dot
-            nameEnd = nameStart;
-            extStart = nameStart;
-        }
-        // find last dot that was after a delimiter
-        else if (c == '.')
-        {
-            nameEnd = len - 1;
-            // extension start with a dot
-            extStart = len;
-        }
-
-        ++len;
-    }
-
-    assert(folderPathEnd > 0 || folderPathEnd == nameStart);
-
-    // no dot
-    if (nameStart == nameEnd)
-    {
-        nameEnd = len - 1;
-        extStart = len;
-    }
-
-    const uint32_t folderPathLen = nameStart > 0 ? folderPathEnd + 1 : 0;
-    const uint32_t nameLen = nameEnd - nameStart + 1;
-    const uint32_t extLen = extStart < len ? len - extStart : 0;
-
-    memcpy(folderPath, str, folderPathLen);
-    folderPath[folderPathLen] = '\0';
-
-    memcpy(name, str + nameStart, nameLen);
-    name[nameLen] = '\0';
-
-    if (extLen > 0)
-    {
-        memcpy(extension, str + extStart, extLen);
-    }
-    extension[extLen] = '\0';
-}
-
-static void SPrintfIfNotNull(
-    char dst[TEXTURE_FILE_PATH_MAX_LENGTH],
-    const char *postfix,
-    const char *texturesPath,
-    const char *folderPath,
-    const char *name,
-    const char *extension)
-{
-    if (postfix != nullptr)
-    {
-        snprintf(dst, TEXTURE_FILE_PATH_MAX_LENGTH, "%s%s%s%s%s", texturesPath, folderPath, name, postfix, extension);
-    }
-    else
-    {
-        dst[0] = '\0';
-    }
-}
-
 const std::optional<ImageLoader::ResultInfo> &RTGL1::TextureOverrides::GetResult(uint32_t index) const
 {
     assert(index < TEXTURES_PER_MATERIAL_COUNT);
@@ -264,38 +217,5 @@ const std::optional<ImageLoader::ResultInfo> &RTGL1::TextureOverrides::GetResult
 
 const char *RTGL1::TextureOverrides::GetDebugName() const
 {
-    return debugName;
-}
-
-bool TextureOverrides::ParseOverrideTexturePaths(
-    char paths[TEXTURES_PER_MATERIAL_COUNT][TEXTURE_FILE_PATH_MAX_LENGTH],
-    const char *relativePath,
-    const OverrideInfo &overrideInfo)
-{
-    char folderPath[TEXTURE_FILE_PATH_MAX_LENGTH];
-    char name[TEXTURE_FILE_NAME_MAX_LENGTH];
-    char extension[TEXTURE_FILE_EXTENSION_MAX_LENGTH];
-
-    if (relativePath != nullptr)
-    {
-        ParseFilePath(relativePath, folderPath, name, extension);
-    }
-    else
-    {
-        return false;
-    }
-
-    // ignore original extension, and force KTX2
-    const char *newExtension = Loader_GetExtension(loader);
-
-    SPrintfIfNotNull(paths[0], overrideInfo.postfixes[0], overrideInfo.texturesPath, folderPath, name, newExtension);
-    SPrintfIfNotNull(paths[1], overrideInfo.postfixes[1], overrideInfo.texturesPath, folderPath, name, newExtension);
-    SPrintfIfNotNull(paths[2], overrideInfo.postfixes[2], overrideInfo.texturesPath, folderPath, name, newExtension);
-
-    static_assert(TEXTURE_DEBUG_NAME_MAX_LENGTH < TEXTURE_FILE_PATH_MAX_LENGTH, "TEXTURE_DEBUG_NAME_MAX_LENGTH must be less than TEXTURE_FILE_PATH_MAX_LENGTH");
-
-    memcpy(debugName, name, TEXTURE_DEBUG_NAME_MAX_LENGTH);
-    debugName[TEXTURE_DEBUG_NAME_MAX_LENGTH - 1] = '\0';
-
-    return true;
+    return debugname;
 }
