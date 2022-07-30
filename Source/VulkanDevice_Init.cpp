@@ -30,6 +30,7 @@
 #include "RgException.h"
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
+#include "LibraryConfig.h"
 
 using namespace RTGL1;
 
@@ -40,7 +41,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     currentFrameState(),
     frameId(1),
     waitForOutOfFrameFence(false),
-    enableValidationLayer(info->enableValidationLayer == RG_TRUE),
+    libconfig(LibraryConfig::Read(info->pConfigPath)),
     debugMessenger(VK_NULL_HANDLE),
     userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
     userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
@@ -105,7 +106,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         worldSamplerManager,
         cmdManager,
         userFileLoad,
-        *info);
+        *info,
+        libconfig);
 
     cubemapManager      = std::make_shared<CubemapManager>(
         device,
@@ -204,7 +206,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device, 
         physDevice->Get(),
         info->pAppGUID,
-        enableValidationLayer);
+        libconfig.dlssValidation);
 
     sharpening          = std::make_shared<Sharpening>(
         device,
@@ -371,9 +373,13 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
 {
     std::vector<const char *> layerNames;
 
-    if (enableValidationLayer)
+    if (libconfig.vulkanValidation)
     {
         layerNames.push_back("VK_LAYER_KHRONOS_validation");
+    }
+
+    if (libconfig.fpsMonitor)
+    {
         layerNames.push_back("VK_LAYER_LUNARG_monitor");
     }
 
@@ -412,7 +418,7 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
     #endif // RG_USE_SURFACE_XLIB
     };
 
-    if (enableValidationLayer)
+    if (libconfig.vulkanValidation)
     {
         extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
         extensions.push_back(VK_EXT_DEBUG_REPORT_EXTENSION_NAME);
@@ -452,7 +458,7 @@ void VulkanDevice::CreateInstance(const RgInstanceCreateInfo &info)
     VK_CHECKERROR(r);
 
 
-    if (enableValidationLayer)
+    if (libconfig.vulkanValidation)
     {
         InitInstanceExtensionFunctions_DebugUtils(instance);
 
@@ -625,7 +631,7 @@ void VulkanDevice::CreateDevice()
 
     InitDeviceExtensionFunctions(device);
 
-    if (enableValidationLayer)
+    if (libconfig.vulkanValidation)
     {
         InitDeviceExtensionFunctions_DebugUtils(device);
     }

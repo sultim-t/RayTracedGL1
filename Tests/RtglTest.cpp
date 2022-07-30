@@ -556,14 +556,11 @@ int main()
 #else
         .pXlibSurfaceCreateInfo             = &xlibInfo,
 #endif
-
-        .enableValidationLayer              = true,
+        
         .pfnPrint                           = [] (const char *pMessage, void *pUserData)
                                             {
                                                 std::cout << pMessage << std::endl;
                                             },
-
-        .isDeveloperMode                    = true,
 
         .pShaderFolderPath                  = ASSET_DIRECTORY,
         .pBlueNoiseFilePath                 = ASSET_DIRECTORY"BlueNoise_LDR_RGBA_128.ktx2",

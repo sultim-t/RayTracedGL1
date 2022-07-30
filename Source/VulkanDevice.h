@@ -53,6 +53,7 @@
 #include "LightGrid.h"
 #include "FSR2.h"
 #include "FrameState.h"
+#include "LibraryConfig.h"
 
 namespace RTGL1
 {
@@ -186,7 +187,7 @@ private:
     std::shared_ptr<TextureManager>         textureManager;
     std::shared_ptr<CubemapManager>         cubemapManager;
 
-    bool                                    enableValidationLayer;
+    LibraryConfig::Config                   libconfig;
     VkDebugUtilsMessengerEXT                debugMessenger;
     std::unique_ptr<UserPrint>              userPrint;
     std::shared_ptr<UserFileLoad>           userFileLoad;

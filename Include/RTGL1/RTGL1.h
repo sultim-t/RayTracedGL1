@@ -167,14 +167,18 @@ typedef struct RgInstanceCreateInfo
     RgXcbSurfaceCreateInfo      *pXcbSurfaceCreateInfo;
     RgXlibSurfaceCreateInfo     *pXlibSurfaceCreateInfo;
 
-    RgBool32                    enableValidationLayer;
+    // Path to the development configuration file. It's read line by line. Case-insensitive.
+    // "VulkanValidation"   - validate each Vulkan API call and print using pfnPrint
+    // "Developer"          - load PNG texture files instead of KTX2; reload a texture if its PNG file was changed
+    // "FPSMonitor"         - show FPS at the window name
+    // Default: "RayTracedGL1.txt"
+    const char                  *pConfigPath;
+    
     // Optional function to print messages from the library.
+    // Requires "VulkanValidation" in the configuration file.
     PFN_rgPrint                 pfnPrint;
     // Custom user data that is passed to pfnUserPrint.
     void                        *pUserPrintData;
-
-    // If true, raw .png files can be loaded.
-    RgBool32                    isDeveloperMode;
 
     const char                  *pShaderFolderPath;
     // Path to the file with 128 layers of uncompressed 128x128 blue noise images.

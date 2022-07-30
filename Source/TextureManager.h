@@ -33,6 +33,7 @@
 #include "SamplerManager.h"
 #include "TextureDescriptors.h"
 #include "TextureUploader.h"
+#include "LibraryConfig.h"
 
 namespace RTGL1
 {
@@ -46,7 +47,8 @@ public:
         std::shared_ptr<SamplerManager> samplerManager,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
         std::shared_ptr<UserFileLoad> userFileLoad,
-        const RgInstanceCreateInfo &info);
+        const RgInstanceCreateInfo &info,
+        const LibraryConfig::Config &config);
     ~TextureManager();
 
     TextureManager(const TextureManager &other) = delete;

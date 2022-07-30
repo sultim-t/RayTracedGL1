@@ -59,7 +59,8 @@ TextureManager::TextureManager(
     std::shared_ptr<SamplerManager> _samplerMgr,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<UserFileLoad> _userFileLoad,
-    const RgInstanceCreateInfo &_info
+    const RgInstanceCreateInfo &_info,
+    const LibraryConfig::Config &config
 )
     : device(_device)
     , samplerMgr(std::move(_samplerMgr))
@@ -90,7 +91,7 @@ TextureManager::TextureManager(
     const uint32_t maxTextureCount = std::clamp(_info.maxTextureCount, TEXTURE_COUNT_MIN, TEXTURE_COUNT_MAX);
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
-    if (_info.isDeveloperMode)
+    if (config.developerMode)
     {
         imageLoaderDev = std::make_shared<ImageLoaderDev>(imageLoader);
     }
