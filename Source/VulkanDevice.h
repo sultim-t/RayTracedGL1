@@ -44,7 +44,6 @@
 #include "Denoiser.h"
 #include "UserFunction.h"
 #include "Bloom.h"
-#include "SuperResolution.h"
 #include "Sharpening.h"
 #include "DLSS.h"
 #include "RenderResolutionHelper.h"
@@ -53,6 +52,7 @@
 #include "EffectSimple_Instances.h"
 #include "LightGrid.h"
 #include "FSR2.h"
+#include "FrameState.h"
 
 namespace RTGL1
 {
@@ -123,116 +123,6 @@ private:
     VkCommandBuffer BeginFrame(const RgStartFrameInfo &startInfo);
     void Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo);
     void EndFrame(VkCommandBuffer cmd);
-
-private:
-    struct FrameState
-    {
-    private:
-        // [0..MAX_FRAMES_IN_FLIGHT-1]
-        uint32_t            frameIndex;
-        VkCommandBuffer     frameCmd;
-        VkSemaphore         semaphoreToWait;
-        // This cmd buffer is used for materials that 
-        // are uploaded out of rgStartFrame - rgDrawFrame when
-        // 'frameCmd' doesn't exist
-        VkCommandBuffer     preFrameCmd;
-
-    public:
-        FrameState() : 
-            frameIndex(MAX_FRAMES_IN_FLIGHT - 1), 
-            frameCmd(VK_NULL_HANDLE), 
-            semaphoreToWait(VK_NULL_HANDLE),
-            preFrameCmd(VK_NULL_HANDLE)
-        {}
-       
-        FrameState(const FrameState &other) = delete;
-        FrameState(FrameState &&other) noexcept = delete;
-        FrameState &operator=(const FrameState &other) = delete;
-        FrameState &operator=(FrameState &&other) noexcept = delete;
-
-        uint32_t IncrementFrameIndexAndGet()
-        {
-            frameIndex = (frameIndex + 1) % MAX_FRAMES_IN_FLIGHT;
-            return frameIndex;
-        }
-
-        uint32_t GetFrameIndex() const
-        {
-            assert(frameIndex >= 0 && frameIndex < MAX_FRAMES_IN_FLIGHT);
-            return frameIndex;
-        }
-
-        static uint32_t GetPrevFrameIndex(uint32_t frameIndex)
-        {
-            assert(frameIndex >= 0 && frameIndex < MAX_FRAMES_IN_FLIGHT);
-            return (frameIndex + (MAX_FRAMES_IN_FLIGHT - 1)) % MAX_FRAMES_IN_FLIGHT;
-        }
-
-        void OnBeginFrame(VkCommandBuffer cmd)
-        {
-            assert(frameCmd == VK_NULL_HANDLE);
-            frameCmd = cmd;
-        }
-
-        void OnEndFrame()
-        {
-            assert(frameCmd != VK_NULL_HANDLE);
-            // pre-frame cmd must be submitted by this time
-            assert(preFrameCmd == VK_NULL_HANDLE);
-            frameCmd = VK_NULL_HANDLE;
-        }
-
-        VkCommandBuffer GetCmdBuffer() const
-        {
-            // only in-frame usage
-            assert(WasFrameStarted());
-            return frameCmd;
-        }
-
-        VkCommandBuffer GetCmdBufferForMaterials(const std::shared_ptr<CommandBufferManager> &cmdManager)
-        {  
-            if (WasFrameStarted())
-            {
-                // use default cmd buffer, if frame was started
-                return GetCmdBuffer();
-            }
-
-            // use custom cmd buffer, if out-of-frame call,
-            // because the default one doesn't exist yet
-            if (preFrameCmd == VK_NULL_HANDLE)
-            {
-                preFrameCmd = cmdManager->StartGraphicsCmd();
-            }
-
-            return preFrameCmd;
-        }
-
-        VkCommandBuffer GetPreFrameCmdAndRemove()
-        {
-            VkCommandBuffer c = preFrameCmd;
-
-            preFrameCmd = VK_NULL_HANDLE;
-            return c;
-        }
-
-        bool WasFrameStarted() const
-        {
-            return frameCmd != nullptr;
-        }
-
-        void SetSemaphore(VkSemaphore s)
-        {
-            semaphoreToWait = s;
-        }
-
-        VkSemaphore GetSemaphoreForWaitAndRemove()
-        {
-            VkSemaphore s = semaphoreToWait;
-
-            semaphoreToWait = VK_NULL_HANDLE;
-            return s;
-        }
-    };
 
 private:
     VkInstance          instance;

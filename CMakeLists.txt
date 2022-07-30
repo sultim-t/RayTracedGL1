@@ -18,6 +18,7 @@ set(Sources
     "Source/RTGL1.cpp"
     "Source/RTGL1A.cpp"
     "Source/VulkanDevice.cpp"
+    "Source/VulkanDevice_Init.cpp"
     "Source/Buffer.cpp"
     "Source/Scene.cpp"
     "Source/PhysicalDevice.cpp"
