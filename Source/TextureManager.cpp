@@ -91,9 +91,15 @@ TextureManager::TextureManager(
     const uint32_t maxTextureCount = std::clamp(_info.maxTextureCount, TEXTURE_COUNT_MIN, TEXTURE_COUNT_MAX);
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
+
     if (config.developerMode)
     {
         imageLoaderDev = std::make_shared<ImageLoaderDev>(imageLoader);
+
+        if (_info.pOverridenTexturesFolderPathDeveloper != nullptr)
+        {
+            defaultTexturesPath = _info.pOverridenTexturesFolderPathDeveloper;
+        }
     }
 
 

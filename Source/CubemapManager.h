@@ -32,6 +32,7 @@
 #include "CubemapUploader.h"
 #include "CommandBufferManager.h"
 #include "ImageLoader.h"
+#include "LibraryConfig.h"
 
 namespace RTGL1
 {
@@ -45,8 +46,8 @@ public:
         std::shared_ptr<SamplerManager> samplerManager,
         const std::shared_ptr<CommandBufferManager> &cmdManager,
         std::shared_ptr<UserFileLoad> userFileLoad,
-        const char *defaultTexturesPath,
-        const char *albedoAlphaPostfix);
+        const RgInstanceCreateInfo &info,
+        const LibraryConfig::Config &config);
     ~CubemapManager();
 
     CubemapManager(const CubemapManager &other) = delete;

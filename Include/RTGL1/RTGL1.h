@@ -222,8 +222,11 @@ typedef struct RgInstanceCreateInfo
     // will set only magnification filter.
     RgBool32                    textureSamplerForceMinificationFilterLinear;
 
-    // The folder to find overriding textures in. Must contain '/' at the end.
+    // The folder to find overriding textures in.
     const char                  *pOverridenTexturesFolderPath;
+    // If not null and the configuration file contains "Developer",
+    // this path is used instead of pOverridenTexturesFolderPath.
+    const char                  *pOverridenTexturesFolderPathDeveloper;
     // Postfixes will be used to determine textures that should be 
     // loaded from files if the texture should be overridden
     // i.e. if postfix="_n" then "Floor_01.*" => "Floor_01_n.*", 

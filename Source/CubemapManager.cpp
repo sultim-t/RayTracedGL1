@@ -25,11 +25,21 @@
 #include "TextureOverrides.h"
 #include "RgException.h"
 
-constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
+namespace
+{
+    constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
-// use albedo-alpha texture data
-constexpr uint32_t MATERIAL_COLOR_TEXTURE_INDEX = 0;
-static_assert(MATERIAL_COLOR_TEXTURE_INDEX < RTGL1::TEXTURES_PER_MATERIAL_COUNT, "");
+    // use albedo-alpha texture data
+    constexpr uint32_t MATERIAL_COLOR_TEXTURE_INDEX = 0;
+    static_assert(MATERIAL_COLOR_TEXTURE_INDEX < RTGL1::TEXTURES_PER_MATERIAL_COUNT);
+
+    template <typename T>
+    constexpr const T *DefaultIfNull(const T *pData, const T *pDefault)
+    {
+        return pData != nullptr ? pData : pDefault;
+    }
+}
+
 
 RTGL1::CubemapManager::CubemapManager(
     VkDevice _device,
@@ -37,16 +47,24 @@ RTGL1::CubemapManager::CubemapManager(
     std::shared_ptr<SamplerManager> _samplerManager,
     const std::shared_ptr<CommandBufferManager> &_cmdManager,
     std::shared_ptr<UserFileLoad> _userFileLoad,
-    const char *_defaultTexturesPath,
-    const char *_overridenTexturePostfix)
-:
-    device(_device),
-    allocator(std::move(_allocator)),
-    samplerManager(std::move(_samplerManager)),
-    cubemaps(MAX_CUBEMAP_COUNT)
+    const RgInstanceCreateInfo &_info,
+    const LibraryConfig::Config &_config
+)
+    : device(_device)
+    , allocator(std::move(_allocator))
+    , samplerManager(std::move(_samplerManager))
+    , cubemaps(MAX_CUBEMAP_COUNT)
+    , defaultTexturesPath(
+        DefaultIfNull(_info.pOverridenTexturesFolderPath, DEFAULT_TEXTURES_PATH)
+        )
+    , overridenTexturePostfix(
+        DefaultIfNull(_info.pOverridenAlbedoAlphaTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA)
+        )
 {
-    defaultTexturesPath = _defaultTexturesPath != nullptr ? _defaultTexturesPath : DEFAULT_TEXTURES_PATH;
-    overridenTexturePostfix = _overridenTexturePostfix != nullptr ? _overridenTexturePostfix : DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA;
+    if (_config.developerMode && _info.pOverridenTexturesFolderPathDeveloper != nullptr)
+    {
+        defaultTexturesPath = _info.pOverridenTexturesFolderPathDeveloper;
+    }
 
     imageLoader = std::make_shared<ImageLoader>(std::move(_userFileLoad));
     cubemapDesc = std::make_shared<TextureDescriptors>(device, samplerManager, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS);
