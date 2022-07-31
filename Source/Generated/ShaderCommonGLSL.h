@@ -232,6 +232,7 @@ struct ShGlobalUniform
     float waterWaveSpeed;
     float waterWaveStrength;
     vec4 waterExtinction;
+    vec4 portalInputPosition;
     vec4 portalOutputPosition;
     vec4 portalOutputDirection;
     vec4 portalOutputUp;

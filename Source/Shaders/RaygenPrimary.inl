@@ -322,11 +322,6 @@ mat3 lookAt(const vec3 forward, const vec3 worldUp)
     return mat3(right, up, forward);
 }
 
-mat3 inverseWorldLookAt(const vec3 forward)
-{
-    return transpose(lookAt(forward, globalUniform.worldUpVector.xyz));
-}
-
 void main() 
 {
     if (globalUniform.reflectRefractMaxDepth == 0)
@@ -475,15 +470,21 @@ void main()
         }
         else if (isPortal)
         {
-            const vec3 inPos = h.hitPosition;
-            const vec3 inDir = -h.normalGeom;
+            const vec3 inCenter = globalUniform.portalInputPosition.xyz;
+            const mat3 inLookAt = lookAt(-h.normal, globalUniform.worldUpVector.xyz);
 
-            const vec3 outPos = globalUniform.portalOutputPosition.xyz;
-            const vec3 outDir = globalUniform.portalOutputDirection.xyz;
-            const vec3 outUp = globalUniform.portalOutputUp.xyz;
+            const vec3 outCenter = globalUniform.portalOutputPosition.xyz;
+            const mat3 outLookAt = lookAt(globalUniform.portalOutputDirection.xyz, 
+                                          globalUniform.portalOutputUp.xyz);
 
-            rayDir = lookAt(outDir, outUp) * (inverseWorldLookAt(inDir) * rayDir);
-            rayOrigin = outPos - inPos + rayOrigin;
+            // to local space; then to world space but at portal output
+            rayDir = outLookAt * (transpose(inLookAt) * rayDir);
+
+            const vec3 inWorldOffset = h.hitPosition - inCenter;
+            const vec2 localOffset = vec2(dot(inWorldOffset, inLookAt[0]), 
+                                          dot(inWorldOffset, inLookAt[1]));
+
+            rayOrigin = outCenter + localOffset.x * outLookAt[0] + localOffset.y * outLookAt[1];
 
             wasPortal = true;
         }

@@ -528,6 +528,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "waterExtinction",                  1),
 
+    (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
     (TYPE_FLOAT32,      4,      "portalOutputPosition",             1),
     (TYPE_FLOAT32,      4,      "portalOutputDirection",            1),
     (TYPE_FLOAT32,      4,      "portalOutputUp",                   1),

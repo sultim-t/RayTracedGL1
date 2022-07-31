@@ -350,6 +350,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         gu->reflectRefractMaxDepth = std::min(4u, rr.maxReflectRefractDepth);
 
+        memcpy(gu->portalInputPosition, rr.portalInputPosition.data, 3 * sizeof(float));
         memcpy(gu->portalOutputPosition, rr.portalOutputPosition.data, 3 * sizeof(float));
         memcpy(gu->portalOutputDirection, rr.portalOutputDirection.data, 3 * sizeof(float));
         memcpy(gu->portalOutputUp, rr.portalOutputUp.data, 3 * sizeof(float));
@@ -381,6 +382,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         gu->reflectRefractMaxDepth = 2;
+        memset(gu->portalInputPosition, 0, sizeof(gu->portalInputPosition));
         memset(gu->portalOutputPosition, 0, sizeof(gu->portalOutputPosition));
         memset(gu->portalOutputDirection, 0, sizeof(gu->portalOutputDirection));
         memset(gu->portalOutputUp, 0, sizeof(gu->portalOutputUp));

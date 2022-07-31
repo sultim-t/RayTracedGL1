@@ -236,6 +236,7 @@ struct ShGlobalUniform
     float waterWaveSpeed;
     float waterWaveStrength;
     float waterExtinction[4];
+    float portalInputPosition[4];
     float portalOutputPosition[4];
     float portalOutputDirection[4];
     float portalOutputUp[4];
