@@ -334,10 +334,7 @@ void main()
     const ivec2 pix = getCheckerboardPix(regularPix);
     const vec2 inUV = getPixelUVWithJitter(regularPix);
 
-    const vec3 cameraOrigin = globalUniform.cameraPosition.xyz;
     const vec3 cameraRayDir = getRayDir(inUV);
-    const vec3 cameraRayDirAX = getRayDirAX(inUV);
-    const vec3 cameraRayDirAY = getRayDirAY(inUV);
     
     const vec4 albedoBuf = texelFetchAlbedo(pix);
     if (isSky(albedoBuf))
@@ -471,7 +468,7 @@ void main()
         else if (isPortal)
         {
             const vec3 inCenter = globalUniform.portalInputPosition.xyz;
-            const mat3 inLookAt = lookAt(-h.normal, globalUniform.worldUpVector.xyz);
+            const mat3 inLookAt = lookAt(-h.normalGeom, globalUniform.worldUpVector.xyz);
 
             const vec3 outCenter = globalUniform.portalOutputPosition.xyz;
             const mat3 outLookAt = lookAt(globalUniform.portalOutputDirection.xyz, 
@@ -523,30 +520,16 @@ void main()
         }
 
         float rayLen;
-        
-        if (doRefraction || isPortal)
-        {
-            h = getHitInfoWithRayCone_Refraction(
-                currentPayload, rayCone, 
-                cameraOrigin, rayDir, cameraRayDirAX, cameraRayDirAY,
-                prevHitPosition, rayLen,
-                motionCurToPrev, motionDepthLinearCurToPrev, 
-                gradDepth, 
-                screenEmission
-            );
-        }
-        else
-        {
-            h = getHitInfoWithRayCone_Reflection(
-                currentPayload, rayCone, 
-                cameraOrigin, rayDir, cameraRayDir, 
-                virtualPos, 
-                prevHitPosition, rayLen, 
-                motionCurToPrev, motionDepthLinearCurToPrev, 
-                gradDepth, 
-                screenEmission
-            );
-        }
+
+        h = getHitInfoWithRayCone_ReflectionRefraction(
+            currentPayload, rayCone, 
+            rayOrigin, rayDir, cameraRayDir, 
+            virtualPos, 
+            rayLen, 
+            motionCurToPrev, motionDepthLinearCurToPrev, 
+            gradDepth, 
+            screenEmission
+        );
 
 
         hitInfoWasOverwritten = true;

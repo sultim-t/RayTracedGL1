@@ -22,9 +22,6 @@
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_TEXTURES
 
-
-#if !defined(HITINFO_INL_RFR)
-
 #if defined(HITINFO_INL_PRIM)
 vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
 #elif defined(HITINFO_INL_RFL)
@@ -153,8 +150,6 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 }
 #endif // HITINFO_INL_PRIM
 
-#endif // !HITINFO_INL_RFR
-
 
 #if defined(HITINFO_INL_PRIM)
 
@@ -167,23 +162,13 @@ ShHitInfo getHitInfoPrimaryRay(
 
 #elif defined(HITINFO_INL_RFL)
 
-ShHitInfo getHitInfoWithRayCone_Reflection(
+ShHitInfo getHitInfoWithRayCone_ReflectionRefraction(
     const ShPayload pl, const RayCone rayCone,
     const vec3 rayOrig, const vec3 rayDir, const vec3 viewDir,
-    in out vec3 virtualPosForMotion, 
-    const vec3 prevHitPosition, out float rayLen,
+    in out vec3 virtualPosForMotion,
+    out float rayLen,
     out vec2 motion, out float motionDepthLinear, 
     in out vec2 gradDepth,
-    out float screenEmission)
-
-#elif defined(HITINFO_INL_RFR)
-
-ShHitInfo getHitInfoWithRayCone_Refraction(
-    const ShPayload pl, const RayCone rayCone,
-    const vec3 rayOrig, const vec3 rayDir, const vec3 rayDirAX, const vec3 rayDirAY, 
-    const vec3 prevHitPosition, out float rayLen,
-    out vec2 motion, out float motionDepthLinear, 
-    out vec2 gradDepth,
     out float screenEmission)
 
 #elif defined(HITINFO_INL_INDIR)
@@ -217,7 +202,7 @@ ShHitInfo getHitInfoBounce(
     h.normalGeom = safeNormalize(tr.normals * baryCoords);
 
 
-#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFR)
+#if defined(HITINFO_INL_PRIM)
     // Tracing Ray Differentials, Igehy
     // instead of casting new rays, check intersections on the same triangle
     const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);
@@ -240,11 +225,11 @@ ShHitInfo getHitInfoBounce(
 
     const vec2 screenSpaceCur    = ndcCur.xy  * 0.5 + 0.5;
     const vec2 screenSpacePrev   = ndcPrev.xy * 0.5 + 0.5;
-#endif // HITINFO_INL_PRIM  || HITINFO_INL_RFR
+#endif // HITINFO_INL_PRIM
 
 
-#if defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
-    rayLen = length(h.hitPosition - prevHitPosition);
+#if defined(HITINFO_INL_RFL) 
+    rayLen = length(h.hitPosition - rayOrig);
 #endif 
 
 
@@ -270,7 +255,7 @@ ShHitInfo getHitInfoBounce(
 #endif
 
 
-#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL)
     // difference in screen-space
     motion = (screenSpacePrev - screenSpaceCur);
 #endif
@@ -278,16 +263,16 @@ ShHitInfo getHitInfoBounce(
 
 #if defined(HITINFO_INL_PRIM)
     motionDepthLinear = length(viewSpacePosPrev.xyz) - depthLinear;
-#elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+#elif defined(HITINFO_INL_RFL)
     motionDepthLinear = length(viewSpacePosPrev.xyz) - length(viewSpacePosCur.xyz);
 #endif 
 
 
-#if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFR) 
+#if defined(HITINFO_INL_PRIM) 
     // gradient of clip-space depth with respect to clip-space coordinates
     gradDepth = vec2(clipSpaceDepthAX - clipSpaceDepth, clipSpaceDepthAY - clipSpaceDepth);
-#elif defined(HITINFO_INL_RFL) 
-    // don't touch gradDepth for reflections
+#elif defined(HITINFO_INL_RFL)
+    // don't touch gradDepth for reflections / refractions
 #endif
 
 
@@ -314,14 +299,14 @@ ShHitInfo getHitInfoBounce(
 #endif // HITINFO_INL_PRIM 
 
 
-#if defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+#if defined(HITINFO_INL_RFL)
     DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
 
     h.albedo = processAlbedoRayConeDeriv(
         tr.geometryInstanceFlags, texCoords, 
         tr.materials, tr.materialColors, 
         derivSet);
-#endif // HITINFO_INL_RFL || HITINFO_INL_RFR
+#endif // HITINFO_INL_RFL
 
 
 #if defined(HITINFO_INL_INDIR)
@@ -339,7 +324,7 @@ ShHitInfo getHitInfoBounce(
         const vec3 rme = 
     #if defined(HITINFO_INL_PRIM)
             getTextureSampleGrad(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
-    #elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+    #elif defined(HITINFO_INL_RFL)
             getTextureSampleDerivSet(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], derivSet, 0).xyz;
     #elif defined(HITINFO_INL_INDIR)
             getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
@@ -349,7 +334,7 @@ ShHitInfo getHitInfoBounce(
         h.metallic  = rme[1];
         h.emission  = rme[2] * globalUniform.emissionMapBoost /*+ tr.geomEmission*/;
 
-    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL)
         screenEmission = clamp(rme[2] /*+ tr.geomEmission*/, 0.0, 1.0);
     #endif
     }
@@ -359,7 +344,7 @@ ShHitInfo getHitInfoBounce(
         h.metallic  = tr.geomMetallicity;
         h.emission  = tr.geomEmission;
 
-    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL)
         screenEmission = clamp(h.emission, 0.0, 1.0);
     #endif
     }
@@ -372,7 +357,7 @@ ShHitInfo getHitInfoBounce(
         vec2 nrm = 
     #if defined(HITINFO_INL_PRIM)
             getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0] * suppressDetails, dTdy[0] * suppressDetails)
-    #elif defined(HITINFO_INL_RFL) || defined(HITINFO_INL_RFR)
+    #elif defined(HITINFO_INL_RFL)
             getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0)
     #elif defined(HITINFO_INL_INDIR)
             getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod)
