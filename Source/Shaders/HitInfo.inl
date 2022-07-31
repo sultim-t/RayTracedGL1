@@ -349,6 +349,7 @@ ShHitInfo getHitInfoBounce(
     #endif
     }
 
+#if !defined(HITINFO_INL_INDIR)
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
         // less details in normal maps for better denoising
@@ -359,8 +360,6 @@ ShHitInfo getHitInfoBounce(
             getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0] * suppressDetails, dTdy[0] * suppressDetails)
     #elif defined(HITINFO_INL_RFL)
             getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0)
-    #elif defined(HITINFO_INL_INDIR)
-            getTextureSampleLod(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], lod)
     #endif
             .xy;
         nrm.xy = nrm.xy * 2.0 - vec2(1.0);
@@ -371,6 +370,7 @@ ShHitInfo getHitInfoBounce(
         h.normal = safeNormalize(mix(h.normalGeom, h.normal, globalUniform.normalMapStrength));
     }
     else
+#endif // HITINFO_INL_INDIR
     {
         h.normal = h.normalGeom;
     }
