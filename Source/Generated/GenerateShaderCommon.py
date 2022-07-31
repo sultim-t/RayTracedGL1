@@ -528,10 +528,9 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "waterExtinction",                  1),
 
-    (TYPE_FLOAT32,      4,      "portalInputToOutputTransform0",    1),
-    (TYPE_FLOAT32,      4,      "portalInputToOutputTransform1",    1),
-    (TYPE_FLOAT32,      4,      "portalInputToOutputTransform2",    1),
-    (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
+    (TYPE_FLOAT32,      4,      "portalOutputPosition",             1),
+    (TYPE_FLOAT32,      4,      "portalOutputDirection",            1),
+    (TYPE_FLOAT32,      4,      "portalOutputUp",                   1),
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
     (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),

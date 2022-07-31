@@ -1074,11 +1074,9 @@ typedef struct RgDrawFrameReflectRefractParams
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
     RgBool32    disableBackfaceReflectionsForNoMediaChange;
-    // Difference between portal input and portal output world positions.
-    RgFloat3D   portalInputPosition;
     RgFloat3D   portalOutputPosition;
-    // Rotation of the output portal rotation relative to rotation of the input .
-    RgMatrix3D  portalRelativeRotation;
+    RgFloat3D   portalOutputDirection;
+    RgFloat3D   portalOutputUp;
 } RgDrawFrameReflectRefractParams;
 
 typedef enum RgRenderUpscaleTechnique

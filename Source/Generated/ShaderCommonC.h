@@ -236,10 +236,9 @@ struct ShGlobalUniform
     float waterWaveSpeed;
     float waterWaveStrength;
     float waterExtinction[4];
-    float portalInputToOutputTransform0[4];
-    float portalInputToOutputTransform1[4];
-    float portalInputToOutputTransform2[4];
-    float portalInputPosition[4];
+    float portalOutputPosition[4];
+    float portalOutputDirection[4];
+    float portalOutputUp[4];
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
     uint32_t useSqrtRoughnessForIndirect;

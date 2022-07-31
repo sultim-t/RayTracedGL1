@@ -314,6 +314,19 @@ void main()
 
 
 #ifdef RAYGEN_REFL_REFR_SHADER
+mat3 lookAt(const vec3 forward, const vec3 worldUp)
+{
+    vec3 right = cross(forward, worldUp);
+    vec3 up = cross(right, forward);
+
+    return mat3(right, up, forward);
+}
+
+mat3 inverseWorldLookAt(const vec3 forward)
+{
+    return transpose(lookAt(forward, globalUniform.worldUpVector.xyz));
+}
+
 void main() 
 {
     if (globalUniform.reflectRefractMaxDepth == 0)
@@ -462,16 +475,15 @@ void main()
         }
         else if (isPortal)
         {
-            const mat4x3 portalTransform = transpose(mat3x4(
-                globalUniform.portalInputToOutputTransform0, 
-                globalUniform.portalInputToOutputTransform1, 
-                globalUniform.portalInputToOutputTransform2
-            ));
-            
-            rayDir    = portalTransform * vec4(rayDir, 0.0);
-            rayOrigin = portalTransform * vec4(rayOrigin - globalUniform.portalInputPosition.xyz, 1.0) + globalUniform.portalInputPosition.xyz;
+            const vec3 inPos = h.hitPosition;
+            const vec3 inDir = -h.normalGeom;
 
-            throughput *= h.albedo;
+            const vec3 outPos = globalUniform.portalOutputPosition.xyz;
+            const vec3 outDir = globalUniform.portalOutputDirection.xyz;
+            const vec3 outUp = globalUniform.portalOutputUp.xyz;
+
+            rayDir = lookAt(outDir, outUp) * (inverseWorldLookAt(inDir) * rayDir);
+            rayOrigin = outPos - inPos + rayOrigin;
 
             wasPortal = true;
         }
