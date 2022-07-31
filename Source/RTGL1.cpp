@@ -107,12 +107,20 @@ RgResult rgDestroyInstance(RgInstance rgInstance)
     return RG_SUCCESS;
 }
 
-template<typename Func, typename... Args> requires (std::is_same_v< std::invoke_result_t<Func, VulkanDevice, Args...>, void>)
+template<typename Func, typename... Args> requires (
+    std::is_same_v< std::invoke_result_t<Func, VulkanDevice, Args...>, void>
+    )
 static auto Call(RgInstance rgInstance, Func f, Args&&... args)
 {
     try
     {
         VulkanDevice &dev = GetDevice(rgInstance);
+
+        if (dev.IsSuspended())
+        {
+            return RG_SUCCESS;
+        }
+
         (dev.*f)(std::forward<Args>(args)...);
     }
     catch (RTGL1::RgException &e) 
@@ -123,18 +131,28 @@ static auto Call(RgInstance rgInstance, Func f, Args&&... args)
     return RG_SUCCESS;
 }
 
-template<typename Func, typename... Args> requires (!std::is_same_v< std::invoke_result_t<Func, VulkanDevice, Args...>, void>)
+template<typename Func, typename... Args> requires (
+    !std::is_same_v< std::invoke_result_t<Func, VulkanDevice, Args...>, void> &&
+    std::is_default_constructible_v< std::invoke_result_t<Func, VulkanDevice, Args...> >
+    )
 static auto Call(RgInstance rgInstance, Func f, Args&&... args)
 {
+    using ReturnType = std::invoke_result_t<Func, VulkanDevice, Args...>;
+
     try
     {
         VulkanDevice &dev = GetDevice(rgInstance);
-        return (dev.*f)(std::forward<Args>(args)...);
+
+        if (!dev.IsSuspended())
+        {
+            return (dev.*f)(std::forward<Args>(args)...);
+        }
     }
     catch (RTGL1::RgException &e)
     {
         TryPrintError(rgInstance, e.what());
     }
+    return ReturnType{};
 }
 
 RgResult rgUploadGeometry(RgInstance rgInstance, const RgGeometryUploadInfo *pUploadInfo)

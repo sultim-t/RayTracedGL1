@@ -127,6 +127,18 @@ Swapchain::Swapchain(VkDevice _device,
     }
 }
 
+bool RTGL1::Swapchain::IsExtentOptimal() const
+{
+    VkSurfaceCapabilitiesKHR surfCapabilities;
+
+    VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice, surface, &surfCapabilities);
+    VK_CHECKERROR(r);
+
+    return
+        !IsNullExtent(surfCapabilities.maxImageExtent) &&
+        !IsNullExtent(surfCapabilities.currentExtent);
+}
+
 VkExtent2D Swapchain::GetOptimalExtent() const
 {
     VkSurfaceCapabilitiesKHR surfCapabilities;

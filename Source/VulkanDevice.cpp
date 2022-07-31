@@ -758,6 +758,16 @@ void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     currentFrameState.OnEndFrame();
 }
 
+bool VulkanDevice::IsSuspended() const
+{
+    if (!swapchain)
+    {
+        return false;
+    }
+
+    return !swapchain->IsExtentOptimal();
+}
+
 bool RTGL1::VulkanDevice::IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechnique technique) const
 {
     switch (technique)

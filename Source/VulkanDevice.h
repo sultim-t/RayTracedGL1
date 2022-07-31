@@ -64,10 +64,12 @@ public:
     explicit VulkanDevice(const RgInstanceCreateInfo *pInfo);
     ~VulkanDevice();
 
+
     VulkanDevice(const VulkanDevice& other) = delete;
     VulkanDevice(VulkanDevice&& other) noexcept = delete;
     VulkanDevice& operator=(const VulkanDevice& other) = delete;
     VulkanDevice& operator=(VulkanDevice&& other) noexcept = delete;
+
 
     void UploadGeometry(const RgGeometryUploadInfo *pUploadInfo);
     void UpdateGeometryTransform(const RgUpdateTransformInfo *pUpdateInfo);
@@ -103,6 +105,7 @@ public:
     void DrawFrame(const RgDrawFrameInfo *pFrameInfo);
 
 
+    bool IsSuspended() const;
     bool IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechnique technique) const;
 
 

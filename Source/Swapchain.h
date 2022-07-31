@@ -66,6 +66,8 @@ public:
     VkImage GetImage(uint32_t index) const;
     const VkImageView *GetImageViews() const;
 
+    bool IsExtentOptimal() const;
+
 private:
     VkExtent2D GetOptimalExtent() const;
 
