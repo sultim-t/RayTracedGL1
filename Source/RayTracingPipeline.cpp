@@ -39,6 +39,7 @@ RayTracingPipeline::RayTracingPipeline(
     const std::shared_ptr<BlueNoise> &_blueNoise,
     const std::shared_ptr<CubemapManager> &_cubemapMgr,
     const std::shared_ptr<RenderCubemap> &_renderCubemap,
+    const std::shared_ptr<PortalList> &_portalList,
     const RgInstanceCreateInfo &_rgInfo)
 :
     device(_device),
@@ -77,7 +78,9 @@ RayTracingPipeline::RayTracingPipeline(
         // cubemaps, for a cubemap type of skyboxes
         _cubemapMgr->GetDescSetLayout(),
         // dynamic cubemaps
-        _renderCubemap->GetDescSetLayout()
+        _renderCubemap->GetDescSetLayout(),
+        // portals
+        _portalList->GetDescSetLayout()
     };
 
     CreatePipelineLayout(setLayouts.data(), setLayouts.size());

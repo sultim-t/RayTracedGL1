@@ -349,12 +349,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
 
         gu->reflectRefractMaxDepth = std::min(4u, rr.maxReflectRefractDepth);
-
-        memcpy(gu->portalInputPosition, rr.portalInputPosition.data, 3 * sizeof(float));
-        memcpy(gu->portalOutputPosition, rr.portalOutputPosition.data, 3 * sizeof(float));
-        memcpy(gu->portalOutputDirection, rr.portalOutputDirection.data, 3 * sizeof(float));
-        memcpy(gu->portalOutputUp, rr.portalOutputUp.data, 3 * sizeof(float));
-
         gu->enableShadowsFromReflRefr = !!rr.reflectRefractCastShadows;
         gu->enableIndirectFromReflRefr = !!rr.reflectRefractToIndirect;
     
@@ -382,12 +376,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         gu->reflectRefractMaxDepth = 2;
-        memset(gu->portalInputPosition, 0, sizeof(gu->portalInputPosition));
-        memset(gu->portalOutputPosition, 0, sizeof(gu->portalOutputPosition));
-        memset(gu->portalOutputDirection, 0, sizeof(gu->portalOutputDirection));
-        memset(gu->portalOutputUp, 0, sizeof(gu->portalOutputUp));
-        gu->portalOutputDirection[2] = 1.0f;
-        gu->portalOutputUp[1] = 1.0f;
     
         gu->enableShadowsFromReflRefr = false;
         gu->enableIndirectFromReflRefr = true;
@@ -533,12 +521,15 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         lightGrid->Build(cmd, frameIndex, uniform, framebuffers, blueNoise, scene->GetLightManager());
 
         decalManager->SubmitForFrame(cmd, frameIndex);
+        portalList->SubmitForFrame(cmd, frameIndex);
 
         const auto params = pathTracer->Bind(
             cmd, frameIndex,
             renderResolution.Width(), renderResolution.Height(),
             scene, uniform, textureManager, 
-            framebuffers, blueNoise, cubemapManager, rasterizer->GetRenderCubemap());
+            framebuffers, blueNoise, 
+            cubemapManager, rasterizer->GetRenderCubemap(),
+            portalList);
 
         pathTracer->TracePrimaryRays(params);
 
@@ -937,6 +928,16 @@ void RTGL1::VulkanDevice::UploadDecal(const RgDecalUploadInfo *pUploadInfo)
     }
 
     decalManager->Upload(currentFrameState.GetFrameIndex(), *pUploadInfo, textureManager);
+}
+
+void RTGL1::VulkanDevice::UploadPortal(const RgPortalUploadInfo *pUploadInfo)
+{
+    if (pUploadInfo == nullptr)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+    }
+
+    portalList->Upload(currentFrameState.GetFrameIndex(), *pUploadInfo);
 }
 
 void VulkanDevice::SubmitStaticGeometries()

@@ -44,6 +44,7 @@ namespace RTGL1
 #define BINDING_LENS_FLARES_DRAW_CMDS (1)
 #define BINDING_DRAW_LENS_FLARES_INSTANCES (0)
 #define BINDING_DECAL_INSTANCES (0)
+#define BINDING_PORTAL_INSTANCES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -236,10 +237,6 @@ struct ShGlobalUniform
     float waterWaveSpeed;
     float waterWaveStrength;
     float waterExtinction[4];
-    float portalInputPosition[4];
-    float portalOutputPosition[4];
-    float portalOutputDirection[4];
-    float portalOutputUp[4];
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
     uint32_t useSqrtRoughnessForIndirect;
@@ -344,6 +341,14 @@ struct ShDecalInstance
     uint32_t textureRougnessMetallic;
     uint32_t textureNormals;
     uint32_t __pad0;
+};
+
+struct ShPortalInstance
+{
+    float inPosition[4];
+    float outPosition[4];
+    float outDirection[4];
+    float outUp[4];
 };
 
 }

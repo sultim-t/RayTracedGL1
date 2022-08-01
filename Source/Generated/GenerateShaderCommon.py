@@ -253,6 +253,7 @@ CONST = {
     "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
     "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
     "BINDING_DECAL_INSTANCES"                   : 0,
+    "BINDING_PORTAL_INSTANCES"                  : 0,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -528,11 +529,6 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      4,      "waterExtinction",                  1),
 
-    (TYPE_FLOAT32,      4,      "portalInputPosition",              1),
-    (TYPE_FLOAT32,      4,      "portalOutputPosition",             1),
-    (TYPE_FLOAT32,      4,      "portalOutputDirection",            1),
-    (TYPE_FLOAT32,      4,      "portalOutputUp",                   1),
-
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
     (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),
     (TYPE_UINT32,       1,      "useSqrtRoughnessForIndirect",      1),
@@ -643,6 +639,13 @@ DECAL_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "textureNormals",           1),
 ]
 
+PORTAL_INSTANCE_STRUCT = [
+    (TYPE_FLOAT32,      4,      "inPosition",               1),
+    (TYPE_FLOAT32,      4,      "outPosition",              1),
+    (TYPE_FLOAT32,      4,      "outDirection",             1),
+    (TYPE_FLOAT32,      4,      "outUp",                    1),
+]
+
 STRUCT_ALIGNMENT_NONE       = 0
 STRUCT_ALIGNMENT_STD430     = 1
 STRUCT_ALIGNMENT_STD140     = 2
@@ -667,6 +670,7 @@ STRUCTS = {
     # TODO: should be STRUCT_ALIGNMENT_STD430, but current generator is not great as it just adds pads at the end, so it's 0
     "ShLensFlareInstance":      (LENS_FLARES_INSTANCE_STRUCT,   False,  0,                          0),
     "ShDecalInstance":          (DECAL_INSTANCE_STRUCT,         False,  STRUCT_ALIGNMENT_STD430,    0),
+    "ShPortalInstance":         (PORTAL_INSTANCE_STRUCT,        False,  STRUCT_ALIGNMENT_STD140,    0),
 }
 
 # --------------------------------------------------------------------------------------------- #

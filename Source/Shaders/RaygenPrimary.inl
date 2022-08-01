@@ -49,6 +49,7 @@
 #define DESC_SET_LIGHT_SOURCES 6
 #define DESC_SET_CUBEMAPS 7
 #define DESC_SET_RENDER_CUBEMAP 8
+#define DESC_SET_PORTALS 9
 #define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_NONE)
 #include "RaygenCommon.h"
 
@@ -467,12 +468,14 @@ void main()
         }
         else if (isPortal)
         {
-            const vec3 inCenter = globalUniform.portalInputPosition.xyz;
+            const ShPortalInstance portal = g_portals[1];
+
+            const vec3 inCenter = portal.inPosition.xyz;
             const mat3 inLookAt = lookAt(-h.normalGeom, globalUniform.worldUpVector.xyz);
 
-            const vec3 outCenter = globalUniform.portalOutputPosition.xyz;
-            const mat3 outLookAt = lookAt(globalUniform.portalOutputDirection.xyz, 
-                                          globalUniform.portalOutputUp.xyz);
+            const vec3 outCenter = portal.outPosition.xyz;
+            const mat3 outLookAt = lookAt(portal.outDirection.xyz, 
+                                          portal.outUp.xyz);
 
             // to local space; then to world space but at portal output
             rayDir = outLookAt * (transpose(inLookAt) * rayDir);

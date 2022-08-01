@@ -152,6 +152,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers,
         textureManager);
 
+    portalList          = std::make_shared<PortalList>(
+        device,
+        memAllocator);
+
     lightGrid           = std::make_shared<LightGrid>(
         device,
         shaderManager,
@@ -172,6 +176,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         blueNoise, 
         cubemapManager,
         rasterizer->GetRenderCubemap(),
+        portalList,
         *info);
 
     pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
@@ -303,6 +308,7 @@ VulkanDevice::~VulkanDevice()
     pathTracer.reset();
     rasterizer.reset();
     decalManager.reset();
+    portalList.reset();
     lightGrid.reset();
     worldSamplerManager.reset();
     genericSamplerManager.reset();

@@ -43,6 +43,8 @@ constexpr const char    *DEFAULT_TEXTURE_POSTFIX_NORMAL                     = "_
 
 constexpr uint32_t      MAX_PREGENERATED_MIPMAP_LEVELS          = 20;
 
+constexpr uint32_t      MAX_PORTALS = 64;
+
 // Use WORLD2 mask bit as SKY
 #define RAYCULLMASK_SKY_IS_WORLD2 1
 

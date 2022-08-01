@@ -37,7 +37,8 @@ PathTracer::TraceParams PathTracer::Bind(
     const std::shared_ptr<Framebuffers> &framebuffers,
     const std::shared_ptr<BlueNoise> &blueNoise,
     const std::shared_ptr<CubemapManager> &cubemapManager,
-    const std::shared_ptr<RenderCubemap> &renderCubemap)
+    const std::shared_ptr<RenderCubemap> &renderCubemap,
+    const std::shared_ptr<PortalList> &portalList)
 {
     rtPipeline->Bind(cmd);
 
@@ -59,7 +60,9 @@ PathTracer::TraceParams PathTracer::Bind(
         // cubemaps
         cubemapManager->GetDescSet(frameIndex),
         // dynamic cubemaps
-        renderCubemap->GetDescSet()
+        renderCubemap->GetDescSet(),
+        // portals
+        portalList->GetDescSet(frameIndex)
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 

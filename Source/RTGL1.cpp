@@ -186,6 +186,11 @@ RgResult rgUploadDecal(RgInstance rgInstance, const RgDecalUploadInfo *pUploadIn
     return Call(rgInstance, &VulkanDevice::UploadDecal, pUploadInfo);
 }
 
+RgResult rgUploadPortal(RgInstance rgInstance, const RgPortalUploadInfo *pUploadInfo)
+{
+    return Call(rgInstance, &VulkanDevice::UploadPortal, pUploadInfo);
+}
+
 RgResult rgBeginStaticGeometries(RgInstance rgInstance)
 {
     return Call(rgInstance, &VulkanDevice::StartNewStaticScene);

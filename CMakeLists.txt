@@ -83,6 +83,7 @@ set(Sources
     "Source/FSR2.cpp"
     "Source/Stb/stb_image.cpp"
     "Source/ImageLoaderDev.cpp"
+    "Source/PortalList.cpp"
 )
 
 

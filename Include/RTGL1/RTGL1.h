@@ -388,6 +388,8 @@ typedef struct RgGeometryUploadInfo
     // use this for whole geometry.
     uint32_t                        sectorID;
 
+    uint8_t                         portalIndex;
+
     // RGBA color for each material layer.
     RgFloat4D                       layerColors[3];
     RgGeometryMaterialBlendType     layerBlendingTypes[3];
@@ -607,6 +609,23 @@ typedef struct RgDecalUploadInfo
 RGAPI RgResult RGCONV rgUploadDecal(
     RgInstance                              rgInstance,
     const RgDecalUploadInfo                 *pUploadInfo);
+
+
+
+typedef struct RgPortalUploadInfo
+{
+    // ID is used in RgGeometryUploadInfo.
+    // 0 is reserved for an empty portal.
+    uint8_t         portalIndex;
+    RgFloat3D       inPosition;
+    RgFloat3D       outPosition;
+    RgFloat3D       outDirection;
+    RgFloat3D       outUp;
+} RgPortalUploadInfo;
+
+RGAPI RgResult RGCONV rgUploadPortal(
+    RgInstance                              rgInstance,
+    const RgPortalUploadInfo                *pUploadInfo);
 
 
 
@@ -1074,10 +1093,6 @@ typedef struct RgDrawFrameReflectRefractParams
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
     RgBool32    disableBackfaceReflectionsForNoMediaChange;
-    RgFloat3D   portalInputPosition;
-    RgFloat3D   portalOutputPosition;
-    RgFloat3D   portalOutputDirection;
-    RgFloat3D   portalOutputUp;
 } RgDrawFrameReflectRefractParams;
 
 typedef enum RgRenderUpscaleTechnique

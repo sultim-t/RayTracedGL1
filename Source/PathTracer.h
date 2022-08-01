@@ -25,6 +25,7 @@
 #include "GlobalUniform.h"
 #include "Framebuffers.h"
 #include "RenderCubemap.h"
+#include "PortalList.h"
 
 namespace RTGL1
 {
@@ -62,7 +63,8 @@ public:
         const std::shared_ptr<Framebuffers> &framebuffers, 
         const std::shared_ptr<BlueNoise> &blueNoise,
         const std::shared_ptr<CubemapManager> &cubemapManager,
-        const std::shared_ptr<RenderCubemap> &renderCubemap);
+        const std::shared_ptr<RenderCubemap> &renderCubemap,
+        const std::shared_ptr<PortalList> &portalList);
     
     void TracePrimaryRays(const TraceParams &params);
     void TraceReflectionRefractionRays(const TraceParams &params);

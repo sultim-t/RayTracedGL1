@@ -54,6 +54,7 @@
 #include "FSR2.h"
 #include "FrameState.h"
 #include "LibraryConfig.h"
+#include "PortalList.h"
 
 namespace RTGL1
 {
@@ -79,6 +80,7 @@ public:
                                   const float *pViewProjection, const RgViewport *pViewport);
     void UploadLensFlare(const RgLensFlareUploadInfo *pUploadInfo);
     void UploadDecal(const RgDecalUploadInfo *pUploadInfo);
+    void UploadPortal(const RgPortalUploadInfo *pUploadInfo);
 
     void SubmitStaticGeometries();
     void StartNewStaticScene();
@@ -164,6 +166,7 @@ private:
     std::shared_ptr<PathTracer>             pathTracer;
     std::shared_ptr<Rasterizer>             rasterizer;
     std::shared_ptr<DecalManager>           decalManager;
+    std::shared_ptr<PortalList>             portalList;
     std::shared_ptr<LightGrid>              lightGrid;
     std::shared_ptr<Denoiser>               denoiser;
     std::shared_ptr<Tonemapping>            tonemapping;

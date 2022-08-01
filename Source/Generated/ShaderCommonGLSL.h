@@ -37,6 +37,7 @@
 #define BINDING_LENS_FLARES_DRAW_CMDS (1)
 #define BINDING_DRAW_LENS_FLARES_INSTANCES (0)
 #define BINDING_DECAL_INSTANCES (0)
+#define BINDING_PORTAL_INSTANCES (0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
@@ -232,10 +233,6 @@ struct ShGlobalUniform
     float waterWaveSpeed;
     float waterWaveStrength;
     vec4 waterExtinction;
-    vec4 portalInputPosition;
-    vec4 portalOutputPosition;
-    vec4 portalOutputDirection;
-    vec4 portalOutputUp;
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
     uint useSqrtRoughnessForIndirect;
@@ -340,6 +337,14 @@ struct ShDecalInstance
     uint textureRougnessMetallic;
     uint textureNormals;
     uint __pad0;
+};
+
+struct ShPortalInstance
+{
+    vec4 inPosition;
+    vec4 outPosition;
+    vec4 outDirection;
+    vec4 outUp;
 };
 
 #ifdef DESC_SET_FRAMEBUFFERS

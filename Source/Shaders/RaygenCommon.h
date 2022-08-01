@@ -76,8 +76,16 @@ layout(set = DESC_SET_TLAS, binding = BINDING_ACCELERATION_STRUCTURE_MAIN)   uni
 #ifdef DESC_SET_CUBEMAPS
 layout(set = DESC_SET_CUBEMAPS, binding = BINDING_CUBEMAPS) uniform samplerCube globalCubemaps[];
 #endif
+
 #ifdef DESC_SET_RENDER_CUBEMAP
 layout(set = DESC_SET_RENDER_CUBEMAP, binding = BINDING_RENDER_CUBEMAP) uniform samplerCube renderCubemap;
+#endif
+
+#ifdef DESC_SET_PORTALS
+layout(set = DESC_SET_PORTALS, binding = BINDING_PORTAL_INSTANCES) uniform readonly PortalInstances_BT
+{
+    ShPortalInstance g_portals[];
+};
 #endif
 
 

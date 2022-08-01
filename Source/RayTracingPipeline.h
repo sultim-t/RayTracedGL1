@@ -27,6 +27,7 @@
 #include "Scene.h"
 #include "CubemapManager.h"
 #include "RenderCubemap.h"
+#include "PortalList.h"
 
 namespace RTGL1
 {
@@ -46,6 +47,7 @@ public:
         const std::shared_ptr<BlueNoise> &blueNoise,
         const std::shared_ptr<CubemapManager> &cubemapManager,
         const std::shared_ptr<RenderCubemap> &renderCubemap,
+        const std::shared_ptr<PortalList> &portalList,
         const RgInstanceCreateInfo &rgInfo);
     ~RayTracingPipeline() override;
 
