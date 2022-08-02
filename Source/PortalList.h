@@ -25,15 +25,16 @@
 #include "RTGL1/RTGL1.h"
 
 #include "AutoBuffer.h"
-#include "Const.h"
 
 namespace RTGL1
 {
+    namespace detail
+    {
+        constexpr size_t PORTAL_LIST_BITCOUNT = 63;
+    }
+
     class PortalList
     {
-    public:
-        using PortalID = decltype(RgPortalUploadInfo::outUp);
-
     public:
         PortalList(VkDevice device, std::shared_ptr<MemoryAllocator> allocator);
         ~PortalList();
@@ -60,6 +61,6 @@ namespace RTGL1
         VkDescriptorSetLayout   descSetLayout;
         VkDescriptorSet         descSet;
 
-        std::bitset<MAX_PORTALS> uploadedIndices;
+        std::bitset<detail::PORTAL_LIST_BITCOUNT> uploadedIndices;
     };
 }

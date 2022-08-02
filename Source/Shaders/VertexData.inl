@@ -420,7 +420,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
         tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
-        tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, inst.materials1C);
+        tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, MATERIAL_NO_TEXTURE);
         tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, MATERIAL_NO_TEXTURE);
 
         tr.materialColors[0] = inst.materialColors[0];
@@ -486,6 +486,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     {
         tr.sectorArrayIndex = inst.sectorArrayIndex;
     }
+    tr.portalIndex = inst.portalIndex;
 
     return tr;
 }

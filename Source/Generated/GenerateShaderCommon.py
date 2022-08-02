@@ -395,11 +395,14 @@ CONST = {
 
     "LIGHT_INDEX_NONE"                      : ((1 << 15) - 1),
 
-    "LIGHT_GRID_SIZE_HORIZONTAL_X"     : 20,
-    "LIGHT_GRID_SIZE_HORIZONTAL_Z"     : 20,
-    "LIGHT_GRID_SIZE_VERTICAL_Y"       : 10,
-    "LIGHT_GRID_CELL_SIZE"             : 64,
-    "COMPUTE_LIGHT_GRID_GROUP_SIZE_X"  : 256,
+    "LIGHT_GRID_SIZE_HORIZONTAL_X"          : 20,
+    "LIGHT_GRID_SIZE_HORIZONTAL_Z"          : 20,
+    "LIGHT_GRID_SIZE_VERTICAL_Y"            : 10,
+    "LIGHT_GRID_CELL_SIZE"                  : 64,
+    "COMPUTE_LIGHT_GRID_GROUP_SIZE_X"       : 256,
+
+    "PORTAL_INDEX_NONE"                     : 63,
+    "PORTAL_MAX_COUNT"                      : 63,
 }
 
 CONST_GLSL_ONLY = {
@@ -573,10 +576,10 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "materials0C",          1),
     (TYPE_UINT32,       1,      "materials1A",          1),
     (TYPE_UINT32,       1,      "materials1B",          1), # not used
-    (TYPE_UINT32,       1,      "materials1C",          1), # not used
+    (TYPE_UINT32,       1,      "portalIndex",          1),
     (TYPE_UINT32,       1,      "materials2A",          1),
     (TYPE_UINT32,       1,      "materials2B",          1), # not used
-    (TYPE_UINT32,       1,      "sectorArrayIndex",     1),
+    (TYPE_UINT32,       1,      "sectorArrayIndex",     1), # 16-bits
     (TYPE_UINT32,       1,      "flags",                1),
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
@@ -741,7 +744,7 @@ FRAMEBUFFERS = {
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "SectorIndex"                       : (TYPE_UINT16,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "PrimaryToReflRefr"                 : (TYPE_UINT32,     COMPONENT_RG,   0),
+    "PrimaryToReflRefr"                 : (TYPE_UINT32,     COMPONENT_RGBA, 0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     # bilinear for bloom
     "PreFinal"                          : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),

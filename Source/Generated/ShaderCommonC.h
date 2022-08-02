@@ -165,6 +165,8 @@ namespace RTGL1
 #define LIGHT_GRID_SIZE_VERTICAL_Y (10)
 #define LIGHT_GRID_CELL_SIZE (64)
 #define COMPUTE_LIGHT_GRID_GROUP_SIZE_X (256)
+#define PORTAL_INDEX_NONE (63)
+#define PORTAL_MAX_COUNT (63)
 
 struct ShVertex
 {
@@ -271,7 +273,7 @@ struct ShGeometryInstance
     uint32_t materials0C;
     uint32_t materials1A;
     uint32_t materials1B;
-    uint32_t materials1C;
+    uint32_t portalIndex;
     uint32_t materials2A;
     uint32_t materials2B;
     uint32_t sectorArrayIndex;

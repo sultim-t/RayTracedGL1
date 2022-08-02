@@ -84,7 +84,7 @@ layout(set = DESC_SET_RENDER_CUBEMAP, binding = BINDING_RENDER_CUBEMAP) uniform 
 #ifdef DESC_SET_PORTALS
 layout(set = DESC_SET_PORTALS, binding = BINDING_PORTAL_INSTANCES) uniform readonly PortalInstances_BT
 {
-    ShPortalInstance g_portals[];
+    ShPortalInstance g_portals[PORTAL_MAX_COUNT];
 };
 #endif
 

@@ -23,8 +23,12 @@
 #include "CmdLabel.h"
 #include "RgException.h"
 
+
 #include "Generated/ShaderCommonC.h"
 static_assert(sizeof(RTGL1::ShPortalInstance) % 16 == 0);
+// to avoid include
+static_assert(RTGL1::detail::PORTAL_LIST_BITCOUNT == PORTAL_MAX_COUNT);
+
 
 RTGL1::PortalList::PortalList(VkDevice _device, std::shared_ptr<MemoryAllocator> _allocator)
     : device(_device)
@@ -33,7 +37,7 @@ RTGL1::PortalList::PortalList(VkDevice _device, std::shared_ptr<MemoryAllocator>
     , descSet{}
 {
     buffer = std::make_shared<AutoBuffer>(std::move(_allocator));
-    buffer->Create(MAX_PORTALS * sizeof(ShPortalInstance), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "Portals buffer");
+    buffer->Create(PORTAL_MAX_COUNT * sizeof(ShPortalInstance), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "Portals buffer");
 
     CreateDescriptors();
 }
@@ -46,14 +50,9 @@ RTGL1::PortalList::~PortalList()
 
 void RTGL1::PortalList::Upload(uint32_t frameIndex, const RgPortalUploadInfo& info)
 {
-    if (info.portalIndex == 0)
+    if (info.portalIndex >= PORTAL_MAX_COUNT)
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Portal index must not be 0");
-    }
-
-    if (info.portalIndex >= MAX_PORTALS)
-    {
-        throw RgException(RG_WRONG_ARGUMENT, "Portal index must be < 64");
+        throw RgException(RG_WRONG_ARGUMENT, "Portal index must be in [0, 62]");
     }
 
     if (uploadedIndices.test(info.portalIndex))

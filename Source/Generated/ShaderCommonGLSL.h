@@ -158,6 +158,8 @@
 #define LIGHT_GRID_SIZE_VERTICAL_Y (10)
 #define LIGHT_GRID_CELL_SIZE (64)
 #define COMPUTE_LIGHT_GRID_GROUP_SIZE_X (256)
+#define PORTAL_INDEX_NONE (63)
+#define PORTAL_MAX_COUNT (63)
 
 #define FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE (3.0)
 #define SURFACE_POSITION_INCORRECT (10000000.0)
@@ -267,7 +269,7 @@ struct ShGeometryInstance
     uint materials0C;
     uint materials1A;
     uint materials1B;
-    uint materials1C;
+    uint portalIndex;
     uint materials2A;
     uint materials2B;
     uint sectorArrayIndex;
@@ -455,7 +457,7 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 21, r16ui) uniform uimage2D frameb
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 22, r16ui) uniform uimage2D framebufSectorIndex_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 23, rgba16f) uniform image2D framebufViewDirection;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 24, rgba16f) uniform image2D framebufViewDirection_Prev;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, rg32ui) uniform uimage2D framebufPrimaryToReflRefr;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 25, rgba32ui) uniform uimage2D framebufPrimaryToReflRefr;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 26, rgba16f) uniform image2D framebufThroughput;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 27, r11f_g11f_b10f) uniform image2D framebufPreFinal;
 #ifndef FRAMEBUF_IGNORE_ATTACHMENTS

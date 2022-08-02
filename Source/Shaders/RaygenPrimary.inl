@@ -142,7 +142,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufSectorIndex,         pix, uvec4(SECTOR_INDEX_NONE));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
 #ifdef RAYGEN_PRIMARY_SHADER
-    imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0));
+    imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(m), 0.0, 0.0));
 #endif
@@ -305,7 +305,7 @@ void main()
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
 
     // save some info for refl/refr shader
-    imageStore(framebufPrimaryToReflRefr,   pix, uvec4(h.geometryInstanceFlags, primaryPayload.instIdAndIndex, 0, 0));
+    imageStore(framebufPrimaryToReflRefr,   pix, uvec4(h.geometryInstanceFlags, primaryPayload.instIdAndIndex, h.portalIndex, 0));
 
     // save info for DLSS, but only about primary surface 
     imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
@@ -346,11 +346,12 @@ void main()
 
 
     // restore state from primary shader
-    const uvec2 primaryToReflRefrBuf        = texelFetch(framebufPrimaryToReflRefr_Sampler, pix, 0).rg;
+    const uvec3 primaryToReflRefrBuf        = texelFetch(framebufPrimaryToReflRefr_Sampler, pix, 0).rgb;
     ShHitInfo h;
     h.albedo                                = albedoBuf.rgb;
     h.hitPosition                           = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
     h.geometryInstanceFlags                 = primaryToReflRefrBuf.r;
+    h.portalIndex                           = primaryToReflRefrBuf.b;
     h.normalGeom                            = texelFetchNormalGeometry(pix);
     h.normal                                = texelFetchNormal(pix);
     const vec3  motionBuf                   = texelFetch(framebufMotion_Sampler, pix, 0).rgb;
@@ -400,7 +401,7 @@ void main()
 
         uint newRayMedia = getNewRayMedia(i, currentRayMedia, h.geometryInstanceFlags);
 
-        bool isPortal = isPortalFromFlags(h.geometryInstanceFlags);
+        bool isPortal = isPortalFromFlags(h.geometryInstanceFlags) && h.portalIndex != PORTAL_INDEX_NONE;
         bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
         bool toReflect = isReflectFromFlags(h.geometryInstanceFlags);
 
@@ -468,10 +469,10 @@ void main()
         }
         else if (isPortal)
         {
-            const ShPortalInstance portal = g_portals[1];
+            const ShPortalInstance portal = g_portals[h.portalIndex];
 
             const vec3 inCenter = portal.inPosition.xyz;
-            const mat3 inLookAt = lookAt(-h.normalGeom, globalUniform.worldUpVector.xyz);
+            const mat3 inLookAt = lookAt(-h.normal, globalUniform.worldUpVector.xyz);
 
             const vec3 outCenter = portal.outPosition.xyz;
             const mat3 outLookAt = lookAt(portal.outDirection.xyz, 

@@ -35,6 +35,7 @@ struct ShTriangle
     float   geomEmission;
     float   geomMetallicity;
     uint    sectorArrayIndex;
+    uint    portalIndex;
 };
 
 struct ShPayload
@@ -61,6 +62,7 @@ struct ShHitInfo
     uint    instCustomIndex;
     uint    geometryInstanceFlags;
     uint    sectorArrayIndex;
+    uint    portalIndex;
 };
 
 #endif // STRUCTS_H_

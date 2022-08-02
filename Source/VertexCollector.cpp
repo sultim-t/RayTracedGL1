@@ -348,7 +348,10 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
             geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
             break;
         case RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL:
-            geomInfo.flags |= GEOM_INST_FLAG_PORTAL;
+            if (info.pPortalIndex)
+            {
+                geomInfo.flags |= GEOM_INST_FLAG_PORTAL;
+            }
             break;
         case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT:
             geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
@@ -374,7 +377,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     geomInfo.materials1A = materials[1].indices[0];
     geomInfo.materials1B = materials[1].indices[1];
-    geomInfo.materials1C = materials[1].indices[2];
+    // no materials1C member
 
     geomInfo.materials2A = materials[2].indices[0];
     geomInfo.materials2B = materials[2].indices[1];
@@ -387,7 +390,7 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     geomInfo.triangleArrayIndex = triangleInfoMgr->UploadAndGetArrayIndex(frameIndex, info.pTriangleSectorIDs, primitiveCount, info.geomType);
     geomInfo.sectorArrayIndex = sectorVisibility->SectorIDToArrayIndex(SectorID{ info.sectorID }).GetArrayIndex();
-
+    geomInfo.portalIndex = info.pPortalIndex ? *info.pPortalIndex : PORTAL_INDEX_NONE;
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)
     // global geometry index -- for indexing in geom infos buffer

@@ -388,7 +388,10 @@ typedef struct RgGeometryUploadInfo
     // use this for whole geometry.
     uint32_t                        sectorID;
 
-    uint8_t                         portalIndex;
+    // Look RgPortalUploadInfo.
+    // Must be null if not RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL.
+    // Must be non-null if RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL.
+    uint8_t                         *pPortalIndex;
 
     // RGBA color for each material layer.
     RgFloat4D                       layerColors[3];
@@ -614,8 +617,8 @@ RGAPI RgResult RGCONV rgUploadDecal(
 
 typedef struct RgPortalUploadInfo
 {
-    // ID is used in RgGeometryUploadInfo.
-    // 0 is reserved for an empty portal.
+    // Index to specify in RgGeometryUploadInfo.
+    // Must be in [0, 62].
     uint8_t         portalIndex;
     RgFloat3D       inPosition;
     RgFloat3D       outPosition;

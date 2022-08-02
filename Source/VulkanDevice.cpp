@@ -848,6 +848,21 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         throw RgException(RG_WRONG_ARGUMENT, "Geometry with ID="s + std::to_string(uploadInfo->uniqueID) + " already exists");
     }
 
+    if (uploadInfo->pPortalIndex != nullptr && uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Geometry's pPortalIndex is non-null, but geometry is not marked as portal");
+    }
+
+    if (uploadInfo->pPortalIndex == nullptr && uploadInfo->passThroughType == RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Geometry is marked as portal, but pPortalIndex is null");
+    }
+
+    if (uploadInfo->pPortalIndex && *(uploadInfo->pPortalIndex) >= PORTAL_MAX_COUNT)
+    {
+        throw RgException(RG_WRONG_ARGUMENT, "Geometry's portal index must be in [0, 62]");
+    }
+
     scene->Upload(currentFrameState.GetFrameIndex(), *uploadInfo);
 }
 
