@@ -37,14 +37,15 @@ void main()
     vec2 c = effect_getCenteredFromPix(pix);
     vec2 offset = 0.1 * getProgress() * c * length(c);
 
-    int iterCount = 4;
+    const int MAX_ITERATIONS = 8;
+    int iterCount = clamp(int(length(effect_getFramebufSize() * offset / 2.0)), 3, MAX_ITERATIONS);
     vec2 delta = offset / iterCount;
 
     vec3 color = vec3(0);
 
     for (int i = 0; i < iterCount; i++)
     {
-        vec3 a = effect_loadFromSource_Centered(c + delta * i);
+        vec3 a = effect_loadFromSource_Centered(c - delta * i);
 
         color += a / float(iterCount);
     }
