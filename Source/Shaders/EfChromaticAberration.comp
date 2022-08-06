@@ -61,7 +61,7 @@ void main()
     vec2 c = effect_getCenteredFromPix(pix);
     vec2 offset = BASE_RADIUS * getProgress() * push.custom.intensity * c * dot(c, c);
 
-    int iterCount = MAX_ITERATIONS;
+    int iterCount = clamp(int(length(effect_getFramebufSize() * offset / 2.0)), 3, MAX_ITERATIONS);
     vec2 delta = offset / iterCount;
 
     vec3 color = vec3(0);
@@ -69,7 +69,7 @@ void main()
 
     for (int i = 0; i < iterCount; i++)
     {
-        vec3 a = effect_loadFromSource_Centered(c + delta * i);
+        vec3 a = effect_loadFromSource_Centered(c - delta * i);
         vec3 w = getAberrationColor((i + 0.5) / iterCount);
 
         color += a * w;
