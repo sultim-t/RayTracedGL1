@@ -258,7 +258,10 @@ void RTGL1::LightManager::Reset()
 
 static bool IsColorTooDim(const float c[3])
 {
-    return std::abs(c[0]) + std::abs(c[1]) + std::abs(c[2]) < RTGL1::MIN_COLOR_SUM;
+    return
+        std::max(c[0], 0.0f) +
+        std::max(c[1], 0.0f) + 
+        std::max(c[2], 0.0f) < RTGL1::MIN_COLOR_SUM;
 }
 
 RTGL1::LightArrayIndex RTGL1::LightManager::GetIndex(const RTGL1::ShLightEncoded &encodedLight) const
