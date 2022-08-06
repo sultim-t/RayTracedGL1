@@ -107,8 +107,9 @@ GLSL_TYPE_SIZES_STD_430 = {
 
 # These types are only for image format use!
 TYPE_UNORM8     = 3
-TYPE_UINT16     = 4
-TYPE_FLOAT16    = 5
+TYPE_UINT8      = 4
+TYPE_UINT16     = 5
+TYPE_FLOAT16    = 6
 TYPE_PACK_11    = 128   # R11G11B10
 TYPE_PACK_E5    = 129   # shared exponent, E5B9G9R9
 
@@ -122,6 +123,10 @@ VULKAN_IMAGE_FORMATS = {
     (TYPE_UNORM8,   COMPONENT_R):       "VK_FORMAT_R8_UNORM",
     (TYPE_UNORM8,   COMPONENT_RG):      "VK_FORMAT_R8G8_UNORM",
     (TYPE_UNORM8,   COMPONENT_RGBA):    "VK_FORMAT_R8G8B8A8_UNORM",
+
+    (TYPE_UINT8,    COMPONENT_R):       "VK_FORMAT_R8_UINT",
+    (TYPE_UINT8,    COMPONENT_RG):      "VK_FORMAT_R8G8_UINT",
+    (TYPE_UINT8,    COMPONENT_RGBA):    "VK_FORMAT_R8G8B8A8_UINT",
 
     (TYPE_UINT16,   COMPONENT_R):       "VK_FORMAT_R16_UINT",
     (TYPE_UINT16,   COMPONENT_RG):      "VK_FORMAT_R16G16_UINT",
@@ -151,6 +156,10 @@ GLSL_IMAGE_FORMATS = {
     (TYPE_UNORM8,   COMPONENT_RG):      "rg8",
     (TYPE_UNORM8,   COMPONENT_RGBA):    "rgba8",
 
+    (TYPE_UINT8,    COMPONENT_R):       "r8ui",
+    (TYPE_UINT8,    COMPONENT_RG):      "rg8ui",
+    (TYPE_UINT8,    COMPONENT_RGBA):    "rgba8ui",
+
     (TYPE_UINT16,   COMPONENT_R):       "r16ui",
     (TYPE_UINT16,   COMPONENT_RG):      "rg16ui",
     (TYPE_UINT16,   COMPONENT_RGBA):    "rgba16ui",
@@ -176,6 +185,7 @@ GLSL_IMAGE_2D_TYPE = {
     TYPE_INT32      : "iimage2D",
     TYPE_UINT32     : "uimage2D",
     TYPE_UNORM8     : "image2D",
+    TYPE_UINT8      : "uimage2D",
     TYPE_UINT16     : "uimage2D",
     TYPE_FLOAT16    : "image2D",
     TYPE_PACK_11    : "image2D",
@@ -187,6 +197,7 @@ GLSL_SAMPLER_2D_TYPE = {
     TYPE_INT32      : "isampler2D",
     TYPE_UINT32     : "usampler2D",
     TYPE_UNORM8     : "sampler2D",
+    TYPE_UINT8      : "usampler2D",
     TYPE_UINT16     : "usampler2D",
     TYPE_FLOAT16    : "sampler2D",
     TYPE_PACK_11    : "sampler2D",
@@ -799,6 +810,7 @@ if GRADIENT_ESTIMATION_ENABLED:
         "DISPingGradient"               : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
         "DISPongGradient"               : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
         "DISGradientHistory"            : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
+        "GradientPrevPix"               : (TYPE_UINT8,      COMPONENT_R,    FRAMEBUF_FLAGS_FORCE_SIZE_1_3),
     })
 
 

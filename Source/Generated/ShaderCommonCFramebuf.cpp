@@ -2,7 +2,7 @@
 
 #include "ShaderCommonCFramebuf.h"
 
-const uint32_t RTGL1::ShFramebuffers_Count = 74;
+const uint32_t RTGL1::ShFramebuffers_Count = 75;
 
 const VkFormat RTGL1::ShFramebuffers_Formats[] = 
 {
@@ -80,6 +80,7 @@ const VkFormat RTGL1::ShFramebuffers_Formats[] =
     VK_FORMAT_R8G8B8A8_UNORM,
     VK_FORMAT_R8G8B8A8_UNORM,
     VK_FORMAT_R8G8B8A8_UNORM,
+    VK_FORMAT_R8_UINT,
 };
 
 const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] = 
@@ -155,6 +156,7 @@ const RTGL1::FramebufferImageFlags RTGL1::ShFramebuffers_Flags[] =
     0,
     0,
     0,
+    RTGL1::FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3,
     RTGL1::FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3,
     RTGL1::FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3,
     RTGL1::FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3,
@@ -236,6 +238,7 @@ const uint32_t RTGL1::ShFramebuffers_Bindings[] =
     71,
     72,
     73,
+    74,
 };
 
 const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] = 
@@ -314,11 +317,11 @@ const uint32_t RTGL1::ShFramebuffers_BindingsSwapped[] =
     71,
     72,
     73,
+    74,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] = 
 {
-    74,
     75,
     76,
     77,
@@ -392,63 +395,64 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_Bindings[] =
     145,
     146,
     147,
+    148,
+    149,
 };
 
 const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] = 
 {
-    74,
-    76,
     75,
-    78,
     77,
-    80,
+    76,
     79,
-    82,
+    78,
     81,
+    80,
     83,
+    82,
     84,
     85,
     86,
     87,
     88,
-    90,
     89,
-    92,
     91,
-    94,
+    90,
     93,
-    96,
+    92,
     95,
+    94,
     97,
+    96,
     98,
     99,
     100,
     101,
     102,
-    104,
     103,
     105,
+    104,
     106,
-    108,
     107,
-    110,
     109,
-    112,
+    108,
     111,
+    110,
     113,
+    112,
     114,
     115,
-    117,
     116,
     118,
+    117,
     119,
-    121,
     120,
-    123,
     122,
-    125,
+    121,
     124,
+    123,
     126,
+    125,
     127,
     128,
     129,
@@ -462,14 +466,16 @@ const uint32_t RTGL1::ShFramebuffers_Sampler_BindingsSwapped[] =
     137,
     138,
     139,
-    141,
     140,
     142,
-    144,
+    141,
     143,
     145,
+    144,
     146,
     147,
+    148,
+    149,
 };
 
 const char *const RTGL1::ShFramebuffers_DebugNames[] = 
@@ -548,5 +554,6 @@ const char *const RTGL1::ShFramebuffers_DebugNames[] =
     "Framebuf DISPingGradient",
     "Framebuf DISPongGradient",
     "Framebuf DISGradientHistory",
+    "Framebuf GradientPrevPix",
 };
 

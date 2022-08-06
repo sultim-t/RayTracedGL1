@@ -85,6 +85,7 @@ enum FramebufferImageIndex
     FB_IMAGE_INDEX_D_I_S_PING_GRADIENT = 71,
     FB_IMAGE_INDEX_D_I_S_PONG_GRADIENT = 72,
     FB_IMAGE_INDEX_D_I_S_GRADIENT_HISTORY = 73,
+    FB_IMAGE_INDEX_GRADIENT_PREV_PIX = 74,
 };
 
 enum FramebufferImageFlagBits

@@ -48,21 +48,24 @@ void main()
     if (gradPix.x * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.x || gradPix.y * COMPUTE_ASVGF_STRATA_SIZE >= screenSize.y)
     {
         return;
-    } 
+    }
+
+    const uint prevStrataPos = imageLoad(framebufGradientPrevPix, gradPix).x;
     
     // (a) instead of choosing random sample in strata, choose the brightest
     ivec2 prevShadingPix = ivec2(0);
+    uint curStrataPos = 0;
     ivec2 curShadingPix = ivec2(0);
     vec2 prevLuminance = vec2(0);
     for (int yy = 0; yy < COMPUTE_ASVGF_STRATA_SIZE; yy++)
     {
         for (int xx = 0; xx < COMPUTE_ASVGF_STRATA_SIZE; xx++)
         {
-            // TODO: do not use same pos in strata for more than 1 frame, otherwise stale 
-            /*if (prevStrataPos.x == xx && prevStrataPos.y == yy)
+            // do not use same pos in strata for more than 1 frame, otherwise it's a bit stale
+            if (yy * COMPUTE_ASVGF_STRATA_SIZE + xx == prevStrataPos)
             {
                 continue;
-            }*/
+            }
 
             // done this way, so there are no duplicates in a strata (b)
             const ivec2 iter_curPix = gradPix * COMPUTE_ASVGF_STRATA_SIZE + ivec2(xx, yy);
@@ -75,6 +78,7 @@ void main()
                 // (b) prevShadingPix is a forward-projected pixel of curShadingPix
                 prevShadingPix = iter_prevPix;
                 curShadingPix = iter_curPix;
+                curStrataPos = yy * COMPUTE_ASVGF_STRATA_SIZE + xx;
                 // (e) luminance of a shading sample from previous frame
                 prevLuminance = iter_prevLuminance;
             }
@@ -86,6 +90,7 @@ void main()
         (prevLuminance.x <= 0.0 && prevLuminance.y <= 0.0))
     {
         imageStore(framebufDISPingGradient, gradPix, vec4(0.0));
+        imageStore(framebufGradientPrevPix, gradPix, uvec4(COMPUTE_ASVGF_STRATA_SIZE * COMPUTE_ASVGF_STRATA_SIZE + 1));
         return;
     }
 
@@ -155,6 +160,7 @@ void main()
     }
 
     imageStore(framebufDISPingGradient, gradPix, vec4(gradDIS, 0.0));
+    imageStore(framebufGradientPrevPix, gradPix, uvec4(curStrataPos));
 }
 
 
