@@ -183,7 +183,7 @@ struct ShGlobalUniform
     mat4 projection;
     mat4 invProjection;
     mat4 projectionPrev;
-    uint _unused0;
+    uint twirlPortalNormal;
     uint _unused1;
     uint _unused2;
     float renderWidth;

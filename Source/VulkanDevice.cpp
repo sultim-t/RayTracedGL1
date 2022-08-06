@@ -371,6 +371,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
     
         gu->noBackfaceReflForNoMediaChange = !!rr.disableBackfaceReflectionsForNoMediaChange;
+
+        gu->twirlPortalNormal = !!rr.portalNormalTwirl;
     }
     else
     {
@@ -394,6 +396,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->waterTextureAreaScale = 1.0f;
 
         gu->noBackfaceReflForNoMediaChange = false;
+
+        gu->twirlPortalNormal = false;
     }
 
     gu->rayCullBackFaces = rayCullBackFacingTriangles ? 1 : 0;

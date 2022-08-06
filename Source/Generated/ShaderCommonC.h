@@ -187,7 +187,7 @@ struct ShGlobalUniform
     float projection[16];
     float invProjection[16];
     float projectionPrev[16];
-    uint32_t _unused0;
+    uint32_t twirlPortalNormal;
     uint32_t _unused1;
     uint32_t _unused2;
     float renderWidth;

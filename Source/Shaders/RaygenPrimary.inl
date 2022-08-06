@@ -211,6 +211,43 @@ vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalG
     return basis * n;   
 }
 
+mat3 lookAt(const vec3 forward, const vec3 worldUp)
+{
+    vec3 right = cross(forward, worldUp);
+    vec3 up = cross(right, forward);
+
+    return mat3(right, up, forward);
+}
+
+vec3 getPortalNormal(const vec3 baseNormal, const vec3 inWorldOffset)
+{
+    if (globalUniform.twirlPortalNormal == 0)
+    {
+        return -baseNormal;
+    }
+
+    float phaseScale = 3;
+    float timeScale = 3;
+    float waveScale = 0.005;
+    float tm = mod(timeScale * globalUniform.time, M_PI * 2);
+
+    const mat3 inLookAt_Plain = lookAt(-baseNormal, globalUniform.worldUpVector.xyz);
+    const vec2 localOffset_Plain = vec2(dot(inWorldOffset, inLookAt_Plain[0]), 
+                                        dot(inWorldOffset, inLookAt_Plain[1]));
+
+    float distance = length(localOffset_Plain);
+    float angle = atan(localOffset_Plain.y, localOffset_Plain.x);
+
+    float phase = sin(phaseScale * sqrt(distance) + angle + tm) + 1.0;
+    phase *= waveScale;
+    // less weight around center
+    phase *= clamp(distance / 20, 0, 1); 
+
+    vec3 localN = { phase, phase, 1.0 };
+
+    return inLookAt_Plain * normalize(localN);
+}
+
 bool isBackface(const vec3 normalGeom, const vec3 rayDir)
 {
     return dot(normalGeom, -rayDir) < 0.0;
@@ -314,14 +351,6 @@ void main()
 
 
 #ifdef RAYGEN_REFL_REFR_SHADER
-mat3 lookAt(const vec3 forward, const vec3 worldUp)
-{
-    vec3 right = cross(forward, worldUp);
-    vec3 up = cross(right, forward);
-
-    return mat3(right, up, forward);
-}
-
 void main() 
 {
     if (globalUniform.reflectRefractMaxDepth == 0)
@@ -471,7 +500,9 @@ void main()
             const ShPortalInstance portal = g_portals[h.portalIndex];
 
             const vec3 inCenter = portal.inPosition.xyz;
-            const mat3 inLookAt = lookAt(-h.normal, globalUniform.worldUpVector.xyz);
+            const vec3 inWorldOffset = h.hitPosition - inCenter;
+
+            mat3 inLookAt = lookAt(getPortalNormal(normal, inWorldOffset), globalUniform.worldUpVector.xyz);
 
             const vec3 outCenter = portal.outPosition.xyz;
             const mat3 outLookAt = lookAt(portal.outDirection.xyz, 
@@ -480,7 +511,6 @@ void main()
             // to local space; then to world space but at portal output
             rayDir = outLookAt * (transpose(inLookAt) * rayDir);
 
-            const vec3 inWorldOffset = h.hitPosition - inCenter;
             const vec2 localOffset = vec2(dot(inWorldOffset, inLookAt[0]), 
                                           dot(inWorldOffset, inLookAt[1]));
 

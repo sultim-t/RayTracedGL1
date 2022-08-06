@@ -1096,6 +1096,8 @@ typedef struct RgDrawFrameReflectRefractParams
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
     RgBool32    disableBackfaceReflectionsForNoMediaChange;
+    // If true, portal normal will be twirled around its 'inPosition'.
+    RgBool32    portalNormalTwirl;
 } RgDrawFrameReflectRefractParams;
 
 typedef enum RgRenderUpscaleTechnique
