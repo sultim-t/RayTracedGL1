@@ -69,7 +69,6 @@ set(Sources
     "Source/UserFunction.cpp"    
     "Source/RgException.cpp"
     "Source/Bloom.cpp"
-    "Source/SuperResolution.cpp"
     "Source/Sharpening.cpp"
     "Source/DLSS.cpp"
     "Source/HaltonSequence.cpp"

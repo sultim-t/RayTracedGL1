@@ -67,8 +67,6 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CBloomUpsample",          "CmBloomUpsample.comp.spv"             },
     {"CBloomApply",             "CmBloomApply.comp.spv"                },
     {"CCheckerboard",           "CmCheckerboard.comp.spv"              },
-    {"CFsrEasu",                "CmFsrEasu.comp.spv"                   },
-    {"CFsrRcas",                "CmFsrRcas.comp.spv"                   },
     {"CCas",                    "CmCas.comp.spv"                       },
     {"VertLensFlare",           "RsRasterizerLensFlare.vert.spv"       },
     {"FragLensFlare",           "RsRasterizerLensFlare.frag.spv"       },
