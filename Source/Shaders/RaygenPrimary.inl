@@ -254,8 +254,7 @@ void main()
     const vec3 cameraRayDirAX = getRayDirAX(inUV);
     const vec3 cameraRayDirAY = getRayDirAY(inUV);
 
-    const uint randomSeed = getRandomSeed(pix, globalUniform.frameId, globalUniform.renderWidth, globalUniform.renderHeight);
-    imageStore(framebufRandomSeed, pix, uvec4(randomSeed));
+    const uint randomSeed = getRandomSeed(pix, globalUniform.frameId);
     
     
     const ShPayload primaryPayload = tracePrimaryRay(cameraOrigin, cameraRayDir);

@@ -22,7 +22,6 @@
 
 #include "ShaderManager.h"
 #include "GlobalUniform.h"
-#include "Framebuffers.h"
 #include "BlueNoise.h"
 #include "LightManager.h"
 
@@ -35,7 +34,6 @@ namespace RTGL1
             VkDevice device,
             const std::shared_ptr<ShaderManager> &shaderManager,
             const std::shared_ptr<GlobalUniform> &uniform,
-            const std::shared_ptr<Framebuffers> &framebuffers,
             const std::shared_ptr<BlueNoise> &blueNoise,
             const std::shared_ptr<LightManager> &lightManager);
         ~LightGrid() override;
@@ -48,7 +46,6 @@ namespace RTGL1
         void Build(
             VkCommandBuffer cmd, uint32_t frameIndex, 
             const std::shared_ptr<GlobalUniform> &uniform,
-            const std::shared_ptr<Framebuffers> &framebuffers,
             const std::shared_ptr<BlueNoise> &blueNoise,
             const std::shared_ptr<LightManager> &lightManager);
 

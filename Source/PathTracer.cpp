@@ -99,7 +99,6 @@ void PathTracer::TracePrimaryRays(const TraceParams &params)
     typedef FramebufferImageIndex FI;
     FI fs[] =
     {
-        FI::FB_IMAGE_INDEX_RANDOM_SEED,
         FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_NORMAL,
         FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
@@ -153,7 +152,6 @@ void PathTracer::CalculateInitialReservoirs(const TraceParams& params)
     typedef FramebufferImageIndex FI;
     FI fs[] =
     {
-        FI::FB_IMAGE_INDEX_RANDOM_SEED,
         FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,

@@ -115,8 +115,7 @@ vec3 effect_loadFromSource_Centered(vec2 centered)
 #ifdef DESC_SET_RANDOM
 vec4 effect_getRandomSample(ivec2 pix, uint frameIndex)
 {
-    ivec2 sz = effect_getFramebufSize();
-    return rndBlueNoise8(getRandomSeed(pix, frameIndex, sz.x, sz.y), RANDOM_SALT_POSTEFFECT);
+    return rndBlueNoise8(getRandomSeed(pix, frameIndex), RANDOM_SALT_POSTEFFECT);
 }
 #endif
 

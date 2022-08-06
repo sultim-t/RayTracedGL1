@@ -237,7 +237,7 @@ void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface
 void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
-    const uint seed = getCurrentRandomSeed(pix);
+    const uint seed = getRandomSeed(pix, globalUniform.frameId);
 
     Surface surf = fetchGbufferSurface(pix);
     surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;

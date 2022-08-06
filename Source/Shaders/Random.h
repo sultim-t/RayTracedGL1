@@ -253,24 +253,25 @@ float rnd16(uint seed, uint salt)
     return float(rnd) / float((1 << 16) - 1);
 }
 
-uint getCurrentRandomSeed(const ivec2 pix)
-{
-    return texelFetch(framebufRandomSeed_Sampler, pix, 0).x;
+// https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
+uvec3 murmurHash33(uvec3 src) {
+    const uint M = 0x5bd1e995u;
+    uvec3 h = uvec3(1190494759u, 2147483647u, 3559788179u);
+    src *= M; src ^= src>>24u; src *= M;
+    h *= M; h ^= src.x; h *= M; h ^= src.y; h *= M; h ^= src.z;
+    h ^= h>>13u; h *= M; h ^= h>>15u;
+    return h;
 }
 
-uint getRandomSeed(const ivec2 pix, uint frameIndex, float screenWidth, float screenHeight)
+uint getRandomSeed(const ivec2 pix, uint frameIndex)
 {
-    uint idX = pix.x / BLUE_NOISE_TEXTURE_SIZE;
-    uint idY = pix.y / BLUE_NOISE_TEXTURE_SIZE;
+    uvec3 hash = murmurHash33(uvec3(pix.x, pix.y, frameIndex));
 
-    uint countX = uint(ceil(screenWidth / BLUE_NOISE_TEXTURE_SIZE));
-    uint countY = uint(ceil(screenHeight / BLUE_NOISE_TEXTURE_SIZE));
-
-    uint texIndex = idY * countX + idX;
-    texIndex = (texIndex + frameIndex) % BLUE_NOISE_TEXTURE_COUNT;
-    
-    uvec2 offset = uvec2(pix.x % BLUE_NOISE_TEXTURE_SIZE,
-                         pix.y % BLUE_NOISE_TEXTURE_SIZE);
+    uvec2 offset = uvec2(
+        hash.x % BLUE_NOISE_TEXTURE_SIZE,
+        hash.y % BLUE_NOISE_TEXTURE_SIZE
+    );
+    uint texIndex = hash.z % BLUE_NOISE_TEXTURE_COUNT;
 
     return packRandomSeed(texIndex, offset);
 }

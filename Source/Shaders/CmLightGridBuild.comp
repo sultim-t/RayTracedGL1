@@ -21,9 +21,8 @@
 #version 460
 
 #define DESC_SET_GLOBAL_UNIFORM 0
-#define DESC_SET_FRAMEBUFFERS 1
-#define DESC_SET_RANDOM 2
-#define DESC_SET_LIGHT_SOURCES 3
+#define DESC_SET_RANDOM 1
+#define DESC_SET_LIGHT_SOURCES 2
 #define LIGHT_GRID_WRITE
 #include "ShaderCommonGLSLFunc.h"
 #include "Reservoir.h"
@@ -51,15 +50,7 @@ void main()
     const vec3 cellCenter = cellToWorld(cellIndex);
     const float cellRadius = getCellRadius();
 
-    // TODO: change seed generation!
-    uint seed;
-    { 
-        ivec2 p;
-
-        p.x = arrayIndex % int(globalUniform.renderWidth);
-        p.y = arrayIndex / int(globalUniform.renderHeight);
-        seed = texelFetch(framebufRandomSeed_Sampler, p, 0).x;
-    }
+    const uint seed = getRandomSeed(ivec2(arrayIndex, 0), globalUniform.frameId);
     uint salt = RANDOM_SALT_LIGHT_GRID_BASE;
 
     Reservoir regularReservoir = emptyReservoir();

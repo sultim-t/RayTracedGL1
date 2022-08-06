@@ -28,7 +28,6 @@ RTGL1::LightGrid::LightGrid(
     VkDevice _device,
     const std::shared_ptr<ShaderManager> &_shaderManager,
     const std::shared_ptr<GlobalUniform> &_uniform,
-    const std::shared_ptr<Framebuffers> &_framebuffers,
     const std::shared_ptr<BlueNoise> &_blueNoise,
     const std::shared_ptr<LightManager> &_lightManager
 )
@@ -39,7 +38,6 @@ RTGL1::LightGrid::LightGrid(
     VkDescriptorSetLayout setLayouts[] =
     {
         _uniform->GetDescSetLayout(),
-        _framebuffers->GetDescSetLayout(),
         _blueNoise->GetDescSetLayout(),
         _lightManager->GetDescSetLayout()
     };
@@ -67,11 +65,9 @@ RTGL1::LightGrid::~LightGrid()
 void RTGL1::LightGrid::Build(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     const std::shared_ptr<GlobalUniform> &uniform,
-    const std::shared_ptr<Framebuffers> &framebuffers, 
     const std::shared_ptr<BlueNoise> &blueNoise,
     const std::shared_ptr<LightManager> &lightManager)
 {
-    typedef FramebufferImageIndex FI;
     CmdLabel label(cmd, "Light grid build");
 
 
@@ -81,7 +77,6 @@ void RTGL1::LightGrid::Build(
     VkDescriptorSet sets[] =
     {
         uniform->GetDescSet(frameIndex),
-        framebuffers->GetDescSet(frameIndex),
         blueNoise->GetDescSet(),
         lightManager->GetDescSet(frameIndex),
     };

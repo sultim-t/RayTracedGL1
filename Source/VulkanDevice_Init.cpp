@@ -160,7 +160,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device,
         shaderManager,
         uniform,
-        framebuffers,
         blueNoise,
         scene->GetLightManager());
 

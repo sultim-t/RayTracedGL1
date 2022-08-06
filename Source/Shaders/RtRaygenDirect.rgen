@@ -36,7 +36,7 @@
 void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
-    const uint seed = getCurrentRandomSeed(pix);
+    const uint seed = getRandomSeed(pix, globalUniform.frameId);
 
     const Surface surf = fetchGbufferSurface(pix);
 

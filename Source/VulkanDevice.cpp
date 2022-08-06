@@ -518,7 +518,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     if (raysCanBeTraced)
     {
-        lightGrid->Build(cmd, frameIndex, uniform, framebuffers, blueNoise, scene->GetLightManager());
+        lightGrid->Build(cmd, frameIndex, uniform, blueNoise, scene->GetLightManager());
 
         decalManager->SubmitForFrame(cmd, frameIndex);
         portalList->SubmitForFrame(cmd, frameIndex);

@@ -90,7 +90,7 @@ void main()
     }
 
     // (f) get shading sample from current frame
-    const uint oldSeed = texelFetch(framebufRandomSeed_Prev_Sampler, prevShadingPix, 0).r;
+    const uint oldSeed = getRandomSeed(prevShadingPix, globalUniform.frameId - 1);
 
     Surface prevSurf = fetchGbufferSurface_NoAlbedoViewDir_Prev(prevShadingPix);
 
