@@ -41,7 +41,7 @@ void getPixAndDepthFromWorldPoint(const vec3 position, out ivec2 pix, out float 
 
     vec2 screenSpace = ndc.xy * 0.5 + 0.5;
     vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
-    pix = ivec2(floor(screenSpace * screenSize));
+    pix = ivec2(round(screenSpace * screenSize));
 }
 
 
@@ -51,7 +51,7 @@ void getPixAndDepthFromScreenPoint(const vec3 screenSpacePosition, out ivec2 pix
 
     // screenSpacePosition.xy is in [0..1]
     vec2 screenSize = vec2(globalUniform.renderWidth, globalUniform.renderHeight);
-    pix = ivec2(floor(screenSpacePosition.xy * screenSize));
+    pix = ivec2(round(screenSpacePosition.xy * screenSize));
 }
 
 
@@ -88,7 +88,12 @@ void main()
     
     float occluderDepth = texelFetch(framebufDepth_Sampler, getCheckerboardPix(pix), 0).w;
 
-    if (depth < occluderDepth + 0.00001 || globalUniform.areFramebufsInitedByRT == 0)
+    if ((
+        depth < occluderDepth + 0.00001 && 
+        all(greaterThan(pix, ivec2(0))) &&
+        all(lessThan(pix, ivec2(globalUniform.renderWidth, globalUniform.renderHeight)))
+        )
+        || globalUniform.areFramebufsInitedByRT == 0)
     {
         uint lensFlareDrawCmdIndex = atomicAdd(lensFlareDrawCmdsCount, 1);
         lensFlareDrawCmds[lensFlareDrawCmdIndex] = l;
