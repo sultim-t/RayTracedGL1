@@ -476,7 +476,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,     44,      "invProjection",                1),
     (TYPE_FLOAT32,     44,      "projectionPrev",               1),
 
-    (TYPE_UINT32,       1,      "twirlPortalNormal",            1),
+    (TYPE_UINT32,       1,      "_unused0",                     1),
     (TYPE_UINT32,       1,      "_unused1",                     1),
     (TYPE_UINT32,       1,      "_unused2",                     1),
     (TYPE_FLOAT32,      1,      "renderWidth",                  1),
@@ -558,7 +558,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "rayCullMaskWorld_Shadow",          1),
     (TYPE_UINT32,       1,      "lensFlareCullingInputCount",       1),
     (TYPE_UINT32,       1,      "applyViewProjToLensFlares",        1),
-    (TYPE_UINT32,       1,      "areFramebufsInitedByRT",           1),
+    (TYPE_UINT32,       1,      "twirlPortalNormal",                1),
 
     (TYPE_UINT32,       1,      "lightIndexIgnoreFPVShadows",       1),
     (TYPE_FLOAT32,      1,      "_pad1",                            1),

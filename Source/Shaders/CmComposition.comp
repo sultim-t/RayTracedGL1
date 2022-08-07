@@ -91,7 +91,7 @@ void main()
     const vec4 albedo4 = texelFetchAlbedo(getCheckerboardPix(pix));
     
     // if not sky
-    if (globalUniform.areFramebufsInitedByRT != 0 && !isSky(albedo4))
+    if (!isSky(albedo4))
     {
         color *= getExposure();
         //color = reinhard(color);
@@ -102,7 +102,7 @@ void main()
     }
     else
     {
-        const vec3 throughput = globalUniform.areFramebufsInitedByRT != 0 ? texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb : vec3(1.0);
+        const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
 
         color = albedo4.rgb * throughput;
     }

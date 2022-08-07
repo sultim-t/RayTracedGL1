@@ -210,7 +210,6 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
                                   const float *view, const float *proj,
                                   const RgFloat2D &jitter,
                                   const RenderResolutionHelper &renderResolution,
-                                  bool werePrimaryTraced,
                                   const RgDrawFrameLensFlareParams *pLensFlareParams)
 {
     CmdLabel label(cmd, "Rasterized to final framebuf");
@@ -231,7 +230,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
 
 
     // copy depth buffer
-    rasterPass->PrepareForFinal(cmd, frameIndex, storageFramebuffers, werePrimaryTraced);
+    rasterPass->PrepareForFinal(cmd, frameIndex, storageFramebuffers);
 
 
     float jitterredProj[16];

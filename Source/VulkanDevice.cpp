@@ -492,11 +492,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
 
     // submit geometry and upload uniform after getting data from a scene
-    const bool raysCanBeTraced = scene->SubmitForFrame(cmd, frameIndex, uniform, 
-                                                       uniform->GetData()->rayCullMaskWorld, 
-                                                       allowGeometryWithSkyFlag, 
-                                                       drawInfo.pReflectRefractParams ? drawInfo.pReflectRefractParams->isReflRefrAlphaTested : false,
-                                                       drawInfo.disableRayTracing);
+    scene->SubmitForFrame(cmd, frameIndex, uniform, 
+                          uniform->GetData()->rayCullMaskWorld, 
+                          allowGeometryWithSkyFlag, 
+                          drawInfo.pReflectRefractParams ? drawInfo.pReflectRefractParams->isReflRefrAlphaTested : false,
+                          drawInfo.disableRayTracing);
 
 
     framebuffers->PrepareForSize(renderResolution.GetResolutionState());
@@ -517,10 +517,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    assert(!!(uniform->GetData()->areFramebufsInitedByRT) == raysCanBeTraced);
-
-
-    if (raysCanBeTraced)
     {
         lightGrid->Build(cmd, frameIndex, uniform, blueNoise, scene->GetLightManager());
 
@@ -575,7 +571,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection,
                                      jitter, renderResolution,
-                                     raysCanBeTraced, drawInfo.pLensFlareParams);
+                                     drawInfo.pLensFlareParams);
     }
 
 

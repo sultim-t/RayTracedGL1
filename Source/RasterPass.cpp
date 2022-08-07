@@ -79,15 +79,14 @@ RTGL1::RasterPass::~RasterPass()
 
 void RTGL1::RasterPass::PrepareForFinal(
     VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<Framebuffers> &storageFramebuffers, 
-    bool werePrimaryTraced)
+    const std::shared_ptr<Framebuffers> &storageFramebuffers)
 {
     assert(rasterWidth > 0 && rasterHeight > 0);
 
     // firstly, copy data from storage buffer to depth buffer,
     // and only after getting correct depth buffer, draw the geometry
     // if no primary rays were traced, just clear depth buffer without copying
-    depthCopying->Process(cmd, frameIndex, storageFramebuffers, rasterWidth, rasterHeight, !werePrimaryTraced);
+    depthCopying->Process(cmd, frameIndex, storageFramebuffers, rasterWidth, rasterHeight, false);
 }
 
 void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t renderHeight,

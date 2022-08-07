@@ -187,7 +187,7 @@ struct ShGlobalUniform
     float projection[16];
     float invProjection[16];
     float projectionPrev[16];
-    uint32_t twirlPortalNormal;
+    uint32_t _unused0;
     uint32_t _unused1;
     uint32_t _unused2;
     float renderWidth;
@@ -251,7 +251,7 @@ struct ShGlobalUniform
     uint32_t rayCullMaskWorld_Shadow;
     uint32_t lensFlareCullingInputCount;
     uint32_t applyViewProjToLensFlares;
-    uint32_t areFramebufsInitedByRT;
+    uint32_t twirlPortalNormal;
     uint32_t lightIndexIgnoreFPVShadows;
     float _pad1;
     float _pad2;

@@ -48,9 +48,8 @@ public:
     Scene& operator=(Scene&& other) noexcept = delete;
 
     void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
-    // Return true if TLAS was built
-    bool SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform,
-                        uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, bool disableRayTracing);
+    void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform,
+                        uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, bool disableRTGeometry);
 
     bool Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
     bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);

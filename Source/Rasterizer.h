@@ -73,7 +73,7 @@ public:
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
     void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const float *view, const float skyViewerPos[3], const float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution);
-    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const float *view, const float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution, bool werePrimaryTraced, const RgDrawFrameLensFlareParams *pLensFlareParams);
+    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const float *view, const float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution, const RgDrawFrameLensFlareParams *pLensFlareParams);
     void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex imageToDrawIn, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
     
     void OnShaderReload(const ShaderManager *shaderManager) override;

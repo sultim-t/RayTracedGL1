@@ -53,7 +53,7 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
     {
         const vec4 albedo4 = textureLodAlbedo(uv);
         
-        if (globalUniform.areFramebufsInitedByRT != 0 && !isSky(albedo4))
+        if (!isSky(albedo4))
         {
             vec3 emis = albedo4.rgb;
             emis = mix(vec3(getLuminance(emis)), emis, 1.0 + globalUniform.bloomEmissionSaturationBias);

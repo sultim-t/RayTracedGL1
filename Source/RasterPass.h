@@ -45,8 +45,7 @@ public:
     RasterPass &operator=(RasterPass &&other) noexcept = delete;
 
     void PrepareForFinal(VkCommandBuffer cmd, uint32_t frameIndex,
-                         const std::shared_ptr<Framebuffers> &storageFramebuffers,
-                         bool werePrimaryTraced);
+                         const std::shared_ptr<Framebuffers> &storageFramebuffers);
 
     void CreateFramebuffers(uint32_t renderWidth, uint32_t renderHeight, 
                             const std::shared_ptr<Framebuffers> &storageFramebuffers,

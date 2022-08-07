@@ -124,6 +124,8 @@ ASManager::ASManager(
     VkDeviceSize instanceBufferSize = MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof(VkAccelerationStructureInstanceKHR);
     instanceBuffer->Create(instanceBufferSize, VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR, "TLAS instance buffer");
 
+    static_assert(std::size(TLASPrepareResult{}.instances) == MAX_TOP_LEVEL_INSTANCE_COUNT);
+
 
     CreateDescriptors();
 
@@ -908,25 +910,27 @@ static void WriteInstanceGeomInfo(int32_t *instanceGeomInfoOffset, int32_t *inst
     instanceGeomCount[index] = geomCount;
 }
 
-void ASManager::PrepareForBuildingTLAS(
+std::pair<ASManager::TLASPrepareResult, ShVertPreprocessing> ASManager::PrepareForBuildingTLAS(
     uint32_t frameIndex,
     ShGlobalUniform &uniformData,
     uint32_t uniformData_rayCullMaskWorld,
     bool allowGeometryWithSkyFlag,
     bool isReflRefrAlphaTested,
-    ShVertPreprocessing *outPush,
-    TLASPrepareResult *outResult) const
+    bool disableRTGeometry) const
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
-    static_assert(sizeof(TLASPrepareResult::instances) / sizeof(TLASPrepareResult::instances[0]) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Change TLASPrepareResult sizes");
+    static_assert(std::size(TLASPrepareResult{}.instances) == MAX_TOP_LEVEL_INSTANCE_COUNT, "Change TLASPrepareResult sizes");
 
 
-    *outResult = {};
-    *outPush = {};
+    TLASPrepareResult r = {};
+    ShVertPreprocessing push = {};
 
 
-    auto &r = *outResult;
+    if (disableRTGeometry)
+    {
+        return std::make_pair(r, push);
+    }
 
 
     // write geometry offsets to uniform to access geomInfos
@@ -957,7 +961,7 @@ void ASManager::PrepareForBuildingTLAS(
                 // mark bit if dynamic
                 if (isDynamic)
                 {
-                    outPush->tlasInstanceIsDynamicBits[r.instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
+                    push.tlasInstanceIsDynamicBits[ r.instanceCount / MAX_TOP_LEVEL_INSTANCE_COUNT] |= 1 << (r.instanceCount % MAX_TOP_LEVEL_INSTANCE_COUNT);
                 }
 
                 WriteInstanceGeomInfo(instanceGeomInfoOffset, instanceGeomCount, r.instanceCount, *blas);
@@ -966,31 +970,28 @@ void ASManager::PrepareForBuildingTLAS(
         }
     }
 
-    outPush->tlasInstanceCount = r.instanceCount;
+    push.tlasInstanceCount = r.instanceCount;
+
+    return std::make_pair(r, push);
 }
 
 void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult &r)
 {
-    assert(!r.IsEmpty());
-    if (r.IsEmpty())
-    {
-        return;
-    }
-
-
     CmdLabel label(cmd, "Building TLAS");
 
 
-    // fill buffer
-    auto *mapped = (VkAccelerationStructureInstanceKHR*)instanceBuffer->GetMapped(frameIndex);
+    if (r.instanceCount > 0)
+    {
+        // fill buffer
+        auto *mapped = (VkAccelerationStructureInstanceKHR*)instanceBuffer->GetMapped(frameIndex);
 
-    memcpy(mapped, r.instances, r.instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
+        memcpy(mapped, r.instances, r.instanceCount * sizeof(VkAccelerationStructureInstanceKHR));
 
-    instanceBuffer->CopyFromStaging(cmd, frameIndex);
+        instanceBuffer->CopyFromStaging(cmd, frameIndex);
+    }
 
 
     TLASComponent *pCurrentTLAS = tlas[frameIndex].get();
-    uint32_t instanceCount = r.instanceCount;
 
 
     VkAccelerationStructureGeometryKHR instGeom = {};
@@ -1000,16 +1001,16 @@ void ASManager::BuildTLAS(VkCommandBuffer cmd, uint32_t frameIndex, const TLASPr
     auto &instData = instGeom.geometry.instances;
     instData.sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR;
     instData.arrayOfPointers = VK_FALSE;
-    instData.data.deviceAddress = instanceBuffer->GetDeviceAddress();
+    instData.data.deviceAddress = r.instanceCount > 0 ? instanceBuffer->GetDeviceAddress() : 0;
 
     // get AS size and create buffer for AS
-    VkAccelerationStructureBuildSizesInfoKHR buildSizes = asBuilder->GetTopBuildSizes(&instGeom, instanceCount, false);
+    VkAccelerationStructureBuildSizesInfoKHR buildSizes = asBuilder->GetTopBuildSizes(&instGeom, r.instanceCount, false);
 
     // if previous buffer's size is not enough
     pCurrentTLAS->RecreateIfNotValid(buildSizes, allocator);
 
     VkAccelerationStructureBuildRangeInfoKHR range = {};
-    range.primitiveCount = instanceCount;
+    range.primitiveCount = r.instanceCount;
 
 
     // build

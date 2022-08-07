@@ -41,11 +41,6 @@ public:
     {
         VkAccelerationStructureInstanceKHR instances[45];
         uint32_t instanceCount;
-
-        bool IsEmpty() const
-        {
-            return instanceCount == 0;
-        }
     };
 
 public:
@@ -91,14 +86,13 @@ public:
 
     // Prepare data for building TLAS.
     // Also fill uniform with current state.
-    void PrepareForBuildingTLAS(
+    std::pair<TLASPrepareResult, ShVertPreprocessing> PrepareForBuildingTLAS(
         uint32_t frameIndex,
         ShGlobalUniform &uniformData,
         uint32_t uniformData_rayCullMaskWorld,
         bool allowGeometryWithSkyFlag,
         bool isReflRefrAlphaTested,
-        ShVertPreprocessing *outPush,
-        TLASPrepareResult *outResult) const;
+        bool disableRTGeometry) const;
     void BuildTLAS(
         VkCommandBuffer cmd, uint32_t frameIndex, 
         const TLASPrepareResult &info);

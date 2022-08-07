@@ -66,8 +66,8 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     asManager->BeginDynamicGeometry(cmd, frameIndex);
 }
 
-bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, 
-                           uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, bool disableRayTracing)
+void Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, 
+                           uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, bool disableRTGeometry)
 {
     uint32_t preprocMode = submittedStaticInCurrentFrame ? VERT_PREPROC_MODE_ALL : 
                            toResubmitMovable             ? VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE : 
@@ -97,27 +97,18 @@ bool Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     triangleInfoMgr->CopyFromStaging(cmd, frameIndex);
 
 
-    ShVertPreprocessing push = {};
-    ASManager::TLASPrepareResult prepare = {};
-
-    asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, isReflRefrAlphaTested, &push, &prepare);
+    // prepare tlas infos, and fill uniform with info about that tlas
+    const auto [prepare, push] = 
+        asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, isReflRefrAlphaTested, disableRTGeometry);
 
     // upload uniform data
-    uniform->GetData()->areFramebufsInitedByRT = !prepare.IsEmpty() && !disableRayTracing;
     uniform->Upload(cmd, frameIndex);
     
     
     vertPreproc->Preprocess(cmd, frameIndex, preprocMode, uniform, asManager, push);
-
-
-    if (prepare.IsEmpty())
-    {
-        return false;
-    }
-
+    
 
     asManager->BuildTLAS(cmd, frameIndex, prepare);
-    return !disableRayTracing;
 }
 
 bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
