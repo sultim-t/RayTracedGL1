@@ -574,6 +574,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection,
+                                     jitter, renderResolution,
                                      raysCanBeTraced, drawInfo.pLensFlareParams);
     }
 

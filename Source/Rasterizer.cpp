@@ -156,8 +156,18 @@ void Rasterizer::DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex,
     }
 }
 
+namespace
+{
+    void ApplyJitter(float *jitterredProj, const float *originalProj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution)
+    {
+        memcpy(jitterredProj, originalProj, 16 * sizeof(float));
+        jitterredProj[2 * 4 + 0] += jitter.data[0] / (float)renderResolution.Width();
+        jitterredProj[2 * 4 + 1] += jitter.data[1] / (float)renderResolution.Height();
+    }
+}
+
 void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, 
-                                 float *view, const float skyViewerPos[3], float *proj, 
+                                 const float *view, const float skyViewerPos[3], const float *proj,
                                  const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution)
 {
     CmdLabel label(cmd, "Rasterized sky to albedo framebuf");
@@ -169,9 +179,7 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
     Matrix::SetNewViewerPosition(skyView, view, skyViewerPos);
 
     float jitterredProj[16];
-    memcpy(jitterredProj, proj, 16 * sizeof(float));
-    jitterredProj[2 * 4 + 0] += jitter.data[0] / (float)renderResolution.Width();
-    jitterredProj[2 * 4 + 1] += jitter.data[1] / (float)renderResolution.Height();
+    ApplyJitter(jitterredProj, proj, jitter, renderResolution);
 
     float defaultSkyViewProj[16];
     Matrix::Multiply(defaultSkyViewProj, skyView, jitterredProj);
@@ -199,7 +207,9 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
 
 void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, 
                                   const std::shared_ptr<TextureManager> &textureManager, 
-                                  float *view, float *proj,
+                                  const float *view, const float *proj,
+                                  const RgFloat2D &jitter,
+                                  const RenderResolutionHelper &renderResolution,
                                   bool werePrimaryTraced,
                                   const RgDrawFrameLensFlareParams *pLensFlareParams)
 {
@@ -224,8 +234,12 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
     rasterPass->PrepareForFinal(cmd, frameIndex, storageFramebuffers, werePrimaryTraced);
 
 
+    float jitterredProj[16];
+    ApplyJitter(jitterredProj, proj, jitter, renderResolution);
+
+
     float defaultViewProj[16];
-    Matrix::Multiply(defaultViewProj, view, proj);
+    Matrix::Multiply(defaultViewProj, view, jitterredProj);
 
     const DrawParams params =
     {
