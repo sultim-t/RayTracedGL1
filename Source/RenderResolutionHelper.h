@@ -168,19 +168,16 @@ public:
 
     float GetMipLodBias(float nativeBias = 0.0f) const
     {
+        // softer if none
+        if (!IsUpscaleEnabled())
+        {
+            return nativeBias;
+        }
+
         // DLSS Programming Guide, Section 3.5
         float ratio = (float)Width() / (float)UpscaledWidth();
         float bias =  nativeBias + std::log2(std::max(0.01f, ratio)) - 1.0f;
-
-        if (bias < 0)
-        {
-            // softer if none
-            if (!IsUpscaleEnabled())
-            {
-                bias *= 0.5f;
-            }
-        }
-
+        
         return bias;
     }
 
