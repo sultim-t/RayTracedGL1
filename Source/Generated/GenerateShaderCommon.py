@@ -743,7 +743,9 @@ FRAMEBUFFERS = {
     "Normal"                            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "Depth"                             : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "DepthWorld"                        : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
+    "DepthGrad"                         : (TYPE_FLOAT16,    COMPONENT_R,    0),
+    "DepthNdc"                          : (TYPE_FLOAT16,    COMPONENT_R,    0),
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredDirect"                  : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredSpecular"                : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
@@ -764,7 +766,6 @@ FRAMEBUFFERS = {
     "UpscaledPong"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  #       src for WipeEffectSource 
     "UpscaledHistory"                   : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV    | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  # for storing prev frame
 
-    "DepthDlss"                         : (TYPE_FLOAT32,    COMPONENT_R,    0),
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),
 
     "AccumHistoryLength"                : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),

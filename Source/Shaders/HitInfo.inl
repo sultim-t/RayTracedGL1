@@ -167,8 +167,7 @@ ShHitInfo getHitInfoWithRayCone_ReflectionRefraction(
     const vec3 rayOrig, const vec3 rayDir, const vec3 viewDir,
     in out vec3 virtualPosForMotion,
     out float rayLen,
-    out vec2 motion, out float motionDepthLinear, 
-    in out vec2 gradDepth,
+    out vec2 motion, out float motionDepthLinear,
     out float screenEmission)
 
 #elif defined(HITINFO_INL_INDIR)

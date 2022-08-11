@@ -165,7 +165,7 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
     FI rs[] =
     {
         FI::FB_IMAGE_INDEX_FINAL,
-        FI::FB_IMAGE_INDEX_DEPTH_DLSS,
+        FI::FB_IMAGE_INDEX_DEPTH_NDC,
         FI::FB_IMAGE_INDEX_MOTION_DLSS,
         OUTPUT_IMAGE_INDEX
     };
@@ -176,7 +176,7 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
     FfxFsr2DispatchDescription info = {};
     info.commandList = ffxGetCommandListVK(cmd);
     info.color = ToFSRResource(FI::FB_IMAGE_INDEX_FINAL, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState());
-    info.depth = ToFSRResource(FI::FB_IMAGE_INDEX_DEPTH_DLSS, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState());
+    info.depth = ToFSRResource(FI::FB_IMAGE_INDEX_DEPTH_NDC, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState());
     info.motionVectors = ToFSRResource(FI::FB_IMAGE_INDEX_MOTION_DLSS, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState());
     info.exposure = {};
     info.reactive = {};

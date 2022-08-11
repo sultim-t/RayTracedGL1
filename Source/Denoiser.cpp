@@ -125,7 +125,8 @@ void RTGL1::Denoiser::Denoise(
         FI fs[] =
         {
             FI::FB_IMAGE_INDEX_MOTION,
-            FI::FB_IMAGE_INDEX_DEPTH,
+            FI::FB_IMAGE_INDEX_DEPTH_WORLD,
+            FI::FB_IMAGE_INDEX_DEPTH_GRAD,
             FI::FB_IMAGE_INDEX_NORMAL,
             FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
             FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,

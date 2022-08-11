@@ -111,7 +111,12 @@ vec2 getMotionForInfinitePoint(const ivec2 pix)
     return screenSpacePrev - screenSpaceCur;
 }
 
-void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, float firstHitDepthNDC, bool wasSplit)
+void storeSky(
+    const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, 
+#ifdef RAYGEN_PRIMARY_SHADER
+    float firstHitDepthNDC, 
+#endif
+    bool wasSplit)
 {
 #ifdef RAYGEN_PRIMARY_SHADER
     const bool isPrimaryRay = true;
@@ -134,7 +139,7 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStoreNormal(                       pix, vec3(0.0));
     imageStoreNormalGeometry(               pix, vec3(0.0));
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
-    imageStore(framebufDepth,               pix, vec4(MAX_RAY_LENGTH * 2.0, 0.0, 0.0, firstHitDepthNDC));
+    imageStore(framebufDepthWorld,          pix, vec4(MAX_RAY_LENGTH * 2.0));
     imageStore(framebufMotion,              pix, vec4(m, 0.0, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(SURFACE_POSITION_INCORRECT));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
@@ -143,7 +148,8 @@ void storeSky(const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlb
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
-    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
+    imageStore(framebufDepthGrad,           pix, vec4(0.0));
+    imageStore(framebufDepthNdc,            getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(m), 0.0, 0.0));
 #endif
 }
@@ -331,8 +337,9 @@ void main()
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-    // save only the first hit's depth for rasterization, as reflections/refraction only may be losely represented via rasterization
-    imageStore(framebufDepth,               pix, vec4(firstHitDepthLinear, gradDepth, firstHitDepthNDC));
+    imageStore(framebufDepthWorld,          pix, vec4(firstHitDepthLinear));
+    // depth gradients is not 2d, to remove vertical/horizontal artifacts
+    imageStore(framebufDepthGrad,           pix, vec4(length(gradDepth)));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(primaryPayload));
@@ -343,8 +350,9 @@ void main()
     // save some info for refl/refr shader
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(h.geometryInstanceFlags, primaryPayload.instIdAndIndex, h.portalIndex, 0));
 
-    // save info for DLSS, but only about primary surface 
-    imageStore(framebufDepthDlss,           getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
+    // save info for rasterization and upscalers (FSR/DLSS), but only about primary surface,
+    // as reflections/refraction only may be losely represented via rasterization
+    imageStore(framebufDepthNdc,            getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(motionCurToPrev), 0.0, 0.0));
 }
 #endif
@@ -385,10 +393,7 @@ void main()
     const vec3  motionBuf                   = texelFetch(framebufMotion_Sampler, pix, 0).rgb;
     vec2        motionCurToPrev             = motionBuf.rg;
     float       motionDepthLinearCurToPrev  = motionBuf.b;
-    const vec4  depthBuf                    = texelFetch(framebufDepth_Sampler, pix, 0);
-    vec2        gradDepth                   = depthBuf.gb;
-    float       firstHitDepthLinear         = depthBuf.r;
-    float       firstHitDepthNDC            = depthBuf.a;
+    float       firstHitDepthLinear         = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
     float       screenEmission              = getScreenEmissionFromAlbedo4(albedoBuf);
     vec3        throughput                  = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
     ShPayload currentPayload;
@@ -548,7 +553,7 @@ void main()
         {
             throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(rayDir, globalUniform.worldUpVector.xyz)), -3));
 
-            storeSky(pix, rayDir, true, throughput, firstHitDepthNDC, wasSplit);
+            storeSky(pix, rayDir, true, throughput, wasSplit);
             return;  
         }
 
@@ -559,8 +564,7 @@ void main()
             rayOrigin, rayDir, cameraRayDir, 
             virtualPos, 
             rayLen, 
-            motionCurToPrev, motionDepthLinearCurToPrev, 
-            gradDepth, 
+            motionCurToPrev, motionDepthLinearCurToPrev,
             screenEmission
         );
 
@@ -584,7 +588,7 @@ void main()
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
     // save only the first hit's depth for rasterization, as reflections/refraction only may be losely represented via rasterization
-    imageStore(framebufDepth,               pix, vec4(fullPathLength, gradDepth, firstHitDepthNDC));
+    imageStore(framebufDepthWorld,          pix, vec4(fullPathLength));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(currentPayload));

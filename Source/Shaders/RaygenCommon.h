@@ -491,7 +491,7 @@ Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, con
 
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
-    const float depthCur = texelFetch(framebufDepth_Sampler, pix, 0).r;
+    const float depthCur = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
     uint salt = RANDOM_SALT_LIGHT_CHOOSE_DIRECT_BASE;
 
@@ -512,7 +512,7 @@ Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, con
         ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
 
         {
-            const float depthPrev = texelFetch(framebufDepth_Prev_Sampler, pp, 0).r;
+            const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
             const vec3 normalPrev = texelFetchNormal_Prev(pp);
 
             if (!testSurfaceForReuse(chRenderArea, pp, 
@@ -552,7 +552,7 @@ Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, con
         ivec2 pp = pix + ivec2(rndOffset * SPATIAL_RADIUS);
 
         {
-            const float depthOther = texelFetch(framebufDepth_Sampler, pp, 0).r;
+            const float depthOther = texelFetch(framebufDepthWorld_Sampler, pp, 0).r;
             const vec3 normalOther = texelFetchNormal(pp);
 
             if (!testSurfaceForReuse(chRenderArea, pp, 

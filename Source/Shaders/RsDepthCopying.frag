@@ -35,5 +35,5 @@ layout(push_constant) uniform DepthCopyingFrag_BT
 void main()
 {
     const ivec2 pix = ivec2(gl_FragCoord.xy);
-    gl_FragDepth = texelFetch(framebufDepth_Sampler, getCheckerboardPix(pix), 0).w;
+    gl_FragDepth = texelFetch(framebufDepthNdc_Sampler, pix, 0).r;
 }

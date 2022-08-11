@@ -89,9 +89,8 @@ void atrous(sampler2D samplerDiff,
     outIndirSH    = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
 
 
-    const vec3 dg = texelFetch(framebufDepth_Sampler, pix, 0).rgb;
-    const float depth     = dg.r;
-    const float gradDepth = length(dg.gb); // changed dot to length, to remove vertical/horizontal artifacts
+    const float depth = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
+    const float gradDepth = texelFetch(framebufDepthGrad_Sampler, pix, 0).r;
 
     if (depth < 0.0 || depth > MAX_RAY_LENGTH)
     {
@@ -161,7 +160,7 @@ void atrous(sampler2D samplerDiff,
 
             const float roughness_q = texelFetch(framebufMetallicRoughness_Sampler, pix_q, 0).g;
             const vec3  normal_q    = texelFetchNormal(                             pix_q);
-            const float depth_q     = texelFetch(framebufDepth_Sampler,             pix_q, 0).r;
+            const float depth_q     = texelFetch(framebufDepthWorld_Sampler,        pix_q, 0).r;
 
             const vec3  specColor_q = decodeE5B9G9R9(texelFetch(samplerSpec,        pix_q, 0).r);
             

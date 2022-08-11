@@ -96,9 +96,8 @@ void fillFilterData(
 
     AtrousData data;
     
-    const vec3 dg = texelFetch(framebufDepth_Sampler, globalPix, 0).rgb;
-    data.depth = dg.r;
-    data.gradDepth = length(dg.gb); // changed dot to length, to remove vertical/horizontal artifacts
+    data.depth = texelFetch(framebufDepthWorld_Sampler, globalPix, 0).r;
+    data.gradDepth = texelFetch(framebufDepthGrad_Sampler, globalPix, 0).r;
 
     const vec4 cv           = texelFetch(samplerDiff,                       globalPix, 0);
     data.directDiffuseColor = cv.rgb;

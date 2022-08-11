@@ -86,7 +86,7 @@ void main()
         getPixAndDepthFromWorldPoint(vec3(l.positionToCheck_X, l.positionToCheck_Y, l.positionToCheck_Z), pix, depth);
     }
     
-    float occluderDepth = texelFetch(framebufDepth_Sampler, getCheckerboardPix(pix), 0).w;
+    float occluderDepth = texelFetch(framebufDepthNdc_Sampler, pix, 0).r;
 
     if (depth < occluderDepth + 0.00001 && 
         all(greaterThan(pix, ivec2(0))) &&

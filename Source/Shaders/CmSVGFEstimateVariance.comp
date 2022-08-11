@@ -60,7 +60,6 @@ const int FILTER_RADIUS = 1;
 
 struct FilterData
 {
-    vec2 gradDepth;
     float depth;
     // E5B9G9R9
     uint encColor;
@@ -80,9 +79,7 @@ void fillFilterData(const ivec2 globalBasePix, const int sharedOffset)
     FilterData data;
     data.encColor           = texelFetch(framebufDiffAccumColor_Sampler, globalPix, 0).r;
     data.encNormalGeometry  = texelFetchEncNormalGeometry(               globalPix);
-    const vec3 depthFB      = texelFetch(framebufDepth_Sampler,          globalPix, 0).rgb;
-    data.gradDepth          = abs(depthFB.gb);
-    data.depth              = depthFB.r;
+    data.depth              = texelFetch(framebufDepthWorld_Sampler,     globalPix, 0).r;
 
     filterData[sharedPix.y][sharedPix.x] = data;
 }
@@ -181,7 +178,7 @@ void main()
             const vec3 color_q = decodeE5B9G9R9(qData.encColor);
             const float l_q = getLuminance(color_q);
 
-            const float w_z = exp(-abs(pixData.depth - qData.depth) / max(dot(pixData.gradDepth, abs(vec2(xx, yy))), 0.01));
+            const float w_z = exp(-abs(pixData.depth - qData.depth) / max(max(pixData.depth, qData.depth), 0.01));
             const float w_n = pow(max(0.0, dotEnc(pixData.encNormalGeometry, qData.encNormalGeometry)), 128.0);
 
             const float w = w_z * w_n;

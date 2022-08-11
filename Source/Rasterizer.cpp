@@ -218,7 +218,7 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
     typedef FramebufferImageIndex FI;
     FI fs[] =
     {
-        FI::FB_IMAGE_INDEX_DEPTH,
+        FI::FB_IMAGE_INDEX_DEPTH_NDC,
         FI::FB_IMAGE_INDEX_FINAL
     };
     storageFramebuffers->BarrierMultiple(cmd, frameIndex, fs);

@@ -108,10 +108,10 @@ void main()
     // xyz - direction, w - hit distance
     const vec4 unfilteredRayInfo= texelFetch(framebufViewDirection_Sampler, pix, 0);
 
-    const ivec3 chRenderArea    = getCheckerboardedRenderArea(      pix);
-    const float motionZ         = texelFetch(framebufMotion_Sampler,pix, 0).z;
-    const float depth           = texelFetch(framebufDepth_Sampler, pix, 0).r;
-    const vec3 normal           = texelFetchNormal(                 pix);
+    const ivec3 chRenderArea    = getCheckerboardedRenderArea(              pix);
+    const float motionZ         = texelFetch(framebufMotion_Sampler,        pix, 0).z;
+    const float depth           = texelFetch(framebufDepthWorld_Sampler,    pix, 0).r;
+    const vec3 normal           = texelFetchNormal(                         pix);
     const float roughness       = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).g;
 
     const float l = getLuminance(unfilteredDiff);
@@ -148,7 +148,7 @@ void main()
             {
                 ivec2 xy = pixPrev + ivec2(xx, yy);
 
-                float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy, 0).r;
+                float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, xy, 0).r;
                 vec3 normalPrev = texelFetchNormal_Prev(xy);
 
                 bool isConsistent = 
@@ -256,7 +256,7 @@ void main()
                 {
                     ivec2 xy_Spec = pixPrev_Spec + ivec2(xx, yy);
 
-                    float depthPrev = texelFetch(framebufDepth_Prev_Sampler, xy_Spec, 0).r;
+                    float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, xy_Spec, 0).r;
                     vec3 normalPrev = texelFetchNormal_Prev(xy_Spec);
 
                     bool isConsistent = 
