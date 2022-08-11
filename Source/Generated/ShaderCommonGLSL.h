@@ -442,7 +442,7 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 6, rgba8) uniform image2D framebuf
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 7, r16f) uniform image2D framebufDepthWorld;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 8, r16f) uniform image2D framebufDepthWorld_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 9, r16f) uniform image2D framebufDepthGrad;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 10, r16f) uniform image2D framebufDepthNdc;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 10, r32f) uniform image2D framebufDepthNdc;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 11, rgba16f) uniform image2D framebufMotion;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 12, r32ui) uniform uimage2D framebufUnfilteredDirect;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 13, r32ui) uniform uimage2D framebufUnfilteredSpecular;

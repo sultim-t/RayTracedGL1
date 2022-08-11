@@ -745,7 +745,7 @@ FRAMEBUFFERS = {
     "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "DepthWorld"                        : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "DepthGrad"                         : (TYPE_FLOAT16,    COMPONENT_R,    0),
-    "DepthNdc"                          : (TYPE_FLOAT16,    COMPONENT_R,    0),
+    "DepthNdc"                          : (TYPE_FLOAT32,    COMPONENT_R,    0),
     "Motion"                            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "UnfilteredDirect"                  : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "UnfilteredSpecular"                : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
