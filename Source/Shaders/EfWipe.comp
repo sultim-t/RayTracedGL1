@@ -48,7 +48,7 @@ void main()
     uint count = sz.x  / push.stripWidthInPixels;
     uint strip = pix.x / push.stripWidthInPixels;
 
-    float rnd = effect_getRandomSample(ivec2(0, 0), push.startFrameId).x;
+    float rnd = effect_getRandomSample(ivec2(0, 0), push.startFrameId);
 
     float x = strip / float(count) + rnd * 10;
   

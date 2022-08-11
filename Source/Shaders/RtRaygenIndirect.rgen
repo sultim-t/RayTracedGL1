@@ -47,7 +47,7 @@ vec3 getSpecularBounce(
     const vec3 n, const float roughness, const vec3 surfSpecularColor,
     const vec3 v, inout vec3 throughput)
 {
-    const vec2 u = rndBlueNoise8(seed, RANDOM_SALT_SPEC_BOUNCE(bounceIndex)).xy;
+    const vec2 u = rnd16_2(seed, RANDOM_SALT_SPEC_BOUNCE(bounceIndex));
 
     // sample microfacet normal
     const vec3 m = sampleSmithGGX(n, v, getModifiedIndirRoughness(roughness), u[0], u[1]);
@@ -78,7 +78,7 @@ vec3 getSpecularBounce(
 // n -- surface normal
 vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, inout vec3 throughput)
 {
-    const vec2 u = rndBlueNoise8(seed, RANDOM_SALT_DIFF_BOUNCE(bounceIndex)).xy;
+    const vec2 u = rnd16_2(seed, RANDOM_SALT_DIFF_BOUNCE(bounceIndex));
 
     float oneOverPdf;
     vec3 l = sampleLambertian(n, u[0], u[1], oneOverPdf);

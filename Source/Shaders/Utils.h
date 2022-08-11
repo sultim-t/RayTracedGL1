@@ -25,6 +25,8 @@
 
 #define M_PI        3.14159265358979323846
 #define UINT32_MAX  0xFFFFFFFF
+#define UINT16_MAX  65535
+#define UINT8_MAX   255
 
 
 

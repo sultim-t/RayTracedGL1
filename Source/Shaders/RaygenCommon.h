@@ -382,7 +382,7 @@ Reservoir calcInitialReservoir(uint seed, uint salt, const Surface surf, const v
     Reservoir regularReservoir = emptyReservoir();
     if (isInsideCell(surf.position))
     {
-        vec3 gridWorldPos = jitterPositionForLightGrid(surf.position, rndBlueNoise8(seed, salt++).xyz);
+        vec3 gridWorldPos = jitterPositionForLightGrid(surf.position, rnd8_4(seed, salt++).xyz);
         int lightGridBase = cellToArrayIndex(worldToCell(gridWorldPos));
 
         for (int i = 0; i < INITIAL_SAMPLES; i++)
@@ -507,7 +507,8 @@ Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, con
     // temporal
     for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = rndBlueNoise8(seed, salt++).xy * 2.0 - 1.0;
+        // TODO: need low discrepancy noise
+        vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
         ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
 
         {
@@ -546,7 +547,8 @@ Reservoir selectLight_Direct(const ivec2 pix, uint seed, const Surface surf, con
 
     for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES; pixIndex++)
     {
-        vec2 rndOffset = rndBlueNoise8(seed, salt++).xy * 2.0 - 1.0;
+        // TODO: need low discrepancy noise
+        vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
         ivec2 pp = pix + ivec2(rndOffset * SPATIAL_RADIUS);
 
         {
@@ -603,7 +605,7 @@ Reservoir selectLight_Indir(uint seed, const Surface surf, const vec2 pointRnd)
 
 vec2 getLightPointRnd(uint seed)
 {
-    return rndBlueNoise8(seed, RANDOM_SALT_LIGHT_POINT).xy * 0.99;
+    return rnd16_2(seed, RANDOM_SALT_LIGHT_POINT) * 0.99;
 }
 
 #if LIGHT_SAMPLE_METHOD != LIGHT_SAMPLE_METHOD_NONE

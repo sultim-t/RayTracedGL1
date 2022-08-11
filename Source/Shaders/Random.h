@@ -236,21 +236,41 @@ vec4 rndBlueNoise8(uint seed, uint salt)
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
 
+// https://nullprogram.com/blog/2018/07/31/
+uint wellonsLowBias32(uint x)
+{
+    x ^= x >> 16;
+    x *= 0x7feb352dU;
+    x ^= x >> 15;
+    x *= 0x846ca68bU;
+    x ^= x >> 16;
+    return x;
+}
+
 // Random in [0..1] with 1/65535 precision
 float rnd16(uint seed, uint salt)
 {
-    vec2 rnd255flt = rndBlueNoise8(seed, salt).xy;
-    
-    uvec2 rnd255 = uvec2(
-        clamp(uint(rnd255flt.x * 255), 0, 255),
-        clamp(uint(rnd255flt.y * 255), 0, 255)
-    );
+    uint rnd = wellonsLowBias32(seed + salt);
+    return 
+        float((rnd & 0x0000FFFF)      ) / float(UINT16_MAX);
+}
 
-    uint rnd = 
-        (rnd255.x) << 0 |
-        (rnd255.y) << 8;
+vec2 rnd16_2(uint seed, uint salt)
+{
+    uint rnd = wellonsLowBias32(seed + salt);
+    return vec2(
+        float((rnd & 0x0000FFFF)      ) / float(UINT16_MAX),
+        float((rnd & 0xFFFF0000) >> 16) / float(UINT16_MAX));
+}
 
-    return float(rnd) / float((1 << 16) - 1);
+vec4 rnd8_4(uint seed, uint salt)
+{
+    uint rnd = wellonsLowBias32(seed + salt) % UINT16_MAX;
+    return vec4(
+        float((rnd & 0x000000FF)      ) / float(UINT8_MAX),
+        float((rnd & 0x0000FF00) >> 8 ) / float(UINT8_MAX),
+        float((rnd & 0x00FF0000) >> 16) / float(UINT8_MAX),
+        float((rnd & 0xFF000000) >> 24) / float(UINT8_MAX));
 }
 
 // https://gist.github.com/mpottinger/54d99732d4831d8137d178b4a6007d1a
