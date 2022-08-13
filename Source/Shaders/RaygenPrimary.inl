@@ -234,7 +234,7 @@ vec3 getPortalNormal(const vec3 baseNormal, const vec3 inWorldOffset)
 
     float phaseScale = 3;
     float timeScale = 3;
-    float waveScale = 0.005;
+    float waveScale = 0.01;
     float tm = mod(timeScale * globalUniform.time, M_PI * 2);
 
     const mat3 inLookAt_Plain = lookAt(-baseNormal, globalUniform.worldUpVector.xyz);
