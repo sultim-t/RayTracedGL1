@@ -729,14 +729,11 @@ typedef enum RgMaterialCreateFlagBits
     RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT = 1,
     // Force to use lowest mip level while rendering
     RG_MATERIAL_CREATE_FORCE_LOWEST_MIP_BIT = 2,
-    // If set, the library won't try to find files with additional info.
-    // Always set for dynamic materials.
-    RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT = 4,
     // If set, sampler will be controlled with RgDrawFrameTexturesParams::dynamicSamplerFilter.
-    RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT = 8,
+    RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT = 4,
     // If set, "rgUpdateMaterialContents" can be used to update textures of the material.
-    // Tip: specify RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT to avoid access to the filesystem.
-    RG_MATERIAL_CREATE_UPDATEABLE_BIT = 16,
+    // Tip: set pRelativePath as null, to avoid access to the filesystem.
+    RG_MATERIAL_CREATE_UPDATEABLE_BIT = 8,
 } RgMaterialCreateFlagBits;
 typedef RgFlags RgMaterialCreateFlags;
 
@@ -759,6 +756,7 @@ typedef struct RgMaterialCreateInfo
     // The library will try to find image files using path:
     //      "<overridenTexturesFolderPath><folders>/<name>.ktx2"
     // Image files must be in KTX2 format.
+    // If null, then texture overriding is disabled.
     const char              *pRelativePath;
     RgSamplerFilter         filter;
     RgSamplerAddressMode    addressModeU;
@@ -841,7 +839,6 @@ typedef struct RgCubemapCreateInfo
     // width = height = sideSize
     uint32_t                sideSize;
     RgBool32                useMipmaps;
-    RgBool32                disableOverride;
     RgSamplerFilter         filter;
 } RgCubemapCreateInfo;
 

@@ -158,10 +158,11 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
 {
     SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0);
 
-    TextureOverrides::OverrideInfo parseInfo = {};
-    parseInfo.disableOverride = false;
-    // use absolute path
-    parseInfo.texturesPath = "";
+    TextureOverrides::OverrideInfo parseInfo = 
+    {
+        // use absolute path
+        .commonFolderPath = ""
+    };
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         parseInfo.postfixes[i] = "";
@@ -267,8 +268,7 @@ uint32_t TextureManager::CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex
 
     TextureOverrides::OverrideInfo parseInfo = 
     {
-        .disableOverride = !!(createInfo.flags & RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT),
-        .texturesPath = defaultTexturesPath.c_str(),
+        .commonFolderPath = defaultTexturesPath.c_str(),
     };
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {

@@ -38,9 +38,7 @@ struct TextureOverrides
 public:
     struct OverrideInfo
     {
-        bool disableOverride = false;
-
-        const char *texturesPath = nullptr;
+        const char *commonFolderPath = "";
         const char *postfixes[TEXTURES_PER_MATERIAL_COUNT] = {};
         // Params for overriden textures. If texture
         // isn't overriden, RgTextureData::isSRGB value is used

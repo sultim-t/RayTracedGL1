@@ -163,22 +163,19 @@ TextureOverrides::TextureOverrides(
     constexpr uint32_t defaultBytesPerPixel = 4;
 
 
-    if (!_overrideInfo.disableOverride)
+    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
-        {
-            // TODO: try to load with different loaders with their own extensions
-            paths[i] = GetTexturePath(_overrideInfo.texturesPath, _relativePath, _overrideInfo.postfixes[i], Loader_GetExtension(loader));
+        // TODO: try to load with different loaders with their own extensions
+        paths[i] = GetTexturePath(_overrideInfo.commonFolderPath, _relativePath, _overrideInfo.postfixes[i], Loader_GetExtension(loader));
 
-            if (paths[i])
+        if (paths[i])
+        {
+            results[i] = Loader_Load(loader, paths[i].value());
+            
+            if (results[i])
             {
-                results[i] = Loader_Load(loader, paths[i].value());
-                
-                if (results[i])
-                {
-                    results[i]->format =
-                        _overrideInfo.overridenIsSRGB[i] ? ToSRGB(results[i]->format) : ToUnorm(results[i]->format);
-                }
+                results[i]->format =
+                    _overrideInfo.overridenIsSRGB[i] ? ToSRGB(results[i]->format) : ToUnorm(results[i]->format);
             }
         }
     }

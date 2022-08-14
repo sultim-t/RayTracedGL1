@@ -83,7 +83,6 @@ void RTGL1::CubemapManager::CreateEmptyCubemap(VkCommandBuffer cmd)
     RgCubemapCreateInfo info = {};
     info.sideSize = 1;
     info.useMipmaps = 0;
-    info.disableOverride = true;
     info.filter = RG_SAMPLER_FILTER_NEAREST;
 
     for (uint32_t i = 0; i < 6; i++)
@@ -146,7 +145,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
     };
 
     TextureOverrides::OverrideInfo parseInfo = {};
-    parseInfo.texturesPath = defaultTexturesPath.c_str();
+    parseInfo.commonFolderPath = defaultTexturesPath.c_str();
     parseInfo.postfixes[MATERIAL_COLOR_TEXTURE_INDEX] = overridenTexturePostfix.c_str();
     parseInfo.overridenIsSRGB[MATERIAL_COLOR_TEXTURE_INDEX] = true;
 
