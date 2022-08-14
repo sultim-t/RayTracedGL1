@@ -506,6 +506,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
 void TextureUploader::UpdateImage(VkCommandBuffer cmd, VkImage targetImage, const void *data)
 {
     assert(targetImage != VK_NULL_HANDLE);
+    assert(data != nullptr);
 
     auto it = updateableImageInfos.find(targetImage);
 

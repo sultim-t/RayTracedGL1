@@ -34,6 +34,7 @@
 #include "TextureDescriptors.h"
 #include "TextureUploader.h"
 #include "LibraryConfig.h"
+#include "TextureObserver.h"
 
 namespace RTGL1
 {
@@ -62,13 +63,12 @@ public:
                            bool forceUpdateAllDescriptors = false); // true, if mip lod bias was changed, for example
 
     uint32_t CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgMaterialCreateInfo &createInfo);
-
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     bool ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
-
     bool UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo);
-
     void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
+
+    void CheckForHotReload(VkCommandBuffer cmd);
 
     MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
 
@@ -110,7 +110,9 @@ private:
     VkDevice device;
 
     std::shared_ptr<ImageLoader> imageLoader;
+
     std::shared_ptr<ImageLoaderDev> imageLoaderDev;
+    std::shared_ptr<TextureObserver> observer;
 
     std::shared_ptr<SamplerManager> samplerMgr;
     std::shared_ptr<TextureDescriptors> textureDesc;

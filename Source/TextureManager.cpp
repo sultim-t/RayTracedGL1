@@ -95,6 +95,7 @@ TextureManager::TextureManager(
     if (config.developerMode)
     {
         imageLoaderDev = std::make_shared<ImageLoaderDev>(imageLoader);
+        observer = std::make_shared<TextureObserver>();
 
         if (_info.pOverridenTexturesFolderPathDeveloper != nullptr)
         {
@@ -281,8 +282,15 @@ uint32_t TextureManager::CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex
     TextureOverrides ovrd(createInfo.pRelativePath, createInfo.textures, createInfo.size, parseInfo, GetLoader(imageLoader, imageLoaderDev));
 
 
-    MaterialTextures mtextures = {};
+    bool isUpdateable = createInfo.flags & RG_MATERIAL_CREATE_UPDATEABLE_BIT;
+    if (observer)
+    {
+        // treat everything as updateable
+        isUpdateable = true;
+    }
 
+
+    MaterialTextures mtextures = {};
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         mtextures.indices[i] = PrepareTexture(
@@ -291,10 +299,22 @@ uint32_t TextureManager::CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex
             samplerHandle,
             !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), 
             ovrd.GetDebugName(),
-            !!(createInfo.flags & RG_MATERIAL_CREATE_UPDATEABLE_BIT));
+            isUpdateable);
     }
     
-    return InsertMaterial(mtextures, createInfo.flags & RG_MATERIAL_CREATE_UPDATEABLE_BIT);
+    uint32_t materialIndex = InsertMaterial(mtextures, isUpdateable);
+
+
+    if (observer)
+    {
+        for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+        {
+            observer->RegisterPath(materialIndex, ovrd.GetPathAndRemove(i), ovrd.GetResult(i), i);
+        }
+    }
+
+
+    return materialIndex;
 }
 
 bool TextureManager::UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo)
@@ -338,7 +358,7 @@ bool TextureManager::UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateI
 
         VkImage img = textures[textureIndex].image;
 
-        if (img == VK_NULL_HANDLE)
+        if (img == VK_NULL_HANDLE || updateData[i] == nullptr)
         {
             continue;
         }
@@ -582,6 +602,7 @@ void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materi
         return;
     }
 
+
     const auto animIt = animatedMaterials.find(materialIndex);
 
     // if it's an animated material
@@ -608,6 +629,13 @@ void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materi
         }
     }
 
+
+    if (observer)
+    {
+        observer->Remove(materialIndex);
+    }
+
+
     // notify subscribers
     for (auto &ws : subscribers)
     {
@@ -616,6 +644,14 @@ void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materi
             // send them empty texture indices as material is destroyed
             s->OnMaterialChange(materialIndex, EmptyMaterialTextures);
         }
+    }
+}
+
+void TextureManager::CheckForHotReload(VkCommandBuffer cmd)
+{
+    if (observer && imageLoaderDev)
+    {
+        observer->CheckPathsAndReupload(cmd, *this, imageLoaderDev.get());
     }
 }
 

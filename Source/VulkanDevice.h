@@ -55,7 +55,6 @@
 #include "FrameState.h"
 #include "LibraryConfig.h"
 #include "PortalList.h"
-#include "TextureObserver.h"
 
 namespace RTGL1
 {
@@ -192,7 +191,6 @@ private:
     std::shared_ptr<BlueNoise>              blueNoise;
     std::shared_ptr<TextureManager>         textureManager;
     std::shared_ptr<CubemapManager>         cubemapManager;
-    std::shared_ptr<TextureObserver>        textureObserver;
 
     LibraryConfig::Config                   libconfig;
     VkDebugUtilsMessengerEXT                debugMessenger;

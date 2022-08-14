@@ -118,8 +118,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         *info,
         libconfig);
 
-    textureObserver     = std::make_shared<TextureObserver>();
-
     shaderManager       = std::make_shared<ShaderManager>(
         device,
         info->pShaderFolderPath,
@@ -316,7 +314,6 @@ VulkanDevice::~VulkanDevice()
     blueNoise.reset();
     textureManager.reset();
     cubemapManager.reset();
-    textureObserver.reset();
     memAllocator.reset();
 
     vkDestroySurfaceKHR(instance, surface, nullptr);

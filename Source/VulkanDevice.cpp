@@ -740,10 +740,7 @@ void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     renderResolution.Setup(drawInfo->pRenderResolutionParams,
                            swapchain->GetWidth(), swapchain->GetHeight(), nvDlss);
 
-    if (textureObserver)
-    {
-        textureObserver->CheckPathsAndReupload();
-    }
+    textureManager->CheckForHotReload(cmd);
 
     if (renderResolution.Width() > 0 && renderResolution.Height() > 0)
     {
@@ -1023,15 +1020,12 @@ void VulkanDevice::CreateMaterial(const RgMaterialCreateInfo *createInfo, RgMate
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    if (textureObserver)
-    {
-      //  textureObserver->RegisterPath());
-    }
-
-    *result = textureManager->CreateMaterial(
+    *result = textureManager->CreateMaterial
+    (
         currentFrameState.GetCmdBufferForMaterials(cmdManager),
         currentFrameState.GetFrameIndex(),
-        *createInfo);
+        *createInfo
+    );
 }
 
 void VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result)
@@ -1046,9 +1040,12 @@ void VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *cr
         throw RgException(RG_WRONG_ARGUMENT, "Animated materials must have non-zero amount of frames");
     }
 
-    *result = textureManager->CreateAnimatedMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager), 
-                                                     currentFrameState.GetFrameIndex(), 
-                                                     *createInfo);
+    *result = textureManager->CreateAnimatedMaterial
+    (
+        currentFrameState.GetCmdBufferForMaterials(cmdManager),
+        currentFrameState.GetFrameIndex(),
+        *createInfo
+    );
 }
 
 void VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex)

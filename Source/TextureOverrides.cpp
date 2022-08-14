@@ -219,8 +219,8 @@ const char *RTGL1::TextureOverrides::GetDebugName() const
     return debugname;
 }
 
-const std::optional<std::filesystem::path>& TextureOverrides::GetPath(uint32_t index) const
+std::optional<std::filesystem::path> &&TextureOverrides::GetPathAndRemove(uint32_t index)
 {
     assert(index < TEXTURES_PER_MATERIAL_COUNT);
-    return paths[index];
+    return std::move(paths[index]);
 }

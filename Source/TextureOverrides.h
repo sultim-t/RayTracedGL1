@@ -65,7 +65,8 @@ public:
 
     [[nodiscard]] const std::optional<ImageLoader::ResultInfo> &GetResult(uint32_t index) const;
     [[nodiscard]] const char *GetDebugName() const;
-    [[nodiscard]] const std::optional<std::filesystem::path> &GetPath(uint32_t index) const;
+    // rvalue, to avoid copies
+    [[nodiscard]] std::optional<std::filesystem::path> &&GetPathAndRemove(uint32_t index);
 
 private:
     Loader loader;

@@ -27,24 +27,39 @@
 
 namespace RTGL1
 {
+    class TextureManager;
+
+
     class TextureObserver
     {
     public:
-        TextureObserver();
-        ~TextureObserver();
+        TextureObserver() = default;
+        ~TextureObserver() = default;
 
         TextureObserver(const TextureObserver& other) = delete;
         TextureObserver(TextureObserver&& other) noexcept = delete;
         TextureObserver& operator=(const TextureObserver& other) = delete;
         TextureObserver& operator=(TextureObserver&& other) noexcept = delete;
 
-        void CheckPathsAndReupload();
+        void CheckPathsAndReupload(VkCommandBuffer cmd, TextureManager &manager, ImageLoaderDev *loader);
 
-        void RegisterPath(RgMaterial index, std::optional<std::filesystem::path> path);
+        void RegisterPath(RgMaterial index, std::optional<std::filesystem::path> path, const std::optional<ImageLoader::ResultInfo> &imageInfo, uint32_t textureType);
         void Remove(RgMaterial index);
 
     private:
+        struct DependentFile
+        {
+            std::filesystem::path path;
+            std::filesystem::file_time_type lastWriteTime;
+            size_t dataSize;
+            VkFormat format;
+            uint32_t textureType;
+        };
 
-        rgl::unordered_map<RgMaterial, std::filesystem::path> texturePaths;
+        static bool HaveChanged(std::vector<DependentFile> &files);
+
+    private:
+        rgl::unordered_map<RgMaterial, std::vector<DependentFile>> materials;
+        std::chrono::time_point<std::chrono::system_clock> lastCheck;
     };
 }

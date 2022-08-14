@@ -20,36 +20,127 @@
 
 #include "TextureObserver.h"
 
-RTGL1::TextureObserver::TextureObserver()
+#include "TextureManager.h"
+#include "Generated/ShaderCommonC.h"
+
+bool RTGL1::TextureObserver::HaveChanged(std::vector<DependentFile> &files)
 {
+    bool changed = false;
+
+    for (DependentFile &f : files)
+    {
+        auto tm = std::filesystem::last_write_time(f.path);
+
+        if (tm > f.lastWriteTime)
+        {
+            f.lastWriteTime = tm;
+            changed = true;
+        }
+    }
+
+    return changed;
 }
 
-RTGL1::TextureObserver::~TextureObserver()
+void RTGL1::TextureObserver::CheckPathsAndReupload(VkCommandBuffer cmd, TextureManager &manager, ImageLoaderDev *loader)
 {
+    if (loader == nullptr)
+    {
+        return;
+    }
+
+    {
+        using namespace std::chrono_literals;
+
+        constexpr auto frequency = 0.05s;
+
+        auto now = std::chrono::system_clock::now();
+        if (now - lastCheck < frequency)
+        {
+            return;
+        }
+        
+        lastCheck = now;
+    }
+
+    for (auto &[materialIndex, files] : materials)
+    {
+        if (!HaveChanged(files))
+        {
+            continue;
+        }
+
+        for (const DependentFile &f : files)
+        {
+            if (auto newImage = loader->Load(f.path))
+            {
+                if (newImage->dataSize != f.dataSize)
+                {
+                    assert(0 && 
+                        "Trying to hot-reload the image, but the data size is mismatching with what originally was specified."
+                        "A new texture file must have the same image size.");
+                    continue;
+                }
+
+                RgMaterialUpdateInfo info =
+                {
+                    .target = materialIndex,
+                    .textures = 
+                    {
+                        .pDataAlbedoAlpha               = f.textureType == MATERIAL_ALBEDO_ALPHA_INDEX                  ? newImage->pData : nullptr,
+                        .pDataRoughnessMetallicEmission = f.textureType == MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX   ? newImage->pData : nullptr,
+                        .pDataNormal                    = f.textureType == MATERIAL_NORMAL_INDEX                        ? newImage->pData : nullptr,
+                    },
+                };
+
+                manager.UpdateMaterial(cmd, info);
+
+                loader->FreeLoaded();
+            }
+        }
+    }
 }
 
-void RTGL1::TextureObserver::CheckPathsAndReupload()
-{
-}
-
-void RTGL1::TextureObserver::RegisterPath(RgMaterial index, std::optional<std::filesystem::path> path)
+void RTGL1::TextureObserver::RegisterPath(RgMaterial index, std::optional<std::filesystem::path> path, const std::optional<ImageLoader::ResultInfo> &imageInfo, uint32_t textureType)
 {
     if (index == RG_NO_MATERIAL)
     {
         return;
     }
 
-    if (!path.has_value() || path.value().empty())
+    if (!path || path->empty())
     {
         return;
     }
 
-    assert(texturePaths.find(index) == texturePaths.end());
+    if (!imageInfo || imageInfo->dataSize == 0 || imageInfo->pData == nullptr)
+    {
+        return;
+    }
 
-    texturePaths[index] = std::move(path.value());
+    if (materials.find(index) == materials.end())
+    {
+        materials[index] = {};
+    }
+
+    if (!std::filesystem::exists(path.value()))
+    {
+        return;
+    }
+
+    auto tm = std::filesystem::last_write_time(path.value());
+
+    materials[index].emplace_back(
+        DependentFile
+        {
+            .path = std::move(path.value()),
+            .lastWriteTime = tm,
+            .dataSize = imageInfo->dataSize,
+            .format = imageInfo->format,
+            .textureType = textureType,
+        });
 }
 
 void RTGL1::TextureObserver::Remove(RgMaterial index)
 {
-    //static_assert(false);
+    materials.erase(index);
 }
