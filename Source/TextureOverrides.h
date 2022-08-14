@@ -67,12 +67,14 @@ public:
 
     [[nodiscard]] const std::optional<ImageLoader::ResultInfo> &GetResult(uint32_t index) const;
     [[nodiscard]] const char *GetDebugName() const;
+    [[nodiscard]] const std::optional<std::filesystem::path> &GetPath(uint32_t index) const;
 
 private:
     Loader loader;
 
     std::optional<ImageLoader::ResultInfo> results[TEXTURES_PER_MATERIAL_COUNT];
-    char debugname[32];
+    char debugname[TEXTURE_DEBUG_NAME_MAX_LENGTH];
+    std::optional<std::filesystem::path> paths[TEXTURES_PER_MATERIAL_COUNT];
 };
 
 }

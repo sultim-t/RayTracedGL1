@@ -221,15 +221,13 @@ RgResult rgUploadPolygonalLight(RgInstance rgInstance, const RgPolygonalLightUpl
     return Call(rgInstance, &VulkanDevice::UploadPolygonalLight, pUploadInfo);
 }
 
-RgResult rgCreateStaticMaterial(RgInstance rgInstance, const RgStaticMaterialCreateInfo *pCreateInfo,
-                               RgMaterial *pResult)
+RgResult rgCreateMaterial(RgInstance rgInstance, const RgMaterialCreateInfo *pCreateInfo, RgMaterial *pResult)
 {
     *pResult = RG_NO_MATERIAL;
-    return Call(rgInstance, &VulkanDevice::CreateStaticMaterial, pCreateInfo, pResult);
+    return Call(rgInstance, &VulkanDevice::CreateMaterial, pCreateInfo, pResult);
 }
 
-RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *pCreateInfo,
-                                 RgMaterial *pResult)
+RgResult rgCreateAnimatedMaterial(RgInstance rgInstance, const RgAnimatedMaterialCreateInfo *pCreateInfo, RgMaterial *pResult)
 {
     *pResult = RG_NO_MATERIAL;
     return Call(rgInstance, &VulkanDevice::CreateAnimatedMaterial, pCreateInfo, pResult);
@@ -240,16 +238,9 @@ RgResult rgChangeAnimatedMaterialFrame(RgInstance rgInstance, RgMaterial animate
     return Call(rgInstance, &VulkanDevice::ChangeAnimatedMaterialFrame, animatedMaterial, frameIndex);
 }
 
-RgResult rgCreateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialCreateInfo *pCreateInfo,
-                                RgMaterial *pResult)
+RgResult rgUpdateMaterialContents(RgInstance rgInstance, const RgMaterialUpdateInfo *pUpdateInfo)
 {
-    *pResult = RG_NO_MATERIAL;
-    return Call(rgInstance, &VulkanDevice::CreateDynamicMaterial, pCreateInfo, pResult);
-}
-
-RgResult rgUpdateDynamicMaterial(RgInstance rgInstance, const RgDynamicMaterialUpdateInfo *pUpdateInfo)
-{
-    return Call(rgInstance, &VulkanDevice::UpdateDynamicMaterial, pUpdateInfo);
+    return Call(rgInstance, &VulkanDevice::UpdateMaterial, pUpdateInfo);
 }
 
 RgResult rgDestroyMaterial(RgInstance rgInstance, RgMaterial material)

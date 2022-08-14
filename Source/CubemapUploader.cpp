@@ -27,9 +27,8 @@ RTGL1::CubemapUploader::CubemapUploader(VkDevice device, std::shared_ptr<MemoryA
 RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const UploadInfo &info)
 {
     assert(info.isCubemap);
-
-    // cubemaps can't be dynamic
-    assert(!info.isDynamic);
+    // cubemaps can't be updateable
+    assert(!info.isUpdateable);
 
     const RgExtent2D &size = info.baseSize;
 

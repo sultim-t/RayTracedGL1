@@ -61,13 +61,12 @@ public:
                            const RgDrawFrameTexturesParams *pTexturesParams,
                            bool forceUpdateAllDescriptors = false); // true, if mip lod bias was changed, for example
 
-    uint32_t CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo);
+    uint32_t CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgMaterialCreateInfo &createInfo);
 
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     bool ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
 
-    uint32_t CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo);
-    bool UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo);
+    bool UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo);
 
     void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
 
@@ -88,13 +87,11 @@ private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
     void CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath);
 
-    uint32_t PrepareStaticTexture(
-        VkCommandBuffer cmd, uint32_t frameIndex, const std::optional<ImageLoader::ResultInfo> &info,
-        SamplerManager::Handle samplerHandle, bool useMipmaps, const char *debugName);
-
-    uint32_t PrepareDynamicTexture(
-        VkCommandBuffer cmd, uint32_t frameIndex, const void *data, uint32_t dataSize, const RgExtent2D &size,
-        SamplerManager::Handle samplerHandle, VkFormat format, bool generateMipmaps, const char *debugName);
+    uint32_t PrepareTexture(
+        VkCommandBuffer cmd, uint32_t frameIndex, 
+        const std::optional<ImageLoader::ResultInfo> &info,
+        SamplerManager::Handle samplerHandle, 
+        bool useMipmaps, const char *debugName, bool isUpdateable);
 
     uint32_t InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, SamplerManager::Handle samplerHandle);
     void DestroyTexture(const Texture &texture);
@@ -103,7 +100,7 @@ private:
     uint32_t GenerateMaterialIndex(const MaterialTextures &materialTextures);
     uint32_t GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices);
 
-    uint32_t InsertMaterial(const MaterialTextures &materialTextures, bool isDynamic);
+    uint32_t InsertMaterial(const MaterialTextures &materialTextures, bool isUpdateable);
     uint32_t InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices);
 
     void DestroyMaterialTextures(uint32_t frameIndex, uint32_t materialIndex);

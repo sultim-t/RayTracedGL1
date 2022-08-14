@@ -42,7 +42,7 @@ TextureUploader::~TextureUploader()
         }
     }
 
-    for (auto &p : dynamicImageInfos)
+    for (auto &p : updateableImageInfos)
     {
         memAllocator->DestroyStagingSrcTextureBuffer(p.second.stagingBuffer);
     }
@@ -408,45 +408,52 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
     // cubemaps are processed in other class
     assert(!info.isCubemap);
 
+
     const void          *data    = info.pData;
     VkDeviceSize        dataSize = info.dataSize;
     const RgExtent2D    &size    = info.baseSize;
 
-    // static textures must not have null data
-    assert(info.isDynamic || data != nullptr);
 
-    UploadResult result = {};
-    result.wasUploaded = false;
+    // updateable can have null data, so it can be provided later
+    if (!info.isUpdateable)
+    {
+        assert(data != nullptr);
+    }
+    
 
     VkResult r;
     void *mappedData;
     VkImage image;
 
+
     // 1. Allocate and fill buffer
 
-    VkBufferCreateInfo stagingInfo = {};
-    stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingInfo.size = dataSize;
-    stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    VkBufferCreateInfo stagingInfo = 
+    {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = dataSize,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    };
 
     VkBuffer stagingBuffer = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, info.pDebugName, &mappedData);
     if (stagingBuffer == VK_NULL_HANDLE)
     {
-        return result;
+        return {};
     }
-
     SET_DEBUG_NAME(device, stagingBuffer, VK_OBJECT_TYPE_BUFFER, info.pDebugName);
+
 
     bool wasCreated = CreateImage(info, &image);
     if (!wasCreated)
     {
         // clean created resources
         memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffer);
-        return result;
+        return {};
     }
 
-    // if it's a dynamic texture and the data is not provided yet
-    if (info.isDynamic && data == nullptr)
+
+    // if it's updateable but the data is not provided yet
+    if (info.isUpdateable && data == nullptr)
     {
         // create image without copying
         PrepareImage(image, VK_NULL_HANDLE, info, ImagePrepareType::INIT_WITHOUT_COPYING);
@@ -460,24 +467,25 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         PrepareImage(image, &stagingBuffer, info, ImagePrepareType::INIT);
     }
 
+
     // create image view
     VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
-
     SET_DEBUG_NAME(device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName);
 
-    // save info about created image
-    if (info.isDynamic)
-    {
-        // for dynamic images:
-        // save pointer for updating image data
-        DynamicImageInfo updateInfo = {};
-        updateInfo.stagingBuffer = stagingBuffer;
-        updateInfo.mappedData = mappedData;
-        updateInfo.dataSize = (uint32_t)dataSize;
-        updateInfo.imageSize = size;
-        updateInfo.generateMipmaps = info.useMipmaps;
 
-        dynamicImageInfos[image] = updateInfo;
+    // save info about created image
+    if (info.isUpdateable)
+    {
+        // for updateable images: save pointer for updating the image data in the future
+
+        updateableImageInfos[image] = UpdateableImageInfo
+        {
+            .stagingBuffer = stagingBuffer,
+            .mappedData = mappedData,
+            .dataSize = static_cast<uint32_t>(dataSize),
+            .imageSize = size,
+            .generateMipmaps = info.useMipmaps,
+        };
     }
     else
     {
@@ -486,20 +494,22 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
         stagingToFree[info.frameIndex].push_back(stagingBuffer);
     }
 
-    // return results
-    result.wasUploaded = true;
-    result.image = image;
-    result.view = imageView;
-    return result;
+
+    return UploadResult
+    {
+        .wasUploaded = true,
+        .image = image,
+        .view = imageView,
+    };
 }
 
-void TextureUploader::UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicImage, const void *data)
+void TextureUploader::UpdateImage(VkCommandBuffer cmd, VkImage targetImage, const void *data)
 {
-    assert(dynamicImage != VK_NULL_HANDLE);
+    assert(targetImage != VK_NULL_HANDLE);
 
-    auto it = dynamicImageInfos.find(dynamicImage);
+    auto it = updateableImageInfos.find(targetImage);
 
-    if (it != dynamicImageInfos.end())
+    if (it != updateableImageInfos.end())
     {
         auto &updateInfo = it->second;
 
@@ -512,22 +522,22 @@ void TextureUploader::UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicIma
         info.useMipmaps = updateInfo.generateMipmaps;
 
         // copy from staging
-        PrepareImage(dynamicImage, &updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);
+        PrepareImage(targetImage, &updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);
     }
 }
 
 void TextureUploader::DestroyImage(VkImage image, VkImageView view)
 {
-    auto it = dynamicImageInfos.find(image);
+    auto it = updateableImageInfos.find(image);
 
-    // if it's a dynamic texture
-    if (it != dynamicImageInfos.end())
+    // if it's updateable
+    if (it != updateableImageInfos.end())
     {
-        // destroy its staging buffer, as it exists for
-        // whole dynamic image lifetime
+        // destroy its staging buffer, as it exists during
+        // the overall lifetime of an updateable image 
         memAllocator->DestroyStagingSrcTextureBuffer(it->second.stagingBuffer);
 
-        dynamicImageInfos.erase(it);
+        updateableImageInfos.erase(it);
     }
 
     memAllocator->DestroyTextureImage(image);

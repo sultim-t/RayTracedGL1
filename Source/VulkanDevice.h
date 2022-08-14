@@ -55,6 +55,7 @@
 #include "FrameState.h"
 #include "LibraryConfig.h"
 #include "PortalList.h"
+#include "TextureObserver.h"
 
 namespace RTGL1
 {
@@ -92,11 +93,10 @@ public:
 
     void SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B);
 
-    void CreateStaticMaterial(const RgStaticMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
+    void CreateMaterial(const RgMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);
-    void CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
-    void UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *pUpdateInfo);
+    void UpdateMaterial(const RgMaterialUpdateInfo *pUpdateInfo);
     void DestroyMaterial(RgMaterial material);
 
     void CreateSkyboxCubemap(const RgCubemapCreateInfo *pCreateInfo, RgCubemap *pResult);
@@ -192,6 +192,7 @@ private:
     std::shared_ptr<BlueNoise>              blueNoise;
     std::shared_ptr<TextureManager>         textureManager;
     std::shared_ptr<CubemapManager>         cubemapManager;
+    std::shared_ptr<TextureObserver>        textureObserver;
 
     LibraryConfig::Config                   libconfig;
     VkDebugUtilsMessengerEXT                debugMessenger;

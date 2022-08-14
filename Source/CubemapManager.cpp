@@ -135,13 +135,15 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
         return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
     });
 
-    TextureUploader::UploadInfo upload = {};
-    upload.cmd = cmd;
-    upload.frameIndex = frameIndex;
-    upload.useMipmaps = info.useMipmaps;
-    upload.isCubemap = true;
-    upload.isDynamic = false;
-    upload.pDebugName = nullptr;
+    TextureUploader::UploadInfo upload = 
+    {
+        .cmd = cmd,
+        .frameIndex = frameIndex,
+        .useMipmaps = !!info.useMipmaps,
+        .isUpdateable = false,
+        .pDebugName = nullptr,
+        .isCubemap = true,
+    };
 
     TextureOverrides::OverrideInfo parseInfo = {};
     parseInfo.texturesPath = defaultTexturesPath.c_str();

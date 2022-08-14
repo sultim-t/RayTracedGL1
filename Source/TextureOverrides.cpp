@@ -168,9 +168,11 @@ TextureOverrides::TextureOverrides(
         for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
         {
             // TODO: try to load with different loaders with their own extensions
-            if (auto path = GetTexturePath(_overrideInfo.texturesPath, _relativePath, _overrideInfo.postfixes[i], Loader_GetExtension(loader)))
+            paths[i] = GetTexturePath(_overrideInfo.texturesPath, _relativePath, _overrideInfo.postfixes[i], Loader_GetExtension(loader));
+
+            if (paths[i])
             {
-                results[i] = Loader_Load(loader, path.value());
+                results[i] = Loader_Load(loader, paths[i].value());
                 
                 if (results[i])
                 {
@@ -218,4 +220,10 @@ const std::optional<ImageLoader::ResultInfo> &RTGL1::TextureOverrides::GetResult
 const char *RTGL1::TextureOverrides::GetDebugName() const
 {
     return debugname;
+}
+
+const std::optional<std::filesystem::path>& TextureOverrides::GetPath(uint32_t index) const
+{
+    assert(index < TEXTURES_PER_MATERIAL_COUNT);
+    return paths[index];
 }

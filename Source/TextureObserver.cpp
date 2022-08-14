@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 Sultim Tsyrendashiev
+// Copyright (c) 2022 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,44 +18,38 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma once
+#include "TextureObserver.h"
 
-#include "Common.h"
-#include "Const.h"
-#include "SamplerManager.h"
-
-namespace RTGL1
+RTGL1::TextureObserver::TextureObserver()
 {
+}
 
-
-struct Texture
+RTGL1::TextureObserver::~TextureObserver()
 {
-    VkImage                 image = VK_NULL_HANDLE;
-    VkImageView             view = VK_NULL_HANDLE;
-    SamplerManager::Handle  samplerHandle = SamplerManager::Handle();
-};
+}
 
-
-struct MaterialTextures
+void RTGL1::TextureObserver::CheckPathsAndReupload()
 {
-    // Indices to use in shaders, each index represents RgTextureData from RgTextureSet
-    uint32_t                indices[TEXTURES_PER_MATERIAL_COUNT];
-};
+}
 
-
-struct Material
+void RTGL1::TextureObserver::RegisterPath(RgMaterial index, std::optional<std::filesystem::path> path)
 {
-    MaterialTextures        textures;
-    uint32_t                isUpdateable;
-};
+    if (index == RG_NO_MATERIAL)
+    {
+        return;
+    }
 
+    if (!path.has_value() || path.value().empty())
+    {
+        return;
+    }
 
-struct AnimatedMaterial
+    assert(texturePaths.find(index) == texturePaths.end());
+
+    texturePaths[index] = std::move(path.value());
+}
+
+void RTGL1::TextureObserver::Remove(RgMaterial index)
 {
-    // Indices of static materials.
-    std::vector<uint32_t>   materialIndices;
-    uint32_t                currentFrame = 0;
-};
-
-
+    //static_assert(false);
 }

@@ -139,7 +139,7 @@ void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex
 
     SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0);
 
-    uint32_t textureIndex = PrepareStaticTexture(cmd, frameIndex, info, samplerHandle, false, "Empty texture");
+    uint32_t textureIndex = PrepareTexture(cmd, frameIndex, info, samplerHandle, false, "Empty texture", false);
 
     // must have specific index
     assert(textureIndex == EMPTY_TEXTURE_INDEX);
@@ -174,7 +174,7 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
     // try to load image file
     TextureOverrides ovrd(pFilePath, RgTextureSet{ .pDataAlbedoAlpha = defaultData }, defaultSize, parseInfo, imageLoader.get());
 
-    this->waterNormalTextureIndex = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(0), samplerHandle, true, "Water normal");
+    this->waterNormalTextureIndex = PrepareTexture(cmd, frameIndex, ovrd.GetResult(0), samplerHandle, true, "Water normal", false);
 }
 
 TextureManager::~TextureManager()
@@ -252,21 +252,24 @@ void TextureManager::SubmitDescriptors(uint32_t frameIndex,
     textureDesc->FlushDescWrites();
 }
 
-uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgStaticMaterialCreateInfo &createInfo)
+uint32_t TextureManager::CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgMaterialCreateInfo &createInfo)
 {
     if (createInfo.pRelativePath == nullptr && 
         createInfo.textures.pDataAlbedoAlpha == nullptr &&
         createInfo.textures.pDataRoughnessMetallicEmission == nullptr &&
         createInfo.textures.pDataNormal == nullptr)
     {
-        throw RgException(RG_WRONG_MATERIAL_PARAMETER, "At least one of \'pRelativePath\' or \'textures\' members must be not null");
+        throw RgException(RG_WRONG_MATERIAL_PARAMETER,
+                          R"(At least one of 'pRelativePath' or 'textures' members must be not null)");
     }
 
     SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags);
 
-    TextureOverrides::OverrideInfo parseInfo = {};
-    parseInfo.disableOverride = createInfo.flags & RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT;
-    parseInfo.texturesPath = defaultTexturesPath.c_str();
+    TextureOverrides::OverrideInfo parseInfo = 
+    {
+        .disableOverride = !!(createInfo.flags & RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT),
+        .texturesPath = defaultTexturesPath.c_str(),
+    };
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
         parseInfo.postfixes[i] = postfixes[i].c_str();
@@ -282,106 +285,77 @@ uint32_t TextureManager::CreateStaticMaterial(VkCommandBuffer cmd, uint32_t fram
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        mtextures.indices[i] = PrepareStaticTexture(cmd, frameIndex, ovrd.GetResult(i), samplerHandle,
-                                                   !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), ovrd.GetDebugName());
+        mtextures.indices[i] = PrepareTexture(
+            cmd, frameIndex, 
+            ovrd.GetResult(i), 
+            samplerHandle,
+            !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), 
+            ovrd.GetDebugName(),
+            !!(createInfo.flags & RG_MATERIAL_CREATE_UPDATEABLE_BIT));
     }
-
-
-    return InsertMaterial(mtextures, false);
+    
+    return InsertMaterial(mtextures, createInfo.flags & RG_MATERIAL_CREATE_UPDATEABLE_BIT);
 }
 
-uint32_t TextureManager::CreateDynamicMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgDynamicMaterialCreateInfo &createInfo)
+bool TextureManager::UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo)
 {
-    SamplerManager::Handle samplerHandle(createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags);
+    const auto it = materials.find(updateInfo.target);
 
-    const void *textureData[TEXTURES_PER_MATERIAL_COUNT] =
-    { 
-        createInfo.textures.pDataAlbedoAlpha,
-        createInfo.textures.pDataRoughnessMetallicEmission,
-        createInfo.textures.pDataNormal,
+    // must exist
+    if (it == materials.end())
+    {
+        throw RgException(RG_CANT_UPDATE_MATERIAL,
+            "Material with ID=" + std::to_string(updateInfo.target) + " was not created");
+    }
+
+    // must be updateable
+    if (!it->second.isUpdateable)
+    {
+        throw RgException(RG_CANT_UPDATE_MATERIAL,
+            "Material with ID=" + std::to_string(updateInfo.target) + " was not marked as updateable");
+    }
+
+    const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
+    {
+        updateInfo.textures.pDataAlbedoAlpha,
+        updateInfo.textures.pDataRoughnessMetallicEmission,
+        updateInfo.textures.pDataNormal,
     };
 
-    const uint32_t bytesPerPixel = 4;
-    const uint32_t dataSize = createInfo.size.width * createInfo.size.height * bytesPerPixel;
-    assert(dataSize > 0);
+    auto &textureIndices = it->second.textures.indices;
+    static_assert(sizeof(textureIndices) / sizeof(textureIndices[0]) == TEXTURES_PER_MATERIAL_COUNT);
 
-
-    MaterialTextures mtextures = {};
+    bool wasUpdated = false;
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        VkFormat format = originalIsSRGB[i] ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
-        mtextures.indices[i] = PrepareDynamicTexture(cmd, frameIndex, textureData[i], dataSize, createInfo.size, samplerHandle, format,
-                                                    !(createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT), nullptr);
-    }
+        uint32_t textureIndex = textureIndices[i];
 
-
-    return InsertMaterial(mtextures, true);
-}
-
-bool TextureManager::UpdateDynamicMaterial(VkCommandBuffer cmd, const RgDynamicMaterialUpdateInfo &updateInfo)
-{
-    const auto it = materials.find(updateInfo.dynamicMaterial);
-
-    // if exist and dynamic
-    if (it != materials.end())
-    {
-        if (!it->second.isDynamic)
+        if (textureIndex == EMPTY_TEXTURE_INDEX)
         {
-            throw RgException(RG_CANT_UPDATE_DYNAMIC_MATERIAL,
-                              "Material with ID=" + std::to_string(updateInfo.dynamicMaterial) + " is not dynamic");
+            continue;
         }
 
-        const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
+        VkImage img = textures[textureIndex].image;
+
+        if (img == VK_NULL_HANDLE)
         {
-            updateInfo.textures.pDataAlbedoAlpha,
-            updateInfo.textures.pDataRoughnessMetallicEmission,
-            updateInfo.textures.pDataNormal,
-        };
-
-        auto &textureIndices = it->second.textures.indices;
-        static_assert(sizeof(textureIndices) / sizeof(textureIndices[0]) == TEXTURES_PER_MATERIAL_COUNT, "");
-
-        bool wasUpdated = false;
-
-        for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
-        {
-            uint32_t textureIndex = textureIndices[i];
-
-            if (textureIndex == EMPTY_TEXTURE_INDEX)
-            {
-                continue;
-            }
-
-            VkImage img = textures[textureIndex].image;
-
-            if (img == VK_NULL_HANDLE)
-            {
-                continue;
-            }
-
-            textureUploader->UpdateDynamicImage(cmd, img, updateData[i]);
-            wasUpdated = true;
+            continue;
         }
 
-        return wasUpdated;
-    }
-    else
-    {
-        throw RgException(RG_CANT_UPDATE_DYNAMIC_MATERIAL, 
-                          "Material with ID=" + std::to_string(updateInfo.dynamicMaterial) +  " was not created");
+        textureUploader->UpdateImage(cmd, img, updateData[i]);
+        wasUpdated = true;
     }
 
-    return false;
+    return wasUpdated;
 }
 
-uint32_t TextureManager::PrepareStaticTexture(
+uint32_t TextureManager::PrepareTexture(
     VkCommandBuffer cmd, uint32_t frameIndex, 
     const std::optional<ImageLoader::ResultInfo> &optImageInfo,
     SamplerManager::Handle samplerHandle, bool useMipmaps,
-    const char *debugName)
+    const char *debugName, bool isUpdateable)
 {
-    // only dynamic textures can have null data
     if (!optImageInfo.has_value())
     {
         return EMPTY_TEXTURE_INDEX;
@@ -401,64 +375,32 @@ uint32_t TextureManager::PrepareStaticTexture(
     assert(imageInfo.dataSize > 0);
     assert(imageInfo.levelCount > 0 && imageInfo.levelSizes[0] > 0);
 
-    TextureUploader::UploadInfo info = {};
-    info.cmd = cmd;
-    info.frameIndex = frameIndex;
-    info.pData = imageInfo.pData;
-    info.dataSize = imageInfo.dataSize;
-    info.baseSize = imageInfo.baseSize;
-    info.format = imageInfo.format;
-    info.isDynamic = false;
-    info.useMipmaps = useMipmaps;
-    info.pDebugName = debugName;
-    info.isCubemap = false;
-    info.pregeneratedLevelCount = imageInfo.isPregenerated ? imageInfo.levelCount : 0;
-    info.pLevelDataOffsets = imageInfo.levelOffsets;
-    info.pLevelDataSizes = imageInfo.levelSizes;
+    TextureUploader::UploadInfo info =
+    {
+        .cmd = cmd,
+        .frameIndex = frameIndex,
+        .pData = imageInfo.pData,
+        .dataSize = imageInfo.dataSize,
+        .cubemap = {},
+        .baseSize = imageInfo.baseSize,
+        .format = imageInfo.format,
+        .useMipmaps = useMipmaps,
+        .pregeneratedLevelCount = imageInfo.isPregenerated ? imageInfo.levelCount : 0,
+        .pLevelDataOffsets = imageInfo.levelOffsets,
+        .pLevelDataSizes = imageInfo.levelSizes,
+        .isUpdateable = isUpdateable,
+        .pDebugName = debugName,
+        .isCubemap = false,
+    };
+    
+    auto [wasUploaded, image, view] = textureUploader->UploadImage(info);
 
-    auto result = textureUploader->UploadImage(info);
-
-    if (!result.wasUploaded)
+    if (!wasUploaded)
     {
         return EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertTexture(frameIndex, result.image, result.view, samplerHandle);
-}
-
-uint32_t TextureManager::PrepareDynamicTexture(
-    VkCommandBuffer cmd, uint32_t frameIndex,
-    const void *data, uint32_t dataSize, const RgExtent2D &size,
-    SamplerManager::Handle samplerHandle, VkFormat format, bool generateMipmaps,
-    const char *debugName)
-{
-    if (data == nullptr)
-    {
-        return EMPTY_TEXTURE_INDEX;
-    }
-
-    assert(size.width > 0 && size.height > 0);
-
-    TextureUploader::UploadInfo info = {};
-    info.cmd = cmd;
-    info.frameIndex = frameIndex;
-    info.pData = data;
-    info.dataSize = dataSize;
-    info.baseSize = size;
-    info.format = format;
-    info.isDynamic = true;
-    info.useMipmaps = generateMipmaps;
-    info.pDebugName = debugName;
-    info.isCubemap = false;
-
-    auto result = textureUploader->UploadImage(info);
-
-    if (!result.wasUploaded)
-    {
-        return EMPTY_TEXTURE_INDEX;
-    }
-
-    return InsertTexture(frameIndex, result.image, result.view, samplerHandle);
+    return InsertTexture(frameIndex, image, view, samplerHandle);
 }
 
 uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
@@ -473,7 +415,7 @@ uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t fr
     // animated material is a series of static materials
     for (uint32_t i = 0; i < createInfo.frameCount; i++)
     {
-        materialIndices[i] = CreateStaticMaterial(cmd, frameIndex, createInfo.pFrames[i]);
+        materialIndices[i] = CreateMaterial(cmd, frameIndex, createInfo.pFrames[i]);
     }
 
     return InsertAnimatedMaterial(materialIndices);
@@ -483,47 +425,45 @@ bool TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t
 {
     const auto animIt = animatedMaterials.find(animMaterial);
 
-    if (animIt != animatedMaterials.end())
-    {
-        AnimatedMaterial &anim = animIt->second;
-
-        uint32_t maxFrameCount = (uint32_t)anim.materialIndices.size();
-        if (materialFrame >= maxFrameCount)
-        {
-            throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL, 
-                              "Animated material with ID=" + std::to_string(animMaterial) + " has only " +
-                              std::to_string(maxFrameCount) + " frames, but frame with index " 
-                              + std::to_string(materialFrame) + " was requested");
-        }
-
-        anim.currentFrame = materialFrame;
-
-        // notify subscribers
-        for (auto &ws : subscribers)
-        {
-            // if subscriber still exist
-            if (auto s = ws.lock())
-            {
-                uint32_t frameMatIndex = anim.materialIndices[anim.currentFrame];
-
-                // find MaterialTextures
-                auto it = materials.find(frameMatIndex);
-
-                if (it != materials.end())
-                {
-                    s->OnMaterialChange(animMaterial, it->second.textures);
-                }
-            }
-        }
-
-        return true;
-    }
-    else
+    if (animIt == animatedMaterials.end())
     {
         throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL, "Material with ID=" + std::to_string(animMaterial) + " is not animated");
     }
 
-    return false;
+    AnimatedMaterial &anim = animIt->second;
+
+    {
+        auto maxFrameCount = static_cast<uint32_t>(anim.materialIndices.size());
+        if (materialFrame >= maxFrameCount)
+        {
+            throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL,
+                "Animated material with ID=" + std::to_string(animMaterial) + " has only " +
+                std::to_string(maxFrameCount) + " frames, but frame with index "
+                + std::to_string(materialFrame) + " was requested");
+        }
+    }
+
+    anim.currentFrame = materialFrame;
+
+    // notify subscribers
+    for (auto &ws : subscribers)
+    {
+        // if subscriber still exist
+        if (auto s = ws.lock())
+        {
+            uint32_t frameMatIndex = anim.materialIndices[anim.currentFrame];
+
+            // find MaterialTextures
+            auto it = materials.find(frameMatIndex);
+
+            if (it != materials.end())
+            {
+                s->OnMaterialChange(animMaterial, it->second.textures);
+            }
+        }
+    }
+
+    return true;
 }
 
 uint32_t TextureManager::GenerateMaterialIndex(const MaterialTextures &materialTextures)
@@ -551,7 +491,7 @@ uint32_t TextureManager::GenerateMaterialIndex(const std::vector<uint32_t> &mate
     return matIndex;
 }
 
-uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures, bool isDynamic)
+uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures, bool isUpdateable)
 {
     bool isEmpty = true;
 
@@ -570,12 +510,12 @@ uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures
     }
 
     uint32_t matIndex = GenerateMaterialIndex(materialTextures);
+    materials[matIndex] = Material
+    {
+        .textures = materialTextures,
+        .isUpdateable = isUpdateable,
+    };
 
-    Material material = {};
-    material.isDynamic = isDynamic;
-    material.textures = materialTextures;
-
-    materials[matIndex] = material;
     return matIndex;
 }
 
@@ -598,12 +538,11 @@ uint32_t TextureManager::InsertAnimatedMaterial(std::vector<uint32_t> &materialI
     }
 
     uint32_t animMatIndex = GenerateMaterialIndex(materialIndices);
-
-    animatedMaterials[animMatIndex] = {};
-
-    AnimatedMaterial &animMat = animatedMaterials[animMatIndex];
-    animMat.currentFrame = 0;
-    animMat.materialIndices = std::move(materialIndices);
+    animatedMaterials[animMatIndex] = AnimatedMaterial
+    {
+        .materialIndices = std::move(materialIndices),
+        .currentFrame = 0,
+    };
 
     return animMatIndex;
 }

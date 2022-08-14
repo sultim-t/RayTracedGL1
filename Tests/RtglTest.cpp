@@ -191,11 +191,11 @@ static void MainLoop(RgInstance instance)
 
     // some resources can be initialized out of frame
     {
-        RgStaticMaterialCreateInfo textureInfo =
+        RgMaterialCreateInfo textureInfo =
         {
             .pRelativePath = "Door.ktx2"
         };
-        r = rgCreateStaticMaterial(instance, &textureInfo, &material);
+        r = rgCreateMaterial(instance, &textureInfo, &material);
         RG_CHECK(r);
 
 

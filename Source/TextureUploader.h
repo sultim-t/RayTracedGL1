@@ -58,7 +58,7 @@ public:
         uint32_t            pregeneratedLevelCount;
         const uint32_t      *pLevelDataOffsets;
         const uint32_t      *pLevelDataSizes;
-        bool                isDynamic;
+        bool                isUpdateable;
         const char          *pDebugName;
         bool                isCubemap;
     };
@@ -76,7 +76,7 @@ public:
     void ClearStaging(uint32_t frameIndex);
 
     virtual UploadResult UploadImage(const UploadInfo &info);
-    void UpdateDynamicImage(VkCommandBuffer cmd, VkImage dynamicImage, const void *data);
+    void UpdateImage(VkCommandBuffer cmd, VkImage targetImage, const void *data);
     void DestroyImage(VkImage image, VkImageView view);
 
 protected:
@@ -110,7 +110,7 @@ protected:
     VkImageView CreateImageView(VkImage image, VkFormat format, bool isCubemap, uint32_t mipmapCount);
 
 private:
-    struct DynamicImageInfo
+    struct UpdateableImageInfo
     {
         VkBuffer    stagingBuffer;
         void        *mappedData;
@@ -129,7 +129,7 @@ protected:
     std::vector<VkBuffer> stagingToFree[MAX_FRAMES_IN_FLIGHT];
 
     // Each dynamic image has its pointer to HOST_VISIBLE data for updating.
-    rgl::unordered_map<VkImage, DynamicImageInfo> dynamicImageInfos;
+    rgl::unordered_map<VkImage, UpdateableImageInfo> updateableImageInfos;
 };
 
 }

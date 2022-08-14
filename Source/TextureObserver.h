@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 Sultim Tsyrendashiev
+// Copyright (c) 2022 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,42 +20,31 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Const.h"
-#include "SamplerManager.h"
+#include <RTGL1/RTGL1.h>
+
+#include "Containers.h"
+#include "TextureOverrides.h"
 
 namespace RTGL1
 {
+    class TextureObserver
+    {
+    public:
+        TextureObserver();
+        ~TextureObserver();
 
+        TextureObserver(const TextureObserver& other) = delete;
+        TextureObserver(TextureObserver&& other) noexcept = delete;
+        TextureObserver& operator=(const TextureObserver& other) = delete;
+        TextureObserver& operator=(TextureObserver&& other) noexcept = delete;
 
-struct Texture
-{
-    VkImage                 image = VK_NULL_HANDLE;
-    VkImageView             view = VK_NULL_HANDLE;
-    SamplerManager::Handle  samplerHandle = SamplerManager::Handle();
-};
+        void CheckPathsAndReupload();
 
+        void RegisterPath(RgMaterial index, std::optional<std::filesystem::path> path);
+        void Remove(RgMaterial index);
 
-struct MaterialTextures
-{
-    // Indices to use in shaders, each index represents RgTextureData from RgTextureSet
-    uint32_t                indices[TEXTURES_PER_MATERIAL_COUNT];
-};
+    private:
 
-
-struct Material
-{
-    MaterialTextures        textures;
-    uint32_t                isUpdateable;
-};
-
-
-struct AnimatedMaterial
-{
-    // Indices of static materials.
-    std::vector<uint32_t>   materialIndices;
-    uint32_t                currentFrame = 0;
-};
-
-
+        rgl::unordered_map<RgMaterial, std::filesystem::path> texturePaths;
+    };
 }

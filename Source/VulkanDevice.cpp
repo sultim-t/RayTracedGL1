@@ -740,6 +740,11 @@ void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
     renderResolution.Setup(drawInfo->pRenderResolutionParams,
                            swapchain->GetWidth(), swapchain->GetHeight(), nvDlss);
 
+    if (textureObserver)
+    {
+        textureObserver->CheckPathsAndReupload();
+    }
+
     if (renderResolution.Width() > 0 && renderResolution.Height() > 0)
     {
         FillUniform(uniform->GetData(), *drawInfo);
@@ -1011,16 +1016,22 @@ void RTGL1::VulkanDevice::SetPotentialVisibility(SectorID sectorID_A, SectorID s
     scene->SetPotentialVisibility(sectorID_A, sectorID_B);
 }
 
-void VulkanDevice::CreateStaticMaterial(const RgStaticMaterialCreateInfo *createInfo, RgMaterial *result)
+void VulkanDevice::CreateMaterial(const RgMaterialCreateInfo *createInfo, RgMaterial *result)
 {
     if (createInfo == nullptr)
     {
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    *result = textureManager->CreateStaticMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager), 
-                                                   currentFrameState.GetFrameIndex(), 
-                                                   *createInfo);
+    if (textureObserver)
+    {
+      //  textureObserver->RegisterPath());
+    }
+
+    *result = textureManager->CreateMaterial(
+        currentFrameState.GetCmdBufferForMaterials(cmdManager),
+        currentFrameState.GetFrameIndex(),
+        *createInfo);
 }
 
 void VulkanDevice::CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *createInfo, RgMaterial *result)
@@ -1050,25 +1061,7 @@ void VulkanDevice::ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint
     bool wasChanged = textureManager->ChangeAnimatedMaterialFrame(animatedMaterial, frameIndex);
 }
 
-void VulkanDevice::CreateDynamicMaterial(const RgDynamicMaterialCreateInfo *createInfo, RgMaterial *result)
-{
-    if (createInfo == nullptr)
-    {
-        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
-    }
-
-    if (createInfo->size.width == 0 || createInfo->size.height == 0)
-    {
-        throw RgException(RG_WRONG_MATERIAL_PARAMETER, "Dynamic materials must have non-zero width and height, but given size is (" +
-                          std::to_string(createInfo->size.width) + ", " + std::to_string(createInfo->size.height) + ")");
-    }
-
-    *result = textureManager->CreateDynamicMaterial(currentFrameState.GetCmdBufferForMaterials(cmdManager),
-                                                    currentFrameState.GetFrameIndex(), 
-                                                    *createInfo);
-}
-
-void VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *updateInfo)
+void VulkanDevice::UpdateMaterial(const RgMaterialUpdateInfo *updateInfo)
 {
     if (!currentFrameState.WasFrameStarted())
     {
@@ -1080,7 +1073,7 @@ void VulkanDevice::UpdateDynamicMaterial(const RgDynamicMaterialUpdateInfo *upda
         throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
     }
 
-    bool wasUpdated = textureManager->UpdateDynamicMaterial(currentFrameState.GetCmdBuffer(), *updateInfo);
+    bool wasUpdated = textureManager->UpdateMaterial(currentFrameState.GetCmdBuffer(), *updateInfo);
 }
 
 void VulkanDevice::DestroyMaterial(RgMaterial material)

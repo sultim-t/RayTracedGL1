@@ -93,7 +93,7 @@ typedef enum RgResult
     RG_FRAME_WASNT_ENDED,
     RG_CANT_UPDATE_TRANSFORM,
     RG_CANT_UPDATE_TEXCOORDS,
-    RG_CANT_UPDATE_DYNAMIC_MATERIAL,
+    RG_CANT_UPDATE_MATERIAL,
     RG_CANT_UPDATE_ANIMATED_MATERIAL,
     RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
     RG_WRONG_MATERIAL_PARAMETER,
@@ -218,7 +218,7 @@ typedef struct RgInstanceCreateInfo
     // Max amount of textures to be used during the execution.
     // The value is clamped to [1024..4096]
     uint32_t                    maxTextureCount;
-    // If true, 'filter' in RgStaticMaterialCreateInfo, RgDynamicMaterialCreateInfo, RgCubemapCreateInfo
+    // If true, 'filter' in RgMaterialCreateInfo, RgCubemapCreateInfo
     // will set only magnification filter.
     RgBool32                    textureSamplerForceMinificationFilterLinear;
 
@@ -734,14 +734,18 @@ typedef enum RgMaterialCreateFlagBits
     RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT = 4,
     // If set, sampler will be controlled with RgDrawFrameTexturesParams::dynamicSamplerFilter.
     RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT = 8,
+    // If set, "rgUpdateMaterialContents" can be used to update textures of the material.
+    // Tip: specify RG_MATERIAL_CREATE_DISABLE_OVERRIDE_BIT to avoid access to the filesystem.
+    RG_MATERIAL_CREATE_UPDATEABLE_BIT = 16,
 } RgMaterialCreateFlagBits;
 typedef RgFlags RgMaterialCreateFlags;
 
-typedef struct RgStaticMaterialCreateInfo
+typedef struct RgMaterialCreateInfo
 {
     RgMaterialCreateFlags   flags;
     // If data is used then size must specify width and height.
     // "data" must be (width * height * 4) bytes.
+    // Can be (0,0).
     RgExtent2D              size;
     // Only R8G8B8A8 textures.
     // Firstly, the library will try to find image file using "relativePath",
@@ -759,38 +763,23 @@ typedef struct RgStaticMaterialCreateInfo
     RgSamplerFilter         filter;
     RgSamplerAddressMode    addressModeU;
     RgSamplerAddressMode    addressModeV;
-} RgStaticMaterialCreateInfo;
-    
-typedef struct RgDynamicMaterialCreateInfo
-{
-    RgMaterialCreateFlags   flags;
-    // The width and height must be > 0.
-    RgExtent2D              size;
-    // Only R8G8B8A8 textures.
-    // If data is not null, the newly created dynamic texture will be
-    // updated using this data. Otherwise, it'll be empty until
-    // "rgUpdateDynamicMaterial" call.
-    RgTextureSet            textures;
-    RgSamplerFilter         filter;
-    RgSamplerAddressMode    addressModeU;
-    RgSamplerAddressMode    addressModeV;
-} RgDynamicMaterialCreateInfo;
+} RgMaterialCreateInfo;
 
-typedef struct RgDynamicMaterialUpdateInfo
+typedef struct RgMaterialUpdateInfo
 {
-    RgMaterial              dynamicMaterial;
+    RgMaterial              target;
     RgTextureSet            textures;
-} RgDynamicMaterialUpdateInfo;
+} RgMaterialUpdateInfo;
 
 typedef struct RgAnimatedMaterialCreateInfo
 {
     uint32_t                            frameCount;
-    RgStaticMaterialCreateInfo          *pFrames;
+    RgMaterialCreateInfo                *pFrames;
 } RgAnimatedMaterialCreateInfo;
 
-RGAPI RgResult RGCONV rgCreateStaticMaterial(
+RGAPI RgResult RGCONV rgCreateMaterial(
     RgInstance                          rgInstance,
-    const RgStaticMaterialCreateInfo    *pCreateInfo,
+    const RgMaterialCreateInfo          *pCreateInfo,
     RgMaterial                          *pResult);
 
 RGAPI RgResult RGCONV rgCreateAnimatedMaterial(
@@ -802,15 +791,10 @@ RGAPI RgResult RGCONV rgChangeAnimatedMaterialFrame(
     RgInstance                          rgInstance,
     RgMaterial                          animatedMaterial,
     uint32_t                            frameIndex);
-    
-RGAPI RgResult RGCONV rgCreateDynamicMaterial(
-    RgInstance                          rgInstance,
-    const RgDynamicMaterialCreateInfo   *pCreateInfo,
-    RgMaterial                          *pResult);
 
-RGAPI RgResult RGCONV rgUpdateDynamicMaterial(
+RGAPI RgResult RGCONV rgUpdateMaterialContents(
     RgInstance                          rgInstance,
-    const RgDynamicMaterialUpdateInfo   *pUpdateInfo);
+    const RgMaterialUpdateInfo          *pUpdateInfo);
 
 // Destroying RG_NO_MATERIAL has no effect.
 RGAPI RgResult RGCONV rgDestroyMaterial(
