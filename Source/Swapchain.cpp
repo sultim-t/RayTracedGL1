@@ -132,6 +132,12 @@ bool RTGL1::Swapchain::IsExtentOptimal() const
     VkSurfaceCapabilitiesKHR surfCapabilities;
 
     VkResult r = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physDevice, surface, &surfCapabilities);
+
+    if (r == VK_ERROR_SURFACE_LOST_KHR)
+    {
+        return false;
+    }
+
     VK_CHECKERROR(r);
 
     return
