@@ -86,7 +86,7 @@ void RTGL1::LightGrid::Build(
         0, nullptr);
 
 
-    uint32_t lightSamplesCount = LIGHT_GRID_CELL_SIZE * LIGHT_GRID_SIZE_HORIZONTAL_X * LIGHT_GRID_SIZE_VERTICAL_Y * LIGHT_GRID_SIZE_HORIZONTAL_Z;
+    uint32_t lightSamplesCount = LIGHT_GRID_CELL_SIZE * LIGHT_GRID_SIZE_X * LIGHT_GRID_SIZE_Y * LIGHT_GRID_SIZE_Z;
     uint32_t wgCountX = Utils::GetWorkGroupCount(lightSamplesCount, COMPUTE_LIGHT_GRID_GROUP_SIZE_X);
 
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, gridBuildPipeline);

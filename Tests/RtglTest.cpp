@@ -496,6 +496,7 @@ static void MainLoop(RgInstance instance)
 
         RgDrawFrameInfo frameInfo =
         {
+            .cellWorldSize = 2.0f,
             .fovYRadians = glm::radians(75.0f),
             .cameraNear = cameraNear,
             .cameraFar = cameraFar,

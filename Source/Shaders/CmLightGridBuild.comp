@@ -47,7 +47,7 @@ void main()
     const int arrayIndex = int(gl_GlobalInvocationID.x);
     const ivec3 cellIndex = arrayIndexToCell(arrayIndex);
 
-    const vec3 cellCenter = cellToWorld(cellIndex);
+    const vec3 cellCenter = getCellWorldCenter(cellIndex);
     const float cellRadius = getCellRadius();
 
     const uint seed = getRandomSeed(ivec2(arrayIndex, 0), globalUniform.frameId);

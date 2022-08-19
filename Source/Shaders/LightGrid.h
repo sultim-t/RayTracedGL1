@@ -29,51 +29,89 @@
 #define LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER 1.5
 
 
-int cellToArrayIndex(const ivec3 cellIndex)
+vec3 getGridDelta()
+{
+    return vec3(globalUniform.cellWorldSize);
+}
+
+vec3 getGridWholeSize()
+{
+    return getGridDelta() * vec3(LIGHT_GRID_SIZE_X, LIGHT_GRID_SIZE_Y, LIGHT_GRID_SIZE_Z);
+}
+
+float getCellRadius()
+{
+    return length(getGridDelta()) * 0.5;
+}
+
+vec3 getGridCenter()
+{
+    // offset a bit, so camera is in the center of the cell
+    return globalUniform.cameraPosition.xyz + getGridDelta() * 0.5;
+}
+
+vec3 getGridMinExtentWorld()
+{
+    return getGridCenter() - getGridWholeSize() * 0.5;
+}
+
+vec3 getGridMaxExtentWorld()
+{
+    return getGridCenter() + getGridWholeSize() * 0.5;
+}
+
+bool isInsideCell(const vec3 worldPos)
+{
+    return 
+        all(greaterThan(worldPos, getGridMinExtentWorld())) && 
+        all(lessThan(worldPos, getGridMaxExtentWorld()));
+}
+
+vec3 jitterPositionForLightGrid(const vec3 surfPosition, const vec3 rnd)
+{
+    return clamp(
+        surfPosition + (rnd * 2.0 - 1.0) * getCellRadius() * LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER,
+        getGridMinExtentWorld(),
+        getGridMaxExtentWorld());
+}
+
+
+vec3 getCellWorldCenter(const ivec3 cellIndex)
+{
+    return getGridMinExtentWorld() + getGridDelta() * (vec3(cellIndex) + 0.5);
+}
+
+ivec3 worldToCell(const vec3 worldPos)
+{
+    return clamp(
+        ivec3((worldPos - getGridMinExtentWorld()) / getGridDelta()),
+        ivec3(0),
+        ivec3(LIGHT_GRID_SIZE_X, LIGHT_GRID_SIZE_Y, LIGHT_GRID_SIZE_Z));
+}
+
+
+int cellToArrayIndex(ivec3 cellIndex)
 {
     return LIGHT_GRID_CELL_SIZE * (
         cellIndex.x +
-        cellIndex.z * LIGHT_GRID_SIZE_HORIZONTAL_X +
-        cellIndex.y * LIGHT_GRID_SIZE_HORIZONTAL_X * LIGHT_GRID_SIZE_HORIZONTAL_Z);
+        cellIndex.y * LIGHT_GRID_SIZE_X +
+        cellIndex.z * LIGHT_GRID_SIZE_X * LIGHT_GRID_SIZE_Y);
 }
 
 ivec3 arrayIndexToCell(int arrayIndex)
 {
     int c = arrayIndex / LIGHT_GRID_CELL_SIZE;
     
-    ivec3 cellIndex;
-    cellIndex.x = (c % (LIGHT_GRID_SIZE_HORIZONTAL_X));
-    cellIndex.z = (c % (LIGHT_GRID_SIZE_HORIZONTAL_X * LIGHT_GRID_SIZE_HORIZONTAL_Z)) / LIGHT_GRID_SIZE_HORIZONTAL_X;
-    cellIndex.y = (c / (LIGHT_GRID_SIZE_HORIZONTAL_X * LIGHT_GRID_SIZE_HORIZONTAL_Z));
+    ivec3 cellIndex = 
+    {
+        (c % (LIGHT_GRID_SIZE_X)),
+        (c % (LIGHT_GRID_SIZE_X * LIGHT_GRID_SIZE_Y)) / LIGHT_GRID_SIZE_X,
+        (c / (LIGHT_GRID_SIZE_X * LIGHT_GRID_SIZE_Y)),
+    };
 
     return cellIndex;
 }
 
-// TODO
-#define CENTER (vec3(0))
-#define SIZE (vec3(100, 50, 100)*10)
-#define BASE (CENTER - SIZE * 0.5)
-#define DELTA (SIZE / vec3(LIGHT_GRID_SIZE_HORIZONTAL_X, LIGHT_GRID_SIZE_VERTICAL_Y, LIGHT_GRID_SIZE_HORIZONTAL_Z))
-
-float getCellRadius()
-{
-    return length(DELTA) * 0.5;
-}
-
-bool isInsideCell(const vec3 worldPos)
-{
-    return all(greaterThan(worldPos, BASE)) && all(lessThan(worldPos, BASE + SIZE));
-}
-
-vec3 cellToWorld(const ivec3 cellIndex)
-{
-    return BASE + DELTA * (vec3(cellIndex));
-}
-
-ivec3 worldToCell(const vec3 worldPos)
-{
-    return ivec3((worldPos - BASE) / DELTA);
-}
 
 Reservoir unpackReservoirFromLightGrid(const ShLightInCell s)
 {
@@ -93,14 +131,6 @@ ShLightInCell packReservoirToLightGrid(const Reservoir normalized)
     s.selected_targetPdf = normalized.selected_targetPdf;
     s.weightSum = normalized.weightSum;
     return s;
-}
-
-vec3 jitterPositionForLightGrid(const vec3 surfPosition, const vec3 rnd)
-{
-    return clamp(
-        surfPosition + (rnd * 2.0 - 1.0) * getCellRadius() * LIGHT_GRID_CELL_SAMPLING_OFFSET_MULTIPLIER,
-        BASE,
-        BASE + SIZE);
 }
 
 #endif // LIGHT_GRID_H_
