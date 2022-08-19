@@ -90,8 +90,6 @@ public:
     void UploadSpotlight(const RgSpotLightUploadInfo *pLightInfo);
     void UploadPolygonalLight(const RgPolygonalLightUploadInfo *pLightInfo);
 
-    void SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B);
-
     void CreateMaterial(const RgMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void CreateAnimatedMaterial(const RgAnimatedMaterialCreateInfo *pCreateInfo, RgMaterial *pResult);
     void ChangeAnimatedMaterialFrame(RgMaterial animatedMaterial, uint32_t frameIndex);

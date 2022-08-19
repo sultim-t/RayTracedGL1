@@ -49,9 +49,7 @@ public:
               std::shared_ptr<MemoryAllocator> allocator,
               std::shared_ptr<CommandBufferManager> cmdManager,
               std::shared_ptr<TextureManager> textureManager,
-              std::shared_ptr<GeomInfoManager> geomInfoManager,
-              std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
-              std::shared_ptr<SectorVisibility> &_sectorVisibility);
+              std::shared_ptr<GeomInfoManager> geomInfoManager);
     ~ASManager();
 
     ASManager(const ASManager& other) = delete;
@@ -155,7 +153,6 @@ private:
     std::shared_ptr<CommandBufferManager> cmdManager;
     std::shared_ptr<TextureManager> textureMgr;
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
-    std::shared_ptr<TriangleInfoManager> triangleInfoMgr;
 
     std::vector<std::unique_ptr<BLASComponent>> allStaticBlas;
     std::vector<std::unique_ptr<BLASComponent>> allDynamicBlas[MAX_FRAMES_IN_FLIGHT];

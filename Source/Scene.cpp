@@ -40,13 +40,10 @@ Scene::Scene(
 {
     VertexCollectorFilterTypeFlags_Init();
 
-    sectorVisibility = std::make_shared<SectorVisibility>();
-
-    lightManager = std::make_shared<LightManager>(_device, _allocator, sectorVisibility);
+    lightManager = std::make_shared<LightManager>(_device, _allocator);
     geomInfoMgr = std::make_shared<GeomInfoManager>(_device, _allocator);
-    triangleInfoMgr = std::make_shared<TriangleInfoManager>(_device, _allocator, sectorVisibility);
 
-    asManager = std::make_shared<ASManager>(_device, _physDevice, _allocator, _cmdManager, _textureManager, geomInfoMgr, triangleInfoMgr, sectorVisibility);
+    asManager = std::make_shared<ASManager>(_device, _physDevice, _allocator, _cmdManager, _textureManager, geomInfoMgr);
   
     vertPreproc = std::make_shared<VertexPreprocessing>(_device, _uniform, asManager, _shaderManager);
 }
@@ -59,7 +56,6 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
     dynamicUniqueIDToSimpleIndex.clear();
 
     geomInfoMgr->PrepareForFrame(frameIndex);
-    triangleInfoMgr->PrepareForFrame(frameIndex);
     lightManager->PrepareForFrame(cmd, frameIndex);
 
     // dynamic geomtry
@@ -94,7 +90,6 @@ void Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
     // copy geom and tri infos to device-local
     geomInfoMgr->CopyFromStaging(cmd, frameIndex);
-    triangleInfoMgr->CopyFromStaging(cmd, frameIndex);
 
 
     // prepare tlas infos, and fill uniform with info about that tlas
@@ -219,7 +214,6 @@ void Scene::StartNewStatic()
     isRecordingStatic = true;
     asManager->BeginStaticGeometry();
     lightManager->Reset();
-    sectorVisibility->Reset();
 
     staticUniqueIDToSimpleIndex.clear();
     movableGeomIndices.clear();
@@ -278,9 +272,4 @@ void RTGL1::Scene::UploadLight(uint32_t frameIndex, const RgPolygonalLightUpload
 void Scene::UploadLight(uint32_t frameIndex,const RgSpotLightUploadInfo &lightInfo)
 {
     lightManager->AddSpotlight(frameIndex, lightInfo);
-}
-
-void RTGL1::Scene::SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B)
-{
-    sectorVisibility->SetPotentialVisibility(sectorID_A, sectorID_B);
 }

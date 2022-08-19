@@ -100,15 +100,6 @@ layout(
     uint prevDynamicIndices[];
 };
 
-layout(
-    set = DESC_SET_VERTEX_DATA,
-    binding = BINDING_PER_TRIANGLE_INFO)
-    readonly 
-    buffer PerTriangleInfo_BT
-{
-    uint triangleSectorIndices[];
-};
-
 vec3 getStaticVerticesPositions(uint index)
 {
     return g_staticVertices[index].position.xyz;
@@ -477,15 +468,6 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     // use (first layer's color) * defaultEmission
     tr.geomEmission = inst.defaultEmission;
 
-    // if should use per-triangle info
-    if (inst.triangleArrayIndex != GEOM_INST_NO_TRIANGLE_INFO)
-    {
-        tr.sectorArrayIndex = triangleSectorIndices[inst.triangleArrayIndex + primitiveId];
-    }
-    else
-    {
-        tr.sectorArrayIndex = inst.sectorArrayIndex;
-    }
     tr.portalIndex = inst.portalIndex;
 
     return tr;

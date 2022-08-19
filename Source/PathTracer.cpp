@@ -110,7 +110,6 @@ void PathTracer::TracePrimaryRays(const TraceParams &params)
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_VISIBILITY_BUFFER,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
-        FI::FB_IMAGE_INDEX_SECTOR_INDEX,
         FI::FB_IMAGE_INDEX_THROUGHPUT,
         FI::FB_IMAGE_INDEX_PRIMARY_TO_REFL_REFR,
     };
@@ -136,7 +135,6 @@ void PathTracer::TraceReflectionRefractionRays(const TraceParams &params)
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_VISIBILITY_BUFFER,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
-        FI::FB_IMAGE_INDEX_SECTOR_INDEX,
         FI::FB_IMAGE_INDEX_THROUGHPUT,
         FI::FB_IMAGE_INDEX_PRIMARY_TO_REFL_REFR,
     };
@@ -159,7 +157,6 @@ void PathTracer::CalculateInitialReservoirs(const TraceParams& params)
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_NORMAL,
         FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
-        FI::FB_IMAGE_INDEX_SECTOR_INDEX,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
     };
     params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);

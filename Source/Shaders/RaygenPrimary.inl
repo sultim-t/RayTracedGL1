@@ -144,7 +144,6 @@ void storeSky(
     imageStore(framebufSurfacePosition,     pix, vec4(SURFACE_POSITION_INCORRECT));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufSectorIndex,         pix, uvec4(SECTOR_INDEX_NONE));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
@@ -344,7 +343,6 @@ void main()
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(primaryPayload));
     imageStore(framebufViewDirection,       pix, vec4(cameraRayDir, 0.0));
-    imageStore(framebufSectorIndex,         pix, uvec4(h.sectorArrayIndex));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
 
     // save some info for refl/refr shader
@@ -593,7 +591,6 @@ void main()
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(currentPayload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufSectorIndex,         pix, uvec4(h.sectorArrayIndex));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
 }
 #endif

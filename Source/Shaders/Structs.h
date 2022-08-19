@@ -34,7 +34,6 @@ struct ShTriangle
     float   geomRoughness;
     float   geomEmission;
     float   geomMetallicity;
-    uint    sectorArrayIndex;
     uint    portalIndex;
 };
 
@@ -61,7 +60,6 @@ struct ShHitInfo
     vec3    hitPosition;
     uint    instCustomIndex;
     uint    geometryInstanceFlags;
-    uint    sectorArrayIndex;
     uint    portalIndex;
 };
 

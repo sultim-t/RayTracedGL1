@@ -190,19 +190,6 @@ layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_LIGHT_SOURCES_INDEX_CUR_T
     uint lightSources_Index_CurToPrev[];
 };
 
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_PLAIN_LIGHT_LIST) readonly buffer PlainLightList_BT
-{
-    uint plainLightList[];
-};
-
-layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_SECTOR_TO_LIGHT_LIST_REGION) readonly buffer SectorToLightListRegion_BT
-{
-    // to get light list region for a sector,
-    // [sectorArrayIndex * 2 + 0] is the start index in 'plainLightList'
-    // [sectorArrayIndex * 2 + 1] is the end (excluding) index in 'plainLightList'
-    uint sectorToLightListRegion_StartEnd[];
-};
-
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_INITIAL_LIGHTS_GRID) 
 #ifndef LIGHT_GRID_WRITE
 readonly

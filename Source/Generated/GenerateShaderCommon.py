@@ -244,7 +244,6 @@ CONST = {
     "BINDING_GEOMETRY_INSTANCES_MATCH_PREV"     : 5,
     "BINDING_PREV_POSITIONS_BUFFER_DYNAMIC"     : 6,
     "BINDING_PREV_INDEX_BUFFER_DYNAMIC"         : 7,
-    "BINDING_PER_TRIANGLE_INFO"                 : 8,
     "BINDING_GLOBAL_UNIFORM"                    : 0,
     "BINDING_ACCELERATION_STRUCTURE_MAIN"       : 0,
     "BINDING_TEXTURES"                          : 0,
@@ -256,10 +255,8 @@ CONST = {
     "BINDING_LIGHT_SOURCES_PREV"                : 1,
     "BINDING_LIGHT_SOURCES_INDEX_PREV_TO_CUR"   : 2,
     "BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV"   : 3,
-    "BINDING_PLAIN_LIGHT_LIST"                  : 4,
-    "BINDING_SECTOR_TO_LIGHT_LIST_REGION"       : 5,
-    "BINDING_INITIAL_LIGHTS_GRID"               : 6,
-    "BINDING_INITIAL_LIGHTS_GRID_PREV"          : 7,
+    "BINDING_INITIAL_LIGHTS_GRID"               : 4,
+    "BINDING_INITIAL_LIGHTS_GRID_PREV"          : 5,
     "BINDING_LENS_FLARES_CULLING_INPUT"         : 0,
     "BINDING_LENS_FLARES_DRAW_CMDS"             : 1,
     "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
@@ -393,7 +390,6 @@ CONST = {
     "MEDIA_TYPE_COUNT"                      : 3,
 
     "GEOM_INST_NO_TRIANGLE_INFO"            : "UINT32_MAX",
-    "SECTOR_INDEX_NONE"                     : ((1 << 15) - 1),
 
     "LIGHT_TYPE_NONE"                       : 0,
     "LIGHT_TYPE_DIRECTIONAL"                : 1,
@@ -406,9 +402,9 @@ CONST = {
 
     "LIGHT_INDEX_NONE"                      : ((1 << 15) - 1),
 
-    "LIGHT_GRID_SIZE_HORIZONTAL_X"          : 20,
-    "LIGHT_GRID_SIZE_HORIZONTAL_Z"          : 20,
-    "LIGHT_GRID_SIZE_VERTICAL_Y"            : 10,
+    "LIGHT_GRID_SIZE_X"                     : 20,
+    "LIGHT_GRID_SIZE_Y"                     : 20,
+    "LIGHT_GRID_SIZE_Z"                     : 20,
     "LIGHT_GRID_CELL_SIZE"                  : 64,
     "COMPUTE_LIGHT_GRID_GROUP_SIZE_X"       : 256,
 
@@ -476,7 +472,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,     44,      "invProjection",                1),
     (TYPE_FLOAT32,     44,      "projectionPrev",               1),
 
-    (TYPE_UINT32,       1,      "_unused0",                     1),
+    (TYPE_FLOAT32,      1,      "cellWorldSize",                1),
     (TYPE_UINT32,       1,      "_unused1",                     1),
     (TYPE_UINT32,       1,      "_unused2",                     1),
     (TYPE_FLOAT32,      1,      "renderWidth",                  1),
@@ -590,7 +586,7 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "portalIndex",          1),
     (TYPE_UINT32,       1,      "materials2A",          1),
     (TYPE_UINT32,       1,      "materials2B",          1), # not used
-    (TYPE_UINT32,       1,      "sectorArrayIndex",     1), # 16-bits
+    (TYPE_UINT32,       1,      "_unused0",             1), 
     (TYPE_UINT32,       1,      "flags",                1),
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
@@ -601,7 +597,7 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,      1,      "defaultRoughness",     1),
     (TYPE_FLOAT32,      1,      "defaultMetallicity",   1),
     (TYPE_FLOAT32,      1,      "defaultEmission",      1),
-    (TYPE_UINT32,       1,      "triangleArrayIndex",   1),
+    (TYPE_UINT32,       1,      "_unused1",   1),
 ]
 
 # TODO: make more compact
@@ -754,7 +750,6 @@ FRAMEBUFFERS = {
     "UnfilteredIndirectSH_B"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "SectorIndex"                       : (TYPE_UINT16,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "PrimaryToReflRefr"                 : (TYPE_UINT32,     COMPONENT_RGBA, 0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),

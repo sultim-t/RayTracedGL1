@@ -98,8 +98,6 @@ typedef enum RgResult
     RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
     RG_WRONG_MATERIAL_PARAMETER,
     RG_WRONG_FUNCTION_CALL,
-    RG_TOO_MANY_SECTORS,
-    RG_ERROR_INCORRECT_SECTOR,
     RG_ERROR_CANT_FIND_BLUE_NOISE,
     RG_ERROR_CANT_FIND_WATER_TEXTURES,
 } RgResult;
@@ -380,14 +378,6 @@ typedef struct RgGeometryUploadInfo
     uint32_t                        indexCount;
     const uint32_t                  *pIndices;
 
-    // Sector ID per triangle. If null, sector IDs are ignored.
-    // Otherwise, must point to an array of (vertexCount/3) or
-    // (indexCount/3) elements (if pIndices is not null)
-    const uint32_t                  *pTriangleSectorIDs;
-    // If per triangle sector IDs are not provided,
-    // use this for whole geometry.
-    uint32_t                        sectorID;
-
     // Look RgPortalUploadInfo.
     // Must be null if not RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL.
     // Must be non-null if RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL.
@@ -462,18 +452,6 @@ RGAPI RgResult RGCONV rgBeginStaticGeometries(
 // rgBeginStaticGeometries and rgSubmitStaticGeometries can be called outside of rgStartFrame-rgDrawFrame.
 RGAPI RgResult RGCONV rgSubmitStaticGeometries(
     RgInstance                          rgInstance);
-
-
-
-// Set mutual potential visibility between sectors A and B.
-// It improves the light sampling by using specific light lists for each sector.
-// If none was set, light sources are chosen uniformly.
-// Note: visibility data is being cleared after calling rgBeginStaticGeometries.
-// Note: sector can be registered by just specifiying the same value for sectorID_A and sectorID_B.
-RGAPI RgResult RGCONV rgSetPotentialVisibility(
-    RgInstance                          rgInstance,
-    uint32_t                            sectorID_A,
-    uint32_t                            sectorID_B);
 
 
 
@@ -645,8 +623,6 @@ typedef struct RgSphericalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    // Look notes in RgPolygonalLightUploadInfo::sectorID
-    uint32_t        sectorID;
     RgFloat3D       color;
     RgFloat3D       position;
     // Sphere radius.
@@ -657,10 +633,6 @@ typedef struct RgPolygonalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    // ID of the sector this light belongs to. Can be any uint32_t value.
-    // If advanced sampling technique is not needed, leave the field with 0,
-    // so all lights will use that one sector, but more noisy results should be expected.
-    uint32_t        sectorID;
     RgFloat3D       color;
     RgFloat3D       positions[3];
 } RgPolygonalLightUploadInfo;
@@ -670,8 +642,6 @@ typedef struct RgSpotLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
-    // Look notes in RgPolygonalLightUploadInfo::sectorID
-    uint32_t        sectorID;
     RgFloat3D       color;
     RgFloat3D       position;
     RgFloat3D       direction;
@@ -1139,6 +1109,9 @@ typedef struct RgDrawFrameInfo
     // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
     // If the length is close to 0.0, then (0, 1, 0) is used.
     RgFloat3D               worldUpVector;
+    // Size of the side of a cell for the light grid. Use RG_DEBUG_DRAW_LIGHT_GRID_BIT for the debug view.
+    // Each cell is used to store a fixed amount of light samples that are important for the cell's center and radius.
+    float                   cellWorldSize;
     // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
     float                   fovYRadians;
     // Camera's near and far planes are used for FSR2.

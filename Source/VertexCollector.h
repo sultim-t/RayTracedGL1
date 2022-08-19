@@ -28,7 +28,6 @@
 #include "GeomInfoManager.h"
 #include "IMaterialDependency.h"
 #include "Material.h"
-#include "TriangleInfoManager.h"
 #include "VertexBufferProperties.h"
 #include "VertexCollectorFilter.h"
 #include "RTGL1/RTGL1.h"
@@ -49,8 +48,6 @@ public:
         VkDevice device, 
         const std::shared_ptr<MemoryAllocator> &allocator,
         std::shared_ptr<GeomInfoManager> geomInfoManager,
-        std::shared_ptr<TriangleInfoManager> triangleInfoMgr,
-        std::shared_ptr<SectorVisibility> sectorVisibility,
         VkDeviceSize bufferSize,
         VertexCollectorFilterTypeFlags filters);
 
@@ -166,8 +163,6 @@ private:
     std::shared_ptr<Buffer> transformsBuffer;
 
     std::shared_ptr<GeomInfoManager> geomInfoMgr;
-    std::shared_ptr<TriangleInfoManager> triangleInfoMgr;
-    std::shared_ptr<SectorVisibility> sectorVisibility;
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

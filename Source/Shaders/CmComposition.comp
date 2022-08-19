@@ -116,24 +116,6 @@ void main()
         color.g = abs(m.g);
         color.b = 0;
     }
-    /*else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_SECTORS) != 0)
-    {
-        uint sectorArrayIndex = texelFetch(framebufSectorIndex_Sampler, getCheckerboardPix(pix), 0).r; 
-        if (sectorArrayIndex != SECTOR_INDEX_NONE)
-        {
-            const uint colorCount = 32;
-            uint r = uint(sectorArrayIndex);
-            color = vec3(
-                0,
-                ((r % (colorCount - 1)) + 1) / float(colorCount),
-                (((r >> (uint(log2(colorCount)))) % (colorCount - 1)) + 1) / float(colorCount)
-            );
-        }
-        else
-        {
-            color = vec3(1,0,0);
-        }
-    }*/
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE) != 0)
     {
         color = texelFetchUnfilteredDirect(getCheckerboardPix(pix));
@@ -153,7 +135,7 @@ void main()
         vec3 surfPos = texelFetch(framebufSurfacePosition_Sampler, getCheckerboardPix(pix), 0).xyz;
        
         vec3 cell = vec3(worldToCell(surfPos));
-        cell /= vec3(LIGHT_GRID_SIZE_HORIZONTAL_X, LIGHT_GRID_SIZE_VERTICAL_Y, LIGHT_GRID_SIZE_HORIZONTAL_Z);
+        cell /= vec3(LIGHT_GRID_SIZE_X, LIGHT_GRID_SIZE_Y, LIGHT_GRID_SIZE_Z);
 
         color = mod(cell.xyz * 8, vec3(1.0));
 

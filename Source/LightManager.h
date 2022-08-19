@@ -20,14 +20,11 @@
 
 #pragma once
 
-#include <optional>
-
 #include "RTGL1/RTGL1.h"
 #include "Common.h"
 #include "Containers.h"
 #include "AutoBuffer.h"
-#include "GlobalUniform.h"
-#include "LightLists.h"
+#include "LightDefs.h"
 
 namespace RTGL1
 {
@@ -37,7 +34,7 @@ struct ShLightEncoded;
 class LightManager
 {
 public:
-    LightManager(VkDevice device, std::shared_ptr<MemoryAllocator> &allocator, std::shared_ptr<SectorVisibility> &sectorVisibility);
+    LightManager(VkDevice device, std::shared_ptr<MemoryAllocator> &allocator);
     ~LightManager();
 
     LightManager(const LightManager &other) = delete;
@@ -68,7 +65,7 @@ public:
 private:
     LightArrayIndex GetIndex(const ShLightEncoded &encodedLight) const;
     void IncrementCount(const ShLightEncoded &encodedLight);
-    void AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const ShLightEncoded &encodedLight);
+    void AddLight(uint32_t frameIndex, uint64_t uniqueId, const ShLightEncoded &encodedLight);
 
     void FillMatchPrev(uint32_t curFrameIndex, LightArrayIndex lightIndexInCurFrame, UniqueLightID uniqueID);
 
@@ -81,8 +78,6 @@ private:
     std::shared_ptr<AutoBuffer> lightsBuffer;
     Buffer lightsBuffer_Prev;
     Buffer initialLightsGrid[MAX_FRAMES_IN_FLIGHT];
-
-    std::shared_ptr<LightLists> lightLists;
 
     // Match light indices between current and previous frames
     std::shared_ptr<AutoBuffer> prevToCurIndex;

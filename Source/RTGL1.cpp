@@ -279,8 +279,3 @@ const char *rgGetResultDescription(RgResult result)
 {
     return RgException::GetRgResultName(result);
 }
-
-RgResult rgSetPotentialVisibility(RgInstance rgInstance, uint32_t sectorID_A, uint32_t sectorID_B)
-{
-    return Call(rgInstance, &VulkanDevice::SetPotentialVisibility, RTGL1::SectorID{ sectorID_A }, RTGL1::SectorID{ sectorID_B });
-}

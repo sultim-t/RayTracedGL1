@@ -614,7 +614,6 @@ bool isDirectIlluminationValid(int bounceIndex)
     bool v = true;
     v = v && (bounceIndex < globalUniform.maxBounceShadowsLights || globalUniform.maxBounceShadowsLights == 0);
     v = v && (globalUniform.lightCount + globalUniform.directionalLightExists > 0);
-    // v = v && (surf.sectorArrayIndex != SECTOR_INDEX_NONE);
     
     return v;
 }

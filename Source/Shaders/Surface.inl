@@ -27,7 +27,6 @@ struct Surface
     vec3    normalGeom;
     float   roughness;
     vec3    normal;
-    uint    sectorArrayIndex;
     vec3    albedo;
     bool    isSky;
     vec3    specularColor;
@@ -63,7 +62,6 @@ Surface fetchGbufferSurface(const ivec2 pix)
     }
     s.normalGeom                = texelFetchNormalGeometry(pix);
     s.normal                    = texelFetchNormal(pix);
-    s.sectorArrayIndex          = texelFetch(framebufSectorIndex_Sampler, pix, 0).r;
     s.toViewerDir               = -texelFetch(framebufViewDirection_Sampler, pix, 0).xyz;
     return s;
 }
@@ -88,7 +86,6 @@ Surface fetchGbufferSurface_NoAlbedoViewDir_Prev(const ivec2 pix)
     }
     s.normalGeom                = texelFetchNormalGeometry_Prev(pix);
     s.normal                    = texelFetchNormal_Prev(pix);
-    s.sectorArrayIndex          = texelFetch(framebufSectorIndex_Prev_Sampler, pix, 0).r;
     s.toViewerDir               = vec3(0.0);
     return s;
 }
@@ -102,7 +99,6 @@ Surface hitInfoToSurface_Indirect(const ShHitInfo h, const vec3 rayDirection)
     s.normalGeom = h.normalGeom;
     s.roughness = h.roughness;
     s.normal = h.normalGeom; // ignore precise normals for indirect
-    s.sectorArrayIndex = h.sectorArrayIndex;
     s.albedo = h.albedo;
     s.isSky = false;
     s.specularColor = getSpecularColor(h.albedo, h.metallic);

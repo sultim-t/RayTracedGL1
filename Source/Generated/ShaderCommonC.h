@@ -24,7 +24,6 @@ namespace RTGL1
 #define BINDING_GEOMETRY_INSTANCES_MATCH_PREV (5)
 #define BINDING_PREV_POSITIONS_BUFFER_DYNAMIC (6)
 #define BINDING_PREV_INDEX_BUFFER_DYNAMIC (7)
-#define BINDING_PER_TRIANGLE_INFO (8)
 #define BINDING_GLOBAL_UNIFORM (0)
 #define BINDING_ACCELERATION_STRUCTURE_MAIN (0)
 #define BINDING_TEXTURES (0)
@@ -36,10 +35,8 @@ namespace RTGL1
 #define BINDING_LIGHT_SOURCES_PREV (1)
 #define BINDING_LIGHT_SOURCES_INDEX_PREV_TO_CUR (2)
 #define BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV (3)
-#define BINDING_PLAIN_LIGHT_LIST (4)
-#define BINDING_SECTOR_TO_LIGHT_LIST_REGION (5)
-#define BINDING_INITIAL_LIGHTS_GRID (6)
-#define BINDING_INITIAL_LIGHTS_GRID_PREV (7)
+#define BINDING_INITIAL_LIGHTS_GRID (4)
+#define BINDING_INITIAL_LIGHTS_GRID_PREV (5)
 #define BINDING_LENS_FLARES_CULLING_INPUT (0)
 #define BINDING_LENS_FLARES_DRAW_CMDS (1)
 #define BINDING_DRAW_LENS_FLARES_INSTANCES (0)
@@ -151,7 +148,6 @@ namespace RTGL1
 #define MEDIA_TYPE_GLASS (2)
 #define MEDIA_TYPE_COUNT (3)
 #define GEOM_INST_NO_TRIANGLE_INFO (UINT32_MAX)
-#define SECTOR_INDEX_NONE (32767)
 #define LIGHT_TYPE_NONE (0)
 #define LIGHT_TYPE_DIRECTIONAL (1)
 #define LIGHT_TYPE_SPHERE (2)
@@ -160,9 +156,9 @@ namespace RTGL1
 #define LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET (0)
 #define LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET (1)
 #define LIGHT_INDEX_NONE (32767)
-#define LIGHT_GRID_SIZE_HORIZONTAL_X (20)
-#define LIGHT_GRID_SIZE_HORIZONTAL_Z (20)
-#define LIGHT_GRID_SIZE_VERTICAL_Y (10)
+#define LIGHT_GRID_SIZE_X (20)
+#define LIGHT_GRID_SIZE_Y (20)
+#define LIGHT_GRID_SIZE_Z (20)
 #define LIGHT_GRID_CELL_SIZE (64)
 #define COMPUTE_LIGHT_GRID_GROUP_SIZE_X (256)
 #define PORTAL_INDEX_NONE (63)
@@ -187,7 +183,7 @@ struct ShGlobalUniform
     float projection[16];
     float invProjection[16];
     float projectionPrev[16];
-    uint32_t _unused0;
+    float cellWorldSize;
     uint32_t _unused1;
     uint32_t _unused2;
     float renderWidth;
@@ -276,7 +272,7 @@ struct ShGeometryInstance
     uint32_t portalIndex;
     uint32_t materials2A;
     uint32_t materials2B;
-    uint32_t sectorArrayIndex;
+    uint32_t _unused0;
     uint32_t flags;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
@@ -287,7 +283,7 @@ struct ShGeometryInstance
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
-    uint32_t triangleArrayIndex;
+    uint32_t _unused1;
 };
 
 struct ShTonemapping

@@ -37,16 +37,12 @@ VertexCollector::VertexCollector(
     VkDevice _device, 
     const std::shared_ptr<MemoryAllocator> &_allocator,
     std::shared_ptr<GeomInfoManager> _geomInfoManager,
-    std::shared_ptr<TriangleInfoManager> _triangleInfoMgr,
-    std::shared_ptr<SectorVisibility> _sectorVisibility,
     VkDeviceSize _bufferSize,
     VertexCollectorFilterTypeFlags _filters) 
 :
     device(_device),
     filtersFlags(_filters),
     geomInfoMgr(std::move(_geomInfoManager)),
-    triangleInfoMgr(std::move(_triangleInfoMgr)),
-    sectorVisibility(std::move(_sectorVisibility)),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curTransformCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr)
 {
@@ -99,8 +95,6 @@ VertexCollector::VertexCollector(
     indexBuffer(_src->indexBuffer),
     transformsBuffer(_src->transformsBuffer),
     geomInfoMgr(_src->geomInfoMgr),
-    triangleInfoMgr(_src->triangleInfoMgr),
-    sectorVisibility(_src->sectorVisibility),
     curVertexCount(0), curIndexCount(0), curPrimitiveCount(0), curTransformCount(0),
     mappedVertexData(nullptr), mappedIndexData(nullptr), mappedTransformData(nullptr)
 {
@@ -115,7 +109,7 @@ void VertexCollector::InitStagingBuffers(const std::shared_ptr<MemoryAllocator> 
     assert(vertBuffer       && vertBuffer->GetSize() > 0);
     assert(indexBuffer      && indexBuffer->GetSize() > 0);
     assert(transformsBuffer && transformsBuffer->GetSize() > 0);
-    assert(geomInfoMgr && triangleInfoMgr);
+    assert(geomInfoMgr);
 
     // vertex buffers
     stagingVertBuffer.Init(
@@ -388,8 +382,6 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
         memcpy(geomInfo.materialColors[layer], info.layerColors[layer].data, sizeof(info.layerColors[layer].data));
     }
 
-    geomInfo.triangleArrayIndex = triangleInfoMgr->UploadAndGetArrayIndex(frameIndex, info.pTriangleSectorIDs, primitiveCount, info.geomType);
-    geomInfo.sectorArrayIndex = sectorVisibility->SectorIDToArrayIndex(SectorID{ info.sectorID }).GetArrayIndex();
     geomInfo.portalIndex = info.pPortalIndex ? *info.pPortalIndex : PORTAL_INDEX_NONE;
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)

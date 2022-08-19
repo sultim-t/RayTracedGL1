@@ -38,14 +38,13 @@ constexpr float MIN_SPHERE_RADIUS = 0.005f;
 constexpr uint32_t LIGHT_ARRAY_MAX_SIZE = 4096;
 
 constexpr VkDeviceSize GRID_LIGHTS_COUNT =
-    LIGHT_GRID_CELL_SIZE * (LIGHT_GRID_SIZE_HORIZONTAL_X * LIGHT_GRID_SIZE_VERTICAL_Y * LIGHT_GRID_SIZE_HORIZONTAL_Z);
+    LIGHT_GRID_CELL_SIZE * (LIGHT_GRID_SIZE_X * LIGHT_GRID_SIZE_Y * LIGHT_GRID_SIZE_Z);
 
 }
 
 RTGL1::LightManager::LightManager(
     VkDevice _device, 
-    std::shared_ptr<MemoryAllocator> &_allocator, 
-    std::shared_ptr<SectorVisibility> &_sectorVisibility)
+    std::shared_ptr<MemoryAllocator> &_allocator)
 :
     device(_device),
     regLightCount(0),
@@ -57,8 +56,6 @@ RTGL1::LightManager::LightManager(
     descSets{},
     needDescSetUpdate{}
 {
-    lightLists      = std::make_shared<LightLists>(device, _allocator, _sectorVisibility);
-
     lightsBuffer    = std::make_shared<AutoBuffer>(device, _allocator);
     lightsBuffer->Create(sizeof(ShLightEncoded) * LIGHT_ARRAY_MAX_SIZE, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT, "Lights buffer");
 
@@ -236,8 +233,6 @@ void RTGL1::LightManager::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameInd
     // no need to clear curToPrevIndex, as it'll be filled in the cur frame
 
     uniqueIDToArrayIndex[frameIndex].clear();
-
-    lightLists->PrepareForFrame();
 }
 
 void RTGL1::LightManager::Reset()
@@ -252,8 +247,6 @@ void RTGL1::LightManager::Reset()
 
     regLightCount_Prev = regLightCount = 0;
     dirLightCount_Prev = dirLightCount = 0;
-
-    lightLists->Reset();
 }
 
 static bool IsColorTooDim(const float c[3])
@@ -297,7 +290,7 @@ void RTGL1::LightManager::IncrementCount(const ShLightEncoded& encodedLight)
     }
 }
 
-void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const SectorID sectorId, const RTGL1::ShLightEncoded &encodedLight)
+void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const RTGL1::ShLightEncoded &encodedLight)
 {
     if (GetLightArrayEnd(regLightCount, dirLightCount) >= LIGHT_ARRAY_MAX_SIZE)
     {
@@ -317,12 +310,6 @@ void RTGL1::LightManager::AddLight(uint32_t frameIndex, uint64_t uniqueId, const
     assert(uniqueIDToArrayIndex[frameIndex].find(uniqueId) == uniqueIDToArrayIndex[frameIndex].end());
     // save index for the next frame
     uniqueIDToArrayIndex[frameIndex][uniqueId] = index;
-
-
-    if (encodedLight.lightType != LIGHT_TYPE_DIRECTIONAL)
-    {
-        lightLists->InsertLight(index, lightLists->SectorIDToArrayIndex(sectorId));
-    }
 }
 
 void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSphericalLightUploadInfo &info)
@@ -332,7 +319,7 @@ void RTGL1::LightManager::AddSphericalLight(uint32_t frameIndex, const RgSpheric
         return;
     }
 
-    AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsSphereLight(info));
+    AddLight(frameIndex, info.uniqueID, EncodeAsSphereLight(info));
 }
 
 void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygonalLightUploadInfo &info)
@@ -348,7 +335,7 @@ void RTGL1::LightManager::AddPolygonalLight(uint32_t frameIndex, const RgPolygon
         return;
     }
 
-    AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsTriangleLight(info, unnormalizedNormal));
+    AddLight(frameIndex, info.uniqueID, EncodeAsTriangleLight(info, unnormalizedNormal));
 }
 
 void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const RgSpotLightUploadInfo &info)
@@ -358,7 +345,7 @@ void RTGL1::LightManager::AddSpotlight(uint32_t frameIndex, const RgSpotLightUpl
         return;
     }
 
-    AddLight(frameIndex, info.uniqueID, SectorID{ info.sectorID }, EncodeAsSpotLight(info));
+    AddLight(frameIndex, info.uniqueID, EncodeAsSpotLight(info));
 }
 
 void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirectionalLightUploadInfo &info)
@@ -373,7 +360,7 @@ void RTGL1::LightManager::AddDirectionalLight(uint32_t frameIndex, const RgDirec
         return;
     }
     
-    AddLight(frameIndex, info.uniqueID, SectorID{ 0 } /* ignored */, EncodeAsDirectionalLight(info));
+    AddLight(frameIndex, info.uniqueID, EncodeAsDirectionalLight(info));
 }
 
 void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
@@ -384,8 +371,6 @@ void RTGL1::LightManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameInd
 
     prevToCurIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * GetLightArrayEnd(regLightCount_Prev, dirLightCount_Prev));
     curToPrevIndex->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * GetLightArrayEnd(regLightCount, dirLightCount));
-
-    lightLists->BuildAndCopyFromStaging(cmd, frameIndex);
 
     // should be used when buffers changed
     if (needDescSetUpdate[frameIndex])
@@ -458,8 +443,6 @@ constexpr uint32_t BINDINGS[] =
     BINDING_LIGHT_SOURCES_PREV,
     BINDING_LIGHT_SOURCES_INDEX_PREV_TO_CUR,
     BINDING_LIGHT_SOURCES_INDEX_CUR_TO_PREV,
-    BINDING_PLAIN_LIGHT_LIST,
-    BINDING_SECTOR_TO_LIGHT_LIST_REGION,
     BINDING_INITIAL_LIGHTS_GRID,
     BINDING_INITIAL_LIGHTS_GRID_PREV,
 };
@@ -535,8 +518,6 @@ void RTGL1::LightManager::UpdateDescriptors(uint32_t frameIndex)
         lightsBuffer_Prev.GetBuffer(),
         prevToCurIndex->GetDeviceLocal(),
         curToPrevIndex->GetDeviceLocal(),
-        lightLists->GetPlainLightListDeviceLocalBuffer(),
-        lightLists->GetSectorToLightListRegionDeviceLocalBuffer(),
         initialLightsGrid[frameIndex].GetBuffer(),
         initialLightsGrid[Utils::GetPreviousByModulo(frameIndex, MAX_FRAMES_IN_FLIGHT)].GetBuffer(),
     };

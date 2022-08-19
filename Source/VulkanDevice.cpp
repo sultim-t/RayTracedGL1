@@ -469,6 +469,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->worldUpVector[2] = drawInfo.worldUpVector.data[2];
     }
 
+    assert(drawInfo.cellWorldSize > 0.001f);
+    gu->cellWorldSize = std::max(drawInfo.cellWorldSize, 0.001f);
+
     gu->useSqrtRoughnessForIndirect = !!drawInfo.useSqrtRoughnessForIndirect;
 
     gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
@@ -1006,11 +1009,6 @@ void RTGL1::VulkanDevice::UploadPolygonalLight(const RgPolygonalLightUploadInfo 
     }
 
     scene->UploadLight(currentFrameState.GetFrameIndex(), *pLightInfo);
-}
-
-void RTGL1::VulkanDevice::SetPotentialVisibility(SectorID sectorID_A, SectorID sectorID_B)
-{
-    scene->SetPotentialVisibility(sectorID_A, sectorID_B);
 }
 
 void VulkanDevice::CreateMaterial(const RgMaterialCreateInfo *createInfo, RgMaterial *result)
