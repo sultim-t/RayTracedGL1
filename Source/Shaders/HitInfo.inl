@@ -382,6 +382,15 @@ ShHitInfo getHitInfoBounce(
         h.normal = h.normalGeom;
     }
 
+    if (globalUniform.lightmapEnable != 0)
+    {
+        h.albedo *= (
+            unpackLittleEndianUintColor(tr.vertexColors[0]).rgb * baryCoords[0] +
+            unpackLittleEndianUintColor(tr.vertexColors[1]).rgb * baryCoords[1] +
+            unpackLittleEndianUintColor(tr.vertexColors[2]).rgb * baryCoords[2] 
+        );
+    }
+
     h.instCustomIndex = instCustomIndex;
     h.geometryInstanceFlags = tr.geometryInstanceFlags;
     h.portalIndex = tr.portalIndex;

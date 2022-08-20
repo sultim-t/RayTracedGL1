@@ -29,6 +29,7 @@ struct ShTriangle
     mat3x2  layerTexCoord[3];
     vec4    materialColors[3];
     uvec3   materials[3];
+    uint    vertexColors[3];
     uint    geometryInstanceFlags;
     vec4    tangent;
     float   geomRoughness;

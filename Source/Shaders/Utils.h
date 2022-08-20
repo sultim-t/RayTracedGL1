@@ -40,6 +40,15 @@ vec4 unpackLittleEndianUintColor(uint c)
     );
 }
 
+uint packLittleEndianUintColor(const vec4 c)
+{
+    return
+        (uint(c.r * 255.0) & 0x000000FF)        |
+        (uint(c.g * 255.0) & 0x000000FF) << 8   |
+        (uint(c.b * 255.0) & 0x000000FF) << 16  |
+        (uint(c.a * 255.0) & 0x000000FF) << 24  ;
+}
+
 float getLuminance(vec3 c)
 {
     return 0.2125 * c.r + 0.7154 * c.g + 0.0721 * c.b;

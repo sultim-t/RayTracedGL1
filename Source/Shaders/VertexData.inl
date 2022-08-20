@@ -110,6 +110,11 @@ vec3 getStaticVerticesNormals(uint index)
     return g_staticVertices[index].normal.xyz;
 }
 
+uint getStaticVerticesPackedColor(uint index)
+{
+    return g_staticVertices[index].packedColor;
+}
+
 vec2 getStaticVerticesTexCoords(uint index)
 {
     return g_staticVertices[index].texCoord;
@@ -133,6 +138,11 @@ vec3 getDynamicVerticesPositions(uint index)
 vec3 getDynamicVerticesNormals(uint index)
 {
     return g_dynamicVertices[index].normal.xyz;
+}
+
+uint getDynamicVerticesPackedColor(uint index)
+{
+    return g_dynamicVertices[index].packedColor;
 }
 
 vec2 getDynamicVerticesTexCoords(uint index)
@@ -292,9 +302,16 @@ ShTriangle getTriangleStatic(uvec3 vertIndices, uint baseVertexIndex, uint baseI
     tr.layerTexCoord[2][1] = getStaticVerticesTexCoordsLayer2(vertIndices[1]);
     tr.layerTexCoord[2][2] = getStaticVerticesTexCoordsLayer2(vertIndices[2]);
 
+    if (globalUniform.lightmapEnable != 0)
+    {
+        tr.vertexColors[0] = getStaticVerticesPackedColor(vertIndices[0]);
+        tr.vertexColors[1] = getStaticVerticesPackedColor(vertIndices[1]);
+        tr.vertexColors[2] = getStaticVerticesPackedColor(vertIndices[2]);
+    }
+
     // get very coarse normal for triangle to determine bitangent's handedness
     tr.tangent = getTangent(tr.positions, safeNormalize(tr.normals[0] + tr.normals[1] + tr.normals[2]), tr.layerTexCoord[0]);
-
+    
     return tr;
 }
 
@@ -313,6 +330,13 @@ ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint base
     tr.layerTexCoord[0][0] = getDynamicVerticesTexCoords(vertIndices[0]);
     tr.layerTexCoord[0][1] = getDynamicVerticesTexCoords(vertIndices[1]);
     tr.layerTexCoord[0][2] = getDynamicVerticesTexCoords(vertIndices[2]);
+
+    if (globalUniform.lightmapEnable != 0)
+    {
+        tr.vertexColors[0] = getDynamicVerticesPackedColor(vertIndices[0]);
+        tr.vertexColors[1] = getDynamicVerticesPackedColor(vertIndices[1]);
+        tr.vertexColors[2] = getDynamicVerticesPackedColor(vertIndices[2]);
+    }
 
     // get very coarse normal for triangle to determine bitangent's handedness
     tr.tangent = getTangent(tr.positions, safeNormalize(tr.normals[0] + tr.normals[1] + tr.normals[2]), tr.layerTexCoord[0]);
