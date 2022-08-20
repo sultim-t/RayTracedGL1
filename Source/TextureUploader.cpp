@@ -485,6 +485,7 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
             .dataSize = static_cast<uint32_t>(dataSize),
             .imageSize = size,
             .generateMipmaps = info.useMipmaps,
+            .format = info.format,
         };
     }
     else
@@ -521,6 +522,7 @@ void TextureUploader::UpdateImage(VkCommandBuffer cmd, VkImage targetImage, cons
         info.cmd = cmd;
         info.baseSize = updateInfo.imageSize;
         info.useMipmaps = updateInfo.generateMipmaps;
+        info.format = updateInfo.format;
 
         // copy from staging
         PrepareImage(targetImage, &updateInfo.stagingBuffer, info, ImagePrepareType::UPDATE);

@@ -117,6 +117,7 @@ private:
         uint32_t    dataSize;
         RgExtent2D  imageSize;
         bool        generateMipmaps;
+        VkFormat    format;
     };
 
 protected:
