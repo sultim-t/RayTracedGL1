@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include <optional>
+#include <span>
 #include <vector>
 
 #include "Buffer.h"
@@ -65,7 +65,8 @@ public:
 
 
     void BeginCollecting(bool isStatic);
-    uint32_t AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT]);
+    // materials[3] is a lightmap
+    uint32_t AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, std::span<MaterialTextures, 3> materials);
     void EndCollecting();
 
 

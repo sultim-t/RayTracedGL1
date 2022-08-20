@@ -507,11 +507,11 @@ uint32_t ASManager::AddStaticGeometry(uint32_t frameIndex, const RgGeometryUploa
 {
     if (info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
     {
-        MaterialTextures materials[3] =
+        MaterialTextures materials[] =
         {
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[0]),
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[1]),
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2]),
         };
 
         return collectorStatic->AddGeometry(frameIndex, info, materials);
@@ -525,11 +525,11 @@ uint32_t ASManager::AddDynamicGeometry(uint32_t frameIndex, const RgGeometryUplo
 {
     if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
     {
-        MaterialTextures materials[3] =
+        MaterialTextures materials[] =
         {
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[0]),
             textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[1]),
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2])
+            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2]),
         };
 
         return collectorDynamic[frameIndex]->AddGeometry(frameIndex, info, materials);

@@ -180,7 +180,7 @@ static uint32_t AlignUpBy3(uint32_t x)
     return ((x + 2) / 3) * 3;
 }
 
-uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, const MaterialTextures materials[MATERIALS_MAX_LAYER_COUNT])
+uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info, std::span<MaterialTextures, 3> materials)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
     const VertexCollectorFilterTypeFlags geomFlags = VertexCollectorFilterTypeFlags_GetForGeometry(info);
@@ -296,9 +296,6 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
 
     Matrix::ToMat4Transposed(geomInfo.model, info.transform);
 
-    static_assert(sizeof(info.geomMaterial.layerMaterials) / sizeof(info.geomMaterial.layerMaterials[0]) == MATERIALS_MAX_LAYER_COUNT,
-                  "Layer count must be MATERIALS_MAX_LAYER_COUNT");
-
     geomInfo.flags = GetMaterialsBlendFlags(info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT);
 
     if (info.flags & RG_GEOMETRY_UPLOAD_GENERATE_NORMALS_BIT)
@@ -365,24 +362,37 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
             break;
     }
 
-    geomInfo.materials0A = materials[0].indices[0];
-    geomInfo.materials0B = materials[0].indices[1];
-    geomInfo.materials0C = materials[0].indices[2];
+    static_assert(sizeof(RgLayeredMaterial) / sizeof(RgMaterial) == MATERIALS_MAX_LAYER_COUNT, "Layer count mismatch with ShGeometryInstance");
+    {
+        geomInfo.materials0A = materials[0].indices[0];
+        geomInfo.materials0B = materials[0].indices[1];
+        geomInfo.materials0C = materials[0].indices[2];
 
-    geomInfo.materials1A = materials[1].indices[0];
-    geomInfo.materials1B = materials[1].indices[1];
-    // no materials1C member
+        geomInfo.materials1A = materials[1].indices[0];
+        geomInfo.materials1B = materials[1].indices[1];
+        // no materials1C member
 
-    geomInfo.materials2A = materials[2].indices[0];
-    geomInfo.materials2B = materials[2].indices[1];
-    // no materials2C member
+        geomInfo.materials2A = materials[2].indices[0];
+        geomInfo.materials2B = materials[2].indices[1];
+        // no materials2C member
+    }
+    const std::tuple<uint32_t, RgMaterial, std::array<uint32_t, TEXTURES_PER_MATERIAL_COUNT>> layerDependencies[] =
+    {
+        /* layer index - its material - corresponding texture indices */
+        { 0, info.geomMaterial.layerMaterials[0], { materials[0].indices[0], materials[0].indices[1], materials[0].indices[2] } },
+        { 1, info.geomMaterial.layerMaterials[1], { materials[1].indices[0], materials[1].indices[1], EMPTY_TEXTURE_INDEX     } },
+        { 2, info.geomMaterial.layerMaterials[2], { materials[2].indices[0], materials[2].indices[1], EMPTY_TEXTURE_INDEX     } },
+    };
+
 
     for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
     {
         memcpy(geomInfo.materialColors[layer], info.layerColors[layer].data, sizeof(info.layerColors[layer].data));
     }
 
+
     geomInfo.portalIndex = info.pPortalIndex ? *info.pPortalIndex : PORTAL_INDEX_NONE;
+
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)
     // global geometry index -- for indexing in geom infos buffer
@@ -390,21 +400,18 @@ uint32_t VertexCollector::AddGeometry(uint32_t frameIndex, const RgGeometryUploa
     uint32_t simpleIndex = geomInfoMgr->WriteGeomInfo(frameIndex, info.uniqueID, localIndex, geomFlags, geomInfo);
 
 
+    // add material dependency but only for static geometry,
+    // dynamic is updated each frame, so their materials will be updated anyway
     if (collectStatic)
     {
-        // add material dependency but only for static geometry,
-        // dynamic is updated each frame, so their materials will be updated anyway
-        for (uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++)
+        for (const auto &[layerIndex, materialIndex, textureIndices] : layerDependencies)
         {
-            const uint32_t materialIndex = info.geomMaterial.layerMaterials[layer];
-
-            for (uint32_t t = 0; t < TEXTURES_PER_MATERIAL_COUNT; t++)
+            // if at least one texture is not empty on this layer, add dependency to the material layer 
+            for (uint32_t textureIndex : textureIndices)
             {
-                // if at least one texture is not empty on this layer, add dependency 
-                if (materials[layer].indices[t] != EMPTY_TEXTURE_INDEX)
+                if (textureIndex != EMPTY_TEXTURE_INDEX)
                 {
-                    AddMaterialDependency(simpleIndex, layer, materialIndex);
-
+                    AddMaterialDependency(simpleIndex, layerIndex, materialIndex);
                     break;
                 }               
             }
