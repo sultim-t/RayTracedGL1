@@ -40,10 +40,9 @@ vec3 Uncharted2TonemapOp(vec3 x)
     return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
-vec3 Uncharted2Tonemap(vec3 color)
+vec3 Uncharted2Tonemap(vec3 color, float whitePoint)
 {
-    float w = globalUniform.luminanceWhitePoint;    
-    return Uncharted2TonemapOp(2.0 * color) / Uncharted2TonemapOp(vec3(w));
+    return Uncharted2TonemapOp(2.0 * color) / Uncharted2TonemapOp(vec3(whitePoint));
 }
 
 vec3 reinhard(const vec3 c)
@@ -90,23 +89,37 @@ void main()
 
     const vec4 albedo4 = texelFetchAlbedo(getCheckerboardPix(pix));
     
-    // if not sky
-    if (!isSky(albedo4))
-    {
-        color *= getExposure();
-        //color = reinhard(color);
-        color = Uncharted2Tonemap(color);
+    if (globalUniform.lightmapEnable == 0)
+    {   
+        if (!isSky(albedo4))
+        {
+            color *= getExposure();
+            //color = reinhard(color);
+            color = Uncharted2Tonemap(color, globalUniform.luminanceWhitePoint);
 
-        const vec3 emission = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
-        color += emission;
+            const vec3 emission = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
+            color += emission;
+        }
+        else
+        {
+            const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
+
+            color = albedo4.rgb * throughput;
+        }
     }
     else
     {
         const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
-
         color = albedo4.rgb * throughput;
-    }
 
+        if (!isSky(albedo4))
+        {
+            color = Uncharted2Tonemap(color, 1.0);
+
+            const vec3 emission = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
+            color += emission;
+        }
+    }
 
 
     if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_MOTION_VECTORS) != 0)

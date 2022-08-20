@@ -266,7 +266,7 @@ RGAPI RgResult RGCONV rgDestroyInstance(
 
 typedef struct RgLayeredMaterial
 {
-    // Geometry or each triangle can have up to 3 materials, RG_NO_MATERIAL is no material
+    // Geometry can have up to 3 materials, RG_NO_MATERIAL is no material.
     RgMaterial  layerMaterials[3];
 } RgLayeredMaterial;
 
@@ -878,6 +878,7 @@ typedef struct RgDrawFrameTexturesParams
     float           emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float           emissionMaxScreenColor;
+    RgBool32        useSqrtRoughnessForIndirect;
 } RgDrawFrameTexturesParams;
 
 typedef enum RgDebugDrawFlagBits
@@ -1092,6 +1093,16 @@ typedef struct RgDrawFrameLensFlareParams
     RgBlendFactor               lensFlareBlendFuncDst;
 } RgDrawFrameLensFlareParams;
 
+typedef struct RgDrawFrameLightmapParams
+{
+    // If true, use provided lightmaps instead of ray-traced lighting.
+    RgBool32                    enableLightmaps;
+    // Specifies layer index in RgLayeredMaterial that is interpreted as a lightmap.
+    // if enableLightmaps=false, layer with this index is ignored.
+    // Can be be 1 or 2.
+    uint32_t                    lightmapLayerIndex;
+} RgDrawFrameLightmapParams;
+
 typedef enum RgDrawFrameRayCullFlagBits
 {
     RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT  = 1,    // RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0
@@ -1112,6 +1123,7 @@ typedef struct RgDrawFrameInfo
     // Size of the side of a cell for the light grid. Use RG_DEBUG_DRAW_LIGHT_GRID_BIT for the debug view.
     // Each cell is used to store a fixed amount of light samples that are important for the cell's center and radius.
     float                   cellWorldSize;
+
     // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
     float                   fovYRadians;
     // Camera's near and far planes are used for FSR2.
@@ -1123,11 +1135,12 @@ typedef struct RgDrawFrameInfo
     float                   rayLength;
     // Distance, at which primary ray starts. Can be used as a near plane distance.
     float                   primaryRayMinDist;
-    RgBool32                disableRayTracing;
+
+    RgBool32                disableRayTracedGeometry;
     RgBool32                disableRasterization;
+
     double                  currentTime;
     RgBool32                disableEyeAdaptation;
-    RgBool32                useSqrtRoughnessForIndirect;
 
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams     *pRenderResolutionParams;
@@ -1138,6 +1151,7 @@ typedef struct RgDrawFrameInfo
     const RgDrawFrameSkyParams                  *pSkyParams;
     const RgDrawFrameTexturesParams             *pTexturesParams;
     const RgDrawFrameLensFlareParams            *pLensFlareParams;
+    const RgDrawFrameLightmapParams             *pLightmapParams;
     const RgDrawFrameDebugParams                *pDebugParams;
     RgDrawFramePostEffectsParams                postEffectParams;
 

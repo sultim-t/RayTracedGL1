@@ -284,12 +284,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
         gu->emissionMapBoost = std::max(drawInfo.pTexturesParams->emissionMapBoost, 0.0f);
         gu->emissionMaxScreenColor = std::max(drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f);
+        gu->useSqrtRoughnessForIndirect = !!drawInfo.pTexturesParams->useSqrtRoughnessForIndirect;
     }
     else
     {
         gu->normalMapStrength = 1.0f;
         gu->emissionMapBoost = 100.0f;
         gu->emissionMaxScreenColor = 1.5f;
+        gu->useSqrtRoughnessForIndirect = false;
     }
 
     if (drawInfo.pShadowParams != nullptr)
@@ -472,7 +474,24 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     assert(drawInfo.cellWorldSize > 0.001f);
     gu->cellWorldSize = std::max(drawInfo.cellWorldSize, 0.001f);
 
-    gu->useSqrtRoughnessForIndirect = !!drawInfo.useSqrtRoughnessForIndirect;
+    if (drawInfo.pLightmapParams != nullptr)
+    {
+        gu->lightmapEnable = !!drawInfo.pLightmapParams->enableLightmaps;
+
+        if (drawInfo.pLightmapParams->lightmapLayerIndex == 1 || drawInfo.pLightmapParams->lightmapLayerIndex == 2)
+        {
+            gu->lightmapLayer = drawInfo.pLightmapParams->lightmapLayerIndex;
+        }
+        else
+        {
+            assert(0 && "pLightMapLayerIndex must point to a value of 1 or 2. Others are invalidated");
+        }
+    }
+    else
+    {
+        gu->lightmapEnable = false;
+        gu->lightmapLayer = UINT8_MAX;
+    }
 
     gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
     gu->applyViewProjToLensFlares = !lensFlareVerticesInScreenSpace;
@@ -499,7 +518,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                           uniform->GetData()->rayCullMaskWorld, 
                           allowGeometryWithSkyFlag, 
                           drawInfo.pReflectRefractParams ? drawInfo.pReflectRefractParams->isReflRefrAlphaTested : false,
-                          drawInfo.disableRayTracing);
+                          drawInfo.disableRayTracedGeometry);
 
 
     framebuffers->PrepareForSize(renderResolution.GetResolutionState());

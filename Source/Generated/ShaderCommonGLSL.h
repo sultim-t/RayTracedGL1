@@ -180,8 +180,8 @@ struct ShGlobalUniform
     mat4 invProjection;
     mat4 projectionPrev;
     float cellWorldSize;
-    uint _unused1;
-    uint _unused2;
+    uint lightmapEnable;
+    uint lightmapLayer;
     float renderWidth;
     float renderHeight;
     uint frameId;

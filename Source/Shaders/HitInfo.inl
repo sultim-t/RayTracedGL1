@@ -42,6 +42,14 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
 
     for (int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
     {
+        if (globalUniform.lightmapEnable == 0)
+        {
+            if (i == globalUniform.lightmapLayer)
+            {
+                continue;
+            }
+        }
+
         if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {
             const vec4 src = materialColors[i] *

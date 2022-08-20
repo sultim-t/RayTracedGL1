@@ -184,8 +184,8 @@ struct ShGlobalUniform
     float invProjection[16];
     float projectionPrev[16];
     float cellWorldSize;
-    uint32_t _unused1;
-    uint32_t _unused2;
+    uint32_t lightmapEnable;
+    uint32_t lightmapLayer;
     float renderWidth;
     float renderHeight;
     uint32_t frameId;
