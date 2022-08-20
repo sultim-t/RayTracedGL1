@@ -22,21 +22,15 @@
 #if defined(VERTEX_PREPROCESS_PARTIAL_DYNAMIC)
 
     #define GET_POSITIONS getDynamicVerticesPositions
-    #define SET_POSITIONS setDynamicVerticesPositions
     #define GET_NORMALS getDynamicVerticesNormals
     #define SET_NORMALS setDynamicVerticesNormals
-    #define GET_TEXCOORDS getDynamicVerticesTexCoords
-    #define SET_TANGENTS setDynamicVerticesTangents
     #define INDICES dynamicIndices
 
 #elif defined(VERTEX_PREPROCESS_PARTIAL_STATIC_ALL) || defined(VERTEX_PREPROCESS_PARTIAL_STATIC_MOVABLE)
 
     #define GET_POSITIONS getStaticVerticesPositions
-    #define SET_POSITIONS setStaticVerticesPositions
     #define GET_NORMALS getStaticVerticesNormals
     #define SET_NORMALS setStaticVerticesNormals
-    #define GET_TEXCOORDS getStaticVerticesTexCoords
-    #define SET_TANGENTS setStaticVerticesTangents
     #define INDICES staticIndices
 
 #else
@@ -137,11 +131,8 @@ for (uint localGeomIndex = gl_LocalInvocationID.x; localGeomIndex < geomCount; l
 
 
 #undef GET_POSITIONS
-#undef SET_POSITIONS
 #undef GET_NORMALS
 #undef SET_NORMALS
-#undef GET_TEXCOORDS
-#undef SET_TANGENTS
 #undef INDICES
 
 #undef VERTEX_PREPROCESS_PARTIAL_STATIC_ALL

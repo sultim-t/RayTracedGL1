@@ -110,26 +110,6 @@ vec3 getStaticVerticesNormals(uint index)
     return g_staticVertices[index].normal.xyz;
 }
 
-uint getStaticVerticesPackedColor(uint index)
-{
-    return g_staticVertices[index].packedColor;
-}
-
-vec2 getStaticVerticesTexCoords(uint index)
-{
-    return g_staticVertices[index].texCoord;
-}
-
-vec2 getStaticVerticesTexCoordsLayer1(uint index)
-{
-    return g_staticVertices[index].texCoordLayer1;
-}
-
-vec2 getStaticVerticesTexCoordsLayer2(uint index)
-{
-    return g_staticVertices[index].texCoordLayer2;
-}
-
 vec3 getDynamicVerticesPositions(uint index)
 {
     return g_dynamicVertices[index].position.xyz;
@@ -140,55 +120,15 @@ vec3 getDynamicVerticesNormals(uint index)
     return g_dynamicVertices[index].normal.xyz;
 }
 
-uint getDynamicVerticesPackedColor(uint index)
-{
-    return g_dynamicVertices[index].packedColor;
-}
-
-vec2 getDynamicVerticesTexCoords(uint index)
-{
-    return g_dynamicVertices[index].texCoord;
-}
-
 #ifdef VERTEX_BUFFER_WRITEABLE
-void setStaticVerticesPositions(uint index, vec3 value)
-{
-    g_staticVertices[index].position = vec4(value, 1.0);
-}
-
 void setStaticVerticesNormals(uint index, vec3 value)
 {
     g_staticVertices[index].normal = vec4(value, 0.0);
 }
 
-void setStaticVerticesTexCoords(uint index, vec2 value)
-{
-    g_staticVertices[index].texCoord = value;
-}
-
-void setStaticVerticesTexCoordsLayer1(uint index, vec2 value)
-{
-    g_staticVertices[index].texCoordLayer1 = value;
-}
-
-void setStaticVerticesTexCoordsLayer2(uint index, vec2 value)
-{
-    g_staticVertices[index].texCoordLayer2 = value;
-}
-
-void setDynamicVerticesPositions(uint index, vec3 value)
-{
-    g_dynamicVertices[index].position = vec4(value, 1.0);
-}
-
 void setDynamicVerticesNormals(uint index, vec3 value)
 {
     g_dynamicVertices[index].normal = vec4(value, 0.0);
-}
-
-void setDynamicVerticesTexCoords(uint index, vec2 value)
-{
-    g_dynamicVertices[index].texCoord = value;
 }
 #endif // VERTEX_BUFFER_WRITEABLE
 
@@ -278,64 +218,35 @@ vec4 getTangent(const mat3 localPos, const vec3 normal, const mat3x2 texCoord)
     return vec4(tangent, handedness);
 }
 
-ShTriangle getTriangleStatic(uvec3 vertIndices, uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
-{
+ShTriangle makeTriangle(const ShVertex a, const ShVertex b, const ShVertex c)
+{    
     ShTriangle tr;
 
-    tr.positions[0] = getStaticVerticesPositions(vertIndices[0]);
-    tr.positions[1] = getStaticVerticesPositions(vertIndices[1]);
-    tr.positions[2] = getStaticVerticesPositions(vertIndices[2]);
+    tr.positions[0] = a.position.xyz;
+    tr.positions[1] = b.position.xyz;
+    tr.positions[2] = c.position.xyz;
 
-    tr.normals[0] = getStaticVerticesNormals(vertIndices[0]);
-    tr.normals[1] = getStaticVerticesNormals(vertIndices[1]);
-    tr.normals[2] = getStaticVerticesNormals(vertIndices[2]);
+    tr.normals[0] = a.normal.xyz;
+    tr.normals[1] = b.normal.xyz;
+    tr.normals[2] = c.normal.xyz;
 
-    tr.layerTexCoord[0][0] = getStaticVerticesTexCoords(vertIndices[0]);
-    tr.layerTexCoord[0][1] = getStaticVerticesTexCoords(vertIndices[1]);
-    tr.layerTexCoord[0][2] = getStaticVerticesTexCoords(vertIndices[2]);
+    tr.layerTexCoord[0][0] = a.texCoord;
+    tr.layerTexCoord[0][1] = b.texCoord;
+    tr.layerTexCoord[0][2] = c.texCoord;
 
-    tr.layerTexCoord[1][0] = getStaticVerticesTexCoordsLayer1(vertIndices[0]);
-    tr.layerTexCoord[1][1] = getStaticVerticesTexCoordsLayer1(vertIndices[1]);
-    tr.layerTexCoord[1][2] = getStaticVerticesTexCoordsLayer1(vertIndices[2]);
+    tr.layerTexCoord[1][0] = a.texCoordLayer1;
+    tr.layerTexCoord[1][1] = b.texCoordLayer1;
+    tr.layerTexCoord[1][2] = c.texCoordLayer1;
 
-    tr.layerTexCoord[2][0] = getStaticVerticesTexCoordsLayer2(vertIndices[0]);
-    tr.layerTexCoord[2][1] = getStaticVerticesTexCoordsLayer2(vertIndices[1]);
-    tr.layerTexCoord[2][2] = getStaticVerticesTexCoordsLayer2(vertIndices[2]);
+    tr.layerTexCoord[2][0] = a.texCoordLayer2;
+    tr.layerTexCoord[2][1] = b.texCoordLayer2;
+    tr.layerTexCoord[2][2] = c.texCoordLayer2;
 
     if (globalUniform.lightmapEnable != 0)
     {
-        tr.vertexColors[0] = getStaticVerticesPackedColor(vertIndices[0]);
-        tr.vertexColors[1] = getStaticVerticesPackedColor(vertIndices[1]);
-        tr.vertexColors[2] = getStaticVerticesPackedColor(vertIndices[2]);
-    }
-
-    // get very coarse normal for triangle to determine bitangent's handedness
-    tr.tangent = getTangent(tr.positions, safeNormalize(tr.normals[0] + tr.normals[1] + tr.normals[2]), tr.layerTexCoord[0]);
-    
-    return tr;
-}
-
-ShTriangle getTriangleDynamic(uvec3 vertIndices, uint baseVertexIndex, uint baseIndexIndex, uint primitiveId)
-{
-    ShTriangle tr;
-
-    tr.positions[0] = getDynamicVerticesPositions(vertIndices[0]);
-    tr.positions[1] = getDynamicVerticesPositions(vertIndices[1]);
-    tr.positions[2] = getDynamicVerticesPositions(vertIndices[2]);
-
-    tr.normals[0] = getDynamicVerticesNormals(vertIndices[0]);
-    tr.normals[1] = getDynamicVerticesNormals(vertIndices[1]);
-    tr.normals[2] = getDynamicVerticesNormals(vertIndices[2]);
-
-    tr.layerTexCoord[0][0] = getDynamicVerticesTexCoords(vertIndices[0]);
-    tr.layerTexCoord[0][1] = getDynamicVerticesTexCoords(vertIndices[1]);
-    tr.layerTexCoord[0][2] = getDynamicVerticesTexCoords(vertIndices[2]);
-
-    if (globalUniform.lightmapEnable != 0)
-    {
-        tr.vertexColors[0] = getDynamicVerticesPackedColor(vertIndices[0]);
-        tr.vertexColors[1] = getDynamicVerticesPackedColor(vertIndices[1]);
-        tr.vertexColors[2] = getDynamicVerticesPackedColor(vertIndices[2]);
+        tr.vertexColors[0] = a.packedColor;
+        tr.vertexColors[1] = b.packedColor;
+        tr.vertexColors[2] = c.packedColor;
     }
 
     // get very coarse normal for triangle to determine bitangent's handedness
@@ -387,16 +298,14 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
 
     if (isDynamic)
     {
-        const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+        {
+            const uvec3 vertIndices = getVertIndicesDynamic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
 
-        tr = getTriangleDynamic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        // only one material for dynamic geometry
-        tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
-        tr.materials[1] = uvec3(MATERIAL_NO_TEXTURE);
-        tr.materials[2] = uvec3(MATERIAL_NO_TEXTURE);
-        
-        tr.materialColors[0] = inst.materialColors[0];
+            tr = makeTriangle(
+                g_dynamicVertices[vertIndices[0]],
+                g_dynamicVertices[vertIndices[1]],
+                g_dynamicVertices[vertIndices[2]]);
+        }
 
         // to world space
         tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
@@ -430,17 +339,14 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     }
     else
     {
-        const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        tr = getTriangleStatic(vertIndices, inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
-
-        tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
-        tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, MATERIAL_NO_TEXTURE);
-        tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, MATERIAL_NO_TEXTURE);
-
-        tr.materialColors[0] = inst.materialColors[0];
-        tr.materialColors[1] = inst.materialColors[1];
-        tr.materialColors[2] = inst.materialColors[2];
+        {
+            const uvec3 vertIndices = getVertIndicesStatic(inst.baseVertexIndex, inst.baseIndexIndex, primitiveId);
+        
+            tr = makeTriangle(
+                g_staticVertices[vertIndices[0]],
+                g_staticVertices[vertIndices[1]],
+                g_staticVertices[vertIndices[2]]);
+        }
 
         const vec4 prevLocalPos[] =
         {
@@ -474,6 +380,16 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
             tr.prevPositions[2] = tr.positions[2];
         }
     }
+
+
+    tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
+    tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, MATERIAL_NO_TEXTURE);
+    tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, MATERIAL_NO_TEXTURE);
+
+    tr.materialColors[0] = inst.materialColors[0];
+    tr.materialColors[1] = inst.materialColors[1];
+    tr.materialColors[2] = inst.materialColors[2];
+        
     
     const mat3 model3 = mat3(inst.model);
 
