@@ -144,15 +144,18 @@ uint32_t RTGL1::CubemapManager::CreateCubemap(VkCommandBuffer cmd, uint32_t fram
         .isCubemap = true,
     };
 
-    TextureOverrides::OverrideInfo parseInfo = {};
-    parseInfo.commonFolderPath = defaultTexturesPath.c_str();
-    parseInfo.postfixes[MATERIAL_COLOR_TEXTURE_INDEX] = overridenTexturePostfix.c_str();
-    parseInfo.overridenIsSRGB[MATERIAL_COLOR_TEXTURE_INDEX] = true;
+    // must be '0' to use special TextureOverrides constructor 
+    static_assert(MATERIAL_COLOR_TEXTURE_INDEX == 0);
+
+    TextureOverrides::OverrideInfo parseInfo = {
+        .commonFolderPath = defaultTexturesPath.c_str(),
+        .postfixes = { overridenTexturePostfix.c_str(), "", "" },
+        .overridenIsSRGB = { true, false, false },
+        .originalIsSRGB = { true, false, false },
+    };
 
     RgExtent2D size = { info.sideSize, info.sideSize };
 
-    // must be '0' to use special TextureOverrides constructor 
-    assert(MATERIAL_COLOR_TEXTURE_INDEX == 0);
     // load additional textures, they'll be freed after leaving the scope
     TextureOverrides ovrd0(info.pRelativePaths[0], RgTextureSet{ .pDataAlbedoAlpha = info.pData[0] }, size, parseInfo, imageLoader.get());
     TextureOverrides ovrd1(info.pRelativePaths[1], RgTextureSet{ .pDataAlbedoAlpha = info.pData[1] }, size, parseInfo, imageLoader.get());

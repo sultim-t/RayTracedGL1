@@ -54,7 +54,7 @@ public:
         const char *relativePath,
         const RgTextureSet &defaultTextures,
         const RgExtent2D &defaultSize,
-        const OverrideInfo &overrideInfo,
+        const OverrideInfo &info,
         Loader loader);
     ~TextureOverrides();
 

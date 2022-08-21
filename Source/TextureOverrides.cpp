@@ -20,7 +20,9 @@
 
 #include "TextureOverrides.h"
 
+#include <array>
 #include <filesystem>
+#include <span>
 
 #include "Const.h"
 #include "ImageLoader.h"
@@ -88,39 +90,44 @@ namespace
         }
     }
 
-    auto Loader_Load(TextureOverrides::Loader loader, const std::filesystem::path &filepath)
+    namespace loader
     {
-        if (std::holds_alternative<ImageLoaderDev *>(loader))
+        auto Load(TextureOverrides::Loader loader, const std::filesystem::path &filepath)
         {
-            return std::get<ImageLoaderDev *>(loader)->Load(filepath);
+            if (std::holds_alternative<ImageLoaderDev *>(loader))
+            {
+                return std::get<ImageLoaderDev *>(loader)->Load(filepath);
+            }
+            else
+            {
+                return std::get<ImageLoader *>(loader)->Load(filepath);
+            }
         }
-        else
-        {
-            return std::get<ImageLoader *>(loader)->Load(filepath);
-        }
-    }
 
-    void Loader_FreeLoaded(TextureOverrides::Loader loader)
-    {
-        if (std::holds_alternative<ImageLoaderDev *>(loader))
+        void FreeLoaded(TextureOverrides::Loader loader)
         {
-            std::get<ImageLoaderDev *>(loader)->FreeLoaded();
+            if (std::holds_alternative<ImageLoaderDev *>(loader))
+            {
+                std::get<ImageLoaderDev *>(loader)->FreeLoaded();
+            }
+            else
+            {
+                std::get<ImageLoader *>(loader)->FreeLoaded();
+            }
         }
-        else
-        {
-            std::get<ImageLoader *>(loader)->FreeLoaded();
-        }
-    }
 
-    constexpr const char *Loader_GetExtension(TextureOverrides::Loader loader)
-    {
-        if (std::holds_alternative<ImageLoaderDev *>(loader))
+        std::span<const char *> GetExtensions(TextureOverrides::Loader loader)
         {
-            return ".png";
-        }
-        else
-        {
-            return ".ktx2";
+            if (std::holds_alternative<ImageLoaderDev *>(loader))
+            {
+                static const char *arr[] = {".png", ".tga"};
+                return arr;
+            }
+            else
+            {
+                static const char *arr[] = { ".ktx2" };
+                return arr;
+            }
         }
     }
 
@@ -142,7 +149,7 @@ TextureOverrides::TextureOverrides(
     const char *_relativePath,
     const RgTextureSet &_defaultTextures,
     const RgExtent2D &_defaultSize,
-    const OverrideInfo &_overrideInfo,
+    const OverrideInfo &_info,
     Loader _loader
 )
     : loader(_loader)
@@ -165,17 +172,19 @@ TextureOverrides::TextureOverrides(
 
     for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
     {
-        // TODO: try to load with different loaders with their own extensions
-        paths[i] = GetTexturePath(_overrideInfo.commonFolderPath, _relativePath, _overrideInfo.postfixes[i], Loader_GetExtension(loader));
-
-        if (paths[i])
+        for (const char *ext : loader::GetExtensions(loader))
         {
-            results[i] = Loader_Load(loader, paths[i].value());
-            
-            if (results[i])
+            if (auto p = GetTexturePath(_info.commonFolderPath, _relativePath, _info.postfixes[i], ext))
             {
-                results[i]->format =
-                    _overrideInfo.overridenIsSRGB[i] ? ToSRGB(results[i]->format) : ToUnorm(results[i]->format);
+                if (auto r = loader::Load(loader, p.value()))
+                {
+                    r->format = _info.overridenIsSRGB[i] ? ToSRGB(r->format) : ToUnorm(r->format);
+
+                    paths[i] = std::move(p);
+                    results[i] = r;
+
+                    break;
+                }
             }
         }
     }
@@ -197,7 +206,7 @@ TextureOverrides::TextureOverrides(
                 .pData = static_cast<const uint8_t *>(defaultData[i]) ,
                 .dataSize = defaultDataSize,
                 .baseSize = _defaultSize,
-                .format = _overrideInfo.originalIsSRGB[i] ? defaultSRGBFormat : defaultLinearFormat,
+                .format = _info.originalIsSRGB[i] ? defaultSRGBFormat : defaultLinearFormat,
             };
         }
     }
@@ -205,7 +214,7 @@ TextureOverrides::TextureOverrides(
 
 TextureOverrides::~TextureOverrides()
 {
-    Loader_FreeLoaded(loader);
+    loader::FreeLoaded(loader);
 }
 
 const std::optional<ImageLoader::ResultInfo> &RTGL1::TextureOverrides::GetResult(uint32_t index) const
