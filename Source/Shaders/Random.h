@@ -265,7 +265,7 @@ vec2 rnd16_2(uint seed, uint salt)
 
 vec4 rnd8_4(uint seed, uint salt)
 {
-    uint rnd = wellonsLowBias32(seed + salt) % UINT16_MAX;
+    uint rnd = wellonsLowBias32(seed + salt);
     return vec4(
         float((rnd & 0x000000FF)      ) / float(UINT8_MAX),
         float((rnd & 0x0000FF00) >> 8 ) / float(UINT8_MAX),

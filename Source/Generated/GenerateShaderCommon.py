@@ -402,10 +402,10 @@ CONST = {
 
     "LIGHT_INDEX_NONE"                      : ((1 << 15) - 1),
 
-    "LIGHT_GRID_SIZE_X"                     : 20,
-    "LIGHT_GRID_SIZE_Y"                     : 20,
-    "LIGHT_GRID_SIZE_Z"                     : 20,
-    "LIGHT_GRID_CELL_SIZE"                  : 64,
+    "LIGHT_GRID_SIZE_X"                     : 16,
+    "LIGHT_GRID_SIZE_Y"                     : 16,
+    "LIGHT_GRID_SIZE_Z"                     : 16,
+    "LIGHT_GRID_CELL_SIZE"                  : 128,
     "COMPUTE_LIGHT_GRID_GROUP_SIZE_X"       : 256,
 
     "PORTAL_INDEX_NONE"                     : 63,
