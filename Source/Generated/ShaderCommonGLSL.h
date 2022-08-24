@@ -245,6 +245,10 @@ struct ShGlobalUniform
     uint applyViewProjToLensFlares;
     uint twirlPortalNormal;
     uint lightIndexIgnoreFPVShadows;
+    float gradientMultDiffuse;
+    float gradientMultIndirect;
+    float gradientMultSpecular;
+    float minRoughness;
     float _pad1;
     float _pad2;
     float _pad3;

@@ -355,6 +355,7 @@ ShHitInfo getHitInfoBounce(
         screenEmission = clamp(h.emission, 0.0, 1.0);
     #endif
     }
+    h.roughness = max(h.roughness, globalUniform.minRoughness);
 
 #if !defined(HITINFO_INL_INDIR)
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)

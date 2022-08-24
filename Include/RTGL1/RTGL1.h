@@ -879,6 +879,7 @@ typedef struct RgDrawFrameTexturesParams
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float           emissionMaxScreenColor;
     RgBool32        useSqrtRoughnessForIndirect;
+    float           minRoughness;
 } RgDrawFrameTexturesParams;
 
 typedef enum RgDebugDrawFlagBits
@@ -901,12 +902,25 @@ typedef struct RgDrawFrameDebugParams
     RgDebugDrawFlags drawFlags;
 } RgDrawFrameDebugParams;
 
-typedef struct RgDrawFrameShadowParams
+typedef struct RgDrawFrameIlluminationParams
 {
     // Shadow rays are cast, if illumination bounce index is in [0, maxBounceShadows).
     uint32_t    maxBounceShadows;
+    // Size of the side of a cell for the light grid. Use RG_DEBUG_DRAW_LIGHT_GRID_BIT for the debug view.
+    // Each cell is used to store a fixed amount of light samples that are important for the cell's center and radius.
+    // Default: 1.0
+    float       cellWorldSize;
+    // If 0.0, then the change of illumination won't be checked, i.e. if a light source suddenly disappeared,
+    // its lighting still will be visible. But if it's 1.0, then lighting will be dropped at the given screen region
+    // and the accumulation will start from scratch.
+    // Default: 0.5
+    float       directDiffuseSensitivityToChange;
+    // Default: 0.2
+    float       indirectDiffuseSensitivityToChange;
+    // Default: 0.5
+    float       specularSensitivityToChange;
     // The higher the value, the more polygonal lights act like a spotlight. 
-    // Default: 2
+    // Default: 2.0
     float       polygonalLightSpotlightFactor;
     // Clamp indirect diffuse with this value to prevent fireflies.
     // Default: 3.0
@@ -915,7 +929,7 @@ typedef struct RgDrawFrameShadowParams
     // E.g. first-person flashlight.
     // Null, if none.
     uint64_t    *lightUniqueIdIgnoreFirstPersonViewerShadows;
-} RgDrawFrameShadowParams;
+} RgDrawFrameIlluminationParams;
 
 typedef struct RgDrawFrameBloomParams
 {
@@ -1120,9 +1134,6 @@ typedef struct RgDrawFrameInfo
     // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
     // If the length is close to 0.0, then (0, 1, 0) is used.
     RgFloat3D               worldUpVector;
-    // Size of the side of a cell for the light grid. Use RG_DEBUG_DRAW_LIGHT_GRID_BIT for the debug view.
-    // Each cell is used to store a fixed amount of light samples that are important for the cell's center and radius.
-    float                   cellWorldSize;
 
     // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
     float                   fovYRadians;
@@ -1144,7 +1155,7 @@ typedef struct RgDrawFrameInfo
 
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams     *pRenderResolutionParams;
-    const RgDrawFrameShadowParams               *pShadowParams;
+    const RgDrawFrameIlluminationParams         *pIlluminationParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
     const RgDrawFrameReflectRefractParams       *pReflectRefractParams;

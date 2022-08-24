@@ -285,6 +285,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->emissionMapBoost = std::max(drawInfo.pTexturesParams->emissionMapBoost, 0.0f);
         gu->emissionMaxScreenColor = std::max(drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f);
         gu->useSqrtRoughnessForIndirect = !!drawInfo.pTexturesParams->useSqrtRoughnessForIndirect;
+        gu->minRoughness = std::clamp(drawInfo.pTexturesParams->minRoughness, 0.0f, 1.0f);
     }
     else
     {
@@ -292,14 +293,19 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->emissionMapBoost = 100.0f;
         gu->emissionMaxScreenColor = 1.5f;
         gu->useSqrtRoughnessForIndirect = false;
+        gu->minRoughness = 0.0f;
     }
 
-    if (drawInfo.pShadowParams != nullptr)
+    if (drawInfo.pIlluminationParams != nullptr)
     {
-        gu->maxBounceShadowsLights              = drawInfo.pShadowParams->maxBounceShadows;
-        gu->polyLightSpotlightFactor            = std::max(0.0f, drawInfo.pShadowParams->polygonalLightSpotlightFactor);
-        gu->firefliesClamp                      = std::max(0.0f, drawInfo.pShadowParams->sphericalPolygonalLightsFirefliesClamp);
-        gu->lightIndexIgnoreFPVShadows          = scene->GetLightManager()->GetLightIndexIgnoreFPVShadows(currentFrameState.GetFrameIndex(), drawInfo.pShadowParams->lightUniqueIdIgnoreFirstPersonViewerShadows);
+        gu->maxBounceShadowsLights      = drawInfo.pIlluminationParams->maxBounceShadows;
+        gu->polyLightSpotlightFactor    = std::max(0.0f, drawInfo.pIlluminationParams->polygonalLightSpotlightFactor);
+        gu->firefliesClamp              = std::max(0.0f, drawInfo.pIlluminationParams->sphericalPolygonalLightsFirefliesClamp);
+        gu->lightIndexIgnoreFPVShadows  = scene->GetLightManager()->GetLightIndexIgnoreFPVShadows(currentFrameState.GetFrameIndex(), drawInfo.pIlluminationParams->lightUniqueIdIgnoreFirstPersonViewerShadows);
+        gu->cellWorldSize               = std::max(drawInfo.pIlluminationParams->cellWorldSize, 0.001f);
+        gu->gradientMultDiffuse         = std::clamp(drawInfo.pIlluminationParams->directDiffuseSensitivityToChange, 0.0f, 1.0f);
+        gu->gradientMultIndirect        = std::clamp(drawInfo.pIlluminationParams->indirectDiffuseSensitivityToChange, 0.0f, 1.0f);
+        gu->gradientMultSpecular        = std::clamp(drawInfo.pIlluminationParams->specularSensitivityToChange, 0.0f, 1.0f);
     }
     else
     {
@@ -307,6 +313,10 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->polyLightSpotlightFactor = 2.0f;
         gu->firefliesClamp = 3.0f;
         gu->lightIndexIgnoreFPVShadows = LIGHT_INDEX_NONE;
+        gu->cellWorldSize = 1.0f;
+        gu->gradientMultDiffuse = 0.5f;
+        gu->gradientMultIndirect = 0.2f;
+        gu->gradientMultSpecular = 0.5f;
     }
 
     if (drawInfo.pBloomParams != nullptr)
@@ -470,9 +480,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         gu->worldUpVector[1] = drawInfo.worldUpVector.data[1];
         gu->worldUpVector[2] = drawInfo.worldUpVector.data[2];
     }
-
-    assert(drawInfo.cellWorldSize > 0.001f);
-    gu->cellWorldSize = std::max(drawInfo.cellWorldSize, 0.001f);
 
     if (drawInfo.pLightmapParams != nullptr)
     {

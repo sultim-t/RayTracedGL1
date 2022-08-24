@@ -49,6 +49,15 @@ void main()
     {
         return;
     }
+    
+    if (globalUniform.gradientMultDiffuse  < 0.001 &&
+        globalUniform.gradientMultIndirect < 0.001 &&
+        globalUniform.gradientMultSpecular < 0.001)
+    {
+        imageStore(framebufDISPingGradient, gradPix, vec4(0.0));
+        imageStore(framebufGradientPrevPix, gradPix, uvec4(COMPUTE_ASVGF_STRATA_SIZE * COMPUTE_ASVGF_STRATA_SIZE + 1));
+        return;
+    }
 
     const uint prevStrataPos = imageLoad(framebufGradientPrevPix, gradPix).x;
     
@@ -135,13 +144,8 @@ void main()
         gradDIS[0] = getAntilagAlpha(gradSample, normFactor);
     }
     {
-        /*
-        const float gradSample = ;
-        const float normFactor = ;
-
-        gradDIS[1] = getAntilagAlpha(gradSample, normFactor);
-        */
-        gradDIS[1] = 0.0;
+        // indirect diffuse: just use direct diffuse gradient
+        gradDIS[1] = gradDIS[0];
     }
     {
         const float gradSample = forwardProjectedLuminance.y - prevLuminance.y;
@@ -149,6 +153,11 @@ void main()
 
         gradDIS[2] = getAntilagAlpha(gradSample, normFactor);
     }
+
+
+    gradDIS[0] *= globalUniform.gradientMultDiffuse;
+    gradDIS[1] *= globalUniform.gradientMultIndirect;
+    gradDIS[2] *= globalUniform.gradientMultSpecular;
     
 
     // smooth temporally, to make antilag less aggressive over a small period of time

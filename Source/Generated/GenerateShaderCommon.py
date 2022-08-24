@@ -557,6 +557,11 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "twirlPortalNormal",                1),
 
     (TYPE_UINT32,       1,      "lightIndexIgnoreFPVShadows",       1),
+    (TYPE_FLOAT32,      1,      "gradientMultDiffuse",              1),
+    (TYPE_FLOAT32,      1,      "gradientMultIndirect",             1),
+    (TYPE_FLOAT32,      1,      "gradientMultSpecular",             1),
+
+    (TYPE_FLOAT32,      1,      "minRoughness",                     1),
     (TYPE_FLOAT32,      1,      "_pad1",                            1),
     (TYPE_FLOAT32,      1,      "_pad2",                            1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
