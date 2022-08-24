@@ -179,15 +179,21 @@ float calcSolidAngleForArea(float area, const vec3 areaPosition, const vec3 area
 
 
 
+float getLightColorWeight(const vec3 color)
+{
+    return clamp(getLuminance(color) * 0.1 + 0.9, 1.0, 10.0);
+}
+
 float getDirectionalLightWeight(const SphereLight l, const vec3 cellCenter, float cellRadius)
 {
-    return getLuminance(l.color);
+    return 
+        getLightColorWeight(l.color);
 }
 
 float getSphereLightWeight(const SphereLight l, const vec3 cellCenter, float cellRadius)
 {
     return 
-        getLuminance(l.color) * 
+        getLightColorWeight(l.color) * 
         calcSolidAngleForSphere(l.radius, max(length(l.center - cellCenter), cellRadius));
 }
 
@@ -204,7 +210,7 @@ float getTriangleLightWeight(const TriangleLight l, const vec3 cellCenter, float
         length(l.position[2] - triCenter) / 3.0;
 
     return 
-        getLuminance(l.color) * 
+        getLightColorWeight(l.color) * 
         calcSolidAngleForSphere(aprxTriRadius, max(length(triCenter - cellCenter), cellRadius)) *
         isSphereInFront(l.normal, triCenter, cellCenter, cellRadius);
 }
@@ -212,7 +218,7 @@ float getTriangleLightWeight(const TriangleLight l, const vec3 cellCenter, float
 float getSpotLightWeight(const SpotLight l, const vec3 cellCenter, float cellRadius)
 {
     return 
-        getLuminance(l.color) * 
+        getLightColorWeight(l.color) * 
         calcSolidAngleForSphere(l.radius, max(length(l.center - cellCenter), cellRadius)) *
         isSphereInFront(l.direction, l.center, cellCenter, cellRadius);
 }
