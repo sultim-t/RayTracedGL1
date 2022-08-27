@@ -110,6 +110,12 @@ uint getReflectionRefractionCullMask(uint surfInstCustomIndex, uint geometryInst
     {
         // ignore refl/refr geometry if requested
         world = world & (~INSTANCE_MASK_REFLECT_REFRACT);
+
+        // if it's also a first-person geometry, then ignore everything first-person
+        if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
+        {
+            return world;
+        }
     }
 
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
