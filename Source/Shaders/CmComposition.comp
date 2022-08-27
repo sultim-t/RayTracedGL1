@@ -29,25 +29,42 @@
 
 layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
 
+#define DEBUG_LPM 0
 
 #define A_GLSL 1
 #define A_GPU 1
 #include "ffx_a.h"
-
 layout(set = DESC_SET_LPM_PARAMS, binding = BINDING_LPM_PARAMS) readonly uniform LpmParams_BT
 {
     AU4 g_lpmParams[24];
 };
-
-AU4 LpmFilterCtl(AU1 i)
-{
-    return g_lpmParams[i];
-}
-#define LPM_NO_SETUP
+#if DEBUG_LPM
+    AU4 debug_lpmParams[24];
+    void LpmSetupOut(AU1 i, inAU4 v) { debug_lpmParams[i] = v; }
+    AU4  LpmFilterCtl(AU1 i)         { return debug_lpmParams[i]; }
+#else
+    #define LPM_NO_SETUP 1
+    AU4  LpmFilterCtl(AU1 i)         { return g_lpmParams[i]; }
+#endif
 #include "ffx_lpm.h"
+#define LPM_RG_CONTEXT  /* used on CPU side */
 
 vec3 lpmTonemap(vec3 c)
 {
+#if DEBUG_LPM
+    varAF3(saturation) = initAF3(-0.1f, -0.1f, -0.1f);
+    varAF3(crosstalk) = initAF3(1.0f, 1.0f / 8.0f, 1.0f / 16.0f);
+    LpmSetup(
+        LPM_RG_CONTEXT
+        false, LPM_CONFIG_709_709,LPM_COLORS_709_709,
+        0.0f, // softGap
+        256.0f, // hdrMax
+        7.5f, // exposure
+        0.1f, // contrast
+        1.0f, // shoulder contrast
+        saturation, crosstalk);
+#endif
+
     LpmFilter(c.r, c.g, c.b, false, LPM_CONFIG_709_709);
     return c;
 }
@@ -82,7 +99,7 @@ vec3 reinhard(const vec3 c)
 vec3 tonemapRT(vec3 c)
 {
     return lpmTonemap(c);
-    //return uncharted2Tonemap(c, globalUniform.luminanceWhitePoint);
+    // return uncharted2Tonemap(c, globalUniform.luminanceWhitePoint);
 }
 
 

@@ -319,6 +319,12 @@ void RTGL1::ImageComposition::DestroyPipelines()
 
 namespace
 {
+    void LpmSetupOut(AU1 i, inAU4 v)
+    {
+        // this function version must not be called, only one with pContext
+        assert(0);
+    }
+
     void LpmSetupOut(void *pContext, AU1 i, const inAU4 value)
     {
         AU1* ctl = static_cast<AU1*>(pContext);
@@ -332,7 +338,6 @@ namespace
     }
 }
 
-#define LPM_NO_SETUP
 #include "shaders/LPM/ffx_lpm.h"
 #include "Shaders/LPM/LpmSetupCustom.inl"
 
@@ -344,19 +349,21 @@ void RTGL1::ImageComposition::SetupLpmParams(VkCommandBuffer cmd)
     }
 
     void* pContext = lpmParams->GetMapped(0);
+    #define LPM_RG_CONTEXT pContext,
 
-    varAF3(saturation) = initAF3(0.0, 0.0, 0.0);
-    varAF3(crosstalk) = initAF3(1.0, 1.0 / 8.0, 1.0 / 16.0);
-
-    LpmSetup(
-        pContext,
-        false, LPM_CONFIG_709_709, LPM_COLORS_709_709,
-        0.0, // softGap
-        256.0, // hdrMax
-        8.0, // exposure
-        0.0, // contrast
-        1.0, // shoulder contrast
-        saturation, crosstalk);
+    {
+        varAF3(saturation) = initAF3(-0.1f, -0.1f, -0.1f);
+        varAF3(crosstalk) = initAF3(1.0f, 1.0f / 8.0f, 1.0f / 16.0f);
+        LpmSetup(
+            LPM_RG_CONTEXT
+            false, LPM_CONFIG_709_709, LPM_COLORS_709_709,
+            0.0f, // softGap
+            256.0f, // hdrMax
+            7.5f, // exposure
+            0.1f, // contrast
+            1.0f, // shoulder contrast
+            saturation, crosstalk);
+    }
 
     lpmParams->CopyFromStaging(cmd, 0, LPM_BUFFER_SIZE);
 
