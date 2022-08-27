@@ -262,6 +262,7 @@ CONST = {
     "BINDING_DRAW_LENS_FLARES_INSTANCES"        : 0,
     "BINDING_DECAL_INSTANCES"                   : 0,
     "BINDING_PORTAL_INSTANCES"                  : 0,
+    "BINDING_LPM_PARAMS"                        : 0,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",

@@ -188,7 +188,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator);
 
     imageComposition    = std::make_shared<ImageComposition>(
-        device, 
+        device,
+        memAllocator,
         framebuffers, 
         shaderManager, 
         uniform, 

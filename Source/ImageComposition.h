@@ -34,11 +34,12 @@ class ImageComposition : public IShaderDependency
 public:
     ImageComposition(
         VkDevice device,
+        std::shared_ptr<MemoryAllocator> allocator,
         std::shared_ptr<Framebuffers> framebuffers,
         const std::shared_ptr<const ShaderManager> &shaderManager,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<const Tonemapping> &tonemapping);
-    ~ImageComposition();
+    ~ImageComposition() override;
 
     ImageComposition(const ImageComposition &other) = delete;
     ImageComposition(ImageComposition &&other) noexcept = delete;
@@ -61,25 +62,35 @@ private:
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
 
-    static void CreatePipelineLayout(
+    static VkPipelineLayout CreatePipelineLayout(
         VkDevice device,
         VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
-        VkPipelineLayout *pDstPipelineLayout,
         const char *pDebugName);
+
+    void CreateDescriptors();
     
     void CreatePipelines(const ShaderManager *shaderManager);
     void DestroyPipelines();
+
+    void SetupLpmParams(VkCommandBuffer cmd);
 
 private:
     VkDevice device;
 
     std::shared_ptr<Framebuffers> framebuffers;
 
+    std::unique_ptr<AutoBuffer> lpmParams;
+    bool lpmParamsInited;
+
     VkPipelineLayout composePipelineLayout;
     VkPipelineLayout checkerboardPipelineLayout;
 
     VkPipeline composePipeline;
     VkPipeline checkerboardPipeline;
+
+    VkDescriptorSetLayout descLayout;
+    VkDescriptorPool descPool;
+    VkDescriptorSet descSet;
 };
 
 }
