@@ -51,22 +51,20 @@ vec3 getSample(sampler2D srcSampler, const vec2 uv)
 {
     if (stepIndex == 0)
     {
-        const vec4 albedo4 = textureLodAlbedo(uv);
-        
-        if (!isSky(albedo4))
-        {
-            vec3 emis = albedo4.rgb;
-            emis = mix(vec3(getLuminance(emis)), emis, 1.0 + globalUniform.bloomEmissionSaturationBias);
-            emis = clamp(emis, 0, 1) * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.bloomEmissionMultiplier;
-            
-            const vec3 illum = textureLod(srcSampler, uv, 0).rgb * getExposure();
-            float f = smoothstep(globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, getLuminance(illum));
+        ivec2 regpix = ivec2(uv * vec2(CHECKERBOARD_FULL_WIDTH, CHECKERBOARD_FULL_HEIGHT));
 
-            return illum * f + emis;
+        const vec3 emis = texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(regpix), 0).rgb;
+
+        if (isSkyPix(getCheckerboardPix(regpix)))
+        {
+            return emis;
         }
         else
         {
-            return albedo4.rgb * getScreenEmissionFromAlbedo4_Sky(albedo4) /* * globalUniform.skyColorMultiplier */;
+            const vec3 illum = texelFetch(srcSampler, regpix, 0).rgb * getExposure();
+            float f = smoothstep(globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, getLuminance(illum));
+
+            return illum * f + emis * globalUniform.bloomEmissionMultiplier;
         }
     }
 

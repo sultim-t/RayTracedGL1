@@ -277,7 +277,7 @@ void main()
 
     if (atrousIteration == 3)
     {
-        vec3 albedo = texelFetchAlbedo(pix).rgb;
+        vec3 albedo = texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
 
         if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ALBEDO_WHITE) != 0)
         {

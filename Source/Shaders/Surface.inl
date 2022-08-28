@@ -35,21 +35,23 @@ struct Surface
 };
 
 
-#ifdef IMAGE_ALBEDO_AVAILABLE
+#if defined(DESC_SET_FRAMEBUFFERS)
+#if !defined(FRAMEBUF_IGNORE_ATTACHMENTS)
+#if defined(CHECKERBOARD_FULL_WIDTH) && defined(CHECKERBOARD_FULL_HEIGHT)
+
 Surface fetchGbufferSurface(const ivec2 pix)
 {
     Surface s;
-    {
-        vec4 albedo4Enc = texelFetchAlbedo(pix);
-        s.albedo = albedo4Enc.rgb;
-        s.emission = getScreenEmissionFromAlbedo4(albedo4Enc);
-        s.isSky = isSky(albedo4Enc);
+    s.isSky = isSkyPix(pix);
 
-        if (s.isSky)
-        {
-            return s;
-        }
+    if (s.isSky)
+    {
+        return s;
     }
+    
+    // framebufAlbedo ALWAYS uses regular layout because of the sky rasterization pass  
+    s.albedo = texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
+    s.emission = getLuminance(texelFetch(framebufScreenEmission_Sampler, pix, 0).rgb);   
     {
         vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
         s.position              = posEnc.xyz;
@@ -69,11 +71,9 @@ Surface fetchGbufferSurface(const ivec2 pix)
 Surface fetchGbufferSurface_NoAlbedoViewDir_Prev(const ivec2 pix)
 {
     Surface s;
-    {
-        s.albedo = vec3(1.0);
-        s.emission = 0.0;
-        s.isSky = false;
-    }
+    s.isSky = false;
+    s.albedo = vec3(1.0);
+    s.emission = 0.0;
     {
         vec4 posEnc             = texelFetch(framebufSurfacePosition_Prev_Sampler, pix, 0);
         s.position              = posEnc.xyz;
@@ -89,8 +89,11 @@ Surface fetchGbufferSurface_NoAlbedoViewDir_Prev(const ivec2 pix)
     s.toViewerDir               = vec3(0.0);
     return s;
 }
-#endif // IMAGE_ALBEDO_AVAILABLE
+#endif // CHECKERBOARD_FULL_WIDTH && CHECKERBOARD_FULL_HEIGHT
+#endif // !FRAMEBUF_IGNORE_ATTACHMENTS
+#endif // DESC_SET_FRAMEBUFFERS
        
+
 Surface hitInfoToSurface_Indirect(const ShHitInfo h, const vec3 rayDirection)
 {
     Surface s;

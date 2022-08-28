@@ -118,20 +118,30 @@ void storeSky(
 #endif
     bool wasSplit)
 {
-#ifdef RAYGEN_PRIMARY_SHADER
-    const bool isPrimaryRay = true;
-#else
-    const bool isPrimaryRay = false;
-#endif
+    imageStore(framebufIsSky, pix, ivec4(1));
 
-    if (calculateSkyAndStoreToAlbedo)
     {
-        imageStoreAlbedoSky(                pix, getSkyPrimary(rayDir), isPrimaryRay);
-    }
-    else
-    {
-        // resave sky albedo in a special format
-        imageStoreAlbedoSky(                pix, texelFetchAlbedo(pix).rgb, isPrimaryRay);
+        vec3 albedo;
+        
+        if (calculateSkyAndStoreToAlbedo)
+        {
+            albedo = getSkyPrimary(rayDir);
+        }
+        else
+        {
+            // was already in G-buffer after rasterization pass
+            albedo = imageLoad(framebufAlbedo, getRegularPixFromCheckerboardPix(pix)).rgb;
+        }
+            
+        imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(albedo, 0.0));
+
+        #ifdef RAYGEN_PRIMARY_SHADER
+            vec3 emission = albedo * globalUniform.bloomSkyMultiplier;
+        #else
+            vec3 emission = vec3(0.0); // with non-primary rays looks ugly
+        #endif
+        
+        imageStore(framebufScreenEmission, pix, vec4(emission, 0.0));
     }
 
     vec2 m = getMotionForInfinitePoint(pix);
@@ -309,10 +319,10 @@ void main()
     if (!doesPayloadContainHitInfo(primaryPayload))
     {
         vec3 throughput = vec3(1.0);
-        throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(cameraRayDir, vec3(0,1,0))), -3));
+        // throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(cameraRayDir, globalUniform.worldUpVector.xyz)), -3));
 
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, vec3(1.0), MAX_RAY_LENGTH * 2.0, false);
+        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, throughput, MAX_RAY_LENGTH * 2.0, false);
         return;
     }
 
@@ -332,7 +342,9 @@ void main()
     throughput *= getMediaTransmittance(currentRayMedia, firstHitDepthLinear);
 
 
-    imageStoreAlbedoSurface(                pix, h.albedo, screenEmission);
+    imageStore(framebufIsSky,               pix, ivec4(0));
+    imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
+    imageStore(framebufScreenEmission,      pix, vec4(h.albedo * screenEmission * throughput , 0.0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
@@ -371,8 +383,7 @@ void main()
 
     const vec3 cameraRayDir = getRayDir(inUV);
     
-    const vec4 albedoBuf = texelFetchAlbedo(pix);
-    if (isSky(albedoBuf))
+    if (isSkyPix(pix))
     {
         return;
     }
@@ -382,7 +393,7 @@ void main()
     // restore state from primary shader
     const uvec3 primaryToReflRefrBuf        = texelFetch(framebufPrimaryToReflRefr_Sampler, pix, 0).rgb;
     ShHitInfo h;
-    h.albedo                                = albedoBuf.rgb;
+    h.albedo                                = texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
     h.hitPosition                           = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
     h.geometryInstanceFlags                 = primaryToReflRefrBuf.r;
     h.portalIndex                           = primaryToReflRefrBuf.b;
@@ -392,7 +403,7 @@ void main()
     vec2        motionCurToPrev             = motionBuf.rg;
     float       motionDepthLinearCurToPrev  = motionBuf.b;
     float       firstHitDepthLinear         = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
-    float       screenEmission              = getScreenEmissionFromAlbedo4(albedoBuf);
+    vec3        screenEmission              = texelFetch(framebufScreenEmission_Sampler, pix, 0).rgb;
     vec3        throughput                  = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
     ShPayload currentPayload;
     currentPayload.instIdAndIndex           = primaryToReflRefrBuf.g;
@@ -556,6 +567,7 @@ void main()
         }
 
         float rayLen;
+        float emis;
 
         h = getHitInfoWithRayCone_ReflectionRefraction(
             currentPayload, rayCone, 
@@ -563,7 +575,7 @@ void main()
             virtualPos, 
             rayLen, 
             motionCurToPrev, motionDepthLinearCurToPrev,
-            screenEmission
+            emis
         );
 
 
@@ -572,6 +584,7 @@ void main()
         propagateRayCone(rayCone, rayLen);
         fullPathLength += rayLen;
         prevHitPosition = h.hitPosition;
+        screenEmission += h.albedo * emis * throughput;
     }
 
 
@@ -581,7 +594,9 @@ void main()
     }
 
 
-    imageStoreAlbedoSurface(                pix, h.albedo, screenEmission);
+    imageStore(framebufIsSky,               pix, ivec4(0));
+    imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
+    imageStore(framebufScreenEmission,      pix, vec4(screenEmission, 0.0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));

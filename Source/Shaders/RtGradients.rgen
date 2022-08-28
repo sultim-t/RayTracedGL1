@@ -95,7 +95,7 @@ void main()
     }
 
     if (!testPixInRenderArea(prevShadingPix, getCheckerboardedRenderArea(curShadingPix)) || 
-        isSky(texelFetchAlbedo(curShadingPix)) ||
+        isSkyPix(curShadingPix) ||
         (prevLuminance.x <= 0.0 && prevLuminance.y <= 0.0))
     {
         imageStore(framebufDISPingGradient, gradPix, vec4(0.0));

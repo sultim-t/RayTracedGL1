@@ -40,7 +40,7 @@ void main()
 
     // sample albedo, so dark places will be visible too
     const ivec2 rendPix = ivec2(effect_getFramebufUV(pix) * vec2(globalUniform.renderWidth, globalUniform.renderHeight));
-    const vec3 albedo = texelFetchAlbedo(getCheckerboardPix(rendPix)).rgb;
+    const vec3 albedo = texelFetch(framebufAlbedo_Sampler, rendPix, 0).rgb;
 
     float bw = max(getBW(color), getBW(albedo));
     bw = sqrt(bw);

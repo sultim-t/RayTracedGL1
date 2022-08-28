@@ -486,72 +486,9 @@ void imageStoreNormalGeometry(const ivec2 pix, const vec3 normal)
     imageStore(framebufNormalGeometry, pix, uvec4(encodeNormal(normal)));
 }
 
-
-
-#define ALBSKY_PRIMARY_RAY     -1
-#define ALBSKY_SECONDARY_RAY   -2
-#if (ALBSKY_PRIMARY_RAY < 0) && (ALBSKY_SECONDARY_RAY < 0)
-    #define ALBSKY_IS_PRIMARY_RAY(a)     ((a) > (ALBSKY_PRIMARY_RAY   - 0.2) && (a) < (ALBSKY_PRIMARY_RAY   + 0.2))
-    #define ALBSKY_IS_SECONDARY_RAY(a)   ((a) > (ALBSKY_SECONDARY_RAY - 0.2) && (a) < (ALBSKY_SECONDARY_RAY + 0.2))
-#else 
-    #error ALBSKY_IS_PRIMARY_RAY/ALBSKY_IS_SECONDARY_RAY assumes negative values
-#endif
-
-
-
-#ifdef CHECKERBOARD_FULL_WIDTH
-#ifdef CHECKERBOARD_FULL_HEIGHT
-
-// framebufAlbedo ALWAYS uses regular layout because of the sky rasterization pass  
-
-#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
-void imageStoreAlbedoSurface(const ivec2 pix, const vec3 surfaceAlbedo, float screenEmission)
+bool isSkyPix(const ivec2 pix)
 {
-    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(surfaceAlbedo, max(0.0, screenEmission)));
-}
-
-// directSkyHit - true, if it was the primary ray that hit the sky
-void imageStoreAlbedoSky(const ivec2 pix, const vec3 skyAlbedo, bool directSkyHit)
-{
-    imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(skyAlbedo, directSkyHit ? ALBSKY_PRIMARY_RAY : ALBSKY_SECONDARY_RAY));
-}
-
-vec4 texelFetchAlbedo(const ivec2 pix)
-{
-    return texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0);
-}
-#define IMAGE_ALBEDO_AVAILABLE
-#endif // FRAMEBUF_IGNORE_ATTACHMENTS
-
-#endif // CHECKERBOARD_FULL_HEIGHT
-#endif // CHECKERBOARD_FULL_WIDTH
-
-
-#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
-vec4 textureLodAlbedo(const vec2 uv)
-{
-    // framebufAlbedo has nearest filtering, so values won't be interpolated
-    return textureLod(framebufAlbedo_Sampler, uv, 0);
-}
-#endif
-
-float getScreenEmissionFromAlbedo4(const vec4 albedo)
-{
-    return max(0.0, albedo.a);
-}
-
-#ifdef DESC_SET_GLOBAL_UNIFORM
-float getScreenEmissionFromAlbedo4_Sky(const vec4 albedo)
-{
-    // -1: sky, hit with primary ray -- emission only for this
-    // -2: sky, but on secondary suface, like mirror, water, etc
-    return float(ALBSKY_IS_PRIMARY_RAY(albedo.a)) * globalUniform.bloomSkyMultiplier;
-}
-#endif // DESC_SET_GLOBAL_UNIFORM
-
-bool isSky(const vec4 albedo)
-{
-    return albedo.a < 0.0;
+    return texelFetch(framebufIsSky_Sampler, pix, 0).r != 0;
 }
 
 #endif // DESC_SET_FRAMEBUFFERS

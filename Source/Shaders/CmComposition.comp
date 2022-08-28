@@ -111,36 +111,39 @@ void main()
         return;
     }
 
+    // framebufPreFinal is addressed by a non-checkerboarded pix
     vec3 color = imageLoad(framebufPreFinal, pix).rgb;
-    const vec4 albedo4 = texelFetchAlbedo(getCheckerboardPix(pix));
     
     if (globalUniform.lightmapEnable == 0)
     {   
-        if (!isSky(albedo4))
+        if (!isSkyPix(getCheckerboardPix(pix)))
         {
             color = tonemapRT(color * getExposure());
 
-            const vec3 emission = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
-            color += emission;
+            color += 
+                texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb * 
+                globalUniform.emissionMaxScreenColor;
         }
         else
         {
-            const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
-
-            color = albedo4.rgb * throughput;
+            color = 
+                texelFetch(framebufAlbedo_Sampler,     pix,                     0).rgb *
+                texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
         }
     }
     else
     {
-        const vec3 throughput = texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
-        color = albedo4.rgb * throughput;
+        color = 
+            texelFetch(framebufAlbedo_Sampler,     pix,                     0).rgb *
+            texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
 
-        if (!isSky(albedo4))
+        if (!isSkyPix(getCheckerboardPix(pix)))
         {
             color = uncharted2Tonemap(color, 1.0);
 
-            const vec3 emission = albedo4.rgb * getScreenEmissionFromAlbedo4(albedo4) * globalUniform.emissionMaxScreenColor;
-            color += emission;
+            color += 
+                texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb * 
+                globalUniform.emissionMaxScreenColor;
         }
     }
 
