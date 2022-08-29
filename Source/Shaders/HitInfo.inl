@@ -163,7 +163,7 @@ vec3 intersectRayTriangle(const mat3 positions, const vec3 orig, const vec3 dir)
 
 ShHitInfo getHitInfoPrimaryRay(
     const ShPayload pl, 
-    const vec3 rayOrig, const vec3 rayDirAX, const vec3 rayDirAY, 
+    const vec3 rayOrigin, const vec3 rayDirAX, const vec3 rayDirAY, 
     out vec2 motion, out float motionDepthLinear, 
     out vec2 gradDepth, out float depthNDC, out float depthLinear,
     out float screenEmission)
@@ -172,7 +172,7 @@ ShHitInfo getHitInfoPrimaryRay(
 
 ShHitInfo getHitInfoWithRayCone_ReflectionRefraction(
     const ShPayload pl, const RayCone rayCone,
-    const vec3 rayOrig, const vec3 rayDir, const vec3 viewDir,
+    const vec3 rayOrigin, const vec3 rayDir, const vec3 viewDir,
     in out vec3 virtualPosForMotion,
     out float rayLen,
     out vec2 motion, out float motionDepthLinear,
@@ -181,7 +181,7 @@ ShHitInfo getHitInfoWithRayCone_ReflectionRefraction(
 #elif defined(HITINFO_INL_INDIR)
 
 ShHitInfo getHitInfoBounce(
-    const ShPayload pl, const vec3 originPosition, float originRoughness, float bounceMipBias)
+    const ShPayload pl, const vec3 rayOrigin, float originRoughness, float bounceMipBias)
 
 #endif
 {
@@ -210,13 +210,19 @@ ShHitInfo getHitInfoBounce(
     // TODO: special flag to compute exact normals
     // h.normalGeom = normalize(tr.normals * baryCoords);
     h.normalGeom = safeNormalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
+   
+    // always face ray origin
+    if (dot(h.normalGeom, h.hitPosition - rayOrigin) > 0)
+    {
+        h.normalGeom *= -1;
+    }
 
 
 #if defined(HITINFO_INL_PRIM)
     // Tracing Ray Differentials, Igehy
     // instead of casting new rays, check intersections on the same triangle
-    const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrig, rayDirAX);
-    const vec3 baryCoordsAY = intersectRayTriangle(tr.positions, rayOrig, rayDirAY);
+    const vec3 baryCoordsAX = intersectRayTriangle(tr.positions, rayOrigin, rayDirAX);
+    const vec3 baryCoordsAY = intersectRayTriangle(tr.positions, rayOrigin, rayDirAY);
 
     const vec4 viewSpacePosCur   = globalUniform.view     * vec4(h.hitPosition, 1.0);
     const vec4 viewSpacePosPrev  = globalUniform.viewPrev * vec4(tr.prevPositions * baryCoords, 1.0);
@@ -239,7 +245,7 @@ ShHitInfo getHitInfoBounce(
 
 
 #if defined(HITINFO_INL_RFL) 
-    rayLen = length(h.hitPosition - rayOrig);
+    rayLen = length(h.hitPosition - rayOrigin);
 #endif 
 
 
@@ -321,7 +327,7 @@ ShHitInfo getHitInfoBounce(
 
 #if defined(HITINFO_INL_INDIR)
     const float viewDist = length(h.hitPosition - globalUniform.cameraPosition.xyz);
-    const float hitDistance = length(h.hitPosition - originPosition);
+    const float hitDistance = length(h.hitPosition - rayOrigin);
 
     const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
