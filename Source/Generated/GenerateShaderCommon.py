@@ -263,6 +263,9 @@ CONST = {
     "BINDING_DECAL_INSTANCES"                   : 0,
     "BINDING_PORTAL_INSTANCES"                  : 0,
     "BINDING_LPM_PARAMS"                        : 0,
+    "BINDING_RESTIR_INDIRECT_INITIAL_SAMPLES"   : 0,
+    "BINDING_RESTIR_INDIRECT_RESERVOIRS"        : 1,
+    "BINDING_RESTIR_INDIRECT_RESERVOIRS_PREV"   : 2,
     
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
@@ -411,6 +414,9 @@ CONST = {
 
     "PORTAL_INDEX_NONE"                     : 63,
     "PORTAL_MAX_COUNT"                      : 63,
+
+    "PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS"    : 5,
+    "PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS" : 8,
 }
 
 CONST_GLSL_ONLY = {

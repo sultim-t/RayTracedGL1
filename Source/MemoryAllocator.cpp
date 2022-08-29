@@ -268,7 +268,7 @@ VkDeviceMemory MemoryAllocator::AllocDedicated(const VkMemoryRequirements2 &memR
     return AllocDedicated(memReqs2.memoryRequirements, properties, allocType, pDebugName);
 }
 
-void MemoryAllocator::FreeDedicated(VkDeviceMemory memory) const
+void MemoryAllocator::FreeDedicated(VkDevice device, VkDeviceMemory memory)
 {
     vkFreeMemory(device, memory, nullptr);
 }

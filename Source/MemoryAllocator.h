@@ -56,7 +56,7 @@ public:
     // If addressQuery=true device address can be queried
     VkDeviceMemory AllocDedicated(const VkMemoryRequirements &memReqs, VkMemoryPropertyFlags properties, AllocType allocType, const char *pDebugName = nullptr) const;
     VkDeviceMemory AllocDedicated(const VkMemoryRequirements2 &memReqs2, VkMemoryPropertyFlags properties, AllocType allocType, const char *pDebugName = nullptr) const;
-    void FreeDedicated(VkDeviceMemory memory) const;
+    static void FreeDedicated(VkDevice device, VkDeviceMemory memory);
 
     
     VkBuffer CreateStagingSrcTextureBuffer(

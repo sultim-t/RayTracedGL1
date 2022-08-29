@@ -31,16 +31,17 @@ RayTracingPipeline::RayTracingPipeline(
     VkDevice _device,
     std::shared_ptr<PhysicalDevice> _physDevice,
     std::shared_ptr<MemoryAllocator> _allocator,
-    const std::shared_ptr<ShaderManager> &_shaderMgr,
-    const std::shared_ptr<Scene> &_scene,
-    const std::shared_ptr<GlobalUniform> &_uniform,
-    const std::shared_ptr<TextureManager> &_textureMgr,
-    const std::shared_ptr<Framebuffers> &_framebuffers,
-    const std::shared_ptr<BlueNoise> &_blueNoise,
-    const std::shared_ptr<CubemapManager> &_cubemapMgr,
-    const std::shared_ptr<RenderCubemap> &_renderCubemap,
-    const std::shared_ptr<PortalList> &_portalList,
-    const RgInstanceCreateInfo &_rgInfo)
+    const std::shared_ptr<ShaderManager>& _shaderMgr,
+    const std::shared_ptr<Scene>& _scene,
+    const std::shared_ptr<GlobalUniform>& _uniform,
+    const std::shared_ptr<TextureManager>& _textureMgr,
+    const std::shared_ptr<Framebuffers>& _framebuffers,
+    const std::shared_ptr<RestirBuffers>& _restirBuffers,
+    const std::shared_ptr<BlueNoise>& _blueNoise,
+    const std::shared_ptr<CubemapManager>& _cubemapMgr,
+    const std::shared_ptr<RenderCubemap>& _renderCubemap,
+    const std::shared_ptr<PortalList>& _portalList,
+    const RgInstanceCreateInfo& _rgInfo)
 :
     device(_device),
     physDevice(std::move(_physDevice)),
@@ -80,7 +81,9 @@ RayTracingPipeline::RayTracingPipeline(
         // dynamic cubemaps
         _renderCubemap->GetDescSetLayout(),
         // portals
-        _portalList->GetDescSetLayout()
+        _portalList->GetDescSetLayout(),
+        // device local buffers for restir
+        _restirBuffers->GetDescSetLayout(),
     };
 
     CreatePipelineLayout(setLayouts.data(), setLayouts.size());

@@ -556,7 +556,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             cmd, frameIndex,
             renderResolution.Width(), renderResolution.Height(),
             scene, uniform, textureManager, 
-            framebuffers, blueNoise, 
+            framebuffers, restirBuffers, blueNoise,
             cubemapManager, rasterizer->GetRenderCubemap(),
             portalList);
 

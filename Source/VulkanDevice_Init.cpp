@@ -93,6 +93,10 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         memAllocator, 
         cmdManager);
 
+    restirBuffers       = std::make_shared<RestirBuffers>(
+        device,
+        memAllocator);
+
     blueNoise           = std::make_shared<BlueNoise>(
         device,
         info->pBlueNoiseFilePath,
@@ -171,7 +175,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         scene,
         uniform, 
         textureManager,
-        framebuffers, 
+        framebuffers,
+        restirBuffers,
         blueNoise, 
         cubemapManager,
         rasterizer->GetRenderCubemap(),
@@ -272,6 +277,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
     framebuffers->Subscribe(amdFsr2);
+    framebuffers->Subscribe(restirBuffers);
 }
 
 VulkanDevice::~VulkanDevice()
@@ -283,6 +289,7 @@ VulkanDevice::~VulkanDevice()
     swapchain.reset();
     cmdManager.reset();
     framebuffers.reset();
+    restirBuffers.reset();
     tonemapping.reset();
     imageComposition.reset();
     bloom.reset();

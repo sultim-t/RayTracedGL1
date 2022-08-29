@@ -81,6 +81,7 @@ set(Sources
     "Source/ImageLoaderDev.cpp"
     "Source/PortalList.cpp"
     "Source/TextureObserver.cpp"
+    "Source/RestirBuffers.cpp"
 )
 
 

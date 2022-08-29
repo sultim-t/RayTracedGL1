@@ -39,6 +39,7 @@
 //                                 define TONEMAPPING_BUFFER_WRITEABLE for writing
 // * DESC_SET_LENS_FLARES
 // * DESC_SET_DECALS
+// * DESC_SET_RESTIR_INDIRECT
 
 
 
@@ -202,6 +203,25 @@ buffer InitialLightsGrid_BT
 layout(set = DESC_SET_LIGHT_SOURCES, binding = BINDING_INITIAL_LIGHTS_GRID_PREV) readonly buffer InitialLightsGridPrev_BT
 {
     ShLightInCell initialLightsGrid_Prev[];
+};
+#endif
+
+
+
+#ifdef DESC_SET_RESTIR_INDIRECT
+layout(set = DESC_SET_RESTIR_INDIRECT, binding = BINDING_RESTIR_INDIRECT_INITIAL_SAMPLES) buffer RestirIndirectInitialSamples_BT
+{
+    uint g_restirIndirectInitialSamples[];
+};
+
+layout(set = DESC_SET_RESTIR_INDIRECT, binding = BINDING_RESTIR_INDIRECT_RESERVOIRS) buffer RestirIndirectReservoirs_BT
+{
+    uint g_restirIndirectReservoirs[];
+};
+
+layout(set = DESC_SET_RESTIR_INDIRECT, binding = BINDING_RESTIR_INDIRECT_RESERVOIRS_PREV) buffer RestirIndirectReservoirs_Prev_BT
+{
+    uint g_restirIndirectReservoirs_Prev[];
 };
 #endif
 

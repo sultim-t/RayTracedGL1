@@ -55,6 +55,7 @@
 #include "FrameState.h"
 #include "LibraryConfig.h"
 #include "PortalList.h"
+#include "RestirBuffers.h"
 
 namespace RTGL1
 {
@@ -154,6 +155,7 @@ private:
     std::shared_ptr<CommandBufferManager>   cmdManager;
 
     std::shared_ptr<Framebuffers>           framebuffers;
+    std::shared_ptr<RestirBuffers>          restirBuffers;
 
     std::shared_ptr<GlobalUniform>          uniform;
     std::shared_ptr<Scene>                  scene;

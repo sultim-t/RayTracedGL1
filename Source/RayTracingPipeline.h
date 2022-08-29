@@ -28,6 +28,7 @@
 #include "CubemapManager.h"
 #include "RenderCubemap.h"
 #include "PortalList.h"
+#include "RestirBuffers.h"
 
 namespace RTGL1
 {
@@ -39,16 +40,17 @@ public:
         VkDevice device,
         std::shared_ptr<PhysicalDevice> physDevice,
         std::shared_ptr<MemoryAllocator> allocator,
-        const std::shared_ptr<ShaderManager> &shaderManager,
-        const std::shared_ptr<Scene> &scene,
-        const std::shared_ptr<GlobalUniform> &uniform,
-        const std::shared_ptr<TextureManager> &textureManager,
-        const std::shared_ptr<Framebuffers> &framebuffers,
-        const std::shared_ptr<BlueNoise> &blueNoise,
-        const std::shared_ptr<CubemapManager> &cubemapManager,
-        const std::shared_ptr<RenderCubemap> &renderCubemap,
-        const std::shared_ptr<PortalList> &portalList,
-        const RgInstanceCreateInfo &rgInfo);
+        const std::shared_ptr<ShaderManager>& shaderManager,
+        const std::shared_ptr<Scene>& scene,
+        const std::shared_ptr<GlobalUniform>& uniform,
+        const std::shared_ptr<TextureManager>& textureManager,
+        const std::shared_ptr<Framebuffers>& framebuffers,
+        const std::shared_ptr<RestirBuffers>& restirBuffers,
+        const std::shared_ptr<BlueNoise>& blueNoise,
+        const std::shared_ptr<CubemapManager>& cubemapManager,
+        const std::shared_ptr<RenderCubemap>& renderCubemap,
+        const std::shared_ptr<PortalList>& portalList,
+        const RgInstanceCreateInfo& rgInfo);
     ~RayTracingPipeline() override;
 
     RayTracingPipeline(const RayTracingPipeline& other) = delete;
