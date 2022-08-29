@@ -206,7 +206,10 @@ ShHitInfo getHitInfoBounce(
     };
     
     h.hitPosition = tr.positions * baryCoords;
-    h.normalGeom = safeNormalize(tr.normals * baryCoords);
+    
+    // TODO: special flag to compute exact normals
+    // h.normalGeom = normalize(tr.normals * baryCoords);
+    h.normalGeom = safeNormalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
 
 
 #if defined(HITINFO_INL_PRIM)
