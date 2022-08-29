@@ -118,11 +118,13 @@ void main()
     {   
         if (!isSkyPix(getCheckerboardPix(pix)))
         {
-            color = tonemapRT(color * getExposure());
+            color = color * getExposure();
 
-            color += 
+            color +=
                 texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb * 
                 globalUniform.emissionMaxScreenColor;
+
+            color = tonemapRT(color);
         }
         else
         {
@@ -139,11 +141,11 @@ void main()
 
         if (!isSkyPix(getCheckerboardPix(pix)))
         {
-            color = uncharted2Tonemap(color, 1.0);
-
             color += 
                 texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb * 
                 globalUniform.emissionMaxScreenColor;
+                
+            color = uncharted2Tonemap(color, 1.0);
         }
     }
 
