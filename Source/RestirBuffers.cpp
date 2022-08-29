@@ -58,6 +58,7 @@ namespace
     auto MakeBuffer(const std::shared_ptr<RTGL1::MemoryAllocator> &allocator, VkDeviceSize size, const char *name)
     {
         using namespace RTGL1;
+        VkResult r;
         RestirBuffers::BufferDef result = {};
 
         VkBufferCreateInfo bufferInfo =
@@ -68,7 +69,7 @@ namespace
             .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         };
 
-        VkResult r = vkCreateBuffer(allocator->GetDevice(), &bufferInfo, nullptr, &result.buffer);
+        r = vkCreateBuffer(allocator->GetDevice(), &bufferInfo, nullptr, &result.buffer);
         VK_CHECKERROR(r);
         SET_DEBUG_NAME(allocator->GetDevice(), result.buffer, VK_OBJECT_TYPE_BUFFER, name);
 
@@ -77,6 +78,9 @@ namespace
 
         result.memory = allocator->AllocDedicated(memReq, 
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, MemoryAllocator::AllocType::DEFAULT, name);
+
+        r = vkBindBufferMemory(allocator->GetDevice(), result.buffer, result.memory, 0);
+        VK_CHECKERROR(r);
 
         return result;
     }
@@ -90,6 +94,8 @@ void RTGL1::RestirBuffers::CreateBuffers(uint32_t renderWidth, uint32_t renderHe
     {
         r = MakeBuffer(allocator, sizeof(uint32_t) * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS * renderWidth * renderHeight, "Restir Indirect - Reservois");
     }
+
+    UpdateDescriptors();
 }
 
 void RTGL1::RestirBuffers::DestroyBuffers()

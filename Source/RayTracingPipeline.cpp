@@ -60,7 +60,7 @@ RayTracingPipeline::RayTracingPipeline(
     shaderBindingTable = std::make_shared<AutoBuffer>(device, std::move(_allocator));
 
     // all set layouts to be used
-    std::vector<VkDescriptorSetLayout> setLayouts =
+    VkDescriptorSetLayout setLayouts[] =
     {
         // ray tracing acceleration structures
         _scene->GetASManager()->GetTLASDescSetLayout(),
@@ -86,7 +86,7 @@ RayTracingPipeline::RayTracingPipeline(
         _restirBuffers->GetDescSetLayout(),
     };
 
-    CreatePipelineLayout(setLayouts.data(), setLayouts.size());
+    CreatePipelineLayout(setLayouts, std::size(setLayouts));
 
     assert(primaryRaysMaxAlbedoLayers <= MATERIALS_MAX_LAYER_COUNT);
     assert(indirectIlluminationMaxAlbedoLayers <= MATERIALS_MAX_LAYER_COUNT);
