@@ -64,6 +64,11 @@ float lengthSquared(const vec3 v)
     return dot(v, v);
 }
 
+float safePositiveRcp(float f)
+{
+    return f <= 0.0 ? 0.0 : 1.0 / f;
+}
+
 
 
 #define ENCODE_NORMAL_N_PHI 1 << 16

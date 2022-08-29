@@ -44,11 +44,6 @@ bool isReservoirValid(const Reservoir r)
     return r.selected != LIGHT_INDEX_NONE;
 }
 
-float safePositiveRcp(float f)
-{
-    return f <= 0.0 ? 0.0 : 1.0 / f;
-}
-
 float calcSelectedSampleWeight(const Reservoir r)
 {
     return safePositiveRcp(r.selected_targetPdf) * (r.weightSum / float(max(1, r.M)));
@@ -64,8 +59,8 @@ void normalizeReservoir(inout Reservoir r, uint maxM)
 
 void updateReservoir(
     inout Reservoir r, 
-    uint lightIndex, float targetPdf, 
-    float oneOverSourcePdf, float rnd)
+    uint lightIndex, float targetPdf, float oneOverSourcePdf, 
+    float rnd)
 {
     float weight = targetPdf * oneOverSourcePdf;
 

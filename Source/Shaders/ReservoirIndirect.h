@@ -31,10 +31,12 @@ struct SampleIndirect
 struct ReservoirIndirect
 {
     SampleIndirect  selected;
-    float           selected_targetPdf;
+    float           selected_targetPdf; // todo: remove? as it's easily calculated
     float           weightSum;
     uint            M;
 };
+
+
 
 SampleIndirect emptySampleIndirect()
 {
@@ -56,6 +58,59 @@ ReservoirIndirect emptyReservoirIndirect()
     r.M = 0;
     return r;
 }
+
+float calcSelectedSampleWeightIndirect(const ReservoirIndirect r)
+{
+    return safePositiveRcp(r.selected_targetPdf) * (r.weightSum / float(max(1, r.M)));
+}
+
+void normalizeReservoirIndirect(inout ReservoirIndirect r, uint maxM)
+{
+    r.weightSum /= float(max(r.M, 1));
+
+    r.M = clamp(r.M, 0, maxM);
+    r.weightSum *= r.M;
+}
+
+void updateReservoirIndirect(
+    inout ReservoirIndirect r,
+    const SampleIndirect newSample, float targetPdf, float oneOverSourcePdf, 
+    float rnd)
+{
+    float weight = targetPdf * oneOverSourcePdf;
+
+    r.weightSum += weight;
+    r.M += 1;
+
+    if (rnd * r.weightSum < weight)
+    {
+        r.selected = newSample;
+        r.selected_targetPdf = targetPdf;
+    }
+}
+
+void initCombinedReservoirIndirect(out ReservoirIndirect combined, const ReservoirIndirect base)
+{
+    combined.selected = base.selected;
+    combined.selected_targetPdf = base.selected_targetPdf;
+    combined.weightSum = base.weightSum;
+    combined.M = base.M;
+}
+
+void updateCombinedReservoirIndirect(inout ReservoirIndirect combined, const ReservoirIndirect b, float rnd)
+{
+    float weight = b.weightSum;
+
+    combined.weightSum += weight;
+    combined.M += b.M;
+    if (rnd * combined.weightSum < weight)
+    {
+        combined.selected = b.selected;
+        combined.selected_targetPdf = b.selected_targetPdf;
+    }
+}
+
+
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_RESTIR_INDIRECT

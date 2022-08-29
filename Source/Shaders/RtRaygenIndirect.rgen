@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Sultim Tsyrendashiev
+// Copyright (c) 2021-2022 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -77,6 +77,27 @@ vec3 getSpecularBounce(
     return l;
 }
 
+/*float oneOverPdf(vec3 v, vec3 n, vec3 m, float roughness)
+{
+    const vec3 l = normalize(reflect(-v, m));
+    
+    float D;
+    {
+        float alphaSq = max(roughness, MIN_GGX_ROUGHNESS);
+        alphaSq *= alphaSq;
+        const vec3 h = normalize(v + l);
+        float nh = max(dot(n, h), 0);
+        D = nh * alphaSq / (M_PI * square(1 + nh * nh * (alphaSq - 1)));
+    }
+
+    const float G1 = G1GGX(v, n, roughness);
+    const float vn = max(dot(v, n), 0);
+    const float vm = max(dot(v, m), 0);
+    const float vl = max(dot(v, l), 0);
+
+    return (vn * 4 * vm) / (G1 * vl * D);
+}*/
+
 // n -- surface normal
 vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, inout vec3 throughput)
 {
@@ -134,7 +155,7 @@ vec3 processSecondBounce(
 }
 
 // Traces bounce ray, computes direct illumination in a hit point
-vec3 processBounce(
+SampleIndirect processBounce(
     bool withSecondBounceAndDist,
     const uint seed, 
     const Surface surf, 
@@ -149,7 +170,13 @@ vec3 processBounce(
     if (hitSurf.isSky)
     {
         rayHitDistance = MAX_RAY_LENGTH;
-        return getSky(bounceDir_First) * throughput_First;
+
+        // TODO: check reuse for sky. a special flag for sky?
+        SampleIndirect s;
+        s.position = hitSurf.position + bounceDir_First * MAX_RAY_LENGTH;
+        s.normal = -bounceDir_First;
+        s.radiance = getSky(bounceDir_First) * throughput_First;
+        return s;
     }
     
     // calculate direct illumination only for directional lights in hit position
@@ -173,11 +200,16 @@ vec3 processBounce(
     }
 
 
-    return hitSurf.emission * hitSurf.albedo + diffuse * throughput_First;
+    SampleIndirect s;
+    s.position = hitSurf.position;
+    s.normal = hitSurf.normalGeom;
+    s.radiance = hitSurf.emission * hitSurf.albedo + diffuse * throughput_First;
+
+    return s;
 }
 
 
-vec3 processSpecular(const uint seed, const Surface surf, out float rayHitDistance)
+/*SampleIndirect processSpecular(const uint seed, const Surface surf, out float rayHitDistance)
 {
     vec3 throughput = vec3(1.0);
     vec3 bounceDirection = getSpecularBounce(seed, 1, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, throughput);
@@ -189,30 +221,28 @@ vec3 processSpecular(const uint seed, const Surface surf, out float rayHitDistan
         bounceDirection,
         throughput,
         rayHitDistance);
-}
+}*/
 
-SH processIndirectDiffuse(const uint seed, const Surface surf)
+SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out vec3 bounceDirection)
 {
     vec3 throughput = vec3(1.0);
-    vec3 bounceDirection = getDiffuseBounce(seed, 1, surf.normalGeom, throughput);
+     bounceDirection = getDiffuseBounce(seed, 1, surf.normalGeom, throughput);
     float unusedf;
 
-    const vec3 contrib = processBounce(
+    return processBounce(
         false,
         seed, 
         surf,
         bounceDirection,
         throughput,
         unusedf);
-
-    return irradianceToSH(contrib, bounceDirection);
 }
 
 
 // v -- direction to viewer
-void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf)
+SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf, out vec3 bounceDirection /*todo: remove*/)
 {
-    if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
+    /*if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
     {
         const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
         float rayHitDistance = 0;
@@ -226,13 +256,23 @@ void processIndirectIllumination(const ivec2 pix, const uint seed, const Surface
 
         // demodulate for denoising
         imageStoreUnfilteredSpecular(pix, directSpecular + demodulateSpecular(contribution, surf.specularColor));
-    }
+    }*/
 
-    {
+    /*{
         const SH bounceSH = processIndirectDiffuse(seed, surf);
 
         imageStoreUnfilteredIndirectSH(pix, bounceSH);
+    }*/
+
+    {
+        return processIndirectDiffuse(seed, surf, bounceDirection);
     }
+}
+
+
+float targetPdfForIndirectSample(const SampleIndirect s)
+{
+    return getLuminance(s.radiance);
 }
 
 
@@ -249,5 +289,58 @@ void main()
         return;
     }
 
-    processIndirectIllumination(pix, seed, surf);        
+vec3 bounceDirection;
+
+    ReservoirIndirect combined;
+    {
+        ReservoirIndirect initial = emptyReservoirIndirect();
+        initial.selected = processIndirectIllumination(pix, seed, surf, bounceDirection);
+        initial.selected_targetPdf = targetPdfForIndirectSample(initial.selected); // todo
+        initial.M = 1;
+        initial.weightSum = initial.selected_targetPdf;
+
+        initCombinedReservoirIndirect(
+            combined, 
+            initial);
+    }
+
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
+    const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
+    const float depthCur = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
+    const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
+    uint salt = 128;
+
+    for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES; pixIndex++)
+    {
+        // TODO: need low discrepancy noise
+        vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
+        ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
+
+        {
+            const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
+            const vec3 normalPrev = texelFetchNormal_Prev(pp);
+
+            if (!testSurfaceForReuse(chRenderArea, pp, 
+                                     depthCur, depthPrev - motionZ,
+                                     surf.normal, normalPrev))
+            {
+                continue;
+            }
+        }
+
+        ReservoirIndirect temporal = restirIndirect_LoadReservoir_Prev(pp);
+        // renormalize to prevent precision problems
+        normalizeReservoirIndirect(temporal, 20);
+
+        float rnd = rnd16(seed, salt++);
+        updateCombinedReservoirIndirect(
+            combined,
+            temporal, 
+            rnd);
+    }
+
+    restirIndirect_StoreReservoir(pix, combined);
+    
+
+    imageStoreUnfilteredIndirectSH(pix, irradianceToSH(combined.selected.radiance * calcSelectedSampleWeightIndirect(combined), bounceDirection));
 }
