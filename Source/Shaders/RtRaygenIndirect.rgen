@@ -223,10 +223,10 @@ SampleIndirect processBounce(
         rayHitDistance);
 }*/
 
-SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out vec3 bounceDirection)
+SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf)
 {
     vec3 throughput = vec3(1.0);
-     bounceDirection = getDiffuseBounce(seed, 1, surf.normalGeom, throughput);
+    vec3 bounceDirection = getDiffuseBounce(seed, 1, surf.normalGeom, throughput);
     float unusedf;
 
     return processBounce(
@@ -240,7 +240,7 @@ SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out v
 
 
 // v -- direction to viewer
-SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf, out vec3 bounceDirection /*todo: remove*/)
+SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf)
 {
     /*if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
     {
@@ -265,7 +265,7 @@ SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, con
     }*/
 
     {
-        return processIndirectDiffuse(seed, surf, bounceDirection);
+        return processIndirectDiffuse(seed, surf);
     }
 }
 
@@ -312,12 +312,10 @@ void main()
         return;
     }
 
-vec3 bounceDirection;
-
     ReservoirIndirect combined;
     {
         ReservoirIndirect initial = emptyReservoirIndirect();
-        initial.selected = processIndirectIllumination(pix, seed, surf, bounceDirection);
+        initial.selected = processIndirectIllumination(pix, seed, surf);
         initial.selected_targetPdf = targetPdfForIndirectSample(initial.selected); // todo
         initial.M = 1;
         initial.weightSum = initial.selected_targetPdf;
@@ -384,12 +382,12 @@ vec3 bounceDirection;
         }
 
         {
-            const float depthOther = texelFetch(framebufDepthWorld_Sampler, pp, 0).r;
-            const vec3 normalOther = texelFetchNormal(pp);
+            const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
+            const vec3 normalPrev = texelFetchNormal_Prev(pp);
 
             if (!testSurfaceForReuseIndirect(chRenderArea, pp,
-                                             depthCur, depthOther,
-                                             surf.normal, normalOther))
+                                             depthCur, depthPrev - motionZ,
+                                             surf.normal, normalPrev))
             {
                 continue;
             }
@@ -449,5 +447,5 @@ vec3 bounceDirection;
         pix,
         irradianceToSH(
             combined.selected.radiance * calcSelectedSampleWeightIndirect(combined),
-            bounceDirection));
+            safeNormalize(combined.selected.position - surf.position)));
 }
