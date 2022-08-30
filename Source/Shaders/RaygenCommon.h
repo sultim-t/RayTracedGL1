@@ -478,13 +478,13 @@ bool testSurfaceForReuse(
     float curDepth, float otherDepth,
     const vec3 curNormal, const vec3 otherNormal)
 {
-    #define DEPTH_THRESHOLD 0.1
-    #define NORMAL_THRESHOLD 0.5
+    const float DepthThreshold = 0.1;
+    const float NormalThreshold = 0.5;
 
     return 
         testPixInRenderArea(otherPix, curChRenderArea) &&
-        (abs(curDepth - otherDepth) / abs(curDepth) < DEPTH_THRESHOLD) &&
-        (dot(curNormal, otherNormal) > NORMAL_THRESHOLD);
+        (abs(curDepth - otherDepth) / abs(curDepth) < DepthThreshold) &&
+        (dot(curNormal, otherNormal) > NormalThreshold);
 }
 
 // Select light in screen-space for direct illumination

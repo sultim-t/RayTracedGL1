@@ -134,7 +134,7 @@ float getGeometryFactor(const vec3 lightNormal, const vec3 lightToSurface, float
 }
 float getGeometryFactorClamped(const vec3 lightNormal, const vec3 lightToSurface, float surfaceToLightDistance)
 {
-    return max(0.0, dot(lightNormal, lightToSurface)) / square(surfaceToLightDistance);
+    return max(0.0, dot(lightNormal, lightToSurface)) * safePositiveRcp(square(surfaceToLightDistance));
 }
 
 float safeSolidAngle(float a)

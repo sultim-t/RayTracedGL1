@@ -97,7 +97,7 @@ void initCombinedReservoirIndirect(out ReservoirIndirect combined, const Reservo
     combined.M = base.M;
 }
 
-void updateCombinedReservoirIndirect(inout ReservoirIndirect combined, const ReservoirIndirect b, float rnd)
+bool updateCombinedReservoirIndirect(inout ReservoirIndirect combined, const ReservoirIndirect b, float rnd)
 {
     float weight = b.weightSum;
 
@@ -107,6 +107,26 @@ void updateCombinedReservoirIndirect(inout ReservoirIndirect combined, const Res
     {
         combined.selected = b.selected;
         combined.selected_targetPdf = b.selected_targetPdf;
+
+        return true;
+    }
+
+    return false;
+}
+
+void updateCombinedReservoirIndirect_newSurf(inout ReservoirIndirect combined, const ReservoirIndirect b, float targetPdf_b, float rnd)
+{
+    // targetPdf_b is targetPdf(b.selected) for pixel q
+    // but b.selected_targetPdf was calculated for pixel q'
+    // so need to renormalize weight
+    float weight = targetPdf_b * safePositiveRcp(b.selected_targetPdf) * b.weightSum;
+
+    combined.weightSum += weight;
+    combined.M += b.M;
+    if (rnd * combined.weightSum < weight)
+    {
+        combined.selected = b.selected;
+        combined.selected_targetPdf = targetPdf_b;
     }
 }
 
@@ -114,13 +134,19 @@ void updateCombinedReservoirIndirect(inout ReservoirIndirect combined, const Res
 
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_RESTIR_INDIRECT
-uint getPixOffset(const ivec2 pix)
+bool rgi_TryGetPixOffset(const ivec2 pix, out uint offset)
 {
-    return pix.y * int(globalUniform.renderWidth) + pix.x;
+    offset = pix.y * uint(globalUniform.renderWidth) + pix.x;
+    return offset >= 0 && offset < uint(globalUniform.renderWidth) * uint(globalUniform.renderHeight);
 }
+
 void restirIndirect_StoreInitialSample(const ivec2 pix, const SampleIndirect s)
 {
-    uint offset = getPixOffset(pix);
+    uint offset;
+    if (!rgi_TryGetPixOffset(pix, offset))
+    {
+        return;
+    }
 
     g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 0] = floatBitsToUint(s.position.x);
     g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 1] = floatBitsToUint(s.position.y);
@@ -133,18 +159,36 @@ void restirIndirect_StoreInitialSample(const ivec2 pix, const SampleIndirect s)
 #endif
 }
 
-void restirIndirect_StoreReservoir(const ivec2 pix, const ReservoirIndirect r)
+void restirIndirect_StoreReservoir(const ivec2 pix, ReservoirIndirect r)
 {
-    uint offset = getPixOffset(pix);
-
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 0] = floatBitsToUint(r.selected.position.x);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 1] = floatBitsToUint(r.selected.position.y);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 2] = floatBitsToUint(r.selected.position.z);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 3] = encodeNormal(r.selected.normal);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 4] = encodeE5B9G9R9(r.selected.radiance);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 5] = floatBitsToUint(r.selected_targetPdf);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 6] = floatBitsToUint(r.weightSum);
-    g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 7] = r.M;
+    uint offset;
+    if (!rgi_TryGetPixOffset(pix, offset))
+    {
+        return;
+    }
+    
+    if (!isinf(r.weightSum) && !isnan(r.weightSum) && r.weightSum >= 0.0)
+    {
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 0] = floatBitsToUint(r.selected.position.x);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 1] = floatBitsToUint(r.selected.position.y);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 2] = floatBitsToUint(r.selected.position.z);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 3] = encodeNormal(r.selected.normal);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 4] = encodeE5B9G9R9(r.selected.radiance);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 5] = floatBitsToUint(r.selected_targetPdf);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 6] = floatBitsToUint(r.weightSum);
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 7] = r.M;
+    }
+    else
+    {
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 0] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 1] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 2] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 3] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 4] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 5] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 6] = 0;
+        g_restirIndirectReservoirs[offset * PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS + 7] = 0;
+    }
 
 #if PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS != 8
     #error "Size mismatch"
@@ -153,9 +197,14 @@ void restirIndirect_StoreReservoir(const ivec2 pix, const ReservoirIndirect r)
 
 SampleIndirect restirIndirect_LoadInitialSample(const ivec2 pix)
 {
-    uint offset = getPixOffset(pix);
-
     SampleIndirect s;
+
+    uint offset;
+    if (!rgi_TryGetPixOffset(pix, offset))
+    {
+        s = emptySampleIndirect();
+        return s;
+    }
 
     s.position.x = uintBitsToFloat(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 0]);
     s.position.y = uintBitsToFloat(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 1]);
@@ -178,16 +227,30 @@ SampleIndirect restirIndirect_LoadInitialSample(const ivec2 pix)
 
 ReservoirIndirect restirIndirect_LoadReservoir(const ivec2 pix)
 {
-    uint offset = getPixOffset(pix);
     ReservoirIndirect r;
+
+    uint offset;
+    if (!rgi_TryGetPixOffset(pix, offset))
+    {
+        r = emptyReservoirIndirect();
+        return r;
+    }
+
     INDIR_LOAD_RESERVOIR_T(g_restirIndirectReservoirs);
     return r;
 }
 
 ReservoirIndirect restirIndirect_LoadReservoir_Prev(const ivec2 pix)
 {
-    uint offset = getPixOffset(pix);
     ReservoirIndirect r;
+
+    uint offset;
+    if (!rgi_TryGetPixOffset(pix, offset))
+    {
+        r = emptyReservoirIndirect();
+        return r;
+    }
+
     INDIR_LOAD_RESERVOIR_T(g_restirIndirectReservoirs_Prev);
     return r;
 }

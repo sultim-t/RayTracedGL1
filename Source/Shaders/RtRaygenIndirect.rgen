@@ -275,6 +275,29 @@ float targetPdfForIndirectSample(const SampleIndirect s)
     return getLuminance(s.radiance);
 }
 
+bool testSurfaceForReuseIndirect(
+    const ivec3 curChRenderArea, const ivec2 otherPix,
+    float curDepth, float otherDepth,
+    const vec3 curNormal, const vec3 otherNormal)
+{
+    const float DepthThreshold = 0.05;
+    const float NormalThreshold = 0.9;
+
+    return 
+        testPixInRenderArea(otherPix, curChRenderArea) &&
+        (abs(curDepth - otherDepth) / abs(curDepth) < DepthThreshold) &&
+        (dot(curNormal, otherNormal) > NormalThreshold);
+}
+
+
+#define TEMPORAL_SAMPLES_INDIR 1
+#define TEMPORAL_RADIUS_INDIR 2
+#define SPATIAL_SAMPLES_INDIR 4
+#define SPATIAL_RADIUS_INDIR 8
+
+#define RESET_RESERVOIRS_INDIR 0
+#define DEBUG_TRACE_BIAS_CORRECT_RAY 0
+
 
 void main()
 {
@@ -308,21 +331,29 @@ vec3 bounceDirection;
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
-    uint salt = 128;
+    uint salt = RANDOM_SALT_RESAMPLE_INDIRECT_BASE;
+    
+    // if back-projected pix is valid, then run spatial pass around
+    // that reprojected pix, as spatial uses restirIndirect_LoadReservoir_Prev
+    // to prevent same-frame dependency
+    bool isTemporalValid = false;
 
-    for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES; pixIndex++)
+    for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES_INDIR; pixIndex++)
     {
         // TODO: need low discrepancy noise
-        vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
-        ivec2 pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS));
+        ivec2 pp;
+        {
+            vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
+            pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS_INDIR));
+        }
 
         {
             const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
             const vec3 normalPrev = texelFetchNormal_Prev(pp);
 
-            if (!testSurfaceForReuse(chRenderArea, pp, 
-                                     depthCur, depthPrev - motionZ,
-                                     surf.normal, normalPrev))
+            if (!testSurfaceForReuseIndirect(chRenderArea, pp,
+                                             depthCur, depthPrev - motionZ,
+                                             surf.normal, normalPrev))
             {
                 continue;
             }
@@ -333,14 +364,90 @@ vec3 bounceDirection;
         normalizeReservoirIndirect(temporal, 20);
 
         float rnd = rnd16(seed, salt++);
-        updateCombinedReservoirIndirect(
+        isTemporalValid = updateCombinedReservoirIndirect(
             combined,
             temporal, 
             rnd);
     }
 
-    restirIndirect_StoreReservoir(pix, combined);
-    
+    uint nobiasM = combined.M;
 
-    imageStoreUnfilteredIndirectSH(pix, irradianceToSH(combined.selected.radiance * calcSelectedSampleWeightIndirect(combined), bounceDirection));
+    for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES_INDIR; pixIndex++)
+    {
+        // TODO: need low discrepancy noise
+        ivec2 pp;
+        {
+            vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
+
+            pp = isTemporalValid ? ivec2(floor(posPrev)) : pix;
+            pp += ivec2(rndOffset * SPATIAL_RADIUS_INDIR);
+        }
+
+        {
+            const float depthOther = texelFetch(framebufDepthWorld_Sampler, pp, 0).r;
+            const vec3 normalOther = texelFetchNormal(pp);
+
+            if (!testSurfaceForReuseIndirect(chRenderArea, pp,
+                                             depthCur, depthOther,
+                                             surf.normal, normalOther))
+            {
+                continue;
+            }
+        }
+
+        ReservoirIndirect reservoir_q = restirIndirect_LoadReservoir_Prev(pp);
+        // renormalize to prevent precision problems
+        normalizeReservoirIndirect(reservoir_q, 20);
+
+        float jacobian;
+        {
+            const vec3 x1_r = surf.position;
+            const vec3 x1_q = texelFetch(framebufSurfacePosition_Sampler, pp, 0).xyz;
+
+            const vec3 x2_q = reservoir_q.selected.position;
+            const vec3 n2_q = reservoir_q.selected.normal;
+
+            const DirectionAndLength phi_r = calcDirectionAndLengthSafe(x2_q, x1_r);
+            const DirectionAndLength phi_q = calcDirectionAndLengthSafe(x2_q, x1_q);
+
+            jacobian            = getGeometryFactorClamped(n2_q, phi_r.dir, phi_r.len)
+                * safePositiveRcp(getGeometryFactorClamped(n2_q, phi_q.dir, phi_q.len));
+        }
+
+        float targetPdf_curSurf = 0.0;
+        
+    #if DEBUG_TRACE_BIAS_CORRECT_RAY
+        if (!traceShadowRay(surf.instCustomIndex, surf.position, reservoir_q.selected.position, false))
+    #endif
+        {
+            targetPdf_curSurf = 
+                targetPdfForIndirectSample(reservoir_q.selected)
+                * safePositiveRcp(jacobian);
+        }
+
+        float rnd = rnd16(seed, salt++);
+        updateCombinedReservoirIndirect_newSurf(
+            combined,
+            reservoir_q, targetPdf_curSurf,
+            rnd);
+
+        if (targetPdf_curSurf > 0.0)
+        {
+            nobiasM += reservoir_q.M;
+        }
+    }
+
+    combined.M = nobiasM;
+
+#if !RESET_RESERVOIRS_INDIR
+    restirIndirect_StoreReservoir(pix, combined);
+#else
+    restirIndirect_StoreReservoir(pix, emptyReservoirIndirect());
+#endif
+
+    imageStoreUnfilteredIndirectSH(
+        pix,
+        irradianceToSH(
+            combined.selected.radiance * calcSelectedSampleWeightIndirect(combined),
+            bounceDirection));
 }
