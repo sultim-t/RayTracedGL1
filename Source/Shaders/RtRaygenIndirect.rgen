@@ -50,33 +50,7 @@ vec3 getSpecularBounce(const uint seed, uint bounceIndex,
                        out float oneOverSourcePdf)
 {
     const vec2 u = rnd16_2(seed, RANDOM_SALT_SPEC_BOUNCE(bounceIndex));
-
-    // sample microfacet normal
-    const vec3 m = sampleSmithGGX(n, v, getModifiedIndirRoughness(roughness), u[0], u[1]);
-
-    // light sample; incident vector must point to surface
-    const vec3 l = normalize(reflect(-v, m));
-
-    // calculate pdf, look "Sampling the GGX Distribution of Visible Normals", Heitz
-    {
-        float D;
-        {
-            float alphaSq = max(roughness, MIN_GGX_ROUGHNESS);
-            alphaSq *= alphaSq;
-            const vec3 h = normalize(v + l);
-            float nh = max(dot(n, h), 0);
-            D = nh * alphaSq / (M_PI * square(1 + nh * nh * (alphaSq - 1)));
-        }
-
-        const float G1 = G1GGX(v, n, roughness);
-        const float vn = max(dot(v, n), 0);
-        const float vm = max(dot(v, m), 0);
-        const float vl = max(dot(v, l), 0);
-
-        oneOverSourcePdf = (vn * 4 * vm) * safePositiveRcp(G1 * vl * D);
-    }
-
-    return l;
+    return sampleSmithGGX(n, v, getModifiedIndirRoughness(roughness), u[0], u[1], oneOverSourcePdf);
 }
 
 // n -- surface normal
@@ -126,54 +100,21 @@ vec3 processSecondDiffuseBounce(const uint seed, const Surface surf, const vec3 
     return (hitSurf.emission + diffuse) * hitSurf.albedo * oneOverPdf;
 }
 
-SampleIndirect processSpecular(const uint seed, const Surface surf, out float oneOverSourcePdf)
+SampleIndirect processIndirect(const bool isSpecular, const uint seed, const Surface surf, out float oneOverSourcePdf)
 {
-    const vec3 bounceDir = getSpecularBounce(seed, 1,
-                                             surf.normal, surf.roughness, surf.specularColor, 
-                                             surf.toViewerDir,
-                                             oneOverSourcePdf);
+    vec3 bounceDir;
 
-    const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01, 
-                                        surf.roughness, 
-                                        surf.instCustomIndex,
-                                        bounceDir, 
-                                        FIRST_BOUNCE_MIP_BIAS);
-
-    if (hitSurf.isSky)
+    if (isSpecular)
     {
-        SampleIndirect s;
-        s.position  = hitSurf.position + bounceDir * MAX_RAY_LENGTH;
-        s.normal    = -bounceDir;
-        s.radiance  = getSky(bounceDir);
-        
-        return s;
+        bounceDir = getSpecularBounce(seed, 1,
+                                      surf.normal, surf.roughness, surf.specularColor,
+                                      surf.toViewerDir,
+                                      oneOverSourcePdf);
     }
-    
-    // calculate direct illumination in a hit position
-    vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
-
+    else
     {
-        float oneOverPdf_Second;
-        const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);
-
-        // for specular, calculate second bounce contribution
-        diffuse += processSecondDiffuseBounce(seed, 
-                                              hitSurf,
-                                              bounceDir_Second,
-                                              oneOverPdf_Second);  
+        bounceDir = getDiffuseBounce(seed, 1, surf.normalGeom, oneOverSourcePdf); 
     }
-
-    SampleIndirect s;
-    s.position  = hitSurf.position;
-    s.normal    = hitSurf.normalGeom;
-    s.radiance  = (hitSurf.emission + diffuse) * hitSurf.albedo;
-
-    return s;
-}
-
-SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out float oneOverSourcePdf)
-{
-    const vec3 bounceDir = getDiffuseBounce(seed, 1, surf.normalGeom, oneOverSourcePdf);
 
     const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01, 
                                         surf.roughness, 
@@ -191,8 +132,21 @@ SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out f
         return s;
     }
     
-    // calculate direct illumination in a hit position
-    const vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
+    // calculate direct diffuse illumination in a hit position
+    vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
+
+    // for specular, calculate additional bounce contribution, 
+    // so shadows are not completely black
+    if (isSpecular)
+    {
+        float oneOverPdf_Second;
+        const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);
+
+        diffuse += processSecondDiffuseBounce(seed, 
+                                              hitSurf,
+                                              bounceDir_Second,
+                                              oneOverPdf_Second);  
+    }
 
     SampleIndirect s;
     s.position  = hitSurf.position;
@@ -202,52 +156,24 @@ SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out f
     return s;
 }
 
-
-// v -- direction to viewer
-/*SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf)
+void shade(const Surface surf, const SampleIndirect indir, float oneOverPdf,
+           out vec3 diffuse, out vec3 specular)
 {
-    if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
-    {
-        const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
-
-        var sample = processSpecular(seed, surf);
-
-        if (getLuminance(directSpecular) < getLuminance(contribution))
-        {
-            float rayHitDistance = length(sample.position - surf.position);
-            imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, rayHitDistance));
-        }
-
-        // demodulate for denoising
-        imageStoreUnfilteredSpecular(pix, directSpecular + demodulateSpecular(contribution, surf.specularColor));
-    }
-
-    {
-        const SH bounceSH = processIndirectDiffuse(seed, surf);
-
-        imageStoreUnfilteredIndirectSH(pix, bounceSH);
-    }
-}*/
-
-
-vec3 shadeIndirectDiffuse(const Surface surf, const SampleIndirect s, float oneOverPdf)
-{
-    vec3 l = safeNormalize(s.position - surf.position);
+    vec3 l = safeNormalize(indir.position - surf.position);
     float nl = dot(surf.normal, l);
     float ngl = dot(surf.normalGeom, l);
 
     if (nl <= 0 || ngl <= 0)
     {
-        return vec3(0);
+        diffuse = specular = vec3(0);
+        return;
     }
 
-    vec3 diffuse = nl * s.radiance * evalBRDFLambertian(1.0);
-    // specular = nl * light.color * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
+    diffuse  = nl * indir.radiance * evalBRDFLambertian(1.0);
+    specular = nl * indir.radiance * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
 
-    diffuse *= oneOverPdf;
-    // specular *= oneOverPdf;
-
-    return diffuse;
+    diffuse  *= oneOverPdf;
+    specular *= oneOverPdf;
 }
 
 float targetPdfForIndirectSample(const SampleIndirect s)
@@ -283,6 +209,7 @@ void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
     const uint seed = getRandomSeed(pix, globalUniform.frameId);
+    uint salt = RANDOM_SALT_RESAMPLE_INDIRECT_BASE;
 
     Surface surf = fetchGbufferSurface(pix);
     surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
@@ -292,10 +219,16 @@ void main()
         return;
     }
 
+    bool isSpecular;
+    {
+        float rndSpec = rnd16(seed, salt++);
+        isSpecular = rndSpec > surf.roughness;
+    }
+
     ReservoirIndirect combined = emptyReservoirIndirect();
     {
         float oneOverSourcePdf;
-        SampleIndirect initial = processIndirectDiffuse(seed, surf, oneOverSourcePdf);
+        SampleIndirect initial = processIndirect(isSpecular, seed, surf, oneOverSourcePdf);
 
         float targetPdf = targetPdfForIndirectSample(initial);
         updateReservoirIndirect(combined, initial, targetPdf, oneOverSourcePdf, 0.5);
@@ -305,7 +238,6 @@ void main()
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
-    uint salt = RANDOM_SALT_RESAMPLE_INDIRECT_BASE;
     
     // if back-projected pix is valid, then run spatial pass around
     // that reprojected pix, as spatial uses restirIndirect_LoadReservoir_Prev
@@ -415,8 +347,29 @@ void main()
     restirIndirect_StoreReservoir(pix, emptyReservoirIndirect());
 #endif
 
-    vec3 contrib = shadeIndirectDiffuse(surf, combined.selected, calcSelectedSampleWeightIndirect(combined));
-    vec3 dir = safeNormalize(combined.selected.position - surf.position);
+    vec3 diffuse, specular;
+    shade(surf, combined.selected, calcSelectedSampleWeightIndirect(combined), diffuse, specular);
 
-    imageStoreUnfilteredIndirectSH(pix, irradianceToSH(contrib, dir));
+    const vec3 surfToHitPoint = combined.selected.position - surf.position;
+
+    {
+        const vec3 direct = texelFetchUnfilteredSpecular(pix);
+        // save indirect hit distance, if brighter than the direct light
+        if (getLuminance(direct) < getLuminance(specular))
+        {
+            imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, length(surfToHitPoint)));
+        }
+
+
+        // demodulate for denoising
+        imageStoreUnfilteredSpecular(
+            pix, 
+            direct + demodulateSpecular(specular, surf.specularColor));
+    }
+
+    {
+        imageStoreUnfilteredIndirectSH(
+            pix, 
+            irradianceToSH(diffuse, safeNormalize(surfToHitPoint)));
+    }
 }
