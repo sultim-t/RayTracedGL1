@@ -194,7 +194,7 @@ vec3 sampleOrientedHemisphere(const vec3 n, float u1, float u2, out float oneOve
     r = normalize(r);
 
     float z = dot(r, n);
-    oneOverPdf = M_PI / max(z, 0.1);
+    oneOverPdf = M_PI * safePositiveRcp(z);
 
     return r;
 }

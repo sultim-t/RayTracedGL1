@@ -44,10 +44,10 @@ float getModifiedIndirRoughness(float r)
 
 // v -- direction to viewer
 // n -- surface normal
-vec3 getSpecularBounce(
-    const uint seed, uint bounceIndex,
-    const vec3 n, const float roughness, const vec3 surfSpecularColor,
-    const vec3 v, inout vec3 throughput)
+vec3 getSpecularBounce(const uint seed, uint bounceIndex,
+                       const vec3 n, const float roughness, const vec3 surfSpecularColor,
+                       const vec3 v, 
+                       out float oneOverSourcePdf)
 {
     const vec2 u = rnd16_2(seed, RANDOM_SALT_SPEC_BOUNCE(bounceIndex));
 
@@ -57,68 +57,43 @@ vec3 getSpecularBounce(
     // light sample; incident vector must point to surface
     const vec3 l = normalize(reflect(-v, m));
 
-    const float nl = max(dot(n, l), 0.0);
-    const float nv = max(dot(n, v), 0.0);
-
-    if (nl > 0 && nv > 0)
+    // calculate pdf, look "Sampling the GGX Distribution of Visible Normals", Heitz
     {
-        // "Sampling the GGX Distribution of Visible Normals", Heitz
-        // equation 19: F * G2(v,l) / G1(v)
-        // which is already contains division by PDF.
-        // Let G2 be the simplest: G2(v,l) = G1(v) * G1(l)
-        // => F * G1(l)
-        
-        const vec3 F = getFresnelSchlick(nl, surfSpecularColor);
-        const float G1 = G1GGX(l, n, roughness);
+        float D;
+        {
+            float alphaSq = max(roughness, MIN_GGX_ROUGHNESS);
+            alphaSq *= alphaSq;
+            const vec3 h = normalize(v + l);
+            float nh = max(dot(n, h), 0);
+            D = nh * alphaSq / (M_PI * square(1 + nh * nh * (alphaSq - 1)));
+        }
 
-        throughput *= F * G1;
+        const float G1 = G1GGX(v, n, roughness);
+        const float vn = max(dot(v, n), 0);
+        const float vm = max(dot(v, m), 0);
+        const float vl = max(dot(v, l), 0);
+
+        oneOverSourcePdf = (vn * 4 * vm) * safePositiveRcp(G1 * vl * D);
     }
 
     return l;
 }
 
-/*float oneOverPdf(vec3 v, vec3 n, vec3 m, float roughness)
-{
-    const vec3 l = normalize(reflect(-v, m));
-    
-    float D;
-    {
-        float alphaSq = max(roughness, MIN_GGX_ROUGHNESS);
-        alphaSq *= alphaSq;
-        const vec3 h = normalize(v + l);
-        float nh = max(dot(n, h), 0);
-        D = nh * alphaSq / (M_PI * square(1 + nh * nh * (alphaSq - 1)));
-    }
-
-    const float G1 = G1GGX(v, n, roughness);
-    const float vn = max(dot(v, n), 0);
-    const float vm = max(dot(v, m), 0);
-    const float vl = max(dot(v, l), 0);
-
-    return (vn * 4 * vm) / (G1 * vl * D);
-}*/
-
 // n -- surface normal
-vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, inout vec3 throughput)
+vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, out float oneOverSourcePdf)
 {
     const vec2 u = rnd16_2(seed, RANDOM_SALT_DIFF_BOUNCE(bounceIndex));
-
-    float oneOverPdf;
-    vec3 l = sampleLambertian(n, u[0], u[1], oneOverPdf);
-    throughput *= evalBRDFLambertian(1.0) * oneOverPdf;
-
-    return l;
+    return sampleLambertian(n, u[0], u[1], oneOverSourcePdf);
 }
 
 
 #define FIRST_BOUNCE_MIP_BIAS 0
 #define SECOND_BOUNCE_MIP_BIAS 32
 
-Surface traceBounce(
-    const vec3 originPosition, float originRoughness, uint originInstCustomIndex, 
-    const vec3 bounceDirection, float bounceMipBias)
+Surface traceBounce(const vec3 originPosition, float originRoughness, uint originInstCustomIndex,
+                    const vec3 bounceDir, float bounceMipBias)
 {
-    const ShPayload p = traceIndirectRay(originInstCustomIndex, originPosition, bounceDirection); 
+    const ShPayload p = traceIndirectRay(originInstCustomIndex, originPosition, bounceDir); 
 
     if (!doesPayloadContainHitInfo(p))
     {
@@ -129,146 +104,151 @@ Surface traceBounce(
 
     return hitInfoToSurface_Indirect(
         getHitInfoBounce(p, originPosition, originRoughness, bounceMipBias), 
-        bounceDirection);
+        bounceDir);
 }
 
-vec3 processSecondBounce(
-    const uint seed, 
-    const Surface surf, 
-    const vec3 bounceDirection,
-    inout vec3 throughput)
+vec3 processSecondDiffuseBounce(const uint seed, const Surface surf, const vec3 bounceDir, float oneOverPdf)
 {
-    const Surface hitSurf = traceBounce(
-        surf.position + surf.normalGeom * 0.01, surf.roughness, surf.instCustomIndex, 
-        bounceDirection, SECOND_BOUNCE_MIP_BIAS); 
+    const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01,
+                                        surf.roughness,
+                                        surf.instCustomIndex,
+                                        bounceDir,
+                                        SECOND_BOUNCE_MIP_BIAS);
 
     if (hitSurf.isSky)
     {
-        return getSky(bounceDirection) * throughput;
+        return getSky(bounceDir) * oneOverPdf;
     }
 
-    // calculate direct illumination only for directional lights in hit position
+    // calculate direct illumination in a hit position
     const vec3 diffuse = processDirectIllumination(seed, hitSurf, 2);
-    throughput *= hitSurf.albedo;
 
-    return hitSurf.emission * hitSurf.albedo + diffuse * throughput;
+    return (hitSurf.emission + diffuse) * hitSurf.albedo * oneOverPdf;
 }
 
-// Traces bounce ray, computes direct illumination in a hit point
-SampleIndirect processBounce(
-    bool withSecondBounceAndDist,
-    const uint seed, 
-    const Surface surf, 
-    const vec3 bounceDir_First, 
-    inout vec3 throughput_First,
-    out float rayHitDistance)
+SampleIndirect processSpecular(const uint seed, const Surface surf, out float oneOverSourcePdf)
 {
-    const Surface hitSurf = traceBounce(
-        surf.position + surf.normalGeom * 0.01, surf.roughness, surf.instCustomIndex, 
-        bounceDir_First, FIRST_BOUNCE_MIP_BIAS); 
+    const vec3 bounceDir = getSpecularBounce(seed, 1,
+                                             surf.normal, surf.roughness, surf.specularColor, 
+                                             surf.toViewerDir,
+                                             oneOverSourcePdf);
+
+    const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01, 
+                                        surf.roughness, 
+                                        surf.instCustomIndex,
+                                        bounceDir, 
+                                        FIRST_BOUNCE_MIP_BIAS);
 
     if (hitSurf.isSky)
     {
-        rayHitDistance = MAX_RAY_LENGTH;
-
-        // TODO: check reuse for sky. a special flag for sky?
         SampleIndirect s;
-        s.position = hitSurf.position + bounceDir_First * MAX_RAY_LENGTH;
-        s.normal = -bounceDir_First;
-        s.radiance = getSky(bounceDir_First) * throughput_First;
+        s.position  = hitSurf.position + bounceDir * MAX_RAY_LENGTH;
+        s.normal    = -bounceDir;
+        s.radiance  = getSky(bounceDir);
+        
         return s;
     }
     
-    // calculate direct illumination only for directional lights in hit position
+    // calculate direct illumination in a hit position
     vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
-    throughput_First *= hitSurf.albedo;
 
-
-    if (withSecondBounceAndDist)
     {
-        rayHitDistance = length(hitSurf.position - surf.position);
+        float oneOverPdf_Second;
+        const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);
 
-        vec3 throughput_Second = vec3(1.0);
-        vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, throughput_Second);
-
-        // second bounce contribution
-        diffuse += processSecondBounce(
-            seed, 
-            hitSurf,
-            bounceDir_Second,
-            throughput_Second);  
+        // for specular, calculate second bounce contribution
+        diffuse += processSecondDiffuseBounce(seed, 
+                                              hitSurf,
+                                              bounceDir_Second,
+                                              oneOverPdf_Second);  
     }
 
+    SampleIndirect s;
+    s.position  = hitSurf.position;
+    s.normal    = hitSurf.normalGeom;
+    s.radiance  = (hitSurf.emission + diffuse) * hitSurf.albedo;
+
+    return s;
+}
+
+SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf, out float oneOverSourcePdf)
+{
+    const vec3 bounceDir = getDiffuseBounce(seed, 1, surf.normalGeom, oneOverSourcePdf);
+
+    const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01, 
+                                        surf.roughness, 
+                                        surf.instCustomIndex, 
+                                        bounceDir, 
+                                        FIRST_BOUNCE_MIP_BIAS); 
+
+    if (hitSurf.isSky)
+    {
+        SampleIndirect s;
+        s.position  = hitSurf.position + bounceDir * MAX_RAY_LENGTH;
+        s.normal    = -bounceDir;
+        s.radiance  = getSky(bounceDir);
+        
+        return s;
+    }
+    
+    // calculate direct illumination in a hit position
+    const vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
 
     SampleIndirect s;
-    s.position = hitSurf.position;
-    s.normal = hitSurf.normalGeom;
-    s.radiance = hitSurf.emission * hitSurf.albedo + diffuse * throughput_First;
+    s.position  = hitSurf.position;
+    s.normal    = hitSurf.normalGeom;
+    s.radiance  = (hitSurf.emission + diffuse) * hitSurf.albedo;
 
     return s;
 }
 
 
-/*SampleIndirect processSpecular(const uint seed, const Surface surf, out float rayHitDistance)
-{
-    vec3 throughput = vec3(1.0);
-    vec3 bounceDirection = getSpecularBounce(seed, 1, surf.normal, surf.roughness, surf.specularColor, surf.toViewerDir, throughput);
-
-    return processBounce(
-        true,
-        seed, 
-        surf,
-        bounceDirection,
-        throughput,
-        rayHitDistance);
-}*/
-
-SampleIndirect processIndirectDiffuse(const uint seed, const Surface surf)
-{
-    vec3 throughput = vec3(1.0);
-    vec3 bounceDirection = getDiffuseBounce(seed, 1, surf.normalGeom, throughput);
-    float unusedf;
-
-    return processBounce(
-        false,
-        seed, 
-        surf,
-        bounceDirection,
-        throughput,
-        unusedf);
-}
-
-
 // v -- direction to viewer
-SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf)
+/*SampleIndirect processIndirectIllumination(const ivec2 pix, const uint seed, const Surface surf)
 {
-    /*if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
+    if (surf.roughness <= FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH)
     {
         const vec3 directSpecular = texelFetchUnfilteredSpecular(pix);
-        float rayHitDistance = 0;
 
-        vec3 contribution = processSpecular(seed, surf, rayHitDistance);
+        var sample = processSpecular(seed, surf);
 
         if (getLuminance(directSpecular) < getLuminance(contribution))
         {
+            float rayHitDistance = length(sample.position - surf.position);
             imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, rayHitDistance));
         }
 
         // demodulate for denoising
         imageStoreUnfilteredSpecular(pix, directSpecular + demodulateSpecular(contribution, surf.specularColor));
-    }*/
+    }
 
-    /*{
+    {
         const SH bounceSH = processIndirectDiffuse(seed, surf);
 
         imageStoreUnfilteredIndirectSH(pix, bounceSH);
-    }*/
-
-    {
-        return processIndirectDiffuse(seed, surf);
     }
-}
+}*/
 
+
+vec3 shadeIndirectDiffuse(const Surface surf, const SampleIndirect s, float oneOverPdf)
+{
+    vec3 l = safeNormalize(s.position - surf.position);
+    float nl = dot(surf.normal, l);
+    float ngl = dot(surf.normalGeom, l);
+
+    if (nl <= 0 || ngl <= 0)
+    {
+        return vec3(0);
+    }
+
+    vec3 diffuse = nl * s.radiance * evalBRDFLambertian(1.0);
+    // specular = nl * light.color * evalBRDFSmithGGX(surf.normal, surf.toViewerDir, l, surf.roughness, surf.specularColor);
+
+    diffuse *= oneOverPdf;
+    // specular *= oneOverPdf;
+
+    return diffuse;
+}
 
 float targetPdfForIndirectSample(const SampleIndirect s)
 {
@@ -312,17 +292,13 @@ void main()
         return;
     }
 
-    ReservoirIndirect combined;
+    ReservoirIndirect combined = emptyReservoirIndirect();
     {
-        ReservoirIndirect initial = emptyReservoirIndirect();
-        initial.selected = processIndirectIllumination(pix, seed, surf);
-        initial.selected_targetPdf = targetPdfForIndirectSample(initial.selected); // todo
-        initial.M = 1;
-        initial.weightSum = initial.selected_targetPdf;
+        float oneOverSourcePdf;
+        SampleIndirect initial = processIndirectDiffuse(seed, surf, oneOverSourcePdf);
 
-        initCombinedReservoirIndirect(
-            combined, 
-            initial);
+        float targetPdf = targetPdfForIndirectSample(initial);
+        updateReservoirIndirect(combined, initial, targetPdf, oneOverSourcePdf, 0.5);
     }
 
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
@@ -362,10 +338,7 @@ void main()
         normalizeReservoirIndirect(temporal, 20);
 
         float rnd = rnd16(seed, salt++);
-        isTemporalValid = updateCombinedReservoirIndirect(
-            combined,
-            temporal, 
-            rnd);
+        isTemporalValid = updateCombinedReservoirIndirect(combined, temporal, rnd);
     }
 
     uint nobiasM = combined.M;
@@ -418,9 +391,8 @@ void main()
         if (!traceShadowRay(surf.instCustomIndex, surf.position, reservoir_q.selected.position, false))
     #endif
         {
-            targetPdf_curSurf = 
-                targetPdfForIndirectSample(reservoir_q.selected)
-                * safePositiveRcp(jacobian);
+            targetPdf_curSurf = targetPdfForIndirectSample(reservoir_q.selected) * 
+                                safePositiveRcp(jacobian);
         }
 
         float rnd = rnd16(seed, salt++);
@@ -443,9 +415,8 @@ void main()
     restirIndirect_StoreReservoir(pix, emptyReservoirIndirect());
 #endif
 
-    imageStoreUnfilteredIndirectSH(
-        pix,
-        irradianceToSH(
-            combined.selected.radiance * calcSelectedSampleWeightIndirect(combined),
-            safeNormalize(combined.selected.position - surf.position)));
+    vec3 contrib = shadeIndirectDiffuse(surf, combined.selected, calcSelectedSampleWeightIndirect(combined));
+    vec3 dir = safeNormalize(combined.selected.position - surf.position);
+
+    imageStoreUnfilteredIndirectSH(pix, irradianceToSH(contrib, dir));
 }

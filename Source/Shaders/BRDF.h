@@ -93,7 +93,7 @@ float getFresnelSchlick(float n1, float n2, const vec3 V, const vec3 N)
 // s -- is either l or v
 float G1GGX(const vec3 s, const vec3 n, float alpha)
 {
-    return 2 * dot(n, s) / (dot(n, s) * (2 - alpha) + alpha);
+    return 2 * dot(n, s) * safePositiveRcp(dot(n, s) * (2 - alpha) + alpha);
 }
 
 #define MIN_GGX_ROUGHNESS 0.001
