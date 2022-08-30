@@ -49,6 +49,7 @@
 
 
 
+#include "Surface.inl"
 #include "Light.h"
 #include "LightGrid.h"
 #include "Media.h"

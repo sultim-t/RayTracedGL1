@@ -24,7 +24,6 @@
 #include "Utils.h"
 #include "ShaderCommonGLSL.h"
 #include "Structs.h"
-#include "BRDF.h"
 
 // Functions to access RTGL data.
 // Available defines:
@@ -512,6 +511,3 @@ bool isSkyPix(const ivec2 pix)
 }
 
 #endif // DESC_SET_FRAMEBUFFERS
-
-
-#include "Surface.inl"

@@ -19,6 +19,11 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#ifndef SURFACE_INL_
+#define SURFACE_INL_
+
+#include "BRDF.h"
+
 
 struct Surface
 {
@@ -110,4 +115,4 @@ Surface hitInfoToSurface_Indirect(const ShHitInfo h, const vec3 rayDirection)
     return s;
 }
        
-       
+#endif // SURFACE_INL_

@@ -23,16 +23,10 @@
 
 #include "Random.h"
 
-float square(float x)
-{
-    return x * x;
-}
 
-
-float RoughnessSquareToSpecPower(in float alpha) {
+float roughnessSquaredToSpecPower(in float alpha) {
     return max(0.01, 2.0f / (square(alpha) + 1e-4) - 2.0f);
 }
-
 
 
 // subsurfaceAlbedo -- 0 if all light is absorbed,

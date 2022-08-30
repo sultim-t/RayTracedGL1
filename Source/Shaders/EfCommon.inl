@@ -113,6 +113,7 @@ vec3 effect_loadFromSource_Centered(vec2 centered)
 
 
 #ifdef DESC_SET_RANDOM
+#include "Random.h"
 float effect_getRandomSample(ivec2 pix, uint frameIndex)
 {
     return rnd16(getRandomSeed(pix, frameIndex), RANDOM_SALT_POSTEFFECT);

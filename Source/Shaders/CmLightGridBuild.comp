@@ -26,6 +26,7 @@
 #define LIGHT_GRID_WRITE
 #include "ShaderCommonGLSLFunc.h"
 #include "Reservoir.h"
+#include "Random.h"
 #include "Light.h"
 #include "LightGrid.h"
 

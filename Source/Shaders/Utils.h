@@ -69,6 +69,11 @@ float safePositiveRcp(float f)
     return f <= 0.0 ? 0.0 : 1.0 / f;
 }
 
+float square(float x)
+{
+    return x * x;
+}
+
 
 
 struct DirectionAndLength { vec3 dir; float len; };

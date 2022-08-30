@@ -51,6 +51,7 @@
 #define DESC_SET_FRAMEBUFFERS 0
 #define DESC_SET_GLOBAL_UNIFORM 1
 #include "ShaderCommonGLSLFunc.h"
+#include "BRDF.h"
 
 layout(local_size_x = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X, local_size_y = COMPUTE_SVGF_ATROUS_GROUP_SIZE_X, local_size_z = 1) in;
 
@@ -108,7 +109,7 @@ void atrous(sampler2D samplerDiff,
 
     float historyLengthSpec = texelFetch(framebufAccumHistoryLength_Sampler, pix, 0).b;
     float normalWeightScale = clamp(historyLengthSpec / 8, 0, 1);
-	float normalWeightSpec = RoughnessSquareToSpecPower(roughness * roughness);
+	float normalWeightSpec = roughnessSquaredToSpecPower(roughness * roughness);
     normalWeightSpec = clamp(normalWeightSpec, 8, 1024);
 	normalWeightSpec *= normalWeightScale;
 
