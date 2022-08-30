@@ -216,13 +216,16 @@ void main()
 
     if (surf.isSky)
     {
+        restirIndirect_StoreReservoir(pix, emptyReservoirIndirect());
         return;
     }
 
     bool isSpecular;
     {
         float rndSpec = rnd16(seed, salt++);
-        isSpecular = rndSpec > surf.roughness;
+        float limit = smoothstep(0.0, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, surf.roughness);
+
+        isSpecular = rndSpec > limit;
     }
 
     ReservoirIndirect combined = emptyReservoirIndirect();
