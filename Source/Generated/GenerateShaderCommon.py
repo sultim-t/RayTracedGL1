@@ -763,7 +763,7 @@ FRAMEBUFFERS = {
     "UnfilteredIndirectSH_B"            : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "SurfacePosition"                   : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     "VisibilityBuffer"                  : (TYPE_FLOAT32,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
-    "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "PrimaryToReflRefr"                 : (TYPE_UINT32,     COMPONENT_RGBA, 0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     # bilinear for bloom
