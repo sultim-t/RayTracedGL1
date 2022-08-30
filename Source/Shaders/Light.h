@@ -125,36 +125,16 @@ float isSphereInFront(const vec3 planeNormal, const vec3 planePos, const vec3 sp
 
 
 
-struct DirectionAndLength { vec3 dir; float len; };
-
-DirectionAndLength calcDirectionAndLength(const vec3 start, const vec3 end)
-{
-    DirectionAndLength r;
-    r.dir = end - start;
-    r.len = length(r.dir);
-    r.dir /= r.len;
-
-    return r;
-}
-
-DirectionAndLength calcDirectionAndLengthSafe(const vec3 start, const vec3 end)
-{
-    DirectionAndLength r;
-    r.dir = end - start;
-    r.len = max(length(r.dir), 0.001);
-    r.dir /= r.len;
-
-    return r;
-}
-
-
-
 // Veach, E. Robust Monte Carlo Methods for Light Transport Simulation
 // The change of variables from solid angle measure to area integration measure
 // Note: but without |dot(surfNormal, surfaceToLight)|
-float getGeometryFactor(const vec3 lightNormal, const vec3 surfaceToLight, float surfaceToLightDistance)
+float getGeometryFactor(const vec3 lightNormal, const vec3 lightToSurface, float surfaceToLightDistance)
 {
-    return abs(dot(lightNormal, -surfaceToLight)) / square(surfaceToLightDistance);
+    return abs(dot(lightNormal, lightToSurface)) / square(surfaceToLightDistance);
+}
+float getGeometryFactorClamped(const vec3 lightNormal, const vec3 lightToSurface, float surfaceToLightDistance)
+{
+    return max(0.0, dot(lightNormal, lightToSurface)) / square(surfaceToLightDistance);
 }
 
 float safeSolidAngle(float a)
@@ -172,9 +152,9 @@ float calcSolidAngleForSphere(float sphereRadius, float distanceToSphereCenter)
 
 float calcSolidAngleForArea(float area, const vec3 areaPosition, const vec3 areaNormal, const vec3 surfPosition)
 {
-    const DirectionAndLength surfToAreaLight = calcDirectionAndLength(surfPosition, areaPosition);
+    const DirectionAndLength areaLightToSurf = calcDirectionAndLength(areaPosition, surfPosition);
     // from area measure to solid angle measure
-    return safeSolidAngle(area * getGeometryFactor(areaNormal, surfToAreaLight.dir, surfToAreaLight.len));
+    return safeSolidAngle(area * getGeometryFactor(areaNormal, areaLightToSurf.dir, areaLightToSurf.len));
 }
 
 

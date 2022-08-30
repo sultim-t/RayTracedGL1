@@ -71,6 +71,30 @@ float safePositiveRcp(float f)
 
 
 
+struct DirectionAndLength { vec3 dir; float len; };
+
+DirectionAndLength calcDirectionAndLength(const vec3 start, const vec3 end)
+{
+    DirectionAndLength r;
+    r.dir = end - start;
+    r.len = length(r.dir);
+    r.dir /= r.len;
+
+    return r;
+}
+
+DirectionAndLength calcDirectionAndLengthSafe(const vec3 start, const vec3 end)
+{
+    DirectionAndLength r;
+    r.dir = end - start;
+    r.len = max(length(r.dir), 0.001);
+    r.dir /= r.len;
+
+    return r;
+}
+
+
+
 #define ENCODE_NORMAL_N_PHI 1 << 16
 #define ENCODE_NORMAL_N_THETA 1 << 16
 
