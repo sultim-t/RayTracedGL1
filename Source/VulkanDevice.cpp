@@ -591,7 +591,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      uniform->GetData()->view, uniform->GetData()->projection,
                                      jitter, renderResolution,
                                      drawInfo.pLensFlareParams,
-                                     uniform->GetData()->bloomEmissionMultiplier);
+                                     drawInfo.pBloomParams ? drawInfo.pBloomParams->bloomRasterMultiplier : 0.0f);
     }
 
 
