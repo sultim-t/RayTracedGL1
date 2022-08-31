@@ -162,6 +162,9 @@ void fillBloomInput(const ivec2 regpix, const vec3 rawIllum, const vec3 rawScrEm
 }
 
 
+vec3 processDebug(const ivec2 pix, const vec3 fallback);
+
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
@@ -179,27 +182,35 @@ void main()
 
     fillBloomInput(pix, rawIllum, rawScrEmis, isSky);
 
+    if (globalUniform.debugShowFlags != 0)
+    {
+        color = processDebug(pix, color);
+    }
 
+    imageStore(framebufPreFinal, pix, vec4(color, 0));
+}
+
+
+vec3 processDebug(const ivec2 pix, const vec3 fallback)
+{
     if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_MOTION_VECTORS) != 0)
     {
         const vec2 m = texelFetch(framebufMotion_Sampler, getCheckerboardPix(pix), 0).rg;
-        color.r = abs(m.r);
-        color.g = abs(m.g);
-        color.b = 0;
+        return vec3(abs(m.r), abs(m.g), 0);
     }
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE) != 0)
     {
-        color = texelFetchUnfilteredDirect(getCheckerboardPix(pix));
+        return texelFetchUnfilteredDirect(getCheckerboardPix(pix));
     }
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR) != 0)
     {
-        color = texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
+        return texelFetchUnfilteredSpecular(getCheckerboardPix(pix));
     }
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT) != 0)
     {
         const SH sh = imageLoadUnfilteredIndirectSH(getCheckerboardPix(pix));
         const vec3 normal = texelFetchNormal(getCheckerboardPix(pix));
-        color = SHToIrradiance(sh, normal);
+        return SHToIrradiance(sh, normal);
     }
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_LIGHT_GRID) != 0)
     {
@@ -208,17 +219,19 @@ void main()
         vec3 cell = vec3(worldToCell(surfPos));
         cell /= vec3(LIGHT_GRID_SIZE_X, LIGHT_GRID_SIZE_Y, LIGHT_GRID_SIZE_Z);
 
-        color = mod(cell.xyz * 8, vec3(1.0));
+        vec3 c = mod(cell.xyz * 8, vec3(1.0));
 
         if (!isInsideCell(surfPos))
         {
-            color = vec3(getLuminance(color) * 0.2 + 0.4);
+            c = vec3(getLuminance(c) * 0.2 + 0.4);
         }
+
+        return c;
     }
 #if GRADIENT_ESTIMATION_ENABLED
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_GRADIENTS) != 0)
     {
-        color.rgb = texelFetch(framebufDISPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0).xyz;
+        return texelFetch(framebufDISPingGradient_Sampler, getCheckerboardPix(pix) / COMPUTE_ASVGF_STRATA_SIZE, 0).xyz;
     }
 #endif
 #ifdef DEBUG_SHOW_SH
@@ -238,11 +251,9 @@ void main()
             framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler, 
             getCheckerboardPix(centerPix));
 
-        imageStore(framebufPreFinal, pix, vec4(SHToIrradiance(indirSH, normal), 0));
-        return;
+        return SHToIrradiance(indirSH, normal);
     }
 #endif
 
-
-   imageStore(framebufPreFinal, pix, vec4(color, 0));
+    return fallback;
 }
