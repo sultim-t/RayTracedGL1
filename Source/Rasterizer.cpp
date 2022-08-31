@@ -20,8 +20,6 @@
 
 #include "Rasterizer.h"
 
-#include <array>
-
 #include "Swapchain.h"
 #include "Matrix.h"
 #include "Utils.h"

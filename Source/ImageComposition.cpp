@@ -284,7 +284,7 @@ void RTGL1::ImageComposition::CreatePipelines(const ShaderManager *shaderManager
         VkComputePipelineCreateInfo plInfo = {};
         plInfo.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
         plInfo.layout = composePipelineLayout;
-        plInfo.stage = shaderManager->GetStageInfo("CComposition");
+        plInfo.stage = shaderManager->GetStageInfo("CPrepareFinal");
 
         VkResult r = vkCreateComputePipelines(device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &composePipeline);
         VK_CHECKERROR(r);

@@ -49,7 +49,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"RClsOpaque",              "RtClsOpaque.rchit.spv"                },
     {"RAlphaTest",              "RtAlphaTest.rahit.spv"                },
     {"CLightGridBuild",         "CmLightGridBuild.comp.spv"            },
-    {"CComposition",            "CmComposition.comp.spv"               },
+    {"CPrepareFinal",           "CmPrepareFinal.comp.spv"              },
     {"CLuminanceHistogram",     "CmLuminanceHistogram.comp.spv"        },
     {"CLuminanceAvg",           "CmLuminanceAvg.comp.spv"              },
     {"VertRasterizer",          "RsRasterizer.vert.spv"                },
