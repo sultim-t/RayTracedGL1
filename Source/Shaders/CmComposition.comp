@@ -103,6 +103,60 @@ vec3 tonemapRT(vec3 c)
 }
 
 
+vec3 finalizeColor(const ivec2 regpix, const vec3 rawIllum, const vec3 rawScrEmis, bool isSky)
+{
+    vec3 color = rawIllum;
+    
+    if (globalUniform.lightmapEnable == 0)
+    {   
+        if (!isSky)
+        {
+            color = color * getExposure();
+            color += rawScrEmis * globalUniform.emissionMaxScreenColor;
+
+            color = tonemapRT(color);
+        }
+        else
+        {
+            color = 
+                texelFetch(framebufAlbedo_Sampler,     regpix,                     0).rgb *
+                texelFetch(framebufThroughput_Sampler, getCheckerboardPix(regpix), 0).rgb;
+        }
+    }
+    else
+    {
+        color = 
+            texelFetch(framebufAlbedo_Sampler,     regpix,                     0).rgb *
+            texelFetch(framebufThroughput_Sampler, getCheckerboardPix(regpix), 0).rgb;
+
+        if (!isSky)
+        {
+            color += rawScrEmis * globalUniform.emissionMaxScreenColor;
+                
+            color = uncharted2Tonemap(color, 1.0);
+        }
+    }
+
+    return color;
+}
+
+
+void fillBloomInput(const ivec2 regpix, const vec3 rawIllum, const vec3 rawScrEmis, bool isSky)
+{
+    vec3 emis = rawScrEmis;
+
+    if (!isSky)
+    {
+        const vec3 illum = rawIllum * getExposure();
+        float f = smoothstep(globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, getLuminance(illum));
+
+        emis = illum * f + emis * globalUniform.bloomEmissionMultiplier;
+    }
+
+    imageStore(framebufBloomInput, regpix, vec4(emis, 0.0));
+}
+
+
 void main()
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
@@ -112,42 +166,13 @@ void main()
     }
 
     // framebufPreFinal is addressed by a non-checkerboarded pix
-    vec3 color = imageLoad(framebufPreFinal, pix).rgb;
-    
-    if (globalUniform.lightmapEnable == 0)
-    {   
-        if (!isSkyPix(getCheckerboardPix(pix)))
-        {
-            color = color * getExposure();
+    const vec3 rawIllum     = imageLoad(framebufPreFinal, pix).rgb;
+    const vec3 rawScrEmis   = texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb;
+    const bool isSky        = isSkyPix(getCheckerboardPix(pix));
 
-            color +=
-                texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb * 
-                globalUniform.emissionMaxScreenColor;
+    vec3 color = finalizeColor(pix, rawIllum, rawScrEmis, isSky);
 
-            color = tonemapRT(color);
-        }
-        else
-        {
-            color = 
-                texelFetch(framebufAlbedo_Sampler,     pix,                     0).rgb *
-                texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
-        }
-    }
-    else
-    {
-        color = 
-            texelFetch(framebufAlbedo_Sampler,     pix,                     0).rgb *
-            texelFetch(framebufThroughput_Sampler, getCheckerboardPix(pix), 0).rgb;
-
-        if (!isSkyPix(getCheckerboardPix(pix)))
-        {
-            color += 
-                texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(pix), 0).rgb * 
-                globalUniform.emissionMaxScreenColor;
-                
-            color = uncharted2Tonemap(color, 1.0);
-        }
-    }
+    fillBloomInput(pix, rawIllum, rawScrEmis, isSky);
 
 
     if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_MOTION_VECTORS) != 0)

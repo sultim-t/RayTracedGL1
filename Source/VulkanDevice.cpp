@@ -577,21 +577,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
         pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);
-
-        // tonemapping
-        tonemapping->Tonemap(cmd, frameIndex, uniform);
+        
+        tonemapping->Prepare(cmd, frameIndex, uniform);
     }
 
 
-    bool enableBloom = drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f);
-
-    if (enableBloom)
-    {
-        bloom->Prepare(cmd, frameIndex, uniform, tonemapping);
-    }
-
-
-    // final image composition
     imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
 
     if (!drawInfo.disableRasterization)
@@ -601,6 +591,14 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      uniform->GetData()->view, uniform->GetData()->projection,
                                      jitter, renderResolution,
                                      drawInfo.pLensFlareParams);
+    }
+
+
+    bool enableBloom = drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f);
+
+    if (enableBloom)
+    {
+        bloom->Prepare(cmd, frameIndex, uniform, tonemapping);
     }
 
 

@@ -60,7 +60,7 @@ RTGL1::RasterPass::RasterPass(
         throw RgException(RG_GRAPHICS_API_ERROR, "Depth format is not supported: "s + DEPTH_FORMAT_NAME);
     }
 
-    CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_SCREEN_EMISSION], DEPTH_FORMAT);
+    CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_BLOOM_INPUT], DEPTH_FORMAT);
     CreateSkyRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_ALBEDO], DEPTH_FORMAT);
 
     rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass, 1 /* for emission */, _instanceInfo.rasterizedVertexColorGamma);
@@ -105,7 +105,7 @@ void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t render
             VkImageView attchs[] =
             {
                 storageFramebuffers->GetImageView(FB_IMAGE_INDEX_FINAL, i),
-                storageFramebuffers->GetImageView(FB_IMAGE_INDEX_SCREEN_EMISSION, i),
+                storageFramebuffers->GetImageView(FB_IMAGE_INDEX_BLOOM_INPUT, i),
                 depthViews[i],
             };
 

@@ -49,25 +49,6 @@ vec2 getSrcUV(const ivec2 downsampledPix)
 
 vec3 getSample(sampler2D srcSampler, const vec2 uv)
 {
-    if (stepIndex == 0)
-    {
-        ivec2 regpix = ivec2(uv * vec2(CHECKERBOARD_FULL_WIDTH, CHECKERBOARD_FULL_HEIGHT));
-
-        const vec3 emis = texelFetch(framebufScreenEmission_Sampler, getCheckerboardPix(regpix), 0).rgb;
-
-        if (isSkyPix(getCheckerboardPix(regpix)))
-        {
-            return emis;
-        }
-        else
-        {
-            const vec3 illum = texelFetch(srcSampler, regpix, 0).rgb * getExposure();
-            float f = smoothstep(globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, getLuminance(illum));
-
-            return illum * f + emis * globalUniform.bloomEmissionMultiplier;
-        }
-    }
-
     return textureLod(srcSampler, uv, 0).rgb;
 }
 
@@ -146,7 +127,7 @@ void main()
     
     switch (stepIndex)
     {
-        case 0: imageStore(framebufBloom_Mip1, downsampledPix, vec4(downsample13tap(framebufPreFinal_Sampler,   srcUV), 0.0)); break;
+        case 0: imageStore(framebufBloom_Mip1, downsampledPix, vec4(downsample13tap(framebufBloomInput_Sampler, srcUV), 0.0)); break;
         case 1: imageStore(framebufBloom_Mip2, downsampledPix, vec4(downsample13tap(framebufBloom_Mip1_Sampler, srcUV), 0.0)); break;
         case 2: imageStore(framebufBloom_Mip3, downsampledPix, vec4(downsample13tap(framebufBloom_Mip2_Sampler, srcUV), 0.0)); break;
         case 3: imageStore(framebufBloom_Mip4, downsampledPix, vec4(downsample13tap(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;
