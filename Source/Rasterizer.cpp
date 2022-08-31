@@ -39,13 +39,12 @@ struct RasterizedPushConst
     float vp[16];
     float c[4];
     uint32_t t;
+    uint32_t e;
 
     explicit RasterizedPushConst(const RasterizedDataCollector::DrawInfo &info, const float *defaultViewProj)
     {
         float model[16];
         Matrix::ToMat4Transposed(model, info.transform);
-
-        static_assert(sizeof(*this) == 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t), "");
 
         if (!info.isDefaultViewProjMatrix)
         {
@@ -58,8 +57,14 @@ struct RasterizedPushConst
 
         memcpy(c, info.color, 4 * sizeof(float));
         t = info.textureIndex;
+        e = info.emissionTextureIndex;
     }
 };
+
+static_assert(offsetof(RasterizedPushConst, vp) == 0);
+static_assert(offsetof(RasterizedPushConst, c) == 64);
+static_assert(offsetof(RasterizedPushConst, t) == 80);
+static_assert(offsetof(RasterizedPushConst, e) == 84);
 
 
 
@@ -434,7 +439,7 @@ void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout)
     VkPushConstantRange pushConst = {};
     pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
     pushConst.offset = 0;
-    pushConst.size = 16 * sizeof(float) + 4 * sizeof(float) + sizeof(uint32_t);
+    pushConst.size = sizeof(RasterizedPushConst);
 
     VkPipelineLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;

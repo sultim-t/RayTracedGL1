@@ -51,6 +51,7 @@ public:
 
         float       color[4];
         uint32_t    textureIndex;
+        uint32_t    emissionTextureIndex;
 
         RgRasterizedGeometryStateFlags  pipelineState;
         RgBlendFactor                   blendFuncSrc;

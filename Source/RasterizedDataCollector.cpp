@@ -148,16 +148,20 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     memcpy(drawInfo.color, info.color.data, 4 * sizeof(float));
 
 
+    drawInfo.textureIndex = EMPTY_TEXTURE_INDEX;
+    drawInfo.emissionTextureIndex = EMPTY_TEXTURE_INDEX;
+
     // copy texture indices
     if (const auto mgr = textureMgr.lock())
     {
         // get only the first (albedo-alpha) texture index from texture manager
         // and ignore roughness, metallic, etc
-        drawInfo.textureIndex = mgr->GetMaterialTextures(info.material).indices[0];
-    }
-    else
-    {
-        drawInfo.textureIndex = EMPTY_TEXTURE_INDEX;
+        drawInfo.textureIndex = mgr->GetMaterialTextures(info.material).indices[MATERIAL_ALBEDO_ALPHA_INDEX];
+
+        if (!renderToSky && !renderToSwapchain)
+        {
+            drawInfo.emissionTextureIndex = mgr->GetMaterialTextures(info.material).indices[MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX];
+        }
     }
 
 
