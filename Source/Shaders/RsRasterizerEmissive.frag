@@ -34,6 +34,7 @@ layout(push_constant) uniform RasterizerFrag_BT
     layout(offset = 64) vec4 color;
     layout(offset = 80) uint textureIndex;
     layout(offset = 84) uint emissionTextureIndex;
+    layout(offset = 88) float emissionMultiplier;
 } rasterizerFragInfo;
 
 layout (constant_id = 0) const uint alphaTest = 0;
@@ -47,7 +48,7 @@ void main()
     float emission = getTextureSample(rasterizerFragInfo.emissionTextureIndex, vertTexCoord)[EMISSION_CHANNEL];
 
     outColor = rasterizerFragInfo.color * vertColor * albedoAlpha;
-    outScreenEmission = emission * albedoAlpha.rgb * globalUniform.bloomEmissionMultiplier;
+    outScreenEmission = emission * albedoAlpha.rgb * rasterizerFragInfo.emissionMultiplier;
 
     if (alphaTest != 0)
     {

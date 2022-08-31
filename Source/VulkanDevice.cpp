@@ -590,7 +590,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
                                      uniform->GetData()->view, uniform->GetData()->projection,
                                      jitter, renderResolution,
-                                     drawInfo.pLensFlareParams);
+                                     drawInfo.pLensFlareParams,
+                                     uniform->GetData()->bloomEmissionMultiplier);
     }
 
 

@@ -40,8 +40,9 @@ struct RasterizedPushConst
     float c[4];
     uint32_t t;
     uint32_t e;
+    float emult;
 
-    explicit RasterizedPushConst(const RasterizedDataCollector::DrawInfo &info, const float *defaultViewProj)
+    explicit RasterizedPushConst(const RasterizedDataCollector::DrawInfo &info, const float *defaultViewProj, float emissionMult)
     {
         float model[16];
         Matrix::ToMat4Transposed(model, info.transform);
@@ -58,6 +59,7 @@ struct RasterizedPushConst
         memcpy(c, info.color, 4 * sizeof(float));
         t = info.textureIndex;
         e = info.emissionTextureIndex;
+        emult = emissionMult;
     }
 };
 
@@ -65,6 +67,8 @@ static_assert(offsetof(RasterizedPushConst, vp) == 0);
 static_assert(offsetof(RasterizedPushConst, c) == 64);
 static_assert(offsetof(RasterizedPushConst, t) == 80);
 static_assert(offsetof(RasterizedPushConst, e) == 84);
+static_assert(offsetof(RasterizedPushConst, emult) == 88);
+static_assert(sizeof(RasterizedPushConst) == 92);
 
 
 
@@ -204,7 +208,8 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
         collectorSky->GetIndexBuffer(),
         textureManager->GetDescSet(frameIndex),
         defaultSkyViewProj,
-        nullptr
+        nullptr,
+        std::nullopt
     };
 
     Draw(cmd, frameIndex, params);
@@ -215,7 +220,8 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
                                   const float *view, const float *proj,
                                   const RgFloat2D &jitter,
                                   const RenderResolutionHelper &renderResolution,
-                                  const RgDrawFrameLensFlareParams *pLensFlareParams)
+                                  const RgDrawFrameLensFlareParams *pLensFlareParams,
+                                  float emissionMult)
 {
     CmdLabel label(cmd, "Rasterized to final framebuf");
 
@@ -260,7 +266,8 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
         collectorGeneral->GetIndexBuffer(),
         textureManager->GetDescSet(frameIndex),
         defaultViewProj,
-        lensFlares.get()
+        lensFlares.get(),
+        emissionMult
     };
 
     Draw(cmd, frameIndex, params);
@@ -285,7 +292,8 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, Frame
         collectorGeneral->GetIndexBuffer(),
         textureManager->GetDescSet(frameIndex),
         defaultViewProj,
-        nullptr
+        nullptr,
+        std::nullopt
     };
 
     Draw(cmd, frameIndex, params);
@@ -355,7 +363,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams
 
             // push const
             {
-                RasterizedPushConst push(info, drawParams.defaultViewProj);
+                RasterizedPushConst push(info, drawParams.defaultViewProj, drawParams.emissionMult.value_or(0.0f));
 
                 vkCmdPushConstants(
                     cmd, drawParams.pipelines->GetPipelineLayout(),

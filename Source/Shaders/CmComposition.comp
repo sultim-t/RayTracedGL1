@@ -148,7 +148,12 @@ void fillBloomInput(const ivec2 regpix, const vec3 rawIllum, const vec3 rawScrEm
     if (!isSky)
     {
         const vec3 illum = rawIllum * getExposure();
-        float f = smoothstep(globalUniform.bloomThreshold, globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, getLuminance(illum));
+        
+        float f = smoothstep(globalUniform.bloomThreshold, 
+                             globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
+                             getLuminance(illum));
+                             
+        emis = mix(vec3(getLuminance(emis)), emis, 1.0 + globalUniform.bloomEmissionSaturationBias);
 
         emis = illum * f + emis * globalUniform.bloomEmissionMultiplier;
     }
