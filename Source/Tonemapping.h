@@ -46,7 +46,7 @@ public:
     Tonemapping &operator=(const Tonemapping &other) = delete;
     Tonemapping &operator=(Tonemapping &&other) noexcept = delete;
 
-    void Tonemap(
+    void Prepare(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
 

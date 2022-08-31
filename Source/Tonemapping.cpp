@@ -62,7 +62,7 @@ RTGL1::Tonemapping::~Tonemapping()
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
-void RTGL1::Tonemapping::Tonemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
+void RTGL1::Tonemapping::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
 {
     CmdLabel label(cmd, "Tonemapping");
 

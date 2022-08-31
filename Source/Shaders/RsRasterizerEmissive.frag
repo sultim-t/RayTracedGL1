@@ -47,7 +47,7 @@ void main()
     float emission = getTextureSample(rasterizerFragInfo.emissionTextureIndex, vertTexCoord)[EMISSION_CHANNEL];
 
     outColor = rasterizerFragInfo.color * vertColor * albedoAlpha;
-    outScreenEmission = emission * albedoAlpha.rgb;
+    outScreenEmission = emission * albedoAlpha.rgb * globalUniform.bloomEmissionMultiplier;
 
     if (alphaTest != 0)
     {
