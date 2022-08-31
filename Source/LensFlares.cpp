@@ -118,7 +118,7 @@ RTGL1::LensFlares::LensFlares(
     CreatePipelineLayouts(uniform->GetDescSetLayout(), textureManager->GetDescSetLayout(), rasterDescSetLayout, cullDescSetLayout, framebuffers->GetDescSetLayout());
 
 
-    rasterPipelines = std::make_unique<RasterizerPipelines>(device, vertFragPipelineLayout, renderPass, _instanceInfo.rasterizedVertexColorGamma);
+    rasterPipelines = std::make_unique<RasterizerPipelines>(device, vertFragPipelineLayout, renderPass, 1 /* emission, for compatibility */, _instanceInfo.rasterizedVertexColorGamma);
     rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
 
     CreatePipelines(_shaderManager.get());

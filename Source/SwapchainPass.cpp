@@ -36,7 +36,7 @@ RTGL1::SwapchainPass::SwapchainPass(
     assert(ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PING] == ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PONG]);
     CreateSwapchainRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PING]);
 
-    swapchainPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, swapchainRenderPass, _instanceInfo.rasterizedVertexColorGamma);
+    swapchainPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, swapchainRenderPass, 0, _instanceInfo.rasterizedVertexColorGamma);
     swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
 }
 

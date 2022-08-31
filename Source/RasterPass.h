@@ -65,7 +65,7 @@ public:
     VkFramebuffer GetSkyFramebuffer(uint32_t frameIndex) const;
 
 private:
-    void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat depthImageFormat);
+    void CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat screenEmisionFormat, VkFormat depthImageFormat);
     void CreateSkyRenderPass(VkFormat skyFinalImageFormat, VkFormat depthImageFormat);
 
     void CreateDepthBuffers(uint32_t width, uint32_t height, 

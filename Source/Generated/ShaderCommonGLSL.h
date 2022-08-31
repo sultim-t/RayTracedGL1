@@ -501,7 +501,9 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 54, rgba16f) uniform image2D frame
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 55, rgba16f) uniform image2D framebufIndirPongSH_G;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 56, rgba16f) uniform image2D framebufIndirPongSH_B;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 57, r16f) uniform image2D framebufAtrousFilteredVariance;
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 58, r11f_g11f_b10f) uniform image2D framebufScreenEmission;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 59, r11f_g11f_b10f) uniform image2D framebufBloom_Mip1;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 60, r11f_g11f_b10f) uniform image2D framebufBloom_Mip2;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 61, r11f_g11f_b10f) uniform image2D framebufBloom_Mip3;
@@ -586,7 +588,9 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 129) uniform sampler2D framebufInd
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 130) uniform sampler2D framebufIndirPongSH_G_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 131) uniform sampler2D framebufIndirPongSH_B_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 132) uniform sampler2D framebufAtrousFilteredVariance_Sampler;
+#ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 133) uniform sampler2D framebufScreenEmission_Sampler;
+#endif
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 134) uniform sampler2D framebufBloom_Mip1_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 135) uniform sampler2D framebufBloom_Mip2_Sampler;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 136) uniform sampler2D framebufBloom_Mip3_Sampler;

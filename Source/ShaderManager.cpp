@@ -54,6 +54,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CLuminanceAvg",           "CmLuminanceAvg.comp.spv"              },
     {"VertRasterizer",          "RsRasterizer.vert.spv"                },
     {"FragRasterizer",          "RsRasterizer.frag.spv"                },
+    {"FragRasterizerEmissive",  "RsRasterizerEmissive.frag.spv"        },
     {"VertRasterizerMultiview", "RsRasterizerMultiview.vert.spv"       },
     {"VertFullscreenQuad",      "RsFullscreenQuad.vert.spv"            },
     {"FragDepthCopying",        "RsDepthCopying.frag.spv"              },

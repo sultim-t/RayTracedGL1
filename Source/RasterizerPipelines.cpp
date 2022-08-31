@@ -24,6 +24,7 @@
 #include <set>
 
 #include "RasterizedDataCollector.h"
+#include "RgException.h"
 
 constexpr uint32_t PIPELINE_STATE_MASK_IS_ALPHA_TEST                    = 1 << 0;
 constexpr uint32_t PIPELINE_STATE_MASK_BLEND_ENABLE                     = 1 << 1;
@@ -214,6 +215,7 @@ RTGL1::RasterizerPipelines::RasterizerPipelines(
     VkDevice _device,
     VkPipelineLayout _pipelineLayout, 
     VkRenderPass _renderPass,
+    uint32_t _additionalAttachmentsCount,
     bool _applyVertexColorGamma)
 :
     device(_device),
@@ -222,7 +224,8 @@ RTGL1::RasterizerPipelines::RasterizerPipelines(
     vertShaderStage{},
     fragShaderStage{},
     pipelineCache(VK_NULL_HANDLE),
-    applyVertexColorGamma(_applyVertexColorGamma)
+    applyVertexColorGamma(_applyVertexColorGamma),
+    additionalAttachmentsCount(_additionalAttachmentsCount)
 {
     assert(TestFlags());
 
@@ -397,23 +400,36 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline(RgRasterizedGeometryStateF
     depthStencil.stencilTestEnable = VK_FALSE;
     depthStencil.depthBoundsTestEnable = VK_FALSE;
 
-    VkPipelineColorBlendAttachmentState colorBlendAttch = {};
-    colorBlendAttch.blendEnable = blendEnable;
-    colorBlendAttch.colorBlendOp = colorBlendAttch.alphaBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttch.srcColorBlendFactor = colorBlendAttch.srcAlphaBlendFactor = ConvertBlendFactorToVk(blendFuncSrc);
-    colorBlendAttch.dstColorBlendFactor = colorBlendAttch.dstAlphaBlendFactor = ConvertBlendFactorToVk(blendFuncDst);
+    VkPipelineColorBlendAttachmentState blendAttch = 
+    {
+        .blendEnable = blendEnable,
+        .srcColorBlendFactor = ConvertBlendFactorToVk(blendFuncSrc),
+        .dstColorBlendFactor = ConvertBlendFactorToVk(blendFuncDst),
+        .colorBlendOp = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = ConvertBlendFactorToVk(blendFuncSrc),
+        .dstAlphaBlendFactor = ConvertBlendFactorToVk(blendFuncDst),
+        .alphaBlendOp = VK_BLEND_OP_ADD,
+        .colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT |
+            VK_COLOR_COMPONENT_G_BIT |
+            VK_COLOR_COMPONENT_B_BIT |
+            VK_COLOR_COMPONENT_A_BIT,
+    };
+    std::array colorBlendAttchs = { blendAttch, blendAttch };
 
-    colorBlendAttch.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT |
-        VK_COLOR_COMPONENT_G_BIT |
-        VK_COLOR_COMPONENT_B_BIT |
-        VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo colorBlendState = 
+    {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable = VK_FALSE,
+        .attachmentCount = 1 + additionalAttachmentsCount,
+        .pAttachments = colorBlendAttchs.data(),
+    };
 
-    VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-    colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendState.logicOpEnable = VK_FALSE;
-    colorBlendState.attachmentCount = 1;
-    colorBlendState.pAttachments = &colorBlendAttch;
+    if (colorBlendState.attachmentCount > colorBlendAttchs.size())
+    {
+        assert(0 && "Add more entries to colorBlendAttchs");
+        throw RgException(RG_GRAPHICS_API_ERROR, "Internal attachment count error");
+    }
 
     VkPipelineDynamicStateCreateInfo dynamicInfo = {};
     dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;

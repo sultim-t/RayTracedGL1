@@ -41,9 +41,9 @@ layout (constant_id = 0) const uint alphaTest = 0;
 
 void main()
 {
-    vec3 albedo = getTextureSample(rasterizerFragInfo.textureIndex, vertTexCoord);
+    vec4 albedoAlpha = getTextureSample(rasterizerFragInfo.textureIndex, vertTexCoord);
 
-    outColor = rasterizerFragInfo.color * vertColor * albedo;
+    outColor = rasterizerFragInfo.color * vertColor * albedoAlpha;
 
     if (alphaTest != 0)
     {

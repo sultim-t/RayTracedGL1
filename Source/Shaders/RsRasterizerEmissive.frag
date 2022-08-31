@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Sultim Tsyrendashiev
+// Copyright (c) 2021 Sultim Tsyrendashiev
 // 
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -22,22 +22,32 @@
 
 layout (location = 0) in vec4 vertColor;
 layout (location = 1) in vec2 vertTexCoord;
-layout (location = 2) flat in uint textureIndex;
 
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec3 outScreenEmission;
 
-#define DESC_SET_TEXTURES 1
+#define DESC_SET_TEXTURES 0
 #include "ShaderCommonGLSLFunc.h"
+
+layout(push_constant) uniform RasterizerFrag_BT 
+{
+    layout(offset = 64) vec4 color;
+    layout(offset = 80) uint textureIndex;
+    layout(offset = 84) uint emissionTextureIndex;
+} rasterizerFragInfo;
 
 layout (constant_id = 0) const uint alphaTest = 0;
 
 #define ALPHA_THRESHOLD 0.5
+#define EMISSION_CHANNEL 2
 
 void main()
 {
-    outColor = vertColor * getTextureSample(textureIndex, vertTexCoord);
-    outScreenEmission = vec3(0);
+    vec4 albedoAlpha = getTextureSample(rasterizerFragInfo.textureIndex, vertTexCoord);
+    float emission = getTextureSample(rasterizerFragInfo.emissionTextureIndex, vertTexCoord)[EMISSION_CHANNEL];
+
+    outColor = rasterizerFragInfo.color * vertColor * albedoAlpha;
+    outScreenEmission = emission * albedoAlpha.rgb;
 
     if (alphaTest != 0)
     {

@@ -35,6 +35,7 @@ public:
         VkDevice device,
         VkPipelineLayout pipelineLayout, 
         VkRenderPass renderPass,
+        uint32_t additionalAttachmentsCount,
         bool applyVertexColorGamma);
 
     ~RasterizerPipelines();
@@ -79,6 +80,7 @@ private:
     } dynamicState;
 
     uint32_t applyVertexColorGamma;
+    uint32_t additionalAttachmentsCount;
 };
 
 }

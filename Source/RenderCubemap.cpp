@@ -335,7 +335,7 @@ void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &s
     scissors.extent = { sideSize, sideSize };
 
 
-    pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass, applyVertexColorGamma);
+    pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass, 0, applyVertexColorGamma);
     pipelines->SetShaders(shaderManager.get(), "VertRasterizerMultiview", "FragRasterizer");
     pipelines->DisableDynamicState(viewport, scissors);
 }
