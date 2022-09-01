@@ -51,7 +51,11 @@ vec3 volume_getCenter( const ivec3 cell )
     float n = globalUniform.volumeCameraNear;
     float f = globalUniform.volumeCameraFar;
 
-    return volume_getOrigin() + worlddir * mix( n, f, local.z );
+    float z    = clamp( local.z, 0.0, 1.0 );
+    z          = square( z );
+    float dist = mix( n, f, z );
+
+    return volume_getOrigin() + worlddir * dist;
 }
 
 vec3 volume_toSamplePosition( const vec3 world )
@@ -63,12 +67,14 @@ vec3 volume_toSamplePosition( const vec3 world )
     float f = globalUniform.volumeCameraFar;
 
     float dist = length( world - volume_getOrigin() );
-    dist       = ( dist - n ) / ( f - n );
+    float z    = ( dist - n ) / ( f - n );
+    z          = clamp( z, 0.0, 1.0 );
+    z          = sqrt( z );
 
     return vec3( 
         ndc.x * 0.5 + 0.5,
         ndc.y * 0.5 + 0.5,
-        clamp( dist, 0.0, 1.0 ) );
+        z );
 }
 
 vec4 volume_sample( const vec3 world ) 
