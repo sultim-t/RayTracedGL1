@@ -56,7 +56,7 @@ Surface fetchGbufferSurface(const ivec2 pix)
     
     // framebufAlbedo ALWAYS uses regular layout because of the sky rasterization pass  
     s.albedo = texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
-    s.emission = getLuminance(texelFetch(framebufScreenEmission_Sampler, pix, 0).rgb);   
+    s.emission = getLuminance(texelFetch(framebufScreenEmission_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb);   
     {
         vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
         s.position              = posEnc.xyz;
