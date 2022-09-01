@@ -161,6 +161,15 @@ void main()
     vec3 color = finalizeColor(hdr, screenEmis, isSky);
     vec3 bloom = getBloomInput(hdr, screenEmis, isSky);
 
+    {
+        const vec3 position = texelFetch( framebufSurfacePosition_Sampler, getCheckerboardPix( pix ), 0 ).xyz;
+        const vec4 v        = volume_sample( position );
+
+        color = color * v.a + v.rgb;
+    }
+
+
+    
     if (globalUniform.debugShowFlags != 0)
     {
         color = processDebug(pix, color);

@@ -1,15 +1,15 @@
-// Copyright (c) 2021-2022 Sultim Tsyrendashiev
-// 
+// Copyright (c) 2022 Sultim Tsyrendashiev
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,22 +22,50 @@
 
 #define MATERIAL_MAX_ALBEDO_LAYERS 0
 
-#define DESC_SET_TLAS            0
-#define DESC_SET_FRAMEBUFFERS    1
-#define DESC_SET_GLOBAL_UNIFORM  2
-#define DESC_SET_VERTEX_DATA     3
-#define DESC_SET_TEXTURES        4
-#define DESC_SET_RANDOM          5
-#define DESC_SET_LIGHT_SOURCES   6
-#define DESC_SET_CUBEMAPS        7
-#define DESC_SET_RENDER_CUBEMAP  8
-#define DESC_SET_VOLUMETRIC      11
-#define LIGHT_SAMPLE_METHOD      ( LIGHT_SAMPLE_METHOD_INDIR )
+#define DESC_SET_TLAS           0
+#define DESC_SET_FRAMEBUFFERS   1
+#define DESC_SET_GLOBAL_UNIFORM 2
+#define DESC_SET_VERTEX_DATA    3
+#define DESC_SET_TEXTURES       4
+#define DESC_SET_RANDOM         5
+#define DESC_SET_LIGHT_SOURCES  6
+#define DESC_SET_CUBEMAPS       7
+#define DESC_SET_RENDER_CUBEMAP 8
+#define DESC_SET_VOLUMETRIC     11
+#define LIGHT_SAMPLE_METHOD     ( LIGHT_SAMPLE_METHOD_INDIR )
 #include "RaygenCommon.h"
+#include "Volumetric.h"
+
+// Approximation of Henyey-Greenstein's phase function
+float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float anisotropy )
+{
+    float costheta = dot( tolight, toviewer );
+    float k        = 1.55 * anisotropy - 0.55 * anisotropy * anisotropy * anisotropy;
+
+    return ( 1 - square( k ) ) / ( 4 * M_PI * ( 1 + square( k * costheta ) ) );
+}
 
 void main()
 {
-    const ivec3 cell  = ivec3( gl_LaunchIDEXT.xyz );
-    
-    imageStore(g_volumetric, cell, vec4(1.0));
+    const ivec3 cell     = ivec3( gl_LaunchIDEXT.xyz );
+    const vec3  center   = volume_getCenter( cell );
+    const vec3  toviewer = normalize( globalUniform.cameraPosition.xyz - center );
+
+    vec3 radiance;
+    vec3 tolight;
+    {
+        DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
+        bool isShadowed = traceShadowRay( 0, center, center - 1000 * l.direction, true );
+
+        radiance = l.color * float( !isShadowed );
+        tolight  = -l.direction;
+    }
+
+    vec3 lighting = radiance * phaseFunction_Schlick( tolight, toviewer, 0 );
+
+
+    float scattering = 0.01;
+    float absorbtion = 0.01;
+
+    imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
 }

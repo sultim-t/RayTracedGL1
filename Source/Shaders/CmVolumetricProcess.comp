@@ -20,6 +20,8 @@
 
 #version 460
 
+// "Volumetric Fog and Lighting", Bart Wronski
+
 #define DESC_SET_VOLUMETRIC 0
 #include "ShaderCommonGLSLFunc.h"
 
@@ -27,9 +29,40 @@ layout( local_size_x = COMPUTE_VOLUMETRIC_GROUP_SIZE_X,
         local_size_y = COMPUTE_VOLUMETRIC_GROUP_SIZE_Y,
         local_size_z = 1 ) in;
 
+// rgb - in−scattered light accumulated so far
+// a   - accumulated scattering coefficient
+vec4 accumulateScattering( const vec4 front, const vec4 back )
+{
+    vec3 light = front.rgb + saturate( exp( -front.a ) ) * back.rgb;
+
+    return vec4( light.rgb, front.a + back.a );
+}
+
+void store(const ivec3 cell, const vec4 colorAndDensity)
+{
+    vec4 final = vec4( colorAndDensity.rgb, exp( -colorAndDensity.a ) );
+
+    // rgb - in−scattered light accumulated so far
+    // a   - scene light transmittance
+    imageStore( g_volumetric, cell, final );
+}
+
 void main()
 {
-    for( int i = 0; i < VOLUMETRIC_SIZE_Z; i++ )
+    const int x = int( gl_GlobalInvocationID.x );
+    const int y = int( gl_GlobalInvocationID.y );
+
+
+    vec4 accum = texelFetch( g_volumetric_Sampler, ivec3( x, y, 0 ), 0 );
+    store( ivec3( x, y, 0 ), accum );
+
+    for( int z = 1; z < VOLUMETRIC_SIZE_Z; z++ )
     {
+        const ivec3 cell = ivec3( x, y, z );
+        const vec4  v    = texelFetch( g_volumetric_Sampler, cell, 0 );
+
+        accum = accumulateScattering( accum, v );
+
+        store( cell, accum );
     }
 }
