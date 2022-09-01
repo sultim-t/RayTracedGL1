@@ -39,6 +39,7 @@
 // * DESC_SET_LENS_FLARES
 // * DESC_SET_DECALS
 // * DESC_SET_RESTIR_INDIRECT
+// * DESC_SET_VOLUMETRIC
 
 
 
@@ -222,6 +223,19 @@ layout(set = DESC_SET_RESTIR_INDIRECT, binding = BINDING_RESTIR_INDIRECT_RESERVO
 {
     uint g_restirIndirectReservoirs_Prev[];
 };
+#endif
+
+
+
+#ifdef DESC_SET_VOLUMETRIC
+layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_STORAGE, rgba16f) 
+uniform image3D g_volumetric;
+
+layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_SAMPLER) 
+uniform sampler2D g_volumetric_Sampler;
+
+layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_SAMPLER_PREV) 
+uniform sampler2D g_volumetric_Sampler_Prev;
 #endif
 
 

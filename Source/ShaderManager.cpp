@@ -44,6 +44,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"RGenIndirect",            "RtRaygenIndirect.rgen.spv"            },
     {"RGenGradients",           "RtGradients.rgen.spv"                 },
     {"RInitialReservoirs",      "RtInitialReservoirs.rgen.spv"         },
+    {"RVolumetric",             "RtVolumetric.rgen.spv"                },
     {"RMiss",                   "RtMiss.rmiss.spv"                     },
     {"RMissShadow",             "RtMissShadowCheck.rmiss.spv"          },
     {"RClsOpaque",              "RtClsOpaque.rchit.spv"                },

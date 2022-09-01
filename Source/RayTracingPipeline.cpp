@@ -27,41 +27,39 @@
 
 using namespace RTGL1;
 
-RayTracingPipeline::RayTracingPipeline(
-    VkDevice _device,
-    std::shared_ptr<PhysicalDevice> _physDevice,
-    std::shared_ptr<MemoryAllocator> _allocator,
-    const std::shared_ptr<ShaderManager>& _shaderMgr,
-    const std::shared_ptr<Scene>& _scene,
-    const std::shared_ptr<GlobalUniform>& _uniform,
-    const std::shared_ptr<TextureManager>& _textureMgr,
-    const std::shared_ptr<Framebuffers>& _framebuffers,
-    const std::shared_ptr<RestirBuffers>& _restirBuffers,
-    const std::shared_ptr<BlueNoise>& _blueNoise,
-    const std::shared_ptr<CubemapManager>& _cubemapMgr,
-    const std::shared_ptr<RenderCubemap>& _renderCubemap,
-    const std::shared_ptr<PortalList>& _portalList,
-    const RgInstanceCreateInfo& _rgInfo)
-:
-    device(_device),
-    physDevice(std::move(_physDevice)),
-    rtPipelineLayout(VK_NULL_HANDLE),
-    rtPipeline(VK_NULL_HANDLE),
-    copySBTFromStaging(false),
-    groupBaseAlignment(0),
-    handleSize(0),
-    alignedHandleSize(0),
-    raygenShaderCount(0),
-    hitGroupCount(0),
-    missShaderCount(0),
-    primaryRaysMaxAlbedoLayers(_rgInfo.primaryRaysMaxAlbedoLayers),
-    indirectIlluminationMaxAlbedoLayers(_rgInfo.indirectIlluminationMaxAlbedoLayers)
+RayTracingPipeline::RayTracingPipeline( VkDevice                           _device,
+                                        std::shared_ptr< PhysicalDevice >  _physDevice,
+                                        std::shared_ptr< MemoryAllocator > _allocator,
+                                        const ShaderManager*               _shaderManager,
+                                        Scene*                             _scene,
+                                        const GlobalUniform*               _uniform,
+                                        const TextureManager*              _textureManager,
+                                        const Framebuffers*                _framebuffers,
+                                        const RestirBuffers*               _restirBuffers,
+                                        const BlueNoise*                   _blueNoise,
+                                        const CubemapManager*              _cubemapManager,
+                                        const RenderCubemap*               _renderCubemap,
+                                        const PortalList*                  _portalList,
+                                        const Volumetric*                  _volumetric,
+                                        const RgInstanceCreateInfo&        _rgInfo )
+    : device( _device )
+    , physDevice( std::move( _physDevice ) )
+    , rtPipelineLayout( VK_NULL_HANDLE )
+    , rtPipeline( VK_NULL_HANDLE )
+    , copySBTFromStaging( false )
+    , groupBaseAlignment( 0 )
+    , handleSize( 0 )
+    , alignedHandleSize( 0 )
+    , raygenShaderCount( 0 )
+    , hitGroupCount( 0 )
+    , missShaderCount( 0 )
+    , primaryRaysMaxAlbedoLayers( _rgInfo.primaryRaysMaxAlbedoLayers )
+    , indirectIlluminationMaxAlbedoLayers( _rgInfo.indirectIlluminationMaxAlbedoLayers )
 {
     shaderBindingTable = std::make_shared<AutoBuffer>(device, std::move(_allocator));
 
     // all set layouts to be used
-    VkDescriptorSetLayout setLayouts[] =
-    {
+    VkDescriptorSetLayout setLayouts[] = {
         // ray tracing acceleration structures
         _scene->GetASManager()->GetTLASDescSetLayout(),
         // storage images
@@ -71,19 +69,21 @@ RayTracingPipeline::RayTracingPipeline(
         // vertex data
         _scene->GetASManager()->GetBuffersDescSetLayout(),
         // textures
-        _textureMgr->GetDescSetLayout(),
+        _textureManager->GetDescSetLayout(),
         // uniform random
         _blueNoise->GetDescSetLayout(),
         // light sources
         _scene->GetLightManager()->GetDescSetLayout(),
         // cubemaps, for a cubemap type of skyboxes
-        _cubemapMgr->GetDescSetLayout(),
+        _cubemapManager->GetDescSetLayout(),
         // dynamic cubemaps
         _renderCubemap->GetDescSetLayout(),
         // portals
         _portalList->GetDescSetLayout(),
         // device local buffers for restir
         _restirBuffers->GetDescSetLayout(),
+        // device local buffers for volumetrics
+        _volumetric->GetDescSetLayout(),
     };
 
     CreatePipelineLayout(setLayouts, std::size(setLayouts));
@@ -100,6 +100,7 @@ RayTracingPipeline::RayTracingPipeline(
         { "RGenIndirect",           &indirectIlluminationMaxAlbedoLayers },
         { "RGenGradients",          nullptr },
         { "RInitialReservoirs",     nullptr },
+        { "RVolumetric",            nullptr },
         { "RMiss",                  nullptr },
         { "RMissShadow",            nullptr },
         { "RClsOpaque",             nullptr },
@@ -132,6 +133,7 @@ RayTracingPipeline::RayTracingPipeline(
     AddRayGenGroup(toIndex("RGenIndirect"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT);
     AddRayGenGroup(toIndex("RGenGradients"));                       assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_GRADIENTS);
     AddRayGenGroup(toIndex("RInitialReservoirs"));                  assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS);
+    AddRayGenGroup(toIndex("RVolumetric"));                         assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_VOLUMETRIC);
 
     AddMissGroup(toIndex("RMiss"));                                 assert(missShaderCount - 1 == SBT_INDEX_MISS_DEFAULT);
     AddMissGroup(toIndex("RMissShadow"));                           assert(missShaderCount - 1 == SBT_INDEX_MISS_SHADOW);
@@ -141,7 +143,7 @@ RayTracingPipeline::RayTracingPipeline(
     // alpha tested and then opaque
     AddHitGroup(toIndex("RClsOpaque"), toIndex("RAlphaTest"));      assert(hitGroupCount - 1 == SBT_INDEX_HITGROUP_ALPHA_TESTED);
 
-    CreatePipeline(_shaderMgr.get());
+    CreatePipeline( _shaderManager );
     CreateSBT();
 }
 
@@ -277,12 +279,13 @@ void RayTracingPipeline::GetEntries(
     VkStridedDeviceAddressRegionKHR &hitEntry,
     VkStridedDeviceAddressRegionKHR &callableEntry) const
 {
-    assert(sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY   || 
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_REFL_REFR ||
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT    ||
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT  ||
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_GRADIENTS ||
-           sbtRayGenIndex == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS);
+    assert( sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_REFL_REFR ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_GRADIENTS ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_VOLUMETRIC );
 
     VkDeviceAddress bufferAddress = shaderBindingTable->GetDeviceAddress();
 

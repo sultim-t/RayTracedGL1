@@ -552,13 +552,20 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         decalManager->SubmitForFrame(cmd, frameIndex);
         portalList->SubmitForFrame(cmd, frameIndex);
 
-        const auto params = pathTracer->Bind(
-            cmd, frameIndex,
-            renderResolution.Width(), renderResolution.Height(),
-            scene, uniform, textureManager, 
-            framebuffers, restirBuffers, blueNoise,
-            cubemapManager, rasterizer->GetRenderCubemap(),
-            portalList);
+        const auto params = pathTracer->Bind( cmd,
+                                              frameIndex,
+                                              renderResolution.Width(),
+                                              renderResolution.Height(),
+                                              scene.get(),
+                                              uniform.get(),
+                                              textureManager.get(),
+                                              framebuffers,
+                                              restirBuffers.get(),
+                                              blueNoise.get(),
+                                              cubemapManager.get(),
+                                              rasterizer->GetRenderCubemap().get(),
+                                              portalList.get(),
+                                              volumetric.get() );
 
         pathTracer->TracePrimaryRays(params);
 
@@ -574,6 +581,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         pathTracer->CalculateInitialReservoirs(params);
         pathTracer->TraceDirectllumination(params);
         pathTracer->TraceIndirectllumination(params);
+        pathTracer->TraceVolumetric(params);
 
         pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);

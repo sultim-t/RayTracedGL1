@@ -28,18 +28,20 @@ PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rt
     : rtPipeline(std::move(_rtPipeline))
 {}
 
-PathTracer::TraceParams PathTracer::Bind(
-    VkCommandBuffer cmd, uint32_t frameIndex,
-    uint32_t width, uint32_t height,
-    const std::shared_ptr<Scene>& scene,
-    const std::shared_ptr<GlobalUniform>& uniform,
-    const std::shared_ptr<TextureManager>& textureManager,
-    const std::shared_ptr<Framebuffers>& framebuffers,
-    const std::shared_ptr<RestirBuffers>& restirBuffers,
-    const std::shared_ptr<BlueNoise>& blueNoise,
-    const std::shared_ptr<CubemapManager>& cubemapManager,
-    const std::shared_ptr<RenderCubemap>& renderCubemap,
-    const std::shared_ptr<PortalList>& portalList)
+PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                 cmd,
+                                          uint32_t                        frameIndex,
+                                          uint32_t                        width,
+                                          uint32_t                        height,
+                                          Scene*                          scene,
+                                          const GlobalUniform*            uniform,
+                                          const TextureManager*           textureManager,
+                                          std::shared_ptr< Framebuffers > framebuffers,
+                                          const RestirBuffers*            restirBuffers,
+                                          const BlueNoise*                blueNoise,
+                                          const CubemapManager*           cubemapManager,
+                                          const RenderCubemap*            renderCubemap,
+                                          const PortalList*               portalList,
+                                          const Volumetric*               volumetric )
 {
     rtPipeline->Bind(cmd);
 
@@ -66,6 +68,8 @@ PathTracer::TraceParams PathTracer::Bind(
         portalList->GetDescSet(frameIndex),
         // device local buffers for restir
         restirBuffers->GetDescSet(frameIndex),
+        // device local buffers for volumetrics
+        volumetric->GetDescSet(frameIndex),
     };
     const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
@@ -79,7 +83,7 @@ PathTracer::TraceParams PathTracer::Bind(
     p.frameIndex = frameIndex;
     p.width = width;
     p.height = height;
-    p.framebuffers = framebuffers;
+    p.framebuffers = std::move( framebuffers );
 
     return p;
 }
@@ -230,4 +234,15 @@ void PathTracer::TraceIndirectllumination(const TraceParams &params)
 
 
     TraceRays(params.cmd, SBT_INDEX_RAYGEN_INDIRECT, params.width, params.height);
+}
+
+void PathTracer::TraceVolumetric( const TraceParams& params )
+{
+    CmdLabel label( params.cmd, "Volumetric illumination" );
+
+    TraceRays( params.cmd,
+               SBT_INDEX_RAYGEN_VOLUMETRIC,
+               VOLUMETRIC_SIZE_X,
+               VOLUMETRIC_SIZE_Y,
+               VOLUMETRIC_SIZE_Z );
 }

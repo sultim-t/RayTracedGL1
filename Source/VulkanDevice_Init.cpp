@@ -97,6 +97,11 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device,
         memAllocator);
 
+    volumetric          = std::make_shared< Volumetric >( 
+        device,
+        cmdManager.get(),
+        memAllocator.get() );
+
     blueNoise           = std::make_shared<BlueNoise>(
         device,
         info->pBlueNoiseFilePath,
@@ -167,21 +172,22 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         blueNoise,
         scene->GetLightManager());
 
-    rtPipeline          = std::make_shared<RayTracingPipeline>(
-        device, 
-        physDevice, 
-        memAllocator, 
-        shaderManager,
-        scene,
-        uniform, 
-        textureManager,
-        framebuffers,
-        restirBuffers,
-        blueNoise, 
-        cubemapManager,
-        rasterizer->GetRenderCubemap(),
-        portalList,
-        *info);
+    rtPipeline = std::make_shared< RayTracingPipeline >( 
+        device,
+        physDevice,
+        memAllocator,
+        shaderManager.get(),
+        scene.get(),
+        uniform.get(),
+        textureManager.get(),
+        framebuffers.get(),
+        restirBuffers.get(),
+        blueNoise.get(),
+        cubemapManager.get(),
+        rasterizer->GetRenderCubemap().get(),
+        portalList.get(),
+        volumetric.get(),
+        *info );
 
     pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
 
@@ -290,6 +296,7 @@ VulkanDevice::~VulkanDevice()
     cmdManager.reset();
     framebuffers.reset();
     restirBuffers.reset();
+    volumetric.reset();
     tonemapping.reset();
     imageComposition.reset();
     bloom.reset();

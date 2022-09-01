@@ -82,6 +82,7 @@ set(Sources
     "Source/PortalList.cpp"
     "Source/TextureObserver.cpp"
     "Source/RestirBuffers.cpp"
+    "Source/Volumetric.cpp"
 )
 
 

@@ -27,6 +27,7 @@
 #include "RenderCubemap.h"
 #include "PortalList.h"
 #include "RestirBuffers.h"
+#include "Volumetric.h"
 
 namespace RTGL1
 {
@@ -55,18 +56,20 @@ public:
     PathTracer& operator=(const PathTracer& other) = delete;
     PathTracer& operator=(PathTracer&& other) noexcept = delete;
 
-    TraceParams Bind(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        uint32_t width, uint32_t height,
-        const std::shared_ptr<Scene>& scene,
-        const std::shared_ptr<GlobalUniform>& uniform,
-        const std::shared_ptr<TextureManager>& textureManager,
-        const std::shared_ptr<Framebuffers>& framebuffers,
-        const std::shared_ptr<RestirBuffers>& restirBuffers,
-        const std::shared_ptr<BlueNoise>& blueNoise,
-        const std::shared_ptr<CubemapManager>& cubemapManager,
-        const std::shared_ptr<RenderCubemap>& renderCubemap,
-        const std::shared_ptr<PortalList>& portalList);
+    TraceParams Bind( VkCommandBuffer                 cmd,
+                      uint32_t                        frameIndex,
+                      uint32_t                        width,
+                      uint32_t                        height,
+                      Scene*                          scene,
+                      const GlobalUniform*            uniform,
+                      const TextureManager*           textureManager,
+                      std::shared_ptr< Framebuffers > framebuffers,
+                      const RestirBuffers*            restirBuffers,
+                      const BlueNoise*                blueNoise,
+                      const CubemapManager*           cubemapManager,
+                      const RenderCubemap*            renderCubemap,
+                      const PortalList*               portalList,
+                      const Volumetric*               volumetric );
     
     void TracePrimaryRays(const TraceParams &params);
     void TraceReflectionRefractionRays(const TraceParams &params);
@@ -74,6 +77,7 @@ public:
     void TraceDirectllumination(const TraceParams &params);
     void CalculateGradientsSamples(const TraceParams &params);
     void TraceIndirectllumination(const TraceParams &params);
+    void TraceVolumetric( const TraceParams& params );
 
 private:
     void TraceRays(
