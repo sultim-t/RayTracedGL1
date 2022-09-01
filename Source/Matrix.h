@@ -24,20 +24,25 @@
 
 namespace RTGL1
 {
+    namespace Matrix
+    {
+        void Multiply( float* result, const float* a, const float* b );
+        void Inverse( float* inversed, const float* m );
+        void Transpose( float* transposed, const float* m );
+        void Transpose( float t[ 4 ][ 4 ] );
 
-class Matrix
-{
-public:
-    static void Inverse(float *inversed, const float *m);
-    static void Transpose(float *transposed, const float *m);
-    static void Transpose(float t[4][4]);
-    static void Multiply(float *result, const float *a, const float *b);
-    static void ToMat4(float *result, const RgTransform &m);
-    static void ToMat4Transposed(float *result, const RgTransform &m);
-    static void GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll);
-    static void GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position, float zNear, float zFar);
-    // Set new position for viewer in (column-major) view matrix.
-    static void SetNewViewerPosition(float *result, const float *viewMatrix, const float *newPosition);
-};
+        void ToMat4( float* result, const RgTransform& m );
+        void ToMat4Transposed( float* result, const RgTransform& m );
 
+        void GetViewMatrix( float* result, const float* pos, float pitch, float yaw, float roll );
+        void GetCubemapViewProjMat(
+            float* result, uint32_t sideIndex, const float* position, float zNear, float zFar );
+        // Set new position for viewer in (column-major) view matrix.
+        void SetNewViewerPosition( float*       result,
+                                   const float* viewMatrix,
+                                   const float* newPosition );
+
+        void MakeProjectionMatrix(
+            float* matrix, float aspect, float fovYRad, float zNear, float zFar );
+    }
 }

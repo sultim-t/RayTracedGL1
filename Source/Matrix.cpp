@@ -184,13 +184,13 @@ void Matrix::Inverse(float *inversed, const float *m)
     }
 }
 
-void Matrix::Transpose(float *dst, const float *src)
+void Matrix::Transpose( float* transposed, const float* m )
 {
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 4; j++)
         {
-            dst[i * 4 + j] = src[j * 4 + i];
+            transposed[ i * 4 + j ] = m[ j * 4 + i ];
         }
     }
 }
@@ -388,4 +388,20 @@ void Matrix::SetNewViewerPosition(float *result, const float *viewMatrix, const 
     result[3 * 4 + 0] = Dot3(columnI, invT);
     result[3 * 4 + 1] = Dot3(columnJ, invT);
     result[3 * 4 + 2] = Dot3(columnK, invT);
+}
+
+void Matrix::MakeProjectionMatrix( float *matrix, float aspect, float fovYRad, float zNear, float zFar )
+{
+    const float tanHalfFovY = tanf( fovYRad * 0.5f );
+
+    memset( matrix, 0, 16 * sizeof( float ) );
+    
+    matrix[ 0 * 4 + 0 ] = 1.0f / ( aspect * tanHalfFovY );
+
+    matrix[ 1 * 4 + 1 ] = -1.0f / tanHalfFovY;
+
+    matrix[ 2 * 4 + 2 ] = zFar / ( zNear - zFar );
+    matrix[ 2 * 4 + 3 ] = -1.0f;
+    
+    matrix[ 3 * 4 + 2 ] = ( zFar * zNear ) / ( zNear - zFar );
 }

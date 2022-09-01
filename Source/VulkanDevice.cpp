@@ -117,20 +117,25 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         0,0,0,1
     };
 
+    const float aspect = static_cast< float >( renderResolution.Width() ) /
+                         static_cast< float >( renderResolution.Height() );
+
     {
-        memcpy(gu->viewPrev, gu->view, 16 * sizeof(float));
-        memcpy(gu->projectionPrev, gu->projection, 16 * sizeof(float));
+        memcpy( gu->viewPrev, gu->view, 16 * sizeof( float ) );
+        memcpy( gu->projectionPrev, gu->projection, 16 * sizeof( float ) );
 
-        memcpy(gu->view, drawInfo.view, 16 * sizeof(float));
-        memcpy(gu->projection, drawInfo.projection, 16 * sizeof(float));
+        memcpy( gu->view, drawInfo.view, 16 * sizeof( float ) );
 
-        Matrix::Inverse(gu->invView, drawInfo.view);
-        Matrix::Inverse(gu->invProjection, drawInfo.projection);
+        Matrix::MakeProjectionMatrix(
+            gu->projection, aspect, drawInfo.fovYRadians, drawInfo.cameraNear, drawInfo.cameraFar );
 
-        memcpy(gu->cameraPositionPrev, gu->cameraPosition, 3 * sizeof(float));
-        gu->cameraPosition[0] = gu->invView[12];
-        gu->cameraPosition[1] = gu->invView[13];
-        gu->cameraPosition[2] = gu->invView[14];
+        Matrix::Inverse( gu->invView, gu->view );
+        Matrix::Inverse( gu->invProjection, gu->projection );
+
+        memcpy( gu->cameraPositionPrev, gu->cameraPosition, 3 * sizeof( float ) );
+        gu->cameraPosition[ 0 ] = gu->invView[ 12 ];
+        gu->cameraPosition[ 1 ] = gu->invView[ 13 ];
+        gu->cameraPosition[ 2 ] = gu->invView[ 14 ];
     }
 
     {
@@ -414,7 +419,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->rayCullBackFaces = rayCullBackFacingTriangles ? 1 : 0;
     gu->rayLength = clamp(drawInfo.rayLength, 0.1f, (float)MAX_RAY_LENGTH);
-    gu->primaryRayMinDist = clamp(drawInfo.primaryRayMinDist, 0.001f, gu->rayLength);
+    gu->primaryRayMinDist = clamp(drawInfo.cameraNear, 0.001f, gu->rayLength);
 
     {
         gu->rayCullMaskWorld = 0;
@@ -502,6 +507,22 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
     gu->applyViewProjToLensFlares = !lensFlareVerticesInScreenSpace;
+
+    {
+        memcpy( gu->volumeViewProj_Prev, gu->volumeViewProj, 16 * sizeof( float ) );
+        memcpy( gu->volumeViewProjInv_Prev, gu->volumeViewProjInv, 16 * sizeof( float ) );
+
+        assert( drawInfo.volumetricFar > drawInfo.cameraNear );
+        float zfar =
+            std::clamp( drawInfo.volumetricFar, drawInfo.cameraNear + 0.01f, drawInfo.cameraFar );
+
+        float volumeproj[ 16 ];
+        Matrix::MakeProjectionMatrix(
+            volumeproj, aspect, drawInfo.fovYRadians, drawInfo.cameraNear, zfar );
+
+        Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
+        Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );
+    }
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

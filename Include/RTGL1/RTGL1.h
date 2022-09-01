@@ -1131,22 +1131,22 @@ typedef struct RgDrawFrameInfo
 {
     // View and projection matrices are column major.
     float                   view[16];
-    float                   projection[16];
     // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
     // If the length is close to 0.0, then (0, 1, 0) is used.
     RgFloat3D               worldUpVector;
 
     // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
     float                   fovYRadians;
-    // Camera's near and far planes are used for FSR2.
+    // Near and far planes for a projection matrix.
     float                   cameraNear;
     float                   cameraFar;
-    // What world parts to render. First-person related geometry is always enabled.
-    RgDrawFrameRayCullFlags rayCullMaskWorld;
+    // Farthest distance for volumetric illumination calculation.
+    // Should be minimal to have better precision around camera.
+    float                   volumetricFar;
     // Max value: 10000.0
     float                   rayLength;
-    // Distance, at which primary ray starts. Can be used as a near plane distance.
-    float                   primaryRayMinDist;
+    // What world parts to render. First-person related geometry is always enabled.
+    RgDrawFrameRayCullFlags rayCullMaskWorld;
 
     RgBool32                disableRayTracedGeometry;
     RgBool32                disableRasterization;

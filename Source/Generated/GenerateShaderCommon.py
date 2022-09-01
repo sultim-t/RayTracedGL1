@@ -489,6 +489,11 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,     44,      "invProjection",                1),
     (TYPE_FLOAT32,     44,      "projectionPrev",               1),
 
+    (TYPE_FLOAT32,     44,      "volumeViewProj",               1),
+    (TYPE_FLOAT32,     44,      "volumeViewProjInv",            1),
+    (TYPE_FLOAT32,     44,      "volumeViewProj_Prev",          1),
+    (TYPE_FLOAT32,     44,      "volumeViewProjInv_Prev",       1),
+
     (TYPE_FLOAT32,      1,      "cellWorldSize",                1),
     (TYPE_UINT32,       1,      "lightmapEnable",               1),
     (TYPE_UINT32,       1,      "lightmapLayer",                1),

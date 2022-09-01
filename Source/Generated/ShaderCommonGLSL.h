@@ -194,6 +194,10 @@ struct ShGlobalUniform
     mat4 projection;
     mat4 invProjection;
     mat4 projectionPrev;
+    mat4 volumeViewProj;
+    mat4 volumeViewProjInv;
+    mat4 volumeViewProj_Prev;
+    mat4 volumeViewProjInv_Prev;
     float cellWorldSize;
     uint lightmapEnable;
     uint lightmapLayer;

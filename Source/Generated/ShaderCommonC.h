@@ -198,6 +198,10 @@ struct ShGlobalUniform
     float projection[16];
     float invProjection[16];
     float projectionPrev[16];
+    float volumeViewProj[16];
+    float volumeViewProjInv[16];
+    float volumeViewProj_Prev[16];
+    float volumeViewProjInv_Prev[16];
     float cellWorldSize;
     uint32_t lightmapEnable;
     uint32_t lightmapLayer;

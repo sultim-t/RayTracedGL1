@@ -460,9 +460,6 @@ static void MainLoop(RgInstance instance)
 
         float cameraNear = 0.1f;
         float cameraFar = 10000.0f;
-        int width, height; glfwGetWindowSize(g_GlfwHandle, &width, &height);
-        float aspect = static_cast<float>(width) / static_cast<float>(height);
-        glm::mat4 persp = glm::perspective(glm::radians(75.0f), aspect, cameraNear, cameraFar); persp[1][1] *= -1;
         glm::mat4 view = glm::lookAt(ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0,1,0 });
 
 
@@ -499,9 +496,8 @@ static void MainLoop(RgInstance instance)
             .fovYRadians = glm::radians(75.0f),
             .cameraNear = cameraNear,
             .cameraFar = cameraFar,
-            .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
             .rayLength = cameraFar,
-            .primaryRayMinDist = cameraNear,
+            .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
             .currentTime = GetCurrentTimeInSeconds(),
             .pRenderResolutionParams = &resolutionParams,
             .pSkyParams = &skyParams,
@@ -511,7 +507,6 @@ static void MainLoop(RgInstance instance)
             },
         };
         // GLM is column major, copy matrix data directly
-        memcpy(frameInfo.projection, &persp[0][0], 16 * sizeof(float));
         memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
 
         r = rgDrawFrame(instance, &frameInfo);

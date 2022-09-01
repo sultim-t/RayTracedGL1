@@ -39,13 +39,13 @@ vec3 volume_getCenter(const ivec3 cell)
         1.0,
     };
 
-    vec4 world = globalUniform.invView * globalUniform.invProjection * ndc;
+    vec4 world = globalUniform.volumeViewProjInv * ndc;
     return world.xyz / world.w;
 }
 
 vec3 volume_toSamplePosition( const vec3 world )
 {
-    vec4 ndc = globalUniform.projection * globalUniform.view * vec4( world, 1.0 );
+    vec4 ndc = globalUniform.volumeViewProj * vec4( world, 1.0 );
     ndc.xyz /= ndc.w;
 
     vec3 local = {
