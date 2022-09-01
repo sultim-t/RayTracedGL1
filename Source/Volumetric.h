@@ -20,16 +20,20 @@
 
 #pragma once
 
-#include "MemoryAllocator.h"
 #include "CommandBufferManager.h"
+#include "IShaderDependency.h"
+#include "MemoryAllocator.h"
 
 namespace RTGL1
 {
-    class Volumetric
+    class Volumetric : public IShaderDependency
     {
     public:
-        Volumetric( VkDevice device, CommandBufferManager *cmdManager, MemoryAllocator* allocator );
-        ~Volumetric();
+        Volumetric( VkDevice              device,
+                    CommandBufferManager* cmdManager,
+                    MemoryAllocator*      allocator,
+                    const ShaderManager*  shaderManager );
+        ~Volumetric() override;
 
         Volumetric( const Volumetric& other )     = delete;
         Volumetric( Volumetric&& other ) noexcept = delete;
@@ -39,6 +43,11 @@ namespace RTGL1
         VkDescriptorSetLayout GetDescSetLayout() const;
         VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
 
+        void Process( VkCommandBuffer cmd, uint32_t frameIndex );
+        void BarrierToReadProcessed( VkCommandBuffer cmd, uint32_t frameIndex );
+
+        void OnShaderReload( const ShaderManager* shaderManager ) override;
+
     private:
         void CreateSampler();
         void CreateImages( CommandBufferManager* cmdManager, MemoryAllocator* allocator );
@@ -46,7 +55,9 @@ namespace RTGL1
         void CreateDescriptors();
         void UpdateDescriptors();
 
-        
+        void CreatePipelineLayout();
+        void CreatePipelines( const ShaderManager* shaderManager );
+        void DestroyPipelines();
 
     private:
         VkDevice device = VK_NULL_HANDLE;
@@ -59,7 +70,7 @@ namespace RTGL1
         VkDescriptorSetLayout descLayout                           = VK_NULL_HANDLE;
         VkDescriptorSet       descSets[ MAX_FRAMES_IN_FLIGHT ]     = {};
 
-
-        
+        VkPipelineLayout processPipelineLayout = VK_NULL_HANDLE;
+        VkPipeline       processPipeline       = VK_NULL_HANDLE;
     };
 }

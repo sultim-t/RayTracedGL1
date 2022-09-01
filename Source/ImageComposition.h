@@ -25,6 +25,7 @@
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
 #include "Tonemapping.h"
+#include "Volumetric.h"
 
 namespace RTGL1
 {
@@ -32,13 +33,13 @@ namespace RTGL1
 class ImageComposition : public IShaderDependency
 {
 public:
-    ImageComposition(
-        VkDevice device,
-        std::shared_ptr<MemoryAllocator> allocator,
-        std::shared_ptr<Framebuffers> framebuffers,
-        const std::shared_ptr<const ShaderManager> &shaderManager,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping);
+    ImageComposition( VkDevice                                      device,
+                      std::shared_ptr< MemoryAllocator >            allocator,
+                      std::shared_ptr< Framebuffers >               framebuffers,
+                      const std::shared_ptr< const ShaderManager >& shaderManager,
+                      const std::shared_ptr< const GlobalUniform >& uniform,
+                      const std::shared_ptr< const Tonemapping >&   tonemapping,
+                      const Volumetric*                             volumetric );
     ~ImageComposition() override;
 
     ImageComposition(const ImageComposition &other) = delete;
@@ -46,25 +47,25 @@ public:
     ImageComposition &operator=(const ImageComposition &other) = delete;
     ImageComposition &operator=(ImageComposition &&other) noexcept = delete;
 
-    void PrepareForRaster(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform);
+    void PrepareForRaster( VkCommandBuffer cmd, uint32_t frameIndex, const GlobalUniform* uniform );
 
-    void Finalize(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform>& uniform,
-        const std::shared_ptr<const Tonemapping>& tonemapping);
+    void Finalize( VkCommandBuffer      cmd,
+                   uint32_t             frameIndex,
+                   const GlobalUniform* uniform,
+                   const Tonemapping*   tonemapping,
+                   const Volumetric*    volumetric );
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void ProcessCheckerboard(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform);
-    void ApplyTonemapping(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping);
+    void ProcessCheckerboard( VkCommandBuffer      cmd,
+                              uint32_t             frameIndex,
+                              const GlobalUniform* uniform );
+    void ApplyTonemapping( VkCommandBuffer      cmd,
+                           uint32_t             frameIndex,
+                           const GlobalUniform* uniform,
+                           const Tonemapping*   tonemapping,
+                           const Volumetric*    volumetric );
 
     static VkPipelineLayout CreatePipelineLayout(
         VkDevice device,

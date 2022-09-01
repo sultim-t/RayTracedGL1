@@ -30,23 +30,23 @@ namespace
 }
 
 RTGL1::ImageComposition::ImageComposition(
-    VkDevice _device,
-    std::shared_ptr<MemoryAllocator> _allocator,
-    std::shared_ptr<Framebuffers> _framebuffers,
-    const std::shared_ptr<const ShaderManager> &_shaderManager,
-    const std::shared_ptr<const GlobalUniform> &_uniform,
-    const std::shared_ptr<const Tonemapping> &_tonemapping
-)
-    : device(_device)
-    , framebuffers(std::move(_framebuffers))
-    , lpmParamsInited(false)
-    , composePipelineLayout(VK_NULL_HANDLE)
-    , checkerboardPipelineLayout(VK_NULL_HANDLE)
-    , composePipeline(VK_NULL_HANDLE)
-    , checkerboardPipeline(VK_NULL_HANDLE)
-    , descLayout(VK_NULL_HANDLE)
-    , descPool(VK_NULL_HANDLE)
-    , descSet(VK_NULL_HANDLE)
+    VkDevice                                      _device,
+    std::shared_ptr< MemoryAllocator >            _allocator,
+    std::shared_ptr< Framebuffers >               _framebuffers,
+    const std::shared_ptr< const ShaderManager >& _shaderManager,
+    const std::shared_ptr< const GlobalUniform >& _uniform,
+    const std::shared_ptr< const Tonemapping >&   _tonemapping,
+    const Volumetric*                             _volumetric )
+    : device( _device )
+    , framebuffers( std::move( _framebuffers ) )
+    , lpmParamsInited( false )
+    , composePipelineLayout( VK_NULL_HANDLE )
+    , checkerboardPipelineLayout( VK_NULL_HANDLE )
+    , composePipeline( VK_NULL_HANDLE )
+    , checkerboardPipeline( VK_NULL_HANDLE )
+    , descLayout( VK_NULL_HANDLE )
+    , descPool( VK_NULL_HANDLE )
+    , descSet( VK_NULL_HANDLE )
 {
     lpmParams = std::make_unique<AutoBuffer>(std::move(_allocator));
     lpmParams->Create(LPM_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "LPM Params", 1);
@@ -54,12 +54,12 @@ RTGL1::ImageComposition::ImageComposition(
     CreateDescriptors();
 
     {
-        VkDescriptorSetLayout setLayouts[] =
-        {
+        VkDescriptorSetLayout setLayouts[] = {
             framebuffers->GetDescSetLayout(),
             _uniform->GetDescSetLayout(),
             _tonemapping->GetDescSetLayout(),
             descLayout,
+            _volumetric->GetDescSetLayout(),
         };
 
         composePipelineLayout = CreatePipelineLayout(device,
@@ -92,28 +92,32 @@ RTGL1::ImageComposition::~ImageComposition()
 
 void RTGL1::ImageComposition::PrepareForRaster(
     VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<const GlobalUniform>& uniform)
+    const GlobalUniform* uniform)
 {
     ProcessCheckerboard(cmd, frameIndex, uniform);
 }
 
-void RTGL1::ImageComposition::Finalize(VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<const GlobalUniform>& uniform, const std::shared_ptr<const Tonemapping>& tonemapping)
+void RTGL1::ImageComposition::Finalize( VkCommandBuffer      cmd,
+                                        uint32_t             frameIndex,
+                                        const GlobalUniform* uniform,
+                                        const Tonemapping*   tonemapping,
+                                        const Volumetric*    volumetric )
 {
-    SetupLpmParams(cmd);
-    ApplyTonemapping(cmd, frameIndex, uniform, tonemapping);
+    SetupLpmParams( cmd );
+    ApplyTonemapping( cmd, frameIndex, uniform, tonemapping, volumetric );
 }
 
-void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
+void RTGL1::ImageComposition::OnShaderReload( const ShaderManager* shaderManager )
 {
     DestroyPipelines();
-    CreatePipelines(shaderManager);
+    CreatePipelines( shaderManager );
 }
 
-void RTGL1::ImageComposition::ApplyTonemapping(VkCommandBuffer cmd,
-                                               uint32_t frameIndex, 
-                                               const std::shared_ptr<const GlobalUniform> &uniform, 
-                                               const std::shared_ptr<const Tonemapping> &tonemapping)
+void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
+                                                uint32_t             frameIndex,
+                                                const GlobalUniform* uniform,
+                                                const Tonemapping*   tonemapping,
+                                                const Volumetric*    volumetric )
 {
     CmdLabel label(cmd, "Prefinal framebuf compose");
 
@@ -127,12 +131,12 @@ void RTGL1::ImageComposition::ApplyTonemapping(VkCommandBuffer cmd,
 
 
     // bind desc sets
-    VkDescriptorSet sets[] =
-    {
-        framebuffers->GetDescSet(frameIndex),
-        uniform->GetDescSet(frameIndex),
+    VkDescriptorSet sets[] = {
+        framebuffers->GetDescSet( frameIndex ),
+        uniform->GetDescSet( frameIndex ),
         tonemapping->GetDescSet(),
         descSet,
+        volumetric->GetDescSet( frameIndex ),
     };
 
     vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -148,7 +152,9 @@ void RTGL1::ImageComposition::ApplyTonemapping(VkCommandBuffer cmd,
     vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
 }
 
-void RTGL1::ImageComposition::ProcessCheckerboard(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform>&uniform)
+void RTGL1::ImageComposition::ProcessCheckerboard( VkCommandBuffer      cmd,
+                                                   uint32_t             frameIndex,
+                                                   const GlobalUniform* uniform )
 {
     CmdLabel label(cmd, "Final framebuf checkerboard");
 

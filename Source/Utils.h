@@ -61,10 +61,8 @@ namespace Utils
     void WaitAndResetFence(VkDevice device, VkFence fence);
     void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
 
-    template<typename T>
-    T Align(const T &v, const T &alignment);
-    template<typename T>
-    bool IsPow2(const T &v);
+    template<typename T> T    Align( const T& v, const T& alignment );
+    template<typename T> bool IsPow2( const T& v );
 
     bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
 
@@ -84,6 +82,10 @@ namespace Utils
     
     uint32_t GetWorkGroupCount(float size, uint32_t groupSize);
     uint32_t GetWorkGroupCount(uint32_t size, uint32_t groupSize);
+
+    template< typename T1, typename T2 >
+    requires( std::is_integral_v< T1 >&& std::is_integral_v< T2 > )
+    uint32_t GetWorkGroupCountT( T1 size, T2 groupSize );
 };
 
 template<typename T>
@@ -107,6 +109,16 @@ T Utils::Align(const T& v, const T& alignment)
     assert(IsPow2(alignment));
 
     return (v + alignment - 1) & ~(alignment - 1);
+}
+
+template< typename T1, typename T2 > requires( std::is_integral_v< T1 >&& std::is_integral_v< T2 > )
+uint32_t Utils::GetWorkGroupCountT( T1 size, T2 groupSize )
+{
+    assert( size <= std::numeric_limits< uint32_t >::max() );
+    assert( groupSize <= std::numeric_limits< uint32_t >::max() );
+
+    return GetWorkGroupCount( static_cast< uint32_t >( size ),
+                              static_cast< uint32_t >( groupSize ) );
 }
 
 }

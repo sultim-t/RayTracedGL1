@@ -232,10 +232,10 @@ layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_STORAGE, rgba16f)
 uniform image3D g_volumetric;
 
 layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_SAMPLER) 
-uniform sampler2D g_volumetric_Sampler;
+uniform sampler3D g_volumetric_Sampler;
 
 layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_SAMPLER_PREV) 
-uniform sampler2D g_volumetric_Sampler_Prev;
+uniform sampler3D g_volumetric_Sampler_Prev;
 #endif
 
 

@@ -97,11 +97,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         device,
         memAllocator);
 
-    volumetric          = std::make_shared< Volumetric >( 
-        device,
-        cmdManager.get(),
-        memAllocator.get() );
-
     blueNoise           = std::make_shared<BlueNoise>(
         device,
         info->pBlueNoiseFilePath,
@@ -152,6 +147,12 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers,
         cmdManager,
         *info);
+
+    volumetric          = std::make_shared< Volumetric >( 
+        device,
+        cmdManager.get(),
+        memAllocator.get(),
+        shaderManager.get() );
 
     decalManager        = std::make_shared<DecalManager>(
         device,
@@ -204,7 +205,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers, 
         shaderManager, 
         uniform, 
-        tonemapping);
+        tonemapping, 
+        volumetric.get() );
 
     bloom               = std::make_shared<Bloom>(
         device,
@@ -261,6 +263,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(denoiser);
     shaderManager->Subscribe(imageComposition);
     shaderManager->Subscribe(rasterizer);
+    shaderManager->Subscribe(volumetric);
     shaderManager->Subscribe(decalManager);
     shaderManager->Subscribe(rtPipeline);
     shaderManager->Subscribe(lightGrid);

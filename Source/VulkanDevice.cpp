@@ -585,12 +585,12 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
         pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);
-        
+        volumetric->Process( cmd, frameIndex );
         tonemapping->CalculateExposure(cmd, frameIndex, uniform);
     }
 
-
-    imageComposition->PrepareForRaster(cmd, frameIndex, uniform);
+    imageComposition->PrepareForRaster( cmd, frameIndex, uniform.get() );
+    volumetric->BarrierToReadProcessed( cmd, frameIndex );
 
     if (!drawInfo.disableRasterization)
     {
@@ -602,7 +602,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      drawInfo.pBloomParams ? drawInfo.pBloomParams->bloomRasterMultiplier : 0.0f);
     }
 
-    imageComposition->Finalize(cmd, frameIndex, uniform, tonemapping);
+    imageComposition->Finalize(
+        cmd, frameIndex, uniform.get(), tonemapping.get(), volumetric.get() );
 
 
     bool enableBloom = drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f);

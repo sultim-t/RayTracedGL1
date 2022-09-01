@@ -53,6 +53,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"CPrepareFinal",           "CmPrepareFinal.comp.spv"              },
     {"CLuminanceHistogram",     "CmLuminanceHistogram.comp.spv"        },
     {"CLuminanceAvg",           "CmLuminanceAvg.comp.spv"              },
+    {"CVolumetricProcess",      "CmVolumetricProcess.comp.spv"         },
     {"VertRasterizer",          "RsRasterizer.vert.spv"                },
     {"FragRasterizer",          "RsRasterizer.frag.spv"                },
     {"FragRasterizerEmissive",  "RsRasterizerEmissive.frag.spv"        },
