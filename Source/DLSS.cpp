@@ -375,6 +375,15 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(VkCommandBuffer cmd, uint32_t fr
     CmdLabel label(cmd, "DLSS");
 
 
+    FI fs[] =
+    {
+        FI::FB_IMAGE_INDEX_FINAL,
+        FI::FB_IMAGE_INDEX_MOTION_DLSS,
+        FI::FB_IMAGE_INDEX_DEPTH_NDC,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs, Framebuffers::BarrierType::Storage);
+
+
     // TODO: DLSS: resettable accumulation
     //             offset of the viewport render
     int resetAccumulation = 0;

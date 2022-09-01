@@ -141,7 +141,7 @@ void storeSky(
             vec3 emission = vec3(0.0); // with non-primary rays looks ugly
         #endif
         
-        imageStore(framebufScreenEmission, pix, vec4(emission, 0.0));
+        imageStore(framebufScreenEmission, getRegularPixFromCheckerboardPix(pix), vec4(emission, 0.0));
     }
 
     vec2 m = getMotionForInfinitePoint(pix);
@@ -344,7 +344,7 @@ void main()
 
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
-    imageStore(framebufScreenEmission,      pix, vec4(h.albedo * screenEmission * throughput , 0.0));
+    imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix(pix), vec4(h.albedo * screenEmission * throughput , 0.0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
@@ -403,7 +403,7 @@ void main()
     vec2        motionCurToPrev             = motionBuf.rg;
     float       motionDepthLinearCurToPrev  = motionBuf.b;
     float       firstHitDepthLinear         = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
-    vec3        screenEmission              = texelFetch(framebufScreenEmission_Sampler, pix, 0).rgb;
+    vec3        screenEmission              = texelFetch(framebufScreenEmission_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
     vec3        throughput                  = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
     ShPayload currentPayload;
     currentPayload.instIdAndIndex           = primaryToReflRefrBuf.g;
@@ -596,7 +596,7 @@ void main()
 
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
-    imageStore(framebufScreenEmission,      pix, vec4(screenEmission, 0.0));
+    imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix(pix), vec4(screenEmission, 0.0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));

@@ -62,9 +62,9 @@ RTGL1::Tonemapping::~Tonemapping()
     vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 }
 
-void RTGL1::Tonemapping::Prepare(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
+void RTGL1::Tonemapping::CalculateExposure(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<const GlobalUniform> &uniform)
 {
-    CmdLabel label(cmd, "Tonemapping");
+    CmdLabel label(cmd, "Exposure");
 
     VkBufferMemoryBarrier br = {};
     br.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;

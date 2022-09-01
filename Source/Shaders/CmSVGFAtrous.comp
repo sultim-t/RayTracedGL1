@@ -279,50 +279,59 @@ void main()
     if (atrousIteration == 3)
     {
         vec3 albedo = texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
-
+        vec3 throughput = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
         if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ALBEDO_WHITE) != 0)
         {
             albedo = vec3(1.0);
         }
 
-        const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
-        const vec3 normal = texelFetchNormal(pix);
-        const vec3 throughput = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
+        bool usePlain = isSkyPix(pix) || (globalUniform.lightmapEnable != 0);
+        vec3 illuminated;
 
-        const float metallic = mrFb.x;
-        const float roughness = mrFb.y;
-
-        const vec3 diffuse = filteredDiff;
-        const vec3 indirect = SHToIrradiance(filteredIndir, normal);
-
-        // to prevent noise, specular will be replaced with SH, if the surface is too rough
-        const vec3 specular = mix(
-            filteredSpec,
-            indirect,
-            smoothstep(FAKE_ROUGH_SPECULAR_THRESHOLD, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, roughness));
-
-        const vec3 ro_s = getSpecularColor(albedo, metallic);
-        const vec3 ro_d = albedo * (1.0 - metallic);
-
-        vec3 illuminated = 
-            (diffuse + indirect) * ro_d + 
-            specular * ro_s;
-
-        if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE) != 0)
+        if (!usePlain)
         {
-            illuminated = diffuse * albedo;
-        }
-        else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_SPECULAR) != 0)
-        {
-            illuminated = specular * getSpecularColor(albedo, metallic);
-        }
-        else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE) != 0)
-        {
-            illuminated = indirect;
-        }
+            const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
+            const vec3 normal = texelFetchNormal(pix);
 
-        illuminated *= throughput;
-        illuminated *= getMaterialAmbient(albedo);
+            const float metallic = mrFb.x;
+            const float roughness = mrFb.y;
+
+            const vec3 diffuse = filteredDiff;
+            const vec3 indirect = SHToIrradiance(filteredIndir, normal);
+
+            // to prevent noise, specular will be replaced with SH, if the surface is too rough
+            const vec3 specular = mix(
+                filteredSpec,
+                indirect,
+                smoothstep(FAKE_ROUGH_SPECULAR_THRESHOLD, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, roughness));
+
+            const vec3 ro_s = getSpecularColor(albedo, metallic);
+            const vec3 ro_d = albedo * (1.0 - metallic);
+
+            illuminated = 
+                (diffuse + indirect) * ro_d + 
+                specular * ro_s;
+
+            if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE) != 0)
+            {
+                illuminated = diffuse * albedo;
+            }
+            else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_SPECULAR) != 0)
+            {
+                illuminated = specular * getSpecularColor(albedo, metallic);
+            }
+            else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE) != 0)
+            {
+                illuminated = indirect;
+            }
+
+            illuminated *= throughput;
+            illuminated *= getMaterialAmbient(albedo);
+        }
+        else
+        {
+            illuminated = albedo * throughput;
+        }
 
         imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }

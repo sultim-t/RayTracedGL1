@@ -46,21 +46,25 @@ public:
     ImageComposition &operator=(const ImageComposition &other) = delete;
     ImageComposition &operator=(ImageComposition &&other) noexcept = delete;
 
-    void Compose(
+    void PrepareForRaster(
         VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping);
+        const std::shared_ptr<const GlobalUniform> &uniform);
+
+    void Finalize(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<const GlobalUniform>& uniform,
+        const std::shared_ptr<const Tonemapping>& tonemapping);
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
 
 private:
-    void ProcessPrefinal(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping);
     void ProcessCheckerboard(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
+    void ApplyTonemapping(
+        VkCommandBuffer cmd, uint32_t frameIndex,
+        const std::shared_ptr<const GlobalUniform> &uniform,
+        const std::shared_ptr<const Tonemapping> &tonemapping);
 
     static VkPipelineLayout CreatePipelineLayout(
         VkDevice device,

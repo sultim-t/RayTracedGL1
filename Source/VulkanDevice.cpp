@@ -578,11 +578,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);
         
-        tonemapping->Prepare(cmd, frameIndex, uniform);
+        tonemapping->CalculateExposure(cmd, frameIndex, uniform);
     }
 
 
-    imageComposition->Compose(cmd, frameIndex, uniform, tonemapping);
+    imageComposition->PrepareForRaster(cmd, frameIndex, uniform);
 
     if (!drawInfo.disableRasterization)
     {
@@ -593,6 +593,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      drawInfo.pLensFlareParams,
                                      drawInfo.pBloomParams ? drawInfo.pBloomParams->bloomRasterMultiplier : 0.0f);
     }
+
+    imageComposition->Finalize(cmd, frameIndex, uniform, tonemapping);
 
 
     bool enableBloom = drawInfo.pBloomParams == nullptr || (drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f);
@@ -605,19 +607,24 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
     FramebufferImageIndex currentResultImage = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
     {
-        VkExtent2D extent = { renderResolution.Width(), renderResolution.Height() };
-
-
         // upscale finalized image
         if (renderResolution.IsNvDlssEnabled())
         {
-            currentResultImage = nvDlss->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter);
-            extent = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight() };
+            currentResultImage = nvDlss->Apply(cmd, frameIndex, 
+                                               framebuffers, 
+                                               renderResolution, 
+                                               jitter);
         }
         else if (renderResolution.IsAmdFsr2Enabled())
         {
-            currentResultImage = amdFsr2->Apply(cmd, frameIndex, framebuffers, renderResolution, jitter, uniform->GetData()->timeDelta, drawInfo.cameraNear, drawInfo.cameraFar, drawInfo.fovYRadians );
-            extent = { renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight() };
+            currentResultImage = amdFsr2->Apply(cmd, frameIndex, 
+                                                framebuffers, 
+                                                renderResolution, 
+                                                jitter, 
+                                                uniform->GetData()->timeDelta, 
+                                                drawInfo.cameraNear, 
+                                                drawInfo.cameraFar, 
+                                                drawInfo.fovYRadians );
         }
 
         currentResultImage = framebuffers->BlitForEffects(cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter());

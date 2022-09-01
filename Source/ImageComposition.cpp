@@ -90,14 +90,18 @@ RTGL1::ImageComposition::~ImageComposition()
     DestroyPipelines();
 }
 
-void RTGL1::ImageComposition::Compose(
+void RTGL1::ImageComposition::PrepareForRaster(
     VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<const GlobalUniform> &uniform,
-    const std::shared_ptr<const Tonemapping> &tonemapping)
+    const std::shared_ptr<const GlobalUniform>& uniform)
+{
+    ProcessCheckerboard(cmd, frameIndex, uniform);
+}
+
+void RTGL1::ImageComposition::Finalize(VkCommandBuffer cmd, uint32_t frameIndex,
+    const std::shared_ptr<const GlobalUniform>& uniform, const std::shared_ptr<const Tonemapping>& tonemapping)
 {
     SetupLpmParams(cmd);
-    ProcessPrefinal(cmd, frameIndex, uniform, tonemapping);
-    ProcessCheckerboard(cmd, frameIndex, uniform);
+    ApplyTonemapping(cmd, frameIndex, uniform, tonemapping);
 }
 
 void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
@@ -106,16 +110,16 @@ void RTGL1::ImageComposition::OnShaderReload(const ShaderManager *shaderManager)
     CreatePipelines(shaderManager);
 }
 
-void RTGL1::ImageComposition::ProcessPrefinal(VkCommandBuffer cmd,
-                                              uint32_t frameIndex, 
-                                              const std::shared_ptr<const GlobalUniform> &uniform, 
-                                              const std::shared_ptr<const Tonemapping> &tonemapping)
+void RTGL1::ImageComposition::ApplyTonemapping(VkCommandBuffer cmd,
+                                               uint32_t frameIndex, 
+                                               const std::shared_ptr<const GlobalUniform> &uniform, 
+                                               const std::shared_ptr<const Tonemapping> &tonemapping)
 {
     CmdLabel label(cmd, "Prefinal framebuf compose");
 
 
     // sync access
-    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_PRE_FINAL);
+    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
 
 
     // bind pipeline
@@ -338,7 +342,7 @@ namespace
     }
 }
 
-#include "shaders/LPM/ffx_lpm.h"
+#include "Shaders/LPM/ffx_lpm.h"
 #include "Shaders/LPM/LpmSetupCustom.inl"
 
 void RTGL1::ImageComposition::SetupLpmParams(VkCommandBuffer cmd)

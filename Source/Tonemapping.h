@@ -39,14 +39,14 @@ public:
         const std::shared_ptr<const ShaderManager> &shaderManager,
         const std::shared_ptr<const GlobalUniform> &uniform,
         const std::shared_ptr<MemoryAllocator> &allocator);
-    ~Tonemapping();
+    ~Tonemapping() override;
 
     Tonemapping(const Tonemapping &other) = delete;
     Tonemapping(Tonemapping &&other) noexcept = delete;
     Tonemapping &operator=(const Tonemapping &other) = delete;
     Tonemapping &operator=(Tonemapping &&other) noexcept = delete;
 
-    void Prepare(
+    void CalculateExposure(
         VkCommandBuffer cmd, uint32_t frameIndex,
         const std::shared_ptr<const GlobalUniform> &uniform);
 
