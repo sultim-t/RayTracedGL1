@@ -512,13 +512,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         memcpy( gu->volumeViewProj_Prev, gu->volumeViewProj, 16 * sizeof( float ) );
         memcpy( gu->volumeViewProjInv_Prev, gu->volumeViewProjInv, 16 * sizeof( float ) );
 
-        assert( drawInfo.volumetricFar > drawInfo.cameraNear );
-        float zfar =
-            std::clamp( drawInfo.volumetricFar, drawInfo.cameraNear + 0.01f, drawInfo.cameraFar );
+        gu->volumeCameraNear = std::max( 0.001f, drawInfo.cameraNear );
+        gu->volumeCameraFar =
+            std::clamp( drawInfo.volumetricFar, gu->volumeCameraNear + 0.01f, drawInfo.cameraFar );
 
         float volumeproj[ 16 ];
         Matrix::MakeProjectionMatrix(
-            volumeproj, aspect, drawInfo.fovYRadians, drawInfo.cameraNear, zfar );
+            volumeproj, aspect, drawInfo.fovYRadians, gu->volumeCameraNear, gu->volumeCameraFar );
 
         Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
         Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );

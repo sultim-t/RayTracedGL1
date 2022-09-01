@@ -584,8 +584,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "gradientMultSpecular",             1),
 
     (TYPE_FLOAT32,      1,      "minRoughness",                     1),
-    (TYPE_FLOAT32,      1,      "_pad1",                            1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "volumeCameraNear",                 1),
+    (TYPE_FLOAT32,      1,      "volumeCameraFar",                  1),
     (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),

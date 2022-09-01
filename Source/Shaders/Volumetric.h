@@ -26,35 +26,49 @@
 #endif
 
 
-vec3 volume_getCenter(const ivec3 cell)
+vec3 volume_getOrigin()
 {
-    vec3 local = 
-        ( vec3( cell ) + 0.5 ) 
-        / vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
+    return globalUniform.cameraPosition.xyz;
+}
+
+vec3 volume_getCenter( const ivec3 cell )
+{
+    vec3 local =
+        ( vec3( cell ) + 0.5 ) / vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
 
     vec4 ndc = {
         local.x * 2.0 - 1.0,
         local.y * 2.0 - 1.0,
-        local.z,
+        0.1,
         1.0,
     };
 
-    vec4 world = globalUniform.volumeViewProjInv * ndc;
-    return world.xyz / world.w;
+    vec4 worldpos = globalUniform.volumeViewProjInv * ndc;
+    worldpos.xyz /= worldpos.w;
+
+    vec3 worlddir = normalize( worldpos.xyz - volume_getOrigin() );
+
+    float n = globalUniform.volumeCameraNear;
+    float f = globalUniform.volumeCameraFar;
+
+    return volume_getOrigin() + worlddir * mix( n, f, local.z );
 }
 
 vec3 volume_toSamplePosition( const vec3 world )
 {
     vec4 ndc = globalUniform.volumeViewProj * vec4( world, 1.0 );
-    ndc.xyz /= ndc.w;
+    ndc.xy /= ndc.w;
 
-    vec3 local = {
-        ( ndc.x + 1.0 ) * 0.5,
-        ( ndc.y + 1.0 ) * 0.5,
-        ndc.z,
-    };
+    float n = globalUniform.volumeCameraNear;
+    float f = globalUniform.volumeCameraFar;
 
-    return local;
+    float dist = length( world - volume_getOrigin() );
+    dist       = ( dist - n ) / ( f - n );
+
+    return vec3( 
+        ndc.x * 0.5 + 0.5,
+        ndc.y * 0.5 + 0.5,
+        clamp( dist, 0.0, 1.0 ) );
 }
 
 vec4 volume_sample( const vec3 world ) 
@@ -64,7 +78,8 @@ vec4 volume_sample( const vec3 world )
 
 ivec3 volume_toCellIndex( const vec3 world )
 {
-    return ivec3( volume_toSamplePosition( world ) );
+    return ivec3( volume_toSamplePosition( world ) *
+                  vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z ) );
 }
 
 

@@ -268,8 +268,8 @@ struct ShGlobalUniform
     float gradientMultIndirect;
     float gradientMultSpecular;
     float minRoughness;
-    float _pad1;
-    float _pad2;
+    float volumeCameraNear;
+    float volumeCameraFar;
     float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
