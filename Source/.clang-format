@@ -42,6 +42,7 @@ IndentWidth: '4'
 IndentWrappedFunctionNames: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'false'
 Language: Cpp
+MaxEmptyLinesToKeep: '3'
 NamespaceIndentation: All
 PointerAlignment: Left
 SortIncludes: 'false'
