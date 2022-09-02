@@ -257,6 +257,11 @@ void main()
         }
 
         {
+            if( isSkyPix( pp ) )
+            {
+                continue;
+            }
+
             const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
             const vec3 normalPrev = texelFetchNormal_Prev(pp);
 
@@ -290,6 +295,11 @@ void main()
         }
 
         {
+            if( isSkyPix( pp ) )
+            {
+                continue;
+            }
+
             const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
             const vec3 normalPrev = texelFetchNormal_Prev(pp);
 
@@ -305,7 +315,7 @@ void main()
         // renormalize to prevent precision problems
         normalizeReservoirIndirect(reservoir_q, 20);
 
-        float jacobian;
+        float oneOverJacobian;
         {
             const vec3 x1_r = surf.position;
             const vec3 x1_q = texelFetch(framebufSurfacePosition_Sampler, pp, 0).xyz;
@@ -316,8 +326,11 @@ void main()
             const DirectionAndLength phi_r = calcDirectionAndLengthSafe(x2_q, x1_r);
             const DirectionAndLength phi_q = calcDirectionAndLengthSafe(x2_q, x1_q);
 
-            jacobian            = getGeometryFactorClamped(n2_q, phi_r.dir, phi_r.len)
-                * safePositiveRcp(getGeometryFactorClamped(n2_q, phi_q.dir, phi_q.len));
+            oneOverJacobian =
+                safePositiveRcp( getGeometryFactorClamped( n2_q, phi_r.dir, phi_r.len ) ) *
+                                 getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
+
+           // oneOverJacobian = min( oneOverJacobian, 0, 1 );
         }
 
         float targetPdf_curSurf = 0.0;
@@ -326,8 +339,8 @@ void main()
         if (!traceShadowRay(surf.instCustomIndex, surf.position, reservoir_q.selected.position, false))
     #endif
         {
-            targetPdf_curSurf = targetPdfForIndirectSample(reservoir_q.selected) * 
-                                safePositiveRcp(jacobian);
+            targetPdf_curSurf =
+                targetPdfForIndirectSample( reservoir_q.selected ) * oneOverJacobian;
         }
 
         float rnd = rnd16(seed, salt++);
