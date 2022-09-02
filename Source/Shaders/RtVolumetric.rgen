@@ -42,7 +42,7 @@ float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float anis
     float costheta = dot( tolight, toviewer );
     float k        = 1.55 * anisotropy - 0.55 * anisotropy * anisotropy * anisotropy;
 
-    return ( 1 - square( k ) ) / ( 4 * M_PI * ( 1 + square( k * costheta ) ) );
+    return ( 1 - square( k ) ) / ( 4 * M_PI * square( 1 + k * costheta ) );
 }
 
 void main()
@@ -50,6 +50,34 @@ void main()
     const ivec3 cell     = ivec3( gl_LaunchIDEXT.xyz );
     const vec3  center   = volume_getCenter( cell );
     const vec3  toviewer = normalize( globalUniform.cameraPosition.xyz - center );
+
+    {
+        ivec2 pix;
+        {
+            vec4 ndc = globalUniform.projection * globalUniform.view * vec4( center, 1.0 );
+            ndc.xy /= ndc.w;
+            ndc.xy = ndc.xy * 0.5 + 0.5;
+
+            pix = ivec2( ndc.xy * vec2( globalUniform.renderWidth, globalUniform.renderHeight ) );
+            pix = getCheckerboardPix( pix );
+        }
+
+        if( !isSkyPix( pix ) )
+        {
+            vec4 surfPos    = texelFetch( framebufSurfacePosition_Sampler, pix, 0 );
+            uint instCustomIndex = floatBitsToUint( surfPos.a );
+
+            if( ( instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC ) == 0 )
+            {
+                if( lengthSquared( center - globalUniform.cameraPosition.xyz ) >
+                    lengthSquared( surfPos.xyz - globalUniform.cameraPosition.xyz ) )
+                {
+                    imageStore( g_volumetric, cell, vec4( 0.0 ) );
+                    return;
+                }
+            }
+        }
+    }
 
     vec3 radiance;
     vec3 tolight;
@@ -61,10 +89,12 @@ void main()
         tolight  = -l.direction;
     }
 
-    vec3 lighting = radiance * phaseFunction_Schlick( tolight, toviewer, 0 );
+    vec3 lighting = radiance * phaseFunction_Schlick( tolight, toviewer, 0.1 );
+
+    lighting += vec3(0.05);
 
 
-    float scattering = 0.01;
+    float scattering = 0.001;
     float absorbtion = 0.01;
 
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );

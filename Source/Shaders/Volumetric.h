@@ -26,6 +26,8 @@
 #endif
 
 
+#define VOLUMETRIC_DISTANCE_POW 4.0
+
 vec3 volume_getCenter_T( const ivec3 cell, const mat4 viewprojInv, const vec3 origin )
 {
     vec3 local =
@@ -47,7 +49,7 @@ vec3 volume_getCenter_T( const ivec3 cell, const mat4 viewprojInv, const vec3 or
     float f = globalUniform.volumeCameraFar;
 
     float z    = clamp( local.z, 0.0, 1.0 );
-    z          = square( z );
+    z          = pow( z, VOLUMETRIC_DISTANCE_POW );
     float dist = mix( n, f, z );
 
     return origin + worlddir * dist;
@@ -64,7 +66,7 @@ vec3 volume_toSamplePosition_T( const vec3 world, const mat4 viewproj, const vec
     float dist = length( world - origin );
     float z    = ( dist - n ) / ( f - n );
     z          = clamp( z, 0.0, 1.0 );
-    z          = sqrt( z );
+    z          = pow( z, 1.0 / VOLUMETRIC_DISTANCE_POW );
 
     return vec3( 
         ndc.x * 0.5 + 0.5,
@@ -78,10 +80,17 @@ vec3 volume_getCenter( const ivec3 cell )
     return volume_getCenter_T(
         cell, globalUniform.volumeViewProjInv, globalUniform.cameraPosition.xyz );
 }
-vec3 volume_getCenter_Prev( const ivec3 cell )
+vec3 volume_getCenter_Prev( const ivec3 prevcell )
 {
     return volume_getCenter_T(
-        cell, globalUniform.volumeViewProjInv_Prev, globalUniform.cameraPositionPrev.xyz );
+        prevcell, globalUniform.volumeViewProjInv_Prev, globalUniform.cameraPositionPrev.xyz );
+}
+
+
+ivec3 volume_toCellIndex( const vec3 samplePosition )
+{
+    return ivec3( samplePosition *
+                  vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z ) );
 }
 
 
@@ -103,13 +112,15 @@ vec4 volume_sample_Prev( const ivec3 curcell )
     return textureLod( g_volumetric_Sampler_Prev, spPrev, 0.0 );
 }
 
-
-ivec3 volume_toCellIndex( const vec3 world )
+vec4 volume_sampleDithered( const vec3 world, const vec3 rnd01, float ditherRadius )
 {
     vec3 sp = volume_toSamplePosition_T(
         world, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
 
-    return ivec3( sp * vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z ) );
+    sp += ditherRadius * ( rnd01 * 2 - 1 ) /
+          vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
+
+    return textureLod( g_volumetric_Sampler, sp, 0.0 );
 }
 
 
