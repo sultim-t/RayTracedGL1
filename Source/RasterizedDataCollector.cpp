@@ -71,7 +71,7 @@ RasterizedDataCollector::RasterizedDataCollector(
     _maxIndexCount = std::max(_maxIndexCount, 64u);
 
     vertexBuffer->Create(_maxVertexCount * sizeof(RgVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "Rasterizer vertex buffer");
-    indexBuffer->Create(_maxIndexCount * sizeof(RgVertex), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "Rasterizer index buffer");
+    indexBuffer->Create(_maxIndexCount * sizeof(uint32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "Rasterizer index buffer");
 }
 
 RasterizedDataCollector::~RasterizedDataCollector()
