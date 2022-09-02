@@ -422,9 +422,9 @@ CONST = {
     "PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS"    : 5,
     "PACKED_INDIRECT_RESERVOIR_SIZE_IN_WORDS" : 8,
 
-    "VOLUMETRIC_SIZE_X"                     : 190,
-    "VOLUMETRIC_SIZE_Y"                     : 90,
-    "VOLUMETRIC_SIZE_Z"                     : 128,
+    "VOLUMETRIC_SIZE_X"                     : 160,
+    "VOLUMETRIC_SIZE_Y"                     : 88,
+    "VOLUMETRIC_SIZE_Z"                     : 64,
     "COMPUTE_VOLUMETRIC_GROUP_SIZE_X"       : 16,
     "COMPUTE_VOLUMETRIC_GROUP_SIZE_Y"       : 16,
 }
@@ -781,8 +781,7 @@ FRAMEBUFFERS = {
     "ViewDirection"                     : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
     "PrimaryToReflRefr"                 : (TYPE_UINT32,     COMPONENT_RGBA, 0),
     "Throughput"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),
-    # bilinear for bloom
-    "PreFinal"                          : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
+    "PreFinal"                          : (TYPE_PACK_11,    COMPONENT_RGB,  0),
     "Final"                             : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
 
     "UpscaledPing"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  # dst for DLSS and blitting in,
