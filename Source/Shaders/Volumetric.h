@@ -26,12 +26,7 @@
 #endif
 
 
-vec3 volume_getOrigin()
-{
-    return globalUniform.cameraPosition.xyz;
-}
-
-vec3 volume_getCenter( const ivec3 cell )
+vec3 volume_getCenter_T( const ivec3 cell, const mat4 viewprojInv, const vec3 origin )
 {
     vec3 local =
         ( vec3( cell ) + 0.5 ) / vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
@@ -43,10 +38,10 @@ vec3 volume_getCenter( const ivec3 cell )
         1.0,
     };
 
-    vec4 worldpos = globalUniform.volumeViewProjInv * ndc;
+    vec4 worldpos = viewprojInv * ndc;
     worldpos.xyz /= worldpos.w;
 
-    vec3 worlddir = normalize( worldpos.xyz - volume_getOrigin() );
+    vec3 worlddir = normalize( worldpos.xyz - origin );
 
     float n = globalUniform.volumeCameraNear;
     float f = globalUniform.volumeCameraFar;
@@ -55,18 +50,18 @@ vec3 volume_getCenter( const ivec3 cell )
     z          = square( z );
     float dist = mix( n, f, z );
 
-    return volume_getOrigin() + worlddir * dist;
+    return origin + worlddir * dist;
 }
 
-vec3 volume_toSamplePosition( const vec3 world )
+vec3 volume_toSamplePosition_T( const vec3 world, const mat4 viewproj, const vec3 origin )
 {
-    vec4 ndc = globalUniform.volumeViewProj * vec4( world, 1.0 );
+    vec4 ndc = viewproj * vec4( world, 1.0 );
     ndc.xy /= ndc.w;
 
     float n = globalUniform.volumeCameraNear;
     float f = globalUniform.volumeCameraFar;
 
-    float dist = length( world - volume_getOrigin() );
+    float dist = length( world - origin );
     float z    = ( dist - n ) / ( f - n );
     z          = clamp( z, 0.0, 1.0 );
     z          = sqrt( z );
@@ -77,15 +72,44 @@ vec3 volume_toSamplePosition( const vec3 world )
         z );
 }
 
+
+vec3 volume_getCenter( const ivec3 cell ) 
+{
+    return volume_getCenter_T(
+        cell, globalUniform.volumeViewProjInv, globalUniform.cameraPosition.xyz );
+}
+vec3 volume_getCenter_Prev( const ivec3 cell )
+{
+    return volume_getCenter_T(
+        cell, globalUniform.volumeViewProjInv_Prev, globalUniform.cameraPositionPrev.xyz );
+}
+
+
 vec4 volume_sample( const vec3 world ) 
 {
-    return textureLod( g_volumetric_Sampler, volume_toSamplePosition( world ), 0.0 );
+    vec3 sp = volume_toSamplePosition_T(
+        world, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
+
+    return textureLod( g_volumetric_Sampler, sp, 0.0 );
 }
+
+vec4 volume_sample_Prev( const ivec3 curcell )
+{
+    vec3 curworld = volume_getCenter( curcell );
+
+    vec3 spPrev = volume_toSamplePosition_T(
+        curworld, globalUniform.volumeViewProj_Prev, globalUniform.cameraPositionPrev.xyz );
+
+    return textureLod( g_volumetric_Sampler_Prev, spPrev, 0.0 );
+}
+
 
 ivec3 volume_toCellIndex( const vec3 world )
 {
-    return ivec3( volume_toSamplePosition( world ) *
-                  vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z ) );
+    vec3 sp = volume_toSamplePosition_T(
+        world, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
+
+    return ivec3( sp * vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z ) );
 }
 
 

@@ -606,7 +606,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
         pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);
-        volumetric->Process( cmd, frameIndex );
+        volumetric->Process( cmd, frameIndex, uniform.get(), blueNoise.get() );
         tonemapping->CalculateExposure(cmd, frameIndex, uniform);
     }
 

@@ -148,11 +148,13 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         cmdManager,
         *info);
 
-    volumetric          = std::make_shared< Volumetric >( 
+    volumetric = std::make_shared< Volumetric >( 
         device,
         cmdManager.get(),
         memAllocator.get(),
-        shaderManager.get() );
+        shaderManager.get(),
+        uniform.get(),
+        blueNoise.get() );
 
     decalManager        = std::make_shared<DecalManager>(
         device,

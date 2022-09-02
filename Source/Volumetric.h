@@ -20,7 +20,9 @@
 
 #pragma once
 
+#include "BlueNoise.h"
 #include "CommandBufferManager.h"
+#include "GlobalUniform.h"
 #include "IShaderDependency.h"
 #include "MemoryAllocator.h"
 
@@ -32,7 +34,9 @@ namespace RTGL1
         Volumetric( VkDevice              device,
                     CommandBufferManager* cmdManager,
                     MemoryAllocator*      allocator,
-                    const ShaderManager*  shaderManager );
+                    const ShaderManager*  shaderManager,
+                    const GlobalUniform*  uniform,
+                    const BlueNoise*      rnd );
         ~Volumetric() override;
 
         Volumetric( const Volumetric& other )     = delete;
@@ -43,7 +47,10 @@ namespace RTGL1
         VkDescriptorSetLayout GetDescSetLayout() const;
         VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
 
-        void Process( VkCommandBuffer cmd, uint32_t frameIndex );
+        void Process( VkCommandBuffer      cmd,
+                      uint32_t             frameIndex,
+                      const GlobalUniform* uniform,
+                      const BlueNoise*     rnd );
         void BarrierToReadProcessed( VkCommandBuffer cmd, uint32_t frameIndex );
 
         void OnShaderReload( const ShaderManager* shaderManager ) override;
@@ -55,7 +62,7 @@ namespace RTGL1
         void CreateDescriptors();
         void UpdateDescriptors();
 
-        void CreatePipelineLayout();
+        void CreatePipelineLayout( const GlobalUniform* uniform, const BlueNoise* rnd );
         void CreatePipelines( const ShaderManager* shaderManager );
         void DestroyPipelines();
 

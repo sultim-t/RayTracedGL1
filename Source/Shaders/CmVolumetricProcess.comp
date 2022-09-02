@@ -23,7 +23,11 @@
 // "Volumetric Fog and Lighting", Bart Wronski
 
 #define DESC_SET_VOLUMETRIC 0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_RANDOM 2
 #include "ShaderCommonGLSLFunc.h"
+#include "Random.h"
+#include "Volumetric.h"
 
 layout( local_size_x = COMPUTE_VOLUMETRIC_GROUP_SIZE_X,
         local_size_y = COMPUTE_VOLUMETRIC_GROUP_SIZE_Y,
@@ -38,9 +42,14 @@ vec4 accumulateScattering( const vec4 front, const vec4 back )
     return vec4( light.rgb, front.a + back.a );
 }
 
-void store(const ivec3 cell, const vec4 colorAndDensity)
+void store( const ivec3 cell, const vec4 colorAndDensity )
 {
     vec4 final = vec4( colorAndDensity.rgb, exp( -colorAndDensity.a ) );
+
+    {
+        vec4 prev = volume_sample_Prev( cell );
+        final = mix( prev, final, 0.1);
+    }
 
     // rgb - in−scattered light accumulated so far
     // a   - scene light transmittance

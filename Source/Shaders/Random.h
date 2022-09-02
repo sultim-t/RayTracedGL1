@@ -199,17 +199,6 @@ vec3 sampleOrientedHemisphere(const vec3 n, float u1, float u2, out float oneOve
     return r;
 }
 
-
-#ifdef DESC_SET_RANDOM
-layout(
-    set = DESC_SET_RANDOM,
-    binding = BINDING_BLUE_NOISE)
-    uniform texture2DArray blueNoiseTextures;
-
-#if BLUE_NOISE_TEXTURE_SIZE_POW * 2 > 31
-    #error BLUE_NOISE_TEXTURE_SIZE_POW must be lower, around 6-8
-#endif
-
 uint packRandomSeed(uint textureIndex, uvec2 offset)
 {
     return 
@@ -225,6 +214,17 @@ void unpackRandomSeed(uint seed, out uint textureIndex, out uvec2 offset)
     offset.x     = seed                                  & (BLUE_NOISE_TEXTURE_SIZE - 1);
 }
 
+
+#ifdef DESC_SET_RANDOM
+layout(
+    set = DESC_SET_RANDOM,
+    binding = BINDING_BLUE_NOISE)
+    uniform texture2DArray blueNoiseTextures;
+
+#if BLUE_NOISE_TEXTURE_SIZE_POW * 2 > 31
+    #error BLUE_NOISE_TEXTURE_SIZE_POW must be lower, around 6-8
+#endif
+
 // Blue noise random in [0..1] with 1/255 precision
 vec4 rndBlueNoise8(uint seed, uint salt)
 {
@@ -236,6 +236,8 @@ vec4 rndBlueNoise8(uint seed, uint salt)
 
     return texelFetch(blueNoiseTextures, ivec3(offset.x, offset.y, texIndex), 0);
 }
+#endif // DESC_SET_RANDOM
+
 
 // https://nullprogram.com/blog/2018/07/31/
 uint wellonsLowBias32(uint x)
@@ -296,6 +298,5 @@ uint getRandomSeed(const ivec2 pix, uint frameIndex)
 
     return packRandomSeed(texIndex, offset);
 }
-#endif // DESC_SET_RANDOM
 
 #endif // RANDOM_H_

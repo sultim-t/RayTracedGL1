@@ -34,14 +34,16 @@ namespace
 RTGL1::Volumetric::Volumetric( VkDevice              _device,
                                CommandBufferManager* _cmdManager,
                                MemoryAllocator*      _allocator,
-                               const ShaderManager*  _shaderManager )
+                               const ShaderManager*  _shaderManager,
+                               const GlobalUniform*  _uniform,
+                               const BlueNoise*      _rnd )
     : device( _device )
 {
     CreateSampler();
     CreateImages( _cmdManager, _allocator );
     CreateDescriptors();
     UpdateDescriptors();
-    CreatePipelineLayout();
+    CreatePipelineLayout( _uniform, _rnd );
     CreatePipelines( _shaderManager );
 }
 
@@ -66,7 +68,10 @@ RTGL1::Volumetric::~Volumetric()
     DestroyPipelines();
 }
 
-void RTGL1::Volumetric::Process( VkCommandBuffer cmd, uint32_t frameIndex )
+void RTGL1::Volumetric::Process( VkCommandBuffer      cmd,
+                                 uint32_t             frameIndex,
+                                 const GlobalUniform* uniform,
+                                 const BlueNoise*     rnd )
 {
     CmdLabel label( cmd, "Volumetric Process" );
 
@@ -107,6 +112,8 @@ void RTGL1::Volumetric::Process( VkCommandBuffer cmd, uint32_t frameIndex )
 
     VkDescriptorSet sets[] = {
         this->GetDescSet( frameIndex ),
+        uniform->GetDescSet( frameIndex ),
+        rnd->GetDescSet(),
     };
 
     vkCmdBindDescriptorSets( cmd,
@@ -406,10 +413,12 @@ VkDescriptorSet RTGL1::Volumetric::GetDescSet( uint32_t frameIndex ) const
     return descSets[ frameIndex ];
 }
 
-void RTGL1::Volumetric::CreatePipelineLayout()
+void RTGL1::Volumetric::CreatePipelineLayout( const GlobalUniform* uniform, const BlueNoise* rnd )
 {
     VkDescriptorSetLayout sets[] = {
         this->GetDescSetLayout(),
+        uniform->GetDescSetLayout(),
+        rnd->GetDescSetLayout(),
     };
 
     VkPipelineLayoutCreateInfo info = {
