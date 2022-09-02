@@ -61,6 +61,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"VertFullscreenQuad",      "RsFullscreenQuad.vert.spv"            },
     {"FragDepthCopying",        "RsDepthCopying.frag.spv"              },
     {"CVertexPreprocess",       "CmVertexPreprocess.comp.spv"          },
+    {"CAntiFirefly",            "CmAntiFirefly.comp.spv"  },
     {"CSVGFTemporalAccum",      "CmSVGFTemporalAccumulation.comp.spv"  },
     {"CSVGFVarianceEstim",      "CmSVGFEstimateVariance.comp.spv"      },
     {"CSVGFAtrous",             "CmSVGFAtrous.comp.spv"                },

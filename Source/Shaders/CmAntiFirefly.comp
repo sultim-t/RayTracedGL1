@@ -1,0 +1,105 @@
+// Copyright (c) 2022 Sultim Tsyrendashiev
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+#define DESC_SET_FRAMEBUFFERS   0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#include "ShaderCommonGLSLFunc.h"
+
+layout( local_size_x = COMPUTE_ANTIFIREFLY_GROUP_SIZE_X,
+        local_size_y = COMPUTE_ANTIFIREFLY_GROUP_SIZE_X,
+        local_size_z = 1 ) in;
+
+#define FILTER_RADIUS 2
+#define MAXFLOAT 1000000
+
+void main()
+{
+    const ivec2 pix = ivec2( gl_GlobalInvocationID );
+
+    if( pix.x >= uint( globalUniform.renderWidth ) || pix.y >= uint( globalUniform.renderHeight ) )
+    {
+        return;
+    }
+
+    vec3 diffMin = vec3( +MAXFLOAT );
+    vec3 diffMax = vec3( -MAXFLOAT );
+
+    vec3 specMin = vec3( +MAXFLOAT );
+    vec3 specMax = vec3( -MAXFLOAT );
+
+    SH shMin;
+    shMin.r = vec4( +MAXFLOAT );
+    shMin.g = vec4( +MAXFLOAT );
+    shMin.b = vec4( +MAXFLOAT );
+    SH shMax;
+    shMax.r = vec4( -MAXFLOAT );
+    shMax.g = vec4( -MAXFLOAT );
+    shMax.b = vec4( -MAXFLOAT );
+
+
+    for( int i = -FILTER_RADIUS; i <= FILTER_RADIUS; i++ )
+    {
+        for( int j = -FILTER_RADIUS; j <= FILTER_RADIUS; j++ )
+        {
+            if( i == 0 && j == 0 )
+            {
+                continue;
+            }
+
+            ivec2 pp = pix + ivec2( i, j );
+
+            vec3 diff = texelFetchDiffAccumColor( pp );
+            vec3 spec = texelFetchSpecAccumColor( pp );
+            SH   sh   = texelFetchIndirAccumSH( pp );
+
+            diffMin = min( diffMin, diff );
+            diffMax = max( diffMax, diff );
+
+            specMin = min( specMin, spec );
+            specMax = max( specMax, spec );
+
+
+            shMin.r = min( shMin.r, sh.r );
+            shMin.g = min( shMin.g, sh.g );
+            shMin.b = min( shMin.b, sh.b );
+
+            shMax.r = max( shMax.r, sh.r );
+            shMax.g = max( shMax.g, sh.g );
+            shMax.b = max( shMax.b, sh.b );
+        }
+    }
+
+    vec3 cdiff = texelFetchDiffAccumColor( pix );
+    vec3 cspec = texelFetchSpecAccumColor( pix );
+    SH   csh   = texelFetchIndirAccumSH( pix );
+
+    cdiff = clamp( cdiff, diffMin, diffMax );
+    cspec = clamp( cspec, specMin, specMax );
+    csh.r = clamp( csh.r, shMin.r, shMax.r );
+    csh.g = clamp( csh.g, shMin.g, shMax.g );
+    csh.b = clamp( csh.b, shMin.b, shMax.b );
+
+    // TODO: separate buffer to write?
+    // imageStoreDiffAccumColor( pix, cdiff );
+    imageStoreSpecPingColor( pix, cspec );
+    imageStoreIndirPingSH( pix, csh );
+}

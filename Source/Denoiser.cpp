@@ -25,20 +25,19 @@
 #include "CmdLabel.h"
 #include "Utils.h"
 
-RTGL1::Denoiser::Denoiser(
-    VkDevice _device, 
-    std::shared_ptr<Framebuffers> _framebuffers,
-    const std::shared_ptr<const ShaderManager> &_shaderManager,
-    const std::shared_ptr<const GlobalUniform> &_uniform,
-    const std::shared_ptr<const ASManager> &_asManager)
-:
-    device(_device),
-    framebuffers(std::move(_framebuffers)),
-    pipelineLayout(VK_NULL_HANDLE),
-    gradientAtrous{},
-    temporalAccumulation(VK_NULL_HANDLE),
-    varianceEstimation(VK_NULL_HANDLE),
-    atrous{}
+RTGL1::Denoiser::Denoiser( VkDevice                                      _device,
+                           std::shared_ptr< Framebuffers >               _framebuffers,
+                           const std::shared_ptr< const ShaderManager >& _shaderManager,
+                           const std::shared_ptr< const GlobalUniform >& _uniform,
+                           const std::shared_ptr< const ASManager >&     _asManager )
+    : device( _device )
+    , framebuffers( std::move( _framebuffers ) )
+    , pipelineLayout( VK_NULL_HANDLE )
+    , gradientAtrous{}
+    , antifirefly( VK_NULL_HANDLE )
+    , temporalAccumulation( VK_NULL_HANDLE )
+    , varianceEstimation( VK_NULL_HANDLE )
+    , atrous{}
 {
     static_assert(sizeof(atrous) / sizeof(VkPipeline) == COMPUTE_SVGF_ATROUS_ITERATION_COUNT, "Wrong atrous pipeline count");
     static_assert(sizeof(gradientAtrous) / sizeof(VkPipeline) == COMPUTE_ASVGF_GRADIENT_ATROUS_ITERATION_COUNT, "Wrong gradient atrous pipeline count");
@@ -120,7 +119,7 @@ void RTGL1::Denoiser::Denoise(
         uint32_t wgCountX = Utils::GetWorkGroupCount(uniform->GetData()->renderWidth, COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
         uint32_t wgCountY = Utils::GetWorkGroupCount(uniform->GetData()->renderHeight, COMPUTE_SVGF_TEMPORAL_GROUP_SIZE_X);
 
-        CmdLabel label(cmd, "SVGF Temporal accumulation");
+        CmdLabel label(cmd, "Temporal accumulation");
         
         FI fs[] =
         {
@@ -146,6 +145,31 @@ void RTGL1::Denoiser::Denoise(
 
         vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, temporalAccumulation);
         vkCmdDispatch(cmd, wgCountX, wgCountY, 1);
+    }
+
+
+    // antifirefly
+    {
+        uint32_t x = Utils::GetWorkGroupCount( uniform->GetData()->renderWidth,
+                                               COMPUTE_ANTIFIREFLY_GROUP_SIZE_X );
+        uint32_t y = Utils::GetWorkGroupCount( uniform->GetData()->renderHeight,
+                                               COMPUTE_ANTIFIREFLY_GROUP_SIZE_X );
+       
+        CmdLabel label( cmd, "Antifirefly" );
+
+        FI fs[] = {
+
+            FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR,
+            FI::FB_IMAGE_INDEX_SPEC_ACCUM_COLOR,
+            FI::FB_IMAGE_INDEX_INDIR_ACCUM_S_H_R,
+            FI::FB_IMAGE_INDEX_INDIR_ACCUM_S_H_G,
+            FI::FB_IMAGE_INDEX_INDIR_ACCUM_S_H_B,
+        };
+        framebuffers->BarrierMultiple( cmd, frameIndex, fs );
+
+        
+        vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_COMPUTE, antifirefly );
+        vkCmdDispatch( cmd, x, y, 1 );
     }
 
 
@@ -274,23 +298,25 @@ void RTGL1::Denoiser::CreatePipelineLayout(VkDescriptorSetLayout*pSetLayouts, ui
 
 void RTGL1::Denoiser::DestroyPipelines()
 {
-    vkDestroyPipeline(device, temporalAccumulation, nullptr);
-    vkDestroyPipeline(device, varianceEstimation, nullptr);
-    
-    for (VkPipeline &p : gradientAtrous)
+    vkDestroyPipeline( device, antifirefly, nullptr );
+    vkDestroyPipeline( device, temporalAccumulation, nullptr );
+    vkDestroyPipeline( device, varianceEstimation, nullptr );
+
+    for( VkPipeline& p : gradientAtrous )
     {
-        vkDestroyPipeline(device, p, nullptr);
+        vkDestroyPipeline( device, p, nullptr );
         p = VK_NULL_HANDLE;
     }
 
-    for (VkPipeline &p : atrous)
+    for( VkPipeline& p : atrous )
     {
-        vkDestroyPipeline(device, p, nullptr);
+        vkDestroyPipeline( device, p, nullptr );
         p = VK_NULL_HANDLE;
     }
-    
+
+    antifirefly          = VK_NULL_HANDLE;
     temporalAccumulation = VK_NULL_HANDLE;
-    varianceEstimation = VK_NULL_HANDLE;
+    varianceEstimation   = VK_NULL_HANDLE;
 }
 
 void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
@@ -346,6 +372,22 @@ void RTGL1::Denoiser::CreatePipelines(const ShaderManager *shaderManager)
         VK_CHECKERROR(r);
 
         SET_DEBUG_NAME(device, temporalAccumulation, VK_OBJECT_TYPE_PIPELINE, "SVGF Temporal accumulation pipeline");
+    }
+
+    {
+        VkComputePipelineCreateInfo plInfo = {
+            .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+            .stage  = shaderManager->GetStageInfo( "CAntiFirefly" ),
+            .layout = pipelineLayout,
+        };
+        
+        r = vkCreateComputePipelines(
+            device, VK_NULL_HANDLE, 1, &plInfo, nullptr, &antifirefly );
+        VK_CHECKERROR( r );
+
+        SET_DEBUG_NAME( device, antifirefly,
+                        VK_OBJECT_TYPE_PIPELINE,
+                        "Antifirefly pipeline" );
     }
 
     {

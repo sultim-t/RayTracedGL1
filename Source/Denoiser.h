@@ -64,6 +64,7 @@ private:
     
     VkPipeline gradientAtrous[4];
 
+    VkPipeline antifirefly;
     VkPipeline temporalAccumulation;
     VkPipeline varianceEstimation;
     VkPipeline atrous[4];

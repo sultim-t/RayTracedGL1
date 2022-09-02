@@ -375,8 +375,6 @@ void main()
     imageStore(framebufAccumHistoryLength,  pix, vec4(diffHistoryLengthAccum, indirHistoryLengthAccum, specHistoryLengthAccum, specHitDistanceAccum));
 
     imageStoreSpecAccumColor(               pix, specColorAccum);
-    imageStoreSpecPingColor(                pix, specColorAccum);
 
     imageStoreIndirAccumSH(                 pix, indirSHAccum);
-    imageStoreIndirPingSH(                  pix, indirSHAccum);
 }
