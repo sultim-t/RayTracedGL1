@@ -430,7 +430,6 @@ CONST = {
 }
 
 CONST_GLSL_ONLY = {
-    "FIDELITY_SUPER_RESOLUTION_GAMMA_SPACE" : 3.0,   # FSR works in perceptual space
     "SURFACE_POSITION_INCORRECT"            : 10000000.0,  
 }
 

@@ -81,6 +81,7 @@ void main()
 
     vec3 radiance;
     vec3 tolight;
+    if( globalUniform.directionalLightExists != 0)
     {
         DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
         bool isShadowed = traceShadowRay( 0, center, center - 1000 * l.direction, true );

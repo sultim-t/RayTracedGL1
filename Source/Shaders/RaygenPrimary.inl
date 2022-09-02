@@ -600,7 +600,6 @@ void main()
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
-    // save only the first hit's depth for rasterization, as reflections/refraction only may be losely represented via rasterization
     imageStore(framebufDepthWorld,          pix, vec4(fullPathLength));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
