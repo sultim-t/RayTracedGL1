@@ -327,7 +327,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
 
     if( pPixelizedRenderSize )
     {
-        filter = VK_FILTER_NEAREST;
+        filter = VK_FILTER_LINEAR;
     }
 
     // if source has almost the same size as the surface, then use nearest blit
@@ -475,7 +475,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
                             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                             1,
                             &region,
-                            filter );
+                            VK_FILTER_NEAREST );
         }
 
         layoutRestoreSrc = newSrcImage;
