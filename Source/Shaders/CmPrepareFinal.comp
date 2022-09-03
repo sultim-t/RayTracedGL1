@@ -166,19 +166,13 @@ void main()
     vec3 rnd  = rnd8_4( seed, 0 ).xyz;
 
     {
-        vec3 position;
-        if( !isSky )
-        {
-            position =
-                texelFetch( framebufSurfacePosition_Sampler, getCheckerboardPix( pix ), 0 ).xyz;
-        }
-        else
-        {
-            position =
-                globalUniform.cameraPosition.xyz +
-                texelFetch( framebufViewDirection_Sampler, getCheckerboardPix( pix ), 0 ).xyz *
-                    globalUniform.volumeCameraFar;
-        }
+        const vec2 inUV         = getPixelUVWithJitter( pix );
+        const vec3 cameraRayDir = getRayDir( inUV );
+
+        float virtualdepth =
+            texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
+
+        vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
 
         vec4 v = volume_sampleDithered( position, rnd, 4.0 );
         color  = color * v.a + v.rgb;
@@ -220,21 +214,16 @@ vec3 processDebug(const ivec2 pix, const vec3 fallback)
     else if ((globalUniform.debugShowFlags & DEBUG_SHOW_FLAG_LIGHT_GRID) != 0)
     {
         vec3 surfPos = texelFetch(framebufSurfacePosition_Sampler, getCheckerboardPix(pix), 0).xyz;
+       
+        vec3 cell = vec3(worldToCell(surfPos));
+        cell /= vec3(LIGHT_GRID_SIZE_X, LIGHT_GRID_SIZE_Y, LIGHT_GRID_SIZE_Z);
 
-        vec3 cell = vec3( volume_toCellIndex( surfPos ) );
-        cell /= vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
+        vec3 c = mod(cell.xyz * 8, vec3(1.0));
 
-        vec3 c = mod(cell.xyz * 9, vec3(1.0));
-
-        /*if (!isInsideCell(surfPos))
+        if (!isInsideCell(surfPos))
         {
             c = vec3(getLuminance(c) * 0.2 + 0.4);
-        }*/
-
-        ivec3 iic = volume_toCellIndex( surfPos );
-
-        c = volume_toCellIndex( volume_getCenter( iic ) ) != iic ? vec3( 0, 0, 1 )
-                                                                           : vec3( 0, 1, 0 );
+        }
 
         return c;
     }

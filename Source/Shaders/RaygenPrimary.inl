@@ -53,38 +53,6 @@
 #define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_NONE)
 #include "RaygenCommon.h"
 
-vec3 getRayDir(vec2 inUV)
-{
-    inUV = inUV * 2.0 - 1.0;
-    
-    vec4 target = globalUniform.invProjection * vec4(inUV.x, inUV.y, 1, 1);
-    vec3 localDir = abs(target.w) < 0.001 ? target.xyz : target.xyz / target.w;   
-
-    vec4 rayDir = globalUniform.invView * vec4(normalize(localDir), 0);
-    
-    return rayDir.xyz;
-}
-
-vec2 getPixelUVWithJitter(const ivec2 pix)
-{
-    const vec2 pixelCenter = vec2(pix) + vec2(0.5);
-    const vec2 jitter = vec2(globalUniform.jitterX, globalUniform.jitterY);
-
-    return (pixelCenter + jitter) / vec2(gl_LaunchSizeEXT.xy);
-}
-
-vec3 getRayDirAX(vec2 inUV)
-{
-    const float AX = 1.0 / globalUniform.renderWidth;
-    return getRayDir(inUV + vec2(AX, 0));
-}
-
-vec3 getRayDirAY(vec2 inUV)
-{
-    const float AY = 1.0 / globalUniform.renderHeight;
-    return getRayDir(inUV + vec2(0, AY));
-}
-
 vec2 getMotionVectorForUpscaler(const vec2 motionCurToPrev)
 {
     return motionCurToPrev;
