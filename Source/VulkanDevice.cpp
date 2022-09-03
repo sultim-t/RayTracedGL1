@@ -659,7 +659,12 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                                 drawInfo.fovYRadians );
         }
 
-        currentResultImage = framebuffers->BlitForEffects(cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter());
+        const RgExtent2D* pixelized = drawInfo.pRenderResolutionParams
+                                          ? drawInfo.pRenderResolutionParams->pPixelizedRenderSize
+                                          : nullptr;
+
+        currentResultImage = framebuffers->BlitForEffects(
+            cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter(), pixelized );
     }
 
 

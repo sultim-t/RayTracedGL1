@@ -1097,8 +1097,12 @@ typedef struct RgDrawFrameRenderResolutionParams
     RgRenderUpscaleTechnique    upscaleTechnique;
     RgRenderSharpenTechnique    sharpenTechnique; 
     RgRenderResolutionMode      resolutionMode;
-    // Used, if resolutionMode is CUSTOM
-    RgExtent2D                  renderSize;
+    // Used, if resolutionMode is RG_RENDER_RESOLUTION_MODE_CUSTOM
+    RgExtent2D                  customRenderSize;
+    // If not null, final image will be downscaled to this size at the very end.
+    // Needed, if pixelized look is needed, but the actual rendering should
+    // be done in higher resolution.
+    const RgExtent2D            *pPixelizedRenderSize;
 } RgDrawFrameRenderResolutionParams;
 
 typedef struct RgDrawFrameLensFlareParams

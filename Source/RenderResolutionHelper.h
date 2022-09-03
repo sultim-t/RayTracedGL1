@@ -114,8 +114,8 @@ public:
 
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
-                renderWidth = pParams->renderSize.width;
-                renderHeight = pParams->renderSize.height;
+                renderWidth  = pParams->customRenderSize.width;
+                renderHeight = pParams->customRenderSize.height;
             }
             else
             {
@@ -138,8 +138,8 @@ public:
         {
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
-                renderWidth = pParams->renderSize.width;
-                renderHeight = pParams->renderSize.height;
+                renderWidth  = pParams->customRenderSize.width;
+                renderHeight = pParams->customRenderSize.height;
             }
             else
             {
@@ -158,8 +158,8 @@ public:
         {
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
-                renderWidth = pParams->renderSize.width;
-                renderHeight = pParams->renderSize.height;
+                renderWidth  = pParams->customRenderSize.width;
+                renderHeight = pParams->customRenderSize.height;
             }
         }
     }

@@ -233,8 +233,63 @@ void Framebuffers::PresentToSwapchain(
         srcExtent.width, srcExtent.height, filter, VK_IMAGE_LAYOUT_GENERAL);
 }
 
-RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex, VkFilter filter)
+namespace
 {
+    VkOffset3D ToSigned( const VkExtent2D& e )
+    {
+        return VkOffset3D{
+            .x = static_cast< int32_t >( e.width ),
+            .y = static_cast< int32_t >( e.height ),
+            .z = 1,
+        };
+    }
+
+    const RgExtent2D* MakeSafePixelized( const RgExtent2D*             pPixelizedRenderSize,
+                                         const RTGL1::ResolutionState& resolution )
+    {
+        if( pPixelizedRenderSize == nullptr)
+        {
+            return nullptr;
+        }
+
+        if( std::abs( static_cast< int32_t >( resolution.renderWidth ) -
+                      static_cast< int32_t >( pPixelizedRenderSize->width ) ) < 8 )
+        {
+            return nullptr;
+        }
+
+        if( std::abs( static_cast< int32_t >( resolution.renderHeight ) -
+                      static_cast< int32_t >( pPixelizedRenderSize->height ) ) < 8 )
+        {
+            return nullptr;
+        }
+
+        return pPixelizedRenderSize;
+    }
+
+    VkOffset3D NormalizePixelized( const RgExtent2D &pPixelizedRenderSize, const RTGL1::ResolutionState &resolution )
+    {
+        return VkOffset3D{
+            .x = std::clamp( static_cast< int32_t >( pPixelizedRenderSize.width ),
+                             8,
+                             static_cast< int32_t >( resolution.renderWidth ) ),
+            .y = std::clamp( static_cast< int32_t >( pPixelizedRenderSize.height ),
+                             8,
+                             static_cast< int32_t >( resolution.renderHeight ) ),
+            .z = 1,
+        };
+    }
+}
+
+RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
+    VkCommandBuffer       cmd,
+    uint32_t              frameIndex,
+    FramebufferImageIndex framebufImageIndex,
+    VkFilter              filter,
+    const RgExtent2D*     pPixelizedRenderSize )
+{
+    pPixelizedRenderSize = MakeSafePixelized( pPixelizedRenderSize, currentResolution );
+
     const VkImageSubresourceRange subresRange = {
         .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
         .baseMipLevel   = 0,
@@ -250,46 +305,36 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
         .layerCount     = 1,
     };
 
-    FramebufferImageIndex src = FrameIndexToFBIndex(framebufImageIndex, frameIndex);
-    FramebufferImageIndex dst;
+    const FramebufferImageIndex src = FrameIndexToFBIndex( framebufImageIndex, frameIndex );
+    assert( src == FB_IMAGE_INDEX_FINAL || src == FB_IMAGE_INDEX_UPSCALED_PING || src == FB_IMAGE_INDEX_UPSCALED_PONG );
 
-    switch (src)
-    {
-        case FB_IMAGE_INDEX_FINAL:         dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_PING, frameIndex); break;
-        case FB_IMAGE_INDEX_UPSCALED_PING: dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_PONG, frameIndex); break;
-        case FB_IMAGE_INDEX_UPSCALED_PONG: dst = FrameIndexToFBIndex(FB_IMAGE_INDEX_UPSCALED_PING, frameIndex); break;
-        default: assert(0); return FB_IMAGE_INDEX_UPSCALED_PING;
-    }
+    const FramebufferImageIndex dst =
+        src == FB_IMAGE_INDEX_FINAL         ? FrameIndexToFBIndex( FB_IMAGE_INDEX_UPSCALED_PING, frameIndex ) :
+        src == FB_IMAGE_INDEX_UPSCALED_PING ? FrameIndexToFBIndex( FB_IMAGE_INDEX_UPSCALED_PONG, frameIndex ) : 
+        src == FB_IMAGE_INDEX_UPSCALED_PONG ? FrameIndexToFBIndex( FB_IMAGE_INDEX_UPSCALED_PING, frameIndex ) : FB_IMAGE_INDEX_UPSCALED_PING;
 
-    VkImage srcImage = images[src];
-    VkImage dstImage = images[dst];
+    const bool fromFinal = src == FB_IMAGE_INDEX_FINAL;
 
-    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[src], currentResolution);
-    VkExtent2D dstExtent = GetFramebufSize(ShFramebuffers_Flags[dst], currentResolution);
+    const VkImage srcImage = images[ src ];
+    const VkImage dstImage = images[ dst ];
 
-    // if source has almost the same size as the surface, then use nearest blit
-    if (std::abs((int)srcExtent.width  - (int)dstExtent.width) < 8 &&
-        std::abs((int)srcExtent.height - (int)dstExtent.height) < 8)
+    const VkOffset3D srcExtent      = ToSigned( GetFramebufSize( ShFramebuffers_Flags[ src ], currentResolution ) );
+    const VkOffset3D upscaledExtent = ToSigned( GetFramebufSize( ShFramebuffers_Flags[ dst ], currentResolution ) );
+
+    const VkOffset3D dstExtent =
+        pPixelizedRenderSize ? NormalizePixelized( *pPixelizedRenderSize, currentResolution )
+                             : upscaledExtent;
+
+    if( pPixelizedRenderSize )
     {
         filter = VK_FILTER_NEAREST;
     }
 
-    VkImageBlit region = {
-        .srcSubresource = subresLayers,
-        .srcOffsets     = { 
-            { 0, 0, 0 },
-            { static_cast< int32_t >( srcExtent.width ),
-              static_cast< int32_t >( srcExtent.height ),
-              1 }, 
-        },
-        .dstSubresource = subresLayers,
-        .dstOffsets     = {
-            { 0, 0, 0 },
-            { static_cast< int32_t >( dstExtent.width ),
-              static_cast< int32_t >( dstExtent.height ),
-              1 },
-        },
-    };
+    // if source has almost the same size as the surface, then use nearest blit
+    if( std::abs( srcExtent.x - dstExtent.x ) < 8 && std::abs( srcExtent.y - dstExtent.y ) < 8 )
+    {
+        filter = VK_FILTER_NEAREST;
+    }
 
     // sync for blit, new layouts
     {
@@ -331,10 +376,118 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
         svkCmdPipelineBarrier2KHR( cmd, &dep );
     }
 
-    vkCmdBlitImage(
-        cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        1, &region, filter);
+    {
+        const VkImageBlit region = {
+            .srcSubresource = subresLayers,
+            .srcOffsets     = { { 0, 0, 0 }, srcExtent },
+            .dstSubresource = subresLayers,
+            .dstOffsets     = { { 0, 0, 0 }, dstExtent },
+        };
+
+        vkCmdBlitImage( cmd,
+                        srcImage,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        dstImage,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        1,
+                        &region,
+                        filter );
+    }
+
+    VkImage               layoutRestoreSrc;
+    VkImage               layoutRestoreDst;
+    FramebufferImageIndex finalDst;
+
+    // if need another blit to rescale from pixelated
+    if( pPixelizedRenderSize )
+    {
+        FramebufferImageIndex newSrc = dst;
+        FramebufferImageIndex newDst;
+
+        switch( newSrc )
+        {
+            case FB_IMAGE_INDEX_UPSCALED_PING: newDst = FrameIndexToFBIndex( FB_IMAGE_INDEX_UPSCALED_PONG, frameIndex ); break;
+            case FB_IMAGE_INDEX_UPSCALED_PONG: newDst = FrameIndexToFBIndex( FB_IMAGE_INDEX_UPSCALED_PING, frameIndex ); break;
+        
+            default: assert( 0 ); newDst = FB_IMAGE_INDEX_UPSCALED_PING; break;
+        }
+
+        VkImage newSrcImage = images[ newSrc ];
+        VkImage newDstImage = images[ newDst ];
+
+        const VkOffset3D &newSrcExtent = dstExtent;
+        const VkOffset3D &newDstExtent = upscaledExtent;
+
+        {
+            VkImageMemoryBarrier2 bs[] = {
+                {
+                    .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                    .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    .srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    .dstAccessMask       = VK_ACCESS_TRANSFER_READ_BIT,
+                    .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image               = newSrcImage,
+                    .subresourceRange    = subresRange,
+                },
+                {
+                    .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                    .srcStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                    .srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT,
+                    .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                    .dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    // if from final, then we haven't touch other ping/pong image,
+                    // so its layout is general
+                    .oldLayout           = fromFinal ? VK_IMAGE_LAYOUT_GENERAL
+                                                     : VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .image               = newDstImage,
+                    .subresourceRange    = subresRange,
+                },
+            };
+
+            VkDependencyInfo dep = {
+                .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+                .imageMemoryBarrierCount = std::size( bs ),
+                .pImageMemoryBarriers    = bs,
+            };
+
+            svkCmdPipelineBarrier2KHR( cmd, &dep );
+        }
+
+        {
+            const VkImageBlit region = {
+                .srcSubresource = subresLayers,
+                .srcOffsets     = { { 0, 0, 0 }, newSrcExtent },
+                .dstSubresource = subresLayers,
+                .dstOffsets     = { { 0, 0, 0 }, newDstExtent },
+            };
+
+            vkCmdBlitImage( cmd,
+                            newSrcImage,
+                            VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                            newDstImage,
+                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                            1,
+                            &region,
+                            filter );
+        }
+
+        layoutRestoreSrc = newSrcImage;
+        layoutRestoreDst = newDstImage;
+        finalDst         = newDst;
+    }
+    else
+    { 
+        layoutRestoreSrc = srcImage;
+        layoutRestoreDst = dstImage;
+        finalDst         = dst;
+    }
 
     // wait for blit and restore layouts
     {
@@ -349,7 +502,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
                 .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = srcImage,
+                .image               = layoutRestoreSrc,
                 .subresourceRange    = subresRange,
             },
             {
@@ -365,21 +518,36 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
                 .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = dstImage,
+                .image               = layoutRestoreDst,
+                .subresourceRange    = subresRange,
+            },
+            // optional: consider transitioning FB_IMAGE_INDEX_FINAL,
+            // if from final and ping/pong was intermediately pixelized
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .srcAccessMask       = VK_ACCESS_TRANSFER_READ_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .dstAccessMask       = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = srcImage,
                 .subresourceRange    = subresRange,
             },
         };
 
         VkDependencyInfo dep = {
             .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-            .imageMemoryBarrierCount = std::size( bs ),
+            .imageMemoryBarrierCount = fromFinal && pPixelizedRenderSize ? 3u : 2u,
             .pImageMemoryBarriers    = bs,
         };
 
         svkCmdPipelineBarrier2KHR( cmd, &dep );
     }
 
-    return dst;
+    return finalDst;
 }
 
 VkDescriptorSet Framebuffers::GetDescSet(uint32_t frameIndex) const
