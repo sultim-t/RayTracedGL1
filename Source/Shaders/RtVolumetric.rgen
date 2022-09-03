@@ -79,23 +79,21 @@ void main()
         }
     }
 
-    vec3 radiance;
-    vec3 tolight;
+    vec3 lighting = vec3( 0.05 );
+
     if( globalUniform.directionalLightExists != 0)
     {
         DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
         bool isShadowed = traceShadowRay( 0, center, center - 1000 * l.direction, true );
 
-        radiance = l.color * float( !isShadowed );
-        tolight  = -l.direction;
+        vec3 radiance = l.color * float( !isShadowed );
+        vec3 tolight   = -l.direction;
+
+        lighting = radiance * phaseFunction_Schlick( tolight, toviewer, 0.4 );
     }
 
-    vec3 lighting = radiance * phaseFunction_Schlick( tolight, toviewer, 0.1 );
 
-    lighting += vec3(0.05);
-
-
-    float scattering = 0.001;
+    float scattering = 0.005;
     float absorbtion = 0.01;
 
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
