@@ -270,7 +270,7 @@ struct ShGlobalUniform
     float minRoughness;
     float volumeCameraNear;
     float volumeCameraFar;
-    float _pad3;
+    uint antiFireflyEnabled;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

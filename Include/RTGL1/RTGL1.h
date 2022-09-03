@@ -1129,7 +1129,7 @@ typedef RgFlags RgDrawFrameRayCullFlags;
 
 typedef struct RgDrawFrameInfo
 {
-    // View and projection matrices are column major.
+    // View matrix is column major.
     float                   view[16];
     // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
     // If the length is close to 0.0, then (0, 1, 0) is used.
@@ -1153,6 +1153,7 @@ typedef struct RgDrawFrameInfo
 
     double                  currentTime;
     RgBool32                disableEyeAdaptation;
+    RgBool32                forceAntiFirefly;
 
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams     *pRenderResolutionParams;

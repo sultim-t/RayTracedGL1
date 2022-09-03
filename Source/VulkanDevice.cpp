@@ -523,6 +523,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
         Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );
     }
+
+    gu->antiFireflyEnabled = !!drawInfo.forceAntiFirefly;
 }
 
 void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)

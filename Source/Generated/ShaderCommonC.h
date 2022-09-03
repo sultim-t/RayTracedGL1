@@ -275,7 +275,7 @@ struct ShGlobalUniform
     float minRoughness;
     float volumeCameraNear;
     float volumeCameraFar;
-    float _pad3;
+    uint32_t antiFireflyEnabled;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];
