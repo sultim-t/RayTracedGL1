@@ -45,10 +45,8 @@ public:
                uint32_t fullWidth, uint32_t fullHeight,
                const std::shared_ptr<DLSS> &dlss)
     {
-        const int interlacingDivisor = pParams != nullptr && pParams->interlacing ? 2 : 1;
-
         renderWidth = fullWidth;
-        renderHeight = fullHeight / interlacingDivisor;
+        renderHeight = fullHeight;
 
         upscaledWidth = fullWidth;
         upscaledHeight = fullHeight;
@@ -117,7 +115,7 @@ public:
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
                 renderWidth = pParams->renderSize.width;
-                renderHeight = pParams->renderSize.height / interlacingDivisor;
+                renderHeight = pParams->renderSize.height;
             }
             else
             {
@@ -133,7 +131,7 @@ public:
                 }
 
                 renderWidth = static_cast<uint32_t>(static_cast<float>(fullWidth) / div);
-                renderHeight = static_cast<uint32_t>(static_cast<float>(fullHeight) / div) / interlacingDivisor;
+                renderHeight = static_cast<uint32_t>(static_cast<float>(fullHeight) / div);
             }
         }
         else if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS)
@@ -141,7 +139,7 @@ public:
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
                 renderWidth = pParams->renderSize.width;
-                renderHeight = pParams->renderSize.height / interlacingDivisor;
+                renderHeight = pParams->renderSize.height;
             }
             else
             {
@@ -152,7 +150,7 @@ public:
                 if (renderWidth == 0 || renderHeight == 0)
                 {
                     renderWidth = fullWidth;
-                    renderHeight = fullHeight / interlacingDivisor;
+                    renderHeight = fullHeight;
                 }
             }
         }
@@ -161,7 +159,7 @@ public:
             if (resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM)
             {
                 renderWidth = pParams->renderSize.width;
-                renderHeight = pParams->renderSize.height / interlacingDivisor;
+                renderHeight = pParams->renderSize.height;
             }
         }
     }

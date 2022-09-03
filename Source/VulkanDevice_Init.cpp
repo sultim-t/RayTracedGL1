@@ -258,7 +258,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     effectColorTint             = CONSTRUCT_SIMPLE_EFFECT(EffectColorTint);
     effectCrtDemodulateEncode   = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDemodulateEncode);
     effectCrtDecode             = CONSTRUCT_SIMPLE_EFFECT(EffectCrtDecode);
-    effectInterlacing           = CONSTRUCT_SIMPLE_EFFECT(EffectInterlacing);
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
 
 
@@ -283,7 +282,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     shaderManager->Subscribe(effectColorTint);
     shaderManager->Subscribe(effectCrtDemodulateEncode);
     shaderManager->Subscribe(effectCrtDecode);
-    shaderManager->Subscribe(effectInterlacing);
 
     framebuffers->Subscribe(rasterizer);
     framebuffers->Subscribe(decalManager);
@@ -318,7 +316,6 @@ VulkanDevice::~VulkanDevice()
     effectColorTint.reset();
     effectCrtDemodulateEncode.reset();
     effectCrtDecode.reset();
-    effectInterlacing.reset();
     denoiser.reset();
     uniform.reset();
     scene.reset();

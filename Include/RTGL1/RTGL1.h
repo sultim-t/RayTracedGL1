@@ -1099,7 +1099,6 @@ typedef struct RgDrawFrameRenderResolutionParams
     RgRenderResolutionMode      resolutionMode;
     // Used, if resolutionMode is CUSTOM
     RgExtent2D                  renderSize;
-    RgBool32                    interlacing;
 } RgDrawFrameRenderResolutionParams;
 
 typedef struct RgDrawFrameLensFlareParams

@@ -660,13 +660,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
 
         currentResultImage = framebuffers->BlitForEffects(cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter());
-
-
-        // save for the next frame, if needed
-        if (drawInfo.pRenderResolutionParams != nullptr && drawInfo.pRenderResolutionParams->interlacing)
-        {
-            framebuffers->CopyToHistoryBuffer(cmd, frameIndex, currentResultImage);
-        }
     }
 
 
@@ -677,13 +670,6 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             currentResultImage = sharpening->Apply(
                 cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage,
                 renderResolution.GetSharpeningTechnique(), renderResolution.GetSharpeningIntensity());
-        }
-        if (drawInfo.pRenderResolutionParams != nullptr && drawInfo.pRenderResolutionParams->interlacing)
-        {
-            if (effectInterlacing->Setup(args))
-            {
-                currentResultImage = effectInterlacing->Apply(args, currentResultImage);
-            }
         }
         if (enableBloom)
         {

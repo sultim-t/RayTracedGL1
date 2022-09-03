@@ -87,7 +87,6 @@ static ShaderModuleDefinition G_SHADERS[] =
     {"EffectHueShift",              "EfHueShift.comp.spv"              },
     {"EffectCrtDemodulateEncode",   "EfCrtDemodulateEncode.comp.spv"   },
     {"EffectCrtDecode",             "EfCrtDecode.comp.spv"             },
-    {"EffectInterlacing",           "EfInterlacing.comp.spv"           },
 };
 
 

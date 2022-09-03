@@ -786,7 +786,6 @@ FRAMEBUFFERS = {
 
     "UpscaledPing"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  # dst for DLSS and blitting in,
     "UpscaledPong"                      : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  #       src for WipeEffectSource 
-    "UpscaledHistory"                   : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV    | FRAMEBUF_FLAGS_UPSCALED_SIZE | FRAMEBUF_FLAGS_USAGE_TRANSFER),  # for storing prev frame
 
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),
 

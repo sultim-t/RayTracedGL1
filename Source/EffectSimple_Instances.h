@@ -194,23 +194,6 @@ struct EffectCrtDecode final : public EffectSimple<EffectCRT_PushConst>
 // ------------------ //
 
 
-struct EffectInterlacing_PushConst
-{};
-
-struct EffectInterlacing final : public EffectSimple<EffectInterlacing_PushConst>
-{
-    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectInterlacing, "EffectInterlacing")
-
-    bool Setup(const CommonnlyUsedEffectArguments &args)
-    {
-        return EffectSimple::Setup(args, true, 0, 0);
-    }
-};
-
-
-// ------------------ //
-
-
 struct EffectWaves_PushConst
 {
     float amplitude;
