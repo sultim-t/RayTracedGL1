@@ -235,6 +235,21 @@ void Framebuffers::PresentToSwapchain(
 
 RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex framebufImageIndex, VkFilter filter)
 {
+    const VkImageSubresourceRange subresRange = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .baseMipLevel   = 0,
+        .levelCount     = 1,
+        .baseArrayLayer = 0,
+        .layerCount     = 1,
+    };
+
+    const VkImageSubresourceLayers subresLayers = {
+        .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+        .mipLevel       = 0,
+        .baseArrayLayer = 0,
+        .layerCount     = 1,
+    };
+
     FramebufferImageIndex src = FrameIndexToFBIndex(framebufImageIndex, frameIndex);
     FramebufferImageIndex dst;
 
@@ -259,45 +274,110 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(VkCommandBuffer
         filter = VK_FILTER_NEAREST;
     }
 
+    VkImageBlit region = {
+        .srcSubresource = subresLayers,
+        .srcOffsets     = { 
+            { 0, 0, 0 },
+            { static_cast< int32_t >( srcExtent.width ),
+              static_cast< int32_t >( srcExtent.height ),
+              1 }, 
+        },
+        .dstSubresource = subresLayers,
+        .dstOffsets     = {
+            { 0, 0, 0 },
+            { static_cast< int32_t >( dstExtent.width ),
+              static_cast< int32_t >( dstExtent.height ),
+              1 },
+        },
+    };
 
-    VkImageBlit region = {};
+    // sync for blit, new layouts
+    {
+        VkImageMemoryBarrier2 bs[] = {
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .dstAccessMask       = VK_ACCESS_TRANSFER_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = srcImage,
+                .subresourceRange    = subresRange,
+            },
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask       = VK_ACCESS_SHADER_WRITE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = dstImage,
+                .subresourceRange    = subresRange,
+            },
+        };
 
-    region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    region.srcOffsets[0] = { 0, 0, 0 };
-    region.srcOffsets[1] = { static_cast<int32_t>(srcExtent.width), static_cast<int32_t>(srcExtent.height), 1 };
+        VkDependencyInfo dep = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = std::size( bs ),
+            .pImageMemoryBarriers    = bs,
+        };
 
-    region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-    region.dstOffsets[0] = { 0, 0, 0 };
-    region.dstOffsets[1] = { static_cast<int32_t>(dstExtent.width), static_cast<int32_t>(dstExtent.height), 1 };
-
-    
-
-    // set layout for blit
-    Utils::BarrierImage(
-        cmd, srcImage,
-        VK_ACCESS_SHADER_WRITE_BIT, VK_ACCESS_TRANSFER_READ_BIT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL);
-
-    Utils::BarrierImage(
-        cmd, dstImage,
-        0, VK_ACCESS_TRANSFER_WRITE_BIT,
-        VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+        svkCmdPipelineBarrier2KHR( cmd, &dep );
+    }
 
     vkCmdBlitImage(
         cmd, srcImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
         dstImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1, &region, filter);
 
-    // restore layouts
-    Utils::BarrierImage(
-        cmd, srcImage,
-        VK_ACCESS_TRANSFER_READ_BIT, VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+    // wait for blit and restore layouts
+    {
+        VkImageMemoryBarrier2 bs[] = {
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .srcAccessMask       = VK_ACCESS_TRANSFER_READ_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .dstAccessMask       = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = srcImage,
+                .subresourceRange    = subresRange,
+            },
+            {
+                .sType              = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask       = VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                .srcAccessMask      = VK_ACCESS_TRANSFER_WRITE_BIT,
+                .dstStageMask       = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                                      VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+                .dstAccessMask      = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT |  
+                                      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                                      VK_ACCESS_COLOR_ATTACHMENT_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = dstImage,
+                .subresourceRange    = subresRange,
+            },
+        };
 
-    Utils::BarrierImage(
-        cmd, dstImage,
-        VK_ACCESS_TRANSFER_WRITE_BIT, 0,
-        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_GENERAL);
+        VkDependencyInfo dep = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = std::size( bs ),
+            .pImageMemoryBarriers    = bs,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &dep );
+    }
 
     return dst;
 }
