@@ -90,7 +90,7 @@ float G1GGX(float ns, float alpha)
     return 2 * ns * safePositiveRcp(ns * (2 - alpha) + alpha);
 }
 
-#define MIN_GGX_ROUGHNESS 0.001
+#define MIN_GGX_ROUGHNESS 0.005
 
 // n -- macrosurface normal
 // v -- direction to viewer
@@ -143,6 +143,8 @@ vec3 evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha, con
 // output   -- normal sampled with PDF D_v(Ne) = G1(v) * max(0, dot(v, Ne)) * D(Ne) / v.z
 vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2, out float oneOverPdf)
 {
+    alpha = max( alpha, MIN_GGX_ROUGHNESS );
+
     // fix: avoid grazing angles
     u1 *= 0.98;
     u2 *= 0.98;
@@ -167,12 +169,12 @@ vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2, out float oneO
     const vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
     
     // Section 3.4: transforming the normal back to the ellipsoid configuration
-    const vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.0, Nh.z)));    
+    const vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.02, Nh.z)));    
     
     {
         float D;
         {
-            const float alphaSq = square(max(alpha, MIN_GGX_ROUGHNESS));
+            const float alphaSq = square( alpha );
 
             // here, macro normal is (0,0,1), so nm=m.z
             const float nm = Ne.z;
@@ -199,13 +201,6 @@ vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2, out float oneO
 // Check Heitz's paper for the special representation of rendering equation term 
 vec3 sampleSmithGGX(const vec3 n, const vec3 v, float alpha, float u1, float u2, out float oneOverPdf)
 {
-    if (alpha < MIN_GGX_ROUGHNESS)
-    {
-        return n;
-    }
-
-    alpha = max(alpha, MIN_GGX_ROUGHNESS);
-
     const mat3 basis = getONB(n);
 
     // get v in normal's space, basis is orthogonal

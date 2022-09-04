@@ -37,11 +37,6 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #include "RaygenCommon.h"
 #include "ReservoirIndirect.h"
 
-float getModifiedIndirRoughness(float r)
-{
-    return globalUniform.useSqrtRoughnessForIndirect == 0 ? r : sqrt(r);
-}
-
 // v -- direction to viewer
 // n -- surface normal
 vec3 getSpecularBounce(const uint seed, uint bounceIndex,
@@ -49,15 +44,15 @@ vec3 getSpecularBounce(const uint seed, uint bounceIndex,
                        const vec3 v, 
                        out float oneOverSourcePdf)
 {
-    const vec2 u = rnd16_2(seed, RANDOM_SALT_SPEC_BOUNCE(bounceIndex));
-    return sampleSmithGGX(n, v, getModifiedIndirRoughness(roughness), u[0], u[1], oneOverSourcePdf);
+    const vec2 u = rnd16_2( seed, RANDOM_SALT_SPEC_BOUNCE( bounceIndex ) ).xy;
+    return sampleSmithGGX( n, v, roughness, u[ 0 ], u[ 1 ], oneOverSourcePdf );
 }
 
 // n -- surface normal
 vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, out float oneOverSourcePdf)
 {
-    const vec2 u = rnd16_2(seed, RANDOM_SALT_DIFF_BOUNCE(bounceIndex));
-    return sampleLambertian(n, u[0], u[1], oneOverSourcePdf);
+    const vec2 u = rnd16_2( seed, RANDOM_SALT_DIFF_BOUNCE( bounceIndex ) ).xy;
+    return sampleLambertian( n, u[ 0 ], u[ 1 ], oneOverSourcePdf );
 }
 
 
@@ -197,7 +192,8 @@ bool testSurfaceForReuseIndirect(
 
 
 #define TEMPORAL_SAMPLES_INDIR 1
-#define TEMPORAL_RADIUS_INDIR 2
+#define TEMPORAL_RADIUS_INDIR_MAX 2
+
 #define SPATIAL_SAMPLES_INDIR 4
 #define SPATIAL_RADIUS_INDIR 8
 
@@ -220,13 +216,11 @@ void main()
         return;
     }
 
-    bool isSpecular;
-    {
-        float rndSpec = rnd16(seed, salt++);
-        float limit = smoothstep(0.0, FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH, surf.roughness);
+    const float diffusePr = smoothstep( MIN_GGX_ROUGHNESS,
+                                        FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH,
+                                        surf.roughness );
 
-        isSpecular = rndSpec > limit;
-    }
+    const bool isSpecular = rnd16( seed, salt++ ) > diffusePr;
 
     ReservoirIndirect combined = emptyReservoirIndirect();
     {
@@ -252,8 +246,8 @@ void main()
         // TODO: need low discrepancy noise
         ivec2 pp;
         {
-            vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
-            pp = ivec2(floor(posPrev + rndOffset * TEMPORAL_RADIUS_INDIR));
+            vec2 rndOffset = rnd8_4( seed, salt++ ).xy * 2.0 - 1.0;
+            pp = ivec2( floor( posPrev + rndOffset * square( diffusePr ) * TEMPORAL_RADIUS_INDIR_MAX ) );
         }
 
         {
@@ -272,86 +266,91 @@ void main()
                 continue;
             }
         }
+
+        isTemporalValid = true;
 
         ReservoirIndirect temporal = restirIndirect_LoadReservoir_Prev(pp);
         // renormalize to prevent precision problems
         normalizeReservoirIndirect(temporal, 20);
 
-        float rnd = rnd16(seed, salt++);
-        isTemporalValid = updateCombinedReservoirIndirect(combined, temporal, rnd);
+        float rnd = rnd16( seed, salt++ );
+        updateCombinedReservoirIndirect(combined, temporal, rnd);
     }
 
     uint nobiasM = combined.M;
 
-    for (int pixIndex = 0; pixIndex < SPATIAL_SAMPLES_INDIR; pixIndex++)
+    if (!isSpecular)
     {
-        // TODO: need low discrepancy noise
-        ivec2 pp;
+        for( int pixIndex = 0; pixIndex < int( SPATIAL_SAMPLES_INDIR * diffusePr ); pixIndex++ )
         {
-            vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
-
-            pp = isTemporalValid ? ivec2(floor(posPrev)) : pix;
-            pp += ivec2(rndOffset * SPATIAL_RADIUS_INDIR);
-        }
-
-        {
-            if( isSkyPix( pp ) )
+            // TODO: need low discrepancy noise
+            ivec2 pp;
             {
-                continue;
+                vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
+
+                pp = isTemporalValid ? ivec2(floor(posPrev)) : pix;
+                pp += ivec2(rndOffset * SPATIAL_RADIUS_INDIR);
             }
 
-            const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
-            const vec3 normalPrev = texelFetchNormal_Prev(pp);
-
-            if (!testSurfaceForReuseIndirect(chRenderArea, pp,
-                                             depthCur, depthPrev - motionZ,
-                                             surf.normal, normalPrev))
             {
-                continue;
+                if( isSkyPix( pp ) )
+                {
+                    continue;
+                }
+
+                const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
+                const vec3 normalPrev = texelFetchNormal_Prev(pp);
+
+                if (!testSurfaceForReuseIndirect(chRenderArea, pp,
+                                                depthCur, depthPrev - motionZ,
+                                                surf.normal, normalPrev))
+                {
+                    continue;
+                }
             }
-        }
 
-        ReservoirIndirect reservoir_q = restirIndirect_LoadReservoir_Prev(pp);
-        // renormalize to prevent precision problems
-        normalizeReservoirIndirect(reservoir_q, 20);
+            ReservoirIndirect reservoir_q = restirIndirect_LoadReservoir_Prev(pp);
+            // renormalize to prevent precision problems
+            normalizeReservoirIndirect(reservoir_q, 20);
 
-        float oneOverJacobian;
-        {
-            const vec3 x1_r = surf.position;
-            const vec3 x1_q = texelFetch(framebufSurfacePosition_Sampler, pp, 0).xyz;
+            float oneOverJacobian;
+            {
+                const vec3 x1_r = surf.position;
+                const vec3 x1_q = texelFetch(framebufSurfacePosition_Sampler, pp, 0).xyz;
 
-            const vec3 x2_q = reservoir_q.selected.position;
-            const vec3 n2_q = reservoir_q.selected.normal;
+                const vec3 x2_q = reservoir_q.selected.position;
+                const vec3 n2_q = reservoir_q.selected.normal;
 
-            const DirectionAndLength phi_r = calcDirectionAndLengthSafe(x2_q, x1_r);
-            const DirectionAndLength phi_q = calcDirectionAndLengthSafe(x2_q, x1_q);
+                const DirectionAndLength phi_r = calcDirectionAndLengthSafe(x2_q, x1_r);
+                const DirectionAndLength phi_q = calcDirectionAndLengthSafe(x2_q, x1_q);
 
-            oneOverJacobian =
-                safePositiveRcp( getGeometryFactorClamped( n2_q, phi_r.dir, phi_r.len ) ) *
-                                 getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
+                oneOverJacobian =
+                    safePositiveRcp( getGeometryFactorClamped( n2_q, phi_r.dir, phi_r.len ) ) *
+                                    getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
 
-           // oneOverJacobian = min( oneOverJacobian, 0, 1 );
-        }
+                // oneOverJacobian = min( oneOverJacobian, 0, 1 );
+            }
 
-        float targetPdf_curSurf = 0.0;
-        
-    #if DEBUG_TRACE_BIAS_CORRECT_RAY
-        if (!traceShadowRay(surf.instCustomIndex, surf.position, reservoir_q.selected.position, false))
-    #endif
-        {
-            targetPdf_curSurf =
-                targetPdfForIndirectSample( reservoir_q.selected ) * oneOverJacobian;
-        }
+            float targetPdf_curSurf = 0.0;
+            
+        #if DEBUG_TRACE_BIAS_CORRECT_RAY
+            if (!traceShadowRay(surf.instCustomIndex, surf.position, reservoir_q.selected.position, false))
+        #endif
+            {
+                targetPdf_curSurf =
+                    targetPdfForIndirectSample( reservoir_q.selected ) * oneOverJacobian;
+            }
 
-        float rnd = rnd16(seed, salt++);
-        updateCombinedReservoirIndirect_newSurf(
-            combined,
-            reservoir_q, targetPdf_curSurf,
-            rnd);
+            float rnd = rnd16(seed, salt++);
+            updateCombinedReservoirIndirect_newSurf(
+                combined,
+                reservoir_q, targetPdf_curSurf,
+                rnd);
 
-        if (targetPdf_curSurf > 0.0)
-        {
-            nobiasM += reservoir_q.M;
+            if (targetPdf_curSurf > 0.0)
+            {
+                nobiasM += reservoir_q.M;
+            }
         }
     }
 
