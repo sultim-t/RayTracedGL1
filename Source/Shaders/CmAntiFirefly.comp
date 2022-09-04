@@ -31,26 +31,106 @@ layout( local_size_x = COMPUTE_ANTIFIREFLY_GROUP_SIZE_X,
 #define FILTER_RADIUS 2
 #define MAXFLOAT 1000000
 
-void clampValues( ivec2      centerPix,
-                  inout vec3 centerDiff,
-                  inout vec3 centerSpec,
-                  inout SH   centerSH )
+
+
+const int SHARED_WIDTH = FILTER_RADIUS + COMPUTE_ANTIFIREFLY_GROUP_SIZE_X + FILTER_RADIUS;
+
+struct Data
 {
-    vec3 diffMin = vec3( +MAXFLOAT );
-    vec3 diffMax = vec3( -MAXFLOAT );
+    vec3 diffuse;
+    vec3 specular;
+    SH   sh;
+};
 
-    vec3 specMin = vec3( +MAXFLOAT );
-    vec3 specMax = vec3( -MAXFLOAT );
+shared Data s_data[ SHARED_WIDTH ][ SHARED_WIDTH ];
 
-    SH shMin;
-    shMin.r = vec4( +MAXFLOAT );
-    shMin.g = vec4( +MAXFLOAT );
-    shMin.b = vec4( +MAXFLOAT );
-    SH shMax;
-    shMax.r = vec4( -MAXFLOAT );
-    shMax.g = vec4( -MAXFLOAT );
-    shMax.b = vec4( -MAXFLOAT );
+void fillFilterData( const ivec2 globalBasePix, const int sharedOffset )
+{
+    const ivec2 sharedPix = ivec2( sharedOffset % SHARED_WIDTH, sharedOffset / SHARED_WIDTH );
+    const ivec2 globalPix = globalBasePix + sharedPix;
 
+    Data data;
+    data.diffuse  = texelFetchDiffAccumColor( globalPix );
+    data.specular = texelFetchSpecAccumColor( globalPix );
+    data.sh       = texelFetchIndirAccumSH( globalPix );
+
+    s_data[ sharedPix.y ][ sharedPix.x ] = data;
+}
+
+#define GET_SDATA( offsetX, offsetY )                                \
+    ( s_data[ gl_LocalInvocationID.y + ( FILTER_RADIUS + offsetY ) ] \
+            [ gl_LocalInvocationID.x + ( FILTER_RADIUS + offsetX ) ] )
+
+void preload()
+{
+    const ivec2 globalBasePix =
+        ivec2( gl_WorkGroupID.xy ) * COMPUTE_ANTIFIREFLY_GROUP_SIZE_X - ivec2( FILTER_RADIUS );
+    const int threadIndex = int( gl_LocalInvocationIndex );
+
+    const int sharedCount = SHARED_WIDTH * SHARED_WIDTH;
+    const int threadCount = COMPUTE_ANTIFIREFLY_GROUP_SIZE_X * COMPUTE_ANTIFIREFLY_GROUP_SIZE_X;
+
+    // how many threads should load only one pixel
+    const int oneLoadCount = 2 * threadCount - sharedCount;
+    // how many threads should load two pixels
+    // const int twoLoadCount = sharedCount - threadCount;
+
+    if( threadIndex < oneLoadCount )
+    {
+        // first threads need to preload only 1 pixel
+        fillFilterData( globalBasePix, threadIndex );
+    }
+    else
+    {
+        // now threads are loading 2 neighboring pixels
+        const int neighborsIndex = threadIndex - oneLoadCount;
+
+        fillFilterData( globalBasePix, oneLoadCount + neighborsIndex * 2 + 0 );
+
+        fillFilterData( globalBasePix, oneLoadCount + neighborsIndex * 2 + 1 );
+    }
+}
+
+
+
+void main()
+{
+    preload();
+    barrier();
+
+
+    const ivec2 pix = ivec2( gl_GlobalInvocationID );
+
+    if( pix.x >= int( globalUniform.renderWidth ) || pix.y >= int( globalUniform.renderHeight ) )
+    {
+        return;
+    }
+
+    if (globalUniform.antiFireflyEnabled == 0)
+    {
+        Data c = GET_SDATA( 0, 0 );
+
+        // TODO: separate buffer to write?
+        // imageStoreDiffAccumColor( pix, c.diffuse );
+        imageStoreSpecPingColor( pix, c.specular );
+        imageStoreIndirPingSH( pix, c.sh );
+        return;
+    }
+
+
+    Data smin;
+    smin.diffuse  = vec3( +MAXFLOAT );
+    smin.specular = vec3( +MAXFLOAT );
+    smin.sh.r     = vec4( +MAXFLOAT );
+    smin.sh.g     = vec4( +MAXFLOAT );
+    smin.sh.b     = vec4( +MAXFLOAT );
+
+    Data smax;
+    smax.diffuse  = vec3( -MAXFLOAT );
+    smax.specular = vec3( -MAXFLOAT );
+    smax.sh.r     = vec4( -MAXFLOAT );
+    smax.sh.g     = vec4( -MAXFLOAT );
+    smax.sh.b     = vec4( -MAXFLOAT );
 
     for( int i = -FILTER_RADIUS; i <= FILTER_RADIUS; i++ )
     {
@@ -61,56 +141,31 @@ void clampValues( ivec2      centerPix,
                 continue;
             }
 
-            ivec2 pp = centerPix + ivec2( i, j );
+            const Data other = GET_SDATA( i, j );
 
-            vec3 diff = texelFetchDiffAccumColor( pp );
-            vec3 spec = texelFetchSpecAccumColor( pp );
-            SH   sh   = texelFetchIndirAccumSH( pp );
+            smin.diffuse  = min( smin.diffuse, other.diffuse );
+            smin.specular = min( smin.specular, other.specular );
+            smin.sh.r     = min( smin.sh.r, other.sh.r );
+            smin.sh.g     = min( smin.sh.g, other.sh.g );
+            smin.sh.b     = min( smin.sh.b, other.sh.b );
 
-            diffMin = min( diffMin, diff );
-            diffMax = max( diffMax, diff );
-
-            specMin = min( specMin, spec );
-            specMax = max( specMax, spec );
-
-
-            shMin.r = min( shMin.r, sh.r );
-            shMin.g = min( shMin.g, sh.g );
-            shMin.b = min( shMin.b, sh.b );
-
-            shMax.r = max( shMax.r, sh.r );
-            shMax.g = max( shMax.g, sh.g );
-            shMax.b = max( shMax.b, sh.b );
+            smax.diffuse  = max( smax.diffuse, other.diffuse );
+            smax.specular = max( smax.specular, other.specular );
+            smax.sh.r     = max( smax.sh.r, other.sh.r );
+            smax.sh.g     = max( smax.sh.g, other.sh.g );
+            smax.sh.b     = max( smax.sh.b, other.sh.b );
         }
     }
 
-    centerDiff = clamp( centerDiff, diffMin, diffMax );
-    centerSpec = clamp( centerSpec, specMin, specMax );
-    centerSH.r = clamp( centerSH.r, shMin.r, shMax.r );
-    centerSH.g = clamp( centerSH.g, shMin.g, shMax.g );
-    centerSH.b = clamp( centerSH.b, shMin.b, shMax.b );
-}
-
-void main()
-{
-    const ivec2 pix = ivec2( gl_GlobalInvocationID );
-
-    if( pix.x >= uint( globalUniform.renderWidth ) || pix.y >= uint( globalUniform.renderHeight ) )
-    {
-        return;
-    }
-
-    vec3 centerDiff = texelFetchDiffAccumColor( pix );
-    vec3 centerSpec = texelFetchSpecAccumColor( pix );
-    SH   centerSH   = texelFetchIndirAccumSH( pix );
-
-    if (globalUniform.antiFireflyEnabled != 0)
-    {
-        clampValues( pix, centerDiff, centerSpec, centerSH );
-    }
+    Data c     = GET_SDATA( 0, 0 );
+    c.diffuse  = clamp( c.diffuse,  smin.diffuse,  smax.diffuse );
+    c.specular = clamp( c.specular, smin.specular, smax.specular );
+    c.sh.r     = clamp( c.sh.r,     smin.sh.r,     smax.sh.r );
+    c.sh.g     = clamp( c.sh.g,     smin.sh.g,     smax.sh.g );
+    c.sh.b     = clamp( c.sh.b,     smin.sh.b,     smax.sh.b );
 
     // TODO: separate buffer to write?
-    // imageStoreDiffAccumColor( pix, centerDiff );
-    imageStoreSpecPingColor( pix, centerSpec );
-    imageStoreIndirPingSH( pix, centerSH );
+    // imageStoreDiffAccumColor( pix, c.diffuse );
+    imageStoreSpecPingColor( pix, c.specular );
+    imageStoreIndirPingSH( pix, c.sh );
 }
