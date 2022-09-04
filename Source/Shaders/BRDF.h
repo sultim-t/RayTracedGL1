@@ -86,6 +86,12 @@ float getFresnelSchlick(float n1, float n2, const vec3 V, const vec3 N)
 // GGX distribution
 float D_GGX( float nm, float alpha )
 {
+#ifdef FORCE_EVALBRDF_GGX_LOOSE
+    // shipping hack: make ggx factor be non-zero, so we can reuse for reprojection,
+    // let there be some lag, but at least less noise
+    alpha = max( 0.2, alpha );
+#endif
+
     const float alphaSq = square( alpha );
 
     nm = max( 0.0, nm );

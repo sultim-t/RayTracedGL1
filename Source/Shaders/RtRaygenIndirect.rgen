@@ -23,6 +23,8 @@
 layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define MATERIAL_MAX_ALBEDO_LAYERS maxAlbedoLayerCount
 
+#define FORCE_EVALBRDF_GGX_LOOSE
+
 #define DESC_SET_TLAS 0
 #define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_GLOBAL_UNIFORM 2
