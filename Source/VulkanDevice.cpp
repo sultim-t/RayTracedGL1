@@ -94,7 +94,7 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     genericSamplerManager->PrepareForFrame(frameIndex);
     textureManager->PrepareForFrame(frameIndex);
     cubemapManager->PrepareForFrame(frameIndex);
-    rasterizer->PrepareForFrame(frameIndex, startInfo.requestRasterizedSkyGeometryReuse);
+    rasterizer->PrepareForFrame(frameIndex);
     decalManager->PrepareForFrame(frameIndex);
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();

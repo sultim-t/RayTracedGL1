@@ -53,16 +53,15 @@ uint32_t RasterizedDataCollector::GetVertexStride()
     return static_cast<uint32_t>(sizeof(RgVertex));
 }
 
-RasterizedDataCollector::RasterizedDataCollector(
-    VkDevice _device,
-    const std::shared_ptr<MemoryAllocator> &_allocator,
-    std::shared_ptr<TextureManager> _textureMgr,
-    uint32_t _maxVertexCount, uint32_t _maxIndexCount)
-:
-    device(_device),
-    textureMgr(_textureMgr),
-    curVertexCount(0),
-    curIndexCount(0)
+RasterizedDataCollector::RasterizedDataCollector( VkDevice                            _device,
+                                                  std::shared_ptr< MemoryAllocator >& _allocator,
+                                                  std::shared_ptr< TextureManager >   _textureMgr,
+                                                  uint32_t _maxVertexCount,
+                                                  uint32_t _maxIndexCount )
+    : device( _device )
+    , textureMgr( std::move( _textureMgr ) )
+    , curVertexCount( 0 )
+    , curIndexCount( 0 )
 {
     vertexBuffer = std::make_shared<AutoBuffer>(_device, _allocator);
     indexBuffer = std::make_shared<AutoBuffer>(_device, _allocator);
@@ -77,6 +76,65 @@ RasterizedDataCollector::RasterizedDataCollector(
 RasterizedDataCollector::~RasterizedDataCollector()
 {}
 
+namespace 
+{
+    bool IsWorld( RgRasterizedGeometryRenderType type )
+    {
+        return type == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT;
+    }
+
+    bool IsSwapchain( RgRasterizedGeometryRenderType type )
+    {
+        return type == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN;
+    }
+
+    bool IsSky( RgRasterizedGeometryRenderType type)
+    {
+        return type == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
+    }
+
+    VkViewport ToVk(const RgViewport &v)
+    {
+        return VkViewport{
+            .x        = v.x,
+            .y        = v.y,
+            .width    = v.width,
+            .height   = v.height,
+            .minDepth = v.minDepth,
+            .maxDepth = v.maxDepth,
+        };
+    }
+
+    uint32_t ResolveTextureIndex_AlbedoAlpha( const RTGL1::TextureManager& manager,
+                                              const RgRasterizedGeometryUploadInfo& info )
+    {
+        if( info.material == RG_NO_MATERIAL )
+        {
+            return EMPTY_TEXTURE_INDEX;
+        }
+
+        return manager.GetMaterialTextures( info.material )
+            .indices[ MATERIAL_ALBEDO_ALPHA_INDEX ];
+    }
+
+    uint32_t ResolveTextureIndex_RME( const RTGL1::TextureManager&          manager,
+                                              const RgRasterizedGeometryUploadInfo& info )
+    {
+        if( info.material == RG_NO_MATERIAL )
+        {
+            return EMPTY_TEXTURE_INDEX;
+        }
+
+        if( !IsWorld( info.renderType ) )
+        {
+            return EMPTY_TEXTURE_INDEX;
+        }
+
+        return manager.GetMaterialTextures( info.material )
+            .indices[ MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX ];
+    }
+}
+
 void RasterizedDataCollector::AddGeometry(uint32_t frameIndex, 
                                           const RgRasterizedGeometryUploadInfo &info, 
                                           const float *pViewProjection, const RgViewport *pViewport)
@@ -84,114 +142,110 @@ void RasterizedDataCollector::AddGeometry(uint32_t frameIndex,
     assert(info.vertexCount > 0);
     assert(info.pVertices != nullptr);
 
-    const bool renderToSwapchain = info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN;
-    const bool renderToSky = info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
-
-    // if renderToSwapchain, depth data is not available
-    if (renderToSwapchain)
+    // for swapchain, depth data is not available
+    if( IsSwapchain( info.renderType ) )
     {
-        assert(!(info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST));
-        assert(!(info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE));
+        if( info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST )
+        {
+            assert( 0 );
+            return;
+        }
+
+        if( info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE )
+        {
+            assert( 0 );
+            return;
+        }
     }
 
-    // if renderToSky, default pViewProjection and pViewport are used,
+    // for sky, default pViewProjection and pViewport must be used,
     // as sky geometry can be updated not in each frame
-    if (renderToSky && (pViewProjection != nullptr || pViewport != nullptr))
+    if( IsSky( info.renderType ) )
     {
-        throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "pViewProjection and pViewport must be null if renderType is RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY");
+        if( pViewProjection != nullptr || pViewport != nullptr )
+        {
+            throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "pViewProjection and pViewport must be null if renderType is RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY");
+        }
     }
 
-    if ((uint64_t)curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof(RgVertex))
+    if (curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof(RgVertex))
     {
         assert(0 && "Increase the size of \"rasterizedMaxVertexCount\". Vertex buffer size reached the limit.");
         return;
     }
 
-    if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
+    if (curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
     {
         assert(0 && "Increase the size of \"rasterizedMaxIndexCount\". Index buffer size reached the limit.");
         return;
     }
 
 
-    DrawInfo *pDrawInfo = PushInfo(info.renderType);
+    DrawInfo &drawInfo = PushInfo(info.renderType);
 
-    if (pDrawInfo == nullptr)
-    {
-        return;
-    }
-
-    DrawInfo &drawInfo = *pDrawInfo;
-
-    drawInfo.isDefaultViewport = pViewport == nullptr;
-    drawInfo.isDefaultViewProjMatrix = pViewProjection == nullptr;
-    drawInfo.transform = info.transform;
-    drawInfo.pipelineState = info.pipelineState;
-    drawInfo.blendFuncSrc = info.blendFuncSrc;
-    drawInfo.blendFuncDst = info.blendFuncDst;
-
-    if (pViewport != nullptr)
-    {
-        drawInfo.viewport.x = pViewport->x;
-        drawInfo.viewport.y = pViewport->y;
-        drawInfo.viewport.width = pViewport->width;
-        drawInfo.viewport.height = pViewport->height;
-        drawInfo.viewport.minDepth = pViewport->minDepth;
-        drawInfo.viewport.maxDepth = pViewport->maxDepth;
-    }
-
-    if (pViewProjection != nullptr)
-    {
-        memcpy(drawInfo.viewProj, pViewProjection, 16 * sizeof(float));
-    }
-
-    memcpy(drawInfo.color, info.color.data, 4 * sizeof(float));
+    ShVertex* const vertsBase   = static_cast< ShVertex* >( vertexBuffer->GetMapped( frameIndex ) );
+    uint32_t* const indicesBase = static_cast< uint32_t* >( indexBuffer->GetMapped( frameIndex ) );
 
 
-    drawInfo.textureIndex = EMPTY_TEXTURE_INDEX;
-    drawInfo.emissionTextureIndex = EMPTY_TEXTURE_INDEX;
-
-    // copy texture indices
-    if (const auto mgr = textureMgr.lock())
-    {
-        // get only the first (albedo-alpha) texture index from texture manager
-        // and ignore roughness, metallic, etc
-        drawInfo.textureIndex = mgr->GetMaterialTextures(info.material).indices[MATERIAL_ALBEDO_ALPHA_INDEX];
-
-        if (!renderToSky && !renderToSwapchain)
-        {
-            drawInfo.emissionTextureIndex = mgr->GetMaterialTextures(info.material).indices[MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX];
-        }
-    }
+    drawInfo = {
+        .transform            = info.transform,
+        .viewProj             = IfNotNull( pViewProjection, Float16D( pViewProjection ) ),
+        .viewport             = IfNotNull( pViewport, ToVk( *pViewport ) ),
+        .color                = Float4D( info.color.data ),
+        .textureIndex         = ResolveTextureIndex_AlbedoAlpha( *textureMgr, info ),
+        .emissionTextureIndex = ResolveTextureIndex_RME( *textureMgr, info ),
+        .pipelineState        = info.pipelineState,
+        .blendFuncSrc         = info.blendFuncSrc,
+        .blendFuncDst         = info.blendFuncDst,
+    };
 
 
     // copy vertex data
-    ShVertex *dstVerts = static_cast<ShVertex *>(vertexBuffer->GetMapped(frameIndex)) + curVertexCount;
-    CopyFromArrayOfStructs(info, dstVerts);
+    CopyFromArrayOfStructs( info, &vertsBase[ curVertexCount ] );
 
     drawInfo.vertexCount = info.vertexCount;
-    drawInfo.firstVertex = curVertexCount;
+    drawInfo.firstVertex  = static_cast< uint32_t >( curVertexCount );
     curVertexCount += info.vertexCount;
 
 
     // copy index data
-    bool useIndices = info.indexCount != 0 && info.pIndices != nullptr;
-    if (useIndices)
+    if( info.indexCount != 0 && info.pIndices != nullptr )
     {
-        if ((uint64_t)curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
+        if( curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof( uint32_t ) )
         {
-            assert(0);
+            assert( 0 );
             return;
         }
 
-        uint32_t *dstIndices = (uint32_t*)indexBuffer->GetMapped(frameIndex) + curIndexCount;
-        memcpy(dstIndices, info.pIndices, info.indexCount * sizeof(uint32_t));
+        memcpy(
+            &indicesBase[ curIndexCount ], info.pIndices, info.indexCount * sizeof( uint32_t ) );
 
-        drawInfo.indexCount = info.indexCount;
-        drawInfo.firstIndex = curIndexCount;
+        drawInfo.indexCount   = info.indexCount;
+        drawInfo.firstIndex = static_cast< uint32_t >( curIndexCount );
 
         curIndexCount += info.indexCount;
     }
+}
+
+RasterizedDataCollector::DrawInfo& RasterizedDataCollector::PushInfo(
+    RgRasterizedGeometryRenderType renderType )
+{
+    if( renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT )
+    {
+        return rasterDrawInfos.emplace_back();
+    }
+
+    if( renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN )
+    {
+        return swapchainDrawInfos.emplace_back();
+    }
+
+    if( renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY )
+    {
+        return skyDrawInfos.emplace_back();
+    }
+
+    throw RgException( RG_GRAPHICS_API_ERROR, "RasterizedDataCollector::PushInfo error" );
 }
 
 void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryUploadInfo &info, ShVertex *dstVerts)
@@ -213,6 +267,10 @@ void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryU
 
 void RasterizedDataCollector::Clear(uint32_t frameIndex)
 {
+    rasterDrawInfos.clear();
+    swapchainDrawInfos.clear();
+    skyDrawInfos.clear();
+
     curVertexCount = 0;
     curIndexCount = 0;
 }
@@ -233,105 +291,20 @@ VkBuffer RasterizedDataCollector::GetIndexBuffer() const
     return indexBuffer->GetDeviceLocal();
 }
 
-
-
-RasterizedDataCollectorGeneral::RasterizedDataCollectorGeneral(
-    VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator, 
-    const std::shared_ptr<TextureManager> &textureMgr, uint32_t maxVertexCount, uint32_t maxIndexCount)
-:
-    RasterizedDataCollector(device, allocator, textureMgr, maxVertexCount, maxIndexCount) {}
-
-bool RasterizedDataCollectorGeneral::TryAddGeometry(uint32_t frameIndex, const RgRasterizedGeometryUploadInfo &info,
-    const float *viewProjection, const RgViewport *viewport)
-{
-    if (info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT ||
-        info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN)
-    {
-        AddGeometry(frameIndex, info, viewProjection, viewport);
-        return true;
-    }
-
-    return false;
-}
-
-void RasterizedDataCollectorGeneral::Clear(uint32_t frameIndex)
-{
-    rasterDrawInfos.clear();
-    swapchainDrawInfos.clear();
-
-    RasterizedDataCollector::Clear(frameIndex);
-}
-
-const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollectorGeneral::GetRasterDrawInfos() const
+const std::vector< RasterizedDataCollector::DrawInfo >& RasterizedDataCollector::
+    GetRasterDrawInfos() const
 {
     return rasterDrawInfos;
 }
 
-const std::vector<RasterizedDataCollector::DrawInfo> &RasterizedDataCollectorGeneral::GetSwapchainDrawInfos() const
+const std::vector< RasterizedDataCollector::DrawInfo >& RasterizedDataCollector::
+    GetSwapchainDrawInfos() const
 {
     return swapchainDrawInfos;
 }
 
-RasterizedDataCollector::DrawInfo *RasterizedDataCollectorGeneral::PushInfo(RgRasterizedGeometryRenderType renderType)
-{
-    if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT)
-    {
-        rasterDrawInfos.emplace_back();
-        return &rasterDrawInfos.back();
-    }
-    else if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN)
-    {
-        swapchainDrawInfos.emplace_back();
-        return &swapchainDrawInfos.back();
-    }
-
-    assert(0);
-    return nullptr;
-}
-
-
-
-RasterizedDataCollectorSky::RasterizedDataCollectorSky(
-    VkDevice device, const std::shared_ptr<MemoryAllocator> &allocator, 
-    const std::shared_ptr<TextureManager> &textureMgr, uint32_t maxVertexCount, uint32_t maxIndexCount)
-:
-    RasterizedDataCollector(device, allocator, textureMgr, maxVertexCount, maxIndexCount) {}
-
-bool RasterizedDataCollectorSky::TryAddGeometry(uint32_t frameIndex, const RgRasterizedGeometryUploadInfo &info,
-    const float *viewProjection, const RgViewport *viewport)
-{
-    if (info.renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
-    {
-        AddGeometry(frameIndex, info, viewProjection, viewport);
-        return true;
-    }
-
-    return false;
-}
-
-void RasterizedDataCollectorSky::Clear(uint32_t frameIndex)
-{
-    skyDrawInfos.clear();
-
-    RasterizedDataCollector::Clear(frameIndex);
-}
-
-const std::vector<RasterizedDataCollector::DrawInfo> & RasterizedDataCollectorSky::GetSkyDrawInfos() const
+const std::vector< RasterizedDataCollector::DrawInfo >& RasterizedDataCollector::
+    GetSkyDrawInfos() const
 {
     return skyDrawInfos;
-}
-
-RasterizedDataCollector::DrawInfo *RasterizedDataCollectorSky::PushInfo(RgRasterizedGeometryRenderType renderType)
-{
-    if (renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY)
-    {
-        // if renderToSky, default pViewProjection and pViewport should be used,
-        // as sky geometry can be updated not in each frame
-
-        skyDrawInfos.emplace_back();
-        return &skyDrawInfos.back();
-    }
-
-    assert(0);
-    return nullptr;
 }

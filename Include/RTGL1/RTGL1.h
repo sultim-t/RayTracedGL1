@@ -207,8 +207,6 @@ typedef struct RgInstanceCreateInfo
     uint32_t                    rasterizedMaxIndexCount;
     // Apply gamma correction to packed rasterized vertex colors.
     RgBool32                    rasterizedVertexColorGamma;
-    uint32_t                    rasterizedSkyMaxVertexCount;
-    uint32_t                    rasterizedSkyMaxIndexCount;
 
     // Size of a cubemap side to render rasterized sky in.
     uint32_t                    rasterizedSkyCubemapSize;  
@@ -827,9 +825,6 @@ typedef struct RgStartFrameInfo
 {
     RgBool32        requestVSync;
     RgBool32        requestShaderReload;
-    // Reuse sky geometry from the previous frames.
-    // The rasterized skybox cubemap won't be rerendered.
-    RgBool32        requestRasterizedSkyGeometryReuse;
 } RgStartFrameInfo;
 
 RGAPI RgResult RGCONV rgStartFrame(

@@ -65,7 +65,7 @@ public:
     Rasterizer& operator=(const Rasterizer& other) = delete;
     Rasterizer& operator=(Rasterizer&& other) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyGeometryReuse);
+    void PrepareForFrame(uint32_t frameIndex);
     void Upload(uint32_t frameIndex, 
                 const RgRasterizedGeometryUploadInfo &uploadInfo, 
                 const float *viewProjection, const RgViewport *viewport);
@@ -128,10 +128,8 @@ private:
     std::shared_ptr<RasterPass> rasterPass;
     std::shared_ptr<SwapchainPass> swapchainPass;
 
-    std::shared_ptr<RasterizedDataCollectorGeneral> collectorGeneral;
-    std::shared_ptr<RasterizedDataCollectorSky> collectorSky;
-
-    bool isCubemapOutdated;
+    std::shared_ptr<RasterizedDataCollector> collector;
+    
     std::shared_ptr<RenderCubemap> renderCubemap;
 
     std::unique_ptr<LensFlares> lensFlares;

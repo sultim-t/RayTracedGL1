@@ -20,11 +20,50 @@
 
 #pragma once
 
+#include <optional>
+
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
 
 namespace RTGL1
 {
+    enum NullifyTokenType
+    {
+    };
+    inline constexpr NullifyTokenType NullifyToken = {};
+
+    template< size_t Size >
+    struct FloatStorage
+    {
+        FloatStorage()  = default;
+        ~FloatStorage() = default;
+
+        explicit FloatStorage( NullifyTokenType ) { memset( data, 0, sizeof( data ) ); }
+        explicit FloatStorage( const float* ptr ) { memcpy( data, ptr, sizeof( data ) ); }
+
+        FloatStorage( const FloatStorage& other )     = default;
+        FloatStorage( FloatStorage&& other ) noexcept = default;
+        FloatStorage& operator=( const FloatStorage& other ) = default;
+        FloatStorage& operator=( FloatStorage&& other ) noexcept = default;
+
+        [[nodiscard]] const float* Get() const { return data; }
+        float*                     Get() { return data; }
+
+        /*const float& operator[]( size_t i ) const
+        {
+            assert( i < std::size( data ) );
+            return data[ i ];
+        }*/
+
+        float data[ Size ];
+    };
+
+    using Float16D = FloatStorage< 16 >;
+    using Float4D = FloatStorage< 4 >;
+
+    // Because std::optional requires explicit constructor
+    #define IfNotNull( ptr, ifnotnull ) \
+        ( ( ptr ) != nullptr ? std::optional( ( ifnotnull ) ) : std::nullopt )
 
 namespace Utils
 {

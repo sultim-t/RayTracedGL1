@@ -567,9 +567,7 @@ int main()
 
         .rasterizedMaxVertexCount           = 4096,
         .rasterizedMaxIndexCount            = 2048,
-        
-        .rasterizedSkyMaxVertexCount        = 4096,
-        .rasterizedSkyMaxIndexCount         = 2048,
+
         .rasterizedSkyCubemapSize           = 256,
 
         .maxTextureCount                    = 1024,

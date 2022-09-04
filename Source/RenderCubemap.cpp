@@ -43,7 +43,7 @@ struct RasterizedMultiviewPushConst
     explicit RasterizedMultiviewPushConst(const RasterizedDataCollector::DrawInfo &info)
     {
         Matrix::ToMat4Transposed(model, info.transform);
-        memcpy(color, info.color, 4 * sizeof(float));
+        memcpy(color, info.color.Get(), 4 * sizeof(float));
         textureIndex = info.textureIndex;
     }
 };
@@ -114,7 +114,7 @@ void RTGL1::RenderCubemap::OnShaderReload(const ShaderManager *shaderManager)
 }
 
 void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
-                                const std::shared_ptr<RasterizedDataCollectorSky> &skyDataCollector,
+                                const std::shared_ptr<RasterizedDataCollector> &skyDataCollector,
                                 const std::shared_ptr<TextureManager> &textureManager,
                                 const std::shared_ptr<GlobalUniform> &uniform)
 {

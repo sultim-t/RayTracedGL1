@@ -50,7 +50,7 @@ public:
 
     // Draw to a cubemap
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex,
-              const std::shared_ptr<RasterizedDataCollectorSky> &skyDataCollector,
+               const std::shared_ptr< RasterizedDataCollector >& skyDataCollector,
               const std::shared_ptr<TextureManager> &textureManager,
               const std::shared_ptr<GlobalUniform> &uniform);
 
