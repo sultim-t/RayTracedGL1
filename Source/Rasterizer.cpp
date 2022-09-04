@@ -70,32 +70,32 @@ static_assert(sizeof(RasterizedPushConst) == 92);
 
 
 
-Rasterizer::Rasterizer(
-    VkDevice _device,
-    VkPhysicalDevice _physDevice,
-    const std::shared_ptr<ShaderManager> &_shaderManager,
-    const std::shared_ptr<TextureManager> &_textureManager,
-    const std::shared_ptr<GlobalUniform> &_uniform,
-    const std::shared_ptr<SamplerManager> &_samplerManager,
-    std::shared_ptr<MemoryAllocator> _allocator,
-    std::shared_ptr<Framebuffers> _storageFramebuffers,
-    std::shared_ptr<CommandBufferManager> _cmdManager,
-    const RgInstanceCreateInfo &_instanceInfo)
-:
-    device(_device),
-    commonPipelineLayout(VK_NULL_HANDLE),
-    allocator(std::move(_allocator)),
-    cmdManager(std::move(_cmdManager)),
-    storageFramebuffers(std::move(_storageFramebuffers)),
-    isCubemapOutdated(true)
+Rasterizer::Rasterizer( VkDevice                                 _device,
+                        VkPhysicalDevice                         _physDevice,
+                        const std::shared_ptr< ShaderManager >&  _shaderManager,
+                        const std::shared_ptr< TextureManager >& _textureManager,
+                        const std::shared_ptr< GlobalUniform >&  _uniform,
+                        const std::shared_ptr< SamplerManager >& _samplerManager,
+                        const std::shared_ptr< Tonemapping >&    _tonemapping,
+                        std::shared_ptr< MemoryAllocator >       _allocator,
+                        std::shared_ptr< Framebuffers >          _storageFramebuffers,
+                        std::shared_ptr< CommandBufferManager >  _cmdManager,
+                        const RgInstanceCreateInfo&              _instanceInfo )
+    : device( _device )
+    , rasterPassPipelineLayout( VK_NULL_HANDLE )
+    , swapchainPassPipelineLayout( VK_NULL_HANDLE )
+    , allocator( std::move( _allocator ) )
+    , cmdManager( std::move( _cmdManager ) )
+    , storageFramebuffers( std::move( _storageFramebuffers ) )
+    , isCubemapOutdated( true )
 {
     collectorGeneral = std::make_shared<RasterizedDataCollectorGeneral>(device, allocator, _textureManager, _instanceInfo.rasterizedMaxVertexCount, _instanceInfo.rasterizedMaxIndexCount);
     collectorSky = std::make_shared<RasterizedDataCollectorSky>(device, allocator, _textureManager, _instanceInfo.rasterizedSkyMaxVertexCount, _instanceInfo.rasterizedSkyMaxIndexCount);
 
-    CreatePipelineLayout(_textureManager->GetDescSetLayout());
+    CreatePipelineLayout( _textureManager->GetDescSetLayout(), _tonemapping->GetDescSetLayout() );
 
-    rasterPass = std::make_shared<RasterPass>(device, _physDevice, commonPipelineLayout, _shaderManager, storageFramebuffers, _instanceInfo);
-    swapchainPass = std::make_shared<SwapchainPass>(device, commonPipelineLayout, _shaderManager, _instanceInfo);
+    rasterPass = std::make_shared<RasterPass>(device, _physDevice, rasterPassPipelineLayout, _shaderManager, storageFramebuffers, _instanceInfo);
+    swapchainPass = std::make_shared<SwapchainPass>(device, swapchainPassPipelineLayout, _shaderManager, _instanceInfo);
     renderCubemap = std::make_shared<RenderCubemap>(device, allocator, _shaderManager, _textureManager, _uniform, _samplerManager, cmdManager, _instanceInfo);
 
     lensFlares = std::make_unique<LensFlares>(device, allocator, _shaderManager, rasterPass->GetRasterRenderPass(), _uniform, storageFramebuffers, _textureManager, _instanceInfo);
@@ -103,7 +103,8 @@ Rasterizer::Rasterizer(
 
 Rasterizer::~Rasterizer()
 {
-    vkDestroyPipelineLayout(device, commonPipelineLayout, nullptr);
+    vkDestroyPipelineLayout( device, rasterPassPipelineLayout, nullptr );
+    vkDestroyPipelineLayout( device, swapchainPassPipelineLayout, nullptr );
 }
 
 void Rasterizer::PrepareForFrame(uint32_t frameIndex, bool requestRasterizedSkyGeometryReuse)
@@ -179,8 +180,10 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
 {
     CmdLabel label(cmd, "Rasterized sky to albedo framebuf");
 
+
     typedef FramebufferImageIndex FI;
     storageFramebuffers->BarrierOne(cmd, frameIndex, FI::FB_IMAGE_INDEX_ALBEDO);
+
 
     float skyView[16];
     Matrix::SetNewViewerPosition(skyView, view, skyViewerPos);
@@ -191,35 +194,40 @@ void Rasterizer::DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const
     float defaultSkyViewProj[16];
     Matrix::Multiply(defaultSkyViewProj, skyView, jitterredProj);
 
-    const DrawParams params
-    {
-        rasterPass->GetSkyRasterPipelines(),
-        // sky infos
-        collectorSky->GetSkyDrawInfos(),
-        rasterPass->GetSkyRasterRenderPass(),
-        // sky FB
-        rasterPass->GetSkyFramebuffer(frameIndex),
-        rasterPass->GetRasterWidth(),
-        rasterPass->GetRasterHeight(),
-        // sky geometry
-        collectorSky->GetVertexBuffer(),
-        collectorSky->GetIndexBuffer(),
-        textureManager->GetDescSet(frameIndex),
-        defaultSkyViewProj,
-        nullptr,
-        std::nullopt
+
+    VkDescriptorSet sets[] = {
+        textureManager->GetDescSet( frameIndex ),
+    };
+
+    const DrawParams params = {
+        .pipelines       = rasterPass->GetSkyRasterPipelines(),
+        .drawInfos       = collectorSky->GetSkyDrawInfos(),
+        .renderPass      = rasterPass->GetSkyRasterRenderPass(),
+        .framebuffer     = rasterPass->GetSkyFramebuffer( frameIndex ),
+        .width           = rasterPass->GetRasterWidth(),
+        .height          = rasterPass->GetRasterHeight(),
+        .vertexBuffer    = collectorSky->GetVertexBuffer(),
+        .indexBuffer     = collectorSky->GetIndexBuffer(),
+        .descSets        = sets,
+        .descSetsCount   = std::size( sets ),
+        .defaultViewProj = defaultSkyViewProj,
+        .pLensFlares     = nullptr,
+        .emissionMult    = std::nullopt,
     };
 
     Draw(cmd, frameIndex, params);
 }
 
-void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, 
-                                  const std::shared_ptr<TextureManager> &textureManager, 
-                                  const float *view, const float *proj,
-                                  const RgFloat2D &jitter,
-                                  const RenderResolutionHelper &renderResolution,
-                                  const RgDrawFrameLensFlareParams *pLensFlareParams,
-                                  float emissionMult)
+void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
+                                   uint32_t                                 frameIndex,
+                                   const std::shared_ptr< TextureManager >& textureManager,
+                                   const std::shared_ptr< Tonemapping >&    tonemapping,
+                                   const float*                             view,
+                                   const float*                             proj,
+                                   const RgFloat2D&                         jitter,
+                                   const RenderResolutionHelper&            renderResolution,
+                                   const RgDrawFrameLensFlareParams*        pLensFlareParams,
+                                   float                                    emissionMult )
 {
     CmdLabel label(cmd, "Rasterized to final framebuf");
 
@@ -249,23 +257,25 @@ void Rasterizer::DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex,
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, jitterredProj);
 
-    const DrawParams params =
-    {
-        rasterPass->GetRasterPipelines(),
-        // ordinary infos
-        collectorGeneral->GetRasterDrawInfos(),
-        rasterPass->GetRasterRenderPass(),
-        // ordinary FB
-        rasterPass->GetFramebuffer(frameIndex),
-        rasterPass->GetRasterWidth(),
-        rasterPass->GetRasterHeight(),
-        // ordinary geometry
-        collectorGeneral->GetVertexBuffer(),
-        collectorGeneral->GetIndexBuffer(),
-        textureManager->GetDescSet(frameIndex),
-        defaultViewProj,
-        lensFlares.get(),
-        emissionMult
+    VkDescriptorSet sets[] = {
+         textureManager->GetDescSet( frameIndex ),
+         tonemapping->GetDescSet(),
+    };
+
+    const DrawParams params = {
+        .pipelines       = rasterPass->GetRasterPipelines(),
+        .drawInfos       = collectorGeneral->GetRasterDrawInfos(),
+        .renderPass      = rasterPass->GetRasterRenderPass(),
+        .framebuffer     = rasterPass->GetFramebuffer( frameIndex ),
+        .width           = rasterPass->GetRasterWidth(),
+        .height          = rasterPass->GetRasterHeight(),
+        .vertexBuffer    = collectorGeneral->GetVertexBuffer(),
+        .indexBuffer     = collectorGeneral->GetIndexBuffer(),
+        .descSets        = sets,
+        .descSetsCount   = std::size( sets ),
+        .defaultViewProj = defaultViewProj,
+        .pLensFlares     = lensFlares.get(),
+        .emissionMult    = emissionMult,
     };
 
     Draw(cmd, frameIndex, params);
@@ -275,23 +285,29 @@ void Rasterizer::DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, Frame
 {
     CmdLabel label(cmd, "Rasterized to swapchain");
 
+
     float defaultViewProj[16];
     Matrix::Multiply(defaultViewProj, view, proj);
 
-    const DrawParams params =
-    {
-        swapchainPass->GetSwapchainPipelines(),
-        collectorGeneral->GetSwapchainDrawInfos(),
-        swapchainPass->GetSwapchainRenderPass(),
-        swapchainPass->GetSwapchainFramebuffer(imageToDrawIn, frameIndex),
-        swapchainPass->GetSwapchainWidth(),
-        swapchainPass->GetSwapchainHeight(),
-        collectorGeneral->GetVertexBuffer(),
-        collectorGeneral->GetIndexBuffer(),
-        textureManager->GetDescSet(frameIndex),
-        defaultViewProj,
-        nullptr,
-        std::nullopt
+
+    VkDescriptorSet sets[] = {
+        textureManager->GetDescSet( frameIndex ),
+    };
+
+    const DrawParams params = {
+        .pipelines       = swapchainPass->GetSwapchainPipelines(),
+        .drawInfos       = collectorGeneral->GetSwapchainDrawInfos(),
+        .renderPass      = swapchainPass->GetSwapchainRenderPass(),
+        .framebuffer     = swapchainPass->GetSwapchainFramebuffer( imageToDrawIn, frameIndex ),
+        .width           = swapchainPass->GetSwapchainWidth(),
+        .height          = swapchainPass->GetSwapchainHeight(),
+        .vertexBuffer    = collectorGeneral->GetVertexBuffer(),
+        .indexBuffer     = collectorGeneral->GetIndexBuffer(),
+        .descSets        = sets,
+        .descSetsCount   = std::size( sets ),
+        .defaultViewProj = defaultViewProj,
+        .pLensFlares     = nullptr,
+        .emissionMult    = std::nullopt,
     };
 
     Draw(cmd, frameIndex, params);
@@ -343,7 +359,7 @@ void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams
 
         vkCmdBindDescriptorSets(
             cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawParams.pipelines->GetPipelineLayout(), 0,
-            1, &drawParams.texturesDescSet,
+            drawParams.descSetsCount, drawParams.descSets,
             0, nullptr);
         vkCmdBindVertexBuffers(cmd, 0, 1, &drawParams.vertexBuffer, &offset);
         vkCmdBindIndexBuffer(cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32);
@@ -440,25 +456,57 @@ void Rasterizer::OnFramebuffersSizeChange(const ResolutionState &resolutionState
     swapchainPass->CreateFramebuffers(resolutionState.upscaledWidth, resolutionState.upscaledHeight, storageFramebuffers);
 }
 
-void Rasterizer::CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout)
+void Rasterizer::CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
+                                       VkDescriptorSetLayout tonemappingSetLayout )
 {
-    VkPushConstantRange pushConst = {};
-    pushConst.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
-    pushConst.offset = 0;
-    pushConst.size = sizeof(RasterizedPushConst);
+    const VkPushConstantRange pushConst = {
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset     = 0,
+        .size       = sizeof( RasterizedPushConst ),
+    };
 
-    VkPipelineLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.pushConstantRangeCount = 1;
-    layoutInfo.pPushConstantRanges = &pushConst;
+    {
+        VkDescriptorSetLayout layouts[] = {
+            texturesSetLayout,
+            tonemappingSetLayout,
+        };
 
-    layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = &texturesSetLayout;
+        VkPipelineLayoutCreateInfo layoutInfo = {
+            .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount         = std::size( layouts ),
+            .pSetLayouts            = layouts,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges    = &pushConst,
+        };
 
-    VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &commonPipelineLayout);
-    VK_CHECKERROR(r);
+        VkResult r =
+            vkCreatePipelineLayout( device, &layoutInfo, nullptr, &rasterPassPipelineLayout );
+        VK_CHECKERROR( r );
 
-    SET_DEBUG_NAME(device, commonPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Rasterizer common pipeline layout");
+        SET_DEBUG_NAME( device,
+                        rasterPassPipelineLayout,
+                        VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+                        "Raster pass Pipeline layout" );
+    }
+
+    {
+        VkPipelineLayoutCreateInfo layoutInfo = {
+            .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount         = 1,
+            .pSetLayouts            = &texturesSetLayout,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges    = &pushConst,
+        };
+
+        VkResult r =
+            vkCreatePipelineLayout( device, &layoutInfo, nullptr, &swapchainPassPipelineLayout );
+        VK_CHECKERROR( r );
+
+        SET_DEBUG_NAME( device,
+                        swapchainPassPipelineLayout,
+                        VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+                        "Swapchain pass Pipeline layout" );
+    }
 }
 
 }

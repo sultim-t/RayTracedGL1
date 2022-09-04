@@ -618,11 +618,17 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     if (!drawInfo.disableRasterization)
     {
         // draw rasterized geometry into the final image
-        rasterizer->DrawToFinalImage(cmd, frameIndex, textureManager,
-                                     uniform->GetData()->view, uniform->GetData()->projection,
-                                     jitter, renderResolution,
-                                     drawInfo.pLensFlareParams,
-                                     drawInfo.pBloomParams ? drawInfo.pBloomParams->bloomRasterMultiplier : 0.0f);
+        rasterizer->DrawToFinalImage(
+            cmd,
+            frameIndex,
+            textureManager,
+            tonemapping,
+            uniform->GetData()->view,
+            uniform->GetData()->projection,
+            jitter,
+            renderResolution,
+            drawInfo.pLensFlareParams,
+            drawInfo.pBloomParams ? drawInfo.pBloomParams->bloomRasterMultiplier : 0.0f );
     }
 
     imageComposition->Finalize(

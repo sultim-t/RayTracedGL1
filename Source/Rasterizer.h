@@ -33,6 +33,7 @@
 #include "RenderCubemap.h"
 #include "ShaderManager.h"
 #include "SwapchainPass.h"
+#include "Tonemapping.h"
 #include "RTGL1/RTGL1.h"
 
 namespace RTGL1
@@ -46,17 +47,17 @@ class RenderResolutionHelper;
 class Rasterizer : public IShaderDependency, public IFramebuffersDependency
 {
 public:
-    explicit Rasterizer(
-        VkDevice device,
-        VkPhysicalDevice physDevice,
-        const std::shared_ptr<ShaderManager> &shaderManager,
-        const std::shared_ptr<TextureManager> &textureManager,    
-        const std::shared_ptr<GlobalUniform> &uniform,
-        const std::shared_ptr<SamplerManager> &samplerManager,
-        std::shared_ptr<MemoryAllocator> allocator,
-        std::shared_ptr<Framebuffers> storageFramebuffers,
-        std::shared_ptr<CommandBufferManager> cmdManager,
-        const RgInstanceCreateInfo &instanceInfo);
+    explicit Rasterizer( VkDevice                                 device,
+                         VkPhysicalDevice                         physDevice,
+                         const std::shared_ptr< ShaderManager >&  shaderManager,
+                         const std::shared_ptr< TextureManager >& textureManager,
+                         const std::shared_ptr< GlobalUniform >&  uniform,
+                         const std::shared_ptr< SamplerManager >& samplerManager,
+                         const std::shared_ptr< Tonemapping >&    tonemapping,
+                         std::shared_ptr< MemoryAllocator >       allocator,
+                         std::shared_ptr< Framebuffers >          storageFramebuffers,
+                         std::shared_ptr< CommandBufferManager >  cmdManager,
+                         const RgInstanceCreateInfo&              instanceInfo );
     ~Rasterizer() override;
 
     Rasterizer(const Rasterizer& other) = delete;
@@ -73,7 +74,7 @@ public:
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void DrawSkyToCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<GlobalUniform> &uniform);
     void DrawSkyToAlbedo(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const float *view, const float skyViewerPos[3], const float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution);
-    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const float *view, const float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution, const RgDrawFrameLensFlareParams *pLensFlareParams, float emissionMult);
+    void DrawToFinalImage(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<TextureManager> &textureManager, const std::shared_ptr<Tonemapping> &tonemapping, const float *view, const float *proj, const RgFloat2D &jitter, const RenderResolutionHelper &renderResolution, const RgDrawFrameLensFlareParams *pLensFlareParams, float emissionMult);
     void DrawToSwapchain(VkCommandBuffer cmd, uint32_t frameIndex, FramebufferImageIndex imageToDrawIn, const std::shared_ptr<TextureManager> &textureManager, float *view, float *proj);
     
     void OnShaderReload(const ShaderManager *shaderManager) override;
@@ -86,25 +87,27 @@ public:
 private:
     struct DrawParams
     {
-        const std::shared_ptr<RasterizerPipelines> &pipelines;
-        const std::vector<RasterizedDataCollector::DrawInfo> &drawInfos;
-        VkRenderPass renderPass;
-        VkFramebuffer framebuffer;
-        uint32_t width;
-        uint32_t height;
-        VkBuffer vertexBuffer;
-        VkBuffer indexBuffer;
-        VkDescriptorSet texturesDescSet;
-        float *defaultViewProj;
+        const std::shared_ptr< RasterizerPipelines >&           pipelines;
+        const std::vector< RasterizedDataCollector::DrawInfo >& drawInfos;
+        VkRenderPass                                            renderPass;
+        VkFramebuffer                                           framebuffer;
+        uint32_t                                                width;
+        uint32_t                                                height;
+        VkBuffer                                                vertexBuffer;
+        VkBuffer                                                indexBuffer;
+        const VkDescriptorSet*                                  descSets;
+        uint32_t                                                descSetsCount;
+        float*                                                  defaultViewProj;
         // not the best way to optionally draw lens flares
-        LensFlares *pLensFlares;
-        std::optional<float> emissionMult;
+        LensFlares*            pLensFlares;
+        std::optional< float > emissionMult;
     };
 
 private:
     void Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams &drawParams);
 
-    void CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout);
+    void CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
+                               VkDescriptorSetLayout tonemappingSetLayout );
 
     // If info's viewport is not the same as current one, new VkViewport will be set.
     void SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,  
@@ -115,7 +118,8 @@ private:
 
 private:
     VkDevice device;
-    VkPipelineLayout commonPipelineLayout;
+    VkPipelineLayout rasterPassPipelineLayout;
+    VkPipelineLayout swapchainPassPipelineLayout;
 
     std::shared_ptr<MemoryAllocator> allocator;
     std::shared_ptr<CommandBufferManager> cmdManager;

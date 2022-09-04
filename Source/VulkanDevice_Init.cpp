@@ -136,6 +136,13 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         shaderManager);
    
+    tonemapping         = std::make_shared<Tonemapping>(
+        device,
+        framebuffers,
+        shaderManager,
+        uniform,
+        memAllocator);
+
     rasterizer          = std::make_shared<Rasterizer>(
         device,
         physDevice->Get(),
@@ -143,6 +150,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         textureManager,
         uniform,
         genericSamplerManager,
+        tonemapping,
         memAllocator,
         framebuffers,
         cmdManager,
@@ -193,13 +201,6 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         *info );
 
     pathTracer          = std::make_shared<PathTracer>(device, rtPipeline);
-
-    tonemapping         = std::make_shared<Tonemapping>(
-        device,
-        framebuffers,
-        shaderManager,
-        uniform,
-        memAllocator);
 
     imageComposition    = std::make_shared<ImageComposition>(
         device,

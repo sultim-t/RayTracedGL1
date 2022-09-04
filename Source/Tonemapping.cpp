@@ -66,23 +66,27 @@ void RTGL1::Tonemapping::CalculateExposure(VkCommandBuffer cmd, uint32_t frameIn
 {
     CmdLabel label(cmd, "Exposure");
 
-    VkBufferMemoryBarrier br = {};
-    br.sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    br.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    br.dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT;
-    br.buffer = tmBuffer.GetBuffer();
-    br.offset = 0;
-    br.size = VK_WHOLE_SIZE;
-
     // sync access to histogram buffer
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        0,
-        0, nullptr,
-        1, &br,
-        0, nullptr);
+    {
+        VkBufferMemoryBarrier2 b = {
+            .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+            .buffer        = tmBuffer.GetBuffer(),
+            .offset        = 0,
+            .size          = VK_WHOLE_SIZE,
+        };
 
+        VkDependencyInfo dep = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers    = &b,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &dep );
+    }
 
     // sync access
     framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_PRE_FINAL);
@@ -115,33 +119,56 @@ void RTGL1::Tonemapping::CalculateExposure(VkCommandBuffer cmd, uint32_t frameIn
 
 
     // sync access to histogram buffer
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        0,
-        0, nullptr,
-        1, &br,
-        0, nullptr);
+    {
+        VkBufferMemoryBarrier2 b = {
+            .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_SHADER_READ_BIT,
+            .buffer        = tmBuffer.GetBuffer(),
+            .offset        = 0,
+            .size          = VK_WHOLE_SIZE,
+        };
+
+        VkDependencyInfo dep = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers    = &b,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &dep );
+    }
 
 
     // calculate average luminance
-
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, avgLuminancePipeline);
-
     // only one working group
     vkCmdDispatch(cmd, 1, 1, 1);
 
 
-    // sync access to histogram buffer
-    br.dstAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    // sync access to histogram buffer to read in compute / raster
+    {
+        VkBufferMemoryBarrier2 b = {
+            .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+            .dstStageMask =
+                VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+            .dstAccessMask = VK_ACCESS_SHADER_READ_BIT,
+            .buffer        = tmBuffer.GetBuffer(),
+            .offset        = 0,
+            .size          = VK_WHOLE_SIZE,
+        };
 
-    vkCmdPipelineBarrier(
-        cmd,
-        VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT, VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
-        0,
-        0, nullptr,
-        1, &br,
-        0, nullptr);
+        VkDependencyInfo dep = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers    = &b,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &dep );
+    }
 }
 
 VkDescriptorSetLayout RTGL1::Tonemapping::GetDescSetLayout() const
@@ -178,7 +205,7 @@ void RTGL1::Tonemapping::CreateTonemappingDescriptors()
     binding.binding = BINDING_LUM_HISTOGRAM;
     binding.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
     binding.descriptorCount = 1;
-    binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT;
+    binding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
 
     VkDescriptorSetLayoutCreateInfo layoutInfo = {};
     layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
