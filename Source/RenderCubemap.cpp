@@ -107,10 +107,7 @@ RTGL1::RenderCubemap::~RenderCubemap()
 
 void RTGL1::RenderCubemap::OnShaderReload(const ShaderManager *shaderManager)
 {
-    pipelines->Clear();
-
-    // set reloaded shaders
-    pipelines->SetShaders(shaderManager, "VertRasterizerMultiview", "FragRasterizer");
+    pipelines->OnShaderReload( shaderManager );
 }
 
 void RTGL1::RenderCubemap::Draw(VkCommandBuffer cmd, uint32_t frameIndex,
@@ -335,8 +332,14 @@ void RTGL1::RenderCubemap::InitPipelines(const std::shared_ptr<ShaderManager> &s
     scissors.extent = { sideSize, sideSize };
 
 
-    pipelines = std::make_shared<RasterizerPipelines>(device, pipelineLayout, multiviewRenderPass, 0, applyVertexColorGamma);
-    pipelines->SetShaders(shaderManager.get(), "VertRasterizerMultiview", "FragRasterizer");
+    pipelines = std::make_shared< RasterizerPipelines >( device,
+                                                         pipelineLayout,
+                                                         multiviewRenderPass,
+                                                         shaderManager.get(),
+                                                         "VertDefaultMultiview",
+                                                         "FragSky",
+                                                         0,
+                                                         applyVertexColorGamma );
     pipelines->DisableDynamicState(viewport, scissors);
 }
 

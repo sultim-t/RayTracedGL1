@@ -211,42 +211,43 @@ static VkBlendFactor ConvertBlendFactorToVk(RgBlendFactor f)
     }
 }
 
-RTGL1::RasterizerPipelines::RasterizerPipelines(
-    VkDevice _device,
-    VkPipelineLayout _pipelineLayout, 
-    VkRenderPass _renderPass,
-    uint32_t _additionalAttachmentsCount,
-    bool _applyVertexColorGamma)
-:
-    device(_device),
-    pipelineLayout(_pipelineLayout),
-    renderPass(_renderPass),
-    vertShaderStage{},
-    fragShaderStage{},
-    pipelineCache(VK_NULL_HANDLE),
-    applyVertexColorGamma(_applyVertexColorGamma),
-    additionalAttachmentsCount(_additionalAttachmentsCount)
+RTGL1::RasterizerPipelines::RasterizerPipelines( VkDevice             _device,
+                                                 VkPipelineLayout     _pipelineLayout,
+                                                 VkRenderPass         _renderPass,
+                                                 const ShaderManager* _shaderManager,
+                                                 std::string_view     _shaderNameVert,
+                                                 std::string_view     _shaderNameFrag,
+                                                 uint32_t             _additionalAttachmentsCount,
+                                                 bool                 _applyVertexColorGamma )
+    : device( _device )
+    , shaderNameVert( _shaderNameVert )
+    , shaderNameFrag( _shaderNameFrag )
+    , pipelineLayout( _pipelineLayout )
+    , renderPass( _renderPass )
+    , vertShaderStage{}
+    , fragShaderStage{}
+    , pipelineCache( VK_NULL_HANDLE )
+    , applyVertexColorGamma( _applyVertexColorGamma )
+    , additionalAttachmentsCount( _additionalAttachmentsCount )
 {
-    assert(TestFlags());
+    assert( TestFlags() );
 
     VkPipelineCacheCreateInfo info = {};
-    info.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
+    info.sType                     = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO;
 
-    VkResult r = vkCreatePipelineCache(device, &info, nullptr, &pipelineCache);
-    VK_CHECKERROR(r);
+    VkResult r = vkCreatePipelineCache( device, &info, nullptr, &pipelineCache );
+    VK_CHECKERROR( r );
+
+    OnShaderReload( _shaderManager );
 }
 
 RTGL1::RasterizerPipelines::~RasterizerPipelines()
 {
-    for (auto &p : pipelines)
-    {
-        vkDestroyPipeline(device, p.second, nullptr);
-    }
-
+    DestroyAllPipelines();
     vkDestroyPipelineCache(device, pipelineCache, nullptr);
 }
 
-void RTGL1::RasterizerPipelines::Clear()
+void RTGL1::RasterizerPipelines::DestroyAllPipelines()
 {
     for (auto &p : pipelines)
     {
@@ -256,10 +257,12 @@ void RTGL1::RasterizerPipelines::Clear()
     pipelines.clear();
 }
 
-void RTGL1::RasterizerPipelines::SetShaders(const ShaderManager *shaderManager, const char *vertexShaderName, const char *fragmentShaderName)
+void RTGL1::RasterizerPipelines::OnShaderReload( const ShaderManager* shaderManager )
 {
-    vertShaderStage         = shaderManager->GetStageInfo(vertexShaderName);
-    fragShaderStage         = shaderManager->GetStageInfo(fragmentShaderName);
+    DestroyAllPipelines();
+
+    vertShaderStage = shaderManager->GetStageInfo( shaderNameVert.c_str() );
+    fragShaderStage = shaderManager->GetStageInfo( shaderNameFrag.c_str() );
 }
 
 void RTGL1::RasterizerPipelines::DisableDynamicState(const VkViewport &viewport, const VkRect2D &scissors)

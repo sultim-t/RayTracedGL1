@@ -27,9 +27,6 @@
 constexpr VkDeviceSize MAX_VERTEX_COUNT   = 1 << 16;
 constexpr VkDeviceSize MAX_INDEX_COUNT    = 1 << 18;
 
-constexpr const char *VERT_SHADER = "VertLensFlare";
-constexpr const char *FRAG_SHADER = "FragLensFlare";
-
 
 // indirectDrawCommands: one uint32_t - for count, the rest - cmds
 constexpr VkDeviceSize GetIndirectDrawCommandsOffset()
@@ -118,8 +115,15 @@ RTGL1::LensFlares::LensFlares(
     CreatePipelineLayouts(uniform->GetDescSetLayout(), textureManager->GetDescSetLayout(), rasterDescSetLayout, cullDescSetLayout, framebuffers->GetDescSetLayout());
 
 
-    rasterPipelines = std::make_unique<RasterizerPipelines>(device, vertFragPipelineLayout, renderPass, 1 /* emission, for compatibility */, _instanceInfo.rasterizedVertexColorGamma);
-    rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
+    rasterPipelines =
+        std::make_unique< RasterizerPipelines >( device,
+                                                 vertFragPipelineLayout,
+                                                 renderPass,
+                                                 _shaderManager.get(),
+                                                 "VertLensFlare",
+                                                 "FragLensFlare",
+                                                 1 /* emission, for compatibility */,
+                                                 _instanceInfo.rasterizedVertexColorGamma );
 
     CreatePipelines(_shaderManager.get());
 }
@@ -481,13 +485,12 @@ void RTGL1::LensFlares::DestroyPipelines()
     }
 }
 
-void RTGL1::LensFlares::OnShaderReload(const ShaderManager *shaderManager)
+void RTGL1::LensFlares::OnShaderReload( const ShaderManager* shaderManager )
 {
-    rasterPipelines->Clear();
-    rasterPipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER);
+    rasterPipelines->OnShaderReload( shaderManager );
 
     DestroyPipelines();
-    CreatePipelines(shaderManager);
+    CreatePipelines( shaderManager );
 }
 
 void RTGL1::LensFlares::CreateCullDescriptors()

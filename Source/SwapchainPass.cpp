@@ -28,16 +28,21 @@ RTGL1::SwapchainPass::SwapchainPass(
 :
     device(_device),
     swapchainRenderPass(VK_NULL_HANDLE),
-    swapchainWidth(0),
-    swapchainHeight(0),
     fbPing{},
     fbPong{}
 {
     assert(ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PING] == ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PONG]);
     CreateSwapchainRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_UPSCALED_PING]);
 
-    swapchainPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, swapchainRenderPass, 0, _instanceInfo.rasterizedVertexColorGamma);
-    swapchainPipelines->SetShaders(_shaderManager.get(), "VertRasterizer", "FragRasterizer");
+    swapchainPipelines =
+        std::make_shared< RasterizerPipelines >( device,
+                                                 _pipelineLayout,
+                                                 swapchainRenderPass,
+                                                 _shaderManager.get(),
+                                                 "VertDefault",
+                                                 "FragSwapchain",
+                                                 0,
+                                                 _instanceInfo.rasterizedVertexColorGamma );
 }
 
 RTGL1::SwapchainPass::~SwapchainPass()
@@ -78,9 +83,6 @@ void RTGL1::SwapchainPass::CreateFramebuffers(uint32_t newSwapchainWidth, uint32
         SET_DEBUG_NAME(device, fbPing[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer swapchain ping framebuffer");
         SET_DEBUG_NAME(device, fbPong[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer swapchain pong framebuffer");
     }
-
-    this->swapchainWidth = newSwapchainWidth;
-    this->swapchainHeight = newSwapchainHeight;
 }
 
 void RTGL1::SwapchainPass::DestroyFramebuffers()
@@ -105,8 +107,7 @@ void RTGL1::SwapchainPass::DestroyFramebuffers()
 
 void RTGL1::SwapchainPass::OnShaderReload(const ShaderManager *shaderManager)
 {
-    swapchainPipelines->Clear();
-    swapchainPipelines->SetShaders(shaderManager, "VertRasterizer", "FragRasterizer");
+    swapchainPipelines->OnShaderReload( shaderManager );
 }
 
 VkRenderPass RTGL1::SwapchainPass::GetSwapchainRenderPass() const
@@ -117,16 +118,6 @@ VkRenderPass RTGL1::SwapchainPass::GetSwapchainRenderPass() const
 const std::shared_ptr<RTGL1::RasterizerPipelines> &RTGL1::SwapchainPass::GetSwapchainPipelines() const
 {
     return swapchainPipelines;
-}
-
-uint32_t RTGL1::SwapchainPass::GetSwapchainWidth() const
-{
-    return swapchainWidth;
-}
-
-uint32_t RTGL1::SwapchainPass::GetSwapchainHeight() const
-{
-    return swapchainHeight;
 }
 
 VkFramebuffer RTGL1::SwapchainPass::GetSwapchainFramebuffer(FramebufferImageIndex framebufIndex, uint32_t frameIndex) const

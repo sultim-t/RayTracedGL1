@@ -643,19 +643,19 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
 
-    FramebufferImageIndex currentResultImage = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+    FramebufferImageIndex accum = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
     {
         // upscale finalized image
         if (renderResolution.IsNvDlssEnabled())
         {
-            currentResultImage = nvDlss->Apply(cmd, frameIndex, 
+            accum = nvDlss->Apply(cmd, frameIndex, 
                                                framebuffers, 
                                                renderResolution, 
                                                jitter);
         }
         else if (renderResolution.IsAmdFsr2Enabled())
         {
-            currentResultImage = amdFsr2->Apply(cmd, frameIndex, 
+            accum = amdFsr2->Apply(cmd, frameIndex, 
                                                 framebuffers, 
                                                 renderResolution, 
                                                 jitter, 
@@ -669,8 +669,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                           ? drawInfo.pRenderResolutionParams->pPixelizedRenderSize
                                           : nullptr;
 
-        currentResultImage = framebuffers->BlitForEffects(
-            cmd, frameIndex, currentResultImage, renderResolution.GetBlitFilter(), pixelized );
+        accum = framebuffers->BlitForEffects(
+            cmd, frameIndex, accum, renderResolution.GetBlitFilter(), pixelized );
     }
 
 
@@ -678,71 +678,77 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     {
         if (renderResolution.IsDedicatedSharpeningEnabled())
         {
-            currentResultImage = sharpening->Apply(
-                cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage,
+            accum = sharpening->Apply(
+                cmd, frameIndex, framebuffers, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), accum,
                 renderResolution.GetSharpeningTechnique(), renderResolution.GetSharpeningIntensity());
         }
         if (enableBloom)
         {
-            currentResultImage = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), currentResultImage);
+            accum = bloom->Apply(cmd, frameIndex, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), accum);
         }
         if (effectColorTint->Setup(args, drawInfo.postEffectParams.pColorTint))
         {
-            currentResultImage = effectColorTint->Apply(args, currentResultImage);
+            accum = effectColorTint->Apply(args, accum);
         }
         if (effectInverseBW->Setup(args, drawInfo.postEffectParams.pInverseBlackAndWhite))
         {
-            currentResultImage = effectInverseBW->Apply(args, currentResultImage);
+            accum = effectInverseBW->Apply(args, accum);
         }
         if (effectHueShift->Setup(args, drawInfo.postEffectParams.pHueShift))
         {
-            currentResultImage = effectHueShift->Apply(args, currentResultImage);
+            accum = effectHueShift->Apply(args, accum);
         }
         if (effectChromaticAberration->Setup(args, drawInfo.postEffectParams.pChromaticAberration))
         {
-            currentResultImage = effectChromaticAberration->Apply(args, currentResultImage);
+            accum = effectChromaticAberration->Apply(args, accum);
         }
         if (effectDistortedSides->Setup(args, drawInfo.postEffectParams.pDistortedSides))
         {
-            currentResultImage = effectDistortedSides->Apply(args, currentResultImage);
+            accum = effectDistortedSides->Apply(args, accum);
         }
         if (effectWaves->Setup(args, drawInfo.postEffectParams.pWaves))
         {
-            currentResultImage = effectWaves->Apply(args, currentResultImage);
+            accum = effectWaves->Apply(args, accum);
         }
         if (effectRadialBlur->Setup(args, drawInfo.postEffectParams.pRadialBlur))
         {
-            currentResultImage = effectRadialBlur->Apply(args, currentResultImage);
+            accum = effectRadialBlur->Apply(args, accum);
         }
     }
 
     // draw geometry such as HUD directly into the swapchain image
     if (!drawInfo.disableRasterization)
     {
-        rasterizer->DrawToSwapchain(cmd, frameIndex, currentResultImage, textureManager,
-                                    uniform->GetData()->view, uniform->GetData()->projection);
+        rasterizer->DrawToSwapchain( cmd,
+                                     frameIndex,
+                                     accum,
+                                     textureManager,
+                                     uniform->GetData()->view,
+                                     uniform->GetData()->projection,
+                                     swapchain->GetWidth(),
+                                     swapchain->GetHeight() );
     }
 
     // post-effect that work on swapchain geometry too
     {
         if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
         {
-            currentResultImage = effectWipe->Apply(args, blueNoise, currentResultImage);
+            accum = effectWipe->Apply(args, blueNoise, accum);
         }
         if (drawInfo.postEffectParams.pCRT != nullptr && drawInfo.postEffectParams.pCRT->isActive)
         {
             effectCrtDemodulateEncode->Setup(args);
-            currentResultImage = effectCrtDemodulateEncode->Apply(args, currentResultImage);
+            accum = effectCrtDemodulateEncode->Apply(args, accum);
 
             effectCrtDecode->Setup(args);
-            currentResultImage = effectCrtDecode->Apply(args, currentResultImage);
+            accum = effectCrtDecode->Apply(args, accum);
         }
     }
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain(
         cmd, frameIndex, swapchain,
-        currentResultImage, VK_FILTER_NEAREST);
+        accum, VK_FILTER_NEAREST);
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)

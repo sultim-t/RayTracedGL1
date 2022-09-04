@@ -48,8 +48,6 @@ public:
 
     VkRenderPass GetSwapchainRenderPass() const;
     const std::shared_ptr<RasterizerPipelines> &GetSwapchainPipelines() const;
-    uint32_t GetSwapchainWidth() const;
-    uint32_t GetSwapchainHeight() const;
     VkFramebuffer GetSwapchainFramebuffer(FramebufferImageIndex framebufIndex, uint32_t frameIndex) const;
 
 private:
@@ -60,9 +58,6 @@ private:
 
     VkRenderPass swapchainRenderPass;
     std::shared_ptr<RasterizerPipelines> swapchainPipelines;
-
-    uint32_t swapchainWidth;
-    uint32_t swapchainHeight;
 
     VkFramebuffer fbPing[MAX_FRAMES_IN_FLIGHT];
     VkFramebuffer fbPong[MAX_FRAMES_IN_FLIGHT];

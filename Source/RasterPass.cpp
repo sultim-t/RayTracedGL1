@@ -26,136 +26,146 @@
 #include "Utils.h"
 
 
-constexpr const char *VERT_SHADER = "VertRasterizer";
-constexpr const char *FRAG_SHADER = "FragRasterizer";
-constexpr const char *FRAG_SHADER_EMISSIVE = "FragRasterizerEmissive";
-constexpr VkFormat DEPTH_FORMAT = VK_FORMAT_D32_SFLOAT;
-constexpr const char *DEPTH_FORMAT_NAME = "VK_FORMAT_X8_D24_UNORM_PACK32";
+constexpr VkFormat    DEPTH_FORMAT      = VK_FORMAT_D32_SFLOAT;
+constexpr const char* DEPTH_FORMAT_NAME = "VK_FORMAT_D32_SFLOAT";
 
 
-RTGL1::RasterPass::RasterPass(
-    VkDevice _device, 
-    VkPhysicalDevice _physDevice,
-    VkPipelineLayout _pipelineLayout,
-    const std::shared_ptr<ShaderManager> &_shaderManager,
-    const std::shared_ptr<Framebuffers> &_storageFramebuffers,
-    const RgInstanceCreateInfo &_instanceInfo)
-:
-    device(_device),
-    rasterRenderPass(VK_NULL_HANDLE),
-    rasterSkyRenderPass(VK_NULL_HANDLE),
-    rasterWidth(0),
-    rasterHeight(0),
-    rasterFramebuffers{},
-    rasterSkyFramebuffers{},
-    depthImages{},
-    depthViews{},
-    depthMemory{}
+RTGL1::RasterPass::RasterPass( VkDevice                                _device,
+                               VkPhysicalDevice                        _physDevice,
+                               VkPipelineLayout                        _pipelineLayout,
+                               const std::shared_ptr< ShaderManager >& _shaderManager,
+                               const std::shared_ptr< Framebuffers >&  _storageFramebuffers,
+                               const RgInstanceCreateInfo&             _instanceInfo )
+    : device( _device )
 {
-    VkFormatProperties props = {};
-    vkGetPhysicalDeviceFormatProperties(_physDevice, DEPTH_FORMAT, &props);
-    if ((props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) == 0)
     {
-        using namespace std::string_literals;
-        throw RgException(RG_GRAPHICS_API_ERROR, "Depth format is not supported: "s + DEPTH_FORMAT_NAME);
+        VkFormatProperties props = {};
+        vkGetPhysicalDeviceFormatProperties( _physDevice, DEPTH_FORMAT, &props );
+        if( ( props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT ) == 0 )
+        {
+            using namespace std::string_literals;
+            throw RgException( RG_GRAPHICS_API_ERROR,
+                               "Depth format is not supported: "s + DEPTH_FORMAT_NAME );
+        }
     }
 
-    CreateRasterRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_FINAL], ShFramebuffers_Formats[FB_IMAGE_INDEX_BLOOM_INPUT], DEPTH_FORMAT);
-    CreateSkyRenderPass(ShFramebuffers_Formats[FB_IMAGE_INDEX_ALBEDO], DEPTH_FORMAT);
+    worldRenderPass = CreateWorldRenderPass( ShFramebuffers_Formats[ FB_IMAGE_INDEX_FINAL ],
+                                             ShFramebuffers_Formats[ FB_IMAGE_INDEX_BLOOM_INPUT ],
+                                             DEPTH_FORMAT );
 
-    rasterPipelines = std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterRenderPass, 1 /* for emission */, _instanceInfo.rasterizedVertexColorGamma);
-    rasterPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER_EMISSIVE);
+    skyRenderPass =
+        CreateSkyRenderPass( ShFramebuffers_Formats[ FB_IMAGE_INDEX_ALBEDO ], DEPTH_FORMAT );
 
-    rasterSkyPipelines= std::make_shared<RasterizerPipelines>(device, _pipelineLayout, rasterSkyRenderPass, 0, _instanceInfo.rasterizedVertexColorGamma);
-    rasterSkyPipelines->SetShaders(_shaderManager.get(), VERT_SHADER, FRAG_SHADER);
+    worldPipelines =
+        std::make_shared< RasterizerPipelines >( device,
+                                                 _pipelineLayout,
+                                                 worldRenderPass,
+                                                 _shaderManager.get(),
+                                                 "VertDefault",
+                                                 "FragWorld",
+                                                 1 /* for emission */,
+                                                 _instanceInfo.rasterizedVertexColorGamma );
 
-    depthCopying = std::make_shared<DepthCopying>(device, DEPTH_FORMAT, _shaderManager, _storageFramebuffers);
+    skyPipelines =
+        std::make_shared< RasterizerPipelines >( device,
+                                                 _pipelineLayout,
+                                                 skyRenderPass,
+                                                 _shaderManager.get(),
+                                                 "VertDefault",
+                                                 "FragSky",
+                                                 0,
+                                                 _instanceInfo.rasterizedVertexColorGamma );
+
+    depthCopying = std::make_shared< DepthCopying >(
+        device, DEPTH_FORMAT, _shaderManager, _storageFramebuffers );
 }
 
 RTGL1::RasterPass::~RasterPass()
 {
-    vkDestroyRenderPass(device, rasterRenderPass, nullptr);
-    vkDestroyRenderPass(device, rasterSkyRenderPass, nullptr);
+    vkDestroyRenderPass( device, worldRenderPass, nullptr );
+    vkDestroyRenderPass( device, skyRenderPass, nullptr );
     DestroyFramebuffers();
 }
 
-void RTGL1::RasterPass::PrepareForFinal(
-    VkCommandBuffer cmd, uint32_t frameIndex,
-    const std::shared_ptr<Framebuffers> &storageFramebuffers)
+void RTGL1::RasterPass::PrepareForFinal( VkCommandBuffer                        cmd,
+                                         uint32_t                               frameIndex,
+                                         const std::shared_ptr< Framebuffers >& storageFramebuffers,
+                                         uint32_t                               renderWidth,
+                                         uint32_t                               renderHeight )
 {
-    assert(rasterWidth > 0 && rasterHeight > 0);
-
     // firstly, copy data from storage buffer to depth buffer,
     // and only after getting correct depth buffer, draw the geometry
     // if no primary rays were traced, just clear depth buffer without copying
-    depthCopying->Process(cmd, frameIndex, storageFramebuffers, rasterWidth, rasterHeight, false);
+    depthCopying->Process( cmd, frameIndex, storageFramebuffers, renderWidth, renderHeight, false );
 }
 
-void RTGL1::RasterPass::CreateFramebuffers(uint32_t renderWidth, uint32_t renderHeight,
-                                           const std::shared_ptr<Framebuffers> &storageFramebuffers,
-                                           const std::shared_ptr<MemoryAllocator> &allocator,
-                                           const std::shared_ptr<CommandBufferManager> &cmdManager)
+void RTGL1::RasterPass::CreateFramebuffers(
+    uint32_t                                       renderWidth,
+    uint32_t                                       renderHeight,
+    const std::shared_ptr< Framebuffers >&         storageFramebuffers,
+    const std::shared_ptr< MemoryAllocator >&      allocator,
+    const std::shared_ptr< CommandBufferManager >& cmdManager )
 {
-    CreateDepthBuffers(renderWidth, renderHeight, allocator, cmdManager);
+    CreateDepthBuffers( renderWidth, renderHeight, allocator, cmdManager );
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
     {
-        assert(rasterFramebuffers[i] == VK_NULL_HANDLE);
+        assert( worldFramebuffers[ i ] == VK_NULL_HANDLE );
         {
-            VkImageView attchs[] =
-            {
-                storageFramebuffers->GetImageView(FB_IMAGE_INDEX_FINAL, i),
-                storageFramebuffers->GetImageView(FB_IMAGE_INDEX_BLOOM_INPUT, i),
-                depthViews[i],
+            VkImageView attchs[] = {
+                storageFramebuffers->GetImageView( FB_IMAGE_INDEX_FINAL, i ),
+                storageFramebuffers->GetImageView( FB_IMAGE_INDEX_BLOOM_INPUT, i ),
+                depthViews[ i ],
             };
 
-            VkFramebufferCreateInfo fbInfo =
-            {
-                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = rasterRenderPass,
-                .attachmentCount = std::size(attchs),
-                .pAttachments = attchs,
-                .width = renderWidth,
-                .height = renderHeight,
-                .layers = 1,
+            VkFramebufferCreateInfo fbInfo = {
+                .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass      = worldRenderPass,
+                .attachmentCount = std::size( attchs ),
+                .pAttachments    = attchs,
+                .width           = renderWidth,
+                .height          = renderHeight,
+                .layers          = 1,
             };
 
-            VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterFramebuffers[i]);
-            VK_CHECKERROR(r);
+            VkResult r = vkCreateFramebuffer( device, &fbInfo, nullptr, &worldFramebuffers[ i ] );
+            VK_CHECKERROR( r );
 
-            SET_DEBUG_NAME(device, rasterFramebuffers[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer raster framebuffer");
+            SET_DEBUG_NAME( device,
+                            worldFramebuffers[ i ],
+                            VK_OBJECT_TYPE_FRAMEBUFFER,
+                            "Rasterizer raster framebuffer" );
         }
 
-        assert(rasterSkyFramebuffers[i] == VK_NULL_HANDLE);
+        assert( skyFramebuffers[ i ] == VK_NULL_HANDLE );
         {
-            VkImageView attchs[] =
-            {
-                storageFramebuffers->GetImageView(FB_IMAGE_INDEX_ALBEDO, i),
-                depthViews[i],
+            VkImageView attchs[] = {
+                storageFramebuffers->GetImageView( FB_IMAGE_INDEX_ALBEDO, i ),
+                depthViews[ i ],
             };
 
-            VkFramebufferCreateInfo fbInfo = 
-            {
-                .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-                .renderPass = rasterSkyRenderPass,
-                .attachmentCount = std::size(attchs),
-                .pAttachments = attchs,
-                .width = renderWidth,
-                .height = renderHeight,
-                .layers = 1,
+            VkFramebufferCreateInfo fbInfo = {
+                .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+                .renderPass      = skyRenderPass,
+                .attachmentCount = std::size( attchs ),
+                .pAttachments    = attchs,
+                .width           = renderWidth,
+                .height          = renderHeight,
+                .layers          = 1,
             };
 
-            VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &rasterSkyFramebuffers[i]);
-            VK_CHECKERROR(r);
+            VkResult r =
+                vkCreateFramebuffer( device, &fbInfo, nullptr, &skyFramebuffers[ i ] );
+            VK_CHECKERROR( r );
 
-            SET_DEBUG_NAME(device, rasterSkyFramebuffers[i], VK_OBJECT_TYPE_FRAMEBUFFER, "Rasterizer raster sky framebuffer");
+            SET_DEBUG_NAME( device,
+                            skyFramebuffers[ i ],
+                            VK_OBJECT_TYPE_FRAMEBUFFER,
+                            "Rasterizer raster sky framebuffer" );
         }
     }
 
-    depthCopying->CreateFramebuffers(depthViews, renderWidth, renderHeight);
-
-    this->rasterWidth = renderWidth;
-    this->rasterHeight = renderHeight;
+    depthCopying->CreateFramebuffers( depthViews, renderWidth, renderHeight );
 }
 
 void RTGL1::RasterPass::DestroyFramebuffers()
@@ -164,77 +174,67 @@ void RTGL1::RasterPass::DestroyFramebuffers()
 
     DestroyDepthBuffers();
 
-    for (VkFramebuffer &fb : rasterFramebuffers)
+    for( VkFramebuffer& fb : worldFramebuffers )
     {
-        if (fb != VK_NULL_HANDLE)
+        if( fb != VK_NULL_HANDLE )
         {
-            vkDestroyFramebuffer(device, fb, nullptr);
+            vkDestroyFramebuffer( device, fb, nullptr );
             fb = VK_NULL_HANDLE;
         }
     }
 
-    for (VkFramebuffer &fb : rasterSkyFramebuffers)
+    for( VkFramebuffer& fb : skyFramebuffers )
     {
-        if (fb != VK_NULL_HANDLE)
+        if( fb != VK_NULL_HANDLE )
         {
-            vkDestroyFramebuffer(device, fb, nullptr);
+            vkDestroyFramebuffer( device, fb, nullptr );
             fb = VK_NULL_HANDLE;
         }
     }
 }
 
-VkRenderPass RTGL1::RasterPass::GetRasterRenderPass() const
+VkRenderPass RTGL1::RasterPass::GetWorldRenderPass() const
 {
-    return rasterRenderPass;
+    return worldRenderPass;
 }
 
-VkRenderPass RTGL1::RasterPass::GetSkyRasterRenderPass() const
+VkRenderPass RTGL1::RasterPass::GetSkyRenderPass() const
 {
-    return rasterSkyRenderPass;
+    return skyRenderPass;
 }
 
-const std::shared_ptr<RTGL1::RasterizerPipelines> &RTGL1::RasterPass::GetRasterPipelines() const
+const std::shared_ptr< RTGL1::RasterizerPipelines >& RTGL1::RasterPass::GetRasterPipelines() const
 {
-    return rasterPipelines;
+    return worldPipelines;
 }
 
-const std::shared_ptr<RTGL1::RasterizerPipelines> &RTGL1::RasterPass::GetSkyRasterPipelines() const
+const std::shared_ptr< RTGL1::RasterizerPipelines >& RTGL1::RasterPass::GetSkyRasterPipelines()
+    const
 {
-    return rasterSkyPipelines;
+    return skyPipelines;
 }
 
-uint32_t RTGL1::RasterPass::GetRasterWidth() const
+VkFramebuffer RTGL1::RasterPass::GetWorldFramebuffer( uint32_t frameIndex ) const
 {
-    return rasterWidth;
+    return worldFramebuffers[ frameIndex ];
 }
 
-uint32_t RTGL1::RasterPass::GetRasterHeight() const
+VkFramebuffer RTGL1::RasterPass::GetSkyFramebuffer( uint32_t frameIndex ) const
 {
-    return rasterHeight;
+    return skyFramebuffers[ frameIndex ];
 }
 
-VkFramebuffer RTGL1::RasterPass::GetFramebuffer(uint32_t frameIndex) const
+void RTGL1::RasterPass::OnShaderReload( const ShaderManager* shaderManager )
 {
-    return rasterFramebuffers[frameIndex];
+    worldPipelines->OnShaderReload( shaderManager );
+    skyPipelines->OnShaderReload( shaderManager );
+
+    depthCopying->OnShaderReload( shaderManager );
 }
 
-VkFramebuffer RTGL1::RasterPass::GetSkyFramebuffer(uint32_t frameIndex) const
-{
-    return rasterSkyFramebuffers[frameIndex];
-}
-
-void RTGL1::RasterPass::OnShaderReload(const ShaderManager *shaderManager)
-{
-    rasterPipelines->Clear();
-    rasterSkyPipelines->Clear();
-
-    rasterPipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER_EMISSIVE);
-    rasterSkyPipelines->SetShaders(shaderManager, VERT_SHADER, FRAG_SHADER);
-
-    depthCopying->OnShaderReload(shaderManager);
-}
-
-void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkFormat screenEmisionFormat, VkFormat depthImageFormat)
+VkRenderPass RTGL1::RasterPass::CreateWorldRenderPass( VkFormat finalImageFormat,
+                                                       VkFormat screenEmisionFormat,
+                                                       VkFormat depthImageFormat ) const
 {
     const VkAttachmentDescription attchs[] =
     {
@@ -323,13 +323,17 @@ void RTGL1::RasterPass::CreateRasterRenderPass(VkFormat finalImageFormat, VkForm
         .pDependencies = &dependency,
     };
 
-    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterRenderPass);
-    VK_CHECKERROR(r);
+    VkRenderPass pass;
+    VkResult     r = vkCreateRenderPass( device, &passInfo, nullptr, &pass );
+    VK_CHECKERROR( r );
 
-    SET_DEBUG_NAME(device, rasterRenderPass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer raster render pass");
+    SET_DEBUG_NAME( device, pass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer raster render pass" );
 
+    return pass;
 }
-void RTGL1::RasterPass::CreateSkyRenderPass(VkFormat skyFinalImageFormat, VkFormat depthImageFormat)
+
+VkRenderPass RTGL1::RasterPass::CreateSkyRenderPass( VkFormat skyFinalImageFormat,
+                                                     VkFormat depthImageFormat ) const
 {
     const VkAttachmentDescription attchs[] =
     {
@@ -403,10 +407,13 @@ void RTGL1::RasterPass::CreateSkyRenderPass(VkFormat skyFinalImageFormat, VkForm
         .pDependencies = &dependency,
     };
 
-    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &rasterSkyRenderPass);
+    VkRenderPass pass;
+    VkResult     r = vkCreateRenderPass( device, &passInfo, nullptr, &pass );
     VK_CHECKERROR(r);
 
-    SET_DEBUG_NAME(device, rasterSkyRenderPass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer raster sky render pass");
+    SET_DEBUG_NAME( device, pass, VK_OBJECT_TYPE_RENDER_PASS, "Rasterizer raster sky render pass" );
+
+    return pass;
 }
 
 void RTGL1::RasterPass::CreateDepthBuffers(uint32_t width, uint32_t height,
