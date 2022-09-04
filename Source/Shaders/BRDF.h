@@ -83,11 +83,20 @@ float getFresnelSchlick(float n1, float n2, const vec3 V, const vec3 N)
     return mix(R0, 1.0, pow(1.0 - abs(dot(N, V)), 5.0));
 }
 
+// GGX distribution
+float D_GGX( float nm, float alpha )
+{
+    const float alphaSq = square( alpha );
+
+    nm = max( 0.0, nm );
+    return alphaSq / M_PI / square( nm * nm * ( alphaSq - 1 ) + 1 );
+}
+
 // Smith G1 for GGX, Karis' approximation ("Real Shading in Unreal Engine 4")
 // ns = dot( macrosurface normal, s ), where s is either v or l
-float G1GGX(float ns, float alpha)
+float G1_GGX( float ns, float alpha )
 {
-    return 2 * ns * safePositiveRcp(ns * (2 - alpha) + alpha);
+    return 2 * ns * safePositiveRcp( ns * ( 2 - alpha ) + alpha );
 }
 
 #define MIN_GGX_ROUGHNESS 0.005
@@ -109,18 +118,10 @@ vec3 evalBRDFSmithGGX(const vec3 n, const vec3 v, const vec3 l, float alpha, con
 
     const vec3 F = getFresnelSchlick(nl, specularColor);
 
-    float D;
-    {
-        const float alphaSq = square(alpha);
-
-        // here, microfacet normal is a half-vector, 
-        // since we know in which direction l should be reflected
-        const vec3 h = normalize(v + l);
-        const float nm = dot(n, h);
-
-        D = max(nm, 0) * alphaSq 
-            / (M_PI * square(1 + square(nm) * (alphaSq - 1)));
-    }
+    // here, microfacet normal is a half-vector,
+    // since we know in which direction l should be reflected
+    const vec3  h = normalize( v + l );
+    const float D = D_GGX( dot( n, h ), alpha );
 
     float G2Modif;
     {
@@ -169,25 +170,18 @@ vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2, out float oneO
     const vec3 Nh = t1 * T1 + t2 * T2 + sqrt(max(0.0, 1.0 - t1 * t1 - t2 * t2)) * Vh;
     
     // Section 3.4: transforming the normal back to the ellipsoid configuration
-    const vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.02, Nh.z)));    
-    
+    const vec3 Ne = normalize(vec3(alpha * Nh.x, alpha * Nh.y, max(0.02, Nh.z)));
+
     {
-        float D;
-        {
-            const float alphaSq = square( alpha );
-
-            // here, macro normal is (0,0,1), so nm=m.z
-            const float nm = Ne.z;
-
-            D = max(nm, 0) * alphaSq 
-                / (M_PI * square(1 + square(nm) * (alphaSq - 1)));
-        }
+        // here, macro normal is (0,0,1), so nm=m.z
+        const float nm = Ne.z;
+        const float D = D_GGX( nm, alpha );
 
         // here, macro normal is (0,0,1), so nv=v.z
         const float nv = v.z;
-        const float G1 = G1GGX(nv, alpha);
+        const float G1 = G1_GGX( nv, alpha );
 
-        oneOverPdf = v.z * safePositiveRcp(G1 * max(0, dot(v, Ne)) * D); 
+        oneOverPdf = v.z * safePositiveRcp(G1 * max(0, dot(v, Ne)) * D);
     }
 
     return Ne;
