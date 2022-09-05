@@ -174,7 +174,7 @@ void main()
 
         vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
 
-        vec4 v = volume_sampleDithered( position, rnd, 4.0 );
+        vec4 v = volume_sampleDithered( position, rnd, 2.0 );
         color  = color * v.a + v.rgb;
     }
 

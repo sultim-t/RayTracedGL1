@@ -48,8 +48,16 @@ float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float anis
 void main()
 {
     const ivec3 cell     = ivec3( gl_LaunchIDEXT.xyz );
-    const vec3  center   = volume_getCenter( cell );
+    vec3        center   = volume_getCenter( cell );
     const vec3  toviewer = normalize( globalUniform.cameraPosition.xyz - center );
+
+    {
+        vec3  s      = volume_getCenter( cell + ivec3( 0, 0, 1 ) );
+        vec3  radius = ( center - s ) * 0.5;
+        uint  seed   = getRandomSeed( cell.xy, globalUniform.frameId );
+        float rnd    = rndBlueNoise8( seed, 0 ).x * 2 - 1;
+        center += radius * rnd;
+    }
 
     {
         ivec2 pix;
@@ -84,7 +92,7 @@ void main()
     if( globalUniform.directionalLightExists != 0)
     {
         DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
-        bool isShadowed = traceShadowRay( 0, center, center - 1000 * l.direction, true );
+        bool isShadowed = traceShadowRay( 0, center, center - MAX_RAY_LENGTH * l.direction, true );
 
         vec3 radiance = l.color * float( !isShadowed );
         vec3 tolight   = -l.direction;
