@@ -97,21 +97,21 @@ vec3 processSecondDiffuseBounce(const uint seed, const Surface surf, const vec3 
     return (hitSurf.emission + diffuse) * hitSurf.albedo * oneOverPdf;
 }
 
-SampleIndirect processIndirect(const bool isSpecular, const uint seed, const Surface surf, out float oneOverSourcePdf)
+SampleIndirect processIndirect( const uint seed, const Surface surf, out float oneOverSourcePdf )
 {
     vec3 bounceDir;
 
-    if (isSpecular)
-    {
-        bounceDir = getSpecularBounce(seed, 1,
-                                      surf.normal, surf.roughness, surf.specularColor,
-                                      surf.toViewerDir,
-                                      oneOverSourcePdf);
-    }
-    else
-    {
-        bounceDir = getDiffuseBounce(seed, 1, surf.normalGeom, oneOverSourcePdf); 
-    }
+#if 1
+    bounceDir = getSpecularBounce( seed,
+                                   1,
+                                   surf.normal,
+                                   surf.roughness,
+                                   surf.specularColor,
+                                   surf.toViewerDir,
+                                   oneOverSourcePdf );
+#else
+    bounceDir = getDiffuseBounce( seed, 1, surf.normalGeom, oneOverSourcePdf );
+#endif
 
     const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01, 
                                         surf.roughness, 
@@ -132,9 +132,11 @@ SampleIndirect processIndirect(const bool isSpecular, const uint seed, const Sur
     // calculate direct diffuse illumination in a hit position
     vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
 
-    // for specular, calculate additional bounce contribution, 
+    // for smoother surfaces, calculate additional bounce contribution, 
     // so shadows are not completely black
-    if (isSpecular)
+    // if( rnd16( seed, RANDOM_SALT_SECOND_BOUND ) > surf.roughness )
+    // TODO: user-defined variable to control 2nd bounce,
+    // as many surfaces are pitch black in some games
     {
         float oneOverPdf_Second;
         const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);
@@ -222,12 +224,10 @@ void main()
                                         FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH,
                                         surf.roughness );
 
-    const bool isSpecular = rnd16( seed, salt++ ) > diffusePr;
-
     ReservoirIndirect combined = emptyReservoirIndirect();
     {
         float oneOverSourcePdf;
-        SampleIndirect initial = processIndirect(isSpecular, seed, surf, oneOverSourcePdf);
+        SampleIndirect initial = processIndirect(seed, surf, oneOverSourcePdf);
 
         float targetPdf = targetPdfForIndirectSample(initial);
         updateReservoirIndirect(combined, initial, targetPdf, oneOverSourcePdf, 0.5);
@@ -281,7 +281,7 @@ void main()
 
     uint nobiasM = combined.M;
 
-    if (!isSpecular)
+    if ( false ) // TODO: investigate leaks
     {
         for( int pixIndex = 0; pixIndex < int( SPATIAL_SAMPLES_INDIR * diffusePr ); pixIndex++ )
         {
