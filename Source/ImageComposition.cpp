@@ -362,17 +362,18 @@ void RTGL1::ImageComposition::SetupLpmParams(VkCommandBuffer cmd)
     #define LPM_RG_CONTEXT pContext,
 
     {
-        varAF3(saturation) = initAF3(-0.1f, -0.1f, -0.1f);
-        varAF3(crosstalk) = initAF3(1.0f, 1.0f / 8.0f, 1.0f / 16.0f);
-        LpmSetup(
-            LPM_RG_CONTEXT
-            false, LPM_CONFIG_709_709, LPM_COLORS_709_709,
-            0.0f, // softGap
-            256.0f, // hdrMax
-            7.5f, // exposure
-            0.1f, // contrast
-            1.0f, // shoulder contrast
-            saturation, crosstalk);
+        varAF3( saturation ) = initAF3( -0.1f, -0.1f, -0.1f );
+        varAF3( crosstalk )  = initAF3( 1.0f, 1.0f / 8.0f, 1.0f / 16.0f );
+        LpmSetup( LPM_RG_CONTEXT false,
+                  LPM_CONFIG_709_709,
+                  LPM_COLORS_709_709,
+                  0.0f,   // softGap
+                  256.0f, // hdrMax
+                  8.0f,   // exposure
+                  0.1f,   // contrast
+                  1.0f,   // shoulder contrast
+                  saturation,
+                  crosstalk );
     }
 
     lpmParams->CopyFromStaging(cmd, 0, LPM_BUFFER_SIZE);

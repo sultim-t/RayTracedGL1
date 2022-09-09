@@ -55,17 +55,18 @@ layout(set = DESC_SET_LPM_PARAMS, binding = BINDING_LPM_PARAMS) readonly uniform
 vec3 lpmTonemap(vec3 c)
 {
 #if DEBUG_LPM
-    varAF3(saturation) = initAF3(-0.1f, -0.1f, -0.1f);
-    varAF3(crosstalk) = initAF3(1.0f, 1.0f / 8.0f, 1.0f / 16.0f);
-    LpmSetup(
-        LPM_RG_CONTEXT
-        false, LPM_CONFIG_709_709,LPM_COLORS_709_709,
-        0.0f, // softGap
-        256.0f, // hdrMax
-        7.5f, // exposure
-        0.1f, // contrast
-        1.0f, // shoulder contrast
-        saturation, crosstalk);
+    varAF3( saturation ) = initAF3( -0.1f, -0.1f, -0.1f );
+    varAF3( crosstalk )  = initAF3( 1.0f, 1.0f / 8.0f, 1.0f / 16.0f );
+    LpmSetup( LPM_RG_CONTEXT false,
+              LPM_CONFIG_709_709,
+              LPM_COLORS_709_709,
+              0.0f,   // softGap
+              256.0f, // hdrMax
+              8.0f,   // exposure
+              0.1f,   // contrast
+              1.0f,   // shoulder contrast
+              saturation,
+              crosstalk );
 #endif
 
     LpmFilter(c.r, c.g, c.b, false, LPM_CONFIG_709_709);
@@ -106,11 +107,42 @@ vec3 tonemapRT(vec3 c)
 }
 
 
+float getManualEV100( float aperture, float shutterTime, float iso )
+{
+    return log2( square( aperture ) / shutterTime * 100.0 / iso );
+}
+
+float getAutoEV100()
+{
+    const float lumAverage = max( 0.0, tonemapping.avgLuminance );
+    const float S          = 100;
+    const float K          = 12.5;
+    return log2( lumAverage * S / K );
+}
+
+float getCurrentEV100()
+{
+    bool manual = false;
+    return manual ? getManualEV100( 1.0 / 16.0, 1.0 / 125.0, 100 ) : getAutoEV100();
+}
+
+float ev100ToLuminousExposure( float ev100 )
+{
+    float maxLuminance = 1.2 * pow( 2.0, ev100 );
+    return maxLuminance > 0.0 ? 1.0 / maxLuminance : 0.0;
+}
+
+float ev100ToLuminance( float ev100 )
+{
+    return pow( 2.0, ev100 - 3 );
+}
+
+
 vec3 finalizeColor(const vec3 hdr, const vec3 screenEmis, bool isSky)
 {
     if( globalUniform.lightmapEnable == 0 )
-    {   
-        vec3 c = hdr * getExposure() +
+    {
+        vec3 c = hdr * ev100ToLuminousExposure( getCurrentEV100() ) +
                  screenEmis * globalUniform.emissionMaxScreenColor;
 
         return tonemapRT(c);
@@ -129,18 +161,14 @@ vec3 getBloomInput(const vec3 hdr, const vec3 screenEmis, bool isSky)
     {
         return screenEmis;
     }
-    
-    vec3 illum = hdr * getExposure();
-    
-    float f = smoothstep(globalUniform.bloomThreshold, 
-                         globalUniform.bloomThreshold + globalUniform.bloomThresholdLength, 
-                         getLuminance(illum));
-                            
-    vec3 emis = mix(vec3(getLuminance(screenEmis)), 
-                    screenEmis,
-                    1.0 + globalUniform.bloomEmissionSaturationBias);
 
-    return illum * f + emis * globalUniform.bloomEmissionMultiplier;
+    float power = getLuminance( screenEmis );
+    vec3  emis  = power > 0.001 ? screenEmis / power : vec3( 0 );
+
+    float ec = power * globalUniform.bloomEmissionMultiplier;
+
+    return hdr * ev100ToLuminance( getCurrentEV100() ) +
+           emis * ev100ToLuminance( getCurrentEV100() + ec );
 }
 
 

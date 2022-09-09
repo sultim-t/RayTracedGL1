@@ -333,6 +333,12 @@ void main()
             illuminated = albedo * throughput;
         }
 
+        // TODO: remove
+        if (isSkyPix(pix))
+        {
+            illuminated = vec3( 0 );
+        }
+
         imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
     }
 }
