@@ -85,6 +85,6 @@ void main()
         float t = 1.0 - exp(-globalUniform.timeDelta * tau);
         float adaptedLuminance = lastFrameLuminance + (weightedAvgLuminance - lastFrameLuminance) * t;
 
-        tonemapping.avgLuminance = adaptedLuminance;
+        tonemapping.avgLuminance = min( adaptedLuminance, exp2( maxLogLuminance ) );
     }
 }

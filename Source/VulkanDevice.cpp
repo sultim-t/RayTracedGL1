@@ -178,9 +178,9 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
         else
         {
-            gu->minLogLuminance = -7.0f;
-            gu->maxLogLuminance = 0.0f;
-            gu->luminanceWhitePoint = 11.0f;
+            gu->minLogLuminance     = -3.9f;
+            gu->maxLogLuminance     = -2.8f;
+            gu->luminanceWhitePoint = 10.0f;
         }
     }
 

@@ -20,7 +20,7 @@
 
 #version 460
 
-#define LUMINANCE_EPS 0.005
+#define LUMINANCE_EPS 0.001
 
 
 #define DESC_SET_FRAMEBUFFERS 0

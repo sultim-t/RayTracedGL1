@@ -128,13 +128,13 @@ float getCurrentEV100()
 
 float ev100ToLuminousExposure( float ev100 )
 {
-    float maxLuminance = 1.2 * pow( 2.0, ev100 );
+    float maxLuminance = 1.2 * exp2( ev100 );
     return maxLuminance > 0.0 ? 1.0 / maxLuminance : 0.0;
 }
 
 float ev100ToLuminance( float ev100 )
 {
-    return pow( 2.0, ev100 - 3 );
+    return exp2( ev100 - 3 );
 }
 
 
