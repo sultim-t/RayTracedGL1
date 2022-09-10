@@ -206,15 +206,21 @@ ShHitInfo getHitInfoBounce(
     };
     
     h.hitPosition = tr.positions * baryCoords;
-    
-    // TODO: special flag to compute exact normals
-    // h.normalGeom = normalize(tr.normals * baryCoords);
-    h.normalGeom = safeNormalize(cross(tr.positions[1] - tr.positions[0], tr.positions[2] - tr.positions[0]));
-   
-    // always face ray origin
-    if (dot(h.normalGeom, h.hitPosition - rayOrigin) > 0)
+
+    if( ( tr.geometryInstanceFlags & GEOM_INST_FLAG_EXACT_NORMALS ) == 0 )
     {
-        h.normalGeom *= -1;
+        h.normalGeom = normalize( tr.normals * baryCoords );
+    }
+    else
+    {
+        h.normalGeom = safeNormalize(
+            cross( tr.positions[ 1 ] - tr.positions[ 0 ], tr.positions[ 2 ] - tr.positions[ 0 ] ) );
+
+        // always face ray origin
+        if( dot( h.normalGeom, h.hitPosition - rayOrigin ) > 0 )
+        {
+            h.normalGeom *= -1;
+        }
     }
 
 

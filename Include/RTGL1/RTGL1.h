@@ -345,17 +345,18 @@ typedef struct RgVertex
 typedef enum RgGeometryUploadFlagBits
 {
     RG_GEOMETRY_UPLOAD_GENERATE_NORMALS_BIT = 1,
-    RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT = 2,
+    RG_GEOMETRY_UPLOAD_EXACT_NORMALS_BIT = 2,
+    RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT = 4,
     // Set this flag if on the both sides of polygons the media is the same.
     // For example, waterfall geometry represented by one flat square,
     // so on both sides is air media.
-    RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 4,
+    RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT = 8,
     // Multiply the thoughput by albedo on reflection / refraction.
     // E.g. mirror has some texture on it. 
-    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 8,
-    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 16,
+    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 16,
+    RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 32,
     // Ignore refl/refr geometry after one refl/refr hit.
-    RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT = 32,
+    RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT = 64,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 

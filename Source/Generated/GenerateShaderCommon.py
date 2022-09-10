@@ -322,7 +322,7 @@ CONST = {
     "GEOM_INST_FLAG_RESERVED_3"             : "1 << 16",
     "GEOM_INST_FLAG_RESERVED_4"             : "1 << 17",
     "GEOM_INST_FLAG_RESERVED_5"             : "1 << 18",
-    "GEOM_INST_FLAG_RESERVED_6"             : "1 << 19",
+    "GEOM_INST_FLAG_EXACT_NORMALS"          : "1 << 19",
     "GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER" : "1 << 20",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT"  : "1 << 21",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD"   : "1 << 22",
