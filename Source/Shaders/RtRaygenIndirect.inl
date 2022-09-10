@@ -274,11 +274,8 @@ void main()
     const float motionZ      = texelFetch( framebufMotion_Sampler, pix, 0 ).z;
     const float depthCur     = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
     const vec2  posPrev      = getPrevScreenPos( framebufMotion_Sampler, pix );
+    
 
-    // if back-projected pix is valid, then run spatial pass around
-    // that reprojected pix, as spatial uses restirIndirect_LoadReservoir_Prev
-    // to prevent same-frame dependency
-    bool isTemporalValid = false;
 
     for( int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES_INDIR; pixIndex++ )
     {
@@ -307,8 +304,6 @@ void main()
             }
         }
 
-        isTemporalValid = true;
-
         ReservoirIndirect temporal = restirIndirect_LoadReservoir_Prev( pp );
         // renormalize to prevent precision problems
         normalizeReservoirIndirect( temporal, 20 );
@@ -319,10 +314,9 @@ void main()
 
 
 
-    uint nobiasM = combined.M;
-
     {
         const int spatialCount = int( SPATIAL_SAMPLES_INDIR * getDiffuseWeight( surf.roughness ) );
+        uint nobiasM = combined.M; 
 
         for( int pixIndex = 0; pixIndex < spatialCount; pixIndex++ )
         {
@@ -351,7 +345,9 @@ void main()
 
             ReservoirIndirect reservoir_q = loadInitialSampleAsReservoir( pp );
 
-            float oneOverJacobian;
+            // TODO: acceptable jacobian values
+            float oneOverJacobian = 1.0;
+            #if 0
             {
                 const vec3 x1_r = surf.position;
                 const vec3 x1_q = texelFetch( framebufSurfacePosition_Sampler, pp, 0 ).xyz;
@@ -365,9 +361,8 @@ void main()
                 oneOverJacobian =
                     safePositiveRcp( getGeometryFactorClamped( n2_q, phi_r.dir, phi_r.len ) ) *
                     getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
-
-                // oneOverJacobian = min( oneOverJacobian, 0, 1 );
             }
+            #endif
 
             float targetPdf_curSurf = 0.0;
 
@@ -389,10 +384,12 @@ void main()
                 nobiasM += reservoir_q.M;
             }
         }
+
+        combined.M = nobiasM;
     }
 
-    combined.M = nobiasM;
     restirIndirect_StoreReservoir( pix, combined );
+
 
 
     vec3 diffuse, specular;
