@@ -18,8 +18,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#version 460
-
 layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define MATERIAL_MAX_ALBEDO_LAYERS maxAlbedoLayerCount
 
@@ -38,6 +36,8 @@ layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
 #define LIGHT_SAMPLE_METHOD (LIGHT_SAMPLE_METHOD_INDIR)
 #include "RaygenCommon.h"
 #include "ReservoirIndirect.h"
+
+
 
 // v -- direction to viewer
 // n -- surface normal
@@ -203,17 +203,19 @@ float getDiffuseWeight( float roughness )
 }
 
 
+
 #define TEMPORAL_SAMPLES_INDIR    1
 #define TEMPORAL_RADIUS_INDIR_MAX 2.0
 
 #define SPATIAL_SAMPLES_INDIR 4
 #define SPATIAL_RADIUS_INDIR  8.0
 
-#define RESET_RESERVOIRS_INDIR       0
 #define DEBUG_TRACE_BIAS_CORRECT_RAY 0
 
 
-void main_initialAndTemporal()
+
+#ifdef RT_RAYGEN_INDIRECT_INIT
+void main()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
     const uint seed = getRandomSeed(pix, globalUniform.frameId);
@@ -224,31 +226,61 @@ void main_initialAndTemporal()
 
     if (surf.isSky)
     {
-        restirIndirect_StoreReservoir(pix, emptyReservoirIndirect());
+        restirIndirect_StoreInitialSample( pix, emptySampleIndirect(), 0.0 );
         return;
     }
 
-    ReservoirIndirect combined = emptyReservoirIndirect();
-    {
-        float oneOverSourcePdf;
-        SampleIndirect initial = processIndirect(seed, surf, oneOverSourcePdf);
+    float          oneOverSourcePdf;
+    SampleIndirect initial = processIndirect( seed, surf, oneOverSourcePdf );
 
-        float targetPdf = targetPdfForIndirectSample(initial);
-        updateReservoirIndirect(combined, initial, targetPdf, oneOverSourcePdf, 0.5);
+    restirIndirect_StoreInitialSample( pix, initial, oneOverSourcePdf );
+}
+#endif // RT_RAYGEN_INDIRECT_INIT
+
+
+
+#ifdef RT_RAYGEN_INDIRECT_FINAL
+ReservoirIndirect loadInitialSampleAsReservoir( const ivec2 pix )
+{
+    float          oneOverSourcePdf;
+    SampleIndirect s         = restirIndirect_LoadInitialSample( pix, oneOverSourcePdf );
+    float          targetPdf = targetPdfForIndirectSample( s );
+
+    ReservoirIndirect r = emptyReservoirIndirect();
+    updateReservoirIndirect( r, s, targetPdf, oneOverSourcePdf, 0.5 );
+    return r;
+}
+
+void main()
+{
+    const ivec2 pix  = ivec2( gl_LaunchIDEXT.xy );
+    const uint  seed = getRandomSeed( pix, globalUniform.frameId );
+    uint        salt = RANDOM_SALT_RESAMPLE_INDIRECT_BASE;
+
+    Surface surf = fetchGbufferSurface( pix );
+    surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
+
+    if( surf.isSky )
+    {
+        return;
     }
 
+
+    ReservoirIndirect combined = loadInitialSampleAsReservoir( pix );
+
+
     // assuming that pix is checkerboarded
-    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
-    const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
-    const float depthCur = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
-    const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
-    
+    const ivec3 chRenderArea = getCheckerboardedRenderArea( pix );
+    const float motionZ      = texelFetch( framebufMotion_Sampler, pix, 0 ).z;
+    const float depthCur     = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
+    const vec2  posPrev      = getPrevScreenPos( framebufMotion_Sampler, pix );
+
     // if back-projected pix is valid, then run spatial pass around
     // that reprojected pix, as spatial uses restirIndirect_LoadReservoir_Prev
     // to prevent same-frame dependency
     bool isTemporalValid = false;
 
-    for (int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES_INDIR; pixIndex++)
+    for( int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES_INDIR; pixIndex++ )
     {
         // TODO: need low discrepancy noise
         ivec2 pp;
@@ -265,12 +297,11 @@ void main_initialAndTemporal()
                 continue;
             }
 
-            const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
-            const vec3 normalPrev = texelFetchNormal_Prev(pp);
+            const float depthPrev  = texelFetch( framebufDepthWorld_Prev_Sampler, pp, 0 ).r;
+            const vec3  normalPrev = texelFetchNormal_Prev( pp );
 
-            if (!testSurfaceForReuseIndirect(chRenderArea, pp,
-                                             depthCur, depthPrev - motionZ,
-                                             surf.normal, normalPrev))
+            if( !testSurfaceForReuseIndirect(
+                    chRenderArea, pp, depthCur, depthPrev - motionZ, surf.normal, normalPrev ) )
             {
                 continue;
             }
@@ -278,41 +309,16 @@ void main_initialAndTemporal()
 
         isTemporalValid = true;
 
-        ReservoirIndirect temporal = restirIndirect_LoadReservoir_Prev(pp);
+        ReservoirIndirect temporal = restirIndirect_LoadReservoir_Prev( pp );
         // renormalize to prevent precision problems
-        normalizeReservoirIndirect(temporal, 20);
+        normalizeReservoirIndirect( temporal, 20 );
 
         float rnd = rnd16( seed, salt++ );
-        updateCombinedReservoirIndirect(combined, temporal, rnd);
+        updateCombinedReservoirIndirect( combined, temporal, rnd );
     }
 
-#if RESET_RESERVOIRS_INDIR
-    combined = emptyReservoirIndirect();
-#endif
-
-    restirIndirect_StoreReservoir( pix, combined );
-}
 
 
-void main_spatialAndFinalize()
-{
-    const ivec2 pix  = ivec2( gl_LaunchIDEXT.xy );
-    const uint  seed = getRandomSeed( pix, globalUniform.frameId );
-    uint        salt = RANDOM_SALT_RESAMPLE_INDIRECT_BASE;
-
-    Surface surf = fetchGbufferSurface( pix );
-    surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
-
-    if( surf.isSky )
-    {
-        return;
-    }
-
-    // assuming that pix is checkerboarded
-    const ivec3 chRenderArea = getCheckerboardedRenderArea( pix );
-    const float depthThis = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
-
-    ReservoirIndirect combined = restirIndirect_LoadReservoir( pix );
     uint nobiasM = combined.M;
 
     {
@@ -337,15 +343,13 @@ void main_spatialAndFinalize()
                 const vec3  normalOther = texelFetchNormal( pp );
 
                 if( !testSurfaceForReuseIndirect(
-                        chRenderArea, pp, depthThis, depthOther, surf.normal, normalOther ) )
+                        chRenderArea, pp, depthCur, depthOther, surf.normal, normalOther ) )
                 {
                     continue;
                 }
             }
 
-            ReservoirIndirect reservoir_q = restirIndirect_LoadReservoir_Prev( pp );
-            // renormalize to prevent precision problems
-            normalizeReservoirIndirect( reservoir_q, 20 );
+            ReservoirIndirect reservoir_q = loadInitialSampleAsReservoir( pp );
 
             float oneOverJacobian;
             {
@@ -388,6 +392,8 @@ void main_spatialAndFinalize()
     }
 
     combined.M = nobiasM;
+    restirIndirect_StoreReservoir( pix, combined );
+
 
     vec3 diffuse, specular;
     shade( surf, combined.selected, calcSelectedSampleWeightIndirect( combined ), diffuse, specular );
@@ -414,3 +420,4 @@ void main_spatialAndFinalize()
             pix, irradianceToSH( diffuse, safeNormalize( surfToHitPoint ) ) );
     }
 }
+#endif // RT_RAYGEN_INDIRECT_FINAL

@@ -583,7 +583,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                               uniform.get(),
                                               textureManager.get(),
                                               framebuffers,
-                                              restirBuffers.get(),
+                                              restirBuffers,
                                               blueNoise.get(),
                                               cubemapManager.get(),
                                               rasterizer->GetRenderCubemap().get(),

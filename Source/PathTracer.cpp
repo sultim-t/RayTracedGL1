@@ -28,20 +28,20 @@ PathTracer::PathTracer(VkDevice _device, std::shared_ptr<RayTracingPipeline> _rt
     : rtPipeline(std::move(_rtPipeline))
 {}
 
-PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                 cmd,
-                                          uint32_t                        frameIndex,
-                                          uint32_t                        width,
-                                          uint32_t                        height,
-                                          Scene*                          scene,
-                                          const GlobalUniform*            uniform,
-                                          const TextureManager*           textureManager,
-                                          std::shared_ptr< Framebuffers > framebuffers,
-                                          const RestirBuffers*            restirBuffers,
-                                          const BlueNoise*                blueNoise,
-                                          const CubemapManager*           cubemapManager,
-                                          const RenderCubemap*            renderCubemap,
-                                          const PortalList*               portalList,
-                                          const Volumetric*               volumetric )
+PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                  cmd,
+                                          uint32_t                         frameIndex,
+                                          uint32_t                         width,
+                                          uint32_t                         height,
+                                          Scene*                           scene,
+                                          const GlobalUniform*             uniform,
+                                          const TextureManager*            textureManager,
+                                          std::shared_ptr< Framebuffers >  framebuffers,
+                                          std::shared_ptr< RestirBuffers > restirBuffers,
+                                          const BlueNoise*                 blueNoise,
+                                          const CubemapManager*            cubemapManager,
+                                          const RenderCubemap*             renderCubemap,
+                                          const PortalList*                portalList,
+                                          const Volumetric*                volumetric )
 {
     rtPipeline->Bind(cmd);
 
@@ -71,12 +71,15 @@ PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                 cmd,
         // device local buffers for volumetrics
         volumetric->GetDescSet(frameIndex),
     };
-    const uint32_t setCount = sizeof(sets) / sizeof(VkDescriptorSet);
 
-    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
-                            rtPipeline->GetLayout(),
-                            0, setCount, sets,
-                            0, nullptr);
+    vkCmdBindDescriptorSets( cmd,
+                             VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+                             rtPipeline->GetLayout(),
+                             0,
+                             std::size( sets ),
+                             sets,
+                             0,
+                             nullptr );
 
     TraceParams p = {};
     p.cmd = cmd;
@@ -84,6 +87,7 @@ PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                 cmd,
     p.width = width;
     p.height = height;
     p.framebuffers = std::move( framebuffers );
+    p.restirBuffers = std::move( restirBuffers );
 
     return p;
 }
@@ -222,18 +226,29 @@ void PathTracer::CalculateGradientsSamples(const TraceParams &params)
 
 void PathTracer::TraceIndirectllumination(const TraceParams &params)
 {
-    CmdLabel label(params.cmd, "Indirect illumination");
-    
+    using FI = FramebufferImageIndex;
 
-    typedef FramebufferImageIndex FI;
-    FI fs[] =
     {
-        FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
-    };
-    params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
+        CmdLabel label(params.cmd, "Indirect illumination - Init");
+
+        FI fs[] = 
+        {
+            FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
+        };
+        params.framebuffers->BarrierMultiple( params.cmd, params.frameIndex, fs );
 
 
-    TraceRays(params.cmd, SBT_INDEX_RAYGEN_INDIRECT, params.width, params.height);
+        TraceRays( params.cmd, SBT_INDEX_RAYGEN_INDIRECT_INIT, params.width, params.height );
+    }
+
+    {
+        CmdLabel label( params.cmd, "Indirect illumination - Final" );
+
+        params.restirBuffers->BarrierInitial( params.cmd );
+
+
+        TraceRays( params.cmd, SBT_INDEX_RAYGEN_INDIRECT_FINAL, params.width, params.height );
+    }
 }
 
 void PathTracer::TraceVolumetric( const TraceParams& params )

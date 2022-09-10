@@ -97,7 +97,8 @@ RayTracingPipeline::RayTracingPipeline( VkDevice                           _devi
         { "RGenPrimary",            &primaryRaysMaxAlbedoLayers },
         { "RGenReflRefr",           &primaryRaysMaxAlbedoLayers },
         { "RGenDirect",             nullptr },
-        { "RGenIndirect",           &indirectIlluminationMaxAlbedoLayers },
+        { "RGenIndirectInit",       &indirectIlluminationMaxAlbedoLayers },
+        { "RGenIndirectFinal",      &indirectIlluminationMaxAlbedoLayers },
         { "RGenGradients",          nullptr },
         { "RInitialReservoirs",     nullptr },
         { "RVolumetric",            nullptr },
@@ -130,7 +131,8 @@ RayTracingPipeline::RayTracingPipeline( VkDevice                           _devi
     AddRayGenGroup(toIndex("RGenPrimary"));                         assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_PRIMARY);
     AddRayGenGroup(toIndex("RGenReflRefr"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_REFL_REFR);
     AddRayGenGroup(toIndex("RGenDirect"));                          assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_DIRECT);
-    AddRayGenGroup(toIndex("RGenIndirect"));                        assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT);
+    AddRayGenGroup(toIndex("RGenIndirectInit"));                    assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT_INIT);
+    AddRayGenGroup(toIndex("RGenIndirectFinal"));                   assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INDIRECT_FINAL);
     AddRayGenGroup(toIndex("RGenGradients"));                       assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_GRADIENTS);
     AddRayGenGroup(toIndex("RInitialReservoirs"));                  assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS);
     AddRayGenGroup(toIndex("RVolumetric"));                         assert(raygenShaderCount - 1 == SBT_INDEX_RAYGEN_VOLUMETRIC);
@@ -282,7 +284,8 @@ void RayTracingPipeline::GetEntries(
     assert( sbtRayGenIndex == SBT_INDEX_RAYGEN_PRIMARY ||
             sbtRayGenIndex == SBT_INDEX_RAYGEN_REFL_REFR ||
             sbtRayGenIndex == SBT_INDEX_RAYGEN_DIRECT ||
-            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT_INIT ||
+            sbtRayGenIndex == SBT_INDEX_RAYGEN_INDIRECT_FINAL ||
             sbtRayGenIndex == SBT_INDEX_RAYGEN_GRADIENTS ||
             sbtRayGenIndex == SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS ||
             sbtRayGenIndex == SBT_INDEX_RAYGEN_VOLUMETRIC );

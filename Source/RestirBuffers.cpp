@@ -37,6 +37,33 @@ RTGL1::RestirBuffers::~RestirBuffers()
     vkDestroyDescriptorPool(device, descPool, nullptr);
 }
 
+void RTGL1::RestirBuffers::BarrierInitial( VkCommandBuffer cmd )
+{
+    VkBufferMemoryBarrier2 b = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+        .srcStageMask =
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+        .dstStageMask =
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+        .dstAccessMask       = VK_ACCESS_2_SHADER_WRITE_BIT | VK_ACCESS_2_SHADER_READ_BIT,
+        .srcQueueFamilyIndex = 0,
+        .dstQueueFamilyIndex = 0,
+        .buffer              = initialSamples.buffer,
+        .offset              = 0,
+        .size                = VK_WHOLE_SIZE,
+    };
+
+    VkDependencyInfo dep = {
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .dependencyFlags          = 0,
+        .bufferMemoryBarrierCount = 1,
+        .pBufferMemoryBarriers    = &b,
+    };
+
+    svkCmdPipelineBarrier2KHR( cmd, &dep );
+}
+
 VkDescriptorSet RTGL1::RestirBuffers::GetDescSet(uint32_t frameIndex) const
 {
     return descSets[frameIndex];

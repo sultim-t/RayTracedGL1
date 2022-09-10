@@ -140,7 +140,7 @@ bool rgi_TryGetPixOffset(const ivec2 pix, out uint offset)
     return offset >= 0 && offset < uint(globalUniform.renderWidth) * uint(globalUniform.renderHeight);
 }
 
-void restirIndirect_StoreInitialSample(const ivec2 pix, const SampleIndirect s)
+void restirIndirect_StoreInitialSample(const ivec2 pix, const SampleIndirect s, float oneOverSourcePdf)
 {
     uint offset;
     if (!rgi_TryGetPixOffset(pix, offset))
@@ -148,13 +148,14 @@ void restirIndirect_StoreInitialSample(const ivec2 pix, const SampleIndirect s)
         return;
     }
 
-    g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 0] = floatBitsToUint(s.position.x);
-    g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 1] = floatBitsToUint(s.position.y);
-    g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 2] = floatBitsToUint(s.position.z);
-    g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 3] = encodeNormal(s.normal);
-    g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 4] = encodeE5B9G9R9(s.radiance);
+    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 0 ] = floatBitsToUint( s.position.x );
+    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 1 ] = floatBitsToUint( s.position.y );
+    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 2 ] = floatBitsToUint( s.position.z );
+    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 3 ] = encodeNormal( s.normal );
+    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 4 ] = encodeE5B9G9R9( s.radiance );
+    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 5 ] = floatBitsToUint( oneOverSourcePdf );
 
-#if PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS != 5
+#if PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS != 6
     #error "Size mismatch"
 #endif
 }
@@ -195,7 +196,7 @@ void restirIndirect_StoreReservoir(const ivec2 pix, ReservoirIndirect r)
 #endif
 }
 
-SampleIndirect restirIndirect_LoadInitialSample(const ivec2 pix)
+SampleIndirect restirIndirect_LoadInitialSample( const ivec2 pix, out float oneOverSourcePdf )
 {
     SampleIndirect s;
 
@@ -206,11 +207,12 @@ SampleIndirect restirIndirect_LoadInitialSample(const ivec2 pix)
         return s;
     }
 
-    s.position.x = uintBitsToFloat(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 0]);
-    s.position.y = uintBitsToFloat(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 1]);
-    s.position.z = uintBitsToFloat(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 2]);
-    s.normal     =    decodeNormal(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 3]);
-    s.radiance   =  decodeE5B9G9R9(g_restirIndirectInitialSamples[offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 4]);
+    s.position.x     = uintBitsToFloat( g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 0 ] );
+    s.position.y     = uintBitsToFloat( g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 1 ] );
+    s.position.z     = uintBitsToFloat( g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 2 ] );
+    s.normal         = decodeNormal(    g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 3 ] );
+    s.radiance       = decodeE5B9G9R9(  g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 4 ] );
+    oneOverSourcePdf = uintBitsToFloat( g_restirIndirectInitialSamples[ offset * PACKED_INDIRECT_SAMPLE_SIZE_IN_WORDS + 5 ] );
 
     return s;
 }

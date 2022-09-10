@@ -1,0 +1,4 @@
+#version 460
+
+#define RT_RAYGEN_INDIRECT_FINAL
+#include "RtRaygenIndirect.inl"

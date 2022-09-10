@@ -40,11 +40,12 @@ public:
     private:
         friend class PathTracer;
 
-        VkCommandBuffer cmd = VK_NULL_HANDLE;
-        uint32_t frameIndex = 0;
-        uint32_t width = 0;
-        uint32_t height = 0;
-        std::shared_ptr<Framebuffers> framebuffers;
+        VkCommandBuffer                  cmd        = VK_NULL_HANDLE;
+        uint32_t                         frameIndex = 0;
+        uint32_t                         width      = 0;
+        uint32_t                         height     = 0;
+        std::shared_ptr< Framebuffers >  framebuffers;
+        std::shared_ptr< RestirBuffers > restirBuffers;
     };
 
 public:
@@ -56,20 +57,20 @@ public:
     PathTracer& operator=(const PathTracer& other) = delete;
     PathTracer& operator=(PathTracer&& other) noexcept = delete;
 
-    TraceParams Bind( VkCommandBuffer                 cmd,
-                      uint32_t                        frameIndex,
-                      uint32_t                        width,
-                      uint32_t                        height,
-                      Scene*                          scene,
-                      const GlobalUniform*            uniform,
-                      const TextureManager*           textureManager,
-                      std::shared_ptr< Framebuffers > framebuffers,
-                      const RestirBuffers*            restirBuffers,
-                      const BlueNoise*                blueNoise,
-                      const CubemapManager*           cubemapManager,
-                      const RenderCubemap*            renderCubemap,
-                      const PortalList*               portalList,
-                      const Volumetric*               volumetric );
+    TraceParams Bind( VkCommandBuffer                  cmd,
+                      uint32_t                         frameIndex,
+                      uint32_t                         width,
+                      uint32_t                         height,
+                      Scene*                           scene,
+                      const GlobalUniform*             uniform,
+                      const TextureManager*            textureManager,
+                      std::shared_ptr< Framebuffers >  framebuffers,
+                      std::shared_ptr< RestirBuffers > restirBuffers,
+                      const BlueNoise*                 blueNoise,
+                      const CubemapManager*            cubemapManager,
+                      const RenderCubemap*             renderCubemap,
+                      const PortalList*                portalList,
+                      const Volumetric*                volumetric );
     
     void TracePrimaryRays(const TraceParams &params);
     void TraceReflectionRefractionRays(const TraceParams &params);

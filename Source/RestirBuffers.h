@@ -36,7 +36,7 @@ namespace RTGL1
         RestirBuffers& operator=(const RestirBuffers& other) = delete;
         RestirBuffers& operator=(RestirBuffers&& other) noexcept = delete;
 
-        void PrepareForFrame(uint32_t frameIndex);
+        void BarrierInitial( VkCommandBuffer cmd );
 
         VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
         VkDescriptorSetLayout GetDescSetLayout() const;

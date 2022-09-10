@@ -87,7 +87,7 @@ void main()
         }
     }
 
-    vec3 lighting = vec3( 0.05 );
+    vec3 lighting = vec3( 0.02, 0.04, 0.08 );
 
     if( globalUniform.directionalLightExists != 0)
     {
@@ -101,8 +101,8 @@ void main()
     }
 
 
-    float scattering = 0.005;
-    float absorbtion = 0.01;
+    float scattering = 0.0002;
+    float absorbtion = 0.0;
 
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
 }
