@@ -195,18 +195,25 @@ bool testSurfaceForReuseIndirect(
         (dot(curNormal, otherNormal) > NormalThreshold);
 }
 
+float getDiffuseWeight( float roughness )
+{
+    return smoothstep( MIN_GGX_ROUGHNESS,
+                       FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH,
+                       roughness );
+}
 
-#define TEMPORAL_SAMPLES_INDIR 1
-#define TEMPORAL_RADIUS_INDIR_MAX 2
+
+#define TEMPORAL_SAMPLES_INDIR    1
+#define TEMPORAL_RADIUS_INDIR_MAX 2.0
 
 #define SPATIAL_SAMPLES_INDIR 4
-#define SPATIAL_RADIUS_INDIR 8
+#define SPATIAL_RADIUS_INDIR  8.0
 
-#define RESET_RESERVOIRS_INDIR 0
+#define RESET_RESERVOIRS_INDIR       0
 #define DEBUG_TRACE_BIAS_CORRECT_RAY 0
 
 
-void main()
+void main_initialAndTemporal()
 {
     const ivec2 pix = ivec2(gl_LaunchIDEXT.xy);
     const uint seed = getRandomSeed(pix, globalUniform.frameId);
@@ -221,10 +228,6 @@ void main()
         return;
     }
 
-    const float diffusePr = smoothstep( MIN_GGX_ROUGHNESS,
-                                        FAKE_ROUGH_SPECULAR_THRESHOLD + FAKE_ROUGH_SPECULAR_LENGTH,
-                                        surf.roughness );
-
     ReservoirIndirect combined = emptyReservoirIndirect();
     {
         float oneOverSourcePdf;
@@ -234,7 +237,8 @@ void main()
         updateReservoirIndirect(combined, initial, targetPdf, oneOverSourcePdf, 0.5);
     }
 
-    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix); // assuming that pix is checkerboarded
+    // assuming that pix is checkerboarded
+    const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
     const float motionZ = texelFetch(framebufMotion_Sampler, pix, 0).z;
     const float depthCur = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
     const vec2 posPrev = getPrevScreenPos(framebufMotion_Sampler, pix);
@@ -250,7 +254,9 @@ void main()
         ivec2 pp;
         {
             vec2 rndOffset = rnd8_4( seed, salt++ ).xy * 2.0 - 1.0;
-            pp = ivec2( floor( posPrev + rndOffset * square( diffusePr ) * TEMPORAL_RADIUS_INDIR_MAX ) );
+            rndOffset *= square( getDiffuseWeight( surf.roughness ) );
+
+            pp = ivec2( floor( posPrev + rndOffset * TEMPORAL_RADIUS_INDIR_MAX ) );
         }
 
         {
@@ -280,19 +286,45 @@ void main()
         updateCombinedReservoirIndirect(combined, temporal, rnd);
     }
 
+#if RESET_RESERVOIRS_INDIR
+    combined = emptyReservoirIndirect();
+#endif
+
+    restirIndirect_StoreReservoir( pix, combined );
+}
+
+
+void main_spatialAndFinalize()
+{
+    const ivec2 pix  = ivec2( gl_LaunchIDEXT.xy );
+    const uint  seed = getRandomSeed( pix, globalUniform.frameId );
+    uint        salt = RANDOM_SALT_RESAMPLE_INDIRECT_BASE;
+
+    Surface surf = fetchGbufferSurface( pix );
+    surf.position += surf.toViewerDir * RAY_ORIGIN_LEAK_BIAS;
+
+    if( surf.isSky )
+    {
+        return;
+    }
+
+    // assuming that pix is checkerboarded
+    const ivec3 chRenderArea = getCheckerboardedRenderArea( pix );
+    const float depthThis = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
+
+    ReservoirIndirect combined = restirIndirect_LoadReservoir( pix );
     uint nobiasM = combined.M;
 
-    if ( false ) // TODO: investigate leaks
     {
-        for( int pixIndex = 0; pixIndex < int( SPATIAL_SAMPLES_INDIR * diffusePr ); pixIndex++ )
+        const int spatialCount = int( SPATIAL_SAMPLES_INDIR * getDiffuseWeight( surf.roughness ) );
+
+        for( int pixIndex = 0; pixIndex < spatialCount; pixIndex++ )
         {
             // TODO: need low discrepancy noise
             ivec2 pp;
             {
-                vec2 rndOffset = rnd8_4(seed, salt++).xy * 2.0 - 1.0;
-
-                pp = isTemporalValid ? ivec2(floor(posPrev)) : pix;
-                pp += ivec2(rndOffset * SPATIAL_RADIUS_INDIR);
+                vec2 rndOffset = rnd8_4( seed, salt++ ).xy * 2.0 - 1.0;
+                pp = pix + ivec2( rndOffset * SPATIAL_RADIUS_INDIR );
             }
 
             {
@@ -301,56 +333,54 @@ void main()
                     continue;
                 }
 
-                const float depthPrev = texelFetch(framebufDepthWorld_Prev_Sampler, pp, 0).r;
-                const vec3 normalPrev = texelFetchNormal_Prev(pp);
+                const float depthOther  = texelFetch( framebufDepthWorld_Sampler, pp, 0 ).r;
+                const vec3  normalOther = texelFetchNormal( pp );
 
-                if (!testSurfaceForReuseIndirect(chRenderArea, pp,
-                                                depthCur, depthPrev - motionZ,
-                                                surf.normal, normalPrev))
+                if( !testSurfaceForReuseIndirect(
+                        chRenderArea, pp, depthThis, depthOther, surf.normal, normalOther ) )
                 {
                     continue;
                 }
             }
 
-            ReservoirIndirect reservoir_q = restirIndirect_LoadReservoir_Prev(pp);
+            ReservoirIndirect reservoir_q = restirIndirect_LoadReservoir_Prev( pp );
             // renormalize to prevent precision problems
-            normalizeReservoirIndirect(reservoir_q, 20);
+            normalizeReservoirIndirect( reservoir_q, 20 );
 
             float oneOverJacobian;
             {
                 const vec3 x1_r = surf.position;
-                const vec3 x1_q = texelFetch(framebufSurfacePosition_Sampler, pp, 0).xyz;
+                const vec3 x1_q = texelFetch( framebufSurfacePosition_Sampler, pp, 0 ).xyz;
 
                 const vec3 x2_q = reservoir_q.selected.position;
                 const vec3 n2_q = reservoir_q.selected.normal;
 
-                const DirectionAndLength phi_r = calcDirectionAndLengthSafe(x2_q, x1_r);
-                const DirectionAndLength phi_q = calcDirectionAndLengthSafe(x2_q, x1_q);
+                const DirectionAndLength phi_r = calcDirectionAndLengthSafe( x2_q, x1_r );
+                const DirectionAndLength phi_q = calcDirectionAndLengthSafe( x2_q, x1_q );
 
                 oneOverJacobian =
                     safePositiveRcp( getGeometryFactorClamped( n2_q, phi_r.dir, phi_r.len ) ) *
-                                    getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
+                    getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
 
                 // oneOverJacobian = min( oneOverJacobian, 0, 1 );
             }
 
             float targetPdf_curSurf = 0.0;
-            
-        #if DEBUG_TRACE_BIAS_CORRECT_RAY
-            if (!traceShadowRay(surf.instCustomIndex, surf.position, reservoir_q.selected.position, false))
-        #endif
+
+#if DEBUG_TRACE_BIAS_CORRECT_RAY
+            if( !traceShadowRay(
+                    surf.instCustomIndex, surf.position, reservoir_q.selected.position, false ) )
+#endif
             {
                 targetPdf_curSurf =
                     targetPdfForIndirectSample( reservoir_q.selected ) * oneOverJacobian;
             }
 
-            float rnd = rnd16(seed, salt++);
+            float rnd = rnd16( seed, salt++ );
             updateCombinedReservoirIndirect_newSurf(
-                combined,
-                reservoir_q, targetPdf_curSurf,
-                rnd);
+                combined, reservoir_q, targetPdf_curSurf, rnd );
 
-            if (targetPdf_curSurf > 0.0)
+            if( targetPdf_curSurf > 0.0 )
             {
                 nobiasM += reservoir_q.M;
             }
@@ -359,35 +389,28 @@ void main()
 
     combined.M = nobiasM;
 
-#if !RESET_RESERVOIRS_INDIR
-    restirIndirect_StoreReservoir(pix, combined);
-#else
-    restirIndirect_StoreReservoir(pix, emptyReservoirIndirect());
-#endif
-
     vec3 diffuse, specular;
-    shade(surf, combined.selected, calcSelectedSampleWeightIndirect(combined), diffuse, specular);
+    shade( surf, combined.selected, calcSelectedSampleWeightIndirect( combined ), diffuse, specular );
 
     const vec3 surfToHitPoint = combined.selected.position - surf.position;
 
     {
-        const vec3 direct = texelFetchUnfilteredSpecular(pix);
+        const vec3 direct = texelFetchUnfilteredSpecular( pix );
         // save indirect hit distance, if brighter than the direct light
-        if (getLuminance(direct) < getLuminance(specular))
+        if( getLuminance( direct ) < getLuminance( specular ) )
         {
-            imageStore(framebufViewDirection, pix, vec4(-surf.toViewerDir, length(surfToHitPoint)));
+            imageStore(
+                framebufViewDirection, pix, vec4( -surf.toViewerDir, length( surfToHitPoint ) ) );
         }
 
 
         // demodulate for denoising
-        imageStoreUnfilteredSpecular(
-            pix, 
-            direct + demodulateSpecular(specular, surf.specularColor));
+        imageStoreUnfilteredSpecular( pix,
+                                      direct + demodulateSpecular( specular, surf.specularColor ) );
     }
 
     {
         imageStoreUnfilteredIndirectSH(
-            pix, 
-            irradianceToSH(diffuse, safeNormalize(surfToHitPoint)));
+            pix, irradianceToSH( diffuse, safeNormalize( surfToHitPoint ) ) );
     }
 }
