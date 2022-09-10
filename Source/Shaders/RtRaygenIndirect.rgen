@@ -46,14 +46,14 @@ vec3 getSpecularBounce(const uint seed, uint bounceIndex,
                        const vec3 v, 
                        out float oneOverSourcePdf)
 {
-    const vec2 u = rnd16_2( seed, RANDOM_SALT_SPEC_BOUNCE( bounceIndex ) ).xy;
+    const vec2 u = rndBlueNoise8( seed, RANDOM_SALT_SPEC_BOUNCE( bounceIndex ) ).xy;
     return sampleSmithGGX( n, v, roughness, u[ 0 ], u[ 1 ], oneOverSourcePdf );
 }
 
 // n -- surface normal
 vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, out float oneOverSourcePdf)
 {
-    const vec2 u = rnd16_2( seed, RANDOM_SALT_DIFF_BOUNCE( bounceIndex ) ).xy;
+    const vec2 u = rndBlueNoise8( seed, RANDOM_SALT_DIFF_BOUNCE( bounceIndex ) ).xy;
     return sampleLambertian( n, u[ 0 ], u[ 1 ], oneOverSourcePdf );
 }
 
@@ -137,6 +137,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
     // if( rnd16( seed, RANDOM_SALT_SECOND_BOUND ) > surf.roughness )
     // TODO: user-defined variable to control 2nd bounce,
     // as many surfaces are pitch black in some games
+    if ( false )
     {
         float oneOverPdf_Second;
         const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);

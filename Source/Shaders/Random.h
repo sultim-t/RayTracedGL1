@@ -162,8 +162,8 @@ mat3 getONB(const vec3 n)
     mat3 basis;
     basis[2] = n;
 
-    //revisedONB(n, basis[0], basis[1]);
-    frisvadONB(n, basis[0], basis[1]);
+    revisedONB(n, basis[0], basis[1]);
+    //frisvadONB(n, basis[0], basis[1]); // Note: buggy for VNDF 
 
     return basis;
 }

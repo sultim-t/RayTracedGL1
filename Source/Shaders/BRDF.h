@@ -188,8 +188,6 @@ vec3 sampleGGXVNDF(const vec3 v, float alpha, float u1, float u2, out float oneO
         const float G1 = G1_GGX( nv, alpha );
 
         oneOverPdf = v.z * safePositiveRcp(G1 * max(0, dot(v, Ne)) * D);
-        // reflection jacobian
-        oneOverPdf *= 4 * dot(v, Ne);
     }
 
     return Ne;
@@ -209,13 +207,15 @@ vec3 sampleSmithGGX(const vec3 n, const vec3 v, float alpha, float u1, float u2,
     const vec3 ve = transpose(basis) * v;
 
     // microfacet normal
-    vec3 m = sampleGGXVNDF(ve, alpha, u1, u2, oneOverPdf);
+    const vec3 m = sampleGGXVNDF(ve, alpha, u1, u2, oneOverPdf);
+
+    // reflect viewer dir by a microfacet
+    const vec3 l = reflect( -ve, m );
+    // reflection jacobian
+    oneOverPdf *= 4 * dot( ve, m );
 
     // back to world space
-    m = basis * m;
-
-    // reflect dir to viewer by a microfacet
-    return normalize(reflect(-v, m));
+    return basis * l;
 }
 
 #endif // BRDF_H_
