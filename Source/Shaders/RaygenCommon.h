@@ -693,7 +693,7 @@ vec3 processDirectIllumination(uint seed, const Surface surf, int bounceIndex)
     vec3 unusedv; float unusedf;
     traceDirectIllumination(surf, reservoir, pointRnd, bounceIndex, unusedf, out_diffuse, unusedv);
     
-    return min(out_diffuse, vec3(globalUniform.firefliesClamp));
+    return out_diffuse;
 }
 #endif
 
