@@ -29,6 +29,7 @@
 #include "LightGrid.h"
 #include "Volumetric.h"
 #include "Random.h"
+#include "Exposure.h"
 
 layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPOSE_GROUP_SIZE_Y, local_size_z = 1) in;
 
@@ -104,37 +105,6 @@ vec3 tonemapRT(vec3 c)
 {
     return lpmTonemap(c);
     // return uncharted2Tonemap(c, globalUniform.luminanceWhitePoint);
-}
-
-
-float getManualEV100( float aperture, float shutterTime, float iso )
-{
-    return log2( square( aperture ) / shutterTime * 100.0 / iso );
-}
-
-float getAutoEV100()
-{
-    const float lumAverage = max( 0.0, tonemapping.avgLuminance );
-    const float S          = 100;
-    const float K          = 12.5;
-    return log2( lumAverage * S / K );
-}
-
-float getCurrentEV100()
-{
-    bool manual = false;
-    return manual ? getManualEV100( 1.0 / 16.0, 1.0 / 125.0, 100 ) : getAutoEV100();
-}
-
-float ev100ToLuminousExposure( float ev100 )
-{
-    float maxLuminance = 1.2 * exp2( ev100 );
-    return maxLuminance > 0.0 ? 1.0 / maxLuminance : 0.0;
-}
-
-float ev100ToLuminance( float ev100 )
-{
-    return exp2( ev100 - 3 );
 }
 
 

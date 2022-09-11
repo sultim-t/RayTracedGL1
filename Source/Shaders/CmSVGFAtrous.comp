@@ -285,10 +285,9 @@ void main()
             albedo = vec3(1.0);
         }
 
-        bool usePlain = isSkyPix(pix) || (globalUniform.lightmapEnable != 0);
         vec3 illuminated;
 
-        if (!usePlain)
+        if( !isSkyPix( pix ) && ( globalUniform.lightmapEnable == 0 ) )
         {
             const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
             const vec3 normal = texelFetchNormal(pix);
@@ -328,13 +327,11 @@ void main()
             illuminated *= throughput;
             illuminated *= getMaterialAmbient(albedo);
         }
-        else
+        else if( globalUniform.lightmapEnable != 0 )
         {
             illuminated = albedo * throughput;
         }
-
-        // TODO: remove
-        if (isSkyPix(pix))
+        else
         {
             illuminated = vec3( 0 );
         }

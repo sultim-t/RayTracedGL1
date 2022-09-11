@@ -95,7 +95,8 @@ Rasterizer::Rasterizer( VkDevice                                 _device,
                                                      _instanceInfo.rasterizedMaxVertexCount,
                                                      _instanceInfo.rasterizedMaxIndexCount );
 
-    CreatePipelineLayout( _textureManager->GetDescSetLayout(), _tonemapping->GetDescSetLayout() );
+    CreatePipelineLayout( _textureManager->GetDescSetLayout(),
+                          _uniform->GetDescSetLayout(), _tonemapping->GetDescSetLayout() );
 
     rasterPass    = std::make_shared< RasterPass >( device,
                                                  _physDevice,
@@ -232,6 +233,7 @@ void Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                          cmd,
 void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
                                    uint32_t                                 frameIndex,
                                    const std::shared_ptr< TextureManager >& textureManager,
+                                   const std::shared_ptr< GlobalUniform >&  uniform,
                                    const std::shared_ptr< Tonemapping >&    tonemapping,
                                    const float*                             view,
                                    const float*                             proj,
@@ -267,6 +269,7 @@ void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
 
     VkDescriptorSet sets[] = {
         textureManager->GetDescSet( frameIndex ),
+        uniform->GetDescSet( frameIndex ),
         tonemapping->GetDescSet(),
     };
 
@@ -472,6 +475,7 @@ void Rasterizer::OnFramebuffersSizeChange(const ResolutionState &resolutionState
 }
 
 void Rasterizer::CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
+                                       VkDescriptorSetLayout uniformSetLayout,
                                        VkDescriptorSetLayout tonemappingSetLayout )
 {
     const VkPushConstantRange pushConst = {
@@ -483,6 +487,7 @@ void Rasterizer::CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
     {
         VkDescriptorSetLayout layouts[] = {
             texturesSetLayout,
+            uniformSetLayout,
             tonemappingSetLayout,
         };
 

@@ -90,6 +90,7 @@ namespace RTGL1
         void DrawToFinalImage( VkCommandBuffer                          cmd,
                                uint32_t                                 frameIndex,
                                const std::shared_ptr< TextureManager >& textureManager,
+                               const std::shared_ptr< GlobalUniform >&  uniform,
                                const std::shared_ptr< Tonemapping >&    tonemapping,
                                const float*                             view,
                                const float*                             proj,
@@ -136,6 +137,7 @@ namespace RTGL1
         void Draw( VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams& drawParams );
 
         void CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
+                                   VkDescriptorSetLayout uniformSetLayout,
                                    VkDescriptorSetLayout tonemappingSetLayout );
 
         // If info's viewport is not the same as current one, new VkViewport will be set.

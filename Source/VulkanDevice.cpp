@@ -608,12 +608,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
 
         pathTracer->CalculateGradientsSamples(params);
         denoiser->Denoise(cmd, frameIndex, uniform);
-        volumetric->Process( cmd, frameIndex, uniform.get(), blueNoise.get() );
+        volumetric->ProcessScattering( cmd, frameIndex, uniform.get(), blueNoise.get() );
         tonemapping->CalculateExposure(cmd, frameIndex, uniform);
     }
 
     imageComposition->PrepareForRaster( cmd, frameIndex, uniform.get() );
-    volumetric->BarrierToReadProcessed( cmd, frameIndex );
+    volumetric->BarrierToReadScattering( cmd, frameIndex );
+    volumetric->BarrierToReadIllumination( cmd );
 
     if (!drawInfo.disableRasterization)
     {
@@ -622,6 +623,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             cmd,
             frameIndex,
             textureManager,
+            uniform,
             tonemapping,
             uniform->GetData()->view,
             uniform->GetData()->projection,
