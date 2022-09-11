@@ -26,7 +26,7 @@
 #endif
 
 
-#define VOLUMETRIC_DISTANCE_POW 1.5
+#define VOLUMETRIC_DISTANCE_POW 1
 
 vec3 volume_getCenter_T( const ivec3 cell, const mat4 viewprojInv, const vec3 origin )
 {

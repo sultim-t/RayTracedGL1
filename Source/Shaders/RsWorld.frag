@@ -26,11 +26,13 @@ layout (location = 1) in vec2 vertTexCoord;
 layout (location = 0) out vec4 outColor;
 layout (location = 1) out vec3 outScreenEmission;
 
-#define DESC_SET_TEXTURES 0
+#define DESC_SET_TEXTURES       0
 #define DESC_SET_GLOBAL_UNIFORM 1
-#define DESC_SET_TONEMAPPING 2
+#define DESC_SET_TONEMAPPING    2
+#define DESC_SET_VOLUMETRIC     3
 #include "ShaderCommonGLSLFunc.h"
 #include "Exposure.h"
+#include "Volumetric.h"
 
 layout(push_constant) uniform RasterizerFrag_BT 
 {
@@ -55,8 +57,21 @@ void main()
 
     if( globalUniform.lightmapEnable == 0 )
     {
-        outColor.rgb = ev100ToLuminousExposure( getCurrentEV100() ) * outColor.rgb;
+        vec4 ndc = vec4( gl_FragCoord.xyz, 1.0 );
+        ndc.xy   /= vec2( globalUniform.renderWidth, globalUniform.renderHeight );
+        ndc.xy = ndc.xy * 2.0 - 1.0;
+
+        vec4 worldpos = globalUniform.invView * globalUniform.invProjection * ndc;
+        worldpos.xyz /= worldpos.w;
+
+        vec3 sp = volume_toSamplePosition_T(
+            worldpos.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
+        vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
+
+        outColor.rgb *= max( vec3( 0.18 * ev100ToLuminousExposure( getCurrentEV100() ) ), illum );
+        // outColor.rgb *= ev100ToLuminousExposure( getCurrentEV100() );
     }
+
 
     outScreenEmission = vec3( 0 );
     //emission* albedoAlpha.rgb* rasterizerFragInfo.emissionMultiplier;

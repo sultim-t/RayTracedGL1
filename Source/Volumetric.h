@@ -47,11 +47,12 @@ namespace RTGL1
         VkDescriptorSetLayout GetDescSetLayout() const;
         VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
 
-        void Process( VkCommandBuffer      cmd,
-                      uint32_t             frameIndex,
-                      const GlobalUniform* uniform,
-                      const BlueNoise*     rnd );
-        void BarrierToReadProcessed( VkCommandBuffer cmd, uint32_t frameIndex );
+        void ProcessScattering( VkCommandBuffer      cmd,
+                                uint32_t             frameIndex,
+                                const GlobalUniform* uniform,
+                                const BlueNoise*     rnd );
+        void BarrierToReadScattering( VkCommandBuffer cmd, uint32_t frameIndex );
+        void BarrierToReadIllumination( VkCommandBuffer cmd );
 
         void OnShaderReload( const ShaderManager* shaderManager ) override;
 
@@ -69,10 +70,18 @@ namespace RTGL1
     private:
         VkDevice device = VK_NULL_HANDLE;
 
-        VkImage               volumeImages[ MAX_FRAMES_IN_FLIGHT ] = {};
-        VkDeviceMemory        volumeMemory[ MAX_FRAMES_IN_FLIGHT ] = {};
-        VkImageView           volumeViews[ MAX_FRAMES_IN_FLIGHT ]  = {};
+        struct VolumeDef
+        {
+            VkImage        image = VK_NULL_HANDLE;
+            VkImageView    view   = VK_NULL_HANDLE;
+            VkDeviceMemory memory = VK_NULL_HANDLE;
+        };
+
+        VolumeDef scattering[ MAX_FRAMES_IN_FLIGHT ] = {};
+        VolumeDef illumination = {};
+        
         VkSampler             volumeSampler                        = VK_NULL_HANDLE;
+
         VkDescriptorPool      descPool                             = VK_NULL_HANDLE;
         VkDescriptorSetLayout descLayout                           = VK_NULL_HANDLE;
         VkDescriptorSet       descSets[ MAX_FRAMES_IN_FLIGHT ]     = {};

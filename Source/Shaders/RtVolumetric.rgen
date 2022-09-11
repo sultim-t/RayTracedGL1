@@ -81,6 +81,7 @@ void main()
                     lengthSquared( surfPos.xyz - globalUniform.cameraPosition.xyz ) )
                 {
                     imageStore( g_volumetric, cell, vec4( 0.0 ) );
+                    imageStore( g_illuminationVolume, cell, vec4( 0.0 ) );
                     return;
                 }
             }
@@ -104,5 +105,6 @@ void main()
     float scattering = 0.0002;
     float absorbtion = 0.0;
 
+    imageStore( g_illuminationVolume, cell,  vec4(mix(lighting, imageLoad(g_illuminationVolume, cell).rgb, 0.9) , 0) );
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
 }

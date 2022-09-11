@@ -77,6 +77,7 @@ Rasterizer::Rasterizer( VkDevice                                 _device,
                         const std::shared_ptr< GlobalUniform >&  _uniform,
                         const std::shared_ptr< SamplerManager >& _samplerManager,
                         const std::shared_ptr< Tonemapping >&    _tonemapping,
+                        const std::shared_ptr< Volumetric >&     _volumetric,
                         std::shared_ptr< MemoryAllocator >       _allocator,
                         std::shared_ptr< Framebuffers >          _storageFramebuffers,
                         std::shared_ptr< CommandBufferManager >  _cmdManager,
@@ -95,8 +96,13 @@ Rasterizer::Rasterizer( VkDevice                                 _device,
                                                      _instanceInfo.rasterizedMaxVertexCount,
                                                      _instanceInfo.rasterizedMaxIndexCount );
 
-    CreatePipelineLayout( _textureManager->GetDescSetLayout(),
-                          _uniform->GetDescSetLayout(), _tonemapping->GetDescSetLayout() );
+    VkDescriptorSetLayout layouts[] = {
+        _textureManager->GetDescSetLayout(),
+        _uniform->GetDescSetLayout(),
+        _tonemapping->GetDescSetLayout(),
+        _volumetric->GetDescSetLayout(),
+    };
+    CreatePipelineLayouts( layouts, std::size( layouts ), _textureManager->GetDescSetLayout() );
 
     rasterPass    = std::make_shared< RasterPass >( device,
                                                  _physDevice,
@@ -235,6 +241,7 @@ void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
                                    const std::shared_ptr< TextureManager >& textureManager,
                                    const std::shared_ptr< GlobalUniform >&  uniform,
                                    const std::shared_ptr< Tonemapping >&    tonemapping,
+                                   const std::shared_ptr< Volumetric >&     volumetric,
                                    const float*                             view,
                                    const float*                             proj,
                                    const RgFloat2D&                         jitter,
@@ -271,6 +278,7 @@ void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
         textureManager->GetDescSet( frameIndex ),
         uniform->GetDescSet( frameIndex ),
         tonemapping->GetDescSet(),
+        volumetric->GetDescSet( frameIndex ),
     };
 
     const DrawParams params = {
@@ -474,9 +482,9 @@ void Rasterizer::OnFramebuffersSizeChange(const ResolutionState &resolutionState
     swapchainPass->CreateFramebuffers(resolutionState.upscaledWidth, resolutionState.upscaledHeight, storageFramebuffers);
 }
 
-void Rasterizer::CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
-                                       VkDescriptorSetLayout uniformSetLayout,
-                                       VkDescriptorSetLayout tonemappingSetLayout )
+void Rasterizer::CreatePipelineLayouts( VkDescriptorSetLayout* allLayouts,
+                                        size_t                 count,
+                                        VkDescriptorSetLayout  texturesSetLayout )
 {
     const VkPushConstantRange pushConst = {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -485,16 +493,10 @@ void Rasterizer::CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
     };
 
     {
-        VkDescriptorSetLayout layouts[] = {
-            texturesSetLayout,
-            uniformSetLayout,
-            tonemappingSetLayout,
-        };
-
         VkPipelineLayoutCreateInfo layoutInfo = {
             .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount         = std::size( layouts ),
-            .pSetLayouts            = layouts,
+            .setLayoutCount         = static_cast< uint32_t >( count ),
+            .pSetLayouts            = allLayouts,
             .pushConstantRangeCount = 1,
             .pPushConstantRanges    = &pushConst,
         };

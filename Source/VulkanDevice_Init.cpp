@@ -143,6 +143,14 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         memAllocator);
 
+    volumetric          = std::make_shared< Volumetric >( 
+        device,
+        cmdManager.get(),
+        memAllocator.get(),
+        shaderManager.get(),
+        uniform.get(),
+        blueNoise.get() );
+
     rasterizer          = std::make_shared<Rasterizer>(
         device,
         physDevice->Get(),
@@ -151,18 +159,11 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         uniform,
         genericSamplerManager,
         tonemapping,
+        volumetric,
         memAllocator,
         framebuffers,
         cmdManager,
         *info);
-
-    volumetric = std::make_shared< Volumetric >( 
-        device,
-        cmdManager.get(),
-        memAllocator.get(),
-        shaderManager.get(),
-        uniform.get(),
-        blueNoise.get() );
 
     decalManager        = std::make_shared<DecalManager>(
         device,

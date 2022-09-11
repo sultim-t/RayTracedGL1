@@ -625,6 +625,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             textureManager,
             uniform,
             tonemapping,
+            volumetric,
             uniform->GetData()->view,
             uniform->GetData()->projection,
             jitter,

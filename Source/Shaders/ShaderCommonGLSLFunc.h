@@ -161,11 +161,6 @@ layout(set = DESC_SET_TONEMAPPING, binding = BINDING_LUM_HISTOGRAM)
 {
     ShTonemapping tonemapping;
 };
-
-float getExposure()
-{
-    return tonemapping.avgLuminance > 0.0 ? 1.0 / tonemapping.avgLuminance : 1.0;
-}
 #endif // DESC_SET_TONEMAPPING
 
 
@@ -236,6 +231,12 @@ uniform sampler3D g_volumetric_Sampler;
 
 layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_SAMPLER_PREV) 
 uniform sampler3D g_volumetric_Sampler_Prev;
+
+layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_ILLUMINATION, r11f_g11f_b10f) 
+uniform image3D g_illuminationVolume;
+
+layout(set = DESC_SET_VOLUMETRIC, binding = BINDING_VOLUMETRIC_ILLUMINATION_SAMPLER) 
+uniform sampler3D g_illuminationVolume_Sampler;
 #endif
 
 

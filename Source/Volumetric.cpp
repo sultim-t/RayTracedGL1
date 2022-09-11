@@ -28,7 +28,8 @@
 namespace 
 {
     // must be in sync with declaration in shaders
-    constexpr VkFormat VOLUME_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
+    constexpr VkFormat SCATTERING_VOLUME_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
+    constexpr VkFormat ILLUMINATION_VOLUME_FORMAT = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 }
 
 RTGL1::Volumetric::Volumetric( VkDevice              _device,
@@ -52,26 +53,23 @@ RTGL1::Volumetric::~Volumetric()
     vkDestroyDescriptorSetLayout( device, descLayout, nullptr );
     vkDestroyDescriptorPool( device, descPool, nullptr );
     vkDestroySampler( device, volumeSampler, nullptr );
-    for( auto i : volumeViews )
+    for( auto i : scattering )
     {
-        vkDestroyImageView( device, i, nullptr );
+        vkDestroyImage( device, i.image, nullptr );
+        vkDestroyImageView( device, i.view, nullptr );
+        MemoryAllocator::FreeDedicated( device, i.memory );
     }
-    for( auto i : volumeMemory )
-    {
-        MemoryAllocator::FreeDedicated( device, i );
-    }
-    for( auto i : volumeImages )
-    {
-        vkDestroyImage( device, i, nullptr );
-    }
+    vkDestroyImage( device, illumination.image, nullptr );
+    vkDestroyImageView( device, illumination.view, nullptr );
+    MemoryAllocator::FreeDedicated( device, illumination.memory );
     vkDestroyPipelineLayout( device, processPipelineLayout, nullptr );
     DestroyPipelines();
 }
 
-void RTGL1::Volumetric::Process( VkCommandBuffer      cmd,
-                                 uint32_t             frameIndex,
-                                 const GlobalUniform* uniform,
-                                 const BlueNoise*     rnd )
+void RTGL1::Volumetric::ProcessScattering( VkCommandBuffer      cmd,
+                                           uint32_t             frameIndex,
+                                           const GlobalUniform* uniform,
+                                           const BlueNoise*     rnd )
 {
     CmdLabel label( cmd, "Volumetric Process" );
 
@@ -89,7 +87,7 @@ void RTGL1::Volumetric::Process( VkCommandBuffer      cmd,
             .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
             .srcQueueFamilyIndex = 0,
             .dstQueueFamilyIndex = 0,
-            .image               = volumeImages[ frameIndex ],
+            .image               = scattering[ frameIndex ].image,
             .subresourceRange    = {
                    .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
                    .baseMipLevel   = 0,
@@ -133,7 +131,7 @@ void RTGL1::Volumetric::Process( VkCommandBuffer      cmd,
     vkCmdDispatch( cmd, cs[ 0 ], cs[ 1 ], cs[2] );
 }
 
-void RTGL1::Volumetric::BarrierToReadProcessed( VkCommandBuffer cmd, uint32_t frameIndex )
+void RTGL1::Volumetric::BarrierToReadScattering( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     VkImageMemoryBarrier2 b = {
         .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
@@ -147,7 +145,40 @@ void RTGL1::Volumetric::BarrierToReadProcessed( VkCommandBuffer cmd, uint32_t fr
         .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
         .srcQueueFamilyIndex = 0,
         .dstQueueFamilyIndex = 0,
-        .image               = volumeImages[ frameIndex ],
+        .image               = scattering[ frameIndex ].image,
+        .subresourceRange    = {
+               .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+               .baseMipLevel   = 0,
+               .levelCount     = 1,
+               .baseArrayLayer = 0,
+               .layerCount     = 1,
+        },
+    };
+
+    VkDependencyInfoKHR info = {
+        .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+        .imageMemoryBarrierCount = 1,
+        .pImageMemoryBarriers    = &b,
+    };
+
+    svkCmdPipelineBarrier2KHR( cmd, &info );
+}
+
+void RTGL1::Volumetric::BarrierToReadIllumination( VkCommandBuffer cmd )
+{
+    VkImageMemoryBarrier2 b = {
+        .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .pNext         = nullptr,
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR,
+        .srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT_KHR | 
+                         VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        .dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT_KHR,
+        .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+        .srcQueueFamilyIndex = 0,
+        .dstQueueFamilyIndex = 0,
+        .image               = illumination.image,
         .subresourceRange    = {
                .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
                .baseMipLevel   = 0,
@@ -200,12 +231,18 @@ void RTGL1::Volumetric::CreateImages( CommandBufferManager* cmdManager, MemoryAl
 {
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
-    for( VkImage& dst : volumeImages )
+    std::tuple< VolumeDef*, VkFormat, const char* > all[] = {
+        { &scattering[ 0 ], SCATTERING_VOLUME_FORMAT, "Scattering Volume" },
+        { &scattering[ 1 ], SCATTERING_VOLUME_FORMAT, "Scattering Volume" },
+        { &illumination, ILLUMINATION_VOLUME_FORMAT, "Illumination Volume" },
+    };
+
+    for( auto& [ dst, format, debugName ] : all )
     {
         VkImageCreateInfo info = {
             .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
             .imageType     = VK_IMAGE_TYPE_3D,
-            .format        = VOLUME_FORMAT,
+            .format        = format,
             .extent        = {
                 .width  = VOLUMETRIC_SIZE_X,
                 .height = VOLUMETRIC_SIZE_Y,
@@ -219,33 +256,29 @@ void RTGL1::Volumetric::CreateImages( CommandBufferManager* cmdManager, MemoryAl
             .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        VkResult r = vkCreateImage( device, &info, nullptr, &dst );
+        VkResult r = vkCreateImage( device, &info, nullptr, &dst->image );
         VK_CHECKERROR( r );
 
-        SET_DEBUG_NAME( device, dst, VK_OBJECT_TYPE_IMAGE, "Volumetric Image" );
-    }
+        SET_DEBUG_NAME( device, dst->image, VK_OBJECT_TYPE_IMAGE, debugName );
 
-    for( size_t i = 0; i < std::size( volumeMemory ); i++ )
-    {
+
         VkMemoryRequirements memReqs;
-        vkGetImageMemoryRequirements( device, volumeImages[ i ], &memReqs );
+        vkGetImageMemoryRequirements( device, dst->image, &memReqs );
 
-        volumeMemory[ i ] = allocator->AllocDedicated( memReqs,
-                                                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-                                                       MemoryAllocator::AllocType::DEFAULT,
-                                                       "Volumetric Image memory" );
+        dst->memory = allocator->AllocDedicated( memReqs,
+                                                 VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                 MemoryAllocator::AllocType::DEFAULT,
+                                                 debugName );
 
-        VkResult r = vkBindImageMemory( device, volumeImages[ i ], volumeMemory[ i ], 0 );
+        r = vkBindImageMemory( device, dst->image, dst->memory, 0 );
         VK_CHECKERROR( r );
-    }
 
-    for( size_t i = 0; i < std::size( volumeViews ); i++ )
-    {
+
         VkImageViewCreateInfo viewInfo = {
             .sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-            .image                           = volumeImages[ i ],
+            .image                           = dst->image,
             .viewType                        = VK_IMAGE_VIEW_TYPE_3D,
-            .format                          = VOLUME_FORMAT,
+            .format                          = format,
             .subresourceRange                = {
                 .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
                 .baseMipLevel   = 0,
@@ -255,15 +288,14 @@ void RTGL1::Volumetric::CreateImages( CommandBufferManager* cmdManager, MemoryAl
             },
         };
 
-        VkResult r = vkCreateImageView( device, &viewInfo, nullptr, &volumeViews[ i ] );
+        r = vkCreateImageView( device, &viewInfo, nullptr, &dst->view );
         VK_CHECKERROR( r );
 
-        SET_DEBUG_NAME(
-            device, volumeViews[ i ], VK_OBJECT_TYPE_IMAGE_VIEW, "Volumetric Image view" );
+        SET_DEBUG_NAME( device, dst->view, VK_OBJECT_TYPE_IMAGE_VIEW, debugName );
 
         // to general layout
         Utils::BarrierImage( cmd,
-                             volumeImages[ i ],
+                             dst->image,
                              0,
                              VK_ACCESS_SHADER_WRITE_BIT,
                              VK_IMAGE_LAYOUT_UNDEFINED,
@@ -289,13 +321,25 @@ void RTGL1::Volumetric::CreateDescriptors()
             .binding         = BINDING_VOLUMETRIC_SAMPLER,
             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
-            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         },
         {
             .binding         = BINDING_VOLUMETRIC_SAMPLER_PREV,
             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        },
+        {
+            .binding         = BINDING_VOLUMETRIC_ILLUMINATION,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+            .descriptorCount = 1,
             .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT,
+        },
+        {
+            .binding         = BINDING_VOLUMETRIC_ILLUMINATION_SAMPLER,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+            .descriptorCount = 1,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
 
@@ -352,17 +396,27 @@ void RTGL1::Volumetric::UpdateDescriptors()
         VkDescriptorImageInfo imgs[] = {
             {
                 .sampler     = VK_NULL_HANDLE,
-                .imageView   = volumeViews[ i ],
+                .imageView   = scattering[ i ].view,
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
             },
             {
                 .sampler     = volumeSampler,
-                .imageView   = volumeViews[ i ],
+                .imageView   = scattering[ i ].view,
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
             },
             {
                 .sampler     = volumeSampler,
-                .imageView   = volumeViews[ Utils::GetPreviousByModulo( i, MAX_FRAMES_IN_FLIGHT ) ],
+                .imageView   = scattering[ Utils::GetPreviousByModulo( i, MAX_FRAMES_IN_FLIGHT ) ].view,
+                .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            },
+            {
+                .sampler     = VK_NULL_HANDLE,
+                .imageView   = illumination.view,
+                .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+            },
+            {
+                .sampler     = volumeSampler,
+                .imageView   = illumination.view,
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
             },
         };
@@ -394,6 +448,24 @@ void RTGL1::Volumetric::UpdateDescriptors()
                 .descriptorCount = 1,
                 .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .pImageInfo      = &imgs[ 2 ],
+            },
+            {
+                .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet          = descSets[ i ],
+                .dstBinding      = BINDING_VOLUMETRIC_ILLUMINATION,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                .pImageInfo      = &imgs[ 3 ],
+            },
+            {
+                .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                .dstSet          = descSets[ i ],
+                .dstBinding      = BINDING_VOLUMETRIC_ILLUMINATION_SAMPLER,
+                .dstArrayElement = 0,
+                .descriptorCount = 1,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+                .pImageInfo      = &imgs[ 4 ],
             },
         };
 

@@ -34,6 +34,7 @@
 #include "ShaderManager.h"
 #include "SwapchainPass.h"
 #include "Tonemapping.h"
+#include "Volumetric.h"
 #include "RTGL1/RTGL1.h"
 
 namespace RTGL1
@@ -56,6 +57,7 @@ namespace RTGL1
                              const std::shared_ptr< GlobalUniform >&  uniform,
                              const std::shared_ptr< SamplerManager >& samplerManager,
                              const std::shared_ptr< Tonemapping >&    tonemapping,
+                             const std::shared_ptr< Volumetric >&     volumetric,
                              std::shared_ptr< MemoryAllocator >       allocator,
                              std::shared_ptr< Framebuffers >          storageFramebuffers,
                              std::shared_ptr< CommandBufferManager >  cmdManager,
@@ -92,6 +94,7 @@ namespace RTGL1
                                const std::shared_ptr< TextureManager >& textureManager,
                                const std::shared_ptr< GlobalUniform >&  uniform,
                                const std::shared_ptr< Tonemapping >&    tonemapping,
+                               const std::shared_ptr< Volumetric >&     volumetric,
                                const float*                             view,
                                const float*                             proj,
                                const RgFloat2D&                         jitter,
@@ -136,9 +139,9 @@ namespace RTGL1
     private:
         void Draw( VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams& drawParams );
 
-        void CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
-                                   VkDescriptorSetLayout uniformSetLayout,
-                                   VkDescriptorSetLayout tonemappingSetLayout );
+        void CreatePipelineLayouts( VkDescriptorSetLayout* allLayouts,
+                                    size_t                 count,
+                                    VkDescriptorSetLayout  texturesSetLayout );
 
         // If info's viewport is not the same as current one, new VkViewport will be set.
         void SetViewportIfNew( VkCommandBuffer                          cmd,
