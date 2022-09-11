@@ -59,6 +59,7 @@ void main()
         center += radius * rnd;
     }
 
+#if 0
     {
         ivec2 pix;
         {
@@ -87,24 +88,43 @@ void main()
             }
         }
     }
+#endif
 
-    vec3 lighting = vec3( 0.02, 0.04, 0.08 );
+    vec3 lighting = vec3( 0.8, 0.85, 1.0 );
 
-    if( globalUniform.directionalLightExists != 0)
+    vec3 radiance      = vec3( 0.01 );
+    vec3 radiance_Prev = imageLoad( g_illuminationVolume, cell ).rgb;
+
+
     {
-        DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
-        bool isShadowed = traceShadowRay( 0, center, center - MAX_RAY_LENGTH * l.direction, true );
+        uint seed = getRandomSeed( ivec2( cell.x, cell.y ), globalUniform.frameId );
 
-        vec3 radiance = l.color * float( !isShadowed );
-        vec3 tolight   = -l.direction;
+        // TODO: processDirectIllumination without normals
+        vec3 n = safeNormalize( toviewer + globalUniform.worldUpVector.xyz * 2.0 );
 
-        lighting = radiance * phaseFunction_Schlick( tolight, toviewer, 0.4 );
+        Surface s;
+        {
+            s.position        = center;
+            s.instCustomIndex = 0;
+            s.normalGeom      = n;
+            s.roughness       = 1.0;
+            s.normal          = n;
+            s.albedo          = vec3( 1.0 );
+            s.isSky           = false;
+            s.specularColor   = vec3( 0.04 );
+            s.emission        = 0.0;
+            s.toViewerDir     = toviewer;
+        }
+
+        radiance += processDirectIllumination( seed, s, 0 );
+        lighting += radiance * phaseFunction_Schlick( toviewer, toviewer, 0.4 );
     }
 
 
     float scattering = 0.0002;
     float absorbtion = 0.0;
 
-    imageStore( g_illuminationVolume, cell,  vec4(mix(lighting, imageLoad(g_illuminationVolume, cell).rgb, 0.9) , 0) );
+
+    imageStore( g_illuminationVolume, cell, vec4( mix( radiance_Prev, radiance, 0.05 ), 0.0 ) );
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
 }

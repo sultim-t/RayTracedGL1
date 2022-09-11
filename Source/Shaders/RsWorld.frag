@@ -68,7 +68,7 @@ void main()
             worldpos.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
         vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
 
-        outColor.rgb *= max( vec3( 0.18 * ev100ToLuminousExposure( getCurrentEV100() ) ), illum );
+        outColor.rgb *= illum;
         // outColor.rgb *= ev100ToLuminousExposure( getCurrentEV100() );
     }
 
