@@ -1,6 +1,7 @@
 #include <chrono>
 #include <iostream>
 #include <cstring>
+#include <span>
 
 
 #ifdef _WIN32
@@ -14,6 +15,7 @@
 
 
 #pragma region BOILERPLATE
+
 #include <GLFW/glfw3.h>
 #ifdef _WIN32
     #define GLFW_EXPOSE_NATIVE_WIN32
@@ -21,12 +23,18 @@
     #define GLFW_EXPOSE_NATIVE_X11
 #endif
 #include <GLFW/glfw3native.h>
+
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/rotate_vector.hpp>
+
+#define TINYGLTF_IMPLEMENTATION
+#define STB_IMAGE_IMPLEMENTATION
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "Libs/tinygltf/tiny_gltf.h"
 
 
 #define ASSET_DIRECTORY "../../"
@@ -39,8 +47,8 @@ static glm::vec3    ctl_CameraDirection     = glm::vec3(0, 0, -1);
 static glm::vec3    ctl_LightPosition       = glm::vec3(0, 0, 1);
 static float        ctl_LightIntensity      = 1.0f;
 static float        ctl_LightCount          = 0.0f;
-static float        ctl_SunIntensity        = 1.0f;
-static float        ctl_SkyIntensity        = 1.0f;
+static float        ctl_SunIntensity        = 10.0f;
+static float        ctl_SkyIntensity        = 0.2f;
 static RgBool32     ctl_SkyboxEnable        = 1;
 static float        ctl_Roughness           = 0.5f;
 static float        ctl_Metallicity         = 0.5f;
@@ -173,6 +181,172 @@ static const RgVertex *GetQuadVertices()
     }
     return verts;
 }
+
+void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::span<uint32_t> indices, RgMaterial material) >& meshFunc,
+                     const std::vector<RgMaterial> &rgmaterials,
+                     const tinygltf::Model& model, const tinygltf::Node& node)
+{
+    if (node.mesh >= 0 && node.mesh < static_cast<int>(model.meshes.size()))
+    {
+        for (const auto &primitive : model.meshes[node.mesh].primitives)
+        {
+            std::vector<RgVertex> rgverts;
+            std::vector<uint32_t> rgindices;
+
+            for (const auto& [attribName, accessId] : primitive.attributes)
+            {
+                auto& attribAccessor = model.accessors[accessId];
+                auto& attribView = model.bufferViews[attribAccessor.bufferView];
+                auto& attribBuffer = model.buffers[attribView.buffer];
+
+                const uint8_t* data = &attribBuffer.data[attribAccessor.byteOffset + attribView.byteOffset];
+                int dataStride = attribAccessor.ByteStride(attribView);
+
+                if (rgverts.empty())
+                {
+                    rgverts.resize(attribAccessor.count);
+                }
+                assert(rgverts.size() == attribAccessor.count);
+
+                std::tuple<const char *, size_t, size_t> attr[] =
+                {
+                    { "POSITION",   offsetof(RgVertex, position), sizeof(float) * 3 },
+                    { "NORMAL",     offsetof(RgVertex, normal),   sizeof(float) * 3 },
+                    { "TEXCOORD_0", offsetof(RgVertex, texCoord), sizeof(float) * 2 },
+                };
+
+                for (const auto &[name, fieldOffset, elemSize] : attr)
+                {
+                    if (attribName == name)
+                    {
+                        for (uint64_t i = 0; i < rgverts.size(); i++)
+                        {
+                            const uint8_t* src = data + i * dataStride;
+                            auto* dst = reinterpret_cast<uint8_t*>(&rgverts[i]);
+
+                            memcpy(dst + fieldOffset, src, elemSize);
+                        }
+                    }
+                }
+            }
+
+            for (auto &v: rgverts)
+            {
+                v.packedColor = 0xFFFFFFFF;
+            }
+
+            {
+                auto& indexAccessor = model.accessors[primitive.indices];
+                auto& indexView = model.bufferViews[indexAccessor.bufferView];
+                auto& indexBuffer = model.buffers[indexView.buffer];
+
+                const uint8_t* data = &indexBuffer.data[indexAccessor.byteOffset + indexView.byteOffset];
+                int dataStride = indexAccessor.ByteStride(indexView);
+                
+                rgindices.resize(indexAccessor.count);
+
+                for (uint64_t i = 0; i < rgindices.size(); i++)
+                {
+                    uint32_t index = 0;
+
+                    if (dataStride == sizeof(uint32_t))
+                    {
+                        index = *reinterpret_cast<const uint32_t*>(data + i * dataStride);
+                    }
+                    else if (dataStride == sizeof(uint16_t))
+                    {
+                        index = *reinterpret_cast<const uint16_t*>(data + i * dataStride);
+                    }
+                    else
+                    {
+                        assert(false);
+                    }
+
+                    rgindices[i] = index;
+                }
+            }
+
+            meshFunc(rgverts, rgindices, rgmaterials[primitive.material]);
+        }
+    }
+
+    for (int c : node.children)
+    {
+        assert(c >= 0 && c < static_cast<int>(model.nodes.size()));
+        ForEachGltfMesh(meshFunc, rgmaterials, model, model.nodes[c]);
+    }
+}
+
+void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::span<uint32_t> indices, RgMaterial material) >& meshFunc,
+                     const std::function< RgMaterial(uint32_t w, uint32_t h, const void *albedo, const void* rme, const void* normal) >& materialFunc)
+{
+    tinygltf::Model model;
+    tinygltf::TinyGLTF loader;
+    std::string err, warn;
+    if (loader.LoadASCIIFromFile(&model, &err, &warn, ASSET_DIRECTORY"Sponza\\glTF\\Sponza.gltf"))
+    {
+        std::vector<RgMaterial> rgmaterials;
+        rgmaterials.resize(model.materials.size());
+
+        for (uint64_t m = 0; m < model.materials.size(); m++)
+        {
+            int itextures[3] = {
+                model.materials[m].pbrMetallicRoughness.baseColorTexture.index,
+                model.materials[m].pbrMetallicRoughness.metallicRoughnessTexture.index,
+                model.materials[m].normalTexture.index,
+            };
+
+            struct MaterialDef
+            {
+                const void* data;
+                uint32_t w;
+                uint32_t h;
+            }
+            defs[3] = {};
+
+            for (size_t i = 0; i < std::size(itextures); i++)
+            {
+                int tex = itextures[i];
+                if (tex >= 0 && model.textures[tex].source >= 0)
+                {
+                    auto& image = model.images[model.textures[tex].source];
+                    assert(image.bits == 8);
+
+                    defs[i] = {
+                        .data = reinterpret_cast<const uint32_t*>(&image.image[0]),
+                        .w = static_cast<uint32_t>(image.width),
+                        .h = static_cast<uint32_t>(image.height),
+                    };
+                }
+            }
+
+            // RTGL restriction: must be the same size
+            if (defs[1].w != defs[0].w || defs[1].h != defs[0].h)
+            {
+                defs[1] = {};
+            }
+            if (defs[2].w != defs[0].w || defs[2].h != defs[0].h)
+            {
+                defs[2] = {};
+            }
+
+            if (defs[0].data || defs[1].data || defs[2].data)
+            {
+                rgmaterials[m] = materialFunc(defs[0].w, defs[0].h, defs[0].data, defs[1].data, defs[2].data);
+            }
+        }
+
+        const auto& scene = model.scenes[model.defaultScene];
+        for (int sceneNode : scene.nodes)
+        {
+            ForEachGltfMesh(meshFunc, rgmaterials, model, model.nodes[sceneNode]);
+        }
+    }
+    else
+    {
+        std::cout << "Can't load GLTF. " << err << std::endl << warn << std::endl;
+    }
+}
 #pragma endregion BOILERPLATE
 
 
@@ -183,7 +357,6 @@ static void MainLoop(RgInstance instance)
 {
     RgResult    r           = RG_SUCCESS;
     uint64_t    frameId     = 0;
-    RgMaterial  material    = RG_NO_MATERIAL;
     RgCubemap   skybox      = RG_NO_MATERIAL;
 
     const uint64_t MovableGeomUniqueID = 200;
@@ -191,23 +364,14 @@ static void MainLoop(RgInstance instance)
 
     // some resources can be initialized out of frame
     {
-        RgMaterialCreateInfo textureInfo =
-        {
-            .pRelativePath = "Door.ktx2"
-        };
-        r = rgCreateMaterial(instance, &textureInfo, &material);
-        RG_CHECK(r);
-
-
-#if 0
+#if 1
         RgCubemapCreateInfo skyboxInfo = 
         {
             .relativePathFaces = {
-                CUBEMAP_DIRECTORY"px.ktx2", CUBEMAP_DIRECTORY"py.ktx2", CUBEMAP_DIRECTORY"pz.ktx2", 
-                CUBEMAP_DIRECTORY"nx.ktx2", CUBEMAP_DIRECTORY"ny.ktx2", CUBEMAP_DIRECTORY"nz.ktx2", 
+                CUBEMAP_DIRECTORY"px", CUBEMAP_DIRECTORY"py", CUBEMAP_DIRECTORY"pz", 
+                CUBEMAP_DIRECTORY"nx", CUBEMAP_DIRECTORY"ny", CUBEMAP_DIRECTORY"nz", 
             },
             .useMipmaps = true,
-            .isSRGB = true
         };
         r = rgCreateCubemap(instance, &skyboxInfo, &skybox);
         RG_CHECK(r);
@@ -218,122 +382,57 @@ static void MainLoop(RgInstance instance)
         r = rgBeginStaticGeometries(instance);
         RG_CHECK(r);
         {
-            const RgGeometryUploadInfo staticCubeGeomTemplate = 
+            auto uploadMaterial = [instance](uint32_t w, uint32_t h, const void* albedo, const void* rme, const void* normal)
             {
-                .flags                  = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
-                .vertexCount            = std::size(s_CubePositions),
-                .pVertices              = GetCubeVertices(),
-                .indexCount             = 0,
-                .pIndices               = nullptr,
-                .layerColors            = { { 1.0f, 1.0f, 1.0f, 1.0f } },
-                .defaultRoughness       = 1.0f,
-                .defaultMetallicity     = 0.0f,
-                .geomMaterial           = { RG_NO_MATERIAL },
-                .transform = {
-                    1, 0, 0, 0,
-                    0, 1, 0, 0,
-                    0, 0, 1, 0
-                }
+                RgMaterialCreateInfo info =
+                {
+                    .size = { w, h },
+                    .textures = {
+                        .pDataAlbedoAlpha = albedo,
+                        .pDataRoughnessMetallicEmission = nullptr,
+                        .pDataNormal = normal,
+                    },
+                };
+
+                RgMaterial material;
+                RgResult t = rgCreateMaterial(instance, &info, &material);
+                RG_CHECK(t);
+
+                return material;
             };
 
-            {
-                RgGeometryUploadInfo info = staticCubeGeomTemplate;
-                info.geomType = RG_GEOMETRY_TYPE_STATIC;
+            uint64_t gltfUniqueID = UINT32_MAX;
 
-                // bottom
-                info.uniqueID = 100;
-                info.transform = {
-                    5, 0, 0, 0,
-                    0, 1, 0, -4,
-                    0, 0, 5 , 0
+            auto uploadStaticGeometry = [instance, &gltfUniqueID](std::span<RgVertex> verts, std::span<uint32_t> indices, RgMaterial material)
+            {
+                RgGeometryUploadInfo info =
+                {
+                    .uniqueID = gltfUniqueID,
+                    .flags = 0,
+                    .geomType = RG_GEOMETRY_TYPE_STATIC,
+                    .passThroughType = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE ,
+                    .vertexCount = static_cast<uint32_t>(verts.size()),
+                    .pVertices = verts.data(),
+                    .indexCount = static_cast<uint32_t>(indices.size()),
+                    .pIndices = indices.data(),
+                    .layerColors = { { 1.0f, 1.0f, 1.0f, 1.0f } },
+                    .defaultRoughness = 1.0f,
+                    .defaultMetallicity = 0.0f,
+                    .geomMaterial = { material },
+                    .transform = {
+                        0.1, 0, 0, 0,
+                        0, 0.1, 0, 0,
+                        0, 0, 0.1, 0
+                    }
                 };
-                info.layerColors[0] = { 1, 1, 1, 1 };
 
-                r = rgUploadGeometry(instance, &info);
-                RG_CHECK(r);
-            }
+                RgResult t = rgUploadGeometry(instance, &info);
+                RG_CHECK(t);
 
-            {
-                RgGeometryUploadInfo info = staticCubeGeomTemplate;
-                info.geomType = RG_GEOMETRY_TYPE_STATIC;
+                gltfUniqueID++;
+            };
 
-                // top
-                info.uniqueID = 101;
-                info.transform = {
-                    5, 0, 0, 0,
-                    0, 1, 0, +4,
-                    0, 0, 5, 0
-                };
-                info.layerColors[0] = { 1, 1, 1, 1 };
-
-                r = rgUploadGeometry(instance, &info);
-                RG_CHECK(r);
-            }
-                       
-            {
-                RgGeometryUploadInfo info = staticCubeGeomTemplate;
-                info.geomType = RG_GEOMETRY_TYPE_STATIC;
-
-                // left, red
-                info.uniqueID = 102;
-                info.transform = {
-                    1, 0, 0, -3,
-                    0, 9, 0, 0,
-                    0, 0, 5, 0
-                };
-                info.layerColors[0] = { 1, 0, 0, 1 };
-
-                r = rgUploadGeometry(instance, &info);
-                RG_CHECK(r);
-            }
-      
-            {
-                RgGeometryUploadInfo info = staticCubeGeomTemplate;
-                info.geomType = RG_GEOMETRY_TYPE_STATIC;
-
-                // right, green
-                info.uniqueID = 103;
-                info.transform = {
-                    1, 0, 0, +3,
-                    0, 9, 0, 0,
-                    0, 0, 5, 0
-                };
-                info.layerColors[0] = { 0, 1, 0, 1 };
-
-                r = rgUploadGeometry(instance, &info);
-                RG_CHECK(r);
-            }
-      
-            {
-                RgGeometryUploadInfo info = staticCubeGeomTemplate;
-                info.geomType = RG_GEOMETRY_TYPE_STATIC;
-
-                // back
-                info.uniqueID = 104;
-                info.transform = {
-                    7, 0, 0, 0,
-                    0, 9, 0, 0,
-                    0, 0, 1, -3
-                };
-                info.layerColors[0] = { 1, 1, 1, 1 };
-
-                r = rgUploadGeometry(instance, &info);
-                RG_CHECK(r);
-            }
-      
-            {
-                RgGeometryUploadInfo info = staticCubeGeomTemplate;
-                // movable static
-                info.geomType = RG_GEOMETRY_TYPE_STATIC_MOVABLE;
-                info.uniqueID = MovableGeomUniqueID;
-
-                // left, tall box - transform is updated in a loop
-                info.layerColors[0] = { 1, 1, 1, 1 };
-                info.geomMaterial.layerMaterials[0] = material;
-
-                r = rgUploadGeometry(instance, &info);
-                RG_CHECK(r);
-            }
+            ForEachGltfMesh(uploadStaticGeometry, uploadMaterial);
         }
         r = rgSubmitStaticGeometries(instance);
         RG_CHECK(r);
@@ -355,7 +454,7 @@ static void MainLoop(RgInstance instance)
 
 
         // transform of movable geometry can be changed
-        RgUpdateTransformInfo transformUpdateInfo = 
+        /*RgUpdateTransformInfo transformUpdateInfo = 
         {
             .movableStaticUniqueID = MovableGeomUniqueID,
             .transform = {
@@ -365,7 +464,7 @@ static void MainLoop(RgInstance instance)
             }
         };
         r = rgUpdateGeometryTransform(instance, &transformUpdateInfo);
-        RG_CHECK(r);
+        RG_CHECK(r);*/
 
 
         // dynamic geometry must be uploaded each frame
@@ -378,14 +477,14 @@ static void MainLoop(RgInstance instance)
             .pVertices              = GetCubeVertices(),
             .indexCount             = 0,
             .pIndices               = nullptr,
-            .layerColors            = { { 1.0f, 1.0f, 1.0f, 1.0f } },
+            .layerColors            = { { 0.3f, 0.3f, 1.0f, 1.0f } },
             .defaultRoughness       = ctl_Roughness,
             .defaultMetallicity     = ctl_Metallicity,
             .geomMaterial           = { RG_NO_MATERIAL },
             .transform = {
-                1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ((frameId + 30) % 200) : 1.0f,
-                0, 1, 0, -3.5 + 0.5,
-                0, 0, 1, 0
+                0.1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ((frameId + 30) % 200) : 1.0f,
+                0, 0.1, 0, -3.5 + 0.5,
+                0, 0, 0.1, 0
             }
         };
         r = rgUploadGeometry(instance, &dynamicGeomInfo);
@@ -408,7 +507,7 @@ static void MainLoop(RgInstance instance)
             .material = RG_NO_MATERIAL,
             .pipelineState = RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST | RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE,
         };
-        r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
+        //r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
         RG_CHECK(r);
 
 
@@ -429,7 +528,7 @@ static void MainLoop(RgInstance instance)
         RgDirectionalLightUploadInfo dirLight = 
         {
             .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
-            .direction              = { -2, -1, -1 },
+            .direction              = { -1, -10, -1 },
             .angularDiameterDegrees = 0.5f
         };
         r = rgUploadDirectionalLight(instance, &dirLight);
@@ -496,6 +595,7 @@ static void MainLoop(RgInstance instance)
             .fovYRadians = glm::radians(75.0f),
             .cameraNear = cameraNear,
             .cameraFar = cameraFar,
+            .volumetricFar = 1000.0f,
             .rayLength = cameraFar,
             .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
             .currentTime = GetCurrentTimeInSeconds(),
