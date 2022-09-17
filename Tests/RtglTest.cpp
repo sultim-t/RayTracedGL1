@@ -27,8 +27,9 @@
 #define GLM_FORCE_RADIANS
 #define GLM_FORCE_DEPTH_ZERO_TO_ONE
 #include <glm/glm.hpp>
-#include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/rotate_vector.hpp>
 
 #define TINYGLTF_IMPLEMENTATION
@@ -178,7 +179,7 @@ static const RgVertex* GetQuadVertices()
     return verts;
 }
 
-void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material ) >& meshFunc,
+void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material, RgTransform transform ) >& meshFunc,
                       const std::vector< RgMaterial >&                    rgmaterials,
                       const tinygltf::Model&                              model,
                       const tinygltf::Node&                               node )
@@ -263,7 +264,32 @@ void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, st
                 }
             }
 
-            meshFunc( rgverts, rgindices, rgmaterials[ primitive.material ] );
+            auto translation = node.translation.size() == 3 ? glm::make_vec3( node.translation.data() )
+                                                            : glm::dvec3( 0.0 );
+            auto rotation    = node.rotation.size() == 4    ? glm::make_quat( node.rotation.data() )
+                                                            : glm::dmat4( 1.0 );
+            auto scale       = node.scale.size() == 3       ? glm::make_vec3( node.scale.data() )
+                                                            : glm::dvec3( 1.0 );
+            glm::dmat4 dtr;
+            if( node.matrix.size() == 16 )
+            {
+                dtr = glm::make_mat4x4( node.matrix.data() );
+            }
+            else
+            {
+                dtr = glm::translate( glm::dmat4( 1.0 ), translation ) * 
+                      glm::dmat4( rotation ) *
+                      glm::scale( glm::dmat4( 1.0 ), scale );
+            }
+            auto tr = glm::mat4( dtr );
+
+            RgTransform rgtransform = { {
+                { tr[ 0 ][ 0 ], tr[ 1 ][ 0 ], tr[ 2 ][ 0 ], tr[ 3 ][ 0 ] },
+                { tr[ 0 ][ 1 ], tr[ 1 ][ 1 ], tr[ 2 ][ 1 ], tr[ 3 ][ 1 ] },
+                { tr[ 0 ][ 2 ], tr[ 1 ][ 2 ], tr[ 2 ][ 2 ], tr[ 3 ][ 2 ] },
+            } };
+
+            meshFunc( rgverts, rgindices, rgmaterials[ primitive.material ], rgtransform );
         }
     }
 
@@ -275,7 +301,7 @@ void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, st
 }
 
 void ForEachGltfMesh( std::string_view path,
-                      const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material ) >& meshFunc,
+                      const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material, RgTransform transform ) >& meshFunc,
                       const std::function< RgMaterial( uint32_t w, uint32_t h, const void* albedo, const void* rme, const void* normal ) >& materialFunc )
 {
     tinygltf::Model    model;
@@ -443,7 +469,8 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
 
             auto uploadStaticGeometry = [ instance, &idCounter ]( std::span< RgVertex > verts,
                                                                   std::span< uint32_t > indices,
-                                                                  RgMaterial            material ) {
+                                                                  RgMaterial            material,
+                                                                  RgTransform           transform ) {
                 RgGeometryUploadInfo info = {
                     .uniqueID           = GltfGeomUniqueIDBase + idCounter,
                     .flags              = 0,
@@ -457,11 +484,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                     .defaultRoughness   = 1.0f,
                     .defaultMetallicity = 0.0f,
                     .geomMaterial       = { material },
-                    .transform          = { {
-                        { 1, 0, 0, 0 },
-                        { 0, 1, 0, 0 },
-                        { 0, 0, 1, 0 },
-                    } },
+                    .transform          = transform,
                 };
                 RgResult t = rgUploadGeometry( instance, &info );
                 RG_CHECK( t );
