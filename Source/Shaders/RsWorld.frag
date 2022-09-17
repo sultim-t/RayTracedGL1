@@ -57,6 +57,7 @@ void main()
 
     if( globalUniform.lightmapEnable == 0 )
     {
+#if ILLUMINATION_VOLUME
         vec4 ndc = vec4( gl_FragCoord.xyz, 1.0 );
         ndc.xy   /= vec2( globalUniform.renderWidth, globalUniform.renderHeight );
         ndc.xy = ndc.xy * 2.0 - 1.0;
@@ -69,7 +70,9 @@ void main()
         vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
 
         outColor.rgb *= illum;
-        // outColor.rgb *= ev100ToLuminousExposure( getCurrentEV100() );
+#else
+        outColor.rgb *= ev100ToLuminousExposure( getCurrentEV100() );
+#endif
     }
 
 

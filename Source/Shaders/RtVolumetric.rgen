@@ -32,7 +32,7 @@
 #define DESC_SET_CUBEMAPS       7
 #define DESC_SET_RENDER_CUBEMAP 8
 #define DESC_SET_VOLUMETRIC     11
-#define LIGHT_SAMPLE_METHOD     ( LIGHT_SAMPLE_METHOD_INDIR )
+#define LIGHT_SAMPLE_METHOD     ( LIGHT_SAMPLE_METHOD_VOLUME )
 #include "RaygenCommon.h"
 #include "Volumetric.h"
 
@@ -82,7 +82,9 @@ void main()
                     lengthSquared( surfPos.xyz - globalUniform.cameraPosition.xyz ) )
                 {
                     imageStore( g_volumetric, cell, vec4( 0.0 ) );
+    #if ILLUMINATION_VOLUME
                     imageStore( g_illuminationVolume, cell, vec4( 0.0 ) );
+    #endif
                     return;
                 }
             }
@@ -93,14 +95,28 @@ void main()
     vec3 lighting = vec3( 0.8, 0.85, 1.0 );
 
     vec3 radiance      = vec3( 0.01 );
-    vec3 radiance_Prev = imageLoad( g_illuminationVolume, cell ).rgb;
 
-
+    if( globalUniform.directionalLightExists != 0 )
     {
-        uint seed = getRandomSeed( ivec2( cell.x, cell.y ), globalUniform.frameId );
+        DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
+        bool isShadowed = traceShadowRay( 0, center, center - MAX_RAY_LENGTH * l.direction, true );
+
+        radiance += l.color * float( !isShadowed );
+        lighting += radiance * phaseFunction_Schlick( vec3(0,1,0), vec3(1,0,0), 0.4 );
+    }
+
+#if ILLUMINATION_VOLUME
+    {
+        vec3 radiance_Prev = imageLoad( g_illuminationVolume, cell ).rgb;
+        if( any( isnan( radiance_Prev ) ) || any( isinf( radiance_Prev ) ) )
+        {
+            radiance_Prev = vec3( 0 );
+        }
+
+        uint seed = getRandomSeed( ivec2( cell.x + cell.z, cell.y + 19 * cell.z ), globalUniform.frameId );
 
         // TODO: processDirectIllumination without normals
-        vec3 n = safeNormalize( toviewer + globalUniform.worldUpVector.xyz * 2.0 );
+        vec3 n = safeNormalize( toviewer );
 
         Surface s;
         {
@@ -116,15 +132,22 @@ void main()
             s.toViewerDir     = toviewer;
         }
 
-        radiance += processDirectIllumination( seed, s, 0 );
-        lighting += radiance * phaseFunction_Schlick( toviewer, toviewer, 0.4 );
+        vec3 tolight = vec3( 0, 1, 0 );
+
+        radiance += processDirectIllumination( seed, s, 0, tolight );
+
+        radiance = mix( radiance_Prev, radiance, 0.05 );
+        lighting += radiance * phaseFunction_Schlick( tolight, toviewer, 0.4 );
     }
+#endif
 
 
     float scattering = 0.0002;
     float absorbtion = 0.0;
 
 
-    imageStore( g_illuminationVolume, cell, vec4( mix( radiance_Prev, radiance, 0.05 ), 0.0 ) );
+#if ILLUMINATION_VOLUME
+    imageStore( g_illuminationVolume, cell, vec4( radiance, 0.0 ) );
+#endif
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
 }

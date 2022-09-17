@@ -43,6 +43,7 @@
 #define LIGHT_SAMPLE_METHOD_INDIR 2
 #define LIGHT_SAMPLE_METHOD_GRADIENTS 3
 #define LIGHT_SAMPLE_METHOD_INITIAL 4
+#define LIGHT_SAMPLE_METHOD_VOLUME 5
 #if !defined(LIGHT_SAMPLE_METHOD)
     #error Light sampling method must be defined
 #endif
@@ -625,7 +626,17 @@ bool isDirectIlluminationValid(int bounceIndex)
     return v;
 }
 
-void traceDirectIllumination(const Surface surf, const Reservoir reservoir, const vec2 pointRnd, int bounceIndex, out float out_distance, out vec3 out_diffuse, out vec3 out_specular)
+void traceDirectIllumination( const Surface   surf,
+                              const Reservoir reservoir,
+                              const vec2      pointRnd,
+                              int             bounceIndex,
+                              out float       out_distance,
+                              out vec3        out_diffuse,
+                              out vec3        out_specular
+    #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_VOLUME
+                              , inout vec3 out_lightdirection
+    #endif
+                              )
 {    
     const LightSample light = sampleLight(lightSources[reservoir.selected], surf.position, pointRnd);
     shade(surf, light, calcSelectedSampleWeight(reservoir), out_diffuse, out_specular);
@@ -645,6 +656,9 @@ void traceDirectIllumination(const Surface surf, const Reservoir reservoir, cons
 
     #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_DIRECT
         out_distance = length(light.position - surf.position);
+    #endif
+    #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_VOLUME
+        out_lightdirection = safeNormalize( surf.position - light.position );
     #endif
     }
 }
@@ -674,8 +688,14 @@ Reservoir processDirectIllumination(uint seed, const ivec2 pix, const Surface su
 }
 #endif
 
-#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INDIR
-vec3 processDirectIllumination(uint seed, const Surface surf, int bounceIndex)
+#if (LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_INDIR) || (LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_VOLUME)
+vec3 processDirectIllumination( uint          seed,
+                                const Surface surf,
+                                int           bounceIndex
+    #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_VOLUME
+                                , inout vec3 out_lightdirection 
+    #endif
+                                )
 {
     if (!isDirectIlluminationValid(bounceIndex))
     {
@@ -691,8 +711,13 @@ vec3 processDirectIllumination(uint seed, const Surface surf, int bounceIndex)
 
     vec3 out_diffuse;
     vec3 unusedv; float unusedf;
-    traceDirectIllumination(surf, reservoir, pointRnd, bounceIndex, unusedf, out_diffuse, unusedv);
-    
+    traceDirectIllumination(
+        surf, reservoir, pointRnd, bounceIndex, unusedf, out_diffuse, unusedv
+    #if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_VOLUME
+        , out_lightdirection
+    #endif
+    );
+
     return out_diffuse;
 }
 #endif

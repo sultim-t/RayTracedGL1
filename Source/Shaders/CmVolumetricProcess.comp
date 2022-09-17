@@ -48,7 +48,7 @@ void store( const ivec3 cell, const vec4 colorAndDensity )
 
     {
         vec4 prev = volume_sample_Prev( cell );
-        final = mix( prev, final, 0.2);
+        final = mix( prev, final, 0.05);
     }
 
     // rgb - in−scattered light accumulated so far
