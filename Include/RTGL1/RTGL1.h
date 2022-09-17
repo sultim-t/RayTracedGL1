@@ -397,7 +397,7 @@ typedef struct RgGeometryUploadInfo
     RgFloat4D                       layerColors[3];
     RgGeometryMaterialBlendType     layerBlendingTypes[3];
     // These default values will be used if no overriding 
-    // texture is found.
+    // texture is found. Clamped to [0,1].
     float                           defaultRoughness;
     float                           defaultMetallicity;
     // Emission = defaultEmission * color
