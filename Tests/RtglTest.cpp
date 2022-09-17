@@ -11,7 +11,7 @@
 #endif
 #include <RTGL1/RTGL1.h>
 
-#define RG_CHECK(x) assert((x) == RG_SUCCESS)
+#define RG_CHECK( x ) assert( ( x ) == RG_SUCCESS )
 
 
 #pragma region BOILERPLATE
@@ -40,97 +40,93 @@
 #define ASSET_DIRECTORY "../../"
 
 
-static GLFWwindow   *g_GlfwHandle;
+static GLFWwindow* g_GlfwHandle;
 
-static glm::vec3    ctl_CameraPosition      = glm::vec3(0, -1.5f, 4.5f);
-static glm::vec3    ctl_CameraDirection     = glm::vec3(0, 0, -1);
-static glm::vec3    ctl_LightPosition       = glm::vec3(0, 0, 1);
-static float        ctl_LightIntensity      = 1.0f;
-static float        ctl_LightCount          = 0.0f;
-static float        ctl_SunIntensity        = 10.0f;
-static float        ctl_SkyIntensity        = 0.2f;
-static RgBool32     ctl_SkyboxEnable        = 1;
-static float        ctl_Roughness           = 0.5f;
-static float        ctl_Metallicity         = 0.5f;
-static RgBool32     ctl_MoveBoxes           = 0;
-static RgBool32     ctl_ShowGradients       = 0;
-static RgBool32     ctl_ReloadShaders       = 0;
+static glm::vec3 ctl_CameraPosition  = glm::vec3( 0, 0, -5 );
+static glm::vec3 ctl_CameraDirection = glm::vec3( 0, 0, -1 );
+static glm::vec3 ctl_LightPosition   = glm::vec3( 0, 0, 1 );
+static float     ctl_LightIntensity  = 1.0f;
+static float     ctl_LightCount      = 0.0f;
+static float     ctl_SunIntensity    = 10.0f;
+static float     ctl_SkyIntensity    = 0.2f;
+static RgBool32  ctl_SkyboxEnable    = 1;
+static float     ctl_Roughness       = 0.05f;
+static float     ctl_Metallicity     = 1.0f;
+static RgBool32  ctl_MoveBoxes       = 0;
+static RgBool32  ctl_ShowGradients   = 0;
+static RgBool32  ctl_ReloadShaders   = 0;
 
 static bool ProcessWindow()
 {
-    if (glfwWindowShouldClose(g_GlfwHandle)) return false;
+    if( glfwWindowShouldClose( g_GlfwHandle ) ) return false;
     glfwPollEvents(); return true;
 }
 
 static void ProcessInput()
 {
-#define IsPressed(key) (glfwGetKey(g_GlfwHandle, (key)) == GLFW_PRESS)
-#define Clamp(x, xmin, xmax) std::max(std::min((x), xmax), xmin)
-    auto ControlFloat = [] (int key, float &value, float speed, float minval = 0.0f, float maxval = 1.0f) {
-        if (IsPressed(key)) {
-            if (IsPressed(GLFW_KEY_KP_ADD))      value += speed;
-            if (IsPressed(GLFW_KEY_KP_SUBTRACT)) value -= speed;
-        }
-        value = Clamp(value, minval, maxval);
-    };
-    static auto s_lastTimePressed = std::chrono::system_clock::now();
-    auto ControlSwitch = [] (int key, uint32_t &value, uint32_t stateCount = 2) {
-        if (IsPressed(key)) {    
-            float secondsSinceLastTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - s_lastTimePressed).count() / 1000.0f;
-            if (secondsSinceLastTime < 0.5f) return;
-            value = (value + 1) % stateCount;
-            s_lastTimePressed = std::chrono::system_clock::now();
-        }
-    };
+    static auto IsPressed    = []( int key ) { return glfwGetKey( g_GlfwHandle, ( key ) ) == GLFW_PRESS; };
+    static auto ControlFloat = []( int key, float& value, float speed, float minval = 0.0f, float maxval = 1.0f ) {
+            if( IsPressed( key ) ) {
+                if( IsPressed( GLFW_KEY_KP_ADD ) ) value += speed;
+                if( IsPressed( GLFW_KEY_KP_SUBTRACT ) ) value -= speed; }
+            value = std::clamp( value, minval, maxval ); };
+    static auto lastTimePressed = std::chrono::system_clock::now();
+    static auto ControlSwitch   = []( int key, uint32_t& value, uint32_t stateCount = 2 ) {
+        if( IsPressed( key ) ) {
+            float secondsSinceLastTime = std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now() - lastTimePressed ).count() / 1000.0f;
+            if( secondsSinceLastTime < 0.5f ) return;
+            value           = ( value + 1 ) % stateCount;
+            lastTimePressed = std::chrono::system_clock::now(); } };
 
-    float cameraSpeed = 5.0f;
-    float delta = 1.0 / 60.0f;
-    const glm::vec3 d = ctl_CameraDirection;
-    const glm::vec3 u = glm::vec3(0, 1, 0);
-    const glm::vec3 r = glm::cross(d, u);
+    float           cameraSpeed = 5.0f;
+    float           delta       = 1.0 / 60.0f;
+    const glm::vec3 d           = ctl_CameraDirection;
+    const glm::vec3 u           = glm::vec3( 0, 1, 0 );
+    const glm::vec3 r           = glm::cross( d, u );
 
-    if (IsPressed(GLFW_KEY_W))      ctl_CameraPosition  += d * delta * cameraSpeed;
-    if (IsPressed(GLFW_KEY_S))      ctl_CameraPosition  -= d * delta * cameraSpeed;
-    if (IsPressed(GLFW_KEY_D))      ctl_CameraPosition  += r * delta * cameraSpeed;
-    if (IsPressed(GLFW_KEY_A))      ctl_CameraPosition  -= r * delta * cameraSpeed;
-    if (IsPressed(GLFW_KEY_E))      ctl_CameraPosition  += u * delta * cameraSpeed;
-    if (IsPressed(GLFW_KEY_Q))      ctl_CameraPosition  -= u * delta * cameraSpeed;
+    if( IsPressed( GLFW_KEY_W ) )       ctl_CameraPosition += d * delta * cameraSpeed;
+    if( IsPressed( GLFW_KEY_S ) )       ctl_CameraPosition -= d * delta * cameraSpeed;
+    if( IsPressed( GLFW_KEY_D ) )       ctl_CameraPosition += r * delta * cameraSpeed;
+    if( IsPressed( GLFW_KEY_A ) )       ctl_CameraPosition -= r * delta * cameraSpeed;
+    if( IsPressed( GLFW_KEY_E ) )       ctl_CameraPosition += u * delta * cameraSpeed;
+    if( IsPressed( GLFW_KEY_Q ) )       ctl_CameraPosition -= u * delta * cameraSpeed;
 
-    if (IsPressed(GLFW_KEY_LEFT))   ctl_CameraDirection  = glm::rotate(ctl_CameraDirection,  delta * 2, glm::vec3(0, 1, 0));
-    if (IsPressed(GLFW_KEY_RIGHT))  ctl_CameraDirection  = glm::rotate(ctl_CameraDirection, -delta * 2, glm::vec3(0, 1, 0));
+    if( IsPressed( GLFW_KEY_LEFT ) )    ctl_CameraDirection = glm::rotate( ctl_CameraDirection, delta * 2, glm::vec3( 0, 1, 0 ) );
+    if( IsPressed( GLFW_KEY_RIGHT ) )   ctl_CameraDirection = glm::rotate( ctl_CameraDirection, -delta * 2, glm::vec3( 0, 1, 0 ) );
 
-    if (IsPressed(GLFW_KEY_KP_8))   ctl_LightPosition[2] += delta * 5;
-    if (IsPressed(GLFW_KEY_KP_5))   ctl_LightPosition[2] -= delta * 5;
-    if (IsPressed(GLFW_KEY_KP_6))   ctl_LightPosition[0] += delta * 5;
-    if (IsPressed(GLFW_KEY_KP_4))   ctl_LightPosition[0] -= delta * 5;
-    if (IsPressed(GLFW_KEY_KP_9))   ctl_LightPosition[1] += delta * 5;
-    if (IsPressed(GLFW_KEY_KP_7))   ctl_LightPosition[1] -= delta * 5;
+    if( IsPressed( GLFW_KEY_KP_8 ) )    ctl_LightPosition[ 2 ] += delta * 5;
+    if( IsPressed( GLFW_KEY_KP_5 ) )    ctl_LightPosition[ 2 ] -= delta * 5;
+    if( IsPressed( GLFW_KEY_KP_6 ) )    ctl_LightPosition[ 0 ] += delta * 5;
+    if( IsPressed( GLFW_KEY_KP_4 ) )    ctl_LightPosition[ 0 ] -= delta * 5;
+    if( IsPressed( GLFW_KEY_KP_9 ) )    ctl_LightPosition[ 1 ] += delta * 5;
+    if( IsPressed( GLFW_KEY_KP_7 ) )    ctl_LightPosition[ 1 ] -= delta * 5;
 
-    ControlFloat(GLFW_KEY_R,        ctl_Roughness,          delta,      0, 1);
-    ControlFloat(GLFW_KEY_M,        ctl_Metallicity,        delta,      0, 1);
-    ControlFloat(GLFW_KEY_Y,        ctl_LightIntensity,     delta,      0, 1000);
-    ControlFloat(GLFW_KEY_Y,        ctl_LightCount,         delta * 5,  0, 1000);
-    ControlFloat(GLFW_KEY_I,        ctl_SunIntensity,       delta,      0, 1000);
-    ControlFloat(GLFW_KEY_O,        ctl_SkyIntensity,       delta,      0, 1000);
+    ControlFloat( GLFW_KEY_R, ctl_Roughness,        delta,      0, 1 );
+    ControlFloat( GLFW_KEY_M, ctl_Metallicity,      delta,      0, 1 );
+    ControlFloat( GLFW_KEY_Y, ctl_LightIntensity,   delta,      0, 1000 );
+    ControlFloat( GLFW_KEY_Y, ctl_LightCount,       delta * 5,  0, 1000 );
+    ControlFloat( GLFW_KEY_I, ctl_SunIntensity,     delta,      0, 1000 );
+    ControlFloat( GLFW_KEY_O, ctl_SkyIntensity,     delta,      0, 1000 );
 
     ctl_ReloadShaders = false;
-    ControlSwitch(GLFW_KEY_TAB,     ctl_SkyboxEnable);
-    ControlSwitch(GLFW_KEY_Z,       ctl_MoveBoxes);
-    ControlSwitch(GLFW_KEY_G,       ctl_ShowGradients);
-    ControlSwitch(GLFW_KEY_H,       ctl_ReloadShaders);
+    ControlSwitch( GLFW_KEY_TAB,        ctl_SkyboxEnable );
+    ControlSwitch( GLFW_KEY_Z,          ctl_MoveBoxes );
+    ControlSwitch( GLFW_KEY_G,          ctl_ShowGradients );
+    ControlSwitch( GLFW_KEY_BACKSLASH,  ctl_ReloadShaders );
 }
 
 static double GetCurrentTimeInSeconds()
 {
-    static auto s_TimeStart = std::chrono::system_clock::now();
-    return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - s_TimeStart).count() / 1000.0;
+    static auto timeStart = std::chrono::system_clock::now();
+    return std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now() - timeStart ).count() / 1000.0;
 }
 
-#define CUBEMAP_DIRECTORY "Cubemap/"
-
-static uint32_t PackColorToUint32(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+static uint32_t PackColorToUint32( uint8_t r, uint8_t g, uint8_t b, uint8_t a )
 {
-    return (static_cast<uint32_t>(a) << 24) | (static_cast<uint32_t>(b) << 16) | (static_cast<uint32_t>(g) << 8) | static_cast<uint32_t>(r);
+    return ( static_cast< uint32_t >( a ) << 24 ) | 
+           ( static_cast< uint32_t >( b ) << 16 ) |
+           ( static_cast< uint32_t >( g ) << 8  ) | 
+           ( static_cast< uint32_t >( r )       );
 }
 
 static const RgFloat3D s_CubePositions[] = { 
@@ -149,14 +145,14 @@ static const RgFloat2D s_CubeTexCoords[] = {
     {0,0}, {1,0}, {0,1}, {0,1}, {0,0}, {1,0}, 
     {0,1}, {0,1}, {0,0}, {1,0}, {0,1}, {0,1}, 
 };
-static const RgVertex *GetCubeVertices()
+static const RgVertex* GetCubeVertices()
 {
-    static RgVertex verts[std::size(s_CubePositions)] = {};
-    for (size_t i = 0; i < std::size(s_CubePositions); i++)
+    static RgVertex verts[ std::size( s_CubePositions ) ] = {};
+    for( size_t i = 0; i < std::size( s_CubePositions ); i++ )
     {
-        memcpy(verts[i].position, &s_CubePositions[i], 3 * sizeof(float));
-        memcpy(verts[i].texCoord, &s_CubeTexCoords[i], 2 * sizeof(float));
-        verts[i].packedColor = PackColorToUint32(255, 255, 255, 255);
+        memcpy( verts[ i ].position, &s_CubePositions[ i ], 3 * sizeof( float ) );
+        memcpy( verts[ i ].texCoord, &s_CubeTexCoords[ i ], 2 * sizeof( float ) );
+        verts[ i ].packedColor = PackColorToUint32( 255, 255, 255, 255 );
     }
     return verts;
 }
@@ -170,129 +166,131 @@ static const RgFloat2D s_QuadTexCoords[] = {
 static const uint32_t s_QuadColorsABGR[] = {
     0xF0FF0000, 0xF0FFFFFF, 0xF0FFFFFF, 0xF0FFFFFF, 0xFFFFFFFF, 0xFF00FF00,
 };
-static const RgVertex *GetQuadVertices()
+static const RgVertex* GetQuadVertices()
 {
-    static RgVertex verts[std::size(s_QuadPositions)] = {};
-    for (size_t i = 0; i < std::size(s_QuadPositions); i++)
+    static RgVertex verts[ std::size( s_QuadPositions ) ] = {};
+    for( size_t i = 0; i < std::size( s_QuadPositions ); i++ )
     {
-        memcpy(verts[i].position, &s_QuadPositions[i], 3 * sizeof(float));
-        memcpy(verts[i].texCoord, &s_QuadTexCoords[i], 2 * sizeof(float));
-        verts[i].packedColor = s_QuadColorsABGR[i];
+        memcpy( verts[ i ].position, &s_QuadPositions[ i ], 3 * sizeof( float ) );
+        memcpy( verts[ i ].texCoord, &s_QuadTexCoords[ i ], 2 * sizeof( float ) );
+        verts[ i ].packedColor = s_QuadColorsABGR[ i ];
     }
     return verts;
 }
 
-void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::span<uint32_t> indices, RgMaterial material) >& meshFunc,
-                     const std::vector<RgMaterial> &rgmaterials,
-                     const tinygltf::Model& model, const tinygltf::Node& node)
+void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material ) >& meshFunc,
+                      const std::vector< RgMaterial >&                    rgmaterials,
+                      const tinygltf::Model&                              model,
+                      const tinygltf::Node&                               node )
 {
-    if (node.mesh >= 0 && node.mesh < static_cast<int>(model.meshes.size()))
+    if( node.mesh >= 0 && node.mesh < static_cast< int >( model.meshes.size() ) )
     {
-        for (const auto &primitive : model.meshes[node.mesh].primitives)
+        for( const auto& primitive : model.meshes[ node.mesh ].primitives )
         {
-            std::vector<RgVertex> rgverts;
-            std::vector<uint32_t> rgindices;
+            std::vector< RgVertex > rgverts;
+            std::vector< uint32_t > rgindices;
 
-            for (const auto& [attribName, accessId] : primitive.attributes)
+            for( const auto& [ attribName, accessId ] : primitive.attributes )
             {
-                auto& attribAccessor = model.accessors[accessId];
-                auto& attribView = model.bufferViews[attribAccessor.bufferView];
-                auto& attribBuffer = model.buffers[attribView.buffer];
+                auto& attribAccessor = model.accessors[ accessId ];
+                auto& attribView     = model.bufferViews[ attribAccessor.bufferView ];
+                auto& attribBuffer   = model.buffers[ attribView.buffer ];
 
-                const uint8_t* data = &attribBuffer.data[attribAccessor.byteOffset + attribView.byteOffset];
-                int dataStride = attribAccessor.ByteStride(attribView);
+                const uint8_t* data =
+                    &attribBuffer.data[ attribAccessor.byteOffset + attribView.byteOffset ];
+                int dataStride = attribAccessor.ByteStride( attribView );
 
-                if (rgverts.empty())
+                if( rgverts.empty() )
                 {
-                    rgverts.resize(attribAccessor.count);
+                    rgverts.resize( attribAccessor.count );
                 }
-                assert(rgverts.size() == attribAccessor.count);
+                assert( rgverts.size() == attribAccessor.count );
 
-                std::tuple<const char *, size_t, size_t> attr[] =
-                {
-                    { "POSITION",   offsetof(RgVertex, position), sizeof(float) * 3 },
-                    { "NORMAL",     offsetof(RgVertex, normal),   sizeof(float) * 3 },
-                    { "TEXCOORD_0", offsetof(RgVertex, texCoord), sizeof(float) * 2 },
+                std::tuple< const char*, size_t, size_t > attr[] = {
+                    { "POSITION", offsetof( RgVertex, position ), sizeof( float ) * 3 },
+                    { "NORMAL", offsetof( RgVertex, normal ), sizeof( float ) * 3 },
+                    { "TEXCOORD_0", offsetof( RgVertex, texCoord ), sizeof( float ) * 2 },
                 };
 
-                for (const auto &[name, fieldOffset, elemSize] : attr)
+                for( const auto& [ name, fieldOffset, elemSize ] : attr )
                 {
-                    if (attribName == name)
+                    if( attribName == name )
                     {
-                        for (uint64_t i = 0; i < rgverts.size(); i++)
+                        for( uint64_t i = 0; i < rgverts.size(); i++ )
                         {
                             const uint8_t* src = data + i * dataStride;
-                            auto* dst = reinterpret_cast<uint8_t*>(&rgverts[i]);
+                            auto*          dst = reinterpret_cast< uint8_t* >( &rgverts[ i ] );
 
-                            memcpy(dst + fieldOffset, src, elemSize);
+                            memcpy( dst + fieldOffset, src, elemSize );
                         }
                     }
                 }
             }
 
-            for (auto &v: rgverts)
+            for( auto& v : rgverts )
             {
                 v.packedColor = 0xFFFFFFFF;
             }
 
             {
-                auto& indexAccessor = model.accessors[primitive.indices];
-                auto& indexView = model.bufferViews[indexAccessor.bufferView];
-                auto& indexBuffer = model.buffers[indexView.buffer];
+                auto& indexAccessor = model.accessors[ primitive.indices ];
+                auto& indexView     = model.bufferViews[ indexAccessor.bufferView ];
+                auto& indexBuffer   = model.buffers[ indexView.buffer ];
 
-                const uint8_t* data = &indexBuffer.data[indexAccessor.byteOffset + indexView.byteOffset];
-                int dataStride = indexAccessor.ByteStride(indexView);
-                
-                rgindices.resize(indexAccessor.count);
+                const uint8_t* data = &indexBuffer.data[ indexAccessor.byteOffset + indexView.byteOffset ];
+                int dataStride = indexAccessor.ByteStride( indexView );
 
-                for (uint64_t i = 0; i < rgindices.size(); i++)
+                rgindices.resize( indexAccessor.count );
+
+                for( uint64_t i = 0; i < rgindices.size(); i++ )
                 {
                     uint32_t index = 0;
 
-                    if (dataStride == sizeof(uint32_t))
+                    if( dataStride == sizeof( uint32_t ) )
                     {
-                        index = *reinterpret_cast<const uint32_t*>(data + i * dataStride);
+                        index = *reinterpret_cast< const uint32_t* >( data + i * dataStride );
                     }
-                    else if (dataStride == sizeof(uint16_t))
+                    else if( dataStride == sizeof( uint16_t ) )
                     {
-                        index = *reinterpret_cast<const uint16_t*>(data + i * dataStride);
+                        index = *reinterpret_cast< const uint16_t* >( data + i * dataStride );
                     }
                     else
                     {
-                        assert(false);
+                        assert( false );
                     }
 
-                    rgindices[i] = index;
+                    rgindices[ i ] = index;
                 }
             }
 
-            meshFunc(rgverts, rgindices, rgmaterials[primitive.material]);
+            meshFunc( rgverts, rgindices, rgmaterials[ primitive.material ] );
         }
     }
 
-    for (int c : node.children)
+    for( int c : node.children )
     {
-        assert(c >= 0 && c < static_cast<int>(model.nodes.size()));
-        ForEachGltfMesh(meshFunc, rgmaterials, model, model.nodes[c]);
+        assert( c >= 0 && c < static_cast< int >( model.nodes.size() ) );
+        ForEachGltfMesh( meshFunc, rgmaterials, model, model.nodes[ c ] );
     }
 }
 
-void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::span<uint32_t> indices, RgMaterial material) >& meshFunc,
-                     const std::function< RgMaterial(uint32_t w, uint32_t h, const void *albedo, const void* rme, const void* normal) >& materialFunc)
+void ForEachGltfMesh( std::string_view path,
+                      const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material ) >& meshFunc,
+                      const std::function< RgMaterial( uint32_t w, uint32_t h, const void* albedo, const void* rme, const void* normal ) >& materialFunc )
 {
-    tinygltf::Model model;
+    tinygltf::Model    model;
     tinygltf::TinyGLTF loader;
-    std::string err, warn;
-    if (loader.LoadASCIIFromFile(&model, &err, &warn, ASSET_DIRECTORY"Sponza\\glTF\\Sponza.gltf"))
+    std::string        err, warn;
+    if( loader.LoadASCIIFromFile( &model, &err, &warn, path.data() ) )
     {
-        std::vector<RgMaterial> rgmaterials;
-        rgmaterials.resize(model.materials.size());
+        std::vector< RgMaterial > rgmaterials;
+        rgmaterials.resize( model.materials.size() );
 
-        for (uint64_t m = 0; m < model.materials.size(); m++)
+        for( uint64_t m = 0; m < model.materials.size(); m++ )
         {
-            const auto &gltfMat = model.materials[m];
+            const auto& gltfMat = model.materials[ m ];
 
-            int itextures[3] = {
+            int itextures[ 3 ] = {
                 gltfMat.pbrMetallicRoughness.baseColorTexture.index,
                 gltfMat.pbrMetallicRoughness.metallicRoughnessTexture.index,
                 gltfMat.normalTexture.index,
@@ -300,77 +298,79 @@ void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::s
 
             struct RGBA
             {
-                uint8_t data[4];
+                uint8_t data[ 4 ];
             };
 
-            auto torgba = [](const std::vector<double>& flt)
-            {
+            auto torgba = []( const std::vector< double >& flt ) {
                 return RGBA{
-                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[0] * 255.0), 255)),
-                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[1] * 255.0), 255)),
-                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[2] * 255.0), 255)),
-                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[3] * 255.0), 255)),
+                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 0 ] * 255.0 ), 255 ) ),
+                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 1 ] * 255.0 ), 255 ) ),
+                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 2 ] * 255.0 ), 255 ) ),
+                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 3 ] * 255.0 ), 255 ) ),
                 };
             };
-            
-            RGBA fallback[3] = {
+
+            RGBA fallback[ 3 ] = {
                 torgba( gltfMat.pbrMetallicRoughness.baseColorFactor ),
-                torgba( { 0.0, gltfMat.pbrMetallicRoughness.metallicFactor, gltfMat.pbrMetallicRoughness.roughnessFactor, 0.0 } ),
+                torgba( { 0.0,
+                          gltfMat.pbrMetallicRoughness.metallicFactor,
+                          gltfMat.pbrMetallicRoughness.roughnessFactor,
+                          0.0 } ),
                 torgba( { 0.0, 1.0, 0.0, 0.0 } ),
             };
 
             struct MaterialDef
             {
                 const void* data;
-                uint32_t w;
-                uint32_t h;
-            }
-            defs[3] = {};
+                uint32_t    w;
+                uint32_t    h;
+            } defs[ 3 ] = {};
 
-            for (size_t i = 0; i < std::size(itextures); i++)
+            for( size_t i = 0; i < std::size( itextures ); i++ )
             {
-                int tex = itextures[i];
-                if (tex >= 0 && model.textures[tex].source >= 0)
+                int tex = itextures[ i ];
+                if( tex >= 0 && model.textures[ tex ].source >= 0 )
                 {
-                    auto& image = model.images[model.textures[tex].source];
-                    assert(image.bits == 8);
+                    auto& image = model.images[ model.textures[ tex ].source ];
+                    assert( image.bits == 8 );
 
-                    defs[i] = {
-                        .data = &image.image[0],
-                        .w = static_cast<uint32_t>(image.width),
-                        .h = static_cast<uint32_t>(image.height),
+                    defs[ i ] = {
+                        .data = &image.image[ 0 ],
+                        .w    = static_cast< uint32_t >( image.width ),
+                        .h    = static_cast< uint32_t >( image.height ),
                     };
                 }
                 else
                 {
-                    defs[i] = {
-                        .data = fallback[i].data,
-                        .w = 1,
-                        .h = 1,
+                    defs[ i ] = {
+                        .data = fallback[ i ].data,
+                        .w    = 1,
+                        .h    = 1,
                     };
                 }
             }
 
             // RTGL restriction: must be the same size
-            if (defs[1].w != defs[0].w || defs[1].h != defs[0].h)
+            if( defs[ 1 ].w != defs[ 0 ].w || defs[ 1 ].h != defs[ 0 ].h )
             {
-                defs[1] = {};
+                defs[ 1 ] = {};
             }
-            if (defs[2].w != defs[0].w || defs[2].h != defs[0].h)
+            if( defs[ 2 ].w != defs[ 0 ].w || defs[ 2 ].h != defs[ 0 ].h )
             {
-                defs[2] = {};
+                defs[ 2 ] = {};
             }
 
-            if (defs[0].data || defs[1].data || defs[2].data)
+            if( defs[ 0 ].data || defs[ 1 ].data || defs[ 2 ].data )
             {
-                rgmaterials[m] = materialFunc(defs[0].w, defs[0].h, defs[0].data, defs[1].data, defs[2].data);
+                rgmaterials[ m ] = materialFunc(
+                    defs[ 0 ].w, defs[ 0 ].h, defs[ 0 ].data, defs[ 1 ].data, defs[ 2 ].data );
             }
         }
 
-        const auto& scene = model.scenes[model.defaultScene];
-        for (int sceneNode : scene.nodes)
+        const auto& scene = model.scenes[ model.defaultScene ];
+        for( int sceneNode : scene.nodes )
         {
-            ForEachGltfMesh(meshFunc, rgmaterials, model, model.nodes[sceneNode]);
+            ForEachGltfMesh( meshFunc, rgmaterials, model, model.nodes[ sceneNode ] );
         }
     }
     else
@@ -384,38 +384,46 @@ void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::s
 
 
 
-static void MainLoop(RgInstance instance)
+static void MainLoop( RgInstance instance, std::string_view gltfPath )
 {
-    RgResult    r           = RG_SUCCESS;
-    uint64_t    frameId     = 0;
-    RgCubemap   skybox      = RG_NO_MATERIAL;
+    RgResult  r       = RG_SUCCESS;
+    uint64_t  frameId = 0;
+    RgCubemap skybox  = RG_NO_MATERIAL;
 
-    const uint64_t MovableGeomUniqueID = 200;
+
+    // each geometry must have a unique ID
+    // for matching between frames
+    constexpr uint64_t MovableGeomUniqueID  = 200;
+    constexpr uint64_t DynamicGeomUniqueID  = 201;
+    constexpr uint64_t GltfGeomUniqueIDBase = 500;
 
 
     // some resources can be initialized out of frame
     {
-#if 1
         RgCubemapCreateInfo skyboxInfo = 
         {
             .relativePathFaces = {
-                CUBEMAP_DIRECTORY"px", CUBEMAP_DIRECTORY"nx",
-                CUBEMAP_DIRECTORY"py", CUBEMAP_DIRECTORY"ny",
-                CUBEMAP_DIRECTORY"pz", CUBEMAP_DIRECTORY"nz", 
+                "Cubemap/px", "Cubemap/nx",
+                "Cubemap/py", "Cubemap/ny",
+                "Cubemap/pz", "Cubemap/nz", 
             },
             .useMipmaps = true,
         };
-        r = rgCreateCubemap(instance, &skyboxInfo, &skybox);
-        RG_CHECK(r);
-#endif
+        r = rgCreateCubemap( instance, &skyboxInfo, &skybox );
+        RG_CHECK( r );
 
 
-        // upload static scene
-        r = rgBeginStaticGeometries(instance);
-        RG_CHECK(r);
+        // upload static geometry of the scene once
+        r = rgBeginStaticGeometries( instance );
+        RG_CHECK( r );
         {
-            auto uploadMaterial = [instance](uint32_t w, uint32_t h, const void* albedo, const void* rme, const void* normal)
-            {
+            auto uploadMaterial = [ instance ]( uint32_t    w,
+                                                uint32_t    h,
+                                                const void* albedo,
+                                                const void* rme,
+                                                const void* normal ) {
+                RgMaterial material;
+
                 RgMaterialCreateInfo info =
                 {
                     .size = { w, h },
@@ -425,225 +433,240 @@ static void MainLoop(RgInstance instance)
                         .pDataNormal = normal,
                     },
                 };
-
-                RgMaterial material;
-                RgResult t = rgCreateMaterial(instance, &info, &material);
-                RG_CHECK(t);
+                RgResult t = rgCreateMaterial( instance, &info, &material );
+                RG_CHECK( t );
 
                 return material;
             };
 
-            uint64_t gltfUniqueID = UINT32_MAX;
+            uint64_t idCounter = 0;
 
-            auto uploadStaticGeometry = [instance, &gltfUniqueID](std::span<RgVertex> verts, std::span<uint32_t> indices, RgMaterial material)
-            {
-                RgGeometryUploadInfo info =
-                {
-                    .uniqueID = gltfUniqueID,
-                    .flags = 0,
-                    .geomType = RG_GEOMETRY_TYPE_STATIC,
-                    .passThroughType = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE ,
-                    .vertexCount = static_cast<uint32_t>(verts.size()),
-                    .pVertices = verts.data(),
-                    .indexCount = static_cast<uint32_t>(indices.size()),
-                    .pIndices = indices.data(),
-                    .layerColors = { { 1.0f, 1.0f, 1.0f, 1.0f } },
-                    .defaultRoughness = 1.0f,
+            auto uploadStaticGeometry = [ instance, &idCounter ]( std::span< RgVertex > verts,
+                                                                  std::span< uint32_t > indices,
+                                                                  RgMaterial            material ) {
+                RgGeometryUploadInfo info = {
+                    .uniqueID           = GltfGeomUniqueIDBase + idCounter,
+                    .flags              = 0,
+                    .geomType           = RG_GEOMETRY_TYPE_STATIC,
+                    .passThroughType    = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
+                    .vertexCount        = static_cast< uint32_t >( verts.size() ),
+                    .pVertices          = verts.data(),
+                    .indexCount         = static_cast< uint32_t >( indices.size() ),
+                    .pIndices           = indices.data(),
+                    .layerColors        = { { 1.0f, 1.0f, 1.0f, 1.0f } },
+                    .defaultRoughness   = 1.0f,
                     .defaultMetallicity = 0.0f,
-                    .geomMaterial = { material },
-                    .transform = {
-                        0.1, 0, 0, 0,
-                        0, 0.1, 0, 0,
-                        0, 0, 0.1, 0
-                    }
+                    .geomMaterial       = { material },
+                    .transform          = { {
+                        { 1, 0, 0, 0 },
+                        { 0, 1, 0, 0 },
+                        { 0, 0, 1, 0 },
+                    } },
                 };
+                RgResult t = rgUploadGeometry( instance, &info );
+                RG_CHECK( t );
 
-                RgResult t = rgUploadGeometry(instance, &info);
-                RG_CHECK(t);
-
-                gltfUniqueID++;
+                idCounter++;
             };
 
-            ForEachGltfMesh(uploadStaticGeometry, uploadMaterial);
+            ForEachGltfMesh( gltfPath, uploadStaticGeometry, uploadMaterial );
         }
-        r = rgSubmitStaticGeometries(instance);
-        RG_CHECK(r);
+        {
+            RgGeometryUploadInfo movable = {
+                .uniqueID           = MovableGeomUniqueID,
+                .flags              = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
+                .geomType           = RG_GEOMETRY_TYPE_STATIC_MOVABLE,
+                .passThroughType    = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
+                .vertexCount        = std::size( s_CubePositions ),
+                .pVertices          = GetCubeVertices(),
+                .layerColors        = { { 0.5f, 0.5f, 1.0f, 1.0f } },
+                .defaultRoughness   = 1.0f,
+                .defaultMetallicity = 0.0f,
+                .geomMaterial       = { RG_NO_MATERIAL },
+                .transform          = { {
+                    { 1, 0, 0, 0 },
+                    { 0, 1, 0, 0 },
+                    { 0, 0, 1, 0 },
+                } },
+            };
+            r = rgUploadGeometry( instance, &movable );
+            RG_CHECK( r );
+        }
+        r = rgSubmitStaticGeometries( instance );
+        RG_CHECK( r );
     }
 
 
-    while (ProcessWindow())
+    while( ProcessWindow() )
     {
         ProcessInput();
 
         {
             RgStartFrameInfo startInfo = {
-                .requestVSync = true,
-                .requestShaderReload = ctl_ReloadShaders
+                .requestVSync        = true,
+                .requestShaderReload = ctl_ReloadShaders,
             };
-            r = rgStartFrame(instance, &startInfo);
-            RG_CHECK(r);
+            r = rgStartFrame( instance, &startInfo );
+            RG_CHECK( r );
         }
 
 
         // transform of movable geometry can be changed
-        /*RgUpdateTransformInfo transformUpdateInfo = 
         {
-            .movableStaticUniqueID = MovableGeomUniqueID,
-            .transform = {
-                1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * (frameId % 200) : -1.0f,
-                0, 2, 0, -3.5 + 1,
-                0, 0, 1, -0.5
-            }
-        };
-        r = rgUpdateGeometryTransform(instance, &transformUpdateInfo);
-        RG_CHECK(r);*/
+            RgUpdateTransformInfo update = {
+                .movableStaticUniqueID = MovableGeomUniqueID,
+                .transform             = { {
+                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ( frameId % 200 ) : -1.0f },
+                    { 0, 1, 0, 0 },
+                    { 0, 0, 1, -7 },
+                } },
+            };
+            r = rgUpdateGeometryTransform( instance, &update );
+            RG_CHECK( r );
+        }
 
 
         // dynamic geometry must be uploaded each frame
-        RgGeometryUploadInfo dynamicGeomInfo = 
         {
-            .uniqueID               = 300,
-            .flags                  = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
-            .geomType               = RG_GEOMETRY_TYPE_DYNAMIC,
-            .vertexCount            = std::size(s_CubePositions),
-            .pVertices              = GetCubeVertices(),
-            .indexCount             = 0,
-            .pIndices               = nullptr,
-            .layerColors            = { { 0.3f, 0.3f, 1.0f, 1.0f } },
-            .defaultRoughness       = ctl_Roughness,
-            .defaultMetallicity     = ctl_Metallicity,
-            .geomMaterial           = { RG_NO_MATERIAL },
-            .transform = {
-                0.1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ((frameId + 30) % 200) : 1.0f,
-                0, 0.1, 0, -3.5 + 0.5,
-                0, 0, 0.1, 0
-            }
-        };
-        r = rgUploadGeometry(instance, &dynamicGeomInfo);
-        RG_CHECK(r);
-
-
-        // upload rasterized geometry
-        RgRasterizedGeometryUploadInfo raster = 
-        {
-            // world-space
-            .renderType     = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
-            .vertexCount    = std::size(s_QuadPositions),
-            .pVertices      = GetQuadVertices(),
-            .transform = {
-                1, 0, 0, 0,
-                0, 1, 0, 0,
-                0, 0, 1, 0
-            },
-            .color = { 1.0f, 1.0f, 1.0f, 1.0f },
-            .material = RG_NO_MATERIAL,
-            .pipelineState = RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST | RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE,
-        };
-        //r = rgUploadRasterizedGeometry(instance, &raster, nullptr, nullptr);
-        RG_CHECK(r);
-
-
-        RgDecalUploadInfo decalInfo =
-        {    
-            .transform = {
-                2, 0, 0, 0,
-                0, 2, 0, 0,
-                0, 0, 2, 0
-            },
-            .material = RG_NO_MATERIAL
-        };
-       // r = rgUploadDecal(instance, &decalInfo);
-        RG_CHECK(r);
-
-
-        // upload sun
-        RgDirectionalLightUploadInfo dirLight = 
-        {
-            .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
-            .direction              = { -1, -10, -1 },
-            .angularDiameterDegrees = 0.5f
-        };
-        r = rgUploadDirectionalLight(instance, &dirLight);
-        RG_CHECK(r);
-
-
-#if 0
-        // upload sphere lights
-        {
-            uint32_t count = (frameId % 2) * 64 + 128;
-
-            for (uint64_t i = 0; i < count; i++)
-            {
-                RgSphericalLightUploadInfo sphLight = 
-                {
-                    .uniqueID           = i,
-                    .color              = { ctl_LightIntensity, ctl_LightIntensity, ctl_LightIntensity },
-                    .position           = { ctl_LightPosition[0] + i * 3, ctl_LightPosition[1], ctl_LightPosition[2] },
-                    .radius             = 0.25f,
-                    .falloffDistance    = 10.0f,
-                };
-                r = rgUploadSphericalLight(instance, &l);        
-                RG_CHECK(r);    
-            }
+            RgGeometryUploadInfo dynamicGeomInfo = {
+                .uniqueID           = DynamicGeomUniqueID,
+                .flags              = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
+                .geomType           = RG_GEOMETRY_TYPE_DYNAMIC,
+                .vertexCount        = std::size( s_CubePositions ),
+                .pVertices          = GetCubeVertices(),
+                .layerColors        = { { 1.0f, 0.88f, 0.6f, 1.0f } },
+                .defaultRoughness   = ctl_Roughness,
+                .defaultMetallicity = ctl_Metallicity,
+                .geomMaterial       = { RG_NO_MATERIAL },
+                .transform          = { {
+                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ( ( frameId + 30 ) % 200 ) : 1.0f },
+                    { 0, 1, 0, 0 },
+                    { 0, 0, 1, -7 },
+                } },
+            };
+            r = rgUploadGeometry( instance, &dynamicGeomInfo );
+            RG_CHECK( r );
         }
-#endif
 
 
-        float cameraNear = 0.1f;
-        float cameraFar = 10000.0f;
-        glm::mat4 view = glm::lookAt(ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0,1,0 });
-
-
-        RgDrawFrameSkyParams skyParams = 
+        // upload world-space rasterized geometry for non-expensive transparency
         {
-            .skyType            = ctl_SkyboxEnable ? RG_SKY_TYPE_CUBEMAP : RG_SKY_TYPE_COLOR,
-            .skyColorDefault    = { 0.71f, 0.88f, 1.0f },
-            .skyColorMultiplier = ctl_SkyIntensity,
-            .skyColorSaturation = 1.0f,
-            .skyViewerPosition  = { 0, 0, 0 },
-            .skyCubemap         = skybox
-        };
+            RgRasterizedGeometryUploadInfo raster = {
+                .renderType    = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
+                .vertexCount   = std::size( s_QuadPositions ),
+                .pVertices     = GetQuadVertices(),
+                .transform     = { {
+                    { 1, 0, 0, -0.5f },
+                    { 0, 1, 0, 0.5f },
+                    { 0, 0, 1, -8 },
+                } },
+                .color         = { 1.0f, 1.0f, 1.0f, 1.0f },
+                .material      = RG_NO_MATERIAL,
+                .pipelineState = RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST |
+                                 RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE,
+            };
+            r = rgUploadRasterizedGeometry( instance, &raster, nullptr, nullptr );
+            RG_CHECK( r );
+        }
 
-        RgDrawFrameDebugParams debugParams = 
+
+        // set bounding box of the decal to modify G-buffer
+        /*{
+            RgDecalUploadInfo decalInfo = {
+                .transform = { {
+                    { 1, 0, 0, 0 },
+                    { 0, 1, 0, 0 },
+                    { 0, 0, 1, 0 },
+                } },
+                .material  = RG_NO_MATERIAL,
+            };
+            r = rgUploadDecal( instance, &decalInfo );
+            RG_CHECK( r );
+        }*/
+
+
+        // upload the sun
         {
-            .drawFlags = ctl_ShowGradients != 0 ? RG_DEBUG_DRAW_GRADIENTS_BIT : 0u
-        };
+            RgDirectionalLightUploadInfo dirLight = {
+                .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
+                .direction              = { -1, -10, -1 },
+                .angularDiameterDegrees = 0.5f
+            };
+            r = rgUploadDirectionalLight( instance, &dirLight );
+            RG_CHECK( r );
+        }
 
-        RgDrawFrameRenderResolutionParams resolutionParams = 
+
+        // upload sphere lights
+        /*{
+            uint32_t count = ( frameId % 2 ) * 64 + 128;
+
+            for( uint64_t i = 0; i < count; i++ )
+            {
+                RgSphericalLightUploadInfo spherical = {
+                    .uniqueID = i + 1,
+                    .color    = { ctl_LightIntensity, ctl_LightIntensity, ctl_LightIntensity },
+                    .position = { ctl_LightPosition[ 0 ] + i * 3,
+                                  ctl_LightPosition[ 1 ],
+                                  ctl_LightPosition[ 2 ] },
+                    .radius   = 0.2f,
+                };
+                r = rgUploadSphericalLight( instance, &spherical );
+                RG_CHECK( r );
+            }
+        }*/
+
+
+        // submit the frame
         {
-            .upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
-            .resolutionMode = RG_RENDER_RESOLUTION_MODE_BALANCED,
-        };
+            RgDrawFrameSkyParams skyParams = {
+                .skyType            = ctl_SkyboxEnable ? RG_SKY_TYPE_CUBEMAP : RG_SKY_TYPE_COLOR,
+                .skyColorDefault    = { 0.71f, 0.88f, 1.0f },
+                .skyColorMultiplier = ctl_SkyIntensity,
+                .skyColorSaturation = 1.0f,
+                .skyViewerPosition  = { 0, 0, 0 },
+                .skyCubemap         = skybox,
+            };
 
-        RgPostEffectChromaticAberration chromaticAberration =
-        {
-            .isActive = true,
-            .transitionDurationIn = 0,
-            .transitionDurationOut = 0,
-            .intensity = 0.3f,
-        };
+            RgDrawFrameDebugParams debugParams = {
+                .drawFlags = ctl_ShowGradients != 0 ? RG_DEBUG_DRAW_GRADIENTS_BIT : 0u,
+            };
 
-        RgDrawFrameInfo frameInfo =
-        {
-            .fovYRadians = glm::radians(75.0f),
-            .cameraNear = cameraNear,
-            .cameraFar = cameraFar,
-            .volumetricFar = 1000.0f,
-            .rayLength = cameraFar,
-            .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
-            .currentTime = GetCurrentTimeInSeconds(),
-            .pRenderResolutionParams = &resolutionParams,
-            .pSkyParams = &skyParams,
-            .pDebugParams = &debugParams,
-            .postEffectParams = {
-                .pChromaticAberration = &chromaticAberration,
-            },
-        };
-        // GLM is column major, copy matrix data directly
-        memcpy(frameInfo.view, &view[0][0], 16 * sizeof(float));
+            RgDrawFrameRenderResolutionParams resolutionParams = {
+                .upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
+                .resolutionMode   = RG_RENDER_RESOLUTION_MODE_BALANCED,
+            };
 
-        r = rgDrawFrame(instance, &frameInfo);
-        RG_CHECK(r);
+            RgPostEffectChromaticAberration chromaticAberration = {
+                .isActive              = true,
+                .intensity             = 0.3f,
+            };
+
+            glm::mat4 view = glm::lookAt(
+                ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0, 1, 0 } );
+
+            RgDrawFrameInfo frameInfo =
+            {
+                .fovYRadians = glm::radians(75.0f),
+                .cameraNear = 0.1f,
+                .cameraFar = 10000.0f,
+                .volumetricFar = 1000.0f,
+                .rayLength = 10000.0f,
+                .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
+                .currentTime = GetCurrentTimeInSeconds(),
+                .pRenderResolutionParams = &resolutionParams,
+                .pSkyParams = &skyParams,
+                .pDebugParams = &debugParams,
+                .postEffectParams = {
+                    .pChromaticAberration = &chromaticAberration,
+                },
+            };
+            // GLM is column major, copy matrix data directly
+            memcpy( frameInfo.view, &view[ 0 ][ 0 ], 16 * sizeof( float ) );
+
+            r = rgDrawFrame( instance, &frameInfo );
+            RG_CHECK( r );
+        }
 
 
         frameId++;
@@ -651,77 +674,76 @@ static void MainLoop(RgInstance instance)
 }
 
 
-int main()
+int main( int argc, char* argv[] )
 {
-    glfwInit(); glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-    g_GlfwHandle = glfwCreateWindow(1600, 900, "RTGL1 Test", nullptr, nullptr);
+    glfwInit(); glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API ); glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
+    g_GlfwHandle = glfwCreateWindow( 1600, 900, "RTGL1 Test", nullptr, nullptr );
 
 
-    RgResult r; 
+    RgResult   r;
     RgInstance instance;
 
 #ifdef _WIN32
-    RgWin32SurfaceCreateInfo win32Info =
-    {
-        .hinstance = GetModuleHandle(NULL),
-        .hwnd = glfwGetWin32Window(g_GlfwHandle),
+    RgWin32SurfaceCreateInfo win32Info = {
+        .hinstance = GetModuleHandle( NULL ),
+        .hwnd      = glfwGetWin32Window( g_GlfwHandle ),
     };
 #else
-    RgXlibSurfaceCreateInfo xlibInfo = 
-    {
-        .dpy = glfwGetX11Display(),
-        .window = glfwGetX11Window(g_GlfwHandle)
+    RgXlibSurfaceCreateInfo xlibInfo = {
+        .dpy    = glfwGetX11Display(),
+        .window = glfwGetX11Window( g_GlfwHandle ),
     };
 #endif
 
-    RgInstanceCreateInfo info = 
-    {
-        .pAppName                           = "RTGL1 Test",
-        .pAppGUID                           = "459d6734-62a6-4d47-927a-bedcdb0445c5",
+    RgInstanceCreateInfo info = {
+        .pAppName = "RTGL1 Test",
+        .pAppGUID = "459d6734-62a6-4d47-927a-bedcdb0445c5",
 
 #ifdef _WIN32
-        .pWin32SurfaceInfo                  = &win32Info,
+        .pWin32SurfaceInfo = &win32Info,
 #else
-        .pXlibSurfaceCreateInfo             = &xlibInfo,
+        .pXlibSurfaceCreateInfo = &xlibInfo,
 #endif
-        
-        .pfnPrint                           = [] (const char *pMessage, void *pUserData)
-                                            {
-                                                std::cout << pMessage << std::endl;
-                                            },
 
-        .pShaderFolderPath                  = ASSET_DIRECTORY,
-        .pBlueNoiseFilePath                 = ASSET_DIRECTORY"BlueNoise_LDR_RGBA_128.ktx2",
+        .pfnPrint = []( const char* pMessage, void* pUserData ) {
+            std::cout << pMessage << std::endl;
+        },
 
-        .primaryRaysMaxAlbedoLayers         = 1,
-        .indirectIlluminationMaxAlbedoLayers= 1,
+        .pShaderFolderPath  = ASSET_DIRECTORY,
+        .pBlueNoiseFilePath = ASSET_DIRECTORY "BlueNoise_LDR_RGBA_128.ktx2",
 
-        .rayCullBackFacingTriangles         = false,
+        .primaryRaysMaxAlbedoLayers          = 1,
+        .indirectIlluminationMaxAlbedoLayers = 1,
 
-        .rasterizedMaxVertexCount           = 4096,
-        .rasterizedMaxIndexCount            = 2048,
+        .rayCullBackFacingTriangles = false,
 
-        .rasterizedSkyCubemapSize           = 256,
+        .rasterizedMaxVertexCount = 4096,
+        .rasterizedMaxIndexCount  = 2048,
 
-        .maxTextureCount                    = 1024,
-        .pOverridenTexturesFolderPath       = ASSET_DIRECTORY,
-        .overridenAlbedoAlphaTextureIsSRGB  = true,
-        .pWaterNormalTexturePath            = ASSET_DIRECTORY"WaterNormal_n.ktx2",
+        .rasterizedSkyCubemapSize = 256,
+
+        .maxTextureCount                   = 1024,
+        .pOverridenTexturesFolderPath      = ASSET_DIRECTORY,
+        .overridenAlbedoAlphaTextureIsSRGB = true,
+        .pWaterNormalTexturePath           = ASSET_DIRECTORY "WaterNormal_n.ktx2",
 
         // to match the GLTF standard
-        .pbrTextureSwizzling                = RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
+        .pbrTextureSwizzling = RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
     };
 
-    r = rgCreateInstance(&info, &instance);
-    RG_CHECK(r);
+    r = rgCreateInstance( &info, &instance );
+    RG_CHECK( r );
 
-    MainLoop(instance);
+    {
+        auto gltfPath = argc > 1 ? argv[ 1 ] : ASSET_DIRECTORY "Sponza/glTF/Sponza.gltf";
+        MainLoop( instance, gltfPath );
+    }
 
-    r = rgDestroyInstance(instance);
-    RG_CHECK(r);
+    r = rgDestroyInstance( instance );
+    RG_CHECK( r );
 
-    
-    glfwDestroyWindow(g_GlfwHandle);
+
+    glfwDestroyWindow( g_GlfwHandle );
     glfwTerminate();
 
     return 0;
