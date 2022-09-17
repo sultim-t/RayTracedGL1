@@ -290,10 +290,33 @@ void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::s
 
         for (uint64_t m = 0; m < model.materials.size(); m++)
         {
+            const auto &gltfMat = model.materials[m];
+
             int itextures[3] = {
-                model.materials[m].pbrMetallicRoughness.baseColorTexture.index,
-                model.materials[m].pbrMetallicRoughness.metallicRoughnessTexture.index,
-                model.materials[m].normalTexture.index,
+                gltfMat.pbrMetallicRoughness.baseColorTexture.index,
+                gltfMat.pbrMetallicRoughness.metallicRoughnessTexture.index,
+                gltfMat.normalTexture.index,
+            };
+
+            struct RGBA
+            {
+                uint8_t data[4];
+            };
+
+            auto torgba = [](const std::vector<double>& flt)
+            {
+                return RGBA{
+                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[0] * 255.0), 255)),
+                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[1] * 255.0), 255)),
+                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[2] * 255.0), 255)),
+                    static_cast<uint8_t>(std::clamp<int>(0, static_cast<int>(flt[3] * 255.0), 255)),
+                };
+            };
+            
+            RGBA fallback[3] = {
+                torgba( gltfMat.pbrMetallicRoughness.baseColorFactor ),
+                torgba( { 0.0, gltfMat.pbrMetallicRoughness.metallicFactor, gltfMat.pbrMetallicRoughness.roughnessFactor, 0.0 } ),
+                torgba( { 0.0, 1.0, 0.0, 0.0 } ),
             };
 
             struct MaterialDef
@@ -313,9 +336,17 @@ void ForEachGltfMesh(const std::function< void(std::span<RgVertex> verts, std::s
                     assert(image.bits == 8);
 
                     defs[i] = {
-                        .data = reinterpret_cast<const uint32_t*>(&image.image[0]),
+                        .data = &image.image[0],
                         .w = static_cast<uint32_t>(image.width),
                         .h = static_cast<uint32_t>(image.height),
+                    };
+                }
+                else
+                {
+                    defs[i] = {
+                        .data = fallback[i].data,
+                        .w = 1,
+                        .h = 1,
                     };
                 }
             }
@@ -364,12 +395,13 @@ static void MainLoop(RgInstance instance)
 
     // some resources can be initialized out of frame
     {
-#if 0
+#if 1
         RgCubemapCreateInfo skyboxInfo = 
         {
             .relativePathFaces = {
-                CUBEMAP_DIRECTORY"px", CUBEMAP_DIRECTORY"py", CUBEMAP_DIRECTORY"pz", 
-                CUBEMAP_DIRECTORY"nx", CUBEMAP_DIRECTORY"ny", CUBEMAP_DIRECTORY"nz", 
+                CUBEMAP_DIRECTORY"px", CUBEMAP_DIRECTORY"nx",
+                CUBEMAP_DIRECTORY"py", CUBEMAP_DIRECTORY"ny",
+                CUBEMAP_DIRECTORY"pz", CUBEMAP_DIRECTORY"nz", 
             },
             .useMipmaps = true,
         };
@@ -520,7 +552,7 @@ static void MainLoop(RgInstance instance)
             },
             .material = RG_NO_MATERIAL
         };
-        r = rgUploadDecal(instance, &decalInfo);
+       // r = rgUploadDecal(instance, &decalInfo);
         RG_CHECK(r);
 
 
@@ -567,6 +599,7 @@ static void MainLoop(RgInstance instance)
             .skyType            = ctl_SkyboxEnable ? RG_SKY_TYPE_CUBEMAP : RG_SKY_TYPE_COLOR,
             .skyColorDefault    = { 0.71f, 0.88f, 1.0f },
             .skyColorMultiplier = ctl_SkyIntensity,
+            .skyColorSaturation = 1.0f,
             .skyViewerPosition  = { 0, 0, 0 },
             .skyCubemap         = skybox
         };
