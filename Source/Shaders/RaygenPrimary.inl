@@ -394,10 +394,6 @@ void main()
     {
         const uint instIndex = unpackInstanceIdAndCustomIndex(currentPayload.instIdAndIndex).y;
 
-        if ((instIndex & INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT) == 0)
-        {
-            break;
-        }
 
         bool isPixOdd = isCheckerboardPixOdd(pix) != 0;
 

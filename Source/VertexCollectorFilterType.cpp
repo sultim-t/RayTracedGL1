@@ -178,15 +178,15 @@ const static FLName FL_NAMES[] =
 {
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_OPAQUE,                "BLAS static opaque"                    },
     { FT::CF_STATIC_NON_MOVABLE | FT::PT_ALPHA_TESTED,          "BLAS static alpha tested"              },
-    { FT::CF_STATIC_NON_MOVABLE | FT::PT_REFLECT,               "BLAS static reflect"                   },
+    { FT::CF_STATIC_NON_MOVABLE | FT::PT_REFRACT,               "BLAS static refract"                   },
 
     { FT::CF_STATIC_MOVABLE     | FT::PT_OPAQUE,                "BLAS movable opaque"                   },
     { FT::CF_STATIC_MOVABLE     | FT::PT_ALPHA_TESTED,          "BLAS movable alpha tested"             },
-    { FT::CF_STATIC_MOVABLE     | FT::PT_REFLECT,               "BLAS movable reflect"                  },
+    { FT::CF_STATIC_MOVABLE     | FT::PT_REFRACT,               "BLAS movable refract"                  },
 
     { FT::CF_DYNAMIC            | FT::PT_OPAQUE,                "BLAS dynamic opaque"                   },
     { FT::CF_DYNAMIC            | FT::PT_ALPHA_TESTED,          "BLAS dynamic alpha tested"             },
-    { FT::CF_DYNAMIC            | FT::PT_REFLECT,               "BLAS dynamic reflect"                  },
+    { FT::CF_DYNAMIC            | FT::PT_REFRACT,               "BLAS dynamic refract"                  },
 };
 
 const char *RTGL1::VertexCollectorFilterTypeFlags_GetNameForBLAS(FL flags)
@@ -231,22 +231,22 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
     switch (info.passThroughType)
     {
         case RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL:
         {
-            flags |= (FL)FT::PT_OPAQUE;
+            flags |= ( FL )FT::PT_OPAQUE;
             break;
         }
         case RG_GEOMETRY_PASS_THROUGH_TYPE_ALPHA_TESTED:
         {
-            flags |= (FL)FT::PT_ALPHA_TESTED;
+            flags |= ( FL )FT::PT_ALPHA_TESTED;
             break;
         }
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR:
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL:
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT:
         case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT:
         case RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT:
         {
-            flags |= (FL)FT::PT_REFLECT;
+            flags |= ( FL )FT::PT_REFRACT;
             break;
         }
         default: assert(0);

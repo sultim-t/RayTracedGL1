@@ -357,8 +357,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
 
         gu->reflectRefractMaxDepth     = std::min( 4u, rr.maxReflectRefractDepth );
-        gu->enableShadowsFromReflRefr  = !!rr.reflectRefractCastShadows;
-        gu->enableIndirectFromReflRefr = !!rr.reflectRefractToIndirect;
 
         gu->indexOfRefractionGlass = std::max( 0.0f, rr.indexOfRefractionGlass );
         gu->indexOfRefractionWater = std::max( 0.0f, rr.indexOfRefractionWater );
@@ -386,9 +384,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     {
         gu->cameraMediaType        = MEDIA_TYPE_VACUUM;
         gu->reflectRefractMaxDepth = 2;
-
-        gu->enableShadowsFromReflRefr  = false;
-        gu->enableIndirectFromReflRefr = true;
 
         gu->indexOfRefractionGlass = 1.52f;
         gu->indexOfRefractionWater = 1.33f;
@@ -539,8 +534,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     // submit geometry and upload uniform after getting data from a scene
     scene->SubmitForFrame(cmd, frameIndex, uniform, 
                           uniform->GetData()->rayCullMaskWorld, 
-                          allowGeometryWithSkyFlag, 
-                          drawInfo.pReflectRefractParams ? drawInfo.pReflectRefractParams->isReflRefrAlphaTested : false,
+                          allowGeometryWithSkyFlag,
                           drawInfo.disableRayTracedGeometry);
 
 

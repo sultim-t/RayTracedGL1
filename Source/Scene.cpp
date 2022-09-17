@@ -63,7 +63,7 @@ void Scene::PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex)
 }
 
 void Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform, 
-                           uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, bool disableRTGeometry)
+                           uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool disableRTGeometry)
 {
     uint32_t preprocMode = submittedStaticInCurrentFrame ? VERT_PREPROC_MODE_ALL : 
                            toResubmitMovable             ? VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE : 
@@ -94,7 +94,7 @@ void Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
 
     // prepare tlas infos, and fill uniform with info about that tlas
     const auto [prepare, push] = 
-        asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, isReflRefrAlphaTested, disableRTGeometry);
+        asManager->PrepareForBuildingTLAS(frameIndex, *uniform->GetData(), uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, disableRTGeometry);
 
     // upload uniform data
     uniform->Upload(cmd, frameIndex);

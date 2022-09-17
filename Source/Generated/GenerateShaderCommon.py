@@ -275,15 +275,14 @@ CONST = {
     "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
     "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
-    "INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT"        : "1 << 3",
-    "INSTANCE_CUSTOM_INDEX_FLAG_SKY"                    : "1 << 4",
+    "INSTANCE_CUSTOM_INDEX_FLAG_SKY"                    : "1 << 3",
 
     "INSTANCE_MASK_WORLD_0"                 : 1 << 0,
     "INSTANCE_MASK_WORLD_1"                 : 1 << 1,
     "INSTANCE_MASK_WORLD_2"                 : 1 << 2,
     "INSTANCE_MASK_RESERVED_0"              : 1 << 3,
     "INSTANCE_MASK_RESERVED_1"              : 1 << 4,
-    "INSTANCE_MASK_REFLECT_REFRACT"         : 1 << 5,
+    "INSTANCE_MASK_REFRACT"                 : 1 << 5,
     "INSTANCE_MASK_FIRST_PERSON"            : 1 << 6,
     "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : 1 << 7,
     
@@ -325,7 +324,7 @@ CONST = {
     "GEOM_INST_FLAG_RESERVED_4"             : "1 << 17",
     "GEOM_INST_FLAG_RESERVED_5"             : "1 << 18",
     "GEOM_INST_FLAG_EXACT_NORMALS"          : "1 << 19",
-    "GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER" : "1 << 20",
+    "GEOM_INST_FLAG_IGNORE_REFRACT_AFTER"   : "1 << 20",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT"  : "1 << 21",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD"   : "1 << 22",
     "GEOM_INST_FLAG_NO_MEDIA_CHANGE"        : "1 << 23",
@@ -547,8 +546,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "indexOfRefractionGlass",           1),
     (TYPE_FLOAT32,      1,      "waterTextureDerivativesMultiplier",1),
 
-    (TYPE_UINT32,       1,      "enableShadowsFromReflRefr",        1),
-    (TYPE_UINT32,       1,      "enableIndirectFromReflRefr",       1),
+    (TYPE_UINT32,       1,      "_unused0",                         1),
+    (TYPE_UINT32,       1,      "_unused1",                         1),
     (TYPE_UINT32,       1,      "forceNoWaterRefraction",           1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 

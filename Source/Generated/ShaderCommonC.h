@@ -54,14 +54,13 @@ namespace RTGL1
 #define INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC (1 << 0)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON (1 << 1)
 #define INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER (1 << 2)
-#define INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT (1 << 3)
-#define INSTANCE_CUSTOM_INDEX_FLAG_SKY (1 << 4)
+#define INSTANCE_CUSTOM_INDEX_FLAG_SKY (1 << 3)
 #define INSTANCE_MASK_WORLD_0 (1)
 #define INSTANCE_MASK_WORLD_1 (2)
 #define INSTANCE_MASK_WORLD_2 (4)
 #define INSTANCE_MASK_RESERVED_0 (8)
 #define INSTANCE_MASK_RESERVED_1 (16)
-#define INSTANCE_MASK_REFLECT_REFRACT (32)
+#define INSTANCE_MASK_REFRACT (32)
 #define INSTANCE_MASK_FIRST_PERSON (64)
 #define INSTANCE_MASK_FIRST_PERSON_VIEWER (128)
 #define PAYLOAD_INDEX_DEFAULT (0)
@@ -97,7 +96,7 @@ namespace RTGL1
 #define GEOM_INST_FLAG_RESERVED_4 (1 << 17)
 #define GEOM_INST_FLAG_RESERVED_5 (1 << 18)
 #define GEOM_INST_FLAG_EXACT_NORMALS (1 << 19)
-#define GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER (1 << 20)
+#define GEOM_INST_FLAG_IGNORE_REFRACT_AFTER (1 << 20)
 #define GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT (1 << 21)
 #define GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD (1 << 22)
 #define GEOM_INST_FLAG_NO_MEDIA_CHANGE (1 << 23)
@@ -245,8 +244,8 @@ struct ShGlobalUniform
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
     float waterTextureDerivativesMultiplier;
-    uint32_t enableShadowsFromReflRefr;
-    uint32_t enableIndirectFromReflRefr;
+    uint32_t _unused0;
+    uint32_t _unused1;
     uint32_t forceNoWaterRefraction;
     uint32_t waterNormalTextureIndex;
     uint32_t noBackfaceReflForNoMediaChange;

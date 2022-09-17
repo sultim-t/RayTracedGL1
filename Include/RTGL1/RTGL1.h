@@ -366,8 +366,8 @@ typedef enum RgGeometryUploadFlagBits
     // E.g. mirror has some texture on it. 
     RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT = 16,
     RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT = 32,
-    // Ignore refl/refr geometry after one refl/refr hit.
-    RG_GEOMETRY_UPLOAD_IGNORE_REFL_REFR_AFTER_ONE_REFL_REFR_BIT = 64,
+    // If hit the geometry with this flag, ignore refract geometry after.
+    RG_GEOMETRY_UPLOAD_IGNORE_REFRACT_AFTER_REFRACT_BIT = 64,
 } RgGeometryUploadFlagBits;
 typedef RgFlags RgGeometryUploadFlags;
 
@@ -1042,15 +1042,9 @@ typedef enum RgMediaType
 
 typedef struct RgDrawFrameReflectRefractParams
 {
-    RgBool32    isReflRefrAlphaTested;
     uint32_t    maxReflectRefractDepth;
     // Media type, in which camera currently is.
     RgMediaType typeOfMediaAroundCamera;
-    // Should reflect-refract geometry cast shadows?
-    RgBool32    reflectRefractCastShadows;
-    // Should reflect-refract geometry be hit when indirect illumination is ray traced?
-    // Note: indirect illumination will interpret reflect-refract geometry as non reflect-refract
-    RgBool32    reflectRefractToIndirect;
     // Default: 1.52
     float       indexOfRefractionGlass;
     // Default: 1.33

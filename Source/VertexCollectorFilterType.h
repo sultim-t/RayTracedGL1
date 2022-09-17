@@ -42,8 +42,8 @@ enum class VertexCollectorFilterTypeFlagBits : uint32_t
 
     PT_OPAQUE                   = 0b00000001 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
     PT_ALPHA_TESTED             = 0b00000010 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
-    PT_REFLECT                  = 0b00000100 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
-    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_REFLECT,
+    PT_REFRACT                  = 0b00000100 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PT,
+    MASK_PASS_THROUGH_GROUP     = PT_OPAQUE | PT_ALPHA_TESTED | PT_REFRACT,
 
     PV_WORLD_0                  = 0b00000001 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
     PV_WORLD_1                  = 0b00000010 << VERTEX_COLLECTOR_FILTER_TYPE_BIT_OFFSET_PV,
@@ -66,7 +66,7 @@ constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PassThrou
 {
     VertexCollectorFilterTypeFlagBits::PT_OPAQUE,
     VertexCollectorFilterTypeFlagBits::PT_ALPHA_TESTED,
-    VertexCollectorFilterTypeFlagBits::PT_REFLECT,
+    VertexCollectorFilterTypeFlagBits::PT_REFRACT,
 };
 
 constexpr VertexCollectorFilterTypeFlagBits VertexCollectorFilterGroup_PrimaryVisibility[] =

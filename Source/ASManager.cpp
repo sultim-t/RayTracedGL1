@@ -719,7 +719,7 @@ void ASManager::ResubmitStaticMovable(VkCommandBuffer cmd)
     asBuilder->BuildBottomLevel(cmd);
 }
 
-bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, VkAccelerationStructureInstanceKHR &instance)
+bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t rayCullMaskWorld, bool allowGeometryWithSkyFlag, VkAccelerationStructureInstanceKHR &instance)
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -800,7 +800,7 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
                 instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_SKY;
             }
         #else
-            #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
+            #error Handle sky, if there is no WORLD_2
         #endif
         }
         else
@@ -810,32 +810,22 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
     }
 
 
-    if (filter & FT::PT_REFLECT)
+    if( filter & FT::PT_REFRACT )
     {
         // don't touch first-person
-        bool rewriteMask = !(filter & FT::PV_FIRST_PERSON) && !(filter & FT::PV_FIRST_PERSON_VIEWER);
+        bool isworld = !( filter & FT::PV_FIRST_PERSON ) && !( filter & FT::PV_FIRST_PERSON_VIEWER );
 
-        if (rewriteMask)
+        if( isworld )
         {
             // completely rewrite mask, ignoring INSTANCE_MASK_WORLD_*,
-            // if mask contains those world bits, then (mask & (~INSTANCE_MASK_REFLECT_REFRACT))
-            // won't actually cull INSTANCE_MASK_REFLECT_REFRACT
-            instance.mask = INSTANCE_MASK_REFLECT_REFRACT;
+            // if mask contains those world bits, then (mask & (~INSTANCE_MASK_REFRACT))
+            // won't actually cull INSTANCE_MASK_REFRACT
+            instance.mask = INSTANCE_MASK_REFRACT;
         }
-
-        instance.instanceCustomIndex |= INSTANCE_CUSTOM_INDEX_FLAG_REFLECT_REFRACT;
     }
 
 
-    if (filter & FT::PT_OPAQUE)
-    {
-        instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
-        instance.flags =
-            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
-            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
-    }
-    else if (filter & FT::PT_ALPHA_TESTED)
+    if( filter & FT::PT_ALPHA_TESTED )
     {
         instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
         instance.flags =
@@ -843,28 +833,15 @@ bool ASManager::SetupTLASInstanceFromBLAS(const BLASComponent &blas, uint32_t ra
             VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
             VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
     }
-    else if (filter & FT::PT_REFLECT)
-    {
-        if (isReflRefrAlphaTested)
-        {
-            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_ALPHA_TESTED;
-            instance.flags =
-                VK_GEOMETRY_INSTANCE_FORCE_NO_OPAQUE_BIT_KHR |
-                VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
-                VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
-        }
-        else
-        {
-            instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
-            instance.flags =
-                VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
-                VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
-                VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
-        }
-    }
     else
     {
-        assert(false);
+        assert( ( filter & FT::PT_OPAQUE ) || ( filter & FT::PT_REFRACT ) );
+
+        instance.instanceShaderBindingTableRecordOffset = SBT_INDEX_HITGROUP_FULLY_OPAQUE;
+        instance.flags =
+            VK_GEOMETRY_INSTANCE_FORCE_OPAQUE_BIT_KHR |
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FRONT_COUNTERCLOCKWISE_BIT_KHR /*|
+            VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR*/;
     }
 
 
@@ -890,7 +867,6 @@ std::pair<ASManager::TLASPrepareResult, ShVertPreprocessing> ASManager::PrepareF
     ShGlobalUniform &uniformData,
     uint32_t uniformData_rayCullMaskWorld,
     bool allowGeometryWithSkyFlag,
-    bool isReflRefrAlphaTested,
     bool disableRTGeometry) const
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
@@ -929,7 +905,7 @@ std::pair<ASManager::TLASPrepareResult, ShVertPreprocessing> ASManager::PrepareF
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
 
             // add to TLAS instances array
-            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, isReflRefrAlphaTested, r.instances[r.instanceCount]);
+            bool isAdded = ASManager::SetupTLASInstanceFromBLAS(*blas, uniformData_rayCullMaskWorld, allowGeometryWithSkyFlag, r.instances[r.instanceCount]);
 
             if (isAdded)
             {

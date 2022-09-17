@@ -101,17 +101,17 @@ layout(location = PAYLOAD_INDEX_SHADOW) rayPayloadEXT ShPayloadShadow g_payloadS
 
 uint getPrimaryVisibilityCullMask()
 {
-    return globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT | INSTANCE_MASK_FIRST_PERSON;
+    return globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFRACT | INSTANCE_MASK_FIRST_PERSON;
 }
 
 uint getReflectionRefractionCullMask(uint surfInstCustomIndex, uint geometryInstanceFlags, bool isRefraction)
 {
-    uint world = globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFLECT_REFRACT;
+    uint world = globalUniform.rayCullMaskWorld | INSTANCE_MASK_REFRACT;
 
-    if ((geometryInstanceFlags & GEOM_INST_FLAG_IGNORE_REFL_REFR_AFTER) != 0)
+    if( ( geometryInstanceFlags & GEOM_INST_FLAG_IGNORE_REFRACT_AFTER ) != 0 )
     {
-        // ignore refl/refr geometry if requested
-        world = world & (~INSTANCE_MASK_REFLECT_REFRACT);
+        // ignore refract geometry if requested
+        world = world & ( ~INSTANCE_MASK_REFRACT );
 
         // if it's also a first-person geometry, then ignore everything first-person
         if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
@@ -135,9 +135,7 @@ uint getReflectionRefractionCullMask(uint surfInstCustomIndex, uint geometryInst
 
 uint getShadowCullMask(uint surfInstCustomIndex)
 {
-    const uint world = 
-        globalUniform.rayCullMaskWorld_Shadow | 
-        (globalUniform.enableShadowsFromReflRefr == 0 ? 0 : INSTANCE_MASK_REFLECT_REFRACT);
+    const uint world = globalUniform.rayCullMaskWorld_Shadow;
 
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {
@@ -158,9 +156,7 @@ uint getShadowCullMask(uint surfInstCustomIndex)
 
 uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
 {
-    const uint world = 
-        globalUniform.rayCullMaskWorld | 
-        (globalUniform.enableIndirectFromReflRefr == 0 ? 0 : INSTANCE_MASK_REFLECT_REFRACT);
+    const uint world = globalUniform.rayCullMaskWorld;
     
     if ((surfInstCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON) != 0)
     {

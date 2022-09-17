@@ -89,7 +89,6 @@ public:
         ShGlobalUniform &uniformData,
         uint32_t uniformData_rayCullMaskWorld,
         bool allowGeometryWithSkyFlag,
-        bool isReflRefrAlphaTested,
         bool disableRTGeometry) const;
     void BuildTLAS(
         VkCommandBuffer cmd, uint32_t frameIndex, 
@@ -128,7 +127,6 @@ private:
         const BLASComponent &as,
         uint32_t rayCullMaskWorld, 
         bool allowGeometryWithSkyFlag,
-        bool isReflRefrAlphaTested,
         VkAccelerationStructureInstanceKHR &instance);
 
     static bool IsFastBuild(VertexCollectorFilterTypeFlags filter);

@@ -48,7 +48,7 @@ public:
 
     void PrepareForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform,
-                        uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool isReflRefrAlphaTested, bool disableRTGeometry);
+                        uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool disableRTGeometry);
 
     bool Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo);
     bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
