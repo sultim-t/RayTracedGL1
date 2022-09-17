@@ -381,24 +381,91 @@ void TextureUploader::PrepareImage(VkImage image, VkBuffer staging[], const Uplo
     }
 }
 
-VkImageView TextureUploader::CreateImageView(VkImage image, VkFormat format, bool isCubemap, uint32_t mipmapCount)
+VkImageView TextureUploader::CreateImageView( VkImage                             image,
+                                              VkFormat                            format,
+                                              bool                                isCubemap,
+                                              uint32_t                            mipmapCount,
+                                              std::optional< RgTextureSwizzling > swizzling )
 {
+    VkComponentMapping mapping = {
+        .r = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .g = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .b = VK_COMPONENT_SWIZZLE_IDENTITY,
+        .a = VK_COMPONENT_SWIZZLE_IDENTITY,
+    };
+
+    if( swizzling )
+    {
+        switch( swizzling.value() )
+        {
+            case RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_R,
+                    .g = VK_COMPONENT_SWIZZLE_G,
+                    .b = VK_COMPONENT_SWIZZLE_B,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_R,
+                    .g = VK_COMPONENT_SWIZZLE_G,
+                    .b = VK_COMPONENT_SWIZZLE_ZERO,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS_EMISSIVE:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_G,
+                    .g = VK_COMPONENT_SWIZZLE_R,
+                    .b = VK_COMPONENT_SWIZZLE_B,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_G,
+                    .g = VK_COMPONENT_SWIZZLE_R,
+                    .b = VK_COMPONENT_SWIZZLE_ZERO,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_G,
+                    .g = VK_COMPONENT_SWIZZLE_B,
+                    .b = VK_COMPONENT_SWIZZLE_ZERO,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            default: assert( 0 ); break;
+        }
+    }
+
+
+    VkImageViewCreateInfo viewInfo = {
+        .sType      = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image      = image,
+        .viewType   = isCubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D,
+        .format     = format,
+        .components = mapping,
+        .subresourceRange = {
+            .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+            .baseMipLevel   = 0,
+            .levelCount     = mipmapCount,
+            .baseArrayLayer = 0,
+            .layerCount     = isCubemap ? 6u : 1u,
+        },
+    };
+
     VkImageView view;
-
-    VkImageViewCreateInfo viewInfo = {};
-    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-    viewInfo.image = image;
-    viewInfo.viewType = isCubemap ? VK_IMAGE_VIEW_TYPE_CUBE : VK_IMAGE_VIEW_TYPE_2D;
-    viewInfo.format = format;
-    viewInfo.components = {};
-    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    viewInfo.subresourceRange.baseMipLevel = 0;
-    viewInfo.subresourceRange.levelCount = mipmapCount;
-    viewInfo.subresourceRange.baseArrayLayer = 0;
-    viewInfo.subresourceRange.layerCount = isCubemap ? 6 : 1;
-
-    VkResult r = vkCreateImageView(device, &viewInfo, nullptr, &view);
-    VK_CHECKERROR(r);
+    VkResult    r = vkCreateImageView( device, &viewInfo, nullptr, &view );
+    VK_CHECKERROR( r );
 
     return view;
 }
@@ -469,8 +536,9 @@ TextureUploader::UploadResult TextureUploader::UploadImage(const UploadInfo &inf
 
 
     // create image view
-    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
-    SET_DEBUG_NAME(device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName);
+    VkImageView imageView = CreateImageView(
+        image, info.format, info.isCubemap, GetMipmapCount( size, info ), info.swizzling );
+    SET_DEBUG_NAME( device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName );
 
 
     // save info about created image

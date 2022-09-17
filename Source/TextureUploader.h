@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <optional>
 #include <vector>
 
 #include "Common.h"
@@ -42,25 +43,26 @@ public:
 
     struct UploadInfo
     {
-        VkCommandBuffer     cmd;
-        uint32_t            frameIndex;
-        const void          *pData;
-        uint32_t            dataSize;
+        VkCommandBuffer cmd;
+        uint32_t        frameIndex;
+        const void*     pData;
+        uint32_t        dataSize;
         struct
         {
-            const void *pFaces[6];
+            const void* pFaces[ 6 ];
         } cubemap;
-        RgExtent2D          baseSize;
-        VkFormat            format;
-        bool                useMipmaps;
+        RgExtent2D baseSize;
+        VkFormat   format;
+        bool       useMipmaps;
         // if count is 0, useMipmaps is true and format supports blit,
         // then the mipmaps will be generated
-        uint32_t            pregeneratedLevelCount;
-        const uint32_t      *pLevelDataOffsets;
-        const uint32_t      *pLevelDataSizes;
-        bool                isUpdateable;
-        const char          *pDebugName;
-        bool                isCubemap;
+        uint32_t                            pregeneratedLevelCount;
+        const uint32_t*                     pLevelDataOffsets;
+        const uint32_t*                     pLevelDataSizes;
+        bool                                isUpdateable;
+        const char*                         pDebugName;
+        bool                                isCubemap;
+        std::optional< RgTextureSwizzling > swizzling;
     };
 
 public:
@@ -107,7 +109,11 @@ protected:
     bool CreateImage(const UploadInfo &info, VkImage *result);
     // Create mipmaps and prepare image for usage in shaders
     void PrepareImage(VkImage image, VkBuffer staging[], const UploadInfo &info, ImagePrepareType prepareType);
-    VkImageView CreateImageView(VkImage image, VkFormat format, bool isCubemap, uint32_t mipmapCount);
+    VkImageView CreateImageView( VkImage                             image,
+                                 VkFormat                            format,
+                                 bool                                isCubemap,
+                                 uint32_t                            mipmapCount,
+                                 std::optional< RgTextureSwizzling > swizzling );
 
 private:
     struct UpdateableImageInfo

@@ -92,7 +92,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const U
     PrepareImage(image, stagingBuffers, info, ImagePrepareType::INIT);
 
     // create image view
-    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info));
+    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info), RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE);
 
     SET_DEBUG_NAME(device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName);
 

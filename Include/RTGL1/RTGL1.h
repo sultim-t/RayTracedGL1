@@ -151,6 +151,15 @@ typedef struct RgXlibSurfaceCreateInfo
 } RgXlibSurfaceCreateInfo;
 #endif // RG_USE_SURFACE_XLIB
 
+typedef enum RgTextureSwizzling
+{
+    RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE,
+    RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC,
+    RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS_EMISSIVE,
+    RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS,
+    RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
+} RgTextureSwizzling;
+
 typedef struct RgInstanceCreateInfo
 {
     // Application name.
@@ -250,6 +259,8 @@ typedef struct RgInstanceCreateInfo
     // Otherwise, XYZ specify a world point to which view-projection will be applied to determine its
     // screen space coords and NDC depth.
     RgBool32                    lensFlarePointToCheckIsInScreenSpace;
+
+    RgTextureSwizzling          pbrTextureSwizzling;
 
 } RgInstanceCreateInfo;
 

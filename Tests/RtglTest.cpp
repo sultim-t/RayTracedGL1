@@ -364,7 +364,7 @@ static void MainLoop(RgInstance instance)
 
     // some resources can be initialized out of frame
     {
-#if 1
+#if 0
         RgCubemapCreateInfo skyboxInfo = 
         {
             .relativePathFaces = {
@@ -389,7 +389,7 @@ static void MainLoop(RgInstance instance)
                     .size = { w, h },
                     .textures = {
                         .pDataAlbedoAlpha = albedo,
-                        .pDataRoughnessMetallicEmission = nullptr,
+                        .pDataRoughnessMetallicEmission = rme,
                         .pDataNormal = normal,
                     },
                 };
@@ -674,6 +674,9 @@ int main()
         .pOverridenTexturesFolderPath       = ASSET_DIRECTORY,
         .overridenAlbedoAlphaTextureIsSRGB  = true,
         .pWaterNormalTexturePath            = ASSET_DIRECTORY"WaterNormal_n.ktx2",
+
+        // to match the GLTF standard
+        .pbrTextureSwizzling                = RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
     };
 
     r = rgCreateInstance(&info, &instance);
@@ -687,4 +690,6 @@ int main()
     
     glfwDestroyWindow(g_GlfwHandle);
     glfwTerminate();
+
+    return 0;
 }

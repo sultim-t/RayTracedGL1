@@ -87,11 +87,14 @@ private:
     void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
     void CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath);
 
-    uint32_t PrepareTexture(
-        VkCommandBuffer cmd, uint32_t frameIndex, 
-        const std::optional<ImageLoader::ResultInfo> &info,
-        SamplerManager::Handle samplerHandle, 
-        bool useMipmaps, const char *debugName, bool isUpdateable);
+    uint32_t PrepareTexture( VkCommandBuffer                                 cmd,
+                             uint32_t                                        frameIndex,
+                             const std::optional< ImageLoader::ResultInfo >& info,
+                             SamplerManager::Handle                          samplerHandle,
+                             bool                                            useMipmaps,
+                             const char*                                     debugName,
+                             bool                                            isUpdateable,
+                             std::optional< RgTextureSwizzling >             swizzling );
 
     uint32_t InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, SamplerManager::Handle samplerHandle);
     void DestroyTexture(const Texture &texture);
@@ -108,6 +111,7 @@ private:
 
 private:
     VkDevice device;
+    RgTextureSwizzling pbrSwizzling;
 
     std::shared_ptr<ImageLoader> imageLoader;
 
