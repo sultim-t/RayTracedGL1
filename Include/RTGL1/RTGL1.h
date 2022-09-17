@@ -885,7 +885,10 @@ typedef struct RgDrawFrameTexturesParams
     float           emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float           emissionMaxScreenColor;
-    RgBool32        useSqrtRoughnessForIndirect;
+    // Set to true, if roughness should be more perceptually linear.
+    // Default: true
+    RgBool32        squareInputRoughness;
+    // Default: 0.0
     float           minRoughness;
 } RgDrawFrameTexturesParams;
 

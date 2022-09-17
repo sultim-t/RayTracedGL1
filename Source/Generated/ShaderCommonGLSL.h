@@ -255,7 +255,7 @@ struct ShGlobalUniform
     vec4 waterExtinction;
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
-    uint useSqrtRoughnessForIndirect;
+    uint squareInputRoughness;
     float upscaledRenderWidth;
     vec4 worldUpVector;
     float upscaledRenderHeight;

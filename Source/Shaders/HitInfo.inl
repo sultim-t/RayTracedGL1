@@ -370,6 +370,7 @@ ShHitInfo getHitInfoBounce(
         screenEmission = clamp(h.emission, 0.0, 1.0);
     #endif
     }
+    h.roughness = globalUniform.squareInputRoughness == 0 ? h.roughness : square( h.roughness );
     h.roughness = max( h.roughness, max( globalUniform.minRoughness, MIN_GGX_ROUGHNESS ) );
 
 #if !defined(HITINFO_INL_INDIR)

@@ -260,7 +260,7 @@ struct ShGlobalUniform
     float waterExtinction[4];
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
-    uint32_t useSqrtRoughnessForIndirect;
+    uint32_t squareInputRoughness;
     float upscaledRenderWidth;
     float worldUpVector[4];
     float upscaledRenderHeight;
