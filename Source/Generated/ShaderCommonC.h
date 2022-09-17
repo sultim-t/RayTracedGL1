@@ -226,7 +226,7 @@ struct ShGlobalUniform
     float cameraPosition[4];
     float cameraPositionPrev[4];
     uint32_t debugShowFlags;
-    float firefliesClamp;
+    uint32_t indirSecondBounce;
     uint32_t lightCount;
     uint32_t lightCountPrev;
     float emissionMapBoost;

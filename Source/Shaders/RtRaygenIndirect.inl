@@ -132,12 +132,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
     // calculate direct diffuse illumination in a hit position
     vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
 
-    // for smoother surfaces, calculate additional bounce contribution, 
-    // so shadows are not completely black
-    // if( rnd16( seed, RANDOM_SALT_SECOND_BOUND ) > surf.roughness )
-    // TODO: user-defined variable to control 2nd bounce,
-    // as many surfaces are pitch black in some games
-    if ( false )
+    if( globalUniform.indirSecondBounce != 0 )
     {
         float oneOverPdf_Second;
         const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);

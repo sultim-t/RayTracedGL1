@@ -72,8 +72,6 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
             opq = opq || (alp && i == 0);
             alp = alp && !opq;
 
-            // TODO: test this instead of branching
-
             dst = float(opq) * (src.rgb) +
                   float(alp) * (src.rgb * src.a + dst * (1 - src.a)) + 
                   float(add) * (src.rgb + dst) +

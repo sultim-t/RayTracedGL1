@@ -916,6 +916,12 @@ typedef struct RgDrawFrameIlluminationParams
 {
     // Shadow rays are cast, if illumination bounce index is in [0, maxBounceShadows).
     uint32_t    maxBounceShadows;
+    // If false, only one bounce will be cast from a primary surface.
+    // If true, a bounce of that bounce will be also cast.
+    // If false, reflections and indirect diffuse might appear darker,
+    // since inside of them, shadowed areas are just pitch black.
+    // Default: true
+    RgBool32    enableSecondBounceForIndirect;
     // Size of the side of a cell for the light grid. Use RG_DEBUG_DRAW_LIGHT_GRID_BIT for the debug view.
     // Each cell is used to store a fixed amount of light samples that are important for the cell's center and radius.
     // Default: 1.0
@@ -932,9 +938,6 @@ typedef struct RgDrawFrameIlluminationParams
     // The higher the value, the more polygonal lights act like a spotlight. 
     // Default: 2.0
     float       polygonalLightSpotlightFactor;
-    // Clamp indirect diffuse with this value to prevent fireflies.
-    // Default: 3.0
-    float       sphericalPolygonalLightsFirefliesClamp;
     // For which light first-person viewer shadows should be ignored.
     // E.g. first-person flashlight.
     // Null, if none.

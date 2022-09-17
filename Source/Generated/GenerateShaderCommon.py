@@ -523,7 +523,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      4,      "cameraPositionPrev",           1),
 
     (TYPE_UINT32,       1,      "debugShowFlags",               1),
-    (TYPE_FLOAT32,      1,      "firefliesClamp",               1),
+    (TYPE_UINT32,       1,      "indirSecondBounce",            1),
     (TYPE_UINT32,       1,      "lightCount",                   1),
     (TYPE_UINT32,       1,      "lightCountPrev",               1),
 

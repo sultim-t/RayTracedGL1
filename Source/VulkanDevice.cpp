@@ -117,8 +117,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         0,0,0,1
     };
 
-    const float aspect = static_cast< float >( renderResolution.Width() ) /
-                         static_cast< float >( renderResolution.Height() );
+    const float aspect = static_cast< float >( renderResolution.Width() ) / static_cast< float >( renderResolution.Height() );
 
     {
         memcpy( gu->viewPrev, gu->view, 16 * sizeof( float ) );
@@ -126,8 +125,11 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
         memcpy( gu->view, drawInfo.view, 16 * sizeof( float ) );
 
-        Matrix::MakeProjectionMatrix(
-            gu->projection, aspect, drawInfo.fovYRadians, drawInfo.cameraNear, drawInfo.cameraFar );
+        Matrix::MakeProjectionMatrix( gu->projection, 
+                                      aspect, 
+                                      drawInfo.fovYRadians, 
+                                      drawInfo.cameraNear, 
+                                      drawInfo.cameraFar );
 
         Matrix::Inverse( gu->invView, gu->view );
         Matrix::Inverse( gu->invProjection, gu->projection );
@@ -139,41 +141,40 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
-        static_assert(sizeof(gu->instanceGeomInfoOffset) == sizeof(gu->instanceGeomInfoOffsetPrev), "");
-        memcpy(gu->instanceGeomInfoOffsetPrev, gu->instanceGeomInfoOffset, sizeof(gu->instanceGeomInfoOffset));
+        static_assert( sizeof( gu->instanceGeomInfoOffset ) == sizeof( gu->instanceGeomInfoOffsetPrev ) );
+        memcpy( gu->instanceGeomInfoOffsetPrev, gu->instanceGeomInfoOffset, sizeof( gu->instanceGeomInfoOffset ) );
     }
 
     {
-        gu->frameId = frameId;
-        gu->timeDelta = (float)std::max<double>(currentFrameTime - previousFrameTime, 0.001);
-        gu->time = (float)currentFrameTime;
+        gu->frameId   = frameId;
+        gu->timeDelta = static_cast< float >( std::max< double >( currentFrameTime - previousFrameTime, 0.001 ) );
+        gu->time      = static_cast< float >( currentFrameTime );
     }
 
     {
-        gu->renderWidth = (float)renderResolution.Width();
-        gu->renderHeight = (float)renderResolution.Height();
+        gu->renderWidth  = static_cast< float >( renderResolution.Width() );
+        gu->renderHeight = static_cast< float >( renderResolution.Height() );
         // render width must be always even for checkerboarding!
-        assert((int)gu->renderWidth % 2 == 0);
+        assert( ( int )gu->renderWidth % 2 == 0 );
 
-        gu->upscaledRenderWidth = (float)renderResolution.UpscaledWidth();
-        gu->upscaledRenderHeight = (float)renderResolution.UpscaledHeight();
+        gu->upscaledRenderWidth  = static_cast< float >( renderResolution.UpscaledWidth() );
+        gu->upscaledRenderHeight = static_cast< float >( renderResolution.UpscaledHeight() );
 
-        RgFloat2D jitter =
-            renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23(frameId) :
-            renderResolution.IsAmdFsr2Enabled() ? FSR2::GetJitter(renderResolution.GetResolutionState(), frameId) :
-            RgFloat2D{ 0, 0 };
+        RgFloat2D jitter = renderResolution.IsNvDlssEnabled() ? HaltonSequence::GetJitter_Halton23( frameId ) :
+                           renderResolution.IsAmdFsr2Enabled() ? FSR2::GetJitter( renderResolution.GetResolutionState(), frameId ) :
+                           RgFloat2D{ 0, 0 };
 
-        gu->jitterX = jitter.data[0];
-        gu->jitterY = jitter.data[1];
+        gu->jitterX = jitter.data[ 0 ];
+        gu->jitterY = jitter.data[ 1 ];
     }
 
     {
         gu->stopEyeAdaptation = drawInfo.disableEyeAdaptation;
 
-        if (drawInfo.pTonemappingParams != nullptr)
+        if( drawInfo.pTonemappingParams != nullptr )
         {
-            gu->minLogLuminance = drawInfo.pTonemappingParams->minLogLuminance;
-            gu->maxLogLuminance = drawInfo.pTonemappingParams->maxLogLuminance;
+            gu->minLogLuminance     = drawInfo.pTonemappingParams->minLogLuminance;
+            gu->maxLogLuminance     = drawInfo.pTonemappingParams->maxLogLuminance;
             gu->luminanceWhitePoint = drawInfo.pTonemappingParams->luminanceWhitePoint;
         }
         else
@@ -185,163 +186,162 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     }
 
     {
-        gu->lightCount         = scene->GetLightManager()->GetLightCount();
-        gu->lightCountPrev     = scene->GetLightManager()->GetLightCountPrev();
+        gu->lightCount     = scene->GetLightManager()->GetLightCount();
+        gu->lightCountPrev = scene->GetLightManager()->GetLightCountPrev();
 
         gu->directionalLightExists = scene->GetLightManager()->DoesDirectionalLightExist();
     }
 
     {
-        static_assert(sizeof(gu->skyCubemapRotationTransform) == sizeof(IdentityMat4x4) && 
-                      sizeof(IdentityMat4x4) == 16 * sizeof(float), "Recheck skyCubemapRotationTransform sizes");
-        memcpy(gu->skyCubemapRotationTransform, IdentityMat4x4, 16 * sizeof(float));
+        static_assert( sizeof( gu->skyCubemapRotationTransform ) == sizeof( IdentityMat4x4 ) && 
+                       sizeof( IdentityMat4x4 ) == 16 * sizeof( float ), "Recheck skyCubemapRotationTransform sizes" );
+        memcpy( gu->skyCubemapRotationTransform, IdentityMat4x4, 16 * sizeof( float ) );
 
-        if (drawInfo.pSkyParams != nullptr)
+        if( drawInfo.pSkyParams != nullptr )
         {
-            const auto &sp = *drawInfo.pSkyParams;
+            const auto& sp = *drawInfo.pSkyParams;
 
-            memcpy(gu->skyColorDefault, sp.skyColorDefault.data, sizeof(float) * 3);
+            memcpy( gu->skyColorDefault, sp.skyColorDefault.data, sizeof( float ) * 3 );
             gu->skyColorMultiplier = sp.skyColorMultiplier;
-            gu->skyColorSaturation = std::max(sp.skyColorSaturation, 0.0f);
+            gu->skyColorSaturation = std::max( sp.skyColorSaturation, 0.0f );
 
-            gu->skyType =
-                sp.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
-                sp.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY :
-                SKY_TYPE_COLOR;
+            gu->skyType = sp.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP :
+                          sp.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY ? SKY_TYPE_RASTERIZED_GEOMETRY :
+                          SKY_TYPE_COLOR;
 
-            gu->skyCubemapIndex = cubemapManager->IsCubemapValid(sp.skyCubemap) ? sp.skyCubemap : RG_EMPTY_CUBEMAP;
+            gu->skyCubemapIndex = cubemapManager->IsCubemapValid( sp.skyCubemap ) ? sp.skyCubemap : RG_EMPTY_CUBEMAP;
 
-            if (!Utils::IsAlmostZero(drawInfo.pSkyParams->skyCubemapRotationTransform))
+            if( !Utils::IsAlmostZero( drawInfo.pSkyParams->skyCubemapRotationTransform ) )
             {
-                Utils::SetMatrix3ToGLSLMat4(gu->skyCubemapRotationTransform, drawInfo.pSkyParams->skyCubemapRotationTransform);
+                Utils::SetMatrix3ToGLSLMat4( gu->skyCubemapRotationTransform, drawInfo.pSkyParams->skyCubemapRotationTransform );
             }
         }
         else
         {
-            gu->skyColorDefault[0] = gu->skyColorDefault[1] = gu->skyColorDefault[2] = gu->skyColorDefault[3] = 1.0f;
-            gu->skyColorMultiplier = 1.0f;
-            gu->skyColorSaturation = 1.0f;
-            gu->skyType = SKY_TYPE_COLOR;
-            gu->skyCubemapIndex = RG_EMPTY_CUBEMAP;
+            gu->skyColorDefault[ 0 ] = gu->skyColorDefault[ 1 ] = gu->skyColorDefault[ 2 ] = gu->skyColorDefault[ 3 ] = 1.0f;
+            gu->skyColorMultiplier                                                                                    = 1.0f;
+            gu->skyColorSaturation                                                                                    = 1.0f;
+            gu->skyType                                                                                               = SKY_TYPE_COLOR;
+            gu->skyCubemapIndex                                                                                       = RG_EMPTY_CUBEMAP;
         }
 
-        RgFloat3D skyViewerPosition = drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0,0,0 };
+        RgFloat3D skyViewerPosition = drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0, 0, 0 };
 
-        for (uint32_t i = 0; i < 6; i++)
+        for( uint32_t i = 0; i < 6; i++ )
         {
-            float *viewProjDst = &gu->viewProjCubemap[16 * i];
+            float* viewProjDst = &gu->viewProjCubemap[ 16 * i ];
 
-            Matrix::GetCubemapViewProjMat(viewProjDst, i, skyViewerPosition.data, drawInfo.cameraNear, drawInfo.cameraFar);
+            Matrix::GetCubemapViewProjMat( viewProjDst, i, skyViewerPosition.data, drawInfo.cameraNear, drawInfo.cameraFar );
         }
     }
 
     gu->debugShowFlags = 0;
 
-    if (drawInfo.pDebugParams != nullptr)
+    if( drawInfo.pDebugParams != nullptr )
     {
         RgDebugDrawFlags fs = drawInfo.pDebugParams->drawFlags;
-        
-        if (fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_DIRECT_BIT)
+
+        if( fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_DIRECT_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE;
         }
-        else if (fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_INDIRECT_BIT)
+        else if( fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_INDIRECT_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE;
         }
-        else if (fs & RG_DEBUG_DRAW_ONLY_SPECULAR_BIT)
+        else if( fs & RG_DEBUG_DRAW_ONLY_SPECULAR_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_SPECULAR;
         }
-        else if (fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_DIRECT_BIT)
+        else if( fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_DIRECT_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE;
         }
-        else if (fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_INDIRECT_BIT)
+        else if( fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_INDIRECT_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT;
         }
-        else if (fs & RG_DEBUG_DRAW_UNFILTERED_SPECULAR_BIT)
+        else if( fs & RG_DEBUG_DRAW_UNFILTERED_SPECULAR_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR;
         }
 
-        if (fs & RG_DEBUG_DRAW_ALBEDO_WHITE_BIT)
+        if( fs & RG_DEBUG_DRAW_ALBEDO_WHITE_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_ALBEDO_WHITE;
         }
-        if (fs & RG_DEBUG_DRAW_MOTION_VECTORS_BIT)
+        if( fs & RG_DEBUG_DRAW_MOTION_VECTORS_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_MOTION_VECTORS;
         }
-        if (fs & RG_DEBUG_DRAW_GRADIENTS_BIT)
+        if( fs & RG_DEBUG_DRAW_GRADIENTS_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_GRADIENTS;
         }
-        if (fs & RG_DEBUG_DRAW_LIGHT_GRID_BIT)
+        if( fs & RG_DEBUG_DRAW_LIGHT_GRID_BIT )
         {
             gu->debugShowFlags |= DEBUG_SHOW_FLAG_LIGHT_GRID;
         }
     }
 
-    if (drawInfo.pTexturesParams != nullptr)
+    if( drawInfo.pTexturesParams != nullptr )
     {
-        gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
-        gu->emissionMapBoost = std::max(drawInfo.pTexturesParams->emissionMapBoost, 0.0f);
-        gu->emissionMaxScreenColor = std::max(drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f);
-        gu->squareInputRoughness = !!drawInfo.pTexturesParams->squareInputRoughness;
-        gu->minRoughness = std::clamp(drawInfo.pTexturesParams->minRoughness, 0.0f, 1.0f);
+        gu->normalMapStrength      = drawInfo.pTexturesParams->normalMapStrength;
+        gu->emissionMapBoost       = std::max( drawInfo.pTexturesParams->emissionMapBoost, 0.0f );
+        gu->emissionMaxScreenColor = std::max( drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f );
+        gu->squareInputRoughness   = !!drawInfo.pTexturesParams->squareInputRoughness;
+        gu->minRoughness           = std::clamp( drawInfo.pTexturesParams->minRoughness, 0.0f, 1.0f );
     }
     else
     {
-        gu->normalMapStrength = 1.0f;
-        gu->emissionMapBoost = 100.0f;
+        gu->normalMapStrength      = 1.0f;
+        gu->emissionMapBoost       = 100.0f;
         gu->emissionMaxScreenColor = 1.5f;
-        gu->squareInputRoughness = 1;
-        gu->minRoughness = 0.0f;
+        gu->squareInputRoughness   = 1;
+        gu->minRoughness           = 0.0f;
     }
 
-    if (drawInfo.pIlluminationParams != nullptr)
+    if( drawInfo.pIlluminationParams != nullptr )
     {
-        gu->maxBounceShadowsLights      = drawInfo.pIlluminationParams->maxBounceShadows;
-        gu->polyLightSpotlightFactor    = std::max(0.0f, drawInfo.pIlluminationParams->polygonalLightSpotlightFactor);
-        gu->firefliesClamp              = std::max(0.0f, drawInfo.pIlluminationParams->sphericalPolygonalLightsFirefliesClamp);
-        gu->lightIndexIgnoreFPVShadows  = scene->GetLightManager()->GetLightIndexIgnoreFPVShadows(currentFrameState.GetFrameIndex(), drawInfo.pIlluminationParams->lightUniqueIdIgnoreFirstPersonViewerShadows);
-        gu->cellWorldSize               = std::max(drawInfo.pIlluminationParams->cellWorldSize, 0.001f);
-        gu->gradientMultDiffuse         = std::clamp(drawInfo.pIlluminationParams->directDiffuseSensitivityToChange, 0.0f, 1.0f);
-        gu->gradientMultIndirect        = std::clamp(drawInfo.pIlluminationParams->indirectDiffuseSensitivityToChange, 0.0f, 1.0f);
-        gu->gradientMultSpecular        = std::clamp(drawInfo.pIlluminationParams->specularSensitivityToChange, 0.0f, 1.0f);
+        gu->maxBounceShadowsLights     = drawInfo.pIlluminationParams->maxBounceShadows;
+        gu->polyLightSpotlightFactor   = std::max( 0.0f, drawInfo.pIlluminationParams->polygonalLightSpotlightFactor );
+        gu->indirSecondBounce          = !!drawInfo.pIlluminationParams->enableSecondBounceForIndirect;
+        gu->lightIndexIgnoreFPVShadows = scene->GetLightManager()->GetLightIndexIgnoreFPVShadows( currentFrameState.GetFrameIndex(), drawInfo.pIlluminationParams->lightUniqueIdIgnoreFirstPersonViewerShadows );
+        gu->cellWorldSize              = std::max( drawInfo.pIlluminationParams->cellWorldSize, 0.001f );
+        gu->gradientMultDiffuse        = std::clamp( drawInfo.pIlluminationParams->directDiffuseSensitivityToChange, 0.0f, 1.0f );
+        gu->gradientMultIndirect       = std::clamp( drawInfo.pIlluminationParams->indirectDiffuseSensitivityToChange, 0.0f, 1.0f );
+        gu->gradientMultSpecular       = std::clamp( drawInfo.pIlluminationParams->specularSensitivityToChange, 0.0f, 1.0f );
     }
     else
     {
-        gu->maxBounceShadowsLights = 2;
-        gu->polyLightSpotlightFactor = 2.0f;
-        gu->firefliesClamp = 3.0f;
+        gu->maxBounceShadowsLights     = 2;
+        gu->polyLightSpotlightFactor   = 2.0f;
+        gu->indirSecondBounce          = true;
         gu->lightIndexIgnoreFPVShadows = LIGHT_INDEX_NONE;
-        gu->cellWorldSize = 1.0f;
-        gu->gradientMultDiffuse = 0.5f;
-        gu->gradientMultIndirect = 0.2f;
-        gu->gradientMultSpecular = 0.5f;
+        gu->cellWorldSize              = 1.0f;
+        gu->gradientMultDiffuse        = 0.5f;
+        gu->gradientMultIndirect       = 0.2f;
+        gu->gradientMultSpecular       = 0.5f;
     }
 
-    if (drawInfo.pBloomParams != nullptr)
+    if( drawInfo.pBloomParams != nullptr )
     {
-        gu->bloomThreshold          = std::max(drawInfo.pBloomParams->inputThreshold, 0.0f);
-        gu->bloomThresholdLength    = std::max(drawInfo.pBloomParams->inputThresholdLength, 0.0f);
-        gu->bloomUpsampleRadius     = std::max(drawInfo.pBloomParams->upsampleRadius, 0.0f);
-        gu->bloomIntensity          = std::max(drawInfo.pBloomParams->bloomIntensity, 0.0f);
-        gu->bloomEmissionMultiplier = std::max(drawInfo.pBloomParams->bloomEmissionMultiplier, 0.0f);
-        gu->bloomSkyMultiplier      = std::max(drawInfo.pBloomParams->bloomSkyMultiplier, 0.0f);
-        gu->bloomEmissionSaturationBias = clamp(drawInfo.pBloomParams->bloomEmissionSaturationBias, -1.0f, 20.0f);
+        gu->bloomThreshold              = std::max( drawInfo.pBloomParams->inputThreshold, 0.0f );
+        gu->bloomThresholdLength        = std::max( drawInfo.pBloomParams->inputThresholdLength, 0.0f );
+        gu->bloomUpsampleRadius         = std::max( drawInfo.pBloomParams->upsampleRadius, 0.0f );
+        gu->bloomIntensity              = std::max( drawInfo.pBloomParams->bloomIntensity, 0.0f );
+        gu->bloomEmissionMultiplier     = std::max( drawInfo.pBloomParams->bloomEmissionMultiplier, 0.0f );
+        gu->bloomSkyMultiplier          = std::max( drawInfo.pBloomParams->bloomSkyMultiplier, 0.0f );
+        gu->bloomEmissionSaturationBias = clamp( drawInfo.pBloomParams->bloomEmissionSaturationBias, -1.0f, 20.0f );
     }
     else
     {
-        gu->bloomThreshold = 15.0f;
-        gu->bloomThresholdLength = 0.25f;
-        gu->bloomUpsampleRadius = 1.0f;
-        gu->bloomIntensity = 1.0f;
-        gu->bloomEmissionMultiplier = 64.0f;
-        gu->bloomSkyMultiplier = 0.05f;
+        gu->bloomThreshold              = 15.0f;
+        gu->bloomThresholdLength        = 0.25f;
+        gu->bloomUpsampleRadius         = 1.0f;
+        gu->bloomIntensity              = 1.0f;
+        gu->bloomEmissionMultiplier     = 64.0f;
+        gu->bloomSkyMultiplier          = 0.05f;
         gu->bloomEmissionSaturationBias = 0.0f;
     }
 
@@ -349,14 +349,13 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         RG_MEDIA_TYPE_VACUUM == MEDIA_TYPE_VACUUM &&
         RG_MEDIA_TYPE_WATER == MEDIA_TYPE_WATER &&
         RG_MEDIA_TYPE_GLASS == MEDIA_TYPE_GLASS, 
-        "Interface and GLSL constants must be identical");
+        "Interface and GLSL constants must be identical" );
 
-    if (drawInfo.pReflectRefractParams != nullptr)
+    if( drawInfo.pReflectRefractParams != nullptr )
     {
-        const auto &rr = *drawInfo.pReflectRefractParams;
+        const auto& rr = *drawInfo.pReflectRefractParams;
 
-        if (rr.typeOfMediaAroundCamera >= 0 &&
-            rr.typeOfMediaAroundCamera < MEDIA_TYPE_COUNT)
+        if( rr.typeOfMediaAroundCamera >= 0 && rr.typeOfMediaAroundCamera < MEDIA_TYPE_COUNT )
         {
             gu->cameraMediaType = rr.typeOfMediaAroundCamera;
         }
@@ -365,20 +364,20 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
             gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         }
 
-        gu->reflectRefractMaxDepth = std::min(4u, rr.maxReflectRefractDepth);
-        gu->enableShadowsFromReflRefr = !!rr.reflectRefractCastShadows;
+        gu->reflectRefractMaxDepth     = std::min( 4u, rr.maxReflectRefractDepth );
+        gu->enableShadowsFromReflRefr  = !!rr.reflectRefractCastShadows;
         gu->enableIndirectFromReflRefr = !!rr.reflectRefractToIndirect;
-    
-        gu->indexOfRefractionGlass = std::max(0.0f, rr.indexOfRefractionGlass);
-        gu->indexOfRefractionWater = std::max(0.0f, rr.indexOfRefractionWater);
 
-        memcpy(gu->waterExtinction, rr.waterExtinction.data, 3 * sizeof(float));
+        gu->indexOfRefractionGlass = std::max( 0.0f, rr.indexOfRefractionGlass );
+        gu->indexOfRefractionWater = std::max( 0.0f, rr.indexOfRefractionWater );
 
-        gu->forceNoWaterRefraction = !!rr.forceNoWaterRefraction;
-        gu->waterWaveSpeed = rr.waterWaveSpeed;
-        gu->waterWaveStrength = rr.waterWaveNormalStrength;
-        gu->waterTextureDerivativesMultiplier = std::max(0.0f, rr.waterWaveTextureDerivativesMultiplier);
-        if (rr.waterTextureAreaScale < 0.0001f)
+        memcpy( gu->waterExtinction, rr.waterExtinction.data, 3 * sizeof( float ) );
+
+        gu->forceNoWaterRefraction            = !!rr.forceNoWaterRefraction;
+        gu->waterWaveSpeed                    = rr.waterWaveSpeed;
+        gu->waterWaveStrength                 = rr.waterWaveNormalStrength;
+        gu->waterTextureDerivativesMultiplier = std::max( 0.0f, rr.waterWaveTextureDerivativesMultiplier );
+        if( rr.waterTextureAreaScale < 0.0001f )
         {
             gu->waterTextureAreaScale = 1.0f;
         }
@@ -386,82 +385,82 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         {
             gu->waterTextureAreaScale = rr.waterTextureAreaScale;
         }
-    
+
         gu->noBackfaceReflForNoMediaChange = !!rr.disableBackfaceReflectionsForNoMediaChange;
 
         gu->twirlPortalNormal = !!rr.portalNormalTwirl;
     }
     else
     {
-        gu->cameraMediaType = MEDIA_TYPE_VACUUM;
+        gu->cameraMediaType        = MEDIA_TYPE_VACUUM;
         gu->reflectRefractMaxDepth = 2;
-    
-        gu->enableShadowsFromReflRefr = false;
+
+        gu->enableShadowsFromReflRefr  = false;
         gu->enableIndirectFromReflRefr = true;
 
         gu->indexOfRefractionGlass = 1.52f;
         gu->indexOfRefractionWater = 1.33f;
 
-        gu->waterExtinction[0] = 0.030f; 
-        gu->waterExtinction[1] = 0.019f;
-        gu->waterExtinction[2] = 0.013f;
+        gu->waterExtinction[ 0 ] = 0.030f;
+        gu->waterExtinction[ 1 ] = 0.019f;
+        gu->waterExtinction[ 2 ] = 0.013f;
 
-        gu->forceNoWaterRefraction = false;
-        gu->waterWaveSpeed = 1.0f;
-        gu->waterWaveStrength = 1.0f;
+        gu->forceNoWaterRefraction            = false;
+        gu->waterWaveSpeed                    = 1.0f;
+        gu->waterWaveStrength                 = 1.0f;
         gu->waterTextureDerivativesMultiplier = 1.0f;
-        gu->waterTextureAreaScale = 1.0f;
+        gu->waterTextureAreaScale             = 1.0f;
 
         gu->noBackfaceReflForNoMediaChange = false;
 
         gu->twirlPortalNormal = false;
     }
 
-    gu->rayCullBackFaces = rayCullBackFacingTriangles ? 1 : 0;
-    gu->rayLength = clamp(drawInfo.rayLength, 0.1f, (float)MAX_RAY_LENGTH);
-    gu->primaryRayMinDist = clamp(drawInfo.cameraNear, 0.001f, gu->rayLength);
+    gu->rayCullBackFaces  = rayCullBackFacingTriangles ? 1 : 0;
+    gu->rayLength         = clamp( drawInfo.rayLength, 0.1f, ( float )MAX_RAY_LENGTH );
+    gu->primaryRayMinDist = clamp( drawInfo.cameraNear, 0.001f, gu->rayLength );
 
     {
         gu->rayCullMaskWorld = 0;
 
-        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT)
+        if( drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT )
         {
             gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_0;
         }
 
-        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_1_BIT)
+        if( drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_1_BIT )
         {
             gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_1;
         }
 
-        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_2_BIT)
+        if( drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_WORLD_2_BIT )
         {
-            if (allowGeometryWithSkyFlag)
+            if( allowGeometryWithSkyFlag )
             {
-                throw RgException(RG_WRONG_ARGUMENT, "RG_DRAW_FRAME_RAY_CULL_WORLD_2_BIT cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was true");
+                throw RgException( RG_WRONG_ARGUMENT, "RG_DRAW_FRAME_RAY_CULL_WORLD_2_BIT cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was true" );
             }
 
             gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_2;
         }
 
-    #if RAYCULLMASK_SKY_IS_WORLD2
-        if (drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_SKY_BIT)
+#if RAYCULLMASK_SKY_IS_WORLD2
+        if( drawInfo.rayCullMaskWorld & RG_DRAW_FRAME_RAY_CULL_SKY_BIT )
         {
-            if (!allowGeometryWithSkyFlag)
+            if( !allowGeometryWithSkyFlag )
             {
-                throw RgException(RG_WRONG_ARGUMENT, "RG_DRAW_FRAME_RAY_CULL_SKY_BIT cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was false");
+                throw RgException( RG_WRONG_ARGUMENT, "RG_DRAW_FRAME_RAY_CULL_SKY_BIT cannot be used, as RgInstanceCreateInfo::allowGeometryWithSkyFlag was false" );
             }
 
             gu->rayCullMaskWorld |= INSTANCE_MASK_WORLD_2;
         }
-    #else
-        #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
-    #endif
+#else
+    #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
+#endif
 
 
-        if (allowGeometryWithSkyFlag)
+        if( allowGeometryWithSkyFlag )
         {
-            gu->rayCullMaskWorld_Shadow = gu->rayCullMaskWorld & (~INSTANCE_MASK_WORLD_2);
+            gu->rayCullMaskWorld_Shadow = gu->rayCullMaskWorld & ( ~INSTANCE_MASK_WORLD_2 );
         }
         else
         {
@@ -471,54 +470,56 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 
-    gu->cameraRayConeSpreadAngle = atanf((2.0f * tanf(drawInfo.fovYRadians * 0.5f)) / (float)renderResolution.Height());
+    gu->cameraRayConeSpreadAngle = atanf( ( 2.0f * tanf( drawInfo.fovYRadians * 0.5f ) ) / ( float )renderResolution.Height() );
 
-    if (Utils::IsAlmostZero(drawInfo.worldUpVector))
+    if( Utils::IsAlmostZero( drawInfo.worldUpVector ) )
     {
-        gu->worldUpVector[0] = 0.0f;
-        gu->worldUpVector[1] = 1.0f;
-        gu->worldUpVector[2] = 0.0f;
+        gu->worldUpVector[ 0 ] = 0.0f;
+        gu->worldUpVector[ 1 ] = 1.0f;
+        gu->worldUpVector[ 2 ] = 0.0f;
     }
     else
     {
-        gu->worldUpVector[0] = drawInfo.worldUpVector.data[0];
-        gu->worldUpVector[1] = drawInfo.worldUpVector.data[1];
-        gu->worldUpVector[2] = drawInfo.worldUpVector.data[2];
+        gu->worldUpVector[ 0 ] = drawInfo.worldUpVector.data[ 0 ];
+        gu->worldUpVector[ 1 ] = drawInfo.worldUpVector.data[ 1 ];
+        gu->worldUpVector[ 2 ] = drawInfo.worldUpVector.data[ 2 ];
     }
 
-    if (drawInfo.pLightmapParams != nullptr)
+    if( drawInfo.pLightmapParams != nullptr )
     {
         gu->lightmapEnable = !!drawInfo.pLightmapParams->enableLightmaps;
 
-        if (drawInfo.pLightmapParams->lightmapLayerIndex == 1 || drawInfo.pLightmapParams->lightmapLayerIndex == 2)
+        if( drawInfo.pLightmapParams->lightmapLayerIndex == 1 || drawInfo.pLightmapParams->lightmapLayerIndex == 2 )
         {
             gu->lightmapLayer = drawInfo.pLightmapParams->lightmapLayerIndex;
         }
         else
         {
-            assert(0 && "pLightMapLayerIndex must point to a value of 1 or 2. Others are invalidated");
+            assert( 0 && "pLightMapLayerIndex must point to a value of 1 or 2. Others are invalidated" );
         }
     }
     else
     {
         gu->lightmapEnable = false;
-        gu->lightmapLayer = UINT8_MAX;
+        gu->lightmapLayer  = UINT8_MAX;
     }
 
     gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
-    gu->applyViewProjToLensFlares = !lensFlareVerticesInScreenSpace;
+    gu->applyViewProjToLensFlares  = !lensFlareVerticesInScreenSpace;
 
     {
         memcpy( gu->volumeViewProj_Prev, gu->volumeViewProj, 16 * sizeof( float ) );
         memcpy( gu->volumeViewProjInv_Prev, gu->volumeViewProjInv, 16 * sizeof( float ) );
 
         gu->volumeCameraNear = std::max( 0.001f, drawInfo.cameraNear );
-        gu->volumeCameraFar =
-            std::clamp( drawInfo.volumetricFar, gu->volumeCameraNear + 0.01f, drawInfo.cameraFar );
+        gu->volumeCameraFar  = std::clamp( drawInfo.volumetricFar, gu->volumeCameraNear + 0.01f, drawInfo.cameraFar );
 
         float volumeproj[ 16 ];
-        Matrix::MakeProjectionMatrix(
-            volumeproj, aspect, drawInfo.fovYRadians, gu->volumeCameraNear, gu->volumeCameraFar );
+        Matrix::MakeProjectionMatrix( volumeproj, 
+                                      aspect,
+                                      drawInfo.fovYRadians, 
+                                      gu->volumeCameraNear,
+                                      gu->volumeCameraFar );
 
         Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
         Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );
