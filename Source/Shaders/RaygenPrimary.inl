@@ -360,6 +360,7 @@ void main()
     h.portalIndex                           = primaryToReflRefrBuf.b;
     h.normalGeom                            = texelFetchNormalGeometry(pix);
     h.normal                                = texelFetchNormal(pix);
+    h.roughness                             = texelFetch( framebufMetallicRoughness_Sampler, pix, 0 ).g;
     const vec3  motionBuf                   = texelFetch(framebufMotion_Sampler, pix, 0).rgb;
     vec2        motionCurToPrev             = motionBuf.rg;
     float       motionDepthLinearCurToPrev  = motionBuf.b;
@@ -402,7 +403,8 @@ void main()
 
         bool isPortal = isPortalFromFlags(h.geometryInstanceFlags) && h.portalIndex != PORTAL_INDEX_NONE;
         bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
-        bool toReflect = isReflectFromFlags(h.geometryInstanceFlags);
+        bool toReflect = h.roughness < globalUniform.minRoughness ||
+                         isReflectFromFlags( h.geometryInstanceFlags );
 
 
         if (!toReflect && !toRefract && !isPortal)
