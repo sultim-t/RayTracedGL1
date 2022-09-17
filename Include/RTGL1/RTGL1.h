@@ -949,13 +949,7 @@ typedef struct RgDrawFrameBloomParams
     // Negative value disables bloom pass
     float       bloomIntensity;
     float       inputThreshold;
-    float       inputThresholdLength;
-    float       upsampleRadius;
     float       bloomEmissionMultiplier;
-    // -1.0 is zero saturation, 0.0 is default
-    float       bloomEmissionSaturationBias;
-    float       bloomSkyMultiplier;
-    float       bloomRasterMultiplier;
 } RgDrawFrameBloomParams;
 
 typedef struct RgPostEffectWipe

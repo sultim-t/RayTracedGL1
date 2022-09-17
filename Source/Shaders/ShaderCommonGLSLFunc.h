@@ -530,6 +530,13 @@ bool isSkyPix(const ivec2 pix)
 
 
 
+float rmeEmissionToScreenEmission( float rmeEmis )
+{
+    return clamp( rmeEmis, 0.0, 1.0 );
+}
+
+
+
 #ifdef DESC_SET_GLOBAL_UNIFORM
 vec3 getRayDir( vec2 inUV )
 {

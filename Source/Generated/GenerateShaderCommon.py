@@ -532,19 +532,14 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "normalMapStrength",            1),
     (TYPE_FLOAT32,      1,      "skyColorSaturation",           1),
 
-    (TYPE_FLOAT32,      1,      "bloomEmissionSaturationBias",      1),
     (TYPE_UINT32,       1,      "maxBounceShadowsLights",           1),
+    (TYPE_FLOAT32,      1,      "rayLength",                        1),
     (TYPE_UINT32,       1,      "rayCullBackFaces",                 1),
     (TYPE_UINT32,       1,      "rayCullMaskWorld",                 1),
 
-    (TYPE_FLOAT32,      1,      "bloomThreshold",                   1),
-    (TYPE_FLOAT32,      1,      "bloomThresholdLength",             1),
-    (TYPE_FLOAT32,      1,      "bloomUpsampleRadius",              1),
     (TYPE_FLOAT32,      1,      "bloomIntensity",                   1),
-
+    (TYPE_FLOAT32,      1,      "bloomThreshold",                   1),
     (TYPE_FLOAT32,      1,      "bloomEmissionMultiplier",          1),
-    (TYPE_FLOAT32,      1,      "bloomSkyMultiplier",               1),
-    (TYPE_FLOAT32,      1,      "rayLength",                        1),
     (TYPE_UINT32,       1,      "reflectRefractMaxDepth",           1),
 
     (TYPE_UINT32,       1,      "cameraMediaType",                  1),
@@ -816,8 +811,8 @@ FRAMEBUFFERS = {
 
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R,    0),
 
-    "ScreenEmission"                    : (TYPE_PACK_11,    COMPONENT_RGB,  0),
-    "BloomInput"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "ScreenEmission"                    : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    "BloomInput"                        : (TYPE_PACK_11,    COMPONENT_RGB,  0),
     "Bloom_Mip1"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_2  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Bloom_Mip2"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_4  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),
     "Bloom_Mip3"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_FORCE_SIZE_1_8  | FRAMEBUF_FLAGS_BILINEAR_SAMPLER),

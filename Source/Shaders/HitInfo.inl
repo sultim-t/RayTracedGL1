@@ -350,26 +350,26 @@ ShHitInfo getHitInfoBounce(
             getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
     #endif
 
-        h.roughness = rme[0];
-        h.metallic  = rme[1];
-        h.emission  = rme[2] * globalUniform.emissionMapBoost /*+ tr.geomEmission*/;
+        h.roughness = rme[ 0 ];
+        h.metallic  = rme[ 1 ];
+        h.emission  = rme[ 2 ];
 
-    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL)
-        screenEmission = clamp(rme[2] /*+ tr.geomEmission*/, 0.0, 1.0);
-    #endif
     }
     else
     {
         h.roughness = tr.geomRoughness;
         h.metallic  = tr.geomMetallicity;
         h.emission  = tr.geomEmission;
-
-    #if defined(HITINFO_INL_PRIM) || defined(HITINFO_INL_RFL)
-        screenEmission = clamp(h.emission, 0.0, 1.0);
-    #endif
     }
+    
     h.roughness = globalUniform.squareInputRoughness == 0 ? h.roughness : square( h.roughness );
     h.roughness = max( h.roughness, max( globalUniform.minRoughness, MIN_GGX_ROUGHNESS ) );
+
+#if defined( HITINFO_INL_PRIM ) || defined( HITINFO_INL_RFL )
+    screenEmission = rmeEmissionToScreenEmission( h.emission );
+    h.emission *= globalUniform.emissionMapBoost;
+#endif
+
 
 #if !defined(HITINFO_INL_INDIR)
     if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)

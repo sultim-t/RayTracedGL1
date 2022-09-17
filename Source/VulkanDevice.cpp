@@ -327,22 +327,14 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     if( drawInfo.pBloomParams != nullptr )
     {
         gu->bloomThreshold              = std::max( drawInfo.pBloomParams->inputThreshold, 0.0f );
-        gu->bloomThresholdLength        = std::max( drawInfo.pBloomParams->inputThresholdLength, 0.0f );
-        gu->bloomUpsampleRadius         = std::max( drawInfo.pBloomParams->upsampleRadius, 0.0f );
         gu->bloomIntensity              = std::max( drawInfo.pBloomParams->bloomIntensity, 0.0f );
         gu->bloomEmissionMultiplier     = std::max( drawInfo.pBloomParams->bloomEmissionMultiplier, 0.0f );
-        gu->bloomSkyMultiplier          = std::max( drawInfo.pBloomParams->bloomSkyMultiplier, 0.0f );
-        gu->bloomEmissionSaturationBias = clamp( drawInfo.pBloomParams->bloomEmissionSaturationBias, -1.0f, 20.0f );
     }
     else
     {
         gu->bloomThreshold              = 15.0f;
-        gu->bloomThresholdLength        = 0.25f;
-        gu->bloomUpsampleRadius         = 1.0f;
         gu->bloomIntensity              = 1.0f;
         gu->bloomEmissionMultiplier     = 64.0f;
-        gu->bloomSkyMultiplier          = 0.05f;
-        gu->bloomEmissionSaturationBias = 0.0f;
     }
 
     static_assert(
@@ -631,8 +623,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
             uniform->GetData()->projection,
             jitter,
             renderResolution,
-            drawInfo.pLensFlareParams,
-            drawInfo.pBloomParams ? drawInfo.pBloomParams->bloomRasterMultiplier : 0.0f );
+            drawInfo.pLensFlareParams );
     }
 
     imageComposition->Finalize(

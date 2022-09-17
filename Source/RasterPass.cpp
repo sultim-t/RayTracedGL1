@@ -50,7 +50,7 @@ RTGL1::RasterPass::RasterPass( VkDevice                                _device,
     }
 
     worldRenderPass = CreateWorldRenderPass( ShFramebuffers_Formats[ FB_IMAGE_INDEX_FINAL ],
-                                             ShFramebuffers_Formats[ FB_IMAGE_INDEX_BLOOM_INPUT ],
+                                             ShFramebuffers_Formats[ FB_IMAGE_INDEX_SCREEN_EMISSION ],
                                              DEPTH_FORMAT );
 
     skyRenderPass =
@@ -114,7 +114,7 @@ void RTGL1::RasterPass::CreateFramebuffers(
         {
             VkImageView attchs[] = {
                 storageFramebuffers->GetImageView( FB_IMAGE_INDEX_FINAL, i ),
-                storageFramebuffers->GetImageView( FB_IMAGE_INDEX_BLOOM_INPUT, i ),
+                storageFramebuffers->GetImageView( FB_IMAGE_INDEX_SCREEN_EMISSION, i ),
                 depthViews[ i ],
             };
 

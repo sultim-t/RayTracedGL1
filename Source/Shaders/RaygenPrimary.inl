@@ -102,14 +102,6 @@ void storeSky(
         }
             
         imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(albedo, 0.0));
-
-        #ifdef RAYGEN_PRIMARY_SHADER
-            vec3 emission = albedo * globalUniform.bloomSkyMultiplier;
-        #else
-            vec3 emission = vec3(0.0); // with non-primary rays looks ugly
-        #endif
-        
-        imageStore(framebufScreenEmission, getRegularPixFromCheckerboardPix(pix), vec4(emission, 0.0));
     }
 
     vec2 m = getMotionForInfinitePoint(pix);
@@ -123,6 +115,7 @@ void storeSky(
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
+    imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix( pix ), vec4( 0.0 ) );
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
     imageStore(framebufDepthGrad,           pix, vec4(0.0));

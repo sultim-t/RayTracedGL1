@@ -327,13 +327,9 @@ void main()
             illuminated *= throughput;
             illuminated *= getMaterialAmbient(albedo);
         }
-        else if( globalUniform.lightmapEnable != 0 )
+        else 
         {
             illuminated = albedo * throughput;
-        }
-        else
-        {
-            illuminated = vec3( 0 );
         }
 
         imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));

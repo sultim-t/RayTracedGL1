@@ -74,7 +74,7 @@ vec3 filterTent3x3(sampler2D srcSampler, const vec2 centerUV)
 
     for (int i = 0; i < 9; i++)
     {
-        r += weights[i] * getSample(srcSampler, centerUV + offsets[i] * invSrcSize * globalUniform.bloomUpsampleRadius);
+        r += weights[i] * getSample(srcSampler, centerUV + offsets[i] * invSrcSize);
     }
 
     return r;

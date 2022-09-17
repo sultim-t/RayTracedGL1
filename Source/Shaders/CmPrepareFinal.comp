@@ -108,7 +108,7 @@ vec3 tonemapRT(vec3 c)
 }
 
 
-vec3 finalizeColor(const vec3 hdr, const vec3 screenEmis, bool isSky)
+vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis )
 {
     if( globalUniform.lightmapEnable == 0 )
     {
@@ -124,14 +124,8 @@ vec3 finalizeColor(const vec3 hdr, const vec3 screenEmis, bool isSky)
 }
 
 
-vec3 getBloomInput(const vec3 hdr, const vec3 screenEmis, bool isSky)
+vec3 getBloomInput( const vec3 hdr, const vec3 screenEmis )
 {
-    // TODO: remove
-    if (isSky)
-    {
-        return screenEmis;
-    }
-
     float power = getLuminance( screenEmis );
     vec3  emis  = power > 0.001 ? screenEmis / power : vec3( 0 );
 
@@ -142,23 +136,22 @@ vec3 getBloomInput(const vec3 hdr, const vec3 screenEmis, bool isSky)
 }
 
 
-vec3 processDebug(const ivec2 pix, const vec3 fallback);
+vec3 processDebug( const ivec2 pix, const vec3 fallback );
 
 
 void main()
 {
-    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
+    const ivec2 pix = ivec2( gl_GlobalInvocationID.x, gl_GlobalInvocationID.y );
+    if( pix.x >= uint( globalUniform.renderWidth ) || pix.y >= uint( globalUniform.renderHeight ) )
     {
         return;
     }
 
-    const vec3 hdr          = texelFetch(framebufFinal_Sampler, pix, 0).rgb;
-    const vec3 screenEmis   = texelFetch(framebufScreenEmission_Sampler, pix, 0).rgb;
-    const bool isSky        = isSkyPix(getCheckerboardPix(pix));
+    const vec3 hdr        = texelFetch( framebufFinal_Sampler, pix, 0 ).rgb;
+    const vec3 screenEmis = texelFetch( framebufScreenEmission_Sampler, pix, 0 ).rgb;
 
-    vec3 color = finalizeColor(hdr, screenEmis, isSky);
-    vec3 bloom = getBloomInput(hdr, screenEmis, isSky);
+    vec3 color = finalizeColor( hdr, screenEmis );
+    vec3 bloom = getBloomInput( hdr, screenEmis );
 
     uint seed = getRandomSeed( pix, globalUniform.frameId );
     vec3 rnd  = rnd8_4( seed, 0 ).xyz;

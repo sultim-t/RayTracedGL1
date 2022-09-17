@@ -39,7 +39,6 @@ layout(push_constant) uniform RasterizerFrag_BT
     layout(offset = 64) vec4 color;
     layout(offset = 80) uint textureIndex;
     layout(offset = 84) uint emissionTextureIndex;
-    layout(offset = 88) float emissionMultiplier;
 } rasterizerFragInfo;
 
 layout (constant_id = 0) const uint alphaTest = 0;
@@ -50,10 +49,8 @@ layout (constant_id = 0) const uint alphaTest = 0;
 
 void main()
 {
-    vec4 albedoAlpha = getTextureSample(rasterizerFragInfo.textureIndex, vertTexCoord);
-    float emission = getTextureSample(rasterizerFragInfo.emissionTextureIndex, vertTexCoord)[EMISSION_CHANNEL];
-
-    outColor = rasterizerFragInfo.color * vertColor * albedoAlpha;
+    vec4 albedoAlpha = getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord );
+    outColor         = rasterizerFragInfo.color * vertColor * albedoAlpha;
 
     if( globalUniform.lightmapEnable == 0 )
     {
@@ -75,13 +72,12 @@ void main()
 #endif
     }
 
+    float emis = getTextureSample( rasterizerFragInfo.emissionTextureIndex, vertTexCoord )[ EMISSION_CHANNEL ];
+    outScreenEmission = rmeEmissionToScreenEmission( emis ) * albedoAlpha.rgb;
 
-    outScreenEmission = vec3( 0 );
-    //emission* albedoAlpha.rgb* rasterizerFragInfo.emissionMultiplier;
-
-    if (alphaTest != 0)
+    if( alphaTest != 0 )
     {
-        if (outColor.a < ALPHA_THRESHOLD)
+        if( outColor.a < ALPHA_THRESHOLD )
         {
             discard;
         }

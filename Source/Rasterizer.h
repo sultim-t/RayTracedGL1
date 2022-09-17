@@ -99,8 +99,7 @@ namespace RTGL1
                                const float*                             proj,
                                const RgFloat2D&                         jitter,
                                const RenderResolutionHelper&            renderResolution,
-                               const RgDrawFrameLensFlareParams*        pLensFlareParams,
-                               float                                    emissionMult );
+                               const RgDrawFrameLensFlareParams*        pLensFlareParams );
         void DrawToSwapchain( VkCommandBuffer                          cmd,
                               uint32_t                                 frameIndex,
                               FramebufferImageIndex                    imageToDrawIn,
@@ -132,8 +131,7 @@ namespace RTGL1
             uint32_t                                                descSetsCount;
             float*                                                  defaultViewProj;
             // not the best way to optionally draw lens flares
-            LensFlares*            pLensFlares;
-            std::optional< float > emissionMult;
+            LensFlares*                                             pLensFlares;
         };
 
     private:
