@@ -546,8 +546,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "indexOfRefractionGlass",           1),
     (TYPE_FLOAT32,      1,      "waterTextureDerivativesMultiplier",1),
 
-    (TYPE_UINT32,       1,      "_unused0",                         1),
-    (TYPE_UINT32,       1,      "_unused1",                         1),
+    (TYPE_UINT32,       1,      "volumeEnable",                     1),
+    (TYPE_FLOAT32,      1,      "volumeScattering",                 1),
     (TYPE_UINT32,       1,      "forceNoWaterRefraction",           1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 
@@ -584,6 +584,15 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "volumeCameraNear",                 1),
     (TYPE_FLOAT32,      1,      "volumeCameraFar",                  1),
     (TYPE_UINT32,       1,      "antiFireflyEnabled",               1),
+
+    (TYPE_FLOAT32,      4,      "volumeAmbient",                    1),
+    (TYPE_FLOAT32,      4,      "volumeSourceColor",                1),
+    (TYPE_FLOAT32,      4,      "volumeDirToSource",                1),
+
+    (TYPE_FLOAT32,      1,      "volumeSourceAsymmetry",            1),
+    (TYPE_FLOAT32,      1,      "_pad1",                            1),
+    (TYPE_FLOAT32,      1,      "_pad2",                            1),
+    (TYPE_FLOAT32,      1,      "_pad3",                            1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),
     #(TYPE_FLOAT32,      1,      "_pad1",                            1),

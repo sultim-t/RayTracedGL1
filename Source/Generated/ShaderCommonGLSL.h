@@ -239,8 +239,8 @@ struct ShGlobalUniform
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
     float waterTextureDerivativesMultiplier;
-    uint _unused0;
-    uint _unused1;
+    uint volumeEnable;
+    float volumeScattering;
     uint forceNoWaterRefraction;
     uint waterNormalTextureIndex;
     uint noBackfaceReflForNoMediaChange;
@@ -269,6 +269,13 @@ struct ShGlobalUniform
     float volumeCameraNear;
     float volumeCameraFar;
     uint antiFireflyEnabled;
+    vec4 volumeAmbient;
+    vec4 volumeSourceColor;
+    vec4 volumeDirToSource;
+    float volumeSourceAsymmetry;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

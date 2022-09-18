@@ -107,6 +107,21 @@ VkCommandBuffer VulkanDevice::BeginFrame(const RgStartFrameInfo &startInfo)
     return cmd;
 }
 
+#define RG_SET_VEC3( dst, x, y, z ) \
+    ( dst )[ 0 ] = ( x );           \
+    ( dst )[ 1 ] = ( y );           \
+    ( dst )[ 2 ] = ( z )
+
+#define RG_SET_VEC3_A( dst, xyz )  \
+    ( dst )[ 0 ] = ( xyz )[ 0 ]; \
+    ( dst )[ 1 ] = ( xyz )[ 1 ]; \
+    ( dst )[ 2 ] = ( xyz )[ 2 ]
+
+#define RG_MAX_VEC3( dst, m ) \
+    ( dst )[ 0 ] = std::max( ( dst )[ 0 ], ( m ) );  \
+    ( dst )[ 1 ] = std::max( ( dst )[ 1 ], ( m ) );  \
+    ( dst )[ 2 ] = std::max( ( dst )[ 2 ], ( m ) )
+
 void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const
 {
     const float IdentityMat4x4[16] =
@@ -495,21 +510,57 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->applyViewProjToLensFlares  = !lensFlareVerticesInScreenSpace;
 
     {
-        memcpy( gu->volumeViewProj_Prev, gu->volumeViewProj, 16 * sizeof( float ) );
-        memcpy( gu->volumeViewProjInv_Prev, gu->volumeViewProjInv, 16 * sizeof( float ) );
-
         gu->volumeCameraNear = std::max( 0.001f, drawInfo.cameraNear );
-        gu->volumeCameraFar  = std::clamp( drawInfo.volumetricFar, gu->volumeCameraNear + 0.01f, drawInfo.cameraFar );
 
-        float volumeproj[ 16 ];
-        Matrix::MakeProjectionMatrix( volumeproj, 
-                                      aspect,
-                                      drawInfo.fovYRadians, 
-                                      gu->volumeCameraNear,
-                                      gu->volumeCameraFar );
+        if( drawInfo.pVolumetricParams )
+        {
+            gu->volumeCameraFar = drawInfo.pVolumetricParams->volumetricFar;
+            gu->volumeScattering = drawInfo.pVolumetricParams->scaterring;
+            gu->volumeSourceAsymmetry = std::clamp( drawInfo.pVolumetricParams->sourceAssymetry, -1.0f, 1.0f );
 
-        Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
-        Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );
+            RG_SET_VEC3_A( gu->volumeAmbient, drawInfo.pVolumetricParams->ambientColor.data );
+            RG_MAX_VEC3( gu->volumeAmbient, 0.0f );
+
+            RG_SET_VEC3_A( gu->volumeSourceColor, drawInfo.pVolumetricParams->sourceColor.data );
+            RG_MAX_VEC3( gu->volumeSourceColor, 0.0f );
+
+            RG_SET_VEC3_A( gu->volumeDirToSource, drawInfo.pVolumetricParams->sourceDirection.data );
+            Utils::Negate( gu->volumeDirToSource );
+            Utils::Normalize( gu->volumeDirToSource );
+        }
+        else
+        {
+            gu->volumeCameraFar       = 100.0f;
+            gu->volumeScattering      = 0.2f;
+            gu->volumeSourceAsymmetry = 0.4f;
+            RG_SET_VEC3( gu->volumeAmbient, 0.8f, 0.85f, 1.0f );
+            RG_SET_VEC3( gu->volumeSourceColor, 0, 0, 0 );
+            RG_SET_VEC3( gu->volumeDirToSource, 0, 1, 0 );
+        }
+
+        gu->volumeCameraFar = std::min( gu->volumeCameraFar, drawInfo.cameraFar );
+
+        if( gu->volumeCameraNear + 0.001f < gu->volumeCameraFar )
+        {
+            gu->volumeEnable = true;
+
+            memcpy( gu->volumeViewProj_Prev, gu->volumeViewProj, 16 * sizeof( float ) );
+            memcpy( gu->volumeViewProjInv_Prev, gu->volumeViewProjInv, 16 * sizeof( float ) );
+
+            float volumeproj[ 16 ];
+            Matrix::MakeProjectionMatrix( volumeproj,
+                                          aspect,
+                                          drawInfo.fovYRadians,
+                                          gu->volumeCameraNear,
+                                          gu->volumeCameraFar );
+
+            Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
+            Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );
+        }
+        else
+        {
+            gu->volumeEnable = false;
+        }
     }
 
     gu->antiFireflyEnabled = !!drawInfo.forceAntiFirefly;

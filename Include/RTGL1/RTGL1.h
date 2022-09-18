@@ -944,6 +944,23 @@ typedef struct RgDrawFrameIlluminationParams
     uint64_t    *lightUniqueIdIgnoreFirstPersonViewerShadows;
 } RgDrawFrameIlluminationParams;
 
+typedef struct RgDrawFrameVolumetricParams
+{
+    // Farthest distance for volumetric illumination calculation.
+    // Should be minimal to have better precision around camera.
+    // Default: 100.0
+    float       volumetricFar;
+    RgFloat3D   ambientColor;
+    // Default: 0.2
+    float       scaterring;
+    // Volumetric directional light source parameters.
+    RgFloat3D   sourceColor;
+    RgFloat3D   sourceDirection;
+    // g parameter [-1..1] for the Henyey–Greenstein phase function.
+    // Default: 0.0 (isotropic)
+    float       sourceAssymetry;
+} RgDrawFrameVolumetricParams;
+
 typedef struct RgDrawFrameBloomParams
 {
     // Negative value disables bloom pass
@@ -1144,9 +1161,6 @@ typedef struct RgDrawFrameInfo
     // Near and far planes for a projection matrix.
     float                   cameraNear;
     float                   cameraFar;
-    // Farthest distance for volumetric illumination calculation.
-    // Should be minimal to have better precision around camera.
-    float                   volumetricFar;
     // Max value: 10000.0
     float                   rayLength;
     // What world parts to render. First-person related geometry is always enabled.
@@ -1162,6 +1176,7 @@ typedef struct RgDrawFrameInfo
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams     *pRenderResolutionParams;
     const RgDrawFrameIlluminationParams         *pIlluminationParams;
+    const RgDrawFrameVolumetricParams           *pVolumetricParams;
     const RgDrawFrameTonemappingParams          *pTonemappingParams;
     const RgDrawFrameBloomParams                *pBloomParams;
     const RgDrawFrameReflectRefractParams       *pReflectRefractParams;

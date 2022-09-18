@@ -174,12 +174,17 @@ bool Utils::AreViewportsSame(const VkViewport &a, const VkViewport &b)
 
 constexpr float ALMOST_ZERO_THRESHOLD = 0.01f;
 
-bool RTGL1::Utils::IsAlmostZero(const RgFloat3D &v)
+bool Utils::IsAlmostZero( const float v[ 3 ] )
 {
     return
-        std::abs(v.data[0]) +
-        std::abs(v.data[1]) +
-        std::abs(v.data[2]) < ALMOST_ZERO_THRESHOLD;
+        std::abs( v[ 0 ] ) + 
+        std::abs( v[ 1 ] ) + 
+        std::abs( v[ 2 ] ) < ALMOST_ZERO_THRESHOLD;
+}
+
+bool Utils::IsAlmostZero( const RgFloat3D& v )
+{
+    return IsAlmostZero( v.data );
 }
 
 bool RTGL1::Utils::IsAlmostZero(const RgMatrix3D &m)
@@ -223,6 +228,20 @@ void RTGL1::Utils::Normalize(float inout[3])
         assert(0);
         inout[0] = inout[1] = inout[2] = 0.0f;
     }
+}
+
+void Utils::Negate( float inout[3] )
+{
+    inout[ 0 ] *= -1;
+    inout[ 1 ] *= -1;
+    inout[ 2 ] *= -1;
+}
+
+void Utils::Nullify( float inout[3] )
+{
+    inout[ 0 ] = 0;
+    inout[ 1 ] = 0;
+    inout[ 2 ] = 0;
 }
 
 

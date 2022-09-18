@@ -37,19 +37,29 @@
 #include "Volumetric.h"
 
 // Approximation of Henyey-Greenstein's phase function
-float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float anisotropy )
+float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float assymetry )
 {
     float costheta = dot( tolight, toviewer );
-    float k        = 1.55 * anisotropy - 0.55 * anisotropy * anisotropy * anisotropy;
+    float k        = 1.55 * assymetry - 0.55 * assymetry * assymetry * assymetry;
 
     return ( 1 - square( k ) ) / ( 4 * M_PI * square( 1 + k * costheta ) );
 }
 
 void main()
 {
-    const ivec3 cell     = ivec3( gl_LaunchIDEXT.xyz );
-    vec3        center   = volume_getCenter( cell );
-    const vec3  toviewer = normalize( globalUniform.cameraPosition.xyz - center );
+    const ivec3 cell = ivec3( gl_LaunchIDEXT.xyz );
+
+    if( globalUniform.volumeEnable == 0 )
+    {
+        imageStore( g_volumetric, cell, vec4( 0.0 ) );
+#if ILLUMINATION_VOLUME
+        imageStore( g_illuminationVolume, cell, vec4( 0.0 ) );
+#endif
+        return;
+    }
+
+    vec3       center   = volume_getCenter( cell );
+    const vec3 toviewer = normalize( globalUniform.cameraPosition.xyz - center );
 
     {
         vec3  s      = volume_getCenter( cell + ivec3( 0, 0, 1 ) );
@@ -59,7 +69,7 @@ void main()
         center += radius * rnd;
     }
 
-#if 0
+#if 1
     {
         ivec2 pix;
         {
@@ -92,18 +102,31 @@ void main()
     }
 #endif
 
-    vec3 lighting = vec3( 0.8, 0.85, 1.0 );
+    vec3 lighting = globalUniform.volumeAmbient.rgb;
+    vec3 radiance = vec3( 0.0 );
 
-    vec3 radiance      = vec3( 0.01 );
+#if SHIPPING_HACK
+    if( getLuminance( globalUniform.volumeSourceColor.rgb ) > 0.01 )
+    {
+        bool isShadowed = traceShadowRay(
+            0, center, center + MAX_RAY_LENGTH * globalUniform.volumeDirToSource.xyz, true );
 
+        radiance += globalUniform.volumeSourceColor.rgb * float( !isShadowed );
+        lighting += radiance * phaseFunction_Schlick( globalUniform.volumeDirToSource.xyz,
+                                                      toviewer,
+                                                      globalUniform.volumeSourceAsymmetry );
+    }
+#else
     if( globalUniform.directionalLightExists != 0 )
     {
-        DirectionalLight l = decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
+        DirectionalLight l =
+            decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
         bool isShadowed = traceShadowRay( 0, center, center - MAX_RAY_LENGTH * l.direction, true );
 
         radiance += l.color * float( !isShadowed );
-        lighting += radiance * phaseFunction_Schlick( vec3(0,1,0), vec3(1,0,0), 0.4 );
+        lighting += radiance * phaseFunction_Schlick( -l.direction, toviewer, 0.4 );
     }
+#endif
 
 #if ILLUMINATION_VOLUME
     {
@@ -142,7 +165,7 @@ void main()
 #endif
 
 
-    float scattering = 0.0002;
+    float scattering = globalUniform.volumeScattering * 0.001;
     float absorbtion = 0.0;
 
 

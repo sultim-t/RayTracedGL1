@@ -244,8 +244,8 @@ struct ShGlobalUniform
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
     float waterTextureDerivativesMultiplier;
-    uint32_t _unused0;
-    uint32_t _unused1;
+    uint32_t volumeEnable;
+    float volumeScattering;
     uint32_t forceNoWaterRefraction;
     uint32_t waterNormalTextureIndex;
     uint32_t noBackfaceReflForNoMediaChange;
@@ -274,6 +274,13 @@ struct ShGlobalUniform
     float volumeCameraNear;
     float volumeCameraFar;
     uint32_t antiFireflyEnabled;
+    float volumeAmbient[4];
+    float volumeSourceColor[4];
+    float volumeDirToSource[4];
+    float volumeSourceAsymmetry;
+    float _pad1;
+    float _pad2;
+    float _pad3;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

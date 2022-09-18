@@ -612,7 +612,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
         {
             RgDirectionalLightUploadInfo dirLight = {
                 .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
-                .direction              = { -1, -10, -1 },
+                .direction              = { -1, -8, -1 },
                 .angularDiameterDegrees = 0.5f
             };
             r = rgUploadDirectionalLight( instance, &dirLight );
@@ -673,7 +673,6 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .fovYRadians = glm::radians(75.0f),
                 .cameraNear = 0.1f,
                 .cameraFar = 10000.0f,
-                .volumetricFar = 1000.0f,
                 .rayLength = 10000.0f,
                 .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
                 .currentTime = GetCurrentTimeInSeconds(),
