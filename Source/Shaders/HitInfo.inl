@@ -367,8 +367,8 @@ ShHitInfo getHitInfoBounce(
 
 #if defined( HITINFO_INL_PRIM ) || defined( HITINFO_INL_RFL )
     screenEmission = rmeEmissionToScreenEmission( h.emission );
-    h.emission *= globalUniform.emissionMapBoost;
 #endif
+    h.emission *= globalUniform.emissionMapBoost;
 
 
 #if !defined(HITINFO_INL_INDIR)
