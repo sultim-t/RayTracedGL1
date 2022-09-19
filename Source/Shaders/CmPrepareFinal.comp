@@ -150,6 +150,7 @@ vec3 applyVolumetrics( const ivec2 pix, const vec3 color )
     const vec3 cameraRayDir = getRayDir( inUV );
 
     float virtualdepth = texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
+    bool  isSky        = virtualdepth > MAX_RAY_LENGTH;
 
     if( globalUniform.lightmapEnable == 0 )
     {
@@ -169,8 +170,15 @@ vec3 applyVolumetrics( const ivec2 pix, const vec3 color )
     {
         float density = globalUniform.volumeScattering * 0.00005;
 
-        float f = exp( -virtualdepth * density );
-        return mix( globalUniform.volumeAmbient.rgb, color, f );
+        if( !isSky )
+        {
+            float f = exp( -virtualdepth * density );
+            return mix( globalUniform.volumeAmbient.rgb, color, f );
+        }
+        else
+        {
+            return color;
+        }
     }
 }
 
