@@ -136,6 +136,45 @@ vec3 getBloomInput( const vec3 hdr, const vec3 screenEmis )
 }
 
 
+vec3 applyVolumetrics( const ivec2 pix, const vec3 color )
+{
+    if( globalUniform.volumeEnable == 0 )
+    {
+        return color;
+    }
+
+    uint seed = getRandomSeed( pix, globalUniform.frameId );
+    vec3 rnd  = rnd8_4( seed, 0 ).xyz;
+
+    const vec2 inUV         = getPixelUVWithJitter( pix );
+    const vec3 cameraRayDir = getRayDir( inUV );
+
+    float virtualdepth = texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
+
+    if( globalUniform.lightmapEnable == 0 )
+    {
+        vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
+
+#ifdef DEBUG_VOLUME_ILLUMINATION
+        vec3 sp = volume_toSamplePosition_T(
+            position.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
+        vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
+        return color * illum;
+#endif
+
+        vec4 v = volume_sampleDithered( position, rnd, 2.0 );
+        return color * v.a + v.rgb;
+    }
+    else
+    {
+        float density = globalUniform.volumeScattering * 0.00005;
+
+        float f = exp( -virtualdepth * density );
+        return mix( globalUniform.volumeAmbient.rgb, color, f );
+    }
+}
+
+
 vec3 processDebug( const ivec2 pix, const vec3 fallback );
 
 
@@ -153,37 +192,16 @@ void main()
     vec3 color = finalizeColor( hdr, screenEmis );
     vec3 bloom = getBloomInput( hdr, screenEmis );
 
-    uint seed = getRandomSeed( pix, globalUniform.frameId );
-    vec3 rnd  = rnd8_4( seed, 0 ).xyz;
+    color = applyVolumetrics( pix, color );
 
+
+    if( globalUniform.debugShowFlags != 0 )
     {
-        const vec2 inUV         = getPixelUVWithJitter( pix );
-        const vec3 cameraRayDir = getRayDir( inUV );
-
-        float virtualdepth =
-            texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
-
-        vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
-
-        vec4 v = volume_sampleDithered( position, rnd, 2.0 );
-        color  = color * v.a + v.rgb;
-
-    #if 0
-        vec3 sp = volume_toSamplePosition_T( position.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
-        vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
-        color *= illum;
-    #endif
+        color = processDebug( pix, color );
     }
 
-
-
-    if (globalUniform.debugShowFlags != 0)
-    {
-        color = processDebug(pix, color);
-    }
-
-    imageStore(framebufFinal, pix, vec4(color, 0));
-    imageStore(framebufBloomInput, pix, vec4(bloom, 0.0));
+    imageStore( framebufFinal, pix, vec4( color, 0 ) );
+    imageStore( framebufBloomInput, pix, vec4( bloom, 0.0 ) );
 }
 
 

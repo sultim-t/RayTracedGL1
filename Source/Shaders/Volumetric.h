@@ -117,7 +117,11 @@ vec4 volume_sampleDithered( const vec3 world, const vec3 rnd01, float ditherRadi
     vec3 sp = volume_toSamplePosition_T(
         world, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
 
-    sp += 0 * ( rnd01 * 2 - 1 ) /
+#if SHIPPING_HACK
+    ditherRadius = 0.0;
+#endif
+
+    sp += ditherRadius * ( rnd01 * 2 - 1 ) /
           vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
 
     return textureLod( g_volumetric_Sampler, sp, 0.0 );
