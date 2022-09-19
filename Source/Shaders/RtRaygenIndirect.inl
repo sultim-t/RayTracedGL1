@@ -129,9 +129,6 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
         return s;
     }
     
-#if SHIPPING_HACK
-    const vec3 diffuse = vec3( 0 );
-#else
     // calculate direct diffuse illumination in a hit position
     vec3 diffuse = processDirectIllumination(seed, hitSurf, 1);
 
@@ -143,8 +140,11 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
         diffuse += processSecondDiffuseBounce(seed, 
                                               hitSurf,
                                               bounceDir_Second,
-                                              oneOverPdf_Second);  
+                                              oneOverPdf_Second);
     }
+    
+#if SHIPPING_HACK
+    diffuse = clamp( diffuse, vec3( 0 ), vec3( 50 ) );
 #endif
 
     SampleIndirect s;
