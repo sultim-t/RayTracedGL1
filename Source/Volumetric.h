@@ -70,6 +70,8 @@ namespace RTGL1
     private:
         VkDevice device = VK_NULL_HANDLE;
 
+        int firstTimeCounter = 0;
+
         struct VolumeDef
         {
             VkImage        image = VK_NULL_HANDLE;

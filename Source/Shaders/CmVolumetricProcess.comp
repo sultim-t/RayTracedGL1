@@ -33,6 +33,8 @@ layout( local_size_x = COMPUTE_VOLUMETRIC_GROUP_SIZE_X,
         local_size_y = COMPUTE_VOLUMETRIC_GROUP_SIZE_Y,
         local_size_z = 1 ) in;
 
+layout( constant_id = 0 ) const float g_temporalWeight = 0.95;
+
 // rgb - in−scattered light accumulated so far
 // a   - accumulated scattering coefficient
 vec4 accumulateScattering( const vec4 front, const vec4 back )
@@ -46,9 +48,10 @@ void store( const ivec3 cell, const vec4 colorAndDensity )
 {
     vec4 final = vec4( colorAndDensity.rgb, exp( -colorAndDensity.a ) );
 
+    if( g_temporalWeight > 0.0 )
     {
         vec4 prev = volume_sample_Prev( cell );
-        final = mix( prev, final, 0.05);
+        final     = mix( final, prev, g_temporalWeight );
     }
 
     // rgb - in−scattered light accumulated so far

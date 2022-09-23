@@ -122,6 +122,19 @@ void RTGL1::Volumetric::ProcessScattering( VkCommandBuffer      cmd,
                              sets,
                              0,
                              nullptr );
+    
+    float temporalWeight = 0.95f;
+    if( firstTimeCounter++ < 5 )
+    {
+        // initialize stage
+        temporalWeight = -1.0f;
+    }
+    vkCmdPushConstants( cmd,
+                        processPipelineLayout,
+                        VK_SHADER_STAGE_COMPUTE_BIT,
+                        0,
+                        sizeof( temporalWeight ),
+                        &temporalWeight );
 
     uint32_t cs[] = {
         Utils::GetWorkGroupCountT( VOLUMETRIC_SIZE_X, COMPUTE_VOLUMETRIC_GROUP_SIZE_X ),
@@ -493,14 +506,20 @@ void RTGL1::Volumetric::CreatePipelineLayout( const GlobalUniform* uniform, cons
         rnd->GetDescSetLayout(),
     };
 
+    VkPushConstantRange push = {
+        .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+        .offset     = 0,
+        .size       = sizeof( float ),
+    };
+
     VkPipelineLayoutCreateInfo info = {
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .pNext                  = nullptr,
         .flags                  = 0,
         .setLayoutCount         = std::size( sets ),
         .pSetLayouts            = sets,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges    = nullptr,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges    = &push,
     };
 
     VkResult r = vkCreatePipelineLayout( device, &info, nullptr, &processPipelineLayout );
