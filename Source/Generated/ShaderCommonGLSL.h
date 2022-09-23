@@ -174,6 +174,9 @@
 #define VOLUMETRIC_SIZE_Z (64)
 #define COMPUTE_VOLUMETRIC_GROUP_SIZE_X (16)
 #define COMPUTE_VOLUMETRIC_GROUP_SIZE_Y (16)
+#define VOLUME_ENABLE_NONE (0)
+#define VOLUME_ENABLE_SIMPLE (1)
+#define VOLUME_ENABLE_VOLUMETRIC (2)
 
 #define SURFACE_POSITION_INCORRECT (10000000.0)
 
@@ -239,7 +242,7 @@ struct ShGlobalUniform
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
     float waterTextureDerivativesMultiplier;
-    uint volumeEnable;
+    uint volumeEnableType;
     float volumeScattering;
     uint forceNoWaterRefraction;
     uint waterNormalTextureIndex;

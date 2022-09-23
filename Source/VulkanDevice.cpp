@@ -510,11 +510,23 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->applyViewProjToLensFlares  = !lensFlareVerticesInScreenSpace;
 
     {
-        gu->volumeCameraNear = std::max( 0.001f, drawInfo.cameraNear );
+        gu->volumeCameraNear = std::max( drawInfo.cameraNear, 0.001f );
+        gu->volumeCameraFar  = std::min(
+            drawInfo.cameraFar,
+            drawInfo.pVolumetricParams ? drawInfo.pVolumetricParams->volumetricFar : 100.0f );
 
         if( drawInfo.pVolumetricParams )
         {
-            gu->volumeCameraFar = drawInfo.pVolumetricParams->volumetricFar;
+            if( drawInfo.pVolumetricParams->enable )
+            {
+                gu->volumeEnableType = drawInfo.pVolumetricParams->useSimpleDepthBased
+                                           ? VOLUME_ENABLE_SIMPLE
+                                           : VOLUME_ENABLE_VOLUMETRIC;
+            }
+            else
+            {
+                gu->volumeEnableType = VOLUME_ENABLE_NONE;
+            }
             gu->volumeScattering = drawInfo.pVolumetricParams->scaterring;
             gu->volumeSourceAsymmetry = std::clamp( drawInfo.pVolumetricParams->sourceAssymetry, -1.0f, 1.0f );
 
@@ -530,7 +542,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
         }
         else
         {
-            gu->volumeCameraFar       = 100.0f;
+            gu->volumeEnableType      = VOLUME_ENABLE_VOLUMETRIC;
             gu->volumeScattering      = 0.2f;
             gu->volumeSourceAsymmetry = 0.4f;
             RG_SET_VEC3( gu->volumeAmbient, 0.8f, 0.85f, 1.0f );
@@ -538,12 +550,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
             RG_SET_VEC3( gu->volumeDirToSource, 0, 1, 0 );
         }
 
-        gu->volumeCameraFar = std::min( gu->volumeCameraFar, drawInfo.cameraFar );
-
-        if( gu->volumeCameraNear + 0.001f < gu->volumeCameraFar )
+        if( gu->volumeEnableType != VOLUME_ENABLE_NONE )
         {
-            gu->volumeEnable = true;
-
             memcpy( gu->volumeViewProj_Prev, gu->volumeViewProj, 16 * sizeof( float ) );
             memcpy( gu->volumeViewProjInv_Prev, gu->volumeViewProjInv, 16 * sizeof( float ) );
 
@@ -556,10 +564,6 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
 
             Matrix::Multiply( gu->volumeViewProj, gu->view, volumeproj );
             Matrix::Inverse( gu->volumeViewProjInv, gu->volumeViewProj );
-        }
-        else
-        {
-            gu->volumeEnable = false;
         }
     }
 

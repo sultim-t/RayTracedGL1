@@ -49,7 +49,7 @@ void main()
 {
     const ivec3 cell = ivec3( gl_LaunchIDEXT.xyz );
 
-    if( globalUniform.volumeEnable == 0 )
+    if( globalUniform.volumeEnableType != VOLUME_ENABLE_VOLUMETRIC )
     {
         imageStore( g_volumetric, cell, vec4( 0.0 ) );
 #if ILLUMINATION_VOLUME

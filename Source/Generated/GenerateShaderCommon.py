@@ -430,6 +430,10 @@ CONST = {
     "VOLUMETRIC_SIZE_Z"                     : 64,
     "COMPUTE_VOLUMETRIC_GROUP_SIZE_X"       : 16,
     "COMPUTE_VOLUMETRIC_GROUP_SIZE_Y"       : 16,
+
+    "VOLUME_ENABLE_NONE"                    : 0,
+    "VOLUME_ENABLE_SIMPLE"                  : 1,
+    "VOLUME_ENABLE_VOLUMETRIC"              : 2,
 }
 
 CONST_GLSL_ONLY = {
@@ -546,7 +550,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "indexOfRefractionGlass",           1),
     (TYPE_FLOAT32,      1,      "waterTextureDerivativesMultiplier",1),
 
-    (TYPE_UINT32,       1,      "volumeEnable",                     1),
+    (TYPE_UINT32,       1,      "volumeEnableType",                 1),
     (TYPE_FLOAT32,      1,      "volumeScattering",                 1),
     (TYPE_UINT32,       1,      "forceNoWaterRefraction",           1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),

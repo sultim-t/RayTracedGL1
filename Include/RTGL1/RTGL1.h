@@ -946,6 +946,10 @@ typedef struct RgDrawFrameIlluminationParams
 
 typedef struct RgDrawFrameVolumetricParams
 {
+    RgBool32    enable;
+    // If true, volumetric illumination is not calculated, just
+    // using simple depth-based fog with ambient color.
+    RgBool32    useSimpleDepthBased;
     // Farthest distance for volumetric illumination calculation.
     // Should be minimal to have better precision around camera.
     // Default: 100.0

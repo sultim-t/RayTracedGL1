@@ -181,6 +181,9 @@ namespace RTGL1
 #define VOLUMETRIC_SIZE_Z (64)
 #define COMPUTE_VOLUMETRIC_GROUP_SIZE_X (16)
 #define COMPUTE_VOLUMETRIC_GROUP_SIZE_Y (16)
+#define VOLUME_ENABLE_NONE (0)
+#define VOLUME_ENABLE_SIMPLE (1)
+#define VOLUME_ENABLE_VOLUMETRIC (2)
 
 struct ShVertex
 {
@@ -244,7 +247,7 @@ struct ShGlobalUniform
     float indexOfRefractionWater;
     float indexOfRefractionGlass;
     float waterTextureDerivativesMultiplier;
-    uint32_t volumeEnable;
+    uint32_t volumeEnableType;
     float volumeScattering;
     uint32_t forceNoWaterRefraction;
     uint32_t waterNormalTextureIndex;

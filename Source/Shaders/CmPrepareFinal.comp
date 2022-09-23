@@ -138,7 +138,7 @@ vec3 getBloomInput( const vec3 hdr, const vec3 screenEmis )
 
 vec3 applyVolumetrics( const ivec2 pix, const vec3 color )
 {
-    if( globalUniform.volumeEnable == 0 )
+    if( globalUniform.volumeEnableType == VOLUME_ENABLE_NONE )
     {
         return color;
     }
@@ -152,7 +152,7 @@ vec3 applyVolumetrics( const ivec2 pix, const vec3 color )
     float virtualdepth = texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
     bool  isSky        = virtualdepth > MAX_RAY_LENGTH;
 
-    if( globalUniform.lightmapEnable == 0 )
+    if( globalUniform.volumeEnableType == VOLUME_ENABLE_VOLUMETRIC )
     {
         vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
 
