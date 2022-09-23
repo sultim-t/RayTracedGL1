@@ -527,6 +527,30 @@ bool isSkyPix(const ivec2 pix)
 {
     return texelFetch(framebufIsSky_Sampler, pix, 0).r != 0;
 }
+
+// t == 0
+bool wasOnlyPrimary( float t )
+{
+    return abs( t ) < 0.5;
+}
+
+// t == -1: was refl/refr without a split, e.g. portal/mirror
+bool wasWithoutSplit( float t )
+{
+    return t < 0.5;
+}
+
+// t == 1: was refl/refr with a split, e.g. water/glass
+bool wasSplit( float t )
+{
+    return t > 0.5;
+}
+
+bool needResolveCheckerboard( const ivec2 checkerboardPix )
+{
+    float t = texelFetch( framebufThroughput_Sampler, checkerboardPix, 0 ).a;
+    return wasSplit( t );
+}
 #endif // DESC_SET_FRAMEBUFFERS
 
 

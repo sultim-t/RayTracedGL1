@@ -80,11 +80,12 @@ vec2 getMotionForInfinitePoint(const ivec2 pix)
 }
 
 void storeSky(
-    const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput, 
+    const ivec2 pix, const vec3 rayDir, bool calculateSkyAndStoreToAlbedo, const vec3 throughput,
 #ifdef RAYGEN_PRIMARY_SHADER
-    float firstHitDepthNDC, 
+    float firstHitDepthNDC )
+#else
+    bool wasSplit )
 #endif
-    bool wasSplit)
 {
     imageStore(framebufIsSky, pix, ivec4(1));
 
@@ -114,13 +115,15 @@ void storeSky(
     imageStore(framebufSurfacePosition,     pix, vec4(SURFACE_POSITION_INCORRECT));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
     imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix( pix ), vec4( 0.0 ) );
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
     imageStore(framebufDepthGrad,           pix, vec4(0.0));
     imageStore(framebufDepthNdc,            getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(m), 0.0, 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+#else
+    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : -1.0));
 #endif
 }
 
@@ -283,7 +286,7 @@ void main()
         // throughput *= getMediaTransmittance(currentRayMedia, pow(abs(dot(cameraRayDir, globalUniform.worldUpVector.xyz)), -3));
 
         // if sky is a rasterized geometry, it was already rendered to albedo framebuf 
-        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, throughput, MAX_RAY_LENGTH * 2.0, false);
+        storeSky(pix, cameraRayDir, globalUniform.skyType != SKY_TYPE_RASTERIZED_GEOMETRY, throughput, MAX_RAY_LENGTH * 2.0);
         return;
     }
 
@@ -296,8 +299,6 @@ void main()
     float screenEmission;
     const ShHitInfo h = getHitInfoPrimaryRay(primaryPayload, cameraOrigin, cameraRayDirAX, cameraRayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, firstHitDepthLinear, screenEmission);
 
-
-    const bool wasSplit = false;
 
     vec3 throughput = vec3(1.0);
     throughput *= getMediaTransmittance(currentRayMedia, firstHitDepthLinear);
@@ -316,7 +317,7 @@ void main()
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(primaryPayload));
     imageStore(framebufViewDirection,       pix, vec4(cameraRayDir, 0.0));
-    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
 
     // save some info for refl/refr shader
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(h.geometryInstanceFlags, primaryPayload.instIdAndIndex, h.portalIndex, 0));
@@ -564,6 +565,6 @@ void main()
     imageStore(framebufSurfacePosition,     pix, vec4(h.hitPosition, uintBitsToFloat(h.instCustomIndex)));
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(currentPayload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : 0.0));
+    imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : -1.0));
 }
 #endif
