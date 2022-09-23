@@ -88,13 +88,17 @@ struct EffectWipe final : public EffectBase
 
             VkImageBlit region = {};
 
-            region.srcSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-            region.srcOffsets[0] = { 0, 0, 0 };
-            region.srcOffsets[1] = { static_cast<int32_t>(swapchain->GetWidth()), static_cast<int32_t>(swapchain->GetHeight()), 1 };
+            region.srcSubresource  = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+            region.srcOffsets[ 0 ] = { 0, 0, 0 };
+            region.srcOffsets[ 1 ] = { static_cast< int32_t >( args.width ),
+                                       static_cast< int32_t >( args.height ),
+                                       1 };
 
-            region.dstSubresource = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
-            region.dstOffsets[0] = { 0, 0, 0 };
-            region.dstOffsets[1] = { static_cast<int32_t>(swapchain->GetWidth()), static_cast<int32_t>(swapchain->GetHeight()), 1 };
+            region.dstSubresource  = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 0, 1 };
+            region.dstOffsets[ 0 ] = { 0, 0, 0 };
+            region.dstOffsets[ 1 ] = { static_cast< int32_t >( args.width ),
+                                       static_cast< int32_t >( args.height ),
+                                       1 };
 
             Utils::BarrierImage(
                 args.cmd, src,

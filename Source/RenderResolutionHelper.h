@@ -41,15 +41,16 @@ public:
     RenderResolutionHelper &operator=(const RenderResolutionHelper &other) = delete;
     RenderResolutionHelper &operator=(RenderResolutionHelper &&other) noexcept = delete;
 
-    void Setup(const RgDrawFrameRenderResolutionParams *pParams, 
-               uint32_t fullWidth, uint32_t fullHeight,
-               const std::shared_ptr<DLSS> &dlss)
+    void Setup( const RgDrawFrameRenderResolutionParams* pParams,
+                uint32_t                                 windowWidth,
+                uint32_t                                 windowHeight,
+                const std::shared_ptr< DLSS >&           dlss )
     {
-        renderWidth = fullWidth;
-        renderHeight = fullHeight;
+        renderWidth  = windowWidth;
+        renderHeight = windowHeight;
 
-        upscaledWidth = fullWidth;
-        upscaledHeight = fullHeight;
+        upscaledWidth  = windowWidth;
+        upscaledHeight = windowHeight;
 
         dlssSharpness = 0;
 
@@ -130,8 +131,8 @@ public:
                 default: assert(0); break;
                 }
 
-                renderWidth = static_cast<uint32_t>(static_cast<float>(fullWidth) / div);
-                renderHeight = static_cast<uint32_t>(static_cast<float>(fullHeight) / div);
+                renderWidth  = static_cast< uint32_t >( static_cast< float >( windowWidth ) / div );
+                renderHeight = static_cast< uint32_t >( static_cast< float >( windowHeight ) / div );
             }
         }
         else if (upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS)
@@ -143,14 +144,18 @@ public:
             }
             else
             {
-                dlss->GetOptimalSettings(fullWidth, fullHeight, resolutionMode,
-                    &renderWidth, &renderHeight, &dlssSharpness);
+                dlss->GetOptimalSettings( windowWidth,
+                                          windowHeight,
+                                          resolutionMode,
+                                          &renderWidth,
+                                          &renderHeight,
+                                          &dlssSharpness );
 
                 // ultra quality returns (0,0)
                 if (renderWidth == 0 || renderHeight == 0)
                 {
-                    renderWidth = fullWidth;
-                    renderHeight = fullHeight;
+                    renderWidth  = windowWidth;
+                    renderHeight = windowHeight;
                 }
             }
         }

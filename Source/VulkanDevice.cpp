@@ -760,7 +760,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
     }
 
-    // draw geometry such as HUD directly into the swapchain image
+    // draw geometry such as HUD into an upscaled framebuf
     if (!drawInfo.disableRasterization)
     {
         rasterizer->DrawToSwapchain( cmd,
@@ -769,8 +769,8 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      textureManager,
                                      uniform->GetData()->view,
                                      uniform->GetData()->projection,
-                                     swapchain->GetWidth(),
-                                     swapchain->GetHeight() );
+                                     renderResolution.UpscaledWidth(),
+                                     renderResolution.UpscaledHeight() );
     }
 
     // post-effect that work on swapchain geometry too
@@ -790,9 +790,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
     }
 
     // blit result image to present on a surface
-    framebuffers->PresentToSwapchain(
-        cmd, frameIndex, swapchain,
-        accum, VK_FILTER_NEAREST);
+    framebuffers->PresentToSwapchain( cmd, frameIndex, swapchain, accum, VK_FILTER_NEAREST );
 }
 
 void VulkanDevice::EndFrame(VkCommandBuffer cmd)
