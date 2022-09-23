@@ -327,7 +327,7 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
 
     if( pPixelizedRenderSize )
     {
-        filter = VK_FILTER_LINEAR;
+        filter = VK_FILTER_NEAREST;
     }
 
     // if source has almost the same size as the surface, then use nearest blit
