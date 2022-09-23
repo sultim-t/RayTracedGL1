@@ -86,6 +86,7 @@ TextureManager::TextureManager( VkDevice                                       _
             !!_info.originalRoughnessMetallicEmissionTextureIsSRGB,
             !!_info.originalNormalTextureIsSRGB,
         }
+    , forceNormalMapFilterLinear( !!_info.textureSamplerForceNormalMapFilterLinear )
 {
     const uint32_t maxTextureCount =
         std::clamp( _info.maxTextureCount, TEXTURE_COUNT_MIN, TEXTURE_COUNT_MAX );
@@ -280,6 +281,12 @@ uint32_t TextureManager::CreateMaterial( VkCommandBuffer             cmd,
     auto samplerHandle = SamplerManager::Handle(
         createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags );
 
+    auto normalMapSamplerHandle = SamplerManager::Handle(
+        forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : createInfo.filter,
+        createInfo.addressModeU,
+        createInfo.addressModeV,
+        createInfo.flags & ( ~RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT ) );
+
     TextureOverrides::OverrideInfo parseInfo = {
         .commonFolderPath = defaultTexturesPath.c_str(),
     };
@@ -309,11 +316,14 @@ uint32_t TextureManager::CreateMaterial( VkCommandBuffer             cmd,
     MaterialTextures mtextures = {};
     for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {
+        const auto& texSampler =
+            i != MATERIAL_NORMAL_INDEX ? samplerHandle : normalMapSamplerHandle;
+
         mtextures.indices[ i ] = PrepareTexture(
             cmd,
             frameIndex,
             ovrd.GetResult( i ),
-            samplerHandle,
+            texSampler,
             !( createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT ),
             ovrd.GetDebugName(),
             isUpdateable,

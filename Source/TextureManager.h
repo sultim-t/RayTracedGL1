@@ -139,6 +139,8 @@ private:
     bool overridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT];
     bool originalIsSRGB[TEXTURES_PER_MATERIAL_COUNT];
 
+    bool forceNormalMapFilterLinear;
+
     std::list<std::weak_ptr<IMaterialDependency>> subscribers;
 };
 

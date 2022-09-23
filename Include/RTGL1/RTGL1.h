@@ -226,6 +226,7 @@ typedef struct RgInstanceCreateInfo
     // If true, 'filter' in RgMaterialCreateInfo, RgCubemapCreateInfo
     // will set only magnification filter.
     RgBool32                    textureSamplerForceMinificationFilterLinear;
+    RgBool32                    textureSamplerForceNormalMapFilterLinear;
 
     // The folder to find overriding textures in.
     const char                  *pOverridenTexturesFolderPath;
