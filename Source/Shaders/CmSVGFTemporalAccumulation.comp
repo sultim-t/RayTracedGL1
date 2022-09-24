@@ -370,7 +370,7 @@ void main()
         indirHistoryLengthAccum = 1.0;
     }
 
-    imageStoreDiffAccumColor(               pix, diffColorAccum);
+    imageStoreDiffTemporary(                pix, diffColorAccum );
     imageStore(framebufDiffAccumMoments,    pix, vec4(diffMomentsAccum, 0.0, 0.0));
     imageStore(framebufAccumHistoryLength,  pix, vec4(diffHistoryLengthAccum, indirHistoryLengthAccum, specHistoryLengthAccum, specHitDistanceAccum));
 

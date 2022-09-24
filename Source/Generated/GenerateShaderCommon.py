@@ -801,6 +801,8 @@ FRAMEBUFFERS = {
 
     "AccumHistoryLength"                : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     
+    # TODO: pack float16 to e5
+    "DiffTemporary"                     : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
     "DiffAccumColor"                    : (TYPE_PACK_E5,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
     "DiffAccumMoments"                  : (TYPE_FLOAT16,    COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
     "DiffColorHistory"                  : (TYPE_FLOAT16,    COMPONENT_RGBA, 0),

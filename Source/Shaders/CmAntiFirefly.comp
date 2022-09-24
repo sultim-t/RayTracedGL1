@@ -50,7 +50,7 @@ void fillFilterData( const ivec2 globalBasePix, const int sharedOffset )
     const ivec2 globalPix = globalBasePix + sharedPix;
 
     Data data;
-    data.diffuse  = texelFetchDiffAccumColor( globalPix );
+    data.diffuse  = texelFetchDiffTemporary( globalPix );
     data.specular = texelFetchSpecAccumColor( globalPix );
     data.sh       = texelFetchIndirAccumSH( globalPix );
 
@@ -111,7 +111,7 @@ void main()
         Data c = GET_SDATA( 0, 0 );
 
         // TODO: separate buffer to write?
-        // imageStoreDiffAccumColor( pix, c.diffuse );
+        imageStoreDiffAccumColor( pix, c.diffuse );
         imageStoreSpecPingColor( pix, c.specular );
         imageStoreIndirPingSH( pix, c.sh );
         return;
@@ -164,8 +164,7 @@ void main()
     c.sh.g     = clamp( c.sh.g,     smin.sh.g,     smax.sh.g );
     c.sh.b     = clamp( c.sh.b,     smin.sh.b,     smax.sh.b );
 
-    // TODO: separate buffer to write?
-    // imageStoreDiffAccumColor( pix, c.diffuse );
+    imageStoreDiffAccumColor( pix, c.diffuse );
     imageStoreSpecPingColor( pix, c.specular );
     imageStoreIndirPingSH( pix, c.sh );
 }
