@@ -404,8 +404,12 @@ void main()
 
         bool isPortal = isPortalFromFlags(h.geometryInstanceFlags) && h.portalIndex != PORTAL_INDEX_NONE;
         bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
+    #if SHIPPING_HACK
+        bool toReflect = isReflectFromFlags( h.geometryInstanceFlags );
+    #else
         bool toReflect = h.roughness < globalUniform.minRoughness ||
                          isReflectFromFlags( h.geometryInstanceFlags );
+    #endif
 
 
         if (!toReflect && !toRefract && !isPortal)
