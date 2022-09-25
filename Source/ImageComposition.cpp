@@ -119,11 +119,17 @@ void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
                                                 const Tonemapping*   tonemapping,
                                                 const Volumetric*    volumetric )
 {
+    using FI = FramebufferImageIndex;
     CmdLabel label(cmd, "Prefinal framebuf compose");
 
 
     // sync access
-    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_FINAL);
+    FI fs[] = {
+        FI::FB_IMAGE_INDEX_SCREEN_EMISSION,
+        FI::FB_IMAGE_INDEX_FINAL,
+        FI::FB_IMAGE_INDEX_DEPTH_WORLD,
+    };
+    framebuffers->BarrierMultiple(cmd, frameIndex, fs);
 
 
     // bind pipeline
@@ -156,11 +162,16 @@ void RTGL1::ImageComposition::ProcessCheckerboard( VkCommandBuffer      cmd,
                                                    uint32_t             frameIndex,
                                                    const GlobalUniform* uniform )
 {
-    CmdLabel label(cmd, "Final framebuf checkerboard");
+    using FI = FramebufferImageIndex;
+    CmdLabel label( cmd, "Framebuf checkerboard interpolate" );
 
 
     // sync access
-    framebuffers->BarrierOne(cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_PRE_FINAL);
+    FI fs[] = {
+        FI::FB_IMAGE_INDEX_PRE_FINAL,
+        FI::FB_IMAGE_INDEX_SCREEN_EMIS_R_T,
+    };
+    framebuffers->BarrierMultiple( cmd, frameIndex, fs );
 
 
     // bind pipeline

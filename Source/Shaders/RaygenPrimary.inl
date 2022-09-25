@@ -115,7 +115,7 @@ void storeSky(
     imageStore(framebufSurfacePosition,     pix, vec4(SURFACE_POSITION_INCORRECT));
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
-    imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix( pix ), vec4( 0.0 ) );
+    imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix( pix ), vec4( 0.0 ) );
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
     imageStore(framebufDepthGrad,           pix, vec4(0.0));
@@ -306,7 +306,7 @@ void main()
 
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
-    imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix(pix), vec4(h.albedo * screenEmission * throughput , 0.0));
+    imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(h.albedo * screenEmission * throughput , 0.0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
@@ -366,7 +366,7 @@ void main()
     vec2        motionCurToPrev             = motionBuf.rg;
     float       motionDepthLinearCurToPrev  = motionBuf.b;
     float       firstHitDepthLinear         = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
-    vec3        screenEmission              = texelFetch(framebufScreenEmission_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
+    vec3        screenEmission              = texelFetch(framebufScreenEmisRT_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
     vec3        throughput                  = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
     ShPayload currentPayload;
     currentPayload.instIdAndIndex           = primaryToReflRefrBuf.g;
@@ -560,7 +560,7 @@ void main()
 
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
-    imageStore(framebufScreenEmission,      getRegularPixFromCheckerboardPix(pix), vec4(screenEmission, 0.0));
+    imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(screenEmission, 0.0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));

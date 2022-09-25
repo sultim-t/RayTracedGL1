@@ -53,20 +53,23 @@ vec3 resolveCheckerboard( sampler2D src, const ivec2 regularPix, const ivec2 che
 
 void main()
 {
-    const ivec2 pix = ivec2(gl_GlobalInvocationID.x, gl_GlobalInvocationID.y);
-    const ivec2 checkerboardPix = getCheckerboardPix(pix);
+    const ivec2 pix             = ivec2( gl_GlobalInvocationID.x, gl_GlobalInvocationID.y );
+    const ivec2 checkerboardPix = getCheckerboardPix( pix );
 
-    if (pix.x >= uint(globalUniform.renderWidth) || pix.y >= uint(globalUniform.renderHeight))
+    if( pix.x >= uint( globalUniform.renderWidth ) || pix.y >= uint( globalUniform.renderHeight ) )
     {
         return;
     }
 
-    vec3 color = imageLoad(framebufPreFinal, pix).rgb;
+    vec3 hdr  = texelFetch( framebufPreFinal_Sampler, pix, 0 ).rgb;
+    vec3 emis = texelFetch( framebufScreenEmisRT_Sampler, pix, 0 ).rgb;
 
     if( needResolveCheckerboard( checkerboardPix ) )
     {
-        color = resolveCheckerboard( framebufPreFinal_Sampler, pix, checkerboardPix, color );
+        hdr  = resolveCheckerboard( framebufPreFinal_Sampler, pix, checkerboardPix, hdr );
+        emis = resolveCheckerboard( framebufScreenEmisRT_Sampler, pix, checkerboardPix, emis );
     }
 
-    imageStore(framebufFinal, pix, vec4(color, 0));
+    imageStore( framebufFinal, pix, vec4( hdr, 0 ) );
+    imageStore( framebufScreenEmission, pix, vec4( emis, 0 ) );
 }

@@ -305,9 +305,9 @@ VkRenderPass RTGL1::RasterPass::CreateWorldRenderPass( VkFormat finalImageFormat
     {
         .srcSubpass = VK_SUBPASS_EXTERNAL,
         .dstSubpass = 0,
-        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
         .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+        .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_SHADER_WRITE_BIT,
         .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
                          VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
     };
