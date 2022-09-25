@@ -201,6 +201,9 @@ void main()
     vec3 bloom = getBloomInput( hdr, screenEmis );
 
     color = applyVolumetrics( pix, color );
+#if SHIPPING_HACK
+    color += texelFetch( framebufAcidFog_Sampler, pix, 0 ).rgb;
+#endif
 
 
     if( globalUniform.debugShowFlags != 0 )

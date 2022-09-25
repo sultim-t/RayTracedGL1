@@ -355,7 +355,8 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     static_assert(
         RG_MEDIA_TYPE_VACUUM == MEDIA_TYPE_VACUUM &&
         RG_MEDIA_TYPE_WATER == MEDIA_TYPE_WATER &&
-        RG_MEDIA_TYPE_GLASS == MEDIA_TYPE_GLASS, 
+        RG_MEDIA_TYPE_GLASS == MEDIA_TYPE_GLASS && 
+        RG_MEDIA_TYPE_ACID == MEDIA_TYPE_ACID,
         "Interface and GLSL constants must be identical" );
 
     if( drawInfo.pReflectRefractParams != nullptr )
@@ -926,6 +927,7 @@ void VulkanDevice::UploadGeometry(const RgGeometryUploadInfo *uploadInfo)
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT &&
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT &&
         uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT &&
+        uploadInfo->passThroughType != RG_GEOMETRY_PASS_THROUGH_TYPE_ACID_REFLECT_REFRACT &&
 
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_0 &&
         uploadInfo->visibilityType != RG_GEOMETRY_VISIBILITY_TYPE_WORLD_1 &&

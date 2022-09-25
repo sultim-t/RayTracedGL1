@@ -245,6 +245,7 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry(const RgGeometryUploadIn
         }
         case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT:
         case RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT:
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_ACID_REFLECT_REFRACT:
         {
             flags |= ( FL )FT::PT_REFRACT;
             break;

@@ -63,13 +63,16 @@ void main()
 
     vec3 hdr  = texelFetch( framebufPreFinal_Sampler, pix, 0 ).rgb;
     vec3 emis = texelFetch( framebufScreenEmisRT_Sampler, pix, 0 ).rgb;
+    vec3 fog  = texelFetch( framebufAcidFogRT_Sampler, pix, 0 ).rgb;
 
     if( needResolveCheckerboard( checkerboardPix ) )
     {
         hdr  = resolveCheckerboard( framebufPreFinal_Sampler, pix, checkerboardPix, hdr );
         emis = resolveCheckerboard( framebufScreenEmisRT_Sampler, pix, checkerboardPix, emis );
+        fog  = resolveCheckerboard( framebufAcidFogRT_Sampler, pix, checkerboardPix, fog );
     }
 
     imageStore( framebufFinal, pix, vec4( hdr, 0 ) );
     imageStore( framebufScreenEmission, pix, vec4( emis, 0 ) );
+    imageStore( framebufAcidFog, pix, vec4( fog, 0 ) );
 }

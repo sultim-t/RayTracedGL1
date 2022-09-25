@@ -322,7 +322,7 @@ CONST = {
     "GEOM_INST_FLAG_RESERVED_2"             : "1 << 15",
     "GEOM_INST_FLAG_RESERVED_3"             : "1 << 16",
     "GEOM_INST_FLAG_RESERVED_4"             : "1 << 17",
-    "GEOM_INST_FLAG_RESERVED_5"             : "1 << 18",
+    "GEOM_INST_FLAG_MEDIA_TYPE_ACID"        : "1 << 18",
     "GEOM_INST_FLAG_EXACT_NORMALS"          : "1 << 19",
     "GEOM_INST_FLAG_IGNORE_REFRACT_AFTER"   : "1 << 20",
     "GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT"  : "1 << 21",
@@ -398,7 +398,8 @@ CONST = {
     "MEDIA_TYPE_VACUUM"                     : 0,
     "MEDIA_TYPE_WATER"                      : 1,
     "MEDIA_TYPE_GLASS"                      : 2,
-    "MEDIA_TYPE_COUNT"                      : 3,
+    "MEDIA_TYPE_ACID"                       : 3,
+    "MEDIA_TYPE_COUNT"                      : 4,
 
     "GEOM_INST_NO_TRIANGLE_INFO"            : "UINT32_MAX",
 
@@ -825,6 +826,10 @@ FRAMEBUFFERS = {
 
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R,    0),
 
+    # TODO: remove after implementing media volumetrics
+    "AcidFogRT"                         : (TYPE_PACK_11,    COMPONENT_RGB,  0),
+    "AcidFog"                           : (TYPE_PACK_11,    COMPONENT_RGB,  0),
+    
     "ScreenEmisRT"                      : (TYPE_PACK_11,    COMPONENT_RGB,  0),
     "ScreenEmission"                    : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_IS_ATTACHMENT),
     "BloomInput"                        : (TYPE_PACK_11,    COMPONENT_RGB,  0),

@@ -116,6 +116,7 @@ void storeSky(
     imageStore(framebufVisibilityBuffer,    pix, vec4(UINT32_MAX));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix( pix ), vec4( 0.0 ) );
+    imageStore(framebufAcidFogRT,           getRegularPixFromCheckerboardPix( pix ), vec4( 0.0 ) );
 #ifdef RAYGEN_PRIMARY_SHADER
     imageStore(framebufPrimaryToReflRefr,   pix, uvec4(0, 0, PORTAL_INDEX_NONE, 0));
     imageStore(framebufDepthGrad,           pix, vec4(0.0));
@@ -258,6 +259,27 @@ vec3 getNormal(const vec3 position, const vec3 normalFromMap, const vec3 normalG
     }
 }
 
+#if SHIPPING_HACK
+vec3 getGlowingMediaFog( uint media, float distance )
+{
+    if( media != MEDIA_TYPE_ACID )
+    {
+        return vec3( 0 );
+    }
+
+    float density = 0.00005 * 10;
+
+    float t = exp( -distance * density );
+    t       = clamp( 1.0 - t, 0.0, 1.0 );
+
+    // const vec3 acid = vec3( 78, 80, 27) / 255;
+    const vec3 acid = vec3( 0, 169, 141 ) / 255;
+    // const vec3 acid = vec3( 220, 242, 255) / 255;
+
+    return t * acid;
+}
+#endif
+
 #ifdef RAYGEN_PRIMARY_SHADER
 void main() 
 {
@@ -307,6 +329,7 @@ void main()
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
     imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(h.albedo * screenEmission * throughput , 0.0));
+    imageStore(framebufAcidFogRT,           getRegularPixFromCheckerboardPix(pix), vec4(getGlowingMediaFog(currentRayMedia, firstHitDepthLinear), 0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
@@ -367,6 +390,7 @@ void main()
     float       motionDepthLinearCurToPrev  = motionBuf.b;
     float       firstHitDepthLinear         = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
     vec3        screenEmission              = texelFetch(framebufScreenEmisRT_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
+    vec3        acidFog                     = texelFetch(framebufAcidFogRT_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
     vec3        throughput                  = texelFetch(framebufThroughput_Sampler, pix, 0).rgb;
     ShPayload currentPayload;
     currentPayload.instIdAndIndex           = primaryToReflRefrBuf.g;
@@ -421,7 +445,15 @@ void main()
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const vec3 normal = getNormal(h.hitPosition, h.normal, h.normalGeom, rayCone, rayDir, !isPortal && (newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER), wasPortal);
+        const vec3 normal = getNormal(
+            h.hitPosition,
+            h.normal,
+            h.normalGeom,
+            rayCone,
+            rayDir,
+            !isPortal && ( newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER ||
+                           newRayMedia == MEDIA_TYPE_ACID || currentRayMedia == MEDIA_TYPE_ACID ),
+            wasPortal );
 
 
         bool delaySplitOnNextTime = false;
@@ -549,6 +581,7 @@ void main()
         fullPathLength += rayLen;
         prevHitPosition = h.hitPosition;
         screenEmission += h.albedo * emis * throughput;
+        acidFog += getGlowingMediaFog(currentRayMedia, rayLen) * (doSplit ? 2.0 : 1.0);
     }
 
 
@@ -561,6 +594,7 @@ void main()
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
     imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(screenEmission, 0.0));
+    imageStore(framebufAcidFogRT,           getRegularPixFromCheckerboardPix(pix), vec4(acidFog, 0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));

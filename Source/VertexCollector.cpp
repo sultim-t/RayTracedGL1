@@ -401,6 +401,12 @@ uint32_t VertexCollector::AddGeometry( uint32_t                         frameInd
             geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
             break;
 
+        case RG_GEOMETRY_PASS_THROUGH_TYPE_ACID_REFLECT_REFRACT:
+            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_ACID;
+            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
+            geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
+            break;
+
         default: break;
     }
 

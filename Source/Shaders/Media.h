@@ -34,6 +34,8 @@ float getIndexOfRefraction(uint media)
     {
         case MEDIA_TYPE_WATER:
             return globalUniform.indexOfRefractionWater;
+        case MEDIA_TYPE_ACID:
+            return globalUniform.indexOfRefractionWater;
         case MEDIA_TYPE_GLASS:
             return globalUniform.indexOfRefractionGlass;
         default:
@@ -84,6 +86,10 @@ uint getMediaTypeFromFlags(uint geometryInstanceFlags)
     else if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_GLASS) != 0)
     {
         return MEDIA_TYPE_GLASS;
+    }
+    else if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_ACID) != 0)
+    {
+        return MEDIA_TYPE_ACID;
     }
     else
     {

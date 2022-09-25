@@ -296,6 +296,7 @@ typedef enum RgGeometryPassThroughType
     RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT,
     RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT,
     RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT,
+    RG_GEOMETRY_PASS_THROUGH_TYPE_ACID_REFLECT_REFRACT,
 } RgGeometryPassThroughType;
 
 typedef enum RgGeometryPrimaryVisibilityType
@@ -1059,7 +1060,8 @@ typedef enum RgMediaType
 {
     RG_MEDIA_TYPE_VACUUM,
     RG_MEDIA_TYPE_WATER,
-    RG_MEDIA_TYPE_GLASS
+    RG_MEDIA_TYPE_GLASS,
+    RG_MEDIA_TYPE_ACID,
 } RgMediaType;
 
 typedef struct RgDrawFrameReflectRefractParams
