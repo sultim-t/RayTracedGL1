@@ -72,7 +72,12 @@ void main()
 #endif
     }
 
-    float emis = getTextureSample( rasterizerFragInfo.emissionTextureIndex, vertTexCoord )[ EMISSION_CHANNEL ];
+    float emis = 0.0;
+    if( rasterizerFragInfo.emissionTextureIndex != MATERIAL_NO_TEXTURE )
+    {
+        emis = getTextureSample( rasterizerFragInfo.emissionTextureIndex,
+                                 vertTexCoord )[ EMISSION_CHANNEL ];
+    }
     outScreenEmission = rmeEmissionToScreenEmission( emis ) * albedoAlpha.rgb;
 
     if( alphaTest != 0 )
