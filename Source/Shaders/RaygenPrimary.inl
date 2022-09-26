@@ -259,27 +259,6 @@ vec3 getNormal(const vec3 position, const vec3 normalFromMap, const vec3 normalG
     }
 }
 
-#if SHIPPING_HACK
-vec3 getGlowingMediaFog( uint media, float distance )
-{
-    if( media != MEDIA_TYPE_ACID )
-    {
-        return vec3( 0 );
-    }
-
-    float density = 0.00005 * 10;
-
-    float t = exp( -distance * density );
-    t       = clamp( 1.0 - t, 0.0, 1.0 );
-
-    // const vec3 acid = vec3( 78, 80, 27) / 255;
-    const vec3 acid = vec3( 0, 169, 141 ) / 255;
-    // const vec3 acid = vec3( 220, 242, 255) / 255;
-
-    return t * acid;
-}
-#endif
-
 #ifdef RAYGEN_PRIMARY_SHADER
 void main() 
 {

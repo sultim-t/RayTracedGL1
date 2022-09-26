@@ -251,7 +251,8 @@ struct ShGlobalUniform
     float time;
     float waterWaveSpeed;
     float waterWaveStrength;
-    vec4 waterExtinction;
+    vec4 waterColorAndDensity;
+    vec4 acidColorAndDensity;
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
     uint squareInputRoughness;

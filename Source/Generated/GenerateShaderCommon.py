@@ -561,7 +561,8 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "waterWaveSpeed",                   1),
     (TYPE_FLOAT32,      1,      "waterWaveStrength",                1),
 
-    (TYPE_FLOAT32,      4,      "waterExtinction",                  1),
+    (TYPE_FLOAT32,      4,      "waterColorAndDensity",             1),
+    (TYPE_FLOAT32,      4,      "acidColorAndDensity",              1),
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
     (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),

@@ -1078,8 +1078,11 @@ typedef struct RgDrawFrameReflectRefractParams
     RgBool32    forceNoWaterRefraction;
     float       waterWaveSpeed;
     float       waterWaveNormalStrength;
-    // Default: (0.030, 0.019, 0.013)
-    RgFloat3D   waterExtinction;
+    // Color at 1 meter depth.
+    RgFloat3D   waterColor;
+    // Color at 1 meter depth.
+    RgFloat3D   acidColor;
+    float       acidDensity;
     // The lower this value, the sharper water normal textures.
     // Default: 1.0
     float       waterWaveTextureDerivativesMultiplier;

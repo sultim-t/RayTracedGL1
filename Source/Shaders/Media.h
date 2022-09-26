@@ -43,20 +43,39 @@ float getIndexOfRefraction(uint media)
     }
 }
 
-vec3 getMediaTransmittance(uint media, float distance)
+vec3 getMediaTransmittance( uint media, float distance )
 {
-    // the values are relative
-    // https://refractiveindex.info/?shelf=3d&book=liquids&page=water
+    vec3 extinction = vec3( 0.0 );
 
-    vec3 extinction = vec3(0.0);
-
-    if (media == MEDIA_TYPE_WATER)
+    if( media == MEDIA_TYPE_WATER )
     {
-        extinction = globalUniform.waterExtinction.rgb;
+        extinction = -log( globalUniform.waterColorAndDensity.rgb );
+    }
+    else if( media == MEDIA_TYPE_ACID )
+    {
+        extinction = -log( globalUniform.acidColorAndDensity.rgb );
+        extinction *= max(1.0, sqrt( globalUniform.acidColorAndDensity.a ) );
     }
 
-    return exp(-distance * extinction);
+    return exp( -distance * extinction );
 }
+
+#if SHIPPING_HACK
+vec3 getGlowingMediaFog( uint media, float distance )
+{
+    if( media != MEDIA_TYPE_ACID )
+    {
+        return vec3( 0 );
+    }
+
+    float density = 0.00005 * globalUniform.acidColorAndDensity.a;
+
+    float fog = exp( -distance * density );
+    fog       = clamp( 1.0 - fog, 0.0, 1.0 );
+
+    return fog * globalUniform.acidColorAndDensity.rgb;
+}
+#endif
 
 
 // Ray Tracing Gems II. Chapter 8: Reflection and Refraction Formulas
