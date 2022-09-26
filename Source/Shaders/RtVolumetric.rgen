@@ -82,7 +82,6 @@ void main()
             depth = ndc.z;
         }
 
-        if( !isSkyPix( getCheckerboardPix( pix ) ) )
         {
             uint instCustomIndex = floatBitsToUint(
                 texelFetch( framebufSurfacePosition_Sampler, getCheckerboardPix( pix ), 0 ).a );
