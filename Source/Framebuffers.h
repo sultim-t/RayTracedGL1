@@ -41,9 +41,10 @@ namespace RTGL1
 class Framebuffers
 {
 public:
-    explicit Framebuffers(VkDevice device,
-                          std::shared_ptr<MemoryAllocator> allocator,
-                          std::shared_ptr<CommandBufferManager> cmdManager);
+    explicit Framebuffers( VkDevice                                device,
+                           std::shared_ptr< MemoryAllocator >      allocator,
+                           std::shared_ptr< CommandBufferManager > cmdManager,
+                           const RgInstanceCreateInfo&             info );
     ~Framebuffers();
 
     Framebuffers(const Framebuffers &other) = delete;
@@ -101,7 +102,8 @@ private:
     void CreateImages(ResolutionState resolutionState);
     void UpdateDescriptors();
 
-    static VkExtent2D GetFramebufSize(FramebufferImageFlags flags, const ResolutionState &resolutionState);
+    VkExtent2D GetFramebufSize( const ResolutionState& resolutionState,
+                                FramebufferImageIndex  index ) const;
 
     void DestroyImages();
 
@@ -109,6 +111,8 @@ private:
 
 private:
     VkDevice device;
+    bool     effectWipeIsUsed;
+
     VkSampler bilinearSampler;
     VkSampler nearestSampler;
 

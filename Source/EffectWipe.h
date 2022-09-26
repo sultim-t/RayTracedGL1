@@ -36,30 +36,34 @@ struct EffectWipe final : public EffectBase
         float endTime;
     };
     
-    explicit EffectWipe(
-        VkDevice device,
-        const std::shared_ptr<const Framebuffers>  &framebuffers,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const BlueNoise>     &blueNoise,
-        const std::shared_ptr<const ShaderManager> &shaderManager)
-    :
-        EffectBase(device),
-        push{}
+    explicit EffectWipe( VkDevice                                      device,
+                         const std::shared_ptr< const Framebuffers >&  _framebuffers,
+                         const std::shared_ptr< const GlobalUniform >& _uniform,
+                         const std::shared_ptr< const BlueNoise >&     _blueNoise,
+                         const std::shared_ptr< const ShaderManager >& _shaderManager,
+                         bool                                          _effectWipeIsUsed )
+        : EffectBase( device ), push{}, effectWipeIsUsed{ _effectWipeIsUsed }
     {
-        VkDescriptorSetLayout setLayouts[] =
-        {
-            framebuffers->GetDescSetLayout(),
-            uniform->GetDescSetLayout(),
-            blueNoise->GetDescSetLayout(),
+        VkDescriptorSetLayout setLayouts[] = {
+            _framebuffers->GetDescSetLayout(),
+            _uniform->GetDescSetLayout(),
+            _blueNoise->GetDescSetLayout(),
         };
 
-        InitBase(shaderManager, setLayouts, PushConst());
+        InitBase( _shaderManager, setLayouts, PushConst() );
     }
 
     bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectWipe *params, const std::shared_ptr<Swapchain> &swapchain, uint32_t currentFrameId)
     {
         if (params == nullptr)
         {
+            return false;
+        }
+
+        if( !effectWipeIsUsed )
+        {
+            // if this effect is not used, params must be null
+            assert( params == nullptr );
             return false;
         }
         
@@ -157,6 +161,7 @@ protected:
 
 private:
     PushConst push;
+    bool      effectWipeIsUsed;
 };
 
 }

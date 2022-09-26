@@ -263,6 +263,7 @@ typedef struct RgInstanceCreateInfo
 
     RgTextureSwizzling          pbrTextureSwizzling;
 
+    RgBool32                    effectWipeIsUsed;
 } RgInstanceCreateInfo;
 
 RGAPI RgResult RGCONV rgCreateInstance(
@@ -1045,6 +1046,7 @@ typedef struct RgPostEffectCRT
 
 typedef struct RgDrawFramePostEffectsParams
 {
+    // Must be null, if effectWipeIsUsed was false.
     const RgPostEffectWipe                  *pWipe;
     const RgPostEffectRadialBlur            *pRadialBlur;
     const RgPostEffectChromaticAberration   *pChromaticAberration;

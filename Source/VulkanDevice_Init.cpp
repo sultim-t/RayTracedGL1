@@ -25,47 +25,46 @@
 #include <stdexcept>
 
 #include "HaltonSequence.h"
-#include "Matrix.h"
 #include "RenderResolutionHelper.h"
 #include "RgException.h"
-#include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 #include "LibraryConfig.h"
 
 using namespace RTGL1;
 
-VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
-    instance(VK_NULL_HANDLE),
-    device(VK_NULL_HANDLE),
-    surface(VK_NULL_HANDLE),
-    currentFrameState(),
-    frameId(1),
-    waitForOutOfFrameFence(false),
-    libconfig(LibraryConfig::Read(info->pConfigPath)),
-    debugMessenger(VK_NULL_HANDLE),
-    userPrint{ std::make_unique<UserPrint>(info->pfnPrint, info->pUserPrintData) },
-    userFileLoad{ std::make_shared<UserFileLoad>(info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData) },
-    rayCullBackFacingTriangles(info->rayCullBackFacingTriangles),
-    allowGeometryWithSkyFlag(info->allowGeometryWithSkyFlag),
-    lensFlareVerticesInScreenSpace(info->lensFlareVerticesInScreenSpace),
-    previousFrameTime(-1.0 / 60.0),
-    currentFrameTime(0)
+VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
+    : instance( VK_NULL_HANDLE )
+    , device( VK_NULL_HANDLE )
+    , surface( VK_NULL_HANDLE )
+    , currentFrameState()
+    , frameId( 1 )
+    , waitForOutOfFrameFence( false )
+    , libconfig( LibraryConfig::Read( info->pConfigPath ) )
+    , debugMessenger( VK_NULL_HANDLE )
+    , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
+    , userFileLoad{ std::make_shared< UserFileLoad >(
+          info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData ) }
+    , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
+    , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
+    , lensFlareVerticesInScreenSpace( info->lensFlareVerticesInScreenSpace )
+    , previousFrameTime( -1.0 / 60.0 )
+    , currentFrameTime( 0 )
 {
-    ValidateCreateInfo(info);
+    ValidateCreateInfo( info );
 
 
 
-    // init vulkan instance 
-    CreateInstance(*info);
+    // init vulkan instance
+    CreateInstance( *info );
 
 
     // create VkSurfaceKHR using user's function
-    surface = GetSurfaceFromUser(instance, *info);
+    surface = GetSurfaceFromUser( instance, *info );
 
 
     // create selected physical device
-    physDevice          = std::make_shared<PhysicalDevice>(instance);
-    queues              = std::make_shared<Queues>(physDevice->Get(), surface);
+    physDevice = std::make_shared< PhysicalDevice >( instance );
+    queues     = std::make_shared< Queues >( physDevice->Get(), surface );
 
     // create vulkan device and set extension function pointers
     CreateDevice();
@@ -73,7 +72,7 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     CreateSyncPrimitives();
 
     // set device
-    queues->SetDevice(device);
+    queues->SetDevice( device );
 
 
     memAllocator        = std::make_shared<MemoryAllocator>(instance, device, physDevice);
@@ -91,7 +90,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
     framebuffers        = std::make_shared<Framebuffers>(
         device,
         memAllocator, 
-        cmdManager);
+        cmdManager, 
+        *info );
 
     restirBuffers       = std::make_shared<RestirBuffers>(
         device,
@@ -247,7 +247,8 @@ VulkanDevice::VulkanDevice(const RgInstanceCreateInfo *info) :
         framebuffers,
         uniform,
         blueNoise,
-        shaderManager);
+        shaderManager, 
+        info->effectWipeIsUsed );
 
 
 #define CONSTRUCT_SIMPLE_EFFECT(T) std::make_shared<T>(device, framebuffers, uniform, shaderManager)

@@ -45,24 +45,24 @@ FramebufferImageIndex Framebuffers::FrameIndexToFBIndex(FramebufferImageIndex fr
     return framebufferImageIndex;
 }
 
-Framebuffers::Framebuffers(
-    VkDevice _device, 
-    std::shared_ptr<MemoryAllocator> _allocator, 
-    std::shared_ptr<CommandBufferManager> _cmdManager)
-: 
-    device(_device),
-    bilinearSampler(VK_NULL_HANDLE),
-    nearestSampler(VK_NULL_HANDLE),
-    allocator(std::move(_allocator)),
-    cmdManager(std::move(_cmdManager)),
-    currentResolution{},
-    descSetLayout(VK_NULL_HANDLE),
-    descPool(VK_NULL_HANDLE),
-    descSets{}
+Framebuffers::Framebuffers( VkDevice                                _device,
+                            std::shared_ptr< MemoryAllocator >      _allocator,
+                            std::shared_ptr< CommandBufferManager > _cmdManager,
+                            const RgInstanceCreateInfo&             info )
+    : device( _device )
+    , effectWipeIsUsed( info.effectWipeIsUsed )
+    , bilinearSampler( VK_NULL_HANDLE )
+    , nearestSampler( VK_NULL_HANDLE )
+    , allocator( std::move( _allocator ) )
+    , cmdManager( std::move( _cmdManager ) )
+    , currentResolution{}
+    , descSetLayout( VK_NULL_HANDLE )
+    , descPool( VK_NULL_HANDLE )
+    , descSets{}
 {
-    images.resize(ShFramebuffers_Count);
-    imageMemories.resize(ShFramebuffers_Count);
-    imageViews.resize(ShFramebuffers_Count);
+    images.resize( ShFramebuffers_Count );
+    imageMemories.resize( ShFramebuffers_Count );
+    imageViews.resize( ShFramebuffers_Count );
 
     CreateDescriptors();
     CreateSamplers();
@@ -226,7 +226,7 @@ void Framebuffers::PresentToSwapchain(
 
     BarrierOne(cmd, frameIndex, framebufImageIndex);
 
-    VkExtent2D srcExtent = GetFramebufSize(ShFramebuffers_Flags[framebufImageIndex], currentResolution);
+    VkExtent2D srcExtent = GetFramebufSize( currentResolution, framebufImageIndex );
 
     swapchain->BlitForPresent(
         cmd, GetImage(framebufImageIndex, frameIndex),
@@ -318,8 +318,8 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
     const VkImage srcImage = images[ src ];
     const VkImage dstImage = images[ dst ];
 
-    const VkOffset3D srcExtent      = ToSigned( GetFramebufSize( ShFramebuffers_Flags[ src ], currentResolution ) );
-    const VkOffset3D upscaledExtent = ToSigned( GetFramebufSize( ShFramebuffers_Flags[ dst ], currentResolution ) );
+    const VkOffset3D srcExtent      = ToSigned( GetFramebufSize( currentResolution, src ) );
+    const VkOffset3D upscaledExtent = ToSigned( GetFramebufSize( currentResolution, dst ) );
 
     const VkOffset3D dstExtent =
         pPixelizedRenderSize ? NormalizePixelized( *pPixelizedRenderSize, currentResolution )
@@ -584,11 +584,23 @@ std::tuple<VkImage, VkImageView, VkFormat, VkExtent2D> Framebuffers::GetImageHan
 {
     auto [image, view, format] = GetImageHandles(fbImageIndex, frameIndex);
     
-    return std::make_tuple(image, view, format, GetFramebufSize(ShFramebuffers_Flags[fbImageIndex], resolutionState));
+    return std::make_tuple( image, view, format, GetFramebufSize( resolutionState, fbImageIndex ) );
 }
 
-VkExtent2D RTGL1::Framebuffers::GetFramebufSize(FramebufferImageFlags flags, const ResolutionState &resolutionState)
+VkExtent2D RTGL1::Framebuffers::GetFramebufSize( const ResolutionState& resolutionState,
+                                                 FramebufferImageIndex  index ) const
 {
+    if( index == FramebufferImageIndex::FB_IMAGE_INDEX_WIPE_EFFECT_SOURCE )
+    {
+        if( !effectWipeIsUsed )
+        {
+            return { 1, 1 };
+        }
+    }
+
+
+    FramebufferImageFlags flags = ShFramebuffers_Flags[ index ];
+
     if (flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_UPSCALED_SIZE)
     {
         return { resolutionState.upscaledWidth, resolutionState.upscaledHeight };
@@ -652,7 +664,8 @@ void Framebuffers::CreateImages(ResolutionState resolutionState)
         VkFormat format = ShFramebuffers_Formats[i];
         FramebufferImageFlags flags = ShFramebuffers_Flags[i];
 
-        VkExtent2D extent = GetFramebufSize(flags, resolutionState);
+        const VkExtent2D extent =
+            GetFramebufSize( resolutionState, static_cast< FramebufferImageIndex >( i ) );
 
         // create image
         VkImageCreateInfo imageInfo = {};
