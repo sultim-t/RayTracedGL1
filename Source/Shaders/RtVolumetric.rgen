@@ -72,24 +72,26 @@ void main()
 #if 1
     {
         ivec2 pix;
+        float depth;
         {
             vec4 ndc = globalUniform.projection * globalUniform.view * vec4( center, 1.0 );
-            ndc.xy /= ndc.w;
+            ndc.xyz /= ndc.w;
             ndc.xy = ndc.xy * 0.5 + 0.5;
 
             pix = ivec2( ndc.xy * vec2( globalUniform.renderWidth, globalUniform.renderHeight ) );
-            pix = getCheckerboardPix( pix );
+            depth = ndc.z;
         }
 
-        if( !isSkyPix( pix ) )
+        if( !isSkyPix( getCheckerboardPix( pix ) ) )
         {
-            vec4 surfPos    = texelFetch( framebufSurfacePosition_Sampler, pix, 0 );
-            uint instCustomIndex = floatBitsToUint( surfPos.a );
+            uint instCustomIndex = floatBitsToUint(
+                texelFetch( framebufSurfacePosition_Sampler, getCheckerboardPix( pix ), 0 ).a );
+
+            float surfDepth = texelFetch(framebufDepthNdc_Sampler, pix, 0).r;
 
             if( ( instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC ) == 0 )
             {
-                if( lengthSquared( center - globalUniform.cameraPosition.xyz ) >
-                    lengthSquared( surfPos.xyz - globalUniform.cameraPosition.xyz ) )
+                if( depth > surfDepth )
                 {
                     imageStore( g_volumetric, cell, vec4( 0.0 ) );
     #if ILLUMINATION_VOLUME
