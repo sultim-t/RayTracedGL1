@@ -777,7 +777,7 @@ FRAMEBUFFERS = {
     "IsSky"                             : (TYPE_UINT8,      COMPONENT_R,    0),
     "Normal"                            : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "NormalGeometry"                    : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
-    "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
+    "MetallicRoughness"                 : (TYPE_UNORM8,     COMPONENT_RG,   FRAMEBUF_FLAGS_STORE_PREV),
     "DepthWorld"                        : (TYPE_FLOAT16,    COMPONENT_R,    FRAMEBUF_FLAGS_STORE_PREV),
     "DepthGrad"                         : (TYPE_FLOAT16,    COMPONENT_R,    0),
     "DepthNdc"                          : (TYPE_FLOAT32,    COMPONENT_R,    0),
