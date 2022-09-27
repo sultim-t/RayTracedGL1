@@ -41,9 +41,9 @@ vec3 volume_getCenter_T( const ivec3 cell, const mat4 viewprojInv, const vec3 or
     };
 
     vec4 worldpos = viewprojInv * ndc;
-    worldpos.xyz /= worldpos.w;
+    worldpos.xyz *= safePositiveRcp( worldpos.w );
 
-    vec3 worlddir = normalize( worldpos.xyz - origin );
+    vec3 worlddir = safeNormalize( worldpos.xyz - origin );
 
     float n = globalUniform.volumeCameraNear;
     float f = globalUniform.volumeCameraFar;
