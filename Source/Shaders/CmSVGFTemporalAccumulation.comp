@@ -67,8 +67,13 @@ float getParallax(vec3 pos, vec3 posPrev)
 
     return parallax;
 }
+float getSpecMinAccumFrames()
+{
+    float fps = safePositiveRcp( globalUniform.timeDelta );
+    return clamp( 0.2 * fps, 0, 128 );
+}
 #define SPEC_MAX_HITDISTANCE_ACCUM_FRAMES 16
-#define SPEC_MIN_ACCUM_FRAMES 0
+#define SPEC_MIN_ACCUM_FRAMES (getSpecMinAccumFrames())
 #define SPEC_MAX_ACCUM_FRAMES 256
 #define SPEC_ACCUM_BASE_POWER 0.5   // [0.5, 1] greater values - less aggressive accumulation
 #define SPEC_ACCUM_CURVE      0.66  // [1 low, 0.5 high] aggressiveness of history rejection depending on viewing angle
