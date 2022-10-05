@@ -369,16 +369,33 @@ void RTGL1::Volumetric::CreateDescriptors()
 
     SET_DEBUG_NAME( device, descLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Volumetric Desc set layout" );
 
-    VkDescriptorPoolSize poolSize = {
-        .type            = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-        .descriptorCount = std::size( bindings ) * MAX_FRAMES_IN_FLIGHT,
-    };
+    std::vector<VkDescriptorPoolSize> poolSizes;
+    for( auto& binding : bindings )
+    {
+        auto existingPoolSize = std::find_if(
+            poolSizes.begin(),
+            poolSizes.end(),
+            [&binding](auto& poolSize) { return poolSize.type == binding.descriptorType; }
+        );
+
+        if( existingPoolSize != poolSizes.end() )
+        {
+            existingPoolSize->descriptorCount += (binding.descriptorCount * MAX_FRAMES_IN_FLIGHT);
+            continue;
+        }
+
+        const VkDescriptorPoolSize poolSize = {
+            .type = binding.descriptorType,
+            .descriptorCount = binding.descriptorCount * MAX_FRAMES_IN_FLIGHT,
+        };
+        poolSizes.push_back(poolSize);
+    }
 
     VkDescriptorPoolCreateInfo poolInfo = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets       = MAX_FRAMES_IN_FLIGHT,
-        .poolSizeCount = 1,
-        .pPoolSizes    = &poolSize,
+        .poolSizeCount = static_cast<uint32_t>( std::size ( poolSizes ) ),
+        .pPoolSizes    = poolSizes.data(),
     };
 
     r = vkCreateDescriptorPool( device, &poolInfo, nullptr, &descPool );
