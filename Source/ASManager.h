@@ -65,18 +65,16 @@ public:
     // If all the added geometries must be removed, call this function before submitting
     void       ResetStaticGeometry();
 
-    
+
     void       BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
-    void       MeshBegin( VkCommandBuffer cmd, uint32_t frameIndex, const RgMeshBeginInfo* pMesh );
-    uint32_t   MeshAddPrimitive( uint32_t                   frameIndex,
-                                 const RgMeshPrimitiveInfo* pPrimitive,
-                                 uint32_t                   primitiveIndex );
-    void       MeshSubmit( VkCommandBuffer cmd, uint32_t frameIndex );
+    uint32_t   AddMeshPrimitive( uint32_t                   frameIndex,
+                                 const RgMeshInfo&          mesh,
+                                 const RgMeshPrimitiveInfo& primitive );
     void       SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
 
 
     // Update transform for static movable geometry
-    //void       UpdateStaticMovableTransform( uint32_t                     simpleIndex,
+    // void       UpdateStaticMovableTransform( uint32_t                     simpleIndex,
     //                                         const RgUpdateTransformInfo& updateInfo );
     // After updating transforms, acceleration structures should be rebuilt
     void       ResubmitStaticMovable( VkCommandBuffer cmd );

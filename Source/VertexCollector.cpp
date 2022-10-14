@@ -221,6 +221,7 @@ void VertexCollector::BeginCollecting( bool isStatic )
 }
 
 uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIndex,
+                                        const RgMeshInfo&                parentMesh,
                                         const RgMeshPrimitiveInfo&       info,
                                         std::span< MaterialTextures, 4 > materials )
 {
@@ -248,14 +249,14 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIn
     const uint32_t indIndex       = AlignUpBy3( curIndexCount );
     const uint32_t transformIndex = curTransformCount;
 
-    const bool     useIndices     = info.indexCount != 0 && info.pIndices != nullptr;
-    const uint32_t primitiveCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
-
+    const bool     useIndices    = info.indexCount != 0 && info.pIndices != nullptr;
+    const uint32_t triangleCount = useIndices ? info.indexCount / 3 : info.vertexCount / 3;
 
     curVertexCount = vertIndex + info.vertexCount;
     curIndexCount  = indIndex + ( useIndices ? info.indexCount : 0 );
-    curPrimitiveCount += primitiveCount;
+    curPrimitiveCount += triangleCount;
     curTransformCount += 1;
+
 
 
     // check bounds
@@ -278,41 +279,43 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIn
     }
 
 
-    // copy data to buffer
-    assert( stagingVertBuffer.IsMapped() );
-    CopyDataToStaging( info, vertIndex );
+
+    // copy data to buffers
+    {
+        assert( stagingVertBuffer.IsMapped() );
+        CopyDataToStaging( info, vertIndex );
+    }
 
     if( useIndices )
     {
         assert( stagingIndexBuffer.IsMapped() );
-        memcpy( mappedIndexData + indIndex, info.pIndices, info.indexCount * sizeof( uint32_t ) );
+        memcpy( mappedIndexData + indIndex,
+                info.pIndices,
+                info.indexCount * sizeof( uint32_t ) );
     }
 
-    static_assert( sizeof( RgTransform ) == sizeof( VkTransformMatrixKHR ),
-                   "RgTransform and VkTransformMatrixKHR must have the same structure to be used "
-                   "in AS building" );
-    memcpy( mappedTransformData + transformIndex, &info.transform, sizeof( VkTransformMatrixKHR ) );
+    {
+        static_assert( sizeof( RgTransform ) == sizeof( VkTransformMatrixKHR ) );
+        memcpy( mappedTransformData + transformIndex,
+                &info.transform,
+                sizeof( VkTransformMatrixKHR ) );
+    }
 
-    // use positions and index data in the device local buffers: AS shouldn't be built using staging
-    // buffers
-    const VkDeviceAddress vertexDataDeviceAddress =
-        vertBuffer->GetAddress() + vertIndex * sizeof( ShVertex ) + offsetof( ShVertex, position );
 
-    // geometry info
+
     VkAccelerationStructureGeometryKHR geom = {
         .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
         .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
         .flags = geomFlags & FT::PT_OPAQUE ? VK_GEOMETRY_OPAQUE_BIT_KHR
                                            : VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR,
     };
-    
     {
         VkAccelerationStructureGeometryTrianglesDataKHR trData = {
             .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
 
             .vertexFormat  = VK_FORMAT_R32G32B32_SFLOAT,
             .vertexData    = {
-                .deviceAddress = vertexDataDeviceAddress,
+                .deviceAddress = vertBuffer->GetAddress() + vertIndex * sizeof( ShVertex ) + offsetof( ShVertex, position ),
             },
             .vertexStride  = sizeof( ShVertex ),
             .maxVertex     = info.vertexCount,
@@ -342,16 +345,16 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIn
 
     {
         VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {
-            .primitiveCount  = primitiveCount,
+            .primitiveCount  = triangleCount,
             .primitiveOffset = 0,
             .firstVertex     = 0,
             .transformOffset = 0,
         };
         PushRangeInfo( geomFlags, rangeInfo );
+
+        PushPrimitiveCount( geomFlags, triangleCount );
     }
 
-
-    PushPrimitiveCount( geomFlags, primitiveCount );
 
 
     ShGeometryInstance geomInfo = {

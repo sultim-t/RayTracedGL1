@@ -218,9 +218,9 @@ RgResult rgDrawFrame( RgInstance instance, const RgDrawFrameInfo* pInfo )
     return Call( instance, &RTGL1::VulkanDevice::DrawFrame, pInfo );
 }
 
-RgPrimitiveVertex* rgUtilScratchAllocForVertices( RgInstance instance, uint32_t count )
+RgPrimitiveVertex* rgUtilScratchAllocForVertices( RgInstance instance, uint32_t vertexCount )
 {
-    return Call( instance, &RTGL1::VulkanDevice::ScratchAllocForVertices, count );
+    return Call( instance, &RTGL1::VulkanDevice::ScratchAllocForVertices, vertexCount );
 }
 
 void rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer )

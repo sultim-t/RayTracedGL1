@@ -591,32 +591,22 @@ void ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )
     collectorDynamic[frameIndex]->BeginCollecting(false);
 }
 
-void ASManager::MeshBegin( VkCommandBuffer cmd, uint32_t frameIndex, const RgMeshBeginInfo* pMesh )
+uint32_t ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
+                                      const RgMeshInfo&          mesh,
+                                      const RgMeshPrimitiveInfo& primitive )
 {
-    
-}
-
-uint32_t ASManager::MeshAddPrimitive( uint32_t                   frameIndex,
-                                      const RgMeshPrimitiveInfo* pPrimitive,
-                                      uint32_t                   primitiveIndex )
-{
-    if( pPrimitive ==nullptr)
-    {
-        return;
-    }
+#define IF_LAYER_NOT_NULL( x, y )                                                              \
+    ( primitive.pEditorInfo ? primitive.pEditorInfo->x ? primitive.pEditorInfo->x->y : nullptr \
+                            : nullptr )
 
     MaterialTextures materials[] = {
-        textureMgr->GetMaterialTextures( pPrimitive->pTextureName ),
-        {},
-        {},
+        textureMgr->GetMaterialTextures( primitive.pTextureName ),
+        textureMgr->GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer1, pTextureName ) ),
+        textureMgr->GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer2, pTextureName ) ),
+        textureMgr->GetMaterialTextures( IF_LAYER_NOT_NULL( pLayerLightmap, pTextureName ) ),
     };
 
-    return collectorDynamic[ frameIndex ]->AddPrimitive( frameIndex, *pPrimitive, materials );
-}
-
-void ASManager::MeshSubmit( VkCommandBuffer cmd, uint32_t frameIndex )
-{
-    
+    return collectorDynamic[ frameIndex ]->AddPrimitive( frameIndex, mesh, primitive, materials );
 }
 
 void ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )

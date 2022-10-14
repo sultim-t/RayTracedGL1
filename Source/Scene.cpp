@@ -106,7 +106,9 @@ void Scene::SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::
     asManager->BuildTLAS(cmd, frameIndex, prepare);
 }
 
-bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
+bool Scene::Upload( uint32_t                   frameIndex,
+                    const RgMeshInfo&          mesh,
+                    const RgMeshPrimitiveInfo& primitive )
 {
     assert(!DoesUniqueIDExist(uploadInfo.uniqueID));
 
@@ -151,7 +153,7 @@ bool Scene::Upload(uint32_t frameIndex, const RgGeometryUploadInfo &uploadInfo)
     return false;
 }
 
-bool Scene::UpdateTransform(const RgUpdateTransformInfo &updateInfo)
+/*bool Scene::UpdateTransform(const RgUpdateTransformInfo &updateInfo)
 {
     uint32_t simpleIndex;
     if (!TryGetStaticSimpleIndex(updateInfo.movableStaticUniqueID, &simpleIndex))
@@ -187,7 +189,7 @@ bool RTGL1::Scene::UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo)
 
     asManager->UpdateStaticTexCoords(simpleIndex, texCoordsInfo);
     return true;
-}
+}*/
 
 void Scene::SubmitStatic()
 {
@@ -208,7 +210,7 @@ void Scene::StartNewStatic()
 {
     if (isRecordingStatic)
     {
-        throw RgException(RG_WRONG_FUNCTION_CALL, "rgStartNewScene must be called only once before rgSubmitStaticGeometries");
+        throw RgException(RG_RESULT_WRONG_FUNCTION_CALL, "rgStartNewScene must be called only once before rgSubmitStaticGeometries");
     }
 
     isRecordingStatic = true;

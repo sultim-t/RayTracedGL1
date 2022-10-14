@@ -69,36 +69,34 @@ public:
 
     VulkanDevice( const VulkanDevice& other )     = delete;
     VulkanDevice( VulkanDevice&& other ) noexcept = delete;
-    VulkanDevice&      operator=( const VulkanDevice& other ) = delete;
-    VulkanDevice&      operator=( VulkanDevice&& other ) noexcept = delete;
+    VulkanDevice& operator=( const VulkanDevice& other ) = delete;
+    VulkanDevice& operator=( VulkanDevice&& other ) noexcept = delete;
 
-    void               UploadMeshPrimitive( const RgMeshInfo*          pMesh,
-                                            const RgMeshPrimitiveInfo* pPrimitive,
-                                            uint32_t                   primitiveIndexInMesh );
-    void               UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pPrimitive,
-                                                const float*               pViewProjection,
-                                                const RgViewport*          pViewport );
-    void               UploadDecal( const RgDecalUploadInfo* pInfo );
+    void UploadMeshPrimitive( const RgMeshInfo* pMesh, const RgMeshPrimitiveInfo* pPrimitive );
+    void UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pPrimitive,
+                                  const float*               pViewProjection,
+                                  const RgViewport*          pViewport );
+    void UploadDecal( const RgDecalUploadInfo* pInfo );
 
-    void               UploadDirectionalLight( const RgDirectionalLightUploadInfo* pInfo );
-    void               UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo );
-    void               UploadSpotlight( const RgSpotLightUploadInfo* pInfo );
-    void               UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo );
+    void UploadDirectionalLight( const RgDirectionalLightUploadInfo* pInfo );
+    void UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo );
+    void UploadSpotlight( const RgSpotLightUploadInfo* pInfo );
+    void UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo );
 
-    void               ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo );
-    void               ProvideOriginalCubemapTexture( const RgCubemapCreateInfo* pInfo );
-    void               MarkOriginalTextureAsDeleted( const char* pTextureName );
+    void ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo );
+    void ProvideOriginalCubemapTexture( const RgCubemapCreateInfo* pInfo );
+    void MarkOriginalTextureAsDeleted( const char* pTextureName );
 
-    void               StartFrame( const RgStartFrameInfo* pInfo );
-    void               DrawFrame( const RgDrawFrameInfo* pInfo );
+    void StartFrame( const RgStartFrameInfo* pInfo );
+    void DrawFrame( const RgDrawFrameInfo* pInfo );
 
 
-    bool               IsSuspended() const;
-    bool               IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique technique ) const;
-    void               ExportAsPNG( const void* pPixels,
-                                    uint32_t    width,
-                                    uint32_t    height,
-                                    const char* pPath ) const;
+    bool IsSuspended() const;
+    bool IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique technique ) const;
+    void ExportAsPNG( const void* pPixels,
+                      uint32_t    width,
+                      uint32_t    height,
+                      const char* pPath ) const;
     RgPrimitiveVertex* ScratchAllocForVertices( uint32_t count );
     void               ScratchFree( const RgPrimitiveVertex* pPointer );
 

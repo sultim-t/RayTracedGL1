@@ -379,13 +379,14 @@ typedef struct RgEditorInfo
 // Primitive is an indexed or non-indexed geometry with a material.
 typedef struct RgMeshPrimitiveInfo
 {
-    RgTransform                     transform;
+    uint32_t                        primitiveIndexInMesh;
     RgMeshPrimitiveFlags            flags;
 
-    uint32_t                        vertexCount;
+    RgTransform                     transform;
     const RgPrimitiveVertex*        pVertices;
-    uint32_t                        indexCount;
+    uint32_t                        vertexCount;
     const uint32_t*                 pIndices;
+    uint32_t                        indexCount;
 
     const char*                     pTextureName;
     uint32_t                        textureFrame;
@@ -396,6 +397,8 @@ typedef struct RgMeshPrimitiveInfo
     // Additional info for the Editor. Can be null.
     const RgEditorInfo*             pEditorInfo;
 } RgMeshPrimitiveInfo;
+
+    int a = sizeof( RgMeshPrimitiveInfo );
 
 // Mesh is a set of primitives.
 typedef struct RgMeshInfo
@@ -412,8 +415,7 @@ typedef struct RgMeshInfo
 
 RGAPI RgResult RGCONV rgUploadMeshPrimitive( RgInstance                 instance,
                                              const RgMeshInfo*          pMesh,
-                                             const RgMeshPrimitiveInfo* pPrimitive,
-                                             uint32_t                   primitiveIndexInMesh );
+                                             const RgMeshPrimitiveInfo* pPrimitive );
 
 RGAPI RgResult RGCONV rgUploadNonWorldPrimitive( RgInstance                 instance,
                                                  const RgMeshPrimitiveInfo* pPrimitive,
@@ -887,7 +889,7 @@ RGAPI RgResult RGCONV           rgDrawFrame( RgInstance instance, const RgDrawFr
 
 
 
-RGAPI RgPrimitiveVertex* RGCONV rgUtilScratchAllocForVertices( RgInstance instance, uint32_t count );
+RGAPI RgPrimitiveVertex* RGCONV rgUtilScratchAllocForVertices( RgInstance instance, uint32_t vertexCount );
 RGAPI void RGCONV               rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer );
 RGAPI RgBool32 RGCONV           rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique );
 RGAPI const char* RGCONV        rgUtilGetResultDescription( RgResult result );

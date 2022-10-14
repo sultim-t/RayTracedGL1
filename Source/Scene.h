@@ -50,7 +50,9 @@ public:
     void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex, const std::shared_ptr<GlobalUniform> &uniform,
                         uint32_t uniformData_rayCullMaskWorld, bool allowGeometryWithSkyFlag, bool disableRTGeometry);
 
-    bool Upload(uint32_t frameIndex, const  &uploadInfo);
+    bool Upload( uint32_t                   frameIndex,
+                 const RgMeshInfo&          mesh,
+                 const RgMeshPrimitiveInfo& primitive );
     // bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
     // bool UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo);
 

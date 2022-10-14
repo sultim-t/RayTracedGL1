@@ -80,7 +80,7 @@ VkSurfaceKHR GetSurfaceFromUser( VkInstance instance, const RgInstanceCreateInfo
 #else
     if( info.pMetalSurfaceCreateInfo != nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "pMetalSurfaceCreateInfo is specified, but the library wasn't built "
                            "with RG_USE_SURFACE_METAL option" );
     }
@@ -103,7 +103,7 @@ VkSurfaceKHR GetSurfaceFromUser( VkInstance instance, const RgInstanceCreateInfo
 #else
     if( info.pWaylandSurfaceCreateInfo != nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "pWaylandSurfaceCreateInfo is specified, but the library wasn't built "
                            "with RG_USE_SURFACE_WAYLAND option" );
     }
@@ -126,7 +126,7 @@ VkSurfaceKHR GetSurfaceFromUser( VkInstance instance, const RgInstanceCreateInfo
 #else
     if( info.pXcbSurfaceCreateInfo != nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "pXcbSurfaceCreateInfo is specified, but the library wasn't built with "
                            "RG_USE_SURFACE_XCB option" );
     }
@@ -149,14 +149,14 @@ VkSurfaceKHR GetSurfaceFromUser( VkInstance instance, const RgInstanceCreateInfo
 #else
     if( info.pXlibSurfaceCreateInfo != nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "pXlibSurfaceCreateInfo is specified, but the library wasn't built with "
                            "RG_USE_SURFACE_XLIB option" );
     }
 #endif // RG_USE_SURFACE_XLIB
 
 
-    throw RgException( RG_WRONG_ARGUMENT, "Surface info wasn't specified" );
+    throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Surface info wasn't specified" );
 }
 
 } // anonymous namespace
@@ -344,6 +344,11 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     framebuffers->Subscribe( decalManager );
     framebuffers->Subscribe( amdFsr2 );
     framebuffers->Subscribe( restirBuffers );
+
+
+    // TODO: remove
+    scene->StartNewStatic();
+    scene->SubmitStatic();
 }
 
 RTGL1::VulkanDevice::~VulkanDevice()
@@ -835,7 +840,7 @@ void RTGL1::VulkanDevice::ValidateCreateInfo( const RgInstanceCreateInfo* pInfo 
 
     if( pInfo == nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT, "Argument is null" );
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
     {
@@ -845,26 +850,27 @@ void RTGL1::VulkanDevice::ValidateCreateInfo( const RgInstanceCreateInfo* pInfo 
 
         if( count != 1 )
         {
-            throw RgException( RG_WRONG_ARGUMENT,
+            throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                                "Exactly one of the surface infos must be not null" );
         }
     }
 
     if( pInfo->rasterizedSkyCubemapSize == 0 )
     {
-        throw RgException( RG_WRONG_ARGUMENT, "rasterizedSkyCubemapSize must be non-zero" );
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                           "rasterizedSkyCubemapSize must be non-zero" );
     }
 
     if( pInfo->primaryRaysMaxAlbedoLayers > MATERIALS_MAX_LAYER_COUNT )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "primaryRaysMaxAlbedoLayers must be <="s +
                                std::to_string( MATERIALS_MAX_LAYER_COUNT ) );
     }
 
     if( pInfo->indirectIlluminationMaxAlbedoLayers > MATERIALS_MAX_LAYER_COUNT )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "indirectIlluminationMaxAlbedoLayers must be <="s +
                                std::to_string( MATERIALS_MAX_LAYER_COUNT ) );
     }

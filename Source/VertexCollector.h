@@ -64,6 +64,7 @@ public:
 
     void             BeginCollecting( bool isStatic );
     uint32_t         AddPrimitive( uint32_t                         frameIndex,
+                                   const RgMeshInfo&                parentMesh,
                                    const RgMeshPrimitiveInfo&       info,
                                    std::span< MaterialTextures, 4 > materials );
     void             EndCollecting();
