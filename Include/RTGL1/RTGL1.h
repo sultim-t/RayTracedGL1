@@ -78,25 +78,18 @@ RG_DEFINE_NON_DISPATCHABLE_HANDLE( RgInstance )
 
 typedef enum RgResult
 {
-    RG_SUCCESS,
-    RG_SUCCESS_FOUND_MESH,
-    RG_SUCCESS_FOUND_TEXTURE,
-    RG_GRAPHICS_API_ERROR,
-    RG_CANT_FIND_PHYSICAL_DEVICE,
-    RG_WRONG_ARGUMENT,
-    RG_TOO_MANY_INSTANCES,
-    RG_WRONG_INSTANCE,
-    RG_FRAME_WASNT_STARTED,
-    RG_FRAME_WASNT_ENDED,
-    RG_CANT_UPDATE_TRANSFORM,
-    RG_CANT_UPDATE_TEXCOORDS,
-    RG_CANT_UPDATE_MATERIAL,
-    RG_CANT_UPDATE_ANIMATED_MATERIAL,
-    RG_CANT_UPLOAD_RASTERIZED_GEOMETRY,
-    RG_WRONG_MATERIAL_PARAMETER,
-    RG_WRONG_FUNCTION_CALL,
-    RG_ERROR_CANT_FIND_BLUE_NOISE,
-    RG_ERROR_CANT_FIND_WATER_TEXTURES,
+    RG_RESULT_SUCCESS,
+    RG_RESULT_SUCCESS_FOUND_MESH,
+    RG_RESULT_SUCCESS_FOUND_TEXTURE,
+    RG_RESULT_WRONG_INSTANCE,
+    RG_RESULT_GRAPHICS_API_ERROR,
+    RG_RESULT_NO_SUPPORTED_PHYSICAL_DEVICE,
+    RG_RESULT_FRAME_WASNT_STARTED,
+    RG_RESULT_FRAME_WASNT_ENDED,
+    RG_RESULT_WRONG_FUNCTION_CALL,
+    RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+    RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
+    RG_RESULT_ERROR_CANT_FIND_SHADER,
 } RgResult;
 
 typedef enum RgMessageSeverityFlagBits
@@ -419,7 +412,7 @@ RGAPI RgResult RGCONV rgMeshBegin( RgInstance instance, const RgMeshBeginInfo* p
 RGAPI RgResult RGCONV rgMeshAddPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, uint32_t primitiveIndex );
 RGAPI RgResult RGCONV rgMeshSubmit( RgInstance instance );
 
-RGAPI RgResult RGCONV rgSubmitNonWorldPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, const float* pViewProjection, const RgViewport* pViewport );
+RGAPI RgResult RGCONV rgUploadNonWorldPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, const float* pViewProjection, const RgViewport* pViewport );
 
 
 
@@ -431,7 +424,7 @@ typedef struct RgDecalUploadInfo
     const char*     pTextureName;
 } RgDecalUploadInfo;
 
-RGAPI RgResult RGCONV rgUploadDecal( RgInstance instance, const RgDecalUploadInfo* pUploadInfo );
+RGAPI RgResult RGCONV rgUploadDecal( RgInstance instance, const RgDecalUploadInfo* pInfo );
 
 
 
@@ -476,10 +469,10 @@ typedef struct RgSpotLightUploadInfo
     float           angleInner;
 } RgSpotLightUploadInfo;
 
-RGAPI RgResult RGCONV rgUploadDirectionalLight( RgInstance instance, const RgDirectionalLightUploadInfo* pUploadInfo );
-RGAPI RgResult RGCONV rgUploadSphericalLight( RgInstance instance, const RgSphericalLightUploadInfo* pUploadInfo );
-RGAPI RgResult RGCONV rgUploadSpotLight( RgInstance instance, const RgSpotLightUploadInfo* pUploadInfo );
-RGAPI RgResult RGCONV rgUploadPolygonalLight( RgInstance instance, const RgPolygonalLightUploadInfo* pUploadInfo );
+RGAPI RgResult RGCONV rgUploadDirectionalLight( RgInstance instance, const RgDirectionalLightUploadInfo* pInfo );
+RGAPI RgResult RGCONV rgUploadSphericalLight( RgInstance instance, const RgSphericalLightUploadInfo* pInfo );
+RGAPI RgResult RGCONV rgUploadSpotLight( RgInstance instance, const RgSpotLightUploadInfo* pInfo );
+RGAPI RgResult RGCONV rgUploadPolygonalLight( RgInstance instance, const RgPolygonalLightUploadInfo* pInfo );
 
 
 
@@ -531,7 +524,7 @@ typedef struct RgStartFrameInfo
     RgBool32        requestShaderReload;
 } RgStartFrameInfo;
 
-RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const RgStartFrameInfo* pStartInfo );
+RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const RgStartFrameInfo* pInfo );
 
 
 
@@ -883,7 +876,7 @@ typedef struct RgDrawFrameInfo
 
 } RgDrawFrameInfo;
 
-RGAPI RgResult RGCONV           rgDrawFrame( RgInstance instance, const RgDrawFrameInfo* pDrawInfo );
+RGAPI RgResult RGCONV           rgDrawFrame( RgInstance instance, const RgDrawFrameInfo* pInfo );
 
 
 
@@ -893,7 +886,7 @@ RGAPI RgBool32 RGCONV           rgUtilIsUpscaleTechniqueAvailable( RgInstance in
 RGAPI const char* RGCONV        rgUtilGetResultDescription( RgResult result );
 RGAPI RgColor4DPacked32 RGCONV  rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_t a );
 RGAPI RgColor4DPacked32 RGCONV  rgUtilPackColorFloat4D( const float color[ 4 ] );
-RGAPI void RGCONV               rgUtilExportAsPNG( const void* pPixels, uint32_t width, uint32_t height, const char* pPath );
+RGAPI void RGCONV               rgUtilExportAsPNG( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath );
 
 #ifdef __cplusplus
 }

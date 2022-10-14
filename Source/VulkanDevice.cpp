@@ -821,59 +821,60 @@ void VulkanDevice::EndFrame(VkCommandBuffer cmd)
 
 
 
-#pragma region RTGL1 interface implementation
+// Interface implementation
 
-void VulkanDevice::StartFrame(const RgStartFrameInfo *startInfo)
+
+
+void VulkanDevice::StartFrame( const RgStartFrameInfo* startInfo )
 {
-    if (currentFrameState.WasFrameStarted())
+    if( currentFrameState.WasFrameStarted() )
     {
-        throw RgException(RG_FRAME_WASNT_ENDED);
+        throw RgException( RG_RESULT_FRAME_WASNT_ENDED );
     }
 
-    if (startInfo == nullptr)
+    if( startInfo == nullptr )
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    VkCommandBuffer newFrameCmd = BeginFrame(*startInfo);
-    currentFrameState.OnBeginFrame(newFrameCmd);
+    VkCommandBuffer newFrameCmd = BeginFrame( *startInfo );
+    currentFrameState.OnBeginFrame( newFrameCmd );
 }
 
-void VulkanDevice::DrawFrame(const RgDrawFrameInfo *drawInfo)
+void VulkanDevice::DrawFrame( const RgDrawFrameInfo* drawInfo )
 {
-    if (!currentFrameState.WasFrameStarted())
+    if( !currentFrameState.WasFrameStarted() )
     {
-        throw RgException(RG_FRAME_WASNT_STARTED);
+        throw RgException( RG_RESULT_FRAME_WASNT_STARTED );
     }
 
-    if (drawInfo == nullptr)
+    if( drawInfo == nullptr )
     {
-        throw RgException(RG_WRONG_ARGUMENT, "Argument is null");
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
     VkCommandBuffer cmd = currentFrameState.GetCmdBuffer();
 
     previousFrameTime = currentFrameTime;
-    currentFrameTime = drawInfo->currentTime;
+    currentFrameTime  = drawInfo->currentTime;
 
-    renderResolution.Setup(drawInfo->pRenderResolutionParams,
-                           swapchain->GetWidth(), swapchain->GetHeight(), nvDlss);
+    renderResolution.Setup( drawInfo->pRenderResolutionParams, swapchain->GetWidth(), swapchain->GetHeight(), nvDlss );
 
-    textureManager->CheckForHotReload(cmd);
+    textureManager->CheckForHotReload( cmd );
 
-    if (renderResolution.Width() > 0 && renderResolution.Height() > 0)
+    if( renderResolution.Width() > 0 && renderResolution.Height() > 0 )
     {
-        FillUniform(uniform->GetData(), *drawInfo);
-        Render(cmd, *drawInfo);
+        FillUniform( uniform->GetData(), *drawInfo );
+        Render( cmd, *drawInfo );
     }
 
-    EndFrame(cmd);
+    EndFrame( cmd );
     currentFrameState.OnEndFrame();
 }
 
 bool VulkanDevice::IsSuspended() const
 {
-    if (!swapchain)
+    if( !swapchain )
     {
         return false;
     }
@@ -881,24 +882,23 @@ bool VulkanDevice::IsSuspended() const
     return !swapchain->IsExtentOptimal();
 }
 
-bool RTGL1::VulkanDevice::IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechnique technique) const
+bool RTGL1::VulkanDevice::IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique technique ) const
 {
-    switch (technique)
+    switch( technique )
     {
-        case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
-        case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
-        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2:
-            return true;
-        case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:
-            return nvDlss->IsDlssAvailable();
-        default:
-            throw RgException(RG_WRONG_ARGUMENT, "Incorrect technique was passed to rgIsRenderUpscaleTechniqueAvailable");
+        case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST: 
+        case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR: 
+        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2: return true;
+
+        case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS: return nvDlss->IsDlssAvailable();
+
+        default: throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Incorrect technique was passed to rgIsRenderUpscaleTechniqueAvailable" );
     }
 }
 
-void VulkanDevice::Print(const char *pMessage) const
+void VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags severity ) const
 {
-    userPrint->Print(pMessage);
+    userPrint->Print( pMessage, severity );
 }
 
 
@@ -1200,5 +1200,3 @@ void VulkanDevice::DestroyCubemap(RgCubemap cubemap)
 {
     cubemapManager->DestroyCubemap(currentFrameState.GetFrameIndex(), cubemap);
 }
-#pragma endregion 
-
