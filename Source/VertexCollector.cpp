@@ -157,28 +157,59 @@ VertexCollector::~VertexCollector()
     stagingTransformsBuffer.TryUnmap();
 }
 
-static uint32_t GetMaterialsBlendFlags( const RgGeometryMaterialBlendType blendingTypes[],
-                                        uint32_t                          count )
+namespace
 {
-    uint32_t r = 0;
-
-    for( uint32_t i = 0; i < count; i++ )
+uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint32_t layerIndex )
+{
+    if( layerInfo == nullptr )
     {
-        RgGeometryMaterialBlendType b = blendingTypes[ i ];
-
-        uint32_t bitOffset = MATERIAL_BLENDING_FLAG_BIT_COUNT * i;
-
-        switch (b)
-        {
-            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_OPAQUE:    r |= MATERIAL_BLENDING_FLAG_OPAQUE  << bitOffset; break;
-            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_ALPHA:     r |= MATERIAL_BLENDING_FLAG_ALPHA   << bitOffset; break;
-            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_ADD:       r |= MATERIAL_BLENDING_FLAG_ADD     << bitOffset; break;
-            case RG_GEOMETRY_MATERIAL_BLEND_TYPE_SHADE:     r |= MATERIAL_BLENDING_FLAG_SHADE   << bitOffset; break;
-            default: assert(0); break;
-        }
+        return 0;
     }
 
-    return r;
+    uint32_t bitOffset = MATERIAL_BLENDING_FLAG_BIT_COUNT * layerIndex;
+
+    switch( layerInfo->blend )
+    {
+        case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_FLAG_OPAQUE << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA:  return MATERIAL_BLENDING_FLAG_ALPHA << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD:    return MATERIAL_BLENDING_FLAG_ADD << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE:  return MATERIAL_BLENDING_FLAG_SHADE << bitOffset;
+        default: assert( 0 ); return 0;
+    }
+}
+
+uint32_t AlignUpBy3( uint32_t x )
+{
+    return ( ( x + 2 ) / 3 ) * 3;
+}
+
+uint32_t GetPrimitiveFlags( const RgMeshPrimitiveInfo& info )
+{
+    uint32_t f = 0;
+
+    if( info.pEditorInfo )
+    {
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerBase,     0 );
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer1,        1 );
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer2,        2 );
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerLightmap, 3 );
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_MIRROR )
+    {
+        f |= GEOM_INST_FLAG_REFLECT;
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_WATER )
+    {
+        f |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
+        f |= GEOM_INST_FLAG_REFLECT;
+        f |= GEOM_INST_FLAG_REFRACT;
+    }
+
+    return f;
+}
+
 }
 
 void VertexCollector::BeginCollecting( bool isStatic )
@@ -189,14 +220,9 @@ void VertexCollector::BeginCollecting( bool isStatic )
     assert( GetAllGeometryCount() == 0 );
 }
 
-static uint32_t AlignUpBy3( uint32_t x )
-{
-    return ( ( x + 2 ) / 3 ) * 3;
-}
-
-uint32_t VertexCollector::AddGeometry( uint32_t                         frameIndex,
-                                       const RgGeometryUploadInfo&      info,
-                                       std::span< MaterialTextures, 3 > materials )
+uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIndex,
+                                        const RgMeshPrimitiveInfo&       info,
+                                        std::span< MaterialTextures, 4 > materials )
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
     const VertexCollectorFilterTypeFlags      geomFlags =
@@ -273,192 +299,119 @@ uint32_t VertexCollector::AddGeometry( uint32_t                         frameInd
         vertBuffer->GetAddress() + vertIndex * sizeof( ShVertex ) + offsetof( ShVertex, position );
 
     // geometry info
-    VkAccelerationStructureGeometryKHR geom = {};
-    geom.sType                              = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR;
-    geom.geometryType                       = VK_GEOMETRY_TYPE_TRIANGLES_KHR;
-
-    geom.flags = geomFlags & FT::PT_OPAQUE ? VK_GEOMETRY_OPAQUE_BIT_KHR
-                                           : VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR;
-
-    VkAccelerationStructureGeometryTrianglesDataKHR& trData = geom.geometry.triangles;
-    trData.sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR;
-    trData.vertexFormat = VK_FORMAT_R32G32B32_SFLOAT;
-    trData.maxVertex    = info.vertexCount;
-    trData.vertexData.deviceAddress = vertexDataDeviceAddress;
-    trData.vertexStride             = sizeof( ShVertex );
-    trData.transformData.deviceAddress =
-        transformsBuffer->GetAddress() + transformIndex * sizeof( VkTransformMatrixKHR );
-
-    if( useIndices )
+    VkAccelerationStructureGeometryKHR geom = {
+        .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
+        .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
+        .flags = geomFlags & FT::PT_OPAQUE ? VK_GEOMETRY_OPAQUE_BIT_KHR
+                                           : VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR,
+    };
+    
     {
-        const VkDeviceAddress indexDataDeviceAddress =
-            indexBuffer->GetAddress() + indIndex * sizeof( uint32_t );
+        VkAccelerationStructureGeometryTrianglesDataKHR trData = {
+            .sType         = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_TRIANGLES_DATA_KHR,
 
-        trData.indexType               = VK_INDEX_TYPE_UINT32;
-        trData.indexData.deviceAddress = indexDataDeviceAddress;
-    }
-    else
-    {
-        trData.indexType = VK_INDEX_TYPE_NONE_KHR;
-        trData.indexData = {};
+            .vertexFormat  = VK_FORMAT_R32G32B32_SFLOAT,
+            .vertexData    = {
+                .deviceAddress = vertexDataDeviceAddress,
+            },
+            .vertexStride  = sizeof( ShVertex ),
+            .maxVertex     = info.vertexCount,
+
+            .indexType     = VK_INDEX_TYPE_NONE_KHR,
+            .indexData     = {},
+
+            .transformData = {
+                .deviceAddress = transformsBuffer->GetAddress() + transformIndex * sizeof( VkTransformMatrixKHR ),
+            },
+        };
+
+        if( useIndices )
+        {
+            trData.indexType = VK_INDEX_TYPE_UINT32;
+            trData.indexData = {
+                .deviceAddress = indexBuffer->GetAddress() + indIndex * sizeof( uint32_t ),
+            };
+        }
+
+        geom.geometry.triangles = trData;
     }
 
 
     uint32_t localIndex = PushGeometry( geomFlags, geom );
 
 
-    VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {};
-    rangeInfo.primitiveCount                           = primitiveCount;
-    rangeInfo.primitiveOffset                          = 0;
-    rangeInfo.firstVertex                              = 0;
-    rangeInfo.transformOffset                          = 0;
-    PushRangeInfo( geomFlags, rangeInfo );
+    {
+        VkAccelerationStructureBuildRangeInfoKHR rangeInfo = {
+            .primitiveCount  = primitiveCount,
+            .primitiveOffset = 0,
+            .firstVertex     = 0,
+            .transformOffset = 0,
+        };
+        PushRangeInfo( geomFlags, rangeInfo );
+    }
 
 
     PushPrimitiveCount( geomFlags, primitiveCount );
 
 
-    ShGeometryInstance geomInfo = {};
-    geomInfo.baseVertexIndex    = vertIndex;
-    geomInfo.baseIndexIndex     = useIndices ? indIndex : UINT32_MAX;
-    geomInfo.vertexCount        = info.vertexCount;
-    geomInfo.indexCount         = useIndices ? info.indexCount : UINT32_MAX;
-    geomInfo.defaultRoughness   = std::clamp( info.defaultRoughness, 0.0f, 1.0f );
-    geomInfo.defaultMetallicity = std::clamp( info.defaultMetallicity, 0.0f, 1.0f );
-    geomInfo.defaultEmission    = std::clamp( info.defaultEmission, 0.0f, 1.0f );
+    ShGeometryInstance geomInfo = {
+        .model               = RG_MATRIX_TRANSPOSED( info.transform ),
+        .prevModel           = { /* set later */ },
 
-    Matrix::ToMat4Transposed( geomInfo.model, info.transform );
+        .flags               = GetPrimitiveFlags( info ),
 
-    geomInfo.flags = GetMaterialsBlendFlags( info.layerBlendingTypes, MATERIALS_MAX_LAYER_COUNT );
+        .base_textureA       = materials[ 0 ].indices[ 0 ],
+        .base_textureB       = materials[ 0 ].indices[ 1 ],
+        .base_textureC       = materials[ 0 ].indices[ 2 ],
+        .base_color          = info.pEditorInfo ? info.pEditorInfo->pLayerBase->color     : 0xFFFFFFFF,
 
-    if( info.flags & RG_GEOMETRY_UPLOAD_GENERATE_NORMALS_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_GENERATE_NORMALS;
-    }
+        .layer1_texture      = materials[ 1 ].indices[ 0 ],
+        .layer1_color        = info.pEditorInfo ? info.pEditorInfo->pLayer1->color        : 0xFFFFFFFF,
 
-    if( info.flags & RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_GENERATE_NORMALS;
-        geomInfo.flags |= GEOM_INST_FLAG_INVERTED_NORMALS;
-    }
+        .layer2_texture      = materials[ 2 ].indices[ 0 ],
+        .layer2_color        = info.pEditorInfo ? info.pEditorInfo->pLayer2->color        : 0xFFFFFFFF,
 
-    if( info.flags & RG_GEOMETRY_UPLOAD_EXACT_NORMALS_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_EXACT_NORMALS;
-    }
+        .lightmap_texture    = materials[ 3 ].indices[ 0 ],
+        .lightmap_color      = info.pEditorInfo ? info.pEditorInfo->pLayerLightmap->color : 0xFFFFFFFF,
 
-    if( info.flags & RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_NO_MEDIA_CHANGE;
-    }
+        .baseVertexIndex     = vertIndex,
+        .baseIndexIndex      = useIndices ? indIndex : UINT32_MAX,
+        .prevBaseVertexIndex = { /* set later */ },
+        .prevBaseIndexIndex  = { /* set later */ },
+        .vertexCount         = info.vertexCount,
+        .indexCount          = useIndices ? info.indexCount : UINT32_MAX,
 
-    if( info.flags & RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_MULTIPLY_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT;
-    }
-    else if( info.flags & RG_GEOMETRY_UPLOAD_REFL_REFR_ALBEDO_ADD_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD;
-    }
-
-    if( info.flags & RG_GEOMETRY_UPLOAD_IGNORE_REFRACT_AFTER_REFRACT_BIT )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_IGNORE_REFRACT_AFTER;
-    }
-
-    if( geomFlags & FT::CF_STATIC_MOVABLE )
-    {
-        geomInfo.flags |= GEOM_INST_FLAG_IS_MOVABLE;
-    }
-
-    switch( info.passThroughType )
-    {
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_MIRROR:
-            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
-            break;
-
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_PORTAL:
-            if( info.pPortalIndex )
-            {
-                geomInfo.flags |= GEOM_INST_FLAG_PORTAL;
-            }
-            break;
-
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_ONLY_REFLECT:
-            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
-            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
-            break;
-
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_WATER_REFLECT_REFRACT:
-            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
-            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
-            geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
-            break;
-
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_GLASS_REFLECT_REFRACT:
-            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_GLASS;
-            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
-            geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
-            break;
-
-        case RG_GEOMETRY_PASS_THROUGH_TYPE_ACID_REFLECT_REFRACT:
-            geomInfo.flags |= GEOM_INST_FLAG_MEDIA_TYPE_ACID;
-            geomInfo.flags |= GEOM_INST_FLAG_REFLECT;
-            geomInfo.flags |= GEOM_INST_FLAG_REFRACT;
-            break;
-
-        default: break;
-    }
-
-    static_assert( sizeof( RgLayeredMaterial ) / sizeof( RgMaterial ) == MATERIALS_MAX_LAYER_COUNT,
-                   "Layer count mismatch with ShGeometryInstance" );
-    {
-        geomInfo.materials0A = materials[ 0 ].indices[ 0 ];
-        geomInfo.materials0B = materials[ 0 ].indices[ 1 ];
-        geomInfo.materials0C = materials[ 0 ].indices[ 2 ];
-
-        geomInfo.materials1A = materials[ 1 ].indices[ 0 ];
-        geomInfo.materials1B = materials[ 1 ].indices[ 1 ];
-        // no materials1C member
-
-        geomInfo.materials2A = materials[ 2 ].indices[ 0 ];
-        geomInfo.materials2B = materials[ 2 ].indices[ 1 ];
-        // no materials2C member
-    }
-    const std::tuple<uint32_t, RgMaterial, std::array<uint32_t, TEXTURES_PER_MATERIAL_COUNT>> layerDependencies[] =
-    {
-        /* layer index - its material - corresponding texture indices */
-        { 0, info.geomMaterial.layerMaterials[0], { materials[0].indices[0], materials[0].indices[1], materials[0].indices[2] } },
-        { 1, info.geomMaterial.layerMaterials[1], { materials[1].indices[0], materials[1].indices[1], EMPTY_TEXTURE_INDEX     } },
-        { 2, info.geomMaterial.layerMaterials[2], { materials[2].indices[0], materials[2].indices[1], EMPTY_TEXTURE_INDEX     } },
+        .defaultRoughness    = 1.0f,
+        .defaultMetallicity  = 0.0f,
+        .defaultEmission     = 0.0f,
     };
-
-
-    for( uint32_t layer = 0; layer < MATERIALS_MAX_LAYER_COUNT; layer++ )
-    {
-        memcpy( geomInfo.materialColors[ layer ],
-                info.layerColors[ layer ].data,
-                sizeof( info.layerColors[ layer ].data ) );
-    }
-
-
-    geomInfo.portalIndex = info.pPortalIndex ? *info.pPortalIndex : PORTAL_INDEX_NONE;
 
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    uint32_t simpleIndex = geomInfoMgr->WriteGeomInfo( frameIndex, info.uniqueID, localIndex, geomFlags, geomInfo );
+    uint32_t simpleIndex = geomInfoMgr->WriteGeomInfo( frameIndex, info., localIndex, geomFlags, geomInfo );
 
 
-    // add material dependency but only for static geometry,
-    // dynamic is updated each frame, so their materials will be updated anyway
     if( collectStatic )
     {
+        // save transform index for updating static movable's transforms
+        simpleIndexToTransformIndex[ simpleIndex ] = transformIndex;
+
+        /*
+        // add material dependency but only for static geometry,
+        // dynamic is updated each frame, so their materials will be updated anyway
+        const std::tuple<uint32_t, RgMaterial, std::array<uint32_t, TEXTURES_PER_MATERIAL_COUNT>> layerDependencies[] =
+        {
+            // layer index - its material - corresponding texture indices
+            { 0, info.layerMaterials[0], { materials[0].indices[0], materials[0].indices[1], materials[0].indices[2] } },
+            { 1, info.layerMaterials[1], { materials[1].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } },
+            { 2, info.layerMaterials[2], { materials[2].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } },
+            { 3, info.layerMaterials[3], { materials[3].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } },
+        };
         for( const auto& [ layerIndex, materialIndex, textureIndices ] : layerDependencies )
         {
-            // if at least one texture is not empty on this layer, add dependency to the material
-            // layer
+            // if at least one texture is not empty on this layer, add dependency to the material layer
             for( uint32_t textureIndex : textureIndices )
             {
                 if( textureIndex != EMPTY_TEXTURE_INDEX )
@@ -468,30 +421,26 @@ uint32_t VertexCollector::AddGeometry( uint32_t                         frameInd
                 }
             }
         }
-
-        // also, save transform index for updating static movable's transforms
-        simpleIndexToTransformIndex[ simpleIndex ] = transformIndex;
+        */
     }
-
 
     return simpleIndex;
 }
 
-void VertexCollector::CopyDataToStaging(const RgGeometryUploadInfo &info, uint32_t vertIndex)
+void VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex )
 {
     assert( ( vertIndex + info.vertexCount ) * sizeof( ShVertex ) < vertBuffer->GetSize() );
 
     ShVertex* const pDst = &mappedVertexData[ vertIndex ];
 
     // must be same to copy
-    static_assert( std::is_same_v< decltype( info.pVertices ), const RgVertex* > );
-    static_assert( sizeof( ShVertex )                   == sizeof( RgVertex ) );
-    static_assert( offsetof( ShVertex, position )       == offsetof( RgVertex, position ) );
-    static_assert( offsetof( ShVertex, normal )         == offsetof( RgVertex, normal ) );
-    static_assert( offsetof( ShVertex, texCoord )       == offsetof( RgVertex, texCoord ) );
-    static_assert( offsetof( ShVertex, texCoordLayer1 ) == offsetof( RgVertex, texCoordLayer1 ) );
-    static_assert( offsetof( ShVertex, texCoordLayer2 ) == offsetof( RgVertex, texCoordLayer2 ) );
-    static_assert( offsetof( ShVertex, packedColor )    == offsetof( RgVertex, packedColor ) );
+    static_assert( std::is_same_v< decltype( info.pVertices ), const RgPrimitiveVertex* > );
+    static_assert( sizeof( ShVertex ) == sizeof( RgPrimitiveVertex ) );
+    static_assert( offsetof( ShVertex, position ) == offsetof( RgPrimitiveVertex, position ) );
+    static_assert( offsetof( ShVertex, normal ) == offsetof( RgPrimitiveVertex, normal ) );
+    static_assert( offsetof( ShVertex, tangent ) == offsetof( RgPrimitiveVertex, tangent ) );
+    static_assert( offsetof( ShVertex, texCoord ) == offsetof( RgPrimitiveVertex, texCoord ) );
+    static_assert( offsetof( ShVertex, packedColor ) == offsetof( RgPrimitiveVertex, color ) );
 
     memcpy( pDst, info.pVertices, info.vertexCount * sizeof( ShVertex ) );
 }
@@ -732,7 +681,7 @@ bool VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
     return vrtCopied || indCopied || trnCopied;
 }
 
-void VertexCollector::UpdateTransform( uint32_t                     simpleIndex,
+/*void VertexCollector::UpdateTransform( uint32_t                     simpleIndex,
                                        const RgUpdateTransformInfo& updateInfo )
 {
     if( simpleIndex >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
@@ -752,37 +701,14 @@ void VertexCollector::UpdateTransform( uint32_t                     simpleIndex,
 
     geomInfoMgr->WriteStaticGeomInfoTransform(
         simpleIndex, updateInfo.movableStaticUniqueID, updateInfo.transform );
-}
-
-void RTGL1::VertexCollector::UpdateTexCoords( uint32_t                     simpleIndex,
-                                              const RgUpdateTexCoordsInfo& texCoordsInfo,
-                                              bool                         isStatic )
-{
-    assert( isStatic );
-    assert( mappedVertexData != nullptr );
-
-    const uint32_t maxVertexCount = isStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
-
-    // base vertex index is saved in geometry instance info
-    uint32_t globalVertIndex = geomInfoMgr->GetStaticGeomBaseVertexIndex( simpleIndex );
-    uint32_t dstVertIndex    = globalVertIndex + texCoordsInfo.vertexOffset;
-
-    if( dstVertIndex + texCoordsInfo.vertexCount >= maxVertexCount )
-    {
-        assert( 0 );
-        return;
-    }
-
-    // TODO: UpdateTexCoords not implemented
-    assert( 0 );
-}
+}*/
 
 void VertexCollector::AddMaterialDependency( uint32_t simpleIndex,
                                              uint32_t layer,
                                              uint32_t materialIndex )
 {
     // ignore empty materials
-    if( materialIndex != RG_NO_MATERIAL )
+    if( materialIndex != 0 )
     {
         auto it = materialDependencies.find( materialIndex );
 

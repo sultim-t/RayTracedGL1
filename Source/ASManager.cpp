@@ -501,44 +501,6 @@ void ASManager::UpdateBLAS(BLASComponent &blas, const std::shared_ptr<VertexColl
                        fastTrace, update, blas.GetFilter() & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE);
 }
 
-// separate functions to make adding between Begin..Geometry() and Submit..Geometry() a bit clearer
-
-uint32_t ASManager::AddStaticGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info)
-{
-    if (info.geomType == RG_GEOMETRY_TYPE_STATIC || info.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE)
-    {
-        MaterialTextures materials[] =
-        {
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[0]),
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[1]),
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2]),
-        };
-
-        return collectorStatic->AddGeometry(frameIndex, info, materials);
-    }
-
-    assert(0);
-    return UINT32_MAX;
-}
-
-uint32_t ASManager::AddDynamicGeometry(uint32_t frameIndex, const RgGeometryUploadInfo &info)
-{
-    if (info.geomType == RG_GEOMETRY_TYPE_DYNAMIC)
-    {
-        MaterialTextures materials[] =
-        {
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[0]),
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[1]),
-            textureMgr->GetMaterialTextures(info.geomMaterial.layerMaterials[2]),
-        };
-
-        return collectorDynamic[frameIndex]->AddGeometry(frameIndex, info, materials);
-    }
-
-    assert(0);
-    return UINT32_MAX;
-}
-
 void ASManager::ResetStaticGeometry()
 {
     collectorStatic->Reset();
@@ -614,7 +576,7 @@ void ASManager::SubmitStaticGeometry()
     Utils::WaitAndResetFence(device, staticCopyFence);
 }
 
-void ASManager::BeginDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
+void ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     scratchBuffer->Reset();
 
@@ -629,7 +591,35 @@ void ASManager::BeginDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     collectorDynamic[frameIndex]->BeginCollecting(false);
 }
 
-void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
+void ASManager::MeshBegin( VkCommandBuffer cmd, uint32_t frameIndex, const RgMeshBeginInfo* pMesh )
+{
+    
+}
+
+uint32_t ASManager::MeshAddPrimitive( uint32_t                   frameIndex,
+                                      const RgMeshPrimitiveInfo* pPrimitive,
+                                      uint32_t                   primitiveIndex )
+{
+    if( pPrimitive ==nullptr)
+    {
+        return;
+    }
+
+    MaterialTextures materials[] = {
+        textureMgr->GetMaterialTextures( pPrimitive->pTextureName ),
+        {},
+        {},
+    };
+
+    return collectorDynamic[ frameIndex ]->AddPrimitive( frameIndex, *pPrimitive, materials );
+}
+
+void ASManager::MeshSubmit( VkCommandBuffer cmd, uint32_t frameIndex )
+{
+    
+}
+
+void ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -665,15 +655,10 @@ void ASManager::SubmitDynamicGeometry(VkCommandBuffer cmd, uint32_t frameIndex)
     Utils::ASBuildMemoryBarrier(cmd);
 }
 
-void ASManager::UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo)
+/*void ASManager::UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdateTransformInfo &updateInfo)
 {
     collectorStatic->UpdateTransform(simpleIndex, updateInfo);
-}
-
-void RTGL1::ASManager::UpdateStaticTexCoords(uint32_t simpleIndex, const RgUpdateTexCoordsInfo &texCoordsInfo)
-{
-    collectorStatic->UpdateTexCoords(simpleIndex, texCoordsInfo, true);
-}
+}*/
 
 void RTGL1::ASManager::ResubmitStaticTexCoords(VkCommandBuffer cmd)
 {

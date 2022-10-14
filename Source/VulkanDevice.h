@@ -60,7 +60,7 @@
 
 namespace RTGL1
 {
-    
+
 class VulkanDevice
 {
 public:
@@ -69,60 +69,57 @@ public:
 
     VulkanDevice( const VulkanDevice& other )     = delete;
     VulkanDevice( VulkanDevice&& other ) noexcept = delete;
-    VulkanDevice& operator=( const VulkanDevice& other ) = delete;
-    VulkanDevice& operator=( VulkanDevice&& other ) noexcept = delete;
+    VulkanDevice&      operator=( const VulkanDevice& other ) = delete;
+    VulkanDevice&      operator=( VulkanDevice&& other ) noexcept = delete;
+
+    void               UploadMeshPrimitive( const RgMeshInfo*          pMesh,
+                                            const RgMeshPrimitiveInfo* pPrimitive,
+                                            uint32_t                   primitiveIndexInMesh );
+    void               UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pPrimitive,
+                                                const float*               pViewProjection,
+                                                const RgViewport*          pViewport );
+    void               UploadDecal( const RgDecalUploadInfo* pInfo );
+
+    void               UploadDirectionalLight( const RgDirectionalLightUploadInfo* pInfo );
+    void               UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo );
+    void               UploadSpotlight( const RgSpotLightUploadInfo* pInfo );
+    void               UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo );
+
+    void               ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo );
+    void               ProvideOriginalCubemapTexture( const RgCubemapCreateInfo* pInfo );
+    void               MarkOriginalTextureAsDeleted( const char* pTextureName );
+
+    void               StartFrame( const RgStartFrameInfo* pInfo );
+    void               DrawFrame( const RgDrawFrameInfo* pInfo );
 
 
-    void          UploadGeometry( const RgGeometryUploadInfo* pUploadInfo );
-
-    void          UploadRasterizedGeometry( const RgRasterizedGeometryUploadInfo* pUploadInfo,
-                                            const float*                          pViewProjection,
-                                            const RgViewport*                     pViewport );
-
-    void          UploadDecal( const RgDecalUploadInfo* pUploadInfo );
-
-    void          SubmitStaticGeometries();
-    void          StartNewStaticScene();
-
-    void          UploadDirectionalLight( const RgDirectionalLightUploadInfo* pLightInfo );
-    void          UploadSphericalLight( const RgSphericalLightUploadInfo* pLightInfo );
-    void          UploadSpotlight( const RgSpotLightUploadInfo* pLightInfo );
-    void          UploadPolygonalLight( const RgPolygonalLightUploadInfo* pLightInfo );
-
-    void          CreateMaterial( const RgMaterialCreateInfo* pCreateInfo, RgMaterial* pResult );
-    void          UpdateMaterial( const RgMaterialUpdateInfo* pUpdateInfo );
-    void          DestroyMaterial( RgMaterial material );
-
-    void          CreateSkyboxCubemap( const RgCubemapCreateInfo* pCreateInfo, RgCubemap* pResult );
-    void          DestroyCubemap( RgCubemap cubemap );
+    bool               IsSuspended() const;
+    bool               IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique technique ) const;
+    void               ExportAsPNG( const void* pPixels,
+                                    uint32_t    width,
+                                    uint32_t    height,
+                                    const char* pPath ) const;
+    RgPrimitiveVertex* ScratchAllocForVertices( uint32_t count );
+    void               ScratchFree( const RgPrimitiveVertex* pPointer );
 
 
-    void          StartFrame( const RgStartFrameInfo* pStartInfo );
-    void          DrawFrame( const RgDrawFrameInfo* pFrameInfo );
-
-
-    bool          IsSuspended() const;
-    bool          IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique technique ) const;
-    void          ExportAsPNG( const void* pPixels, uint32_t width, uint32_t height, const char* pPath ) const;
-
-
-    void          Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
+    void               Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
 
 private:
-    void                CreateInstance( const RgInstanceCreateInfo& info );
-    void                CreateDevice();
-    void                CreateSyncPrimitives();
-    void                ValidateCreateInfo( const RgInstanceCreateInfo* pInfo ) const;
+    void            CreateInstance( const RgInstanceCreateInfo& info );
+    void            CreateDevice();
+    void            CreateSyncPrimitives();
+    void            ValidateCreateInfo( const RgInstanceCreateInfo* pInfo ) const;
 
-    void                DestroyInstance();
-    void                DestroyDevice();
-    void                DestroySyncPrimitives();
+    void            DestroyInstance();
+    void            DestroyDevice();
+    void            DestroySyncPrimitives();
 
-    void                FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
+    void            FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
 
-    VkCommandBuffer     BeginFrame( const RgStartFrameInfo& startInfo );
-    void                Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
-    void                EndFrame( VkCommandBuffer cmd );
+    VkCommandBuffer BeginFrame( const RgStartFrameInfo& startInfo );
+    void            Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
+    void            EndFrame( VkCommandBuffer cmd );
 
 private:
     VkInstance                              instance;

@@ -21,15 +21,18 @@
 #include "VulkanDevice.h"
 #include "RgException.h"
 
-constexpr uint32_t                                                       MAX_DEVICE_COUNT = 8;
-static rgl::unordered_map< RgInstance, std::unique_ptr< RTGL1::VulkanDevice > > G_DEVICES;
+namespace
+{
+constexpr uint32_t MAX_DEVICE_COUNT = 8;
 
-static RgInstance                                                        GetNextID()
+rgl::unordered_map< RgInstance, std::unique_ptr< RTGL1::VulkanDevice > > G_DEVICES;
+
+RgInstance GetNextID()
 {
     return reinterpret_cast< RgInstance >( G_DEVICES.size() + 1024 );
 }
 
-static RTGL1::VulkanDevice& GetDevice( RgInstance rgInstance )
+RTGL1::VulkanDevice& GetDevice( RgInstance rgInstance )
 {
     auto it = G_DEVICES.find( rgInstance );
 
@@ -41,14 +44,15 @@ static RTGL1::VulkanDevice& GetDevice( RgInstance rgInstance )
     return *( it->second );
 }
 
-static void TryPrintError( RgInstance rgInstance, const char* pMessage )
+void TryPrintError( RgInstance rgInstance, const char* pMessage, RgMessageSeverityFlags severity )
 {
     auto it = G_DEVICES.find( rgInstance );
 
     if( it != G_DEVICES.end() )
     {
-        it->second->Print( pMessage );
+        it->second->Print( pMessage, severity );
     }
+}
 }
 
 
@@ -99,7 +103,7 @@ RgResult rgDestroyInstance( RgInstance rgInstance )
     }
     catch( RTGL1::RgException& e )
     {
-        TryPrintError( rgInstance, e.what() );
+        TryPrintError( rgInstance, e.what(), RG_MESSAGE_SEVERITY_ERROR );
         return e.GetErrorCode();
     }
     return RG_RESULT_SUCCESS;
@@ -121,7 +125,7 @@ requires( std::is_same_v< std::invoke_result_t< Func, RTGL1::VulkanDevice, Args.
     }
     catch( RTGL1::RgException& e )
     {
-        TryPrintError( rgInstance, e.what() );
+        TryPrintError( rgInstance, e.what(), RG_MESSAGE_SEVERITY_ERROR );
         return e.GetErrorCode();
     }
     return RG_RESULT_SUCCESS;
@@ -154,79 +158,74 @@ static auto Call( RgInstance rgInstance, Func f, Args&&... args )
 
 
 
-RgResult rgMeshBegin( RgInstance instance, const RgMeshBeginInfo* pMesh )
+RgResult rgUploadMeshPrimitive( RgInstance instance, const RgMeshInfo* pMesh, const RgMeshPrimitiveInfo* pPrimitive, uint32_t primitiveIndexInMesh )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
-}
-
-RgResult rgMeshAddPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, uint32_t primitiveIndex )
-{
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
-}
-
-RgResult rgMeshSubmit( RgInstance instance )
-{
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadMeshPrimitive, pMesh, pPrimitive, primitiveIndexInMesh );
 }
 
 RgResult rgUploadNonWorldPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, const float* pViewProjection, const RgViewport* pViewport )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadNonWorldPrimitive, pPrimitive, pViewProjection, pViewport );
 }
 
 RgResult rgUploadDecal( RgInstance instance, const RgDecalUploadInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadDecal, pInfo );
 }
 
 RgResult rgUploadDirectionalLight( RgInstance instance, const RgDirectionalLightUploadInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadDirectionalLight, pInfo );
 }
 
 RgResult rgUploadSphericalLight( RgInstance instance, const RgSphericalLightUploadInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadSphericalLight, pInfo );
 }
 
 RgResult rgUploadSpotLight( RgInstance instance, const RgSpotLightUploadInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadSpotlight, pInfo );
 }
 
 RgResult rgUploadPolygonalLight( RgInstance instance, const RgPolygonalLightUploadInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::UploadPolygonalLight, pInfo );
 }
 
 RgResult rgProvideOriginalTexture( RgInstance instance, const RgOriginalTextureInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::ProvideOriginalTexture, pInfo );
 }
 
-RgResult rgProvideOriginalCubemap( RgInstance instance, const RgCubemapCreateInfo* pInfo )
+RgResult rgProvideOriginalCubemapTexture( RgInstance instance, const RgCubemapCreateInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::ProvideOriginalCubemapTexture, pInfo );
+}
+
+RgResult rgMarkOriginalTextureAsDeleted( RgInstance instance, const char* pTextureName )
+{
+    return Call( instance, &RTGL1::VulkanDevice::MarkOriginalTextureAsDeleted, pTextureName );
 }
 
 RgResult rgStartFrame( RgInstance instance, const RgStartFrameInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::StartFrame, pInfo );
 }
 
 RgResult rgDrawFrame( RgInstance instance, const RgDrawFrameInfo* pInfo )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::DrawFrame, pInfo );
 }
 
 RgPrimitiveVertex* rgUtilScratchAllocForVertices( RgInstance instance, uint32_t count )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    return Call( instance, &RTGL1::VulkanDevice::ScratchAllocForVertices, count );
 }
 
 void rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer )
 {
-    return Call( instance, &RTGL1::VulkanDevice::, pInfo );
+    Call( instance, &RTGL1::VulkanDevice::ScratchFree, pPointer );
 }
 
 RgBool32 rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique )

@@ -732,9 +732,9 @@ void TextureManager::AddToBeDestroyed(uint32_t frameIndex, const Texture &textur
     texturesToDestroy[frameIndex].push_back(texture);
 }
 
-MaterialTextures TextureManager::GetMaterialTextures(uint32_t materialIndex) const
+MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName ) const
 {
-    if (materialIndex == RG_NO_MATERIAL)
+    if( pTextureName == nullptr )
     {
         return EmptyMaterialTextures;
     }

@@ -55,6 +55,12 @@ public:
     CubemapManager &operator=(const CubemapManager &other) = delete;
     CubemapManager &operator=(CubemapManager &&other) noexcept = delete;
 
+
+    uint32_t TryGetTextureIndex( const char* pTextureName );
+    bool TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
+
+
+
     uint32_t CreateCubemap(VkCommandBuffer cmd, uint32_t frameIndex, const RgCubemapCreateInfo &info);
     void DestroyCubemap(uint32_t frameIndex, uint32_t cubemapIndex);
 

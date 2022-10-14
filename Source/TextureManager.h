@@ -62,15 +62,20 @@ public:
                            const RgDrawFrameTexturesParams *pTexturesParams,
                            bool forceUpdateAllDescriptors = false); // true, if mip lod bias was changed, for example
 
+
+    bool TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
+
+
+
+
     uint32_t CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgMaterialCreateInfo &createInfo);
     uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
     bool ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
     bool UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo);
     void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
-
     void CheckForHotReload(VkCommandBuffer cmd);
 
-    MaterialTextures GetMaterialTextures(uint32_t materialIndex) const;
+    MaterialTextures GetMaterialTextures(const char *pTextureName) const;
 
     static constexpr uint32_t GetEmptyTextureIndex();
     uint32_t GetWaterNormalTextureIndex() const;

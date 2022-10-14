@@ -480,10 +480,10 @@ def evalConst():
 VERTEX_STRUCT = [
     (TYPE_FLOAT32,      4,     "position",              1),
     (TYPE_FLOAT32,      4,     "normal",                1),
+    (TYPE_FLOAT32,      4,     "tangent",               1),
     (TYPE_FLOAT32,      2,     "texCoord",              1),
-    (TYPE_FLOAT32,      2,     "texCoordLayer1",        1),
-    (TYPE_FLOAT32,      2,     "texCoordLayer2",        1),
     (TYPE_UINT32,       1,     "packedColor",           1),
+    (TYPE_UINT32,       1,     "_padding",              1),
 ]
 
 # Must be careful with std140 offsets! They are set manually.
@@ -616,27 +616,46 @@ GLOBAL_UNIFORM_STRUCT = [
 GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,     44,      "model",                1),
     (TYPE_FLOAT32,     44,      "prevModel",            1),
-    (TYPE_FLOAT32,      4,      "materialColors",       3),
-    (TYPE_UINT32,       1,      "materials0A",          1),
-    (TYPE_UINT32,       1,      "materials0B",          1),
-    (TYPE_UINT32,       1,      "materials0C",          1),
-    (TYPE_UINT32,       1,      "materials1A",          1),
-    (TYPE_UINT32,       1,      "materials1B",          1), # not used
-    (TYPE_UINT32,       1,      "portalIndex",          1),
-    (TYPE_UINT32,       1,      "materials2A",          1),
-    (TYPE_UINT32,       1,      "materials2B",          1), # not used
-    (TYPE_UINT32,       1,      "_unused0",             1), 
+
     (TYPE_UINT32,       1,      "flags",                1),
+
+    (TYPE_UINT32,       1,      "base_textureA",        1),
+    (TYPE_UINT32,       1,      "base_textureB",        1),
+    (TYPE_UINT32,       1,      "base_textureC",        1),
+    (TYPE_UINT32,       1,      "base_color",           1),
+
+    (TYPE_UINT32,       1,      "layer1_texture",       1),
+    (TYPE_UINT32,       1,      "layer1_color",         1),
+    (TYPE_UINT32,       1,      "layer2_texture",       1),
+    (TYPE_UINT32,       1,      "layer2_color",         1),
+    (TYPE_UINT32,       1,      "lightmap_texture",     1),
+    (TYPE_UINT32,       1,      "lightmap_color",       1),
+    
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
     (TYPE_UINT32,       1,      "prevBaseVertexIndex",  1),
     (TYPE_UINT32,       1,      "prevBaseIndexIndex",   1),
     (TYPE_UINT32,       1,      "vertexCount",          1),
     (TYPE_UINT32,       1,      "indexCount",           1),
+
     (TYPE_FLOAT32,      1,      "defaultRoughness",     1),
     (TYPE_FLOAT32,      1,      "defaultMetallicity",   1),
     (TYPE_FLOAT32,      1,      "defaultEmission",      1),
-    (TYPE_UINT32,       1,      "_unused1",   1),
+    (TYPE_UINT32,       1,      "_unused0",             1),
+    
+    (TYPE_UINT32,       1,      "_unused1",             1),
+    (TYPE_UINT32,       1,      "_unused2",             1),
+    (TYPE_UINT32,       1,      "_unused3",             1),
+
+    (TYPE_UINT32,       1,      "_unused4",             1),
+    (TYPE_UINT32,       1,      "_unused5",             1),
+    (TYPE_UINT32,       1,      "_unused6",             1),
+    (TYPE_UINT32,       1,      "_unused7",             1),
+
+    (TYPE_UINT32,       1,      "_unused8",             1),
+    (TYPE_UINT32,       1,      "_unused9",             1),
+    (TYPE_UINT32,       1,      "_unused10",             1),
+    (TYPE_UINT32,       1,      "_unused11",             1),
 ]
 
 # TODO: make more compact

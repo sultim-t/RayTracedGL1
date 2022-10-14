@@ -22,6 +22,14 @@
 
 #include "RTGL1/RTGL1.h"
 
+#define RG_MATRIX_TRANSPOSED( /* RgTransform */ m )                                   \
+    {                                                                                 \
+        ( m ).matrix[ 0 ][ 0 ], ( m ).matrix[ 1 ][ 0 ], ( m ).matrix[ 2 ][ 0 ], 0.0f, \
+        ( m ).matrix[ 0 ][ 1 ], ( m ).matrix[ 1 ][ 1 ], ( m ).matrix[ 2 ][ 1 ], 0.0f, \
+        ( m ).matrix[ 0 ][ 2 ], ( m ).matrix[ 1 ][ 2 ], ( m ).matrix[ 2 ][ 2 ], 0.0f, \
+        ( m ).matrix[ 0 ][ 3 ], ( m ).matrix[ 1 ][ 3 ], ( m ).matrix[ 2 ][ 3 ], 1.0f, \
+    }
+
 namespace RTGL1
 {
     namespace Matrix

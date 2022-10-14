@@ -190,11 +190,10 @@ struct ShVertex
 {
     float position[4];
     float normal[4];
+    float tangent[4];
     float texCoord[2];
-    float texCoordLayer1[2];
-    float texCoordLayer2[2];
     uint32_t packedColor;
-    uint32_t __pad0;
+    uint32_t _padding;
 };
 
 struct ShGlobalUniform
@@ -297,17 +296,17 @@ struct ShGeometryInstance
 {
     float model[16];
     float prevModel[16];
-    float materialColors[3][4];
-    uint32_t materials0A;
-    uint32_t materials0B;
-    uint32_t materials0C;
-    uint32_t materials1A;
-    uint32_t materials1B;
-    uint32_t portalIndex;
-    uint32_t materials2A;
-    uint32_t materials2B;
-    uint32_t _unused0;
     uint32_t flags;
+    uint32_t base_textureA;
+    uint32_t base_textureB;
+    uint32_t base_textureC;
+    uint32_t base_color;
+    uint32_t layer1_texture;
+    uint32_t layer1_color;
+    uint32_t layer2_texture;
+    uint32_t layer2_color;
+    uint32_t lightmap_texture;
+    uint32_t lightmap_color;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t prevBaseVertexIndex;
@@ -317,7 +316,18 @@ struct ShGeometryInstance
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
+    uint32_t _unused0;
     uint32_t _unused1;
+    uint32_t _unused2;
+    uint32_t _unused3;
+    uint32_t _unused4;
+    uint32_t _unused5;
+    uint32_t _unused6;
+    uint32_t _unused7;
+    uint32_t _unused8;
+    uint32_t _unused9;
+    uint32_t _unused10;
+    uint32_t _unused11;
 };
 
 struct ShTonemapping

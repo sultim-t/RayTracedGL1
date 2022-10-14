@@ -369,6 +369,8 @@ typedef struct RgEditorInfo
     // If not null, then the primitive defines a portal.
     const RgEditorPortalInfo*       pPortal;
     // Texture layer parameters. Layers can be made visible only through the Editor.
+    // Only 'blend' and 'color' are used from 'pLayerBase', as its info is provided by RgMeshPrimitiveInfo.
+    const RgEditorTextureLayerInfo* pLayerBase;
     const RgEditorTextureLayerInfo* pLayer1;
     const RgEditorTextureLayerInfo* pLayer2;
     const RgEditorTextureLayerInfo* pLayerLightmap;
@@ -396,7 +398,7 @@ typedef struct RgMeshPrimitiveInfo
 } RgMeshPrimitiveInfo;
 
 // Mesh is a set of primitives.
-typedef struct RgMeshBeginInfo
+typedef struct RgMeshInfo
 {
     // Object is an instance of a mesh.
     uint64_t                        uniqueObjectID;
@@ -406,13 +408,17 @@ typedef struct RgMeshBeginInfo
     bool                            isStatic;
     const char*                     animationName;
     float                           animationTime;
-} RgMeshBeginInfo;
+} RgMeshInfo;
 
-RGAPI RgResult RGCONV rgMeshBegin( RgInstance instance, const RgMeshBeginInfo* pMesh );
-RGAPI RgResult RGCONV rgMeshAddPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, uint32_t primitiveIndex );
-RGAPI RgResult RGCONV rgMeshSubmit( RgInstance instance );
+RGAPI RgResult RGCONV rgUploadMeshPrimitive( RgInstance                 instance,
+                                             const RgMeshInfo*          pMesh,
+                                             const RgMeshPrimitiveInfo* pPrimitive,
+                                             uint32_t                   primitiveIndexInMesh );
 
-RGAPI RgResult RGCONV rgUploadNonWorldPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, const float* pViewProjection, const RgViewport* pViewport );
+RGAPI RgResult RGCONV rgUploadNonWorldPrimitive( RgInstance                 instance,
+                                                 const RgMeshPrimitiveInfo* pPrimitive,
+                                                 const float*               pViewProjection,
+                                                 const RgViewport*          pViewport );
 
 
 
@@ -514,7 +520,8 @@ typedef struct RgCubemapCreateInfo
 } RgCubemapCreateInfo;
 
 RGAPI RgResult RGCONV rgProvideOriginalTexture( RgInstance instance, const RgOriginalTextureInfo* pInfo );
-RGAPI RgResult RGCONV rgProvideOriginalCubemap( RgInstance instance, const RgCubemapCreateInfo* pInfo );
+RGAPI RgResult RGCONV rgProvideOriginalCubemapTexture( RgInstance instance, const RgCubemapCreateInfo* pInfo );
+RGAPI RgResult RGCONV rgMarkOriginalTextureAsDeleted( RgInstance instance, const char* pTextureName );
 
 
 

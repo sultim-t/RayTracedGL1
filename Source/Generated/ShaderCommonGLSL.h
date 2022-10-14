@@ -185,11 +185,10 @@ struct ShVertex
 {
     vec4 position;
     vec4 normal;
+    vec4 tangent;
     vec2 texCoord;
-    vec2 texCoordLayer1;
-    vec2 texCoordLayer2;
     uint packedColor;
-    uint __pad0;
+    uint _padding;
 };
 
 struct ShGlobalUniform
@@ -292,17 +291,17 @@ struct ShGeometryInstance
 {
     mat4 model;
     mat4 prevModel;
-    vec4 materialColors[3];
-    uint materials0A;
-    uint materials0B;
-    uint materials0C;
-    uint materials1A;
-    uint materials1B;
-    uint portalIndex;
-    uint materials2A;
-    uint materials2B;
-    uint _unused0;
     uint flags;
+    uint base_textureA;
+    uint base_textureB;
+    uint base_textureC;
+    uint base_color;
+    uint layer1_texture;
+    uint layer1_color;
+    uint layer2_texture;
+    uint layer2_color;
+    uint lightmap_texture;
+    uint lightmap_color;
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint prevBaseVertexIndex;
@@ -312,7 +311,18 @@ struct ShGeometryInstance
     float defaultRoughness;
     float defaultMetallicity;
     float defaultEmission;
+    uint _unused0;
     uint _unused1;
+    uint _unused2;
+    uint _unused3;
+    uint _unused4;
+    uint _unused5;
+    uint _unused6;
+    uint _unused7;
+    uint _unused8;
+    uint _unused9;
+    uint _unused10;
+    uint _unused11;
 };
 
 struct ShTonemapping
