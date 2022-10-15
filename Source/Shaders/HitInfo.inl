@@ -23,11 +23,11 @@
 #ifdef DESC_SET_TEXTURES
 
 #if defined(HITINFO_INL_PRIM)
-vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const vec2 dPdx[3], const vec2 dPdy[3])
+vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 layerTextures[4], const uvec4 layerColors, const vec2 dPdx[3], const vec2 dPdy[3])
 #elif defined(HITINFO_INL_RFL)
-vec3 processAlbedoRayConeDeriv(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], const DerivativeSet derivSet)
+vec3 processAlbedoRayConeDeriv(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 layerTextures[4], const  uvec4 layerColors, const DerivativeSet derivSet)
 #elif defined(HITINFO_INL_INDIR)
-vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 materials[3], const vec4 materialColors[3], float lod)
+vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 layerTextures[4], const uvec4 layerColors, float lod)
 #endif
 {
     const uint blendsFlags[] = 
@@ -50,15 +50,15 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
             }
         }
 
-        if (materials[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+        if (layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
         {
-            const vec4 src = materialColors[i] *
+            const vec4 src = unpackUintColor( layerColors[i] ) *
         #if defined(HITINFO_INL_PRIM)
-                getTextureSampleGrad(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
+                getTextureSampleGrad(layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
         #elif defined(HITINFO_INL_RFL)
-                getTextureSampleDerivSet(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], derivSet, i);
+                getTextureSampleDerivSet(layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], derivSet, i);
         #elif defined(HITINFO_INL_INDIR)
-                getTextureSampleLod(materials[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
+                getTextureSampleLod(layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
         #endif
 
             bool opq = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0;
@@ -66,7 +66,7 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
             bool add = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD)    != 0;
             bool shd = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)  != 0;
 
-            // simple fix for materials that have alpha-tested blending for the first layer
+            // simple fix for layerTextures that have alpha-tested blending for the first layer
             // (just makes "opq" instead of "alp" for that partuicular case);
             // without this fix, alpha-tested geometry will have white color around borders 
             opq = opq || (alp && i == 0);
@@ -81,8 +81,8 @@ vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uv
         }
     }
 
-    // if no albedo textures, use primary color 
-    dst = mix(materialColors[0].rgb, dst, float(hasAnyAlbedoTexture));
+    // if no albedo textures, use primary color
+    dst = mix( unpackUintColor( layerColors[ 0 ] ).rgb, dst, float( hasAnyAlbedoTexture ) );
 
     return clamp(dst, vec3(0), vec3(1));
 }
@@ -109,7 +109,7 @@ vec3 getHitInfoAlbedoOnly(ShPayload pl)
         tr.layerTexCoord[2] * baryCoords
     };
     
-    return processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, 0);
+    return processAlbedo(tr.geometryInstanceFlags, texCoords, tr.layerTextures, tr.layerColors, 0);
 }
 #endif // HITINFO_INL_INDIR
 
@@ -312,20 +312,22 @@ ShHitInfo getHitInfoBounce(
         (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2])
     };
 
-    h.albedo = processAlbedoGrad(
-        tr.geometryInstanceFlags, texCoords,
-            tr.materials, tr.materialColors, 
-            dTdx, dTdy);
+    h.albedo = processAlbedoGrad( tr.geometryInstanceFlags, 
+                                  texCoords,
+                                  tr.layerTextures, 
+                                  tr.layerColors, 
+                                  dTdx, dTdy );
 #endif // HITINFO_INL_PRIM 
 
 
 #if defined(HITINFO_INL_RFL)
     DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
 
-    h.albedo = processAlbedoRayConeDeriv(
-        tr.geometryInstanceFlags, texCoords, 
-        tr.materials, tr.materialColors, 
-        derivSet);
+    h.albedo = processAlbedoRayConeDeriv( tr.geometryInstanceFlags,
+                                          texCoords,
+                                          tr.layerTextures,
+                                          tr.layerColors,
+                                          derivSet );
 #endif // HITINFO_INL_RFL
 
 
@@ -335,19 +337,19 @@ ShHitInfo getHitInfoBounce(
 
     const float lod = getBounceLOD(originRoughness, viewDist, hitDistance, globalUniform.renderWidth, bounceMipBias);
 
-    h.albedo = processAlbedo(tr.geometryInstanceFlags, texCoords, tr.materials, tr.materialColors, lod);
+    h.albedo = processAlbedo(tr.geometryInstanceFlags, texCoords, tr.layerTextures, tr.layerColors, lod);
 #endif // HITINFO_INL_INDIR
 
 
-    if (tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
+    if (tr.layerTextures[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX] != MATERIAL_NO_TEXTURE)
     {
         const vec3 rme = 
     #if defined(HITINFO_INL_PRIM)
-            getTextureSampleGrad(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
+            getTextureSampleGrad(tr.layerTextures[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], dTdx[0], dTdy[0]).xyz;
     #elif defined(HITINFO_INL_RFL)
-            getTextureSampleDerivSet(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], derivSet, 0).xyz;
+            getTextureSampleDerivSet(tr.layerTextures[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], derivSet, 0).xyz;
     #elif defined(HITINFO_INL_INDIR)
-            getTextureSampleLod(tr.materials[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
+            getTextureSampleLod(tr.layerTextures[0][MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], texCoords[0], lod).xyz;
     #endif
 
         h.roughness = rme[ 0 ];
@@ -372,16 +374,16 @@ ShHitInfo getHitInfoBounce(
 
 
 #if !defined(HITINFO_INL_INDIR)
-    if (tr.materials[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
+    if (tr.layerTextures[0][MATERIAL_NORMAL_INDEX] != MATERIAL_NO_TEXTURE)
     {
         // less details in normal maps for better denoising
         const float suppressDetails = 5.0;
 
         vec2 nrm = 
     #if defined(HITINFO_INL_PRIM)
-            getTextureSampleGrad(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0] * suppressDetails, dTdy[0] * suppressDetails)
+            getTextureSampleGrad(tr.layerTextures[0][MATERIAL_NORMAL_INDEX], texCoords[0], dTdx[0] * suppressDetails, dTdy[0] * suppressDetails)
     #elif defined(HITINFO_INL_RFL)
-            getTextureSampleDerivSet(tr.materials[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0)
+            getTextureSampleDerivSet(tr.layerTextures[0][MATERIAL_NORMAL_INDEX], texCoords[0], derivSet, 0)
     #endif
             .xy;
         nrm.xy = nrm.xy * 2.0 - vec2(1.0);
@@ -400,9 +402,9 @@ ShHitInfo getHitInfoBounce(
     if (globalUniform.lightmapEnable != 0)
     {
         h.albedo *= (
-            unpackLittleEndianUintColor(tr.vertexColors[0]).rgb * baryCoords[0] +
-            unpackLittleEndianUintColor(tr.vertexColors[1]).rgb * baryCoords[1] +
-            unpackLittleEndianUintColor(tr.vertexColors[2]).rgb * baryCoords[2] 
+            unpackUintColor(tr.vertexColors[0]).rgb * baryCoords[0] +
+            unpackUintColor(tr.vertexColors[1]).rgb * baryCoords[1] +
+            unpackUintColor(tr.vertexColors[2]).rgb * baryCoords[2] 
         );
     }
 

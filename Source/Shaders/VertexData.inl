@@ -234,19 +234,23 @@ ShTriangle makeTriangle(const ShVertex a, const ShVertex b, const ShVertex c)
     tr.layerTexCoord[0][1] = b.texCoord;
     tr.layerTexCoord[0][2] = c.texCoord;
 
-    tr.layerTexCoord[1][0] = a.texCoordLayer1;
-    tr.layerTexCoord[1][1] = b.texCoordLayer1;
-    tr.layerTexCoord[1][2] = c.texCoordLayer1;
+    tr.layerTexCoord[1][0] = vec2( 0, 0 );
+    tr.layerTexCoord[1][1] = vec2( 0, 0 );
+    tr.layerTexCoord[1][2] = vec2( 0, 0 );
 
-    tr.layerTexCoord[2][0] = a.texCoordLayer2;
-    tr.layerTexCoord[2][1] = b.texCoordLayer2;
-    tr.layerTexCoord[2][2] = c.texCoordLayer2;
+    tr.layerTexCoord[2][0] = vec2( 0, 0 );
+    tr.layerTexCoord[2][1] = vec2( 0, 0 );
+    tr.layerTexCoord[2][2] = vec2( 0, 0 );
+
+    tr.layerTexCoord[3][0] = vec2( 0, 0 );
+    tr.layerTexCoord[3][1] = vec2( 0, 0 );
+    tr.layerTexCoord[3][2] = vec2( 0, 0 );
 
     if (globalUniform.lightmapEnable != 0)
     {
-        tr.vertexColors[0] = a.packedColor;
-        tr.vertexColors[1] = b.packedColor;
-        tr.vertexColors[2] = c.packedColor;
+        tr.vertexColors[0] = a.color;
+        tr.vertexColors[1] = b.color;
+        tr.vertexColors[2] = c.color;
     }
 
     // get very coarse normal for triangle to determine bitangent's handedness
@@ -272,17 +276,6 @@ bool getCurrentGeometryIndexByPrev(int prevInstanceID, int prevLocalGeometryInde
     // UINT32_MAX -- no prev to cur exist
     return curFrameGlobalGeomIndex != UINT32_MAX;
 }
-
-/*#define GEOMETRY_INSTANCE_TEXTURE_SET_SIZE 3
-
-uvec3 getGeometryInstanceMaterialLayer(const ShGeometryInstance inst, int layer)
-{
-    return uvec3(
-        inst.materials[layer * GEOMETRY_INSTANCE_TEXTURE_SET_SIZE + MATERIAL_ALBEDO_ALPHA_INDEX], 
-        inst.materials[layer * GEOMETRY_INSTANCE_TEXTURE_SET_SIZE + MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX], 
-        inst.materials[layer * GEOMETRY_INSTANCE_TEXTURE_SET_SIZE + MATERIAL_NORMAL_INDEX]
-    );
-}*/
 
 // localGeometryIndex is index of geometry in pGeometries in BLAS
 // primitiveId is index of a triangle
@@ -382,15 +375,17 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     }
 
 
-    tr.materials[0] = uvec3(inst.materials0A, inst.materials0B, inst.materials0C);
-    tr.materials[1] = uvec3(inst.materials1A, inst.materials1B, MATERIAL_NO_TEXTURE);
-    tr.materials[2] = uvec3(inst.materials2A, inst.materials2B, MATERIAL_NO_TEXTURE);
+    tr.layerTextures[ 0 ] = uvec3( inst.base_textureA,    inst.base_textureB,  inst.base_textureC  );
+    tr.layerTextures[ 1 ] = uvec3( inst.layer1_texture,   MATERIAL_NO_TEXTURE, MATERIAL_NO_TEXTURE );
+    tr.layerTextures[ 2 ] = uvec3( inst.layer2_texture,   MATERIAL_NO_TEXTURE, MATERIAL_NO_TEXTURE );
+    tr.layerTextures[ 2 ] = uvec3( inst.lightmap_texture, MATERIAL_NO_TEXTURE, MATERIAL_NO_TEXTURE );
 
-    tr.materialColors[0] = inst.materialColors[0];
-    tr.materialColors[1] = inst.materialColors[1];
-    tr.materialColors[2] = inst.materialColors[2];
-        
-    
+    tr.layerColors[ 0 ] = inst.base_color;
+    tr.layerColors[ 1 ] = inst.layer1_color;
+    tr.layerColors[ 2 ] = inst.layer2_color;
+    tr.layerColors[ 2 ] = inst.lightmap_color;
+
+
     const mat3 model3 = mat3(inst.model);
 
     // to world space
@@ -408,7 +403,7 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     // use (first layer's color) * defaultEmission
     tr.geomEmission = inst.defaultEmission;
 
-    tr.portalIndex = inst.portalIndex;
+    tr.portalIndex = 0;
 
     return tr;
 }

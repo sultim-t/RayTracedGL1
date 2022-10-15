@@ -482,7 +482,7 @@ VERTEX_STRUCT = [
     (TYPE_FLOAT32,      4,     "normal",                1),
     (TYPE_FLOAT32,      4,     "tangent",               1),
     (TYPE_FLOAT32,      2,     "texCoord",              1),
-    (TYPE_UINT32,       1,     "packedColor",           1),
+    (TYPE_UINT32,       1,     "color",                 1),
     (TYPE_UINT32,       1,     "_padding",              1),
 ]
 

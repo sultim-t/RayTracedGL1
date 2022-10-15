@@ -187,7 +187,7 @@ struct ShVertex
     vec4 normal;
     vec4 tangent;
     vec2 texCoord;
-    uint packedColor;
+    uint color;
     uint _padding;
 };
 

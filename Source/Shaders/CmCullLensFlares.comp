@@ -20,6 +20,8 @@
 
 #version 460
 
+#if 0
+
 #define DESC_SET_GLOBAL_UNIFORM 0
 #define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_LENS_FLARES 2
@@ -96,3 +98,7 @@ void main()
         lensFlareDrawCmds[lensFlareDrawCmdIndex] = l;
     }
 }
+
+#else
+void main() {}
+#endif

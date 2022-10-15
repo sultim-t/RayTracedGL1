@@ -20,6 +20,8 @@
 
 #version 460
 
+#if 0
+
 layout (location = 0) in vec4 vertColor;
 layout (location = 1) in vec2 vertTexCoord;
 layout (location = 2) flat in uint textureIndex;
@@ -47,3 +49,7 @@ void main()
         }
     }
 }
+
+#else
+void main() {}
+#endif

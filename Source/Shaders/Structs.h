@@ -26,9 +26,9 @@ struct ShTriangle
     mat3    positions;
     mat3    prevPositions;
     mat3    normals;
-    mat3x2  layerTexCoord[3];
-    vec4    materialColors[3];
-    uvec3   materials[3];
+    mat3x2  layerTexCoord[4];
+    uvec3   layerTextures[4];
+    uvec4   layerColors;
     uint    vertexColors[3];
     uint    geometryInstanceFlags;
     vec4    tangent;

@@ -192,7 +192,7 @@ struct ShVertex
     float normal[4];
     float tangent[4];
     float texCoord[2];
-    uint32_t packedColor;
+    uint32_t color;
     uint32_t _padding;
 };
 
