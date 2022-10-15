@@ -83,7 +83,7 @@ typedef enum RgResult
     RG_RESULT_SUCCESS_FOUND_TEXTURE,
     RG_RESULT_WRONG_INSTANCE,
     RG_RESULT_GRAPHICS_API_ERROR,
-    RG_RESULT_NO_SUPPORTED_PHYSICAL_DEVICE,
+    RG_RESULT_CANT_FIND_SUPPORTED_PHYSICAL_DEVICE,
     RG_RESULT_FRAME_WASNT_STARTED,
     RG_RESULT_FRAME_WASNT_ENDED,
     RG_RESULT_WRONG_FUNCTION_CALL,
@@ -397,8 +397,6 @@ typedef struct RgMeshPrimitiveInfo
     // Additional info for the Editor. Can be null.
     const RgEditorInfo*             pEditorInfo;
 } RgMeshPrimitiveInfo;
-
-    int a = sizeof( RgMeshPrimitiveInfo );
 
 // Mesh is a set of primitives.
 typedef struct RgMeshInfo

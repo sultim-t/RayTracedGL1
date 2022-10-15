@@ -50,12 +50,4 @@ struct Material
 };
 
 
-struct AnimatedMaterial
-{
-    // Indices of static materials.
-    std::vector<uint32_t>   materialIndices;
-    uint32_t                currentFrame = 0;
-};
-
-
 }

@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -36,49 +36,52 @@ class RenderResolutionHelper;
 class Bloom final : public IShaderDependency
 {
 public:
-    Bloom(
-        VkDevice device,
-        std::shared_ptr<Framebuffers> framebuffers,
-        const std::shared_ptr<const ShaderManager> &shaderManager,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping);
+    Bloom( VkDevice                                      device,
+           std::shared_ptr< Framebuffers >               framebuffers,
+           const std::shared_ptr< const ShaderManager >& shaderManager,
+           const std::shared_ptr< const GlobalUniform >& uniform,
+           const std::shared_ptr< const Tonemapping >&   tonemapping );
     ~Bloom() override;
 
-    Bloom(const Bloom &other) = delete;
-    Bloom(Bloom &&other) noexcept = delete;
-    Bloom &operator=(const Bloom &other) = delete;
-    Bloom &operator=(Bloom &&other) noexcept = delete;
+    Bloom( const Bloom& other )     = delete;
+    Bloom( Bloom&& other ) noexcept = delete;
+    Bloom&                operator=( const Bloom& other ) = delete;
+    Bloom&                operator=( Bloom&& other ) noexcept = delete;
 
-    void Prepare(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const Tonemapping> &tonemapping);
+    void                  Prepare( VkCommandBuffer                               cmd,
+                                   uint32_t                                      frameIndex,
+                                   const std::shared_ptr< const GlobalUniform >& uniform,
+                                   const std::shared_ptr< const Tonemapping >&   tonemapping );
 
-    FramebufferImageIndex Apply(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        uint32_t width, uint32_t height, FramebufferImageIndex inputFramebuf);
+    FramebufferImageIndex Apply( VkCommandBuffer                               cmd,
+                                 uint32_t                                      frameIndex,
+                                 const std::shared_ptr< const GlobalUniform >& uniform,
+                                 uint32_t                                      width,
+                                 uint32_t                                      height,
+                                 FramebufferImageIndex                         inputFramebuf );
 
-    void OnShaderReload(const ShaderManager *shaderManager) override;
+    void                  OnShaderReload( const ShaderManager* shaderManager ) override;
 
 private:
-    void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
-    void CreatePipelines(const ShaderManager *shaderManager);
-    void CreateStepPipelines(const ShaderManager *shaderManager);
-    void CreateApplyPipelines(const ShaderManager *shaderManager);
+    void CreatePipelineLayout( VkDescriptorSetLayout* pSetLayouts, uint32_t setLayoutCount );
+    void CreatePipelines( const ShaderManager* shaderManager );
+    void CreateStepPipelines( const ShaderManager* shaderManager );
+    void CreateApplyPipelines( const ShaderManager* shaderManager );
     void DestroyPipelines();
 
 private:
-    VkDevice device;
+    static constexpr uint32_t       StepCount = 5;
 
-    std::shared_ptr<Framebuffers> framebuffers;
+    VkDevice                        device;
 
-    VkPipelineLayout pipelineLayout;
+    std::shared_ptr< Framebuffers > framebuffers;
 
-    VkPipeline downsamplePipelines[5];
-    VkPipeline upsamplePipelines[5];
-    
-    VkPipeline applyPipelines[2];
+    VkPipelineLayout                pipelineLayout;
+
+    VkPipeline                      downsamplePipelines[ StepCount ];
+    VkPipeline                      upsamplePipelines[ StepCount ];
+
+    VkPipeline                      applyPipelines[ 2 ];
 };
 
 }

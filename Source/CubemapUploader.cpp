@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,92 +20,99 @@
 
 #include "CubemapUploader.h"
 
-RTGL1::CubemapUploader::CubemapUploader(VkDevice device, std::shared_ptr<MemoryAllocator> memAllocator)
-    :TextureUploader(device, std::move(memAllocator))
-{}
-
-RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage(const UploadInfo &info)
+RTGL1::CubemapUploader::CubemapUploader( VkDevice                           device,
+                                         std::shared_ptr< MemoryAllocator > memAllocator )
+    : TextureUploader( device, std::move( memAllocator ) )
 {
-    assert(info.isCubemap);
+}
+
+RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage( const UploadInfo& info )
+{
+    assert( info.isCubemap );
     // cubemaps can't be updateable
-    assert(!info.isUpdateable);
+    assert( !info.isUpdateable );
 
-    const RgExtent2D &size = info.baseSize;
+    const RgExtent2D& size = info.baseSize;
 
-    UploadResult result = {};
-    result.wasUploaded = false;
+    UploadResult      result = {};
+    result.wasUploaded       = false;
 
-    VkImage image;
+    VkImage            image;
 
-    VkBuffer stagingBuffers[6] = {};
-    void *mappedData[6] = {};
+    VkBuffer           stagingBuffers[ 6 ] = {};
+    void*              mappedData[ 6 ]     = {};
 
     // 1. Allocate and fill buffer
-    const uint32_t faceNumber = 6;
-    VkDeviceSize faceSize = (VkDeviceSize)info.dataSize;
+    const uint32_t     faceNumber = 6;
+    VkDeviceSize       faceSize   = ( VkDeviceSize )info.dataSize;
 
     VkBufferCreateInfo stagingInfo = {};
-    stagingInfo.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingInfo.size = faceSize;
-    stagingInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    stagingInfo.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
+    stagingInfo.size               = faceSize;
+    stagingInfo.usage              = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
 
-    for (uint32_t i = 0; i < 6; i++)
+    for( uint32_t i = 0; i < 6; i++ )
     {
-        stagingBuffers[i] = memAllocator->CreateStagingSrcTextureBuffer(&stagingInfo, info.pDebugName, &mappedData[i]);
+        stagingBuffers[ i ] = memAllocator->CreateStagingSrcTextureBuffer(
+            &stagingInfo, info.pDebugName, &mappedData[ i ] );
 
         // if couldn't allocate memory
-        if (stagingBuffers[i] == VK_NULL_HANDLE)
+        if( stagingBuffers[ i ] == VK_NULL_HANDLE )
         {
             // clear allocated
-            for (uint32_t j = 0; j < i; j++)
+            for( uint32_t j = 0; j < i; j++ )
             {
-                memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffers[j]);
+                memAllocator->DestroyStagingSrcTextureBuffer( stagingBuffers[ j ] );
             }
 
             return result;
         }
 
-        SET_DEBUG_NAME(device, stagingBuffers[i], VK_OBJECT_TYPE_BUFFER, info.pDebugName);
+        SET_DEBUG_NAME( device, stagingBuffers[ i ], VK_OBJECT_TYPE_BUFFER, info.pDebugName );
     }
 
 
-    bool wasCreated = CreateImage(info, &image);
-    if (!wasCreated)
+    bool wasCreated = CreateImage( info, &image );
+    if( !wasCreated )
     {
         // clean created resources
-        for (uint32_t j = 0; j < 6; j++)
+        for( uint32_t j = 0; j < 6; j++ )
         {
-            memAllocator->DestroyStagingSrcTextureBuffer(stagingBuffers[j]);
+            memAllocator->DestroyStagingSrcTextureBuffer( stagingBuffers[ j ] );
         }
 
         return result;
     }
 
     // copy image data to buffer
-    for (uint32_t i = 0; i < 6; i++)
+    for( uint32_t i = 0; i < 6; i++ )
     {
-        memcpy(mappedData[i], info.cubemap.pFaces[i], faceSize);
+        memcpy( mappedData[ i ], info.cubemap.pFaces[ i ], faceSize );
     }
 
 
     // and copy it to image
-    PrepareImage(image, stagingBuffers, info, ImagePrepareType::INIT);
+    PrepareImage( image, stagingBuffers, info, ImagePrepareType::INIT );
 
     // create image view
-    VkImageView imageView = CreateImageView(image, info.format, info.isCubemap, GetMipmapCount(size, info), RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE);
+    VkImageView imageView = CreateImageView( image,
+                                             info.format,
+                                             info.isCubemap,
+                                             GetMipmapCount( size, info ),
+                                             RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE );
 
-    SET_DEBUG_NAME(device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName);
+    SET_DEBUG_NAME( device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName );
 
 
     // push staging buffer to be deleted when it won't be in use
-    for (uint32_t i = 0; i < 6; i++)
+    for( uint32_t i = 0; i < 6; i++ )
     {
-        stagingToFree[info.frameIndex].push_back(stagingBuffers[i]);
+        stagingToFree[ info.frameIndex ].push_back( stagingBuffers[ i ] );
     }
 
     // return results
     result.wasUploaded = true;
-    result.image = image;
-    result.view = imageView;
+    result.image       = image;
+    result.view        = imageView;
     return result;
 }

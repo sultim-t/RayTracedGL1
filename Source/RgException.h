@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,12 +30,12 @@ namespace RTGL1
 class RgException : public std::runtime_error
 {
 public:
-    explicit RgException(RgResult errorCode);
-    explicit RgException(RgResult errorCode, const std::string &_Message);
-    explicit RgException(RgResult errorCode, const char *_Message);
+    explicit RgException( RgResult errorCode );
+    explicit RgException( RgResult errorCode, const std::string& message );
+    explicit RgException( RgResult errorCode, const char* message );
 
-    RgResult GetErrorCode() const;
-    static const char* GetRgResultName(RgResult r);
+    RgResult           GetErrorCode() const;
+    static const char* GetRgResultName( RgResult r );
 
 private:
     RgResult errorCode;

@@ -30,6 +30,13 @@
         ( m ).matrix[ 0 ][ 3 ], ( m ).matrix[ 1 ][ 3 ], ( m ).matrix[ 2 ][ 3 ], 1.0f, \
     }
 
+#define RG_TRANSFORM_IDENTITY   \
+    {                           \
+        1.0f, 0.0f, 0.0f, 0.0f, \
+        0.0f, 1.0f, 0.0f, 0.0f, \
+        0.0f, 0.0f, 1.0f, 0.0f, \
+    }
+
 namespace RTGL1
 {
     namespace Matrix
