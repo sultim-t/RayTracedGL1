@@ -36,9 +36,9 @@ layout (location = 1) out vec3 outScreenEmission;
 
 layout(push_constant) uniform RasterizerFrag_BT 
 {
-    layout(offset = 64) vec4 color;
-    layout(offset = 80) uint textureIndex;
-    layout(offset = 84) uint emissionTextureIndex;
+    layout(offset = 64) uint packedColor;
+    layout(offset = 68) uint textureIndex;
+    layout(offset = 72) uint emissionTextureIndex;
 } rasterizerFragInfo;
 
 layout (constant_id = 0) const uint alphaTest = 0;
@@ -50,7 +50,7 @@ layout (constant_id = 0) const uint alphaTest = 0;
 void main()
 {
     vec4 albedoAlpha = getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord );
-    outColor         = rasterizerFragInfo.color * vertColor * albedoAlpha;
+    outColor         = unpackUintColor( rasterizerFragInfo.packedColor ) * vertColor * albedoAlpha;
 
     if( globalUniform.lightmapEnable == 0 )
     {

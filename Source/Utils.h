@@ -25,6 +25,46 @@
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
 
+#define RG_SET_VEC3( dst, x, y, z ) \
+    ( dst )[ 0 ] = ( x );           \
+    ( dst )[ 1 ] = ( y );           \
+    ( dst )[ 2 ] = ( z )
+
+#define RG_SET_VEC3_A( dst, xyz ) \
+    ( dst )[ 0 ] = ( xyz )[ 0 ];  \
+    ( dst )[ 1 ] = ( xyz )[ 1 ];  \
+    ( dst )[ 2 ] = ( xyz )[ 2 ]
+
+#define RG_ACCESS_VEC3( src ) ( src )[ 0 ], ( src )[ 1 ], ( src )[ 2 ]
+#define RG_ACCESS_VEC4( src ) ( src )[ 0 ], ( src )[ 1 ], ( src )[ 2 ], ( src )[ 3 ] 
+
+#define RG_MAX_VEC3( dst, m )                       \
+    ( dst )[ 0 ] = std::max( ( dst )[ 0 ], ( m ) ); \
+    ( dst )[ 1 ] = std::max( ( dst )[ 1 ], ( m ) ); \
+    ( dst )[ 2 ] = std::max( ( dst )[ 2 ], ( m ) )
+
+#define RG_SET_VEC4( dst, x, y, z, w ) \
+    ( dst )[ 0 ] = ( x );              \
+    ( dst )[ 1 ] = ( y );              \
+    ( dst )[ 2 ] = ( z );              \
+    ( dst )[ 3 ] = ( w )
+
+
+#define RG_MATRIX_TRANSPOSED( /* RgTransform */ m )                                   \
+    {                                                                                 \
+        ( m ).matrix[ 0 ][ 0 ], ( m ).matrix[ 1 ][ 0 ], ( m ).matrix[ 2 ][ 0 ], 0.0f, \
+        ( m ).matrix[ 0 ][ 1 ], ( m ).matrix[ 1 ][ 1 ], ( m ).matrix[ 2 ][ 1 ], 0.0f, \
+        ( m ).matrix[ 0 ][ 2 ], ( m ).matrix[ 1 ][ 2 ], ( m ).matrix[ 2 ][ 2 ], 0.0f, \
+        ( m ).matrix[ 0 ][ 3 ], ( m ).matrix[ 1 ][ 3 ], ( m ).matrix[ 2 ][ 3 ], 1.0f, \
+    }
+
+#define RG_TRANSFORM_IDENTITY   \
+    {                           \
+        1.0f, 0.0f, 0.0f, 0.0f, \
+        0.0f, 1.0f, 0.0f, 0.0f, \
+        0.0f, 0.0f, 1.0f, 0.0f, \
+    }
+
 namespace RTGL1
 {
     enum NullifyTokenType
@@ -128,6 +168,8 @@ namespace Utils
     template< typename T1, typename T2 >
     requires( std::is_integral_v< T1 >&& std::is_integral_v< T2 > )
     uint32_t GetWorkGroupCountT( T1 size, T2 groupSize );
+
+    RgFloat4D UnpackColor4DPacked32( RgColor4DPacked32 c );
 };
 
 template<typename T>

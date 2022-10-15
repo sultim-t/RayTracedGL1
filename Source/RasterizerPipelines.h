@@ -23,78 +23,64 @@
 #include "Common.h"
 #include "Containers.h"
 #include "ShaderManager.h"
-#include "RTGL1/RTGL1.h"
+#include "RasterizedDataCollector.h"
 
 namespace RTGL1
 {
 
-    class RasterizerPipelines
-    {
-    public:
-        explicit RasterizerPipelines( VkDevice         device,
-                                      VkPipelineLayout pipelineLayout,
-                                      VkRenderPass     renderPass,
-                                      const ShaderManager* shaderManager,
-                                      std::string_view shaderNameVert,
-                                      std::string_view shaderNameFrag,
-                                      uint32_t         additionalAttachmentsCount,
-                                      bool             applyVertexColorGamma );
+class RasterizerPipelines
+{
+public:
+    explicit RasterizerPipelines( VkDevice             device,
+                                  VkPipelineLayout     pipelineLayout,
+                                  VkRenderPass         renderPass,
+                                  const ShaderManager* shaderManager,
+                                  std::string_view     shaderNameVert,
+                                  std::string_view     shaderNameFrag,
+                                  uint32_t             additionalAttachmentsCount,
+                                  bool                 applyVertexColorGamma,
+                                  const VkViewport*    pViewport = nullptr,
+                                  const VkRect2D*      pScissors = nullptr );
+    ~RasterizerPipelines();
 
-        ~RasterizerPipelines();
+    RasterizerPipelines( const RasterizerPipelines& other )     = delete;
+    RasterizerPipelines( RasterizerPipelines&& other ) noexcept = delete;
+    RasterizerPipelines& operator=( const RasterizerPipelines& other ) = delete;
+    RasterizerPipelines& operator=( RasterizerPipelines&& other ) noexcept = delete;
 
-        RasterizerPipelines( const RasterizerPipelines& other )     = delete;
-        RasterizerPipelines( RasterizerPipelines&& other ) noexcept = delete;
-        RasterizerPipelines& operator=( const RasterizerPipelines& other ) = delete;
-        RasterizerPipelines& operator=( RasterizerPipelines&& other ) noexcept = delete;
+    void                 OnShaderReload( const ShaderManager* shaderManager );
 
-        void OnShaderReload( const ShaderManager* shaderManager );
-        void DisableDynamicState( const VkViewport& viewport, const VkRect2D& scissors );
+    VkPipelineLayout     GetPipelineLayout();
 
-        VkPipeline GetPipeline( RgRasterizedGeometryStateFlags pipelineState,
-                                RgBlendFactor                  blendFuncSrc,
-                                RgBlendFactor                  blendFuncDst );
-
-        VkPipelineLayout GetPipelineLayout();
-
-        void BindPipelineIfNew( VkCommandBuffer                cmd,
-                                VkPipeline&                    curPipeline,
-                                RgRasterizedGeometryStateFlags pipelineState,
-                                RgBlendFactor                  blendFuncSrc,
-                                RgBlendFactor                  blendFuncDst );
+    VkPipeline           BindPipelineIfNew( VkCommandBuffer    cmd,
+                                            VkPipeline         oldPipeline,
+                                            PipelineStateFlags pipelineState );
 
 
-    private:
-        VkPipeline CreatePipeline( RgRasterizedGeometryStateFlags pipelineState,
-                                   RgBlendFactor                  blendFuncSrc,
-                                   RgBlendFactor                  blendFuncDst ) const;
+private:
+    [[nodiscard]] VkPipeline CreatePipeline( PipelineStateFlags pipelineState ) const;
+    VkPipeline               GetPipeline( PipelineStateFlags pipelineState );
+    void                     DestroyAllPipelines();
 
-        void DestroyAllPipelines();
+private:
+    VkDevice                                             device;
 
-    private:
-        VkDevice device;
+    std::string                                          shaderNameVert;
+    std::string                                          shaderNameFrag;
 
-        std::string shaderNameVert;
-        std::string shaderNameFrag;
+    VkPipelineLayout                                     pipelineLayout;
+    VkRenderPass                                         renderPass;
+    VkPipelineShaderStageCreateInfo                      vertShaderStage;
+    VkPipelineShaderStageCreateInfo                      fragShaderStage;
 
-        VkPipelineLayout                pipelineLayout;
-        VkRenderPass                    renderPass;
-        VkPipelineShaderStageCreateInfo vertShaderStage;
-        VkPipelineShaderStageCreateInfo fragShaderStage;
+    rgl::unordered_map< PipelineStateFlags, VkPipeline > pipelines;
+    VkPipelineCache                                      pipelineCache;
 
-        rgl::unordered_map< uint32_t, VkPipeline > pipelines;
-        VkPipelineCache                            pipelineCache;
+    std::optional< VkViewport >                          nonDynamicViewport;
+    std::optional< VkRect2D >                            nonDynamicScissors;
 
-        struct
-        {
-            VkViewport viewport = {};
-            VkRect2D   scissors = {};
-
-            // if true, viewport/scissors must be set dynamically
-            bool isEnabled = true;
-        } dynamicState;
-
-        uint32_t applyVertexColorGamma;
-        uint32_t additionalAttachmentsCount;
-    };
+    uint32_t                                             applyVertexColorGamma;
+    uint32_t                                             additionalAttachmentsCount;
+};
 
 }

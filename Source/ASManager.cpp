@@ -121,7 +121,7 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
 
 
     // instance buffer for TLAS
-    instanceBuffer = std::make_unique< AutoBuffer >( device, allocator );
+    instanceBuffer = std::make_unique< AutoBuffer >( allocator );
 
     VkDeviceSize instanceBufferSize =
         MAX_TOP_LEVEL_INSTANCE_COUNT * sizeof( VkAccelerationStructureInstanceKHR );
@@ -614,18 +614,11 @@ uint32_t RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameInd
                                              const RgMeshInfo&          mesh,
                                              const RgMeshPrimitiveInfo& primitive )
 {
-#define IF_LAYER_NOT_NULL( x, y )                                                              \
-    ( primitive.pEditorInfo ? primitive.pEditorInfo->x ? primitive.pEditorInfo->x->y : nullptr \
-                            : nullptr )
+    auto textures = textureMgr->GetTexturesForLayers( primitive );
+    auto colors = textureMgr->GetColorForLayers( primitive );
 
-    MaterialTextures materials[] = {
-        textureMgr->GetMaterialTextures( primitive.pTextureName ),
-        textureMgr->GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer1, pTextureName ) ),
-        textureMgr->GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer2, pTextureName ) ),
-        textureMgr->GetMaterialTextures( IF_LAYER_NOT_NULL( pLayerLightmap, pTextureName ) ),
-    };
-
-    return collectorDynamic[ frameIndex ]->AddPrimitive( frameIndex, mesh, primitive, materials );
+    return collectorDynamic[ frameIndex ]->AddPrimitive(
+        frameIndex, mesh, primitive, textures, colors );
 }
 
 void RTGL1::ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )

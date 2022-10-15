@@ -25,7 +25,7 @@
 #include <cstring>
 
 #include "Generated/ShaderCommonC.h"
-#include "Matrix.h"
+#include "Utils.h"
 
 using namespace RTGL1;
 
@@ -159,55 +159,10 @@ VertexCollector::~VertexCollector()
 
 namespace
 {
-uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint32_t layerIndex )
-{
-    if( layerInfo == nullptr )
-    {
-        return 0;
-    }
-
-    uint32_t bitOffset = MATERIAL_BLENDING_FLAG_BIT_COUNT * layerIndex;
-
-    switch( layerInfo->blend )
-    {
-        case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_FLAG_OPAQUE << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA:  return MATERIAL_BLENDING_FLAG_ALPHA << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD:    return MATERIAL_BLENDING_FLAG_ADD << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE:  return MATERIAL_BLENDING_FLAG_SHADE << bitOffset;
-        default: assert( 0 ); return 0;
-    }
-}
 
 uint32_t AlignUpBy3( uint32_t x )
 {
     return ( ( x + 2 ) / 3 ) * 3;
-}
-
-uint32_t GetPrimitiveFlags( const RgMeshPrimitiveInfo& info )
-{
-    uint32_t f = 0;
-
-    if( info.pEditorInfo )
-    {
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerBase,     0 );
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer1,        1 );
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer2,        2 );
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerLightmap, 3 );
-    }
-
-    if( info.flags & RG_MESH_PRIMITIVE_MIRROR )
-    {
-        f |= GEOM_INST_FLAG_REFLECT;
-    }
-
-    if( info.flags & RG_MESH_PRIMITIVE_WATER )
-    {
-        f |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
-        f |= GEOM_INST_FLAG_REFLECT;
-        f |= GEOM_INST_FLAG_REFRACT;
-    }
-
-    return f;
 }
 
 }
@@ -220,10 +175,11 @@ void VertexCollector::BeginCollecting( bool isStatic )
     assert( GetAllGeometryCount() == 0 );
 }
 
-uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIndex,
-                                        const RgMeshInfo&                parentMesh,
-                                        const RgMeshPrimitiveInfo&       info,
-                                        std::span< MaterialTextures, 4 > materials )
+uint32_t VertexCollector::AddPrimitive( uint32_t                          frameIndex,
+                                        const RgMeshInfo&                 parentMesh,
+                                        const RgMeshPrimitiveInfo&        info,
+                                        std::span< MaterialTextures, 4 >  layerTextures,
+                                        std::span< RgColor4DPacked32, 4 > layerColors )
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
     const VertexCollectorFilterTypeFlags      geomFlags =
@@ -306,8 +262,9 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIn
     VkAccelerationStructureGeometryKHR geom = {
         .sType        = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_KHR,
         .geometryType = VK_GEOMETRY_TYPE_TRIANGLES_KHR,
-        .flags = geomFlags & FT::PT_OPAQUE ? VK_GEOMETRY_OPAQUE_BIT_KHR
-                                           : VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR,
+        .flags        = geomFlags & FT::PT_OPAQUE
+                            ? VkGeometryFlagsKHR( VK_GEOMETRY_OPAQUE_BIT_KHR )
+                            : VkGeometryFlagsKHR( VK_GEOMETRY_NO_DUPLICATE_ANY_HIT_INVOCATION_BIT_KHR ),
     };
     {
         VkAccelerationStructureGeometryTrianglesDataKHR trData = {
@@ -361,21 +318,21 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                         frameIn
         .model               = RG_MATRIX_TRANSPOSED( info.transform ),
         .prevModel           = { /* set later */ },
 
-        .flags               = GetPrimitiveFlags( info ),
+        .flags               = GeomInfoManager::GetPrimitiveFlags( info ),
 
-        .base_textureA       = materials[ 0 ].indices[ 0 ],
-        .base_textureB       = materials[ 0 ].indices[ 1 ],
-        .base_textureC       = materials[ 0 ].indices[ 2 ],
-        .base_color          = info.pEditorInfo ? info.pEditorInfo->pLayerBase->color     : 0xFFFFFFFF,
+        .base_textureA       = layerTextures[ 0 ].indices[ 0 ],
+        .base_textureB       = layerTextures[ 0 ].indices[ 1 ],
+        .base_textureC       = layerTextures[ 0 ].indices[ 2 ],
+        .base_color          = layerColors[ 0 ],
 
-        .layer1_texture      = materials[ 1 ].indices[ 0 ],
-        .layer1_color        = info.pEditorInfo ? info.pEditorInfo->pLayer1->color        : 0xFFFFFFFF,
+        .layer1_texture      = layerTextures[ 1 ].indices[ 0 ],
+        .layer1_color        = layerColors[ 1 ],
 
-        .layer2_texture      = materials[ 2 ].indices[ 0 ],
-        .layer2_color        = info.pEditorInfo ? info.pEditorInfo->pLayer2->color        : 0xFFFFFFFF,
+        .layer2_texture      = layerTextures[ 2 ].indices[ 0 ],
+        .layer2_color        = layerColors[ 2 ],
 
-        .lightmap_texture    = materials[ 3 ].indices[ 0 ],
-        .lightmap_color      = info.pEditorInfo ? info.pEditorInfo->pLayerLightmap->color : 0xFFFFFFFF,
+        .lightmap_texture    = layerTextures[ 3 ].indices[ 0 ],
+        .lightmap_color      = layerColors[ 3 ],
 
         .baseVertexIndex     = vertIndex,
         .baseIndexIndex      = useIndices ? indIndex : UINT32_MAX,
@@ -443,7 +400,7 @@ void VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32
     static_assert( offsetof( ShVertex, normal ) == offsetof( RgPrimitiveVertex, normal ) );
     static_assert( offsetof( ShVertex, tangent ) == offsetof( RgPrimitiveVertex, tangent ) );
     static_assert( offsetof( ShVertex, texCoord ) == offsetof( RgPrimitiveVertex, texCoord ) );
-    static_assert( offsetof( ShVertex, packedColor ) == offsetof( RgPrimitiveVertex, color ) );
+    static_assert( offsetof( ShVertex, color ) == offsetof( RgPrimitiveVertex, color ) );
 
     memcpy( pDst, info.pVertices, info.vertexCount * sizeof( ShVertex ) );
 }

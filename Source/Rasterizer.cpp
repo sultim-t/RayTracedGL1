@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -26,58 +26,49 @@
 #include "CmdLabel.h"
 #include "RenderResolutionHelper.h"
 
-
-namespace RTGL1
+namespace
 {
 
 struct RasterizedPushConst
 {
     float    vp[ 16 ];
-    float    c[ 4 ];
-    uint32_t t;
-    uint32_t e;
+    uint32_t packedColor;
+    uint32_t textureIndex;
+    uint32_t emissionTextureIndex;
 
-    explicit RasterizedPushConst( const RasterizedDataCollector::DrawInfo& info,
-                                  const float*                             defaultViewProj )
+    explicit RasterizedPushConst( const RTGL1::RasterizedDataCollector::DrawInfo& info,
+                                  const float*                                    defaultViewProj )
+        : vp{}
+        , packedColor{ info.base_color }
+        , textureIndex( info.base_textureA )
+        , emissionTextureIndex( info.base_textureB )
     {
-        float model[ 16 ];
-        Matrix::ToMat4Transposed( model, info.transform );
-
-        if( info.viewProj )
-        {
-            Matrix::Multiply( vp, model, info.viewProj->Get() );
-        }
-        else
-        {
-            Matrix::Multiply( vp, model, defaultViewProj );
-        }
-
-        memcpy( c, info.color.Get(), 4 * sizeof( float ) );
-        t     = info.textureIndex;
-        e     = info.emissionTextureIndex;
+        float model[ 16 ] = RG_MATRIX_TRANSPOSED( info.transform );
+        RTGL1::Matrix::Multiply(
+            vp, model, info.viewProj ? info.viewProj->Get() : defaultViewProj );
     }
 };
 
 static_assert( offsetof( RasterizedPushConst, vp ) == 0 );
-static_assert( offsetof( RasterizedPushConst, c ) == 64 );
-static_assert( offsetof( RasterizedPushConst, t ) == 80 );
-static_assert( offsetof( RasterizedPushConst, e ) == 84 );
-static_assert( sizeof( RasterizedPushConst ) == 88 );
+static_assert( offsetof( RasterizedPushConst, packedColor ) == 64 );
+static_assert( offsetof( RasterizedPushConst, textureIndex ) == 68 );
+static_assert( offsetof( RasterizedPushConst, emissionTextureIndex ) == 72 );
+static_assert( sizeof( RasterizedPushConst ) == 76 );
 
+}
 
-
-Rasterizer::Rasterizer( VkDevice                                 _device,
-                        VkPhysicalDevice                         _physDevice,
-                        const std::shared_ptr< ShaderManager >&  _shaderManager,
-                        const std::shared_ptr< TextureManager >& _textureManager,
-                        const std::shared_ptr< GlobalUniform >&  _uniform,
-                        const std::shared_ptr< SamplerManager >& _samplerManager,
-                        const std::shared_ptr< Tonemapping >&    _tonemapping,
-                        const std::shared_ptr< Volumetric >&     _volumetric,
-                        std::shared_ptr< MemoryAllocator >       _allocator,
-                        std::shared_ptr< Framebuffers >          _storageFramebuffers,
-                        std::shared_ptr< CommandBufferManager >  _cmdManager,
-                        const RgInstanceCreateInfo&              _instanceInfo )
+RTGL1::Rasterizer::Rasterizer( VkDevice                                 _device,
+                               VkPhysicalDevice                         _physDevice,
+                               const std::shared_ptr< ShaderManager >&  _shaderManager,
+                               const std::shared_ptr< TextureManager >& _textureManager,
+                               const std::shared_ptr< GlobalUniform >&  _uniform,
+                               const std::shared_ptr< SamplerManager >& _samplerManager,
+                               const std::shared_ptr< Tonemapping >&    _tonemapping,
+                               const std::shared_ptr< Volumetric >&     _volumetric,
+                               std::shared_ptr< MemoryAllocator >       _allocator,
+                               std::shared_ptr< Framebuffers >          _storageFramebuffers,
+                               std::shared_ptr< CommandBufferManager >  _cmdManager,
+                               const RgInstanceCreateInfo&              _instanceInfo )
     : device( _device )
     , rasterPassPipelineLayout( VK_NULL_HANDLE )
     , swapchainPassPipelineLayout( VK_NULL_HANDLE )
@@ -117,6 +108,7 @@ Rasterizer::Rasterizer( VkDevice                                 _device,
                                                        cmdManager,
                                                        _instanceInfo );
 
+    /*
     lensFlares = std::make_unique< LensFlares >( device,
                                                  allocator,
                                                  _shaderManager,
@@ -125,77 +117,113 @@ Rasterizer::Rasterizer( VkDevice                                 _device,
                                                  storageFramebuffers,
                                                  _textureManager,
                                                  _instanceInfo );
+    */
 }
 
-Rasterizer::~Rasterizer()
+RTGL1::Rasterizer::~Rasterizer()
 {
     vkDestroyPipelineLayout( device, rasterPassPipelineLayout, nullptr );
     vkDestroyPipelineLayout( device, swapchainPassPipelineLayout, nullptr );
 }
 
-void Rasterizer::PrepareForFrame( uint32_t frameIndex )
+void RTGL1::Rasterizer::PrepareForFrame( uint32_t frameIndex )
 {
     collector->Clear( frameIndex );
-    lensFlares->PrepareForFrame( frameIndex );
+    // lensFlares->PrepareForFrame( frameIndex );
 }
 
-void Rasterizer::Upload( uint32_t                              frameIndex,
-                         const RgRasterizedGeometryUploadInfo& uploadInfo,
-                         const float*                          viewProjection,
-                         const RgViewport*                     viewport )
+void RTGL1::Rasterizer::Upload( uint32_t                   frameIndex,
+                                GeometryRasterType         rasterType,
+                                const RgMeshPrimitiveInfo& info,
+                                const float*               pViewProjection,
+                                const RgViewport*          pViewport )
 {
-    collector->AddGeometry( frameIndex, uploadInfo, viewProjection, viewport );
+    collector->AddPrimitive( frameIndex, rasterType, info, pViewProjection, pViewport );
 }
 
-void Rasterizer::UploadLensFlare( uint32_t frameIndex, const RgLensFlareUploadInfo& uploadInfo )
-{
-    lensFlares->Upload( frameIndex, uploadInfo );
-}
-
-void Rasterizer::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
+void RTGL1::Rasterizer::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     CmdLabel label( cmd, "Copying rasterizer data" );
 
     collector->CopyFromStaging( cmd, frameIndex );
-    lensFlares->SubmitForFrame( cmd, frameIndex );
 }
 
-void Rasterizer::DrawSkyToCubemap( VkCommandBuffer                          cmd,
-                                   uint32_t                                 frameIndex,
-                                   const std::shared_ptr< TextureManager >& textureManager,
-                                   const std::shared_ptr< GlobalUniform >&  uniform )
+void RTGL1::Rasterizer::DrawSkyToCubemap( VkCommandBuffer                          cmd,
+                                          uint32_t                                 frameIndex,
+                                          const std::shared_ptr< TextureManager >& textureManager,
+                                          const std::shared_ptr< GlobalUniform >&  uniform )
 {
     CmdLabel label( cmd, "Rasterized sky to cubemap" );
 
     renderCubemap->Draw( cmd, frameIndex, collector, textureManager, uniform );
 }
 
+namespace RTGL1
+{
 namespace
 {
-    void ApplyJitter( float*                        jitterredProj,
-                      const float*                  originalProj,
-                      const RgFloat2D&              jitter,
-                      const RenderResolutionHelper& renderResolution )
+    void ApplyJitter( float*                               jitterredProj,
+                      const float*                         originalProj,
+                      const RgFloat2D&                     jitter,
+                      const RTGL1::RenderResolutionHelper& renderResolution )
     {
         memcpy( jitterredProj, originalProj, 16 * sizeof( float ) );
-        jitterredProj[ 2 * 4 + 0 ] += jitter.data[ 0 ] / ( float )renderResolution.Width();
-        jitterredProj[ 2 * 4 + 1 ] += jitter.data[ 1 ] / ( float )renderResolution.Height();
+        jitterredProj[ 2 * 4 + 0 ] +=
+            jitter.data[ 0 ] / static_cast< float >( renderResolution.Width() );
+        jitterredProj[ 2 * 4 + 1 ] +=
+            jitter.data[ 1 ] / static_cast< float >( renderResolution.Height() );
+    }
+
+
+    void SetViewportIfNew( VkCommandBuffer                          cmd,
+                           const RasterizedDataCollector::DrawInfo& info,
+                           const VkViewport&                        defaultViewport,
+                           VkViewport&                              curViewport )
+    {
+        const VkViewport newViewport = info.viewport.value_or( defaultViewport );
+
+        if( !Utils::AreViewportsSame( curViewport, newViewport ) )
+        {
+            vkCmdSetViewport( cmd, 0, 1, &newViewport );
+            curViewport = newViewport;
+        }
     }
 }
+}
 
-void Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                          cmd,
-                                  uint32_t                                 frameIndex,
-                                  const std::shared_ptr< TextureManager >& textureManager,
-                                  const float*                             view,
-                                  const float                              skyViewerPos[ 3 ],
-                                  const float*                             proj,
-                                  const RgFloat2D&                         jitter,
-                                  const RenderResolutionHelper&            renderResolution )
+namespace RTGL1
+{
+
+struct RasterDrawParams
+{
+    const std::shared_ptr< RTGL1::RasterizerPipelines >&           pipelines;
+    const std::vector< RTGL1::RasterizedDataCollector::DrawInfo >& drawInfos;
+    VkRenderPass                                                   renderPass;
+    VkFramebuffer                                                  framebuffer;
+    uint32_t                                                       width;
+    uint32_t                                                       height;
+    VkBuffer                                                       vertexBuffer;
+    VkBuffer                                                       indexBuffer;
+    const VkDescriptorSet*                                         descSets;
+    uint32_t                                                       descSetsCount;
+    float*                                                         defaultViewProj;
+};
+
+}
+
+void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                          cmd,
+                                         uint32_t                                 frameIndex,
+                                         const std::shared_ptr< TextureManager >& textureManager,
+                                         const float*                             view,
+                                         const float                              skyViewerPos[ 3 ],
+                                         const float*                             proj,
+                                         const RgFloat2D&                         jitter,
+                                         const RenderResolutionHelper&            renderResolution )
 {
     CmdLabel label( cmd, "Rasterized sky to albedo framebuf" );
 
 
-    typedef FramebufferImageIndex FI;
+    using FI = FramebufferImageIndex;
     storageFramebuffers->BarrierOne( cmd, frameIndex, FI::FB_IMAGE_INDEX_ALBEDO );
 
 
@@ -213,7 +241,7 @@ void Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                          cmd,
         textureManager->GetDescSet( frameIndex ),
     };
 
-    const DrawParams params = {
+    const RasterDrawParams params = {
         .pipelines       = rasterPass->GetSkyRasterPipelines(),
         .drawInfos       = collector->GetSkyDrawInfos(),
         .renderPass      = rasterPass->GetSkyRenderPass(),
@@ -225,35 +253,31 @@ void Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                          cmd,
         .descSets        = sets,
         .descSetsCount   = std::size( sets ),
         .defaultViewProj = defaultSkyViewProj,
-        .pLensFlares     = nullptr,
     };
 
     Draw( cmd, frameIndex, params );
 }
 
-void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
-                                   uint32_t                                 frameIndex,
-                                   const std::shared_ptr< TextureManager >& textureManager,
-                                   const std::shared_ptr< GlobalUniform >&  uniform,
-                                   const std::shared_ptr< Tonemapping >&    tonemapping,
-                                   const std::shared_ptr< Volumetric >&     volumetric,
-                                   const float*                             view,
-                                   const float*                             proj,
-                                   const RgFloat2D&                         jitter,
-                                   const RenderResolutionHelper&            renderResolution,
-                                   const RgDrawFrameLensFlareParams*        pLensFlareParams )
+void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
+                                          uint32_t                                 frameIndex,
+                                          const std::shared_ptr< TextureManager >& textureManager,
+                                          const std::shared_ptr< GlobalUniform >&  uniform,
+                                          const std::shared_ptr< Tonemapping >&    tonemapping,
+                                          const std::shared_ptr< Volumetric >&     volumetric,
+                                          const float*                             view,
+                                          const float*                             proj,
+                                          const RgFloat2D&                         jitter,
+                                          const RenderResolutionHelper& renderResolution )
 {
     CmdLabel label( cmd, "Rasterized to final framebuf" );
+    using FI = FramebufferImageIndex;
 
 
-    typedef FramebufferImageIndex FI;
-    FI                            fs[] = { FI::FB_IMAGE_INDEX_DEPTH_NDC, FI::FB_IMAGE_INDEX_FINAL };
+    FI fs[] = {
+        FI::FB_IMAGE_INDEX_DEPTH_NDC,
+        FI::FB_IMAGE_INDEX_FINAL,
+    };
     storageFramebuffers->BarrierMultiple( cmd, frameIndex, fs );
-
-
-    // prepare lens flares draw commands
-    lensFlares->SetParams( pLensFlareParams );
-    lensFlares->Cull( cmd, frameIndex );
 
 
     // copy depth buffer
@@ -275,7 +299,7 @@ void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
         volumetric->GetDescSet( frameIndex ),
     };
 
-    const DrawParams params = {
+    const RasterDrawParams params = {
         .pipelines       = rasterPass->GetRasterPipelines(),
         .drawInfos       = collector->GetRasterDrawInfos(),
         .renderPass      = rasterPass->GetWorldRenderPass(),
@@ -287,25 +311,24 @@ void Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
         .descSets        = sets,
         .descSetsCount   = std::size( sets ),
         .defaultViewProj = defaultViewProj,
-        .pLensFlares     = lensFlares.get(),
     };
 
     Draw( cmd, frameIndex, params );
 }
 
-void Rasterizer::DrawToSwapchain( VkCommandBuffer                          cmd,
-                                  uint32_t                                 frameIndex,
-                                  FramebufferImageIndex                    imageToDrawIn,
-                                  const std::shared_ptr< TextureManager >& textureManager,
-                                  const float*                             view,
-                                  const float*                             proj,
-                                  uint32_t                                 swapchainWidth,
-                                  uint32_t                                 swapchainHeight )
+void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer                          cmd,
+                                         uint32_t                                 frameIndex,
+                                         FramebufferImageIndex                    imageToDrawIn,
+                                         const std::shared_ptr< TextureManager >& textureManager,
+                                         const float*                             view,
+                                         const float*                             proj,
+                                         uint32_t                                 swapchainWidth,
+                                         uint32_t                                 swapchainHeight )
 {
     CmdLabel label( cmd, "Rasterized to swapchain" );
 
 
-    float defaultViewProj[ 16 ];
+    float    defaultViewProj[ 16 ];
     Matrix::Multiply( defaultViewProj, view, proj );
 
 
@@ -313,7 +336,7 @@ void Rasterizer::DrawToSwapchain( VkCommandBuffer                          cmd,
         textureManager->GetDescSet( frameIndex ),
     };
 
-    const DrawParams params = {
+    const RasterDrawParams params = {
         .pipelines       = swapchainPass->GetSwapchainPipelines(),
         .drawInfos       = collector->GetSwapchainDrawInfos(),
         .renderPass      = swapchainPass->GetSwapchainRenderPass(),
@@ -325,159 +348,140 @@ void Rasterizer::DrawToSwapchain( VkCommandBuffer                          cmd,
         .descSets        = sets,
         .descSetsCount   = std::size( sets ),
         .defaultViewProj = defaultViewProj,
-        .pLensFlares     = nullptr,
     };
 
     Draw( cmd, frameIndex, params );
 }
 
-void Rasterizer::Draw(VkCommandBuffer cmd, uint32_t frameIndex, const DrawParams &drawParams)
+void RTGL1::Rasterizer::Draw( VkCommandBuffer         cmd,
+                              uint32_t                frameIndex,
+                              const RasterDrawParams& drawParams )
 {
-    assert(drawParams.framebuffer != VK_NULL_HANDLE);
-
-    const bool draw = !drawParams.drawInfos.empty();
-    const bool drawLensFlares = drawParams.pLensFlares != nullptr && drawParams.pLensFlares->GetCullingInputCount() > 0;
-
-    if (!draw && !drawLensFlares)
+    assert( drawParams.framebuffer != VK_NULL_HANDLE );
+    if( drawParams.drawInfos.empty() )
     {
         return;
     }
 
+    const VkViewport defaultViewport = {
+        .x        = 0,
+        .y        = 0,
+        .width    = static_cast< float >( drawParams.width ),
+        .height   = static_cast< float >( drawParams.height ),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
 
-    if (drawLensFlares)
-    {
-        drawParams.pLensFlares->SyncForDraw(cmd, frameIndex);
-    }
+    const VkRect2D defaultRenderArea = {
+        .offset = { 0, 0 },
+        .extent = { drawParams.width, drawParams.height },
+    };
 
-
-    const VkViewport defaultViewport = { 0, 0, (float)drawParams.width, (float)drawParams.height, 0.0f, 1.0f };
-    const VkRect2D defaultRenderArea = { { 0, 0 }, { drawParams.width, drawParams.height }};
-
-    VkClearValue clear[2] = {};
-    clear[1].depthStencil.depth = 1.0f;
-
-    VkRenderPassBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    beginInfo.renderPass = drawParams.renderPass;
-    beginInfo.framebuffer = drawParams.framebuffer;
-    beginInfo.renderArea = defaultRenderArea;
-    beginInfo.clearValueCount = 2;
-    beginInfo.pClearValues = clear;
-
-    vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-
-    if (draw)
-    {
-        VkPipeline curPipeline = VK_NULL_HANDLE;
-        BindPipelineIfNew(cmd, drawParams.drawInfos[0], drawParams.pipelines, curPipeline);
-
-
-        VkDeviceSize offset = 0;
-
-        vkCmdBindDescriptorSets(
-            cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, drawParams.pipelines->GetPipelineLayout(), 0,
-            drawParams.descSetsCount, drawParams.descSets,
-            0, nullptr);
-        vkCmdBindVertexBuffers(cmd, 0, 1, &drawParams.vertexBuffer, &offset);
-        vkCmdBindIndexBuffer(cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32);
-
-
-        vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
-        vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
-
-        VkViewport curViewport = defaultViewport;
-
-        for (const auto &info : drawParams.drawInfos)
+    const VkClearValue clear[] = {
         {
-            SetViewportIfNew(cmd, info, defaultViewport, curViewport);
-            BindPipelineIfNew(cmd, info, drawParams.pipelines, curPipeline);
+            .color = { .float32 = { 0.0f, 0.0f, 0.0f, 0.0 } },
+        },
+        {
+            .depthStencil = { .depth = 1.0f },
+        },
+    };
 
-            // push const
-            {
-                RasterizedPushConst push( info, drawParams.defaultViewProj );
+    VkRenderPassBeginInfo beginInfo = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass      = drawParams.renderPass,
+        .framebuffer     = drawParams.framebuffer,
+        .renderArea      = defaultRenderArea,
+        .clearValueCount = std::size( clear ),
+        .pClearValues    = clear,
+    };
 
-                vkCmdPushConstants( cmd,
-                                    drawParams.pipelines->GetPipelineLayout(),
-                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                    0,
-                                    sizeof( push ),
-                                    &push );
-            }
+    vkCmdBeginRenderPass( cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
 
-            // draw
-            if (info.indexCount > 0)
-            {
-                vkCmdDrawIndexed(cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0);
-            }
-            else
-            {
-                vkCmdDraw(cmd, info.vertexCount, 1, info.firstVertex, 0);
-            }
+
+    VkPipeline curPipeline = drawParams.pipelines->BindPipelineIfNew(
+        cmd, VK_NULL_HANDLE, drawParams.drawInfos[ 0 ].pipelineState );
+
+    vkCmdBindDescriptorSets( cmd,
+                             VK_PIPELINE_BIND_POINT_GRAPHICS,
+                             drawParams.pipelines->GetPipelineLayout(),
+                             0,
+                             drawParams.descSetsCount,
+                             drawParams.descSets,
+                             0,
+                             nullptr );
+
+    VkDeviceSize offset = 0;
+    vkCmdBindVertexBuffers( cmd, 0, 1, &drawParams.vertexBuffer, &offset );
+    vkCmdBindIndexBuffer( cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32 );
+
+
+    vkCmdSetScissor( cmd, 0, 1, &defaultRenderArea );
+    vkCmdSetViewport( cmd, 0, 1, &defaultViewport );
+    VkViewport curViewport = defaultViewport;
+
+
+    for( const auto& info : drawParams.drawInfos )
+    {
+        SetViewportIfNew( cmd, info, defaultViewport, curViewport );
+        curPipeline =
+            drawParams.pipelines->BindPipelineIfNew( cmd, curPipeline, info.pipelineState );
+
+        // push const
+        {
+            RasterizedPushConst push( info, drawParams.defaultViewProj );
+
+            vkCmdPushConstants( cmd,
+                                drawParams.pipelines->GetPipelineLayout(),
+                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                0,
+                                sizeof( push ),
+                                &push );
+        }
+
+        // draw
+        if( info.indexCount > 0 )
+        {
+            vkCmdDrawIndexed( cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0 );
+        }
+        else
+        {
+            vkCmdDraw( cmd, info.vertexCount, 1, info.firstVertex, 0 );
         }
     }
 
 
-    if (drawLensFlares)
-    {
-        vkCmdSetScissor(cmd, 0, 1, &defaultRenderArea);
-        vkCmdSetViewport(cmd, 0, 1, &defaultViewport);
-
-        drawParams.pLensFlares->Draw(cmd, frameIndex);
-    }
-
-
-    vkCmdEndRenderPass(cmd);
+    vkCmdEndRenderPass( cmd );
 }
 
-void Rasterizer::SetViewportIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, 
-                                  const VkViewport &defaultViewport, VkViewport &curViewport)
-{
-    const VkViewport& newViewport = info.viewport.value_or( defaultViewport );
-
-    if( !Utils::AreViewportsSame( curViewport, newViewport ) )
-    {
-        vkCmdSetViewport( cmd, 0, 1, &newViewport );
-        curViewport = newViewport;
-    }
-}
-
-void Rasterizer::BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info,
-    const std::shared_ptr<RasterizerPipelines> &pipelines, VkPipeline &curPipeline)
-{
-    pipelines->BindPipelineIfNew(cmd, curPipeline, info.pipelineState, info.blendFuncSrc, info.blendFuncDst);
-}
-
-const std::shared_ptr<RenderCubemap> &Rasterizer::GetRenderCubemap() const
+const std::shared_ptr< RTGL1::RenderCubemap >& RTGL1::Rasterizer::GetRenderCubemap() const
 {
     return renderCubemap;
 }
 
-uint32_t Rasterizer::GetLensFlareCullingInputCount() const
+void RTGL1::Rasterizer::OnShaderReload( const ShaderManager* shaderManager )
 {
-    return lensFlares->GetCullingInputCount();
+    rasterPass->OnShaderReload( shaderManager );
+    swapchainPass->OnShaderReload( shaderManager );
+    renderCubemap->OnShaderReload( shaderManager );
 }
 
-void Rasterizer::OnShaderReload(const ShaderManager *shaderManager)
-{
-    rasterPass->OnShaderReload(shaderManager);
-    swapchainPass->OnShaderReload(shaderManager);
-    renderCubemap->OnShaderReload(shaderManager);
-    lensFlares->OnShaderReload(shaderManager);
-}
-
-void Rasterizer::OnFramebuffersSizeChange(const ResolutionState &resolutionState)
+void RTGL1::Rasterizer::OnFramebuffersSizeChange( const ResolutionState& resolutionState )
 {
     rasterPass->DestroyFramebuffers();
     swapchainPass->DestroyFramebuffers();
 
-    rasterPass->CreateFramebuffers(resolutionState.renderWidth, resolutionState.renderHeight, storageFramebuffers, allocator, cmdManager);
-    swapchainPass->CreateFramebuffers(resolutionState.upscaledWidth, resolutionState.upscaledHeight, storageFramebuffers);
+    rasterPass->CreateFramebuffers( resolutionState.renderWidth,
+                                    resolutionState.renderHeight,
+                                    storageFramebuffers,
+                                    allocator,
+                                    cmdManager );
+    swapchainPass->CreateFramebuffers(
+        resolutionState.upscaledWidth, resolutionState.upscaledHeight, storageFramebuffers );
 }
 
-void Rasterizer::CreatePipelineLayouts( VkDescriptorSetLayout* allLayouts,
-                                        size_t                 count,
-                                        VkDescriptorSetLayout  texturesSetLayout )
+void RTGL1::Rasterizer::CreatePipelineLayouts( VkDescriptorSetLayout* allLayouts,
+                                               size_t                 count,
+                                               VkDescriptorSetLayout  texturesSetLayout )
 {
     const VkPushConstantRange pushConst = {
         .stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
@@ -522,6 +526,4 @@ void Rasterizer::CreatePipelineLayouts( VkDescriptorSetLayout* allLayouts,
                         VK_OBJECT_TYPE_PIPELINE_LAYOUT,
                         "Swapchain pass Pipeline layout" );
     }
-}
-
 }

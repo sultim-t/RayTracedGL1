@@ -29,6 +29,58 @@
 
 static_assert(sizeof(RTGL1::ShGeometryInstance) % 16 == 0, "Std430 structs must be aligned by 16 bytes");
 
+namespace
+{
+
+uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint32_t layerIndex )
+{
+    if( layerInfo == nullptr )
+    {
+        return 0;
+    }
+
+    uint32_t bitOffset = MATERIAL_BLENDING_FLAG_BIT_COUNT * layerIndex;
+
+    switch( layerInfo->blend )
+    {
+        case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_FLAG_OPAQUE << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA: return MATERIAL_BLENDING_FLAG_ALPHA << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD: return MATERIAL_BLENDING_FLAG_ADD << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE: return MATERIAL_BLENDING_FLAG_SHADE << bitOffset;
+        default: assert( 0 ); return 0;
+    }
+}
+
+}
+
+uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& info )
+{
+    uint32_t f = 0;
+
+    if( info.pEditorInfo )
+    {
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerBase, 0 );
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer1, 1 );
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer2, 2 );
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerLightmap, 3 );
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_MIRROR )
+    {
+        f |= GEOM_INST_FLAG_REFLECT;
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_WATER )
+    {
+        f |= GEOM_INST_FLAG_MEDIA_TYPE_WATER;
+        f |= GEOM_INST_FLAG_REFLECT;
+        f |= GEOM_INST_FLAG_REFRACT;
+    }
+
+    return f;
+}
+
+
 RTGL1::GeomInfoManager::GeomInfoManager(VkDevice _device, std::shared_ptr<MemoryAllocator> &_allocator)
 :
     device(_device),

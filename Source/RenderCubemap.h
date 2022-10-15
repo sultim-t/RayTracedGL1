@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,69 +33,74 @@ namespace RTGL1
 class RenderCubemap : public IShaderDependency
 {
 public:
-    RenderCubemap(VkDevice device,
-                  const std::shared_ptr<MemoryAllocator> &allocator,
-                  const std::shared_ptr<ShaderManager> &shaderManager,
-                  const std::shared_ptr<TextureManager> &textureManager,
-                  const std::shared_ptr<GlobalUniform> &uniform,
-                  const std::shared_ptr<SamplerManager> &samplerManager,
-                  const std::shared_ptr<CommandBufferManager> &cmdManager,
-                  const RgInstanceCreateInfo &instanceInfo);
+    RenderCubemap( VkDevice                    device,
+                   MemoryAllocator&            allocator,
+                   const ShaderManager&        shaderManager,
+                   const TextureManager&       textureManager,
+                   const GlobalUniform&        uniform,
+                   const SamplerManager&       samplerManager,
+                   CommandBufferManager&       cmdManager,
+                   const RgInstanceCreateInfo& instanceInfo );
     ~RenderCubemap() override;
 
-    RenderCubemap(const RenderCubemap &other) = delete;
-    RenderCubemap(RenderCubemap &&other) noexcept = delete;
-    RenderCubemap &operator=(const RenderCubemap &other) = delete;
-    RenderCubemap &operator=(RenderCubemap &&other) noexcept = delete;
+    RenderCubemap( const RenderCubemap& other )     = delete;
+    RenderCubemap( RenderCubemap&& other ) noexcept = delete;
+    RenderCubemap&        operator=( const RenderCubemap& other ) = delete;
+    RenderCubemap&        operator=( RenderCubemap&& other ) noexcept = delete;
 
     // Draw to a cubemap
-    void Draw(VkCommandBuffer cmd, uint32_t frameIndex,
-               const std::shared_ptr< RasterizedDataCollector >& skyDataCollector,
-              const std::shared_ptr<TextureManager> &textureManager,
-              const std::shared_ptr<GlobalUniform> &uniform);
+    void                  Draw( VkCommandBuffer                                   cmd,
+                                uint32_t                                          frameIndex,
+                                const std::shared_ptr< RasterizedDataCollector >& skyDataCollector,
+                                const std::shared_ptr< TextureManager >&          textureManager,
+                                const std::shared_ptr< GlobalUniform >&           uniform );
 
     VkDescriptorSetLayout GetDescSetLayout() const;
-    VkDescriptorSet GetDescSet() const;
+    VkDescriptorSet       GetDescSet() const;
 
-    void OnShaderReload(const ShaderManager *shaderManager) override;
-    
+    void                  OnShaderReload( const ShaderManager* shaderManager ) override;
+
 
 private:
     struct Attachment
     {
-        VkImage image;
-        VkImageView view;
+        VkImage        image;
+        VkImageView    view;
         VkDeviceMemory memory;
     };
 
 private:
-    void CreatePipelineLayout(VkDescriptorSetLayout texturesSetLayout, VkDescriptorSetLayout uniformSetLayout);
-    void CreateRenderPass();
-    void InitPipelines(const std::shared_ptr<ShaderManager> &shaderManager, uint32_t sideSize, bool applyVertexColorGamma);
-    void CreateAttch(const std::shared_ptr<MemoryAllocator> &allocator, VkCommandBuffer cmd, uint32_t sideSize, Attachment &result, bool isDepth);
-    void CreateFramebuffer(uint32_t sideSize);
-    void CreateDescriptors(const std::shared_ptr<SamplerManager> &samplerManager);
-
-    void BindPipelineIfNew(VkCommandBuffer cmd, const RasterizedDataCollector::DrawInfo &info, VkPipeline &curPipeline);
+    void                     CreatePipelineLayout( VkDescriptorSetLayout texturesSetLayout,
+                                                   VkDescriptorSetLayout uniformSetLayout );
+    void                     CreateRenderPass();
+    void                     InitPipelines( const ShaderManager& shaderManager,
+                                            uint32_t             sideSize,
+                                            bool                 applyVertexColorGamma );
+    [[nodiscard]] Attachment CreateAttch( MemoryAllocator& allocator,
+                                          VkCommandBuffer  cmd,
+                                          uint32_t         sideSize,
+                                          bool             isDepth );
+    void                     CreateFramebuffer( uint32_t sideSize );
+    void                     CreateDescriptors( const SamplerManager& samplerManager );
 
 private:
-    VkDevice device;
+    VkDevice                               device;
 
-    VkPipelineLayout pipelineLayout;
-    std::shared_ptr<RasterizerPipelines> pipelines;
+    VkPipelineLayout                       pipelineLayout;
+    std::shared_ptr< RasterizerPipelines > pipelines;
 
-    VkRenderPass multiviewRenderPass;
+    VkRenderPass                           multiviewRenderPass;
 
-    Attachment cubemap;
-    Attachment cubemapDepth;
+    Attachment                             cubemap;
+    Attachment                             cubemapDepth;
 
-    VkFramebuffer cubemapFramebuffer;
+    VkFramebuffer                          cubemapFramebuffer;
 
-    uint32_t cubemapSize;
+    uint32_t                               cubemapSize;
 
-    VkDescriptorSetLayout descSetLayout;
-    VkDescriptorPool descPool;
-    VkDescriptorSet descSet;
+    VkDescriptorSetLayout                  descSetLayout;
+    VkDescriptorPool                       descPool;
+    VkDescriptorSet                        descSet;
 };
 
 }

@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <array>
 #include <list>
 #include <string>
 
@@ -75,7 +76,9 @@ public:
     void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
     void CheckForHotReload(VkCommandBuffer cmd);
 
-    MaterialTextures GetMaterialTextures(const char *pTextureName) const;
+    MaterialTextures GetMaterialTextures( const char* pTextureName ) const;
+    [[nodiscard]] std::array< MaterialTextures, 4 > GetTexturesForLayers( const RgMeshPrimitiveInfo& primitive ) const;
+    [[nodiscard]] std::array< RgColor4DPacked32, 4 > GetColorForLayers( const RgMeshPrimitiveInfo& primitive ) const;
 
     static constexpr uint32_t GetEmptyTextureIndex();
     uint32_t GetWaterNormalTextureIndex() const;

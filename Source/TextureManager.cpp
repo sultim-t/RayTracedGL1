@@ -791,3 +791,30 @@ uint32_t TextureManager::GetWaterNormalTextureIndex() const
 {
     return waterNormalTextureIndex;
 }
+
+#define IF_LAYER_NOT_NULL( member, field, default )                                            \
+    ( primitive.pEditorInfo                                                                    \
+          ? primitive.pEditorInfo->member ? primitive.pEditorInfo->member->field : ( default ) \
+          : ( default ) )
+
+std::array< MaterialTextures, 4 > TextureManager::GetTexturesForLayers(
+    const RgMeshPrimitiveInfo& primitive ) const
+{
+    return {
+        GetMaterialTextures( primitive.pTextureName ),
+        GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer1, pTextureName, nullptr ) ),
+        GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer2, pTextureName, nullptr ) ),
+        GetMaterialTextures( IF_LAYER_NOT_NULL( pLayerLightmap, pTextureName, nullptr ) ),
+    };
+}
+
+std::array< RgColor4DPacked32, 4 > TextureManager::GetColorForLayers(
+    const RgMeshPrimitiveInfo& primitive ) const
+{
+    return {
+        primitive.color,
+        IF_LAYER_NOT_NULL( pLayer1, color, 0xFFFFFF ),
+        IF_LAYER_NOT_NULL( pLayer2, color, 0xFFFFFF ),
+        IF_LAYER_NOT_NULL( pLayerLightmap, color, 0xFFFFFF ),
+    };
+}

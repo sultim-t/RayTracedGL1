@@ -106,27 +106,6 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     return cmd;
 }
 
-#define RG_SET_VEC3( dst, x, y, z ) \
-    ( dst )[ 0 ] = ( x );           \
-    ( dst )[ 1 ] = ( y );           \
-    ( dst )[ 2 ] = ( z )
-
-#define RG_SET_VEC3_A( dst, xyz ) \
-    ( dst )[ 0 ] = ( xyz )[ 0 ];  \
-    ( dst )[ 1 ] = ( xyz )[ 1 ];  \
-    ( dst )[ 2 ] = ( xyz )[ 2 ]
-
-#define RG_MAX_VEC3( dst, m )                       \
-    ( dst )[ 0 ] = std::max( ( dst )[ 0 ], ( m ) ); \
-    ( dst )[ 1 ] = std::max( ( dst )[ 1 ], ( m ) ); \
-    ( dst )[ 2 ] = std::max( ( dst )[ 2 ], ( m ) )
-
-#define RG_SET_VEC4( dst, x, y, z, w ) \
-    ( dst )[ 0 ] = ( x );              \
-    ( dst )[ 1 ] = ( y );              \
-    ( dst )[ 2 ] = ( z );              \
-    ( dst )[ 3 ] = ( w )
-
 void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
                                        const RgDrawFrameInfo&  drawInfo ) const
 {
@@ -536,7 +515,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->lightmapLayer  = UINT8_MAX;
     }
 
-    gu->lensFlareCullingInputCount = rasterizer->GetLensFlareCullingInputCount();
+    gu->lensFlareCullingInputCount = 0;
     gu->applyViewProjToLensFlares  = false;
 
     {

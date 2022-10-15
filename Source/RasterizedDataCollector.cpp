@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,78 +22,71 @@
 
 #include <algorithm>
 
-#include "Utils.h"
+#include "GeomInfoManager.h"
 #include "RgException.h"
+#include "Utils.h"
+
 #include "Generated/ShaderCommonC.h"
 
-using namespace RTGL1;
-
-void RasterizedDataCollector::GetVertexLayout(VkVertexInputAttributeDescription *outAttrs, uint32_t *outAttrsCount)
+std::array< VkVertexInputAttributeDescription, 3 > RTGL1::RasterizedDataCollector::GetVertexLayout()
 {
-    *outAttrsCount = 3;
-
-    outAttrs[0].binding = 0;
-    outAttrs[0].location = 0;
-    outAttrs[0].format = VK_FORMAT_R32G32B32_SFLOAT;
-    outAttrs[0].offset = offsetof(RgVertex, position);
-
-    outAttrs[1].binding = 0;
-    outAttrs[1].location = 1;
-    outAttrs[1].format = VK_FORMAT_R8G8B8A8_UNORM;
-    outAttrs[1].offset = offsetof(RgVertex, packedColor);
-
-    outAttrs[2].binding = 0;
-    outAttrs[2].location = 2;
-    outAttrs[2].format = VK_FORMAT_R32G32_SFLOAT;
-    outAttrs[2].offset = offsetof(RgVertex, texCoord);
+    return { {
+        {
+            .location = 0,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32B32_SFLOAT,
+            .offset   = offsetof( ShVertex, position ),
+        },
+        {
+            .location = 1,
+            .binding  = 0,
+            .format   = VK_FORMAT_R8G8B8A8_UNORM,
+            .offset   = offsetof( ShVertex, color ),
+        },
+        {
+            .location = 2,
+            .binding  = 0,
+            .format   = VK_FORMAT_R32G32_SFLOAT,
+            .offset   = offsetof( ShVertex, texCoord ),
+        },
+    } };
 }
 
-uint32_t RasterizedDataCollector::GetVertexStride()
+uint32_t RTGL1::RasterizedDataCollector::GetVertexStride()
 {
-    return static_cast<uint32_t>(sizeof(RgVertex));
+    return static_cast< uint32_t >( sizeof( ShVertex ) );
 }
 
-RasterizedDataCollector::RasterizedDataCollector( VkDevice                            _device,
-                                                  std::shared_ptr< MemoryAllocator >& _allocator,
-                                                  std::shared_ptr< TextureManager >   _textureMgr,
-                                                  uint32_t _maxVertexCount,
-                                                  uint32_t _maxIndexCount )
+RTGL1::RasterizedDataCollector::RasterizedDataCollector(
+    VkDevice                            _device,
+    std::shared_ptr< MemoryAllocator >& _allocator,
+    std::shared_ptr< TextureManager >   _textureMgr,
+    uint32_t                            _maxVertexCount,
+    uint32_t                            _maxIndexCount )
     : device( _device )
     , textureMgr( std::move( _textureMgr ) )
     , curVertexCount( 0 )
     , curIndexCount( 0 )
 {
-    vertexBuffer = std::make_shared<AutoBuffer>(_device, _allocator);
-    indexBuffer = std::make_shared<AutoBuffer>(_device, _allocator);
+    vertexBuffer = std::make_shared< AutoBuffer >( _allocator );
+    indexBuffer  = std::make_shared< AutoBuffer >( _allocator );
 
-    _maxVertexCount = std::max(_maxVertexCount, 64u);
-    _maxIndexCount = std::max(_maxIndexCount, 64u);
+    _maxVertexCount = std::max( _maxVertexCount, 64u );
+    _maxIndexCount  = std::max( _maxIndexCount, 64u );
 
-    vertexBuffer->Create(_maxVertexCount * sizeof(RgVertex), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, "Rasterizer vertex buffer");
-    indexBuffer->Create(_maxIndexCount * sizeof(uint32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, "Rasterizer index buffer");
+    vertexBuffer->Create( _maxVertexCount * sizeof( ShVertex ),
+                          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT,
+                          "Rasterizer vertex buffer" );
+    indexBuffer->Create( _maxIndexCount * sizeof( uint32_t ),
+                         VK_BUFFER_USAGE_INDEX_BUFFER_BIT,
+                         "Rasterizer index buffer" );
 }
 
-RasterizedDataCollector::~RasterizedDataCollector()
-{}
-
-namespace 
+namespace RTGL1
 {
-    bool IsWorld( RgRasterizedGeometryRenderType type )
-    {
-        return type == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT;
-    }
-
-    bool IsSwapchain( RgRasterizedGeometryRenderType type )
-    {
-        return type == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN;
-    }
-
-    bool IsSky( RgRasterizedGeometryRenderType type)
-    {
-        return type == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY;
-    }
-
-    VkViewport ToVk(const RgViewport &v)
+namespace
+{
+    VkViewport ToVk( const RgViewport& v )
     {
         return VkViewport{
             .x        = v.x,
@@ -105,205 +98,214 @@ namespace
         };
     }
 
-    uint32_t ResolveTextureIndex_AlbedoAlpha( const RTGL1::TextureManager& manager,
-                                              const RgRasterizedGeometryUploadInfo& info )
+    PipelineStateFlags ToPipelineState( GeometryRasterType         rasterType,
+                                        const RgMeshPrimitiveInfo& info )
     {
-        if( info.material == RG_NO_MATERIAL )
+        PipelineStateFlags r = 0;
+
+        if( info.flags & RG_MESH_PRIMITIVE_ALPHA_TESTED )
         {
-            return EMPTY_TEXTURE_INDEX;
+            r = r | PipelineStateFlagBits::ALPHA_TEST;
         }
 
-        return manager.GetMaterialTextures( info.material )
-            .indices[ MATERIAL_ALBEDO_ALPHA_INDEX ];
+        if( info.flags & RG_MESH_PRIMITIVE_TRANSLUCENT )
+        {
+            r = r | PipelineStateFlagBits::TRANSLUCENT;
+        }
+
+        // if alpha specifies semi-transparency
+        if( Utils::UnpackColor4DPacked32( info.color ).data[ 3 ] < 0.98f )
+        {
+            r = r | PipelineStateFlagBits::TRANSLUCENT;
+        }
+
+        // depth test for world / sky geometry
+        if( rasterType != GeometryRasterType::SWAPCHAIN )
+        {
+            r = r | PipelineStateFlagBits::DEPTH_TEST;
+
+            // depth write if not semi-transparent
+            if( !( r & PipelineStateFlagBits::TRANSLUCENT ) )
+            {
+                r = r | PipelineStateFlagBits::DEPTH_WRITE;
+            }
+        }
+
+        return r;
     }
 
-    uint32_t ResolveTextureIndex_RME( const RTGL1::TextureManager&          manager,
-                                              const RgRasterizedGeometryUploadInfo& info )
+    void CopyFromArrayOfStructs( const RgMeshPrimitiveInfo& info, ShVertex* dstVerts )
     {
-        if( info.material == RG_NO_MATERIAL )
-        {
-            return EMPTY_TEXTURE_INDEX;
-        }
+        assert( info.pVertices && dstVerts );
 
-        if( !IsWorld( info.renderType ) )
-        {
-            return EMPTY_TEXTURE_INDEX;
-        }
+        // must be same to copy
+        static_assert( std::is_same_v< decltype( info.pVertices ), const RgPrimitiveVertex* > );
+        static_assert( sizeof( ShVertex ) == sizeof( RgPrimitiveVertex ) );
+        static_assert( offsetof( ShVertex, position ) == offsetof( RgPrimitiveVertex, position ) );
+        static_assert( offsetof( ShVertex, normal ) == offsetof( RgPrimitiveVertex, normal ) );
+        static_assert( offsetof( ShVertex, tangent ) == offsetof( RgPrimitiveVertex, tangent ) );
+        static_assert( offsetof( ShVertex, texCoord ) == offsetof( RgPrimitiveVertex, texCoord ) );
+        static_assert( offsetof( ShVertex, color ) == offsetof( RgPrimitiveVertex, color ) );
 
-        return manager.GetMaterialTextures( info.material )
-            .indices[ MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX ];
+        memcpy( dstVerts, info.pVertices, sizeof( ShVertex ) * info.vertexCount );
+    }
+
+    bool IndicesExist( const RgMeshPrimitiveInfo& info )
+    {
+        return info.indexCount > 0 && info.pIndices != nullptr;
+    }
+    void CopyIndices( const RgMeshPrimitiveInfo& info, uint32_t* dstIndices )
+    {
+        assert( IndicesExist( info ) && dstIndices );
+        memcpy( dstIndices, info.pIndices, info.indexCount * sizeof( uint32_t ) );
     }
 }
+}
 
-void RasterizedDataCollector::AddGeometry(uint32_t frameIndex, 
-                                          const RgRasterizedGeometryUploadInfo &info, 
-                                          const float *pViewProjection, const RgViewport *pViewport)
+void RTGL1::RasterizedDataCollector::AddPrimitive( uint32_t                   frameIndex,
+                                                   GeometryRasterType         rasterType,
+                                                   const RgMeshPrimitiveInfo& info,
+                                                   const float*               pViewProjection,
+                                                   const RgViewport*          pViewport )
 {
-    assert(info.vertexCount > 0);
-    assert(info.pVertices != nullptr);
+    assert( info.vertexCount > 0 && info.pVertices != nullptr );
 
-    // for swapchain, depth data is not available
-    if( IsSwapchain( info.renderType ) )
+    if( curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof( ShVertex ) )
     {
-        if( info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST )
-        {
-            assert( 0 );
-            return;
-        }
-
-        if( info.pipelineState & RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE )
-        {
-            assert( 0 );
-            return;
-        }
-    }
-
-    // for sky, default pViewProjection and pViewport must be used,
-    // as sky geometry can be updated not in each frame
-    if( IsSky( info.renderType ) )
-    {
-        if( pViewProjection != nullptr || pViewport != nullptr )
-        {
-            throw RgException(RG_CANT_UPLOAD_RASTERIZED_GEOMETRY, "pViewProjection and pViewport must be null if renderType is RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY");
-        }
-    }
-
-    if (curVertexCount + info.vertexCount >= vertexBuffer->GetSize() / sizeof(RgVertex))
-    {
-        assert(0 && "Increase the size of \"rasterizedMaxVertexCount\". Vertex buffer size reached the limit.");
+        assert( 0 && "Increase the size of \"rasterizedMaxVertexCount\". Vertex buffer size "
+                     "reached the limit." );
         return;
     }
 
-    if (curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof(uint32_t))
-    {
-        assert(0 && "Increase the size of \"rasterizedMaxIndexCount\". Index buffer size reached the limit.");
-        return;
-    }
-
-
-    DrawInfo &drawInfo = PushInfo(info.renderType);
-
-    ShVertex* const vertsBase   = static_cast< ShVertex* >( vertexBuffer->GetMapped( frameIndex ) );
-    uint32_t* const indicesBase = static_cast< uint32_t* >( indexBuffer->GetMapped( frameIndex ) );
-
-
-    drawInfo = {
-        .transform            = info.transform,
-        .viewProj             = IfNotNull( pViewProjection, Float16D( pViewProjection ) ),
-        .viewport             = IfNotNull( pViewport, ToVk( *pViewport ) ),
-        .color                = Float4D( info.color.data ),
-        .textureIndex         = ResolveTextureIndex_AlbedoAlpha( *textureMgr, info ),
-        .emissionTextureIndex = ResolveTextureIndex_RME( *textureMgr, info ),
-        .pipelineState        = info.pipelineState,
-        .blendFuncSrc         = info.blendFuncSrc,
-        .blendFuncDst         = info.blendFuncDst,
-    };
-
-
-    // copy vertex data
-    CopyFromArrayOfStructs( info, &vertsBase[ curVertexCount ] );
-
-    drawInfo.vertexCount = info.vertexCount;
-    drawInfo.firstVertex  = static_cast< uint32_t >( curVertexCount );
-    curVertexCount += info.vertexCount;
-
-
-    // copy index data
-    if( info.indexCount != 0 && info.pIndices != nullptr )
+    if( IndicesExist( info ) )
     {
         if( curIndexCount + info.indexCount >= indexBuffer->GetSize() / sizeof( uint32_t ) )
         {
-            assert( 0 );
+            assert( 0 &&
+                    "Increase the size of \"rasterizedMaxIndexCount\". Index buffer size reached "
+                    "the limit." );
             return;
         }
-
-        memcpy(
-            &indicesBase[ curIndexCount ], info.pIndices, info.indexCount * sizeof( uint32_t ) );
-
-        drawInfo.indexCount   = info.indexCount;
-        drawInfo.firstIndex = static_cast< uint32_t >( curIndexCount );
-
-        curIndexCount += info.indexCount;
     }
+
+
+    // copy vertex data
+    const uint32_t vertexCount = info.vertexCount;
+    const uint32_t firstVertex = curVertexCount;
+
+    {
+        auto* vertsBase = vertexBuffer->GetMappedAs< ShVertex* >( frameIndex );
+        CopyFromArrayOfStructs( info, &vertsBase[ firstVertex ] );
+    }
+
+
+    // copy index data
+    const uint32_t indexCount = IndicesExist( info ) ? info.indexCount : 0;
+    const uint32_t firstIndex = IndicesExist( info ) ? curIndexCount : 0;
+
+    if( IndicesExist( info ) )
+    {
+        auto* indicesBase = indexBuffer->GetMappedAs< uint32_t* >( frameIndex );
+        CopyIndices( info, &indicesBase[ firstIndex ] );
+    }
+
+
+    const auto textures = textureMgr->GetTexturesForLayers( info );
+    const auto colors   = textureMgr->GetColorForLayers( info );
+
+    PushInfo( rasterType ) = {
+        .transform = info.transform,
+        .flags     = GeomInfoManager::GetPrimitiveFlags( info ),
+
+        .base_textureA = textures[ 0 ].indices[ 0 ],
+        .base_textureB = textures[ 0 ].indices[ 1 ],
+        .base_textureC = textures[ 0 ].indices[ 2 ],
+        .base_color    = colors[ 0 ],
+
+        .layer1_texture = textures[ 1 ].indices[ 0 ],
+        .layer1_color   = colors[ 1 ],
+
+        .layer2_texture = textures[ 2 ].indices[ 0 ],
+        .layer2_color   = colors[ 2 ],
+
+        .lightmap_texture = textures[ 3 ].indices[ 0 ],
+        .lightmap_color   = colors[ 3 ],
+
+        .vertexCount = vertexCount,
+        .firstVertex = firstVertex,
+        .indexCount  = indexCount,
+        .firstIndex  = firstIndex,
+
+        .viewProj = IfNotNull( pViewProjection, Float16D( pViewProjection ) ),
+        .viewport = IfNotNull( pViewport, ToVk( *pViewport ) ),
+
+        .pipelineState = ToPipelineState( rasterType, info ),
+    };
+
+    curVertexCount += info.vertexCount;
+    curIndexCount += info.indexCount;
 }
 
-RasterizedDataCollector::DrawInfo& RasterizedDataCollector::PushInfo(
-    RgRasterizedGeometryRenderType renderType )
+RTGL1::RasterizedDataCollector::DrawInfo& RTGL1::RasterizedDataCollector::PushInfo(
+    GeometryRasterType rasterType )
 {
-    if( renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT )
+    switch( rasterType )
     {
-        return rasterDrawInfos.emplace_back();
+        case GeometryRasterType::WORLD: {
+            return rasterDrawInfos.emplace_back();
+        }
+        case GeometryRasterType::SKY: {
+            return swapchainDrawInfos.emplace_back();
+        }
+        case GeometryRasterType::SWAPCHAIN: {
+            return skyDrawInfos.emplace_back();
+        }
+        default: {
+            throw RgException( RG_RESULT_GRAPHICS_API_ERROR,
+                               "RasterizedDataCollector::PushInfo error" );
+        }
     }
-
-    if( renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SWAPCHAIN )
-    {
-        return swapchainDrawInfos.emplace_back();
-    }
-
-    if( renderType == RG_RASTERIZED_GEOMETRY_RENDER_TYPE_SKY )
-    {
-        return skyDrawInfos.emplace_back();
-    }
-
-    throw RgException( RG_GRAPHICS_API_ERROR, "RasterizedDataCollector::PushInfo error" );
 }
 
-void RasterizedDataCollector::CopyFromArrayOfStructs(const RgRasterizedGeometryUploadInfo &info, ShVertex *dstVerts)
-{
-    assert(info.pVertices != nullptr);
-
-    // must be same to copy
-    static_assert(std::is_same_v<decltype(info.pVertices), const RgVertex * >);
-    static_assert(sizeof(ShVertex)                      == sizeof(RgVertex));
-    static_assert(offsetof(ShVertex, position)          == offsetof(RgVertex, position));
-    static_assert(offsetof(ShVertex, normal)            == offsetof(RgVertex, normal));
-    static_assert(offsetof(ShVertex, texCoord)          == offsetof(RgVertex, texCoord));
-    static_assert(offsetof(ShVertex, texCoordLayer1)    == offsetof(RgVertex, texCoordLayer1));
-    static_assert(offsetof(ShVertex, texCoordLayer2)    == offsetof(RgVertex, texCoordLayer2));
-    static_assert(offsetof(ShVertex, packedColor)       == offsetof(RgVertex, packedColor));
-
-    memcpy(dstVerts, info.pVertices, sizeof(RgVertex) * info.vertexCount);
-}
-
-void RasterizedDataCollector::Clear(uint32_t frameIndex)
+void RTGL1::RasterizedDataCollector::Clear( uint32_t frameIndex )
 {
     rasterDrawInfos.clear();
     swapchainDrawInfos.clear();
     skyDrawInfos.clear();
 
     curVertexCount = 0;
-    curIndexCount = 0;
+    curIndexCount  = 0;
 }
 
-void RasterizedDataCollector::CopyFromStaging(VkCommandBuffer cmd, uint32_t frameIndex)
+void RTGL1::RasterizedDataCollector::CopyFromStaging( VkCommandBuffer cmd, uint32_t frameIndex )
 {
-    vertexBuffer->CopyFromStaging(cmd, frameIndex, sizeof(RgVertex) * curVertexCount);
-    indexBuffer->CopyFromStaging(cmd, frameIndex, sizeof(uint32_t) * curIndexCount);
+    vertexBuffer->CopyFromStaging( cmd, frameIndex, sizeof( ShVertex ) * curVertexCount );
+    indexBuffer->CopyFromStaging( cmd, frameIndex, sizeof( uint32_t ) * curIndexCount );
 }
 
-VkBuffer RasterizedDataCollector::GetVertexBuffer() const
+VkBuffer RTGL1::RasterizedDataCollector::GetVertexBuffer() const
 {
     return vertexBuffer->GetDeviceLocal();
 }
 
-VkBuffer RasterizedDataCollector::GetIndexBuffer() const
+VkBuffer RTGL1::RasterizedDataCollector::GetIndexBuffer() const
 {
     return indexBuffer->GetDeviceLocal();
 }
 
-const std::vector< RasterizedDataCollector::DrawInfo >& RasterizedDataCollector::
+const std::vector< RTGL1::RasterizedDataCollector::DrawInfo >& RTGL1::RasterizedDataCollector::
     GetRasterDrawInfos() const
 {
     return rasterDrawInfos;
 }
 
-const std::vector< RasterizedDataCollector::DrawInfo >& RasterizedDataCollector::
+const std::vector< RTGL1::RasterizedDataCollector::DrawInfo >& RTGL1::RasterizedDataCollector::
     GetSwapchainDrawInfos() const
 {
     return swapchainDrawInfos;
 }
 
-const std::vector< RasterizedDataCollector::DrawInfo >& RasterizedDataCollector::
+const std::vector< RTGL1::RasterizedDataCollector::DrawInfo >& RTGL1::RasterizedDataCollector::
     GetSkyDrawInfos() const
 {
     return skyDrawInfos;

@@ -20,6 +20,8 @@
 
 #include "LensFlares.h"
 
+#if 0
+
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
@@ -653,3 +655,4 @@ void RTGL1::LensFlares::CreateRasterDescriptors()
     }
 }
 
+#endif

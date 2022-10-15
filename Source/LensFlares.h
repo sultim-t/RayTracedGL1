@@ -20,6 +20,8 @@
 
 #pragma once
 
+#if 0
+
 #include "AutoBuffer.h"
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
@@ -111,3 +113,5 @@ private:
 };
 
 }
+
+#endif

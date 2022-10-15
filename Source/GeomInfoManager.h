@@ -80,6 +80,10 @@ public:
     VkBuffer GetBuffer() const;
     VkBuffer GetMatchPrevBuffer() const;
     uint32_t GetStaticGeomBaseVertexIndex(uint32_t simpleIndex);
+
+
+    static uint32_t GetPrimitiveFlags( const RgMeshPrimitiveInfo& info );
+
     
 private:
     struct GeomFrameInfo

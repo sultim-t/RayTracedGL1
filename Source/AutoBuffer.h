@@ -62,6 +62,14 @@ public:
 
     VkDeviceSize    GetSize() const;
 
+public:
+    template< typename T >
+    requires( std::is_pointer_v< T > )
+    T GetMappedAs( uint32_t frameIndex )
+    {
+        return static_cast< T >( GetMapped( frameIndex ) );
+    }
+
 private:
     std::shared_ptr< MemoryAllocator > allocator;
 
