@@ -25,11 +25,11 @@
 #include "Generated/ShaderCommonC.h"
 #include "Utils.h"
 
-namespace 
+namespace
 {
-    // must be in sync with declaration in shaders
-    constexpr VkFormat SCATTERING_VOLUME_FORMAT = VK_FORMAT_R16G16B16A16_SFLOAT;
-    constexpr VkFormat ILLUMINATION_VOLUME_FORMAT = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
+// must be in sync with declaration in shaders
+constexpr VkFormat SCATTERING_VOLUME_FORMAT   = VK_FORMAT_R16G16B16A16_SFLOAT;
+constexpr VkFormat ILLUMINATION_VOLUME_FORMAT = VK_FORMAT_B10G11R11_UFLOAT_PACK32;
 }
 
 RTGL1::Volumetric::Volumetric( VkDevice              _device,
@@ -122,7 +122,7 @@ void RTGL1::Volumetric::ProcessScattering( VkCommandBuffer      cmd,
                              sets,
                              0,
                              nullptr );
-    
+
     float temporalWeight = 0.95f;
     if( firstTimeCounter++ < 5 )
     {
@@ -141,7 +141,7 @@ void RTGL1::Volumetric::ProcessScattering( VkCommandBuffer      cmd,
         Utils::GetWorkGroupCountT( VOLUMETRIC_SIZE_Y, COMPUTE_VOLUMETRIC_GROUP_SIZE_Y ),
         1,
     };
-    vkCmdDispatch( cmd, cs[ 0 ], cs[ 1 ], cs[2] );
+    vkCmdDispatch( cmd, cs[ 0 ], cs[ 1 ], cs[ 2 ] );
 }
 
 void RTGL1::Volumetric::BarrierToReadScattering( VkCommandBuffer cmd, uint32_t frameIndex )
@@ -242,7 +242,7 @@ void RTGL1::Volumetric::CreateSampler()
 
 void RTGL1::Volumetric::CreateImages( CommandBufferManager* cmdManager, MemoryAllocator* allocator )
 {
-    VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
+    VkCommandBuffer                                 cmd = cmdManager->StartGraphicsCmd();
 
     std::tuple< VolumeDef*, VkFormat, const char* > all[] = {
         { &scattering[ 0 ], SCATTERING_VOLUME_FORMAT, "Scattering Volume" },
@@ -321,7 +321,7 @@ void RTGL1::Volumetric::CreateImages( CommandBufferManager* cmdManager, MemoryAl
 
 void RTGL1::Volumetric::CreateDescriptors()
 {
-    VkResult r;
+    VkResult                     r;
 
     VkDescriptorSetLayoutBinding bindings[] = {
         {
@@ -334,13 +334,15 @@ void RTGL1::Volumetric::CreateDescriptors()
             .binding         = BINDING_VOLUMETRIC_SAMPLER,
             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
-            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT |
+                          VK_SHADER_STAGE_FRAGMENT_BIT,
         },
         {
             .binding         = BINDING_VOLUMETRIC_SAMPLER_PREV,
             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
-            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT |
+                          VK_SHADER_STAGE_FRAGMENT_BIT,
         },
         {
             .binding         = BINDING_VOLUMETRIC_ILLUMINATION,
@@ -352,7 +354,8 @@ void RTGL1::Volumetric::CreateDescriptors()
             .binding         = BINDING_VOLUMETRIC_ILLUMINATION_SAMPLER,
             .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
-            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR | VK_SHADER_STAGE_COMPUTE_BIT |
+                          VK_SHADER_STAGE_FRAGMENT_BIT,
         },
     };
 
@@ -367,34 +370,34 @@ void RTGL1::Volumetric::CreateDescriptors()
     r = vkCreateDescriptorSetLayout( device, &layoutInfo, nullptr, &descLayout );
     VK_CHECKERROR( r );
 
-    SET_DEBUG_NAME( device, descLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Volumetric Desc set layout" );
+    SET_DEBUG_NAME(
+        device, descLayout, VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT, "Volumetric Desc set layout" );
 
-    std::vector<VkDescriptorPoolSize> poolSizes;
+    std::vector< VkDescriptorPoolSize > poolSizes;
     for( auto& binding : bindings )
     {
-        auto existingPoolSize = std::find_if(
-            poolSizes.begin(),
-            poolSizes.end(),
-            [&binding](auto& poolSize) { return poolSize.type == binding.descriptorType; }
-        );
+        auto existingPoolSize =
+            std::ranges::find_if( poolSizes, [ &binding ]( auto& poolSize ) {
+                return poolSize.type == binding.descriptorType;
+            } );
 
         if( existingPoolSize != poolSizes.end() )
         {
-            existingPoolSize->descriptorCount += (binding.descriptorCount * MAX_FRAMES_IN_FLIGHT);
+            existingPoolSize->descriptorCount += ( binding.descriptorCount * MAX_FRAMES_IN_FLIGHT );
             continue;
         }
 
         const VkDescriptorPoolSize poolSize = {
-            .type = binding.descriptorType,
+            .type            = binding.descriptorType,
             .descriptorCount = binding.descriptorCount * MAX_FRAMES_IN_FLIGHT,
         };
-        poolSizes.push_back(poolSize);
+        poolSizes.push_back( poolSize );
     }
 
     VkDescriptorPoolCreateInfo poolInfo = {
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets       = MAX_FRAMES_IN_FLIGHT,
-        .poolSizeCount = static_cast<uint32_t>( std::size ( poolSizes ) ),
+        .poolSizeCount = static_cast< uint32_t >( std::size( poolSizes ) ),
         .pPoolSizes    = poolSizes.data(),
     };
 
@@ -435,8 +438,9 @@ void RTGL1::Volumetric::UpdateDescriptors()
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
             },
             {
-                .sampler     = volumeSampler,
-                .imageView   = scattering[ Utils::GetPreviousByModulo( i, MAX_FRAMES_IN_FLIGHT ) ].view,
+                .sampler = volumeSampler,
+                .imageView =
+                    scattering[ Utils::GetPreviousByModulo( i, MAX_FRAMES_IN_FLIGHT ) ].view,
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
             },
             {
@@ -450,7 +454,7 @@ void RTGL1::Volumetric::UpdateDescriptors()
                 .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
             },
         };
-        
+
         VkWriteDescriptorSet wrts[] = {
             {
                 .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
@@ -542,8 +546,10 @@ void RTGL1::Volumetric::CreatePipelineLayout( const GlobalUniform* uniform, cons
     VkResult r = vkCreatePipelineLayout( device, &info, nullptr, &processPipelineLayout );
     VK_CHECKERROR( r );
 
-    SET_DEBUG_NAME(
-        device, processPipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Volumetric Process pipeline layout" );
+    SET_DEBUG_NAME( device,
+                    processPipelineLayout,
+                    VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+                    "Volumetric Process pipeline layout" );
 }
 
 void RTGL1::Volumetric::CreatePipelines( const ShaderManager* shaderManager )
@@ -562,7 +568,8 @@ void RTGL1::Volumetric::CreatePipelines( const ShaderManager* shaderManager )
         vkCreateComputePipelines( device, VK_NULL_HANDLE, 1, &info, nullptr, &processPipeline );
     VK_CHECKERROR( r );
 
-    SET_DEBUG_NAME( device, processPipeline, VK_OBJECT_TYPE_PIPELINE, "Volumetric Process pipeline" );
+    SET_DEBUG_NAME(
+        device, processPipeline, VK_OBJECT_TYPE_PIPELINE, "Volumetric Process pipeline" );
 }
 
 void RTGL1::Volumetric::DestroyPipelines()
@@ -570,4 +577,3 @@ void RTGL1::Volumetric::DestroyPipelines()
     vkDestroyPipeline( device, processPipeline, nullptr );
     processPipeline = VK_NULL_HANDLE;
 }
-

@@ -34,7 +34,7 @@ public:
     explicit RasterizerPipelines( VkDevice             device,
                                   VkPipelineLayout     pipelineLayout,
                                   VkRenderPass         renderPass,
-                                  const ShaderManager* shaderManager,
+                                  const ShaderManager& shaderManager,
                                   std::string_view     shaderNameVert,
                                   std::string_view     shaderNameFrag,
                                   uint32_t             additionalAttachmentsCount,

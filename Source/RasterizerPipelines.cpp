@@ -28,7 +28,7 @@
 RTGL1::RasterizerPipelines::RasterizerPipelines( VkDevice             _device,
                                                  VkPipelineLayout     _pipelineLayout,
                                                  VkRenderPass         _renderPass,
-                                                 const ShaderManager* _shaderManager,
+                                                 const ShaderManager& _shaderManager,
                                                  std::string_view     _shaderNameVert,
                                                  std::string_view     _shaderNameFrag,
                                                  uint32_t             _additionalAttachmentsCount,
@@ -53,7 +53,7 @@ RTGL1::RasterizerPipelines::RasterizerPipelines( VkDevice             _device,
     VkResult                  r = vkCreatePipelineCache( device, &info, nullptr, &pipelineCache );
     VK_CHECKERROR( r );
 
-    OnShaderReload( _shaderManager );
+    OnShaderReload( &_shaderManager );
 }
 
 RTGL1::RasterizerPipelines::~RasterizerPipelines()

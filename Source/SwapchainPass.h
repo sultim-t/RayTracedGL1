@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -30,37 +30,40 @@ namespace RTGL1
 class SwapchainPass : public IShaderDependency
 {
 public:
-    SwapchainPass(VkDevice device, 
-                  VkPipelineLayout pipelineLayout, 
-                  const std::shared_ptr<ShaderManager> &shaderManager,
-                  const RgInstanceCreateInfo &instanceInfo);
+    SwapchainPass( VkDevice                    device,
+                   VkPipelineLayout            pipelineLayout,
+                   const ShaderManager&        shaderManager,
+                   const RgInstanceCreateInfo& instanceInfo );
     ~SwapchainPass() override;
 
-    SwapchainPass(const SwapchainPass &other) = delete;
-    SwapchainPass(SwapchainPass &&other) noexcept = delete;
-    SwapchainPass &operator=(const SwapchainPass &other) = delete;
-    SwapchainPass &operator=(SwapchainPass &&other) noexcept = delete;
+    SwapchainPass( const SwapchainPass& other )     = delete;
+    SwapchainPass( SwapchainPass&& other ) noexcept = delete;
+    SwapchainPass& operator=( const SwapchainPass& other ) = delete;
+    SwapchainPass& operator=( SwapchainPass&& other ) noexcept = delete;
 
-    void CreateFramebuffers(uint32_t swapchainWidth, uint32_t swapchainHeight, const std::shared_ptr<Framebuffers> &storageFramebuffers);
-    void DestroyFramebuffers();
+    void           CreateFramebuffers( uint32_t                               swapchainWidth,
+                                       uint32_t                               swapchainHeight,
+                                       const std::shared_ptr< Framebuffers >& storageFramebuffers );
+    void           DestroyFramebuffers();
 
-    void OnShaderReload(const ShaderManager *shaderManager) override;
+    void           OnShaderReload( const ShaderManager* shaderManager ) override;
 
-    VkRenderPass GetSwapchainRenderPass() const;
-    const std::shared_ptr<RasterizerPipelines> &GetSwapchainPipelines() const;
-    VkFramebuffer GetSwapchainFramebuffer(FramebufferImageIndex framebufIndex, uint32_t frameIndex) const;
+    VkRenderPass   GetSwapchainRenderPass() const;
+    const std::shared_ptr< RasterizerPipelines >& GetSwapchainPipelines() const;
+    VkFramebuffer GetSwapchainFramebuffer( FramebufferImageIndex framebufIndex,
+                                           uint32_t              frameIndex ) const;
 
 private:
-    void CreateSwapchainRenderPass(VkFormat surfaceFormat);
+    [[nodiscard]] VkRenderPass CreateSwapchainRenderPass( VkFormat surfaceFormat ) const;
 
 private:
-    VkDevice device;
+    VkDevice                               device;
 
-    VkRenderPass swapchainRenderPass;
-    std::shared_ptr<RasterizerPipelines> swapchainPipelines;
+    VkRenderPass                           swapchainRenderPass;
+    std::shared_ptr< RasterizerPipelines > swapchainPipelines;
 
-    VkFramebuffer fbPing[MAX_FRAMES_IN_FLIGHT];
-    VkFramebuffer fbPong[MAX_FRAMES_IN_FLIGHT];
+    VkFramebuffer                          fbPing[ MAX_FRAMES_IN_FLIGHT ];
+    VkFramebuffer                          fbPong[ MAX_FRAMES_IN_FLIGHT ];
 };
 
 }

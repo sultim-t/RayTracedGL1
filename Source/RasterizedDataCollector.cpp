@@ -58,11 +58,11 @@ uint32_t RTGL1::RasterizedDataCollector::GetVertexStride()
 }
 
 RTGL1::RasterizedDataCollector::RasterizedDataCollector(
-    VkDevice                            _device,
-    std::shared_ptr< MemoryAllocator >& _allocator,
-    std::shared_ptr< TextureManager >   _textureMgr,
-    uint32_t                            _maxVertexCount,
-    uint32_t                            _maxIndexCount )
+    VkDevice                           _device,
+    std::shared_ptr< MemoryAllocator > _allocator,
+    std::shared_ptr< TextureManager >  _textureMgr,
+    uint32_t                           _maxVertexCount,
+    uint32_t                           _maxIndexCount )
     : device( _device )
     , textureMgr( std::move( _textureMgr ) )
     , curVertexCount( 0 )

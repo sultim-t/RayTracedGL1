@@ -25,7 +25,8 @@
 namespace
 {
 
-bool IsSuccess( RgResult r ) {
+bool IsSuccess( RgResult r )
+{
     return r == RG_RESULT_SUCCESS || r == RG_RESULT_SUCCESS_FOUND_MESH ||
            r == RG_RESULT_SUCCESS_FOUND_TEXTURE;
 }

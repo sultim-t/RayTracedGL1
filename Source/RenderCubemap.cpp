@@ -113,13 +113,13 @@ void RTGL1::RenderCubemap::OnShaderReload( const ShaderManager* shaderManager )
     pipelines->OnShaderReload( shaderManager );
 }
 
-void RTGL1::RenderCubemap::Draw( VkCommandBuffer                                   cmd,
-                                 uint32_t                                          frameIndex,
-                                 const std::shared_ptr< RasterizedDataCollector >& skyDataCollector,
-                                 const std::shared_ptr< TextureManager >&          textureManager,
-                                 const std::shared_ptr< GlobalUniform >&           uniform )
+void RTGL1::RenderCubemap::Draw( VkCommandBuffer                cmd,
+                                 uint32_t                       frameIndex,
+                                 const RasterizedDataCollector& skyDataCollector,
+                                 const TextureManager&          textureManager,
+                                 const GlobalUniform&           uniform )
 {
-    const auto& drawInfos = skyDataCollector->GetSkyDrawInfos();
+    const auto& drawInfos = skyDataCollector.GetSkyDrawInfos();
 
     if( drawInfos.empty() )
     {
@@ -127,8 +127,8 @@ void RTGL1::RenderCubemap::Draw( VkCommandBuffer                                
     }
 
     VkDescriptorSet descSets[] = {
-        textureManager->GetDescSet( frameIndex ),
-        uniform->GetDescSet( frameIndex ),
+        textureManager.GetDescSet( frameIndex ),
+        uniform.GetDescSet( frameIndex ),
     };
 
     VkClearValue clearValues[] = {
@@ -169,8 +169,8 @@ void RTGL1::RenderCubemap::Draw( VkCommandBuffer                                
 
     {
         VkDeviceSize offset       = 0;
-        VkBuffer     vertexBuffer = skyDataCollector->GetVertexBuffer();
-        VkBuffer     indexBuffer  = skyDataCollector->GetIndexBuffer();
+        VkBuffer     vertexBuffer = skyDataCollector.GetVertexBuffer();
+        VkBuffer     indexBuffer  = skyDataCollector.GetIndexBuffer();
         vkCmdBindVertexBuffers( cmd, 0, 1, &vertexBuffer, &offset );
         vkCmdBindIndexBuffer( cmd, indexBuffer, offset, VK_INDEX_TYPE_UINT32 );
     }
@@ -194,7 +194,8 @@ void RTGL1::RenderCubemap::Draw( VkCommandBuffer                                
         // draw
         if( info.indexCount > 0 )
         {
-            vkCmdDrawIndexed( cmd, info.indexCount, 1, info.firstIndex, int32_t( info.firstVertex ), 0 );
+            vkCmdDrawIndexed(
+                cmd, info.indexCount, 1, info.firstIndex, int32_t( info.firstVertex ), 0 );
         }
         else
         {
@@ -300,11 +301,11 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     int32_t                         viewOffset = 0;
 
     VkRenderPassMultiviewCreateInfo multiview = {
-        .sType                = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
-        .subpassCount         = 1,
-        .pViewMasks           = &viewMask,
-        .dependencyCount      = 1,
-        .pViewOffsets         = &viewOffset,
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,
+        .subpassCount    = 1,
+        .pViewMasks      = &viewMask,
+        .dependencyCount = 1,
+        .pViewOffsets    = &viewOffset,
         // no correlation between cubemap faces
         .correlationMaskCount = 0,
         .pCorrelationMasks    = nullptr,
@@ -351,7 +352,7 @@ void RTGL1::RenderCubemap::InitPipelines( const ShaderManager& shaderManager,
     pipelines = std::make_shared< RasterizerPipelines >( device,
                                                          pipelineLayout,
                                                          multiviewRenderPass,
-                                                         &shaderManager,
+                                                         shaderManager,
                                                          "VertDefaultMultiview",
                                                          "FragSky",
                                                          0,

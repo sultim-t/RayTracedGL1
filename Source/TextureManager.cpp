@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -34,22 +34,37 @@ using namespace RTGL1;
 
 namespace
 {
-    static_assert(TEXTURES_PER_MATERIAL_COUNT == sizeof(RgTextureSet) / sizeof(const void *), "TEXTURES_PER_MATERIAL_COUNT must be same as in RgTextureSet");
 
-    constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX,EMPTY_TEXTURE_INDEX };
+constexpr MaterialTextures                EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX,
+                                                     EMPTY_TEXTURE_INDEX,
+                                                     EMPTY_TEXTURE_INDEX };
 
-    constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
+constexpr RgSamplerFilter                 DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
 
-    template <typename T>
-    constexpr const T *DefaultIfNull(const T *pData, const T *pDefault)
+template< typename T > constexpr const T* DefaultIfNull( const T* pData, const T* pDefault )
+{
+    return pData != nullptr ? pData : pDefault;
+}
+
+TextureOverrides::Loader GetLoader( const std::shared_ptr< ImageLoader >&   defaultLoader,
+                                    const std::shared_ptr< ImageLoaderDev > devLoader )
+{
+    return devLoader ? TextureOverrides::Loader( devLoader.get() )
+                     : TextureOverrides::Loader( defaultLoader.get() );
+}
+
+bool ContainsTextures( const MaterialTextures& m )
+{
+    for( uint32_t t : m.indices )
     {
-        return pData != nullptr ? pData : pDefault;
+        if( t != EMPTY_TEXTURE_INDEX )
+        {
+            return true;
+        }
     }
+    return false;
+}
 
-    TextureOverrides::Loader GetLoader(const std::shared_ptr<ImageLoader> &defaultLoader, const std::shared_ptr<ImageLoaderDev> devLoader)
-    {
-        return devLoader ? TextureOverrides::Loader(devLoader.get()) : TextureOverrides::Loader(defaultLoader.get());
-    }
 }
 
 
@@ -96,7 +111,7 @@ TextureManager::TextureManager( VkDevice                                       _
     if( _config.developerMode )
     {
         imageLoaderDev = std::make_shared< ImageLoaderDev >( imageLoader );
-        observer       = std::make_shared< TextureObserver >();
+        // observer       = std::make_shared< TextureObserver >();
 
         if( _info.pOverridenTexturesFolderPathDeveloper != nullptr )
         {
@@ -120,65 +135,71 @@ TextureManager::TextureManager( VkDevice                                       _
 
     if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
                            "Couldn't create water normal texture with path: " +
                                std::string( _info.pWaterNormalTexturePath ) );
     }
 }
 
-void TextureManager::CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex)
+void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameIndex )
 {
-    assert(textures[EMPTY_TEXTURE_INDEX].image == VK_NULL_HANDLE && textures[EMPTY_TEXTURE_INDEX].view == VK_NULL_HANDLE);
+    assert( textures[ EMPTY_TEXTURE_INDEX ].image == VK_NULL_HANDLE &&
+            textures[ EMPTY_TEXTURE_INDEX ].view == VK_NULL_HANDLE );
 
-    const uint32_t data[] = { 0xFFFFFFFF };
-    const RgExtent2D size = { 1,1 };
+    constexpr uint32_t      data[] = { 0xFFFFFFFF };
+    constexpr RgExtent2D    size   = { 1, 1 };
 
-    ImageLoader::ResultInfo info = {};
-    info.pData = reinterpret_cast<const uint8_t*>(data);
-    info.dataSize = sizeof(data);
-    info.baseSize = size;
-    info.format = VK_FORMAT_R8G8B8A8_UNORM;
-    info.levelCount = 1;
-    info.isPregenerated = false;
-    info.levelSizes[0] = sizeof(data);
+    ImageLoader::ResultInfo info = {
+        .levelSizes     = { sizeof( data ) },
+        .levelCount     = 1,
+        .isPregenerated = false,
+        .pData          = reinterpret_cast< const uint8_t* >( data ),
+        .dataSize       = sizeof( data ),
+        .baseSize       = size,
+        .format         = VK_FORMAT_R8G8B8A8_UNORM,
+    };
 
-    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0);
+    SamplerManager::Handle samplerHandle(
+        RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT );
 
-    uint32_t textureIndex = PrepareTexture(cmd, frameIndex, info, samplerHandle, false, "Empty texture", false, std::nullopt);
+    uint32_t textureIndex = PrepareTexture(
+        cmd, frameIndex, info, samplerHandle, false, "Empty texture", false, std::nullopt );
 
     // must have specific index
-    assert(textureIndex == EMPTY_TEXTURE_INDEX);
+    assert( textureIndex == EMPTY_TEXTURE_INDEX );
 
-    VkImage emptyImage = textures[textureIndex].image;
-    VkImageView emptyView = textures[textureIndex].view;
+    VkImage     emptyImage = textures[ textureIndex ].image;
+    VkImageView emptyView  = textures[ textureIndex ].view;
 
-    assert(emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE);
+    assert( emptyImage != VK_NULL_HANDLE && emptyView != VK_NULL_HANDLE );
 
     // if texture will be reset, it will use empty texture's info
-    textureDesc->SetEmptyTextureInfo(emptyView);
+    textureDesc->SetEmptyTextureInfo( emptyView );
 }
 
 // Check CreateStaticMaterial for notes
-void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath)
+void RTGL1::TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
+                                                      uint32_t        frameIndex,
+                                                      const char*     pFilePath )
 {
-    SamplerManager::Handle samplerHandle(RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT, 0);
+    SamplerManager::Handle samplerHandle(
+        RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT );
 
-    TextureOverrides::OverrideInfo parseInfo = 
-    {
+    TextureOverrides::OverrideInfo parseInfo = {
         // use absolute path
-        .commonFolderPath = ""
+        .commonFolderPath = "",
     };
-    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {
-        parseInfo.postfixes[i] = "";
-        parseInfo.originalIsSRGB[i] = false;
-        parseInfo.overridenIsSRGB[i] = false;
+        parseInfo.postfixes[ i ]       = "";
+        parseInfo.originalIsSRGB[ i ]  = false;
+        parseInfo.overridenIsSRGB[ i ] = false;
     }
 
-    constexpr uint32_t defaultData[] = { 0x7F7FFFFF };
-    constexpr RgExtent2D defaultSize = { 1, 1 };
+    constexpr uint32_t   defaultData[] = { 0x7F7FFFFF };
+    constexpr RgExtent2D defaultSize   = { 1, 1 };
     // try to load image file
-    TextureOverrides ovrd(pFilePath, RgTextureSet{ .pDataAlbedoAlpha = defaultData }, defaultSize, parseInfo, imageLoader.get());
+    TextureOverrides     ovrd( pFilePath, defaultData, defaultSize, parseInfo, imageLoader.get() );
 
     this->waterNormalTextureIndex = PrepareTexture( cmd,
                                                     frameIndex,
@@ -192,100 +213,99 @@ void RTGL1::TextureManager::CreateWaterNormalTexture(VkCommandBuffer cmd, uint32
 
 TextureManager::~TextureManager()
 {
-    for (auto &texture : textures)
+    for( auto& texture : textures )
     {
-        assert((texture.image == VK_NULL_HANDLE && texture.view == VK_NULL_HANDLE) ||
-               (texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE));
+        assert( ( texture.image == VK_NULL_HANDLE && texture.view == VK_NULL_HANDLE ) ||
+                ( texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE ) );
 
-        if (texture.image != VK_NULL_HANDLE)
+        if( texture.image != VK_NULL_HANDLE )
         {
-            DestroyTexture(texture);
+            DestroyTexture( texture );
         }
     }
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
     {
-        for (auto &texture : texturesToDestroy[i])
+        for( auto& texture : texturesToDestroy[ i ] )
         {
-            DestroyTexture(texture);
+            DestroyTexture( texture );
         }
     }
 }
 
-void TextureManager::PrepareForFrame(uint32_t frameIndex)
+void TextureManager::PrepareForFrame( uint32_t frameIndex )
 {
     // destroy delayed textures
-    for (auto &texture : texturesToDestroy[frameIndex])
+    for( auto& texture : texturesToDestroy[ frameIndex ] )
     {
-        DestroyTexture(texture);
+        DestroyTexture( texture );
     }
-    texturesToDestroy[frameIndex].clear();
+    texturesToDestroy[ frameIndex ].clear();
 
     // clear staging buffer that are not in use
-    textureUploader->ClearStaging(frameIndex);
+    textureUploader->ClearStaging( frameIndex );
 }
 
-void TextureManager::SubmitDescriptors(uint32_t frameIndex, 
-                                       const RgDrawFrameTexturesParams *pTexturesParams,
-                                       bool forceUpdateAllDescriptors)
+void TextureManager::SubmitDescriptors( uint32_t                         frameIndex,
+                                        const RgDrawFrameTexturesParams* pTexturesParams,
+                                        bool                             forceUpdateAllDescriptors )
 {
     // check if dynamic sampler filter was changed
-    RgSamplerFilter newDynamicSamplerFilter = pTexturesParams != nullptr ?
-        pTexturesParams->dynamicSamplerFilter : DefaultDynamicSamplerFilter;
+    RgSamplerFilter newDynamicSamplerFilter = pTexturesParams != nullptr
+                                                  ? pTexturesParams->dynamicSamplerFilter
+                                                  : DefaultDynamicSamplerFilter;
 
-    if (currentDynamicSamplerFilter != newDynamicSamplerFilter)
+    if( currentDynamicSamplerFilter != newDynamicSamplerFilter )
     {
         currentDynamicSamplerFilter = newDynamicSamplerFilter;
-        forceUpdateAllDescriptors = true;
+        forceUpdateAllDescriptors   = true;
     }
 
 
-    if (forceUpdateAllDescriptors)
+    if( forceUpdateAllDescriptors )
     {
-        textureDesc->ResetAllCache(frameIndex);
+        textureDesc->ResetAllCache( frameIndex );
     }
 
     // update desc set with current values
-    for (uint32_t i = 0; i < textures.size(); i++)
+    for( uint32_t i = 0; i < textures.size(); i++ )
     {
-        textures[i].samplerHandle.SetIfHasDynamicSamplerFilter(newDynamicSamplerFilter);
+        textures[ i ].samplerHandle.SetIfHasDynamicSamplerFilter( newDynamicSamplerFilter );
 
 
-        if (textures[i].image != VK_NULL_HANDLE)
+        if( textures[ i ].image != VK_NULL_HANDLE )
         {
-            textureDesc->UpdateTextureDesc(frameIndex, i, textures[i].view, textures[i].samplerHandle);
+            textureDesc->UpdateTextureDesc(
+                frameIndex, i, textures[ i ].view, textures[ i ].samplerHandle );
         }
         else
         {
             // reset descriptor to empty texture
-            textureDesc->ResetTextureDesc(frameIndex, i);
+            textureDesc->ResetTextureDesc( frameIndex, i );
         }
     }
 
     textureDesc->FlushDescWrites();
 }
 
-uint32_t TextureManager::CreateMaterial( VkCommandBuffer             cmd,
-                                         uint32_t                    frameIndex,
-                                         const RgMaterialCreateInfo& createInfo )
+bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
+                                        uint32_t                     frameIndex,
+                                        const RgOriginalTextureInfo& info )
 {
-    if( createInfo.pRelativePath == nullptr && createInfo.textures.pDataAlbedoAlpha == nullptr &&
-        createInfo.textures.pDataRoughnessMetallicEmission == nullptr &&
-        createInfo.textures.pDataNormal == nullptr )
+    if( info.pTextureName == nullptr || info.pPixels == nullptr )
     {
         throw RgException(
-            RG_WRONG_MATERIAL_PARAMETER,
-            R"(At least one of 'pRelativePath' or 'textures' members must be not null)" );
+            RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+            R"('pTextureName' or 'pPixels' must be not null in RgOriginalTextureInfo)" );
     }
 
-    auto samplerHandle = SamplerManager::Handle(
-        createInfo.filter, createInfo.addressModeU, createInfo.addressModeV, createInfo.flags );
+    auto samplerHandle =
+        SamplerManager::Handle( info.filter, info.addressModeU, info.addressModeV );
 
-    auto normalMapSamplerHandle = SamplerManager::Handle(
-        forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : createInfo.filter,
-        createInfo.addressModeU,
-        createInfo.addressModeV,
-        createInfo.flags & ( ~RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT ) );
+    auto normalMapSamplerHandle =
+        SamplerManager::Handle( forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : info.filter,
+                                info.addressModeU,
+                                info.addressModeV );
 
     TextureOverrides::OverrideInfo parseInfo = {
         .commonFolderPath = defaultTexturesPath.c_str(),
@@ -298,157 +318,158 @@ uint32_t TextureManager::CreateMaterial( VkCommandBuffer             cmd,
     }
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd( createInfo.pRelativePath,
-                           createInfo.textures,
-                           createInfo.size,
+    TextureOverrides ovrd( info.pTextureName,
+                           info.pPixels,
+                           info.size,
                            parseInfo,
                            GetLoader( imageLoader, imageLoaderDev ) );
 
 
-    bool isUpdateable = createInfo.flags & RG_MATERIAL_CREATE_UPDATEABLE_BIT;
-    if( observer )
+    bool             isUpdateable = false;
+    /*if( observer )
     {
         // treat everything as updateable
         isUpdateable = true;
-    }
+    }*/
 
 
     MaterialTextures mtextures = {};
     for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {
-        const auto& texSampler =
-            i != MATERIAL_NORMAL_INDEX ? samplerHandle : normalMapSamplerHandle;
-
         mtextures.indices[ i ] = PrepareTexture(
             cmd,
             frameIndex,
             ovrd.GetResult( i ),
-            texSampler,
-            !( createInfo.flags & RG_MATERIAL_CREATE_DONT_GENERATE_MIPMAPS_BIT ),
+            i == MATERIAL_NORMAL_INDEX ? normalMapSamplerHandle : samplerHandle,
+            true,
             ovrd.GetDebugName(),
             isUpdateable,
             i == MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX ? std::optional( pbrSwizzling )
                                                             : std::nullopt );
     }
 
-    uint32_t materialIndex = InsertMaterial( mtextures, isUpdateable );
+    InsertMaterial( frameIndex,
+                    info.pTextureName,
+                    Material{
+                        .textures     = mtextures,
+                        .isUpdateable = isUpdateable,
+                    } );
 
-
-    if( observer )
+    /*if( observer )
     {
         for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
         {
             observer->RegisterPath(
                 materialIndex, ovrd.GetPathAndRemove( i ), ovrd.GetResult( i ), i );
         }
-    }
+    }*/
 
 
-    return materialIndex;
+    return true;
 }
 
-bool TextureManager::UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo)
+/*bool TextureManager::UpdateMaterial( VkCommandBuffer cmd, const RgMaterialUpdateInfo& updateInfo )
 {
-    const auto it = materials.find(updateInfo.target);
+    const auto it = materials.find( updateInfo.target );
 
     // must exist
-    if (it == materials.end())
+    if( it == materials.end() )
     {
-        throw RgException(RG_CANT_UPDATE_MATERIAL,
-            "Material with ID=" + std::to_string(updateInfo.target) + " was not created");
+        throw RgException( RG_CANT_UPDATE_MATERIAL,
+                           "Material with ID=" + std::to_string( updateInfo.target ) +
+                               " was not created" );
     }
 
     // must be updateable
-    if (!it->second.isUpdateable)
+    if( !it->second.isUpdateable )
     {
-        throw RgException(RG_CANT_UPDATE_MATERIAL,
-            "Material with ID=" + std::to_string(updateInfo.target) + " was not marked as updateable");
+        throw RgException( RG_CANT_UPDATE_MATERIAL,
+                           "Material with ID=" + std::to_string( updateInfo.target ) +
+                               " was not marked as updateable" );
     }
 
-    const void *updateData[TEXTURES_PER_MATERIAL_COUNT] = 
-    {
+    const void* updateData[ TEXTURES_PER_MATERIAL_COUNT ] = {
         updateInfo.textures.pDataAlbedoAlpha,
         updateInfo.textures.pDataRoughnessMetallicEmission,
         updateInfo.textures.pDataNormal,
     };
 
-    auto &textureIndices = it->second.textures.indices;
-    static_assert(sizeof(textureIndices) / sizeof(textureIndices[0]) == TEXTURES_PER_MATERIAL_COUNT);
+    auto& textureIndices = it->second.textures.indices;
+    static_assert( sizeof( textureIndices ) / sizeof( textureIndices[ 0 ] ) ==
+                   TEXTURES_PER_MATERIAL_COUNT );
 
     bool wasUpdated = false;
 
-    for (uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++)
+    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {
-        uint32_t textureIndex = textureIndices[i];
+        uint32_t textureIndex = textureIndices[ i ];
 
-        if (textureIndex == EMPTY_TEXTURE_INDEX)
+        if( textureIndex == EMPTY_TEXTURE_INDEX )
         {
             continue;
         }
 
-        VkImage img = textures[textureIndex].image;
+        VkImage img = textures[ textureIndex ].image;
 
-        if (img == VK_NULL_HANDLE || updateData[i] == nullptr)
+        if( img == VK_NULL_HANDLE || updateData[ i ] == nullptr )
         {
             continue;
         }
 
-        textureUploader->UpdateImage(cmd, img, updateData[i]);
+        textureUploader->UpdateImage( cmd, img, updateData[ i ] );
         wasUpdated = true;
     }
 
     return wasUpdated;
-}
+}*/
 
-uint32_t TextureManager::PrepareTexture(
-    VkCommandBuffer                                 cmd,
-    uint32_t                                        frameIndex,
-    const std::optional< ImageLoader::ResultInfo >& optImageInfo,
-    SamplerManager::Handle                          samplerHandle,
-    bool                                            useMipmaps,
-    const char*                                     debugName,
-    bool                                            isUpdateable,
-    std::optional< RgTextureSwizzling >             swizzling )
+uint32_t TextureManager::PrepareTexture( VkCommandBuffer                                 cmd,
+                                         uint32_t                                        frameIndex,
+                                         const std::optional< ImageLoader::ResultInfo >& info,
+                                         SamplerManager::Handle              samplerHandle,
+                                         bool                                useMipmaps,
+                                         const char*                         debugName,
+                                         bool                                isUpdateable,
+                                         std::optional< RgTextureSwizzling > swizzling )
 {
-    if( !optImageInfo.has_value() )
+    if( !info )
     {
         return EMPTY_TEXTURE_INDEX;
     }
-    const auto& imageInfo = optImageInfo.value();
 
-    if( imageInfo.baseSize.width == 0 || imageInfo.baseSize.height == 0 )
+    if( info->baseSize.width == 0 || info->baseSize.height == 0 )
     {
         using namespace std::string_literals;
 
-        throw RgException( RG_WRONG_MATERIAL_PARAMETER,
-                           "Incorrect size (" + std::to_string( imageInfo.baseSize.width ) + ", " +
-                               std::to_string( imageInfo.baseSize.height ) +
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                           "Incorrect size (" + std::to_string( info->baseSize.width ) + ", " +
+                               std::to_string( info->baseSize.height ) +
                                ") of one of images in a material" +
                                ( debugName != nullptr ? " with name: "s + debugName : ""s ) );
     }
 
-    assert( imageInfo.dataSize > 0 );
-    assert( imageInfo.levelCount > 0 && imageInfo.levelSizes[ 0 ] > 0 );
+    assert( info->dataSize > 0 );
+    assert( info->levelCount > 0 && info->levelSizes[ 0 ] > 0 );
 
-    TextureUploader::UploadInfo info = {
+    auto uploadInfo = TextureUploader::UploadInfo{
         .cmd                    = cmd,
         .frameIndex             = frameIndex,
-        .pData                  = imageInfo.pData,
-        .dataSize               = imageInfo.dataSize,
+        .pData                  = info->pData,
+        .dataSize               = info->dataSize,
         .cubemap                = {},
-        .baseSize               = imageInfo.baseSize,
-        .format                 = imageInfo.format,
+        .baseSize               = info->baseSize,
+        .format                 = info->format,
         .useMipmaps             = useMipmaps,
-        .pregeneratedLevelCount = imageInfo.isPregenerated ? imageInfo.levelCount : 0,
-        .pLevelDataOffsets      = imageInfo.levelOffsets,
-        .pLevelDataSizes        = imageInfo.levelSizes,
+        .pregeneratedLevelCount = info->isPregenerated ? info->levelCount : 0,
+        .pLevelDataOffsets      = info->levelOffsets,
+        .pLevelDataSizes        = info->levelSizes,
         .isUpdateable           = isUpdateable,
         .pDebugName             = debugName,
         .isCubemap              = false,
         .swizzling              = swizzling,
     };
 
-    auto [ wasUploaded, image, view ] = textureUploader->UploadImage( info );
+    auto [ wasUploaded, image, view ] = textureUploader->UploadImage( uploadInfo );
 
     if( !wasUploaded )
     {
@@ -458,62 +479,67 @@ uint32_t TextureManager::PrepareTexture(
     return InsertTexture( frameIndex, image, view, samplerHandle );
 }
 
-uint32_t TextureManager::CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo)
+/*uint32_t TextureManager::CreateAnimatedMaterial( VkCommandBuffer                     cmd,
+                                                 uint32_t                            frameIndex,
+                                                 const RgAnimatedMaterialCreateInfo& createInfo )
 {
-    if (createInfo.frameCount == 0)
+    if( createInfo.frameCount == 0 )
     {
         return RG_NO_MATERIAL;
     }
 
-    std::vector<uint32_t> materialIndices(createInfo.frameCount);
+    std::vector< uint32_t > materialIndices( createInfo.frameCount );
 
     // animated material is a series of static materials
-    for (uint32_t i = 0; i < createInfo.frameCount; i++)
+    for( uint32_t i = 0; i < createInfo.frameCount; i++ )
     {
-        materialIndices[i] = CreateMaterial(cmd, frameIndex, createInfo.pFrames[i]);
+        materialIndices[ i ] = CreateMaterial( cmd, frameIndex, createInfo.pFrames[ i ] );
     }
 
-    return InsertAnimatedMaterial(materialIndices);
+    return InsertAnimatedMaterial( materialIndices );
 }
 
-bool TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame)
+bool TextureManager::ChangeAnimatedMaterialFrame( uint32_t animMaterial, uint32_t materialFrame )
 {
-    const auto animIt = animatedMaterials.find(animMaterial);
+    const auto animIt = animatedMaterials.find( animMaterial );
 
-    if (animIt == animatedMaterials.end())
+    if( animIt == animatedMaterials.end() )
     {
-        throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL, "Material with ID=" + std::to_string(animMaterial) + " is not animated");
+        throw RgException( RG_CANT_UPDATE_ANIMATED_MATERIAL,
+                           "Material with ID=" + std::to_string( animMaterial ) +
+                               " is not animated" );
     }
 
-    AnimatedMaterial &anim = animIt->second;
+    AnimatedMaterial& anim = animIt->second;
 
     {
-        auto maxFrameCount = static_cast<uint32_t>(anim.materialIndices.size());
-        if (materialFrame >= maxFrameCount)
+        auto maxFrameCount = static_cast< uint32_t >( anim.materialIndices.size() );
+        if( materialFrame >= maxFrameCount )
         {
-            throw RgException(RG_CANT_UPDATE_ANIMATED_MATERIAL,
-                "Animated material with ID=" + std::to_string(animMaterial) + " has only " +
-                std::to_string(maxFrameCount) + " frames, but frame with index "
-                + std::to_string(materialFrame) + " was requested");
+            throw RgException( RG_CANT_UPDATE_ANIMATED_MATERIAL,
+                               "Animated material with ID=" + std::to_string( animMaterial ) +
+                                   " has only " + std::to_string( maxFrameCount ) +
+                                   " frames, but frame with index " +
+                                   std::to_string( materialFrame ) + " was requested" );
         }
     }
 
     anim.currentFrame = materialFrame;
 
     // notify subscribers
-    for (auto &ws : subscribers)
+    for( auto& ws : subscribers )
     {
         // if subscriber still exist
-        if (auto s = ws.lock())
+        if( auto s = ws.lock() )
         {
-            uint32_t frameMatIndex = anim.materialIndices[anim.currentFrame];
+            uint32_t frameMatIndex = anim.materialIndices[ anim.currentFrame ];
 
             // find MaterialTextures
-            auto it = materials.find(frameMatIndex);
+            auto     it = materials.find( frameMatIndex );
 
-            if (it != materials.end())
+            if( it != materials.end() )
             {
-                s->OnMaterialChange(animMaterial, it->second.textures);
+                s->OnMaterialChange( animMaterial, it->second.textures );
             }
         }
     }
@@ -521,215 +547,170 @@ bool TextureManager::ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t
     return true;
 }
 
-uint32_t TextureManager::GenerateMaterialIndex(const MaterialTextures &materialTextures)
-{
-    uint32_t matIndex = materialTextures.indices[0] + materialTextures.indices[1] + materialTextures.indices[2];
-
-    while (materials.find(matIndex) != materials.end())
-    {
-        matIndex++;
-    }
-
-    return matIndex;
-}
-
-uint32_t TextureManager::GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices)
-{
-    uint32_t matIndex = std::accumulate(materialIndices.begin(), materialIndices.end(), 0u);
-
-    // all materials share the same pool of indices
-    while (materials.find(matIndex) != materials.end())
-    {
-        matIndex++;
-    }
-
-    return matIndex;
-}
-
-uint32_t TextureManager::InsertMaterial(const MaterialTextures &materialTextures, bool isUpdateable)
+uint32_t TextureManager::InsertAnimatedMaterial( std::vector< uint32_t >& materialIndices )
 {
     bool isEmpty = true;
 
-    for (uint32_t t : materialTextures.indices)
+    for( uint32_t m : materialIndices )
     {
-        if (t != EMPTY_TEXTURE_INDEX)
+        if( m != RG_NO_MATERIAL )
         {
             isEmpty = false;
             break;
         }
     }
 
-    if (isEmpty)
+    if( isEmpty )
     {
         return RG_NO_MATERIAL;
     }
 
-    uint32_t matIndex = GenerateMaterialIndex(materialTextures);
-    materials[matIndex] = Material
-    {
-        .textures = materialTextures,
-        .isUpdateable = isUpdateable,
-    };
-
-    return matIndex;
-}
-
-uint32_t TextureManager::InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices)
-{
-    bool isEmpty = true;
-
-    for (uint32_t m : materialIndices)
-    {
-        if (m != RG_NO_MATERIAL)
-        {
-            isEmpty = false;
-            break;
-        }    
-    }
-
-    if (isEmpty)
-    {
-        return RG_NO_MATERIAL;
-    }
-
-    uint32_t animMatIndex = GenerateMaterialIndex(materialIndices);
-    animatedMaterials[animMatIndex] = AnimatedMaterial
-    {
-        .materialIndices = std::move(materialIndices),
-        .currentFrame = 0,
+    uint32_t animMatIndex             = GenerateMaterialIndex( materialIndices );
+    animatedMaterials[ animMatIndex ] = AnimatedMaterial{
+        .materialIndices = std::move( materialIndices ),
+        .currentFrame    = 0,
     };
 
     return animMatIndex;
-}
+}*/
 
-void TextureManager::DestroyMaterialTextures(uint32_t frameIndex, uint32_t materialIndex)
+void TextureManager::InsertMaterial( uint32_t        frameIndex,
+                                     const char*     pTextureName,
+                                     const Material& material )
 {
-    auto it = materials.find(materialIndex);
+    auto [ iter, insertednew ] = materials.insert( { std::string( pTextureName ), material } );
 
-    if (it != materials.end())
+    if( !insertednew )
     {
-        DestroyMaterialTextures(frameIndex, it->second);
-    }
-}
+        Material& existing = iter->second;
 
-void TextureManager::DestroyMaterialTextures(uint32_t frameIndex, const Material &material)
-{
-    for (auto t : material.textures.indices)
-    {
-        if (t != EMPTY_TEXTURE_INDEX)
+        // destroy old, overwrite with new
+        DestroyMaterialTextures( frameIndex, existing );
+        existing = material;
+
+        // notify subscribers
+        for( auto& ws : subscribers )
         {
-            Texture &texture = textures[t];
-
-            AddToBeDestroyed(frameIndex, texture);
-
-            // null data
-            texture.image = VK_NULL_HANDLE;
-            texture.view = VK_NULL_HANDLE;
-            texture.samplerHandle = SamplerManager::Handle();
+            if( auto s = ws.lock() )
+            {
+                // TODO: IMaterialDependency
+                // s->OnMaterialChange(   );
+            }
         }
     }
 }
 
-void TextureManager::DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex)
+void TextureManager::DestroyMaterialTextures( uint32_t frameIndex, const Material& material )
 {
-    if (materialIndex == RG_NO_MATERIAL)
+    for( auto t : material.textures.indices )
     {
-        return;
-    }
-
-
-    const auto animIt = animatedMaterials.find(materialIndex);
-
-    // if it's an animated material
-    if (animIt != animatedMaterials.end())
-    {
-        AnimatedMaterial &anim = animIt->second;
-
-        // destroy each material
-        for (auto &mat : anim.materialIndices)
+        if( t != EMPTY_TEXTURE_INDEX )
         {
-            DestroyMaterialTextures(currentFrameIndex, mat);
-        }
+            Texture& texture = textures[ t ];
 
-        animatedMaterials.erase(animIt);
-    }
-    else
-    {
-        auto it = materials.find(materialIndex);
+            AddToBeDestroyed( frameIndex, texture );
 
-        if (it != materials.end())
-        {
-            DestroyMaterialTextures(currentFrameIndex, it->second);
-            materials.erase(it);
+            // nullify the slot
+            texture = {
+                .image         = VK_NULL_HANDLE,
+                .view          = VK_NULL_HANDLE,
+                .samplerHandle = SamplerManager::Handle(),
+            };
         }
     }
+}
 
-
-    if (observer)
+bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName )
+{
+    if( pTextureName == nullptr )
     {
-        observer->Remove(materialIndex);
+        return false;
     }
 
+    auto it = materials.find( pTextureName );
+
+    if( it == materials.end() )
+    {
+        return false;
+    }
+
+    DestroyMaterialTextures( frameIndex, it->second );
+    materials.erase( it );
+
+    /*if( observer )
+    {
+        observer->Remove( materialIndex );
+    }*/
 
     // notify subscribers
-    for (auto &ws : subscribers)
+    for( auto& ws : subscribers )
     {
-        if (auto s = ws.lock())
+        if( auto s = ws.lock() )
         {
             // send them empty texture indices as material is destroyed
-            s->OnMaterialChange(materialIndex, EmptyMaterialTextures);
+
+            // TODO: IMaterialDependency
+            // s->OnMaterialChange( materialIndex, EmptyMaterialTextures );
         }
     }
+
+    return true;
 }
 
-void TextureManager::CheckForHotReload(VkCommandBuffer cmd)
+/*void TextureManager::CheckForHotReload( VkCommandBuffer cmd )
 {
-    if (observer && imageLoaderDev)
+    if( observer && imageLoaderDev )
     {
-        observer->CheckPathsAndReupload(cmd, *this, imageLoaderDev.get());
+        observer->CheckPathsAndReupload( cmd, *this, imageLoaderDev.get() );
     }
-}
+}*/
 
-uint32_t TextureManager::InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, SamplerManager::Handle samplerHandle)
+uint32_t TextureManager::InsertTexture( uint32_t               frameIndex,
+                                        VkImage                image,
+                                        VkImageView            view,
+                                        SamplerManager::Handle samplerHandle )
 {
-    auto texture = std::find_if(textures.begin(), textures.end(), [] (const Texture &t)
-    {
+    auto texture = std::ranges::find_if( textures, []( const Texture& t ) {
         return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
-    });
+    } );
 
-    // if coudn't find empty space, use empty texture
-    if (texture == textures.end())
+    // if couldn't find empty space, use empty texture
+    if( texture == textures.end() )
     {
         // clean created data
-        Texture t = {};
-        t.image = image;
-        t.view = view;
-        AddToBeDestroyed(frameIndex, t);
+        AddToBeDestroyed( frameIndex,
+                          Texture{
+                              .image = image,
+                              .view  = view,
+                          } );
 
         // TODO: properly warn user, add severity to print
-        assert(false && "Too many textures");
+        assert( false && "Too many textures" );
 
         return EMPTY_TEXTURE_INDEX;
     }
 
-    texture->image = image;
-    texture->view = view;
-    texture->samplerHandle = samplerHandle;
+    *texture = Texture{
+        .image         = image,
+        .view          = view,
+        .samplerHandle = samplerHandle,
+    };
 
-    return (uint32_t)std::distance(textures.begin(), texture);
+    return uint32_t( std::distance( textures.begin(), texture ) );
 }
 
-void TextureManager::DestroyTexture(const Texture &texture)
+void TextureManager::DestroyTexture( const Texture& texture )
 {
-    assert(texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE);
-    textureUploader->DestroyImage(texture.image, texture.view);
+    assert( texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE );
+
+    textureUploader->DestroyImage( texture.image, texture.view );
 }
 
-void TextureManager::AddToBeDestroyed(uint32_t frameIndex, const Texture &texture)
+void TextureManager::AddToBeDestroyed( uint32_t frameIndex, const Texture& texture )
 {
-    assert(texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE);
+    assert( texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE );
 
-    texturesToDestroy[frameIndex].push_back(texture);
+    texturesToDestroy[ frameIndex ].push_back( texture );
 }
 
 MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName ) const
@@ -739,19 +720,19 @@ MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName )
         return EmptyMaterialTextures;
     }
 
-    const auto animIt = animatedMaterials.find(materialIndex);
+    /*const auto animIt = animatedMaterials.find( materialIndex );
 
-    if (animIt != animatedMaterials.end())
+    if( animIt != animatedMaterials.end() )
     {
-        const AnimatedMaterial &anim = animIt->second;
+        const AnimatedMaterial& anim = animIt->second;
 
         // return material textures of the current frame
-        return GetMaterialTextures(anim.materialIndices[anim.currentFrame]);
-    }
+        return GetMaterialTextures( anim.materialIndices[ anim.currentFrame ] );
+    }*/
 
-    const auto it = materials.find(materialIndex);
+    const auto it = materials.find( pTextureName );
 
-    if (it == materials.end())
+    if( it == materials.end() )
     {
         return EmptyMaterialTextures;
     }
@@ -759,9 +740,9 @@ MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName )
     return it->second.textures;
 }
 
-VkDescriptorSet TextureManager::GetDescSet(uint32_t frameIndex) const
+VkDescriptorSet TextureManager::GetDescSet( uint32_t frameIndex ) const
 {
-    return textureDesc->GetDescSet(frameIndex);
+    return textureDesc->GetDescSet( frameIndex );
 }
 
 VkDescriptorSetLayout TextureManager::GetDescSetLayout() const
@@ -769,22 +750,21 @@ VkDescriptorSetLayout TextureManager::GetDescSetLayout() const
     return textureDesc->GetDescSetLayout();
 }
 
-void TextureManager::Subscribe(std::shared_ptr<IMaterialDependency> subscriber)
+void TextureManager::Subscribe( std::shared_ptr< IMaterialDependency > subscriber )
 {
-    subscribers.emplace_back(subscriber);
+    subscribers.emplace_back( subscriber );
 }
 
-void TextureManager::Unsubscribe(const IMaterialDependency *subscriber)
+void TextureManager::Unsubscribe( const IMaterialDependency* subscriber )
 {
-    subscribers.remove_if([subscriber] (const std::weak_ptr<IMaterialDependency> &ws)
-    {
-        if (const auto s = ws.lock())
+    subscribers.remove_if( [ subscriber ]( const std::weak_ptr< IMaterialDependency >& ws ) {
+        if( const auto s = ws.lock() )
         {
             return s.get() == subscriber;
         }
 
         return true;
-    });
+    } );
 }
 
 uint32_t TextureManager::GetWaterNormalTextureIndex() const

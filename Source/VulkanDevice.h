@@ -84,7 +84,7 @@ public:
     void UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo );
 
     void ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo );
-    void ProvideOriginalCubemapTexture( const RgCubemapCreateInfo* pInfo );
+    void ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo );
     void MarkOriginalTextureAsDeleted( const char* pTextureName );
 
     void StartFrame( const RgStartFrameInfo* pInfo );

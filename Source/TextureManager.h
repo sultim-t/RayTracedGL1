@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -43,57 +43,60 @@ namespace RTGL1
 class TextureManager
 {
 public:
-    explicit TextureManager(
-        VkDevice device,
-        std::shared_ptr<MemoryAllocator> memAllocator,
-        std::shared_ptr<SamplerManager> samplerManager,
-        const std::shared_ptr<CommandBufferManager> &cmdManager,
-        std::shared_ptr<UserFileLoad> userFileLoad,
-        const RgInstanceCreateInfo &info,
-        const LibraryConfig::Config &config);
+    TextureManager( VkDevice                                       device,
+                    std::shared_ptr< MemoryAllocator >             memAllocator,
+                    std::shared_ptr< SamplerManager >              samplerManager,
+                    const std::shared_ptr< CommandBufferManager >& cmdManager,
+                    std::shared_ptr< UserFileLoad >                userFileLoad,
+                    const RgInstanceCreateInfo&                    info,
+                    const LibraryConfig::Config&                   config );
     ~TextureManager();
 
-    TextureManager(const TextureManager &other) = delete;
-    TextureManager(TextureManager &&other) noexcept = delete;
-    TextureManager &operator=(const TextureManager &other) = delete;
-    TextureManager &operator=(TextureManager &&other) noexcept = delete;
+    TextureManager( const TextureManager& other )     = delete;
+    TextureManager( TextureManager&& other ) noexcept = delete;
+    TextureManager&       operator=( const TextureManager& other ) = delete;
+    TextureManager&       operator=( TextureManager&& other ) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex);
-    void SubmitDescriptors(uint32_t frameIndex,
-                           const RgDrawFrameTexturesParams *pTexturesParams,
-                           bool forceUpdateAllDescriptors = false); // true, if mip lod bias was changed, for example
-
-
-    bool TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
-
-
+    void                  PrepareForFrame( uint32_t frameIndex );
+    void                  SubmitDescriptors( uint32_t                         frameIndex,
+                                             const RgDrawFrameTexturesParams* pTexturesParams,
+                                             bool                             forceUpdateAllDescriptors =
+                                                 false /* true, if mip lod bias was changed, for example */ );
+    VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
+    VkDescriptorSetLayout GetDescSetLayout() const;
 
 
-    uint32_t CreateMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgMaterialCreateInfo &createInfo);
-    uint32_t CreateAnimatedMaterial(VkCommandBuffer cmd, uint32_t frameIndex, const RgAnimatedMaterialCreateInfo &createInfo);
-    bool ChangeAnimatedMaterialFrame(uint32_t animMaterial, uint32_t materialFrame);
-    bool UpdateMaterial(VkCommandBuffer cmd, const RgMaterialUpdateInfo &updateInfo);
-    void DestroyMaterial(uint32_t currentFrameIndex, uint32_t materialIndex);
-    void CheckForHotReload(VkCommandBuffer cmd);
+    bool                  TryCreateMaterial( VkCommandBuffer              cmd,
+                                             uint32_t                     frameIndex,
+                                             const RgOriginalTextureInfo& info );
+    bool                  TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
 
-    MaterialTextures GetMaterialTextures( const char* pTextureName ) const;
-    [[nodiscard]] std::array< MaterialTextures, 4 > GetTexturesForLayers( const RgMeshPrimitiveInfo& primitive ) const;
-    [[nodiscard]] std::array< RgColor4DPacked32, 4 > GetColorForLayers( const RgMeshPrimitiveInfo& primitive ) const;
 
-    static constexpr uint32_t GetEmptyTextureIndex();
+    MaterialTextures      GetMaterialTextures( const char* pTextureName ) const;
+    std::array< MaterialTextures, 4 > GetTexturesForLayers(
+        const RgMeshPrimitiveInfo& primitive ) const;
+    std::array< RgColor4DPacked32, 4 > GetColorForLayers(
+        const RgMeshPrimitiveInfo& primitive ) const;
     uint32_t GetWaterNormalTextureIndex() const;
 
-    VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
-    VkDescriptorSetLayout GetDescSetLayout() const;
 
     // Subscribe to material change event.
     // shared_ptr will be transformed to weak_ptr
-    void Subscribe(std::shared_ptr<IMaterialDependency> subscriber);
-    void Unsubscribe(const IMaterialDependency *subscriber);
+    void     Subscribe( std::shared_ptr< IMaterialDependency > subscriber );
+    void     Unsubscribe( const IMaterialDependency* subscriber );
 
 private:
-    void CreateEmptyTexture(VkCommandBuffer cmd, uint32_t frameIndex);
-    void CreateWaterNormalTexture(VkCommandBuffer cmd, uint32_t frameIndex, const char *pFilePath);
+    struct Material
+    {
+        MaterialTextures textures;
+        bool             isUpdateable;
+    };
+
+private:
+    void     CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameIndex );
+    void     CreateWaterNormalTexture( VkCommandBuffer cmd,
+                                       uint32_t        frameIndex,
+                                       const char*     pFilePath );
 
     uint32_t PrepareTexture( VkCommandBuffer                                 cmd,
                              uint32_t                                        frameIndex,
@@ -104,57 +107,46 @@ private:
                              bool                                            isUpdateable,
                              std::optional< RgTextureSwizzling >             swizzling );
 
-    uint32_t InsertTexture(uint32_t frameIndex, VkImage image, VkImageView view, SamplerManager::Handle samplerHandle);
-    void DestroyTexture(const Texture &texture);
-    void AddToBeDestroyed(uint32_t frameIndex, const Texture &texture);
+    uint32_t InsertTexture( uint32_t               frameIndex,
+                            VkImage                image,
+                            VkImageView            view,
+                            SamplerManager::Handle samplerHandle );
+    void     DestroyTexture( const Texture& texture );
+    void     AddToBeDestroyed( uint32_t frameIndex, const Texture& texture );
 
-    uint32_t GenerateMaterialIndex(const MaterialTextures &materialTextures);
-    uint32_t GenerateMaterialIndex(const std::vector<uint32_t> &materialIndices);
-
-    uint32_t InsertMaterial(const MaterialTextures &materialTextures, bool isUpdateable);
-    uint32_t InsertAnimatedMaterial(std::vector<uint32_t> &materialIndices);
-
-    void DestroyMaterialTextures(uint32_t frameIndex, uint32_t materialIndex);
-    void DestroyMaterialTextures(uint32_t frameIndex, const Material &material);
+    void InsertMaterial( uint32_t frameIndex, const char* pTextureName, const Material& material );
+    void DestroyMaterialTextures( uint32_t frameIndex, const Material& material );
 
 private:
-    VkDevice device;
-    RgTextureSwizzling pbrSwizzling;
+    VkDevice                                    device;
+    RgTextureSwizzling                          pbrSwizzling;
 
-    std::shared_ptr<ImageLoader> imageLoader;
+    std::shared_ptr< ImageLoader >              imageLoader;
+    std::shared_ptr< ImageLoaderDev >           imageLoaderDev;
 
-    std::shared_ptr<ImageLoaderDev> imageLoaderDev;
-    std::shared_ptr<TextureObserver> observer;
+    std::shared_ptr< SamplerManager >           samplerMgr;
+    std::shared_ptr< TextureDescriptors >       textureDesc;
+    std::shared_ptr< TextureUploader >          textureUploader;
 
-    std::shared_ptr<SamplerManager> samplerMgr;
-    std::shared_ptr<TextureDescriptors> textureDesc;
-    std::shared_ptr<TextureUploader> textureUploader;
+    std::vector< Texture >                      textures;
+    // Textures are not destroyed immediately, but only when they are not in use anymore
+    std::vector< Texture >                      texturesToDestroy[ MAX_FRAMES_IN_FLIGHT ];
 
-    std::vector<Texture> textures;
-    // Textures are not destroyed immediately, but when
-    // they won't be in use
-    std::vector<Texture> texturesToDestroy[MAX_FRAMES_IN_FLIGHT];
+    // TODO: string keys pool
+    rgl::unordered_map< std::string, Material > materials;
 
-    rgl::unordered_map<uint32_t, AnimatedMaterial> animatedMaterials;
-    rgl::unordered_map<uint32_t, Material> materials;
+    uint32_t                                    waterNormalTextureIndex;
 
-    uint32_t waterNormalTextureIndex;
+    RgSamplerFilter                             currentDynamicSamplerFilter;
 
-    RgSamplerFilter currentDynamicSamplerFilter;
+    std::string                                 defaultTexturesPath;
+    std::string                                 postfixes[ TEXTURES_PER_MATERIAL_COUNT ];
+    bool                                        overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];
+    bool                                        originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];
 
-    std::string defaultTexturesPath;
-    std::string postfixes[TEXTURES_PER_MATERIAL_COUNT];
-    bool overridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT];
-    bool originalIsSRGB[TEXTURES_PER_MATERIAL_COUNT];
+    bool                                        forceNormalMapFilterLinear;
 
-    bool forceNormalMapFilterLinear;
-
-    std::list<std::weak_ptr<IMaterialDependency>> subscribers;
+    std::list< std::weak_ptr< IMaterialDependency > > subscribers;
 };
-
-inline constexpr uint32_t TextureManager::GetEmptyTextureIndex()
-{
-    return EMPTY_TEXTURE_INDEX;
-}
 
 }

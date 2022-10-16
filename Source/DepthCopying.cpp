@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,310 +20,347 @@
 
 #include "DepthCopying.h"
 
-
-constexpr const char *SHADER_VERT = "VertFullscreenQuad";
-constexpr const char *SHADER_FRAG = "FragDepthCopying";
-
-
-RTGL1::DepthCopying::DepthCopying(
-    VkDevice _device,
-    VkFormat _depthFormat,
-    const std::shared_ptr<ShaderManager> &_shaderManager, 
-    const std::shared_ptr<Framebuffers> &_storageFramebuffers)
-:
-    device(_device),
-    renderPass(VK_NULL_HANDLE),
-    framebuffers{},
-    pipelineLayout(VK_NULL_HANDLE),
-    pipeline(VK_NULL_HANDLE)
+namespace
 {
-    CreateRenderPass(_depthFormat);
-    CreatePipelineLayout(_storageFramebuffers->GetDescSetLayout());
-    CreatePipeline(_shaderManager.get());
+constexpr const char* SHADER_VERT = "VertFullscreenQuad";
+constexpr const char* SHADER_FRAG = "FragDepthCopying";
+}
+
+
+RTGL1::DepthCopying::DepthCopying( VkDevice             _device,
+                                   VkFormat             _depthFormat,
+                                   const ShaderManager& _shaderManager,
+                                   const Framebuffers&  _storageFramebuffers )
+    : device( _device )
+    , renderPass( VK_NULL_HANDLE )
+    , framebuffers{}
+    , pipelineLayout( VK_NULL_HANDLE )
+    , pipeline( VK_NULL_HANDLE )
+{
+    CreateRenderPass( _depthFormat );
+    CreatePipelineLayout( _storageFramebuffers.GetDescSetLayout() );
+    CreatePipeline( &_shaderManager );
 }
 
 RTGL1::DepthCopying::~DepthCopying()
 {
-    vkDestroyRenderPass(device, renderPass, nullptr);
-    vkDestroyPipeline(device, pipeline, nullptr);
-    vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
+    vkDestroyRenderPass( device, renderPass, nullptr );
+    vkDestroyPipeline( device, pipeline, nullptr );
+    vkDestroyPipelineLayout( device, pipelineLayout, nullptr );
 
     DestroyFramebuffers();
 }
 
-void RTGL1::DepthCopying::Process(VkCommandBuffer cmd, uint32_t frameIndex, 
-                               const std::shared_ptr<Framebuffers> &storageFramebuffers, 
-                               uint32_t width, uint32_t height, bool justClear)
+void RTGL1::DepthCopying::Process( VkCommandBuffer     cmd,
+                                   uint32_t            frameIndex,
+                                   const Framebuffers& storageFramebuffers,
+                                   uint32_t            width,
+                                   uint32_t            height,
+                                   bool                justClear )
 {
-    assert(renderPass && framebuffers[frameIndex] && pipeline && pipelineLayout);
+    assert( renderPass && framebuffers[ frameIndex ] && pipeline && pipelineLayout );
 
-    VkDescriptorSet descSet = storageFramebuffers->GetDescSet(frameIndex);
+    VkDescriptorSet descSets[] = {
+        storageFramebuffers.GetDescSet( frameIndex ),
+    };
 
-    VkRect2D renderArea = {};
-    renderArea.extent.width = width;
-    renderArea.extent.height = height;
+    VkRect2D renderArea = {
+        .offset = { 0, 0 },
+        .extent = { width, height },
+    };
 
-    VkViewport viewport = {};
-    viewport.width = (float)width;
-    viewport.height = (float)height;
-    viewport.minDepth = 0.0f;
-    viewport.maxDepth = 1.0f;
+    VkViewport viewport = {
+        .x        = 0,
+        .y        = 0,
+        .width    = float( width ),
+        .height   = float( height ),
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
 
-    VkRenderPassBeginInfo beginInfo = {};
-    beginInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    beginInfo.renderPass = renderPass;
-    beginInfo.framebuffer = framebuffers[frameIndex];
-    beginInfo.renderArea = renderArea;
-    beginInfo.clearValueCount = 0;
+    VkRenderPassBeginInfo beginInfo = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass      = renderPass,
+        .framebuffer     = framebuffers[ frameIndex ],
+        .renderArea      = renderArea,
+        .clearValueCount = 0,
+    };
 
-    vkCmdBeginRenderPass(cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE);
+    vkCmdBeginRenderPass( cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
 
-    if (!justClear)
+    if( !justClear )
     {
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline);
+        vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
-        vkCmdSetScissor(cmd, 0, 1, &renderArea);
-        vkCmdSetViewport(cmd, 0, 1, &viewport);
+        vkCmdSetScissor( cmd, 0, 1, &renderArea );
+        vkCmdSetViewport( cmd, 0, 1, &viewport );
 
-        vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout,
-                                0, 1, &descSet,
-                                0, nullptr);
+        vkCmdBindDescriptorSets( cmd,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 pipelineLayout,
+                                 0,
+                                 std::size( descSets ),
+                                 descSets,
+                                 0,
+                                 nullptr );
 
         uint32_t push[] = { width, height };
-        vkCmdPushConstants(cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(push), push);
+        vkCmdPushConstants(
+            cmd, pipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof( push ), push );
 
-        vkCmdDraw(cmd, 6, 1, 0, 0);
+        vkCmdDraw( cmd, 6, 1, 0, 0 );
     }
     else
     {
-        VkClearRect rect = {};
-        rect.rect.extent = { width, height };
-        rect.baseArrayLayer = 0;
-        rect.layerCount = 1;
+        VkClearRect rect = {
+            .rect           = {
+                .offset = { 0, 0 },
+                .extent = { width, height },
+            },
+            .baseArrayLayer = 0,
+            .layerCount     = 1,
+        };
 
-        VkClearAttachment clear = {};
-        clear.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
-        clear.colorAttachment = 0;
-        clear.clearValue.depthStencil.depth = 1.0f;
+        VkClearAttachment clear = {
+            .aspectMask      = VK_IMAGE_ASPECT_DEPTH_BIT,
+            .colorAttachment = 0,
+            .clearValue      = { .depthStencil = { .depth = 1.0f } },
+        };
 
-        vkCmdClearAttachments(cmd, 1, &clear, 1, &rect);
+        vkCmdClearAttachments( cmd, 1, &clear, 1, &rect );
     }
 
-    vkCmdEndRenderPass(cmd);
+    vkCmdEndRenderPass( cmd );
 }
 
-void RTGL1::DepthCopying::OnShaderReload(const ShaderManager *shaderManager)
+void RTGL1::DepthCopying::OnShaderReload( const ShaderManager* shaderManager )
 {
-    vkDestroyPipeline(device, pipeline, nullptr);
+    vkDestroyPipeline( device, pipeline, nullptr );
     pipeline = VK_NULL_HANDLE;
 
-    CreatePipeline(shaderManager);
+    CreatePipeline( shaderManager );
 }
 
-void RTGL1::DepthCopying::CreateRenderPass(VkFormat depthFormat)
+void RTGL1::DepthCopying::CreateRenderPass( VkFormat depthFormat )
 {
-    VkAttachmentDescription depthAttch = {};
-    depthAttch.format = depthFormat;
-    depthAttch.samples = VK_SAMPLE_COUNT_1_BIT;
-    depthAttch.loadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttch.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
-    depthAttch.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    depthAttch.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    depthAttch.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-    depthAttch.finalLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkAttachmentDescription depthAttch = {
+        .format         = depthFormat,
+        .samples        = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+        .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
 
+    VkAttachmentReference depthRef = {
+        .attachment = 0,
+        .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
+    };
 
-    VkAttachmentReference depthRef = {};
-    depthRef.attachment = 0;
-    depthRef.layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
+    VkSubpassDescription subpass = {
+        .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .colorAttachmentCount    = 0,
+        .pDepthStencilAttachment = &depthRef,
+    };
 
-    VkSubpassDescription subpass = {};
-    subpass.pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.colorAttachmentCount = 0;
-    subpass.pDepthStencilAttachment = &depthRef;
+    VkSubpassDependency dependency = {
+        .srcSubpass    = VK_SUBPASS_EXTERNAL,
+        .dstSubpass    = 0,
+        .srcStageMask  = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT,
+        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT,
+        .dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT,
+    };
 
+    VkRenderPassCreateInfo passInfo = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .attachmentCount = 1,
+        .pAttachments    = &depthAttch,
+        .subpassCount    = 1,
+        .pSubpasses      = &subpass,
+        .dependencyCount = 1,
+        .pDependencies   = &dependency,
+    };
 
-    VkSubpassDependency dependency = {};
-    dependency.srcSubpass = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass = 0;
-    dependency.srcStageMask = VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    dependency.dstStageMask = VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
-    dependency.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
-    dependency.dstAccessMask = VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
+    VkResult r = vkCreateRenderPass( device, &passInfo, nullptr, &renderPass );
 
-    VkRenderPassCreateInfo passInfo = {};
-    passInfo.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    passInfo.attachmentCount = 1;
-    passInfo.pAttachments = &depthAttch;
-    passInfo.subpassCount = 1;
-    passInfo.pSubpasses = &subpass;
-    passInfo.dependencyCount = 1;
-    passInfo.pDependencies = &dependency;
-
-    VkResult r = vkCreateRenderPass(device, &passInfo, nullptr, &renderPass);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, renderPass, VK_OBJECT_TYPE_RENDER_PASS, "Depth copying render pass");
+    VK_CHECKERROR( r );
+    SET_DEBUG_NAME( device, renderPass, VK_OBJECT_TYPE_RENDER_PASS, "Depth copying render pass" );
 }
 
-void RTGL1::DepthCopying::CreateFramebuffers(VkImageView pDepthAttchViews[MAX_FRAMES_IN_FLIGHT], uint32_t width, uint32_t height)
+void RTGL1::DepthCopying::CreateFramebuffers( VkImageView pDepthAttchViews[ MAX_FRAMES_IN_FLIGHT ],
+                                              uint32_t    width,
+                                              uint32_t    height )
 {
-    assert(renderPass);
+    assert( renderPass );
 
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
     {
-        assert(framebuffers[i] == VK_NULL_HANDLE);
+        assert( framebuffers[ i ] == VK_NULL_HANDLE );
 
-        VkFramebufferCreateInfo fbInfo = {};
-        fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        fbInfo.renderPass = renderPass;
-        fbInfo.attachmentCount = 1;
-        fbInfo.pAttachments = &pDepthAttchViews[i];
-        fbInfo.width = width;
-        fbInfo.height = height;
-        fbInfo.layers = 1;
+        VkFramebufferCreateInfo fbInfo = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass      = renderPass,
+            .attachmentCount = 1,
+            .pAttachments    = &pDepthAttchViews[ i ],
+            .width           = width,
+            .height          = height,
+            .layers          = 1,
+        };
 
-        VkResult r = vkCreateFramebuffer(device, &fbInfo, nullptr, &framebuffers[i]);
-        VK_CHECKERROR(r);
+        VkResult r = vkCreateFramebuffer( device, &fbInfo, nullptr, &framebuffers[ i ] );
+        VK_CHECKERROR( r );
     }
 }
 
 void RTGL1::DepthCopying::DestroyFramebuffers()
 {
-    for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++)
+    for( auto& f : framebuffers )
     {
-        if (framebuffers[i] != VK_NULL_HANDLE)
+        if( f != VK_NULL_HANDLE )
         {
-            vkDestroyFramebuffer(device, framebuffers[i], nullptr);
-            framebuffers[i] = VK_NULL_HANDLE;
+            vkDestroyFramebuffer( device, f, nullptr );
+            f = VK_NULL_HANDLE;
         }
     }
 }
 
-void RTGL1::DepthCopying::CreatePipelineLayout(VkDescriptorSetLayout fbSetLayout)
+void RTGL1::DepthCopying::CreatePipelineLayout( VkDescriptorSetLayout fbSetLayout )
 {
-    VkPushConstantRange push = {};
-    push.offset = 0;
-    push.size = sizeof(uint32_t) * 2;
-    push.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-
-    VkPipelineLayoutCreateInfo layoutInfo = {};
-    layoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    layoutInfo.setLayoutCount = 1;
-    layoutInfo.pSetLayouts = &fbSetLayout;
-    layoutInfo.pushConstantRangeCount = 1;
-    layoutInfo.pPushConstantRanges = &push;
-
-    VkResult r = vkCreatePipelineLayout(device, &layoutInfo, nullptr, &pipelineLayout);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, pipelineLayout, VK_OBJECT_TYPE_PIPELINE_LAYOUT, "Depth copying raster pipeline layout");
-}
-
-void RTGL1::DepthCopying::CreatePipeline(const ShaderManager *shaderManager)
-{
-    assert(renderPass && pipelineLayout);
-    assert(pipeline == VK_NULL_HANDLE);
-
-    VkPipelineShaderStageCreateInfo stages[] =
-    {
-        shaderManager->GetStageInfo(SHADER_VERT),
-        shaderManager->GetStageInfo(SHADER_FRAG)
+    VkPushConstantRange push = {
+        .stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset     = 0,
+        .size       = sizeof( uint32_t ) * 2,
     };
 
-    VkDynamicState dynamicStates[] =
-    {
+    VkPipelineLayoutCreateInfo layoutInfo = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount         = 1,
+        .pSetLayouts            = &fbSetLayout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges    = &push,
+    };
+
+    VkResult r = vkCreatePipelineLayout( device, &layoutInfo, nullptr, &pipelineLayout );
+
+    VK_CHECKERROR( r );
+    SET_DEBUG_NAME( device,
+                    pipelineLayout,
+                    VK_OBJECT_TYPE_PIPELINE_LAYOUT,
+                    "Depth copying raster pipeline layout" );
+}
+
+void RTGL1::DepthCopying::CreatePipeline( const ShaderManager* shaderManager )
+{
+    assert( renderPass && pipelineLayout );
+    assert( pipeline == VK_NULL_HANDLE );
+
+    VkPipelineShaderStageCreateInfo stages[] = {
+        shaderManager->GetStageInfo( SHADER_VERT ),
+        shaderManager->GetStageInfo( SHADER_FRAG ),
+    };
+
+    VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
     };
 
-    VkVertexInputBindingDescription vertBinding = {};
-    vertBinding.binding = 0;
-    vertBinding.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
-    vertBinding.stride = 0;
+    VkVertexInputBindingDescription vertBinding = {
+        .binding   = 0,
+        .stride    = 0,
+        .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
+    };
 
-    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
-    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInputInfo.vertexBindingDescriptionCount = 0;
-    vertexInputInfo.pVertexBindingDescriptions = &vertBinding;
-    vertexInputInfo.vertexAttributeDescriptionCount = 0;
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
+        .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 0,
+        .pVertexBindingDescriptions    = &vertBinding,
+        .vertexAttributeDescriptionCount = 0,
+    };
 
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology               = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .primitiveRestartEnable = VK_FALSE,
+    };
 
-    VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports = nullptr;
-    viewportState.scissorCount = 1;
-    viewportState.pScissors = nullptr;
+    VkPipelineViewportStateCreateInfo viewportState = {
+        .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports    = nullptr,
+        .scissorCount  = 1,
+        .pScissors     = nullptr,
+    };
 
-    VkPipelineRasterizationStateCreateInfo raster = {};
-    raster.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    raster.polygonMode = VK_POLYGON_MODE_FILL;
-    raster.cullMode = VK_CULL_MODE_NONE;
-    raster.depthClampEnable = VK_FALSE;
-    raster.rasterizerDiscardEnable = VK_FALSE;
-    raster.lineWidth = 1.0f;
-    raster.depthBiasEnable = VK_FALSE;
+    VkPipelineRasterizationStateCreateInfo raster = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable        = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .cullMode                = VK_CULL_MODE_NONE,
+        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable         = VK_FALSE,
+        .lineWidth               = 1.0f,
+    };
 
-    VkPipelineMultisampleStateCreateInfo multisampling = {};
-    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.sampleShadingEnable = VK_FALSE;
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+        .sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable  = VK_FALSE,
+    };
 
-    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
-    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    // write to depth buffer through gl_FragDepth
-    depthStencil.depthWriteEnable = VK_TRUE;
-    // enable for depthWriteEnable
-    depthStencil.depthTestEnable = VK_TRUE;
-    depthStencil.depthCompareOp = VK_COMPARE_OP_ALWAYS;
-    depthStencil.stencilTestEnable = VK_FALSE;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    VkPipelineDepthStencilStateCreateInfo depthStencil = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        // enable for depthWriteEnable
+        .depthTestEnable = VK_TRUE,
+        // write to depth buffer through gl_FragDepth
+        .depthWriteEnable      = VK_TRUE,
+        .depthCompareOp        = VK_COMPARE_OP_ALWAYS,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable     = VK_FALSE,
+    };
 
-    VkPipelineColorBlendAttachmentState colorBlendAttch = {};
-    colorBlendAttch.blendEnable = VK_FALSE;
+    VkPipelineColorBlendAttachmentState colorBlendAttch = {
+        .blendEnable    = VK_FALSE,
+        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    };
 
-    colorBlendAttch.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT |
-        VK_COLOR_COMPONENT_G_BIT |
-        VK_COLOR_COMPONENT_B_BIT |
-        VK_COLOR_COMPONENT_A_BIT;
+    VkPipelineColorBlendStateCreateInfo colorBlendState = {
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable   = VK_FALSE,
+        .attachmentCount = 1,
+        .pAttachments    = &colorBlendAttch,
+    };
 
-    VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-    colorBlendState.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendState.logicOpEnable = VK_FALSE;
-    colorBlendState.attachmentCount = 1;
-    colorBlendState.pAttachments = &colorBlendAttch;
+    VkPipelineDynamicStateCreateInfo dynamicInfo = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = std::size( dynamicStates ),
+        .pDynamicStates    = dynamicStates,
+    };
 
-    VkPipelineDynamicStateCreateInfo dynamicInfo = {};
-    dynamicInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = sizeof(dynamicStates) / sizeof(dynamicStates[0]);
-    dynamicInfo.pDynamicStates = dynamicStates;
+    VkGraphicsPipelineCreateInfo plInfo = {
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount          = std::size( stages ),
+        .pStages             = stages,
+        .pVertexInputState   = &vertexInputInfo,
+        .pInputAssemblyState = &inputAssembly,
+        .pViewportState      = &viewportState,
+        .pRasterizationState = &raster,
+        .pMultisampleState   = &multisampling,
+        .pDepthStencilState  = &depthStencil,
+        .pColorBlendState    = &colorBlendState,
+        .pDynamicState       = &dynamicInfo,
+        .layout              = pipelineLayout,
+        .renderPass          = renderPass,
+        .subpass             = 0,
+        .basePipelineHandle  = VK_NULL_HANDLE,
+    };
 
-    VkGraphicsPipelineCreateInfo plInfo = {};
-    plInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    plInfo.stageCount = sizeof(stages) / sizeof(stages[0]);
-    plInfo.pStages = stages;
-    plInfo.pVertexInputState = &vertexInputInfo;
-    plInfo.pInputAssemblyState = &inputAssembly;
-    plInfo.pViewportState = &viewportState;
-    plInfo.pRasterizationState = &raster;
-    plInfo.pMultisampleState = &multisampling;
-    plInfo.pDepthStencilState = &depthStencil;
-    plInfo.pColorBlendState = &colorBlendState;
-    plInfo.pDynamicState = &dynamicInfo;
-    plInfo.layout = pipelineLayout;
-    plInfo.renderPass = renderPass;
-    plInfo.subpass = 0;
-    plInfo.basePipelineHandle = VK_NULL_HANDLE;
+    VkResult r = vkCreateGraphicsPipelines( device, nullptr, 1, &plInfo, nullptr, &pipeline );
 
-    VkResult r = vkCreateGraphicsPipelines(device, nullptr, 1, &plInfo, nullptr, &pipeline);
-    VK_CHECKERROR(r);
-
-    SET_DEBUG_NAME(device, pipeline, VK_OBJECT_TYPE_PIPELINE, "Rasterizer raster draw pipeline");
+    VK_CHECKERROR( r );
+    SET_DEBUG_NAME( device, pipeline, VK_OBJECT_TYPE_PIPELINE, "Rasterizer raster draw pipeline" );
 }

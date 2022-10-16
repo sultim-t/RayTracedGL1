@@ -28,67 +28,67 @@
 
 namespace RTGL1
 {
-    class Volumetric : public IShaderDependency
+class Volumetric : public IShaderDependency
+{
+public:
+    Volumetric( VkDevice              device,
+                CommandBufferManager* cmdManager,
+                MemoryAllocator*      allocator,
+                const ShaderManager*  shaderManager,
+                const GlobalUniform*  uniform,
+                const BlueNoise*      rnd );
+    ~Volumetric() override;
+
+    Volumetric( const Volumetric& other )     = delete;
+    Volumetric( Volumetric&& other ) noexcept = delete;
+    Volumetric&           operator=( const Volumetric& other ) = delete;
+    Volumetric&           operator=( Volumetric&& other ) noexcept = delete;
+
+    VkDescriptorSetLayout GetDescSetLayout() const;
+    VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
+
+    void                  ProcessScattering( VkCommandBuffer      cmd,
+                                             uint32_t             frameIndex,
+                                             const GlobalUniform* uniform,
+                                             const BlueNoise*     rnd );
+    void                  BarrierToReadScattering( VkCommandBuffer cmd, uint32_t frameIndex );
+    void                  BarrierToReadIllumination( VkCommandBuffer cmd );
+
+    void                  OnShaderReload( const ShaderManager* shaderManager ) override;
+
+private:
+    void CreateSampler();
+    void CreateImages( CommandBufferManager* cmdManager, MemoryAllocator* allocator );
+
+    void CreateDescriptors();
+    void UpdateDescriptors();
+
+    void CreatePipelineLayout( const GlobalUniform* uniform, const BlueNoise* rnd );
+    void CreatePipelines( const ShaderManager* shaderManager );
+    void DestroyPipelines();
+
+private:
+    VkDevice device = VK_NULL_HANDLE;
+
+    int      firstTimeCounter = 0;
+
+    struct VolumeDef
     {
-    public:
-        Volumetric( VkDevice              device,
-                    CommandBufferManager* cmdManager,
-                    MemoryAllocator*      allocator,
-                    const ShaderManager*  shaderManager,
-                    const GlobalUniform*  uniform,
-                    const BlueNoise*      rnd );
-        ~Volumetric() override;
-
-        Volumetric( const Volumetric& other )     = delete;
-        Volumetric( Volumetric&& other ) noexcept = delete;
-        Volumetric& operator=( const Volumetric& other ) = delete;
-        Volumetric& operator=( Volumetric&& other ) noexcept = delete;
-
-        VkDescriptorSetLayout GetDescSetLayout() const;
-        VkDescriptorSet GetDescSet(uint32_t frameIndex) const;
-
-        void ProcessScattering( VkCommandBuffer      cmd,
-                                uint32_t             frameIndex,
-                                const GlobalUniform* uniform,
-                                const BlueNoise*     rnd );
-        void BarrierToReadScattering( VkCommandBuffer cmd, uint32_t frameIndex );
-        void BarrierToReadIllumination( VkCommandBuffer cmd );
-
-        void OnShaderReload( const ShaderManager* shaderManager ) override;
-
-    private:
-        void CreateSampler();
-        void CreateImages( CommandBufferManager* cmdManager, MemoryAllocator* allocator );
-
-        void CreateDescriptors();
-        void UpdateDescriptors();
-
-        void CreatePipelineLayout( const GlobalUniform* uniform, const BlueNoise* rnd );
-        void CreatePipelines( const ShaderManager* shaderManager );
-        void DestroyPipelines();
-
-    private:
-        VkDevice device = VK_NULL_HANDLE;
-
-        int firstTimeCounter = 0;
-
-        struct VolumeDef
-        {
-            VkImage        image = VK_NULL_HANDLE;
-            VkImageView    view   = VK_NULL_HANDLE;
-            VkDeviceMemory memory = VK_NULL_HANDLE;
-        };
-
-        VolumeDef scattering[ MAX_FRAMES_IN_FLIGHT ] = {};
-        VolumeDef illumination = {};
-        
-        VkSampler             volumeSampler                        = VK_NULL_HANDLE;
-
-        VkDescriptorPool      descPool                             = VK_NULL_HANDLE;
-        VkDescriptorSetLayout descLayout                           = VK_NULL_HANDLE;
-        VkDescriptorSet       descSets[ MAX_FRAMES_IN_FLIGHT ]     = {};
-
-        VkPipelineLayout processPipelineLayout = VK_NULL_HANDLE;
-        VkPipeline       processPipeline       = VK_NULL_HANDLE;
+        VkImage        image  = VK_NULL_HANDLE;
+        VkImageView    view   = VK_NULL_HANDLE;
+        VkDeviceMemory memory = VK_NULL_HANDLE;
     };
+
+    VolumeDef             scattering[ MAX_FRAMES_IN_FLIGHT ] = {};
+    VolumeDef             illumination                       = {};
+
+    VkSampler             volumeSampler = VK_NULL_HANDLE;
+
+    VkDescriptorPool      descPool                         = VK_NULL_HANDLE;
+    VkDescriptorSetLayout descLayout                       = VK_NULL_HANDLE;
+    VkDescriptorSet       descSets[ MAX_FRAMES_IN_FLIGHT ] = {};
+
+    VkPipelineLayout      processPipelineLayout = VK_NULL_HANDLE;
+    VkPipeline            processPipeline       = VK_NULL_HANDLE;
+};
 }

@@ -93,7 +93,7 @@ void RTGL1::DecalManager::Upload( uint32_t                                 frame
     const uint32_t decalIndex = decalCount;
     decalCount++;
 
-    const MaterialTextures mat = textureManager->GetMaterialTextures( uploadInfo.material );
+    const MaterialTextures mat = textureManager->GetMaterialTextures( uploadInfo.pTextureName );
 
     ShDecalInstance        instance  = {};
     instance.textureAlbedoAlpha      = mat.indices[ MATERIAL_ALBEDO_ALPHA_INDEX ];

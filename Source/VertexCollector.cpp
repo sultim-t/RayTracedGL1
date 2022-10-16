@@ -181,9 +181,9 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                          frameI
                                         std::span< MaterialTextures, 4 >  layerTextures,
                                         std::span< RgColor4DPacked32, 4 > layerColors )
 {
-    typedef VertexCollectorFilterTypeFlagBits FT;
+    using FT = VertexCollectorFilterTypeFlagBits;
     const VertexCollectorFilterTypeFlags      geomFlags =
-        VertexCollectorFilterTypeFlags_GetForGeometry( info );
+        VertexCollectorFilterTypeFlags_GetForGeometry( parentMesh, info );
 
 
     // if exceeds a limit of geometries in a group with specified geomFlags

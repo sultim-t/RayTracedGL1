@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -38,42 +38,41 @@ struct TextureOverrides
 public:
     struct OverrideInfo
     {
-        const char *commonFolderPath = "";
-        const char *postfixes[TEXTURES_PER_MATERIAL_COUNT] = {};
+        const char* commonFolderPath                         = "";
+        const char* postfixes[ TEXTURES_PER_MATERIAL_COUNT ] = {};
         // Params for overriden textures. If texture
         // isn't overriden, RgTextureData::isSRGB value is used
         // instead of one of these params.
-        bool overridenIsSRGB[TEXTURES_PER_MATERIAL_COUNT] = {};
-        bool originalIsSRGB[TEXTURES_PER_MATERIAL_COUNT] = {};
+        bool        overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ] = {};
+        bool        originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ]  = {};
     };
 
-    using Loader = std::variant<ImageLoader *, ImageLoaderDev *>;
+    using Loader = std::variant< ImageLoader*, ImageLoaderDev* >;
 
 public:
-    explicit TextureOverrides(
-        const char *relativePath,
-        const RgTextureSet &defaultTextures,
-        const RgExtent2D &defaultSize,
-        const OverrideInfo &info,
-        Loader loader);
+    explicit TextureOverrides( const char*         relativePath,
+                               const void*         pPixels,
+                               const RgExtent2D&   defaultSize,
+                               const OverrideInfo& info,
+                               Loader              loader );
     ~TextureOverrides();
 
-    TextureOverrides(const TextureOverrides &other) = delete;
-    TextureOverrides(TextureOverrides &&other) noexcept = delete;
-    TextureOverrides &operator=(const TextureOverrides &other) = delete;
-    TextureOverrides &operator=(TextureOverrides &&other) noexcept = delete;
+    TextureOverrides( const TextureOverrides& other )     = delete;
+    TextureOverrides( TextureOverrides&& other ) noexcept = delete;
+    TextureOverrides& operator=( const TextureOverrides& other ) = delete;
+    TextureOverrides& operator=( TextureOverrides&& other ) noexcept = delete;
 
-    [[nodiscard]] const std::optional<ImageLoader::ResultInfo> &GetResult(uint32_t index) const;
-    [[nodiscard]] const char *GetDebugName() const;
+    [[nodiscard]] const std::optional< ImageLoader::ResultInfo >& GetResult( uint32_t index ) const;
+    [[nodiscard]] const char*                                     GetDebugName() const;
     // rvalue, to avoid copies
-    [[nodiscard]] std::optional<std::filesystem::path> &&GetPathAndRemove(uint32_t index);
+    [[nodiscard]] std::optional< std::filesystem::path >&& GetPathAndRemove( uint32_t index );
 
 private:
-    Loader loader;
+    Loader                                   loader;
 
-    std::optional<ImageLoader::ResultInfo> results[TEXTURES_PER_MATERIAL_COUNT];
-    char debugname[TEXTURE_DEBUG_NAME_MAX_LENGTH];
-    std::optional<std::filesystem::path> paths[TEXTURES_PER_MATERIAL_COUNT];
+    std::optional< ImageLoader::ResultInfo > results[ TEXTURES_PER_MATERIAL_COUNT ];
+    char                                     debugname[ TEXTURE_DEBUG_NAME_MAX_LENGTH ];
+    std::optional< std::filesystem::path >   paths[ TEXTURES_PER_MATERIAL_COUNT ];
 };
 
 }

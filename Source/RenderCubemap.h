@@ -49,11 +49,11 @@ public:
     RenderCubemap&        operator=( RenderCubemap&& other ) noexcept = delete;
 
     // Draw to a cubemap
-    void                  Draw( VkCommandBuffer                                   cmd,
-                                uint32_t                                          frameIndex,
-                                const std::shared_ptr< RasterizedDataCollector >& skyDataCollector,
-                                const std::shared_ptr< TextureManager >&          textureManager,
-                                const std::shared_ptr< GlobalUniform >&           uniform );
+    void                  Draw( VkCommandBuffer                cmd,
+                                uint32_t                       frameIndex,
+                                const RasterizedDataCollector& skyDataCollector,
+                                const TextureManager&          textureManager,
+                                const GlobalUniform&           uniform );
 
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet() const;

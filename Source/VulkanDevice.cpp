@@ -988,7 +988,7 @@ void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* p
                                     *pInfo );
 }
 
-void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgCubemapCreateInfo* pInfo )
+void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo )
 {
     if( pInfo == nullptr )
     {

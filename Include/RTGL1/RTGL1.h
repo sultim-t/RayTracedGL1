@@ -325,8 +325,9 @@ typedef enum RgMeshPrimitiveFlagBits
     RG_MESH_PRIMITIVE_TRANSLUCENT           = 2,
     RG_MESH_PRIMITIVE_FIRST_PERSON          = 4,
     RG_MESH_PRIMITIVE_FIRST_PERSON_VIEWER   = 8,
-    RG_MESH_PRIMITIVE_MIRROR                = 16,
-    RG_MESH_PRIMITIVE_WATER                 = 32,
+    RG_MESH_PRIMITIVE_SKY                   = 16,
+    RG_MESH_PRIMITIVE_MIRROR                = 32,
+    RG_MESH_PRIMITIVE_WATER                 = 64,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 
@@ -506,7 +507,7 @@ typedef struct RgOriginalTextureInfo
     RgSamplerAddressMode    addressModeV;
 } RgOriginalTextureInfo;
 
-typedef struct RgCubemapCreateInfo
+typedef struct RgOriginalCubemapInfo
 {
     const char*             pTextureName;
     // R8G8B8A8 pixel data. Each must be (sideSize * sideSize * 4) bytes.
@@ -517,10 +518,10 @@ typedef struct RgCubemapCreateInfo
     const void*             pPixelsPositiveZ;
     const void*             pPixelsNegativeZ;
     uint32_t                sideSize;
-} RgCubemapCreateInfo;
+} RgOriginalCubemapInfo;
 
 RGAPI RgResult RGCONV rgProvideOriginalTexture( RgInstance instance, const RgOriginalTextureInfo* pInfo );
-RGAPI RgResult RGCONV rgProvideOriginalCubemapTexture( RgInstance instance, const RgCubemapCreateInfo* pInfo );
+RGAPI RgResult RGCONV rgProvideOriginalCubemapTexture( RgInstance instance, const RgOriginalCubemapInfo* pInfo );
 RGAPI RgResult RGCONV rgMarkOriginalTextureAsDeleted( RgInstance instance, const char* pTextureName );
 
 

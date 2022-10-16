@@ -46,7 +46,7 @@ enum class PipelineStateFlagBits
     DEPTH_WRITE   = 0b01000,
     DRAW_AS_LINES = 0b10000,
 };
-typedef uint32_t PipelineStateFlags;
+typedef uint32_t          PipelineStateFlags;
 
 inline PipelineStateFlags operator|( PipelineStateFlags a, PipelineStateFlagBits b )
 {
@@ -63,7 +63,6 @@ inline bool operator&( PipelineStateFlags a, PipelineStateFlagBits b )
 class RasterizedDataCollector final
 {
 public:
-
     struct DrawInfo
     {
         RgTransform                 transform = {};
@@ -89,17 +88,17 @@ public:
         uint32_t                    firstIndex  = 0;
 
         // Raster-specific
-        std::optional< Float16D >   viewProj    = std::nullopt;
-        std::optional< VkViewport > viewport    = std::nullopt;
+        std::optional< Float16D >   viewProj      = std::nullopt;
+        std::optional< VkViewport > viewport      = std::nullopt;
         PipelineStateFlags          pipelineState = 0;
     };
 
 public:
-    explicit RasterizedDataCollector( VkDevice                            device,
-                                      std::shared_ptr< MemoryAllocator >& allocator,
-                                      std::shared_ptr< TextureManager >   textureMgr,
-                                      uint32_t                            maxVertexCount,
-                                      uint32_t                            maxIndexCount );
+    explicit RasterizedDataCollector( VkDevice                           device,
+                                      std::shared_ptr< MemoryAllocator > allocator,
+                                      std::shared_ptr< TextureManager >  textureMgr,
+                                      uint32_t                           maxVertexCount,
+                                      uint32_t                           maxIndexCount );
     ~RasterizedDataCollector() = default;
 
     RasterizedDataCollector( const RasterizedDataCollector& other )     = delete;
@@ -123,9 +122,9 @@ public:
     static uint32_t          GetVertexStride();
     static std::array< VkVertexInputAttributeDescription, 3 > GetVertexLayout();
 
-    const std::vector< DrawInfo >&                              GetRasterDrawInfos() const;
-    const std::vector< DrawInfo >&                              GetSwapchainDrawInfos() const;
-    const std::vector< DrawInfo >&                              GetSkyDrawInfos() const;
+    const std::vector< DrawInfo >&                            GetRasterDrawInfos() const;
+    const std::vector< DrawInfo >&                            GetSwapchainDrawInfos() const;
+    const std::vector< DrawInfo >&                            GetSkyDrawInfos() const;
 
 protected:
     DrawInfo& PushInfo( GeometryRasterType rasterType );

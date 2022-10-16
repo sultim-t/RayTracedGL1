@@ -29,7 +29,6 @@
 #include "RasterizerPipelines.h"
 #include "RasterPass.h"
 #include "RenderCubemap.h"
-#include "ShaderManager.h"
 #include "SwapchainPass.h"
 #include "Tonemapping.h"
 #include "Volumetric.h"
@@ -44,23 +43,23 @@ struct RasterDrawParams;
 
 
 // This class provides rasterization functionality
-class Rasterizer
+class Rasterizer final
     : public IShaderDependency
     , public IFramebuffersDependency
 {
 public:
-    explicit Rasterizer( VkDevice                                 device,
-                         VkPhysicalDevice                         physDevice,
-                         const std::shared_ptr< ShaderManager >&  shaderManager,
-                         const std::shared_ptr< TextureManager >& textureManager,
-                         const std::shared_ptr< GlobalUniform >&  uniform,
-                         const std::shared_ptr< SamplerManager >& samplerManager,
-                         const std::shared_ptr< Tonemapping >&    tonemapping,
-                         const std::shared_ptr< Volumetric >&     volumetric,
-                         std::shared_ptr< MemoryAllocator >       allocator,
-                         std::shared_ptr< Framebuffers >          storageFramebuffers,
-                         std::shared_ptr< CommandBufferManager >  cmdManager,
-                         const RgInstanceCreateInfo&              instanceInfo );
+    explicit Rasterizer( VkDevice                                device,
+                         VkPhysicalDevice                        physDevice,
+                         const ShaderManager&                    shaderManager,
+                         std::shared_ptr< TextureManager >       textureManager,
+                         const GlobalUniform&                    uniform,
+                         const SamplerManager&                   samplerManager,
+                         const Tonemapping&                      tonemapping,
+                         const Volumetric&                       volumetric,
+                         std::shared_ptr< MemoryAllocator >      allocator,
+                         std::shared_ptr< Framebuffers >         storageFramebuffers,
+                         std::shared_ptr< CommandBufferManager > cmdManager,
+                         const RgInstanceCreateInfo&             instanceInfo );
     ~Rasterizer() override;
 
     Rasterizer( const Rasterizer& other )     = delete;
@@ -76,39 +75,39 @@ public:
                         const RgViewport*          pViewport );
     void        SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
 
-    void        DrawSkyToCubemap( VkCommandBuffer                          cmd,
-                                  uint32_t                                 frameIndex,
-                                  const std::shared_ptr< TextureManager >& textureManager,
-                                  const std::shared_ptr< GlobalUniform >&  uniform );
+    void        DrawSkyToCubemap( VkCommandBuffer       cmd,
+                                  uint32_t              frameIndex,
+                                  const TextureManager& textureManager,
+                                  const GlobalUniform&  uniform );
 
-    void        DrawSkyToAlbedo( VkCommandBuffer                          cmd,
-                                 uint32_t                                 frameIndex,
-                                 const std::shared_ptr< TextureManager >& textureManager,
-                                 const float*                             view,
-                                 const float                              skyViewerPos[ 3 ],
-                                 const float*                             proj,
-                                 const RgFloat2D&                         jitter,
-                                 const RenderResolutionHelper&            renderResolution );
+    void        DrawSkyToAlbedo( VkCommandBuffer               cmd,
+                                 uint32_t                      frameIndex,
+                                 const TextureManager&         textureManager,
+                                 const float*                  view,
+                                 const float                   skyViewerPos[ 3 ],
+                                 const float*                  proj,
+                                 const RgFloat2D&              jitter,
+                                 const RenderResolutionHelper& renderResolution );
 
-    void        DrawToFinalImage( VkCommandBuffer                          cmd,
-                                  uint32_t                                 frameIndex,
-                                  const std::shared_ptr< TextureManager >& textureManager,
-                                  const std::shared_ptr< GlobalUniform >&  uniform,
-                                  const std::shared_ptr< Tonemapping >&    tonemapping,
-                                  const std::shared_ptr< Volumetric >&     volumetric,
-                                  const float*                             view,
-                                  const float*                             proj,
-                                  const RgFloat2D&                         jitter,
-                                  const RenderResolutionHelper&            renderResolution );
+    void        DrawToFinalImage( VkCommandBuffer               cmd,
+                                  uint32_t                      frameIndex,
+                                  const TextureManager&         textureManager,
+                                  const GlobalUniform&          uniform,
+                                  const Tonemapping&            tonemapping,
+                                  const Volumetric&             volumetric,
+                                  const float*                  view,
+                                  const float*                  proj,
+                                  const RgFloat2D&              jitter,
+                                  const RenderResolutionHelper& renderResolution );
 
-    void        DrawToSwapchain( VkCommandBuffer                          cmd,
-                                 uint32_t                                 frameIndex,
-                                 FramebufferImageIndex                    imageToDrawIn,
-                                 const std::shared_ptr< TextureManager >& textureManager,
-                                 const float*                             view,
-                                 const float*                             proj,
-                                 uint32_t                                 swapchainWidth,
-                                 uint32_t                                 swapchainHeight );
+    void        DrawToSwapchain( VkCommandBuffer       cmd,
+                                 uint32_t              frameIndex,
+                                 FramebufferImageIndex imageToDrawIn,
+                                 const TextureManager& textureManager,
+                                 const float*          view,
+                                 const float*          proj,
+                                 uint32_t              swapchainWidth,
+                                 uint32_t              swapchainHeight );
 
     void        OnShaderReload( const ShaderManager* shaderManager ) override;
     void        OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;

@@ -57,18 +57,18 @@ static_assert( sizeof( RasterizedPushConst ) == 76 );
 
 }
 
-RTGL1::Rasterizer::Rasterizer( VkDevice                                 _device,
-                               VkPhysicalDevice                         _physDevice,
-                               const std::shared_ptr< ShaderManager >&  _shaderManager,
-                               const std::shared_ptr< TextureManager >& _textureManager,
-                               const std::shared_ptr< GlobalUniform >&  _uniform,
-                               const std::shared_ptr< SamplerManager >& _samplerManager,
-                               const std::shared_ptr< Tonemapping >&    _tonemapping,
-                               const std::shared_ptr< Volumetric >&     _volumetric,
-                               std::shared_ptr< MemoryAllocator >       _allocator,
-                               std::shared_ptr< Framebuffers >          _storageFramebuffers,
-                               std::shared_ptr< CommandBufferManager >  _cmdManager,
-                               const RgInstanceCreateInfo&              _instanceInfo )
+RTGL1::Rasterizer::Rasterizer( VkDevice                                _device,
+                               VkPhysicalDevice                        _physDevice,
+                               const ShaderManager&                    _shaderManager,
+                               std::shared_ptr< TextureManager >       _textureManager,
+                               const GlobalUniform&                    _uniform,
+                               const SamplerManager&                   _samplerManager,
+                               const Tonemapping&                      _tonemapping,
+                               const Volumetric&                       _volumetric,
+                               std::shared_ptr< MemoryAllocator >      _allocator,
+                               std::shared_ptr< Framebuffers >         _storageFramebuffers,
+                               std::shared_ptr< CommandBufferManager > _cmdManager,
+                               const RgInstanceCreateInfo&             _instanceInfo )
     : device( _device )
     , rasterPassPipelineLayout( VK_NULL_HANDLE )
     , swapchainPassPipelineLayout( VK_NULL_HANDLE )
@@ -85,27 +85,29 @@ RTGL1::Rasterizer::Rasterizer( VkDevice                                 _device,
 
     VkDescriptorSetLayout layouts[] = {
         _textureManager->GetDescSetLayout(),
-        _uniform->GetDescSetLayout(),
-        _tonemapping->GetDescSetLayout(),
-        _volumetric->GetDescSetLayout(),
+        _uniform.GetDescSetLayout(),
+        _tonemapping.GetDescSetLayout(),
+        _volumetric.GetDescSetLayout(),
     };
     CreatePipelineLayouts( layouts, std::size( layouts ), _textureManager->GetDescSetLayout() );
 
-    rasterPass    = std::make_shared< RasterPass >( device,
+    rasterPass = std::make_shared< RasterPass >( device,
                                                  _physDevice,
                                                  rasterPassPipelineLayout,
                                                  _shaderManager,
-                                                 storageFramebuffers,
+                                                 *storageFramebuffers,
                                                  _instanceInfo );
+
     swapchainPass = std::make_shared< SwapchainPass >(
         device, swapchainPassPipelineLayout, _shaderManager, _instanceInfo );
+
     renderCubemap = std::make_shared< RenderCubemap >( device,
-                                                       allocator,
+                                                       *allocator,
                                                        _shaderManager,
-                                                       _textureManager,
+                                                       *_textureManager,
                                                        _uniform,
                                                        _samplerManager,
-                                                       cmdManager,
+                                                       *cmdManager,
                                                        _instanceInfo );
 
     /*
@@ -148,14 +150,14 @@ void RTGL1::Rasterizer::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex
     collector->CopyFromStaging( cmd, frameIndex );
 }
 
-void RTGL1::Rasterizer::DrawSkyToCubemap( VkCommandBuffer                          cmd,
-                                          uint32_t                                 frameIndex,
-                                          const std::shared_ptr< TextureManager >& textureManager,
-                                          const std::shared_ptr< GlobalUniform >&  uniform )
+void RTGL1::Rasterizer::DrawSkyToCubemap( VkCommandBuffer       cmd,
+                                          uint32_t              frameIndex,
+                                          const TextureManager& textureManager,
+                                          const GlobalUniform&  uniform )
 {
     CmdLabel label( cmd, "Rasterized sky to cubemap" );
 
-    renderCubemap->Draw( cmd, frameIndex, collector, textureManager, uniform );
+    renderCubemap->Draw( cmd, frameIndex, *collector, textureManager, uniform );
 }
 
 namespace RTGL1
@@ -211,14 +213,14 @@ struct RasterDrawParams
 
 }
 
-void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                          cmd,
-                                         uint32_t                                 frameIndex,
-                                         const std::shared_ptr< TextureManager >& textureManager,
-                                         const float*                             view,
-                                         const float                              skyViewerPos[ 3 ],
-                                         const float*                             proj,
-                                         const RgFloat2D&                         jitter,
-                                         const RenderResolutionHelper&            renderResolution )
+void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer               cmd,
+                                         uint32_t                      frameIndex,
+                                         const TextureManager&         textureManager,
+                                         const float*                  view,
+                                         const float                   skyViewerPos[ 3 ],
+                                         const float*                  proj,
+                                         const RgFloat2D&              jitter,
+                                         const RenderResolutionHelper& renderResolution )
 {
     CmdLabel label( cmd, "Rasterized sky to albedo framebuf" );
 
@@ -238,7 +240,7 @@ void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                        
 
 
     VkDescriptorSet sets[] = {
-        textureManager->GetDescSet( frameIndex ),
+        textureManager.GetDescSet( frameIndex ),
     };
 
     const RasterDrawParams params = {
@@ -258,15 +260,15 @@ void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer                        
     Draw( cmd, frameIndex, params );
 }
 
-void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer                          cmd,
-                                          uint32_t                                 frameIndex,
-                                          const std::shared_ptr< TextureManager >& textureManager,
-                                          const std::shared_ptr< GlobalUniform >&  uniform,
-                                          const std::shared_ptr< Tonemapping >&    tonemapping,
-                                          const std::shared_ptr< Volumetric >&     volumetric,
-                                          const float*                             view,
-                                          const float*                             proj,
-                                          const RgFloat2D&                         jitter,
+void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer               cmd,
+                                          uint32_t                      frameIndex,
+                                          const TextureManager&         textureManager,
+                                          const GlobalUniform&          uniform,
+                                          const Tonemapping&            tonemapping,
+                                          const Volumetric&             volumetric,
+                                          const float*                  view,
+                                          const float*                  proj,
+                                          const RgFloat2D&              jitter,
                                           const RenderResolutionHelper& renderResolution )
 {
     CmdLabel label( cmd, "Rasterized to final framebuf" );
@@ -281,8 +283,11 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer                       
 
 
     // copy depth buffer
-    rasterPass->PrepareForFinal(
-        cmd, frameIndex, storageFramebuffers, renderResolution.Width(), renderResolution.Height() );
+    rasterPass->PrepareForFinal( cmd,
+                                 frameIndex,
+                                 *storageFramebuffers,
+                                 renderResolution.Width(),
+                                 renderResolution.Height() );
 
 
     float jitterredProj[ 16 ];
@@ -293,10 +298,10 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer                       
     Matrix::Multiply( defaultViewProj, view, jitterredProj );
 
     VkDescriptorSet sets[] = {
-        textureManager->GetDescSet( frameIndex ),
-        uniform->GetDescSet( frameIndex ),
-        tonemapping->GetDescSet(),
-        volumetric->GetDescSet( frameIndex ),
+        textureManager.GetDescSet( frameIndex ),
+        uniform.GetDescSet( frameIndex ),
+        tonemapping.GetDescSet(),
+        volumetric.GetDescSet( frameIndex ),
     };
 
     const RasterDrawParams params = {
@@ -316,14 +321,14 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer                       
     Draw( cmd, frameIndex, params );
 }
 
-void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer                          cmd,
-                                         uint32_t                                 frameIndex,
-                                         FramebufferImageIndex                    imageToDrawIn,
-                                         const std::shared_ptr< TextureManager >& textureManager,
-                                         const float*                             view,
-                                         const float*                             proj,
-                                         uint32_t                                 swapchainWidth,
-                                         uint32_t                                 swapchainHeight )
+void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer       cmd,
+                                         uint32_t              frameIndex,
+                                         FramebufferImageIndex imageToDrawIn,
+                                         const TextureManager& textureManager,
+                                         const float*          view,
+                                         const float*          proj,
+                                         uint32_t              swapchainWidth,
+                                         uint32_t              swapchainHeight )
 {
     CmdLabel label( cmd, "Rasterized to swapchain" );
 
@@ -333,7 +338,7 @@ void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer                        
 
 
     VkDescriptorSet sets[] = {
-        textureManager->GetDescSet( frameIndex ),
+        textureManager.GetDescSet( frameIndex ),
     };
 
     const RasterDrawParams params = {
@@ -472,9 +477,9 @@ void RTGL1::Rasterizer::OnFramebuffersSizeChange( const ResolutionState& resolut
 
     rasterPass->CreateFramebuffers( resolutionState.renderWidth,
                                     resolutionState.renderHeight,
-                                    storageFramebuffers,
-                                    allocator,
-                                    cmdManager );
+                                    *storageFramebuffers,
+                                    *allocator,
+                                    *cmdManager );
     swapchainPass->CreateFramebuffers(
         resolutionState.upscaledWidth, resolutionState.upscaledHeight, storageFramebuffers );
 }

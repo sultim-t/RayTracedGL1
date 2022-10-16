@@ -198,7 +198,7 @@ RgResult rgProvideOriginalTexture( RgInstance instance, const RgOriginalTextureI
     return Call( instance, &RTGL1::VulkanDevice::ProvideOriginalTexture, pInfo );
 }
 
-RgResult rgProvideOriginalCubemapTexture( RgInstance instance, const RgCubemapCreateInfo* pInfo )
+RgResult rgProvideOriginalCubemapTexture( RgInstance instance, const RgOriginalCubemapInfo* pInfo )
 {
     return Call( instance, &RTGL1::VulkanDevice::ProvideOriginalCubemapTexture, pInfo );
 }
