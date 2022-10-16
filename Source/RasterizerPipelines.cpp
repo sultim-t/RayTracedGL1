@@ -237,7 +237,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
     };
     VkPipelineDynamicStateCreateInfo dynamicInfo = {
         .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = nonDynamicViewport && nonDynamicScissors ? 2u : 0u,
+        .dynamicStateCount = nonDynamicViewport && nonDynamicScissors ? 0u : 2u,
         .pDynamicStates    = dynamics,
     };
 

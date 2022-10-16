@@ -794,8 +794,8 @@ std::array< RgColor4DPacked32, 4 > TextureManager::GetColorForLayers(
 {
     return {
         primitive.color,
-        IF_LAYER_NOT_NULL( pLayer1, color, 0xFFFFFF ),
-        IF_LAYER_NOT_NULL( pLayer2, color, 0xFFFFFF ),
-        IF_LAYER_NOT_NULL( pLayerLightmap, color, 0xFFFFFF ),
+        IF_LAYER_NOT_NULL( pLayer1, color, 0xFFFFFFFF ),
+        IF_LAYER_NOT_NULL( pLayer2, color, 0xFFFFFFFF ),
+        IF_LAYER_NOT_NULL( pLayerLightmap, color, 0xFFFFFFFF ),
     };
 }

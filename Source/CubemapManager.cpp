@@ -400,6 +400,12 @@ void RTGL1::CubemapManager::SubmitDescriptors( uint32_t frameIndex )
         iter++;
     }
 
+    while( iter < MAX_CUBEMAP_COUNT )
+    {
+        cubemapDesc->ResetTextureDesc( frameIndex, iter );
+        iter++;
+    }
+
     cubemapDesc->FlushDescWrites();
 }
 
