@@ -203,105 +203,192 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     queues->SetDevice( device );
 
 
-    memAllocator = std::make_shared< MemoryAllocator >( instance, device, physDevice );
+    memAllocator = std::make_shared< MemoryAllocator >( 
+        instance, 
+        device, 
+        physDevice );
 
-    cmdManager = std::make_shared< CommandBufferManager >( device, queues );
+    cmdManager = std::make_shared< CommandBufferManager >( 
+        device, 
+        queues );
 
-    uniform = std::make_shared< GlobalUniform >( device, memAllocator );
+    uniform = std::make_shared< GlobalUniform >( 
+        device, 
+        memAllocator );
 
-    swapchain = std::make_shared< Swapchain >( device, surface, physDevice->Get(), cmdManager );
+    swapchain = std::make_shared< Swapchain >(
+        device, 
+        surface, 
+        physDevice->Get(), 
+        cmdManager );
 
     // for world samplers with modifyable lod biad
-    worldSamplerManager = std::make_shared< SamplerManager >(
-        device, 8, info->textureSamplerForceMinificationFilterLinear );
-    genericSamplerManager = std::make_shared< SamplerManager >(
-        device, 0, info->textureSamplerForceMinificationFilterLinear );
+    worldSamplerManager = std::make_shared< SamplerManager >( device, 8, info->textureSamplerForceMinificationFilterLinear );
+    genericSamplerManager = std::make_shared< SamplerManager >( device, 0, info->textureSamplerForceMinificationFilterLinear );
 
-    framebuffers = std::make_shared< Framebuffers >( device, memAllocator, cmdManager, *info );
+    framebuffers = std::make_shared< Framebuffers >( 
+        device, 
+        memAllocator, 
+        cmdManager,
+        *info );
 
-    restirBuffers = std::make_shared< RestirBuffers >( device, memAllocator );
+    restirBuffers = std::make_shared< RestirBuffers >( 
+        device, 
+        memAllocator );
 
     blueNoise = std::make_shared< BlueNoise >(
-        device, info->pBlueNoiseFilePath, memAllocator, cmdManager, userFileLoad );
+        device,
+        info->pBlueNoiseFilePath, 
+        memAllocator, 
+        cmdManager, 
+        userFileLoad );
 
     textureManager = std::make_shared< TextureManager >(
-        device, memAllocator, worldSamplerManager, cmdManager, userFileLoad, *info, libconfig );
+        device, 
+        memAllocator, 
+        worldSamplerManager,
+        cmdManager, 
+        userFileLoad,
+        *info, 
+        libconfig );
 
     cubemapManager = std::make_shared< CubemapManager >(
-        device, memAllocator, genericSamplerManager, cmdManager, userFileLoad, *info, libconfig );
+        device, 
+        memAllocator, 
+        genericSamplerManager, 
+        cmdManager, 
+        userFileLoad, 
+        *info, 
+        libconfig );
 
-    shaderManager =
-        std::make_shared< ShaderManager >( device, info->pShaderFolderPath, userFileLoad );
+    shaderManager = std::make_shared< ShaderManager >( 
+        device, 
+        info->pShaderFolderPath,
+        userFileLoad );
 
     scene = std::make_shared< Scene >(
-        device, physDevice, memAllocator, cmdManager, textureManager, uniform, shaderManager );
+        device, 
+        *physDevice,
+        memAllocator, 
+        cmdManager, 
+        textureManager, 
+        *uniform, 
+        *shaderManager );
 
     tonemapping = std::make_shared< Tonemapping >(
-        device, framebuffers, shaderManager, uniform, memAllocator );
+        device, 
+        framebuffers, 
+        shaderManager, 
+        uniform, 
+        memAllocator );
 
-    volumetric = std::make_shared< Volumetric >( device,
-                                                 cmdManager.get(),
-                                                 memAllocator.get(),
-                                                 shaderManager.get(),
-                                                 uniform.get(),
-                                                 blueNoise.get() );
+    volumetric = std::make_shared< Volumetric >( 
+        device,
+        cmdManager.get(),
+        memAllocator.get(),
+        shaderManager.get(),
+        uniform.get(),
+        blueNoise.get() );
 
-    rasterizer = std::make_shared< Rasterizer >( device,
-                                                 physDevice->Get(),
-                                                 shaderManager,
-                                                 textureManager,
-                                                 uniform,
-                                                 genericSamplerManager,
-                                                 tonemapping,
-                                                 volumetric,
-                                                 memAllocator,
-                                                 framebuffers,
-                                                 cmdManager,
-                                                 *info );
+    rasterizer = std::make_shared< Rasterizer >( 
+        device,
+        physDevice->Get(),
+        *shaderManager,
+        textureManager,
+        *uniform,
+        *genericSamplerManager,
+        *tonemapping,
+        *volumetric,
+        memAllocator,
+        framebuffers,
+        cmdManager,
+        *info );
 
     decalManager = std::make_shared< DecalManager >(
-        device, memAllocator, shaderManager, uniform, framebuffers, textureManager );
+        device, 
+        memAllocator, 
+        shaderManager, 
+        uniform, 
+        framebuffers,
+        textureManager );
 
-    portalList = std::make_shared< PortalList >( device, memAllocator );
+    portalList = std::make_shared< PortalList >( 
+        device,
+        memAllocator );
 
     lightGrid = std::make_shared< LightGrid >(
-        device, shaderManager, uniform, blueNoise, scene->GetLightManager() );
+        device,
+        shaderManager, 
+        uniform, 
+        blueNoise, 
+        scene->GetLightManager() );
 
-    rtPipeline = std::make_shared< RayTracingPipeline >( device,
-                                                         physDevice,
-                                                         memAllocator,
-                                                         shaderManager.get(),
-                                                         scene.get(),
-                                                         uniform.get(),
-                                                         textureManager.get(),
-                                                         framebuffers.get(),
-                                                         restirBuffers.get(),
-                                                         blueNoise.get(),
-                                                         cubemapManager.get(),
-                                                         rasterizer->GetRenderCubemap().get(),
-                                                         portalList.get(),
-                                                         volumetric.get(),
-                                                         *info );
+    rtPipeline = std::make_shared< RayTracingPipeline >( 
+        device,
+        physDevice,
+        memAllocator,
+        *shaderManager,
+        *scene,
+        *uniform,
+        *textureManager,
+        *framebuffers,
+        *restirBuffers,
+        *blueNoise,
+        *cubemapManager,
+        *rasterizer->GetRenderCubemap(),
+        *portalList,
+        *volumetric,
+        *info );
 
-    pathTracer = std::make_shared< PathTracer >( device, rtPipeline );
+    pathTracer = std::make_shared< PathTracer >( 
+        device,
+        rtPipeline );
 
     imageComposition = std::make_shared< ImageComposition >(
-        device, memAllocator, framebuffers, shaderManager, uniform, tonemapping, volumetric.get() );
+        device, 
+        memAllocator, 
+        framebuffers, 
+        *shaderManager, 
+        *uniform, 
+        *tonemapping,
+        *volumetric );
 
-    bloom = std::make_shared< Bloom >( device, framebuffers, shaderManager, uniform, tonemapping );
+    bloom = std::make_shared< Bloom >( 
+        device, 
+        framebuffers, 
+        shaderManager, 
+        uniform, 
+        tonemapping );
 
-    amdFsr2 = std::make_shared< FSR2 >( device, physDevice->Get() );
+    amdFsr2 = std::make_shared< FSR2 >( 
+        device, 
+        physDevice->Get() );
 
     nvDlss = std::make_shared< DLSS >(
-        instance, device, physDevice->Get(), info->pAppGUID, libconfig.dlssValidation );
+        instance, 
+        device, 
+        physDevice->Get(), 
+        info->pAppGUID, 
+        libconfig.dlssValidation );
 
-    sharpening = std::make_shared< Sharpening >( device, framebuffers, shaderManager );
+    sharpening = std::make_shared< Sharpening >( 
+        device, 
+        framebuffers, 
+        shaderManager );
 
     denoiser = std::make_shared< Denoiser >(
-        device, framebuffers, shaderManager, uniform, scene->GetASManager() );
+        device, 
+        framebuffers, 
+        *shaderManager,
+        *uniform );
 
     effectWipe = std::make_shared< EffectWipe >(
-        device, framebuffers, uniform, blueNoise, shaderManager, info->effectWipeIsUsed );
+        device, 
+        framebuffers, 
+        uniform, 
+        blueNoise, 
+        shaderManager, 
+        info->effectWipeIsUsed );
 
 
 #define CONSTRUCT_SIMPLE_EFFECT( T ) \

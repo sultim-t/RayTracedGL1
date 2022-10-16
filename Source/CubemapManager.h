@@ -61,6 +61,9 @@ public:
     bool                  TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName );
 
 
+    uint32_t              TryGetDescriptorIndex( const char* pTextureName );
+
+
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
 

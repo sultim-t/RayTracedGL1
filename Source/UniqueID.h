@@ -27,7 +27,7 @@ namespace RTGL1
 
 namespace UniqueID
 {
-    uint64_t MakeForPrimitive( const RgMeshInfo &mesh, const RgMeshPrimitiveInfo &primitive )
+    constexpr uint64_t MakeForPrimitive( const RgMeshInfo &mesh, const RgMeshPrimitiveInfo &primitive )
     {
         return uint64_t( mesh.uniqueObjectID ) << 32ull |
                uint64_t( primitive.primitiveIndexInMesh );

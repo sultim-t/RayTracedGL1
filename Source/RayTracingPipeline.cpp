@@ -117,11 +117,11 @@ RTGL1::RayTracingPipeline::RayTracingPipeline( VkDevice                         
 
     // shader modules in the pipeline will have the exact order
     shaderStageInfos = {
-        { "RGenPrimary",        std::make_unique< uint32_t >( _rgInfo.primaryRaysMaxAlbedoLayers ) },
-        { "RGenReflRefr",       std::make_unique< uint32_t >( _rgInfo.primaryRaysMaxAlbedoLayers ) },
+        { "RGenPrimary",        std::make_shared< uint32_t >( _rgInfo.primaryRaysMaxAlbedoLayers ) },
+        { "RGenReflRefr",       std::make_shared< uint32_t >( _rgInfo.primaryRaysMaxAlbedoLayers ) },
         { "RGenDirect",         nullptr },        
-        { "RGenIndirectInit",   std::make_unique< uint32_t >( _rgInfo.indirectIlluminationMaxAlbedoLayers ) },
-        { "RGenIndirectFinal",  std::make_unique< uint32_t >( _rgInfo.indirectIlluminationMaxAlbedoLayers ) },
+        { "RGenIndirectInit",   std::make_shared< uint32_t >( _rgInfo.indirectIlluminationMaxAlbedoLayers ) },
+        { "RGenIndirectFinal",  std::make_shared< uint32_t >( _rgInfo.indirectIlluminationMaxAlbedoLayers ) },
         { "RGenGradients",      nullptr },
         { "RInitialReservoirs", nullptr },
         { "RVolumetric",        nullptr },

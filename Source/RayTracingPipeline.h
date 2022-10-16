@@ -92,7 +92,7 @@ private:
         // One uint specialization const to use in the shader.
         // Must exist throughout class lifetime,
         // as CreatePipeline can be called any time.
-        std::unique_ptr< uint32_t > specConst;
+        std::shared_ptr< uint32_t > specConst;
     };
 
 private:

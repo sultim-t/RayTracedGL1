@@ -209,7 +209,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
                               ? SKY_TYPE_RASTERIZED_GEOMETRY
                               : SKY_TYPE_COLOR;
 
-            gu->skyCubemapIndex = cubemapManager->TryGetTextureIndex( sp.pSkyCubemapTextureName );
+            gu->skyCubemapIndex =
+                cubemapManager->TryGetDescriptorIndex( sp.pSkyCubemapTextureName );
 
             if( !Utils::IsAlmostZero( drawInfo.pSkyParams->skyCubemapRotationTransform ) )
             {
@@ -620,10 +621,10 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
             RgFloat3D skyViewerPosition =
                 drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0, 0, 0 };
 
-            rasterizer->DrawSkyToCubemap( cmd, frameIndex, textureManager, uniform );
+            rasterizer->DrawSkyToCubemap( cmd, frameIndex, *textureManager, *uniform );
             rasterizer->DrawSkyToAlbedo( cmd,
                                          frameIndex,
-                                         textureManager,
+                                         *textureManager,
                                          uniform->GetData()->view,
                                          skyViewerPosition.data,
                                          uniform->GetData()->projection,
@@ -643,16 +644,16 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                               frameIndex,
                                               renderResolution.Width(),
                                               renderResolution.Height(),
-                                              scene.get(),
-                                              uniform.get(),
-                                              textureManager.get(),
+                                              *scene,
+                                              *uniform,
+                                              *textureManager,
                                               framebuffers,
                                               restirBuffers,
-                                              blueNoise.get(),
-                                              cubemapManager.get(),
-                                              rasterizer->GetRenderCubemap().get(),
-                                              portalList.get(),
-                                              volumetric.get() );
+                                              *blueNoise,
+                                              *cubemapManager,
+                                              *rasterizer->GetRenderCubemap(),
+                                              *portalList,
+                                              *volumetric );
 
         pathTracer->TracePrimaryRays( params );
 
@@ -685,15 +686,14 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         // draw rasterized geometry into the final image
         rasterizer->DrawToFinalImage( cmd,
                                       frameIndex,
-                                      textureManager,
-                                      uniform,
-                                      tonemapping,
-                                      volumetric,
+                                      *textureManager,
+                                      *uniform,
+                                      *tonemapping,
+                                      *volumetric,
                                       uniform->GetData()->view,
                                       uniform->GetData()->projection,
                                       jitter,
-                                      renderResolution,
-                                      nullptr );
+                                      renderResolution );
     }
 
     imageComposition->Finalize(
@@ -804,7 +804,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         rasterizer->DrawToSwapchain( cmd,
                                      frameIndex,
                                      accum,
-                                     textureManager,
+                                     *textureManager,
                                      uniform->GetData()->view,
                                      uniform->GetData()->projection,
                                      renderResolution.UpscaledWidth(),
@@ -891,7 +891,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     renderResolution.Setup(
         pInfo->pRenderResolutionParams, swapchain->GetWidth(), swapchain->GetHeight(), nvDlss );
 
-    textureManager->CheckForHotReload( cmd );
+    // textureManager->CheckForHotReload( cmd );
 
     if( renderResolution.Width() > 0 && renderResolution.Height() > 0 )
     {
@@ -983,9 +983,9 @@ void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* p
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    textureManager->CreateMaterial( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
-                                    currentFrameState.GetFrameIndex(),
-                                    *pInfo );
+    textureManager->TryCreateMaterial( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
+                                       currentFrameState.GetFrameIndex(),
+                                       *pInfo );
 }
 
 void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo )
@@ -995,15 +995,15 @@ void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemap
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    cubemapManager->CreateCubemap( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
-                                   currentFrameState.GetFrameIndex(),
-                                   *pInfo );
+    cubemapManager->TryCreateCubemap( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
+                                      currentFrameState.GetFrameIndex(),
+                                      *pInfo );
 }
 
 void RTGL1::VulkanDevice::MarkOriginalTextureAsDeleted( const char* pTextureName )
 {
     textureManager->TryDestroyMaterial( currentFrameState.GetFrameIndex(), pTextureName );
-    cubemapManager->TryDestroyMaterial( currentFrameState.GetFrameIndex(), pTextureName );
+    cubemapManager->TryDestroyCubemap( currentFrameState.GetFrameIndex(), pTextureName );
 }
 
 bool RTGL1::VulkanDevice::IsSuspended() const

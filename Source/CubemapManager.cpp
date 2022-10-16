@@ -403,6 +403,30 @@ void RTGL1::CubemapManager::SubmitDescriptors( uint32_t frameIndex )
     cubemapDesc->FlushDescWrites();
 }
 
+uint32_t RTGL1::CubemapManager::TryGetDescriptorIndex( const char* pTextureName )
+{
+    // TODO: TextureDescriptors should return an index on creation,
+    //       now, iter must be the same as in SubmitDescriptors
+
+    uint32_t iter = 0;
+    for( const auto& [ name, cubetxd ] : cubemaps )
+    {
+        if( cubetxd.view != VK_NULL_HANDLE )
+        {
+            if( name == pTextureName)
+            {
+                return iter;
+            }
+        }
+
+        iter++;
+    }
+
+    // TODO: must not happen for now
+    assert( false );
+    return 0;
+}
+
 bool RTGL1::CubemapManager::IsCubemapValid( uint32_t cubemapIndex ) const
 {
     return cubemapIndex < MAX_CUBEMAP_COUNT;

@@ -11,7 +11,9 @@
 #endif
 #include <RTGL1/RTGL1.h>
 
-#define RG_CHECK( x ) assert( ( x ) == RG_SUCCESS )
+#define RG_CHECK( x )                                                              \
+    assert( ( x ) == RG_RESULT_SUCCESS || ( x ) == RG_RESULT_SUCCESS_FOUND_MESH || \
+            ( x ) == RG_RESULT_SUCCESS_FOUND_TEXTURE )
 
 
 #pragma region BOILERPLATE
@@ -122,14 +124,6 @@ static double GetCurrentTimeInSeconds()
     return std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now() - timeStart ).count() / 1000.0;
 }
 
-static uint32_t PackColorToUint32( uint8_t r, uint8_t g, uint8_t b, uint8_t a )
-{
-    return ( static_cast< uint32_t >( a ) << 24 ) | 
-           ( static_cast< uint32_t >( b ) << 16 ) |
-           ( static_cast< uint32_t >( g ) << 8  ) | 
-           ( static_cast< uint32_t >( r )       );
-}
-
 static const RgFloat3D s_CubePositions[] = { 
     {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, 
     { 0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, 
@@ -146,14 +140,14 @@ static const RgFloat2D s_CubeTexCoords[] = {
     {0,0}, {1,0}, {0,1}, {0,1}, {0,0}, {1,0}, 
     {0,1}, {0,1}, {0,0}, {1,0}, {0,1}, {0,1}, 
 };
-static const RgVertex* GetCubeVertices()
+static const RgPrimitiveVertex* GetCubeVertices()
 {
-    static RgVertex verts[ std::size( s_CubePositions ) ] = {};
+    static RgPrimitiveVertex verts[ std::size( s_CubePositions ) ] = {};
     for( size_t i = 0; i < std::size( s_CubePositions ); i++ )
     {
         memcpy( verts[ i ].position, &s_CubePositions[ i ], 3 * sizeof( float ) );
         memcpy( verts[ i ].texCoord, &s_CubeTexCoords[ i ], 2 * sizeof( float ) );
-        verts[ i ].packedColor = PackColorToUint32( 255, 255, 255, 255 );
+        verts[ i ].color = rgUtilPackColorByte4D( 255, 255, 255, 255 );
     }
     return verts;
 }
@@ -167,18 +161,19 @@ static const RgFloat2D s_QuadTexCoords[] = {
 static const uint32_t s_QuadColorsABGR[] = {
     0xF0FF0000, 0xF0FFFFFF, 0xF0FFFFFF, 0xF0FFFFFF, 0xFFFFFFFF, 0xFF00FF00,
 };
-static const RgVertex* GetQuadVertices()
+static const RgPrimitiveVertex* GetQuadVertices()
 {
-    static RgVertex verts[ std::size( s_QuadPositions ) ] = {};
+    static RgPrimitiveVertex verts[ std::size( s_QuadPositions ) ] = {};
     for( size_t i = 0; i < std::size( s_QuadPositions ); i++ )
     {
         memcpy( verts[ i ].position, &s_QuadPositions[ i ], 3 * sizeof( float ) );
         memcpy( verts[ i ].texCoord, &s_QuadTexCoords[ i ], 2 * sizeof( float ) );
-        verts[ i ].packedColor = s_QuadColorsABGR[ i ];
+        verts[ i ].color = s_QuadColorsABGR[ i ];
     }
     return verts;
 }
 
+#if 0
 void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material, RgTransform transform ) >& meshFunc,
                       const std::vector< RgMaterial >&                    rgmaterials,
                       const tinygltf::Model&                              model,
@@ -404,6 +399,7 @@ void ForEachGltfMesh( std::string_view path,
         std::cout << "Can't load GLTF. " << err << std::endl << warn << std::endl;
     }
 }
+#endif
 #pragma endregion BOILERPLATE
 
 
@@ -412,9 +408,8 @@ void ForEachGltfMesh( std::string_view path,
 
 static void MainLoop( RgInstance instance, std::string_view gltfPath )
 {
-    RgResult  r       = RG_SUCCESS;
+    RgResult  r       = RG_RESULT_SUCCESS;
     uint64_t  frameId = 0;
-    RgCubemap skybox  = RG_NO_MATERIAL;
 
 
     // each geometry must have a unique ID
@@ -426,20 +421,24 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
 
     // some resources can be initialized out of frame
     {
-        RgCubemapCreateInfo skyboxInfo = 
+        const uint32_t        white      = 0xFFFFFFFF;
+        RgOriginalCubemapInfo skyboxInfo = 
         {
-            .relativePathFaces = {
-                "Cubemap/px", "Cubemap/nx",
-                "Cubemap/py", "Cubemap/ny",
-                "Cubemap/pz", "Cubemap/nz", 
-            },
-            .useMipmaps = true,
+            .pTextureName     = "Cubemap/",
+            .pPixelsPositiveX = &white,
+            .pPixelsNegativeX = &white,
+            .pPixelsPositiveY = &white,
+            .pPixelsNegativeY = &white,
+            .pPixelsPositiveZ = &white,
+            .pPixelsNegativeZ = &white,
+            .sideSize = 1,
         };
-        r = rgCreateCubemap( instance, &skyboxInfo, &skybox );
+        r = rgProvideOriginalCubemapTexture( instance, &skyboxInfo );
         RG_CHECK( r );
 
 
         // upload static geometry of the scene once
+        #if 0
         r = rgBeginStaticGeometries( instance );
         RG_CHECK( r );
         {
@@ -517,6 +516,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
         }
         r = rgSubmitStaticGeometries( instance );
         RG_CHECK( r );
+        #endif
     }
 
 
@@ -534,46 +534,39 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
         }
 
 
-        // transform of movable geometry can be changed
-        {
-            RgUpdateTransformInfo update = {
-                .movableStaticUniqueID = MovableGeomUniqueID,
-                .transform             = { {
-                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ( frameId % 200 ) : -1.0f },
-                    { 0, 1, 0, 0 },
-                    { 0, 0, 1, -7 },
-                } },
-            };
-            r = rgUpdateGeometryTransform( instance, &update );
-            RG_CHECK( r );
-        }
-
-
         // dynamic geometry must be uploaded each frame
         {
-            RgGeometryUploadInfo dynamicGeomInfo = {
-                .uniqueID           = DynamicGeomUniqueID,
-                .flags              = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
-                .geomType           = RG_GEOMETRY_TYPE_DYNAMIC,
-                .vertexCount        = std::size( s_CubePositions ),
-                .pVertices          = GetCubeVertices(),
-                .layerColors        = { { 1.0f, 0.88f, 0.6f, 1.0f } },
-                .defaultRoughness   = ctl_Roughness,
-                .defaultMetallicity = ctl_Metallicity,
-                .geomMaterial       = { RG_NO_MATERIAL },
-                .transform          = { {
+            RgMeshInfo mesh = {
+                .uniqueObjectID = 10,
+                .pMeshName      = "test",
+                .isStatic       = false,
+                .animationName  = nullptr,
+                .animationTime  = 0.0f,
+            };
+
+            RgMeshPrimitiveInfo prim = {
+                .primitiveIndexInMesh = 0,
+                .flags                = 0,
+                .transform            = { {
                     { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ( ( frameId + 30 ) % 200 ) : 1.0f },
                     { 0, 1, 0, 0 },
                     { 0, 0, 1, -7 },
                 } },
+                .pVertices            = GetCubeVertices(),
+                .vertexCount          = std::size( s_CubePositions ),
+                .pTextureName         = nullptr,
+                .textureFrame         = 0,
+                .color                = 0xFFFFFFFF,
+                .pEditorInfo          = nullptr,
             };
-            r = rgUploadGeometry( instance, &dynamicGeomInfo );
+            
+            r = rgUploadMeshPrimitive( instance, &mesh, &prim );
             RG_CHECK( r );
         }
 
 
         // upload world-space rasterized geometry for non-expensive transparency
-        {
+        /*{
             RgRasterizedGeometryUploadInfo raster = {
                 .renderType    = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
                 .vertexCount   = std::size( s_QuadPositions ),
@@ -590,7 +583,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
             };
             r = rgUploadRasterizedGeometry( instance, &raster, nullptr, nullptr );
             RG_CHECK( r );
-        }
+        }*/
 
 
         // set bounding box of the decal to modify G-buffer
@@ -648,7 +641,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .skyColorMultiplier = ctl_SkyIntensity,
                 .skyColorSaturation = 1.0f,
                 .skyViewerPosition  = { 0, 0, 0 },
-                .skyCubemap         = skybox,
+                .pSkyCubemapTextureName = "Cubemap/",
             };
 
             RgDrawFrameDebugParams debugParams = {
@@ -727,9 +720,10 @@ int main( int argc, char* argv[] )
         .pXlibSurfaceCreateInfo = &xlibInfo,
 #endif
 
-        .pfnPrint = []( const char* pMessage, void* pUserData ) {
-            std::cout << pMessage << std::endl;
-        },
+        .pfnPrint = []( const char* pMessage, RgMessageSeverityFlags severity, void *pUserData )
+            {
+                std::cout << pMessage << std::endl;
+            },
 
         .pShaderFolderPath  = ASSET_DIRECTORY,
         .pBlueNoiseFilePath = ASSET_DIRECTORY "BlueNoise_LDR_RGBA_128.ktx2",
