@@ -25,19 +25,19 @@
 #include <cstring>
 
 #include "Generated/ShaderCommonC.h"
+#include "UniqueID.h"
 #include "Utils.h"
 
-using namespace RTGL1;
+constexpr uint32_t INDEX_BUFFER_SIZE = MAX_INDEXED_PRIMITIVE_COUNT * 3 * sizeof( uint32_t );
+constexpr uint32_t TRANSFORM_BUFFER_SIZE =
+    MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof( VkTransformMatrixKHR );
 
-constexpr uint32_t INDEX_BUFFER_SIZE     = MAX_INDEXED_PRIMITIVE_COUNT * 3 * sizeof( uint32_t );
-constexpr uint32_t TRANSFORM_BUFFER_SIZE =  MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof( VkTransformMatrixKHR );
 
-
-VertexCollector::VertexCollector( VkDevice                                  _device,
-                                  const std::shared_ptr< MemoryAllocator >& _allocator,
-                                  std::shared_ptr< GeomInfoManager >        _geomInfoManager,
-                                  VkDeviceSize                              _bufferSize,
-                                  VertexCollectorFilterTypeFlags            _filters )
+RTGL1::VertexCollector::VertexCollector( VkDevice                                  _device,
+                                         const std::shared_ptr< MemoryAllocator >& _allocator,
+                                         std::shared_ptr< GeomInfoManager >        _geomInfoManager,
+                                         VkDeviceSize                              _bufferSize,
+                                         VertexCollectorFilterTypeFlags            _filters )
     : device( _device )
     , filtersFlags( _filters )
     , geomInfoMgr( std::move( _geomInfoManager ) )
@@ -63,33 +63,39 @@ VertexCollector::VertexCollector( VkDevice                                  _dev
                   : VK_BUFFER_USAGE_TRANSFER_DST_BIT;
 
     // vertex buffers
-    vertBuffer->Init(
-        _allocator, _bufferSize,
-        transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        isDynamic ? "Dynamic Vertices data buffer" : "Static Vertices data buffer");
+    vertBuffer->Init( _allocator,
+                      _bufferSize,
+                      transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                          VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                          VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                      isDynamic ? "Dynamic Vertices data buffer" : "Static Vertices data buffer" );
 
     // index buffers
-    indexBuffer->Init(
-        _allocator, INDEX_BUFFER_SIZE,
-        transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
-        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        isDynamic ? "Dynamic Index data buffer" : "Static Index data buffer");
+    indexBuffer->Init( _allocator,
+                       INDEX_BUFFER_SIZE,
+                       transferUsage | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+                           VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                       isDynamic ? "Dynamic Index data buffer" : "Static Index data buffer" );
 
     // transforms buffer
     transformsBuffer->Init(
-        _allocator, TRANSFORM_BUFFER_SIZE,
-        transferUsage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
+        _allocator,
+        TRANSFORM_BUFFER_SIZE,
+        transferUsage | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT |
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR,
         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-        isDynamic ? "Dynamic BLAS transforms buffer" : "Static BLAS transforms buffer");
+        isDynamic ? "Dynamic BLAS transforms buffer" : "Static BLAS transforms buffer" );
 
     // device local buffers are
     InitStagingBuffers( _allocator );
     InitFilters( filtersFlags );
 }
 
-VertexCollector::VertexCollector( const std::shared_ptr< const VertexCollector >& _src,
-                                  const std::shared_ptr< MemoryAllocator >&       _allocator )
+RTGL1::VertexCollector::VertexCollector( const std::shared_ptr< const VertexCollector >& _src,
+                                         const std::shared_ptr< MemoryAllocator >& _allocator )
     : device( _src->device )
     , filtersFlags( _src->filtersFlags )
     , vertBuffer( _src->vertBuffer )
@@ -109,7 +115,8 @@ VertexCollector::VertexCollector( const std::shared_ptr< const VertexCollector >
     InitFilters( filtersFlags );
 }
 
-void VertexCollector::InitStagingBuffers( const std::shared_ptr< MemoryAllocator >& allocator )
+void RTGL1::VertexCollector::InitStagingBuffers(
+    const std::shared_ptr< MemoryAllocator >& allocator )
 {
     // device local buffers must not be empty
     assert( vertBuffer && vertBuffer->GetSize() > 0 );
@@ -121,7 +128,8 @@ void VertexCollector::InitStagingBuffers( const std::shared_ptr< MemoryAllocator
     stagingVertBuffer.Init( allocator,
                             vertBuffer->GetSize(),
                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                             filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC
                                 ? "Dynamic Vertices data staging buffer"
                                 : "Static Vertices data staging buffer" );
@@ -130,7 +138,8 @@ void VertexCollector::InitStagingBuffers( const std::shared_ptr< MemoryAllocator
     stagingIndexBuffer.Init( allocator,
                              indexBuffer->GetSize(),
                              VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                 VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                              filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC
                                  ? "Dynamic Index data staging buffer"
                                  : "Static Index data staging buffer" );
@@ -139,7 +148,8 @@ void VertexCollector::InitStagingBuffers( const std::shared_ptr< MemoryAllocator
     stagingTransformsBuffer.Init( allocator,
                                   transformsBuffer->GetSize(),
                                   VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                  VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
                                   filtersFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC
                                       ? "Dynamic BLAS transforms staging buffer"
                                       : "Static BLAS transforms staging buffer" );
@@ -149,7 +159,7 @@ void VertexCollector::InitStagingBuffers( const std::shared_ptr< MemoryAllocator
     mappedTransformData = static_cast< VkTransformMatrixKHR* >( stagingTransformsBuffer.Map() );
 }
 
-VertexCollector::~VertexCollector()
+RTGL1::VertexCollector::~VertexCollector()
 {
     // unmap buffers to destroy them
     stagingVertBuffer.TryUnmap();
@@ -167,7 +177,7 @@ uint32_t AlignUpBy3( uint32_t x )
 
 }
 
-void VertexCollector::BeginCollecting( bool isStatic )
+void RTGL1::VertexCollector::BeginCollecting( bool isStatic )
 {
     assert( curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 );
     assert( ( isStatic && geomInfoMgr->GetStaticCount() == 0 ) ||
@@ -175,14 +185,14 @@ void VertexCollector::BeginCollecting( bool isStatic )
     assert( GetAllGeometryCount() == 0 );
 }
 
-uint32_t VertexCollector::AddPrimitive( uint32_t                          frameIndex,
-                                        const RgMeshInfo&                 parentMesh,
-                                        const RgMeshPrimitiveInfo&        info,
-                                        std::span< MaterialTextures, 4 >  layerTextures,
-                                        std::span< RgColor4DPacked32, 4 > layerColors )
+uint32_t RTGL1::VertexCollector::AddPrimitive( uint32_t                          frameIndex,
+                                               const RgMeshInfo&                 parentMesh,
+                                               const RgMeshPrimitiveInfo&        info,
+                                               std::span< MaterialTextures, 4 >  layerTextures,
+                                               std::span< RgColor4DPacked32, 4 > layerColors )
 {
     using FT = VertexCollectorFilterTypeFlagBits;
-    const VertexCollectorFilterTypeFlags      geomFlags =
+    const VertexCollectorFilterTypeFlags geomFlags =
         VertexCollectorFilterTypeFlags_GetForGeometry( parentMesh, info );
 
 
@@ -245,16 +255,13 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                          frameI
     if( useIndices )
     {
         assert( stagingIndexBuffer.IsMapped() );
-        memcpy( mappedIndexData + indIndex,
-                info.pIndices,
-                info.indexCount * sizeof( uint32_t ) );
+        memcpy( mappedIndexData + indIndex, info.pIndices, info.indexCount * sizeof( uint32_t ) );
     }
 
     {
         static_assert( sizeof( RgTransform ) == sizeof( VkTransformMatrixKHR ) );
-        memcpy( mappedTransformData + transformIndex,
-                &info.transform,
-                sizeof( VkTransformMatrixKHR ) );
+        memcpy(
+            mappedTransformData + transformIndex, &info.transform, sizeof( VkTransformMatrixKHR ) );
     }
 
 
@@ -315,24 +322,24 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                          frameI
 
 
     ShGeometryInstance geomInfo = {
-        .model               = RG_MATRIX_TRANSPOSED( info.transform ),
-        .prevModel           = { /* set later */ },
+        .model     = RG_MATRIX_TRANSPOSED( info.transform ),
+        .prevModel = { /* set later */ },
 
-        .flags               = GeomInfoManager::GetPrimitiveFlags( info ),
+        .flags = GeomInfoManager::GetPrimitiveFlags( info ),
 
-        .base_textureA       = layerTextures[ 0 ].indices[ 0 ],
-        .base_textureB       = layerTextures[ 0 ].indices[ 1 ],
-        .base_textureC       = layerTextures[ 0 ].indices[ 2 ],
-        .base_color          = layerColors[ 0 ],
+        .base_textureA = layerTextures[ 0 ].indices[ 0 ],
+        .base_textureB = layerTextures[ 0 ].indices[ 1 ],
+        .base_textureC = layerTextures[ 0 ].indices[ 2 ],
+        .base_color    = layerColors[ 0 ],
 
-        .layer1_texture      = layerTextures[ 1 ].indices[ 0 ],
-        .layer1_color        = layerColors[ 1 ],
+        .layer1_texture = layerTextures[ 1 ].indices[ 0 ],
+        .layer1_color   = layerColors[ 1 ],
 
-        .layer2_texture      = layerTextures[ 2 ].indices[ 0 ],
-        .layer2_color        = layerColors[ 2 ],
+        .layer2_texture = layerTextures[ 2 ].indices[ 0 ],
+        .layer2_color   = layerColors[ 2 ],
 
-        .lightmap_texture    = layerTextures[ 3 ].indices[ 0 ],
-        .lightmap_color      = layerColors[ 3 ],
+        .lightmap_texture = layerTextures[ 3 ].indices[ 0 ],
+        .lightmap_color   = layerColors[ 3 ],
 
         .baseVertexIndex     = vertIndex,
         .baseIndexIndex      = useIndices ? indIndex : UINT32_MAX,
@@ -341,16 +348,21 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                          frameI
         .vertexCount         = info.vertexCount,
         .indexCount          = useIndices ? info.indexCount : UINT32_MAX,
 
-        .defaultRoughness    = 1.0f,
-        .defaultMetallicity  = 0.0f,
-        .defaultEmission     = 0.0f,
+        .defaultRoughness   = 1.0f,
+        .defaultMetallicity = 0.0f,
+        .defaultEmission    = 0.0f,
     };
 
 
     // simple index -- calculated as (global cur static count + global cur dynamic count)
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    uint32_t simpleIndex = geomInfoMgr->WriteGeomInfo( frameIndex, info., localIndex, geomFlags, geomInfo );
+    uint32_t simpleIndex =
+        geomInfoMgr->WriteGeomInfo( frameIndex,
+                                    UniqueID::MakeForPrimitive( parentMesh, info ),
+                                    localIndex,
+                                    geomFlags,
+                                    geomInfo );
 
 
     if( collectStatic )
@@ -361,18 +373,21 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                          frameI
         /*
         // add material dependency but only for static geometry,
         // dynamic is updated each frame, so their materials will be updated anyway
-        const std::tuple<uint32_t, RgMaterial, std::array<uint32_t, TEXTURES_PER_MATERIAL_COUNT>> layerDependencies[] =
+        const std::tuple<uint32_t, RgMaterial, std::array<uint32_t, TEXTURES_PER_MATERIAL_COUNT>>
+        layerDependencies[] =
         {
             // layer index - its material - corresponding texture indices
-            { 0, info.layerMaterials[0], { materials[0].indices[0], materials[0].indices[1], materials[0].indices[2] } },
-            { 1, info.layerMaterials[1], { materials[1].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } },
-            { 2, info.layerMaterials[2], { materials[2].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } },
-            { 3, info.layerMaterials[3], { materials[3].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } },
+            { 0, info.layerMaterials[0], { materials[0].indices[0], materials[0].indices[1],
+        materials[0].indices[2] } }, { 1, info.layerMaterials[1], { materials[1].indices[0],
+        EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } }, { 2, info.layerMaterials[2], {
+        materials[2].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } }, { 3,
+        info.layerMaterials[3], { materials[3].indices[0], EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX
+        } },
         };
         for( const auto& [ layerIndex, materialIndex, textureIndices ] : layerDependencies )
         {
-            // if at least one texture is not empty on this layer, add dependency to the material layer
-            for( uint32_t textureIndex : textureIndices )
+            // if at least one texture is not empty on this layer, add dependency to the material
+        layer for( uint32_t textureIndex : textureIndices )
             {
                 if( textureIndex != EMPTY_TEXTURE_INDEX )
                 {
@@ -387,7 +402,8 @@ uint32_t VertexCollector::AddPrimitive( uint32_t                          frameI
     return simpleIndex;
 }
 
-void VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex )
+void RTGL1::VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info,
+                                                uint32_t                   vertIndex )
 {
     assert( ( vertIndex + info.vertexCount ) * sizeof( ShVertex ) < vertBuffer->GetSize() );
 
@@ -405,9 +421,9 @@ void VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32
     memcpy( pDst, info.pVertices, info.vertexCount * sizeof( ShVertex ) );
 }
 
-void VertexCollector::EndCollecting() {}
+void RTGL1::VertexCollector::EndCollecting() {}
 
-void VertexCollector::Reset()
+void RTGL1::VertexCollector::Reset()
 {
     curVertexCount    = 0;
     curIndexCount     = 0;
@@ -424,7 +440,7 @@ void VertexCollector::Reset()
     }
 }
 
-bool VertexCollector::CopyVertexDataFromStaging( VkCommandBuffer cmd )
+bool RTGL1::VertexCollector::CopyVertexDataFromStaging( VkCommandBuffer cmd )
 {
     if( curVertexCount == 0 )
     {
@@ -442,7 +458,7 @@ bool VertexCollector::CopyVertexDataFromStaging( VkCommandBuffer cmd )
     return true;
 }
 
-bool VertexCollector::CopyIndexDataFromStaging( VkCommandBuffer cmd )
+bool RTGL1::VertexCollector::CopyIndexDataFromStaging( VkCommandBuffer cmd )
 {
     if( curIndexCount == 0 )
     {
@@ -460,7 +476,7 @@ bool VertexCollector::CopyIndexDataFromStaging( VkCommandBuffer cmd )
     return true;
 }
 
-bool VertexCollector::CopyTransformsFromStaging( VkCommandBuffer cmd, bool insertMemBarrier )
+bool RTGL1::VertexCollector::CopyTransformsFromStaging( VkCommandBuffer cmd, bool insertMemBarrier )
 {
     if( curTransformCount == 0 )
     {
@@ -502,7 +518,7 @@ bool VertexCollector::CopyTransformsFromStaging( VkCommandBuffer cmd, bool inser
     return true;
 }
 
-bool VertexCollector::RecopyTransformsFromStaging( VkCommandBuffer cmd )
+bool RTGL1::VertexCollector::RecopyTransformsFromStaging( VkCommandBuffer cmd )
 {
     return CopyTransformsFromStaging( cmd, true );
 }
@@ -556,11 +572,11 @@ bool RTGL1::VertexCollector::RecopyTexCoordsFromStaging( VkCommandBuffer cmd )
     return true;
 }
 
-bool VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
+bool RTGL1::VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
 {
-    bool vrtCopied = CopyVertexDataFromStaging( cmd );
-    bool indCopied = CopyIndexDataFromStaging( cmd );
-    bool trnCopied = CopyTransformsFromStaging( cmd, false );
+    bool                                   vrtCopied = CopyVertexDataFromStaging( cmd );
+    bool                                   indCopied = CopyIndexDataFromStaging( cmd );
+    bool                                   trnCopied = CopyTransformsFromStaging( cmd, false );
 
     std::array< VkBufferMemoryBarrier, 2 > barriers     = {};
     uint32_t                               barrierCount = 0;
@@ -663,9 +679,9 @@ bool VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
         simpleIndex, updateInfo.movableStaticUniqueID, updateInfo.transform );
 }*/
 
-void VertexCollector::AddMaterialDependency( uint32_t simpleIndex,
-                                             uint32_t layer,
-                                             uint32_t materialIndex )
+void RTGL1::VertexCollector::AddMaterialDependency( uint32_t simpleIndex,
+                                                    uint32_t layer,
+                                                    uint32_t materialIndex )
 {
     // ignore empty materials
     if( materialIndex != 0 )
@@ -681,7 +697,8 @@ void VertexCollector::AddMaterialDependency( uint32_t simpleIndex,
         it->second.push_back( { simpleIndex, layer } );
     }
 }
-void VertexCollector::OnMaterialChange( uint32_t materialIndex, const MaterialTextures& newInfo )
+void RTGL1::VertexCollector::OnMaterialChange( uint32_t                materialIndex,
+                                               const MaterialTextures& newInfo )
 {
     // for each geom index that has this material, update geometry instance infos
     for( const auto& p : materialDependencies[ materialIndex ] )
@@ -691,17 +708,17 @@ void VertexCollector::OnMaterialChange( uint32_t materialIndex, const MaterialTe
 }
 
 
-VkBuffer VertexCollector::GetVertexBuffer() const
+VkBuffer RTGL1::VertexCollector::GetVertexBuffer() const
 {
     return vertBuffer->GetBuffer();
 }
 
-VkBuffer VertexCollector::GetIndexBuffer() const
+VkBuffer RTGL1::VertexCollector::GetIndexBuffer() const
 {
     return indexBuffer->GetBuffer();
 }
 
-const std::vector< uint32_t >& VertexCollector::GetPrimitiveCounts(
+const std::vector< uint32_t >& RTGL1::VertexCollector::GetPrimitiveCounts(
     VertexCollectorFilterTypeFlags filter ) const
 {
     auto f = filters.find( filter );
@@ -710,7 +727,7 @@ const std::vector< uint32_t >& VertexCollector::GetPrimitiveCounts(
     return f->second->GetPrimitiveCounts();
 }
 
-const std::vector< VkAccelerationStructureGeometryKHR >& VertexCollector::GetASGeometries(
+const std::vector< VkAccelerationStructureGeometryKHR >& RTGL1::VertexCollector::GetASGeometries(
     VertexCollectorFilterTypeFlags filter ) const
 {
     auto f = filters.find( filter );
@@ -719,7 +736,7 @@ const std::vector< VkAccelerationStructureGeometryKHR >& VertexCollector::GetASG
     return f->second->GetASGeometries();
 }
 
-const std::vector< VkAccelerationStructureBuildRangeInfoKHR >& VertexCollector::
+const std::vector< VkAccelerationStructureBuildRangeInfoKHR >& RTGL1::VertexCollector::
     GetASBuildRangeInfos( VertexCollectorFilterTypeFlags filter ) const
 {
     auto f = filters.find( filter );
@@ -728,7 +745,7 @@ const std::vector< VkAccelerationStructureBuildRangeInfoKHR >& VertexCollector::
     return f->second->GetASBuildRangeInfos();
 }
 
-bool VertexCollector::AreGeometriesEmpty( VertexCollectorFilterTypeFlags flags ) const
+bool RTGL1::VertexCollector::AreGeometriesEmpty( VertexCollectorFilterTypeFlags flags ) const
 {
     for( const auto& p : filters )
     {
@@ -745,17 +762,17 @@ bool VertexCollector::AreGeometriesEmpty( VertexCollectorFilterTypeFlags flags )
     return true;
 }
 
-bool VertexCollector::AreGeometriesEmpty( VertexCollectorFilterTypeFlagBits type ) const
+bool RTGL1::VertexCollector::AreGeometriesEmpty( VertexCollectorFilterTypeFlagBits type ) const
 {
     return AreGeometriesEmpty( ( VertexCollectorFilterTypeFlags )type );
 }
 
-void VertexCollector::InsertVertexPreprocessBeginBarrier( VkCommandBuffer cmd )
+void RTGL1::VertexCollector::InsertVertexPreprocessBeginBarrier( VkCommandBuffer cmd )
 {
     // barriers were already inserted in CopyFromStaging()
 }
 
-void VertexCollector::InsertVertexPreprocessFinishBarrier( VkCommandBuffer cmd )
+void RTGL1::VertexCollector::InsertVertexPreprocessFinishBarrier( VkCommandBuffer cmd )
 {
     std::array< VkBufferMemoryBarrier, 2 > barriers     = {};
     uint32_t                               barrierCount = 0;
@@ -812,23 +829,24 @@ void VertexCollector::InsertVertexPreprocessFinishBarrier( VkCommandBuffer cmd )
                           nullptr );
 }
 
-uint32_t VertexCollector::PushGeometry( VertexCollectorFilterTypeFlags            type,
-                                        const VkAccelerationStructureGeometryKHR& geom )
+uint32_t RTGL1::VertexCollector::PushGeometry( VertexCollectorFilterTypeFlags            type,
+                                               const VkAccelerationStructureGeometryKHR& geom )
 {
     assert( filters.find( type ) != filters.end() );
 
     return filters[ type ]->PushGeometry( type, geom );
 }
 
-void VertexCollector::PushPrimitiveCount( VertexCollectorFilterTypeFlags type, uint32_t primCount )
+void RTGL1::VertexCollector::PushPrimitiveCount( VertexCollectorFilterTypeFlags type,
+                                                 uint32_t                       primCount )
 {
     assert( filters.find( type ) != filters.end() );
 
     filters[ type ]->PushPrimitiveCount( type, primCount );
 }
 
-void VertexCollector::PushRangeInfo( VertexCollectorFilterTypeFlags                  type,
-                                     const VkAccelerationStructureBuildRangeInfoKHR& rangeInfo )
+void RTGL1::VertexCollector::PushRangeInfo(
+    VertexCollectorFilterTypeFlags type, const VkAccelerationStructureBuildRangeInfoKHR& rangeInfo )
 {
     assert( filters.find( type ) != filters.end() );
 
@@ -842,7 +860,7 @@ uint32_t RTGL1::VertexCollector::GetGeometryCount( VertexCollectorFilterTypeFlag
     return filters[ type ]->GetGeometryCount();
 }
 
-uint32_t VertexCollector::GetAllGeometryCount() const
+uint32_t RTGL1::VertexCollector::GetAllGeometryCount() const
 {
     uint32_t count = 0;
 
@@ -854,17 +872,17 @@ uint32_t VertexCollector::GetAllGeometryCount() const
     return count;
 }
 
-uint32_t VertexCollector::GetCurrentVertexCount() const
+uint32_t RTGL1::VertexCollector::GetCurrentVertexCount() const
 {
     return curVertexCount;
 }
 
-uint32_t VertexCollector::GetCurrentIndexCount() const
+uint32_t RTGL1::VertexCollector::GetCurrentIndexCount() const
 {
     return curIndexCount;
 }
 
-void VertexCollector::AddFilter( VertexCollectorFilterTypeFlags filterGroup )
+void RTGL1::VertexCollector::AddFilter( VertexCollectorFilterTypeFlags filterGroup )
 {
     if( filterGroup == ( VertexCollectorFilterTypeFlags )0 )
     {
@@ -877,7 +895,7 @@ void VertexCollector::AddFilter( VertexCollectorFilterTypeFlags filterGroup )
 }
 
 // try create filters for each group (mask)
-void VertexCollector::InitFilters( VertexCollectorFilterTypeFlags flags )
+void RTGL1::VertexCollector::InitFilters( VertexCollectorFilterTypeFlags flags )
 {
     typedef VertexCollectorFilterTypeFlags    FL;
     typedef VertexCollectorFilterTypeFlagBits FT;

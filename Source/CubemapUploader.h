@@ -25,10 +25,10 @@
 namespace RTGL1
 {
 
-class CubemapUploader : public TextureUploader
+class CubemapUploader final : public TextureUploader
 {
 public:
-    CubemapUploader( VkDevice device, std::shared_ptr< MemoryAllocator > memAllocator );
+    using TextureUploader::TextureUploader;
 
     UploadResult UploadImage( const UploadInfo& info ) override;
 };

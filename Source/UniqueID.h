@@ -20,19 +20,18 @@
 
 #pragma once
 
-#include "Common.h"
-#include "ResolutionState.h"
+#include <RTGL1/RTGL1.h>
 
 namespace RTGL1
 {
 
-class Framebuffers;
-
-class IFramebuffersDependency
+namespace UniqueID
 {
-public:
-    virtual ~IFramebuffersDependency()                                              = default;
-    virtual void OnFramebuffersSizeChange( const ResolutionState& resolutionState ) = 0;
-};
+    uint64_t MakeForPrimitive( const RgMeshInfo &mesh, const RgMeshPrimitiveInfo &primitive )
+    {
+        return uint64_t( mesh.uniqueObjectID ) << 32ull |
+               uint64_t( primitive.primitiveIndexInMesh );
+    }
+}
 
 }

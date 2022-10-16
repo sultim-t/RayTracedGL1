@@ -36,9 +36,9 @@ class TextureUploader
 public:
     struct UploadResult
     {
-        bool        wasUploaded;
-        VkImage     image;
-        VkImageView view;
+        bool        wasUploaded = false;
+        VkImage     image = VK_NULL_HANDLE;
+        VkImageView view = VK_NULL_HANDLE;
     };
 
     struct UploadInfo

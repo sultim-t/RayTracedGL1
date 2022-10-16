@@ -28,7 +28,6 @@
 #include "GeomInfoManager.h"
 #include "IMaterialDependency.h"
 #include "Material.h"
-#include "VertexBufferProperties.h"
 #include "VertexCollectorFilter.h"
 #include "RTGL1/RTGL1.h"
 

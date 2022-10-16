@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -27,55 +27,66 @@
 
 using namespace RTGL1;
 
-PhysicalDevice::PhysicalDevice(VkInstance instance)
-    : physDevice(VK_NULL_HANDLE), memoryProperties{}, rtPipelineProperties{}, asProperties{}
+PhysicalDevice::PhysicalDevice( VkInstance instance )
+    : physDevice( VK_NULL_HANDLE ), memoryProperties{}, rtPipelineProperties{}, asProperties{}
 {
-    VkResult r;
-
-    uint32_t physCount = 0;
-    r = vkEnumeratePhysicalDevices(instance, &physCount, nullptr);
-
-    if (physCount == 0)
+    std::vector< VkPhysicalDevice > physicalDevices;
     {
-        throw RgException(RG_CANT_FIND_PHYSICAL_DEVICE, "Can't find physical devices");
+        uint32_t physCount = 0;
+        {
+            VkResult r = vkEnumeratePhysicalDevices( instance, &physCount, nullptr );
+            VK_CHECKERROR( r );
+        }
+
+        if( physCount == 0 )
+        {
+            throw RgException( RG_RESULT_CANT_FIND_SUPPORTED_PHYSICAL_DEVICE,
+                               "Can't find physical devices" );
+        }
+        physicalDevices.resize( physCount );
+
+        VkResult r = vkEnumeratePhysicalDevices( instance, &physCount, physicalDevices.data() );
+        VK_CHECKERROR( r );
     }
 
-    std::vector<VkPhysicalDevice> physicalDevices;
-    physicalDevices.resize(physCount);
-    r = vkEnumeratePhysicalDevices(instance, &physCount, physicalDevices.data());
-    VK_CHECKERROR(r);
-
-    for (VkPhysicalDevice p : physicalDevices)
+    for( VkPhysicalDevice p : physicalDevices )
     {
-        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtFeatures = {};
-        rtFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR;
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtFeatures = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+        };
+        VkPhysicalDeviceFeatures2 deviceFeatures2 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
+            .pNext = &rtFeatures,
+        };
+        vkGetPhysicalDeviceFeatures2( p, &deviceFeatures2 );
 
-        VkPhysicalDeviceFeatures2 deviceFeatures2 = {};
-        deviceFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        deviceFeatures2.pNext = &rtFeatures;
-        vkGetPhysicalDeviceFeatures2(p, &deviceFeatures2);
-
-        if (rtFeatures.rayTracingPipeline)
+        if( rtFeatures.rayTracingPipeline )
         {
             physDevice = p;
 
-            rtPipelineProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR;
-            asProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR;
-            VkPhysicalDeviceProperties2 deviceProp2 = {};
-            deviceProp2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-            deviceProp2.pNext = &rtPipelineProperties;
-            rtPipelineProperties.pNext = &asProperties;
+            asProperties = VkPhysicalDeviceAccelerationStructurePropertiesKHR{
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_PROPERTIES_KHR
+            };
+            rtPipelineProperties = VkPhysicalDeviceRayTracingPipelinePropertiesKHR{
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR,
+                .pNext = &asProperties,
+            };
+            VkPhysicalDeviceProperties2 deviceProp2 = {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+                .pNext = &rtPipelineProperties,
+            };
 
-            vkGetPhysicalDeviceProperties2(physDevice, &deviceProp2);
-            vkGetPhysicalDeviceMemoryProperties(physDevice, &memoryProperties);
+            vkGetPhysicalDeviceProperties2( physDevice, &deviceProp2 );
+            vkGetPhysicalDeviceMemoryProperties( physDevice, &memoryProperties );
 
             break;
         }
     }
 
-    if (physDevice == VK_NULL_HANDLE)
+    if( physDevice == VK_NULL_HANDLE )
     {
-        throw RgException(RG_CANT_FIND_PHYSICAL_DEVICE, "Can't find physical device with ray tracing support");
+        throw RgException( RG_RESULT_CANT_FIND_SUPPORTED_PHYSICAL_DEVICE,
+                           "Can't find physical device with ray tracing support" );
     }
 }
 
@@ -84,12 +95,13 @@ VkPhysicalDevice PhysicalDevice::Get() const
     return physDevice;
 }
 
-uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags requirementsMask) const
+uint32_t PhysicalDevice::GetMemoryTypeIndex( uint32_t memoryTypeBits,
+                                             VkFlags  requirementsMask ) const
 {
     VkMemoryPropertyFlags flagsToIgnore = 0;
 
-    if (requirementsMask & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)
-    {        
+    if( requirementsMask & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT )
+    {
         // device-local memory must not be host visible
         flagsToIgnore = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT;
     }
@@ -98,20 +110,20 @@ uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags req
         // host visible memory must not be device-local
         flagsToIgnore = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
     }
-    
+
 
     // for each memory type available for this device
-    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+    for( uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++ )
     {
         // if type is available
-        if ((memoryTypeBits & 1u) == 1)
+        if( ( memoryTypeBits & 1u ) == 1 )
         {
-            VkMemoryPropertyFlags flags = memoryProperties.memoryTypes[i].propertyFlags;
+            VkMemoryPropertyFlags flags = memoryProperties.memoryTypes[ i ].propertyFlags;
 
-            bool isSuitable = (flags & requirementsMask) == requirementsMask;
-            bool isIgnored = (flags & flagsToIgnore) == flagsToIgnore;
-            
-            if (isSuitable && !isIgnored)
+            bool                  isSuitable = ( flags & requirementsMask ) == requirementsMask;
+            bool                  isIgnored  = ( flags & flagsToIgnore ) == flagsToIgnore;
+
+            if( isSuitable && !isIgnored )
             {
                 return i;
             }
@@ -120,16 +132,18 @@ uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags req
         memoryTypeBits >>= 1u;
     }
 
-    throw RgException(RG_GRAPHICS_API_ERROR, "Can't find memory type for given memory property flags (" + std::to_string(requirementsMask) + ")");
-    return 0;
+    throw RgException( RG_RESULT_GRAPHICS_API_ERROR,
+                       "Can't find memory type for given memory property flags (" +
+                           std::to_string( requirementsMask ) + ")" );
 }
 
-const VkPhysicalDeviceMemoryProperties &PhysicalDevice::GetMemoryProperties() const
+const VkPhysicalDeviceMemoryProperties& PhysicalDevice::GetMemoryProperties() const
 {
     return memoryProperties;
 }
 
-const VkPhysicalDeviceRayTracingPipelinePropertiesKHR &PhysicalDevice::GetRTPipelineProperties() const
+const VkPhysicalDeviceRayTracingPipelinePropertiesKHR& PhysicalDevice::GetRTPipelineProperties()
+    const
 {
     return rtPipelineProperties;
 }

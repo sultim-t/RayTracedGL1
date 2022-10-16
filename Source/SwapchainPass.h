@@ -27,7 +27,7 @@
 namespace RTGL1
 {
 
-class SwapchainPass : public IShaderDependency
+class SwapchainPass final : public IShaderDependency
 {
 public:
     SwapchainPass( VkDevice                    device,

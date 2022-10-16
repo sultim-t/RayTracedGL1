@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -28,7 +28,7 @@ namespace RTGL1
 
 
 // Passed to the library by a user.
-typedef uint64_t UniqueLightID;
+using UniqueLightID = uint64_t;
 
 
 // Index in the global light array.
@@ -37,18 +37,15 @@ typedef uint64_t UniqueLightID;
 struct LightArrayIndex
 {
     typedef uint32_t index_t;
-    index_t _indexInGlobalArray;
+    index_t          _indexInGlobalArray;
 
-    index_t GetArrayIndex() const
-    {
-        return _indexInGlobalArray;
-    }
-    bool operator==(const LightArrayIndex &other) const
+    index_t          GetArrayIndex() const { return _indexInGlobalArray; }
+    bool             operator==( const LightArrayIndex& other ) const
     {
         return _indexInGlobalArray == other._indexInGlobalArray;
     }
 };
-static_assert(std::is_trivial_v<LightArrayIndex>);
+static_assert( std::is_trivial_v< LightArrayIndex > );
 
 
 }
@@ -57,11 +54,10 @@ static_assert(std::is_trivial_v<LightArrayIndex>);
 // default hash specialializations
 
 
-template<>
-struct std::hash<RTGL1::LightArrayIndex>
+template<> struct std::hash< RTGL1::LightArrayIndex >
 {
-    std::size_t operator()(RTGL1::LightArrayIndex const &s) const noexcept
+    std::size_t operator()( RTGL1::LightArrayIndex const& s ) const noexcept
     {
-        return std::hash<RTGL1::LightArrayIndex::index_t>{}(s._indexInGlobalArray);
+        return std::hash< RTGL1::LightArrayIndex::index_t >{}( s._indexInGlobalArray );
     }
 };

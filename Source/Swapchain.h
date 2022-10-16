@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,7 +24,6 @@
 #include <vector>
 
 #include "Common.h"
-#include "PhysicalDevice.h"
 #include "CommandBufferManager.h"
 #include "ISwapchainDependency.h"
 
@@ -34,76 +33,83 @@ namespace RTGL1
 class Swapchain
 {
 public:
-    Swapchain(
-        VkDevice device, 
-        VkSurfaceKHR surface, 
-        VkPhysicalDevice physDevice,
-        std::shared_ptr<CommandBufferManager> cmdManager);
+    Swapchain( VkDevice                                device,
+               VkSurfaceKHR                            surface,
+               VkPhysicalDevice                        physDevice,
+               std::shared_ptr< CommandBufferManager > cmdManager );
     ~Swapchain();
 
-    Swapchain(const Swapchain &other) = delete;
-    Swapchain(Swapchain &&other) noexcept = delete;
-    Swapchain &operator=(const Swapchain &other) = delete;
-    Swapchain &operator=(Swapchain &&other) noexcept = delete;
+    Swapchain( const Swapchain& other )     = delete;
+    Swapchain( Swapchain&& other ) noexcept = delete;
+    Swapchain& operator=( const Swapchain& other ) = delete;
+    Swapchain& operator=( Swapchain&& other ) noexcept = delete;
 
-    bool RequestVsync(bool enable);
+    bool       RequestVsync( bool enable );
 
-    void AcquireImage(VkSemaphore imageAvailableSemaphore);
-    void BlitForPresent(VkCommandBuffer cmd, VkImage srcImage, uint32_t srcImageWidth, uint32_t srcImageHeight, VkFilter filter, VkImageLayout srcImageLayout = VK_IMAGE_LAYOUT_GENERAL);
-    void Present(const std::shared_ptr<Queues> &queues, VkSemaphore renderFinishedSemaphore);
+    void       AcquireImage( VkSemaphore imageAvailableSemaphore );
+    void       BlitForPresent( VkCommandBuffer cmd,
+                               VkImage         srcImage,
+                               uint32_t        srcImageWidth,
+                               uint32_t        srcImageHeight,
+                               VkFilter        filter,
+                               VkImageLayout   srcImageLayout = VK_IMAGE_LAYOUT_GENERAL );
+    void Present( const std::shared_ptr< Queues >& queues, VkSemaphore renderFinishedSemaphore );
 
     // Subscribe to swapchain size chagne event.
     // shared_ptr will be transformed to weak_ptr
-    void Subscribe(std::shared_ptr<ISwapchainDependency> subscriber);
-    void Unsubscribe(const ISwapchainDependency *subscriber);
+    void Subscribe( std::shared_ptr< ISwapchainDependency > subscriber );
+    void Unsubscribe( const ISwapchainDependency* subscriber );
 
-    VkFormat GetSurfaceFormat() const;
-    uint32_t GetWidth() const;
-    uint32_t GetHeight() const;
-    uint32_t GetCurrentImageIndex() const;
-    uint32_t GetImageCount() const;
-    VkImageView GetImageView(uint32_t index) const;
-    VkImage GetImage(uint32_t index) const;
-    const VkImageView *GetImageViews() const;
+    VkFormat           GetSurfaceFormat() const;
+    uint32_t           GetWidth() const;
+    uint32_t           GetHeight() const;
+    uint32_t           GetCurrentImageIndex() const;
+    uint32_t           GetImageCount() const;
+    VkImageView        GetImageView( uint32_t index ) const;
+    VkImage            GetImage( uint32_t index ) const;
+    const VkImageView* GetImageViews() const;
 
-    bool IsExtentOptimal() const;
+    bool               IsExtentOptimal() const;
 
 private:
-    VkExtent2D GetOptimalExtent() const;
+    VkExtent2D     GetOptimalExtent() const;
 
     // Safe to call even if swapchain wasn't created
-    bool TryRecreate(const VkExtent2D &newExtent, bool vsync);
+    bool           TryRecreate( const VkExtent2D& newExtent, bool vsync );
 
-    void Create(uint32_t newWidth, uint32_t newHeight, bool vsync, VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE);
-    void Destroy();
+    void           Create( uint32_t       newWidth,
+                           uint32_t       newHeight,
+                           bool           vsync,
+                           VkSwapchainKHR oldSwapchain = VK_NULL_HANDLE );
+    void           Destroy();
     // Destroy dresources but not the swapchain itself. Old swapchain is returned.
     VkSwapchainKHR DestroyWithoutSwapchain();
 
-    void CallCreateSubscribers();
-    void CallDestroySubscribers();
+    void           CallCreateSubscribers();
+    void           CallDestroySubscribers();
 
 private:
-    VkDevice device;
-    VkSurfaceKHR surface;
-    VkPhysicalDevice physDevice;
-    std::shared_ptr<CommandBufferManager> cmdManager;
+    VkDevice                                           device;
+    VkSurfaceKHR                                       surface;
+    VkPhysicalDevice                                   physDevice;
+    std::shared_ptr< CommandBufferManager >            cmdManager;
 
-    VkSurfaceFormatKHR surfaceFormat;
-    VkPresentModeKHR presentModeVsync;
-    VkPresentModeKHR presentModeImmediate;
+    VkSurfaceFormatKHR                                 surfaceFormat;
+    VkPresentModeKHR                                   presentModeVsync;
+    VkPresentModeKHR                                   presentModeImmediate;
 
-    bool requestedVsync;
+    bool                                               requestedVsync;
     // current surface's size
-    VkExtent2D surfaceExtent;
-    bool isVsync;
+    VkExtent2D                                         surfaceExtent;
+    bool                                               isVsync;
 
-    VkSwapchainKHR swapchain;
-    std::vector<VkImage> swapchainImages;
-    std::vector<VkImageView> swapchainViews;
+    VkSwapchainKHR                                     swapchain;
+    std::vector< VkImage >                             swapchainImages;
+    std::vector< VkImageView >                         swapchainViews;
 
-    uint32_t currentSwapchainIndex;
+    uint32_t                                           currentSwapchainIndex;
 
-    std::list<std::weak_ptr<ISwapchainDependency>> subscribers;
+    std::list< std::weak_ptr< ISwapchainDependency > > subscribers;
 };
 
 }

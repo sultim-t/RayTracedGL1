@@ -55,15 +55,11 @@ public:
     CubemapManager&       operator=( CubemapManager&& other ) noexcept = delete;
 
 
-    uint32_t              TryGetTextureIndex( const char* pTextureName );
-    bool                  TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
+    bool                  TryCreateCubemap( VkCommandBuffer              cmd,
+                                            uint32_t                     frameIndex,
+                                            const RgOriginalCubemapInfo& info );
+    bool                  TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName );
 
-
-
-    uint32_t              CreateCubemap( VkCommandBuffer            cmd,
-                                         uint32_t                   frameIndex,
-                                         const RgCubemapCreateInfo& info );
-    void                  DestroyCubemap( uint32_t frameIndex, uint32_t cubemapIndex );
 
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
@@ -75,21 +71,22 @@ public:
 
 private:
     void CreateEmptyCubemap( VkCommandBuffer cmd );
+    void AddForDeletion( uint32_t frameIndex, Texture& txd );
 
 private:
-    VkDevice                              device;
+    VkDevice                                   device;
 
-    std::shared_ptr< MemoryAllocator >    allocator;
-    std::shared_ptr< ImageLoader >        imageLoader;
-    std::shared_ptr< SamplerManager >     samplerManager;
-    std::shared_ptr< TextureDescriptors > cubemapDesc;
-    std::shared_ptr< CubemapUploader >    cubemapUploader;
+    std::shared_ptr< MemoryAllocator >         allocator;
+    std::shared_ptr< ImageLoader >             imageLoader;
+    std::shared_ptr< SamplerManager >          samplerManager;
+    std::shared_ptr< TextureDescriptors >      cubemapDesc;
+    std::shared_ptr< CubemapUploader >         cubemapUploader;
 
-    std::vector< Texture >                cubemaps;
-    std::vector< Texture >                cubemapsToDestroy[ MAX_FRAMES_IN_FLIGHT ];
+    std::unordered_map< std::string, Texture > cubemaps;
+    std::vector< Texture >                     cubemapsToDestroy[ MAX_FRAMES_IN_FLIGHT ];
 
-    std::string                           defaultTexturesPath;
-    std::string                           overridenTexturePostfix;
+    std::string                                defaultTexturesPath;
+    std::string                                overridenTexturePostfix;
 };
 
 }

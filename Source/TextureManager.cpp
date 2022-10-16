@@ -128,8 +128,10 @@ TextureManager::TextureManager( VkDevice                                       _
 
     // submit cmd to create empty texture
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
-    CreateEmptyTexture( cmd, 0 );
-    CreateWaterNormalTexture( cmd, 0, _info.pWaterNormalTexturePath );
+    {
+        CreateEmptyTexture( cmd, 0 );
+        CreateWaterNormalTexture( cmd, 0, _info.pWaterNormalTexturePath );
+    }
     _cmdManager->Submit( cmd );
     _cmdManager->WaitGraphicsIdle();
 
@@ -628,7 +630,6 @@ bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextu
     }
 
     auto it = materials.find( pTextureName );
-
     if( it == materials.end() )
     {
         return false;

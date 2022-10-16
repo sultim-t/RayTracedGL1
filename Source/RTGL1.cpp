@@ -138,7 +138,7 @@ requires(
         )
 static auto Call( RgInstance rgInstance, Func f, Args&&... args )
 {
-    using ReturnType = std::invoke_result_t< Func, VulkanDevice, Args... >;
+    using ReturnType = std::invoke_result_t< Func, RTGL1::VulkanDevice, Args... >;
 
     try
     {
@@ -151,16 +151,16 @@ static auto Call( RgInstance rgInstance, Func f, Args&&... args )
     }
     catch( RTGL1::RgException& e )
     {
-        TryPrintError( rgInstance, e.what() );
+        TryPrintError( rgInstance, e.what(), RG_MESSAGE_SEVERITY_ERROR );
     }
     return ReturnType{};
 }
 
 
 
-RgResult rgUploadMeshPrimitive( RgInstance instance, const RgMeshInfo* pMesh, const RgMeshPrimitiveInfo* pPrimitive, uint32_t primitiveIndexInMesh )
+RgResult rgUploadMeshPrimitive( RgInstance instance, const RgMeshInfo* pMesh, const RgMeshPrimitiveInfo* pPrimitive )
 {
-    return Call( instance, &RTGL1::VulkanDevice::UploadMeshPrimitive, pMesh, pPrimitive, primitiveIndexInMesh );
+    return Call( instance, &RTGL1::VulkanDevice::UploadMeshPrimitive, pMesh, pPrimitive );
 }
 
 RgResult rgUploadNonWorldPrimitive( RgInstance instance, const RgMeshPrimitiveInfo* pPrimitive, const float* pViewProjection, const RgViewport* pViewport )

@@ -25,7 +25,6 @@
 #include "GlobalUniform.h"
 #include "ScratchBuffer.h"
 #include "TextureManager.h"
-#include "VertexBufferProperties.h"
 #include "VertexCollector.h"
 #include "ASComponent.h"
 
@@ -45,7 +44,7 @@ public:
 
 public:
     ASManager( VkDevice                                device,
-               std::shared_ptr< PhysicalDevice >       physDevice,
+               const PhysicalDevice&                   physDevice,
                std::shared_ptr< MemoryAllocator >      allocator,
                std::shared_ptr< CommandBufferManager > cmdManager,
                std::shared_ptr< TextureManager >       textureManager,

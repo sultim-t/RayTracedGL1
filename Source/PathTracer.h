@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -49,45 +49,46 @@ public:
     };
 
 public:
-    explicit PathTracer(VkDevice device, std::shared_ptr<RayTracingPipeline> rtPipeline);
+    explicit PathTracer( VkDevice device, std::shared_ptr< RayTracingPipeline > rtPipeline );
     ~PathTracer() = default;
 
-    PathTracer(const PathTracer& other) = delete;
-    PathTracer(PathTracer&& other) noexcept = delete;
-    PathTracer& operator=(const PathTracer& other) = delete;
-    PathTracer& operator=(PathTracer&& other) noexcept = delete;
+    PathTracer( const PathTracer& other )     = delete;
+    PathTracer( PathTracer&& other ) noexcept = delete;
+    PathTracer& operator=( const PathTracer& other ) = delete;
+    PathTracer& operator=( PathTracer&& other ) noexcept = delete;
 
     TraceParams Bind( VkCommandBuffer                  cmd,
                       uint32_t                         frameIndex,
                       uint32_t                         width,
                       uint32_t                         height,
-                      Scene*                           scene,
-                      const GlobalUniform*             uniform,
-                      const TextureManager*            textureManager,
+                      Scene&                           scene,
+                      const GlobalUniform&             uniform,
+                      const TextureManager&            textureManager,
                       std::shared_ptr< Framebuffers >  framebuffers,
                       std::shared_ptr< RestirBuffers > restirBuffers,
-                      const BlueNoise*                 blueNoise,
-                      const CubemapManager*            cubemapManager,
-                      const RenderCubemap*             renderCubemap,
-                      const PortalList*                portalList,
-                      const Volumetric*                volumetric );
-    
-    void TracePrimaryRays(const TraceParams &params);
-    void TraceReflectionRefractionRays(const TraceParams &params);
-    void CalculateInitialReservoirs(const TraceParams &params);
-    void TraceDirectllumination(const TraceParams &params);
-    void CalculateGradientsSamples(const TraceParams &params);
-    void TraceIndirectllumination(const TraceParams &params);
-    void TraceVolumetric( const TraceParams& params );
+                      const BlueNoise&                 blueNoise,
+                      const CubemapManager&            cubemapManager,
+                      const RenderCubemap&             renderCubemap,
+                      const PortalList&                portalList,
+                      const Volumetric&                volumetric );
+
+    void        TracePrimaryRays( const TraceParams& params );
+    void        TraceReflectionRefractionRays( const TraceParams& params );
+    void        CalculateInitialReservoirs( const TraceParams& params );
+    void        TraceDirectllumination( const TraceParams& params );
+    void        CalculateGradientsSamples( const TraceParams& params );
+    void        TraceIndirectllumination( const TraceParams& params );
+    void        TraceVolumetric( const TraceParams& params );
 
 private:
-    void TraceRays(
-        VkCommandBuffer cmd,
-        uint32_t sbtRayGenIndex,
-        uint32_t width, uint32_t height, uint32_t depth = 1);
+    void TraceRays( VkCommandBuffer cmd,
+                    uint32_t        sbtRayGenIndex,
+                    uint32_t        width,
+                    uint32_t        height,
+                    uint32_t        depth = 1 );
 
 private:
-    std::shared_ptr<RayTracingPipeline> rtPipeline;
+    std::shared_ptr< RayTracingPipeline > rtPipeline;
 };
 
 }

@@ -1,15 +1,15 @@
 // Copyright (c) 2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -28,46 +28,44 @@
 namespace RTGL1
 {
 
-class Denoiser : public IShaderDependency
+class Denoiser final : public IShaderDependency
 {
 public:
-    Denoiser(
-        VkDevice device,
-        std::shared_ptr<Framebuffers> framebuffers,
-        const std::shared_ptr<const ShaderManager> &shaderManager,
-        const std::shared_ptr<const GlobalUniform> &uniform,
-        const std::shared_ptr<const ASManager> &asManager);
-    ~Denoiser();
+    Denoiser( VkDevice                                      device,
+              std::shared_ptr< Framebuffers >               framebuffers,
+              const ShaderManager& shaderManager,
+              const GlobalUniform& uniform );
+    ~Denoiser() override;
 
-    Denoiser(const Denoiser &other) = delete;
-    Denoiser(Denoiser &&other) noexcept = delete;
-    Denoiser & operator=(const Denoiser &other) = delete;
-    Denoiser & operator=(Denoiser &&other) noexcept = delete;
+    Denoiser( const Denoiser& other )     = delete;
+    Denoiser( Denoiser&& other ) noexcept = delete;
+    Denoiser& operator=( const Denoiser& other ) = delete;
+    Denoiser& operator=( Denoiser&& other ) noexcept = delete;
 
-    void Denoise(
-        VkCommandBuffer cmd, uint32_t frameIndex,
-        const std::shared_ptr<const GlobalUniform> &uniform);
-    
-    void OnShaderReload(const ShaderManager *shaderManager) override;
+    void      Denoise( VkCommandBuffer                               cmd,
+                       uint32_t                                      frameIndex,
+                       const std::shared_ptr< const GlobalUniform >& uniform );
+
+    void      OnShaderReload( const ShaderManager* shaderManager ) override;
 
 private:
-    void CreatePipelineLayout(VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount);
-    void CreatePipelines(const ShaderManager *shaderManager);
+    void CreatePipelineLayout( VkDescriptorSetLayout* pSetLayouts, uint32_t setLayoutCount );
+    void CreatePipelines( const ShaderManager* shaderManager );
     void DestroyPipelines();
 
 private:
-    VkDevice device;
+    VkDevice                        device;
 
-    std::shared_ptr<Framebuffers> framebuffers;
+    std::shared_ptr< Framebuffers > framebuffers;
 
-    VkPipelineLayout pipelineLayout;
-    
-    VkPipeline gradientAtrous[4];
+    VkPipelineLayout                pipelineLayout;
 
-    VkPipeline antifirefly;
-    VkPipeline temporalAccumulation;
-    VkPipeline varianceEstimation;
-    VkPipeline atrous[4];
+    VkPipeline                      gradientAtrous[ 4 ];
+
+    VkPipeline                      antifirefly;
+    VkPipeline                      temporalAccumulation;
+    VkPipeline                      varianceEstimation;
+    VkPipeline                      atrous[ 4 ];
 };
 
 }

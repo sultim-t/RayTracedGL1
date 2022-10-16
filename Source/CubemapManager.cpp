@@ -27,6 +27,7 @@
 
 namespace
 {
+
 constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
 // use albedo-alpha texture data
@@ -37,6 +38,45 @@ template< typename T > constexpr const T* DefaultIfNull( const T* pData, const T
 {
     return pData != nullptr ? pData : pDefault;
 }
+
+void CheckIfFaceCorrect( const RTGL1::ImageLoader::ResultInfo& face,
+                         RgExtent2D                            commonSize,
+                         VkFormat                              commonFormat,
+                         const char*                           pDebugName )
+{
+    using namespace std::string_literals;
+
+    assert( face.pData != nullptr );
+    const auto& sz = face.baseSize;
+
+    if( face.format != commonFormat )
+    {
+        throw RTGL1::RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                                  "Cubemap must have the same format on each face. Failed on: "s +
+                                      pDebugName );
+    }
+
+    if( sz.width != sz.height )
+    {
+        throw RTGL1::RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                                  "Cubemap must have square face size: "s + pDebugName + " has (" +
+                                      std::to_string( sz.width ) + ", " +
+                                      std::to_string( sz.height ) + ")" );
+    }
+
+    if( sz.width != commonSize.width || sz.height != commonSize.height )
+    {
+        throw RTGL1::RgException(
+            RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+            "Cubemap faces must have the same size: "s + pDebugName + " has (" +
+                std::to_string( sz.width ) + ", " + std::to_string( sz.height ) +
+                ")"
+                "but expected (" +
+                std::to_string( commonSize.width ) + ", " + std::to_string( commonSize.height ) +
+                ") like on " + pDebugName );
+    }
+}
+
 }
 
 
@@ -67,44 +107,53 @@ RTGL1::CubemapManager::CubemapManager( VkDevice                           _devic
     cubemapUploader = std::make_shared< CubemapUploader >( device, allocator );
 
     VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
-    CreateEmptyCubemap( cmd );
+    {
+        CreateEmptyCubemap( cmd );
+    }
     _cmdManager->Submit( cmd );
     _cmdManager->WaitGraphicsIdle();
 }
 
 void RTGL1::CubemapManager::CreateEmptyCubemap( VkCommandBuffer cmd )
 {
-    uint32_t            whitePixel = 0xFFFFFFFF;
+    const uint32_t        whitePixel       = 0xFFFFFFFF;
+    const char*           emptyTextureName = "_RTGL1DefaultCubemap";
 
-    RgCubemapCreateInfo info = {};
-    info.sideSize            = 1;
-    info.useMipmaps          = 0;
-    info.filter              = RG_SAMPLER_FILTER_NEAREST;
+    RgOriginalCubemapInfo info = {
+        .pTextureName     = emptyTextureName,
+        .pPixelsPositiveX = &whitePixel,
+        .pPixelsNegativeX = &whitePixel,
+        .pPixelsPositiveY = &whitePixel,
+        .pPixelsNegativeY = &whitePixel,
+        .pPixelsPositiveZ = &whitePixel,
+        .pPixelsNegativeZ = &whitePixel,
+        .sideSize         = 1,
+    };
 
-    for( uint32_t i = 0; i < 6; i++ )
-    {
-        info.pData[ i ] = &whitePixel;
-    }
+    bool b = TryCreateCubemap( cmd, 0, info );
 
-    uint32_t index = CreateCubemap( cmd, 0, info );
-    assert( index == RG_EMPTY_CUBEMAP );
+    assert( b );
+    assert( cubemaps.contains( emptyTextureName ) );
 
-    cubemapDesc->SetEmptyTextureInfo( cubemaps[ RG_EMPTY_CUBEMAP ].view );
+    cubemapDesc->SetEmptyTextureInfo( cubemaps[ emptyTextureName ].view );
 }
 
 RTGL1::CubemapManager::~CubemapManager()
 {
-    std::vector< Texture >* arrays[ MAX_FRAMES_IN_FLIGHT + 1 ] = {};
-    arrays[ MAX_FRAMES_IN_FLIGHT ]                             = &cubemaps;
-
-    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
+    for( const auto& [ name, t ] : cubemaps )
     {
-        arrays[ i ] = &cubemapsToDestroy[ i ];
+        assert( ( t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE ) ||
+                ( t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE ) );
+
+        if( t.image != VK_NULL_HANDLE )
+        {
+            cubemapUploader->DestroyImage( t.image, t.view );
+        }
     }
 
-    for( auto* arr : arrays )
+    for( const std::vector< Texture >& vec : cubemapsToDestroy )
     {
-        for( auto& t : *arr )
+        for( const auto& t : vec )
         {
             assert( ( t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE ) ||
                     ( t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE ) );
@@ -117,24 +166,14 @@ RTGL1::CubemapManager::~CubemapManager()
     }
 }
 
-uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
-                                               uint32_t                   frameIndex,
-                                               const RgCubemapCreateInfo& info )
+bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
+                                              uint32_t                     frameIndex,
+                                              const RgOriginalCubemapInfo& info )
 {
-    using namespace std::string_literals;
-
-    auto f = std::find_if( cubemaps.begin(), cubemaps.end(), []( const Texture& t ) {
-        // also check if texture's members are all empty or all filled
-        assert( ( t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE ) ||
-                ( t.image != VK_NULL_HANDLE && t.view != VK_NULL_HANDLE ) );
-
-        return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
-    } );
-
     TextureUploader::UploadInfo upload = {
         .cmd          = cmd,
         .frameIndex   = frameIndex,
-        .useMipmaps   = !!info.useMipmaps,
+        .useMipmaps   = true,
         .isUpdateable = false,
         .pDebugName   = nullptr,
         .isCubemap    = true,
@@ -149,43 +188,28 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
         .overridenIsSRGB  = { true, false, false },
         .originalIsSRGB   = { true, false, false },
     };
+    auto*       ldr = imageLoader.get();
 
-    RgExtent2D        size = { info.sideSize, info.sideSize };
+    RgExtent2D  size = { info.sideSize, info.sideSize };
+
+    std::string faceNames[] = {
+        std::string( info.pTextureName ) + "_px", std::string( info.pTextureName ) + "_nx",
+        std::string( info.pTextureName ) + "_py", std::string( info.pTextureName ) + "_ny",
+        std::string( info.pTextureName ) + "_pz", std::string( info.pTextureName ) + "_nz",
+    };
+    const void* facePixels[] = {
+        info.pPixelsPositiveX, info.pPixelsNegativeX, info.pPixelsPositiveY,
+        info.pPixelsNegativeY, info.pPixelsPositiveZ, info.pPixelsNegativeZ,
+    };
 
     // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides  ovrd0( info.pRelativePaths[ 0 ],
-                            RgTextureSet{ .pDataAlbedoAlpha = info.pData[ 0 ] },
-                            size,
-                            parseInfo,
-                            imageLoader.get() );
-    TextureOverrides  ovrd1( info.pRelativePaths[ 1 ],
-                            RgTextureSet{ .pDataAlbedoAlpha = info.pData[ 1 ] },
-                            size,
-                            parseInfo,
-                            imageLoader.get() );
-    TextureOverrides  ovrd2( info.pRelativePaths[ 2 ],
-                            RgTextureSet{ .pDataAlbedoAlpha = info.pData[ 2 ] },
-                            size,
-                            parseInfo,
-                            imageLoader.get() );
-    TextureOverrides  ovrd3( info.pRelativePaths[ 3 ],
-                            RgTextureSet{ .pDataAlbedoAlpha = info.pData[ 3 ] },
-                            size,
-                            parseInfo,
-                            imageLoader.get() );
-    TextureOverrides  ovrd4( info.pRelativePaths[ 4 ],
-                            RgTextureSet{ .pDataAlbedoAlpha = info.pData[ 4 ] },
-                            size,
-                            parseInfo,
-                            imageLoader.get() );
-    TextureOverrides  ovrd5( info.pRelativePaths[ 5 ],
-                            RgTextureSet{ .pDataAlbedoAlpha = info.pData[ 5 ] },
-                            size,
-                            parseInfo,
-                            imageLoader.get() );
-
-    TextureOverrides* ovrd[] = {
-        &ovrd0, &ovrd1, &ovrd2, &ovrd3, &ovrd4, &ovrd5,
+    TextureOverrides ovrd[] = {
+        TextureOverrides( faceNames[ 0 ].c_str(), facePixels[ 0 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 1 ].c_str(), facePixels[ 1 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 2 ].c_str(), facePixels[ 2 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 3 ].c_str(), facePixels[ 3 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 4 ].c_str(), facePixels[ 4 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 5 ].c_str(), facePixels[ 5 ], size, parseInfo, ldr ),
     };
 
     // all overrides must have albedo data and the same and square size
@@ -195,7 +219,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
     RgExtent2D commonSize   = {};
     VkFormat   commonFormat = VK_FORMAT_UNDEFINED;
     {
-        if( const auto& firstAlbedo = ovrd[ 0 ]->GetResult( MATERIAL_COLOR_TEXTURE_INDEX ) )
+        if( const auto& firstAlbedo = ovrd[ 0 ].GetResult( MATERIAL_COLOR_TEXTURE_INDEX ) )
         {
             commonSize   = { firstAlbedo->baseSize.width, firstAlbedo->baseSize.height };
             commonFormat = firstAlbedo->format;
@@ -210,40 +234,9 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
     // check if all entries are correct
     for( auto& o : ovrd )
     {
-        if( const auto& albedo = o->GetResult( MATERIAL_COLOR_TEXTURE_INDEX ) )
+        if( const auto& face = o.GetResult( MATERIAL_COLOR_TEXTURE_INDEX ) )
         {
-            const char* debugName = o->GetDebugName();
-            assert( albedo->pData != nullptr );
-
-            const auto& faceSize = albedo->baseSize;
-
-            if( albedo->format != commonFormat )
-            {
-                throw RgException( RG_WRONG_ARGUMENT,
-                                   "Cubemap must have the same format on each face. Failed on: "s +
-                                       debugName );
-            }
-
-            if( faceSize.width != faceSize.height )
-            {
-                throw RgException( RG_WRONG_ARGUMENT,
-                                   "Cubemap must have square face size: "s + debugName + " has (" +
-                                       std::to_string( faceSize.width ) + ", " +
-                                       std::to_string( faceSize.height ) + ")" );
-            }
-
-            if( faceSize.width != commonSize.width || faceSize.height != commonSize.height )
-            {
-                throw RgException( RG_WRONG_ARGUMENT,
-                                   "Cubemap faces must have the same size: "s + debugName +
-                                       " has (" + std::to_string( faceSize.width ) + ", " +
-                                       std::to_string( faceSize.height ) +
-                                       ")"
-                                       "but expected (" +
-                                       std::to_string( commonSize.width ) + ", " +
-                                       std::to_string( commonSize.height ) + ") like on " +
-                                       debugName );
-            }
+            CheckIfFaceCorrect( *face, commonSize, commonFormat, o.GetDebugName() );
         }
         else
         {
@@ -254,12 +247,11 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
 
     if( useOvrd )
     {
-        upload.pDebugName = ovrd[ 0 ]->GetDebugName();
+        upload.pDebugName = ovrd[ 0 ].GetDebugName();
 
         for( uint32_t i = 0; i < 6; i++ )
         {
-            upload.cubemap.pFaces[ i ] =
-                ovrd[ i ]->GetResult( MATERIAL_COLOR_TEXTURE_INDEX )->pData;
+            upload.cubemap.pFaces[ i ] = ovrd[ i ].GetResult( MATERIAL_COLOR_TEXTURE_INDEX )->pData;
         }
     }
     else
@@ -271,18 +263,19 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
 
         if( info.sideSize == 0 )
         {
-            throw RgException( RG_WRONG_ARGUMENT, "Cubemap's side size must be non-zero" );
+            throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                               "Cubemap's side size must be non-zero" );
         }
 
         for( uint32_t i = 0; i < 6; i++ )
         {
             // if original data is not valid
-            if( info.pData[ i ] == nullptr )
+            if( facePixels[ i ] == nullptr )
             {
-                return RG_EMPTY_CUBEMAP;
+                return false;
             }
 
-            upload.cubemap.pFaces[ i ] = info.pData[ i ];
+            upload.cubemap.pFaces[ i ] = facePixels[ i ];
         }
     }
 
@@ -293,7 +286,7 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
     if( commonFormat != VK_FORMAT_R8G8B8A8_SRGB && commonFormat != VK_FORMAT_R8G8B8A8_UNORM )
     {
         assert( false && "For now, cubemaps only support only R8G8B8A8 formats!" );
-        return RG_EMPTY_CUBEMAP;
+        return false;
     }
     upload.baseSize = commonSize;
     upload.dataSize = 4 * commonSize.width * commonSize.height;
@@ -301,44 +294,67 @@ uint32_t RTGL1::CubemapManager::CreateCubemap( VkCommandBuffer            cmd,
 
 
     auto i = cubemapUploader->UploadImage( upload );
-
     if( !i.wasUploaded )
     {
-        return RG_EMPTY_CUBEMAP;
+        assert( false );
+        return false;
     }
 
-    f->image         = i.image;
-    f->view          = i.view;
-    f->samplerHandle = SamplerManager::Handle( info.filter,
-                                               RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                               RG_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
-                                               0 );
+    Texture txd = {
+        .image         = i.image,
+        .view          = i.view,
+        .samplerHandle = SamplerManager::Handle( RG_SAMPLER_FILTER_LINEAR,
+                                                 RG_SAMPLER_ADDRESS_MODE_CLAMP,
+                                                 RG_SAMPLER_ADDRESS_MODE_CLAMP ),
+    };
 
-    return std::distance( cubemaps.begin(), f );
+    auto [ iter, insertednew ] = cubemaps.insert( { std::string( info.pTextureName ), txd } );
+
+    if( !insertednew )
+    {
+        Texture& existing = iter->second;
+
+        // destroy old, overwrite with new
+        AddForDeletion( frameIndex, existing );
+        existing = txd;
+    }
+
+    return true;
 }
 
-void RTGL1::CubemapManager::DestroyCubemap( uint32_t frameIndex, uint32_t cubemapIndex )
+void RTGL1::CubemapManager::AddForDeletion( uint32_t frameIndex, Texture& txd )
 {
-    if( cubemapIndex >= MAX_CUBEMAP_COUNT )
+    assert( txd.image != VK_NULL_HANDLE );
+    assert( txd.view != VK_NULL_HANDLE );
+
+    // destroy later
+    cubemapsToDestroy[ frameIndex ].push_back( txd );
+
+    // nullify
+    txd = {
+        .image         = VK_NULL_HANDLE,
+        .view          = VK_NULL_HANDLE,
+        .samplerHandle = SamplerManager::Handle(),
+    };
+}
+
+bool RTGL1::CubemapManager::TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName )
+{
+    if( pTextureName == nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
-                           "Wrong cubemap ID=" + std::to_string( cubemapIndex ) );
+        return false;
     }
 
-    if( cubemaps[ cubemapIndex ].image == VK_NULL_HANDLE )
+    auto it = cubemaps.find( pTextureName );
+    if( it == cubemaps.end() )
     {
-        return;
+        return false;
     }
 
-    Texture& t = cubemaps[ cubemapIndex ];
+    AddForDeletion( frameIndex, it->second );
+    cubemaps.erase( it );
 
-    // add to be destroyed later
-    cubemapsToDestroy[ frameIndex ].push_back( t );
-
-    // clear data
-    t.image         = VK_NULL_HANDLE;
-    t.view          = VK_NULL_HANDLE;
-    t.samplerHandle = SamplerManager::Handle();
+    return true;
 }
 
 VkDescriptorSetLayout RTGL1::CubemapManager::GetDescSetLayout() const
@@ -354,7 +370,7 @@ VkDescriptorSet RTGL1::CubemapManager::GetDescSet( uint32_t frameIndex ) const
 void RTGL1::CubemapManager::PrepareForFrame( uint32_t frameIndex )
 {
     // destroy delayed textures
-    for( auto& t : cubemapsToDestroy[ frameIndex ] )
+    for( const Texture& t : cubemapsToDestroy[ frameIndex ] )
     {
         vkDestroyImage( device, t.image, nullptr );
         vkDestroyImageView( device, t.view, nullptr );
@@ -368,18 +384,20 @@ void RTGL1::CubemapManager::PrepareForFrame( uint32_t frameIndex )
 void RTGL1::CubemapManager::SubmitDescriptors( uint32_t frameIndex )
 {
     // update desc set with current values
-    for( uint32_t i = 0; i < cubemaps.size(); i++ )
+    uint32_t iter = 0;
+    for( const auto& [ name, cubetxd ] : cubemaps )
     {
-        if( cubemaps[ i ].image != VK_NULL_HANDLE )
+        if( cubetxd.image != VK_NULL_HANDLE )
         {
-            cubemapDesc->UpdateTextureDesc(
-                frameIndex, i, cubemaps[ i ].view, cubemaps[ i ].samplerHandle );
+            cubemapDesc->UpdateTextureDesc( frameIndex, iter, cubetxd.view, cubetxd.samplerHandle );
         }
         else
         {
             // reset descriptor to empty texture
-            cubemapDesc->ResetTextureDesc( frameIndex, i );
+            cubemapDesc->ResetTextureDesc( frameIndex, iter );
         }
+
+        iter++;
     }
 
     cubemapDesc->FlushDescWrites();

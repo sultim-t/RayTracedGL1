@@ -20,38 +20,29 @@
 
 #include "CubemapUploader.h"
 
-RTGL1::CubemapUploader::CubemapUploader( VkDevice                           device,
-                                         std::shared_ptr< MemoryAllocator > memAllocator )
-    : TextureUploader( device, std::move( memAllocator ) )
-{
-}
-
 RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage( const UploadInfo& info )
 {
     assert( info.isCubemap );
     // cubemaps can't be updateable
     assert( !info.isUpdateable );
 
-    const RgExtent2D& size = info.baseSize;
-
-    UploadResult      result = {};
-    result.wasUploaded       = false;
+    constexpr uint32_t FaceCount = 6;
 
     VkImage            image;
+    VkBuffer           stagingBuffers[ FaceCount ] = {};
+    void*              mappedData[ FaceCount ]     = {};
 
-    VkBuffer           stagingBuffers[ 6 ] = {};
-    void*              mappedData[ 6 ]     = {};
 
-    // 1. Allocate and fill buffer
-    const uint32_t     faceNumber = 6;
-    VkDeviceSize       faceSize   = ( VkDeviceSize )info.dataSize;
+    // allocate and fill buffer
+    const auto         faceSize = VkDeviceSize( info.dataSize );
 
-    VkBufferCreateInfo stagingInfo = {};
-    stagingInfo.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingInfo.size               = faceSize;
-    stagingInfo.usage              = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    VkBufferCreateInfo stagingInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size  = faceSize,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    };
 
-    for( uint32_t i = 0; i < 6; i++ )
+    for( uint32_t i = 0; i < FaceCount; i++ )
     {
         stagingBuffers[ i ] = memAllocator->CreateStagingSrcTextureBuffer(
             &stagingInfo, info.pDebugName, &mappedData[ i ] );
@@ -65,7 +56,7 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage( const 
                 memAllocator->DestroyStagingSrcTextureBuffer( stagingBuffers[ j ] );
             }
 
-            return result;
+            return UploadResult{};
         }
 
         SET_DEBUG_NAME( device, stagingBuffers[ i ], VK_OBJECT_TYPE_BUFFER, info.pDebugName );
@@ -76,16 +67,17 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage( const 
     if( !wasCreated )
     {
         // clean created resources
-        for( uint32_t j = 0; j < 6; j++ )
+        for( VkBuffer b : stagingBuffers )
         {
-            memAllocator->DestroyStagingSrcTextureBuffer( stagingBuffers[ j ] );
+            memAllocator->DestroyStagingSrcTextureBuffer( b );
         }
 
-        return result;
+        return UploadResult{};
     }
 
+
     // copy image data to buffer
-    for( uint32_t i = 0; i < 6; i++ )
+    for( uint32_t i = 0; i < FaceCount; i++ )
     {
         memcpy( mappedData[ i ], info.cubemap.pFaces[ i ], faceSize );
     }
@@ -94,25 +86,28 @@ RTGL1::TextureUploader::UploadResult RTGL1::CubemapUploader::UploadImage( const 
     // and copy it to image
     PrepareImage( image, stagingBuffers, info, ImagePrepareType::INIT );
 
+
     // create image view
     VkImageView imageView = CreateImageView( image,
                                              info.format,
                                              info.isCubemap,
-                                             GetMipmapCount( size, info ),
+                                             GetMipmapCount( info.baseSize, info ),
                                              RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE );
-
     SET_DEBUG_NAME( device, imageView, VK_OBJECT_TYPE_IMAGE_VIEW, info.pDebugName );
 
 
     // push staging buffer to be deleted when it won't be in use
-    for( uint32_t i = 0; i < 6; i++ )
+    for( VkBuffer b : stagingBuffers )
     {
-        stagingToFree[ info.frameIndex ].push_back( stagingBuffers[ i ] );
+        stagingToFree[ info.frameIndex ].push_back( b );
     }
 
+
     // return results
-    result.wasUploaded = true;
-    result.image       = image;
-    result.view        = imageView;
-    return result;
+
+    return UploadResult{
+        .wasUploaded = true,
+        .image       = image,
+        .view        = imageView,
+    };
 }

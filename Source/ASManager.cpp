@@ -29,7 +29,7 @@
 #include "Matrix.h"
 
 RTGL1::ASManager::ASManager( VkDevice                                _device,
-                             std::shared_ptr< PhysicalDevice >       _physDevice,
+                             const PhysicalDevice&                   _physDevice,
                              std::shared_ptr< MemoryAllocator >      _allocator,
                              std::shared_ptr< CommandBufferManager > _cmdManager,
                              std::shared_ptr< TextureManager >       _textureManager,
@@ -71,7 +71,7 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
     }
 
     const uint32_t scratchOffsetAligment =
-        _physDevice->GetASProperties().minAccelerationStructureScratchOffsetAlignment;
+        _physDevice.GetASProperties().minAccelerationStructureScratchOffsetAlignment;
     scratchBuffer = std::make_shared< ScratchBuffer >( allocator, scratchOffsetAligment );
     asBuilder     = std::make_shared< ASBuilder >( device, scratchBuffer );
 
@@ -615,7 +615,7 @@ uint32_t RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameInd
                                              const RgMeshPrimitiveInfo& primitive )
 {
     auto textures = textureMgr->GetTexturesForLayers( primitive );
-    auto colors = textureMgr->GetColorForLayers( primitive );
+    auto colors   = textureMgr->GetColorForLayers( primitive );
 
     return collectorDynamic[ frameIndex ]->AddPrimitive(
         frameIndex, mesh, primitive, textures, colors );
@@ -722,7 +722,7 @@ bool RTGL1::ASManager::SetupTLASInstanceFromBLAS( const BLASComponent& blas,
 
     instance.accelerationStructureReference = blas.GetASAddress();
 
-    instance.transform           = RG_TRANSFORM_IDENTITY;
+    instance.transform = RG_TRANSFORM_IDENTITY;
 
     instance.instanceCustomIndex = 0;
 
@@ -942,7 +942,7 @@ void RTGL1::ASManager::BuildTLAS( VkCommandBuffer          cmd,
     }
 
 
-    TLASComponent*                     pCurrentTLAS = tlas[ frameIndex ].get();
+    TLASComponent* pCurrentTLAS = tlas[ frameIndex ].get();
 
 
     VkAccelerationStructureGeometryKHR instGeom = {

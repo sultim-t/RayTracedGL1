@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -49,13 +49,11 @@
 #include <cmath>
 #include <cstring>
 
-using namespace RTGL1;
-
 #ifndef M_PI
 constexpr float M_PI = 3.141592653589793238462643383279f;
 #endif
 
-void Matrix::Inverse(float *inversed, const float *m)
+void RTGL1::Matrix::Inverse( float* inversed, const float* m )
 {
     // Copied from "Mesa - The 3D Graphics Library" (MIT license)
     // https://github.com/mesa3d/mesa/blob/master/src/mesa/math/m_matrix.c
@@ -184,224 +182,214 @@ void Matrix::Inverse(float *inversed, const float *m)
     }
 }
 
-void Matrix::Transpose( float* transposed, const float* m )
+void RTGL1::Matrix::Transpose( float* transposed, const float* m )
 {
-    for (int i = 0; i < 4; i++)
+    for( int i = 0; i < 4; i++ )
     {
-        for (int j = 0; j < 4; j++)
+        for( int j = 0; j < 4; j++ )
         {
             transposed[ i * 4 + j ] = m[ j * 4 + i ];
         }
     }
 }
 
-void Matrix::Transpose(float t[4][4])
+void RTGL1::Matrix::Transpose( float t[ 4 ][ 4 ] )
 {
-    std::swap(t[0][1], t[1][0]);
-    std::swap(t[0][2], t[2][0]);
-    std::swap(t[0][3], t[3][0]);
+    std::swap( t[ 0 ][ 1 ], t[ 1 ][ 0 ] );
+    std::swap( t[ 0 ][ 2 ], t[ 2 ][ 0 ] );
+    std::swap( t[ 0 ][ 3 ], t[ 3 ][ 0 ] );
 
-    std::swap(t[1][2], t[2][1]);
-    std::swap(t[1][3], t[3][1]);
+    std::swap( t[ 1 ][ 2 ], t[ 2 ][ 1 ] );
+    std::swap( t[ 1 ][ 3 ], t[ 3 ][ 1 ] );
 
-    std::swap(t[2][3], t[3][2]);
+    std::swap( t[ 2 ][ 3 ], t[ 3 ][ 2 ] );
 }
 
-void Matrix::Multiply(float *result, const float *a, const float *b)
+void RTGL1::Matrix::Multiply( float* result, const float* a, const float* b )
 {
-    for (int i = 0; i < 4; i++)
+    for( int i = 0; i < 4; i++ )
     {
-        for (int j = 0; j < 4; j++)
+        for( int j = 0; j < 4; j++ )
         {
-            result[i * 4 + j] =
-                a[i * 4 + 0] * b[0 * 4 + j] +
-                a[i * 4 + 1] * b[1 * 4 + j] +
-                a[i * 4 + 2] * b[2 * 4 + j] +
-                a[i * 4 + 3] * b[3 * 4 + j];
+            result[ i * 4 + j ] = a[ i * 4 + 0 ] * b[ 0 * 4 + j ] +
+                                  a[ i * 4 + 1 ] * b[ 1 * 4 + j ] +
+                                  a[ i * 4 + 2 ] * b[ 2 * 4 + j ] + 
+                                  a[ i * 4 + 3 ] * b[ 3 * 4 + j ];
         }
     }
 }
 
-void Matrix::ToMat4(float *result, const RgTransform &m)
+void RTGL1::Matrix::ToMat4( float* result, const RgTransform& m )
 {
-    result[0] = m.matrix[0][0];
-    result[1] = m.matrix[0][1];
-    result[2] = m.matrix[0][2];
+    result[ 0 ] = m.matrix[ 0 ][ 0 ];
+    result[ 1 ] = m.matrix[ 0 ][ 1 ];
+    result[ 2 ] = m.matrix[ 0 ][ 2 ];
 
-    result[4] = m.matrix[1][0];
-    result[5] = m.matrix[1][1];
-    result[6] = m.matrix[1][2];
+    result[ 4 ] = m.matrix[ 1 ][ 0 ];
+    result[ 5 ] = m.matrix[ 1 ][ 1 ];
+    result[ 6 ] = m.matrix[ 1 ][ 2 ];
 
-    result[8] = m.matrix[2][0];
-    result[9] = m.matrix[2][1];
-    result[10] = m.matrix[2][2];
+    result[ 8 ]  = m.matrix[ 2 ][ 0 ];
+    result[ 9 ]  = m.matrix[ 2 ][ 1 ];
+    result[ 10 ] = m.matrix[ 2 ][ 2 ];
 
-    result[3] = m.matrix[0][3];
-    result[7] = m.matrix[1][3];
-    result[11] = m.matrix[2][3];
+    result[ 3 ]  = m.matrix[ 0 ][ 3 ];
+    result[ 7 ]  = m.matrix[ 1 ][ 3 ];
+    result[ 11 ] = m.matrix[ 2 ][ 3 ];
 
-    result[12] = 0.0f;
-    result[13] = 0.0f;
-    result[14] = 0.0f;
-    result[15] = 1.0f;
+    result[ 12 ] = 0.0f;
+    result[ 13 ] = 0.0f;
+    result[ 14 ] = 0.0f;
+    result[ 15 ] = 1.0f;
 }
 
-void Matrix::ToMat4Transposed(float *result, const RgTransform &m)
+void RTGL1::Matrix::ToMat4Transposed( float* result, const RgTransform& m )
 {
-    result[0] = m.matrix[0][0];
-    result[4] = m.matrix[0][1];
-    result[8] = m.matrix[0][2];
+    result[ 0 ] = m.matrix[ 0 ][ 0 ];
+    result[ 4 ] = m.matrix[ 0 ][ 1 ];
+    result[ 8 ] = m.matrix[ 0 ][ 2 ];
 
-    result[1] = m.matrix[1][0];
-    result[5] = m.matrix[1][1];
-    result[9] = m.matrix[1][2];
+    result[ 1 ] = m.matrix[ 1 ][ 0 ];
+    result[ 5 ] = m.matrix[ 1 ][ 1 ];
+    result[ 9 ] = m.matrix[ 1 ][ 2 ];
 
-    result[2] = m.matrix[2][0];
-    result[6] = m.matrix[2][1];
-    result[10] = m.matrix[2][2];
+    result[ 2 ]  = m.matrix[ 2 ][ 0 ];
+    result[ 6 ]  = m.matrix[ 2 ][ 1 ];
+    result[ 10 ] = m.matrix[ 2 ][ 2 ];
 
-    result[12] = m.matrix[0][3];
-    result[13] = m.matrix[1][3];
-    result[14] = m.matrix[2][3];
+    result[ 12 ] = m.matrix[ 0 ][ 3 ];
+    result[ 13 ] = m.matrix[ 1 ][ 3 ];
+    result[ 14 ] = m.matrix[ 2 ][ 3 ];
 
-    result[3] = 0.0f;
-    result[7] = 0.0f;
-    result[11] = 0.0f;
-    result[15] = 1.0f;
+    result[ 3 ]  = 0.0f;
+    result[ 7 ]  = 0.0f;
+    result[ 11 ] = 0.0f;
+    result[ 15 ] = 1.0f;
 }
 
-static float Dot3(const float *a, const float *b)
+static float Dot3( const float* a, const float* b )
 {
-    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    return a[ 0 ] * b[ 0 ] + a[ 1 ] * b[ 1 ] + a[ 2 ] * b[ 2 ];
 }
 
-void Matrix::GetViewMatrix(float *result, const float *pos, float pitch, float yaw, float roll)
+void RTGL1::Matrix::GetViewMatrix(
+    float* result, const float* pos, float pitch, float yaw, float roll )
 {
-    float fSinH = std::sin(yaw); 
-    float fCosH = std::cos(yaw);
-    float fSinP = std::sin(pitch); 
-    float fCosP = std::cos(pitch);
-    float fSinB = std::sin(roll); 
-    float fCosB = std::cos(roll);
+    float fSinH = std::sin( yaw );
+    float fCosH = std::cos( yaw );
+    float fSinP = std::sin( pitch );
+    float fCosP = std::cos( pitch );
+    float fSinB = std::sin( roll );
+    float fCosB = std::cos( roll );
 
     // inverse transform, i.e. (T * R)^-1 = R^(-1) * T^(-1) = R^(-1) * T^(-1)
-    float m[4][4];
+    float m[ 4 ][ 4 ];
 
     // rotation matrix inverse
-    m[0][0] = fCosH*fCosB+fSinP*fSinH*fSinB;
-    m[1][0] = fSinP*fSinH*fCosB-fCosH*fSinB;
-    m[2][0] = fCosP*fSinH;
-    m[0][1] = fCosP*fSinB;
-    m[1][1] = fCosP*fCosB;
-    m[2][1] = -fSinP;
-    m[0][2] = fSinP*fCosH*fSinB-fSinH*fCosB;
-    m[1][2] = fSinP*fCosH*fCosB+fSinH*fSinB;
-    m[2][2] = fCosP*fCosH;
+    m[ 0 ][ 0 ] = fCosH * fCosB + fSinP * fSinH * fSinB;
+    m[ 1 ][ 0 ] = fSinP * fSinH * fCosB - fCosH * fSinB;
+    m[ 2 ][ 0 ] = fCosP * fSinH;
+    m[ 0 ][ 1 ] = fCosP * fSinB;
+    m[ 1 ][ 1 ] = fCosP * fCosB;
+    m[ 2 ][ 1 ] = -fSinP;
+    m[ 0 ][ 2 ] = fSinP * fCosH * fSinB - fSinH * fCosB;
+    m[ 1 ][ 2 ] = fSinP * fCosH * fCosB + fSinH * fSinB;
+    m[ 2 ][ 2 ] = fCosP * fCosH;
 
-    float invT[] = { -pos[0], -pos[1], -pos[2] };
+    float invT[] = { -pos[ 0 ], -pos[ 1 ], -pos[ 2 ] };
 
     // 4th column
-    m[0][3] = Dot3(m[0], invT);
-    m[1][3] = Dot3(m[1], invT);
-    m[2][3] = Dot3(m[2], invT);
+    m[ 0 ][ 3 ] = Dot3( m[ 0 ], invT );
+    m[ 1 ][ 3 ] = Dot3( m[ 1 ], invT );
+    m[ 2 ][ 3 ] = Dot3( m[ 2 ], invT );
 
-    m[3][0] = 0;
-    m[3][1] = 0;
-    m[3][2] = 0;
-    m[3][3] = 1;
+    m[ 3 ][ 0 ] = 0;
+    m[ 3 ][ 1 ] = 0;
+    m[ 3 ][ 2 ] = 0;
+    m[ 3 ][ 3 ] = 1;
 
     // to column-major
-    Matrix::Transpose(result, (float*)m);
+    RTGL1::Matrix::Transpose( result, ( float* )m );
 }
 
-void Matrix::GetCubemapViewProjMat(float *result, uint32_t sideIndex, const float *position, float zNear, float zFar)
+void RTGL1::Matrix::GetCubemapViewProjMat(
+    float* result, uint32_t sideIndex, const float* position, float zNear, float zFar )
 {
-    float view[16];
+    float view[ 16 ];
 
-    switch (sideIndex)
+    switch( sideIndex )
     {
-    // POSITIVE_X
-    case 0:
-        GetViewMatrix(view, position, 0, M_PI / 2, 0);
-        break;
+        // POSITIVE_X
+        case 0: GetViewMatrix( view, position, 0, M_PI / 2, 0 ); break;
 
-    // NEGATIVE_X
-    case 1:
-        GetViewMatrix(view, position, 0, -M_PI / 2, 0);
-        break;
+        // NEGATIVE_X
+        case 1: GetViewMatrix( view, position, 0, -M_PI / 2, 0 ); break;
 
-    // POSITIVE_Y
-    case 2:
-        GetViewMatrix(view, position, -M_PI / 2, 0, 0);
-        break;
+        // POSITIVE_Y
+        case 2: GetViewMatrix( view, position, -M_PI / 2, 0, 0 ); break;
 
-    // NEGATIVE_Y
-    case 3:
-        GetViewMatrix(view, position, M_PI / 2, 0, 0);
-        break;
+        // NEGATIVE_Y
+        case 3: GetViewMatrix( view, position, M_PI / 2, 0, 0 ); break;
 
-    // POSITIVE_Z
-    case 4:
-        GetViewMatrix(view, position, 0, 0, 0);
-        break;
+        // POSITIVE_Z
+        case 4: GetViewMatrix( view, position, 0, 0, 0 ); break;
 
-    // NEGATIVE_Z
-    case 5:
-        GetViewMatrix(view, position, 0, M_PI, 0);
-        break;
+        // NEGATIVE_Z
+        case 5: GetViewMatrix( view, position, 0, M_PI, 0 ); break;
 
-    default:
-        assert(0);
-        return;
+        default: assert( 0 ); return;
     }
 
     // tan(90/2)
-    const float tanHalfFovy = 1.0f;
-    const float aspect = 1.0f;
+    constexpr float tanHalfFovy = 1.0f;
+    constexpr float aspect      = 1.0f;
 
     // perspective matrix, depth [0..1],
-    // column-major 
-	float proj[4][4] = {};
-	proj[0][0] = 1.0f / (aspect * tanHalfFovy);
-	proj[1][1] = 1.0f / tanHalfFovy;
-	proj[2][2] = zFar / (zFar - zNear);
-	proj[2][3] = 1.0f;
-	proj[3][2] = -(zFar * zNear) / (zFar - zNear);
+    // column-major
+    float           proj[ 4 ][ 4 ] = {};
+    proj[ 0 ][ 0 ]                 = 1.0f / ( aspect * tanHalfFovy );
+    proj[ 1 ][ 1 ]                 = 1.0f / tanHalfFovy;
+    proj[ 2 ][ 2 ]                 = zFar / ( zFar - zNear );
+    proj[ 2 ][ 3 ]                 = 1.0f;
+    proj[ 3 ][ 2 ]                 = -( zFar * zNear ) / ( zFar - zNear );
 
     // inverted Y-axis
-    proj[1][1] *= -1;
+    proj[ 1 ][ 1 ] *= -1;
 
-    Multiply(result, view, (float*)proj);
+    Multiply( result, view, ( float* )proj );
 }
 
-void Matrix::SetNewViewerPosition(float *result, const float *viewMatrix, const float *newPosition)
+void RTGL1::Matrix::SetNewViewerPosition( float*       result,
+                                          const float* viewMatrix,
+                                          const float* newPosition )
 {
-    memcpy(result, viewMatrix, sizeof(float) * 16);
+    memcpy( result, viewMatrix, sizeof( float ) * 16 );
 
-    float invT[] = { -newPosition[0], -newPosition[1], -newPosition[2] };
+    float invT[] = { -newPosition[ 0 ], -newPosition[ 1 ], -newPosition[ 2 ] };
 
-    float columnI[] = { viewMatrix[0 * 4 + 0], viewMatrix[1 * 4 + 0], viewMatrix[2 * 4 + 0] };
-    float columnJ[] = { viewMatrix[0 * 4 + 1], viewMatrix[1 * 4 + 1], viewMatrix[2 * 4 + 1] };
-    float columnK[] = { viewMatrix[0 * 4 + 2], viewMatrix[1 * 4 + 2], viewMatrix[2 * 4 + 2] };
+    float columnI[] = { viewMatrix[ 0 * 4 + 0 ], viewMatrix[ 1 * 4 + 0 ], viewMatrix[ 2 * 4 + 0 ] };
+    float columnJ[] = { viewMatrix[ 0 * 4 + 1 ], viewMatrix[ 1 * 4 + 1 ], viewMatrix[ 2 * 4 + 1 ] };
+    float columnK[] = { viewMatrix[ 0 * 4 + 2 ], viewMatrix[ 1 * 4 + 2 ], viewMatrix[ 2 * 4 + 2 ] };
 
     // set new values for translation (4th row, viewMatrix and result are column-major)
-    result[3 * 4 + 0] = Dot3(columnI, invT);
-    result[3 * 4 + 1] = Dot3(columnJ, invT);
-    result[3 * 4 + 2] = Dot3(columnK, invT);
+    result[ 3 * 4 + 0 ] = Dot3( columnI, invT );
+    result[ 3 * 4 + 1 ] = Dot3( columnJ, invT );
+    result[ 3 * 4 + 2 ] = Dot3( columnK, invT );
 }
 
-void Matrix::MakeProjectionMatrix( float *matrix, float aspect, float fovYRad, float zNear, float zFar )
+void RTGL1::Matrix::MakeProjectionMatrix(
+    float* matrix, float aspect, float fovYRad, float zNear, float zFar )
 {
     const float tanHalfFovY = tanf( fovYRad * 0.5f );
 
     memset( matrix, 0, 16 * sizeof( float ) );
-    
+
     matrix[ 0 * 4 + 0 ] = 1.0f / ( aspect * tanHalfFovY );
 
     matrix[ 1 * 4 + 1 ] = -1.0f / tanHalfFovY;
 
     matrix[ 2 * 4 + 2 ] = zFar / ( zNear - zFar );
     matrix[ 2 * 4 + 3 ] = -1.0f;
-    
+
     matrix[ 3 * 4 + 2 ] = ( zFar * zNear ) / ( zNear - zFar );
 }

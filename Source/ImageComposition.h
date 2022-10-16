@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -33,19 +33,19 @@ namespace RTGL1
 class ImageComposition : public IShaderDependency
 {
 public:
-    ImageComposition( VkDevice                                      device,
-                      std::shared_ptr< MemoryAllocator >            allocator,
-                      std::shared_ptr< Framebuffers >               framebuffers,
-                      const std::shared_ptr< const ShaderManager >& shaderManager,
-                      const std::shared_ptr< const GlobalUniform >& uniform,
-                      const std::shared_ptr< const Tonemapping >&   tonemapping,
-                      const Volumetric*                             volumetric );
+    ImageComposition( VkDevice                           device,
+                      std::shared_ptr< MemoryAllocator > allocator,
+                      std::shared_ptr< Framebuffers >    framebuffers,
+                      const ShaderManager&               shaderManager,
+                      const GlobalUniform&               uniform,
+                      const Tonemapping&                 tonemapping,
+                      const Volumetric&                  volumetric );
     ~ImageComposition() override;
 
-    ImageComposition(const ImageComposition &other) = delete;
-    ImageComposition(ImageComposition &&other) noexcept = delete;
-    ImageComposition &operator=(const ImageComposition &other) = delete;
-    ImageComposition &operator=(ImageComposition &&other) noexcept = delete;
+    ImageComposition( const ImageComposition& other )     = delete;
+    ImageComposition( ImageComposition&& other ) noexcept = delete;
+    ImageComposition& operator=( const ImageComposition& other ) = delete;
+    ImageComposition& operator=( ImageComposition&& other ) noexcept = delete;
 
     void PrepareForRaster( VkCommandBuffer cmd, uint32_t frameIndex, const GlobalUniform* uniform );
 
@@ -54,48 +54,48 @@ public:
                    const GlobalUniform* uniform,
                    const Tonemapping*   tonemapping,
                    const Volumetric*    volumetric );
-    
-    void OnShaderReload(const ShaderManager *shaderManager) override;
+
+    void OnShaderReload( const ShaderManager* shaderManager ) override;
 
 private:
-    void ProcessCheckerboard( VkCommandBuffer      cmd,
-                              uint32_t             frameIndex,
-                              const GlobalUniform* uniform );
-    void ApplyTonemapping( VkCommandBuffer      cmd,
-                           uint32_t             frameIndex,
-                           const GlobalUniform* uniform,
-                           const Tonemapping*   tonemapping,
-                           const Volumetric*    volumetric );
+    void                    ProcessCheckerboard( VkCommandBuffer      cmd,
+                                                 uint32_t             frameIndex,
+                                                 const GlobalUniform* uniform );
+    void                    ApplyTonemapping( VkCommandBuffer      cmd,
+                                              uint32_t             frameIndex,
+                                              const GlobalUniform* uniform,
+                                              const Tonemapping*   tonemapping,
+                                              const Volumetric*    volumetric );
 
-    static VkPipelineLayout CreatePipelineLayout(
-        VkDevice device,
-        VkDescriptorSetLayout *pSetLayouts, uint32_t setLayoutCount, 
-        const char *pDebugName);
+    static VkPipelineLayout CreatePipelineLayout( VkDevice               device,
+                                                  VkDescriptorSetLayout* pSetLayouts,
+                                                  uint32_t               setLayoutCount,
+                                                  const char*            pDebugName );
 
-    void CreateDescriptors();
-    
-    void CreatePipelines(const ShaderManager *shaderManager);
-    void DestroyPipelines();
+    void                    CreateDescriptors();
 
-    void SetupLpmParams(VkCommandBuffer cmd);
+    void                    CreatePipelines( const ShaderManager* shaderManager );
+    void                    DestroyPipelines();
+
+    void                    SetupLpmParams( VkCommandBuffer cmd );
 
 private:
-    VkDevice device;
+    VkDevice                        device;
 
-    std::shared_ptr<Framebuffers> framebuffers;
+    std::shared_ptr< Framebuffers > framebuffers;
 
-    std::unique_ptr<AutoBuffer> lpmParams;
-    bool lpmParamsInited;
+    std::unique_ptr< AutoBuffer >   lpmParams;
+    bool                            lpmParamsInited;
 
-    VkPipelineLayout composePipelineLayout;
-    VkPipelineLayout checkerboardPipelineLayout;
+    VkPipelineLayout                composePipelineLayout;
+    VkPipelineLayout                checkerboardPipelineLayout;
 
-    VkPipeline composePipeline;
-    VkPipeline checkerboardPipeline;
+    VkPipeline                      composePipeline;
+    VkPipeline                      checkerboardPipeline;
 
-    VkDescriptorSetLayout descLayout;
-    VkDescriptorPool descPool;
-    VkDescriptorSet descSet;
+    VkDescriptorSetLayout           descLayout;
+    VkDescriptorPool                descPool;
+    VkDescriptorSet                 descSet;
 };
 
 }

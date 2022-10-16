@@ -403,7 +403,7 @@ typedef struct RgMeshPrimitiveInfo
 typedef struct RgMeshInfo
 {
     // Object is an instance of a mesh.
-    uint64_t                        uniqueObjectID;
+    uint32_t                        uniqueObjectID;
     // Name and primitive index is used to override meshes.
     const char*                     pMeshName;
     // Set to true, if an object never changes its vertices / transform / material / properties.
