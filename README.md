@@ -1,16 +1,20 @@
 # RTGL1
 
-***Work in progress***
+RTGL1 is a library that aims to simplify the process of porting 3D applications to *real-time path tracing*, via hardware accelerated ray tracing, denoising algorithms (A-SVGF) and advanced sampling algorithms (ReSTIR, ReSTIR GI) to improve the image quality by aggressively reusing spatio-temporal data.
 
-RTGL1 is a library that simplifies the process of porting applications with fixed-function pipeline to *real-time path tracing*.
+## RUG1 (development)
 
-It's achievable with hardware accelerated ray tracing, low sample per pixel count and utilizing denoising algorithms to improve the image quality by aggressively reusing spatio-temporal data.
+RUG1 (stands for **R**ay-traced **U**pdated **G**raphics Library **1**) is the next generation of RTGL1. 
 
+Goals:
+* overriding not just textures, but 3D models with animations
+* thinner interface
+* internal restructuring
 
 ## Build
 1. Requirements:
     * 64-bit CPU
-    * GPU with ray tracing support
+    * GPU with a ray tracing support
     * [Git](https://github.com/git-for-windows/git/releases)
     * [CMake](https://cmake.org/download/)
     * [Vulkan SDK](https://vulkan.lunarg.com/)
@@ -28,8 +32,7 @@ It's achievable with hardware accelerated ray tracing, low sample per pixel coun
             * `RG_WITH_SURFACE_METAL`
             * `RG_WITH_SURFACE_WAYLAND`
             * `RG_WITH_SURFACE_XCB`
-            * `RG_WITH_SURFACE_XLIB`
-        * *(optional)* to build with DLSS: add the environment variable `DLSS_SDK_PATH` that points to a cloned [DLSS repository](https://github.com/NVIDIA/DLSS), and enable `RG_WITH_NVIDIA_DLSS` option    
+            * `RG_WITH_SURFACE_XLIB`  
         * configure
         ```
         mkdir Build
@@ -54,24 +57,9 @@ It's achievable with hardware accelerated ray tracing, low sample per pixel coun
 
 RTGL1 supports shader hot-reloading (a target application sets `RgStartFrameInfo::requestShaderReload=true` in runtime).
 
-But to ease the process of *building* the shaders, instead of running `GenerateShaders.py` from a terminal manually, you can install [Visual Studio Code](https://code.visualstudio.com/) and [Script Runner extension](https://marketplace.visualstudio.com/items?itemName=easterapps.script-runner) to it. Open `Sources/Shaders` folder, add such config to VS Code's `.json` settings file (of courser, it could be better done with VS Code workspaces).
+But to ease the process of *building* the shaders, instead of running `GenerateShaders.py` from a terminal manually, you can install [Visual Studio Code](https://code.visualstudio.com/) and [Script Runner extension](https://marketplace.visualstudio.com/items?itemName=easterapps.script-runner) to it. Open `Sources/Shaders` folder, add such config to VS Code's `.json` settings file (TODO: VS Code workspace).
 ```
-"script-runner.definitions": {
-        "commands": [
-            {
-                "identifier": "shaderBuild",
-                "description": "Build shaders",
-                "command": "cls; python .\\GenerateShaders.py -ps",
-                "working_directory": "${workspaceFolder}",
-            },
-            {
-                "identifier": "shaderGenAndBuild",
-                "description": "Build shaders with generating common files",
-                "command": "cls; python .\\GenerateShaders.py -ps -g",
-                "working_directory": "${workspaceFolder}",
-            }
-        ],
-    },
+"script-runner.definitions": { "commands": [ { "identifier": "shaderBuild", "description": "Build shaders", "command": "cls; python .\\GenerateShaders.py -ps", "working_directory": "${workspaceFolder}", }, { "identifier": "shaderGenAndBuild", "description": "Build shaders with generating common files", "command": "cls; python .\\GenerateShaders.py -ps -g", "working_directory": "${workspaceFolder}", } ], },
 ```
 Then assign hotkeys to `shaderBuild` and `shaderGenAndBuild` commands in `File->Preferences->Keyboard Shortcuts`.
 
