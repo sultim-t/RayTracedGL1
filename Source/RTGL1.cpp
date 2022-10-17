@@ -241,19 +241,19 @@ const char* rgUtilGetResultDescription( RgResult result )
 RgColor4DPacked32 rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_t a )
 {
     return
-        ( static_cast< uint32_t >( a ) << 24 ) | 
-        ( static_cast< uint32_t >( b ) << 16 ) | 
-        ( static_cast< uint32_t >( g ) << 8 ) | 
-        ( static_cast< uint32_t >( r ) );
+        ( uint32_t( a ) << 24 ) | 
+        ( uint32_t( b ) << 16 ) | 
+        ( uint32_t( g ) << 8 ) | 
+        ( uint32_t( r ) );
 }
 
 RgColor4DPacked32 rgUtilPackColorFloat4D( const float color[ 4 ] )
 {
     const uint32_t c[] = {
-        static_cast< uint8_t >( std::clamp( static_cast< uint32_t >( color[ 0 ] * 255.0f ), 0u, 255u ) ),
-        static_cast< uint8_t >( std::clamp( static_cast< uint32_t >( color[ 1 ] * 255.0f ), 0u, 255u ) ),
-        static_cast< uint8_t >( std::clamp( static_cast< uint32_t >( color[ 2 ] * 255.0f ), 0u, 255u ) ),
-        static_cast< uint8_t >( std::clamp( static_cast< uint32_t >( color[ 3 ] * 255.0f ), 0u, 255u ) ),
+        uint8_t( std::clamp( uint32_t( color[ 0 ] * 255.0f ), 0u, 255u ) ),
+        uint8_t( std::clamp( uint32_t( color[ 1 ] * 255.0f ), 0u, 255u ) ),
+        uint8_t( std::clamp( uint32_t( color[ 2 ] * 255.0f ), 0u, 255u ) ),
+        uint8_t( std::clamp( uint32_t( color[ 3 ] * 255.0f ), 0u, 255u ) ),
     };
 
     return rgUtilPackColorByte4D( c[ 0 ], c[ 1 ], c[ 2 ], c[ 3 ] );

@@ -93,8 +93,8 @@ void RTGL1::Bloom::Prepare( VkCommandBuffer                               cmd,
     {
         CmdLabel    label( cmd, "Bloom downsample iteration" );
 
-        const float w = uniform->GetData()->renderWidth / static_cast< float >( 1 << ( i + 1 ) );
-        const float h = uniform->GetData()->renderHeight / static_cast< float >( 1 << ( i + 1 ) );
+        const float w = uniform->GetData()->renderWidth / float( 1 << ( i + 1 ) );
+        const float h = uniform->GetData()->renderHeight / float( 1 << ( i + 1 ) );
 
         vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_COMPUTE, downsamplePipelines[ i ] );
 
@@ -123,8 +123,8 @@ void RTGL1::Bloom::Prepare( VkCommandBuffer                               cmd,
     {
         CmdLabel    label( cmd, "Bloom upsample iteration" );
 
-        const float w = uniform->GetData()->renderWidth / static_cast< float >( 1 << ( i + 1 ) );
-        const float h = uniform->GetData()->renderHeight / static_cast< float >( 1 << ( i + 1 ) );
+        const float w = uniform->GetData()->renderWidth / float( 1 << i );
+        const float h = uniform->GetData()->renderHeight / float( 1 << i );
 
         vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_COMPUTE, upsamplePipelines[ i ] );
 

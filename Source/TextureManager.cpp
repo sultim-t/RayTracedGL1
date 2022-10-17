@@ -298,7 +298,14 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
     {
         throw RgException(
             RG_RESULT_WRONG_FUNCTION_ARGUMENT,
-            R"('pTextureName' or 'pPixels' must be not null in RgOriginalTextureInfo)" );
+            R"('pTextureName' must be not null or empty string in RgOriginalTextureInfo)" );
+    }
+
+    if( info.pPixels == nullptr )
+    {
+        throw RgException(
+            RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+            R"('pPixels' must be not null in RgOriginalTextureInfo)" );
     }
 
     auto samplerHandle =
@@ -624,7 +631,7 @@ void TextureManager::DestroyMaterialTextures( uint32_t frameIndex, const Materia
 
 bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName )
 {
-    if( pTextureName == nullptr )
+    if( pTextureName == nullptr || pTextureName[ 0 ] == '\0' )
     {
         return false;
     }
@@ -716,7 +723,7 @@ void TextureManager::AddToBeDestroyed( uint32_t frameIndex, const Texture& textu
 
 MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName ) const
 {
-    if( pTextureName == nullptr )
+    if( pTextureName == nullptr || pTextureName[ 0 ] == '\0' )
     {
         return EmptyMaterialTextures;
     }

@@ -173,9 +173,7 @@ static const RgPrimitiveVertex* GetQuadVertices()
     return verts;
 }
 
-#if 0
-void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material, RgTransform transform ) >& meshFunc,
-                      const std::vector< RgMaterial >&                    rgmaterials,
+void ForEachGltfMesh( const std::function< void( std::span< RgPrimitiveVertex > verts, std::span< uint32_t > indices, const char *pTextureName, RgTransform transform ) >& meshFunc,
                       const tinygltf::Model&                              model,
                       const tinygltf::Node&                               node )
 {
@@ -183,7 +181,7 @@ void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, st
     {
         for( const auto& primitive : model.meshes[ node.mesh ].primitives )
         {
-            std::vector< RgVertex > rgverts;
+            std::vector< RgPrimitiveVertex > rgverts;
             std::vector< uint32_t > rgindices;
 
             for( const auto& [ attribName, accessId ] : primitive.attributes )
@@ -203,9 +201,9 @@ void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, st
                 assert( rgverts.size() == attribAccessor.count );
 
                 std::tuple< const char*, size_t, size_t > attr[] = {
-                    { "POSITION", offsetof( RgVertex, position ), sizeof( float ) * 3 },
-                    { "NORMAL", offsetof( RgVertex, normal ), sizeof( float ) * 3 },
-                    { "TEXCOORD_0", offsetof( RgVertex, texCoord ), sizeof( float ) * 2 },
+                    { "POSITION", offsetof( RgPrimitiveVertex, position ), sizeof( float ) * 3 },
+                    { "NORMAL", offsetof( RgPrimitiveVertex, normal ), sizeof( float ) * 3 },
+                    { "TEXCOORD_0", offsetof( RgPrimitiveVertex, texCoord ), sizeof( float ) * 2 },
                 };
 
                 for( const auto& [ name, fieldOffset, elemSize ] : attr )
@@ -225,7 +223,7 @@ void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, st
 
             for( auto& v : rgverts )
             {
-                v.packedColor = 0xFFFFFFFF;
+                v.color = 0xFFFFFFFF;
             }
 
             {
@@ -284,114 +282,66 @@ void ForEachGltfMesh( const std::function< void( std::span< RgVertex > verts, st
                 { tr[ 0 ][ 2 ], tr[ 1 ][ 2 ], tr[ 2 ][ 2 ], tr[ 3 ][ 2 ] },
             } };
 
-            meshFunc( rgverts, rgindices, rgmaterials[ primitive.material ], rgtransform );
+            std::string texName;
+            {
+                int tex = model.materials[ primitive.material ]
+                              .pbrMetallicRoughness.baseColorTexture.index;
+                if( tex >= 0 && model.textures[ tex ].source >= 0 )
+                {
+                    auto& image = model.images[ model.textures[ tex ].source ];
+                    texName     = image.uri;
+                }
+            }
+
+            meshFunc( rgverts, rgindices, texName.c_str(), rgtransform );
         }
     }
 
     for( int c : node.children )
     {
         assert( c >= 0 && c < static_cast< int >( model.nodes.size() ) );
-        ForEachGltfMesh( meshFunc, rgmaterials, model, model.nodes[ c ] );
+        ForEachGltfMesh( meshFunc, model, model.nodes[ c ] );
     }
 }
 
 void ForEachGltfMesh( std::string_view path,
-                      const std::function< void( std::span< RgVertex > verts, std::span< uint32_t > indices, RgMaterial material, RgTransform transform ) >& meshFunc,
-                      const std::function< RgMaterial( uint32_t w, uint32_t h, const void* albedo, const void* rme, const void* normal ) >& materialFunc )
+                      const std::function< void( std::span< RgPrimitiveVertex > verts, std::span< uint32_t > indices, const char *pTextureName, RgTransform transform ) >& meshFunc,
+                      const std::function< void( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
 {
     tinygltf::Model    model;
     tinygltf::TinyGLTF loader;
     std::string        err, warn;
     if( loader.LoadASCIIFromFile( &model, &err, &warn, path.data() ) )
     {
-        std::vector< RgMaterial > rgmaterials;
-        rgmaterials.resize( model.materials.size() );
-
         for( uint64_t m = 0; m < model.materials.size(); m++ )
         {
             const auto& gltfMat = model.materials[ m ];
 
-            int itextures[ 3 ] = {
+            int itextures[] = {
                 gltfMat.pbrMetallicRoughness.baseColorTexture.index,
                 gltfMat.pbrMetallicRoughness.metallicRoughnessTexture.index,
                 gltfMat.normalTexture.index,
             };
 
-            struct RGBA
+            for( int tex : itextures )
             {
-                uint8_t data[ 4 ];
-            };
-
-            auto torgba = []( const std::vector< double >& flt ) {
-                return RGBA{
-                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 0 ] * 255.0 ), 255 ) ),
-                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 1 ] * 255.0 ), 255 ) ),
-                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 2 ] * 255.0 ), 255 ) ),
-                    static_cast< uint8_t >( std::clamp< int >( 0, static_cast< int >( flt[ 3 ] * 255.0 ), 255 ) ),
-                };
-            };
-
-            RGBA fallback[ 3 ] = {
-                torgba( gltfMat.pbrMetallicRoughness.baseColorFactor ),
-                torgba( { 0.0,
-                          gltfMat.pbrMetallicRoughness.metallicFactor,
-                          gltfMat.pbrMetallicRoughness.roughnessFactor,
-                          0.0 } ),
-                torgba( { 0.0, 1.0, 0.0, 0.0 } ),
-            };
-
-            struct MaterialDef
-            {
-                const void* data;
-                uint32_t    w;
-                uint32_t    h;
-            } defs[ 3 ] = {};
-
-            for( size_t i = 0; i < std::size( itextures ); i++ )
-            {
-                int tex = itextures[ i ];
                 if( tex >= 0 && model.textures[ tex ].source >= 0 )
                 {
                     auto& image = model.images[ model.textures[ tex ].source ];
                     assert( image.bits == 8 );
 
-                    defs[ i ] = {
-                        .data = &image.image[ 0 ],
-                        .w    = static_cast< uint32_t >( image.width ),
-                        .h    = static_cast< uint32_t >( image.height ),
-                    };
+                    materialFunc( image.uri.c_str(),
+                                  &image.image[ 0 ],
+                                  uint32_t( image.width ),
+                                  uint32_t( image.height ) );
                 }
-                else
-                {
-                    defs[ i ] = {
-                        .data = fallback[ i ].data,
-                        .w    = 1,
-                        .h    = 1,
-                    };
-                }
-            }
-
-            // RTGL restriction: must be the same size
-            if( defs[ 1 ].w != defs[ 0 ].w || defs[ 1 ].h != defs[ 0 ].h )
-            {
-                defs[ 1 ] = {};
-            }
-            if( defs[ 2 ].w != defs[ 0 ].w || defs[ 2 ].h != defs[ 0 ].h )
-            {
-                defs[ 2 ] = {};
-            }
-
-            if( defs[ 0 ].data || defs[ 1 ].data || defs[ 2 ].data )
-            {
-                rgmaterials[ m ] = materialFunc(
-                    defs[ 0 ].w, defs[ 0 ].h, defs[ 0 ].data, defs[ 1 ].data, defs[ 2 ].data );
             }
         }
 
         const auto& scene = model.scenes[ model.defaultScene ];
         for( int sceneNode : scene.nodes )
         {
-            ForEachGltfMesh( meshFunc, rgmaterials, model, model.nodes[ sceneNode ] );
+            ForEachGltfMesh( meshFunc, model, model.nodes[ sceneNode ] );
         }
     }
     else
@@ -399,7 +349,6 @@ void ForEachGltfMesh( std::string_view path,
         std::cout << "Can't load GLTF. " << err << std::endl << warn << std::endl;
     }
 }
-#endif
 #pragma endregion BOILERPLATE
 
 
@@ -436,87 +385,57 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
         r = rgProvideOriginalCubemapTexture( instance, &skyboxInfo );
         RG_CHECK( r );
 
+        
+        auto uploadMaterial = [ instance ]( const char* pTextureName,
+                                            const void* pPixels,
+                                            uint32_t    w,
+                                            uint32_t    h ) {
+            RgOriginalTextureInfo info =
+            {
+                .pTextureName = pTextureName,
+                .pPixels = pPixels,
+                .size = { w, h },
+            };
+            RgResult t = rgProvideOriginalTexture( instance, &info );
+            RG_CHECK( t );
+        };
 
-        // upload static geometry of the scene once
-        #if 0
-        r = rgBeginStaticGeometries( instance );
-        RG_CHECK( r );
-        {
-            auto uploadMaterial = [ instance ]( uint32_t    w,
-                                                uint32_t    h,
-                                                const void* albedo,
-                                                const void* rme,
-                                                const void* normal ) {
-                RgMaterial material;
+        uint32_t indexInMesh = 0;
 
-                RgMaterialCreateInfo info =
-                {
-                    .size = { w, h },
-                    .textures = {
-                        .pDataAlbedoAlpha = albedo,
-                        .pDataRoughnessMetallicEmission = rme,
-                        .pDataNormal = normal,
-                    },
+        RgMeshInfo meshInfo = {
+            .uniqueObjectID = 0,
+            .pMeshName      = gltfPath.data(),
+            .isStatic       = true,
+            .animationName  = nullptr,
+            .animationTime  = 0.0f,
+        };
+
+        auto uploadPrimtive =
+            [ instance, &indexInMesh, meshInfo ]( std::span< RgPrimitiveVertex > verts,
+                                                  std::span< uint32_t >          indices,
+                                                  const char*                    pTextureName,
+                                                  RgTransform                    transform ) {
+                RgMeshPrimitiveInfo info = {
+                    .primitiveIndexInMesh = indexInMesh,
+                    .flags                = 0,
+                    .transform            = transform,
+                    .pVertices            = verts.data(),
+                    .vertexCount          = uint32_t( verts.size() ),
+                    .pIndices             = indices.data(),
+                    .indexCount           = uint32_t( indices.size() ),
+                    .pTextureName         = nullptr, //pTextureName,
+                    .textureFrame         = 0,
+                    .color                = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
+                    .pEditorInfo          = nullptr,
                 };
-                RgResult t = rgCreateMaterial( instance, &info, &material );
+
+                RgResult t = rgUploadMeshPrimitive( instance, &meshInfo, &info );
                 RG_CHECK( t );
 
-                return material;
+                indexInMesh++;
             };
 
-            uint64_t idCounter = 0;
-
-            auto uploadStaticGeometry = [ instance, &idCounter ]( std::span< RgVertex > verts,
-                                                                  std::span< uint32_t > indices,
-                                                                  RgMaterial            material,
-                                                                  RgTransform           transform ) {
-                RgGeometryUploadInfo info = {
-                    .uniqueID           = GltfGeomUniqueIDBase + idCounter,
-                    .flags              = 0,
-                    .geomType           = RG_GEOMETRY_TYPE_STATIC,
-                    .passThroughType    = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
-                    .vertexCount        = static_cast< uint32_t >( verts.size() ),
-                    .pVertices          = verts.data(),
-                    .indexCount         = static_cast< uint32_t >( indices.size() ),
-                    .pIndices           = indices.data(),
-                    .layerColors        = { { 1.0f, 1.0f, 1.0f, 1.0f } },
-                    .defaultRoughness   = 1.0f,
-                    .defaultMetallicity = 0.0f,
-                    .geomMaterial       = { material },
-                    .transform          = transform,
-                };
-                RgResult t = rgUploadGeometry( instance, &info );
-                RG_CHECK( t );
-
-                idCounter++;
-            };
-
-            ForEachGltfMesh( gltfPath, uploadStaticGeometry, uploadMaterial );
-        }
-        {
-            RgGeometryUploadInfo movable = {
-                .uniqueID           = MovableGeomUniqueID,
-                .flags              = RG_GEOMETRY_UPLOAD_GENERATE_INVERTED_NORMALS_BIT,
-                .geomType           = RG_GEOMETRY_TYPE_STATIC_MOVABLE,
-                .passThroughType    = RG_GEOMETRY_PASS_THROUGH_TYPE_OPAQUE,
-                .vertexCount        = std::size( s_CubePositions ),
-                .pVertices          = GetCubeVertices(),
-                .layerColors        = { { 0.5f, 0.5f, 1.0f, 1.0f } },
-                .defaultRoughness   = 1.0f,
-                .defaultMetallicity = 0.0f,
-                .geomMaterial       = { RG_NO_MATERIAL },
-                .transform          = { {
-                    { 1, 0, 0, 0 },
-                    { 0, 1, 0, 0 },
-                    { 0, 0, 1, 0 },
-                } },
-            };
-            r = rgUploadGeometry( instance, &movable );
-            RG_CHECK( r );
-        }
-        r = rgSubmitStaticGeometries( instance );
-        RG_CHECK( r );
-        #endif
+        ForEachGltfMesh( gltfPath, uploadPrimtive, uploadMaterial );
     }
 
 
@@ -566,24 +485,34 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
 
 
         // upload world-space rasterized geometry for non-expensive transparency
-        /*{
-            RgRasterizedGeometryUploadInfo raster = {
-                .renderType    = RG_RASTERIZED_GEOMETRY_RENDER_TYPE_DEFAULT,
-                .vertexCount   = std::size( s_QuadPositions ),
-                .pVertices     = GetQuadVertices(),
-                .transform     = { {
+        {
+            RgMeshInfo mesh = {
+                .uniqueObjectID = 12,
+                .pMeshName      = "test_raster",
+                .isStatic       = false,
+                .animationName  = nullptr,
+                .animationTime  = 0.0f,
+            };
+
+            RgMeshPrimitiveInfo raster = {
+                .primitiveIndexInMesh = 0,
+                .flags                = 0,
+                .transform            = { {
                     { 1, 0, 0, -0.5f },
                     { 0, 1, 0, 0.5f },
                     { 0, 0, 1, -8 },
                 } },
-                .color         = { 1.0f, 1.0f, 1.0f, 1.0f },
-                .material      = RG_NO_MATERIAL,
-                .pipelineState = RG_RASTERIZED_GEOMETRY_STATE_DEPTH_TEST |
-                                 RG_RASTERIZED_GEOMETRY_STATE_DEPTH_WRITE,
+                .pVertices            = GetQuadVertices(),
+                .vertexCount          = std::size( s_QuadPositions ),
+                .pTextureName         = nullptr,
+                .textureFrame         = 0,
+                .color                = rgUtilPackColorByte4D( 255, 128, 128, 128 ),
+                .pEditorInfo          = nullptr,
             };
-            r = rgUploadRasterizedGeometry( instance, &raster, nullptr, nullptr );
+
+            r = rgUploadMeshPrimitive( instance, &mesh, &raster );
             RG_CHECK( r );
-        }*/
+        }
 
 
         // set bounding box of the decal to modify G-buffer

@@ -340,7 +340,7 @@ void RTGL1::CubemapManager::AddForDeletion( uint32_t frameIndex, Texture& txd )
 
 bool RTGL1::CubemapManager::TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName )
 {
-    if( pTextureName == nullptr )
+    if( pTextureName == nullptr || pTextureName[ 0 ] == '\0' )
     {
         return false;
     }
