@@ -4,3 +4,6 @@
 [submodule "Tests/Libs/glm"]
 	path = Tests/Libs/glm
 	url = https://github.com/g-truc/glm.git
+[submodule "Source/imgui"]
+	path = Source/imgui
+	url = https://github.com/ocornut/imgui.git
