@@ -592,7 +592,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .animationTime  = 0.0f,
             };
 
-            RgMeshPrimitiveInfo raster = {
+            RgMeshPrimitiveInfo prim = {
                 .primitiveIndexInMesh = 0,
                 .flags                = 0,
                 .transform            = { {
@@ -604,11 +604,12 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .vertexCount          = std::size( s_QuadPositions ),
                 .pTextureName         = nullptr,
                 .textureFrame         = 0,
+                // alpha is not 1.0
                 .color                = rgUtilPackColorByte4D( 255, 128, 128, 128 ),
                 .pEditorInfo          = nullptr,
             };
 
-            r = rgUploadMeshPrimitive( instance, &mesh, &raster );
+            r = rgUploadMeshPrimitive( instance, &mesh, &prim );
             RG_CHECK( r );
         }
 

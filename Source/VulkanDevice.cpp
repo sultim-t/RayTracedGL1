@@ -965,7 +965,11 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    // TODO
+    rasterizer->Upload( currentFrameState.GetFrameIndex(),
+                        GeometryRasterType::SWAPCHAIN,
+                        *pPrimitive,
+                        pViewProjection,
+                        pViewport );
 }
 
 void RTGL1::VulkanDevice::UploadDecal( const RgDecalUploadInfo* pInfo )

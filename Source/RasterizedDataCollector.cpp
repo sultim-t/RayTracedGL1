@@ -255,10 +255,10 @@ RTGL1::RasterizedDataCollector::DrawInfo& RTGL1::RasterizedDataCollector::PushIn
             return rasterDrawInfos.emplace_back();
         }
         case GeometryRasterType::SKY: {
-            return swapchainDrawInfos.emplace_back();
+            return skyDrawInfos.emplace_back();
         }
         case GeometryRasterType::SWAPCHAIN: {
-            return skyDrawInfos.emplace_back();
+            return swapchainDrawInfos.emplace_back();
         }
         default: {
             throw RgException( RG_RESULT_GRAPHICS_API_ERROR,
