@@ -22,99 +22,118 @@
 #ifdef DESC_SET_GLOBAL_UNIFORM
 #ifdef DESC_SET_TEXTURES
 
-#if defined(HITINFO_INL_PRIM)
-vec3 processAlbedoGrad(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 layerTextures[4], const uvec4 layerColors, const vec2 dPdx[3], const vec2 dPdy[3])
-#elif defined(HITINFO_INL_RFL)
-vec3 processAlbedoRayConeDeriv(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 layerTextures[4], const  uvec4 layerColors, const DerivativeSet derivSet)
-#elif defined(HITINFO_INL_INDIR)
-vec3 processAlbedo(uint geometryInstanceFlags, const vec2 texCoords[3], const uvec3 layerTextures[4], const uvec4 layerColors, float lod)
+
+
+#if defined( HITINFO_INL_PRIM )
+vec3 processAlbedoGrad(         
+    uint geometryInstanceFlags, 
+    const vec2 texCoords[ 4 ], const uvec3 layerTextures[ 4 ], const uvec4 layerColors, 
+    const vec2 dPdx[ 4 ], const vec2 dPdy[ 4 ] )
+
+#elif defined( HITINFO_INL_RFL )
+vec3 processAlbedoRayConeDeriv( 
+    uint geometryInstanceFlags, 
+    const vec2 texCoords[ 4 ], const uvec3 layerTextures[ 4 ], const uvec4 layerColors, 
+    const DerivativeSet derivSet )
+
+#elif defined( HITINFO_INL_INDIR )
+vec3 processAlbedo(             
+    uint geometryInstanceFlags, 
+    const vec2 texCoords[ 4 ], const uvec3 layerTextures[ 4 ], const uvec4 layerColors, 
+    float lod )
 #endif
 {
-    const uint blendsFlags[] = 
-    {
-        (geometryInstanceFlags & MATERIAL_BLENDING_MASK_FIRST_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 0),
-        (geometryInstanceFlags & MATERIAL_BLENDING_MASK_SECOND_LAYER) >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 1),
-        (geometryInstanceFlags & MATERIAL_BLENDING_MASK_THIRD_LAYER)  >> (MATERIAL_BLENDING_FLAG_BIT_COUNT * 2)
-    };
+    #if GEOM_INST_FLAG_BLENDING_LAYER_COUNT != 4
+        #error
+    #endif
+    #if MATERIAL_MAX_ALBEDO_LAYERS > GEOM_INST_FLAG_BLENDING_LAYER_COUNT
+        #error
+    #endif
 
-    vec3 dst = vec3(1.0);
+    vec3 dst                 = vec3( 1.0 );
     bool hasAnyAlbedoTexture = false;
 
-    for (int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++)
+    for( int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++ )
     {
-        if (globalUniform.lightmapEnable == 0)
+        if( globalUniform.lightmapEnable == 0 )
         {
-            if (i == globalUniform.lightmapLayer)
+            if( i == globalUniform.lightmapLayer )
             {
                 continue;
             }
         }
 
-        if (layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX] != MATERIAL_NO_TEXTURE)
+        if( layerTextures[ i ][ MATERIAL_ALBEDO_ALPHA_INDEX ] != MATERIAL_NO_TEXTURE )
         {
-            const vec4 src = unpackUintColor( layerColors[i] ) *
-        #if defined(HITINFO_INL_PRIM)
-                getTextureSampleGrad(layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], dPdx[i], dPdy[i]);
-        #elif defined(HITINFO_INL_RFL)
-                getTextureSampleDerivSet(layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], derivSet, i);
-        #elif defined(HITINFO_INL_INDIR)
-                getTextureSampleLod(layerTextures[i][MATERIAL_ALBEDO_ALPHA_INDEX], texCoords[i], lod);
-        #endif
+            const vec4 src = unpackUintColor( layerColors[ i ] ) *
+    #if defined( HITINFO_INL_PRIM )
+                    getTextureSampleGrad( layerTextures[ i ][ MATERIAL_ALBEDO_ALPHA_INDEX ], texCoords[ i ], dPdx[ i ], dPdy[ i ] );
+    #elif defined( HITINFO_INL_RFL )
+                getTextureSampleDerivSet( layerTextures[ i ][ MATERIAL_ALBEDO_ALPHA_INDEX ], texCoords[ i ], derivSet, i );
+    #elif defined( HITINFO_INL_INDIR )
+                     getTextureSampleLod( layerTextures[ i ][ MATERIAL_ALBEDO_ALPHA_INDEX ], texCoords[ i ], lod );
+    #endif
 
-            bool opq = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_OPAQUE) != 0;
-            bool alp = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ALPHA)  != 0;
-            bool add = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_ADD)    != 0;
-            bool shd = (blendsFlags[i] & MATERIAL_BLENDING_FLAG_SHADE)  != 0;
+            uint layerBlendType = 
+                ( geometryInstanceFlags >> ( MATERIAL_BLENDING_TYPE_BIT_COUNT * i ) ) 
+                    & MATERIAL_BLENDING_TYPE_BIT_MASK;
+
+            bool opq = ( layerBlendType == MATERIAL_BLENDING_TYPE_OPAQUE );
+            bool alp = ( layerBlendType == MATERIAL_BLENDING_TYPE_ALPHA );
+            bool add = ( layerBlendType == MATERIAL_BLENDING_TYPE_ADD );
+            bool shd = ( layerBlendType == MATERIAL_BLENDING_TYPE_SHADE );
 
             // simple fix for layerTextures that have alpha-tested blending for the first layer
             // (just makes "opq" instead of "alp" for that partuicular case);
-            // without this fix, alpha-tested geometry will have white color around borders 
-            opq = opq || (alp && i == 0);
+            // without this fix, alpha-tested geometry will have white color around borders
+            opq = opq || ( alp && i == 0 );
             alp = alp && !opq;
 
-            dst = float(opq) * (src.rgb) +
-                  float(alp) * (src.rgb * src.a + dst * (1 - src.a)) + 
-                  float(add) * (src.rgb + dst) +
-                  float(shd) * (src.rgb * dst * 2);
 
-            hasAnyAlbedoTexture = true; 
+
+            // TODO: fix blendsFlags!!!
+            dst = src.rgb;
+
+
+
+            hasAnyAlbedoTexture = true;
         }
     }
 
     // if no albedo textures, use primary color
     dst = mix( unpackUintColor( layerColors[ 0 ] ).rgb, dst, float( hasAnyAlbedoTexture ) );
 
-    return clamp(dst, vec3(0), vec3(1));
+    return clamp( dst, vec3( 0 ), vec3( 1 ) );
 }
 
 
-#if defined(HITINFO_INL_INDIR)
-vec3 getHitInfoAlbedoOnly(ShPayload pl) 
+#if defined( HITINFO_INL_INDIR )
+vec3 getHitInfoAlbedoOnly( ShPayload pl )
 {
     int instanceId, instCustomIndex;
     int geomIndex, primIndex;
 
-    unpackInstanceIdAndCustomIndex(pl.instIdAndIndex, instanceId, instCustomIndex);
-    unpackGeometryAndPrimitiveIndex(pl.geomAndPrimIndex, geomIndex, primIndex);
+    unpackInstanceIdAndCustomIndex( pl.instIdAndIndex, instanceId, instCustomIndex );
+    unpackGeometryAndPrimitiveIndex( pl.geomAndPrimIndex, geomIndex, primIndex );
 
-    const ShTriangle tr = getTriangle(instanceId, instCustomIndex, geomIndex, primIndex);
+    const ShTriangle tr = getTriangle( instanceId, instCustomIndex, geomIndex, primIndex );
 
     const vec2 inBaryCoords = pl.baryCoords;
-    const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
+    const vec3 baryCoords   = vec3( 1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y );
 
-    const vec2 texCoords[] = 
-    {
-        tr.layerTexCoord[0] * baryCoords,
-        tr.layerTexCoord[1] * baryCoords,
-        tr.layerTexCoord[2] * baryCoords
+    const vec2 texCoords[] = {
+        tr.layerTexCoord[ 0 ] * baryCoords,
+        tr.layerTexCoord[ 1 ] * baryCoords,
+        tr.layerTexCoord[ 2 ] * baryCoords,
+        tr.layerTexCoord[ 3 ] * baryCoords,
     };
-    
-    return processAlbedo(tr.geometryInstanceFlags, texCoords, tr.layerTextures, tr.layerColors, 0);
+
+    return processAlbedo( tr.geometryInstanceFlags, texCoords, tr.layerTextures, tr.layerColors, 0 );
 }
 #endif // HITINFO_INL_INDIR
 
 
-#if defined(HITINFO_INL_PRIM)
+#if defined( HITINFO_INL_PRIM )
 // "Ray Traced Reflections in 'Wolfenstein: Youngblood'", Jiho Choi, Jim Kjellin, Patrik Willbo, Dmitry Zhdan
 float getBounceLOD(float roughness, float viewDist, float hitDist, float screenWidth, float bounceMipBias)
 {    
@@ -195,14 +214,14 @@ ShHitInfo getHitInfoBounce(
 
     const vec2 inBaryCoords = pl.baryCoords;
     const vec3 baryCoords = vec3(1.0f - inBaryCoords.x - inBaryCoords.y, inBaryCoords.x, inBaryCoords.y);
-    
-    const vec2 texCoords[] = 
-    {
-        tr.layerTexCoord[0] * baryCoords,
-        tr.layerTexCoord[1] * baryCoords,
-        tr.layerTexCoord[2] * baryCoords
+
+    const vec2 texCoords[] = {
+        tr.layerTexCoord[ 0 ] * baryCoords,
+        tr.layerTexCoord[ 1 ] * baryCoords,
+        tr.layerTexCoord[ 2 ] * baryCoords,
+        tr.layerTexCoord[ 3 ] * baryCoords,
     };
-    
+
     h.hitPosition = tr.positions * baryCoords;
 
     if( ( tr.geometryInstanceFlags & GEOM_INST_FLAG_EXACT_NORMALS ) == 0 )
@@ -296,20 +315,20 @@ ShHitInfo getHitInfoBounce(
 #endif
 
 
-#if defined(HITINFO_INL_PRIM)
+#if defined( HITINFO_INL_PRIM )
     // pixel's footprint in texture space
-    const vec2 dTdx[] = 
-    {
-        (tr.layerTexCoord[0] * baryCoordsAX - texCoords[0]),
-        (tr.layerTexCoord[1] * baryCoordsAX - texCoords[1]),
-        (tr.layerTexCoord[2] * baryCoordsAX - texCoords[2])
+    const vec2 dTdx[] = {
+        ( tr.layerTexCoord[ 0 ] * baryCoordsAX - texCoords[ 0 ] ),
+        ( tr.layerTexCoord[ 1 ] * baryCoordsAX - texCoords[ 1 ] ),
+        ( tr.layerTexCoord[ 2 ] * baryCoordsAX - texCoords[ 2 ] ),
+        ( tr.layerTexCoord[ 3 ] * baryCoordsAX - texCoords[ 3 ] ),
     };
 
-    const vec2 dTdy[] = 
-    {
-        (tr.layerTexCoord[0] * baryCoordsAY - texCoords[0]),
-        (tr.layerTexCoord[1] * baryCoordsAY - texCoords[1]),
-        (tr.layerTexCoord[2] * baryCoordsAY - texCoords[2])
+    const vec2 dTdy[] = {
+        ( tr.layerTexCoord[ 0 ] * baryCoordsAY - texCoords[ 0 ] ),
+        ( tr.layerTexCoord[ 1 ] * baryCoordsAY - texCoords[ 1 ] ),
+        ( tr.layerTexCoord[ 2 ] * baryCoordsAY - texCoords[ 2 ] ),
+        ( tr.layerTexCoord[ 3 ] * baryCoordsAY - texCoords[ 3 ] ),
     };
 
     h.albedo = processAlbedoGrad( tr.geometryInstanceFlags, 

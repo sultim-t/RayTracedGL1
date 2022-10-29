@@ -221,6 +221,8 @@ CONST_TO_EVALUATE = "CONST VALUE MUST BE EVALUATED"
 
 GRADIENT_ESTIMATION_ENABLED = True
 FRAMEBUF_IGNORE_ATTACHMENTS_DEFINE = "FRAMEBUF_IGNORE_ATTACHMENTS" # define this, to not specify framebufs that are used as attachments
+def BIT( i ):
+    return "1 << " + str( i )
 
 CONST = {
     "MAX_STATIC_VERTEX_COUNT"               : 1 << 20,
@@ -272,19 +274,19 @@ CONST = {
     "BINDING_VOLUMETRIC_ILLUMINATION"           : 3,
     "BINDING_VOLUMETRIC_ILLUMINATION_SAMPLER"   : 4,
     
-    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : "1 << 0",
-    "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : "1 << 1",
-    "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : "1 << 2",
-    "INSTANCE_CUSTOM_INDEX_FLAG_SKY"                    : "1 << 3",
+    "INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC"                : BIT( 0 ),
+    "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON"           : BIT( 1 ),
+    "INSTANCE_CUSTOM_INDEX_FLAG_FIRST_PERSON_VIEWER"    : BIT( 2 ),
+    "INSTANCE_CUSTOM_INDEX_FLAG_SKY"                    : BIT( 3 ),
 
-    "INSTANCE_MASK_WORLD_0"                 : 1 << 0,
-    "INSTANCE_MASK_WORLD_1"                 : 1 << 1,
-    "INSTANCE_MASK_WORLD_2"                 : 1 << 2,
-    "INSTANCE_MASK_RESERVED_0"              : 1 << 3,
-    "INSTANCE_MASK_RESERVED_1"              : 1 << 4,
-    "INSTANCE_MASK_REFRACT"                 : 1 << 5,
-    "INSTANCE_MASK_FIRST_PERSON"            : 1 << 6,
-    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : 1 << 7,
+    "INSTANCE_MASK_WORLD_0"                 : BIT( 0 ),
+    "INSTANCE_MASK_WORLD_1"                 : BIT( 1 ),
+    "INSTANCE_MASK_WORLD_2"                 : BIT( 2 ),
+    "INSTANCE_MASK_RESERVED_0"              : BIT( 3 ),
+    "INSTANCE_MASK_RESERVED_1"              : BIT( 4 ),
+    "INSTANCE_MASK_REFRACT"                 : BIT( 5 ),
+    "INSTANCE_MASK_FIRST_PERSON"            : BIT( 6 ),
+    "INSTANCE_MASK_FIRST_PERSON_VIEWER"     : BIT( 7 ),
     
     "PAYLOAD_INDEX_DEFAULT"                 : 0,
     "PAYLOAD_INDEX_SHADOW"                  : 1,
@@ -308,34 +310,40 @@ CONST = {
     
     "MATERIAL_NO_TEXTURE"                   : 0,
 
-    "MATERIAL_BLENDING_FLAG_OPAQUE"         : "1 << 0",
-    "MATERIAL_BLENDING_FLAG_ALPHA"          : "1 << 1",
-    "MATERIAL_BLENDING_FLAG_ADD"            : "1 << 2",
-    "MATERIAL_BLENDING_FLAG_SHADE"          : "1 << 3",
-    "MATERIAL_BLENDING_FLAG_BIT_COUNT"      : 4,
-    "MATERIAL_BLENDING_MASK_FIRST_LAYER"    : CONST_TO_EVALUATE,
-    "MATERIAL_BLENDING_MASK_SECOND_LAYER"   : CONST_TO_EVALUATE,
-    "MATERIAL_BLENDING_MASK_THIRD_LAYER"    : CONST_TO_EVALUATE,
-    # 12 first bits are for the blending flags per each layer, others can be used
-    "GEOM_INST_FLAG_RESERVED_0"             : "1 << 13",
-    "GEOM_INST_FLAG_RESERVED_1"             : "1 << 14",
-    "GEOM_INST_FLAG_RESERVED_2"             : "1 << 15",
-    "GEOM_INST_FLAG_RESERVED_3"             : "1 << 16",
-    "GEOM_INST_FLAG_RESERVED_4"             : "1 << 17",
-    "GEOM_INST_FLAG_MEDIA_TYPE_ACID"        : "1 << 18",
-    "GEOM_INST_FLAG_EXACT_NORMALS"          : "1 << 19",
-    "GEOM_INST_FLAG_IGNORE_REFRACT_AFTER"   : "1 << 20",
-    "GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT"  : "1 << 21",
-    "GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD"   : "1 << 22",
-    "GEOM_INST_FLAG_NO_MEDIA_CHANGE"        : "1 << 23",
-    "GEOM_INST_FLAG_REFRACT"                : "1 << 24",
-    "GEOM_INST_FLAG_REFLECT"                : "1 << 25",
-    "GEOM_INST_FLAG_PORTAL"                 : "1 << 26",
-    "GEOM_INST_FLAG_MEDIA_TYPE_WATER"       : "1 << 27",
-    "GEOM_INST_FLAG_MEDIA_TYPE_GLASS"       : "1 << 28",
-    "GEOM_INST_FLAG_GENERATE_NORMALS"       : "1 << 29",
-    "GEOM_INST_FLAG_INVERTED_NORMALS"       : "1 << 30",
-    "GEOM_INST_FLAG_IS_MOVABLE"             : "1 << 31",
+    "MATERIAL_BLENDING_TYPE_OPAQUE"         : 0,
+    "MATERIAL_BLENDING_TYPE_ALPHA"          : 1,
+    "MATERIAL_BLENDING_TYPE_ADD"            : 2,
+    "MATERIAL_BLENDING_TYPE_SHADE"          : 3,
+    "MATERIAL_BLENDING_TYPE_BIT_COUNT"      : 2,
+    "MATERIAL_BLENDING_TYPE_BIT_MASK"       : CONST_TO_EVALUATE,
+
+    "GEOM_INST_FLAG_BLENDING_LAYER_COUNT"   : 4,         
+    # first 8 bits (MATERIAL_BLENDING_TYPE_BIT_COUNT * GEOM_INST_FLAG_BLENDING_LAYER_COUNT)
+    # are for the blending flags per each layer, others can be used
+    "GEOM_INST_FLAG_RESERVED_0"             : BIT( 8 ),
+    "GEOM_INST_FLAG_RESERVED_1"             : BIT( 9 ),
+    "GEOM_INST_FLAG_RESERVED_2"             : BIT( 10 ),
+    "GEOM_INST_FLAG_RESERVED_3"             : BIT( 11 ),
+    "GEOM_INST_FLAG_RESERVED_4"             : BIT( 12 ),
+    "GEOM_INST_FLAG_RESERVED_5"             : BIT( 13 ),
+    "GEOM_INST_FLAG_RESERVED_6"             : BIT( 14 ),
+    "GEOM_INST_FLAG_RESERVED_7"             : BIT( 15 ),
+    "GEOM_INST_FLAG_RESERVED_8"             : BIT( 16 ),
+    "GEOM_INST_FLAG_RESERVED_9"             : BIT( 17 ),
+    "GEOM_INST_FLAG_MEDIA_TYPE_ACID"        : BIT( 18 ),
+    "GEOM_INST_FLAG_EXACT_NORMALS"          : BIT( 19 ),
+    "GEOM_INST_FLAG_IGNORE_REFRACT_AFTER"   : BIT( 20 ),
+    "GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT"  : BIT( 21 ),
+    "GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD"   : BIT( 22 ),
+    "GEOM_INST_FLAG_NO_MEDIA_CHANGE"        : BIT( 23 ),
+    "GEOM_INST_FLAG_REFRACT"                : BIT( 24 ),
+    "GEOM_INST_FLAG_REFLECT"                : BIT( 25 ),
+    "GEOM_INST_FLAG_PORTAL"                 : BIT( 26 ),
+    "GEOM_INST_FLAG_MEDIA_TYPE_WATER"       : BIT( 27 ),
+    "GEOM_INST_FLAG_MEDIA_TYPE_GLASS"       : BIT( 28 ),
+    "GEOM_INST_FLAG_GENERATE_NORMALS"       : BIT( 29 ),
+    "GEOM_INST_FLAG_INVERTED_NORMALS"       : BIT( 30 ),
+    "GEOM_INST_FLAG_IS_MOVABLE"             : BIT( 31 ),
 
     "SKY_TYPE_COLOR"                        : 0,
     "SKY_TYPE_CUBEMAP"                      : 1,
@@ -382,16 +390,16 @@ CONST = {
     "COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X"         : 256,
     "LENS_FLARES_MAX_DRAW_CMD_COUNT"                    : 512,
 
-    "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : "1 << 0",
-    "DEBUG_SHOW_FLAG_GRADIENTS"             : "1 << 1",
-    "DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE"    : "1 << 2",
-    "DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR"   : "1 << 3",
-    "DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT"   : "1 << 4",
-    "DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE"   : "1 << 5",
-    "DEBUG_SHOW_FLAG_ONLY_SPECULAR"         : "1 << 6",
-    "DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE" : "1 << 7",
-    "DEBUG_SHOW_FLAG_LIGHT_GRID"            : "1 << 8",
-    "DEBUG_SHOW_FLAG_ALBEDO_WHITE"          : "1 << 9",
+    "DEBUG_SHOW_FLAG_MOTION_VECTORS"        : BIT( 0 ),
+    "DEBUG_SHOW_FLAG_GRADIENTS"             : BIT( 1 ),
+    "DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE"    : BIT( 2 ),
+    "DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR"   : BIT( 3 ),
+    "DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT"   : BIT( 4 ),
+    "DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE"   : BIT( 5 ),
+    "DEBUG_SHOW_FLAG_ONLY_SPECULAR"         : BIT( 6 ),
+    "DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE" : BIT( 7 ),
+    "DEBUG_SHOW_FLAG_LIGHT_GRID"            : BIT( 8 ),
+    "DEBUG_SHOW_FLAG_ALBEDO_WHITE"          : BIT( 9 ),
     
     "MAX_RAY_LENGTH"                        : "10000.0",
 
@@ -452,17 +460,15 @@ def align4(a):
 
 def evalConst():
     # flags for each layer
-    assert CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 3 <= 12
-    CONST["MATERIAL_BLENDING_MASK_FIRST_LAYER"]     = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 0)
-    CONST["MATERIAL_BLENDING_MASK_SECOND_LAYER"]    = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 1)
-    CONST["MATERIAL_BLENDING_MASK_THIRD_LAYER"]     = ((1 << CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"]) - 1) << (CONST["MATERIAL_BLENDING_FLAG_BIT_COUNT"] * 2)
+    assert CONST[ "MATERIAL_BLENDING_TYPE_BIT_COUNT" ] * CONST[ "GEOM_INST_FLAG_BLENDING_LAYER_COUNT" ] <= 8
+    CONST[ "MATERIAL_BLENDING_TYPE_BIT_MASK" ]          = ( 1 << int( CONST[ "MATERIAL_BLENDING_TYPE_BIT_COUNT" ] ) ) - 1
 
-    CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW"]  = int(log2(CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT"]))
-    CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]       = 32 - CONST["MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW"]
-    CONST["MAX_GEOMETRY_PRIMITIVE_COUNT"]           = 1 << CONST["MAX_GEOMETRY_PRIMITIVE_COUNT_POW"]
-    CONST["BLUE_NOISE_TEXTURE_SIZE_POW"]            = int(log2(CONST["BLUE_NOISE_TEXTURE_SIZE"]))
+    CONST[ "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" ]    = int( log2( CONST[ "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT" ] ) )
+    CONST[ "MAX_GEOMETRY_PRIMITIVE_COUNT_POW" ]         = 32 - CONST[ "MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT_POW" ]
+    CONST[ "MAX_GEOMETRY_PRIMITIVE_COUNT" ]             = 1 << CONST[ "MAX_GEOMETRY_PRIMITIVE_COUNT_POW" ]
+    CONST[ "BLUE_NOISE_TEXTURE_SIZE_POW" ]              = int( log2( CONST[ "BLUE_NOISE_TEXTURE_SIZE" ] ) )
 
-    assert len([None for _, v in CONST.items() if v == CONST_TO_EVALUATE]) == 0, "All CONST_TO_EVALUATE values must be calculated"
+    assert len( [ None for _, v in CONST.items() if v == CONST_TO_EVALUATE ] ) == 0, "All CONST_TO_EVALUATE values must be calculated"
 
 
 # --------------------------------------------------------------------------------------------- #
