@@ -129,7 +129,8 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                                "rgSubmitStaticGeometries calls" );
         }
 
-        uint32_t simpleIndex = asManager->AddMeshPrimitive( frameIndex, mesh, primitive );
+        uint32_t simpleIndex =
+            asManager->AddMeshPrimitive( frameIndex, mesh, primitive, mesh.isStatic );
 
         if( simpleIndex != UINT32_MAX )
         {
@@ -147,7 +148,10 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                                "and rgSubmitStaticGeometries calls" );
         }
 
-        uint32_t simpleIndex = asManager->AddMeshPrimitive( frameIndex, mesh, primitive );
+        uint32_t simpleIndex =
+            asManager->AddMeshPrimitive( frameIndex, mesh, primitive, mesh.isStatic );
+
+        // TODO: REMOVE
 
         if( simpleIndex != UINT32_MAX )
         {

@@ -425,13 +425,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
     uint64_t  frameId = 0;
 
 
-    // each geometry must have a unique ID
-    // for matching between frames
-    constexpr uint64_t MovableGeomUniqueID  = 200;
-    constexpr uint64_t DynamicGeomUniqueID  = 201;
-    constexpr uint64_t GltfGeomUniqueIDBase = 500;
-
-
     // some resources can be initialized out of frame
     {
         const uint32_t        white      = 0xFFFFFFFF;
@@ -473,31 +466,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             .animationName  = nullptr,
             .animationTime  = 0.0f,
         };
-
-        auto uploadPrimtive =
-            [ instance, &indexInMesh, meshInfo ]( std::span< RgPrimitiveVertex > verts,
-                                                  std::span< uint32_t >          indices,
-                                                  const char*                    pTextureName,
-                                                  RgTransform                    transform ) {
-                RgMeshPrimitiveInfo info = {
-                    .primitiveIndexInMesh = indexInMesh,
-                    .flags                = 0,
-                    .transform            = transform,
-                    .pVertices            = verts.data(),
-                    .vertexCount          = uint32_t( verts.size() ),
-                    .pIndices             = indices.data(),
-                    .indexCount           = uint32_t( indices.size() ),
-                    .pTextureName         = pTextureName,
-                    .textureFrame         = 0,
-                    .color                = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
-                    .pEditorInfo          = nullptr,
-                };
-
-                RgResult t = rgUploadMeshPrimitive( instance, &meshInfo, &info );
-                RG_CHECK( t );
-
-                indexInMesh++;
-            };
 
         /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }

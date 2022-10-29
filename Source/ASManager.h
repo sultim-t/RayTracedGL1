@@ -66,11 +66,13 @@ public:
 
 
     void       BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
-    uint32_t   AddMeshPrimitive( uint32_t                   frameIndex,
-                                 const RgMeshInfo&          mesh,
-                                 const RgMeshPrimitiveInfo& primitive );
     void       SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
 
+
+    uint32_t   AddMeshPrimitive( uint32_t                   frameIndex,
+                                 const RgMeshInfo&          mesh,
+                                 const RgMeshPrimitiveInfo& primitive,
+                                 bool                       isStatic );
 
     // Update transform for static movable geometry
     // void       UpdateStaticMovableTransform( uint32_t                     simpleIndex,

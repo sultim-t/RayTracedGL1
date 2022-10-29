@@ -612,13 +612,22 @@ void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frame
 
 uint32_t RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
                                              const RgMeshInfo&          mesh,
-                                             const RgMeshPrimitiveInfo& primitive )
+                                             const RgMeshPrimitiveInfo& primitive,
+                                             bool                       isStatic )
 {
     auto textures = textureMgr->GetTexturesForLayers( primitive );
     auto colors   = textureMgr->GetColorForLayers( primitive );
 
-    return collectorDynamic[ frameIndex ]->AddPrimitive(
-        frameIndex, mesh, primitive, textures, colors );
+    if( isStatic )
+    {
+        return collectorStatic->AddPrimitive( 
+            frameIndex, mesh, primitive, textures, colors );
+    }
+    else
+    {
+        return collectorDynamic[ frameIndex ]->AddPrimitive(
+            frameIndex, mesh, primitive, textures, colors );
+    }
 }
 
 void RTGL1::ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )
