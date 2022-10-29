@@ -43,29 +43,31 @@
 #define ASSET_DIRECTORY "../../"
 
 
-static GLFWwindow* g_GlfwHandle;
+namespace
+{
+GLFWwindow* g_GlfwHandle;
 
-static glm::vec3 ctl_CameraPosition  = glm::vec3( 0, 0, -5 );
-static glm::vec3 ctl_CameraDirection = glm::vec3( 0, 0, -1 );
-static glm::vec3 ctl_LightPosition   = glm::vec3( 0, 0, 1 );
-static float     ctl_LightIntensity  = 1.0f;
-static float     ctl_LightCount      = 0.0f;
-static float     ctl_SunIntensity    = 10.0f;
-static float     ctl_SkyIntensity    = 0.2f;
-static RgBool32  ctl_SkyboxEnable    = 1;
-static float     ctl_Roughness       = 0.05f;
-static float     ctl_Metallicity     = 1.0f;
-static RgBool32  ctl_MoveBoxes       = 0;
-static RgBool32  ctl_ShowGradients   = 0;
-static RgBool32  ctl_ReloadShaders   = 0;
+glm::vec3 ctl_CameraPosition  = glm::vec3( 0, 0, -5 );
+glm::vec3 ctl_CameraDirection = glm::vec3( 0, 0, -1 );
+glm::vec3 ctl_LightPosition   = glm::vec3( 0, 0, 1 );
+float     ctl_LightIntensity  = 1.0f;
+float     ctl_LightCount      = 0.0f;
+float     ctl_SunIntensity    = 10.0f;
+float     ctl_SkyIntensity    = 0.2f;
+RgBool32  ctl_SkyboxEnable    = 1;
+float     ctl_Roughness       = 0.05f;
+float     ctl_Metallicity     = 1.0f;
+RgBool32  ctl_MoveBoxes       = 0;
+RgBool32  ctl_ShowGradients   = 0;
+RgBool32  ctl_ReloadShaders   = 0;
 
-static bool ProcessWindow()
+bool ProcessWindow()
 {
     if( glfwWindowShouldClose( g_GlfwHandle ) ) return false;
     glfwPollEvents(); return true;
 }
 
-static void ProcessInput()
+void ProcessInput()
 {
     static auto IsPressed    = []( int key ) { return glfwGetKey( g_GlfwHandle, ( key ) ) == GLFW_PRESS; };
     static auto ControlFloat = []( int key, float& value, float speed, float minval = 0.0f, float maxval = 1.0f ) {
@@ -118,13 +120,13 @@ static void ProcessInput()
     ControlSwitch( GLFW_KEY_BACKSLASH,  ctl_ReloadShaders );
 }
 
-static double GetCurrentTimeInSeconds()
+double GetCurrentTimeInSeconds()
 {
     static auto timeStart = std::chrono::system_clock::now();
-    return std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now() - timeStart ).count() / 1000.0;
+    return double( std::chrono::duration_cast< std::chrono::milliseconds >( std::chrono::system_clock::now() - timeStart ).count() ) / 1000.0;
 }
 
-static const RgFloat3D s_CubePositions[] = { 
+const RgFloat3D s_CubePositions[] = { 
     {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f,-0.5f}, { 0.5f,-0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, 
     { 0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, 
     { 0.5f,-0.5f, 0.5f}, {-0.5f,-0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, { 0.5f, 0.5f, 0.5f}, {-0.5f,-0.5f, 0.5f}, {-0.5f, 0.5f, 0.5f}, 
@@ -132,7 +134,7 @@ static const RgFloat3D s_CubePositions[] = {
     {-0.5f, 0.5f,-0.5f}, { 0.5f, 0.5f,-0.5f}, {-0.5f, 0.5f, 0.5f}, {-0.5f, 0.5f, 0.5f}, { 0.5f, 0.5f,-0.5f}, { 0.5f, 0.5f, 0.5f}, 
     {-0.5f,-0.5f, 0.5f}, { 0.5f,-0.5f, 0.5f}, {-0.5f,-0.5f,-0.5f}, {-0.5f,-0.5f,-0.5f}, { 0.5f,-0.5f, 0.5f}, { 0.5f,-0.5f,-0.5f}, 
 };
-static const RgFloat2D s_CubeTexCoords[] = {
+const RgFloat2D s_CubeTexCoords[] = {
     {0,0}, {1,0}, {0,1}, {0,1}, {0,0}, {1,0}, 
     {0,1}, {0,1}, {0,0}, {1,0}, {0,1}, {0,1}, 
     {0,0}, {1,0}, {0,1}, {0,1}, {0,0}, {1,0}, 
@@ -140,7 +142,7 @@ static const RgFloat2D s_CubeTexCoords[] = {
     {0,0}, {1,0}, {0,1}, {0,1}, {0,0}, {1,0}, 
     {0,1}, {0,1}, {0,0}, {1,0}, {0,1}, {0,1}, 
 };
-static const RgPrimitiveVertex* GetCubeVertices()
+const RgPrimitiveVertex* GetCubeVertices()
 {
     static RgPrimitiveVertex verts[ std::size( s_CubePositions ) ] = {};
     for( size_t i = 0; i < std::size( s_CubePositions ); i++ )
@@ -152,16 +154,16 @@ static const RgPrimitiveVertex* GetCubeVertices()
     return verts;
 }
 
-static const RgFloat3D s_QuadPositions[] = {
+const RgFloat3D s_QuadPositions[] = {
     {0,0,0}, {0,1,0}, {1, 0, 0}, {1, 0, 0}, {0, 1, 0}, {1, 1, 0},
 };
-static const RgFloat2D s_QuadTexCoords[] = {
+const RgFloat2D s_QuadTexCoords[] = {
     {0,0}, {0, 1}, {1, 0}, {1, 0}, {0, 1}, {1, 1},
 };
-static const uint32_t s_QuadColorsABGR[] = {
+const uint32_t s_QuadColorsABGR[] = {
     0xF0FF0000, 0xF0FFFFFF, 0xF0FFFFFF, 0xF0FFFFFF, 0xFFFFFFFF, 0xFF00FF00,
 };
-static const RgPrimitiveVertex* GetQuadVertices()
+const RgPrimitiveVertex* GetQuadVertices()
 {
     static RgPrimitiveVertex verts[ std::size( s_QuadPositions ) ] = {};
     for( size_t i = 0; i < std::size( s_QuadPositions ); i++ )
@@ -173,12 +175,69 @@ static const RgPrimitiveVertex* GetQuadVertices()
     return verts;
 }
 
-void ForEachGltfMesh( const std::function< void( std::span< RgPrimitiveVertex > verts, std::span< uint32_t > indices, const char *pTextureName, RgTransform transform ) >& meshFunc,
-                      const tinygltf::Model&                              model,
-                      const tinygltf::Node&                               node )
+uint32_t MurmurHash32( std::string_view str, uint32_t seed = 0 )
+{
+    const uint32_t m   = 0x5bd1e995;
+    const uint32_t r   = 24;
+
+    uint32_t       len = uint32_t( str.length() );
+    uint32_t       h   = seed ^ len;
+    auto*          data = reinterpret_cast< const uint8_t* >( str.data() );
+
+    while( len >= 4 )
+    {
+        unsigned int k = *reinterpret_cast< const uint32_t* >( data );
+
+        k *= m;
+        k ^= k >> r;
+        k *= m;
+
+        h *= m;
+        h ^= k;
+
+        data += 4;
+        len -= 4;
+    }
+
+    if( len == 3 )
+    {
+        h ^= data[ 2 ] << 16;
+    }
+
+    if( len == 2 )
+    {
+        h ^= data[ 1 ] << 8;
+    }
+
+    if( len == 1 )
+    {
+        h ^= data[ 0 ];
+        h *= m;
+    }
+
+    h ^= h >> 13;
+    h *= m;
+    h ^= h >> 15;
+
+    return h;
+}
+
+using MeshName = std::string;
+struct WorldMeshPrimitive
+{
+    RgTransform                      transform;
+    std::vector< RgPrimitiveVertex > vertices;
+    std::vector< uint32_t >          indices;
+    std::string                      texture;
+};
+std::unordered_map< MeshName, std::vector< WorldMeshPrimitive > > g_allMeshes;
+
+void ForEachGltfMesh( const tinygltf::Model& model, const tinygltf::Node& node )
 {
     if( node.mesh >= 0 && node.mesh < static_cast< int >( model.meshes.size() ) )
     {
+        std::string_view meshName = model.meshes[ node.mesh ].name;
+
         for( const auto& primitive : model.meshes[ node.mesh ].primitives )
         {
             std::vector< RgPrimitiveVertex > rgverts;
@@ -293,20 +352,24 @@ void ForEachGltfMesh( const std::function< void( std::span< RgPrimitiveVertex > 
                 }
             }
 
-            meshFunc( rgverts, rgindices, texName.c_str(), rgtransform );
+            g_allMeshes[ meshName.data() ].push_back( WorldMeshPrimitive{
+                .transform = rgtransform,
+                .vertices  = std::move( rgverts ),
+                .indices   = std::move( rgindices ),
+                .texture   = std::move( texName ),
+            } );
         }
     }
 
     for( int c : node.children )
     {
         assert( c >= 0 && c < static_cast< int >( model.nodes.size() ) );
-        ForEachGltfMesh( meshFunc, model, model.nodes[ c ] );
+        ForEachGltfMesh( model, model.nodes[ c ] );
     }
 }
 
-void ForEachGltfMesh( std::string_view path,
-                      const std::function< void( std::span< RgPrimitiveVertex > verts, std::span< uint32_t > indices, const char *pTextureName, RgTransform transform ) >& meshFunc,
-                      const std::function< void( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
+void FillGAllMeshes( std::string_view path,
+                     const std::function< void( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
 {
     tinygltf::Model    model;
     tinygltf::TinyGLTF loader;
@@ -341,7 +404,7 @@ void ForEachGltfMesh( std::string_view path,
         const auto& scene = model.scenes[ model.defaultScene ];
         for( int sceneNode : scene.nodes )
         {
-            ForEachGltfMesh( meshFunc, model, model.nodes[ sceneNode ] );
+            ForEachGltfMesh( model, model.nodes[ sceneNode ] );
         }
     }
     else
@@ -349,13 +412,14 @@ void ForEachGltfMesh( std::string_view path,
         std::cout << "Can't load GLTF. " << err << std::endl << warn << std::endl;
     }
 }
+}
 #pragma endregion BOILERPLATE
 
 
 
 
 
-static void MainLoop( RgInstance instance, std::string_view gltfPath )
+void MainLoop( RgInstance instance, std::string_view gltfPath )
 {
     RgResult  r       = RG_RESULT_SUCCESS;
     uint64_t  frameId = 0;
@@ -423,7 +487,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                     .vertexCount          = uint32_t( verts.size() ),
                     .pIndices             = indices.data(),
                     .indexCount           = uint32_t( indices.size() ),
-                    .pTextureName         = nullptr, //pTextureName,
+                    .pTextureName         = pTextureName,
                     .textureFrame         = 0,
                     .color                = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
                     .pEditorInfo          = nullptr,
@@ -435,7 +499,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                 indexInMesh++;
             };
 
-        ForEachGltfMesh( gltfPath, uploadPrimtive, uploadMaterial );
+        /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -453,7 +517,41 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
         }
 
 
-        // dynamic geometry must be uploaded each frame
+        for( const auto& [ meshName, primitives ] : g_allMeshes )
+        {
+            std::string objectName = "obj_" + meshName;
+
+            RgMeshInfo  mesh = {
+                 .uniqueObjectID = MurmurHash32( objectName ),
+                 .pMeshName      = meshName.c_str(),
+                 .isStatic       = false,
+                 .animationName  = nullptr,
+                 .animationTime  = 0.0f,
+            };
+
+            uint32_t index = 0; 
+            for( const auto& srcPrim : primitives )
+            {
+                RgMeshPrimitiveInfo prim = {
+                    .primitiveIndexInMesh = index++,
+                    .flags                = 0,
+                    .transform            = srcPrim.transform,
+                    .pVertices            = srcPrim.vertices.data(),
+                    .vertexCount          = uint32_t( srcPrim.vertices.size() ),
+                    .pIndices             = srcPrim.indices.data(),
+                    .indexCount           = uint32_t( srcPrim.indices.size() ),
+                    .pTextureName         = srcPrim.texture.c_str(),
+                    .textureFrame         = 0,
+                    .color                = 0xFFFFFFFF,
+                    .pEditorInfo          = nullptr,
+                };
+
+                r = rgUploadMeshPrimitive( instance, &mesh, &prim );
+                RG_CHECK( r );
+            }
+        }
+
+
         {
             RgMeshInfo mesh = {
                 .uniqueObjectID = 10,
@@ -467,9 +565,9 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .primitiveIndexInMesh = 0,
                 .flags                = 0,
                 .transform            = { {
-                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * ( ( frameId + 30 ) % 200 ) : 1.0f },
-                    { 0, 1, 0, 0 },
-                    { 0, 0, 1, -7 },
+                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * float( ( frameId + 30 ) % 200 ) : 1.0f },
+                    { 0, 1, 0, 1.0f },
+                    { 0, 0, 1, 0.0f },
                 } },
                 .pVertices            = GetCubeVertices(),
                 .vertexCount          = std::size( s_CubePositions ),
@@ -478,7 +576,7 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .color                = 0xFFFFFFFF,
                 .pEditorInfo          = nullptr,
             };
-            
+
             r = rgUploadMeshPrimitive( instance, &mesh, &prim );
             RG_CHECK( r );
         }
@@ -499,8 +597,8 @@ static void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .flags                = 0,
                 .transform            = { {
                     { 1, 0, 0, -0.5f },
-                    { 0, 1, 0, 0.5f },
-                    { 0, 0, 1, -8 },
+                    { 0, 1, 0, 1.0f },
+                    { 0, 0, 1, 1.0f },
                 } },
                 .pVertices            = GetQuadVertices(),
                 .vertexCount          = std::size( s_QuadPositions ),
