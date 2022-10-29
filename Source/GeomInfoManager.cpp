@@ -40,14 +40,14 @@ uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint3
         return 0;
     }
 
-    uint32_t bitOffset = MATERIAL_BLENDING_FLAG_BIT_COUNT * layerIndex;
+    uint32_t bitOffset = MATERIAL_BLENDING_TYPE_BIT_COUNT * layerIndex;
 
     switch( layerInfo->blend )
     {
-        case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_FLAG_OPAQUE << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA: return MATERIAL_BLENDING_FLAG_ALPHA << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD: return MATERIAL_BLENDING_FLAG_ADD << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE: return MATERIAL_BLENDING_FLAG_SHADE << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_TYPE_OPAQUE << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA:  return MATERIAL_BLENDING_TYPE_ALPHA  << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD:    return MATERIAL_BLENDING_TYPE_ADD    << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE:  return MATERIAL_BLENDING_TYPE_SHADE  << bitOffset;
         default: assert( 0 ); return 0;
     }
 }
