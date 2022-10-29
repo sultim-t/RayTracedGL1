@@ -170,6 +170,7 @@ namespace Utils
     uint32_t GetWorkGroupCountT( T1 size, T2 groupSize );
 
     RgFloat4D UnpackColor4DPacked32( RgColor4DPacked32 c );
+    float UnpackAlphaFromPacked32( RgColor4DPacked32 c );
 };
 
 template<typename T>

@@ -903,6 +903,37 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     currentFrameState.OnEndFrame();
 }
 
+namespace RTGL1
+{
+namespace
+{
+    bool IsRasterized( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
+    {
+        if( mesh.isStatic )
+        {
+            return false;
+        }
+
+        if( primitive.flags & RG_MESH_PRIMITIVE_TRANSLUCENT )
+        {
+            return true;
+        }
+
+        if( primitive.flags & RG_MESH_PRIMITIVE_SKY )
+        {
+            return true;
+        }
+
+        if( Utils::UnpackAlphaFromPacked32( primitive.color ) < MESH_TRANSLUCENT_ALPHA_THRESHOLD )
+        {
+            return true;
+        }
+
+        return false;
+    }
+}
+}
+
 void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                                                const RgMeshPrimitiveInfo* pPrimitive )
 {
@@ -910,8 +941,19 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
-
-    scene->Upload( currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive );
+    
+    if( IsRasterized( *pMesh, *pPrimitive ) )
+    {
+        rasterizer->Upload( currentFrameState.GetFrameIndex(),
+                            GeometryRasterType::WORLD,
+                            *pPrimitive,
+                            nullptr,
+                            nullptr );
+    }
+    else
+    {
+        scene->Upload( currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive );
+    }
 }
 
 void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pPrimitive,

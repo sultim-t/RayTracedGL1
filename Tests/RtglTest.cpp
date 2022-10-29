@@ -573,7 +573,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .vertexCount          = std::size( s_CubePositions ),
                 .pTextureName         = nullptr,
                 .textureFrame         = 0,
-                .color                = 0xFFFFFFFF,
+                .color                = rgUtilPackColorByte4D( 128, 255, 128, 128 ),
                 .pEditorInfo          = nullptr,
             };
 

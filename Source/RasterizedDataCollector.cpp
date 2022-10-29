@@ -114,7 +114,7 @@ namespace
         }
 
         // if alpha specifies semi-transparency
-        if( Utils::UnpackColor4DPacked32( info.color ).data[ 3 ] < 0.98f )
+        if( Utils::UnpackAlphaFromPacked32( info.color ) < MESH_TRANSLUCENT_ALPHA_THRESHOLD )
         {
             r = r | PipelineStateFlagBits::TRANSLUCENT;
         }
