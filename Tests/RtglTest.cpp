@@ -40,7 +40,9 @@
 #include "Libs/tinygltf/tiny_gltf.h"
 
 
-#define ASSET_DIRECTORY "../../"
+#ifndef ASSET_DIRECTORY
+    #define ASSET_DIRECTORY ""
+#endif
 
 
 namespace

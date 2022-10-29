@@ -222,6 +222,15 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         physDevice->Get(), 
         cmdManager );
 
+    debugWindows = std::make_shared< DebugWindows >( 
+        instance,
+        physDevice->Get(),
+        device,
+        queues->GetIndexGraphics(),
+        queues->GetGraphics(),
+        *cmdManager,
+        *swapchain );
+
     // for world samplers with modifyable lod biad
     worldSamplerManager = std::make_shared< SamplerManager >( device, 8, info->textureSamplerForceMinificationFilterLinear );
     genericSamplerManager = std::make_shared< SamplerManager >( device, 0, info->textureSamplerForceMinificationFilterLinear );
@@ -432,6 +441,10 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     framebuffers->Subscribe( amdFsr2 );
     framebuffers->Subscribe( restirBuffers );
 
+    if( debugWindows )
+    {
+        swapchain->Subscribe( debugWindows );
+    }
 
     // TODO: remove
     scene->StartNewStatic();
@@ -480,6 +493,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     blueNoise.reset();
     textureManager.reset();
     cubemapManager.reset();
+    debugWindows.reset();
     memAllocator.reset();
 
     vkDestroySurfaceKHR( instance, surface, nullptr );

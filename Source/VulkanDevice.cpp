@@ -95,6 +95,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     cubemapManager->PrepareForFrame( frameIndex );
     rasterizer->PrepareForFrame( frameIndex );
     decalManager->PrepareForFrame( frameIndex );
+    if( debugWindows )
+    {
+        debugWindows->PrepareForFrame( frameIndex );
+    }
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
 
@@ -829,6 +833,12 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
     // blit result image to present on a surface
     framebuffers->PresentToSwapchain( cmd, frameIndex, swapchain, accum, VK_FILTER_NEAREST );
+
+    if( debugWindows )
+    {
+        debugWindows->Draw();
+        debugWindows->SubmitForFrame( cmd, frameIndex, *swapchain );
+    }
 }
 
 void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )

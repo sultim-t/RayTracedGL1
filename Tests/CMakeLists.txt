@@ -1,23 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
 project(RtglTest CXX)
 
-message(STATUS "Adding tests.")
-option(RTGL1_EXAMPLES_STANDALONE "If true, examples will import RTGL1 library from .lib/.dll" ON)
-    
 
-set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(Libs/glfw)
+message(STATUS "Adding standalone example") 
+set(RTGL1_SDK_PATH "${CMAKE_SOURCE_DIR}/..")
 
 
-if (RTGL1_EXAMPLES_STANDALONE)
-    set(RTGL1_SDK_PATH "${CMAKE_SOURCE_DIR}/..")
-    add_library(RayTracedGL1 SHARED IMPORTED)
-endif()
-
-# link to RTGL1
+# add RTGL1 library using .dll / .so
+add_library(RayTracedGL1 SHARED IMPORTED)
 if (WIN32)
     set_target_properties(RayTracedGL1 PROPERTIES
         INTERFACE_INCLUDE_DIRECTORIES "${RTGL1_SDK_PATH}/Include"
@@ -36,15 +26,24 @@ else()
     )
 endif()
 
+
+# find glfw library
+ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(Libs/glfw)
+
+
 add_executable(RtglTest RtglTest.cpp)
 set_property(TARGET RtglTest PROPERTY CXX_STANDARD 20)
 
 target_link_libraries(RtglTest RayTracedGL1)
 target_link_libraries(RtglTest glfw)
-target_include_directories(RtglTest PUBLIC )
 target_include_directories(RtglTest PUBLIC Libs/glm)
 
-# copy dll-s to exe directory
+
+# post-build step: copy dll-s to exe directory
 get_target_property(RTGL1_DLL_PATH RayTracedGL1 IMPORTED_LOCATION)
 get_target_property(RTGL1_DLL_PATH_D RayTracedGL1 IMPORTED_LOCATION_DEBUG)
 add_custom_command(TARGET RtglTest POST_BUILD

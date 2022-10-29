@@ -57,6 +57,7 @@
 #include "PortalList.h"
 #include "RestirBuffers.h"
 #include "Volumetric.h"
+#include "DebugWindows.h"
 
 namespace RTGL1
 {
@@ -187,6 +188,7 @@ private:
     VkDebugUtilsMessengerEXT                     debugMessenger;
     std::unique_ptr< UserPrint >                 userPrint;
     std::shared_ptr< UserFileLoad >              userFileLoad;
+    std::shared_ptr< DebugWindows >              debugWindows;
 
     bool                                         rayCullBackFacingTriangles;
     bool                                         allowGeometryWithSkyFlag;

@@ -83,6 +83,7 @@ set(Sources
     "Source/TextureObserver.cpp"
     "Source/RestirBuffers.cpp"
     "Source/Volumetric.cpp"
+    "Source/DebugWindows.cpp"
 )
 
 
@@ -116,8 +117,9 @@ option(RG_WITH_SURFACE_XCB      "Build with Xcb VkSurfaceKHR support"       OFF)
 option(RG_WITH_SURFACE_XLIB     "Build with Xlib VkSurfaceKHR support"      OFF)
 
 option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"              OFF)
+option(RG_WITH_IMGUI            "Build RTGL1 with ImGui debug windows"      ON)
 
-option(RG_WITH_EXAMPLES         "Add examples project"                      OFF)
+option(RG_WITH_EXAMPLES         "Build with examples executable"            ON)
 
 
 # for KTX-Software
@@ -158,6 +160,34 @@ if (RG_WITH_SURFACE_XLIB)
 endif()
 
 
+# Imgui
+if (RG_WITH_IMGUI)
+    message(STATUS "RG_WITH_IMGUI enabled")
+    add_definitions(-DRG_USE_IMGUI)
+    set(ImGuiSourceFolder Source/imgui)
+    add_library(ImGui STATIC)
+    target_sources(ImGui PRIVATE 
+        ${ImGuiSourceFolder}/imgui_demo.cpp
+        ${ImGuiSourceFolder}/imgui_draw.cpp
+        ${ImGuiSourceFolder}/imgui_tables.cpp
+        ${ImGuiSourceFolder}/imgui_widgets.cpp
+        ${ImGuiSourceFolder}/imgui.cpp
+        ${ImGuiSourceFolder}/backends/imgui_impl_vulkan.cpp
+        ${ImGuiSourceFolder}/backends/imgui_impl_glfw.cpp
+    )
+    target_include_directories(ImGui PUBLIC ${ImGuiSourceFolder} ${ImGuiSourceFolder}/backends)
+    # Use Vulkan and GLFW as ImGui backend
+    target_link_libraries(ImGui PUBLIC Vulkan)
+    set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+    set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+    set(GLFW_INSTALL OFF CACHE BOOL "" FORCE)
+    add_subdirectory(Source/glfw)
+    target_link_libraries(ImGui PRIVATE glfw)
+    target_include_directories(ImGui PRIVATE glfw)
+endif()
+
+
 add_library(RayTracedGL1 SHARED  
     ${Sources}
     ${KTXSources}
@@ -170,7 +200,7 @@ target_include_directories(RayTracedGL1 PRIVATE "Source/KTX/include" "Source/KTX
 
 # DLSS
 if (RG_WITH_NVIDIA_DLSS)
-    message(STATUS "RG_USE_NVIDIA_DLSS enabled")
+    message(STATUS "RG_WITH_NVIDIA_DLSS enabled")
     add_definitions(-DRG_USE_NVIDIA_DLSS)
 
     if (DEFINED ENV{DLSS_SDK_PATH})
@@ -213,10 +243,20 @@ else()
     message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
 endif()
 
+# ImGui
+if (RG_WITH_IMGUI)
+    target_link_libraries(RayTracedGL1 PRIVATE ImGui)
+    target_include_directories(RayTracedGL1 PRIVATE ImGui)
+    target_link_libraries(RayTracedGL1 PRIVATE glfw)
+    target_include_directories(RayTracedGL1 PRIVATE glfw)
+endif()
 
 if (RG_WITH_EXAMPLES)
     message(STATUS "RG_WITH_EXAMPLES enabled")
-    set(RTGL1_EXAMPLES_STANDALONE OFF CACHE BOOL "" FORCE)
-    set(RTGL1_SDK_PATH "${CMAKE_SOURCE_DIR}")
-    add_subdirectory(Tests)
+    add_definitions(-DASSET_DIRECTORY="../")
+    add_executable(RtglExample Tests/RtglTest.cpp)
+    set_property(TARGET RtglExample PROPERTY CXX_STANDARD 20)
+    target_link_libraries(RtglExample RayTracedGL1)
+    target_link_libraries(RtglExample glfw)
+    target_include_directories(RtglExample PUBLIC Tests/Libs/glm)
 endif()
