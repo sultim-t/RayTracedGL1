@@ -29,35 +29,47 @@ struct GLFWwindow;
 namespace RTGL1
 {
 
-class DebugWindows : public ISwapchainDependency
+class DebugWindows final : public ISwapchainDependency
 {
 public:
-    DebugWindows( VkInstance            instance,
-                  VkPhysicalDevice      physDevice,
-                  VkDevice              device,
-                  uint32_t              queueFamiy,
-                  VkQueue               queue,
-                  CommandBufferManager& cmdManager,
-                  const Swapchain&      swapchain );
+    DebugWindows( VkInstance                               instance,
+                  VkPhysicalDevice                         physDevice,
+                  VkDevice                                 device,
+                  uint32_t                                 queueFamiy,
+                  VkQueue                                  queue,
+                  std::shared_ptr< CommandBufferManager >& cmdManager );
     ~DebugWindows() override;
 
-    void PrepareForFrame( uint32_t frameIndex );
-    void Draw();
-    void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex, const Swapchain& swapchain );
+    DebugWindows( const DebugWindows& other )     = delete;
+    DebugWindows( DebugWindows&& other ) noexcept = delete;
+    DebugWindows&  operator=( const DebugWindows& other ) = delete;
+    DebugWindows&  operator=( DebugWindows&& other ) noexcept = delete;
 
-    void OnSwapchainCreate(const Swapchain* pSwapchain) override;
-    void OnSwapchainDestroy() override;
+    // TODO: remove
+    void           Init( std::shared_ptr< DebugWindows > self );
+
+    void           PrepareForFrame( uint32_t frameIndex );
+    void           SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void           OnQueuePresent( VkResult queuePresentResult );
+
+    void           OnSwapchainCreate( const Swapchain* pSwapchain ) override;
+    void           OnSwapchainDestroy() override;
+
+    VkSwapchainKHR GetSwapchainHandle() const;
+    uint32_t       GetSwapchainCurrentImageIndex() const;
+    VkSemaphore    GetSwapchainImageAvailableSemaphore( uint32_t frameIndex ) const;
 
 private:
     VkDevice                     device;
 
-    GLFWwindow*                  glfwWindow;
-    VkSurfaceKHR                 glfwSurface;
+    GLFWwindow*                  customWindow;
+    VkSurfaceKHR                 customSurface;
+    std::unique_ptr< Swapchain > customSwapchain;
+    VkSemaphore                  swapchainImageAvailable[ MAX_FRAMES_IN_FLIGHT ];
 
     VkDescriptorPool             descPool;
     VkRenderPass                 renderPass;
     std::vector< VkFramebuffer > framebuffers;
-
 };
 
 }

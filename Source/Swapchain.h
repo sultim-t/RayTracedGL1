@@ -53,7 +53,7 @@ public:
                                uint32_t        srcImageHeight,
                                VkFilter        filter,
                                VkImageLayout   srcImageLayout = VK_IMAGE_LAYOUT_GENERAL );
-    void Present( const std::shared_ptr< Queues >& queues, VkSemaphore renderFinishedSemaphore );
+    void       OnQueuePresent( VkResult queuePresentResult );
 
     // Subscribe to swapchain size chagne event.
     // shared_ptr will be transformed to weak_ptr
@@ -68,6 +68,7 @@ public:
     VkImageView        GetImageView( uint32_t index ) const;
     VkImage            GetImage( uint32_t index ) const;
     const VkImageView* GetImageViews() const;
+    VkSwapchainKHR     GetHandle() const;
 
     bool               IsExtentOptimal() const;
 

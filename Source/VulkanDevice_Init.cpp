@@ -228,8 +228,8 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         device,
         queues->GetIndexGraphics(),
         queues->GetGraphics(),
-        *cmdManager,
-        *swapchain );
+        cmdManager );
+    debugWindows->Init( debugWindows );
 
     // for world samplers with modifyable lod biad
     worldSamplerManager = std::make_shared< SamplerManager >( device, 8, info->textureSamplerForceMinificationFilterLinear );
@@ -440,11 +440,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     framebuffers->Subscribe( decalManager );
     framebuffers->Subscribe( amdFsr2 );
     framebuffers->Subscribe( restirBuffers );
-
-    if( debugWindows )
-    {
-        swapchain->Subscribe( debugWindows );
-    }
 
     // TODO: remove
     scene->StartNewStatic();

@@ -214,8 +214,8 @@ void RTGL1::Swapchain::BlitForPresent( VkCommandBuffer cmd,
                                        VkImageLayout   srcImageLayout )
 {
     // if source has almost the same size as the surface, then use nearest blit
-    if( std::abs( ( int )srcImageWidth - ( int )surfaceExtent.width ) < 8 &&
-        std::abs( ( int )srcImageHeight - ( int )surfaceExtent.height ) < 8 )
+    if( std::abs( int( srcImageWidth )  - int( surfaceExtent.width  ) ) < 8 &&
+        std::abs( int( srcImageHeight ) - int( surfaceExtent.height ) ) < 8 )
     {
         filter = VK_FILTER_NEAREST;
     }
@@ -278,21 +278,9 @@ void RTGL1::Swapchain::BlitForPresent( VkCommandBuffer cmd,
                          swapchainImageLayout );
 }
 
-void RTGL1::Swapchain::Present( const std::shared_ptr< Queues >& queues,
-                                VkSemaphore                      renderFinishedSemaphore )
+void RTGL1::Swapchain::OnQueuePresent( VkResult queuePresentResult )
 {
-    VkPresentInfoKHR presentInfo   = {};
-    presentInfo.sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
-    presentInfo.waitSemaphoreCount = 1;
-    presentInfo.pWaitSemaphores    = &renderFinishedSemaphore;
-    presentInfo.swapchainCount     = 1;
-    presentInfo.pSwapchains        = &swapchain;
-    presentInfo.pImageIndices      = &currentSwapchainIndex;
-    presentInfo.pResults           = nullptr;
-
-    VkResult r = vkQueuePresentKHR( queues->GetGraphics(), &presentInfo );
-
-    if( r == VK_ERROR_OUT_OF_DATE_KHR || r == VK_SUBOPTIMAL_KHR )
+    if( queuePresentResult == VK_ERROR_OUT_OF_DATE_KHR || queuePresentResult == VK_SUBOPTIMAL_KHR )
     {
         TryRecreate( GetOptimalExtent(), requestedVsync );
     }
@@ -349,22 +337,23 @@ void RTGL1::Swapchain::Create( uint32_t       newWidth,
         imageCount = std::min( imageCount, surfCapabilities.maxImageCount );
     }
 
-    VkSwapchainCreateInfoKHR swapchainInfo = {};
-    swapchainInfo.sType                    = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
-    swapchainInfo.surface                  = surface;
-    swapchainInfo.minImageCount            = imageCount;
-    swapchainInfo.imageFormat              = surfaceFormat.format;
-    swapchainInfo.imageColorSpace          = surfaceFormat.colorSpace;
-    swapchainInfo.imageExtent              = surfaceExtent;
-    swapchainInfo.imageArrayLayers         = 1;
-    swapchainInfo.imageUsage               = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                               VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
-    swapchainInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-    swapchainInfo.preTransform     = surfCapabilities.currentTransform;
-    swapchainInfo.compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
-    swapchainInfo.presentMode      = vsync ? presentModeVsync : presentModeImmediate;
-    swapchainInfo.clipped          = VK_FALSE;
-    swapchainInfo.oldSwapchain     = oldSwapchain;
+    VkSwapchainCreateInfoKHR swapchainInfo = {
+        .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface          = surface,
+        .minImageCount    = imageCount,
+        .imageFormat      = surfaceFormat.format,
+        .imageColorSpace  = surfaceFormat.colorSpace,
+        .imageExtent      = surfaceExtent,
+        .imageArrayLayers = 1,
+        .imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+                      VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+        .imageSharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .preTransform     = surfCapabilities.currentTransform,
+        .compositeAlpha   = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode      = vsync ? presentModeVsync : presentModeImmediate,
+        .clipped          = VK_FALSE,
+        .oldSwapchain     = oldSwapchain,
+    };
 
     r = vkCreateSwapchainKHR( device, &swapchainInfo, nullptr, &swapchain );
     VK_CHECKERROR( r );
@@ -385,17 +374,18 @@ void RTGL1::Swapchain::Create( uint32_t       newWidth,
 
     for( uint32_t i = 0; i < imageCount; i++ )
     {
-        VkImageViewCreateInfo viewInfo           = {};
-        viewInfo.sType                           = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
-        viewInfo.image                           = swapchainImages[ i ];
-        viewInfo.viewType                        = VK_IMAGE_VIEW_TYPE_2D;
-        viewInfo.format                          = surfaceFormat.format;
-        viewInfo.components                      = {};
-        viewInfo.subresourceRange.aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT;
-        viewInfo.subresourceRange.baseMipLevel   = 0;
-        viewInfo.subresourceRange.levelCount     = 1;
-        viewInfo.subresourceRange.baseArrayLayer = 0;
-        viewInfo.subresourceRange.layerCount     = 1;
+        VkImageViewCreateInfo viewInfo = {
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+            .image            = swapchainImages[ i ],
+            .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+            .format           = surfaceFormat.format,
+            .components       = {},
+            .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                  .baseMipLevel   = 0,
+                                  .levelCount     = 1,
+                                  .baseArrayLayer = 0,
+                                  .layerCount     = 1 },
+        };
 
         r = vkCreateImageView( device, &viewInfo, nullptr, &swapchainViews[ i ] );
         VK_CHECKERROR( r );
@@ -542,4 +532,10 @@ const VkImageView* RTGL1::Swapchain::GetImageViews() const
     }
 
     return nullptr;
+}
+
+VkSwapchainKHR RTGL1::Swapchain::GetHandle() const
+{
+    assert( swapchain );
+    return swapchain;
 }

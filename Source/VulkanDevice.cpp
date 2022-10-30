@@ -30,6 +30,8 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
+#include "imgui.h"
+
 VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startInfo )
 {
     uint32_t frameIndex = currentFrameState.IncrementFrameIndexAndGet();
@@ -134,6 +136,20 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->cameraPosition[ 0 ] = gu->invView[ 12 ];
         gu->cameraPosition[ 1 ] = gu->invView[ 13 ];
         gu->cameraPosition[ 2 ] = gu->invView[ 14 ];
+
+        if( debugWindows )
+        {
+            ImGui::Begin( "Test" );
+            ImGui::Text( "Camera: %.2f %.2f %.2f",
+                         gu->cameraPosition[ 0 ],
+                         gu->cameraPosition[ 1 ],
+                         gu->cameraPosition[ 2 ] );
+
+            ImGui::Text( "%.3f ms/frame (%.1f FPS)",
+                         1000.0f / ImGui::GetIO().Framerate,
+                         ImGui::GetIO().Framerate );
+            ImGui::End();
+        }
     }
 
     {
@@ -836,25 +852,60 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
     if( debugWindows )
     {
-        debugWindows->Draw();
-        debugWindows->SubmitForFrame( cmd, frameIndex, *swapchain );
+        debugWindows->SubmitForFrame( cmd, frameIndex );
     }
 }
 
 void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )
 {
-    uint32_t    frameIndex      = currentFrameState.GetFrameIndex();
-    VkSemaphore semaphoreToWait = currentFrameState.GetSemaphoreForWaitAndRemove();
+    uint32_t    frameIndex     = currentFrameState.GetFrameIndex();
+    uint32_t    swapchainCount = debugWindows ? 2 : 1;
+
+    VkSwapchainKHR swapchains[] = {
+        swapchain->GetHandle(),
+        debugWindows ? debugWindows->GetSwapchainHandle() : VK_NULL_HANDLE,
+    };
+    uint32_t swapchainIndices[] = {
+        swapchain->GetCurrentImageIndex(),
+        debugWindows ? debugWindows->GetSwapchainCurrentImageIndex() : 0,
+    };
+    VkSemaphore semaphoresToWait[] = {
+        currentFrameState.GetSemaphoreForWaitAndRemove(),
+        debugWindows ? debugWindows->GetSwapchainImageAvailableSemaphore( frameIndex )
+                     : VK_NULL_HANDLE,
+    };
+    VkPipelineStageFlags stagesToWait[] = {
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+    };
+    VkResult results[ 2 ] = {};
 
     // submit command buffer, but wait until presentation engine has completed using image
     cmdManager->Submit( cmd,
-                        semaphoreToWait,
-                        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                        semaphoresToWait,
+                        stagesToWait,
+                        swapchainCount,
                         renderFinishedSemaphores[ frameIndex ],
                         frameFences[ frameIndex ] );
 
-    // present on a surface when rendering will be finished
-    swapchain->Present( queues, renderFinishedSemaphores[ frameIndex ] );
+    // present to surfaces after finishing the rendering
+    VkPresentInfoKHR presentInfo = {
+        .sType              = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores    = &renderFinishedSemaphores[ frameIndex ],
+        .swapchainCount     = swapchainCount,
+        .pSwapchains        = swapchains,
+        .pImageIndices      = swapchainIndices,
+        .pResults           = results,
+    };
+
+    VkResult r = vkQueuePresentKHR( queues->GetGraphics(), &presentInfo );
+
+    swapchain->OnQueuePresent( results[ 0 ] );
+    if( debugWindows )
+    {
+        debugWindows->OnQueuePresent( results[ 1 ] );
+    }
 
     frameId++;
 }

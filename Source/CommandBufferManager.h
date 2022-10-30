@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <span>
 #include <vector>
 
 #include "Common.h"
@@ -55,6 +56,12 @@ public:
                                   VkPipelineStageFlags waitStages,
                                   VkSemaphore          signalSemaphore,
                                   VkFence              fence );
+    void                  Submit( VkCommandBuffer             cmd,
+                                  const VkSemaphore*          waitSemaphores,
+                                  const VkPipelineStageFlags* waitStages,
+                                  uint32_t                    waitCount,
+                                  VkSemaphore                 signalSemaphore,
+                                  VkFence                     fence );
 
 
     void                  WaitGraphicsIdle();

@@ -156,20 +156,22 @@ void RTGL1::CommandBufferManager::Submit( VkCommandBuffer cmd, VkFence fence )
     VK_CHECKERROR( r );
 }
 
-void RTGL1::CommandBufferManager::Submit( VkCommandBuffer      cmd,
-                                          VkSemaphore          waitSemaphore,
-                                          VkPipelineStageFlags waitStages,
-                                          VkSemaphore          signalSemaphore,
-                                          VkFence              fence )
+
+void RTGL1::CommandBufferManager::Submit( VkCommandBuffer             cmd,
+                                          const VkSemaphore*          waitSemaphores,
+                                          const VkPipelineStageFlags* waitStages,
+                                          uint32_t                    waitCount,
+                                          VkSemaphore                 signalSemaphore,
+                                          VkFence                     fence )
 {
     VkResult r = vkEndCommandBuffer( cmd );
     VK_CHECKERROR( r );
-
+    
     VkSubmitInfo submitInfo = {
         .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount   = 1,
-        .pWaitSemaphores      = &waitSemaphore,
-        .pWaitDstStageMask    = &waitStages,
+        .waitSemaphoreCount   = waitCount,
+        .pWaitSemaphores      = waitSemaphores,
+        .pWaitDstStageMask    = waitStages,
         .commandBufferCount   = 1,
         .pCommandBuffers      = &cmd,
         .signalSemaphoreCount = 1,
@@ -184,6 +186,15 @@ void RTGL1::CommandBufferManager::Submit( VkCommandBuffer      cmd,
 
     r = vkQueueSubmit( q, 1, &submitInfo, fence );
     VK_CHECKERROR( r );
+}
+
+void RTGL1::CommandBufferManager::Submit( VkCommandBuffer      cmd,
+                                          VkSemaphore          waitSemaphore,
+                                          VkPipelineStageFlags waitStages,
+                                          VkSemaphore          signalSemaphore,
+                                          VkFence              fence )
+{
+    Submit( cmd, &waitSemaphore, &waitStages, 1, signalSemaphore, fence );
 }
 
 
