@@ -99,7 +99,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     decalManager->PrepareForFrame( frameIndex );
     if( debugWindows )
     {
-        debugWindows->PrepareForFrame( frameIndex );
+        if( !debugWindows->PrepareForFrame( frameIndex ) )
+        {
+            debugWindows.reset();
+        }
     }
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();

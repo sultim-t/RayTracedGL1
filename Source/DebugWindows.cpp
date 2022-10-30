@@ -57,6 +57,7 @@ GLFWwindow* CreateGLFWWindow()
     assert( glfwVulkanSupported() );
 
     glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API );
+    glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
     return glfwCreateWindow( 1280, 720, "ImGui window", nullptr, nullptr );
 }
 
@@ -193,12 +194,12 @@ VkSemaphore CreateSwapchainSemaphore(VkDevice device)
 
 } // anonymous
 
-RTGL1::DebugWindows::DebugWindows( VkInstance                              _instance,
-                                   VkPhysicalDevice                        _physDevice,
-                                   VkDevice                                _device,
-                                   uint32_t                                _queueFamiy,
-                                   VkQueue                                 _queue,
-                                   std::shared_ptr< CommandBufferManager > &_cmdManager )
+RTGL1::DebugWindows::DebugWindows( VkInstance                               _instance,
+                                   VkPhysicalDevice                         _physDevice,
+                                   VkDevice                                 _device,
+                                   uint32_t                                 _queueFamiy,
+                                   VkQueue                                  _queue,
+                                   std::shared_ptr< CommandBufferManager >& _cmdManager )
     : device( _device )
     , customWindow( CreateGLFWWindow() )
     , customSurface( VK_NULL_HANDLE )
@@ -262,6 +263,10 @@ RTGL1::DebugWindows::~DebugWindows()
 {
     vkDeviceWaitIdle( device );
 
+    for( auto& sm : swapchainImageAvailable )
+    {
+        vkDestroySemaphore( device, sm, nullptr );
+    }
     vkDestroyDescriptorPool( device, descPool, nullptr );
     vkDestroyRenderPass( device, renderPass, nullptr );
     for( auto f : framebuffers )
@@ -283,11 +288,11 @@ void RTGL1::DebugWindows::Init( std::shared_ptr< DebugWindows > self )
     customSwapchain->Subscribe( std::move( self ) );
 }
 
-void RTGL1::DebugWindows::PrepareForFrame( uint32_t frameIndex )
+bool RTGL1::DebugWindows::PrepareForFrame( uint32_t frameIndex )
 {
     if( glfwWindowShouldClose( customWindow ) )
     {
-        return;
+        return false;
     }
 
     glfwPollEvents();
@@ -297,10 +302,11 @@ void RTGL1::DebugWindows::PrepareForFrame( uint32_t frameIndex )
     ImGui_ImplVulkan_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
+
+    return true;
 }
 
-void RTGL1::DebugWindows::SubmitForFrame( VkCommandBuffer  cmd,
-                                          uint32_t         frameIndex )
+void RTGL1::DebugWindows::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     CmdLabel label( cmd, "ImGui" );
     assert( framebuffers.size() == customSwapchain->GetImageCount() );

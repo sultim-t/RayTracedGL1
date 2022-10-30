@@ -48,7 +48,7 @@ public:
     // TODO: remove
     void           Init( std::shared_ptr< DebugWindows > self );
 
-    void           PrepareForFrame( uint32_t frameIndex );
+    bool           PrepareForFrame( uint32_t frameIndex );
     void           SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
     void           OnQueuePresent( VkResult queuePresentResult );
 
