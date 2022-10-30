@@ -75,7 +75,7 @@ inline void VK_CHECKERROR( const VkResult r )
 
 
 #define SET_DEBUG_NAME( device, obj, type, pName ) \
-    AddDebugName( ( device ), reinterpret_cast< uint64_t >( obj ), ( type ), ( pName ) )
+    RTGL1::AddDebugName( ( device ), reinterpret_cast< uint64_t >( obj ), ( type ), ( pName ) )
 
 
 // If name is null, debug name won't be set
