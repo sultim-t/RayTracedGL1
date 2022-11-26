@@ -21,6 +21,7 @@
 #pragma once
 
 #include <optional>
+#include <limits>
 
 #include "Common.h"
 #include "RTGL1/RTGL1.h"
