@@ -185,11 +185,12 @@ void RTGL1::VertexCollector::BeginCollecting( bool isStatic )
     assert( GetAllGeometryCount() == 0 );
 }
 
-uint32_t RTGL1::VertexCollector::AddPrimitive( uint32_t                          frameIndex,
-                                               const RgMeshInfo&                 parentMesh,
-                                               const RgMeshPrimitiveInfo&        info,
-                                               std::span< MaterialTextures, 4 >  layerTextures,
-                                               std::span< RgColor4DPacked32, 4 > layerColors )
+std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
+    uint32_t                          frameIndex,
+    const RgMeshInfo&                 parentMesh,
+    const RgMeshPrimitiveInfo&        info,
+    std::span< MaterialTextures, 4 >  layerTextures,
+    std::span< RgColor4DPacked32, 4 > layerColors )
 {
     using FT = VertexCollectorFilterTypeFlagBits;
     const VertexCollectorFilterTypeFlags geomFlags =
@@ -201,7 +202,7 @@ uint32_t RTGL1::VertexCollector::AddPrimitive( uint32_t                         
         VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( geomFlags ) )
     {
         assert( false && "Too many geometries in a group" );
-        return UINT32_MAX;
+        return std::nullopt;
     }
 
 
@@ -229,19 +230,19 @@ uint32_t RTGL1::VertexCollector::AddPrimitive( uint32_t                         
     if( curVertexCount >= maxVertexCount )
     {
         assert( 0 );
-        return UINT32_MAX;
+        return std::nullopt;
     }
 
     if( curIndexCount >= MAX_INDEXED_PRIMITIVE_COUNT * 3 )
     {
         assert( 0 );
-        return UINT32_MAX;
+        return std::nullopt;
     }
 
     if( geomInfoMgr->GetCount() + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
     {
         assert( 0 );
-        return UINT32_MAX;
+        return std::nullopt;
     }
 
 

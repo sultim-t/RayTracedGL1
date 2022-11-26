@@ -63,6 +63,7 @@ RTGL1::RayTracingPipeline::RayTracingPipeline( VkDevice                         
                                                const Framebuffers&                _framebuffers,
                                                const RestirBuffers&               _restirBuffers,
                                                const BlueNoise&                   _blueNoise,
+                                               const LightManager&                _lightManager,
                                                const CubemapManager&              _cubemapManager,
                                                const RenderCubemap&               _renderCubemap,
                                                const PortalList&                  _portalList,
@@ -97,7 +98,7 @@ RTGL1::RayTracingPipeline::RayTracingPipeline( VkDevice                         
         // uniform random
         _blueNoise.GetDescSetLayout(),
         // light sources
-        _scene.GetLightManager()->GetDescSetLayout(),
+        _lightManager.GetDescSetLayout(),
         // cubemaps, for a cubemap type of skyboxes
         _cubemapManager.GetDescSetLayout(),
         // dynamic cubemaps

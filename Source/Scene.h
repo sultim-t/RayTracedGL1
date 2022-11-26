@@ -58,16 +58,9 @@ public:
     // bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
     // bool UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo);
 
-    void   UploadLight( uint32_t frameIndex, const RgSphericalLightUploadInfo& lightInfo );
-    void   UploadLight( uint32_t frameIndex, const RgPolygonalLightUploadInfo& lightInfo );
-    void   UploadLight( uint32_t frameIndex, const RgDirectionalLightUploadInfo& lightInfo );
-    void   UploadLight( uint32_t frameIndex, const RgSpotLightUploadInfo& lightInfo );
-
-    void   SubmitStatic();
-    void   StartNewStatic();
+    void   StartNewScene( LightManager& lightManager );
 
     const std::shared_ptr< ASManager >&           GetASManager();
-    const std::shared_ptr< LightManager >&        GetLightManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
     bool                                          DoesUniqueIDExist( uint64_t uniqueID ) const;
@@ -77,20 +70,12 @@ private:
 
 private:
     std::shared_ptr< ASManager >             asManager;
-    std::shared_ptr< LightManager >          lightManager;
     std::shared_ptr< GeomInfoManager >       geomInfoMgr;
     std::shared_ptr< VertexPreprocessing >   vertPreproc;
 
     // Dynamic indices are cleared every frame
     rgl::unordered_map< uint64_t, uint32_t > dynamicUniqueIDToSimpleIndex;
     rgl::unordered_map< uint64_t, uint32_t > staticUniqueIDToSimpleIndex;
-
-    // Movable geometry IDs
-    std::vector< uint32_t >                  movableGeomIndices;
-    bool                                     toResubmitMovable;
-
-    bool                                     isRecordingStatic;
-    bool                                     submittedStaticInCurrentFrame;
 };
 
 }

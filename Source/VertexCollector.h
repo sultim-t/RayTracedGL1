@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <optional>
 #include <span>
 #include <vector>
 
@@ -61,13 +62,13 @@ public:
     VertexCollector& operator=( VertexCollector&& other ) noexcept = delete;
 
 
-    void             BeginCollecting( bool isStatic );
-    uint32_t         AddPrimitive( uint32_t                          frameIndex,
-                                   const RgMeshInfo&                 parentMesh,
-                                   const RgMeshPrimitiveInfo&        info,
-                                   std::span< MaterialTextures, 4 >  layerTextures,
-                                   std::span< RgColor4DPacked32, 4 > layerColors );
-    void             EndCollecting();
+    void                      BeginCollecting( bool isStatic );
+    std::optional< uint32_t > AddPrimitive( uint32_t                          frameIndex,
+                                            const RgMeshInfo&                 parentMesh,
+                                            const RgMeshPrimitiveInfo&        info,
+                                            std::span< MaterialTextures, 4 >  layerTextures,
+                                            std::span< RgColor4DPacked32, 4 > layerColors );
+    void                      EndCollecting();
 
 
     // Clear data that was generated while collecting.

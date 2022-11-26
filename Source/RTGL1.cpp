@@ -249,7 +249,7 @@ RgColor4DPacked32 rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_
 
 RgColor4DPacked32 rgUtilPackColorFloat4D( const float color[ 4 ] )
 {
-    const uint32_t c[] = {
+    const uint8_t c[] = {
         uint8_t( std::clamp( uint32_t( color[ 0 ] * 255.0f ), 0u, 255u ) ),
         uint8_t( std::clamp( uint32_t( color[ 1 ] * 255.0f ), 0u, 255u ) ),
         uint8_t( std::clamp( uint32_t( color[ 2 ] * 255.0f ), 0u, 255u ) ),

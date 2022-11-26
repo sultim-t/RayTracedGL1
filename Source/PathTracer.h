@@ -67,6 +67,7 @@ public:
                       std::shared_ptr< Framebuffers >  framebuffers,
                       std::shared_ptr< RestirBuffers > restirBuffers,
                       const BlueNoise&                 blueNoise,
+                      const LightManager&              lightManager,
                       const CubemapManager&            cubemapManager,
                       const RenderCubemap&             renderCubemap,
                       const PortalList&                portalList,

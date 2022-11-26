@@ -32,11 +32,9 @@ RTGL1::Scene::Scene( VkDevice                                _device,
                      std::shared_ptr< TextureManager >       _textureManager,
                      const GlobalUniform&                    _uniform,
                      const ShaderManager&                    _shaderManager )
-    : toResubmitMovable( false ), isRecordingStatic( false ), submittedStaticInCurrentFrame( false )
 {
     VertexCollectorFilterTypeFlags_Init();
 
-    lightManager = std::make_shared< LightManager >( _device, _allocator );
     geomInfoMgr  = std::make_shared< GeomInfoManager >( _device, _allocator );
 
     asManager = std::make_shared< ASManager >( _device,
@@ -55,7 +53,6 @@ void RTGL1::Scene::PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
     dynamicUniqueIDToSimpleIndex.clear();
 
     geomInfoMgr->PrepareForFrame( frameIndex );
-    lightManager->PrepareForFrame( cmd, frameIndex );
 
     // dynamic geomtry
     asManager->BeginDynamicGeometry( cmd, frameIndex );
@@ -68,26 +65,10 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
                                    bool     allowGeometryWithSkyFlag,
                                    bool     disableRTGeometry )
 {
-    uint32_t preprocMode          = submittedStaticInCurrentFrame ? VERT_PREPROC_MODE_ALL
-                                    : toResubmitMovable ? VERT_PREPROC_MODE_DYNAMIC_AND_MOVABLE
-                                                        : VERT_PREPROC_MODE_ONLY_DYNAMIC;
-    submittedStaticInCurrentFrame = false;
-
-
-    lightManager->CopyFromStaging( cmd, frameIndex );
-
-
     // copy to device-local, if there were any tex coords change for static geometry
     asManager->ResubmitStaticTexCoords( cmd );
 
-    if( toResubmitMovable )
-    {
-        // at least one transform of static movable geometry was changed
-        asManager->ResubmitStaticMovable( cmd );
-        toResubmitMovable = false;
-    }
-
-    // always submit dynamic geomtetry on the frame ending
+    // always submit dynamic geometry on the frame ending
     asManager->SubmitDynamicGeometry( cmd, frameIndex );
 
 
@@ -106,7 +87,8 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
     uniform->Upload( cmd, frameIndex );
 
 
-    vertPreproc->Preprocess( cmd, frameIndex, preprocMode, *uniform, *asManager, push );
+    vertPreproc->Preprocess(
+        cmd, frameIndex, VERT_PREPROC_MODE_ONLY_DYNAMIC, *uniform, *asManager, push );
 
 
     asManager->BuildTLAS( cmd, frameIndex, prepare );
@@ -117,140 +99,35 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                            const RgMeshPrimitiveInfo& primitive )
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
-
     assert( !DoesUniqueIDExist( uniqueID ) );
 
-    if( !mesh.isStatic )
+    if( mesh.isStatic )
     {
-        if( isRecordingStatic )
-        {
-            throw RgException( RG_RESULT_WRONG_FUNCTION_CALL,
-                               "Dynamic geometry must not be uploaded between rgStartNewScene and "
-                               "rgSubmitStaticGeometries calls" );
-        }
-
-        uint32_t simpleIndex =
-            asManager->AddMeshPrimitive( frameIndex, mesh, primitive, mesh.isStatic );
-
-        if( simpleIndex != UINT32_MAX )
-        {
-            dynamicUniqueIDToSimpleIndex[ uniqueID ] = simpleIndex;
-            return true;
-        }
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Expected RgMeshInfo::isStatic to be false" );
     }
-    else
+
+    if( auto simpleIndex = asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false ) )
     {
-        if( !isRecordingStatic )
-        {
-            // never allow submitting static geometry out of StartNewStatic-SubmitStatic
-            throw RgException( RG_RESULT_WRONG_FUNCTION_CALL,
-                               "Submitting static geometry is only allowed between rgStartNewScene "
-                               "and rgSubmitStaticGeometries calls" );
-        }
-
-        uint32_t simpleIndex =
-            asManager->AddMeshPrimitive( frameIndex, mesh, primitive, mesh.isStatic );
-
-        // TODO: REMOVE
-
-        if( simpleIndex != UINT32_MAX )
-        {
-            staticUniqueIDToSimpleIndex[ uniqueID ] = simpleIndex;
-
-            /*if( uploadInfo.geomType == RG_GEOMETRY_TYPE_STATIC_MOVABLE )
-            {
-                movableGeomIndices.push_back( simpleIndex );
-            }*/
-
-            return true;
-        }
+        dynamicUniqueIDToSimpleIndex[ uniqueID ] = *simpleIndex;
+        return true;
     }
 
     return false;
 }
 
-/*bool Scene::UpdateTransform(const RgUpdateTransformInfo &updateInfo)
+void RTGL1::Scene::StartNewScene( LightManager& lightManager )
 {
-    uint32_t simpleIndex;
-    if (!TryGetStaticSimpleIndex(updateInfo.movableStaticUniqueID, &simpleIndex))
-    {
-        throw RgException(RG_CANT_UPDATE_TRANSFORM, "Can't find static geometry with unique ID=" +
-std::to_string(updateInfo.movableStaticUniqueID));
-    }
-
-    // check if it's actually movable
-    if (std::find(movableGeomIndices.begin(), movableGeomIndices.end(), simpleIndex) ==
-movableGeomIndices.end())
-    {
-        throw RgException(RG_CANT_UPDATE_TRANSFORM, "Static geometry with unique ID=" +
-std::to_string(updateInfo.movableStaticUniqueID) + " isn't movable");
-    }
-
-    asManager->UpdateStaticMovableTransform(simpleIndex, updateInfo);
-
-    // if not recording, then static geometries were already submitted,
-    // as some movable transform was changed AS must be rebuilt
-    if (!isRecordingStatic)
-    {
-        toResubmitMovable = true;
-    }
-
-    return true;
-}
-
-bool RTGL1::Scene::UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo)
-{
-    uint32_t simpleIndex;
-    if (!TryGetStaticSimpleIndex(texCoordsInfo.staticUniqueID, &simpleIndex))
-    {
-        throw RgException(RG_CANT_UPDATE_TEXCOORDS, "Can't find static geometry with unique ID=" +
-std::to_string(texCoordsInfo.staticUniqueID));
-    }
-
-    asManager->UpdateStaticTexCoords(simpleIndex, texCoordsInfo);
-    return true;
-}*/
-
-void RTGL1::Scene::SubmitStatic()
-{
-    // submit even if nothing was recorded,
-    // so the static scene will be empty
-    if( !isRecordingStatic )
-    {
-        asManager->BeginStaticGeometry();
-    }
-
-    asManager->SubmitStaticGeometry();
-    isRecordingStatic = false;
-
-    submittedStaticInCurrentFrame = true;
-}
-
-void RTGL1::Scene::StartNewStatic()
-{
-    if( isRecordingStatic )
-    {
-        throw RgException(
-            RG_RESULT_WRONG_FUNCTION_CALL,
-            "rgStartNewScene must be called only once before rgSubmitStaticGeometries" );
-    }
-
-    isRecordingStatic = true;
     asManager->BeginStaticGeometry();
-    lightManager->Reset();
+    asManager->SubmitStaticGeometry();
+
+    lightManager.Reset();
 
     staticUniqueIDToSimpleIndex.clear();
-    movableGeomIndices.clear();
 }
 
 const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()
 {
     return asManager;
-}
-
-const std::shared_ptr< RTGL1::LightManager >& RTGL1::Scene::GetLightManager()
-{
-    return lightManager;
 }
 
 const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPreprocessing()
@@ -275,24 +152,4 @@ bool RTGL1::Scene::TryGetStaticSimpleIndex( uint64_t uniqueID, uint32_t* result 
     }
 
     return false;
-}
-
-void RTGL1::Scene::UploadLight( uint32_t frameIndex, const RgDirectionalLightUploadInfo& lightInfo )
-{
-    lightManager->AddDirectionalLight( frameIndex, lightInfo );
-}
-
-void RTGL1::Scene::UploadLight( uint32_t frameIndex, const RgSphericalLightUploadInfo& lightInfo )
-{
-    lightManager->AddSphericalLight( frameIndex, lightInfo );
-}
-
-void RTGL1::Scene::UploadLight( uint32_t frameIndex, const RgPolygonalLightUploadInfo& lightInfo )
-{
-    lightManager->AddPolygonalLight( frameIndex, lightInfo );
-}
-
-void RTGL1::Scene::UploadLight( uint32_t frameIndex, const RgSpotLightUploadInfo& lightInfo )
-{
-    lightManager->AddSpotlight( frameIndex, lightInfo );
 }

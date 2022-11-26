@@ -159,6 +159,7 @@ private:
     std::shared_ptr< Rasterizer >           rasterizer;
     std::shared_ptr< DecalManager >         decalManager;
     std::shared_ptr< PortalList >           portalList;
+    std::shared_ptr< LightManager >         lightManager;
     std::shared_ptr< LightGrid >            lightGrid;
     std::shared_ptr< Denoiser >             denoiser;
     std::shared_ptr< Tonemapping >          tonemapping;

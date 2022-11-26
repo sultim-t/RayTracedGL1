@@ -106,10 +106,9 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     }
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
-
     BeginCmdLabel( cmd, "Prepare for frame" );
 
-    // start dynamic geometry recording to current frame
+    lightManager->PrepareForFrame( cmd, frameIndex );
     scene->PrepareForFrame( cmd, frameIndex );
 
     return cmd;
@@ -207,10 +206,10 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        gu->lightCount     = scene->GetLightManager()->GetLightCount();
-        gu->lightCountPrev = scene->GetLightManager()->GetLightCountPrev();
+        gu->lightCount     = lightManager->GetLightCount();
+        gu->lightCountPrev = lightManager->GetLightCountPrev();
 
-        gu->directionalLightExists = scene->GetLightManager()->DoesDirectionalLightExist();
+        gu->directionalLightExists = lightManager->DoesDirectionalLightExist();
     }
 
     {
@@ -335,7 +334,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->polyLightSpotlightFactor =
             std::max( 0.0f, drawInfo.pIlluminationParams->polygonalLightSpotlightFactor );
         gu->indirSecondBounce = !!drawInfo.pIlluminationParams->enableSecondBounceForIndirect;
-        gu->lightIndexIgnoreFPVShadows = scene->GetLightManager()->GetLightIndexIgnoreFPVShadows(
+        gu->lightIndexIgnoreFPVShadows = lightManager->GetLightIndexIgnoreFPVShadows(
             currentFrameState.GetFrameIndex(),
             drawInfo.pIlluminationParams->lightUniqueIdIgnoreFirstPersonViewerShadows );
         gu->cellWorldSize       = std::max( drawInfo.pIlluminationParams->cellWorldSize, 0.001f );
@@ -621,6 +620,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     textureManager->SubmitDescriptors( frameIndex, drawInfo.pTexturesParams, mipLodBiasUpdated );
     cubemapManager->SubmitDescriptors( frameIndex );
 
+    lightManager->SubmitForFrame( cmd, frameIndex );
 
     // submit geometry and upload uniform after getting data from a scene
     scene->SubmitForFrame( cmd,
@@ -658,7 +658,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
 
     {
-        lightGrid->Build( cmd, frameIndex, uniform, blueNoise, scene->GetLightManager() );
+        lightGrid->Build( cmd, frameIndex, uniform, blueNoise, lightManager );
 
         decalManager->SubmitForFrame( cmd, frameIndex );
         portalList->SubmitForFrame( cmd, frameIndex );
@@ -673,6 +673,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                               framebuffers,
                                               restirBuffers,
                                               *blueNoise,
+                                              *lightManager,
                                               *cubemapManager,
                                               *rasterizer->GetRenderCubemap(),
                                               *portalList,
@@ -688,7 +689,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
             pathTracer->TraceReflectionRefractionRays( params );
         }
 
-        scene->GetLightManager()->BarrierLightGrid( cmd, frameIndex );
+        lightManager->BarrierLightGrid( cmd, frameIndex );
         pathTracer->CalculateInitialReservoirs( params );
         pathTracer->TraceDirectllumination( params );
         pathTracer->TraceIndirectllumination( params );
@@ -1053,7 +1054,7 @@ void RTGL1::VulkanDevice::UploadDirectionalLight( const RgDirectionalLightUpload
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), *pInfo );
+    lightManager->AddDirectionalLight( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo )
@@ -1063,7 +1064,7 @@ void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), *pInfo );
+    lightManager->AddSphericalLight( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
@@ -1073,7 +1074,7 @@ void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), *pInfo );
+    lightManager->AddSpotlight( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo )
@@ -1083,7 +1084,7 @@ void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), *pInfo );
+    lightManager->AddPolygonalLight( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo )

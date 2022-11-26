@@ -610,10 +610,10 @@ void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frame
     collectorDynamic[ frameIndex ]->BeginCollecting( false );
 }
 
-uint32_t RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
-                                             const RgMeshInfo&          mesh,
-                                             const RgMeshPrimitiveInfo& primitive,
-                                             bool                       isStatic )
+std::optional< uint32_t > RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
+                                                              const RgMeshInfo&          mesh,
+                                                              const RgMeshPrimitiveInfo& primitive,
+                                                              bool                       isStatic )
 {
     auto textures = textureMgr->GetTexturesForLayers( primitive );
     auto colors   = textureMgr->GetColorForLayers( primitive );

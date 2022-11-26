@@ -47,6 +47,7 @@ public:
                         const Framebuffers&                framebuffers,
                         const RestirBuffers&               restirBuffers,
                         const BlueNoise&                   blueNoise,
+                        const LightManager&                lightManager,
                         const CubemapManager&              cubemapManager,
                         const RenderCubemap&               renderCubemap,
                         const PortalList&                  portalList,

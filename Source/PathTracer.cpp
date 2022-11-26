@@ -39,6 +39,7 @@ PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                  cmd,
                                           std::shared_ptr< Framebuffers >  framebuffers,
                                           std::shared_ptr< RestirBuffers > restirBuffers,
                                           const BlueNoise&                 blueNoise,
+                                          const LightManager&              lightManager,
                                           const CubemapManager&            cubemapManager,
                                           const RenderCubemap&             renderCubemap,
                                           const PortalList&                portalList,
@@ -60,7 +61,7 @@ PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                  cmd,
         // uniform random
         blueNoise.GetDescSet(),
         // light sources
-        scene.GetLightManager()->GetDescSet( frameIndex ),
+        lightManager.GetDescSet( frameIndex ),
         // cubemaps
         cubemapManager.GetDescSet( frameIndex ),
         // dynamic cubemaps

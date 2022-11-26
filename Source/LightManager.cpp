@@ -385,7 +385,7 @@ void RTGL1::LightManager::AddDirectionalLight( uint32_t                         
     AddLight( frameIndex, info.uniqueID, EncodeAsDirectionalLight( info ) );
 }
 
-void RTGL1::LightManager::CopyFromStaging( VkCommandBuffer cmd, uint32_t frameIndex )
+void RTGL1::LightManager::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     CmdLabel label( cmd, "Copying lights" );
 
@@ -432,12 +432,12 @@ void RTGL1::LightManager::BarrierLightGrid( VkCommandBuffer cmd, uint32_t frameI
     svkCmdPipelineBarrier2KHR( cmd, &dependency );
 }
 
-VkDescriptorSetLayout RTGL1::LightManager::GetDescSetLayout()
+VkDescriptorSetLayout RTGL1::LightManager::GetDescSetLayout() const
 {
     return descSetLayout;
 }
 
-VkDescriptorSet RTGL1::LightManager::GetDescSet( uint32_t frameIndex )
+VkDescriptorSet RTGL1::LightManager::GetDescSet( uint32_t frameIndex ) const
 {
     return descSets[ frameIndex ];
 }

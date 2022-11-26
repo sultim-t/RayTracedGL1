@@ -325,12 +325,16 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         device,
         memAllocator );
 
+    lightManager = std::make_shared< LightManager >( 
+        device, 
+        memAllocator );
+
     lightGrid = std::make_shared< LightGrid >(
         device,
         shaderManager, 
         uniform, 
         blueNoise, 
-        scene->GetLightManager() );
+        lightManager );
 
     rtPipeline = std::make_shared< RayTracingPipeline >( 
         device,
@@ -343,6 +347,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         *framebuffers,
         *restirBuffers,
         *blueNoise,
+        *lightManager,
         *cubemapManager,
         *rasterizer->GetRenderCubemap(),
         *portalList,
@@ -442,8 +447,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     framebuffers->Subscribe( restirBuffers );
 
     // TODO: remove
-    scene->StartNewStatic();
-    scene->SubmitStatic();
+    scene->StartNewScene( *lightManager );
 }
 
 RTGL1::VulkanDevice::~VulkanDevice()
@@ -482,6 +486,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     rasterizer.reset();
     decalManager.reset();
     portalList.reset();
+    lightManager.reset();
     lightGrid.reset();
     worldSamplerManager.reset();
     genericSamplerManager.reset();

@@ -56,11 +56,11 @@ public:
     void     AddDirectionalLight( uint32_t frameIndex, const RgDirectionalLightUploadInfo& info );
     void     AddSpotlight( uint32_t frameIndex, const RgSpotLightUploadInfo& info );
 
-    void     CopyFromStaging( VkCommandBuffer cmd, uint32_t frameIndex );
+    void     SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
     void     BarrierLightGrid( VkCommandBuffer cmd, uint32_t frameIndex );
 
-    VkDescriptorSetLayout GetDescSetLayout();
-    VkDescriptorSet       GetDescSet( uint32_t frameIndex );
+    VkDescriptorSetLayout GetDescSetLayout() const;
+    VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
 
 private:
     LightArrayIndex GetIndex( const ShLightEncoded& encodedLight ) const;
