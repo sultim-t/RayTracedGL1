@@ -1149,18 +1149,62 @@ void RTGL1::VulkanDevice::ExportAsPNG( const void* pPixels,
                                        uint32_t    height,
                                        const char* pPath ) const
 {
-    // TODO
+    // TODO: png export
 }
 
 RgPrimitiveVertex* RTGL1::VulkanDevice::ScratchAllocForVertices( uint32_t vertexCount )
 {
-    // TODO
-    return nullptr;
+    // TODO: scratch allocator
+    return new RgPrimitiveVertex[ vertexCount ];
 }
 
 void RTGL1::VulkanDevice::ScratchFree( const RgPrimitiveVertex* pPointer )
 {
-    // TODO
+    // TODO: scratch allocator
+    delete[] pPointer;
+}
+
+void RTGL1::VulkanDevice::ImScratchBegin()
+{
+    // TODO: scratch allocator
+    tempVerts.clear();
+}
+
+void RTGL1::VulkanDevice::ImScratchVertex( const float& x, const float& y, const float& z )
+{
+    tempVertsAccum.position[ 0 ] = x;
+    tempVertsAccum.position[ 1 ] = y;
+    tempVertsAccum.position[ 2 ] = z;
+
+    // TODO: scratch allocator
+    tempVerts.push_back( tempVertsAccum );
+}
+
+void RTGL1::VulkanDevice::ImScratchTexCoord( const float& u, const float& v )
+{
+    tempVertsAccum.texCoord[ 0 ] = u;
+    tempVertsAccum.texCoord[ 1 ] = v;
+}
+
+void RTGL1::VulkanDevice::ImScratchColor( const uint8_t& r,
+                                          const uint8_t& g,
+                                          const uint8_t& b,
+                                          const uint8_t& a )
+{
+    tempVertsAccum.color = rgUtilPackColorByte4D( r, g, b, a );
+}
+
+void RTGL1::VulkanDevice::ImScratchGet( RgPrimitiveVertex** ppOutVerts, uint32_t* pOutCount )
+{
+    // TODO: scratch allocator
+    *ppOutVerts = tempVerts.data();
+    *pOutCount  = static_cast< uint32_t >( tempVerts.size() );
+}
+
+void RTGL1::VulkanDevice::ImScratchEnd()
+{
+    // TODO: scratch allocator
+    tempVerts.clear();
 }
 
 void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags severity ) const

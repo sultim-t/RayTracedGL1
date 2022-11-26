@@ -98,11 +98,19 @@ public:
                       uint32_t    width,
                       uint32_t    height,
                       const char* pPath ) const;
+
     RgPrimitiveVertex* ScratchAllocForVertices( uint32_t count );
     void               ScratchFree( const RgPrimitiveVertex* pPointer );
 
+    void ImScratchBegin();
+    void ImScratchVertex( const float& x, const float& y, const float& z );
+    void ImScratchTexCoord( const float& u, const float& v );
+    void ImScratchColor( const uint8_t& r, const uint8_t& g, const uint8_t& b, const uint8_t& a );
+    void ImScratchGet( RgPrimitiveVertex** ppOutVerts, uint32_t* pOutCount );
+    void ImScratchEnd();
 
-    void               Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
+
+    void Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
 
 private:
     void            CreateInstance( const RgInstanceCreateInfo& info );
@@ -190,6 +198,8 @@ private:
     std::unique_ptr< UserPrint >                 userPrint;
     std::shared_ptr< UserFileLoad >              userFileLoad;
     std::shared_ptr< DebugWindows >              debugWindows;
+    std::vector< RgPrimitiveVertex >             tempVerts;
+    RgPrimitiveVertex                            tempVertsAccum;
 
     bool                                         rayCullBackFacingTriangles;
     bool                                         allowGeometryWithSkyFlag;

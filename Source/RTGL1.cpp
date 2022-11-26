@@ -110,7 +110,10 @@ RgResult rgDestroyInstance( RgInstance rgInstance )
 }
 
 template< typename Func, typename... Args >
-requires( std::is_same_v< std::invoke_result_t< Func, RTGL1::VulkanDevice, Args... >, void > ) static auto Call( RgInstance rgInstance, Func f, Args&&... args )
+requires( 
+            std::is_same_v< std::invoke_result_t< Func, RTGL1::VulkanDevice, Args... >, void > 
+        )
+static auto Call( RgInstance rgInstance, Func f, Args&&... args )
 {
     try
     {
@@ -228,6 +231,31 @@ void rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer )
     Call( instance, &RTGL1::VulkanDevice::ScratchFree, pPointer );
 }
 
+void rgUtilImScratchBegin( RgInstance instance )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchBegin );
+}
+
+void rgUtilImScratchVertex( RgInstance instance, float x, float y, float z )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchVertex, x, y, z );
+}
+
+void rgUtilImScratchTexCoord( RgInstance instance, float u, float v )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord, u, v );
+}
+
+void rgUtilImScratchColor( RgInstance instance, uint8_t r, uint8_t g, uint8_t b, uint8_t a )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchColor, r, g, b, a );
+}
+
+void rgUtilImScratchEnd( RgInstance instance )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchEnd );
+}
+
 RgBool32 rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique )
 {
     return Call( instance, &RTGL1::VulkanDevice::IsUpscaleTechniqueAvailable, technique );
@@ -247,16 +275,13 @@ RgColor4DPacked32 rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_
         ( uint32_t( r ) );
 }
 
-RgColor4DPacked32 rgUtilPackColorFloat4D( const float color[ 4 ] )
+RgColor4DPacked32 rgUtilPackColorFloat4D( float r, float g, float b, float a )
 {
-    const uint8_t c[] = {
-        uint8_t( std::clamp( uint32_t( color[ 0 ] * 255.0f ), 0u, 255u ) ),
-        uint8_t( std::clamp( uint32_t( color[ 1 ] * 255.0f ), 0u, 255u ) ),
-        uint8_t( std::clamp( uint32_t( color[ 2 ] * 255.0f ), 0u, 255u ) ),
-        uint8_t( std::clamp( uint32_t( color[ 3 ] * 255.0f ), 0u, 255u ) ),
+    auto toUint8 = []( float c ) {
+        return uint8_t( std::clamp( int32_t( c * 255.0f ), 0, 255 ) );
     };
 
-    return rgUtilPackColorByte4D( c[ 0 ], c[ 1 ], c[ 2 ], c[ 3 ] );
+    return rgUtilPackColorByte4D( toUint8( r ), toUint8( g ), toUint8( b ), toUint8( a ) );
 }
 
 void rgUtilExportAsPNG( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath )

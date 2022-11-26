@@ -165,7 +165,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     : instance( VK_NULL_HANDLE )
     , device( VK_NULL_HANDLE )
     , surface( VK_NULL_HANDLE )
-    , currentFrameState()
     , frameId( 1 )
     , waitForOutOfFrameFence( false )
     , libconfig( LibraryConfig::Read( info->pConfigPath ) )
@@ -173,6 +172,13 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
     , userFileLoad{ std::make_shared< UserFileLoad >(
           info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData ) }
+    , tempVertsAccum{
+        .position = { 0.0f, 0.0f, 0.0f },
+        .normal   = { 0.0f, 1.0f, 0.0f },
+        .tangent  = { 0.0f, 0.0f, 1.0f },
+        .texCoord = { 0.0f, 0.0f },
+        .color    = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
+    }
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
     , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
     , previousFrameTime( -1.0 / 60.0 )
