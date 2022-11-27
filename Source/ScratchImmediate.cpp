@@ -51,7 +51,7 @@ uint32_t GetIndexCount( RgUtilImScratchTopology topology, uint32_t vertexCount )
     return GetTriangleCount( topology, vertexCount ) * 3;
 }
 
-constexpr uint32_t ALLOC_STEP = 256;
+constexpr uint32_t ALLOC_STEP = 600;
 
 uint32_t GetNextAllocStep( uint32_t old )
 {

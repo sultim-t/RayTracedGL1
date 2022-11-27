@@ -32,6 +32,7 @@ class ScratchImmediate
 public:
     void Begin( RgUtilImScratchTopology topology )
     {
+        verts.clear();
         accumTopology = topology;
     }
 
@@ -44,7 +45,7 @@ public:
         verts.push_back( accumVertex );
     }
 
-    void TexCoord( const float& u, const float& v )
+    void TexCoord( float u, float v )
     {
         accumVertex.texCoord[ 0 ] = u;
         accumVertex.texCoord[ 1 ] = v;
