@@ -408,7 +408,7 @@ typedef struct RgMeshInfo
     // Name and primitive index is used to override meshes.
     const char*                     pMeshName;
     // Set to true, if an object never changes its vertices / transform / material / properties.
-    bool                            isStatic;
+    RgBool32                        isStatic;
     const char*                     animationName;
     float                           animationTime;
 } RgMeshInfo;

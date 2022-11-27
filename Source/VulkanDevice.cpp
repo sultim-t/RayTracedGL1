@@ -232,7 +232,9 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
                               : SKY_TYPE_COLOR;
 
             gu->skyCubemapIndex =
-                cubemapManager->TryGetDescriptorIndex( sp.pSkyCubemapTextureName );
+                sp.pSkyCubemapTextureName
+                    ? cubemapManager->TryGetDescriptorIndex( sp.pSkyCubemapTextureName )
+                    : MATERIAL_NO_TEXTURE;
 
             if( !Utils::IsAlmostZero( drawInfo.pSkyParams->skyCubemapRotationTransform ) )
             {

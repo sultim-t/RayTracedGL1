@@ -294,7 +294,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                                         uint32_t                     frameIndex,
                                         const RgOriginalTextureInfo& info )
 {
-    if( info.pTextureName == nullptr || info.pPixels == nullptr )
+    if( info.pTextureName == nullptr || info.pTextureName[ 0 ] == '\0' )
     {
         throw RgException(
             RG_RESULT_WRONG_FUNCTION_ARGUMENT,
