@@ -889,13 +889,24 @@ RGAPI RgResult RGCONV           rgDrawFrame( RgInstance instance, const RgDrawFr
 
 
 
+typedef enum RgUtilImScratchTopology
+{
+    RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLES,
+    RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_STRIP,
+    RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_FAN,
+    RG_UTIL_IM_SCRATCH_TOPOLOGY_QUADS,
+} RgUtilImScratchTopology;
+
 RGAPI RgPrimitiveVertex* RGCONV rgUtilScratchAllocForVertices( RgInstance instance, uint32_t vertexCount );
 RGAPI void RGCONV               rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer );
-RGAPI void RGCONV               rgUtilImScratchBegin( RgInstance instance );
+RGAPI void RGCONV               rgUtilScratchGetIndices( RgInstance instance, RgUtilImScratchTopology topology, uint32_t vertexCount, const uint32_t** ppOutIndices, uint32_t* pOutIndexCount );
+
+RGAPI void RGCONV               rgUtilImScratchBegin( RgInstance instance, RgUtilImScratchTopology topology );
 RGAPI void RGCONV               rgUtilImScratchVertex( RgInstance instance, float x, float y, float z );
 RGAPI void RGCONV               rgUtilImScratchTexCoord( RgInstance instance, float u, float v );
-RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, uint8_t r, uint8_t g, uint8_t b, uint8_t a );
-RGAPI void RGCONV               rgUtilImScratchEnd( RgInstance instance );
+RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color );
+RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo *pTarget );
+
 RGAPI RgBool32 RGCONV           rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique );
 RGAPI const char* RGCONV        rgUtilGetResultDescription( RgResult result );
 RGAPI RgColor4DPacked32 RGCONV  rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_t a );

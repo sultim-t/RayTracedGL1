@@ -84,6 +84,7 @@ set(Sources
     "Source/RestirBuffers.cpp"
     "Source/Volumetric.cpp"
     "Source/DebugWindows.cpp"
+    "Source/ScratchImmediate.cpp"
 )
 
 

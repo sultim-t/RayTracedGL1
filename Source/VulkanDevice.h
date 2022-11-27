@@ -58,6 +58,7 @@
 #include "RestirBuffers.h"
 #include "Volumetric.h"
 #include "DebugWindows.h"
+#include "ScratchImmediate.h"
 
 namespace RTGL1
 {
@@ -101,13 +102,16 @@ public:
 
     RgPrimitiveVertex* ScratchAllocForVertices( uint32_t count );
     void               ScratchFree( const RgPrimitiveVertex* pPointer );
+    void               ScratchGetIndices( RgUtilImScratchTopology topology,
+                                          uint32_t                vertexCount,
+                                          const uint32_t**        ppOutIndices,
+                                          uint32_t*               pOutIndexCount );
 
-    void ImScratchBegin();
+    void ImScratchBegin( RgUtilImScratchTopology topology );
     void ImScratchVertex( const float& x, const float& y, const float& z );
     void ImScratchTexCoord( const float& u, const float& v );
-    void ImScratchColor( const uint8_t& r, const uint8_t& g, const uint8_t& b, const uint8_t& a );
-    void ImScratchGet( RgPrimitiveVertex** ppOutVerts, uint32_t* pOutCount );
-    void ImScratchEnd();
+    void ImScratchColor( const RgColor4DPacked32& color );
+    void ImScratchSetToPrimitive( RgMeshPrimitiveInfo *pTarget );
 
 
     void Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
@@ -198,8 +202,7 @@ private:
     std::unique_ptr< UserPrint >                 userPrint;
     std::shared_ptr< UserFileLoad >              userFileLoad;
     std::shared_ptr< DebugWindows >              debugWindows;
-    std::vector< RgPrimitiveVertex >             tempVerts;
-    RgPrimitiveVertex                            tempVertsAccum;
+    ScratchImmediate                             scratchImmediate;
 
     bool                                         rayCullBackFacingTriangles;
     bool                                         allowGeometryWithSkyFlag;

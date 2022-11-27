@@ -1166,47 +1166,38 @@ void RTGL1::VulkanDevice::ScratchFree( const RgPrimitiveVertex* pPointer )
     delete[] pPointer;
 }
 
-void RTGL1::VulkanDevice::ImScratchBegin()
+void RTGL1::VulkanDevice::ScratchGetIndices( RgUtilImScratchTopology topology,
+                                             uint32_t                vertexCount,
+                                             const uint32_t**        ppOutIndices,
+                                             uint32_t*               pOutIndexCount )
 {
-    // TODO: scratch allocator
-    tempVerts.clear();
+    std::tie( *ppOutIndices, *pOutIndexCount ) =
+        scratchImmediate.GetIndices( topology, vertexCount );
+}
+
+void RTGL1::VulkanDevice::ImScratchBegin( RgUtilImScratchTopology topology )
+{
+    scratchImmediate.Begin( topology );
 }
 
 void RTGL1::VulkanDevice::ImScratchVertex( const float& x, const float& y, const float& z )
 {
-    tempVertsAccum.position[ 0 ] = x;
-    tempVertsAccum.position[ 1 ] = y;
-    tempVertsAccum.position[ 2 ] = z;
-
-    // TODO: scratch allocator
-    tempVerts.push_back( tempVertsAccum );
+    scratchImmediate.Vertex( x, y, z );
 }
 
 void RTGL1::VulkanDevice::ImScratchTexCoord( const float& u, const float& v )
 {
-    tempVertsAccum.texCoord[ 0 ] = u;
-    tempVertsAccum.texCoord[ 1 ] = v;
+    scratchImmediate.TexCoord( u, v );
 }
 
-void RTGL1::VulkanDevice::ImScratchColor( const uint8_t& r,
-                                          const uint8_t& g,
-                                          const uint8_t& b,
-                                          const uint8_t& a )
+void RTGL1::VulkanDevice::ImScratchColor( const RgColor4DPacked32& color )
 {
-    tempVertsAccum.color = rgUtilPackColorByte4D( r, g, b, a );
+    scratchImmediate.Color( color );
 }
 
-void RTGL1::VulkanDevice::ImScratchGet( RgPrimitiveVertex** ppOutVerts, uint32_t* pOutCount )
+void RTGL1::VulkanDevice::ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget )
 {
-    // TODO: scratch allocator
-    *ppOutVerts = tempVerts.data();
-    *pOutCount  = static_cast< uint32_t >( tempVerts.size() );
-}
-
-void RTGL1::VulkanDevice::ImScratchEnd()
-{
-    // TODO: scratch allocator
-    tempVerts.clear();
+    scratchImmediate.SetToPrimitive( pTarget );
 }
 
 void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags severity ) const

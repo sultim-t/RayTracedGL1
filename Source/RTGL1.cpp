@@ -231,9 +231,23 @@ void rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer )
     Call( instance, &RTGL1::VulkanDevice::ScratchFree, pPointer );
 }
 
-void rgUtilImScratchBegin( RgInstance instance )
+void rgUtilScratchGetIndices( RgInstance              instance,
+                              RgUtilImScratchTopology topology,
+                              uint32_t                vertexCount,
+                              const uint32_t**        ppOutIndices,
+                              uint32_t*               pOutIndexCount )
 {
-    Call( instance, &RTGL1::VulkanDevice::ImScratchBegin );
+    Call( instance,
+          &RTGL1::VulkanDevice::ScratchGetIndices,
+          topology,
+          vertexCount,
+          ppOutIndices,
+          pOutIndexCount );
+}
+
+void rgUtilImScratchBegin( RgInstance instance, RgUtilImScratchTopology topology )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchBegin, topology );
 }
 
 void rgUtilImScratchVertex( RgInstance instance, float x, float y, float z )
@@ -246,14 +260,14 @@ void rgUtilImScratchTexCoord( RgInstance instance, float u, float v )
     Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord, u, v );
 }
 
-void rgUtilImScratchColor( RgInstance instance, uint8_t r, uint8_t g, uint8_t b, uint8_t a )
+void rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color )
 {
-    Call( instance, &RTGL1::VulkanDevice::ImScratchColor, r, g, b, a );
+    Call( instance, &RTGL1::VulkanDevice::ImScratchColor, color );
 }
 
-void rgUtilImScratchEnd( RgInstance instance )
+void rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo* pTarget )
 {
-    Call( instance, &RTGL1::VulkanDevice::ImScratchEnd );
+    Call( instance, &RTGL1::VulkanDevice::ImScratchSetToPrimitive, pTarget );
 }
 
 RgBool32 rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique )
