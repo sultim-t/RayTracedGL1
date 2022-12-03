@@ -40,11 +40,12 @@ enum class GeometryRasterType
 
 enum class PipelineStateFlagBits
 {
-    ALPHA_TEST    = 0b00001,
-    TRANSLUCENT   = 0b00010,
-    DEPTH_TEST    = 0b00100,
-    DEPTH_WRITE   = 0b01000,
-    DRAW_AS_LINES = 0b10000,
+    ALPHA_TEST    = 0b000001,
+    TRANSLUCENT   = 0b000010,
+    ADDITIVE      = 0b000100,
+    DEPTH_TEST    = 0b001000,
+    DEPTH_WRITE   = 0b010000,
+    DRAW_AS_LINES = 0b100000,
 };
 typedef uint32_t          PipelineStateFlags;
 

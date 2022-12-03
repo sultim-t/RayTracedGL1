@@ -351,7 +351,7 @@ std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
 
         .defaultRoughness   = 1.0f,
         .defaultMetallicity = 0.0f,
-        .defaultEmission    = 0.0f,
+        .defaultEmission    = std::clamp( info.emissive, 0.0f, 1.0f ),
     };
 
 

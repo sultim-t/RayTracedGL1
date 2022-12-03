@@ -119,6 +119,11 @@ namespace
             r = r | PipelineStateFlagBits::TRANSLUCENT;
         }
 
+        if( info.emissive > std::numeric_limits< float >::epsilon() )
+        {
+            r = r | PipelineStateFlagBits::ADDITIVE;
+        }
+
         // depth test for world / sky geometry
         if( rasterType != GeometryRasterType::SWAPCHAIN )
         {

@@ -105,11 +105,12 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
     assert( vertShaderStage.sType != 0 && fragShaderStage.sType != 0 );
 
 
-    uint32_t                 alphaTest = pipelineState & PipelineStateFlagBits::ALPHA_TEST ? 1 : 0;
-    bool                     translucent = pipelineState & PipelineStateFlagBits::TRANSLUCENT;
-    bool                     depthTest   = pipelineState & PipelineStateFlagBits::DEPTH_TEST;
-    bool                     depthWrite  = pipelineState & PipelineStateFlagBits::DEPTH_WRITE;
-    bool                     isLines     = pipelineState & PipelineStateFlagBits::DRAW_AS_LINES;
+    uint32_t alphaTest   = pipelineState & PipelineStateFlagBits::ALPHA_TEST ? 1 : 0;
+    bool     translucent = pipelineState & PipelineStateFlagBits::TRANSLUCENT;
+    bool     additive    = pipelineState & PipelineStateFlagBits::ADDITIVE;
+    bool     depthTest   = pipelineState & PipelineStateFlagBits::DEPTH_TEST;
+    bool     depthWrite  = pipelineState & PipelineStateFlagBits::DEPTH_WRITE;
+    bool     isLines     = pipelineState & PipelineStateFlagBits::DRAW_AS_LINES;
 
 
     VkSpecializationMapEntry vertMapEntry = {
@@ -203,18 +204,31 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
         .stencilTestEnable     = VK_FALSE,
     };
 
+    VkBlendFactor blendSrc = VK_BLEND_FACTOR_ONE;
+    VkBlendFactor blendDst = VK_BLEND_FACTOR_ONE;
+    if( translucent )
+    {
+        if( additive )
+        {
+            blendSrc = VK_BLEND_FACTOR_ONE;
+            blendDst = VK_BLEND_FACTOR_ONE;
+        }
+        else
+        {
+            blendSrc = VK_BLEND_FACTOR_SRC_ALPHA;
+            blendDst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+        }
+    }
     VkPipelineColorBlendAttachmentState blendAttch = {
-        .blendEnable         = translucent,
-        .srcColorBlendFactor = translucent ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_ONE,
-        .dstColorBlendFactor =
-            translucent ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ONE,
+        .blendEnable         = additive || translucent,
+        .srcColorBlendFactor = blendSrc,
+        .dstColorBlendFactor = blendDst,
         .colorBlendOp        = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = translucent ? VK_BLEND_FACTOR_SRC_ALPHA : VK_BLEND_FACTOR_ONE,
-        .dstAlphaBlendFactor =
-            translucent ? VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA : VK_BLEND_FACTOR_ONE,
-        .alphaBlendOp   = VK_BLEND_OP_ADD,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        .srcAlphaBlendFactor = blendSrc,
+        .dstAlphaBlendFactor = blendDst,
+        .alphaBlendOp        = VK_BLEND_OP_ADD,
+        .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
     };
     VkPipelineColorBlendAttachmentState colorBlendAttchs[] = { blendAttch, blendAttch };
 

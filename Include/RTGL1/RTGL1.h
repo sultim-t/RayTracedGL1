@@ -395,6 +395,7 @@ typedef struct RgMeshPrimitiveInfo
 
     // If alpha < 1.0, then RG_MESH_PRIMITIVE_TRANSLUCENT is assumed.
     RgColor4DPacked32               color;
+    float                           emissive;
 
     // Additional info for the Editor. Can be null.
     const RgEditorInfo*             pEditorInfo;
