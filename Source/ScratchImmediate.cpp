@@ -192,13 +192,13 @@ auto RTGL1::ScratchImmediate::GetIndices( RgUtilImScratchTopology topology, uint
             return { GetIndicesTriangles( indicesTriangles, indexCount ), indexCount };
 
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_STRIP:
-            return { GetIndicesTriangleStrip( indicesTriangles, indexCount ), indexCount };
+            return { GetIndicesTriangleStrip( indicesTriangleStrip, indexCount ), indexCount };
 
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_FAN:
-            return { GetIndicesTriangleFan( indicesTriangles, indexCount ), indexCount };
+            return { GetIndicesTriangleFan( indicesTriangleFan, indexCount ), indexCount };
 
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_QUADS:
-            return { GetIndicesQuads( indicesTriangles, indexCount ), indexCount };
+            return { GetIndicesQuads( indicesQuad, indexCount ), indexCount };
 
         default:
             throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
