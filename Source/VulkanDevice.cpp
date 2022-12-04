@@ -1008,6 +1008,11 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
+
+    if( pPrimitive->vertexCount == 0 || pPrimitive->pVertices == nullptr )
+    {
+        return;
+    }
     
     if( IsRasterized( *pMesh, *pPrimitive ) )
     {
