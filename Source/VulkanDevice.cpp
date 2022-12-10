@@ -1176,13 +1176,25 @@ void RTGL1::VulkanDevice::ScratchGetIndices( RgUtilImScratchTopology topology,
                                              const uint32_t**        ppOutIndices,
                                              uint32_t*               pOutIndexCount )
 {
-    std::tie( *ppOutIndices, *pOutIndexCount ) =
-        scratchImmediate.GetIndices( topology, vertexCount );
+    const auto indices = scratchImmediate.GetIndices( topology, vertexCount );
+
+    *ppOutIndices   = indices.data();
+    *pOutIndexCount = uint32_t( indices.size() );
 }
 
-void RTGL1::VulkanDevice::ImScratchBegin( RgUtilImScratchTopology topology )
+void RTGL1::VulkanDevice::ImScratchClear()
 {
-    scratchImmediate.Begin( topology );
+    scratchImmediate.Clear();
+}
+
+void RTGL1::VulkanDevice::ImScratchStart( RgUtilImScratchTopology topology )
+{
+    scratchImmediate.StartPrimitive( topology );
+}
+
+void RTGL1::VulkanDevice::ImScratchEnd()
+{
+    scratchImmediate.EndPrimitive();
 }
 
 void RTGL1::VulkanDevice::ImScratchVertex( const float& x, const float& y, const float& z )

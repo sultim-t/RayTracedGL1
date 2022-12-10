@@ -381,6 +381,7 @@ typedef struct RgEditorInfo
 // Primitive is an indexed or non-indexed geometry with a material.
 typedef struct RgMeshPrimitiveInfo
 {
+    const char*                     primitiveNameInMesh;
     uint32_t                        primitiveIndexInMesh;
     RgMeshPrimitiveFlags            flags;
 
@@ -902,11 +903,13 @@ RGAPI RgPrimitiveVertex* RGCONV rgUtilScratchAllocForVertices( RgInstance instan
 RGAPI void RGCONV               rgUtilScratchFree( RgInstance instance, const RgPrimitiveVertex* pPointer );
 RGAPI void RGCONV               rgUtilScratchGetIndices( RgInstance instance, RgUtilImScratchTopology topology, uint32_t vertexCount, const uint32_t** ppOutIndices, uint32_t* pOutIndexCount );
 
-RGAPI void RGCONV               rgUtilImScratchBegin( RgInstance instance, RgUtilImScratchTopology topology );
-RGAPI void RGCONV               rgUtilImScratchVertex( RgInstance instance, float x, float y, float z );
+RGAPI void RGCONV               rgUtilImScratchClear( RgInstance instance );
+RGAPI void RGCONV               rgUtilImScratchStart( RgInstance instance, RgUtilImScratchTopology topology );
+RGAPI void RGCONV               rgUtilImScratchVertex( RgInstance instance, float x, float y, float z );            // Push vertex to a list
 RGAPI void RGCONV               rgUtilImScratchTexCoord( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color );
-RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo *pTarget );
+RGAPI void RGCONV               rgUtilImScratchEnd( RgInstance instance );
+RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo *pTarget ); // Set accumulated vertices to pTarget
 
 RGAPI RgBool32 RGCONV           rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique );
 RGAPI const char* RGCONV        rgUtilGetResultDescription( RgResult result );

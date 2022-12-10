@@ -107,7 +107,9 @@ public:
                                           const uint32_t**        ppOutIndices,
                                           uint32_t*               pOutIndexCount );
 
-    void ImScratchBegin( RgUtilImScratchTopology topology );
+    void ImScratchClear();
+    void ImScratchStart( RgUtilImScratchTopology topology );
+    void ImScratchEnd();
     void ImScratchVertex( const float& x, const float& y, const float& z );
     void ImScratchTexCoord( const float& u, const float& v );
     void ImScratchColor( const RgColor4DPacked32& color );

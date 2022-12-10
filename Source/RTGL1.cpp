@@ -245,9 +245,19 @@ void rgUtilScratchGetIndices( RgInstance              instance,
           pOutIndexCount );
 }
 
-void rgUtilImScratchBegin( RgInstance instance, RgUtilImScratchTopology topology )
+void rgUtilImScratchClear( RgInstance instance )
 {
-    Call( instance, &RTGL1::VulkanDevice::ImScratchBegin, topology );
+    Call( instance, &RTGL1::VulkanDevice::ImScratchClear );
+}
+
+void rgUtilImScratchStart( RgInstance instance, RgUtilImScratchTopology topology )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchStart, topology );
+}
+
+void rgUtilImScratchEnd( RgInstance instance )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchEnd );
 }
 
 void rgUtilImScratchVertex( RgInstance instance, float x, float y, float z )

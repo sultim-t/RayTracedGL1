@@ -181,8 +181,9 @@ const uint32_t* GetIndicesQuads( std::vector< uint32_t >& existing, uint32_t req
 
 }
 
-auto RTGL1::ScratchImmediate::GetIndices( RgUtilImScratchTopology topology, uint32_t vertexCount )
-    -> std::pair< const uint32_t*, uint32_t >
+
+std::span< const uint32_t > RTGL1::ScratchImmediate::GetIndices( RgUtilImScratchTopology topology,
+                                                                 uint32_t vertexCount )
 {
     uint32_t indexCount = GetIndexCount( topology, vertexCount );
 
@@ -190,7 +191,6 @@ auto RTGL1::ScratchImmediate::GetIndices( RgUtilImScratchTopology topology, uint
     {
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLES: 
             return { GetIndicesTriangles( indicesTriangles, indexCount ), indexCount };
-
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_STRIP:
             return { GetIndicesTriangleStrip( indicesTriangleStrip, indexCount ), indexCount };
 
@@ -206,16 +206,50 @@ auto RTGL1::ScratchImmediate::GetIndices( RgUtilImScratchTopology topology, uint
     }
 }
 
+void RTGL1::ScratchImmediate::Clear()
+{
+    verts.clear();
+    lastbatch = std::nullopt;
+    accumIndices.clear();
+    accumTopology = std::nullopt;
+}
+
+void RTGL1::ScratchImmediate::StartPrimitive( RgUtilImScratchTopology topology )
+{
+    lastbatch     = PrimitiveRange{ .startVertex = uint32_t( verts.size() ), .end = 0 };
+    accumTopology = topology;
+}
+
+void RTGL1::ScratchImmediate::EndPrimitive()
+{
+    if( !lastbatch || !accumTopology )
+    {
+        throw RgException( RG_RESULT_WRONG_FUNCTION_CALL,
+                           "Corresponding ImScratchStart was not called for rgUtilImScratchEnd" );
+    }
+
+    lastbatch->end = uint32_t( verts.size() );
+    assert( lastbatch->startVertex <= lastbatch->end );
+    
+    auto localIndices = GetIndices( *accumTopology, lastbatch->Count() );
+    for( const auto i : localIndices )
+    {
+        accumIndices.push_back( lastbatch->startVertex + i );
+    }
+
+    lastbatch = std::nullopt;
+}
+
 void RTGL1::ScratchImmediate::SetToPrimitive( RgMeshPrimitiveInfo* pTarget )
 {
-    if( pTarget == nullptr )
+    if( !pTarget )
     {
-        return;
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "pTarget is null" );
     }
 
     pTarget->pVertices   = verts.data();
     pTarget->vertexCount = uint32_t( verts.size() );
 
-    std::tie( pTarget->pIndices, pTarget->indexCount ) =
-        GetIndices( accumTopology, pTarget->vertexCount );
+    pTarget->pIndices   = accumIndices.data();
+    pTarget->indexCount = uint32_t( accumIndices.size() );
 }

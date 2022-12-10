@@ -20,6 +20,9 @@
 
 #pragma once
 
+#include <cassert>
+#include <optional>
+#include <span>
 #include <vector>
 
 #include "RTGL1/RTGL1.h"
@@ -30,11 +33,22 @@ namespace RTGL1
 class ScratchImmediate
 {
 public:
-    void Begin( RgUtilImScratchTopology topology )
+    struct PrimitiveRange
     {
-        verts.clear();
-        accumTopology = topology;
-    }
+        uint32_t startVertex;
+        uint32_t end;
+
+        uint32_t Count() const
+        {
+            assert( startVertex <= end );
+            return end - startVertex;
+        }
+    };
+
+public:
+    void Clear();
+    void StartPrimitive( RgUtilImScratchTopology topology );
+    void EndPrimitive();
 
     void Vertex( float x, float y, float z )
     {
@@ -58,16 +72,19 @@ public:
 
     void SetToPrimitive( RgMeshPrimitiveInfo* pTarget );
 
-    auto GetIndices( RgUtilImScratchTopology topology, uint32_t vertexCount )
-        -> std::pair< const uint32_t*, uint32_t >;
+    std::span< const uint32_t > GetIndices( RgUtilImScratchTopology topology,
+                                            uint32_t                vertexCount );
 
 private:
     std::vector< RgPrimitiveVertex > verts;
+    std::optional< PrimitiveRange >  lastbatch;
 
     std::vector< uint32_t > indicesTriangles;
     std::vector< uint32_t > indicesTriangleStrip;
     std::vector< uint32_t > indicesTriangleFan;
     std::vector< uint32_t > indicesQuad;
+
+    std::vector< uint32_t > accumIndices;
 
     RgPrimitiveVertex accumVertex{
         .position = { 0.0f, 0.0f, 0.0f },
@@ -76,7 +93,7 @@ private:
         .texCoord = { 0.0f, 0.0f },
         .color    = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
     };
-    RgUtilImScratchTopology accumTopology{ RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLES };
+    std::optional< RgUtilImScratchTopology > accumTopology;
 };
 
 }
