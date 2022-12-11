@@ -209,12 +209,12 @@ private:
 
     struct DebugPrim
     {
-        uint32_t    callIndex;
-        uint32_t    objectId;
-        std::string meshName;
-        uint32_t    primitiveIndex;
-        std::string primitiveName;
-        std::string textureName;
+        std::optional< uint32_t > callIndex;
+        uint32_t                  objectId;
+        std::string               meshName;
+        uint32_t                  primitiveIndex;
+        std::string               primitiveName;
+        std::string               textureName;
     };
     struct DebugNonWorld
     {
@@ -223,8 +223,10 @@ private:
     };
     mutable struct
     {
-        std::vector< DebugPrim >     primitivesTable;
-        std::vector< DebugNonWorld > nonworldTable;
+        bool                         primitivesTableEnable{ false };
+        std::vector< DebugPrim >     primitivesTable{};
+        bool                         nonworldTableEnable{ false };
+        std::vector< DebugNonWorld > nonworldTable{};
     } debugData;
 
     bool                                         rayCullBackFacingTriangles;

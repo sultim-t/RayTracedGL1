@@ -611,6 +611,8 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
 
     if( ImGui::Begin( "Primitives" ) )
     {
+        ImGui::Checkbox( "Enable", &debugData.primitivesTableEnable );
+
         if( ImGui::BeginTable( "Primitives table",
                                6,
                                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
@@ -675,7 +677,14 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
 
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
-                    ImGui::Text( "%u", prim.callIndex );
+                    if( prim.callIndex )
+                    {
+                        ImGui::Text( "%u", *prim.callIndex );
+                    }
+                    else
+                    {
+                        ImGui::TextUnformatted( "fail" );
+                    }
                     ImGui::TableNextColumn();
                     ImGui::Text( "%u", prim.objectId );
                     ImGui::TableNextColumn();
@@ -696,6 +705,8 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
 
     if( ImGui::Begin( "Non-world Primitives" ) )
     {
+        ImGui::Checkbox( "Enable", &debugData.nonworldTableEnable );
+
         if( ImGui::BeginTable( "Non-world Primitives table",
                                2,
                                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
@@ -1144,16 +1155,17 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     {
         bool success = scene->Upload( currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive );
 
-        if( debugWindows && success )
+        if( debugWindows && debugData.primitivesTableEnable )
         {
             auto safeCstr = []( const char* ptr ) {
                 return ptr == nullptr ? "" : ptr;
             };
 
             debugData.primitivesTable.push_back( DebugPrim{
-                .callIndex      = uint32_t( debugData.primitivesTable.size() ),
-                .objectId       = pMesh->uniqueObjectID,
-                .meshName       = safeCstr( pMesh->pMeshName ),
+                .callIndex = success ? std::optional( uint32_t( debugData.primitivesTable.size() ) )
+                                     : std::nullopt,
+                .objectId  = pMesh->uniqueObjectID,
+                .meshName  = safeCstr( pMesh->pMeshName ),
                 .primitiveIndex = pPrimitive->primitiveIndexInMesh,
                 .primitiveName  = safeCstr( pPrimitive->primitiveNameInMesh ),
                 .textureName    = safeCstr( pPrimitive->pTextureName ),
@@ -1176,7 +1188,7 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
                         *pPrimitive,
                         pViewProjection,
                         pViewport );
-    if( debugWindows )
+    if( debugWindows && debugData.nonworldTableEnable )
     {
         debugData.nonworldTable.push_back( DebugNonWorld{
             .callIndex   = uint32_t( debugData.nonworldTable.size() ),
