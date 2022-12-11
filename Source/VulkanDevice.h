@@ -89,7 +89,7 @@ public:
     void ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo );
     void MarkOriginalTextureAsDeleted( const char* pTextureName );
 
-    void StartFrame( const RgStartFrameInfo* pInfo );
+    void StartFrame();
     void DrawFrame( const RgDrawFrameInfo* pInfo );
 
 
@@ -131,7 +131,7 @@ private:
     void            FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
     void            DrawDebugWindows() const;
 
-    VkCommandBuffer BeginFrame( const RgStartFrameInfo& startInfo );
+    VkCommandBuffer BeginFrame();
     void            Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
     void            EndFrame( VkCommandBuffer cmd );
 
@@ -223,19 +223,24 @@ private:
     };
     mutable struct
     {
+        bool                         overrideDrawInfo{ false };
+        bool                         ovrdVsync{ false };
+        bool                         reloadShaders;
         bool                         primitivesTableEnable{ false };
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };
         std::vector< DebugNonWorld > nonworldTable{};
     } debugData;
 
-    bool                                         rayCullBackFacingTriangles;
-    bool                                         allowGeometryWithSkyFlag;
+    bool rayCullBackFacingTriangles;
+    bool allowGeometryWithSkyFlag;
 
-    RenderResolutionHelper                       renderResolution;
+    RenderResolutionHelper renderResolution;
 
-    double                                       previousFrameTime;
-    double                                       currentFrameTime;
+    double previousFrameTime;
+    double currentFrameTime;
+
+    bool vsync;
 };
 
 }

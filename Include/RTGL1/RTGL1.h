@@ -529,13 +529,7 @@ RGAPI RgResult RGCONV rgMarkOriginalTextureAsDeleted( RgInstance instance, const
 
 
 
-typedef struct RgStartFrameInfo
-{
-    RgBool32        requestVSync;
-    RgBool32        requestShaderReload;
-} RgStartFrameInfo;
-
-RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const RgStartFrameInfo* pInfo );
+RGAPI RgResult RGCONV rgStartFrame( RgInstance instance );
 
 
 
@@ -871,6 +865,8 @@ typedef struct RgDrawFrameInfo
     double                                   currentTime;
     RgBool32                                 disableEyeAdaptation;
     RgBool32                                 forceAntiFirefly;
+
+    RgBool32                                 vsync;
 
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams* pRenderResolutionParams;

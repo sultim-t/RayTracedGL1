@@ -32,7 +32,7 @@
 
 #include "imgui.h"
 
-VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startInfo )
+VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
 {
     uint32_t frameIndex = currentFrameState.IncrementFrameIndexAndGet();
 
@@ -47,7 +47,7 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
             device, frameFences[ frameIndex ], outOfFrameFences[ frameIndex ] );
     }
 
-    swapchain->RequestVsync( startInfo.requestVSync );
+    swapchain->RequestVsync( vsync );
     swapchain->AcquireImage( imageAvailableSemaphores[ frameIndex ] );
 
     VkSemaphore semaphoreToWaitOnSubmit = imageAvailableSemaphores[ frameIndex ];
@@ -81,9 +81,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     currentFrameState.SetSemaphore( semaphoreToWaitOnSubmit );
 
 
-    if( startInfo.requestShaderReload )
+    if( debugData.reloadShaders )
     {
         shaderManager->ReloadShaders();
+        debugData.reloadShaders = false;
     }
 
 
@@ -1050,19 +1051,14 @@ void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )
 
 
 
-void RTGL1::VulkanDevice::StartFrame( const RgStartFrameInfo* pInfo )
+void RTGL1::VulkanDevice::StartFrame()
 {
     if( currentFrameState.WasFrameStarted() )
     {
         throw RgException( RG_RESULT_FRAME_WASNT_ENDED );
     }
 
-    if( pInfo == nullptr )
-    {
-        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
-    }
-
-    VkCommandBuffer newFrameCmd = BeginFrame( *pInfo );
+    VkCommandBuffer newFrameCmd = BeginFrame();
     currentFrameState.OnBeginFrame( newFrameCmd );
 }
 
@@ -1076,6 +1072,25 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     if( pInfo == nullptr )
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
+    }
+
+    // override if requested
+    if( debugWindows )
+    {
+        if( ImGui::Begin( "Frame" ) )
+        {
+            debugData.reloadShaders = ImGui::Button( "Reload shaders", { -1, 96 } );
+            ImGui::Checkbox( "Override", &debugData.overrideDrawInfo );
+            if( ImGui::TreeNode( "Overriden" ) )
+            {
+                ImGui::BeginDisabled( !debugData.overrideDrawInfo );
+                ImGui::Checkbox( "Vsync", &debugData.ovrdVsync );
+                
+                ImGui::EndDisabled();
+                ImGui::TreePop();
+            }
+        }
+        ImGui::End();
     }
 
     VkCommandBuffer cmd = currentFrameState.GetCmdBuffer();
@@ -1097,6 +1112,9 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
 
     EndFrame( cmd );
     currentFrameState.OnEndFrame();
+
+    // process in next frame
+    vsync = debugData.overrideDrawInfo ? debugData.ovrdVsync : pInfo->vsync;
 }
 
 namespace RTGL1

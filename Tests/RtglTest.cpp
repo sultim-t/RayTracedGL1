@@ -61,7 +61,6 @@ float     ctl_Roughness       = 0.05f;
 float     ctl_Metallicity     = 1.0f;
 RgBool32  ctl_MoveBoxes       = 0;
 RgBool32  ctl_ShowGradients   = 0;
-RgBool32  ctl_ReloadShaders   = 0;
 
 bool ProcessWindow()
 {
@@ -114,12 +113,10 @@ void ProcessInput()
     ControlFloat( GLFW_KEY_Y, ctl_LightCount,       delta * 5,  0, 1000 );
     ControlFloat( GLFW_KEY_I, ctl_SunIntensity,     delta,      0, 1000 );
     ControlFloat( GLFW_KEY_O, ctl_SkyIntensity,     delta,      0, 1000 );
-
-    ctl_ReloadShaders = false;
+    
     ControlSwitch( GLFW_KEY_TAB,        ctl_SkyboxEnable );
     ControlSwitch( GLFW_KEY_Z,          ctl_MoveBoxes );
     ControlSwitch( GLFW_KEY_G,          ctl_ShowGradients );
-    ControlSwitch( GLFW_KEY_BACKSLASH,  ctl_ReloadShaders );
 }
 
 double GetCurrentTimeInSeconds()
@@ -478,11 +475,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         ProcessInput();
 
         {
-            RgStartFrameInfo startInfo = {
-                .requestVSync        = true,
-                .requestShaderReload = ctl_ReloadShaders,
-            };
-            r = rgStartFrame( instance, &startInfo );
+            r = rgStartFrame( instance );
             RG_CHECK( r );
         }
 
