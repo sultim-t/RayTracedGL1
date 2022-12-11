@@ -99,12 +99,13 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     decalManager->PrepareForFrame( frameIndex );
     if( debugWindows )
     {
-        debugData.primitivesTable.clear();
         if( !debugWindows->PrepareForFrame( frameIndex ) )
         {
             debugWindows.reset();
         }
     }
+    debugData.primitivesTable.clear();
+    debugData.nonworldTable.clear();
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
     BeginCmdLabel( cmd, "Prepare for frame" );
@@ -692,6 +693,34 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
     }
     ImGui::End();
+
+    if( ImGui::Begin( "Non-world Primitives" ) )
+    {
+        if( ImGui::BeginTable( "Non-world Primitives table",
+                               2,
+                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
+                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
+                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
+        {
+            {
+                ImGui::TableSetupColumn( "Call" );
+                ImGui::TableSetupColumn( "Texture" );
+                ImGui::TableHeadersRow();
+            }
+
+            for( const auto& prim : debugData.nonworldTable )
+            {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::Text( "%u", prim.callIndex );
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted( prim.textureName.c_str() );
+            }
+
+            ImGui::EndTable();
+        }
+    }
+    ImGui::End();
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
@@ -1147,6 +1176,13 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
                         *pPrimitive,
                         pViewProjection,
                         pViewport );
+    if( debugWindows )
+    {
+        debugData.nonworldTable.push_back( DebugNonWorld{
+            .callIndex   = uint32_t( debugData.nonworldTable.size() ),
+            .textureName = pPrimitive->pTextureName ? pPrimitive->pTextureName : "",
+        } );
+    }
 }
 
 void RTGL1::VulkanDevice::UploadDecal( const RgDecalUploadInfo* pInfo )
