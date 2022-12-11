@@ -129,6 +129,7 @@ private:
     void            DestroySyncPrimitives();
 
     void            FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
+    void            DrawDebugWindows() const;
 
     VkCommandBuffer BeginFrame( const RgStartFrameInfo& startInfo );
     void            Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
@@ -205,6 +206,20 @@ private:
     std::shared_ptr< UserFileLoad >              userFileLoad;
     std::shared_ptr< DebugWindows >              debugWindows;
     ScratchImmediate                             scratchImmediate;
+
+    struct DebugPrim
+    {
+        uint32_t    callIndex;
+        uint32_t    objectId;
+        std::string meshName;
+        uint32_t    primitiveIndex;
+        std::string primitiveName;
+        std::string textureName;
+    };
+    mutable struct
+    {
+        std::vector< DebugPrim > primitivesTable;
+    } debugData;
 
     bool                                         rayCullBackFacingTriangles;
     bool                                         allowGeometryWithSkyFlag;

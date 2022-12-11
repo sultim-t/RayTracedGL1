@@ -99,6 +99,7 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& startIn
     decalManager->PrepareForFrame( frameIndex );
     if( debugWindows )
     {
+        debugData.primitivesTable.clear();
         if( !debugWindows->PrepareForFrame( frameIndex ) )
         {
             debugWindows.reset();
@@ -138,20 +139,6 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->cameraPosition[ 0 ] = gu->invView[ 12 ];
         gu->cameraPosition[ 1 ] = gu->invView[ 13 ];
         gu->cameraPosition[ 2 ] = gu->invView[ 14 ];
-
-        if( debugWindows )
-        {
-            ImGui::Begin( "Test" );
-            ImGui::Text( "Camera: %.2f %.2f %.2f",
-                         gu->cameraPosition[ 0 ],
-                         gu->cameraPosition[ 1 ],
-                         gu->cameraPosition[ 2 ] );
-
-            ImGui::Text( "%.3f ms/frame (%.1f FPS)",
-                         1000.0f / ImGui::GetIO().Framerate,
-                         ImGui::GetIO().Framerate );
-            ImGui::End();
-        }
     }
 
     {
@@ -606,6 +593,107 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     gu->antiFireflyEnabled = !!drawInfo.forceAntiFirefly;
 }
 
+void RTGL1::VulkanDevice::DrawDebugWindows() const
+{
+    if( !debugWindows )
+    {
+        return;
+    }
+
+    if( ImGui::Begin( "Test" ) )
+    {
+        ImGui::Text( "%.3f ms/frame (%.1f FPS)",
+                     1000.0f / ImGui::GetIO().Framerate,
+                     ImGui::GetIO().Framerate );
+    }
+    ImGui::End();
+
+    if( ImGui::Begin( "Primitives" ) )
+    {
+        if( ImGui::BeginTable( "Primitives table",
+                               6,
+                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
+                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
+                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
+        {
+            {
+                ImGui::TableSetupColumn( "Call" );
+                ImGui::TableSetupColumn( "Object ID" );
+                ImGui::TableSetupColumn( "Mesh name" );
+                ImGui::TableSetupColumn( "Primitive index" );
+                ImGui::TableSetupColumn( "Primitive name" );
+                ImGui::TableSetupColumn( "Texture" );
+                ImGui::TableHeadersRow();
+            }
+
+            if( ImGuiTableSortSpecs* sortspecs = ImGui::TableGetSortSpecs() )
+            {
+                sortspecs->SpecsDirty = true;
+
+                std::ranges::sort(
+                    debugData.primitivesTable,
+                    [ sortspecs ]( const DebugPrim& a, const DebugPrim& b ) -> bool {
+                        for( int n = 0; n < sortspecs->SpecsCount; n++ )
+                        {
+                            const ImGuiTableColumnSortSpecs* srt = &sortspecs->Specs[ n ];
+
+                            std::strong_ordering ord{ 0 };
+                            switch( srt->ColumnIndex )
+                            {
+                                case 0: ord = ( a.callIndex <=> b.callIndex ); break;
+                                case 1: ord = ( a.objectId <=> b.objectId ); break;
+                                case 2: ord = ( a.meshName <=> b.meshName ); break;
+                                case 3: ord = ( a.primitiveIndex <=> b.primitiveIndex ); break;
+                                case 4: ord = ( a.primitiveName <=> b.primitiveName ); break;
+                                case 5: ord = ( a.textureName <=> b.textureName ); break;
+                                default: assert( 0 ); return false;
+                            }
+
+                            if( std::is_gt( ord ) )
+                            {
+                                return srt->SortDirection != ImGuiSortDirection_Ascending;
+                            }
+
+                            if( std::is_lt( ord ) )
+                            {
+                                return srt->SortDirection == ImGuiSortDirection_Ascending;
+                            }
+                        }
+
+                        return a.callIndex < b.callIndex;
+                    } );
+            }
+
+            ImGuiListClipper clipper;
+            clipper.Begin( int( debugData.primitivesTable.size() ) );
+            while( clipper.Step() )
+            {
+                for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ )
+                {
+                    const auto& prim = debugData.primitivesTable[ i ];
+
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::Text( "%u", prim.callIndex );
+                    ImGui::TableNextColumn();
+                    ImGui::Text( "%u", prim.objectId );
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted( prim.meshName.c_str() );
+                    ImGui::TableNextColumn();
+                    ImGui::Text( "%u", prim.primitiveIndex );
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted( prim.primitiveName.c_str() );
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted( prim.textureName.c_str() );
+                }
+            }
+
+            ImGui::EndTable();
+        }
+    }
+    ImGui::End();
+}
+
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
 {
     // end of "Prepare for frame" label
@@ -963,6 +1051,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     if( renderResolution.Width() > 0 && renderResolution.Height() > 0 )
     {
         FillUniform( uniform->GetData(), *pInfo );
+        DrawDebugWindows();
         Render( cmd, *pInfo );
     }
 
@@ -1024,7 +1113,23 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     }
     else
     {
-        scene->Upload( currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive );
+        bool success = scene->Upload( currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive );
+
+        if( debugWindows && success )
+        {
+            auto safeCstr = []( const char* ptr ) {
+                return ptr == nullptr ? "" : ptr;
+            };
+
+            debugData.primitivesTable.push_back( DebugPrim{
+                .callIndex      = uint32_t( debugData.primitivesTable.size() ),
+                .objectId       = pMesh->uniqueObjectID,
+                .meshName       = safeCstr( pMesh->pMeshName ),
+                .primitiveIndex = pPrimitive->primitiveIndexInMesh,
+                .primitiveName  = safeCstr( pPrimitive->primitiveNameInMesh ),
+                .textureName    = safeCstr( pPrimitive->pTextureName ),
+            } );
+        }
     }
 }
 
