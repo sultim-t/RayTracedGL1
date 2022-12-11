@@ -185,6 +185,9 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     CreateInstance( *info );
 
 
+    // clang-format off
+
+
     // create VkSurfaceKHR using user's function
     surface = GetSurfaceFromUser( instance, *info );
 
@@ -221,14 +224,17 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         physDevice->Get(), 
         cmdManager );
 
-    debugWindows = std::make_shared< DebugWindows >( 
-        instance,
-        physDevice->Get(),
-        device,
-        queues->GetIndexGraphics(),
-        queues->GetGraphics(),
-        cmdManager );
-    debugWindows->Init( debugWindows );
+    if( libconfig.developerMode )
+    {
+        debugWindows = std::make_shared< DebugWindows >( 
+            instance,
+            physDevice->Get(),
+            device,
+            queues->GetIndexGraphics(),
+            queues->GetGraphics(),
+            cmdManager );
+        debugWindows->Init( debugWindows );
+    }
 
     // for world samplers with modifyable lod biad
     worldSamplerManager = std::make_shared< SamplerManager >( device, 8, info->textureSamplerForceMinificationFilterLinear );
@@ -402,6 +408,9 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         blueNoise, 
         shaderManager, 
         info->effectWipeIsUsed );
+
+
+    // clang-format on
 
 
 #define CONSTRUCT_SIMPLE_EFFECT( T ) \
@@ -826,7 +835,7 @@ void RTGL1::VulkanDevice::CreateDevice()
         deviceExtensions.push_back( n );
     }
 
-    const auto         queueCreateInfos = queues->GetDeviceQueueCreateInfos();
+    const auto queueCreateInfos = queues->GetDeviceQueueCreateInfos();
 
     VkDeviceCreateInfo deviceCreateInfo = {
         .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
@@ -857,30 +866,40 @@ void RTGL1::VulkanDevice::CreateSyncPrimitives()
             VkSemaphoreCreateInfo semaphoreInfo = {
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             };
-            VkResult r = vkCreateSemaphore( device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[ i ] );
+            VkResult r = vkCreateSemaphore(
+                device, &semaphoreInfo, nullptr, &imageAvailableSemaphores[ i ] );
 
             VK_CHECKERROR( r );
-            SET_DEBUG_NAME( device, imageAvailableSemaphores[ i ], VK_OBJECT_TYPE_SEMAPHORE, "Image available semaphore" );
+            SET_DEBUG_NAME( device,
+                            imageAvailableSemaphores[ i ],
+                            VK_OBJECT_TYPE_SEMAPHORE,
+                            "Image available semaphore" );
         }
 
         {
             VkSemaphoreCreateInfo semaphoreInfo = {
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             };
-            VkResult r = vkCreateSemaphore( device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[ i ] );
+            VkResult r = vkCreateSemaphore(
+                device, &semaphoreInfo, nullptr, &renderFinishedSemaphores[ i ] );
 
             VK_CHECKERROR( r );
-            SET_DEBUG_NAME( device, renderFinishedSemaphores[ i ], VK_OBJECT_TYPE_SEMAPHORE, "Render finished semaphore" );
+            SET_DEBUG_NAME( device,
+                            renderFinishedSemaphores[ i ],
+                            VK_OBJECT_TYPE_SEMAPHORE,
+                            "Render finished semaphore" );
         }
 
         {
             VkSemaphoreCreateInfo semaphoreInfo = {
                 .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
             };
-            VkResult r = vkCreateSemaphore( device, &semaphoreInfo, nullptr, &inFrameSemaphores[ i ] );
+            VkResult r =
+                vkCreateSemaphore( device, &semaphoreInfo, nullptr, &inFrameSemaphores[ i ] );
 
             VK_CHECKERROR( r );
-            SET_DEBUG_NAME( device, inFrameSemaphores[ i ], VK_OBJECT_TYPE_SEMAPHORE, "In-frame semaphore" );
+            SET_DEBUG_NAME(
+                device, inFrameSemaphores[ i ], VK_OBJECT_TYPE_SEMAPHORE, "In-frame semaphore" );
         }
 
         {
@@ -898,10 +917,12 @@ void RTGL1::VulkanDevice::CreateSyncPrimitives()
             VkFenceCreateInfo nonSignaledFenceInfo = {
                 .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
             };
-            VkResult r = vkCreateFence( device, &nonSignaledFenceInfo, nullptr, &outOfFrameFences[ i ] );
+            VkResult r =
+                vkCreateFence( device, &nonSignaledFenceInfo, nullptr, &outOfFrameFences[ i ] );
 
             VK_CHECKERROR( r );
-            SET_DEBUG_NAME( device, outOfFrameFences[ i ], VK_OBJECT_TYPE_FENCE, "Out of frame fence" );
+            SET_DEBUG_NAME(
+                device, outOfFrameFences[ i ], VK_OBJECT_TYPE_FENCE, "Out of frame fence" );
         }
     }
 }
