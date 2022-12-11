@@ -1164,7 +1164,8 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     if( IsRasterized( *pMesh, *pPrimitive ) )
     {
         rasterizer->Upload( currentFrameState.GetFrameIndex(),
-                            GeometryRasterType::WORLD,
+                            pPrimitive->flags & RG_MESH_PRIMITIVE_SKY ? GeometryRasterType::SKY
+                                                                      : GeometryRasterType::WORLD,
                             *pPrimitive,
                             nullptr,
                             nullptr );
