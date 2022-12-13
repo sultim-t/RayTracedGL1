@@ -215,12 +215,7 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&      
 {
     FL flags = 0;
 
-
-    if( mesh.isStatic )
-    {
-        flags |= FL( FT::CF_STATIC_NON_MOVABLE );
-    }
-    else
+    
     {
         flags |= FL( FT::CF_DYNAMIC );
     }

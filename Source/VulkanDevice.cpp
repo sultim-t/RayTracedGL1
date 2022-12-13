@@ -86,6 +86,13 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
         shaderManager->ReloadShaders();
         debugData.reloadShaders = false;
     }
+    if( debugData.exportPrimitives )
+    {
+        assert( !exporter );
+        exporter = std::make_unique< Exporter >();
+
+        debugData.exportPrimitives = false;
+    }
 
 
     // reset cmds for current frame index
@@ -1074,12 +1081,21 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
+    if( exporter )
+    {
+        exporter->ExportToFiles( modelsPath );
+        exporter.reset();
+    }
+
     // override if requested
     if( debugWindows )
     {
         if( ImGui::Begin( "Frame" ) )
         {
             debugData.reloadShaders = ImGui::Button( "Reload shaders", { -1, 96 } );
+            ImGui::Separator();
+            debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
+            ImGui::Separator();
             ImGui::Checkbox( "Override", &debugData.overrideDrawInfo );
             if( ImGui::TreeNode( "Overriden" ) )
             {
@@ -1123,11 +1139,6 @@ namespace
 {
     bool IsRasterized( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
     {
-        if( mesh.isStatic )
-        {
-            return false;
-        }
-
         if( primitive.flags & RG_MESH_PRIMITIVE_TRANSLUCENT )
         {
             return true;
@@ -1186,9 +1197,14 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                 .objectId  = pMesh->uniqueObjectID,
                 .meshName  = safeCstr( pMesh->pMeshName ),
                 .primitiveIndex = pPrimitive->primitiveIndexInMesh,
-                .primitiveName  = safeCstr( pPrimitive->primitiveNameInMesh ),
+                .primitiveName  = safeCstr( pPrimitive->pPrimitiveNameInMesh ),
                 .textureName    = safeCstr( pPrimitive->pTextureName ),
             } );
+        }
+
+        if( exporter && pMesh->isExportable && success )
+        {
+            exporter->AddPrimitive( *pMesh, *pPrimitive );
         }
     }
 }
@@ -1391,5 +1407,29 @@ void RTGL1::VulkanDevice::ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget 
 
 void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags severity ) const
 {
-    userPrint->Print( pMessage, severity );
+    if( debugWindows )
+    {
+        if( ImGui::Begin( "Log" ) )
+        {
+            ImVec4 c;
+            switch( severity )
+            {
+                case RG_MESSAGE_SEVERITY_ERROR: c = { 1.f, 0.f, 0.f, 1.f }; break;
+                case RG_MESSAGE_SEVERITY_WARNING: c = { 1.f, 1.f, 0.f, 1.f }; break;
+                case RG_MESSAGE_SEVERITY_VERBOSE:
+                case RG_MESSAGE_SEVERITY_INFO:
+                default: c = { 1.f, 1.f, 1.f, 1.f }; break;
+            }
+
+            ImGui::PushStyleColor( ImGuiCol_Text, c );
+            ImGui::TextUnformatted( pMessage );
+            ImGui::PopStyleColor();
+        }
+        ImGui::End();
+    }
+
+    if( userPrint )
+    {
+        userPrint->Print( pMessage, severity );
+    }
 }

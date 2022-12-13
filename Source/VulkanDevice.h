@@ -59,6 +59,7 @@
 #include "Volumetric.h"
 #include "DebugWindows.h"
 #include "ScratchImmediate.h"
+#include "Exporter.h"
 
 namespace RTGL1
 {
@@ -206,6 +207,8 @@ private:
     std::shared_ptr< UserFileLoad >              userFileLoad;
     std::shared_ptr< DebugWindows >              debugWindows;
     ScratchImmediate                             scratchImmediate;
+    std::unique_ptr< Exporter >                  exporter;
+    std::filesystem::path                        modelsPath;
 
     struct DebugPrim
     {
@@ -225,7 +228,8 @@ private:
     {
         bool                         overrideDrawInfo{ false };
         bool                         ovrdVsync{ false };
-        bool                         reloadShaders;
+        bool                         reloadShaders{ false };
+        bool                         exportPrimitives{ false };
         bool                         primitivesTableEnable{ false };
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };

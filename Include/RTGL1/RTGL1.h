@@ -82,6 +82,7 @@ typedef enum RgResult
     RG_RESULT_SUCCESS_FOUND_MESH,
     RG_RESULT_SUCCESS_FOUND_TEXTURE,
     RG_RESULT_WRONG_INSTANCE,
+    RG_RESULT_ALREADY_INITIALIZED,
     RG_RESULT_GRAPHICS_API_ERROR,
     RG_RESULT_INTERNAL_ERROR,
     RG_RESULT_CANT_FIND_SUPPORTED_PHYSICAL_DEVICE,
@@ -381,7 +382,7 @@ typedef struct RgEditorInfo
 // Primitive is an indexed or non-indexed geometry with a material.
 typedef struct RgMeshPrimitiveInfo
 {
-    const char*                     primitiveNameInMesh;
+    const char*                     pPrimitiveNameInMesh;
     uint32_t                        primitiveIndexInMesh;
     RgMeshPrimitiveFlags            flags;
 
@@ -409,8 +410,8 @@ typedef struct RgMeshInfo
     uint32_t                        uniqueObjectID;
     // Name and primitive index is used to override meshes.
     const char*                     pMeshName;
-    // Set to true, if an object never changes its vertices / transform / material / properties.
-    RgBool32                        isStatic;
+    // Set to true, if an object can be exported.
+    RgBool32                        isExportable;
     const char*                     animationName;
     float                           animationTime;
 } RgMeshInfo;

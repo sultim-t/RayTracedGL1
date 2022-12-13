@@ -456,17 +456,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RG_CHECK( t );
         };
 
-        uint32_t indexInMesh = 0;
-
-        RgMeshInfo meshInfo = {
-            .uniqueObjectID = 0,
-            .pMeshName      = gltfPath.data(),
-            .isStatic       = true,
-            .animationName  = nullptr,
-            .animationTime  = 0.0f,
-        };
-
-        /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
+        // /* g_allMeshes = */FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -487,7 +477,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshInfo  mesh = {
                  .uniqueObjectID = MurmurHash32( objectName ),
                  .pMeshName      = meshName.c_str(),
-                 .isStatic       = false,
+                 .isExportable   = true,
                  .animationName  = nullptr,
                  .animationTime  = 0.0f,
             };
@@ -519,7 +509,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshInfo mesh = {
                 .uniqueObjectID = 10,
                 .pMeshName      = "test",
-                .isStatic       = false,
+                .isExportable   = false,
                 .animationName  = nullptr,
                 .animationTime  = 0.0f,
             };
@@ -550,7 +540,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshInfo mesh = {
                 .uniqueObjectID = 12,
                 .pMeshName      = "test_raster",
-                .isStatic       = false,
+                .isExportable   = false,
                 .animationName  = nullptr,
                 .animationTime  = 0.0f,
             };

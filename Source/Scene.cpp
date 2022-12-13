@@ -100,12 +100,7 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
     assert( !DoesUniqueIDExist( uniqueID ) );
-
-    if( mesh.isStatic )
-    {
-        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Expected RgMeshInfo::isStatic to be false" );
-    }
-
+    
     if( auto simpleIndex = asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false ) )
     {
         dynamicUniqueIDToSimpleIndex[ uniqueID ] = *simpleIndex;

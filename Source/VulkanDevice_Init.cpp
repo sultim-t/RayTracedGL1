@@ -172,6 +172,8 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
     , userFileLoad{ std::make_shared< UserFileLoad >(
           info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData ) }
+    , modelsPath( info->pOverridenTexturesFolderPath ? info->pOverridenTexturesFolderPath
+                                                     : DEFAULT_MODELS_PATH )
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
     , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
     , previousFrameTime( -1.0 / 60.0 )
@@ -235,6 +237,11 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
             queues->GetGraphics(),
             cmdManager );
         debugWindows->Init( debugWindows );
+
+        if ( info->pOverridenTexturesFolderPathDeveloper )
+        {
+            modelsPath = info->pOverridenTexturesFolderPathDeveloper;
+        }
     }
 
     // for world samplers with modifyable lod biad
@@ -569,8 +576,8 @@ VKAPI_ATTR VkBool32 VKAPI_CALL
               pCallbackData->pMessageIdName,
               pCallbackData->pMessage );
 
-    auto* userPrint = static_cast< RTGL1::UserPrint* >( pUserData );
-    userPrint->Print( buf, severity );
+    auto* device = static_cast< RTGL1::VulkanDevice* >( pUserData );
+    device->Print( buf, severity );
 
     return VK_FALSE;
 }
@@ -671,25 +678,22 @@ void RTGL1::VulkanDevice::CreateInstance( const RgInstanceCreateInfo& info )
     if( libconfig.vulkanValidation )
     {
         InitInstanceExtensionFunctions_DebugUtils( instance );
+        
+        // init debug utilsdebugMessenger
+        VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {
+            .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+            .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                               VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+            .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+            .pfnUserCallback = DebugMessengerCallback,
+            .pUserData       = static_cast< void* >( this ),
+        };
 
-        if( userPrint )
-        {
-            // init debug utilsdebugMessenger
-            VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {
-                .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-                .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                   VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-                .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-                               VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-                               VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-                .pfnUserCallback = DebugMessengerCallback,
-                .pUserData       = static_cast< void* >( userPrint.get() ),
-            };
-
-            r = svkCreateDebugUtilsMessengerEXT(
-                instance, &debugMessengerInfo, nullptr, &debugMessenger );
-            VK_CHECKERROR( r );
-        }
+        r = svkCreateDebugUtilsMessengerEXT(
+            instance, &debugMessengerInfo, nullptr, &debugMessenger );
+        VK_CHECKERROR( r );
     }
 }
 
