@@ -23,34 +23,37 @@
 
 namespace
 {
-constexpr uint32_t MAX_DEVICE_COUNT = 8;
+#define INITIALIZED_RGINSTANCE ( reinterpret_cast< RgInstance >( 1024 ) )
 
-rgl::unordered_map< RgInstance, std::unique_ptr< RTGL1::VulkanDevice > > G_DEVICES;
+RgInstance                             g_deviceRgInstance{ nullptr };
+std::unique_ptr< RTGL1::VulkanDevice > g_device{};
 
-RgInstance GetNextID()
+RTGL1::VulkanDevice* TryGetDevice( RgInstance rgInstance )
 {
-    return reinterpret_cast< RgInstance >( G_DEVICES.size() + 1024 );
+    if( rgInstance == g_deviceRgInstance )
+    {
+        if( g_device )
+        {
+            return g_device.get();
+        }
+    }
+    return nullptr;
 }
 
 RTGL1::VulkanDevice& GetDevice( RgInstance rgInstance )
 {
-    auto it = G_DEVICES.find( rgInstance );
-
-    if( it == G_DEVICES.end() )
+    if( auto d = TryGetDevice( rgInstance ) )
     {
-        throw RTGL1::RgException( RG_RESULT_WRONG_INSTANCE );
+        return *d;
     }
-
-    return *( it->second );
+    throw RTGL1::RgException( RG_RESULT_WRONG_INSTANCE );
 }
 
 void TryPrintError( RgInstance rgInstance, const char* pMessage, RgMessageSeverityFlags severity )
 {
-    auto it = G_DEVICES.find( rgInstance );
-
-    if( it != G_DEVICES.end() )
+    if( auto d = TryGetDevice( rgInstance ) )
     {
-        it->second->Print( pMessage, severity );
+        d->Print( pMessage, severity );
     }
 }
 }
@@ -61,19 +64,17 @@ RgResult rgCreateInstance( const RgInstanceCreateInfo* pInfo, RgInstance* pResul
 {
     *pResult = nullptr;
 
-    if( G_DEVICES.size() >= MAX_DEVICE_COUNT )
+    if( TryGetDevice( g_deviceRgInstance ) )
     {
-        return RG_RESULT_WRONG_INSTANCE;
+        return RG_RESULT_ALREADY_INITIALIZED;
     }
-
-    // insert new
-    RgInstance rgInstance = GetNextID();
-    assert( G_DEVICES.find( rgInstance ) == G_DEVICES.end() );
 
     try
     {
-        G_DEVICES[ rgInstance ] = std::make_unique< RTGL1::VulkanDevice >( pInfo );
-        *pResult                = rgInstance;
+        g_device = std::make_unique< RTGL1::VulkanDevice >( pInfo );
+        g_deviceRgInstance = INITIALIZED_RGINSTANCE;
+
+        *pResult = g_deviceRgInstance;
     }
     // TODO: VulkanDevice must clean all the resources if initialization failed!
     // So for now exceptions should not happen. But if they did, target application must be closed.
@@ -92,14 +93,15 @@ RgResult rgCreateInstance( const RgInstanceCreateInfo* pInfo, RgInstance* pResul
 
 RgResult rgDestroyInstance( RgInstance rgInstance )
 {
-    if( G_DEVICES.find( rgInstance ) == G_DEVICES.end() )
+    if( !TryGetDevice( rgInstance ) )
     {
         return RG_RESULT_WRONG_INSTANCE;
     }
 
     try
     {
-        G_DEVICES.erase( rgInstance );
+        g_device.reset();
+        g_deviceRgInstance = nullptr;
     }
     catch( RTGL1::RgException& e )
     {
