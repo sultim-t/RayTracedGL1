@@ -29,6 +29,7 @@
 #include <array>
 #include <cassert>
 #include <fstream>
+#include <queue>
 #include <span>
 #include <type_traits>
 
@@ -413,6 +414,131 @@ constexpr size_t AttributesPerPrim = std::size(
     std::invoke_result_t< decltype( MakeVertexAttributes ), std::span< cgltf_accessor > >{} );
 
 
+struct BeginCount
+{
+    ptrdiff_t offset;
+    size_t count;
+
+    template< typename T > std::span< T > ToSpan( std::vector< T >& container ) const
+    {
+        return { container.begin() + offset, count };
+    }
+
+    template< typename T > T* ToPointer( std::vector< T >& container ) const
+    {
+        assert( count == 1 );
+        return &container[ offset ];
+    }
+
+    template< typename T > std::vector< T* > ToVectorOfPointers( std::vector< T >& container ) const
+    {
+        std::vector< T* > ptrs;
+
+        std::ranges::transform(
+            ToSpan< T >( container ), std::back_inserter( ptrs ), ConvertRefToPtr< T > );
+
+        return ptrs;
+    }
+};
+
+template< typename T > auto append_n( std::vector< T >& v, size_t toadd )
+{
+    auto begin = ptrdiff_t( v.size() );
+    v.resize( v.size() + toadd );
+    
+    return BeginCount{ begin, toadd };
+}
+
+
+struct GltfRoot
+{
+    std::string                name;
+    cgltf_node*                parent;
+    std::vector< cgltf_node* > children;
+
+    std::span< cgltf_buffer_view > bufferViews;
+    std::span< cgltf_accessor >    accessors;
+    std::span< cgltf_attribute >   attributes;
+    std::span< cgltf_primitive >   primitives;
+    std::span< cgltf_mesh >        meshes;
+
+    std::vector< std::shared_ptr< RTGL1::DeepCopyOfPrimitive > > source;
+};
+
+struct GltfStorage
+{
+    explicit GltfStorage(
+        const rgl::unordered_map< std::string,
+                                  std::vector< std::shared_ptr< RTGL1::DeepCopyOfPrimitive > > >&
+            scene )
+    {
+        struct Ranges
+        {
+            BeginCount bufferViews;
+            BeginCount accessors;
+            BeginCount attributes;
+            BeginCount primitives;
+            BeginCount meshes;
+            BeginCount parent;
+            BeginCount children;
+        };
+        std::queue< Ranges > ranges;
+
+        // alloc
+        for( const auto& [ meshname, prims ] : scene )
+        {
+            ranges.push( Ranges{
+                .bufferViews = append_n( allBufferViews, prims.size() * BufferViewsPerPrim ),
+                .accessors   = append_n( allAccessors, prims.size() * AccessorsPerPrim ),
+                .attributes  = append_n( allAttributes, prims.size() * AttributesPerPrim ),
+                .primitives  = append_n( allPrimitives, prims.size() ),
+                .meshes      = append_n( allMeshes, prims.size() ),
+                .parent      = append_n( allNodes, 1 ),
+                .children    = append_n( allNodes, prims.size() ),
+            } );
+        }
+
+        // resolve pointers
+        for( const auto& [ meshName, prims ] : scene )
+        {
+            const Ranges r = ranges.front();
+            ranges.pop();
+
+            GltfRoot root = {
+                .name        = meshName,
+                .parent      = r.parent.ToPointer( allNodes ),
+                .children    = r.children.ToVectorOfPointers( allNodes ),
+                .bufferViews = r.bufferViews.ToSpan( allBufferViews ),
+                .accessors   = r.accessors.ToSpan( allAccessors ),
+                .attributes  = r.attributes.ToSpan( allAttributes ),
+                .primitives  = r.primitives.ToSpan( allPrimitives ),
+                .meshes      = r.meshes.ToSpan( allMeshes ),
+                .source      = prims,
+            };
+
+            assert( root.source.size() == root.children.size() );
+            assert( root.source.size() == root.primitives.size() );
+            assert( root.source.size() == root.meshes.size() );
+
+            rootNodes.push_back( root.parent );
+            roots.push_back( std::move( root ) );
+        }
+
+        assert( ranges.empty() );
+    }
+
+    std::vector< cgltf_buffer_view > allBufferViews;
+    std::vector< cgltf_accessor >    allAccessors;
+    std::vector< cgltf_attribute >   allAttributes;
+    std::vector< cgltf_primitive >   allPrimitives;
+    std::vector< cgltf_mesh >        allMeshes;
+    std::vector< cgltf_node >        allNodes;
+
+    std::vector< GltfRoot >    roots; // each corresponds to RgMeshInfo
+    std::vector< cgltf_node* > rootNodes;
+};
+
+
 }
 
 
@@ -449,19 +575,92 @@ void RTGL1::Exporter::ExportToFiles( const std::filesystem::path& folder )
     }
 
     const char *sceneName = nullptr;
-
-    const auto [ rgmeshName, rgprimitives ] = *scene.begin();
     
-    const char* primExtrasExample = nullptr /*"{\n"
-                                    "    \"portalOutPosition\" : [0,0,0]\n"
-                                    "}\n"*/;
-    const char* sceneExtrasExample = nullptr /*"{\n"
-                                     "    \"tonemapping_enable\" : 1\n"
-                                     "}\n"*/;
+    
+    const char* primExtrasExample  = nullptr; // "{ portalOutPosition\" : [0,0,0] }";
+    const char* sceneExtrasExample = nullptr; // "{ tonemapping_enable\" : 1 }";
 
+    
+    // lock pointers
+    BinFile fbin( folder, sceneName );
+    GltfStorage storage( scene );
+    
+
+    for( GltfRoot& root : storage.roots )
+    {
+        *root.parent = cgltf_node{
+            .name           = const_cast< char* >( root.name.c_str() ),
+            .parent         = nullptr,
+            .children       = std::data( root.children ),
+            .children_count = std::size( root.children ),
+            .extras         = { .data = nullptr },
+        };
+
+        for( size_t i = 0; i < root.source.size(); i++ )
+        {
+            const DeepCopyOfPrimitive& rgprim = *root.source[ i ];
+
+            std::span viewsDst( root.bufferViews.begin() + ptrdiff_t( BufferViewsPerPrim * i ),
+                                BufferViewsPerPrim );
+            {
+                std::ranges::swap_ranges( viewsDst, MakeBufferViews( fbin, rgprim ) );
+            }
+
+            std::span accessorsDst( root.accessors.begin() + ptrdiff_t( AccessorsPerPrim * i ),
+                                    AccessorsPerPrim );
+            {
+                std::ranges::swap_ranges(
+                    accessorsDst,
+                    MakeAccessors( rgprim.Vertices().size(), rgprim.Indices().size(), viewsDst ) );
+            }
+
+            std::span vertAttrsDst( root.attributes.begin() + ptrdiff_t( AttributesPerPrim * i ),
+                                    AttributesPerPrim );
+            {
+                std::ranges::swap_ranges( vertAttrsDst, MakeVertexAttributes( accessorsDst ) );
+            }
+
+            root.primitives[ i ] = cgltf_primitive{
+                .type             = cgltf_primitive_type_triangles,
+                .indices          = GetIndicesAccessor( accessorsDst ),
+                .material         = nullptr,
+                .attributes       = std::data( vertAttrsDst ),
+                .attributes_count = std::size( vertAttrsDst ),
+                .extras           = {},
+            };
+
+            root.meshes[ i ] = cgltf_mesh{
+                .name             = const_cast< char* >( rgprim.PrimitiveNameInMesh().c_str() ),
+                .primitives       = &root.primitives[ i ],
+                .primitives_count = 1,
+                .extras           = {},
+            };
+
+            *root.children[ i ] = cgltf_node{
+                .name           = const_cast< char* >( rgprim.PrimitiveNameInMesh().c_str() ),
+                .parent         = root.parent,
+                .children       = nullptr,
+                .children_count = 0,
+                .mesh           = &root.meshes[ i ],
+                .camera         = nullptr,
+                .light          = nullptr,
+                .has_matrix     = true,
+                .matrix         = RG_TRANSFORM_TO_GLTF_MATRIX( rgprim.Transform() ),
+                .extras         = { .data = const_cast< char* >( primExtrasExample ) },
+                .has_mesh_gpu_instancing = false,
+                .mesh_gpu_instancing     = {},
+            };
+        }
+    }
+
+    cgltf_scene gltfScene = {
+        .name        = const_cast< char* >( "default" ),
+        .nodes       = std::data( storage.rootNodes ),
+        .nodes_count = std::size( storage.rootNodes ),
+        .extras      = { .data = const_cast< char* >( sceneExtrasExample ) },
+    };
 
     // Note: const_cast, assuming that cgltf_write_file makes only read-only access
-    
     cgltf_data data = {
         .asset =
             cgltf_asset{
@@ -470,119 +669,20 @@ void RTGL1::Exporter::ExportToFiles( const std::filesystem::path& folder )
                 .version     = const_cast< char* >( "2.0" ),
                 .min_version = nullptr,
             },
+        .meshes             = std::data( storage.allMeshes ),
+        .meshes_count       = std::size( storage.allMeshes ),
+        .accessors          = std::data( storage.allAccessors ),
+        .accessors_count    = std::size( storage.allAccessors ),
+        .buffer_views       = std::data( storage.allBufferViews ),
+        .buffer_views_count = std::size( storage.allBufferViews ),
+        .buffers            = fbin.Get(),
+        .buffers_count      = 1,
+        .nodes              = std::data( storage.allNodes ),
+        .nodes_count        = std::size( storage.allNodes ),
+        .scenes             = &gltfScene,
+        .scenes_count       = 1,
+        .scene              = &gltfScene,
     };
-
-    
-    // lock pointer
-    BinFile fbin( folder, sceneName );
-
-
-    // lock pointers - no resize!
-    // clang-format off
-    auto bufferViews = std::vector< cgltf_buffer_view   >( BufferViewsPerPrim * rgprimitives.size() );
-    auto accessors   = std::vector< cgltf_accessor      >( AccessorsPerPrim * rgprimitives.size() );
-    auto vertAttrs   = std::vector< cgltf_attribute     >( AttributesPerPrim * rgprimitives.size() );
-    auto gltfPrims   = std::vector< cgltf_primitive     >( rgprimitives.size() );
-    auto gltfMeshes  = std::vector< cgltf_mesh          >( rgprimitives.size() );
-    // clang-format on
-    data.buffer_views       = std::data( bufferViews );
-    data.buffer_views_count = std::size( bufferViews );
-    data.accessors          = std::data( accessors );
-    data.accessors_count    = std::size( accessors );
-    data.meshes             = std::data( gltfMeshes );
-    data.meshes_count       = std::size( gltfMeshes );
-
-    
-    // lock pointers - no resize!
-    auto allNodes = std::vector< cgltf_node >( 1 /* parent */ + gltfMeshes.size() );
-    
-    cgltf_node* parentNode = &allNodes[ 0 ];
-    std::vector< cgltf_node* > childNodes;
-    std::ranges::transform( std::span( allNodes.begin() + 1, gltfMeshes.size() ),
-                            std::back_inserter( childNodes ),
-                            ConvertRefToPtr< cgltf_node > );
-    *parentNode = cgltf_node{
-        .name           = const_cast< char* >( rgmeshName.c_str() ),
-        .parent         = nullptr,
-        .children       = std::data( childNodes ),
-        .children_count = std::size( childNodes ),
-        .extras         = { .data = nullptr },
-    };
-
-    data.nodes       = std::data( allNodes );
-    data.nodes_count = std::size( allNodes );
-
-
-    for( size_t i = 0; i < rgprimitives.size(); i++ )
-    {
-        const DeepCopyOfPrimitive& rgprim = *rgprimitives[ i ];
-
-        std::span viewsDst( bufferViews.begin() + ptrdiff_t( BufferViewsPerPrim * i ),
-                            BufferViewsPerPrim );
-        {
-            std::ranges::swap_ranges( viewsDst, MakeBufferViews( fbin, rgprim ) );
-        }
-
-        std::span accessorsDst( accessors.begin() + ptrdiff_t( AccessorsPerPrim * i ),
-                                AccessorsPerPrim );
-        {
-            std::ranges::swap_ranges(
-                accessorsDst,
-                MakeAccessors( rgprim.Vertices().size(), rgprim.Indices().size(), viewsDst ) );
-        }
-
-        std::span vertAttrsDst( vertAttrs.begin() + ptrdiff_t( AttributesPerPrim * i ),
-                                AttributesPerPrim );
-        {
-            std::ranges::swap_ranges( vertAttrsDst, MakeVertexAttributes( accessorsDst ) );
-        }
-
-        gltfPrims[ i ] = cgltf_primitive{
-            .type             = cgltf_primitive_type_triangles,
-            .indices          = GetIndicesAccessor( accessorsDst ),
-            .material         = nullptr,
-            .attributes       = std::data( vertAttrsDst ),
-            .attributes_count = std::size( vertAttrsDst ),
-            .extras           = {},
-        };
-
-        gltfMeshes[ i ] = cgltf_mesh{
-            .name             = const_cast< char* >( rgprim.PrimitiveNameInMesh().c_str() ),
-            .primitives       = &gltfPrims[ i ],
-            .primitives_count = 1,
-            .extras           = {},
-        };
-
-        *childNodes[ i ] = cgltf_node{
-            .name                    = const_cast< char* >( rgprim.PrimitiveNameInMesh().c_str() ),
-            .parent                  = parentNode,
-            .children                = nullptr,
-            .children_count          = 0,
-            .mesh                    = &gltfMeshes[ i ],
-            .camera                  = nullptr,
-            .light                   = nullptr,
-            .has_matrix              = true,
-            .matrix                  = RG_TRANSFORM_TO_GLTF_MATRIX( rgprim.Transform() ),
-            .extras                  = { .data = const_cast< char* >( primExtrasExample ) },
-            .has_mesh_gpu_instancing = false,
-            .mesh_gpu_instancing     = {},
-        };
-    }
-    
-    cgltf_scene scenes[] = {
-        {
-            .name        = const_cast< char* >( "default" ),
-            .nodes       = &parentNode,
-            .nodes_count = 1,
-            .extras      = { .data = const_cast< char* >( sceneExtrasExample ) },
-        },
-    };
-    data.scenes       = std::data( scenes );
-    data.scenes_count = std::size( scenes );
-    data.scene        = &scenes[ 0 ];
-
-    data.buffers       = fbin.Get();
-    data.buffers_count = 1;
 
     cgltf_options options = {};
     cgltf_result  r;
