@@ -22,14 +22,20 @@
 
 #include <RTGL1/RTGL1.h>
 
+#include "Containers.h"
+
 #include <filesystem>
+#include <functional>
 
 namespace RTGL1
 {
+    struct DeepCopyOfPrimitive;
+
     class Exporter
     {
     public:
-        Exporter();
+        explicit Exporter(
+            std::function< void( const char*, RgMessageSeverityFlags ) > debugprint );
         ~Exporter();
 
         Exporter( const Exporter& other )                = delete;
@@ -41,6 +47,9 @@ namespace RTGL1
         void ExportToFiles( const std::filesystem::path& folder );
 
     private:
-
+        std::function< void( const char*, RgMessageSeverityFlags ) > debugprint;
+        
+        rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > >
+            scene;
     };
 }

@@ -234,6 +234,7 @@ private:
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };
         std::vector< DebugNonWorld > nonworldTable{};
+        std::pair< RgMessageSeverityFlags, std::string > lastlog;
     } debugData;
 
     bool rayCullBackFacingTriangles;

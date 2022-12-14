@@ -456,7 +456,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RG_CHECK( t );
         };
 
-        // /* g_allMeshes = */FillGAllMeshes( gltfPath, uploadMaterial );
+         /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -476,7 +476,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
 
             RgMeshInfo  mesh = {
                  .uniqueObjectID = MurmurHash32( objectName ),
-                 .pMeshName      = meshName.c_str(),
+                .pMeshName      = objectName.c_str(), // meshName.c_str(),
                  .isExportable   = true,
                  .animationName  = nullptr,
                  .animationTime  = 0.0f,
@@ -486,6 +486,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             for( const auto& srcPrim : primitives )
             {
                 RgMeshPrimitiveInfo prim = {
+                    .pPrimitiveNameInMesh = srcPrim.texture.c_str(),
                     .primitiveIndexInMesh = index++,
                     .flags                = 0,
                     .transform            = srcPrim.transform,

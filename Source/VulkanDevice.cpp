@@ -89,7 +89,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     if( debugData.exportPrimitives )
     {
         assert( !exporter );
-        exporter = std::make_unique< Exporter >();
+        exporter = std::make_unique< Exporter >(
+            [ this ]( const char* pMessage, RgMessageSeverityFlags severity ) {
+                this->Print( pMessage, severity );
+            } );
 
         debugData.exportPrimitives = false;
     }
@@ -740,6 +743,26 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
     }
     ImGui::End();
+    
+    if( ImGui::Begin( "Log" ) )
+    {
+        const auto [ severity, msg ] = debugData.lastlog;
+
+        ImVec4 c;
+        switch( severity )
+        {
+            case RG_MESSAGE_SEVERITY_ERROR: c = { 1.f, 0.f, 0.f, 1.f }; break;
+            case RG_MESSAGE_SEVERITY_WARNING: c = { 1.f, 1.f, 0.f, 1.f }; break;
+            case RG_MESSAGE_SEVERITY_VERBOSE:
+            case RG_MESSAGE_SEVERITY_INFO:
+            default: c = { 1.f, 1.f, 1.f, 1.f }; break;
+        }
+
+        ImGui::PushStyleColor( ImGuiCol_Text, c );
+        ImGui::TextUnformatted( msg.c_str() );
+        ImGui::PopStyleColor();
+    }
+    ImGui::End();
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
@@ -1202,7 +1225,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
             } );
         }
 
-        if( exporter && pMesh->isExportable && success )
+        if( exporter && success )
         {
             exporter->AddPrimitive( *pMesh, *pPrimitive );
         }
@@ -1409,23 +1432,7 @@ void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags se
 {
     if( debugWindows )
     {
-        if( ImGui::Begin( "Log" ) )
-        {
-            ImVec4 c;
-            switch( severity )
-            {
-                case RG_MESSAGE_SEVERITY_ERROR: c = { 1.f, 0.f, 0.f, 1.f }; break;
-                case RG_MESSAGE_SEVERITY_WARNING: c = { 1.f, 1.f, 0.f, 1.f }; break;
-                case RG_MESSAGE_SEVERITY_VERBOSE:
-                case RG_MESSAGE_SEVERITY_INFO:
-                default: c = { 1.f, 1.f, 1.f, 1.f }; break;
-            }
-
-            ImGui::PushStyleColor( ImGuiCol_Text, c );
-            ImGui::TextUnformatted( pMessage );
-            ImGui::PopStyleColor();
-        }
-        ImGui::End();
+        debugData.lastlog = { severity, pMessage };
     }
 
     if( userPrint )
