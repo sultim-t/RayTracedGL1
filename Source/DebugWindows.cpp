@@ -58,7 +58,7 @@ GLFWwindow* CreateGLFWWindow()
 
     glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API );
     glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
-    return glfwCreateWindow( 1280, 720, "ImGui window", nullptr, nullptr );
+    return glfwCreateWindow( 700, 1000, "RTGL1 Dev", nullptr, nullptr );
 }
 
 void UploadFonts( RTGL1::CommandBufferManager& cmdManager )

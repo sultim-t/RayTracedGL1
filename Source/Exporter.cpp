@@ -546,7 +546,7 @@ void RTGL1::Exporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiv
 {
     if ( !mesh.isExportable )
     {
-    //    return;
+        return;
     }
 
     if( IsCstrEmpty( mesh.pMeshName ) || IsCstrEmpty( primitive.pPrimitiveNameInMesh ) )

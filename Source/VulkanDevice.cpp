@@ -746,21 +746,44 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     
     if( ImGui::Begin( "Log" ) )
     {
-        const auto [ severity, msg ] = debugData.lastlog;
+        ImGui::CheckboxFlags( "Errors", &debugData.logFlags, RG_MESSAGE_SEVERITY_ERROR );
+        ImGui::SameLine();
+        ImGui::CheckboxFlags( "Warnings", &debugData.logFlags, RG_MESSAGE_SEVERITY_WARNING );
+        ImGui::SameLine();
+        ImGui::CheckboxFlags( "Info", &debugData.logFlags, RG_MESSAGE_SEVERITY_INFO );
+        ImGui::SameLine();
+        ImGui::CheckboxFlags( "Verbose", &debugData.logFlags, RG_MESSAGE_SEVERITY_VERBOSE );
 
-        ImVec4 c;
-        switch( severity )
+        for( const auto& [ severity, msg ] : debugData.logs )
         {
-            case RG_MESSAGE_SEVERITY_ERROR: c = { 1.f, 0.f, 0.f, 1.f }; break;
-            case RG_MESSAGE_SEVERITY_WARNING: c = { 1.f, 1.f, 0.f, 1.f }; break;
-            case RG_MESSAGE_SEVERITY_VERBOSE:
-            case RG_MESSAGE_SEVERITY_INFO:
-            default: c = { 1.f, 1.f, 1.f, 1.f }; break;
-        }
+            RgMessageSeverityFlags filtered = severity & debugData.logFlags;
 
-        ImGui::PushStyleColor( ImGuiCol_Text, c );
-        ImGui::TextUnformatted( msg.c_str() );
-        ImGui::PopStyleColor();
+            ImU32 color;
+            if( filtered & RG_MESSAGE_SEVERITY_ERROR )
+            {
+                color = IM_COL32( 255, 0, 0, 255 );
+            }
+            else if( filtered & RG_MESSAGE_SEVERITY_WARNING )
+            {
+                color = IM_COL32( 255, 255, 0, 255 );
+            }
+            else if( filtered & RG_MESSAGE_SEVERITY_INFO )
+            {
+                color = IM_COL32( 255, 255, 255, 255 );
+            }
+            else if( filtered & RG_MESSAGE_SEVERITY_VERBOSE )
+            {
+                color = IM_COL32( 255, 255, 255, 255 );
+            }
+            else
+            {
+                assert( filtered == 0 );
+                continue;
+            }
+            ImGui::PushStyleColor( ImGuiCol_Text, color );
+            ImGui::TextUnformatted( msg.c_str() );
+            ImGui::PopStyleColor();
+        }
     }
     ImGui::End();
 }
@@ -1432,7 +1455,7 @@ void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags se
 {
     if( debugWindows )
     {
-        debugData.lastlog = { severity, pMessage };
+        debugData.logs.emplace_back( severity, pMessage );
     }
 
     if( userPrint )
