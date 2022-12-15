@@ -59,7 +59,7 @@
 #include "Volumetric.h"
 #include "DebugWindows.h"
 #include "ScratchImmediate.h"
-#include "Exporter.h"
+#include "GltfExporter.h"
 
 namespace RTGL1
 {

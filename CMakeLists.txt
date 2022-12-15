@@ -85,7 +85,7 @@ set(Sources
     "Source/Volumetric.cpp"
     "Source/DebugWindows.cpp"
     "Source/ScratchImmediate.cpp"
-    "Source/Exporter.cpp"
+    "Source/GltfExporter.cpp"
 )
 
 
