@@ -42,7 +42,9 @@ public:
     GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
-    void ExportToFiles( const std::filesystem::path& folder );
+    void ExportToFiles( const std::filesystem::path& folder, std::string_view sceneName );
+
+    static bool CanBeExported( const RgMeshInfo* mesh, const RgMeshPrimitiveInfo* primitive );
 
 private:
     rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;

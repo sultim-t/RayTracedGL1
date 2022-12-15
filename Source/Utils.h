@@ -175,6 +175,17 @@ namespace Utils
 
     RgFloat4D UnpackColor4DPacked32( RgColor4DPacked32 c );
     float UnpackAlphaFromPacked32( RgColor4DPacked32 c );
+    
+    inline bool IsCstrEmpty( const char* cstr ) { return cstr == nullptr || *cstr == '\0'; }
+
+    // clang-format off
+    // Column memory order!
+    #define RG_TRANSFORM_TO_GLTF_MATRIX( t ) {                                      \
+        ( t ).matrix[ 0 ][ 0 ], ( t ).matrix[ 1 ][ 0 ], ( t ).matrix[ 2 ][ 0 ], 0,  \
+        ( t ).matrix[ 0 ][ 1 ], ( t ).matrix[ 1 ][ 1 ], ( t ).matrix[ 2 ][ 1 ], 0,  \
+        ( t ).matrix[ 0 ][ 2 ], ( t ).matrix[ 1 ][ 2 ], ( t ).matrix[ 2 ][ 2 ], 0,  \
+        ( t ).matrix[ 0 ][ 3 ], ( t ).matrix[ 1 ][ 3 ], ( t ).matrix[ 2 ][ 3 ], 1   }
+    // clang-format on
 };
 
 template<typename T>

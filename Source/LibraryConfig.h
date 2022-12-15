@@ -20,6 +20,8 @@
 
 #pragma once
 
+#include "Utils.h"
+
 #include <filesystem>
 #include <fstream>
 
@@ -58,7 +60,7 @@ namespace detail
 
 inline Config Read( const char* pPath )
 {
-    if( pPath == nullptr || pPath[ 0 ] == '\0' )
+    if( Utils::IsCstrEmpty( pPath ) )
     {
         pPath = "RayTracedGL1.txt";
     }

@@ -24,6 +24,7 @@
 #include "Const.h"
 #include "TextureOverrides.h"
 #include "RgException.h"
+#include "Utils.h"
 
 namespace
 {
@@ -340,7 +341,7 @@ void RTGL1::CubemapManager::AddForDeletion( uint32_t frameIndex, Texture& txd )
 
 bool RTGL1::CubemapManager::TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName )
 {
-    if( pTextureName == nullptr || pTextureName[ 0 ] == '\0' )
+    if( Utils::IsCstrEmpty( pTextureName ) )
     {
         return false;
     }

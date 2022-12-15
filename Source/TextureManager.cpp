@@ -294,7 +294,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                                         uint32_t                     frameIndex,
                                         const RgOriginalTextureInfo& info )
 {
-    if( info.pTextureName == nullptr || info.pTextureName[ 0 ] == '\0' )
+    if( Utils::IsCstrEmpty( info.pTextureName ) )
     {
         throw RgException(
             RG_RESULT_WRONG_FUNCTION_ARGUMENT,
@@ -631,7 +631,7 @@ void TextureManager::DestroyMaterialTextures( uint32_t frameIndex, const Materia
 
 bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName )
 {
-    if( pTextureName == nullptr || pTextureName[ 0 ] == '\0' )
+    if( Utils::IsCstrEmpty( pTextureName ) )
     {
         return false;
     }
@@ -723,7 +723,7 @@ void TextureManager::AddToBeDestroyed( uint32_t frameIndex, const Texture& textu
 
 MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName ) const
 {
-    if( pTextureName == nullptr || pTextureName[ 0 ] == '\0' )
+    if( Utils::IsCstrEmpty( pTextureName ) )
     {
         return EmptyMaterialTextures;
     }

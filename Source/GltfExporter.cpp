@@ -43,44 +43,27 @@ auto* ConvertRefToPtr( auto& ref )
     return &ref;
 }
 
-bool IsCstrEmpty(const char *cstr)
-{
-    return cstr == nullptr || *cstr == '\0';
-}
-
 std::string SafeString( const char* cstr )
 {
-    return IsCstrEmpty( cstr ) ? "" : cstr;
+    return RTGL1::Utils::IsCstrEmpty( cstr ) ? "" : cstr;
 }
 
-std::string SafeSceneName( const char* pSceneName )
+std::filesystem::path GetGltfPath( const std::filesystem::path& folder, std::string_view sceneName )
 {
-    return IsCstrEmpty( pSceneName ) ? "scene" : pSceneName;
+    assert( !sceneName.empty() );
+    return folder / ( std::string( sceneName ) + ".gltf" );
 }
 
-std::filesystem::path GetGltfPath( const std::filesystem::path& folder, const char* pSceneName )
+std::string GetGltfBinURI( std::string_view sceneName )
 {
-    return folder / ( SafeSceneName( pSceneName ) + ".gltf" );
+    assert( !sceneName.empty() );
+    return std::string( sceneName ) + ".bin";
 }
 
-std::string GetGltfBinURI( const char* pSceneName )
+std::filesystem::path GetGltfBinPath( const std::filesystem::path& folder, std::string_view sceneName )
 {
-    return SafeSceneName( pSceneName ) + ".bin";
+    return folder / GetGltfBinURI( sceneName );
 }
-
-std::filesystem::path GetGltfBinPath( const std::filesystem::path& folder, const char* pSceneName )
-{
-    return folder / GetGltfBinURI( pSceneName );
-}
-
-// clang-format off
-#define RG_TRANSFORM_TO_GLTF_MATRIX( t ) {                                  \
-    ( t ).matrix[ 0 ][ 0 ], ( t ).matrix[ 0 ][ 1 ], ( t ).matrix[ 0 ][ 2 ], \
-    ( t ).matrix[ 0 ][ 3 ], ( t ).matrix[ 1 ][ 0 ], ( t ).matrix[ 1 ][ 1 ], \
-    ( t ).matrix[ 1 ][ 2 ], ( t ).matrix[ 1 ][ 3 ], ( t ).matrix[ 2 ][ 0 ], \
-    ( t ).matrix[ 2 ][ 1 ], ( t ).matrix[ 2 ][ 2 ], ( t ).matrix[ 2 ][ 3 ], \
-    0.f, 0.f, 0.f, 1.f }
-// clang-format on
 }
 
 
@@ -197,9 +180,9 @@ namespace
 
 struct BinFile
 {
-    explicit BinFile( const std::filesystem::path& folder, const char* pSceneName )
-        : uri( GetGltfBinURI( pSceneName ) )
-        , file( GetGltfBinPath( folder, pSceneName ),
+    explicit BinFile( const std::filesystem::path& folder, std::string_view sceneName )
+        : uri( GetGltfBinURI( sceneName ) )
+        , file( GetGltfBinPath( folder, sceneName ),
                 std::ios::out | std::ios::trunc | std::ios::binary )
         , fileOffset( 0 )
         , storage{}
@@ -542,32 +525,46 @@ struct GltfStorage
 
 }
 
+bool RTGL1::GltfExporter::CanBeExported( const RgMeshInfo*          mesh,
+                                         const RgMeshPrimitiveInfo* primitive )
+{
+    if( mesh && primitive )
+    {
+        if( mesh->isExportable )
+        {
+            if( !Utils::IsCstrEmpty( mesh->pMeshName ) &&
+                !Utils::IsCstrEmpty( primitive->pPrimitiveNameInMesh ) )
+            {
+                return true;
+            }
+        }
+    }
+    
+    return false;
+}
 
 void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
 {
-    if ( !mesh.isExportable )
-    {
-        return;
-    }
-
-    if( IsCstrEmpty( mesh.pMeshName ) || IsCstrEmpty( primitive.pPrimitiveNameInMesh ) )
+    if( !CanBeExported( &mesh, &primitive ) )
     {
         return;
     }
 
     if( primitive.indexCount == 0 || primitive.pIndices == nullptr )
     {
-        debugprint( ( std::string( "Exporter doesn't support primitives without index buffer: " ) +
-                      mesh.pMeshName + " - " + primitive.pPrimitiveNameInMesh )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debugprint(
+            std::format( "Exporter doesn't support primitives without index buffer: {} - {}",
+                         mesh.pMeshName,
+                         primitive.pPrimitiveNameInMesh ).c_str(),
+            RG_MESSAGE_SEVERITY_WARNING );
         return;
     }
 
     scene[ mesh.pMeshName ].emplace_back( std::make_shared< DeepCopyOfPrimitive >( primitive ) );
 }
 
-void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder )
+void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
+                                         std::string_view             sceneName )
 {
     if( scene.empty() )
     {
@@ -575,7 +572,12 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder )
         return;
     }
 
-    const char *sceneName = nullptr;
+    if( sceneName.empty() )
+    {
+        debugprint( "Can't export: RgDrawFrameInfo::pMapName is an empty string",
+                    RG_MESSAGE_SEVERITY_WARNING );
+        return;
+    }
     
     
     const char* primExtrasExample  = nullptr; // "{ portalOutPosition\" : [0,0,0] }";
@@ -721,5 +723,6 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder )
         return;
     }
 
-    debugprint( ( gltfPath + ": Exported successfully" ).c_str(), RG_MESSAGE_SEVERITY_INFO );
+    debugprint( std::format( "{}: Exported successfully", gltfPath ).c_str(),
+                RG_MESSAGE_SEVERITY_INFO );
 }

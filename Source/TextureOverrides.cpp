@@ -26,6 +26,7 @@
 
 #include "Const.h"
 #include "ImageLoader.h"
+#include "Utils.h"
 
 using namespace RTGL1;
 
@@ -135,7 +136,7 @@ std::optional< std::filesystem::path > GetTexturePath( const char* commonFolderP
                                                        const char* postfix,
                                                        const char* extension )
 {
-    if( relativePath == nullptr || relativePath[ 0 ] == '\0' )
+    if( Utils::IsCstrEmpty( relativePath ) )
     {
         return std::nullopt;
     }
