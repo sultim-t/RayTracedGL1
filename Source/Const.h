@@ -49,4 +49,6 @@ constexpr float       MESH_TRANSLUCENT_ALPHA_THRESHOLD = 0.98f;
 // Use WORLD2 mask bit as SKY
 #define RAYCULLMASK_SKY_IS_WORLD2 1
 
+#define RTGL1_MAIN_ROOT_NODE "rtgl1_main_root"
+
 }

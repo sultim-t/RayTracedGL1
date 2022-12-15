@@ -86,6 +86,7 @@ set(Sources
     "Source/DebugWindows.cpp"
     "Source/ScratchImmediate.cpp"
     "Source/GltfExporter.cpp"
+    "Source/GltfImporter.cpp"
 )
 
 
@@ -252,6 +253,9 @@ if (RG_WITH_IMGUI)
     target_link_libraries(RayTracedGL1 PRIVATE glfw)
     target_include_directories(RayTracedGL1 PRIVATE glfw)
 endif()
+
+# GLM from VulkanSDK
+target_include_directories(RayTracedGL1 PRIVATE "$ENV{VULKAN_SDK}/Third-Party/Include")
 
 if (RG_WITH_EXAMPLES)
     message(STATUS "RG_WITH_EXAMPLES enabled")

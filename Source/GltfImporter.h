@@ -21,32 +21,30 @@
 #pragma once
 
 #include "Common.h"
-#include "Containers.h"
 
 #include <filesystem>
-#include <functional>
+
+struct cgltf_data;
 
 namespace RTGL1
 {
-struct DeepCopyOfPrimitive;
 
-class GltfExporter
+class GltfImporter
 {
 public:
-    explicit GltfExporter( const RgTransform& worldTransform, DebugPrintFn debugprint );
-    ~GltfExporter() = default;
+    GltfImporter( const std::filesystem::path& gltfPath,
+                  const RgTransform&           worldTransform,
+                  DebugPrintFn                 debugrint );
+    ~GltfImporter();
 
-    GltfExporter( const GltfExporter& other )     = delete;
-    GltfExporter( GltfExporter&& other ) noexcept = delete;
-    GltfExporter& operator=( const GltfExporter& other ) = delete;
-    GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
-
-    void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
-    void ExportToFiles( const std::filesystem::path& folder );
+    GltfImporter( const GltfImporter& other )                = delete;
+    GltfImporter( GltfImporter&& other ) noexcept            = delete;
+    GltfImporter& operator=( const GltfImporter& other )     = delete;
+    GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
 private:
-    rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
-    RgTransform  worldTransform;
+    cgltf_data*  data;
     DebugPrintFn debugprint;
 };
+
 }

@@ -377,7 +377,7 @@ RgTransform Utils::MakeTransform( const RgFloat3D& up, const RgFloat3D& forward,
         {
             for( int k = 0; k < 3; k++ )
             {
-                tr.matrix[ i ][ j ] += scl[ i ][ k ] * rot[ k ][ j ];
+                tr.matrix[ i ][ j ] += rot[ k ][ j ] * scl[ i ][ k ];
             }
         }
     }

@@ -20,6 +20,7 @@
 
 #include "GltfExporter.h"
 
+#include "Const.h"
 #include "Utils.h"
 
 #define CGLTF_VALIDATE_ENABLE_ASSERTS 1
@@ -37,8 +38,6 @@
 
 namespace 
 {
-#define RTGL1_MAIN_ROOT_NODE "rtgl1_main_root"
-
 auto* ConvertRefToPtr( auto& ref )
 {
     return &ref;
@@ -188,13 +187,8 @@ private:
 
 
 
-RTGL1::GltfExporter::GltfExporter( const RgFloat3D& _worldUp,
-                           const RgFloat3D& _worldForward,
-                           float            _worldScale,
-                           DebugPrintFn     _debugprint )
-    : worldTransform( Utils::MakeTransform(
-          Utils::Normalize( _worldUp ), Utils::Normalize( _worldForward ), _worldScale ) )
-    , debugprint( std::move( _debugprint ) )
+RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform, DebugPrintFn _debugprint )
+    : worldTransform( _worldTransform ), debugprint( std::move( _debugprint ) )
 {
 }
 

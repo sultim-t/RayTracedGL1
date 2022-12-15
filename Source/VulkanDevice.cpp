@@ -89,10 +89,11 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     if( debugData.exportPrimitives )
     {
         assert( !exporter );
-        exporter = std::make_unique< GltfExporter >( debugData.exportWorldUp,
-                                                     debugData.exportWorldForward,
-                                                     debugData.exportWorldScale,
-                                                     MakePrintFn() );
+        exporter = std::make_unique< GltfExporter >(
+            Utils::MakeTransform( Utils::Normalize( debugData.exportWorldUp ),
+                                  Utils::Normalize( debugData.exportWorldForward ),
+                                  debugData.exportWorldScale ),
+            MakePrintFn() );
 
         debugData.exportPrimitives = false;
     }
@@ -1144,6 +1145,12 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     {
         exporter->ExportToFiles( modelsPath );
         exporter.reset();
+
+        GltfImporter imp( modelsPath / "scene.gltf",
+                          Utils::MakeTransform( Utils::Normalize( debugData.exportWorldUp ),
+                                                Utils::Normalize( debugData.exportWorldForward ),
+                                                debugData.exportWorldScale ),
+                          MakePrintFn() );
     }
 
     // override if requested

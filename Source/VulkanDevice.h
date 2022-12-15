@@ -60,6 +60,7 @@
 #include "DebugWindows.h"
 #include "ScratchImmediate.h"
 #include "GltfExporter.h"
+#include "GltfImporter.h"
 
 namespace RTGL1
 {
