@@ -125,6 +125,15 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     lightManager->PrepareForFrame( cmd, frameIndex );
     scene->PrepareForFrame( cmd, frameIndex );
 
+    if( const char *pMapName = nullptr )
+    {
+        GltfImporter imp( modelsPath / ( std::string( pMapName ) + ".gltf" ),
+                          Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
+                                                Utils::Normalize( defaultWorldForward ),
+                                                defaultWorldScale ),
+                          MakePrintFn() );
+    }
+
     return cmd;
 }
 
@@ -1145,12 +1154,6 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     {
         exporter->ExportToFiles( modelsPath );
         exporter.reset();
-
-        GltfImporter imp( modelsPath / "scene.gltf",
-                          Utils::MakeTransform( Utils::Normalize( debugData.exportWorldUp ),
-                                                Utils::Normalize( debugData.exportWorldForward ),
-                                                debugData.exportWorldScale ),
-                          MakePrintFn() );
     }
 
     // override if requested

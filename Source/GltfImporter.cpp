@@ -114,16 +114,16 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
 
     struct FreeIfFail
     {
-        cgltf_result* result;
-        cgltf_data**  data;
+        cgltf_data** data;
+        cgltf_data** parsedData;
         ~FreeIfFail()
         {
-            if( *result != cgltf_result_success )
+            if( *data == nullptr )
             {
-                cgltf_free( *data );
+                cgltf_free( *parsedData );
             }
         }
-    } tmp = { &r, &parsedData };
+    } tmp = { &data, &parsedData };
 
     r = cgltf_parse_file( &options, utf8Path.c_str(), &parsedData );
     if( r != cgltf_result_success)
