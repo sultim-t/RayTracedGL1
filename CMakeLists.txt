@@ -1,7 +1,7 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.20)
 project(RayTracedGL1 CXX C)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 
 # Vulkan
 message(STATUS "Adding Vulkan. VulkanSDK: $ENV{VULKAN_SDK}")
@@ -253,9 +253,6 @@ if (RG_WITH_IMGUI)
     target_link_libraries(RayTracedGL1 PRIVATE glfw)
     target_include_directories(RayTracedGL1 PRIVATE glfw)
 endif()
-
-# GLM from VulkanSDK
-target_include_directories(RayTracedGL1 PRIVATE "$ENV{VULKAN_SDK}/Third-Party/Include")
 
 if (RG_WITH_EXAMPLES)
     message(STATUS "RG_WITH_EXAMPLES enabled")
