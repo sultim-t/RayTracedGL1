@@ -868,6 +868,8 @@ typedef struct RgDrawFrameInfo
 
     RgBool32                                 vsync;
 
+    const char*                              pMapName;
+
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams* pRenderResolutionParams;
     const RgDrawFrameIlluminationParams*     pIlluminationParams;

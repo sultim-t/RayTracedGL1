@@ -220,6 +220,7 @@ private:
         uint32_t                  primitiveIndex;
         std::string               primitiveName;
         std::string               textureName;
+        bool                      exportable;
     };
     struct DebugNonWorld
     {
@@ -257,6 +258,8 @@ private:
     double currentFrameTime;
 
     bool vsync;
+    
+    std::string currentMap{};
 };
 
 }

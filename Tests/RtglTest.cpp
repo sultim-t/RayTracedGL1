@@ -651,6 +651,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .rayLength = 10000.0f,
                 .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
                 .currentTime = GetCurrentTimeInSeconds(),
+                .pMapName = "scene",
                 .pRenderResolutionParams = &resolutionParams,
                 .pSkyParams = &skyParams,
                 .pDebugParams = &debugParams,

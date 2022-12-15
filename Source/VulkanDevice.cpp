@@ -125,15 +125,6 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     lightManager->PrepareForFrame( cmd, frameIndex );
     scene->PrepareForFrame( cmd, frameIndex );
 
-    if( const char *pMapName = nullptr )
-    {
-        GltfImporter imp( modelsPath / ( std::string( pMapName ) + ".gltf" ),
-                          Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
-                                                Utils::Normalize( defaultWorldForward ),
-                                                defaultWorldScale ),
-                          MakePrintFn() );
-    }
-
     return cmd;
 }
 
@@ -686,6 +677,12 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
                 {
                     const auto& prim = debugData.primitivesTable[ i ];
 
+                    if( prim.exportable )
+                    {
+                        ImGui::PushStyleColor( ImGuiCol_TableRowBg, IM_COL32( 0, 128, 0, 64 ) );
+                        ImGui::PushStyleColor( ImGuiCol_TableRowBgAlt, IM_COL32( 0, 128, 0, 128 ) );
+                    }
+
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     if( prim.callIndex )
@@ -706,6 +703,12 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
                     ImGui::TextUnformatted( prim.primitiveName.c_str() );
                     ImGui::TableNextColumn();
                     ImGui::TextUnformatted( prim.textureName.c_str() );
+
+                    if( prim.exportable )
+                    {
+                        ImGui::PopStyleColor();
+                        ImGui::PopStyleColor();
+                    }
                 }
             }
 
@@ -798,8 +801,9 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
 
         debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
+        ImGui::Text( "Folder: %s", modelsPath.string().c_str() );
+        ImGui::Text( "Map name: %s", currentMap.c_str() );
         ImGui::Checkbox( "Settings", &debugData.overrideExport );
-
         ImGui::BeginDisabled( !debugData.overrideExport );
         ImGui::SliderFloat3( "World Up vector", debugData.exportWorldUp.data, -1.0f, 1.0f );
         ImGui::SliderFloat3( "World Forward vector", debugData.exportWorldForward.data, -1.0f, 1.0f );
@@ -818,6 +822,19 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
 
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
+
+
+    if( !Utils::IsCstrEmpty( drawInfo.pMapName ) && currentMap != drawInfo.pMapName )
+    {
+        currentMap = drawInfo.pMapName;
+
+        GltfImporter imp( modelsPath / ( currentMap + ".gltf" ),
+                          Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
+                                                Utils::Normalize( defaultWorldForward ),
+                                                defaultWorldScale ),
+                          MakePrintFn() );
+
+    }
 
 
     bool           mipLodBiasUpdated =
@@ -1152,7 +1169,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
 
     if( exporter )
     {
-        exporter->ExportToFiles( modelsPath );
+        exporter->ExportToFiles( modelsPath, currentMap );
         exporter.reset();
     }
 
@@ -1266,6 +1283,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                 .primitiveIndex = pPrimitive->primitiveIndexInMesh,
                 .primitiveName  = safeCstr( pPrimitive->pPrimitiveNameInMesh ),
                 .textureName    = safeCstr( pPrimitive->pTextureName ),
+                .exportable     = GltfExporter::CanBeExported( pMesh, pPrimitive ),
             } );
         }
 

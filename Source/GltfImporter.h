@@ -21,9 +21,11 @@
 #pragma once
 
 #include "Common.h"
+#include "Scene.h"
 
 #include <filesystem>
 
+struct cgltf_node;
 struct cgltf_data;
 
 namespace RTGL1
@@ -42,8 +44,14 @@ public:
     GltfImporter& operator=( const GltfImporter& other )     = delete;
     GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
+    void UploadAsStaticToScene( Scene& scene );
+
+private:
+    std::vector< RgPrimitiveVertex > GatherVertices( const cgltf_node& node );
+
 private:
     cgltf_data*  data;
+    std::string  gltfPath;
     DebugPrintFn debugprint;
 };
 
