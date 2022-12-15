@@ -188,7 +188,7 @@ private:
 
 
 
-RTGL1::Exporter::Exporter( const RgFloat3D& _worldUp,
+RTGL1::GltfExporter::GltfExporter( const RgFloat3D& _worldUp,
                            const RgFloat3D& _worldForward,
                            float            _worldScale,
                            DebugPrintFn     _debugprint )
@@ -549,7 +549,7 @@ struct GltfStorage
 }
 
 
-void RTGL1::Exporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
+void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
 {
     if ( !mesh.isExportable )
     {
@@ -573,7 +573,7 @@ void RTGL1::Exporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiv
     scene[ mesh.pMeshName ].emplace_back( std::make_shared< DeepCopyOfPrimitive >( primitive ) );
 }
 
-void RTGL1::Exporter::ExportToFiles( const std::filesystem::path& folder )
+void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder )
 {
     if( scene.empty() )
     {

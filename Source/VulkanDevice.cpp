@@ -89,10 +89,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     if( debugData.exportPrimitives )
     {
         assert( !exporter );
-        exporter = std::make_unique< Exporter >( debugData.exportWorldUp,
-                                                 debugData.exportWorldForward,
-                                                 debugData.exportWorldScale,
-                                                 MakePrintFn() );
+        exporter = std::make_unique< GltfExporter >( debugData.exportWorldUp,
+                                                     debugData.exportWorldForward,
+                                                     debugData.exportWorldScale,
+                                                     MakePrintFn() );
 
         debugData.exportPrimitives = false;
     }

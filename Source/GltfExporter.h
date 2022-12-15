@@ -30,19 +30,19 @@ namespace RTGL1
 {
 struct DeepCopyOfPrimitive;
 
-class Exporter
+class GltfExporter
 {
 public:
-    explicit Exporter( const RgFloat3D& worldUp,
+    explicit GltfExporter( const RgFloat3D& worldUp,
                        const RgFloat3D& worldForward,
                        float            worldScale,
                        DebugPrintFn     debugprint );
-    ~Exporter() = default;
+    ~GltfExporter() = default;
 
-    Exporter( const Exporter& other )     = delete;
-    Exporter( Exporter&& other ) noexcept = delete;
-    Exporter& operator=( const Exporter& other ) = delete;
-    Exporter& operator=( Exporter&& other ) noexcept = delete;
+    GltfExporter( const GltfExporter& other )     = delete;
+    GltfExporter( GltfExporter&& other ) noexcept = delete;
+    GltfExporter& operator=( const GltfExporter& other ) = delete;
+    GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
     void ExportToFiles( const std::filesystem::path& folder );

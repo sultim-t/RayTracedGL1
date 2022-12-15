@@ -208,7 +208,7 @@ private:
     std::shared_ptr< UserFileLoad >              userFileLoad;
     std::shared_ptr< DebugWindows >              debugWindows;
     ScratchImmediate                             scratchImmediate;
-    std::unique_ptr< Exporter >                  exporter;
+    std::unique_ptr< GltfExporter >              exporter;
     std::filesystem::path                        modelsPath;
 
     struct DebugPrim
