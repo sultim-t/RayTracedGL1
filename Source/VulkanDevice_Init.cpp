@@ -176,6 +176,9 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
                                                      : DEFAULT_MODELS_PATH )
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
     , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
+    , defaultWorldUp( Utils::SafeNormalize( info->worldUp, { 0, 1, 0 } ) )
+    , defaultWorldForward( Utils::SafeNormalize( info->worldForward, { 0, 0, 1 } ) )
+    , defaultWorldScale( std::max( info->worldScale, 0.0f ) )
     , previousFrameTime( -1.0 / 60.0 )
     , currentFrameTime( 0 )
     , vsync( true )
@@ -999,5 +1002,22 @@ void RTGL1::VulkanDevice::ValidateCreateInfo( const RgInstanceCreateInfo* pInfo 
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "indirectIlluminationMaxAlbedoLayers must be <="s +
                                std::to_string( MATERIALS_MAX_LAYER_COUNT ) );
+    }
+
+    if( pInfo->worldScale <= 0.00001f )
+    {
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "worldScale is too small" );
+    }
+
+    if( Utils::IsAlmostZero( pInfo->worldUp ) )
+    {
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                           "worldUp vector is too small to represent direction" );
+    }
+
+    if( Utils::IsAlmostZero( pInfo->worldForward ) )
+    {
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                           "worldForward vector is too small to represent direction" );
     }
 }

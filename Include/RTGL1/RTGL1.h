@@ -161,6 +161,21 @@ typedef enum RgTextureSwizzling
     RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
 } RgTextureSwizzling;
 
+typedef struct RgFloat2D
+{
+    float data[ 2 ];
+} RgFloat2D;
+
+typedef struct RgFloat3D
+{
+    float data[ 3 ];
+} RgFloat3D;
+
+typedef struct RgFloat4D
+{
+    float data[ 4 ];
+} RgFloat4D;
+
 typedef struct RgInstanceCreateInfo
 {
     // Application name.
@@ -260,6 +275,15 @@ typedef struct RgInstanceCreateInfo
     RgTextureSwizzling          pbrTextureSwizzling;
 
     RgBool32                    effectWipeIsUsed;
+
+    // Used for exporting.
+    // Up is also used for additional water flow calculations.
+    RgFloat3D                   worldUp;
+    RgFloat3D                   worldForward;
+    // Used for exporting.
+    // 1 game unit should correspond to (worldScale) meters.
+    float                       worldScale;
+
 } RgInstanceCreateInfo;
 
 RGAPI RgResult RGCONV rgCreateInstance( const RgInstanceCreateInfo *pInfo, RgInstance *pResult );
@@ -277,33 +301,11 @@ typedef struct RgMatrix3D
     float       matrix[ 3 ][ 3 ];
 } RgMatrix3D;
 
-typedef struct RgFloat2D
-{
-    float       data[ 2 ];
-} RgFloat2D;
-
-typedef struct RgFloat3D
-{
-    float       data[ 3 ];
-} RgFloat3D;
-
-typedef struct RgFloat4D
-{
-    float       data[ 4 ];
-} RgFloat4D;
-
 typedef struct RgExtent2D
 {
     uint32_t    width;
     uint32_t    height;
 } RgExtent2D;
-
-typedef struct RgExtent3D
-{
-    uint32_t    width;
-    uint32_t    height;
-    uint32_t    depth;
-} RgExtent3D;
 
 // Struct is used to transform from NDC to window coordinates.
 // x, y, width, height are specified in pixels. (x,y) defines top-left corner.
@@ -846,9 +848,6 @@ typedef struct RgDrawFrameInfo
 {
     // View matrix is column major.
     float                                    view[ 16 ];
-    // For additional water calculations (is the flow vertical, make extinction stronger closer to horizon).
-    // If the length is close to 0.0, then (0, 1, 0) is used.
-    RgFloat3D                                worldUpVector;
 
     // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
     float                                    fovYRadians;

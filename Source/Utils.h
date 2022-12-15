@@ -150,7 +150,10 @@ namespace Utils
     bool IsAlmostZero(const RgMatrix3D &m);
     float Dot(const float a[3], const float b[3]);
     float Length(const float v[3]);
+    bool TryNormalize( float inout[ 3 ] );
     void Normalize(float inout[3]);
+    RgFloat3D Normalize( const RgFloat3D& v );
+    RgFloat3D SafeNormalize( const RgFloat3D& v, const RgFloat3D& fallback );
     void Negate(float inout[3]);
     void Nullify(float inout[3]);
     void Cross(const float a[3], const float b[3], float r[3]);
@@ -159,6 +162,7 @@ namespace Utils
     // In terms of GLSL: mat3(a), where a is mat4.
     // The remaining values are initialized with identity matrix.
     void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
+    RgTransform MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale );
 
     uint32_t GetPreviousByModulo(uint32_t value, uint32_t count);
     

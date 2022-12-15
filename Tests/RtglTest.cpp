@@ -727,6 +727,10 @@ int main( int argc, char* argv[] )
 
         // to match the GLTF standard
         .pbrTextureSwizzling = RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
+
+        .worldUp      = { 0, 1, 0 },
+        .worldForward = { 0, 0, 1 },
+        .worldScale   = 1.0f,
     };
 
     r = rgCreateInstance( &info, &instance );

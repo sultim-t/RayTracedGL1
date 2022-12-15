@@ -20,8 +20,7 @@
 
 #pragma once
 
-#include <RTGL1/RTGL1.h>
-
+#include "Common.h"
 #include "Containers.h"
 
 #include <filesystem>
@@ -29,27 +28,28 @@
 
 namespace RTGL1
 {
-    struct DeepCopyOfPrimitive;
+struct DeepCopyOfPrimitive;
 
-    class Exporter
-    {
-    public:
-        explicit Exporter(
-            std::function< void( const char*, RgMessageSeverityFlags ) > debugprint );
-        ~Exporter();
+class Exporter
+{
+public:
+    explicit Exporter( const RgFloat3D& worldUp,
+                       const RgFloat3D& worldForward,
+                       float            worldScale,
+                       DebugPrintFn     debugprint );
+    ~Exporter() = default;
 
-        Exporter( const Exporter& other )                = delete;
-        Exporter( Exporter&& other ) noexcept            = delete;
-        Exporter& operator=( const Exporter& other )     = delete;
-        Exporter& operator=( Exporter&& other ) noexcept = delete;
+    Exporter( const Exporter& other )     = delete;
+    Exporter( Exporter&& other ) noexcept = delete;
+    Exporter& operator=( const Exporter& other ) = delete;
+    Exporter& operator=( Exporter&& other ) noexcept = delete;
 
-        void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
-        void ExportToFiles( const std::filesystem::path& folder );
+    void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
+    void ExportToFiles( const std::filesystem::path& folder );
 
-    private:
-        std::function< void( const char*, RgMessageSeverityFlags ) > debugprint;
-        
-        rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > >
-            scene;
-    };
+private:
+    rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
+    RgTransform  worldTransform;
+    DebugPrintFn debugprint;
+};
 }

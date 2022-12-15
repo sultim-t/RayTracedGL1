@@ -236,22 +236,44 @@ float RTGL1::Utils::Length( const float v[ 3 ] )
     return sqrtf( Dot( v, v ) );
 }
 
-
-void RTGL1::Utils::Normalize( float inout[ 3 ] )
+bool Utils::TryNormalize( float inout[3] )
 {
     float len = Length( inout );
 
-    if( len > 0.01f )
+    if( len < 0.001f )
     {
-        inout[ 0 ] /= len;
-        inout[ 1 ] /= len;
-        inout[ 2 ] /= len;
+        return false;
     }
-    else
+
+    inout[ 0 ] /= len;
+    inout[ 1 ] /= len;
+    inout[ 2 ] /= len;
+    return true;
+}
+
+
+void RTGL1::Utils::Normalize( float inout[ 3 ] )
+{
+    bool s = TryNormalize( inout );
+    assert( s );
+}
+
+RgFloat3D Utils::Normalize( const RgFloat3D& v )
+{
+    RgFloat3D dst = v;
+    TryNormalize( dst.data );
+    return dst;
+}
+
+RgFloat3D Utils::SafeNormalize( const RgFloat3D& v, const RgFloat3D& fallback )
+{
+    RgFloat3D dst = v;
+    if( !TryNormalize( dst.data ) )
     {
-        assert( 0 );
-        inout[ 0 ] = inout[ 1 ] = inout[ 2 ] = 0.0f;
+        assert( std::abs( Length( fallback.data ) - 1.0f ) < 0.001f );
+        return fallback;
     }
+    return dst;
 }
 
 void Utils::Negate( float inout[ 3 ] )
@@ -329,6 +351,37 @@ void RTGL1::Utils::SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src 
             dst[ i * 4 + j ] = v;
         }
     }
+}
+
+RgTransform Utils::MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale )
+{
+    float right[ 3 ];
+    Cross( up.data, forward.data, right );
+
+    float rot[ 3 ][ 3 ] = {
+        { right[ 0 ], up.data[ 0 ], forward.data[ 0 ] },
+        { right[ 1 ], up.data[ 1 ], forward.data[ 1 ] },
+        { right[ 2 ], up.data[ 2 ], forward.data[ 2 ] },
+    };
+
+    float scl[ 3 ][ 3 ] = {
+        { scale, 0, 0 },
+        { 0, scale, 0 },
+        { 0, 0, scale },
+    };
+
+    RgTransform tr = {};
+    for( int i = 0; i < 3; i++ )
+    {
+        for( int j = 0; j < 3; j++ )
+        {
+            for( int k = 0; k < 3; k++ )
+            {
+                tr.matrix[ i ][ j ] += scl[ i ][ k ] * rot[ k ][ j ];
+            }
+        }
+    }
+    return tr;
 }
 
 uint32_t RTGL1::Utils::GetPreviousByModulo( uint32_t value, uint32_t count )

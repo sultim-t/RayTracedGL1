@@ -20,6 +20,8 @@
 
 #include "Exporter.h"
 
+#include "Utils.h"
+
 #define CGLTF_VALIDATE_ENABLE_ASSERTS 1
 #define CGLTF_IMPLEMENTATION
 #define CGLTF_WRITE_IMPLEMENTATION
@@ -35,6 +37,8 @@
 
 namespace 
 {
+#define RTGL1_MAIN_ROOT_NODE "rtgl1_main_root"
+
 auto* ConvertRefToPtr( auto& ref )
 {
     return &ref;
@@ -184,16 +188,14 @@ private:
 
 
 
-RTGL1::Exporter::Exporter(
-    std::function< void( const char*, RgMessageSeverityFlags ) > _debugprint )
-    : debugprint( std::move( _debugprint ) )
+RTGL1::Exporter::Exporter( const RgFloat3D& _worldUp,
+                           const RgFloat3D& _worldForward,
+                           float            _worldScale,
+                           DebugPrintFn     _debugprint )
+    : worldTransform( Utils::MakeTransform(
+          Utils::Normalize( _worldUp ), Utils::Normalize( _worldForward ), _worldScale ) )
+    , debugprint( std::move( _debugprint ) )
 {
-}
-
-RTGL1::Exporter::~Exporter()
-{
-    // TODO: check if ExportToFiles was called
-    assert( 1 );
 }
 
 namespace
@@ -497,6 +499,7 @@ struct GltfStorage
                 .children    = append_n( allNodes, prims.size() ),
             } );
         }
+        BeginCount worldbc = append_n( allNodes, 1 );
 
         // resolve pointers
         for( const auto& [ meshName, prims ] : scene )
@@ -520,11 +523,13 @@ struct GltfStorage
             assert( root.source.size() == root.primitives.size() );
             assert( root.source.size() == root.meshes.size() );
 
-            rootNodes.push_back( root.parent );
+            worldRoots.push_back( root.parent );
             roots.push_back( std::move( root ) );
         }
+        world = worldbc.ToPointer( allNodes );
 
         assert( ranges.empty() );
+        assert( worldRoots.size() == roots.size() );
     }
 
     std::vector< cgltf_buffer_view > allBufferViews;
@@ -535,7 +540,9 @@ struct GltfStorage
     std::vector< cgltf_node >        allNodes;
 
     std::vector< GltfRoot >    roots; // each corresponds to RgMeshInfo
-    std::vector< cgltf_node* > rootNodes;
+
+    cgltf_node*                world; 
+    std::vector< cgltf_node* > worldRoots;
 };
 
 
@@ -653,10 +660,27 @@ void RTGL1::Exporter::ExportToFiles( const std::filesystem::path& folder )
         }
     }
 
+    // main root node
+    {
+        *storage.world = cgltf_node{
+            .name           = const_cast< char* >( RTGL1_MAIN_ROOT_NODE ),
+            .parent         = nullptr,
+            .children       = std::data( storage.worldRoots ),
+            .children_count = std::size( storage.worldRoots ),
+            .has_matrix     = true,
+            .matrix         = RG_TRANSFORM_TO_GLTF_MATRIX( worldTransform ),
+            .extras         = { .data = nullptr },
+        };
+        for( cgltf_node* child : storage.worldRoots )
+        {
+            child->parent = storage.world;
+        }
+    }
+
     cgltf_scene gltfScene = {
         .name        = const_cast< char* >( "default" ),
-        .nodes       = std::data( storage.rootNodes ),
-        .nodes_count = std::size( storage.rootNodes ),
+        .nodes       = &storage.world,
+        .nodes_count = 1,
         .extras      = { .data = const_cast< char* >( sceneExtrasExample ) },
     };
 
@@ -694,10 +718,14 @@ void RTGL1::Exporter::ExportToFiles( const std::filesystem::path& folder )
         return;
     }
 
-    r = cgltf_write_file( &options, GetGltfPath( folder, sceneName ).string().c_str(), &data );
+    const auto gltfPath = GetGltfPath( folder, sceneName ).string();
+
+    r = cgltf_write_file( &options, gltfPath.c_str(), &data );
     if( r != cgltf_result_success )
     {
         debugprint( "cgltf_write_file fail", RG_MESSAGE_SEVERITY_WARNING );
         return;
     }
+
+    debugprint( ( gltfPath + ": Exported successfully" ).c_str(), RG_MESSAGE_SEVERITY_INFO );
 }

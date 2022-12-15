@@ -89,10 +89,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     if( debugData.exportPrimitives )
     {
         assert( !exporter );
-        exporter = std::make_unique< Exporter >(
-            [ this ]( const char* pMessage, RgMessageSeverityFlags severity ) {
-                this->Print( pMessage, severity );
-            } );
+        exporter = std::make_unique< Exporter >( debugData.exportWorldUp,
+                                                 debugData.exportWorldForward,
+                                                 debugData.exportWorldScale,
+                                                 MakePrintFn() );
 
         debugData.exportPrimitives = false;
     }
@@ -505,18 +505,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     gu->cameraRayConeSpreadAngle = atanf( ( 2.0f * tanf( drawInfo.fovYRadians * 0.5f ) ) /
                                           ( float )renderResolution.Height() );
 
-    if( Utils::IsAlmostZero( drawInfo.worldUpVector ) )
-    {
-        gu->worldUpVector[ 0 ] = 0.0f;
-        gu->worldUpVector[ 1 ] = 1.0f;
-        gu->worldUpVector[ 2 ] = 0.0f;
-    }
-    else
-    {
-        gu->worldUpVector[ 0 ] = drawInfo.worldUpVector.data[ 0 ];
-        gu->worldUpVector[ 1 ] = drawInfo.worldUpVector.data[ 1 ];
-        gu->worldUpVector[ 2 ] = drawInfo.worldUpVector.data[ 2 ];
-    }
+    assert( !Utils::IsAlmostZero( defaultWorldUp ) );
+    RG_SET_VEC3_A( gu->worldUpVector, defaultWorldUp.data );
 
     if( drawInfo.pLightmapParams != nullptr )
     {
@@ -784,6 +774,29 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
             ImGui::TextUnformatted( msg.c_str() );
             ImGui::PopStyleColor();
         }
+    }
+    ImGui::End();
+
+    
+    if( ImGui::Begin( "Export" ) )
+    {
+        if( !debugData.overrideExport )
+        {
+            debugData.exportWorldUp      = defaultWorldUp;
+            debugData.exportWorldForward = defaultWorldForward;
+            debugData.exportWorldScale   = defaultWorldScale;
+        }
+
+        debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
+        ImGui::Checkbox( "Settings", &debugData.overrideExport );
+
+        ImGui::BeginDisabled( !debugData.overrideExport );
+        ImGui::SliderFloat3( "World Up vector", debugData.exportWorldUp.data, -1.0f, 1.0f );
+        ImGui::SliderFloat3( "World Forward vector", debugData.exportWorldForward.data, -1.0f, 1.0f );
+        ImGui::InputFloat( "1 unit = ", &debugData.exportWorldScale );
+        ImGui::SameLine();
+        ImGui::TextUnformatted( " meters" );
+        ImGui::EndDisabled();
     }
     ImGui::End();
 }
@@ -1140,8 +1153,6 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
         {
             debugData.reloadShaders = ImGui::Button( "Reload shaders", { -1, 96 } );
             ImGui::Separator();
-            debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
-            ImGui::Separator();
             ImGui::Checkbox( "Override", &debugData.overrideDrawInfo );
             if( ImGui::TreeNode( "Overriden" ) )
             {
@@ -1462,4 +1473,11 @@ void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags se
     {
         userPrint->Print( pMessage, severity );
     }
+}
+
+RTGL1::DebugPrintFn RTGL1::VulkanDevice::MakePrintFn() const
+{
+    return [ this ]( const char* pMessage, RgMessageSeverityFlags severity ) {
+        this->Print( pMessage, severity );
+    };
 }

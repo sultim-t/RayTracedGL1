@@ -118,6 +118,7 @@ public:
 
 
     void Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
+    DebugPrintFn MakePrintFn() const;
 
 private:
     void            CreateInstance( const RgInstanceCreateInfo& info );
@@ -230,6 +231,10 @@ private:
         bool                         ovrdVsync{ false };
         bool                         reloadShaders{ false };
         bool                         exportPrimitives{ false };
+        bool                         overrideExport{ false };
+        RgFloat3D                    exportWorldUp{};
+        RgFloat3D                    exportWorldForward{};
+        float                        exportWorldScale{};
         bool                         primitivesTableEnable{ false };
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };
@@ -239,8 +244,11 @@ private:
         std::vector< std::pair< RgMessageSeverityFlags, std::string > > logs{};
     } debugData;
 
-    bool rayCullBackFacingTriangles;
-    bool allowGeometryWithSkyFlag;
+    bool      rayCullBackFacingTriangles;
+    bool      allowGeometryWithSkyFlag;
+    RgFloat3D defaultWorldUp;
+    RgFloat3D defaultWorldForward;
+    float     defaultWorldScale;
 
     RenderResolutionHelper renderResolution;
 
