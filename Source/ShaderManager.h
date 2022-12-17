@@ -54,7 +54,6 @@ public:
     // Subscribe to shader reload event.
     // shared_ptr will be transformed to weak_ptr
     void                            Subscribe( std::shared_ptr< IShaderDependency > subscriber );
-    void                            Unsubscribe( const IShaderDependency* subscriber );
 
 private:
     struct ShaderModule

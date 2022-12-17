@@ -101,7 +101,6 @@ public:
     // Subscribe to framebuffers' size change event.
     // shared_ptr will be transformed to weak_ptr
     void Subscribe( std::shared_ptr< IFramebuffersDependency > subscriber );
-    void Unsubscribe( const IFramebuffersDependency* subscriber );
 
 private:
     static FramebufferImageIndex FrameIndexToFBIndex( FramebufferImageIndex framebufferImageIndex,

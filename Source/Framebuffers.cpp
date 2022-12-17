@@ -923,15 +923,3 @@ void Framebuffers::Subscribe( std::shared_ptr< IFramebuffersDependency > subscri
 {
     subscribers.emplace_back( subscriber );
 }
-
-void Framebuffers::Unsubscribe( const IFramebuffersDependency* subscriber )
-{
-    subscribers.remove_if( [ subscriber ]( const std::weak_ptr< IFramebuffersDependency >& ws ) {
-        if( const auto s = ws.lock() )
-        {
-            return s.get() == subscriber;
-        }
-
-        return true;
-    } );
-}

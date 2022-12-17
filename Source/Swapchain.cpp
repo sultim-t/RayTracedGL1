@@ -474,18 +474,6 @@ void RTGL1::Swapchain::Subscribe( std::shared_ptr< ISwapchainDependency > subscr
     subscribers.emplace_back( subscriber );
 }
 
-void RTGL1::Swapchain::Unsubscribe( const ISwapchainDependency* subscriber )
-{
-    subscribers.remove_if( [ subscriber ]( const std::weak_ptr< ISwapchainDependency >& ws ) {
-        if( const auto s = ws.lock() )
-        {
-            return s.get() == subscriber;
-        }
-
-        return true;
-    } );
-}
-
 VkFormat RTGL1::Swapchain::GetSurfaceFormat() const
 {
     return surfaceFormat.format;

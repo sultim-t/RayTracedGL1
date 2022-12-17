@@ -83,7 +83,6 @@ public:
     // Subscribe to material change event.
     // shared_ptr will be transformed to weak_ptr
     void     Subscribe( std::shared_ptr< IMaterialDependency > subscriber );
-    void     Unsubscribe( const IMaterialDependency* subscriber );
 
 private:
     struct Material

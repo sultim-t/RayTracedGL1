@@ -763,18 +763,6 @@ void TextureManager::Subscribe( std::shared_ptr< IMaterialDependency > subscribe
     subscribers.emplace_back( subscriber );
 }
 
-void TextureManager::Unsubscribe( const IMaterialDependency* subscriber )
-{
-    subscribers.remove_if( [ subscriber ]( const std::weak_ptr< IMaterialDependency >& ws ) {
-        if( const auto s = ws.lock() )
-        {
-            return s.get() == subscriber;
-        }
-
-        return true;
-    } );
-}
-
 uint32_t TextureManager::GetWaterNormalTextureIndex() const
 {
     return waterNormalTextureIndex;

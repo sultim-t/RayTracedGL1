@@ -305,18 +305,6 @@ void ShaderManager::Subscribe( std::shared_ptr< IShaderDependency > subscriber )
     subscribers.emplace_back( subscriber );
 }
 
-void ShaderManager::Unsubscribe( const IShaderDependency* subscriber )
-{
-    subscribers.remove_if( [ subscriber ]( const std::weak_ptr< IShaderDependency >& ws ) {
-        if( const auto s = ws.lock() )
-        {
-            return s.get() == subscriber;
-        }
-
-        return true;
-    } );
-}
-
 void ShaderManager::NotifySubscribersAboutReload()
 {
     for( auto& ws : subscribers )

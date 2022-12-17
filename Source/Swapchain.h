@@ -58,7 +58,6 @@ public:
     // Subscribe to swapchain size chagne event.
     // shared_ptr will be transformed to weak_ptr
     void Subscribe( std::shared_ptr< ISwapchainDependency > subscriber );
-    void Unsubscribe( const ISwapchainDependency* subscriber );
 
     VkFormat           GetSurfaceFormat() const;
     uint32_t           GetWidth() const;
