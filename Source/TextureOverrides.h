@@ -38,28 +38,28 @@ struct TextureOverrides
 public:
     struct OverrideInfo
     {
-        const char* commonFolderPath                         = "";
-        const char* postfixes[ TEXTURES_PER_MATERIAL_COUNT ] = {};
+        const std::filesystem::path& commonFolderPath;
+        const char*                  postfixes[ TEXTURES_PER_MATERIAL_COUNT ]{};
         // Params for overriden textures. If texture
         // isn't overriden, RgTextureData::isSRGB value is used
         // instead of one of these params.
-        bool        overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ] = {};
-        bool        originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ]  = {};
+        bool                         overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ]{};
+        bool                         originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ]{};
     };
 
     using Loader = std::variant< ImageLoader*, ImageLoaderDev* >;
 
 public:
-    explicit TextureOverrides( const char*         relativePath,
+    explicit TextureOverrides( std::string_view    relativePath,
                                const void*         pPixels,
                                const RgExtent2D&   defaultSize,
                                const OverrideInfo& info,
                                Loader              loader );
     ~TextureOverrides();
 
-    TextureOverrides( const TextureOverrides& other )     = delete;
-    TextureOverrides( TextureOverrides&& other ) noexcept = delete;
-    TextureOverrides& operator=( const TextureOverrides& other ) = delete;
+    TextureOverrides( const TextureOverrides& other )                = delete;
+    TextureOverrides( TextureOverrides&& other ) noexcept            = delete;
+    TextureOverrides& operator=( const TextureOverrides& other )     = delete;
     TextureOverrides& operator=( TextureOverrides&& other ) noexcept = delete;
 
     [[nodiscard]] const std::optional< ImageLoader::ResultInfo >& GetResult( uint32_t index ) const;
@@ -68,7 +68,7 @@ public:
     [[nodiscard]] std::optional< std::filesystem::path >&& GetPathAndRemove( uint32_t index );
 
 private:
-    Loader                                   loader;
+    Loader loader;
 
     std::optional< ImageLoader::ResultInfo > results[ TEXTURES_PER_MATERIAL_COUNT ];
     char                                     debugname[ TEXTURE_DEBUG_NAME_MAX_LENGTH ];

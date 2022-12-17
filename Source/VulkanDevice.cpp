@@ -801,7 +801,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
 
         debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
-        ImGui::Text( "Folder: %s", modelsPath.string().c_str() );
+        ImGui::Text( "Folder: %s", ovrdFolder.string().c_str() );
         ImGui::Text( "Map name: %s", currentMap.c_str() );
         ImGui::Checkbox( "Settings", &debugData.overrideExport );
         ImGui::BeginDisabled( !debugData.overrideExport );
@@ -1169,7 +1169,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
 
     if( exporter )
     {
-        exporter->ExportToFiles( modelsPath, currentMap );
+        exporter->ExportToFiles( ovrdFolder, currentMap );
         exporter.reset();
     }
 
@@ -1376,7 +1376,8 @@ void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* p
 
     textureManager->TryCreateMaterial( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
                                        currentFrameState.GetFrameIndex(),
-                                       *pInfo );
+                                       *pInfo,
+                                       ovrdFolder );
 }
 
 void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo )
@@ -1388,7 +1389,8 @@ void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemap
 
     cubemapManager->TryCreateCubemap( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
                                       currentFrameState.GetFrameIndex(),
-                                      *pInfo );
+                                      *pInfo,
+                                      ovrdFolder );
 }
 
 void RTGL1::VulkanDevice::MarkOriginalTextureAsDeleted( const char* pTextureName )

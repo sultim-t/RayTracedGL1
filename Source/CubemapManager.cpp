@@ -92,16 +92,9 @@ RTGL1::CubemapManager::CubemapManager( VkDevice                           _devic
     , allocator( std::move( _allocator ) )
     , samplerManager( std::move( _samplerManager ) )
     , cubemaps( MAX_CUBEMAP_COUNT )
-    , defaultTexturesPath(
-          DefaultIfNull( _info.pOverridenTexturesFolderPath, DEFAULT_TEXTURES_PATH ) )
     , overridenTexturePostfix( DefaultIfNull( _info.pOverridenAlbedoAlphaTexturePostfix,
                                               DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA ) )
 {
-    if( _config.developerMode && _info.pOverridenTexturesFolderPathDeveloper != nullptr )
-    {
-        defaultTexturesPath = _info.pOverridenTexturesFolderPathDeveloper;
-    }
-
     imageLoader = std::make_shared< ImageLoader >( std::move( _userFileLoad ) );
     cubemapDesc = std::make_shared< TextureDescriptors >(
         device, samplerManager, MAX_CUBEMAP_COUNT, BINDING_CUBEMAPS );
@@ -131,7 +124,7 @@ void RTGL1::CubemapManager::CreateEmptyCubemap( VkCommandBuffer cmd )
         .sideSize         = 1,
     };
 
-    bool b = TryCreateCubemap( cmd, 0, info );
+    bool b = TryCreateCubemap( cmd, 0, info, std::filesystem::path() );
 
     assert( b );
     assert( cubemaps.contains( emptyTextureName ) );
@@ -169,7 +162,8 @@ RTGL1::CubemapManager::~CubemapManager()
 
 bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
                                               uint32_t                     frameIndex,
-                                              const RgOriginalCubemapInfo& info )
+                                              const RgOriginalCubemapInfo& info,
+                                              const std::filesystem::path& folder )
 {
     TextureUploader::UploadInfo upload = {
         .cmd          = cmd,
@@ -184,7 +178,7 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
     static_assert( MATERIAL_COLOR_TEXTURE_INDEX == 0 );
 
     TextureOverrides::OverrideInfo parseInfo = {
-        .commonFolderPath = defaultTexturesPath.c_str(),
+        .commonFolderPath = folder,
         .postfixes        = { overridenTexturePostfix.c_str(), "", "" },
         .overridenIsSRGB  = { true, false, false },
         .originalIsSRGB   = { true, false, false },
@@ -205,12 +199,12 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
 
     // load additional textures, they'll be freed after leaving the scope
     TextureOverrides ovrd[] = {
-        TextureOverrides( faceNames[ 0 ].c_str(), facePixels[ 0 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 1 ].c_str(), facePixels[ 1 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 2 ].c_str(), facePixels[ 2 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 3 ].c_str(), facePixels[ 3 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 4 ].c_str(), facePixels[ 4 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 5 ].c_str(), facePixels[ 5 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 0 ], facePixels[ 0 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 1 ], facePixels[ 1 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 2 ], facePixels[ 2 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 3 ], facePixels[ 3 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 4 ], facePixels[ 4 ], size, parseInfo, ldr ),
+        TextureOverrides( faceNames[ 5 ], facePixels[ 5 ], size, parseInfo, ldr ),
     };
 
     // all overrides must have albedo data and the same and square size

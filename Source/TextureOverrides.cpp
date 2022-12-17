@@ -72,21 +72,13 @@ VkFormat ToSRGB( VkFormat f )
     }
 }
 
-template< uint32_t N > void SafeCopy( char ( &dst )[ N ], const char* src )
+template< size_t N > void SafeCopy( char ( &dst )[ N ], std::string_view src )
 {
     memset( dst, 0, N );
 
-    if( src != nullptr )
+    for( size_t i = 0; i < N - 1 && i < src.length(); i++ )
     {
-        for( uint32_t i = 0; i < N - 1; i++ )
-        {
-            if( src[ i ] == '\0' )
-            {
-                break;
-            }
-
-            dst[ i ] = src[ i ];
-        }
+        dst[ i ] = src[ i ];
     }
 }
 
@@ -131,25 +123,19 @@ namespace loader
     }
 }
 
-std::optional< std::filesystem::path > GetTexturePath( const char* commonFolderPath,
-                                                       const char* relativePath,
-                                                       const char* postfix,
-                                                       const char* extension )
+std::filesystem::path GetTexturePath( std::filesystem::path commonFolderPath,
+                                      std::string_view      relativePath,
+                                      const char*           postfix,
+                                      const char*           extension )
 {
-    if( Utils::IsCstrEmpty( relativePath ) )
-    {
-        return std::nullopt;
-    }
-
-    return std::filesystem::path( commonFolderPath )
-        .append( relativePath )
+    return commonFolderPath.append( relativePath )
         .replace_extension( "" )
         .concat( postfix )
         .replace_extension( extension );
 }
 }
 
-TextureOverrides::TextureOverrides( const char*         _relativePath,
+TextureOverrides::TextureOverrides( std::string_view    _relativePath,
                                     const void*         _pPixels,
                                     const RgExtent2D&   _defaultSize,
                                     const OverrideInfo& _info,
@@ -173,19 +159,17 @@ TextureOverrides::TextureOverrides( const char*         _relativePath,
     {
         for( const char* ext : loader::GetExtensions( loader ) )
         {
-            if( auto p = GetTexturePath(
-                    _info.commonFolderPath, _relativePath, _info.postfixes[ i ], ext ) )
+            auto p =
+                GetTexturePath( _info.commonFolderPath, _relativePath, _info.postfixes[ i ], ext );
+
+            if( auto r = loader::Load( loader, p ) )
             {
-                if( auto r = loader::Load( loader, p.value() ) )
-                {
-                    r->format =
-                        _info.overridenIsSRGB[ i ] ? ToSRGB( r->format ) : ToUnorm( r->format );
+                r->format = _info.overridenIsSRGB[ i ] ? ToSRGB( r->format ) : ToUnorm( r->format );
 
-                    paths[ i ]   = std::move( p );
-                    results[ i ] = r;
+                paths[ i ]   = std::move( p );
+                results[ i ] = r;
 
-                    break;
-                }
+                break;
             }
         }
     }

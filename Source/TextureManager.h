@@ -68,7 +68,8 @@ public:
 
     bool                  TryCreateMaterial( VkCommandBuffer              cmd,
                                              uint32_t                     frameIndex,
-                                             const RgOriginalTextureInfo& info );
+                                             const RgOriginalTextureInfo& info,
+                                             const std::filesystem::path& folder );
     bool                  TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
 
 
@@ -137,8 +138,7 @@ private:
     uint32_t                                    waterNormalTextureIndex;
 
     RgSamplerFilter                             currentDynamicSamplerFilter;
-
-    std::string                                 defaultTexturesPath;
+    
     std::string                                 postfixes[ TEXTURES_PER_MATERIAL_COUNT ];
     bool                                        overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];
     bool                                        originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];

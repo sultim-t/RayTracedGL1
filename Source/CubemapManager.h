@@ -57,7 +57,8 @@ public:
 
     bool                  TryCreateCubemap( VkCommandBuffer              cmd,
                                             uint32_t                     frameIndex,
-                                            const RgOriginalCubemapInfo& info );
+                                            const RgOriginalCubemapInfo& info,
+                                            const std::filesystem::path& folder );
     bool                  TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName );
 
 
@@ -87,8 +88,7 @@ private:
 
     std::unordered_map< std::string, Texture > cubemaps;
     std::vector< Texture >                     cubemapsToDestroy[ MAX_FRAMES_IN_FLIGHT ];
-
-    std::string                                defaultTexturesPath;
+    
     std::string                                overridenTexturePostfix;
 };
 

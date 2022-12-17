@@ -80,9 +80,6 @@ TextureManager::TextureManager( VkDevice                                       _
     , samplerMgr( std::move( _samplerMgr ) )
     , waterNormalTextureIndex( 0 )
     , currentDynamicSamplerFilter( DefaultDynamicSamplerFilter )
-    , defaultTexturesPath(
-        DefaultIfNull(_info.pOverridenTexturesFolderPath, DEFAULT_TEXTURES_PATH)
-        )
     , postfixes
         {
             DefaultIfNull(_info.pOverridenAlbedoAlphaTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA),
@@ -112,11 +109,6 @@ TextureManager::TextureManager( VkDevice                                       _
     {
         imageLoaderDev = std::make_shared< ImageLoaderDev >( imageLoader );
         // observer       = std::make_shared< TextureObserver >();
-
-        if( _info.pOverridenTexturesFolderPathDeveloper != nullptr )
-        {
-            defaultTexturesPath = _info.pOverridenTexturesFolderPathDeveloper;
-        }
     }
 
 
@@ -180,16 +172,24 @@ void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameInde
 }
 
 // Check CreateStaticMaterial for notes
-void RTGL1::TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
-                                                      uint32_t        frameIndex,
-                                                      const char*     pFilePath )
+void TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
+                                               uint32_t        frameIndex,
+                                               const char*     pFilePath )
 {
+    if( Utils::IsCstrEmpty( pFilePath ) )
+    {
+        this->waterNormalTextureIndex = EMPTY_TEXTURE_INDEX;
+        return;
+    }
+
     SamplerManager::Handle samplerHandle(
         RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT );
 
+    // use absolute path
+    std::filesystem::path folder{};
+
     TextureOverrides::OverrideInfo parseInfo = {
-        // use absolute path
-        .commonFolderPath = "",
+        .commonFolderPath = folder,
     };
     for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {
@@ -292,7 +292,8 @@ void TextureManager::SubmitDescriptors( uint32_t                         frameIn
 
 bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                                         uint32_t                     frameIndex,
-                                        const RgOriginalTextureInfo& info )
+                                        const RgOriginalTextureInfo& info,
+                                        const std::filesystem::path& folder )
 {
     if( Utils::IsCstrEmpty( info.pTextureName ) )
     {
@@ -317,7 +318,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                                 info.addressModeV );
 
     TextureOverrides::OverrideInfo parseInfo = {
-        .commonFolderPath = defaultTexturesPath.c_str(),
+        .commonFolderPath = folder,
     };
     for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {

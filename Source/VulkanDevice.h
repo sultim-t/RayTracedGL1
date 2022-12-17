@@ -203,6 +203,8 @@ private:
     std::shared_ptr< TextureManager >            textureManager;
     std::shared_ptr< CubemapManager >            cubemapManager;
 
+    std::filesystem::path                        ovrdFolder;
+
     LibraryConfig::Config                        libconfig;
     VkDebugUtilsMessengerEXT                     debugMessenger;
     std::unique_ptr< UserPrint >                 userPrint;
