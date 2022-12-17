@@ -29,7 +29,7 @@
 
 namespace
 {
-    
+
 RgTransform ColumnsToRows( const float arr[ 16 ] )
 {
 #define MAT( i, j ) arr[ ( i )*4 + ( j ) ]
@@ -37,7 +37,7 @@ RgTransform ColumnsToRows( const float arr[ 16 ] )
     assert( std::abs( MAT( 0, 3 ) ) < FLT_EPSILON );
     assert( std::abs( MAT( 1, 3 ) ) < FLT_EPSILON );
     assert( std::abs( MAT( 2, 3 ) ) < FLT_EPSILON );
-    assert( std::abs( MAT( 2, 3 ) - 1.0f ) < FLT_EPSILON );
+    assert( std::abs( MAT( 3, 3 ) - 1.0f ) < FLT_EPSILON );
 
     return RgTransform{ {
         { MAT( 0, 0 ), MAT( 1, 0 ), MAT( 2, 0 ), MAT( 3, 0 ) },
@@ -56,7 +56,7 @@ RgTransform MakeRgTransformFromGltfNode( const cgltf_node& node )
     return ColumnsToRows( mat );
 }
 
-void ApplyInverseWorldTransform( cgltf_node &mainNode, const RgTransform& worldTransform )
+void ApplyInverseWorldTransform( cgltf_node& mainNode, const RgTransform& worldTransform )
 {
     mainNode.has_translation = false;
     mainNode.has_rotation    = false;
@@ -103,6 +103,25 @@ cgltf_node* FindMainRootNode( cgltf_data* data )
 
     return nullptr;
 }
+
+const char* NodeName( const cgltf_node& node )
+{
+    return node.name ? node.name : "";
+}
+
+const char* NodeName( const cgltf_node* node )
+{
+    return NodeName( *node );
+}
+
+template< size_t N >
+cgltf_bool cgltf_accessor_read_float_h( const cgltf_accessor* accessor,
+                                        cgltf_size            index,
+                                        float ( &out )[ N ] )
+{
+    return cgltf_accessor_read_float( accessor, index, out, N );
+}
+
 }
 
 std::vector< RgPrimitiveVertex > RTGL1::GltfImporter::GatherVertices( const cgltf_node& node )
@@ -110,54 +129,285 @@ std::vector< RgPrimitiveVertex > RTGL1::GltfImporter::GatherVertices( const cglt
     assert( node.mesh );
     assert( node.parent );
 
-    /*if( node.mesh->primitives_count < 1 )
+    if( node.mesh->primitives_count < 1 )
+    {
+        debugprint( std::format( "{}: Ignoring ...->{}->{}: No primitives on a mesh",
+                                 gltfPath,
+                                 NodeName( node.parent ),
+                                 NodeName( node ) )
+                        .c_str(),
+                    RG_MESSAGE_SEVERITY_WARNING );
+        return {};
+    }
+
+    if( node.mesh->primitives_count > 2 )
+    {
+        debugprint( std::format( "{}: ...->{}->{}: Expected only 1 primitive on a mesh, but got "
+                                 "{}. Parsing only the first",
+                                 gltfPath,
+                                 NodeName( node.parent ),
+                                 NodeName( node ),
+                                 node.mesh->primitives_count )
+                        .c_str(),
+                    RG_MESSAGE_SEVERITY_WARNING );
+    }
+
+    const cgltf_primitive& prim = node.mesh->primitives[ 0 ];
+
+    std::span attrSpan( prim.attributes, prim.attributes_count );
+
+    auto debugprintAttr = [ this, &node ]( const cgltf_attribute& attr, std::string_view msg ) {
+        debugprint( std::format( "{}: Ignoring ...->{}->{}: Attribute {}: {}",
+                                 gltfPath,
+                                 NodeName( node.parent ),
+                                 NodeName( node ),
+                                 attr.name ? attr.name : "",
+                                 msg )
+                        .c_str(),
+                    RG_MESSAGE_SEVERITY_WARNING );
+    };
+
+    // check if compatible and find common attribute count
+    std::optional< size_t > vertexCount;
+    {
+        // required
+        bool position{}, normal{}, tangent{}, texcoord{};
+
+        for( const cgltf_attribute& attr : attrSpan )
+        {
+            if( attr.data->is_sparse )
+            {
+                debugprintAttr( attr, "Sparse accessors are not supported" );
+                return {};
+            }
+
+            bool color = false;
+
+            switch( attr.type )
+            {
+                case cgltf_attribute_type_position:
+                    position = true;
+                    if( cgltf_num_components( attr.data->type ) != 3 )
+                    {
+                        debugprintAttr( attr, "Expected VEC3" );
+                        return {};
+                    }
+                    static_assert( std::size( RgPrimitiveVertex{}.position ) == 3 );
+                    break;
+
+                case cgltf_attribute_type_normal:
+                    normal = true;
+                    if( cgltf_num_components( attr.data->type ) != 3 )
+                    {
+                        debugprintAttr( attr, "Expected VEC3" );
+                        return {};
+                    }
+                    static_assert( std::size( RgPrimitiveVertex{}.normal ) == 3 );
+                    break;
+
+                case cgltf_attribute_type_tangent:
+                    tangent = true;
+                    if( cgltf_num_components( attr.data->type ) != 4 )
+                    {
+                        debugprintAttr( attr, "Expected VEC4" );
+                        return {};
+                    }
+                    static_assert( std::size( RgPrimitiveVertex{}.tangent ) == 4 );
+                    break;
+
+                case cgltf_attribute_type_texcoord:
+                    texcoord = true;
+                    if( cgltf_num_components( attr.data->type ) != 2 )
+                    {
+                        debugprintAttr( attr, "Expected VEC2" );
+                        return {};
+                    }
+                    static_assert( std::size( RgPrimitiveVertex{}.texCoord ) == 2 );
+                    break;
+
+
+                case cgltf_attribute_type_color:
+                    color = true;
+                    if( cgltf_num_components( attr.data->type ) != 4 )
+                    {
+                        debugprintAttr( attr, "Expected VEC4" );
+                        return {};
+                    }
+                    static_assert( std::is_same_v< decltype( RgPrimitiveVertex{}.color ),
+                                                   RgColor4DPacked32 > );
+                    break;
+
+                default: break;
+            }
+
+            if( position || normal || tangent || texcoord || color )
+            {
+                if( vertexCount )
+                {
+                    if( vertexCount.value() != attr.data->count )
+                    {
+                        debugprintAttr(
+                            attr,
+                            std::format( "Mismatch on attributes count (expected {}, but got {})",
+                                         *vertexCount,
+                                         attr.data->count ) );
+                        return {};
+                    }
+                }
+                else
+                {
+                    vertexCount = attr.data->count;
+                }
+            }
+        }
+
+        if( !position || !normal || !tangent || !texcoord )
+        {
+            debugprint(
+                std::format( "{}: Ignoring ...->{}->{}: Not all required attributes are present. "
+                             "POSITION - {}. "
+                             "NORMAL - {}. "
+                             "TANGENT - {}. "
+                             "TEXCOORD_0 - {}",
+                             gltfPath,
+                             NodeName( node.parent ),
+                             NodeName( node ),
+                             position,
+                             normal,
+                             tangent,
+                             texcoord )
+                    .c_str(),
+                RG_MESSAGE_SEVERITY_WARNING );
+            return {};
+        }
+    }
+
+    if( !vertexCount )
     {
         debugprint(
             std::format(
-                "{}: No primitives on (...->{}->{}). Ignoring", gltfPath, node.parent->name, node.name )
+                "{}: Ignoring ...->{}->{}: ", gltfPath, NodeName( node.parent ), NodeName( node ) )
+                .c_str(),
+            RG_MESSAGE_SEVERITY_VERBOSE );
+        return {};
+    }
+
+
+    auto primVertices = std::vector< RgPrimitiveVertex >( *vertexCount );
+    auto defaultColor = std::optional( rgUtilPackColorByte4D( 255, 255, 255, 255 ) );
+
+    for( const cgltf_attribute& attr : attrSpan )
+    {
+        cgltf_bool ok = true;
+
+        switch( attr.type )
+        {
+            case cgltf_attribute_type_position:
+                for( size_t i = 0; i < primVertices.size(); i++ )
+                {
+                    ok &= cgltf_accessor_read_float_h( attr.data, i, primVertices[ i ].position );
+                }
+                break;
+
+            case cgltf_attribute_type_normal:
+                for( size_t i = 0; i < primVertices.size(); i++ )
+                {
+                    ok &= cgltf_accessor_read_float_h( attr.data, i, primVertices[ i ].normal );
+                }
+                break;
+
+            case cgltf_attribute_type_tangent:
+                for( size_t i = 0; i < primVertices.size(); i++ )
+                {
+                    ok &= cgltf_accessor_read_float_h( attr.data, i, primVertices[ i ].tangent );
+                }
+                break;
+
+            case cgltf_attribute_type_texcoord: {
+                int texcoordIndex = attr.index;
+                for( size_t i = 0; i < primVertices.size(); i++ )
+                {
+                    ok &= cgltf_accessor_read_float_h( attr.data, i, primVertices[ i ].texCoord );
+                }
+                break;
+            }
+
+            case cgltf_attribute_type_color:
+                defaultColor = std::nullopt;
+                for( size_t i = 0; i < primVertices.size(); i++ )
+                {
+                    float c[ 4 ] = { 1, 1, 1, 1 };
+                    ok &= cgltf_accessor_read_float_h( attr.data, i, c );
+                    primVertices[ i ].color =
+                        rgUtilPackColorFloat4D( c[ 0 ], c[ 1 ], c[ 2 ], c[ 3 ] );
+                }
+                break;
+
+            default: break;
+        }
+
+        if( !ok )
+        {
+            debugprintAttr( attr, "cgltf_accessor_read_float fail" );
+            return {};
+        }
+    }
+
+    if( defaultColor )
+    {
+        for( auto& v : primVertices )
+        {
+            v.color = *defaultColor;
+        }
+    }
+
+    return primVertices;
+}
+
+std::vector< uint32_t > RTGL1::GltfImporter::GatherIndices( const cgltf_node& node )
+{
+    // assuming that GatherVertices was already called,
+    // so no need for extensive checks
+    assert( node.mesh );
+    assert( node.parent );
+    assert( node.mesh->primitives_count > 0 );
+
+    const cgltf_primitive& prim = node.mesh->primitives[ 0 ];
+
+    if( prim.indices->is_sparse )
+    {
+        debugprint(
+            std::format( "{}: Ignoring ...->{}->{}: Indices: Sparse accessors are not supported",
+                         gltfPath,
+                         NodeName( node.parent ),
+                         NodeName( node ) )
                 .c_str(),
             RG_MESSAGE_SEVERITY_WARNING );
         return {};
     }
-    else if( node.mesh->primitives_count > 2 )
-    {
-        debugprint( std::format( "{}: No primitives on (...->{}->{}). Ignoring",
-                                 gltfPath,
-                                 node.parent->name,
-                                 node.name )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
-        return {};
-    }*/
 
-    for( size_t i = 0; i < node.mesh->primitives_count; i++ )
-    {
-        const cgltf_primitive& prim = node.mesh->primitives[ i ];
+    std::vector< uint32_t > primIndices( prim.indices->count );
 
-        for( size_t a = 0; a < prim.attributes_count; a++ )
+    for( size_t k = 0; k < prim.indices->count; k++ )
+    {
+        uint32_t resolved;
+
+        if( !cgltf_accessor_read_uint( prim.indices, k, &resolved, 1 ) )
         {
-            const cgltf_attribute& attr = prim.attributes[ a ];
-
-            switch( attr.type )
-            {
-                case cgltf_attribute_type_position: break;
-                case cgltf_attribute_type_normal: break;
-                case cgltf_attribute_type_tangent: break;
-                case cgltf_attribute_type_texcoord: {
-                    int texcoordIndex = attr.index;
-
-                    break;
-                }
-                case cgltf_attribute_type_color: break;
-                default: break;
-            }
-
-
-
+            debugprint(
+                std::format( "{}: Ignoring ...->{}->{}: Indices: cgltf_accessor_read_uint fail",
+                             gltfPath,
+                             node.parent->name,
+                             node.name )
+                    .c_str(),
+                RG_MESSAGE_SEVERITY_WARNING );
+            return {};
         }
+
+        primIndices[ k ] = resolved;
     }
 
-    return {};
+    return primIndices;
 }
 
 
@@ -208,7 +458,7 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
     {
         debugprint(
             std::format( "{}: {}. Error code: {}", gltfPath, "cgltf_validate", int( r ) ).c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+            RG_MESSAGE_SEVERITY_WARNING );
         return;
     }
 
@@ -230,10 +480,11 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
 
     if( !mainNode )
     {
-        debugprint(
-            std::format( "{}: {}", gltfPath, "No \"" RTGL1_MAIN_ROOT_NODE "\" node in the default scene" )
-                .c_str(),
-            RG_MESSAGE_SEVERITY_WARNING );
+        debugprint( std::format( "{}: {}",
+                                 gltfPath,
+                                 "No \"" RTGL1_MAIN_ROOT_NODE "\" node in the default scene" )
+                        .c_str(),
+                    RG_MESSAGE_SEVERITY_WARNING );
         return;
     }
 
@@ -247,7 +498,7 @@ RTGL1::GltfImporter::~GltfImporter()
     cgltf_free( data );
 }
 
-void RTGL1::GltfImporter::UploadAsStaticToScene( Scene& scene )
+void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex )
 {
     cgltf_node* mainNode = FindMainRootNode( data );
     if( !mainNode )
@@ -297,7 +548,7 @@ void RTGL1::GltfImporter::UploadAsStaticToScene( Scene& scene )
             .pMeshName    = srcMesh->name,
             .isExportable = false,
         };
-        
+
         for( size_t i = 0; i < srcMesh->children_count; i++ )
         {
             cgltf_node* srcPrim = srcMesh->children[ i ];
@@ -322,31 +573,44 @@ void RTGL1::GltfImporter::UploadAsStaticToScene( Scene& scene )
 
             if( srcPrim->children_count != 0 )
             {
-                debugprint(
-                    std::format( "{}: Found child nodes of ({}->{}->{}). Ignoring",
-                                 gltfPath,
-                                 mainNode->name,
-                                 srcMesh->name,
-                                 srcPrim->name )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+                debugprint( std::format( "{}: Found child nodes of ({}->{}->{}). Ignoring",
+                                         gltfPath,
+                                         mainNode->name,
+                                         srcMesh->name,
+                                         srcPrim->name )
+                                .c_str(),
+                            RG_MESSAGE_SEVERITY_WARNING );
             }
-            
+
+            auto vertices = GatherVertices( *srcPrim );
+            auto indices  = GatherIndices( *srcPrim );
+
+            if( vertices.empty() )
+            {
+                continue;
+            }
+
             RgMeshPrimitiveInfo dstPrim = {
                 .pPrimitiveNameInMesh = srcPrim->name,
                 .primitiveIndexInMesh = uint32_t( i ),
                 .flags                = 0,
                 .transform            = MakeRgTransformFromGltfNode( *srcPrim ),
-               /* .pVertices            =,
-                .vertexCount          =,
-                .pIndices             =,
-                .indexCount =
-                    , .pTextureName =, .textureFrame =, .color =, .emissive =, .pEditorInfo =.,*/
+                .pVertices            = vertices.data(),
+                .vertexCount          = uint32_t( vertices.size() ),
+                .pIndices             = indices.empty() ? nullptr : indices.data(),
+                .indexCount           = uint32_t( indices.size() ),
+                .pTextureName         = nullptr,
+                .textureFrame         = 0,
+                .color                = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
+                .emissive             = 0.0f,
+                .pEditorInfo          = nullptr,
             };
 
+            // TODO: static geom upload
+            if( !scene.Upload( frameIndex, dstMesh, dstPrim ) )
+            {
+                assert( 0 );
+            }
         }
     }
-
 }
-
-

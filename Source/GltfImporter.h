@@ -44,10 +44,11 @@ public:
     GltfImporter& operator=( const GltfImporter& other )     = delete;
     GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
-    void UploadAsStaticToScene( Scene& scene );
+    void UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex );
 
 private:
     std::vector< RgPrimitiveVertex > GatherVertices( const cgltf_node& node );
+    std::vector< uint32_t >          GatherIndices( const cgltf_node& node );
 
 private:
     cgltf_data*  data;
