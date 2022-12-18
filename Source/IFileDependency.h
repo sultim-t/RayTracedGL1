@@ -46,19 +46,19 @@ inline FileType MakeFileType( const std::filesystem::path& p )
     {
         return FileType::GLTF;
     }
-    else if( ext == ".ktx2" )
+    if( ext == ".ktx2" )
     {
         return FileType::KTX2;
     }
-    else if( ext == ".png" )
+    if( ext == ".png" )
     {
         return FileType::PNG;
     }
-    else if( ext == ".tga" )
+    if( ext == ".tga" )
     {
         return FileType::TGA;
     }
-    else if( ext == ".jpg" || ext == ".jpeg" )
+    if( ext == ".jpg" || ext == ".jpeg" )
     {
         return FileType::JPG;
     }

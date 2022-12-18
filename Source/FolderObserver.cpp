@@ -30,14 +30,21 @@ namespace
 
     auto GetAllFolderFiles( const fs::path& folder )
     {
-        std::set< FolderObserver::DependentFile > result;
+        std::vector< FolderObserver::DependentFile > result;
 
         for( const fs::directory_entry& entry : fs::recursive_directory_iterator( folder ) )
         {
-            result.insert( FolderObserver::DependentFile{
-                .path          = entry.path(),
-                .lastWriteTime = entry.last_write_time(),
-            } );
+            FileType type = MakeFileType( entry.path() );
+
+            if( type != FileType::Unknown )
+            {
+                result.push_back( FolderObserver::DependentFile{
+                    .type          = type,
+                    .path          = entry.path(),
+                    .pathHash      = std::hash< fs::path >{}( entry.path() ),
+                    .lastWriteTime = entry.last_write_time(),
+                } );
+            }
         }
 
         return result;
@@ -54,7 +61,7 @@ void RTGL1::FolderObserver::RecheckFiles()
         return;
     }
 
-    std::set< DependentFile > curAllFiles = GetAllFolderFiles( folder );
+    auto curAllFiles = GetAllFolderFiles( folder );
 
     for( const auto& cur : curAllFiles )
     {
@@ -63,13 +70,12 @@ void RTGL1::FolderObserver::RecheckFiles()
         for( const auto& prev : prevAllFiles )
         {
             // if file previously existed
-            if( cur.path == prev.path )
+            if( cur.pathHash == prev.pathHash && cur.path == prev.path )
             {
                 // if was changed
                 if( cur.lastWriteTime != prev.lastWriteTime )
                 {
-                    CallSubsbribers(
-                        &IFileDependency::OnFileChanged, MakeFileType( cur.path ), cur.path );
+                    CallSubsbribers( &IFileDependency::OnFileChanged, cur.type, cur.path );
                 }
 
                 foundInPrev = true;
@@ -80,8 +86,7 @@ void RTGL1::FolderObserver::RecheckFiles()
         // if new file
         if( !foundInPrev )
         {
-            CallSubsbribers(
-                &IFileDependency::OnFileChanged, MakeFileType( cur.path ), cur.path );
+            CallSubsbribers( &IFileDependency::OnFileChanged, cur.type, cur.path );
         }
     }
 

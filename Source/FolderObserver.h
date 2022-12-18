@@ -24,7 +24,6 @@
 #include "IFileDependency.h"
 
 #include <filesystem>
-#include <set>
 
 namespace RTGL1
 {
@@ -52,9 +51,11 @@ public:
 
     struct DependentFile
     {
+        FileType              type;
         std::filesystem::path path;
+        uint64_t              pathHash;
         Clock::time_point     lastWriteTime;
-        
+
         friend std::strong_ordering operator<=>( const DependentFile& a,
                                                  const DependentFile& b ) noexcept
         {
@@ -64,9 +65,9 @@ public:
     };
 
 private:
-    std::filesystem::path     folder;
-    Clock::time_point         lastCheck;
-    std::set< DependentFile > prevAllFiles;
+    std::filesystem::path        folder;
+    Clock::time_point            lastCheck;
+    std::vector< DependentFile > prevAllFiles;
 
     std::vector< std::weak_ptr< IFileDependency > > subscribers;
 
