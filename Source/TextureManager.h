@@ -36,7 +36,6 @@
 #include "TextureDescriptors.h"
 #include "TextureUploader.h"
 #include "LibraryConfig.h"
-#include "TextureObserver.h"
 
 namespace RTGL1
 {

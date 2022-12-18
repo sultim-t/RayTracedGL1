@@ -80,7 +80,6 @@ set(Sources
     "Source/Stb/stb_image.cpp"
     "Source/ImageLoaderDev.cpp"
     "Source/PortalList.cpp"
-    "Source/TextureObserver.cpp"
     "Source/RestirBuffers.cpp"
     "Source/Volumetric.cpp"
     "Source/DebugWindows.cpp"
