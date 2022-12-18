@@ -50,22 +50,22 @@ public:
                std::shared_ptr< GeomInfoManager >      geomInfoManager );
     ~ASManager();
 
-    ASManager( const ASManager& other )     = delete;
-    ASManager( ASManager&& other ) noexcept = delete;
-    ASManager& operator=( const ASManager& other ) = delete;
+    ASManager( const ASManager& other )                = delete;
+    ASManager( ASManager&& other ) noexcept            = delete;
+    ASManager& operator=( const ASManager& other )     = delete;
     ASManager& operator=( ASManager&& other ) noexcept = delete;
 
 
-    void       BeginStaticGeometry();
+    void BeginStaticGeometry();
     // Submitting static geometry to the building is a heavy operation
     // with waiting for it to complete.
-    void       SubmitStaticGeometry();
+    void SubmitStaticGeometry();
     // If all the added geometries must be removed, call this function before submitting
-    void       ResetStaticGeometry();
+    void ResetStaticGeometry();
 
 
-    void       BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
-    void       SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
+    void BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
+    void SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
 
 
     bool AddMeshPrimitive( uint32_t                   frameIndex,
@@ -95,8 +95,8 @@ public:
     void OnVertexPreprocessingFinish( VkCommandBuffer cmd, uint32_t frameIndex, bool onlyDynamic );
 
 
-    VkDescriptorSet       GetBuffersDescSet( uint32_t frameIndex ) const;
-    VkDescriptorSet       GetTLASDescSet( uint32_t frameIndex ) const;
+    VkDescriptorSet GetBuffersDescSet( uint32_t frameIndex ) const;
+    VkDescriptorSet GetTLASDescSet( uint32_t frameIndex ) const;
 
     VkDescriptorSetLayout GetBuffersDescSetLayout() const;
     VkDescriptorSetLayout GetTLASDescSetLayout() const;
@@ -106,9 +106,9 @@ private:
     void UpdateBufferDescriptors( uint32_t frameIndex );
     void UpdateASDescriptors( uint32_t frameIndex );
 
-    bool        SetupBLAS( BLASComponent& as, const VertexCollector& vertCollector );
+    bool SetupBLAS( BLASComponent& as, const VertexCollector& vertCollector );
 
-    void        UpdateBLAS( BLASComponent& as, const VertexCollector& vertCollector );
+    void UpdateBLAS( BLASComponent& as, const VertexCollector& vertCollector );
 
     static bool SetupTLASInstanceFromBLAS( const BLASComponent& as,
                                            uint32_t             rayCullMaskWorld,
@@ -118,41 +118,41 @@ private:
     static bool IsFastBuild( VertexCollectorFilterTypeFlags filter );
 
 private:
-    VkDevice                                        device;
-    std::shared_ptr< MemoryAllocator >              allocator;
+    VkDevice                           device;
+    std::shared_ptr< MemoryAllocator > allocator;
 
-    VkFence                                         staticCopyFence;
+    VkFence staticCopyFence;
 
     // for filling buffers
-    std::shared_ptr< VertexCollector >              collectorStatic;
-    std::shared_ptr< VertexCollector >              collectorDynamic[ MAX_FRAMES_IN_FLIGHT ];
+    std::shared_ptr< VertexCollector > collectorStatic;
+    std::shared_ptr< VertexCollector > collectorDynamic[ MAX_FRAMES_IN_FLIGHT ];
     // device-local buffer for storing previous info
-    Buffer                                          previousDynamicPositions;
-    Buffer                                          previousDynamicIndices;
+    Buffer                             previousDynamicPositions;
+    Buffer                             previousDynamicIndices;
 
     // building
-    std::shared_ptr< ScratchBuffer >                scratchBuffer;
-    std::shared_ptr< ASBuilder >                    asBuilder;
+    std::shared_ptr< ScratchBuffer > scratchBuffer;
+    std::shared_ptr< ASBuilder >     asBuilder;
 
-    std::shared_ptr< CommandBufferManager >         cmdManager;
-    std::shared_ptr< TextureManager >               textureMgr;
-    std::shared_ptr< GeomInfoManager >              geomInfoMgr;
+    std::shared_ptr< CommandBufferManager > cmdManager;
+    std::shared_ptr< TextureManager >       textureMgr;
+    std::shared_ptr< GeomInfoManager >      geomInfoMgr;
 
     std::vector< std::unique_ptr< BLASComponent > > allStaticBlas;
     std::vector< std::unique_ptr< BLASComponent > > allDynamicBlas[ MAX_FRAMES_IN_FLIGHT ];
 
     // top level AS
-    std::unique_ptr< AutoBuffer >                   instanceBuffer;
-    std::unique_ptr< TLASComponent >                tlas[ MAX_FRAMES_IN_FLIGHT ];
+    std::unique_ptr< AutoBuffer >    instanceBuffer;
+    std::unique_ptr< TLASComponent > tlas[ MAX_FRAMES_IN_FLIGHT ];
 
     // TLAS and buffer descriptors
-    VkDescriptorPool                                descPool;
+    VkDescriptorPool descPool;
 
-    VkDescriptorSetLayout                           buffersDescSetLayout;
-    VkDescriptorSet                                 buffersDescSets[ MAX_FRAMES_IN_FLIGHT ];
+    VkDescriptorSetLayout buffersDescSetLayout;
+    VkDescriptorSet       buffersDescSets[ MAX_FRAMES_IN_FLIGHT ];
 
-    VkDescriptorSetLayout                           asDescSetLayout;
-    VkDescriptorSet                                 asDescSets[ MAX_FRAMES_IN_FLIGHT ];
+    VkDescriptorSetLayout asDescSetLayout;
+    VkDescriptorSet       asDescSets[ MAX_FRAMES_IN_FLIGHT ];
 };
 
 }

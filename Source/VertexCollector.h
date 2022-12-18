@@ -55,9 +55,9 @@ public:
 
     ~VertexCollector();
 
-    VertexCollector( const VertexCollector& other )     = delete;
-    VertexCollector( VertexCollector&& other ) noexcept = delete;
-    VertexCollector& operator=( const VertexCollector& other ) = delete;
+    VertexCollector( const VertexCollector& other )                = delete;
+    VertexCollector( VertexCollector&& other ) noexcept            = delete;
+    VertexCollector& operator=( const VertexCollector& other )     = delete;
     VertexCollector& operator=( VertexCollector&& other ) noexcept = delete;
 
 
@@ -72,10 +72,10 @@ public:
 
     // Clear data that was generated while collecting.
     // Should be called when blasGeometries is not needed anymore
-    virtual void     Reset();
+    void Reset();
     // Copy buffer from staging and set barrier for processing in compute shader
     // "isStaticVertexData" is required to determine what GLSL struct to use for copying
-    bool             CopyFromStaging( VkCommandBuffer cmd );
+    bool CopyFromStaging( VkCommandBuffer cmd );
 
 
     VkBuffer GetVertexBuffer() const;
@@ -109,18 +109,18 @@ public:
     void InsertVertexPreprocessFinishBarrier( VkCommandBuffer cmd );
 
 private:
-    void     InitStagingBuffers( const std::shared_ptr< MemoryAllocator >& allocator );
+    void InitStagingBuffers( const std::shared_ptr< MemoryAllocator >& allocator );
 
-    void     CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex );
+    void CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex );
 
-    bool     CopyVertexDataFromStaging( VkCommandBuffer cmd );
-    bool     CopyIndexDataFromStaging( VkCommandBuffer cmd );
-    bool     CopyTransformsFromStaging( VkCommandBuffer cmd, bool insertMemBarrier );
+    bool CopyVertexDataFromStaging( VkCommandBuffer cmd );
+    bool CopyIndexDataFromStaging( VkCommandBuffer cmd );
+    bool CopyTransformsFromStaging( VkCommandBuffer cmd, bool insertMemBarrier );
 
     // Parse flags to flag bit pairs and create instances of
     // VertexCollectorFilter. Flag bit pair contains one bit from
     // each flag bit group (e.g. change frequency group and pass through group).
-    void     InitFilters( VertexCollectorFilterTypeFlags flags );
+    void InitFilters( VertexCollectorFilterTypeFlags flags );
 
     void     AddFilter( VertexCollectorFilterTypeFlags filterGroup );
     uint32_t PushGeometry( VertexCollectorFilterTypeFlags            type,
@@ -133,31 +133,31 @@ private:
     uint32_t GetAllGeometryCount() const;
 
 private:
-    VkDevice                                                   device;
-    VertexCollectorFilterTypeFlags                             filtersFlags;
+    VkDevice                       device;
+    VertexCollectorFilterTypeFlags filtersFlags;
 
-    Buffer                                                     stagingVertBuffer;
-    std::shared_ptr< Buffer >                                  vertBuffer;
+    Buffer                    stagingVertBuffer;
+    std::shared_ptr< Buffer > vertBuffer;
 
-    Buffer                                                     stagingIndexBuffer;
-    std::shared_ptr< Buffer >                                  indexBuffer;
+    Buffer                    stagingIndexBuffer;
+    std::shared_ptr< Buffer > indexBuffer;
 
-    Buffer                                                     stagingTransformsBuffer;
-    std::shared_ptr< Buffer >                                  transformsBuffer;
+    Buffer                    stagingTransformsBuffer;
+    std::shared_ptr< Buffer > transformsBuffer;
 
-    std::shared_ptr< GeomInfoManager >                         geomInfoMgr;
+    std::shared_ptr< GeomInfoManager > geomInfoMgr;
 
-    uint32_t                                                   curVertexCount;
-    uint32_t                                                   curIndexCount;
-    uint32_t                                                   curPrimitiveCount;
-    uint32_t                                                   curTransformCount;
+    uint32_t curVertexCount;
+    uint32_t curIndexCount;
+    uint32_t curPrimitiveCount;
+    uint32_t curTransformCount;
 
-    ShVertex*                                                  mappedVertexData;
-    uint32_t*                                                  mappedIndexData;
-    VkTransformMatrixKHR*                                      mappedTransformData;
-    
+    ShVertex*             mappedVertexData;
+    uint32_t*             mappedIndexData;
+    VkTransformMatrixKHR* mappedTransformData;
+
     rgl::unordered_map< VertexCollectorFilterTypeFlags, std::shared_ptr< VertexCollectorFilter > >
-                                             filters;
+        filters;
 };
 
 }

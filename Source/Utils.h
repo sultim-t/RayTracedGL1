@@ -1,15 +1,15 @@
 // Copyright (c) 2020-2021 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -36,7 +36,7 @@
     ( dst )[ 2 ] = ( xyz )[ 2 ]
 
 #define RG_ACCESS_VEC3( src ) ( src )[ 0 ], ( src )[ 1 ], ( src )[ 2 ]
-#define RG_ACCESS_VEC4( src ) ( src )[ 0 ], ( src )[ 1 ], ( src )[ 2 ], ( src )[ 3 ] 
+#define RG_ACCESS_VEC4( src ) ( src )[ 0 ], ( src )[ 1 ], ( src )[ 2 ], ( src )[ 3 ]
 
 #define RG_MAX_VEC3( dst, m )                       \
     ( dst )[ 0 ] = std::max( ( dst )[ 0 ], ( m ) ); \
@@ -49,6 +49,7 @@
     ( dst )[ 2 ] = ( z );              \
     ( dst )[ 3 ] = ( w )
 
+// clang-format off
 
 #define RG_MATRIX_TRANSPOSED( /* RgTransform */ m )                                   \
     {                                                                                 \
@@ -65,120 +66,132 @@
         0.0f, 0.0f, 1.0f, 0.0f, \
     }
 
+// clang-format on
+
 namespace RTGL1
 {
-    enum NullifyTokenType
+enum NullifyTokenType
+{
+};
+inline constexpr NullifyTokenType NullifyToken = {};
+
+template< size_t Size >
+struct FloatStorage
+{
+    FloatStorage()  = default;
+    ~FloatStorage() = default;
+
+    explicit FloatStorage( NullifyTokenType ) { memset( data, 0, sizeof( data ) ); }
+    explicit FloatStorage( const float* ptr ) { memcpy( data, ptr, sizeof( data ) ); }
+
+    FloatStorage( const FloatStorage& other )                = default;
+    FloatStorage( FloatStorage&& other ) noexcept            = default;
+    FloatStorage& operator=( const FloatStorage& other )     = default;
+    FloatStorage& operator=( FloatStorage&& other ) noexcept = default;
+
+    [[nodiscard]] const float* Get() const { return data; }
+    float*                     Get() { return data; }
+
+    /*const float& operator[]( size_t i ) const
     {
-    };
-    inline constexpr NullifyTokenType NullifyToken = {};
+        assert( i < std::size( data ) );
+        return data[ i ];
+    }*/
 
-    template< size_t Size >
-    struct FloatStorage
-    {
-        FloatStorage()  = default;
-        ~FloatStorage() = default;
+    float data[ Size ];
+};
 
-        explicit FloatStorage( NullifyTokenType ) { memset( data, 0, sizeof( data ) ); }
-        explicit FloatStorage( const float* ptr ) { memcpy( data, ptr, sizeof( data ) ); }
+using Float16D = FloatStorage< 16 >;
+using Float4D  = FloatStorage< 4 >;
 
-        FloatStorage( const FloatStorage& other )     = default;
-        FloatStorage( FloatStorage&& other ) noexcept = default;
-        FloatStorage& operator=( const FloatStorage& other ) = default;
-        FloatStorage& operator=( FloatStorage&& other ) noexcept = default;
-
-        [[nodiscard]] const float* Get() const { return data; }
-        float*                     Get() { return data; }
-
-        /*const float& operator[]( size_t i ) const
-        {
-            assert( i < std::size( data ) );
-            return data[ i ];
-        }*/
-
-        float data[ Size ];
-    };
-
-    using Float16D = FloatStorage< 16 >;
-    using Float4D = FloatStorage< 4 >;
-
-    // Because std::optional requires explicit constructor
-    #define IfNotNull( ptr, ifnotnull ) \
-        ( ( ptr ) != nullptr ? std::optional( ( ifnotnull ) ) : std::nullopt )
+// Because std::optional requires explicit constructor
+#define IfNotNull( ptr, ifnotnull ) \
+    ( ( ptr ) != nullptr ? std::optional( ( ifnotnull ) ) : std::nullopt )
 
 namespace Utils
 {
-    void BarrierImage(
-        VkCommandBuffer cmd, VkImage image,
-        VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
-        VkImageLayout oldLayout, VkImageLayout newLayout,
-        VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
-        const VkImageSubresourceRange &subresourceRange);
+    void BarrierImage( VkCommandBuffer                cmd,
+                       VkImage                        image,
+                       VkAccessFlags                  srcAccessMask,
+                       VkAccessFlags                  dstAccessMask,
+                       VkImageLayout                  oldLayout,
+                       VkImageLayout                  newLayout,
+                       VkPipelineStageFlags           srcStageMask,
+                       VkPipelineStageFlags           dstStageMask,
+                       const VkImageSubresourceRange& subresourceRange );
 
-    void BarrierImage(
-        VkCommandBuffer cmd, VkImage image,
-        VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
-        VkImageLayout oldLayout, VkImageLayout newLayout,
-        const VkImageSubresourceRange &subresourceRange);
+    void BarrierImage( VkCommandBuffer                cmd,
+                       VkImage                        image,
+                       VkAccessFlags                  srcAccessMask,
+                       VkAccessFlags                  dstAccessMask,
+                       VkImageLayout                  oldLayout,
+                       VkImageLayout                  newLayout,
+                       const VkImageSubresourceRange& subresourceRange );
 
-    void BarrierImage(
-        VkCommandBuffer cmd, VkImage image,
-        VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
-        VkImageLayout oldLayout, VkImageLayout newLayout,
-        VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask);
+    void BarrierImage( VkCommandBuffer      cmd,
+                       VkImage              image,
+                       VkAccessFlags        srcAccessMask,
+                       VkAccessFlags        dstAccessMask,
+                       VkImageLayout        oldLayout,
+                       VkImageLayout        newLayout,
+                       VkPipelineStageFlags srcStageMask,
+                       VkPipelineStageFlags dstStageMask );
 
-    void BarrierImage(
-        VkCommandBuffer cmd, VkImage image,
-        VkAccessFlags srcAccessMask, VkAccessFlags dstAccessMask,
-        VkImageLayout oldLayout, VkImageLayout newLayout);
+    void BarrierImage( VkCommandBuffer cmd,
+                       VkImage         image,
+                       VkAccessFlags   srcAccessMask,
+                       VkAccessFlags   dstAccessMask,
+                       VkImageLayout   oldLayout,
+                       VkImageLayout   newLayout );
 
-    void ASBuildMemoryBarrier(
-        VkCommandBuffer cmd
-    );
+    void ASBuildMemoryBarrier( VkCommandBuffer cmd );
 
-    void WaitForFence(VkDevice device, VkFence fence);
-    void ResetFence(VkDevice device, VkFence fence);
-    void WaitAndResetFence(VkDevice device, VkFence fence);
-    void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
+    void WaitForFence( VkDevice device, VkFence fence );
+    void ResetFence( VkDevice device, VkFence fence );
+    void WaitAndResetFence( VkDevice device, VkFence fence );
+    void WaitAndResetFences( VkDevice device, VkFence fence_A, VkFence fence_B );
 
     VkFormat ToUnorm( VkFormat f );
     VkFormat ToSRGB( VkFormat f );
     bool     IsSRGB( VkFormat f );
 
-    template<typename T> T    Align( const T& v, const T& alignment );
-    template<typename T> bool IsPow2( const T& v );
+    template< typename T >
+    T Align( const T& v, const T& alignment );
+    template< typename T >
+    bool IsPow2( const T& v );
 
-    bool AreViewportsSame(const VkViewport &a, const VkViewport &b);
+    bool AreViewportsSame( const VkViewport& a, const VkViewport& b );
 
-    bool IsAlmostZero( const float v[ 3 ] );
-    bool IsAlmostZero(const RgFloat3D &v);
-    bool IsAlmostZero(const RgMatrix3D &m);
-    float Dot(const float a[3], const float b[3]);
-    float Length(const float v[3]);
-    bool TryNormalize( float inout[ 3 ] );
-    void Normalize(float inout[3]);
-    RgFloat3D Normalize( const RgFloat3D& v );
-    RgFloat3D SafeNormalize( const RgFloat3D& v, const RgFloat3D& fallback );
-    void Negate(float inout[3]);
-    void Nullify(float inout[3]);
-    void Cross(const float a[3], const float b[3], float r[3]);
-    RgFloat3D GetUnnormalizedNormal(const RgFloat3D positions[3]);
-    bool GetNormalAndArea(const RgFloat3D positions[3], RgFloat3D &normal, float &area);
+    bool        IsAlmostZero( const float v[ 3 ] );
+    bool        IsAlmostZero( const RgFloat3D& v );
+    bool        IsAlmostZero( const RgMatrix3D& m );
+    float       Dot( const float a[ 3 ], const float b[ 3 ] );
+    float       Length( const float v[ 3 ] );
+    bool        TryNormalize( float inout[ 3 ] );
+    void        Normalize( float inout[ 3 ] );
+    RgFloat3D   Normalize( const RgFloat3D& v );
+    RgFloat3D   SafeNormalize( const RgFloat3D& v, const RgFloat3D& fallback );
+    void        Negate( float inout[ 3 ] );
+    void        Nullify( float inout[ 3 ] );
+    void        Cross( const float a[ 3 ], const float b[ 3 ], float r[ 3 ] );
+    RgFloat3D   GetUnnormalizedNormal( const RgFloat3D positions[ 3 ] );
+    bool        GetNormalAndArea( const RgFloat3D positions[ 3 ], RgFloat3D& normal, float& area );
     // In terms of GLSL: mat3(a), where a is mat4.
     // The remaining values are initialized with identity matrix.
-    void SetMatrix3ToGLSLMat4(float dst[16], const RgMatrix3D &src);
+    void        SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src );
     RgTransform MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale );
 
-    uint32_t GetPreviousByModulo(uint32_t value, uint32_t count);
-    
-    uint32_t GetWorkGroupCount(float size, uint32_t groupSize);
-    uint32_t GetWorkGroupCount(uint32_t size, uint32_t groupSize);
+    uint32_t GetPreviousByModulo( uint32_t value, uint32_t count );
+
+    uint32_t GetWorkGroupCount( float size, uint32_t groupSize );
+    uint32_t GetWorkGroupCount( uint32_t size, uint32_t groupSize );
 
     template< typename T1, typename T2 >
-    requires( std::is_integral_v< T1 >&& std::is_integral_v< T2 > )
+        requires( std::is_integral_v< T1 > && std::is_integral_v< T2 > )
     uint32_t GetWorkGroupCountT( T1 size, T2 groupSize );
 
     RgFloat4D UnpackColor4DPacked32( RgColor4DPacked32 c );
-    float UnpackAlphaFromPacked32( RgColor4DPacked32 c );
+    float     UnpackAlphaFromPacked32( RgColor4DPacked32 c );
 
     inline bool IsCstrEmpty( const char* cstr )
     {
@@ -189,7 +202,7 @@ namespace Utils
         return cstr ? cstr : "";
     }
 
-    // clang-format off
+// clang-format off
     // Column memory order!
     #define RG_TRANSFORM_TO_GLTF_MATRIX( t ) {                                      \
         ( t ).matrix[ 0 ][ 0 ], ( t ).matrix[ 1 ][ 0 ], ( t ).matrix[ 2 ][ 0 ], 0,  \
@@ -199,30 +212,31 @@ namespace Utils
     // clang-format on
 };
 
-template<typename T>
-constexpr T clamp(const T &v, const T &v_min, const T &v_max)
+template< typename T >
+constexpr T clamp( const T& v, const T& v_min, const T& v_max )
 {
-    assert(v_min <= v_max);
-    return std::min(v_max, std::max(v_min, v));
+    assert( v_min <= v_max );
+    return std::min( v_max, std::max( v_min, v ) );
 }
 
-template <typename T>
-bool Utils::IsPow2(const T& v)
+template< typename T >
+bool Utils::IsPow2( const T& v )
 {
-    static_assert(std::is_integral_v<T>);
-    return (v != 0) && ((v & (v - 1)) == 0);
+    static_assert( std::is_integral_v< T > );
+    return ( v != 0 ) && ( ( v & ( v - 1 ) ) == 0 );
 }
 
-template <typename T>
-T Utils::Align(const T& v, const T& alignment)
+template< typename T >
+T Utils::Align( const T& v, const T& alignment )
 {
-    static_assert(std::is_integral_v<T>);
-    assert(IsPow2(alignment));
+    static_assert( std::is_integral_v< T > );
+    assert( IsPow2( alignment ) );
 
-    return (v + alignment - 1) & ~(alignment - 1);
+    return ( v + alignment - 1 ) & ~( alignment - 1 );
 }
 
-template< typename T1, typename T2 > requires( std::is_integral_v< T1 >&& std::is_integral_v< T2 > )
+template< typename T1, typename T2 >
+    requires( std::is_integral_v< T1 > && std::is_integral_v< T2 > )
 uint32_t Utils::GetWorkGroupCountT( T1 size, T2 groupSize )
 {
     assert( size <= std::numeric_limits< uint32_t >::max() );

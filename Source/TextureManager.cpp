@@ -35,13 +35,14 @@ using namespace RTGL1;
 namespace
 {
 
-constexpr MaterialTextures                EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX,
+constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX,
                                                      EMPTY_TEXTURE_INDEX,
                                                      EMPTY_TEXTURE_INDEX };
 
-constexpr RgSamplerFilter                 DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
+constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
 
-template< typename T > constexpr const T* DefaultIfNull( const T* pData, const T* pDefault )
+template< typename T >
+constexpr const T* DefaultIfNull( const T* pData, const T* pDefault )
 {
     return pData != nullptr ? pData : pDefault;
 }
@@ -369,9 +370,8 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
 
     if( info.pPixels == nullptr )
     {
-        throw RgException(
-            RG_RESULT_WRONG_FUNCTION_ARGUMENT,
-            R"('pPixels' must be not null in RgOriginalTextureInfo)" );
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
+                           R"('pPixels' must be not null in RgOriginalTextureInfo)" );
     }
 
     const auto samplerHandle =
@@ -419,7 +419,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                         .textures     = mtextures,
                         .isUpdateable = isUpdateable,
                     } );
-    
+
     return true;
 }
 
@@ -750,7 +750,8 @@ VkDescriptorSetLayout TextureManager::GetDescSetLayout() const
 
 void TextureManager::OnFileChanged( FileType type, const std::filesystem::path& filepath )
 {
-    if( type == FileType::PNG || type == FileType::TGA || type == FileType::KTX2 || type == FileType::JPG )
+    if( type == FileType::PNG || type == FileType::TGA || type == FileType::KTX2 ||
+        type == FileType::JPG )
     {
         texturesToReloadNoExt.push_back(
             std::filesystem::path( filepath ).replace_extension( "" ) );

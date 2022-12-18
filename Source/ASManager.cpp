@@ -454,11 +454,11 @@ bool RTGL1::ASManager::SetupBLAS( BLASComponent& blas, const VertexCollector& ve
     const auto& ranges     = vertCollector.GetASBuildRangeInfos( filter );
     const auto& primCounts = vertCollector.GetPrimitiveCounts( filter );
 
-    const bool  fastTrace = !IsFastBuild( filter );
-    const bool  update    = false;
+    const bool fastTrace = !IsFastBuild( filter );
+    const bool update    = false;
 
     // get AS size and create buffer for AS
-    const auto  buildSizes =
+    const auto buildSizes =
         asBuilder->GetBottomBuildSizes( geoms.size(), geoms.data(), primCounts.data(), fastTrace );
 
     // if no buffer, or it was created, but its size is too small for current AS
@@ -494,11 +494,11 @@ void RTGL1::ASManager::UpdateBLAS( BLASComponent& blas, const VertexCollector& v
     const auto& ranges     = vertCollector.GetASBuildRangeInfos( filter );
     const auto& primCounts = vertCollector.GetPrimitiveCounts( filter );
 
-    const bool  fastTrace = !IsFastBuild( filter );
+    const bool fastTrace = !IsFastBuild( filter );
     // must be just updated
-    const bool  update = true;
+    const bool update = true;
 
-    const auto  buildSizes =
+    const auto buildSizes =
         asBuilder->GetBottomBuildSizes( geoms.size(), geoms.data(), primCounts.data(), fastTrace );
 
     assert( blas.IsValid( buildSizes ) );
@@ -614,8 +614,7 @@ bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
 
     if( isStatic )
     {
-        return collectorStatic->AddPrimitive( 
-            frameIndex, mesh, primitive, textures, colors );
+        return collectorStatic->AddPrimitive( frameIndex, mesh, primitive, textures, colors );
     }
     else
     {

@@ -33,7 +33,8 @@ static_assert( MAX_TOP_LEVEL_INSTANCE_COUNT ==
                "It's recommended for MAX_TOP_LEVEL_INSTANCE_COUNT to be such value" );
 
 using FlagToIndexType = uint8_t;
-constexpr uint32_t FlagToIndexTypeMaxValue = 1 << ( 8 /* bits per byte */ * sizeof( FlagToIndexType ) );
+constexpr uint32_t FlagToIndexTypeMaxValue =
+    1 << ( 8 /* bits per byte */ * sizeof( FlagToIndexType ) );
 
 static_assert( MAX_TOP_LEVEL_INSTANCE_COUNT < FlagToIndexTypeMaxValue );
 
@@ -56,17 +57,17 @@ void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags( std::function< void
 }
 
 // max flag value in a group
-constexpr uint32_t     MAX_FLAG_VALUE_CF = 4;
-constexpr uint32_t     MAX_FLAG_VALUE_PT = 4;
-constexpr uint32_t     MAX_FLAG_VALUE_PV = 16;
+constexpr uint32_t MAX_FLAG_VALUE_CF = 4;
+constexpr uint32_t MAX_FLAG_VALUE_PT = 4;
+constexpr uint32_t MAX_FLAG_VALUE_PV = 16;
 
 static FlagToIndexType FlagToIndex[ MAX_FLAG_VALUE_CF ][ MAX_FLAG_VALUE_PT ][ MAX_FLAG_VALUE_PV ];
 
-static uint32_t        AllBottomLevelGeomsCount = 0;
+static uint32_t AllBottomLevelGeomsCount = 0;
 static uint32_t OffsetInGlobalArray[ MAX_FLAG_VALUE_CF ][ MAX_FLAG_VALUE_PT ][ MAX_FLAG_VALUE_PV ];
 static uint32_t AmountInGlobalArray[ MAX_FLAG_VALUE_CF ][ MAX_FLAG_VALUE_PT ][ MAX_FLAG_VALUE_PV ];
 
-void            RTGL1::VertexCollectorFilterTypeFlags_Init()
+void RTGL1::VertexCollectorFilterTypeFlags_Init()
 {
     memset( FlagToIndex, 0xFF, sizeof( FlagToIndex ) );
 
@@ -215,7 +216,7 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&      
 {
     FL flags = 0;
 
-    
+
     {
         flags |= FL( FT::CF_DYNAMIC );
     }
@@ -248,7 +249,7 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&      
 #if RAYCULLMASK_SKY_IS_WORLD2
         flags |= FL( FT::PV_WORLD_2 );
 #else
-        #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
+    #error Handle RG_DRAW_FRAME_RAY_CULL_SKY_BIT, if there is no WORLD_2
 #endif
     }
     else

@@ -253,7 +253,8 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
     if( geomInfoMgr->GetCount() + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
     {
-        debug::Error( "Too many geometry infos: the limit is {}", MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT );
+        debug::Error( "Too many geometry infos: the limit is {}",
+                      MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT );
         return false;
     }
 
@@ -366,7 +367,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
         .defaultEmission    = std::clamp( info.emissive, 0.0f, 1.0f ),
     };
 
-    
+
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
     geomInfoMgr->WriteGeomInfo( frameIndex,
@@ -492,9 +493,9 @@ bool RTGL1::VertexCollector::CopyTransformsFromStaging( VkCommandBuffer cmd, boo
 
 bool RTGL1::VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
 {
-    bool                                   vrtCopied = CopyVertexDataFromStaging( cmd );
-    bool                                   indCopied = CopyIndexDataFromStaging( cmd );
-    bool                                   trnCopied = CopyTransformsFromStaging( cmd, false );
+    bool vrtCopied = CopyVertexDataFromStaging( cmd );
+    bool indCopied = CopyIndexDataFromStaging( cmd );
+    bool trnCopied = CopyTransformsFromStaging( cmd, false );
 
     std::array< VkBufferMemoryBarrier, 2 > barriers     = {};
     uint32_t                               barrierCount = 0;

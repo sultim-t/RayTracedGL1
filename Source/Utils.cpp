@@ -246,7 +246,7 @@ bool Utils::AreViewportsSame( const VkViewport& a, const VkViewport& b )
 
 constexpr float ALMOST_ZERO_THRESHOLD = 0.01f;
 
-bool            Utils::IsAlmostZero( const float v[ 3 ] )
+bool Utils::IsAlmostZero( const float v[ 3 ] )
 {
     return std::abs( v[ 0 ] ) + std::abs( v[ 1 ] ) + std::abs( v[ 2 ] ) < ALMOST_ZERO_THRESHOLD;
 }
@@ -281,7 +281,7 @@ float RTGL1::Utils::Length( const float v[ 3 ] )
     return sqrtf( Dot( v, v ) );
 }
 
-bool Utils::TryNormalize( float inout[3] )
+bool Utils::TryNormalize( float inout[ 3 ] )
 {
     float len = Length( inout );
 
@@ -349,10 +349,10 @@ RgFloat3D RTGL1::Utils::GetUnnormalizedNormal( const RgFloat3D positions[ 3 ] )
     const float* b = positions[ 1 ].data;
     const float* c = positions[ 2 ].data;
 
-    float        e1[ 3 ] = { b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ], b[ 2 ] - a[ 2 ] };
-    float        e2[ 3 ] = { c[ 0 ] - a[ 0 ], c[ 1 ] - a[ 1 ], c[ 2 ] - a[ 2 ] };
+    float e1[ 3 ] = { b[ 0 ] - a[ 0 ], b[ 1 ] - a[ 1 ], b[ 2 ] - a[ 2 ] };
+    float e2[ 3 ] = { c[ 0 ] - a[ 0 ], c[ 1 ] - a[ 1 ], c[ 2 ] - a[ 2 ] };
 
-    RgFloat3D    n = {};
+    RgFloat3D n = {};
     Cross( e1, e2, n.data );
 
     return n;
@@ -454,8 +454,8 @@ uint32_t RTGL1::Utils::GetWorkGroupCount( uint32_t size, uint32_t groupSize )
 RgFloat4D Utils::UnpackColor4DPacked32( RgColor4DPacked32 c )
 {
     return { {
-        float( ( c >> 0  ) & 255u ) / 255.0f,
-        float( ( c >> 8  ) & 255u ) / 255.0f,
+        float( ( c >> 0 ) & 255u ) / 255.0f,
+        float( ( c >> 8 ) & 255u ) / 255.0f,
         float( ( c >> 16 ) & 255u ) / 255.0f,
         float( ( c >> 24 ) & 255u ) / 255.0f,
     } };

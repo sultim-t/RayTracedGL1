@@ -72,9 +72,9 @@ public:
     explicit VulkanDevice( const RgInstanceCreateInfo* pInfo );
     ~VulkanDevice();
 
-    VulkanDevice( const VulkanDevice& other )     = delete;
-    VulkanDevice( VulkanDevice&& other ) noexcept = delete;
-    VulkanDevice& operator=( const VulkanDevice& other ) = delete;
+    VulkanDevice( const VulkanDevice& other )                = delete;
+    VulkanDevice( VulkanDevice&& other ) noexcept            = delete;
+    VulkanDevice& operator=( const VulkanDevice& other )     = delete;
     VulkanDevice& operator=( VulkanDevice&& other ) noexcept = delete;
 
     void UploadMeshPrimitive( const RgMeshInfo* pMesh, const RgMeshPrimitiveInfo* pPrimitive );
@@ -116,78 +116,78 @@ public:
     void ImScratchVertex( const float& x, const float& y, const float& z );
     void ImScratchTexCoord( const float& u, const float& v );
     void ImScratchColor( const RgColor4DPacked32& color );
-    void ImScratchSetToPrimitive( RgMeshPrimitiveInfo *pTarget );
+    void ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget );
 
 
     void Print( std::string_view msg, RgMessageSeverityFlags severity ) const;
 
 private:
-    void            CreateInstance( const RgInstanceCreateInfo& info );
-    void            CreateDevice();
-    void            CreateSyncPrimitives();
-    void            ValidateCreateInfo( const RgInstanceCreateInfo* pInfo ) const;
+    void CreateInstance( const RgInstanceCreateInfo& info );
+    void CreateDevice();
+    void CreateSyncPrimitives();
+    void ValidateCreateInfo( const RgInstanceCreateInfo* pInfo ) const;
 
-    void            DestroyInstance();
-    void            DestroyDevice();
-    void            DestroySyncPrimitives();
+    void DestroyInstance();
+    void DestroyDevice();
+    void DestroySyncPrimitives();
 
-    void            FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
-    void            DrawDebugWindows() const;
+    void FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
+    void DrawDebugWindows() const;
 
     VkCommandBuffer BeginFrame();
     void            Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
     void            EndFrame( VkCommandBuffer cmd );
 
 private:
-    VkInstance                              instance;
-    VkDevice                                device;
-    VkSurfaceKHR                            surface;
+    VkInstance   instance;
+    VkDevice     device;
+    VkSurfaceKHR surface;
 
-    FrameState                              currentFrameState;
+    FrameState currentFrameState;
 
     // incremented every frame
-    uint32_t                                frameId;
+    uint32_t frameId;
 
-    VkFence                                 frameFences[ MAX_FRAMES_IN_FLIGHT ]              = {};
-    VkSemaphore                             imageAvailableSemaphores[ MAX_FRAMES_IN_FLIGHT ] = {};
-    VkSemaphore                             renderFinishedSemaphores[ MAX_FRAMES_IN_FLIGHT ] = {};
-    VkSemaphore                             inFrameSemaphores[ MAX_FRAMES_IN_FLIGHT ]        = {};
+    VkFence     frameFences[ MAX_FRAMES_IN_FLIGHT ]              = {};
+    VkSemaphore imageAvailableSemaphores[ MAX_FRAMES_IN_FLIGHT ] = {};
+    VkSemaphore renderFinishedSemaphores[ MAX_FRAMES_IN_FLIGHT ] = {};
+    VkSemaphore inFrameSemaphores[ MAX_FRAMES_IN_FLIGHT ]        = {};
 
-    bool                                    waitForOutOfFrameFence;
-    VkFence                                 outOfFrameFences[ MAX_FRAMES_IN_FLIGHT ] = {};
+    bool    waitForOutOfFrameFence;
+    VkFence outOfFrameFences[ MAX_FRAMES_IN_FLIGHT ] = {};
 
-    std::shared_ptr< PhysicalDevice >       physDevice;
-    std::shared_ptr< Queues >               queues;
-    std::shared_ptr< Swapchain >            swapchain;
+    std::shared_ptr< PhysicalDevice > physDevice;
+    std::shared_ptr< Queues >         queues;
+    std::shared_ptr< Swapchain >      swapchain;
 
-    std::shared_ptr< MemoryAllocator >      memAllocator;
+    std::shared_ptr< MemoryAllocator > memAllocator;
 
     std::shared_ptr< CommandBufferManager > cmdManager;
 
-    std::shared_ptr< Framebuffers >         framebuffers;
-    std::shared_ptr< RestirBuffers >        restirBuffers;
-    std::shared_ptr< Volumetric >           volumetric;
+    std::shared_ptr< Framebuffers >  framebuffers;
+    std::shared_ptr< RestirBuffers > restirBuffers;
+    std::shared_ptr< Volumetric >    volumetric;
 
-    std::shared_ptr< GlobalUniform >        uniform;
-    std::shared_ptr< Scene >                scene;
+    std::shared_ptr< GlobalUniform > uniform;
+    std::shared_ptr< Scene >         scene;
 
-    std::shared_ptr< ShaderManager >        shaderManager;
-    std::shared_ptr< RayTracingPipeline >   rtPipeline;
-    std::shared_ptr< PathTracer >           pathTracer;
-    std::shared_ptr< Rasterizer >           rasterizer;
-    std::shared_ptr< DecalManager >         decalManager;
-    std::shared_ptr< PortalList >           portalList;
-    std::shared_ptr< LightManager >         lightManager;
-    std::shared_ptr< LightGrid >            lightGrid;
-    std::shared_ptr< Denoiser >             denoiser;
-    std::shared_ptr< Tonemapping >          tonemapping;
-    std::shared_ptr< ImageComposition >     imageComposition;
-    std::shared_ptr< Bloom >                bloom;
-    std::shared_ptr< FSR2 >                 amdFsr2;
-    std::shared_ptr< DLSS >                 nvDlss;
-    std::shared_ptr< Sharpening >           sharpening;
-    std::shared_ptr< EffectWipe >           effectWipe;
-    std::shared_ptr< EffectRadialBlur >     effectRadialBlur;
+    std::shared_ptr< ShaderManager >             shaderManager;
+    std::shared_ptr< RayTracingPipeline >        rtPipeline;
+    std::shared_ptr< PathTracer >                pathTracer;
+    std::shared_ptr< Rasterizer >                rasterizer;
+    std::shared_ptr< DecalManager >              decalManager;
+    std::shared_ptr< PortalList >                portalList;
+    std::shared_ptr< LightManager >              lightManager;
+    std::shared_ptr< LightGrid >                 lightGrid;
+    std::shared_ptr< Denoiser >                  denoiser;
+    std::shared_ptr< Tonemapping >               tonemapping;
+    std::shared_ptr< ImageComposition >          imageComposition;
+    std::shared_ptr< Bloom >                     bloom;
+    std::shared_ptr< FSR2 >                      amdFsr2;
+    std::shared_ptr< DLSS >                      nvDlss;
+    std::shared_ptr< Sharpening >                sharpening;
+    std::shared_ptr< EffectWipe >                effectWipe;
+    std::shared_ptr< EffectRadialBlur >          effectRadialBlur;
     std::shared_ptr< EffectChromaticAberration > effectChromaticAberration;
     std::shared_ptr< EffectInverseBW >           effectInverseBW;
     std::shared_ptr< EffectHueShift >            effectHueShift;
@@ -197,22 +197,22 @@ private:
     std::shared_ptr< EffectCrtDemodulateEncode > effectCrtDemodulateEncode;
     std::shared_ptr< EffectCrtDecode >           effectCrtDecode;
 
-    std::shared_ptr< SamplerManager >            worldSamplerManager;
-    std::shared_ptr< SamplerManager >            genericSamplerManager;
-    std::shared_ptr< BlueNoise >                 blueNoise;
-    std::shared_ptr< TextureManager >            textureManager;
-    std::shared_ptr< CubemapManager >            cubemapManager;
+    std::shared_ptr< SamplerManager > worldSamplerManager;
+    std::shared_ptr< SamplerManager > genericSamplerManager;
+    std::shared_ptr< BlueNoise >      blueNoise;
+    std::shared_ptr< TextureManager > textureManager;
+    std::shared_ptr< CubemapManager > cubemapManager;
 
-    std::filesystem::path                        ovrdFolder;
+    std::filesystem::path ovrdFolder;
 
-    LibraryConfig::Config                        libconfig;
-    VkDebugUtilsMessengerEXT                     debugMessenger;
-    std::unique_ptr< UserPrint >                 userPrint;
-    std::shared_ptr< UserFileLoad >              userFileLoad;
-    std::shared_ptr< DebugWindows >              debugWindows;
-    ScratchImmediate                             scratchImmediate;
-    std::unique_ptr< GltfExporter >              exporter;
-    std::unique_ptr< FolderObserver >            observer;
+    LibraryConfig::Config             libconfig;
+    VkDebugUtilsMessengerEXT          debugMessenger;
+    std::unique_ptr< UserPrint >      userPrint;
+    std::shared_ptr< UserFileLoad >   userFileLoad;
+    std::shared_ptr< DebugWindows >   debugWindows;
+    ScratchImmediate                  scratchImmediate;
+    std::unique_ptr< GltfExporter >   exporter;
+    std::unique_ptr< FolderObserver > observer;
 
     struct DebugPrim
     {
@@ -260,7 +260,7 @@ private:
     double currentFrameTime;
 
     bool vsync;
-    
+
     std::string currentMap{};
 };
 

@@ -36,16 +36,16 @@ public:
     explicit VertexCollectorFilter( VertexCollectorFilterTypeFlags filter );
     ~VertexCollectorFilter();
 
-    VertexCollectorFilter( const VertexCollectorFilter& other )     = delete;
-    VertexCollectorFilter( VertexCollectorFilter&& other ) noexcept = delete;
-    VertexCollectorFilter&         operator=( const VertexCollectorFilter& other ) = delete;
-    VertexCollectorFilter&         operator=( VertexCollectorFilter&& other ) noexcept = delete;
+    VertexCollectorFilter( const VertexCollectorFilter& other )                = delete;
+    VertexCollectorFilter( VertexCollectorFilter&& other ) noexcept            = delete;
+    VertexCollectorFilter& operator=( const VertexCollectorFilter& other )     = delete;
+    VertexCollectorFilter& operator=( VertexCollectorFilter&& other ) noexcept = delete;
 
-    const std::vector< uint32_t >& GetPrimitiveCounts() const;
+    const std::vector< uint32_t >&                                 GetPrimitiveCounts() const;
     const std::vector< VkAccelerationStructureGeometryKHR >&       GetASGeometries() const;
     const std::vector< VkAccelerationStructureBuildRangeInfoKHR >& GetASBuildRangeInfos() const;
 
-    void                                                           Reset();
+    void Reset();
 
     uint32_t PushGeometry( VertexCollectorFilterTypeFlags            type,
                            const VkAccelerationStructureGeometryKHR& geom );
@@ -57,7 +57,7 @@ public:
     uint32_t                       GetGeometryCount() const;
 
 private:
-    VertexCollectorFilterTypeFlags                          filter;
+    VertexCollectorFilterTypeFlags filter;
 
     std::vector< uint32_t >                                 primitiveCounts;
     std::vector< VkAccelerationStructureGeometryKHR >       asGeometries;

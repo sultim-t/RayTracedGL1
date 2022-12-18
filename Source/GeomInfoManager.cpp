@@ -45,9 +45,9 @@ uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint3
     switch( layerInfo->blend )
     {
         case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_TYPE_OPAQUE << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA:  return MATERIAL_BLENDING_TYPE_ALPHA  << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD:    return MATERIAL_BLENDING_TYPE_ADD    << bitOffset;
-        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE:  return MATERIAL_BLENDING_TYPE_SHADE  << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA: return MATERIAL_BLENDING_TYPE_ALPHA << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_ADD: return MATERIAL_BLENDING_TYPE_ADD << bitOffset;
+        case RG_TEXTURE_LAYER_BLEND_TYPE_SHADE: return MATERIAL_BLENDING_TYPE_SHADE << bitOffset;
         default: assert( 0 ); return 0;
     }
 }
@@ -117,7 +117,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
         VkBufferCopy          copyInfos[ MAX_TOP_LEVEL_INSTANCE_COUNT ];
         VkBufferMemoryBarrier barriers[ MAX_TOP_LEVEL_INSTANCE_COUNT ];
 
-        uint32_t              infoCount = 0;
+        uint32_t infoCount = 0;
 
         for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
         {
@@ -209,7 +209,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
         VkBufferCopy          copyInfos[ MAX_TOP_LEVEL_INSTANCE_COUNT ];
         VkBufferMemoryBarrier barriers[ MAX_TOP_LEVEL_INSTANCE_COUNT ];
 
-        uint32_t              infoCount = 0;
+        uint32_t infoCount = 0;
 
         for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
         {
@@ -217,7 +217,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
             {
                 for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
                 {
-                    uint32_t       flagsId = VertexCollectorFilterTypeFlags_GetID( cf | pt | pm );
+                    uint32_t flagsId = VertexCollectorFilterTypeFlags_GetID( cf | pt | pm );
 
                     const uint32_t lower = copyRegionLowerBounds[ frameIndex ][ flagsId ];
                     const uint32_t upper = copyRegionUpperBounds[ frameIndex ][ flagsId ];
@@ -356,7 +356,7 @@ void RTGL1::GeomInfoManager::ResetWithStatic()
 
     staticGeomCount  = 0;
     dynamicGeomCount = 0;
-    
+
     for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
     {
         ResetOnlyDynamic( i );
