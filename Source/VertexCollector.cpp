@@ -185,12 +185,11 @@ void RTGL1::VertexCollector::BeginCollecting( bool isStatic )
     assert( GetAllGeometryCount() == 0 );
 }
 
-std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
-    uint32_t                          frameIndex,
-    const RgMeshInfo&                 parentMesh,
-    const RgMeshPrimitiveInfo&        info,
-    std::span< MaterialTextures, 4 >  layerTextures,
-    std::span< RgColor4DPacked32, 4 > layerColors )
+bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          frameIndex,
+                                           const RgMeshInfo&                 parentMesh,
+                                           const RgMeshPrimitiveInfo&        info,
+                                           std::span< MaterialTextures, 4 >  layerTextures,
+                                           std::span< RgColor4DPacked32, 4 > layerColors )
 {
     using FT = VertexCollectorFilterTypeFlagBits;
     const VertexCollectorFilterTypeFlags geomFlags =
@@ -198,11 +197,17 @@ std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
 
 
     // if exceeds a limit of geometries in a group with specified geomFlags
-    if( GetGeometryCount( geomFlags ) + 1 >=
-        VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( geomFlags ) )
     {
-        assert( false && "Too many geometries in a group" );
-        return std::nullopt;
+        auto geomCount = GetGeometryCount( geomFlags );
+        if( geomCount + 1 >= VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( geomFlags ) )
+        {
+            debug::Error( "Too many geometries ({}) in a group ({}-{}-{})",
+                          geomCount,
+                          uint32_t( geomFlags & FT::MASK_CHANGE_FREQUENCY_GROUP ),
+                          uint32_t( geomFlags & FT::MASK_PASS_THROUGH_GROUP ),
+                          uint32_t( geomFlags & FT::MASK_PRIMARY_VISIBILITY_GROUP ) );
+            return false;
+        }
     }
 
 
@@ -229,20 +234,27 @@ std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
     // check bounds
     if( curVertexCount >= maxVertexCount )
     {
-        assert( 0 );
-        return std::nullopt;
+        if( collectStatic )
+        {
+            debug::Error( "Too many static vertices: the limit is {}", maxVertexCount );
+        }
+        else
+        {
+            debug::Error( "Too many dynamic vertices: the limit is {}", maxVertexCount );
+        }
+        return false;
     }
 
     if( curIndexCount >= MAX_INDEXED_PRIMITIVE_COUNT * 3 )
     {
-        assert( 0 );
-        return std::nullopt;
+        debug::Error( "Too many indices: the limit is {}", MAX_INDEXED_PRIMITIVE_COUNT * 3 );
+        return false;
     }
 
     if( geomInfoMgr->GetCount() + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
     {
-        assert( 0 );
-        return std::nullopt;
+        debug::Error( "Too many geometry infos: the limit is {}", MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT );
+        return false;
     }
 
 
@@ -354,25 +366,16 @@ std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
         .defaultEmission    = std::clamp( info.emissive, 0.0f, 1.0f ),
     };
 
-
-    // simple index -- calculated as (global cur static count + global cur dynamic count)
+    
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    uint32_t simpleIndex =
-        geomInfoMgr->WriteGeomInfo( frameIndex,
-                                    UniqueID::MakeForPrimitive( parentMesh, info ),
-                                    localIndex,
-                                    geomFlags,
-                                    geomInfo );
+    geomInfoMgr->WriteGeomInfo( frameIndex,
+                                UniqueID::MakeForPrimitive( parentMesh, info ),
+                                localIndex,
+                                geomFlags,
+                                geomInfo );
 
-
-    if( collectStatic )
-    {
-        // save transform index for updating static movable's transforms
-        simpleIndexToTransformIndex[ simpleIndex ] = transformIndex;
-    }
-
-    return simpleIndex;
+    return true;
 }
 
 void RTGL1::VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info,
@@ -402,8 +405,6 @@ void RTGL1::VertexCollector::Reset()
     curIndexCount     = 0;
     curPrimitiveCount = 0;
     curTransformCount = 0;
-
-    simpleIndexToTransformIndex.clear();
 
     for( auto& f : filters )
     {
@@ -485,60 +486,6 @@ bool RTGL1::VertexCollector::CopyTransformsFromStaging( VkCommandBuffer cmd, boo
                               0,
                               nullptr );
     }
-
-    return true;
-}
-
-bool RTGL1::VertexCollector::RecopyTransformsFromStaging( VkCommandBuffer cmd )
-{
-    return CopyTransformsFromStaging( cmd, true );
-}
-
-bool RTGL1::VertexCollector::RecopyTexCoordsFromStaging( VkCommandBuffer cmd )
-{
-    if( texCoordsToCopy.empty() )
-    {
-        return false;
-    }
-    assert( curTransformCount > 0 );
-
-    vkCmdCopyBuffer( cmd,
-                     stagingVertBuffer.GetBuffer(),
-                     vertBuffer->GetBuffer(),
-                     texCoordsToCopy.size(),
-                     texCoordsToCopy.data() );
-
-    VkDeviceSize lowerBound = UINT64_MAX;
-    VkDeviceSize upperBound = 0;
-    for( const auto& c : texCoordsToCopy )
-    {
-        lowerBound = std::min( lowerBound, c.dstOffset );
-        upperBound = std::max( upperBound, c.dstOffset + c.size );
-    }
-    assert( lowerBound < upperBound );
-
-    VkBufferMemoryBarrier txcBr = {};
-    txcBr.sType                 = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-    txcBr.srcQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-    txcBr.dstQueueFamilyIndex   = VK_QUEUE_FAMILY_IGNORED;
-    txcBr.srcAccessMask         = VK_ACCESS_TRANSFER_WRITE_BIT;
-    txcBr.dstAccessMask         = VK_ACCESS_SHADER_READ_BIT;
-    txcBr.buffer                = vertBuffer->GetBuffer();
-    txcBr.offset                = lowerBound;
-    txcBr.size                  = upperBound - lowerBound;
-
-    vkCmdPipelineBarrier( cmd,
-                          VK_PIPELINE_STAGE_TRANSFER_BIT,
-                          VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR,
-                          0,
-                          0,
-                          nullptr,
-                          1,
-                          &txcBr,
-                          0,
-                          nullptr );
-
-    texCoordsToCopy.clear();
 
     return true;
 }
@@ -627,28 +574,6 @@ bool RTGL1::VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
 
     return vrtCopied || indCopied || trnCopied;
 }
-
-/*void VertexCollector::UpdateTransform( uint32_t                     simpleIndex,
-                                       const RgUpdateTransformInfo& updateInfo )
-{
-    if( simpleIndex >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
-    {
-        assert( 0 );
-        return;
-    }
-
-    assert( mappedTransformData != nullptr );
-
-    static_assert( sizeof( RgTransform ) == sizeof( VkTransformMatrixKHR ),
-                   "RgTransform and VkTransformMatrixKHR must have the same structure to be used "
-                   "in AS building" );
-    memcpy( mappedTransformData + simpleIndexToTransformIndex[ simpleIndex ],
-            &updateInfo.transform,
-            sizeof( VkTransformMatrixKHR ) );
-
-    geomInfoMgr->WriteStaticGeomInfoTransform(
-        simpleIndex, updateInfo.movableStaticUniqueID, updateInfo.transform );
-}*/
 
 VkBuffer RTGL1::VertexCollector::GetVertexBuffer() const
 {

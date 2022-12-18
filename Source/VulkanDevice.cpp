@@ -815,8 +815,6 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     ImGui::End();
 }
 
-static RTGL1::GltfImporter* g_imp_DEBUG = nullptr;
-
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
 {
     // end of "Prepare for frame" label
@@ -829,18 +827,17 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     if( !Utils::IsCstrEmpty( drawInfo.pMapName ) && currentMap != drawInfo.pMapName )
     {
         currentMap = drawInfo.pMapName;
+        
+        auto imported = GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
+                                      Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
+                                                            Utils::Normalize( defaultWorldForward ),
+                                                            defaultWorldScale ) );
 
-        delete g_imp_DEBUG;
-        g_imp_DEBUG =
-            new GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
-                              Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
-                                                    Utils::Normalize( defaultWorldForward ),
-                                                    defaultWorldScale ) );
+        scene->StartStatic();
+        imported.UploadToScene_DEBUG( *scene, frameIndex );
+        scene->SubmitStatic( cmd );
     }
-    if( g_imp_DEBUG )
-    {
-        // g_imp_DEBUG->UploadToScene_DEBUG( *scene, frameIndex );
-    }
+
 
     bool           mipLodBiasUpdated =
         worldSamplerManager->TryChangeMipLodBias( frameIndex, renderResolution.GetMipLodBias() );

@@ -34,7 +34,6 @@ namespace RTGL1
 
 struct ShGeometryInstance;
 
-// SimpleIndex -- linear index, incremented with each addition of new geometry
 // LocalGeomIndex -- geometry index in its filter's space
 // GlobalGeomIndex = ToOffset(geomType) * MAX_BLAS_GEOMS + geomLocalIndex
 class GeomInfoManager
@@ -56,20 +55,11 @@ public:
     // Save instance for copying into buffer and fill previous frame's data.
     // For dynamic geometry it should be called every frame,
     // and for static geometry -- only when whole static scene was changed.
-    // Returns simple index.
-    uint32_t         WriteGeomInfo( uint32_t                       frameIndex,
-                                    uint64_t                       geomUniqueID,
-                                    uint32_t                       localGeomIndex,
-                                    VertexCollectorFilterTypeFlags flags,
-                                    ShGeometryInstance&            src );
-
-
-    void             WriteStaticGeomInfoMaterials( uint32_t                simpleIndex,
-                                                   uint32_t                layer,
-                                                   const MaterialTextures& src );
-    void             WriteStaticGeomInfoTransform( uint32_t           simpleIndex,
-                                                   uint64_t           geomUniqueID,
-                                                   const RgTransform& src );
+    void WriteGeomInfo( uint32_t                       frameIndex,
+                        uint64_t                       geomUniqueID,
+                        uint32_t                       localGeomIndex,
+                        VertexCollectorFilterTypeFlags flags,
+                        ShGeometryInstance&            src );
 
 
     bool     CopyFromStaging( VkCommandBuffer cmd, uint32_t frameIndex, bool insertBarrier = true );
@@ -80,7 +70,6 @@ public:
     uint32_t GetDynamicCount() const;
     VkBuffer GetBuffer() const;
     VkBuffer GetMatchPrevBuffer() const;
-    uint32_t GetStaticGeomBaseVertexIndex( uint32_t simpleIndex );
 
 
     static uint32_t GetPrimitiveFlags( const RgMeshPrimitiveInfo& info );
@@ -112,8 +101,6 @@ private:
                                             VertexCollectorFilterTypeFlags flags );
     ShGeometryInstance* GetGeomInfoAddressByGlobalIndex( uint32_t frameIndex,
                                                          uint32_t globalGeomIndex );
-
-    uint32_t            ConvertSimpleIndexToGlobal( uint32_t simpleIndex ) const;
 
     // Mark memory to be copied to device local buffer
     void                MarkGeomInfoIndexToCopy( uint32_t frameIndex,
@@ -157,11 +144,6 @@ private:
 
     std::vector< uint32_t >                       copyRegionLowerBounds[ MAX_FRAMES_IN_FLIGHT ];
     std::vector< uint32_t >                       copyRegionUpperBounds[ MAX_FRAMES_IN_FLIGHT ];
-
-    // each geometry has its type as they're can be in different filters
-    std::vector< VertexCollectorFilterTypeFlags > geomType;
-
-    std::vector< uint32_t >                       simpleToLocalIndex;
 
     // geometry's uniqueID to geom frame info,
     // used for getting info from previous frame

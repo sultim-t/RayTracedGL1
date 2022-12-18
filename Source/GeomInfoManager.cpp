@@ -315,18 +315,6 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic( uint32_t frameIndex )
     // do nothing, if there were no dynamic indices
     if( dynamicGeomCount > 0 )
     {
-        // trim before static indices
-        if( staticGeomCount > 0 )
-        {
-            geomType.resize( staticGeomCount );
-            simpleToLocalIndex.resize( staticGeomCount );
-        }
-        else
-        {
-            geomType.clear();
-            simpleToLocalIndex.clear();
-        }
-
         // reset each dynamic group
         for( auto pt : VertexCollectorFilterGroup_PassThrough )
         {
@@ -342,12 +330,8 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic( uint32_t frameIndex )
 
     for( uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++ )
     {
-        std::fill( copyRegionLowerBounds[ frameIndex ].begin(),
-                   copyRegionLowerBounds[ frameIndex ].end(),
-                   UINT32_MAX );
-        std::fill( copyRegionUpperBounds[ frameIndex ].begin(),
-                   copyRegionUpperBounds[ frameIndex ].end(),
-                   0 );
+        std::ranges::fill( copyRegionLowerBounds[ frameIndex ], UINT32_MAX );
+        std::ranges::fill( copyRegionUpperBounds[ frameIndex ], 0 );
     }
 }
 
@@ -372,10 +356,7 @@ void RTGL1::GeomInfoManager::ResetWithStatic()
 
     staticGeomCount  = 0;
     dynamicGeomCount = 0;
-
-    geomType.clear();
-    simpleToLocalIndex.clear();
-
+    
     for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
     {
         ResetOnlyDynamic( i );
@@ -396,18 +377,6 @@ RTGL1::ShGeometryInstance* RTGL1::GeomInfoManager::GetGeomInfoAddressByGlobalInd
     return &mapped[ globalGeomIndex ];
 }
 
-uint32_t RTGL1::GeomInfoManager::ConvertSimpleIndexToGlobal( uint32_t simpleIndex ) const
-{
-    // must exist
-    assert( simpleIndex < geomType.size() );
-    assert( geomType.size() == simpleToLocalIndex.size() );
-
-    const VertexCollectorFilterTypeFlags flags          = geomType[ simpleIndex ];
-    const uint32_t                       localGeomIndex = simpleToLocalIndex[ simpleIndex ];
-
-    return GetGlobalGeomIndex( localGeomIndex, flags );
-}
-
 void RTGL1::GeomInfoManager::PrepareForFrame( uint32_t frameIndex )
 {
     // save counts before resetting
@@ -418,37 +387,23 @@ void RTGL1::GeomInfoManager::PrepareForFrame( uint32_t frameIndex )
     ResetOnlyDynamic( frameIndex );
 }
 
-uint32_t RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       frameIndex,
-                                                uint64_t                       geomUniqueID,
-                                                uint32_t                       localGeomIndex,
-                                                VertexCollectorFilterTypeFlags flags,
-                                                ShGeometryInstance&            src )
+void RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       frameIndex,
+                                            uint64_t                       geomUniqueID,
+                                            uint32_t                       localGeomIndex,
+                                            VertexCollectorFilterTypeFlags flags,
+                                            ShGeometryInstance&            src )
 {
     // must be aligned for per-triangle vertex attributes
     assert( src.baseVertexIndex % 3 == 0 );
     assert( src.baseIndexIndex % 3 == 0 );
 
-    const uint32_t simpleIndex = GetCount();
 
-    // must not exist
-    assert( simpleIndex == geomType.size() );
-    assert( geomType.size() == simpleToLocalIndex.size() );
+    bool isStatic = !( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC );
 
-    geomType.push_back( flags );
-    simpleToLocalIndex.push_back( localGeomIndex );
-
-    uint32_t frameBegin = frameIndex;
-    uint32_t frameEnd   = frameIndex + 1;
-
-    bool     isStatic = !( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC );
+    uint32_t frameBegin, frameEnd;
 
     if( isStatic )
     {
-        // no dynamic geoms before static ones
-        assert( dynamicGeomCount == 0 );
-
-        // make sure that indices are added sequentially
-        assert( staticGeomCount == simpleIndex );
         staticGeomCount++;
 
         // copy to all staging buffers
@@ -457,11 +412,10 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       f
     }
     else
     {
-        // dynamic geoms only after static ones
-        assert( staticGeomCount <= simpleIndex );
-
-        assert( dynamicGeomCount == simpleIndex - staticGeomCount );
         dynamicGeomCount++;
+
+        frameBegin = frameIndex;
+        frameEnd   = frameIndex + 1;
     }
 
     uint32_t globalGeomIndex = GetGlobalGeomIndex( localGeomIndex, flags );
@@ -479,8 +433,6 @@ uint32_t RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       f
     }
 
     WriteInfoForNextUsage( flags, geomUniqueID, globalGeomIndex, src, frameIndex );
-
-    return simpleIndex;
 }
 
 void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy( uint32_t frameIndex,
@@ -608,109 +560,6 @@ void RTGL1::GeomInfoManager::WriteInfoForNextUsage( VertexCollectorFilterTypeFla
     ( *idToInfo )[ geomUniqueID ] = f;
 }
 
-void RTGL1::GeomInfoManager::WriteStaticGeomInfoMaterials( uint32_t                simpleIndex,
-                                                           uint32_t                layer,
-                                                           const MaterialTextures& src )
-{
-    // only static
-    // geoms are allowed to rewrite material info
-    assert( simpleIndex < geomType.size() );
-    assert( !( geomType[ simpleIndex ] & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ) );
-    assert( geomType.size() == simpleToLocalIndex.size() );
-
-    const uint32_t flagsId     = VertexCollectorFilterTypeFlags_GetID( geomType[ simpleIndex ] );
-    const uint32_t globalIndex = ConvertSimpleIndexToGlobal( simpleIndex );
-
-    // need to write to both staging buffers for static geometry
-    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
-    {
-        ShGeometryInstance* dst = GetGeomInfoAddressByGlobalIndex( i, globalIndex );
-
-        // copy new material info
-        switch( layer )
-        {
-            case 0:
-                dst->base_textureA = src.indices[ 0 ];
-                dst->base_textureB = src.indices[ 1 ];
-                dst->base_textureC = src.indices[ 2 ];
-                break;
-
-            case 1: dst->layer1_texture = src.indices[ 0 ]; break;
-
-            case 2: dst->layer2_texture = src.indices[ 0 ]; break;
-
-            case 3: dst->lightmap_texture = src.indices[ 0 ]; break;
-
-            default: assert( 0 ); break;
-        }
-
-        // mark to be copied
-        MarkGeomInfoIndexToCopy( i, simpleToLocalIndex[ simpleIndex ], flagsId );
-    }
-}
-
-void RTGL1::GeomInfoManager::WriteStaticGeomInfoTransform( uint32_t           simpleIndex,
-                                                           uint64_t           geomUniqueID,
-                                                           const RgTransform& src )
-{
-    if( simpleIndex >= geomType.size() )
-    {
-        assert( 0 );
-        return;
-    }
-
-    assert( geomType.size() == simpleToLocalIndex.size() );
-
-
-    const auto     flags   = geomType[ simpleIndex ];
-    const uint32_t flagsId = VertexCollectorFilterTypeFlags_GetID( flags );
-
-    // only static and movable
-    // geoms are allowed to update transforms
-    if( !( flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE ) )
-    {
-        assert( 0 );
-        return;
-    }
-
-
-    float modelMatix[ 16 ];
-    Matrix::ToMat4Transposed( modelMatix, src );
-
-    auto prev = movableIDToGeomFrameInfo.find( geomUniqueID );
-
-    // if movable is updated, then it must be added previously
-    if( prev == movableIDToGeomFrameInfo.end() )
-    {
-        assert( 0 );
-        return;
-    }
-
-    float*         prevModelMatrix = prev->second.model;
-
-    const uint32_t localGeomIndex = simpleToLocalIndex[ simpleIndex ];
-    const uint32_t globalIndex    = GetGlobalGeomIndex( localGeomIndex, flags );
-
-    // need to write to both staging buffers for static geometry
-    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
-    {
-        ShGeometryInstance* dst = GetGeomInfoAddressByGlobalIndex( i, globalIndex );
-
-        memcpy( dst->model, modelMatix, 16 * sizeof( float ) );
-        memcpy( dst->prevModel, prevModelMatrix, 16 * sizeof( float ) );
-
-        // mark that movable has a previous info now
-        MarkMovableHasPrevInfo( *dst );
-
-        // mark to be copied
-        MarkGeomInfoIndexToCopy( i, localGeomIndex, flagsId );
-    }
-
-
-    // save new prev data
-    memcpy( prevModelMatrix, modelMatix, 16 * sizeof( float ) );
-}
-
 uint32_t RTGL1::GeomInfoManager::GetCount() const
 {
     return staticGeomCount + dynamicGeomCount;
@@ -734,11 +583,4 @@ VkBuffer RTGL1::GeomInfoManager::GetBuffer() const
 VkBuffer RTGL1::GeomInfoManager::GetMatchPrevBuffer() const
 {
     return matchPrev->GetDeviceLocal();
-}
-
-uint32_t RTGL1::GeomInfoManager::GetStaticGeomBaseVertexIndex( uint32_t simpleIndex )
-{
-    // just use frame 0, as infos have same values in both staging buffers
-    return GetGeomInfoAddressByGlobalIndex( 0, ConvertSimpleIndexToGlobal( simpleIndex ) )
-        ->baseVertexIndex;
 }

@@ -477,9 +477,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     {
         observer->Subscribe( textureManager );
     }
-
-    // TODO: remove
-    scene->StartNewScene( *lightManager );
 }
 
 RTGL1::VulkanDevice::~VulkanDevice()

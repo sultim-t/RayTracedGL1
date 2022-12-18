@@ -24,6 +24,8 @@
 #include "LightManager.h"
 #include "VertexPreprocessing.h"
 
+#include <set>
+
 namespace RTGL1
 {
 
@@ -55,10 +57,9 @@ public:
                  const RgMeshInfo&          mesh,
                  const RgMeshPrimitiveInfo& primitive,
                  const TextureManager&      textureManager );
-    // bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
-    // bool UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo);
 
-    void   StartNewScene( LightManager& lightManager );
+    void StartStatic();
+    void SubmitStatic( VkCommandBuffer cmd );
 
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
@@ -66,16 +67,13 @@ public:
     bool                                          DoesUniqueIDExist( uint64_t uniqueID ) const;
 
 private:
-    bool TryGetStaticSimpleIndex( uint64_t uniqueID, uint32_t* result ) const;
-
-private:
     std::shared_ptr< ASManager >             asManager;
     std::shared_ptr< GeomInfoManager >       geomInfoMgr;
     std::shared_ptr< VertexPreprocessing >   vertPreproc;
 
     // Dynamic indices are cleared every frame
-    rgl::unordered_map< uint64_t, uint32_t > dynamicUniqueIDToSimpleIndex;
-    rgl::unordered_map< uint64_t, uint32_t > staticUniqueIDToSimpleIndex;
+    std::set< uint64_t > dynamicUniqueIDs;
+    std::set< uint64_t > staticUniqueIDs;
 };
 
 }

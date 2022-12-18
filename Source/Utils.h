@@ -179,8 +179,15 @@ namespace Utils
 
     RgFloat4D UnpackColor4DPacked32( RgColor4DPacked32 c );
     float UnpackAlphaFromPacked32( RgColor4DPacked32 c );
-    
-    inline bool IsCstrEmpty( const char* cstr ) { return cstr == nullptr || *cstr == '\0'; }
+
+    inline bool IsCstrEmpty( const char* cstr )
+    {
+        return cstr == nullptr || *cstr == '\0';
+    }
+    inline const char* SafeCstr( const char* cstr )
+    {
+        return cstr ? cstr : "";
+    }
 
     // clang-format off
     // Column memory order!

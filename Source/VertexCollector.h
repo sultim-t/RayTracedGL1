@@ -61,13 +61,13 @@ public:
     VertexCollector& operator=( VertexCollector&& other ) noexcept = delete;
 
 
-    void                      BeginCollecting( bool isStatic );
-    std::optional< uint32_t > AddPrimitive( uint32_t                          frameIndex,
-                                            const RgMeshInfo&                 parentMesh,
-                                            const RgMeshPrimitiveInfo&        info,
-                                            std::span< MaterialTextures, 4 >  layerTextures,
-                                            std::span< RgColor4DPacked32, 4 > layerColors );
-    void                      EndCollecting();
+    void BeginCollecting( bool isStatic );
+    bool AddPrimitive( uint32_t                          frameIndex,
+                       const RgMeshInfo&                 parentMesh,
+                       const RgMeshPrimitiveInfo&        info,
+                       std::span< MaterialTextures, 4 >  layerTextures,
+                       std::span< RgColor4DPacked32, 4 > layerColors );
+    void EndCollecting();
 
 
     // Clear data that was generated while collecting.
@@ -76,9 +76,6 @@ public:
     // Copy buffer from staging and set barrier for processing in compute shader
     // "isStaticVertexData" is required to determine what GLSL struct to use for copying
     bool             CopyFromStaging( VkCommandBuffer cmd );
-    // Returns false, if wasn't copied
-    bool             RecopyTransformsFromStaging( VkCommandBuffer cmd );
-    bool             RecopyTexCoordsFromStaging( VkCommandBuffer cmd );
 
 
     VkBuffer GetVertexBuffer() const;
@@ -136,13 +133,6 @@ private:
     uint32_t GetAllGeometryCount() const;
 
 private:
-    struct MaterialRef
-    {
-        uint32_t simpleIndex;
-        uint32_t layer;
-    };
-
-private:
     VkDevice                                                   device;
     VertexCollectorFilterTypeFlags                             filtersFlags;
 
@@ -168,12 +158,6 @@ private:
     
     rgl::unordered_map< VertexCollectorFilterTypeFlags, std::shared_ptr< VertexCollectorFilter > >
                                              filters;
-
-    // if some static geometries changed their tex coords, then they should be copied
-    // from staging to device-local; this array holds copy ranges; freed after vkCmdCopy call
-    std::vector< VkBufferCopy >              texCoordsToCopy;
-
-    rgl::unordered_map< uint32_t, uint32_t > simpleIndexToTransformIndex;
 };
 
 }

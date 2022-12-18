@@ -603,11 +603,11 @@ void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frame
     collectorDynamic[ frameIndex ]->BeginCollecting( false );
 }
 
-std::optional< uint32_t > RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
-                                                              const RgMeshInfo&          mesh,
-                                                              const RgMeshPrimitiveInfo& primitive,
-                                                              bool                       isStatic,
-                                                              const TextureManager& textureManager )
+bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
+                                         const RgMeshInfo&          mesh,
+                                         const RgMeshPrimitiveInfo& primitive,
+                                         bool                       isStatic,
+                                         const TextureManager&      textureManager )
 {
     auto textures = textureManager.GetTexturesForLayers( primitive );
     auto colors   = textureManager.GetColorForLayers( primitive );
@@ -657,56 +657,6 @@ void RTGL1::ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t fram
 
     // sync AS access
     Utils::ASBuildMemoryBarrier( cmd );
-}
-
-/*void ASManager::UpdateStaticMovableTransform(uint32_t simpleIndex, const RgUpdateTransformInfo
-&updateInfo)
-{
-    collectorStatic->UpdateTransform(simpleIndex, updateInfo);
-}*/
-
-void RTGL1::ASManager::ResubmitStaticTexCoords( VkCommandBuffer cmd )
-{
-    typedef VertexCollectorFilterTypeFlagBits FT;
-
-    if( collectorStatic->AreGeometriesEmpty( FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE ) )
-    {
-        return;
-    }
-
-    CmdLabel label( cmd, "Recopying static tex coords" );
-
-    collectorStatic->RecopyTexCoordsFromStaging( cmd );
-}
-
-void RTGL1::ASManager::ResubmitStaticMovable( VkCommandBuffer cmd )
-{
-    typedef VertexCollectorFilterTypeFlagBits FT;
-
-    if( collectorStatic->AreGeometriesEmpty( FT::CF_STATIC_MOVABLE ) )
-    {
-        return;
-    }
-
-    assert( asBuilder->IsEmpty() );
-
-    // update movable blas
-    for( auto& blas : allStaticBlas )
-    {
-        assert( !( blas->GetFilter() & FT::CF_DYNAMIC ) );
-
-        if( blas->GetFilter() & FT::CF_STATIC_MOVABLE )
-        {
-            UpdateBLAS( *blas, *collectorStatic );
-        }
-    }
-
-    CmdLabel label( cmd, "Building static movable BLAS" );
-
-    // copy transforms to device-local memory
-    collectorStatic->RecopyTransformsFromStaging( cmd );
-
-    asBuilder->BuildBottomLevel( cmd );
 }
 
 bool RTGL1::ASManager::SetupTLASInstanceFromBLAS( const BLASComponent& blas,

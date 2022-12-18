@@ -48,7 +48,7 @@ RTGL1::Scene::Scene( VkDevice                                _device,
 
 void RTGL1::Scene::PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
-    dynamicUniqueIDToSimpleIndex.clear();
+    dynamicUniqueIDs.clear();
 
     geomInfoMgr->PrepareForFrame( frameIndex );
 
@@ -63,9 +63,6 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
                                    bool     allowGeometryWithSkyFlag,
                                    bool     disableRTGeometry )
 {
-    // copy to device-local, if there were any tex coords change for static geometry
-    asManager->ResubmitStaticTexCoords( cmd );
-
     // always submit dynamic geometry on the frame ending
     asManager->SubmitDynamicGeometry( cmd, frameIndex );
 
@@ -98,26 +95,35 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                            const TextureManager&      textureManager )
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
-    assert( !DoesUniqueIDExist( uniqueID ) );
-    
-    if( auto simpleIndex =
-            asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false, textureManager ) )
+
+    if ( DoesUniqueIDExist( uniqueID ) )
     {
-        dynamicUniqueIDToSimpleIndex[ uniqueID ] = *simpleIndex;
+        debug::Error( "Uploading mesh primitive ({}->{}) with ID ({}->{}), but it already exists",
+                      Utils::SafeCstr( mesh.pMeshName ),
+                      Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
+                      mesh.uniqueObjectID,
+                      primitive.primitiveIndexInMesh );
+        return false;
+    }
+    
+    if( asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false, textureManager ) )
+    {
+        dynamicUniqueIDs.emplace( uniqueID );
         return true;
     }
 
     return false;
 }
 
-void RTGL1::Scene::StartNewScene( LightManager& lightManager )
+void RTGL1::Scene::StartStatic()
 {
     asManager->BeginStaticGeometry();
+    staticUniqueIDs.clear();
+}
+
+void RTGL1::Scene::SubmitStatic( VkCommandBuffer cmd )
+{
     asManager->SubmitStaticGeometry();
-
-    lightManager.Reset();
-
-    staticUniqueIDToSimpleIndex.clear();
 }
 
 const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()
@@ -132,19 +138,6 @@ const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPrep
 
 bool RTGL1::Scene::DoesUniqueIDExist( uint64_t uniqueID ) const
 {
-    return staticUniqueIDToSimpleIndex.find( uniqueID ) != staticUniqueIDToSimpleIndex.end() ||
-           dynamicUniqueIDToSimpleIndex.find( uniqueID ) != dynamicUniqueIDToSimpleIndex.end();
-}
-
-bool RTGL1::Scene::TryGetStaticSimpleIndex( uint64_t uniqueID, uint32_t* result ) const
-{
-    auto f = staticUniqueIDToSimpleIndex.find( uniqueID );
-
-    if( f != staticUniqueIDToSimpleIndex.end() )
-    {
-        *result = f->second;
-        return true;
-    }
-
-    return false;
+    return std::ranges::contains( dynamicUniqueIDs, uniqueID ) ||
+           std::ranges::contains( staticUniqueIDs, uniqueID );
 }

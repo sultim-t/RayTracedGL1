@@ -68,19 +68,11 @@ public:
     void       SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
 
 
-    std::optional< uint32_t > AddMeshPrimitive( uint32_t                   frameIndex,
-                                                const RgMeshInfo&          mesh,
-                                                const RgMeshPrimitiveInfo& primitive,
-                                                bool                       isStatic,
-                                                const TextureManager&      textureManager );
-
-    // Update transform for static movable geometry
-    // void       UpdateStaticMovableTransform( uint32_t                     simpleIndex,
-    //                                         const RgUpdateTransformInfo& updateInfo );
-    // After updating transforms, acceleration structures should be rebuilt
-    void       ResubmitStaticMovable( VkCommandBuffer cmd );
-
-    void       ResubmitStaticTexCoords( VkCommandBuffer cmd );
+    bool AddMeshPrimitive( uint32_t                   frameIndex,
+                           const RgMeshInfo&          mesh,
+                           const RgMeshPrimitiveInfo& primitive,
+                           bool                       isStatic,
+                           const TextureManager&      textureManager );
 
 
     // Prepare data for building TLAS.
