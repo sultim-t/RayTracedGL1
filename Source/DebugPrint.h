@@ -23,10 +23,7 @@
 #include <format>
 #include <string_view>
 
-// There's no std::basic_format_string... so use compiler specific :(
-#ifdef _MSC_VER
-    #define RTGL1_STD_FORMAT_STRING std::_Fmt_string
-#endif
+// TODO: fmt instead of std::format? for compile-time checks
 
 namespace RTGL1
 {
@@ -49,17 +46,7 @@ namespace debug
                 }
             }
         }
-
-#ifdef RTGL1_STD_FORMAT_STRING
-        template< typename... Args >
-        void Print( RgMessageSeverityFlags                   severity,
-                    const RTGL1_STD_FORMAT_STRING< Args... > msg,
-                    Args&&... args )
-        {
-            auto str = std::format( msg, std::forward< Args >( args )... );
-            Print( severity, std::string_view( str ) );
-        }
-#else
+        
         template< typename... Args >
         void Print( RgMessageSeverityFlags severity, std::string_view msg, Args&&... args )
         {
@@ -67,7 +54,6 @@ namespace debug
                 std::vformat( msg, std::make_format_args( std::forward< Args >( args )... ) );
             Print( severity, std::string_view( str ) );
         }
-#endif
     }
 
     inline void Verbose( std::string_view msg )
@@ -89,33 +75,6 @@ namespace debug
     {
         detail::Print( RG_MESSAGE_SEVERITY_ERROR, msg );
     }
-
-#ifdef RTGL1_STD_FORMAT_STRING
-    template< typename... Args >
-    void Verbose( RTGL1_STD_FORMAT_STRING< Args... > fmt, Args&&... args )
-    {
-        detail::Print( RG_MESSAGE_SEVERITY_VERBOSE, fmt, std::forward< Args >( args )... );
-    }
-
-    template< typename... Args >
-    void Info( RTGL1_STD_FORMAT_STRING< Args... > fmt, Args&&... args )
-    {
-        detail::Print( RG_MESSAGE_SEVERITY_INFO, fmt, std::forward< Args >( args )... );
-    }
-
-    template< typename... Args >
-    void Warning( RTGL1_STD_FORMAT_STRING< Args... > fmt, Args&&... args )
-    {
-        detail::Print( RG_MESSAGE_SEVERITY_WARNING, fmt, std::forward< Args >( args )... );
-    }
-
-    template< typename... Args >
-    void Error( RTGL1_STD_FORMAT_STRING< Args... > fmt, Args&&... args )
-    {
-        detail::Print( RG_MESSAGE_SEVERITY_ERROR, fmt, std::forward< Args >( args )... );
-    }
-
-#else // !RTGL1_STD_FORMAT_STRING
 
     template< typename... Args >
     void Verbose( std::string_view fmt, Args&&... args )
@@ -140,11 +99,6 @@ namespace debug
     {
         detail::Print( RG_MESSAGE_SEVERITY_ERROR, fmt, std::forward< Args >( args )... );
     }
-#endif // RTGL1_STD_FORMAT_STRING
 
 }
 }
-
-#ifdef _MSC_VER
-    #undef RTGL1_STD_FORMAT_STRING
-#endif
