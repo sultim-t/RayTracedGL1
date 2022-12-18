@@ -140,6 +140,10 @@ namespace Utils
     void WaitAndResetFence(VkDevice device, VkFence fence);
     void WaitAndResetFences(VkDevice device, VkFence fence_A, VkFence fence_B);
 
+    VkFormat ToUnorm( VkFormat f );
+    VkFormat ToSRGB( VkFormat f );
+    bool     IsSRGB( VkFormat f );
+
     template<typename T> T    Align( const T& v, const T& alignment );
     template<typename T> bool IsPow2( const T& v );
 

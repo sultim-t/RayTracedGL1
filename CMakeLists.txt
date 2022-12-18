@@ -87,6 +87,7 @@ set(Sources
     "Source/ScratchImmediate.cpp"
     "Source/GltfExporter.cpp"
     "Source/GltfImporter.cpp"
+    "Source/FolderObserver.cpp"
 )
 
 

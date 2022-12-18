@@ -32,46 +32,6 @@ using namespace RTGL1;
 
 namespace
 {
-VkFormat ToUnorm( VkFormat f )
-{
-    switch( f )
-    {
-        case VK_FORMAT_R8_SRGB: return VK_FORMAT_R8_UNORM;
-        case VK_FORMAT_R8G8_SRGB: return VK_FORMAT_R8G8_UNORM;
-        case VK_FORMAT_R8G8B8_SRGB: return VK_FORMAT_R8G8B8_UNORM;
-        case VK_FORMAT_B8G8R8_SRGB: return VK_FORMAT_B8G8R8_UNORM;
-        case VK_FORMAT_R8G8B8A8_SRGB: return VK_FORMAT_R8G8B8A8_UNORM;
-        case VK_FORMAT_B8G8R8A8_SRGB: return VK_FORMAT_B8G8R8A8_UNORM;
-        case VK_FORMAT_A8B8G8R8_SRGB_PACK32: return VK_FORMAT_A8B8G8R8_UNORM_PACK32;
-        case VK_FORMAT_BC1_RGB_SRGB_BLOCK: return VK_FORMAT_BC1_RGB_UNORM_BLOCK;
-        case VK_FORMAT_BC1_RGBA_SRGB_BLOCK: return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
-        case VK_FORMAT_BC2_SRGB_BLOCK: return VK_FORMAT_BC2_UNORM_BLOCK;
-        case VK_FORMAT_BC3_SRGB_BLOCK: return VK_FORMAT_BC3_UNORM_BLOCK;
-        case VK_FORMAT_BC7_SRGB_BLOCK: return VK_FORMAT_BC7_UNORM_BLOCK;
-        default: return f;
-    }
-}
-
-VkFormat ToSRGB( VkFormat f )
-{
-    switch( f )
-    {
-        case VK_FORMAT_R8_UNORM: return VK_FORMAT_R8_SRGB;
-        case VK_FORMAT_R8G8_UNORM: return VK_FORMAT_R8G8_SRGB;
-        case VK_FORMAT_R8G8B8_UNORM: return VK_FORMAT_R8G8B8_SRGB;
-        case VK_FORMAT_B8G8R8_UNORM: return VK_FORMAT_B8G8R8_SRGB;
-        case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SRGB;
-        case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SRGB;
-        case VK_FORMAT_A8B8G8R8_UNORM_PACK32: return VK_FORMAT_A8B8G8R8_SRGB_PACK32;
-        case VK_FORMAT_BC1_RGB_UNORM_BLOCK: return VK_FORMAT_BC1_RGB_SRGB_BLOCK;
-        case VK_FORMAT_BC1_RGBA_UNORM_BLOCK: return VK_FORMAT_BC1_RGBA_SRGB_BLOCK;
-        case VK_FORMAT_BC2_UNORM_BLOCK: return VK_FORMAT_BC2_SRGB_BLOCK;
-        case VK_FORMAT_BC3_UNORM_BLOCK: return VK_FORMAT_BC3_SRGB_BLOCK;
-        case VK_FORMAT_BC7_UNORM_BLOCK: return VK_FORMAT_BC7_SRGB_BLOCK;
-        default: return f;
-    }
-}
-
 template< size_t N > void SafeCopy( char ( &dst )[ N ], std::string_view src )
 {
     memset( dst, 0, N );
@@ -80,6 +40,18 @@ template< size_t N > void SafeCopy( char ( &dst )[ N ], std::string_view src )
     {
         dst[ i ] = src[ i ];
     }
+}
+
+std::optional< uint32_t > ResolveDefaultDataSize( VkFormat format, const RgExtent2D &size )
+{
+    if( format != VK_FORMAT_R8G8B8A8_SRGB && format != VK_FORMAT_R8G8B8A8_UNORM )
+    {
+        assert( 0 && "Default can be only RGBA8" );
+        return std::nullopt;
+    }
+    constexpr uint32_t defaultBytesPerPixel = 4;
+
+    return defaultBytesPerPixel * size.width * size.height;
 }
 
 namespace loader
@@ -112,7 +84,7 @@ namespace loader
     {
         if( std::holds_alternative< ImageLoaderDev* >( loader ) )
         {
-            static const char* arr[] = { ".png", ".tga" };
+            static const char* arr[] = { ".png", ".tga", ".jpg", ".jpeg" };
             return arr;
         }
         else
@@ -123,76 +95,71 @@ namespace loader
     }
 }
 
-std::filesystem::path GetTexturePath( std::filesystem::path commonFolderPath,
+std::filesystem::path GetTexturePath( std::filesystem::path basePath,
                                       std::string_view      relativePath,
-                                      const char*           postfix,
-                                      const char*           extension )
+                                      std::string_view      postfix,
+                                      std::string_view      extension )
 {
-    return commonFolderPath.append( relativePath )
+    if( relativePath.empty() )
+    {
+        return basePath.replace_extension( "" ).concat( postfix ).replace_extension( extension );
+    }
+
+    return basePath.append( relativePath )
         .replace_extension( "" )
         .concat( postfix )
         .replace_extension( extension );
 }
 }
 
-TextureOverrides::TextureOverrides( std::string_view    _relativePath,
-                                    const void*         _pPixels,
-                                    const RgExtent2D&   _defaultSize,
-                                    const OverrideInfo& _info,
-                                    Loader              _loader )
-    : loader( _loader ), results{}, debugname{}
+TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
+                                    std::string_view             _relativePath,
+                                    std::string_view             _postfix,
+                                    const void*                  _defaultPixels,
+                                    const RgExtent2D&            _defaultSize,
+                                    VkFormat                     _defaultFormat,
+                                    Loader                       _loader )
+    : result{ std::nullopt }, debugname{}, loader( _loader )
 {
     SafeCopy( debugname, _relativePath );
 
-    const void* defaultData[ TEXTURES_PER_MATERIAL_COUNT ] = {
-        _pPixels,
-        nullptr,
-        nullptr,
-    };
 
-    constexpr VkFormat defaultSRGBFormat    = VK_FORMAT_R8G8B8A8_SRGB;
-    constexpr VkFormat defaultLinearFormat  = VK_FORMAT_R8G8B8A8_UNORM;
-    constexpr uint32_t defaultBytesPerPixel = 4;
-
-
-    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
+    for( const char* ext : loader::GetExtensions( loader ) )
     {
-        for( const char* ext : loader::GetExtensions( loader ) )
+        auto p = GetTexturePath( _basePath, _relativePath, _postfix, ext );
+
+        if( auto r = loader::Load( loader, p ) )
         {
-            auto p =
-                GetTexturePath( _info.commonFolderPath, _relativePath, _info.postfixes[ i ], ext );
+            r->format = Utils::IsSRGB( _defaultFormat ) ? Utils::ToSRGB( r->format )
+                                                        : Utils::ToUnorm( r->format );
 
-            if( auto r = loader::Load( loader, p ) )
-            {
-                r->format = _info.overridenIsSRGB[ i ] ? ToSRGB( r->format ) : ToUnorm( r->format );
+            result = r;
+            path   = std::move( p );
 
-                paths[ i ]   = std::move( p );
-                results[ i ] = r;
-
-                break;
-            }
+            break;
         }
     }
 
 
-    const uint32_t defaultDataSize =
-        defaultBytesPerPixel * _defaultSize.width * _defaultSize.height;
-
-    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
+    // if file wasn't found, use defaults
+    if( !result )
     {
-        // if file wasn't found, use default data instead
-        if( !results[ i ] && defaultData[ i ] )
+        if( _defaultPixels )
         {
-            results[ i ] = ImageLoader::ResultInfo{
-                .levelOffsets   = { 0 },
-                .levelSizes     = { defaultDataSize },
-                .levelCount     = 1,
-                .isPregenerated = false,
-                .pData          = static_cast< const uint8_t* >( defaultData[ i ] ),
-                .dataSize       = defaultDataSize,
-                .baseSize       = _defaultSize,
-                .format = _info.originalIsSRGB[ i ] ? defaultSRGBFormat : defaultLinearFormat,
-            };
+            if( auto dataSize = ResolveDefaultDataSize( _defaultFormat, _defaultSize ) )
+            {
+                result = ImageLoader::ResultInfo{
+                    .levelOffsets   = { 0 },
+                    .levelSizes     = { *dataSize },
+                    .levelCount     = 1,
+                    .isPregenerated = false,
+                    .pData          = static_cast< const uint8_t* >( _defaultPixels ),
+                    .dataSize       = *dataSize,
+                    .baseSize       = _defaultSize,
+                    .format         = _defaultFormat,
+                };
+                path = GetTexturePath( _basePath, _relativePath, _postfix, "" );
+            }
         }
     }
 }
@@ -200,22 +167,4 @@ TextureOverrides::TextureOverrides( std::string_view    _relativePath,
 TextureOverrides::~TextureOverrides()
 {
     loader::FreeLoaded( loader );
-}
-
-const std::optional< ImageLoader::ResultInfo >& RTGL1::TextureOverrides::GetResult(
-    uint32_t index ) const
-{
-    assert( index < TEXTURES_PER_MATERIAL_COUNT );
-    return results[ index ];
-}
-
-const char* RTGL1::TextureOverrides::GetDebugName() const
-{
-    return debugname;
-}
-
-std::optional< std::filesystem::path >&& TextureOverrides::GetPathAndRemove( uint32_t index )
-{
-    assert( index < TEXTURES_PER_MATERIAL_COUNT );
-    return std::move( paths[ index ] );
 }

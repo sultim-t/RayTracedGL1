@@ -35,26 +35,15 @@ constexpr uint32_t TEXTURE_DEBUG_NAME_MAX_LENGTH = 32;
 // Struct for loading overriding texture files. Should be created on stack.
 struct TextureOverrides
 {
-public:
-    struct OverrideInfo
-    {
-        const std::filesystem::path& commonFolderPath;
-        const char*                  postfixes[ TEXTURES_PER_MATERIAL_COUNT ]{};
-        // Params for overriden textures. If texture
-        // isn't overriden, RgTextureData::isSRGB value is used
-        // instead of one of these params.
-        bool                         overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ]{};
-        bool                         originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ]{};
-    };
-
     using Loader = std::variant< ImageLoader*, ImageLoaderDev* >;
 
-public:
-    explicit TextureOverrides( std::string_view    relativePath,
-                               const void*         pPixels,
-                               const RgExtent2D&   defaultSize,
-                               const OverrideInfo& info,
-                               Loader              loader );
+    explicit TextureOverrides( const std::filesystem::path& basePath,
+                               std::string_view             relativePath,
+                               std::string_view             postfix,
+                               const void*                  defaultPixels,
+                               const RgExtent2D&            defaultSize,
+                               VkFormat                     defaultFormat,
+                               Loader                       loader );
     ~TextureOverrides();
 
     TextureOverrides( const TextureOverrides& other )                = delete;
@@ -62,17 +51,12 @@ public:
     TextureOverrides& operator=( const TextureOverrides& other )     = delete;
     TextureOverrides& operator=( TextureOverrides&& other ) noexcept = delete;
 
-    [[nodiscard]] const std::optional< ImageLoader::ResultInfo >& GetResult( uint32_t index ) const;
-    [[nodiscard]] const char*                                     GetDebugName() const;
-    // rvalue, to avoid copies
-    [[nodiscard]] std::optional< std::filesystem::path >&& GetPathAndRemove( uint32_t index );
+    std::optional< ImageLoader::ResultInfo > result;
+    char                                     debugname[ TEXTURE_DEBUG_NAME_MAX_LENGTH ];
+    std::filesystem::path                    path;
 
 private:
     Loader loader;
-
-    std::optional< ImageLoader::ResultInfo > results[ TEXTURES_PER_MATERIAL_COUNT ];
-    char                                     debugname[ TEXTURE_DEBUG_NAME_MAX_LENGTH ];
-    std::optional< std::filesystem::path >   paths[ TEXTURES_PER_MATERIAL_COUNT ];
 };
 
 }

@@ -172,8 +172,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
     , userFileLoad{ std::make_shared< UserFileLoad >(
           info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData ) }
-    , modelsPath( info->pOverridenTexturesFolderPath ? info->pOverridenTexturesFolderPath
-                                                     : DEFAULT_MODELS_PATH )
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
     , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
     , defaultWorldUp( Utils::SafeNormalize( info->worldUp, { 0, 1, 0 } ) )
@@ -184,6 +182,20 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , vsync( true )
 {
     ValidateCreateInfo( info );
+    {
+        if( libconfig.developerMode && info->pOverridenTexturesFolderPathDeveloper )
+        {
+            ovrdFolder = info->pOverridenTexturesFolderPathDeveloper;
+        }
+        else if( info->pOverridenTexturesFolderPath )
+        {
+            ovrdFolder = info->pOverridenTexturesFolderPath;
+        }
+        else
+        {
+            ovrdFolder = DEFAULT_OVRD_FOLDER_PATH;
+        }
+    }
 
 
 
@@ -229,7 +241,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         surface, 
         physDevice->Get(), 
         cmdManager );
-
+    
     if( libconfig.developerMode )
     {
         debugWindows = std::make_shared< DebugWindows >( 
@@ -241,10 +253,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
             cmdManager );
         debugWindows->Init( debugWindows );
 
-        if ( info->pOverridenTexturesFolderPathDeveloper )
-        {
-            modelsPath = info->pOverridenTexturesFolderPathDeveloper;
-        }
+        observer = std::make_unique< FolderObserver >( ovrdFolder );
     }
 
     // for world samplers with modifyable lod biad
@@ -464,6 +473,11 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     framebuffers->Subscribe( decalManager );
     framebuffers->Subscribe( amdFsr2 );
     framebuffers->Subscribe( restirBuffers );
+
+    if( observer )
+    {
+        observer->Subscribe( textureManager );
+    }
 
     // TODO: remove
     scene->StartNewScene( *lightManager );

@@ -177,15 +177,8 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
     // must be '0' to use special TextureOverrides constructor
     static_assert( MATERIAL_COLOR_TEXTURE_INDEX == 0 );
 
-    TextureOverrides::OverrideInfo parseInfo = {
-        .commonFolderPath = folder,
-        .postfixes        = { overridenTexturePostfix.c_str(), "", "" },
-        .overridenIsSRGB  = { true, false, false },
-        .originalIsSRGB   = { true, false, false },
-    };
-    auto*       ldr = imageLoader.get();
-
-    RgExtent2D  size = { info.sideSize, info.sideSize };
+    auto*      ldr  = imageLoader.get();
+    RgExtent2D size = { info.sideSize, info.sideSize };
 
     std::string faceNames[] = {
         std::string( info.pTextureName ) + "_px", std::string( info.pTextureName ) + "_nx",
@@ -197,15 +190,16 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
         info.pPixelsNegativeY, info.pPixelsPositiveZ, info.pPixelsNegativeZ,
     };
 
-    // load additional textures, they'll be freed after leaving the scope
+    // clang-format off
     TextureOverrides ovrd[] = {
-        TextureOverrides( faceNames[ 0 ], facePixels[ 0 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 1 ], facePixels[ 1 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 2 ], facePixels[ 2 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 3 ], facePixels[ 3 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 4 ], facePixels[ 4 ], size, parseInfo, ldr ),
-        TextureOverrides( faceNames[ 5 ], facePixels[ 5 ], size, parseInfo, ldr ),
+        TextureOverrides( folder, faceNames[ 0 ], overridenTexturePostfix.c_str(), facePixels[ 0 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
+        TextureOverrides( folder, faceNames[ 1 ], overridenTexturePostfix.c_str(), facePixels[ 1 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
+        TextureOverrides( folder, faceNames[ 2 ], overridenTexturePostfix.c_str(), facePixels[ 2 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
+        TextureOverrides( folder, faceNames[ 3 ], overridenTexturePostfix.c_str(), facePixels[ 3 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
+        TextureOverrides( folder, faceNames[ 4 ], overridenTexturePostfix.c_str(), facePixels[ 4 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
+        TextureOverrides( folder, faceNames[ 5 ], overridenTexturePostfix.c_str(), facePixels[ 5 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
     };
+    // clang-format on
 
     // all overrides must have albedo data and the same and square size
     bool       useOvrd = true;
@@ -214,10 +208,13 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
     RgExtent2D commonSize   = {};
     VkFormat   commonFormat = VK_FORMAT_UNDEFINED;
     {
-        if( const auto& firstAlbedo = ovrd[ 0 ].GetResult( MATERIAL_COLOR_TEXTURE_INDEX ) )
+        if( ovrd[ 0 ].result )
         {
-            commonSize   = { firstAlbedo->baseSize.width, firstAlbedo->baseSize.height };
-            commonFormat = firstAlbedo->format;
+            commonSize = {
+                ovrd[ 0 ].result->baseSize.width,
+                ovrd[ 0 ].result->baseSize.height,
+            };
+            commonFormat = ovrd[ 0 ].result->format;
         }
         else
         {
@@ -227,11 +224,11 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
 
 
     // check if all entries are correct
-    for( auto& o : ovrd )
+    for( const auto& o : ovrd )
     {
-        if( const auto& face = o.GetResult( MATERIAL_COLOR_TEXTURE_INDEX ) )
+        if( o.result )
         {
-            CheckIfFaceCorrect( *face, commonSize, commonFormat, o.GetDebugName() );
+            CheckIfFaceCorrect( *o.result, commonSize, commonFormat, o.debugname );
         }
         else
         {
@@ -242,11 +239,11 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
 
     if( useOvrd )
     {
-        upload.pDebugName = ovrd[ 0 ].GetDebugName();
+        upload.pDebugName = ovrd[ 0 ].debugname;
 
         for( uint32_t i = 0; i < 6; i++ )
         {
-            upload.cubemap.pFaces[ i ] = ovrd[ i ].GetResult( MATERIAL_COLOR_TEXTURE_INDEX )->pData;
+            upload.cubemap.pFaces[ i ] = ovrd[ i ].result->pData;
         }
     }
     else
@@ -298,9 +295,12 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
     Texture txd = {
         .image         = i.image,
         .view          = i.view,
+        .format        = upload.format,
         .samplerHandle = SamplerManager::Handle( RG_SAMPLER_FILTER_LINEAR,
                                                  RG_SAMPLER_ADDRESS_MODE_CLAMP,
                                                  RG_SAMPLER_ADDRESS_MODE_CLAMP ),
+        .swizzling     = std::nullopt,
+        .filepath      = {},
     };
 
     auto [ iter, insertednew ] = cubemaps.insert( { std::string( info.pTextureName ), txd } );
@@ -326,11 +326,7 @@ void RTGL1::CubemapManager::AddForDeletion( uint32_t frameIndex, Texture& txd )
     cubemapsToDestroy[ frameIndex ].push_back( txd );
 
     // nullify
-    txd = {
-        .image         = VK_NULL_HANDLE,
-        .view          = VK_NULL_HANDLE,
-        .samplerHandle = SamplerManager::Handle(),
-    };
+    txd = {};
 }
 
 bool RTGL1::CubemapManager::TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName )

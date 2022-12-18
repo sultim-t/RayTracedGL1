@@ -61,6 +61,7 @@
 #include "ScratchImmediate.h"
 #include "GltfExporter.h"
 #include "GltfImporter.h"
+#include "FolderObserver.h"
 
 namespace RTGL1
 {
@@ -212,7 +213,7 @@ private:
     std::shared_ptr< DebugWindows >              debugWindows;
     ScratchImmediate                             scratchImmediate;
     std::unique_ptr< GltfExporter >              exporter;
-    std::filesystem::path                        modelsPath;
+    std::unique_ptr< FolderObserver >            observer;
 
     struct DebugPrim
     {

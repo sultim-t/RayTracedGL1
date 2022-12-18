@@ -46,8 +46,8 @@ template< typename T > constexpr const T* DefaultIfNull( const T* pData, const T
     return pData != nullptr ? pData : pDefault;
 }
 
-TextureOverrides::Loader GetLoader( const std::shared_ptr< ImageLoader >&   defaultLoader,
-                                    const std::shared_ptr< ImageLoaderDev > devLoader )
+TextureOverrides::Loader GetLoader( const std::shared_ptr< ImageLoader >&    defaultLoader,
+                                    const std::shared_ptr< ImageLoaderDev >& devLoader )
 {
     return devLoader ? TextureOverrides::Loader( devLoader.get() )
                      : TextureOverrides::Loader( defaultLoader.get() );
@@ -63,6 +63,13 @@ bool ContainsTextures( const MaterialTextures& m )
         }
     }
     return false;
+}
+
+auto FindEmptySlot( std::vector< Texture >& textures )
+{
+    return std::ranges::find_if( textures, []( const Texture& t ) {
+        return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
+    } );
 }
 
 }
@@ -108,7 +115,6 @@ TextureManager::TextureManager( VkDevice                                       _
     if( _config.developerMode )
     {
         imageLoaderDev = std::make_shared< ImageLoaderDev >( imageLoader );
-        // observer       = std::make_shared< TextureObserver >();
     }
 
 
@@ -140,8 +146,8 @@ void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameInde
     assert( textures[ EMPTY_TEXTURE_INDEX ].image == VK_NULL_HANDLE &&
             textures[ EMPTY_TEXTURE_INDEX ].view == VK_NULL_HANDLE );
 
-    constexpr uint32_t      data[] = { 0xFFFFFFFF };
-    constexpr RgExtent2D    size   = { 1, 1 };
+    constexpr uint32_t   data[] = { 0xFFFFFFFF };
+    constexpr RgExtent2D size   = { 1, 1 };
 
     ImageLoader::ResultInfo info = {
         .levelSizes     = { sizeof( data ) },
@@ -153,11 +159,19 @@ void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameInde
         .format         = VK_FORMAT_R8G8B8A8_UNORM,
     };
 
-    SamplerManager::Handle samplerHandle(
-        RG_SAMPLER_FILTER_NEAREST, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT );
-
-    uint32_t textureIndex = PrepareTexture(
-        cmd, frameIndex, info, samplerHandle, false, "Empty texture", false, std::nullopt );
+    uint32_t textureIndex =
+        PrepareTexture( cmd,
+                        frameIndex,
+                        info,
+                        SamplerManager::Handle( RG_SAMPLER_FILTER_NEAREST,
+                                                RG_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+                        false,
+                        "Empty texture",
+                        false,
+                        std::nullopt,
+                        {},
+                        FindEmptySlot( textures ) );
 
     // must have specific index
     assert( textureIndex == EMPTY_TEXTURE_INDEX );
@@ -182,35 +196,31 @@ void TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
         return;
     }
 
-    SamplerManager::Handle samplerHandle(
-        RG_SAMPLER_FILTER_LINEAR, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT );
-
-    // use absolute path
-    std::filesystem::path folder{};
-
-    TextureOverrides::OverrideInfo parseInfo = {
-        .commonFolderPath = folder,
-    };
-    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
-    {
-        parseInfo.postfixes[ i ]       = "";
-        parseInfo.originalIsSRGB[ i ]  = false;
-        parseInfo.overridenIsSRGB[ i ] = false;
-    }
-
     constexpr uint32_t   defaultData[] = { 0x7F7FFFFF };
     constexpr RgExtent2D defaultSize   = { 1, 1 };
-    // try to load image file
-    TextureOverrides     ovrd( pFilePath, defaultData, defaultSize, parseInfo, imageLoader.get() );
 
-    this->waterNormalTextureIndex = PrepareTexture( cmd,
-                                                    frameIndex,
-                                                    ovrd.GetResult( 0 ),
-                                                    samplerHandle,
-                                                    true,
-                                                    "Water normal",
-                                                    false,
-                                                    std::nullopt );
+    // try to load image file
+    TextureOverrides ovrd( {} /* absolute path */,
+                           pFilePath,
+                           "",
+                           defaultData,
+                           defaultSize,
+                           VK_FORMAT_R8G8B8A8_UNORM,
+                           imageLoader.get() );
+
+    this->waterNormalTextureIndex =
+        PrepareTexture( cmd,
+                        frameIndex,
+                        ovrd.result,
+                        SamplerManager::Handle( RG_SAMPLER_FILTER_LINEAR,
+                                                RG_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+                        true,
+                        "Water normal",
+                        false,
+                        std::nullopt,
+                        std::move( ovrd.path ),
+                        FindEmptySlot( textures ) );
 }
 
 TextureManager::~TextureManager()
@@ -238,14 +248,69 @@ TextureManager::~TextureManager()
 void TextureManager::PrepareForFrame( uint32_t frameIndex )
 {
     // destroy delayed textures
-    for( auto& texture : texturesToDestroy[ frameIndex ] )
+    for( auto& t : texturesToDestroy[ frameIndex ] )
     {
-        DestroyTexture( texture );
+        DestroyTexture( t );
     }
     texturesToDestroy[ frameIndex ].clear();
 
     // clear staging buffer that are not in use
     textureUploader->ClearStaging( frameIndex );
+}
+
+void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
+{
+    for( auto& filepathNoExt : texturesToReloadNoExt )
+    {
+        for( auto slot = textures.begin(); slot < textures.end(); ++slot )
+        {
+            if( slot->image == VK_NULL_HANDLE || slot->view == VK_NULL_HANDLE )
+            {
+                continue;
+            }
+
+            constexpr bool isUpdateable = false;
+
+            bool sameWithoutExt =
+                std::filesystem::path( slot->filepath ).replace_extension( "" ) == filepathNoExt;
+
+            if( sameWithoutExt )
+            {
+                TextureOverrides ovrd( filepathNoExt,
+                                       "",
+                                       "",
+                                       nullptr,
+                                       {},
+                                       slot->format,
+                                       GetLoader( imageLoader, imageLoaderDev ) );
+
+                if( ovrd.result )
+                {
+                    const auto prevSampler   = slot->samplerHandle;
+                    const auto prevSwizzling = slot->swizzling;
+
+                    AddToBeDestroyed( frameIndex, *slot );
+
+                    auto tindex = PrepareTexture( cmd,
+                                                  frameIndex,
+                                                  ovrd.result,
+                                                  prevSampler,
+                                                  true,
+                                                  ovrd.debugname,
+                                                  isUpdateable,
+                                                  prevSwizzling,
+                                                  std::move( ovrd.path ),
+                                                  slot );
+
+                    // must match, so materials' indices are still correct
+                    assert( tindex == std::distance( textures.begin(), slot ) );
+
+                    break;
+                }
+            }
+        }
+    }
+    texturesToReloadNoExt.clear();
 }
 
 void TextureManager::SubmitDescriptors( uint32_t                         frameIndex,
@@ -309,38 +374,26 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
             R"('pPixels' must be not null in RgOriginalTextureInfo)" );
     }
 
-    auto samplerHandle =
+    const auto samplerHandle =
         SamplerManager::Handle( info.filter, info.addressModeU, info.addressModeV );
 
-    auto normalMapSamplerHandle =
+    const auto normalMapSamplerHandle =
         SamplerManager::Handle( forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : info.filter,
                                 info.addressModeU,
                                 info.addressModeV );
 
-    TextureOverrides::OverrideInfo parseInfo = {
-        .commonFolderPath = folder,
+
+    // clang-format off
+    TextureOverrides ovrd[] = {
+        TextureOverrides( folder, info.pTextureName, postfixes[ 0 ], info.pPixels, info.size, VK_FORMAT_R8G8B8A8_SRGB, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( folder, info.pTextureName, postfixes[ 1 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( folder, info.pTextureName, postfixes[ 2 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, GetLoader( imageLoader, imageLoaderDev ) ),
     };
-    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
-    {
-        parseInfo.postfixes[ i ]       = postfixes[ i ].c_str();
-        parseInfo.overridenIsSRGB[ i ] = overridenIsSRGB[ i ];
-        parseInfo.originalIsSRGB[ i ]  = originalIsSRGB[ i ];
-    }
-
-    // load additional textures, they'll be freed after leaving the scope
-    TextureOverrides ovrd( info.pTextureName,
-                           info.pPixels,
-                           info.size,
-                           parseInfo,
-                           GetLoader( imageLoader, imageLoaderDev ) );
+    static_assert( std::size( ovrd ) == TEXTURES_PER_MATERIAL_COUNT );
+    // clang-format on
 
 
-    bool             isUpdateable = false;
-    /*if( observer )
-    {
-        // treat everything as updateable
-        isUpdateable = true;
-    }*/
+    constexpr bool isUpdateable = false;
 
 
     MaterialTextures mtextures = {};
@@ -349,13 +402,15 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
         mtextures.indices[ i ] = PrepareTexture(
             cmd,
             frameIndex,
-            ovrd.GetResult( i ),
+            ovrd[ i ].result,
             i == MATERIAL_NORMAL_INDEX ? normalMapSamplerHandle : samplerHandle,
             true,
-            ovrd.GetDebugName(),
+            ovrd[ i ].debugname,
             isUpdateable,
             i == MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX ? std::optional( pbrSwizzling )
-                                                            : std::nullopt );
+                                                            : std::nullopt,
+            std::move( ovrd[ i ].path ),
+            FindEmptySlot( textures ) );
     }
 
     InsertMaterial( frameIndex,
@@ -364,17 +419,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                         .textures     = mtextures,
                         .isUpdateable = isUpdateable,
                     } );
-
-    /*if( observer )
-    {
-        for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
-        {
-            observer->RegisterPath(
-                materialIndex, ovrd.GetPathAndRemove( i ), ovrd.GetResult( i ), i );
-        }
-    }*/
-
-
+    
     return true;
 }
 
@@ -440,10 +485,20 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
                                          bool                                useMipmaps,
                                          const char*                         debugName,
                                          bool                                isUpdateable,
-                                         std::optional< RgTextureSwizzling > swizzling )
+                                         std::optional< RgTextureSwizzling > swizzling,
+                                         std::filesystem::path&&             filepath,
+                                         std::vector< Texture >::iterator    targetSlot )
 {
     if( !info )
     {
+        return EMPTY_TEXTURE_INDEX;
+    }
+
+    if( targetSlot == textures.end() )
+    {
+        // no empty slots
+        // TODO: print warning
+        assert( 0 && "Too many textures" );
         return EMPTY_TEXTURE_INDEX;
     }
 
@@ -486,7 +541,16 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
         return EMPTY_TEXTURE_INDEX;
     }
 
-    return InsertTexture( frameIndex, image, view, samplerHandle );
+    // insert
+    *targetSlot = Texture{
+        .image         = image,
+        .view          = view,
+        .format        = uploadInfo.format,
+        .samplerHandle = samplerHandle,
+        .swizzling     = uploadInfo.swizzling,
+        .filepath      = std::move( filepath ),
+    };
+    return uint32_t( std::distance( textures.begin(), targetSlot ) );
 }
 
 /*uint32_t TextureManager::CreateAnimatedMaterial( VkCommandBuffer                     cmd,
@@ -616,16 +680,7 @@ void TextureManager::DestroyMaterialTextures( uint32_t frameIndex, const Materia
     {
         if( t != EMPTY_TEXTURE_INDEX )
         {
-            Texture& texture = textures[ t ];
-
-            AddToBeDestroyed( frameIndex, texture );
-
-            // nullify the slot
-            texture = {
-                .image         = VK_NULL_HANDLE,
-                .view          = VK_NULL_HANDLE,
-                .samplerHandle = SamplerManager::Handle(),
-            };
+            AddToBeDestroyed( frameIndex, textures[ t ] );
         }
     }
 }
@@ -666,48 +721,6 @@ bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextu
     return true;
 }
 
-/*void TextureManager::CheckForHotReload( VkCommandBuffer cmd )
-{
-    if( observer && imageLoaderDev )
-    {
-        observer->CheckPathsAndReupload( cmd, *this, imageLoaderDev.get() );
-    }
-}*/
-
-uint32_t TextureManager::InsertTexture( uint32_t               frameIndex,
-                                        VkImage                image,
-                                        VkImageView            view,
-                                        SamplerManager::Handle samplerHandle )
-{
-    auto texture = std::ranges::find_if( textures, []( const Texture& t ) {
-        return t.image == VK_NULL_HANDLE && t.view == VK_NULL_HANDLE;
-    } );
-
-    // if couldn't find empty space, use empty texture
-    if( texture == textures.end() )
-    {
-        // clean created data
-        AddToBeDestroyed( frameIndex,
-                          Texture{
-                              .image = image,
-                              .view  = view,
-                          } );
-
-        // TODO: properly warn user, add severity to print
-        assert( false && "Too many textures" );
-
-        return EMPTY_TEXTURE_INDEX;
-    }
-
-    *texture = Texture{
-        .image         = image,
-        .view          = view,
-        .samplerHandle = samplerHandle,
-    };
-
-    return uint32_t( std::distance( textures.begin(), texture ) );
-}
-
 void TextureManager::DestroyTexture( const Texture& texture )
 {
     assert( texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE );
@@ -715,11 +728,14 @@ void TextureManager::DestroyTexture( const Texture& texture )
     textureUploader->DestroyImage( texture.image, texture.view );
 }
 
-void TextureManager::AddToBeDestroyed( uint32_t frameIndex, const Texture& texture )
+void TextureManager::AddToBeDestroyed( uint32_t frameIndex, Texture& texture )
 {
     assert( texture.image != VK_NULL_HANDLE && texture.view != VK_NULL_HANDLE );
 
-    texturesToDestroy[ frameIndex ].push_back( texture );
+    texturesToDestroy[ frameIndex ].push_back( std::move( texture ) );
+
+    // nullify the slot
+    texture = {};
 }
 
 MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName ) const
@@ -759,9 +775,18 @@ VkDescriptorSetLayout TextureManager::GetDescSetLayout() const
     return textureDesc->GetDescSetLayout();
 }
 
-void TextureManager::Subscribe( std::shared_ptr< IMaterialDependency > subscriber )
+void TextureManager::Subscribe( const std::shared_ptr< IMaterialDependency >& subscriber )
 {
     subscribers.emplace_back( subscriber );
+}
+
+void TextureManager::OnFileChanged( FileType type, const std::filesystem::path& filepath )
+{
+    if( type == FileType::PNG || type == FileType::TGA || type == FileType::KTX2 || type == FileType::JPG )
+    {
+        texturesToReloadNoExt.push_back(
+            std::filesystem::path( filepath ).replace_extension( "" ) );
+    }
 }
 
 uint32_t TextureManager::GetWaterNormalTextureIndex() const

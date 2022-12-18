@@ -370,10 +370,13 @@ void ForEachGltfMesh( const tinygltf::Model& model, const tinygltf::Node& node )
 void FillGAllMeshes( std::string_view path,
                      const std::function< void( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
 {
+    auto absGltfPath = std::filesystem::path( ASSET_DIRECTORY ) / path;
+    auto gltfFolder = std::filesystem::path( path ).remove_filename();
+
     tinygltf::Model    model;
     tinygltf::TinyGLTF loader;
     std::string        err, warn;
-    if( loader.LoadASCIIFromFile( &model, &err, &warn, path.data() ) )
+    if( loader.LoadASCIIFromFile( &model, &err, &warn, absGltfPath.string() ) )
     {
         for( uint64_t m = 0; m < model.materials.size(); m++ )
         {
@@ -392,7 +395,7 @@ void FillGAllMeshes( std::string_view path,
                     auto& image = model.images[ model.textures[ tex ].source ];
                     assert( image.bits == 8 );
 
-                    materialFunc( image.uri.c_str(),
+                    materialFunc( ( gltfFolder / image.uri ).string().c_str(),
                                   &image.image[ 0 ],
                                   uint32_t( image.width ),
                                   uint32_t( image.height ) );
@@ -456,7 +459,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RG_CHECK( t );
         };
 
-         /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
+           /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -738,7 +741,7 @@ int main( int argc, char* argv[] )
     RG_CHECK( r );
 
     {
-        auto gltfPath = argc > 1 ? argv[ 1 ] : ASSET_DIRECTORY "Sponza/glTF/Sponza.gltf";
+        auto gltfPath = argc > 1 ? argv[ 1 ] : "Sponza/glTF/Sponza.gltf";
         MainLoop( instance, gltfPath );
     }
 

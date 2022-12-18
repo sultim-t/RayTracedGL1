@@ -122,6 +122,7 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
     BeginCmdLabel( cmd, "Prepare for frame" );
 
+    textureManager->TryHotReload( cmd, frameIndex );
     lightManager->PrepareForFrame( cmd, frameIndex );
     scene->PrepareForFrame( cmd, frameIndex );
 
@@ -1201,7 +1202,10 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
     renderResolution.Setup(
         pInfo->pRenderResolutionParams, swapchain->GetWidth(), swapchain->GetHeight(), nvDlss );
 
-    // textureManager->CheckForHotReload( cmd );
+    if( observer )
+    {
+        observer->RecheckFiles();
+    }
 
     if( renderResolution.Width() > 0 && renderResolution.Height() > 0 )
     {

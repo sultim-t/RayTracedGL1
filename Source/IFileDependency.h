@@ -1,4 +1,4 @@
-// Copyright (c) 2020-2021 Sultim Tsyrendashiev
+// Copyright (c) 2022 Sultim Tsyrendashiev
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,30 +20,57 @@
 
 #pragma once
 
-#include "Common.h"
-#include "Const.h"
-#include "SamplerManager.h"
-
 #include <filesystem>
 
 namespace RTGL1
 {
 
-struct Texture
+enum class FileType
 {
-    VkImage                             image         = VK_NULL_HANDLE;
-    VkImageView                         view          = VK_NULL_HANDLE;
-    VkFormat                            format        = VK_FORMAT_UNDEFINED;
-    SamplerManager::Handle              samplerHandle = SamplerManager::Handle();
-    std::optional< RgTextureSwizzling > swizzling     = std::nullopt;
-    std::filesystem::path               filepath      = {};
+    Unknown,
+    GLTF,
+    KTX2,
+    PNG,
+    TGA,
+    JPG,
 };
 
-
-struct MaterialTextures
+inline FileType MakeFileType( const std::filesystem::path& p )
 {
-    // Indices to use in shaders, each index represents a texture: albedo, roughness, etc
-    uint32_t indices[ TEXTURES_PER_MATERIAL_COUNT ];
+    // 2 allocations...
+    auto ext = p.extension().string();
+
+    std::ranges::transform( ext, ext.begin(), []( unsigned char c ) { return std::tolower( c ); } );
+
+    if( ext == ".gltf" )
+    {
+        return FileType::GLTF;
+    }
+    else if( ext == ".ktx2" )
+    {
+        return FileType::KTX2;
+    }
+    else if( ext == ".png" )
+    {
+        return FileType::PNG;
+    }
+    else if( ext == ".tga" )
+    {
+        return FileType::TGA;
+    }
+    else if( ext == ".jpg" || ext == ".jpeg" )
+    {
+        return FileType::JPG;
+    }
+
+    return FileType::Unknown;
+}
+
+class IFileDependency
+{
+public:
+    virtual ~IFileDependency()                                                         = default;
+    virtual void OnFileChanged( FileType type, const std::filesystem::path& filepath ) = 0;
 };
 
 }
