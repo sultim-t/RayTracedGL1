@@ -21,17 +21,20 @@
 #pragma once
 
 #include <cassert>
-#include <memory>
 #include <cstring>
 #include <functional>
+#include <memory>
+
 #include <vulkan/vulkan.h>
 
 #include "RTGL1/RTGL1.h"
 
+#include "DebugPrint.h"
+
 namespace RTGL1
 {
 
-constexpr uint32_t       MAX_FRAMES_IN_FLIGHT = 2;
+constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 #pragma region extension functions
 
@@ -85,8 +88,5 @@ inline void VK_CHECKERROR( const VkResult r )
 void AddDebugName( VkDevice device, uint64_t obj, VkObjectType type, const char* pName );
 void BeginCmdLabel( VkCommandBuffer cmd, const char* pName, const float pColor[ 4 ] = nullptr );
 void EndCmdLabel( VkCommandBuffer cmd );
-
-
-using DebugPrintFn = std::function< void( const char*, RgMessageSeverityFlags ) >;
 
 }

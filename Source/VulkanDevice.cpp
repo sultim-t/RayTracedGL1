@@ -92,8 +92,7 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
         exporter = std::make_unique< GltfExporter >(
             Utils::MakeTransform( Utils::Normalize( debugData.exportWorldUp ),
                                   Utils::Normalize( debugData.exportWorldForward ),
-                                  debugData.exportWorldScale ),
-            MakePrintFn() );
+                                  debugData.exportWorldScale ) );
 
         debugData.exportPrimitives = false;
     }
@@ -836,8 +835,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
             new GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
                               Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
                                                     Utils::Normalize( defaultWorldForward ),
-                                                    defaultWorldScale ),
-                              MakePrintFn() );
+                                                    defaultWorldScale ) );
     }
     if( g_imp_DEBUG )
     {
@@ -1503,22 +1501,15 @@ void RTGL1::VulkanDevice::ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget 
     scratchImmediate.SetToPrimitive( pTarget );
 }
 
-void RTGL1::VulkanDevice::Print( const char* pMessage, RgMessageSeverityFlags severity ) const
+void RTGL1::VulkanDevice::Print( std::string_view msg, RgMessageSeverityFlags severity ) const
 {
     if( debugWindows )
     {
-        debugData.logs.emplace_back( severity, pMessage );
+        debugData.logs.emplace_back( severity, msg );
     }
 
     if( userPrint )
     {
-        userPrint->Print( pMessage, severity );
+        userPrint->Print( msg.data(), severity );
     }
-}
-
-RTGL1::DebugPrintFn RTGL1::VulkanDevice::MakePrintFn() const
-{
-    return [ this ]( const char* pMessage, RgMessageSeverityFlags severity ) {
-        this->Print( pMessage, severity );
-    };
 }

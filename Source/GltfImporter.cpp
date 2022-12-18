@@ -131,25 +131,21 @@ std::vector< RgPrimitiveVertex > RTGL1::GltfImporter::GatherVertices( const cglt
 
     if( node.mesh->primitives_count < 1 )
     {
-        debugprint( std::format( "{}: Ignoring ...->{}->{}: No primitives on a mesh",
-                                 gltfPath,
-                                 NodeName( node.parent ),
-                                 NodeName( node ) )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: Ignoring ...->{}->{}: No primitives on a mesh",
+                        gltfPath,
+                        NodeName( node.parent ),
+                        NodeName( node ) );
         return {};
     }
 
     if( node.mesh->primitives_count > 2 )
     {
-        debugprint( std::format( "{}: ...->{}->{}: Expected only 1 primitive on a mesh, but got "
-                                 "{}. Parsing only the first",
-                                 gltfPath,
-                                 NodeName( node.parent ),
-                                 NodeName( node ),
-                                 node.mesh->primitives_count )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: ...->{}->{}: Expected only 1 primitive on a mesh, but got "
+                        "{}. Parsing only the first",
+                        gltfPath,
+                        NodeName( node.parent ),
+                        NodeName( node ),
+                        node.mesh->primitives_count );
     }
 
     const cgltf_primitive& prim = node.mesh->primitives[ 0 ];
@@ -157,14 +153,12 @@ std::vector< RgPrimitiveVertex > RTGL1::GltfImporter::GatherVertices( const cglt
     std::span attrSpan( prim.attributes, prim.attributes_count );
 
     auto debugprintAttr = [ this, &node ]( const cgltf_attribute& attr, std::string_view msg ) {
-        debugprint( std::format( "{}: Ignoring ...->{}->{}: Attribute {}: {}",
-                                 gltfPath,
-                                 NodeName( node.parent ),
-                                 NodeName( node ),
-                                 attr.name ? attr.name : "",
-                                 msg )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: Ignoring ...->{}->{}: Attribute {}: {}",
+                        gltfPath,
+                        NodeName( node.parent ),
+                        NodeName( node ),
+                        attr.name ? attr.name : "",
+                        msg );
     };
 
     // check if compatible and find common attribute count
@@ -263,32 +257,26 @@ std::vector< RgPrimitiveVertex > RTGL1::GltfImporter::GatherVertices( const cglt
 
         if( !position || !normal || !tangent || !texcoord )
         {
-            debugprint(
-                std::format( "{}: Ignoring ...->{}->{}: Not all required attributes are present. "
-                             "POSITION - {}. "
-                             "NORMAL - {}. "
-                             "TANGENT - {}. "
-                             "TEXCOORD_0 - {}",
-                             gltfPath,
-                             NodeName( node.parent ),
-                             NodeName( node ),
-                             position,
-                             normal,
-                             tangent,
-                             texcoord )
-                    .c_str(),
-                RG_MESSAGE_SEVERITY_WARNING );
+            debug::Warning( "{}: Ignoring ...->{}->{}: Not all required attributes are present. "
+                            "POSITION - {}. "
+                            "NORMAL - {}. "
+                            "TANGENT - {}. "
+                            "TEXCOORD_0 - {}",
+                            gltfPath,
+                            NodeName( node.parent ),
+                            NodeName( node ),
+                            position,
+                            normal,
+                            tangent,
+                            texcoord );
             return {};
         }
     }
 
     if( !vertexCount )
     {
-        debugprint(
-            std::format(
-                "{}: Ignoring ...->{}->{}: ", gltfPath, NodeName( node.parent ), NodeName( node ) )
-                .c_str(),
-            RG_MESSAGE_SEVERITY_VERBOSE );
+        debug::Warning(
+            "{}: Ignoring ...->{}->{}: ", gltfPath, NodeName( node.parent ), NodeName( node ) );
         return {};
     }
 
@@ -376,13 +364,10 @@ std::vector< uint32_t > RTGL1::GltfImporter::GatherIndices( const cgltf_node& no
 
     if( prim.indices->is_sparse )
     {
-        debugprint(
-            std::format( "{}: Ignoring ...->{}->{}: Indices: Sparse accessors are not supported",
-                         gltfPath,
-                         NodeName( node.parent ),
-                         NodeName( node ) )
-                .c_str(),
-            RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: Ignoring ...->{}->{}: Indices: Sparse accessors are not supported",
+                        gltfPath,
+                        NodeName( node.parent ),
+                        NodeName( node ) );
         return {};
     }
 
@@ -394,13 +379,10 @@ std::vector< uint32_t > RTGL1::GltfImporter::GatherIndices( const cgltf_node& no
 
         if( !cgltf_accessor_read_uint( prim.indices, k, &resolved, 1 ) )
         {
-            debugprint(
-                std::format( "{}: Ignoring ...->{}->{}: Indices: cgltf_accessor_read_uint fail",
-                             gltfPath,
-                             node.parent->name,
-                             node.name )
-                    .c_str(),
-                RG_MESSAGE_SEVERITY_WARNING );
+            debug::Warning( "{}: Ignoring ...->{}->{}: Indices: cgltf_accessor_read_uint fail",
+                            gltfPath,
+                            node.parent->name,
+                            node.name );
             return {};
         }
 
@@ -413,9 +395,8 @@ std::vector< uint32_t > RTGL1::GltfImporter::GatherIndices( const cgltf_node& no
 
 
 RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
-                                   const RgTransform&           _worldTransform,
-                                   DebugPrintFn                 _debugprint )
-    : data( nullptr ), gltfPath( _gltfPath.string() ), debugprint( std::move( _debugprint ) )
+                                   const RgTransform&           _worldTransform )
+    : data( nullptr ), gltfPath( _gltfPath.string() )
 {
     cgltf_result  r{ cgltf_result_success };
     cgltf_options options{};
@@ -437,42 +418,33 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
     r = cgltf_parse_file( &options, gltfPath.c_str(), &parsedData );
     if( r != cgltf_result_success )
     {
-        debugprint(
-            std::format( "{}: {}. Error code: {}", gltfPath, "cgltf_parse_file", int( r ) ).c_str(),
-            RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: {}. Error code: {}", gltfPath, "cgltf_parse_file", int( r ) );
         return;
     }
 
     r = cgltf_load_buffers( &options, parsedData, gltfPath.c_str() );
     if( r != cgltf_result_success )
     {
-        debugprint(
-            std::format( "{}: {}. Error code: {}", gltfPath, "cgltf_load_buffers", int( r ) )
-                .c_str(),
-            RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: {}. Error code: {}", gltfPath, "cgltf_load_buffers", int( r ) );
         return;
     }
 
     r = cgltf_validate( parsedData );
     if( r != cgltf_result_success )
     {
-        debugprint(
-            std::format( "{}: {}. Error code: {}", gltfPath, "cgltf_validate", int( r ) ).c_str(),
-            RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: {}. Error code: {}", gltfPath, "cgltf_validate", int( r ) );
         return;
     }
 
     if( parsedData->scenes_count == 0 )
     {
-        debugprint( std::format( "{}: {}", gltfPath, "No scenes found" ).c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: {}", gltfPath, "No scenes found" );
         return;
     }
 
     if( parsedData->scene == nullptr )
     {
-        debugprint( std::format( "{}: {}", gltfPath, "No default scene, using first" ).c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: {}", gltfPath, "No default scene, using first" );
         parsedData->scene = &parsedData->scenes[ 0 ];
     }
 
@@ -480,11 +452,8 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
 
     if( !mainNode )
     {
-        debugprint( std::format( "{}: {}",
-                                 gltfPath,
-                                 "No \"" RTGL1_MAIN_ROOT_NODE "\" node in the default scene" )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning(
+            "{}: {}", gltfPath, "No \"" RTGL1_MAIN_ROOT_NODE "\" node in the default scene" );
         return;
     }
 
@@ -508,12 +477,10 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex
 
     if( mainNode->mesh )
     {
-        debugprint( std::format( "{}: Found a mesh attached to node ({}). Main node should can't "
-                                 "have meshes. Ignoring",
-                                 gltfPath,
-                                 mainNode->name )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "{}: Found a mesh attached to node ({}). Main node should can't "
+                        "have meshes. Ignoring",
+                        gltfPath,
+                        mainNode->name );
     }
 
     std::span srcMeshes( mainNode->children, mainNode->children_count );
@@ -521,24 +488,19 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex
     {
         if( Utils::IsCstrEmpty( srcMesh->name ) )
         {
-            debugprint(
-                std::format( "{}: Found srcMesh with null name (a child node of {}). Ignoring",
-                             gltfPath,
-                             mainNode->name )
-                    .c_str(),
-                RG_MESSAGE_SEVERITY_WARNING );
+            debug::Warning( "{}: Found srcMesh with null name (a child node of {}). Ignoring",
+                            gltfPath,
+                            mainNode->name );
             continue;
         }
 
         if( srcMesh->mesh )
         {
-            debugprint( std::format( "{}: Found a mesh attached to node ({}->{}). Only child nodes "
-                                     "of it can have meshes. Ignoring",
-                                     gltfPath,
-                                     mainNode->name,
-                                     srcMesh->name )
-                            .c_str(),
-                        RG_MESSAGE_SEVERITY_WARNING );
+            debug::Warning( "{}: Found a mesh attached to node ({}->{}). Only child nodes "
+                            "of it can have meshes. Ignoring",
+                            gltfPath,
+                            mainNode->name,
+                            srcMesh->name );
         }
 
         // TODO: really bad way to reduce hash64 to 32 bits
@@ -560,26 +522,21 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex
 
             if( Utils::IsCstrEmpty( srcPrim->name ) )
             {
-                debugprint(
-                    std::format(
-                        "{}: Found srcPrim with null name (a child node of {}->{}). Ignoring",
-                        gltfPath,
-                        mainNode->name,
-                        srcMesh->name )
-                        .c_str(),
-                    RG_MESSAGE_SEVERITY_WARNING );
+                debug::Warning(
+                    "{}: Found srcPrim with null name (a child node of {}->{}). Ignoring",
+                    gltfPath,
+                    mainNode->name,
+                    srcMesh->name );
                 continue;
             }
 
             if( srcPrim->children_count != 0 )
             {
-                debugprint( std::format( "{}: Found child nodes of ({}->{}->{}). Ignoring",
-                                         gltfPath,
-                                         mainNode->name,
-                                         srcMesh->name,
-                                         srcPrim->name )
-                                .c_str(),
-                            RG_MESSAGE_SEVERITY_WARNING );
+                debug::Warning( "{}: Found child nodes of ({}->{}->{}). Ignoring",
+                                gltfPath,
+                                mainNode->name,
+                                srcMesh->name,
+                                srcPrim->name );
             }
 
             auto vertices = GatherVertices( *srcPrim );

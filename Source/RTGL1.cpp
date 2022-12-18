@@ -25,6 +25,7 @@ namespace
 {
 #define INITIALIZED_RGINSTANCE ( reinterpret_cast< RgInstance >( 1024 ) )
 
+
 RgInstance                             g_deviceRgInstance{ nullptr };
 std::unique_ptr< RTGL1::VulkanDevice > g_device{};
 
@@ -48,14 +49,11 @@ RTGL1::VulkanDevice& GetDevice( RgInstance rgInstance )
     }
     throw RTGL1::RgException( RG_RESULT_WRONG_INSTANCE );
 }
-
-void TryPrintError( RgInstance rgInstance, const char* pMessage, RgMessageSeverityFlags severity )
-{
-    if( auto d = TryGetDevice( rgInstance ) )
-    {
-        d->Print( pMessage, severity );
-    }
 }
+
+namespace RTGL1::debug::detail
+{
+DebugPrintFn g_print{};
 }
 
 
@@ -88,6 +86,14 @@ RgResult rgCreateInstance( const RgInstanceCreateInfo* pInfo, RgInstance* pResul
 
         return e.GetErrorCode();
     }
+
+    RTGL1::debug::detail::g_print = []( std::string_view msg, RgMessageSeverityFlags severity ) {
+        if( g_device )
+        {
+            g_device->Print( msg, severity );
+        }
+    };
+
     return RG_RESULT_SUCCESS;
 }
 
@@ -105,9 +111,12 @@ RgResult rgDestroyInstance( RgInstance rgInstance )
     }
     catch( RTGL1::RgException& e )
     {
-        TryPrintError( rgInstance, e.what(), RG_MESSAGE_SEVERITY_ERROR );
+        RTGL1::debug::Error( e.what() );
         return e.GetErrorCode();
     }
+
+    RTGL1::debug::detail::g_print = nullptr;
+
     return RG_RESULT_SUCCESS;
 }
 
@@ -130,7 +139,7 @@ static auto Call( RgInstance rgInstance, Func f, Args&&... args )
     }
     catch( RTGL1::RgException& e )
     {
-        TryPrintError( rgInstance, e.what(), RG_MESSAGE_SEVERITY_ERROR );
+        RTGL1::debug::Error( e.what() );
         return e.GetErrorCode();
     }
     return RG_RESULT_SUCCESS;
@@ -156,7 +165,7 @@ static auto Call( RgInstance rgInstance, Func f, Args&&... args )
     }
     catch( RTGL1::RgException& e )
     {
-        TryPrintError( rgInstance, e.what(), RG_MESSAGE_SEVERITY_ERROR );
+        RTGL1::debug::Error( e.what() );
     }
     return ReturnType{};
 }

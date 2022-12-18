@@ -35,8 +35,7 @@ class GltfImporter
 {
 public:
     GltfImporter( const std::filesystem::path& gltfPath,
-                  const RgTransform&           worldTransform,
-                  DebugPrintFn                 debugrint );
+                  const RgTransform&           worldTransform );
     ~GltfImporter();
 
     GltfImporter( const GltfImporter& other )                = delete;
@@ -53,7 +52,6 @@ private:
 private:
     cgltf_data*  data;
     std::string  gltfPath;
-    DebugPrintFn debugprint;
 };
 
 }

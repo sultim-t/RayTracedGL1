@@ -36,7 +36,7 @@
 #include <span>
 #include <type_traits>
 
-namespace 
+namespace
 {
 auto* ConvertRefToPtr( auto& ref )
 {
@@ -60,7 +60,8 @@ std::string GetGltfBinURI( std::string_view sceneName )
     return std::string( sceneName ) + ".bin";
 }
 
-std::filesystem::path GetGltfBinPath( const std::filesystem::path& folder, std::string_view sceneName )
+std::filesystem::path GetGltfBinPath( const std::filesystem::path& folder,
+                                      std::string_view             sceneName )
 {
     return folder / GetGltfBinURI( sceneName );
 }
@@ -99,7 +100,7 @@ struct DeepCopyOfPrimitive
         , pPrimitiveNameInMesh( std::move( other.pPrimitiveNameInMesh ) )
         , pTextureName( std::move( other.pTextureName ) )
         , pVertices( std::move( other.pVertices ) )
-        , pIndices( std::move( other.pIndices ) )              
+        , pIndices( std::move( other.pIndices ) )
     {
         assert( other.info.vertexCount == other.pVertices.size() );
         assert( other.info.indexCount == other.pIndices.size() );
@@ -128,18 +129,15 @@ struct DeepCopyOfPrimitive
     }
 
     // No copies
-    DeepCopyOfPrimitive( const DeepCopyOfPrimitive& other ) = delete;
+    DeepCopyOfPrimitive( const DeepCopyOfPrimitive& other )            = delete;
     DeepCopyOfPrimitive& operator=( const DeepCopyOfPrimitive& other ) = delete;
-    
+
     std::span< const RgPrimitiveVertex > Vertices() const
     {
         return { pVertices.begin(), pVertices.end() };
     }
-    
-    std::span< const uint32_t > Indices() const
-    {
-        return { pIndices.begin(), pIndices.end() };
-    }
+
+    std::span< const uint32_t > Indices() const { return { pIndices.begin(), pIndices.end() }; }
 
     const auto& PrimitiveNameInMesh() const { return pPrimitiveNameInMesh; }
     const auto& TextureName() const { return pTextureName; }
@@ -170,8 +168,8 @@ private:
 
 
 
-RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform, DebugPrintFn _debugprint )
-    : worldTransform( _worldTransform ), debugprint( std::move( _debugprint ) )
+RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform )
+    : worldTransform( _worldTransform )
 {
 }
 
@@ -223,7 +221,7 @@ private:
 auto MakeBufferViews( BinFile& fbin, const RTGL1::DeepCopyOfPrimitive& prim )
 {
     return std::to_array( {
-        #define BUFFER_VIEW_VERTICES 0
+#define BUFFER_VIEW_VERTICES 0
         cgltf_buffer_view{
             .name   = nullptr,
             .buffer = fbin.Get(),
@@ -232,7 +230,7 @@ auto MakeBufferViews( BinFile& fbin, const RTGL1::DeepCopyOfPrimitive& prim )
             .stride = sizeof( decltype( prim.Vertices() )::element_type ),
             .type   = cgltf_buffer_view_type_vertices,
         },
-        #define BUFFER_VIEW_INDICES 1
+#define BUFFER_VIEW_INDICES 1
         cgltf_buffer_view{
             .name   = nullptr,
             .buffer = fbin.Get(),
@@ -396,20 +394,23 @@ constexpr size_t AttributesPerPrim = std::size(
 struct BeginCount
 {
     ptrdiff_t offset;
-    size_t count;
+    size_t    count;
 
-    template< typename T > std::span< T > ToSpan( std::vector< T >& container ) const
+    template< typename T >
+    std::span< T > ToSpan( std::vector< T >& container ) const
     {
         return { container.begin() + offset, count };
     }
 
-    template< typename T > T* ToPointer( std::vector< T >& container ) const
+    template< typename T >
+    T* ToPointer( std::vector< T >& container ) const
     {
         assert( count == 1 );
         return &container[ offset ];
     }
 
-    template< typename T > std::vector< T* > ToVectorOfPointers( std::vector< T >& container ) const
+    template< typename T >
+    std::vector< T* > ToVectorOfPointers( std::vector< T >& container ) const
     {
         std::vector< T* > ptrs;
 
@@ -420,11 +421,12 @@ struct BeginCount
     }
 };
 
-template< typename T > auto append_n( std::vector< T >& v, size_t toadd )
+template< typename T >
+auto append_n( std::vector< T >& v, size_t toadd )
 {
     auto begin = ptrdiff_t( v.size() );
     v.resize( v.size() + toadd );
-    
+
     return BeginCount{ begin, toadd };
 }
 
@@ -516,9 +518,9 @@ struct GltfStorage
     std::vector< cgltf_mesh >        allMeshes;
     std::vector< cgltf_node >        allNodes;
 
-    std::vector< GltfRoot >    roots; // each corresponds to RgMeshInfo
+    std::vector< GltfRoot > roots; // each corresponds to RgMeshInfo
 
-    cgltf_node*                world; 
+    cgltf_node*                world;
     std::vector< cgltf_node* > worldRoots;
 };
 
@@ -539,11 +541,12 @@ bool RTGL1::GltfExporter::CanBeExported( const RgMeshInfo*          mesh,
             }
         }
     }
-    
+
     return false;
 }
 
-void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
+void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
+                                        const RgMeshPrimitiveInfo& primitive )
 {
     if( !CanBeExported( &mesh, &primitive ) )
     {
@@ -552,11 +555,9 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrim
 
     if( primitive.indexCount == 0 || primitive.pIndices == nullptr )
     {
-        debugprint(
-            std::format( "Exporter doesn't support primitives without index buffer: {} - {}",
-                         mesh.pMeshName,
-                         primitive.pPrimitiveNameInMesh ).c_str(),
-            RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "Exporter doesn't support primitives without index buffer: {} - {}",
+                        mesh.pMeshName,
+                        primitive.pPrimitiveNameInMesh );
         return;
     }
 
@@ -568,26 +569,25 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
 {
     if( scene.empty() )
     {
-        debugprint( "Nothing to export", RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "Nothing to export" );
         return;
     }
 
     if( sceneName.empty() )
     {
-        debugprint( "Can't export: RgDrawFrameInfo::pMapName is an empty string",
-                    RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "Can't export: RgDrawFrameInfo::pMapName is an empty string" );
         return;
     }
-    
-    
+
+
     const char* primExtrasExample  = nullptr; // "{ portalOutPosition\" : [0,0,0] }";
     const char* sceneExtrasExample = nullptr; // "{ tonemapping_enable\" : 1 }";
 
-    
+
     // lock pointers
-    BinFile fbin( folder, sceneName );
+    BinFile     fbin( folder, sceneName );
     GltfStorage storage( scene );
-    
+
 
     for( GltfRoot& root : storage.roots )
     {
@@ -708,9 +708,9 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
     cgltf_result  r;
 
     r = cgltf_validate( &data );
-    if( r != cgltf_result_success)
+    if( r != cgltf_result_success )
     {
-        debugprint( "cgltf_validate fail", RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "cgltf_validate fail" );
         return;
     }
 
@@ -719,10 +719,9 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
     r = cgltf_write_file( &options, gltfPath.c_str(), &data );
     if( r != cgltf_result_success )
     {
-        debugprint( "cgltf_write_file fail", RG_MESSAGE_SEVERITY_WARNING );
+        debug::Warning( "cgltf_write_file fail" );
         return;
     }
 
-    debugprint( std::format( "{}: Exported successfully", gltfPath ).c_str(),
-                RG_MESSAGE_SEVERITY_INFO );
+    debug::Info( "{}: Exported successfully", gltfPath );
 }

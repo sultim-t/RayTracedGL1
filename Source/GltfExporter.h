@@ -33,7 +33,7 @@ struct DeepCopyOfPrimitive;
 class GltfExporter
 {
 public:
-    explicit GltfExporter( const RgTransform& worldTransform, DebugPrintFn debugprint );
+    explicit GltfExporter( const RgTransform& worldTransform );
     ~GltfExporter() = default;
 
     GltfExporter( const GltfExporter& other )     = delete;
@@ -49,6 +49,5 @@ public:
 private:
     rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
     RgTransform  worldTransform;
-    DebugPrintFn debugprint;
 };
 }

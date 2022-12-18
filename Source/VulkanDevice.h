@@ -119,8 +119,7 @@ public:
     void ImScratchSetToPrimitive( RgMeshPrimitiveInfo *pTarget );
 
 
-    void Print( const char* pMessage, RgMessageSeverityFlags severity ) const;
-    DebugPrintFn MakePrintFn() const;
+    void Print( std::string_view msg, RgMessageSeverityFlags severity ) const;
 
 private:
     void            CreateInstance( const RgInstanceCreateInfo& info );
