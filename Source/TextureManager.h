@@ -29,7 +29,6 @@
 #include "Material.h"
 #include "ImageLoader.h"
 #include "ImageLoaderDev.h"
-#include "IMaterialDependency.h"
 #include "IFileDependency.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
@@ -80,9 +79,6 @@ public:
         -> std::array< MaterialTextures, 4 >;
     auto GetColorForLayers( const RgMeshPrimitiveInfo& primitive ) const
         -> std::array< RgColor4DPacked32, 4 >;
-
-
-    void Subscribe( const std::shared_ptr< IMaterialDependency >& subscriber );
 
 
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
@@ -145,8 +141,6 @@ private:
     bool        originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];
 
     bool forceNormalMapFilterLinear;
-
-    std::list< std::weak_ptr< IMaterialDependency > > subscribers;
 };
 
 }

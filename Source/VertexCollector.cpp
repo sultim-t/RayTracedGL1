@@ -370,34 +370,6 @@ std::optional< uint32_t > RTGL1::VertexCollector::AddPrimitive(
     {
         // save transform index for updating static movable's transforms
         simpleIndexToTransformIndex[ simpleIndex ] = transformIndex;
-
-        /*
-        // add material dependency but only for static geometry,
-        // dynamic is updated each frame, so their materials will be updated anyway
-        const std::tuple<uint32_t, RgMaterial, std::array<uint32_t, TEXTURES_PER_MATERIAL_COUNT>>
-        layerDependencies[] =
-        {
-            // layer index - its material - corresponding texture indices
-            { 0, info.layerMaterials[0], { materials[0].indices[0], materials[0].indices[1],
-        materials[0].indices[2] } }, { 1, info.layerMaterials[1], { materials[1].indices[0],
-        EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } }, { 2, info.layerMaterials[2], {
-        materials[2].indices[0], EMPTY_TEXTURE_INDEX,     EMPTY_TEXTURE_INDEX     } }, { 3,
-        info.layerMaterials[3], { materials[3].indices[0], EMPTY_TEXTURE_INDEX, EMPTY_TEXTURE_INDEX
-        } },
-        };
-        for( const auto& [ layerIndex, materialIndex, textureIndices ] : layerDependencies )
-        {
-            // if at least one texture is not empty on this layer, add dependency to the material
-        layer for( uint32_t textureIndex : textureIndices )
-            {
-                if( textureIndex != EMPTY_TEXTURE_INDEX )
-                {
-                    AddMaterialDependency( simpleIndex, layerIndex, materialIndex );
-                    break;
-                }
-            }
-        }
-        */
     }
 
     return simpleIndex;
@@ -432,8 +404,6 @@ void RTGL1::VertexCollector::Reset()
     curTransformCount = 0;
 
     simpleIndexToTransformIndex.clear();
-
-    materialDependencies.clear();
 
     for( auto& f : filters )
     {
@@ -679,35 +649,6 @@ bool RTGL1::VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
     geomInfoMgr->WriteStaticGeomInfoTransform(
         simpleIndex, updateInfo.movableStaticUniqueID, updateInfo.transform );
 }*/
-
-void RTGL1::VertexCollector::AddMaterialDependency( uint32_t simpleIndex,
-                                                    uint32_t layer,
-                                                    uint32_t materialIndex )
-{
-    // ignore empty materials
-    if( materialIndex != 0 )
-    {
-        auto it = materialDependencies.find( materialIndex );
-
-        if( it == materialDependencies.end() )
-        {
-            materialDependencies[ materialIndex ] = {};
-            it                                    = materialDependencies.find( materialIndex );
-        }
-
-        it->second.push_back( { simpleIndex, layer } );
-    }
-}
-void RTGL1::VertexCollector::OnMaterialChange( uint32_t                materialIndex,
-                                               const MaterialTextures& newInfo )
-{
-    // for each geom index that has this material, update geometry instance infos
-    for( const auto& p : materialDependencies[ materialIndex ] )
-    {
-        geomInfoMgr->WriteStaticGeomInfoMaterials( p.simpleIndex, p.layer, newInfo );
-    }
-}
-
 
 VkBuffer RTGL1::VertexCollector::GetVertexBuffer() const
 {

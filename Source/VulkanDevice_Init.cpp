@@ -305,7 +305,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         *physDevice,
         memAllocator, 
         cmdManager, 
-        textureManager, 
         *uniform, 
         *shaderManager );
 

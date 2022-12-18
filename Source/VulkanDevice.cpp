@@ -816,6 +816,8 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     ImGui::End();
 }
 
+static RTGL1::GltfImporter* g_imp_DEBUG = nullptr;
+
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
 {
     // end of "Prepare for frame" label
@@ -829,14 +831,18 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     {
         currentMap = drawInfo.pMapName;
 
-        GltfImporter imp( modelsPath / ( currentMap + ".gltf" ),
-                          Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
-                                                Utils::Normalize( defaultWorldForward ),
-                                                defaultWorldScale ),
-                          MakePrintFn() );
-
+        delete g_imp_DEBUG;
+        g_imp_DEBUG =
+            new GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
+                              Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
+                                                    Utils::Normalize( defaultWorldForward ),
+                                                    defaultWorldScale ),
+                              MakePrintFn() );
     }
-
+    if( g_imp_DEBUG )
+    {
+        // g_imp_DEBUG->UploadToScene_DEBUG( *scene, frameIndex );
+    }
 
     bool           mipLodBiasUpdated =
         worldSamplerManager->TryChangeMipLodBias( frameIndex, renderResolution.GetMipLodBias() );
@@ -1271,7 +1277,8 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     }
     else
     {
-        bool success = scene->Upload( currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive );
+        bool success = scene->Upload(
+            currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive, *textureManager );
 
         if( debugWindows && debugData.primitivesTableEnable )
         {

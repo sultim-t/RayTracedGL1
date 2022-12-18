@@ -34,7 +34,6 @@ public:
                     const PhysicalDevice&                   physDevice,
                     std::shared_ptr< MemoryAllocator >&     allocator,
                     std::shared_ptr< CommandBufferManager > cmdManager,
-                    std::shared_ptr< TextureManager >       textureManager,
                     const GlobalUniform&                    uniform,
                     const ShaderManager&                    shaderManager );
     ~Scene() = default;
@@ -52,9 +51,10 @@ public:
                            bool                                    allowGeometryWithSkyFlag,
                            bool                                    disableRTGeometry );
 
-    bool   Upload( uint32_t                   frameIndex,
-                   const RgMeshInfo&          mesh,
-                   const RgMeshPrimitiveInfo& primitive );
+    bool Upload( uint32_t                   frameIndex,
+                 const RgMeshInfo&          mesh,
+                 const RgMeshPrimitiveInfo& primitive,
+                 const TextureManager&      textureManager );
     // bool UpdateTransform(const RgUpdateTransformInfo &updateInfo);
     // bool UpdateTexCoords(const RgUpdateTexCoordsInfo &texCoordsInfo);
 

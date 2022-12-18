@@ -607,10 +607,10 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex
             };
 
             // TODO: static geom upload
-            if( !scene.Upload( frameIndex, dstMesh, dstPrim ) )
+            /*if( !scene.Upload( frameIndex, dstMesh, dstPrim ) )
             {
                 assert( 0 );
-            }
+            }*/
         }
     }
 }

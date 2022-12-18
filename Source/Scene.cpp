@@ -29,7 +29,6 @@ RTGL1::Scene::Scene( VkDevice                                _device,
                      const PhysicalDevice&                   _physDevice,
                      std::shared_ptr< MemoryAllocator >&     _allocator,
                      std::shared_ptr< CommandBufferManager > _cmdManager,
-                     std::shared_ptr< TextureManager >       _textureManager,
                      const GlobalUniform&                    _uniform,
                      const ShaderManager&                    _shaderManager )
 {
@@ -41,7 +40,6 @@ RTGL1::Scene::Scene( VkDevice                                _device,
                                                _physDevice,
                                                _allocator,
                                                std::move( _cmdManager ),
-                                               std::move( _textureManager ),
                                                geomInfoMgr );
 
     vertPreproc =
@@ -96,12 +94,14 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
 
 bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                            const RgMeshInfo&          mesh,
-                           const RgMeshPrimitiveInfo& primitive )
+                           const RgMeshPrimitiveInfo& primitive,
+                           const TextureManager&      textureManager )
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
     assert( !DoesUniqueIDExist( uniqueID ) );
     
-    if( auto simpleIndex = asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false ) )
+    if( auto simpleIndex =
+            asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false, textureManager ) )
     {
         dynamicUniqueIDToSimpleIndex[ uniqueID ] = *simpleIndex;
         return true;

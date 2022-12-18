@@ -32,13 +32,11 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
                              const PhysicalDevice&                   _physDevice,
                              std::shared_ptr< MemoryAllocator >      _allocator,
                              std::shared_ptr< CommandBufferManager > _cmdManager,
-                             std::shared_ptr< TextureManager >       _textureManager,
                              std::shared_ptr< GeomInfoManager >      _geomInfoManager )
     : device( _device )
     , allocator( std::move( _allocator ) )
     , staticCopyFence( VK_NULL_HANDLE )
     , cmdManager( std::move( _cmdManager ) )
-    , textureMgr( std::move( _textureManager ) )
     , geomInfoMgr( std::move( _geomInfoManager ) )
     , descPool( VK_NULL_HANDLE )
     , buffersDescSetLayout( VK_NULL_HANDLE )
@@ -84,11 +82,6 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
         MAX_STATIC_VERTEX_COUNT * sizeof( ShVertex ),
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::MASK_PASS_THROUGH_GROUP |
             FT::MASK_PRIMARY_VISIBILITY_GROUP );
-
-    // subscribe to texture manager only static collector,
-    // as static geometries aren't updating its material info (in ShGeometryInstance)
-    // every frame unlike dynamic ones
-    textureMgr->Subscribe( collectorStatic );
 
 
     // dynamic vertices
@@ -613,10 +606,11 @@ void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frame
 std::optional< uint32_t > RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
                                                               const RgMeshInfo&          mesh,
                                                               const RgMeshPrimitiveInfo& primitive,
-                                                              bool                       isStatic )
+                                                              bool                       isStatic,
+                                                              const TextureManager& textureManager )
 {
-    auto textures = textureMgr->GetTexturesForLayers( primitive );
-    auto colors   = textureMgr->GetColorForLayers( primitive );
+    auto textures = textureManager.GetTexturesForLayers( primitive );
+    auto colors   = textureManager.GetColorForLayers( primitive );
 
     if( isStatic )
     {

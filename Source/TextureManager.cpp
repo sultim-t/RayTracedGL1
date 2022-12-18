@@ -661,16 +661,6 @@ void TextureManager::InsertMaterial( uint32_t        frameIndex,
         // destroy old, overwrite with new
         DestroyMaterialTextures( frameIndex, existing );
         existing = material;
-
-        // notify subscribers
-        for( auto& ws : subscribers )
-        {
-            if( auto s = ws.lock() )
-            {
-                // TODO: IMaterialDependency
-                // s->OnMaterialChange(   );
-            }
-        }
     }
 }
 
@@ -700,23 +690,6 @@ bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextu
 
     DestroyMaterialTextures( frameIndex, it->second );
     materials.erase( it );
-
-    /*if( observer )
-    {
-        observer->Remove( materialIndex );
-    }*/
-
-    // notify subscribers
-    for( auto& ws : subscribers )
-    {
-        if( auto s = ws.lock() )
-        {
-            // send them empty texture indices as material is destroyed
-
-            // TODO: IMaterialDependency
-            // s->OnMaterialChange( materialIndex, EmptyMaterialTextures );
-        }
-    }
 
     return true;
 }
@@ -773,11 +746,6 @@ VkDescriptorSet TextureManager::GetDescSet( uint32_t frameIndex ) const
 VkDescriptorSetLayout TextureManager::GetDescSetLayout() const
 {
     return textureDesc->GetDescSetLayout();
-}
-
-void TextureManager::Subscribe( const std::shared_ptr< IMaterialDependency >& subscriber )
-{
-    subscribers.emplace_back( subscriber );
 }
 
 void TextureManager::OnFileChanged( FileType type, const std::filesystem::path& filepath )

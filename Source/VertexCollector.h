@@ -27,7 +27,6 @@
 #include "Buffer.h"
 #include "Common.h"
 #include "GeomInfoManager.h"
-#include "IMaterialDependency.h"
 #include "Material.h"
 #include "VertexCollectorFilter.h"
 #include "RTGL1/RTGL1.h"
@@ -41,7 +40,7 @@ struct ShVertex;
 // The class collects vertex data to buffers with shader struct types.
 // Geometries are passed to the class by chunks and the result of collecting
 // is a vertex buffer with ready data and infos for acceleration structure creation/building.
-class VertexCollector : public IMaterialDependency
+class VertexCollector
 {
 public:
     explicit VertexCollector( VkDevice                                  device,
@@ -54,7 +53,7 @@ public:
     explicit VertexCollector( const std::shared_ptr< const VertexCollector >& src,
                               const std::shared_ptr< MemoryAllocator >&       allocator );
 
-    ~VertexCollector() override;
+    ~VertexCollector();
 
     VertexCollector( const VertexCollector& other )     = delete;
     VertexCollector( VertexCollector&& other ) noexcept = delete;
@@ -80,11 +79,6 @@ public:
     // Returns false, if wasn't copied
     bool             RecopyTransformsFromStaging( VkCommandBuffer cmd );
     bool             RecopyTexCoordsFromStaging( VkCommandBuffer cmd );
-
-
-
-    // When material data is changed, this function is called
-    void     OnMaterialChange( uint32_t materialIndex, const MaterialTextures& newInfo ) override;
 
 
     VkBuffer GetVertexBuffer() const;
@@ -125,8 +119,6 @@ private:
     bool     CopyVertexDataFromStaging( VkCommandBuffer cmd );
     bool     CopyIndexDataFromStaging( VkCommandBuffer cmd );
     bool     CopyTransformsFromStaging( VkCommandBuffer cmd, bool insertMemBarrier );
-
-    void     AddMaterialDependency( uint32_t simpleIndex, uint32_t layer, uint32_t materialIndex );
 
     // Parse flags to flag bit pairs and create instances of
     // VertexCollectorFilter. Flag bit pair contains one bit from
@@ -173,9 +165,7 @@ private:
     ShVertex*                                                  mappedVertexData;
     uint32_t*                                                  mappedIndexData;
     VkTransformMatrixKHR*                                      mappedTransformData;
-
-    // material index to a list of () that have that material
-    rgl::unordered_map< uint32_t, std::vector< MaterialRef > > materialDependencies;
+    
     rgl::unordered_map< VertexCollectorFilterTypeFlags, std::shared_ptr< VertexCollectorFilter > >
                                              filters;
 

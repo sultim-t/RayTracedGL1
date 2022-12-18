@@ -47,7 +47,6 @@ public:
                const PhysicalDevice&                   physDevice,
                std::shared_ptr< MemoryAllocator >      allocator,
                std::shared_ptr< CommandBufferManager > cmdManager,
-               std::shared_ptr< TextureManager >       textureManager,
                std::shared_ptr< GeomInfoManager >      geomInfoManager );
     ~ASManager();
 
@@ -72,7 +71,8 @@ public:
     std::optional< uint32_t > AddMeshPrimitive( uint32_t                   frameIndex,
                                                 const RgMeshInfo&          mesh,
                                                 const RgMeshPrimitiveInfo& primitive,
-                                                bool                       isStatic );
+                                                bool                       isStatic,
+                                                const TextureManager&      textureManager );
 
     // Update transform for static movable geometry
     // void       UpdateStaticMovableTransform( uint32_t                     simpleIndex,
