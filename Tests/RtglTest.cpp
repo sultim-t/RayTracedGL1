@@ -231,7 +231,14 @@ struct WorldMeshPrimitive
 };
 std::unordered_map< MeshName, std::vector< WorldMeshPrimitive > > g_allMeshes;
 
-void ForEachGltfMesh( const tinygltf::Model& model, const tinygltf::Node& node )
+auto GetTexturePath( const std::filesystem::path &gltfFolder, std::string_view uri )
+{
+    return ( gltfFolder / uri ).string();
+}
+
+void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
+                      const tinygltf::Model& model,
+                      const tinygltf::Node&  node )
 {
     if( node.mesh >= 0 && node.mesh < static_cast< int >( model.meshes.size() ) )
     {
@@ -347,7 +354,7 @@ void ForEachGltfMesh( const tinygltf::Model& model, const tinygltf::Node& node )
                 if( tex >= 0 && model.textures[ tex ].source >= 0 )
                 {
                     auto& image = model.images[ model.textures[ tex ].source ];
-                    texName     = image.uri;
+                    texName     = GetTexturePath( gltfFolder, image.uri );
                 }
             }
 
@@ -363,15 +370,15 @@ void ForEachGltfMesh( const tinygltf::Model& model, const tinygltf::Node& node )
     for( int c : node.children )
     {
         assert( c >= 0 && c < static_cast< int >( model.nodes.size() ) );
-        ForEachGltfMesh( model, model.nodes[ c ] );
+        ForEachGltfMesh( gltfFolder, model, model.nodes[ c ] );
     }
 }
 
 void FillGAllMeshes( std::string_view path,
                      const std::function< void( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
 {
-    auto absGltfPath = std::filesystem::path( ASSET_DIRECTORY ) / path;
-    auto gltfFolder = std::filesystem::path( path ).remove_filename();
+    const auto gltfFolder = std::filesystem::path( path ).remove_filename();
+    const auto absGltfPath = std::filesystem::path( ASSET_DIRECTORY ) / path;
 
     tinygltf::Model    model;
     tinygltf::TinyGLTF loader;
@@ -395,7 +402,7 @@ void FillGAllMeshes( std::string_view path,
                     auto& image = model.images[ model.textures[ tex ].source ];
                     assert( image.bits == 8 );
 
-                    materialFunc( ( gltfFolder / image.uri ).string().c_str(),
+                    materialFunc( GetTexturePath( gltfFolder, image.uri ).c_str(),
                                   &image.image[ 0 ],
                                   uint32_t( image.width ),
                                   uint32_t( image.height ) );
@@ -406,7 +413,7 @@ void FillGAllMeshes( std::string_view path,
         const auto& scene = model.scenes[ model.defaultScene ];
         for( int sceneNode : scene.nodes )
         {
-            ForEachGltfMesh( model, model.nodes[ sceneNode ] );
+            ForEachGltfMesh( gltfFolder, model, model.nodes[ sceneNode ] );
         }
     }
     else

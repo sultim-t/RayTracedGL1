@@ -128,6 +128,11 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
     {
         auto p = GetTexturePath( _basePath, _relativePath, _postfix, ext );
 
+        if( !std::filesystem::exists( p ) )
+        {
+            continue;
+        }
+
         if( auto r = loader::Load( loader, p ) )
         {
             r->format = Utils::IsSRGB( _defaultFormat ) ? Utils::ToSRGB( r->format )
