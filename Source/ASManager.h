@@ -27,6 +27,7 @@
 #include "TextureManager.h"
 #include "VertexCollector.h"
 #include "ASComponent.h"
+#include "Token.h"
 
 namespace RTGL1
 {
@@ -56,16 +57,20 @@ public:
     ASManager& operator=( ASManager&& other ) noexcept = delete;
 
 
-    void BeginStaticGeometry();
+    [[nodiscard]] StaticGeometryToken BeginStaticGeometry();
     // Submitting static geometry to the building is a heavy operation
     // with waiting for it to complete.
-    void SubmitStaticGeometry();
+    void                              SubmitStaticGeometry( StaticGeometryToken& token );
+
     // If all the added geometries must be removed, call this function before submitting
     void ResetStaticGeometry();
 
 
-    void BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
-    void SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex );
+    [[nodiscard]] DynamicGeometryToken BeginDynamicGeometry( VkCommandBuffer cmd,
+                                                             uint32_t        frameIndex );
+    void                               SubmitDynamicGeometry( DynamicGeometryToken& token,
+                                                              VkCommandBuffer       cmd,
+                                                              uint32_t              frameIndex );
 
 
     bool AddMeshPrimitive( uint32_t                   frameIndex,

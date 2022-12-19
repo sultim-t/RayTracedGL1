@@ -36,13 +36,10 @@ RTGL1::Scene::Scene( VkDevice                                _device,
 {
     VertexCollectorFilterTypeFlags_Init();
 
-    geomInfoMgr  = std::make_shared< GeomInfoManager >( _device, _allocator );
+    geomInfoMgr = std::make_shared< GeomInfoManager >( _device, _allocator );
 
-    asManager = std::make_shared< ASManager >( _device,
-                                               _physDevice,
-                                               _allocator,
-                                               std::move( _cmdManager ),
-                                               geomInfoMgr );
+    asManager = std::make_shared< ASManager >(
+        _device, _physDevice, _allocator, std::move( _cmdManager ), geomInfoMgr );
 
     vertPreproc =
         std::make_shared< VertexPreprocessing >( _device, _uniform, *asManager, _shaderManager );
@@ -50,12 +47,13 @@ RTGL1::Scene::Scene( VkDevice                                _device,
 
 void RTGL1::Scene::PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
-    dynamicUniqueIDs.clear();
+    assert( !makingDynamic );
+    assert( !makingStatic );
 
     geomInfoMgr->PrepareForFrame( frameIndex );
 
-    // dynamic geomtry
-    asManager->BeginDynamicGeometry( cmd, frameIndex );
+    makingDynamic = asManager->BeginDynamicGeometry( cmd, frameIndex );
+    dynamicUniqueIDs.clear();
 }
 
 void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
@@ -66,7 +64,7 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
                                    bool     disableRTGeometry )
 {
     // always submit dynamic geometry on the frame ending
-    asManager->SubmitDynamicGeometry( cmd, frameIndex );
+    asManager->SubmitDynamicGeometry( makingDynamic, cmd, frameIndex );
 
 
     // copy geom and tri infos to device-local
@@ -98,7 +96,7 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
 
-    if ( DoesUniqueIDExist( uniqueID ) )
+    if( DoesUniqueIDExist( uniqueID ) )
     {
         debug::Error( "Uploading mesh primitive ({}->{}) with ID ({}->{}), but it already exists",
                       Utils::SafeCstr( mesh.pMeshName ),
@@ -107,7 +105,7 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                       primitive.primitiveIndexInMesh );
         return false;
     }
-    
+
     if( asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false, textureManager ) )
     {
         dynamicUniqueIDs.emplace( uniqueID );
@@ -119,13 +117,15 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
 
 void RTGL1::Scene::StartStatic()
 {
-    asManager->BeginStaticGeometry();
+    assert( !makingStatic );
+    makingStatic = asManager->BeginStaticGeometry();
+
     staticUniqueIDs.clear();
 }
 
 void RTGL1::Scene::SubmitStatic( VkCommandBuffer cmd )
 {
-    asManager->SubmitStaticGeometry();
+    asManager->SubmitStaticGeometry( makingStatic );
 }
 
 const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()

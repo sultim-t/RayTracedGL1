@@ -40,18 +40,18 @@ public:
                     const ShaderManager&                    shaderManager );
     ~Scene() = default;
 
-    Scene( const Scene& other )     = delete;
-    Scene( Scene&& other ) noexcept = delete;
-    Scene& operator=( const Scene& other ) = delete;
+    Scene( const Scene& other )                = delete;
+    Scene( Scene&& other ) noexcept            = delete;
+    Scene& operator=( const Scene& other )     = delete;
     Scene& operator=( Scene&& other ) noexcept = delete;
 
-    void   PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
-    void   SubmitForFrame( VkCommandBuffer                         cmd,
-                           uint32_t                                frameIndex,
-                           const std::shared_ptr< GlobalUniform >& uniform,
-                           uint32_t                                uniformData_rayCullMaskWorld,
-                           bool                                    allowGeometryWithSkyFlag,
-                           bool                                    disableRTGeometry );
+    void PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void SubmitForFrame( VkCommandBuffer                         cmd,
+                         uint32_t                                frameIndex,
+                         const std::shared_ptr< GlobalUniform >& uniform,
+                         uint32_t                                uniformData_rayCullMaskWorld,
+                         bool                                    allowGeometryWithSkyFlag,
+                         bool                                    disableRTGeometry );
 
     bool Upload( uint32_t                   frameIndex,
                  const RgMeshInfo&          mesh,
@@ -64,16 +64,19 @@ public:
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
-    bool                                          DoesUniqueIDExist( uint64_t uniqueID ) const;
+    bool DoesUniqueIDExist( uint64_t uniqueID ) const;
 
 private:
-    std::shared_ptr< ASManager >             asManager;
-    std::shared_ptr< GeomInfoManager >       geomInfoMgr;
-    std::shared_ptr< VertexPreprocessing >   vertPreproc;
+    std::shared_ptr< ASManager >           asManager;
+    std::shared_ptr< GeomInfoManager >     geomInfoMgr;
+    std::shared_ptr< VertexPreprocessing > vertPreproc;
 
     // Dynamic indices are cleared every frame
     std::set< uint64_t > dynamicUniqueIDs;
     std::set< uint64_t > staticUniqueIDs;
+
+    StaticGeometryToken  makingStatic{};
+    DynamicGeometryToken makingDynamic{};
 };
 
 }

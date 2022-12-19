@@ -523,15 +523,20 @@ void RTGL1::ASManager::ResetStaticGeometry()
     geomInfoMgr->ResetOnlyStatic();
 }
 
-void RTGL1::ASManager::BeginStaticGeometry()
+RTGL1::StaticGeometryToken RTGL1::ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
     collectorStatic->Reset();
     geomInfoMgr->ResetOnlyStatic();
+
+    return StaticGeometryToken( InitAsExisting );
 }
 
-void RTGL1::ASManager::SubmitStaticGeometry()
+void RTGL1::ASManager::SubmitStaticGeometry( StaticGeometryToken& token )
 {
+    assert( token );
+    token = {};
+
     // static geometry submission happens very infrequently, e.g. on level load
     vkDeviceWaitIdle( device );
 
@@ -588,7 +593,8 @@ void RTGL1::ASManager::SubmitStaticGeometry()
     Utils::WaitAndResetFence( device, staticCopyFence );
 }
 
-void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )
+RTGL1::DynamicGeometryToken RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd,
+                                                                    uint32_t        frameIndex )
 {
     scratchBuffer->Reset();
 
@@ -598,6 +604,8 @@ void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frame
 
     // dynamic AS must be recreated
     collectorDynamic[ frameIndex ]->Reset();
+
+    return DynamicGeometryToken( InitAsExisting );
 }
 
 bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
@@ -620,13 +628,18 @@ bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
     }
 }
 
-void RTGL1::ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t frameIndex )
+void RTGL1::ASManager::SubmitDynamicGeometry( DynamicGeometryToken& token,
+                                              VkCommandBuffer       cmd,
+                                              uint32_t              frameIndex )
 {
+    assert( token );
+    token = {};
+
     CmdLabel label( cmd, "Building dynamic BLAS" );
     using FT = VertexCollectorFilterTypeFlagBits;
 
     auto& colDyn = *collectorDynamic[ frameIndex ];
-    
+
     colDyn.CopyFromStaging( cmd );
 
     assert( asBuilder->IsEmpty() );
