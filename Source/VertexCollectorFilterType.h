@@ -115,6 +115,21 @@ uint32_t                       VertexCollectorFilterTypeFlags_GetOffsetInGlobalA
 uint32_t                       VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( VertexCollectorFilterTypeFlags flags );
 const char*                    VertexCollectorFilterTypeFlags_GetNameForBLAS( VertexCollectorFilterTypeFlags flags );
 VertexCollectorFilterTypeFlags VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo &mesh, const RgMeshPrimitiveInfo& primitive );
-void                           VertexCollectorFilterTypeFlags_IterateOverFlags( std::function< void( VertexCollectorFilterTypeFlags ) > f );
+void                           VertexCollectorFilterTypeFlags_IterateOverFlags( const std::function< void( VertexCollectorFilterTypeFlags ) >& f );
+
+template< typename Lambda >
+auto VertexCollectorFilterTypeFlags_IterateOverFlags_T( Lambda lambda )
+{
+    for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
+    {
+        for( auto pt : VertexCollectorFilterGroup_PassThrough )
+        {
+            for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
+            {
+                lambda( cf | pt | pm );
+            }
+        }
+    }
+}
 
 }

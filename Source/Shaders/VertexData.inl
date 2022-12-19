@@ -273,8 +273,8 @@ bool getCurrentGeometryIndexByPrev(int prevInstanceID, int prevLocalGeometryInde
     // try to find global geom index in current frame by it
     curFrameGlobalGeomIndex = geomIndexPrevToCur[prevFrameGeomIndex];
 
-    // UINT32_MAX -- no prev to cur exist
-    return curFrameGlobalGeomIndex != UINT32_MAX;
+    // -1 : no prev to cur exist
+    return curFrameGlobalGeomIndex >= 0;
 }
 
 // localGeometryIndex is index of geometry in pGeometries in BLAS

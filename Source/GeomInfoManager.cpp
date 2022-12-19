@@ -26,6 +26,7 @@
 #include "VertexCollectorFilterType.h"
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
+#include "Utils.h"
 
 static_assert( sizeof( RTGL1::ShGeometryInstance ) % 16 == 0,
                "Std430 structs must be aligned by 16 bytes" );
@@ -84,7 +85,7 @@ uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& i
 
 RTGL1::GeomInfoManager::GeomInfoManager( VkDevice                            _device,
                                          std::shared_ptr< MemoryAllocator >& _allocator )
-    : device( _device ), staticGeomCount( 0 ), dynamicGeomCount( 0 )
+    : device( _device )
 {
     buffer    = std::make_shared< AutoBuffer >( _allocator );
     matchPrev = std::make_shared< AutoBuffer >( _allocator );
@@ -92,19 +93,30 @@ RTGL1::GeomInfoManager::GeomInfoManager( VkDevice                            _de
     const uint32_t allBottomLevelGeomsCount =
         VertexCollectorFilterTypeFlags_GetAllBottomLevelGeomsCount();
 
-    buffer->Create( allBottomLevelGeomsCount * sizeof( RTGL1::ShGeometryInstance ),
+    buffer->Create( allBottomLevelGeomsCount * sizeof( ShGeometryInstance ),
                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                     "Geometry info buffer" );
+
+
+    for( auto frameIndex = 0u; frameIndex < MAX_FRAMES_IN_FLIGHT; frameIndex++ )
+    {
+        auto baseSpan = std::span( buffer->GetMappedAs< ShGeometryInstance* >( frameIndex ),
+                                   allBottomLevelGeomsCount );
+
+        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+            [ & ]( VertexCollectorFilterTypeFlags flags ) {
+                auto from  = VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( flags );
+                auto count = VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( flags );
+
+                AccessGeometryInstanceGroup( frameIndex, flags ) = baseSpan.subspan( from, count );
+            } );
+    }
+
+
     matchPrev->Create( allBottomLevelGeomsCount * sizeof( int32_t ),
                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                        "Match previous Geometry infos buffer" );
     matchPrevShadow = std::make_unique< int32_t[] >( allBottomLevelGeomsCount );
-
-    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
-    {
-        copyRegionLowerBounds[ i ].resize( MAX_TOP_LEVEL_INSTANCE_COUNT, UINT32_MAX );
-        copyRegionUpperBounds[ i ].resize( MAX_TOP_LEVEL_INSTANCE_COUNT, 0 );
-    }
 }
 
 bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
@@ -119,69 +131,56 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
 
         uint32_t infoCount = 0;
 
-        for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
-        {
-            uint64_t upperBoundSize =
-                cf & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC
-                    ? matchPrevCopyInfo.maxDynamicGeomCount * sizeof( int32_t )
-                    : matchPrevCopyInfo.maxStaticGeomCount * sizeof( int32_t );
+        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+            [ & ]( VertexCollectorFilterTypeFlags flags ) {
+                //
+                const auto groupOffsetInElements =
+                    VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( flags );
 
-            if( upperBoundSize == 0 )
-            {
-                continue;
-            }
+                rgl::index_subspan elementsToCopy =
+                    AccessGeometryInstanceGroup( Utils::PrevFrame( frameIndex ), flags )
+                        .resolve_index_subspan( groupOffsetInElements );
 
-            for( auto pt : VertexCollectorFilterGroup_PassThrough )
-            {
-                for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
+                using MatchPrevIndexType =
+                    std::remove_pointer_t< decltype( matchPrevShadow.get() ) >;
+
+
+                if( elementsToCopy.elementsCount == 0 )
                 {
-                    uint64_t offset =
-                        VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( cf | pt | pm );
-                    offset *= sizeof( int32_t );
-
-                    // min of upper-bound size and max size of the group
-                    uint64_t size = std::min(
-                        upperBoundSize,
-                        VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( cf | pt | pm ) *
-                            sizeof( int32_t ) );
-
-                    // copy to staging
-                    {
-                        uint8_t* pDst = ( uint8_t* )matchPrev->GetMapped( frameIndex );
-                        uint8_t* pSrc = ( uint8_t* )matchPrevShadow.get();
-
-                        memcpy( pDst + offset, pSrc + offset, size );
-                    }
-
-                    // copy from staging
-                    {
-                        VkBufferCopy& c = copyInfos[ infoCount ];
-
-                        c           = {};
-                        c.srcOffset = offset;
-                        c.dstOffset = offset;
-                        c.size      = size;
-                    }
-
-                    {
-                        VkBufferMemoryBarrier& b = barriers[ infoCount ];
-
-                        b                     = {};
-                        b.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-                        b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                        b.srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-                        b.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-
-                        b.buffer = matchPrev->GetDeviceLocal();
-                        b.offset = offset;
-                        b.size   = size;
-                    }
-
-                    infoCount++;
+                    return;
                 }
-            }
-        }
+
+                // copy to staging
+                {
+                    auto* dst = matchPrev->GetMappedAs< MatchPrevIndexType* >( frameIndex );
+                    MatchPrevIndexType* src = matchPrevShadow.get();
+
+                    memcpy( &dst[ elementsToCopy.elementsOffset ],
+                            &src[ elementsToCopy.elementsOffset ],
+                            elementsToCopy.elementsCount * sizeof( MatchPrevIndexType ) );
+                }
+
+                // copy from staging
+                copyInfos[ infoCount ] = {
+                    .srcOffset = elementsToCopy.elementsOffset * sizeof( MatchPrevIndexType ),
+                    .dstOffset = elementsToCopy.elementsOffset * sizeof( MatchPrevIndexType ),
+                    .size      = elementsToCopy.elementsCount * sizeof( MatchPrevIndexType ),
+                };
+
+                barriers[ infoCount ] = VkBufferMemoryBarrier{
+                    .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                    .srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
+                    .dstAccessMask       = VK_ACCESS_SHADER_READ_BIT,
+                    .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                    .buffer              = matchPrev->GetDeviceLocal(),
+                    .offset              = copyInfos[ infoCount ].dstOffset,
+                    .size                = copyInfos[ infoCount ].size,
+                };
+
+                infoCount++;
+            } );
+
 
         if( infoCount > 0 )
         {
@@ -211,55 +210,39 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
 
         uint32_t infoCount = 0;
 
-        for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
-        {
-            for( auto pt : VertexCollectorFilterGroup_PassThrough )
-            {
-                for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
+        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+            [ & ]( VertexCollectorFilterTypeFlags flags ) {
+                //
+                const auto groupOffsetInBytes =
+                    VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( flags ) *
+                    sizeof( ShGeometryInstance );
+
+                rgl::byte_subspan toCopy = AccessGeometryInstanceGroup( frameIndex, flags )
+                                               .resolve_byte_subspan( groupOffsetInBytes );
+
+                if( toCopy.sizeInBytes > 0 )
                 {
-                    uint32_t flagsId = VertexCollectorFilterTypeFlags_GetID( cf | pt | pm );
+                    copyInfos[ infoCount ] = VkBufferCopy{
 
-                    const uint32_t lower = copyRegionLowerBounds[ frameIndex ][ flagsId ];
-                    const uint32_t upper = copyRegionUpperBounds[ frameIndex ][ flagsId ];
+                        .srcOffset = toCopy.offsetInBytes,
+                        .dstOffset = toCopy.offsetInBytes,
+                        .size      = toCopy.sizeInBytes,
+                    };
 
-                    if( lower < upper )
-                    {
-                        const uint32_t offsetInArray =
-                            VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( cf | pt | pm );
+                    barriers[ infoCount ] = VkBufferMemoryBarrier{
+                        .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+                        .srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
+                        .dstAccessMask       = VK_ACCESS_SHADER_READ_BIT,
+                        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                        .buffer              = buffer->GetDeviceLocal(),
+                        .offset              = copyInfos[ infoCount ].dstOffset,
+                        .size                = copyInfos[ infoCount ].size,
+                    };
 
-                        const uint64_t offset =
-                            sizeof( ShGeometryInstance ) * ( offsetInArray + lower );
-                        const uint64_t size = sizeof( ShGeometryInstance ) * ( upper - lower );
-
-                        {
-                            VkBufferCopy& c = copyInfos[ infoCount ];
-
-                            c           = {};
-                            c.srcOffset = offset;
-                            c.dstOffset = offset;
-                            c.size      = size;
-                        }
-
-                        {
-                            VkBufferMemoryBarrier& b = barriers[ infoCount ];
-
-                            b                     = {};
-                            b.sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
-                            b.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                            b.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-                            b.srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT;
-                            b.dstAccessMask       = VK_ACCESS_SHADER_READ_BIT;
-
-                            b.buffer = buffer->GetDeviceLocal();
-                            b.offset = offset;
-                            b.size   = size;
-                        }
-
-                        infoCount++;
-                    }
+                    infoCount++;
                 }
-            }
-        }
+            } );
 
         if( infoCount == 0 )
         {
@@ -288,78 +271,50 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
 }
 
 void RTGL1::GeomInfoManager::ResetMatchPrevForGroup( uint32_t                       frameIndex,
-                                                     VertexCollectorFilterTypeFlags groupFlags )
+                                                     VertexCollectorFilterTypeFlags flags )
 {
-    int32_t* prevIndexToCurIndex = matchPrevShadow.get();
+    int32_t* prevIndexToCurIndexArr = matchPrevShadow.get();
 
-    uint32_t offsetInArray = VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( groupFlags );
-    int32_t* toReset       = prevIndexToCurIndex + offsetInArray;
+    auto offset = VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( flags );
+    auto count  = VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( flags );
 
-    // approximate exact size with dynamicGeomCount
-    uint32_t maxGeomCount = groupFlags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC
-                                ? dynamicGeomCount
-                                : staticGeomCount;
+    auto region = std::span( &prevIndexToCurIndexArr[ offset ], count );
 
-    uint32_t resetCount = std::min(
-        maxGeomCount, VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( groupFlags ) );
+    static_assert( std::is_same_v< decltype( region )::value_type, int >,
+                   "Recheck usage of geomIndexPrevToCur in shaders if not int32" );
 
-    // reset matchPrev data for dynamic
-    memset( toReset, 0xFF, resetCount * sizeof( int32_t ) );
+    // set each entry to invalid
+    std::ranges::fill( region, -1 );
 }
 
 void RTGL1::GeomInfoManager::ResetOnlyDynamic( uint32_t frameIndex )
 {
-    typedef VertexCollectorFilterTypeFlags    FL;
-    typedef VertexCollectorFilterTypeFlagBits FT;
-
-    // do nothing, if there were no dynamic indices
-    if( dynamicGeomCount > 0 )
-    {
-        // reset each dynamic group
-        for( auto pt : VertexCollectorFilterGroup_PassThrough )
-        {
-            for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
+    VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+        [ & ]( VertexCollectorFilterTypeFlags flags ) {
+            //
+            if( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC )
             {
-                ResetMatchPrevForGroup( frameIndex, FT::CF_DYNAMIC | pt | pm );
+                ResetMatchPrevForGroup( frameIndex, flags );
+                AccessGeometryInstanceGroup( frameIndex, flags ).reset_subspan();
             }
-        }
-
-        // reset only dynamic count
-        dynamicGeomCount = 0;
-    }
-
-    for( uint32_t type = 0; type < MAX_TOP_LEVEL_INSTANCE_COUNT; type++ )
-    {
-        std::ranges::fill( copyRegionLowerBounds[ frameIndex ], UINT32_MAX );
-        std::ranges::fill( copyRegionUpperBounds[ frameIndex ], 0 );
-    }
+        } );
 }
 
-void RTGL1::GeomInfoManager::ResetWithStatic()
+void RTGL1::GeomInfoManager::ResetOnlyStatic()
 {
     movableIDToGeomFrameInfo.clear();
 
-    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
+    for( auto frameIndex = 0u; frameIndex < MAX_FRAMES_IN_FLIGHT; frameIndex++ )
     {
-        // reset each group
-        for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
-        {
-            for( auto pt : VertexCollectorFilterGroup_PassThrough )
-            {
-                for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
+        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+            [ & ]( VertexCollectorFilterTypeFlags flags ) {
+                //
+                if( !( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ) )
                 {
-                    ResetMatchPrevForGroup( i, cf | pt | pm );
+                    ResetMatchPrevForGroup( frameIndex, flags );
+                    AccessGeometryInstanceGroup( frameIndex, flags ).reset_subspan();
                 }
-            }
-        }
-    }
-
-    staticGeomCount  = 0;
-    dynamicGeomCount = 0;
-
-    for( uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++ )
-    {
-        ResetOnlyDynamic( i );
+            } );
     }
 }
 
@@ -369,20 +324,8 @@ uint32_t RTGL1::GeomInfoManager::GetGlobalGeomIndex( uint32_t                   
     return VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( flags ) + localGeomIndex;
 }
 
-RTGL1::ShGeometryInstance* RTGL1::GeomInfoManager::GetGeomInfoAddressByGlobalIndex(
-    uint32_t frameIndex, uint32_t globalGeomIndex )
-{
-    auto* mapped = ( ShGeometryInstance* )buffer->GetMapped( frameIndex );
-
-    return &mapped[ globalGeomIndex ];
-}
-
 void RTGL1::GeomInfoManager::PrepareForFrame( uint32_t frameIndex )
 {
-    // save counts before resetting
-    matchPrevCopyInfo.maxDynamicGeomCount = dynamicGeomCount;
-    matchPrevCopyInfo.maxStaticGeomCount  = staticGeomCount;
-
     dynamicIDToGeomFrameInfo[ frameIndex ].clear();
     ResetOnlyDynamic( frameIndex );
 }
@@ -397,62 +340,43 @@ void RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       frame
     assert( src.baseVertexIndex % 3 == 0 );
     assert( src.baseIndexIndex % 3 == 0 );
 
-
-    bool isStatic = !( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC );
-
     uint32_t frameBegin, frameEnd;
-
-    if( isStatic )
+    if( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC )
     {
-        staticGeomCount++;
-
-        // copy to all staging buffers
-        frameBegin = 0;
-        frameEnd   = MAX_FRAMES_IN_FLIGHT;
-    }
-    else
-    {
-        dynamicGeomCount++;
-
         frameBegin = frameIndex;
         frameEnd   = frameIndex + 1;
     }
+    else
+    {
+        // if static, copy to all staging buffers
+        frameBegin = 0;
+        frameEnd   = MAX_FRAMES_IN_FLIGHT;
+    }
 
     uint32_t globalGeomIndex = GetGlobalGeomIndex( localGeomIndex, flags );
-
-    uint32_t flagsId = VertexCollectorFilterTypeFlags_GetID( flags );
 
     for( uint32_t i = frameBegin; i < frameEnd; i++ )
     {
         FillWithPrevFrameData( flags, geomUniqueID, globalGeomIndex, src, i );
 
-        ShGeometryInstance* dst = GetGeomInfoAddressByGlobalIndex( i, globalGeomIndex );
-        memcpy( dst, &src, sizeof( ShGeometryInstance ) );
+        auto &geomInstSpan = AccessGeometryInstanceGroup( i, flags );
 
-        MarkGeomInfoIndexToCopy( i, localGeomIndex, flagsId );
+        memcpy( &geomInstSpan[ localGeomIndex ], &src, sizeof( ShGeometryInstance ) );
+        geomInstSpan.add_to_subspan( localGeomIndex );
     }
 
     WriteInfoForNextUsage( flags, geomUniqueID, globalGeomIndex, src, frameIndex );
-}
-
-void RTGL1::GeomInfoManager::MarkGeomInfoIndexToCopy( uint32_t frameIndex,
-                                                      uint32_t localGeomIndex,
-                                                      uint32_t flagsId )
-{
-    assert( flagsId < MAX_TOP_LEVEL_INSTANCE_COUNT );
-
-    copyRegionLowerBounds[ frameIndex ][ flagsId ] =
-        std::min( localGeomIndex, copyRegionLowerBounds[ frameIndex ][ flagsId ] );
-    copyRegionUpperBounds[ frameIndex ][ flagsId ] =
-        std::max( localGeomIndex + 1, copyRegionUpperBounds[ frameIndex ][ flagsId ] );
 }
 
 void RTGL1::GeomInfoManager::FillWithPrevFrameData( VertexCollectorFilterTypeFlags flags,
                                                     uint64_t                       geomUniqueID,
                                                     uint32_t            currentGlobalGeomIndex,
                                                     ShGeometryInstance& dst,
-                                                    int32_t             frameIndex )
+                                                    uint32_t            frameIndex )
 {
+    assert( currentGlobalGeomIndex <
+            static_cast< uint32_t >( std::numeric_limits< int32_t >::max() ) );
+
     int32_t* prevIndexToCurIndex = matchPrevShadow.get();
 
     const rgl::unordered_map< uint64_t, GeomFrameInfo >* prevIdToInfo = nullptr;
@@ -463,15 +387,13 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData( VertexCollectorFilterTypeFla
     // fill prev info, but only for movable and dynamic geoms
     if( isDynamic )
     {
-        static_assert( MAX_FRAMES_IN_FLIGHT == 2, "Assuming MAX_FRAMES_IN_FLIGHT==2" );
-        uint32_t prevFrame = ( frameIndex + 1 ) % MAX_FRAMES_IN_FLIGHT;
-
-        prevIdToInfo = &dynamicIDToGeomFrameInfo[ prevFrame ];
+        prevIdToInfo = &dynamicIDToGeomFrameInfo[ Utils::PrevFrame( frameIndex ) ];
     }
     else
     {
         // global geom indices are not changing for static geometry
-        prevIndexToCurIndex[ currentGlobalGeomIndex ] = ( int32_t )currentGlobalGeomIndex;
+        prevIndexToCurIndex[ currentGlobalGeomIndex ] =
+            static_cast< int32_t >( currentGlobalGeomIndex );
 
         if( isMovable )
         {
@@ -508,7 +430,8 @@ void RTGL1::GeomInfoManager::FillWithPrevFrameData( VertexCollectorFilterTypeFla
     if( isDynamic )
     {
         // save index to access ShGeometryInfo using previous frame's global geom index
-        prevIndexToCurIndex[ prev->second.prevGlobalGeomIndex ] = currentGlobalGeomIndex;
+        prevIndexToCurIndex[ prev->second.prevGlobalGeomIndex ] =
+            static_cast< int32_t >( currentGlobalGeomIndex );
     }
 }
 
@@ -526,7 +449,7 @@ void RTGL1::GeomInfoManager::WriteInfoForNextUsage( VertexCollectorFilterTypeFla
                                                     uint64_t                       geomUniqueID,
                                                     uint32_t currentGlobalGeomIndex,
                                                     const ShGeometryInstance& src,
-                                                    int32_t                   frameIndex )
+                                                    uint32_t                  frameIndex )
 {
     bool isMovable = flags & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE;
     bool isDynamic = flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC;
@@ -549,30 +472,18 @@ void RTGL1::GeomInfoManager::WriteInfoForNextUsage( VertexCollectorFilterTypeFla
     // IDs must be unique
     assert( idToInfo->find( geomUniqueID ) == idToInfo->end() );
 
-    GeomFrameInfo f = {};
+    GeomFrameInfo f = {
+        .baseVertexIndex     = src.baseVertexIndex,
+        .baseIndexIndex      = src.baseIndexIndex,
+        .vertexCount         = src.vertexCount,
+        .indexCount          = src.indexCount,
+        .prevGlobalGeomIndex = currentGlobalGeomIndex,
+    };
+    static_assert( sizeof f.model == sizeof( float ) * 16 );
+    static_assert( sizeof src.model == sizeof( float ) * 16 );
     memcpy( f.model, src.model, sizeof( float ) * 16 );
-    f.baseVertexIndex     = src.baseVertexIndex;
-    f.baseIndexIndex      = src.baseIndexIndex;
-    f.vertexCount         = src.vertexCount;
-    f.indexCount          = src.indexCount;
-    f.prevGlobalGeomIndex = currentGlobalGeomIndex;
 
     ( *idToInfo )[ geomUniqueID ] = f;
-}
-
-uint32_t RTGL1::GeomInfoManager::GetCount() const
-{
-    return staticGeomCount + dynamicGeomCount;
-}
-
-uint32_t RTGL1::GeomInfoManager::GetStaticCount() const
-{
-    return staticGeomCount;
-}
-
-uint32_t RTGL1::GeomInfoManager::GetDynamicCount() const
-{
-    return dynamicGeomCount;
 }
 
 VkBuffer RTGL1::GeomInfoManager::GetBuffer() const
@@ -583,4 +494,37 @@ VkBuffer RTGL1::GeomInfoManager::GetBuffer() const
 VkBuffer RTGL1::GeomInfoManager::GetMatchPrevBuffer() const
 {
     return matchPrev->GetDeviceLocal();
+}
+
+rgl::subspan_incremental< RTGL1::ShGeometryInstance >& RTGL1::GeomInfoManager::
+    AccessGeometryInstanceGroup( uint32_t frameIndex, VertexCollectorFilterTypeFlags flagsForGroup )
+{
+    assert( frameIndex < std::size( mappedBufferRegions ) );
+    auto& r = mappedBufferRegions[ frameIndex ][ flagsForGroup ];
+
+    // span must always match GlobalGeomIndex as it's used in shaders to index the 'buffer'
+    if( r.data() != nullptr )
+    {
+        assert( r.data() == &buffer->GetMappedAs< ShGeometryInstance* >(
+                                frameIndex )[ GetGlobalGeomIndex( 0, flagsForGroup ) ] );
+    }
+
+    // must be in group bounds
+    assert( r.size() <= VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( flagsForGroup ) );
+    assert( r.count_in_subspan() <=
+            VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( flagsForGroup ) );
+
+    return r;
+}
+
+uint32_t RTGL1::GeomInfoManager::GetCount( uint32_t frameIndex ) const
+{
+    uint32_t count = 0;
+
+    for( const auto& [ flags, span ] : mappedBufferRegions[ frameIndex ] )
+    {
+        count += span.count_in_subspan();
+    }
+
+    return count;
 }

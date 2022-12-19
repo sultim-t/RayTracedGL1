@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Sultim Tsyrendashiev
+// Copyright (c) 2021-2022 Sultim Tsyrendashiev
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -20,19 +20,20 @@
 
 #pragma once
 
-#include <vector>
-
 #include "AutoBuffer.h"
 #include "Common.h"
 #include "Containers.h"
 #include "Material.h"
 #include "MemoryAllocator.h"
+#include "SpanCounted.h"
 #include "VertexCollectorFilterType.h"
+
+#include "Generated/ShaderCommonC.h"
+
+#include <vector>
 
 namespace RTGL1
 {
-
-struct ShGeometryInstance;
 
 // LocalGeomIndex -- geometry index in its filter's space
 // GlobalGeomIndex = ToOffset(geomType) * MAX_BLAS_GEOMS + geomLocalIndex
@@ -49,7 +50,7 @@ public:
 
 
     void PrepareForFrame( uint32_t frameIndex );
-    void ResetWithStatic();
+    void ResetOnlyStatic();
 
 
     // Save instance for copying into buffer and fill previous frame's data.
@@ -65,11 +66,11 @@ public:
     bool CopyFromStaging( VkCommandBuffer cmd, uint32_t frameIndex, bool insertBarrier = true );
 
 
-    uint32_t GetCount() const;
-    uint32_t GetStaticCount() const;
-    uint32_t GetDynamicCount() const;
     VkBuffer GetBuffer() const;
     VkBuffer GetMatchPrevBuffer() const;
+
+
+    uint32_t GetCount( uint32_t frameIndex ) const;
 
 
     static uint32_t GetPrimitiveFlags( const RgMeshPrimitiveInfo& info );
@@ -86,26 +87,13 @@ private:
         uint32_t prevGlobalGeomIndex;
     };
 
-    struct MatchPrevCopyInfo
-    {
-        uint32_t maxStaticGeomCount  = 0;
-        uint32_t maxDynamicGeomCount = 0;
-    };
-
 private:
     void ResetMatchPrevForGroup( uint32_t frameIndex, VertexCollectorFilterTypeFlags groupFlags );
 
     void ResetOnlyDynamic( uint32_t frameIndex );
 
-    static uint32_t     GetGlobalGeomIndex( uint32_t                       localGeomIndex,
-                                            VertexCollectorFilterTypeFlags flags );
-    ShGeometryInstance* GetGeomInfoAddressByGlobalIndex( uint32_t frameIndex,
-                                                         uint32_t globalGeomIndex );
-
-    // Mark memory to be copied to device local buffer
-    void MarkGeomInfoIndexToCopy( uint32_t frameIndex,
-                                  uint32_t localGeomIndex,
-                                  uint32_t flagsOffset );
+    static uint32_t GetGlobalGeomIndex( uint32_t                       localGeomIndex,
+                                        VertexCollectorFilterTypeFlags flags );
 
     // Fill ShGeometryInstance with the data from previous frame
     // Note: frameIndex is not used if geom is not dynamic
@@ -113,7 +101,7 @@ private:
                                 uint64_t                       geomUniqueID,
                                 uint32_t                       currentGlobalGeomIndex,
                                 ShGeometryInstance&            dst,
-                                int32_t                        frameIndex = 0 );
+                                uint32_t                       frameIndex = 0 );
 
     void MarkNoPrevInfo( ShGeometryInstance& dst );
     void MarkMovableHasPrevInfo( ShGeometryInstance& dst );
@@ -123,32 +111,30 @@ private:
                                 uint64_t                       geomUniqueID,
                                 uint32_t                       currentGlobalGeomIndex,
                                 const ShGeometryInstance&      src,
-                                int32_t                        frameIndex = 0 );
+                                uint32_t                       frameIndex = 0 );
 
 private:
     VkDevice device;
 
-    // Dynamic geoms must be added only after static ones
-    // so the variable "staticGeomCount" is used to "protect" static geoms
-    // from deletion as dynamic geoms are readded every frame,
-    // but static ones are added very infrequently, e.g. on level load
-    uint32_t staticGeomCount;
-    uint32_t dynamicGeomCount;
-
     // buffer for getting info for geometry in BLAS
     std::shared_ptr< AutoBuffer > buffer;
+
     std::shared_ptr< AutoBuffer > matchPrev;
     // special CPU side buffer to reduce granular writes to staging
     std::unique_ptr< int32_t[] >  matchPrevShadow;
-    MatchPrevCopyInfo             matchPrevCopyInfo;
-
-    std::vector< uint32_t > copyRegionLowerBounds[ MAX_FRAMES_IN_FLIGHT ];
-    std::vector< uint32_t > copyRegionUpperBounds[ MAX_FRAMES_IN_FLIGHT ];
 
     // geometry's uniqueID to geom frame info,
     // used for getting info from previous frame
     rgl::unordered_map< uint64_t, GeomFrameInfo > dynamicIDToGeomFrameInfo[ MAX_FRAMES_IN_FLIGHT ];
     rgl::unordered_map< uint64_t, GeomFrameInfo > movableIDToGeomFrameInfo;
+
+private:
+    rgl::unordered_map< VertexCollectorFilterTypeFlags,
+                        rgl::subspan_incremental< ShGeometryInstance > >
+        mappedBufferRegions[ MAX_FRAMES_IN_FLIGHT ]{};
+
+    rgl::subspan_incremental< ShGeometryInstance >& AccessGeometryInstanceGroup(
+        uint32_t frameIndex, VertexCollectorFilterTypeFlags flagsForGroup );
 };
 
 }

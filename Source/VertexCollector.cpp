@@ -20,13 +20,15 @@
 
 #include "VertexCollector.h"
 
+#include "GeomInfoManager.h"
+#include "UniqueID.h"
+#include "Utils.h"
+
+#include "Generated/ShaderCommonC.h"
+
 #include <algorithm>
 #include <array>
 #include <cstring>
-
-#include "Generated/ShaderCommonC.h"
-#include "UniqueID.h"
-#include "Utils.h"
 
 constexpr uint32_t INDEX_BUFFER_SIZE = MAX_INDEXED_PRIMITIVE_COUNT * 3 * sizeof( uint32_t );
 constexpr uint32_t TRANSFORM_BUFFER_SIZE =
@@ -177,14 +179,6 @@ uint32_t AlignUpBy3( uint32_t x )
 
 }
 
-void RTGL1::VertexCollector::BeginCollecting( bool isStatic )
-{
-    assert( curVertexCount == 0 && curIndexCount == 0 && curPrimitiveCount == 0 );
-    assert( ( isStatic && geomInfoMgr->GetStaticCount() == 0 ) ||
-            ( !isStatic && geomInfoMgr->GetDynamicCount() == 0 ) );
-    assert( GetAllGeometryCount() == 0 );
-}
-
 bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          frameIndex,
                                            const RgMeshInfo&                 parentMesh,
                                            const RgMeshPrimitiveInfo&        info,
@@ -198,14 +192,14 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
     // if exceeds a limit of geometries in a group with specified geomFlags
     {
-        auto geomCount = GetGeometryCount( geomFlags );
-        if( geomCount + 1 >= VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( geomFlags ) )
+        if( GetGeometryCount( geomFlags ) + 1 >=
+            VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( geomFlags ) )
         {
-            debug::Error( "Too many geometries ({}) in a group ({}-{}-{})",
-                          geomCount,
+            debug::Error( "Too many geometries in a group ({}-{}-{}). Limit is {}",
                           uint32_t( geomFlags & FT::MASK_CHANGE_FREQUENCY_GROUP ),
                           uint32_t( geomFlags & FT::MASK_PASS_THROUGH_GROUP ),
-                          uint32_t( geomFlags & FT::MASK_PRIMARY_VISIBILITY_GROUP ) );
+                          uint32_t( geomFlags & FT::MASK_PRIMARY_VISIBILITY_GROUP ),
+                          VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( geomFlags ) );
             return false;
         }
     }
@@ -251,7 +245,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
         return false;
     }
 
-    if( geomInfoMgr->GetCount() + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
+    if( geomInfoMgr->GetCount( frameIndex ) + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
     {
         debug::Error( "Too many geometry infos: the limit is {}",
                       MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT );
@@ -397,8 +391,6 @@ void RTGL1::VertexCollector::CopyDataToStaging( const RgMeshPrimitiveInfo& info,
 
     memcpy( pDst, info.pVertices, info.vertexCount * sizeof( ShVertex ) );
 }
-
-void RTGL1::VertexCollector::EndCollecting() {}
 
 void RTGL1::VertexCollector::Reset()
 {

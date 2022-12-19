@@ -26,7 +26,6 @@
 
 #include "Buffer.h"
 #include "Common.h"
-#include "GeomInfoManager.h"
 #include "Material.h"
 #include "VertexCollectorFilter.h"
 #include "RTGL1/RTGL1.h"
@@ -36,6 +35,8 @@ namespace RTGL1
 
 struct ShGeometryInstance;
 struct ShVertex;
+
+class GeomInfoManager;
 
 // The class collects vertex data to buffers with shader struct types.
 // Geometries are passed to the class by chunks and the result of collecting
@@ -60,14 +61,12 @@ public:
     VertexCollector& operator=( const VertexCollector& other )     = delete;
     VertexCollector& operator=( VertexCollector&& other ) noexcept = delete;
 
-
-    void BeginCollecting( bool isStatic );
+    
     bool AddPrimitive( uint32_t                          frameIndex,
                        const RgMeshInfo&                 parentMesh,
                        const RgMeshPrimitiveInfo&        info,
                        std::span< MaterialTextures, 4 >  layerTextures,
                        std::span< RgColor4DPacked32, 4 > layerColors );
-    void EndCollecting();
 
 
     // Clear data that was generated while collecting.

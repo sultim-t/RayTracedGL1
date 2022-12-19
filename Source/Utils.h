@@ -182,6 +182,10 @@ namespace Utils
     RgTransform MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale );
 
     uint32_t GetPreviousByModulo( uint32_t value, uint32_t count );
+    inline uint32_t PrevFrame( uint32_t frameIndex )
+    {
+        return GetPreviousByModulo( frameIndex, MAX_FRAMES_IN_FLIGHT );
+    }
 
     uint32_t GetWorkGroupCount( float size, uint32_t groupSize );
     uint32_t GetWorkGroupCount( uint32_t size, uint32_t groupSize );

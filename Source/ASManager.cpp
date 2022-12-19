@@ -20,13 +20,15 @@
 
 #include "ASManager.h"
 
+#include "CmdLabel.h"
+#include "GeomInfoManager.h"
+#include "Matrix.h"
+#include "Utils.h"
+
+#include "Generated/ShaderCommonC.h"
+
 #include <array>
 #include <cstring>
-
-#include "Utils.h"
-#include "Generated/ShaderCommonC.h"
-#include "CmdLabel.h"
-#include "Matrix.h"
 
 RTGL1::ASManager::ASManager( VkDevice                                _device,
                              const PhysicalDevice&                   _physDevice,
@@ -518,22 +520,18 @@ void RTGL1::ASManager::UpdateBLAS( BLASComponent& blas, const VertexCollector& v
 void RTGL1::ASManager::ResetStaticGeometry()
 {
     collectorStatic->Reset();
-    geomInfoMgr->ResetWithStatic();
+    geomInfoMgr->ResetOnlyStatic();
 }
 
 void RTGL1::ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
     collectorStatic->Reset();
-    geomInfoMgr->ResetWithStatic();
-
-    collectorStatic->BeginCollecting( true );
+    geomInfoMgr->ResetOnlyStatic();
 }
 
 void RTGL1::ASManager::SubmitStaticGeometry()
 {
-    collectorStatic->EndCollecting();
-
     // static geometry submission happens very infrequently, e.g. on level load
     vkDeviceWaitIdle( device );
 
@@ -600,7 +598,6 @@ void RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuffer cmd, uint32_t frame
 
     // dynamic AS must be recreated
     collectorDynamic[ frameIndex ]->Reset();
-    collectorDynamic[ frameIndex ]->BeginCollecting( false );
 }
 
 bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
@@ -629,8 +626,7 @@ void RTGL1::ASManager::SubmitDynamicGeometry( VkCommandBuffer cmd, uint32_t fram
     using FT = VertexCollectorFilterTypeFlagBits;
 
     auto& colDyn = *collectorDynamic[ frameIndex ];
-
-    colDyn.EndCollecting();
+    
     colDyn.CopyFromStaging( cmd );
 
     assert( asBuilder->IsEmpty() );

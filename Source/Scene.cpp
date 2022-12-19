@@ -21,9 +21,11 @@
 #include "Scene.h"
 
 #include "CmdLabel.h"
-#include "Generated/ShaderCommonC.h"
+#include "GeomInfoManager.h"
 #include "RgException.h"
 #include "UniqueID.h"
+
+#include "Generated/ShaderCommonC.h"
 
 RTGL1::Scene::Scene( VkDevice                                _device,
                      const PhysicalDevice&                   _physDevice,
