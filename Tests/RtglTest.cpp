@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstring>
 #include <span>
+#include <random>
 
 
 #ifdef _WIN32
@@ -226,6 +227,7 @@ struct WorldMeshPrimitive
     std::vector< RgPrimitiveVertex > vertices;
     std::vector< uint32_t >          indices;
     std::string                      texture;
+    uint32_t                         indexInMesh;
 };
 std::unordered_map< MeshName, std::vector< WorldMeshPrimitive > > g_allMeshes;
 
@@ -241,6 +243,7 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
     if( node.mesh >= 0 && node.mesh < static_cast< int >( model.meshes.size() ) )
     {
         std::string_view meshName = model.meshes[ node.mesh ].name;
+        uint32_t         indexInMesh = 0;
 
         for( const auto& primitive : model.meshes[ node.mesh ].primitives )
         {
@@ -355,12 +358,13 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
                     texName     = GetTexturePath( gltfFolder, image.uri );
                 }
             }
-
+            
             g_allMeshes[ meshName.data() ].push_back( WorldMeshPrimitive{
-                .transform = rgtransform,
-                .vertices  = std::move( rgverts ),
-                .indices   = std::move( rgindices ),
-                .texture   = std::move( texName ),
+                .transform   = rgtransform,
+                .vertices    = std::move( rgverts ),
+                .indices     = std::move( rgindices ),
+                .texture     = std::move( texName ),
+                .indexInMesh = indexInMesh++,
             } );
         }
     }
@@ -468,6 +472,10 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
     }
 
 
+    std::random_device rndDevice;
+    std::mt19937       rnd( rndDevice() );
+
+
     while( ProcessWindow() )
     {
         ProcessInput();
@@ -478,24 +486,26 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         }
 
 
-        for( const auto& [ meshName, primitives ] : g_allMeshes )
+        for( auto& [ meshName, primitives ] : g_allMeshes )
         {
             std::string objectName = "obj_" + meshName;
 
-            RgMeshInfo  mesh = {
-                 .uniqueObjectID = MurmurHash32( objectName ),
+            RgMeshInfo mesh = {
+                .uniqueObjectID = MurmurHash32( objectName ),
                 .pMeshName      = objectName.c_str(), // meshName.c_str(),
-                 .isExportable   = true,
-                 .animationName  = nullptr,
-                 .animationTime  = 0.0f,
+                .isExportable   = true,
+                .animationName  = nullptr,
+                .animationTime  = 0.0f,
             };
 
-            uint32_t index = 0; 
+            // random permutation, as primitive upload order must not influence the final image
+            std::ranges::shuffle( primitives, rnd );
+
             for( const auto& srcPrim : primitives )
             {
                 RgMeshPrimitiveInfo prim = {
                     .pPrimitiveNameInMesh = srcPrim.texture.c_str(),
-                    .primitiveIndexInMesh = index++,
+                    .primitiveIndexInMesh = srcPrim.indexInMesh,
                     .flags                = 0,
                     .transform            = srcPrim.transform,
                     .pVertices            = srcPrim.vertices.data(),
