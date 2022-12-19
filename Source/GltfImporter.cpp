@@ -467,7 +467,9 @@ RTGL1::GltfImporter::~GltfImporter()
     cgltf_free( data );
 }
 
-void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex )
+void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene&          scene,
+                                               TextureManager& textureManager,
+                                               uint32_t        frameIndex )
 {
     cgltf_node* mainNode = FindMainRootNode( data );
     if( !mainNode )
@@ -563,11 +565,10 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex
                 .pEditorInfo          = nullptr,
             };
 
-            // TODO: static geom upload
-            /*if( !scene.Upload( frameIndex, dstMesh, dstPrim ) )
+            if( !scene.Upload( frameIndex, dstMesh, dstPrim, textureManager, true ) )
             {
                 assert( 0 );
-            }*/
+            }
         }
     }
 }

@@ -56,7 +56,8 @@ public:
     bool Upload( uint32_t                   frameIndex,
                  const RgMeshInfo&          mesh,
                  const RgMeshPrimitiveInfo& primitive,
-                 const TextureManager&      textureManager );
+                 const TextureManager&      textureManager,
+                 bool                       isStatic );
 
     void StartStatic();
     void SubmitStatic( VkCommandBuffer cmd );

@@ -92,7 +92,8 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
 bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
                            const RgMeshInfo&          mesh,
                            const RgMeshPrimitiveInfo& primitive,
-                           const TextureManager&      textureManager )
+                           const TextureManager&      textureManager,
+                           bool                       isStatic )
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
 
@@ -106,9 +107,10 @@ bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
         return false;
     }
 
-    if( asManager->AddMeshPrimitive( frameIndex, mesh, primitive, false, textureManager ) )
+    if( asManager->AddMeshPrimitive(
+            frameIndex, mesh, primitive, isStatic, textureManager, *geomInfoMgr ) )
     {
-        dynamicUniqueIDs.emplace( uniqueID );
+        isStatic ? staticUniqueIDs.emplace( uniqueID ) : dynamicUniqueIDs.emplace( uniqueID );
         return true;
     }
 

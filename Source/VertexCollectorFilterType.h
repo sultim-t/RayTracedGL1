@@ -114,7 +114,7 @@ uint32_t                       VertexCollectorFilterTypeFlags_GetOffsetInGlobalA
 // Amount of bottom level geometries in a group with specified flags
 uint32_t                       VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( VertexCollectorFilterTypeFlags flags );
 const char*                    VertexCollectorFilterTypeFlags_GetNameForBLAS( VertexCollectorFilterTypeFlags flags );
-VertexCollectorFilterTypeFlags VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo &mesh, const RgMeshPrimitiveInfo& primitive );
+VertexCollectorFilterTypeFlags VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo &mesh, const RgMeshPrimitiveInfo& primitive, bool isStatic );
 
 template< typename Lambda >
 auto VertexCollectorFilterTypeFlags_IterateOverFlags( Lambda lambda )

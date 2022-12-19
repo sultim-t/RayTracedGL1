@@ -198,11 +198,17 @@ const char* RTGL1::VertexCollectorFilterTypeFlags_GetNameForBLAS( FL flags )
 }
 
 FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&          mesh,
-                                                         const RgMeshPrimitiveInfo& primitive )
+                                                         const RgMeshPrimitiveInfo& primitive,
+                                                         bool                       isStatic )
 {
     FL flags = 0;
 
 
+    if( isStatic )
+    {
+        flags |= FL( FT::CF_STATIC_NON_MOVABLE );
+    }
+    else
     {
         flags |= FL( FT::CF_DYNAMIC );
     }

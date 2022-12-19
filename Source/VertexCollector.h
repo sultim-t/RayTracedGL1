@@ -32,8 +32,7 @@
 
 namespace RTGL1
 {
-
-struct ShGeometryInstance;
+    
 struct ShVertex;
 
 class GeomInfoManager;
@@ -46,7 +45,6 @@ class VertexCollector
 public:
     explicit VertexCollector( VkDevice                                  device,
                               const std::shared_ptr< MemoryAllocator >& allocator,
-                              std::shared_ptr< GeomInfoManager >        geomInfoManager,
                               VkDeviceSize                              bufferSize,
                               VertexCollectorFilterTypeFlags            filters );
 
@@ -63,10 +61,12 @@ public:
 
     
     bool AddPrimitive( uint32_t                          frameIndex,
+                       bool                              isStatic,
                        const RgMeshInfo&                 parentMesh,
                        const RgMeshPrimitiveInfo&        info,
                        std::span< MaterialTextures, 4 >  layerTextures,
-                       std::span< RgColor4DPacked32, 4 > layerColors );
+                       std::span< RgColor4DPacked32, 4 > layerColors,
+                       GeomInfoManager&                  geomInfoManager );
 
 
     // Clear data that was generated while collecting.
@@ -143,8 +143,6 @@ private:
 
     Buffer                    stagingTransformsBuffer;
     std::shared_ptr< Buffer > transformsBuffer;
-
-    std::shared_ptr< GeomInfoManager > geomInfoMgr;
 
     uint32_t curVertexCount;
     uint32_t curIndexCount;

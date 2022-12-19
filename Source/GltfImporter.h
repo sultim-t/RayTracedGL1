@@ -34,8 +34,7 @@ namespace RTGL1
 class GltfImporter
 {
 public:
-    GltfImporter( const std::filesystem::path& gltfPath,
-                  const RgTransform&           worldTransform );
+    GltfImporter( const std::filesystem::path& gltfPath, const RgTransform& worldTransform );
     ~GltfImporter();
 
     GltfImporter( const GltfImporter& other )                = delete;
@@ -43,15 +42,15 @@ public:
     GltfImporter& operator=( const GltfImporter& other )     = delete;
     GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
-    void UploadToScene_DEBUG( Scene& scene, uint32_t frameIndex );
+    void UploadToScene_DEBUG( Scene& scene, TextureManager& textureManager, uint32_t frameIndex );
 
 private:
     std::vector< RgPrimitiveVertex > GatherVertices( const cgltf_node& node );
     std::vector< uint32_t >          GatherIndices( const cgltf_node& node );
 
 private:
-    cgltf_data*  data;
-    std::string  gltfPath;
+    cgltf_data* data;
+    std::string gltfPath;
 };
 
 }

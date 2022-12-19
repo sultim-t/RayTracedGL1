@@ -80,7 +80,6 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
     collectorStatic = std::make_shared< VertexCollector >(
         device,
         allocator,
-        geomInfoMgr,
         MAX_STATIC_VERTEX_COUNT * sizeof( ShVertex ),
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::MASK_PASS_THROUGH_GROUP |
             FT::MASK_PRIMARY_VISIBILITY_GROUP );
@@ -90,7 +89,6 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
     collectorDynamic[ 0 ] = std::make_shared< VertexCollector >(
         device,
         allocator,
-        geomInfoMgr,
         MAX_DYNAMIC_VERTEX_COUNT * sizeof( ShVertex ),
         FT::CF_DYNAMIC | FT::MASK_PASS_THROUGH_GROUP | FT::MASK_PRIMARY_VISIBILITY_GROUP );
 
@@ -517,12 +515,6 @@ void RTGL1::ASManager::UpdateBLAS( BLASComponent& blas, const VertexCollector& v
                         blas.GetFilter() & VertexCollectorFilterTypeFlagBits::CF_STATIC_MOVABLE );
 }
 
-void RTGL1::ASManager::ResetStaticGeometry()
-{
-    collectorStatic->Reset();
-    geomInfoMgr->ResetOnlyStatic();
-}
-
 RTGL1::StaticGeometryToken RTGL1::ASManager::BeginStaticGeometry()
 {
     // the whole static vertex data must be recreated, clear previous data
@@ -612,19 +604,21 @@ bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
                                          const RgMeshInfo&          mesh,
                                          const RgMeshPrimitiveInfo& primitive,
                                          bool                       isStatic,
-                                         const TextureManager&      textureManager )
+                                         const TextureManager&      textureManager,
+                                         GeomInfoManager&           geomInfoManager )
 {
     auto textures = textureManager.GetTexturesForLayers( primitive );
     auto colors   = textureManager.GetColorForLayers( primitive );
 
     if( isStatic )
     {
-        return collectorStatic->AddPrimitive( frameIndex, mesh, primitive, textures, colors );
+        return collectorStatic->AddPrimitive(
+            frameIndex, isStatic, mesh, primitive, textures, colors, geomInfoManager );
     }
     else
     {
         return collectorDynamic[ frameIndex ]->AddPrimitive(
-            frameIndex, mesh, primitive, textures, colors );
+            frameIndex, isStatic, mesh, primitive, textures, colors, geomInfoManager );
     }
 }
 

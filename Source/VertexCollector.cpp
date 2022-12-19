@@ -37,12 +37,10 @@ constexpr uint32_t TRANSFORM_BUFFER_SIZE =
 
 RTGL1::VertexCollector::VertexCollector( VkDevice                                  _device,
                                          const std::shared_ptr< MemoryAllocator >& _allocator,
-                                         std::shared_ptr< GeomInfoManager >        _geomInfoManager,
                                          VkDeviceSize                              _bufferSize,
                                          VertexCollectorFilterTypeFlags            _filters )
     : device( _device )
     , filtersFlags( _filters )
-    , geomInfoMgr( std::move( _geomInfoManager ) )
     , curVertexCount( 0 )
     , curIndexCount( 0 )
     , curPrimitiveCount( 0 )
@@ -103,7 +101,6 @@ RTGL1::VertexCollector::VertexCollector( const std::shared_ptr< const VertexColl
     , vertBuffer( _src->vertBuffer )
     , indexBuffer( _src->indexBuffer )
     , transformsBuffer( _src->transformsBuffer )
-    , geomInfoMgr( _src->geomInfoMgr )
     , curVertexCount( 0 )
     , curIndexCount( 0 )
     , curPrimitiveCount( 0 )
@@ -124,7 +121,6 @@ void RTGL1::VertexCollector::InitStagingBuffers(
     assert( vertBuffer && vertBuffer->GetSize() > 0 );
     assert( indexBuffer && indexBuffer->GetSize() > 0 );
     assert( transformsBuffer && transformsBuffer->GetSize() > 0 );
-    assert( geomInfoMgr );
 
     // vertex buffers
     stagingVertBuffer.Init( allocator,
@@ -180,15 +176,17 @@ uint32_t AlignUpBy3( uint32_t x )
 }
 
 bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          frameIndex,
+                                           bool                              isStatic,
                                            const RgMeshInfo&                 parentMesh,
                                            const RgMeshPrimitiveInfo&        info,
                                            std::span< MaterialTextures, 4 >  layerTextures,
-                                           std::span< RgColor4DPacked32, 4 > layerColors )
+                                           std::span< RgColor4DPacked32, 4 > layerColors,
+                                           GeomInfoManager&                  geomInfoManager )
 {
     using FT = VertexCollectorFilterTypeFlagBits;
     const VertexCollectorFilterTypeFlags geomFlags =
-        VertexCollectorFilterTypeFlags_GetForGeometry( parentMesh, info );
-
+        VertexCollectorFilterTypeFlags_GetForGeometry( parentMesh, info, isStatic );
+    
 
     // if exceeds a limit of geometries in a group with specified geomFlags
     {
@@ -205,12 +203,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     }
 
 
-    const bool collectStatic = geomFlags & ( FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE );
-
-    const uint32_t maxVertexCount =
-        collectStatic ? MAX_STATIC_VERTEX_COUNT : MAX_DYNAMIC_VERTEX_COUNT;
-
-
+    
     const uint32_t vertIndex      = AlignUpBy3( curVertexCount );
     const uint32_t indIndex       = AlignUpBy3( curIndexCount );
     const uint32_t transformIndex = curTransformCount;
@@ -224,19 +217,24 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     curTransformCount += 1;
 
 
-
-    // check bounds
-    if( curVertexCount >= maxVertexCount )
+    
+    if( isStatic )
     {
-        if( collectStatic )
+        if( curVertexCount >= MAX_STATIC_VERTEX_COUNT )
         {
-            debug::Error( "Too many static vertices: the limit is {}", maxVertexCount );
+            debug::Error( "Too many static vertices: the limit is {}", MAX_STATIC_VERTEX_COUNT );
+            return false;
         }
-        else
+        assert( geomFlags & FT::CF_STATIC_NON_MOVABLE );
+    }
+    else
+    {
+        if( curVertexCount >= MAX_DYNAMIC_VERTEX_COUNT )
         {
-            debug::Error( "Too many dynamic vertices: the limit is {}", maxVertexCount );
+            debug::Error( "Too many dynamic vertices: the limit is {}", MAX_DYNAMIC_VERTEX_COUNT );
+            return false;
         }
-        return false;
+        assert( geomFlags & FT::CF_DYNAMIC );
     }
 
     if( curIndexCount >= MAX_INDEXED_PRIMITIVE_COUNT * 3 )
@@ -245,7 +243,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
         return false;
     }
 
-    if( geomInfoMgr->GetCount( frameIndex ) + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
+    if( geomInfoManager.GetCount( frameIndex ) + 1 >= MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT )
     {
         debug::Error( "Too many geometry infos: the limit is {}",
                       MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT );
@@ -364,11 +362,11 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    geomInfoMgr->WriteGeomInfo( frameIndex,
-                                UniqueID::MakeForPrimitive( parentMesh, info ),
-                                localIndex,
-                                geomFlags,
-                                geomInfo );
+    geomInfoManager.WriteGeomInfo( frameIndex,
+                                   UniqueID::MakeForPrimitive( parentMesh, info ),
+                                   localIndex,
+                                   geomFlags,
+                                   geomInfo );
 
     return true;
 }

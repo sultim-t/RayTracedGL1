@@ -787,7 +787,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                                             defaultWorldScale ) );
 
         scene->StartStatic();
-        imported.UploadToScene_DEBUG( *scene, frameIndex );
+        imported.UploadToScene_DEBUG( *scene, *textureManager, frameIndex );
         scene->SubmitStatic( cmd );
     }
 
@@ -1247,7 +1247,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     else
     {
         bool success = scene->Upload(
-            currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive, *textureManager );
+            currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive, *textureManager, false );
 
         if( debugWindows && debugData.primitivesTableEnable )
         {

@@ -62,9 +62,6 @@ public:
     // with waiting for it to complete.
     void                              SubmitStaticGeometry( StaticGeometryToken& token );
 
-    // If all the added geometries must be removed, call this function before submitting
-    void ResetStaticGeometry();
-
 
     [[nodiscard]] DynamicGeometryToken BeginDynamicGeometry( VkCommandBuffer cmd,
                                                              uint32_t        frameIndex );
@@ -77,7 +74,8 @@ public:
                            const RgMeshInfo&          mesh,
                            const RgMeshPrimitiveInfo& primitive,
                            bool                       isStatic,
-                           const TextureManager&      textureManager );
+                           const TextureManager&      textureManager,
+                           GeomInfoManager&           geomInfoManager );
 
 
     // Prepare data for building TLAS.
