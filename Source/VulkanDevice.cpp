@@ -263,55 +263,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         }
     }
 
-    gu->debugShowFlags = 0;
-
-    if( drawInfo.pDebugParams != nullptr )
-    {
-        RgDebugDrawFlags fs = drawInfo.pDebugParams->drawFlags;
-
-        if( fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_DIRECT_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE;
-        }
-        else if( fs & RG_DEBUG_DRAW_ONLY_DIFFUSE_INDIRECT_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE;
-        }
-        else if( fs & RG_DEBUG_DRAW_ONLY_SPECULAR_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ONLY_SPECULAR;
-        }
-        else if( fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_DIRECT_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE;
-        }
-        else if( fs & RG_DEBUG_DRAW_UNFILTERED_DIFFUSE_INDIRECT_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT;
-        }
-        else if( fs & RG_DEBUG_DRAW_UNFILTERED_SPECULAR_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR;
-        }
-
-        if( fs & RG_DEBUG_DRAW_ALBEDO_WHITE_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_ALBEDO_WHITE;
-        }
-        if( fs & RG_DEBUG_DRAW_MOTION_VECTORS_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_MOTION_VECTORS;
-        }
-        if( fs & RG_DEBUG_DRAW_GRADIENTS_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_GRADIENTS;
-        }
-        if( fs & RG_DEBUG_DRAW_LIGHT_GRID_BIT )
-        {
-            gu->debugShowFlags |= DEBUG_SHOW_FLAG_LIGHT_GRID;
-        }
-    }
-
+    gu->debugShowFlags = debugData.debugShowFlags;
+    
     if( drawInfo.pTexturesParams != nullptr )
     {
         gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
@@ -1182,13 +1135,34 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
         {
             debugData.reloadShaders = ImGui::Button( "Reload shaders", { -1, 96 } );
             ImGui::Separator();
-            ImGui::Checkbox( "Override", &debugData.overrideDrawInfo );
-            if( ImGui::TreeNode( "Overriden" ) )
+            if( ImGui::TreeNode( "Override" ) )
             {
+                ImGui::Checkbox( "Enable", &debugData.overrideDrawInfo );
                 ImGui::BeginDisabled( !debugData.overrideDrawInfo );
+
                 ImGui::Checkbox( "Vsync", &debugData.ovrdVsync );
                 
                 ImGui::EndDisabled();
+                ImGui::TreePop();
+            }
+            if( ImGui::TreeNode( "Debug show" ) )
+            {
+                std::pair< const char*, uint32_t > fs[] = {
+                    { "Unfiltered diffuse direct", DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE },
+                    { "Unfiltered diffuse indirect", DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT },
+                    { "Unfiltered specular", DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR },
+                    { "Diffuse direct", DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE },
+                    { "Diffuse indirect", DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE },
+                    { "Specular", DEBUG_SHOW_FLAG_ONLY_SPECULAR },
+                    { "Albedo white", DEBUG_SHOW_FLAG_ALBEDO_WHITE },
+                    { "Motion vectors", DEBUG_SHOW_FLAG_MOTION_VECTORS },
+                    { "Gradients", DEBUG_SHOW_FLAG_GRADIENTS },
+                    { "Light grid", DEBUG_SHOW_FLAG_LIGHT_GRID },
+                };
+                for( const auto [ name, f ] : fs )
+                {
+                    ImGui::CheckboxFlags( name, &debugData.debugShowFlags, f );
+                }
                 ImGui::TreePop();
             }
         }

@@ -234,6 +234,7 @@ private:
         bool                         overrideDrawInfo{ false };
         bool                         ovrdVsync{ false };
         bool                         reloadShaders{ false };
+        uint32_t                     debugShowFlags{ 0 };
         bool                         exportPrimitives{ false };
         bool                         overrideExport{ false };
         RgFloat3D                    exportWorldUp{};

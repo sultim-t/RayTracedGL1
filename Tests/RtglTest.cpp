@@ -60,7 +60,6 @@ RgBool32  ctl_SkyboxEnable    = 1;
 float     ctl_Roughness       = 0.05f;
 float     ctl_Metallicity     = 1.0f;
 RgBool32  ctl_MoveBoxes       = 0;
-RgBool32  ctl_ShowGradients   = 0;
 
 bool ProcessWindow()
 {
@@ -116,7 +115,6 @@ void ProcessInput()
     
     ControlSwitch( GLFW_KEY_TAB,        ctl_SkyboxEnable );
     ControlSwitch( GLFW_KEY_Z,          ctl_MoveBoxes );
-    ControlSwitch( GLFW_KEY_G,          ctl_ShowGradients );
 }
 
 double GetCurrentTimeInSeconds()
@@ -636,10 +634,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .pSkyCubemapTextureName = "Cubemap/",
             };
 
-            RgDrawFrameDebugParams debugParams = {
-                .drawFlags = ctl_ShowGradients != 0 ? RG_DEBUG_DRAW_GRADIENTS_BIT : 0u,
-            };
-
             RgDrawFrameRenderResolutionParams resolutionParams = {
                 .upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
                 .resolutionMode   = RG_RENDER_RESOLUTION_MODE_BALANCED,
@@ -664,7 +658,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .pMapName = "scene",
                 .pRenderResolutionParams = &resolutionParams,
                 .pSkyParams = &skyParams,
-                .pDebugParams = &debugParams,
                 .postEffectParams = {
                     .pChromaticAberration = &chromaticAberration,
                 },
