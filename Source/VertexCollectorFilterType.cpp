@@ -42,20 +42,6 @@ static_assert( MAX_TOP_LEVEL_INSTANCE_COUNT < FlagToIndexTypeMaxValue );
 using FT = RTGL1::VertexCollectorFilterTypeFlagBits;
 using FL = RTGL1::VertexCollectorFilterTypeFlags;
 
-void RTGL1::VertexCollectorFilterTypeFlags_IterateOverFlags( const std::function< void( FL ) >& f )
-{
-    for( auto cf : VertexCollectorFilterGroup_ChangeFrequency )
-    {
-        for( auto pt : VertexCollectorFilterGroup_PassThrough )
-        {
-            for( auto pm : VertexCollectorFilterGroup_PrimaryVisibility )
-            {
-                f( cf | pt | pm );
-            }
-        }
-    }
-}
-
 // max flag value in a group
 constexpr uint32_t MAX_FLAG_VALUE_CF = 4;
 constexpr uint32_t MAX_FLAG_VALUE_PT = 4;

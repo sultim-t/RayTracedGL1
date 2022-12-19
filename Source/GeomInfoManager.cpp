@@ -103,7 +103,7 @@ RTGL1::GeomInfoManager::GeomInfoManager( VkDevice                            _de
         auto baseSpan = std::span( buffer->GetMappedAs< ShGeometryInstance* >( frameIndex ),
                                    allBottomLevelGeomsCount );
 
-        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+        VertexCollectorFilterTypeFlags_IterateOverFlags(
             [ & ]( VertexCollectorFilterTypeFlags flags ) {
                 auto from  = VertexCollectorFilterTypeFlags_GetOffsetInGlobalArray( flags );
                 auto count = VertexCollectorFilterTypeFlags_GetAmountInGlobalArray( flags );
@@ -131,7 +131,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
 
         uint32_t infoCount = 0;
 
-        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+        VertexCollectorFilterTypeFlags_IterateOverFlags(
             [ & ]( VertexCollectorFilterTypeFlags flags ) {
                 //
                 const auto groupOffsetInElements =
@@ -210,7 +210,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging( VkCommandBuffer cmd,
 
         uint32_t infoCount = 0;
 
-        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+        VertexCollectorFilterTypeFlags_IterateOverFlags(
             [ & ]( VertexCollectorFilterTypeFlags flags ) {
                 //
                 const auto groupOffsetInBytes =
@@ -289,7 +289,7 @@ void RTGL1::GeomInfoManager::ResetMatchPrevForGroup( uint32_t                   
 
 void RTGL1::GeomInfoManager::ResetOnlyDynamic( uint32_t frameIndex )
 {
-    VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+    VertexCollectorFilterTypeFlags_IterateOverFlags(
         [ & ]( VertexCollectorFilterTypeFlags flags ) {
             //
             if( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC )
@@ -306,7 +306,7 @@ void RTGL1::GeomInfoManager::ResetOnlyStatic()
 
     for( auto frameIndex = 0u; frameIndex < MAX_FRAMES_IN_FLIGHT; frameIndex++ )
     {
-        VertexCollectorFilterTypeFlags_IterateOverFlags_T(
+        VertexCollectorFilterTypeFlags_IterateOverFlags(
             [ & ]( VertexCollectorFilterTypeFlags flags ) {
                 //
                 if( !( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC ) )
