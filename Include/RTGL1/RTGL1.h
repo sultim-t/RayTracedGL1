@@ -332,6 +332,7 @@ typedef enum RgMeshPrimitiveFlagBits
     RG_MESH_PRIMITIVE_SKY                   = 16,
     RG_MESH_PRIMITIVE_MIRROR                = 32,
     RG_MESH_PRIMITIVE_WATER                 = 64,
+    RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS = 128,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 

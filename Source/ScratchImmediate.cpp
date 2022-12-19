@@ -59,6 +59,7 @@ uint32_t GetNextAllocStep( uint32_t old )
     return m * ALLOC_STEP;
 }
 
+template< bool CounterClockwise >
 const uint32_t* GetIndicesTriangles( std::vector< uint32_t >& existing, uint32_t required )
 {
     const auto curIndexCount = uint32_t( existing.size() );
@@ -79,15 +80,16 @@ const uint32_t* GetIndicesTriangles( std::vector< uint32_t >& existing, uint32_t
 
         for( uint32_t tri = startTri; tri < newTriCount; tri++ )
         {
-            existing[ tri * 3 + 0 ] = tri * 3 + 0;
-            existing[ tri * 3 + 1 ] = tri * 3 + 1;
-            existing[ tri * 3 + 2 ] = tri * 3 + 2;
+            existing[ tri * 3 + ( CounterClockwise ? 2 : 0 ) ] = tri * 3 + 0;
+            existing[ tri * 3 + ( CounterClockwise ? 1 : 1 ) ] = tri * 3 + 1;
+            existing[ tri * 3 + ( CounterClockwise ? 0 : 2 ) ] = tri * 3 + 2;
         }
     }
-    
+
     return existing.data();
 }
 
+template< bool CounterClockwise >
 const uint32_t* GetIndicesTriangleStrip( std::vector< uint32_t >& existing, uint32_t required )
 {
     const auto curIndexCount = uint32_t( existing.size() );
@@ -101,22 +103,23 @@ const uint32_t* GetIndicesTriangleStrip( std::vector< uint32_t >& existing, uint
         required = GetNextAllocStep( required );
         assert( required % 3 == 0 );
 
-        uint32_t startTri  = curIndexCount / 3;
+        uint32_t startTri    = curIndexCount / 3;
         uint32_t newTriCount = required / 3;
 
         existing.resize( required );
 
         for( uint32_t tri = startTri; tri < newTriCount; tri++ )
         {
-            existing[ tri * 3 + 0 ] = tri;
-            existing[ tri * 3 + 1 ] = tri + ( 1 + tri % 2 );
-            existing[ tri * 3 + 2 ] = tri + ( 2 - tri % 2 );
+            existing[ tri * 3 + ( CounterClockwise ? 2 : 0 ) ] = tri;
+            existing[ tri * 3 + ( CounterClockwise ? 1 : 1 ) ] = tri + ( 1 + tri % 2 );
+            existing[ tri * 3 + ( CounterClockwise ? 0 : 2 ) ] = tri + ( 2 - tri % 2 );
         }
     }
 
     return existing.data();
 }
 
+template< bool CounterClockwise >
 const uint32_t* GetIndicesTriangleFan( std::vector< uint32_t >& existing, uint32_t required )
 {
     const auto curIndexCount = uint32_t( existing.size() );
@@ -137,15 +140,16 @@ const uint32_t* GetIndicesTriangleFan( std::vector< uint32_t >& existing, uint32
 
         for( uint32_t tri = startTri; tri < newTriCount; tri++ )
         {
-            existing[ tri * 3 + 0 ] = tri + 1;
-            existing[ tri * 3 + 1 ] = tri + 2;
-            existing[ tri * 3 + 2 ] = 0;
+            existing[ tri * 3 + ( CounterClockwise ? 2 : 0 ) ] = tri + 1;
+            existing[ tri * 3 + ( CounterClockwise ? 1 : 1 ) ] = tri + 2;
+            existing[ tri * 3 + ( CounterClockwise ? 0 : 2 ) ] = 0;
         }
     }
 
     return existing.data();
 }
 
+template< bool CounterClockwise >
 const uint32_t* GetIndicesQuads( std::vector< uint32_t >& existing, uint32_t required )
 {
     const auto curIndexCount = uint32_t( existing.size() );
@@ -159,20 +163,20 @@ const uint32_t* GetIndicesQuads( std::vector< uint32_t >& existing, uint32_t req
         required = GetNextAllocStep( required );
         assert( required % 6 == 0 );
 
-        uint32_t startQuad = curIndexCount / 6;
+        uint32_t startQuad    = curIndexCount / 6;
         uint32_t newQuadCount = required / 6;
 
         existing.resize( required );
 
         for( uint32_t quad = startQuad; quad < newQuadCount; quad++ )
         {
-            existing[ quad * 6 + 0 ] = quad * 4 + 0;
-            existing[ quad * 6 + 1 ] = quad * 4 + 1;
-            existing[ quad * 6 + 2 ] = quad * 4 + 2;
+            existing[ quad * 6 + ( CounterClockwise ? 2 : 0 ) ] = quad * 4 + 0;
+            existing[ quad * 6 + ( CounterClockwise ? 1 : 1 ) ] = quad * 4 + 1;
+            existing[ quad * 6 + ( CounterClockwise ? 0 : 2 ) ] = quad * 4 + 2;
 
-            existing[ quad * 6 + 3 ] = quad * 4 + 2;
-            existing[ quad * 6 + 4 ] = quad * 4 + 3;
-            existing[ quad * 6 + 5 ] = quad * 4 + 0;
+            existing[ quad * 6 + ( CounterClockwise ? 5 : 3 ) ] = quad * 4 + 2;
+            existing[ quad * 6 + ( CounterClockwise ? 4 : 4 ) ] = quad * 4 + 3;
+            existing[ quad * 6 + ( CounterClockwise ? 3 : 5 ) ] = quad * 4 + 0;
         }
     }
 
@@ -189,17 +193,26 @@ std::span< const uint32_t > RTGL1::ScratchImmediate::GetIndices( RgUtilImScratch
 
     switch( topology )
     {
-        case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLES: 
-            return { GetIndicesTriangles( indicesTriangles, indexCount ), indexCount };
+        case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLES:
+            return {
+                GetIndicesTriangles< true >( indicesTriangles, indexCount ),
+                indexCount,
+            };
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_STRIP:
-            return { GetIndicesTriangleStrip( indicesTriangleStrip, indexCount ), indexCount };
-
+            return {
+                GetIndicesTriangleStrip< true >( indicesTriangleStrip, indexCount ),
+                indexCount,
+            };
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_TRIANGLE_FAN:
-            return { GetIndicesTriangleFan( indicesTriangleFan, indexCount ), indexCount };
-
+            return {
+                GetIndicesTriangleFan< true >( indicesTriangleFan, indexCount ),
+                indexCount,
+            };
         case RG_UTIL_IM_SCRATCH_TOPOLOGY_QUADS:
-            return { GetIndicesQuads( indicesQuad, indexCount ), indexCount };
-
+            return {
+                GetIndicesQuads< true >( indicesQuad, indexCount ),
+                indexCount,
+            };
         default:
             throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                                "ScratchGetIndices: Unknown topology" );
@@ -230,7 +243,7 @@ void RTGL1::ScratchImmediate::EndPrimitive()
 
     lastbatch->end = uint32_t( verts.size() );
     assert( lastbatch->startVertex <= lastbatch->end );
-    
+
     auto localIndices = GetIndices( *accumTopology, lastbatch->Count() );
     for( const auto i : localIndices )
     {
