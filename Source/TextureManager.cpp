@@ -277,7 +277,11 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
             if( sameWithoutExt )
             {
                 TextureOverrides ovrd( filepathNoExt,
-                                       Utils::IsSRGB( slot->format ),
+                                       "",
+                                       "",
+                                       nullptr,
+                                       {},
+                                       slot->format,
                                        GetLoader( imageLoader, imageLoaderDev ) );
 
                 if( ovrd.result )
