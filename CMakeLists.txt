@@ -263,3 +263,13 @@ if (RG_WITH_EXAMPLES)
     target_link_libraries(RtglExample glfw)
     target_include_directories(RtglExample PUBLIC Tests/Libs/glm)
 endif()
+
+if (MSVC AND WIN32 AND NOT MSVC_VERSION VERSION_LESS 142)
+
+    target_link_options(RayTracedGL1 PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
+    target_compile_options(RayTracedGL1 PRIVATE $<$<CONFIG:Debug>:/ZI>)
+
+    target_link_options(RtglExample PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
+    target_compile_options(RtglExample PRIVATE $<$<CONFIG:Debug>:/ZI>)
+
+endif()
