@@ -21,7 +21,6 @@
 #include "VertexCollector.h"
 
 #include "GeomInfoManager.h"
-#include "UniqueID.h"
 #include "Utils.h"
 
 #include "Generated/ShaderCommonC.h"
@@ -179,6 +178,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
                                            bool                              isStatic,
                                            const RgMeshInfo&                 parentMesh,
                                            const RgMeshPrimitiveInfo&        info,
+                                           uint64_t                          uniqueID,
                                            std::span< MaterialTextures, 4 >  layerTextures,
                                            std::span< RgColor4DPacked32, 4 > layerColors,
                                            GeomInfoManager&                  geomInfoManager )
@@ -186,7 +186,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     using FT = VertexCollectorFilterTypeFlagBits;
     const VertexCollectorFilterTypeFlags geomFlags =
         VertexCollectorFilterTypeFlags_GetForGeometry( parentMesh, info, isStatic );
-    
+
 
     // if exceeds a limit of geometries in a group with specified geomFlags
     {
@@ -203,7 +203,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     }
 
 
-    
+
     const uint32_t vertIndex      = AlignUpBy3( curVertexCount );
     const uint32_t indIndex       = AlignUpBy3( curIndexCount );
     const uint32_t transformIndex = curTransformCount;
@@ -217,7 +217,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     curTransformCount += 1;
 
 
-    
+
     if( isStatic )
     {
         if( curVertexCount >= MAX_STATIC_VERTEX_COUNT )
@@ -362,11 +362,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
     // global geometry index -- for indexing in geom infos buffer
     // local geometry index -- index of geometry in BLAS
-    geomInfoManager.WriteGeomInfo( frameIndex,
-                                   UniqueID::MakeForPrimitive( parentMesh, info ),
-                                   localIndex,
-                                   geomFlags,
-                                   geomInfo );
+    geomInfoManager.WriteGeomInfo( frameIndex, uniqueID, localIndex, geomFlags, geomInfo );
 
     return true;
 }

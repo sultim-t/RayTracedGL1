@@ -107,7 +107,7 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
         }
 
         if( asManager->AddMeshPrimitive(
-                frameIndex, mesh, primitive, isStatic, textureManager, *geomInfoMgr ) )
+                frameIndex, mesh, primitive, uniqueID, isStatic, textureManager, *geomInfoMgr ) )
         {
             staticUniqueIDs.emplace( uniqueID );
             return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
@@ -139,7 +139,7 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
         }
 
         if( asManager->AddMeshPrimitive(
-                frameIndex, mesh, primitive, isStatic, textureManager, *geomInfoMgr ) )
+                frameIndex, mesh, primitive, uniqueID, isStatic, textureManager, *geomInfoMgr ) )
         {
             dynamicUniqueIDs.emplace( uniqueID );
             return mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic;
@@ -159,7 +159,7 @@ void RTGL1::Scene::NewScene( const GltfImporter& staticScene )
     {
         assert( !makingStatic );
         makingStatic = asManager->BeginStaticGeometry();
-        
+
         debug::Info( "Rebuilding static geometry. Waiting device idle..." );
         asManager->SubmitStaticGeometry( makingStatic );
 

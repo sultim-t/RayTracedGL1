@@ -64,6 +64,7 @@ public:
                        bool                              isStatic,
                        const RgMeshInfo&                 parentMesh,
                        const RgMeshPrimitiveInfo&        info,
+                       uint64_t                          uniqueID,
                        std::span< MaterialTextures, 4 >  layerTextures,
                        std::span< RgColor4DPacked32, 4 > layerColors,
                        GeomInfoManager&                  geomInfoManager );

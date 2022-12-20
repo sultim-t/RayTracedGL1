@@ -603,6 +603,7 @@ RTGL1::DynamicGeometryToken RTGL1::ASManager::BeginDynamicGeometry( VkCommandBuf
 bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
                                          const RgMeshInfo&          mesh,
                                          const RgMeshPrimitiveInfo& primitive,
+                                         uint64_t                   uniqueID,
                                          bool                       isStatic,
                                          const TextureManager&      textureManager,
                                          GeomInfoManager&           geomInfoManager )
@@ -613,12 +614,12 @@ bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
     if( isStatic )
     {
         return collectorStatic->AddPrimitive(
-            frameIndex, isStatic, mesh, primitive, textures, colors, geomInfoManager );
+            frameIndex, isStatic, mesh, primitive, uniqueID, textures, colors, geomInfoManager );
     }
     else
     {
         return collectorDynamic[ frameIndex ]->AddPrimitive(
-            frameIndex, isStatic, mesh, primitive, textures, colors, geomInfoManager );
+            frameIndex, isStatic, mesh, primitive, uniqueID, textures, colors, geomInfoManager );
     }
 }
 

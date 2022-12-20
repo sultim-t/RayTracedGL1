@@ -73,6 +73,7 @@ public:
     bool AddMeshPrimitive( uint32_t                   frameIndex,
                            const RgMeshInfo&          mesh,
                            const RgMeshPrimitiveInfo& primitive,
+                           uint64_t                   uniqueID,
                            bool                       isStatic,
                            const TextureManager&      textureManager,
                            GeomInfoManager&           geomInfoManager );
