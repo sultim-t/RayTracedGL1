@@ -24,20 +24,24 @@
 #include <list>
 #include <string>
 
-#include "Common.h"
 #include "CommandBufferManager.h"
-#include "Material.h"
+#include "Common.h"
+#include "IFileDependency.h"
 #include "ImageLoader.h"
 #include "ImageLoaderDev.h"
-#include "IFileDependency.h"
+#include "LibraryConfig.h"
+#include "Material.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 #include "TextureDescriptors.h"
 #include "TextureUploader.h"
-#include "LibraryConfig.h"
 
 namespace RTGL1
 {
+
+
+struct TextureOverrides;
+
 
 class TextureManager : public IFileDependency
 {
@@ -68,6 +72,14 @@ public:
                             uint32_t                     frameIndex,
                             const RgOriginalTextureInfo& info,
                             const std::filesystem::path& folder );
+
+    bool TryCreateMaterial( VkCommandBuffer                     cmd,
+                            uint32_t                            frameIndex,
+                            std::string_view                    materialName,
+                            std::span< std::filesystem::path >  fullPaths,
+                            std::span< SamplerManager::Handle > samplers,
+                            RgTextureSwizzling                  customPbrSwizzling );
+
     bool TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
 
 
@@ -96,6 +108,13 @@ private:
                                    uint32_t        frameIndex,
                                    const char*     pFilePath );
 
+    void MakeMaterial( VkCommandBuffer                                  cmd,
+                       uint32_t                                         frameIndex,
+                       std::string_view                                 materialName,
+                       std::span< TextureOverrides >                    ovrd,
+                       std::span< SamplerManager::Handle >              samplers,
+                       std::span< std::optional< RgTextureSwizzling > > swizzlings );
+
     uint32_t PrepareTexture( VkCommandBuffer                                 cmd,
                              uint32_t                                        frameIndex,
                              const std::optional< ImageLoader::ResultInfo >& info,
@@ -110,7 +129,9 @@ private:
     void DestroyTexture( const Texture& texture );
     void AddToBeDestroyed( uint32_t frameIndex, Texture& texture );
 
-    void InsertMaterial( uint32_t frameIndex, const char* pTextureName, const Material& material );
+    void InsertMaterial( uint32_t         frameIndex,
+                         std::string_view materialName,
+                         const Material&  material );
     void DestroyMaterialTextures( uint32_t frameIndex, const Material& material );
 
 private:

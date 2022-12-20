@@ -181,7 +181,7 @@ namespace Utils
     void        SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src );
     RgTransform MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale );
 
-    uint32_t GetPreviousByModulo( uint32_t value, uint32_t count );
+    uint32_t        GetPreviousByModulo( uint32_t value, uint32_t count );
     inline uint32_t PrevFrame( uint32_t frameIndex )
     {
         return GetPreviousByModulo( frameIndex, MAX_FRAMES_IN_FLIGHT );
@@ -204,6 +204,26 @@ namespace Utils
     inline const char* SafeCstr( const char* cstr )
     {
         return cstr ? cstr : "";
+    }
+
+    constexpr RgColor4DPacked32 PackColor( uint8_t r, uint8_t g, uint8_t b, uint8_t a )
+    {
+        return ( uint32_t( a ) << 24 ) | ( uint32_t( b ) << 16 ) | ( uint32_t( g ) << 8 ) |
+               ( uint32_t( r ) );
+    }
+
+    constexpr RgColor4DPacked32 PackColorFromFloat( float r, float g, float b, float a )
+    {
+        constexpr auto toUint8 = []( float c ) {
+            return uint8_t( std::clamp( int32_t( c * 255.0f ), 0, 255 ) );
+        };
+
+        return PackColor( toUint8( r ), toUint8( g ), toUint8( b ), toUint8( a ) );
+    }
+    
+    constexpr RgColor4DPacked32 PackColorFromFloat( const float ( &rgba )[ 4 ] )
+    {
+        return PackColorFromFloat( rgba[ 0 ], rgba[ 1 ], rgba[ 2 ], rgba[ 3 ] );
     }
 
 // clang-format off

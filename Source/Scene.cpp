@@ -149,7 +149,10 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
     }
 }
 
-void RTGL1::Scene::NewScene( const GltfImporter& staticScene )
+void RTGL1::Scene::NewScene( VkCommandBuffer     cmd,
+                             uint32_t            frameIndex,
+                             const GltfImporter& staticScene,
+                             TextureManager&     textureManager )
 {
     debug::Verbose( "Starting new scene" );
 
@@ -159,6 +162,8 @@ void RTGL1::Scene::NewScene( const GltfImporter& staticScene )
     {
         assert( !makingStatic );
         makingStatic = asManager->BeginStaticGeometry();
+
+        staticScene.UploadToScene_DEBUG( cmd, frameIndex,*this, textureManager );
 
         debug::Info( "Rebuilding static geometry. Waiting device idle..." );
         asManager->SubmitStaticGeometry( makingStatic );

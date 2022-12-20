@@ -796,11 +796,14 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     if( !Utils::IsCstrEmpty( drawInfo.pMapName ) && currentMap != drawInfo.pMapName )
     {
         currentMap = drawInfo.pMapName;
-        scene->NewScene(
+
+        auto staticScene =
             GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
                           Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
                                                 Utils::Normalize( defaultWorldForward ),
-                                                defaultWorldScale ) ) );
+                                                defaultWorldScale ) );
+
+        scene->NewScene( cmd, frameIndex, staticScene, *textureManager );
     }
 
 

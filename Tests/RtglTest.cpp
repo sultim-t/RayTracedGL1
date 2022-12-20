@@ -468,7 +468,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RG_CHECK( t );
         };
 
-           /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
+        //   /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -665,7 +665,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .rayLength = 10000.0f,
                 .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
                 .currentTime = GetCurrentTimeInSeconds(),
-                .pMapName = "scene",
+                .pMapName = "TEST/untitled",
                 .pRenderResolutionParams = &resolutionParams,
                 .pSkyParams = &skyParams,
                 .postEffectParams = {

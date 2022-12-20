@@ -26,6 +26,7 @@
 
 struct cgltf_node;
 struct cgltf_data;
+struct cgltf_material;
 
 namespace RTGL1
 {
@@ -44,17 +45,17 @@ public:
     GltfImporter& operator=( const GltfImporter& other )     = delete;
     GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
-    void UploadToScene_DEBUG( Scene& scene, TextureManager& textureManager, uint32_t frameIndex );
+    void UploadToScene_DEBUG( VkCommandBuffer cmd,
+                              uint32_t        frameIndex,
+                              Scene&          scene,
+                              TextureManager& textureManager ) const;
 
     explicit operator bool() const;
-
+    
 private:
-    std::vector< RgPrimitiveVertex > GatherVertices( const cgltf_node& node );
-    std::vector< uint32_t >          GatherIndices( const cgltf_node& node );
-
-private:
-    cgltf_data* data;
-    std::string gltfPath;
+    cgltf_data*           data;
+    std::string           gltfPath;
+    std::filesystem::path gltfFolder;
 };
 
 }

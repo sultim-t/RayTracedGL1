@@ -69,7 +69,10 @@ public:
                          const TextureManager&      textureManager,
                          bool                       isStatic );
 
-    void NewScene( const GltfImporter& staticScene );
+    void NewScene( VkCommandBuffer     cmd,
+                   uint32_t            frameIndex,
+                   const GltfImporter& staticScene,
+                   TextureManager&     textureManager );
 
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();

@@ -32,7 +32,8 @@ using namespace RTGL1;
 
 namespace
 {
-template< size_t N > void SafeCopy( char ( &dst )[ N ], std::string_view src )
+template< size_t N >
+void SafeCopy( char ( &dst )[ N ], std::string_view src )
 {
     memset( dst, 0, N );
 
@@ -42,7 +43,7 @@ template< size_t N > void SafeCopy( char ( &dst )[ N ], std::string_view src )
     }
 }
 
-std::optional< uint32_t > ResolveDefaultDataSize( VkFormat format, const RgExtent2D &size )
+std::optional< uint32_t > ResolveDefaultDataSize( VkFormat format, const RgExtent2D& size )
 {
     if( format != VK_FORMAT_R8G8B8A8_SRGB && format != VK_FORMAT_R8G8B8A8_UNORM )
     {
@@ -128,7 +129,7 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
     {
         auto p = GetTexturePath( _basePath, _relativePath, _postfix, ext );
 
-        if( !std::filesystem::exists( p ) )
+        if( !std::filesystem::is_regular_file( p ) )
         {
             continue;
         }
@@ -166,6 +167,27 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
                 path = GetTexturePath( _basePath, _relativePath, _postfix, "" );
             }
         }
+    }
+}
+
+TextureOverrides::TextureOverrides( const std::filesystem::path& _fullPath,
+                                    bool                         _isSRGB,
+                                    Loader                       _loader )
+    : result{ std::nullopt }, debugname{}, loader( _loader )
+{
+    if( !std::filesystem::is_regular_file( _fullPath ) )
+    {
+        return;
+    }
+    SafeCopy( debugname, _fullPath.string() );
+
+    if( auto r = loader::Load( loader, _fullPath ) )
+    {
+        r->format = _isSRGB ? Utils::ToSRGB( r->format )
+                                                    : Utils::ToUnorm( r->format );
+
+        result = r;
+        path   = _fullPath;
     }
 }
 

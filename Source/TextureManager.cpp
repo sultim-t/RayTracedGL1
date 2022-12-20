@@ -277,11 +277,7 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
             if( sameWithoutExt )
             {
                 TextureOverrides ovrd( filepathNoExt,
-                                       "",
-                                       "",
-                                       nullptr,
-                                       {},
-                                       slot->format,
+                                       Utils::IsSRGB( slot->format ),
                                        GetLoader( imageLoader, imageLoaderDev ) );
 
                 if( ovrd.result )
@@ -372,14 +368,6 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
         return false;
     }
 
-    const auto samplerHandle =
-        SamplerManager::Handle( info.filter, info.addressModeU, info.addressModeV );
-
-    const auto normalMapSamplerHandle =
-        SamplerManager::Handle( forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : info.filter,
-                                info.addressModeU,
-                                info.addressModeV );
-
 
     // clang-format off
     TextureOverrides ovrd[] = {
@@ -391,33 +379,103 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
     // clang-format on
 
 
-    constexpr bool isUpdateable = false;
+    SamplerManager::Handle samplers[] = {
+        SamplerManager::Handle( info.filter, info.addressModeU, info.addressModeV ),
+        SamplerManager::Handle( info.filter, info.addressModeU, info.addressModeV ),
+        SamplerManager::Handle( forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : info.filter,
+                                info.addressModeU,
+                                info.addressModeV ),
+    };
+    static_assert( std::size( samplers ) == TEXTURES_PER_MATERIAL_COUNT );
+    static_assert( MATERIAL_NORMAL_INDEX == 2 );
 
+
+    std::optional< RgTextureSwizzling > swizzlings[] = {
+        std::nullopt,
+        std::optional( pbrSwizzling ),
+        std::nullopt,
+    };
+    static_assert( std::size( swizzlings ) == TEXTURES_PER_MATERIAL_COUNT );
+    static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
+
+
+    MakeMaterial( cmd, frameIndex, info.pTextureName, ovrd, samplers, swizzlings );
+    return true;
+}
+
+void TextureManager::MakeMaterial( VkCommandBuffer                                  cmd,
+                                   uint32_t                                         frameIndex,
+                                   std::string_view                                 materialName,
+                                   std::span< TextureOverrides >                    ovrd,
+                                   std::span< SamplerManager::Handle >              samplers,
+                                   std::span< std::optional< RgTextureSwizzling > > swizzlings )
+{
+    assert( ovrd.size() == TEXTURES_PER_MATERIAL_COUNT );
+    assert( samplers.size() == TEXTURES_PER_MATERIAL_COUNT );
+    assert( swizzlings.size() == TEXTURES_PER_MATERIAL_COUNT );
+
+    constexpr bool isUpdateable = false;
 
     MaterialTextures mtextures = {};
     for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
     {
-        mtextures.indices[ i ] = PrepareTexture(
-            cmd,
-            frameIndex,
-            ovrd[ i ].result,
-            i == MATERIAL_NORMAL_INDEX ? normalMapSamplerHandle : samplerHandle,
-            true,
-            ovrd[ i ].debugname,
-            isUpdateable,
-            i == MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX ? std::optional( pbrSwizzling )
-                                                            : std::nullopt,
-            std::move( ovrd[ i ].path ),
-            FindEmptySlot( textures ) );
+        mtextures.indices[ i ] = PrepareTexture( cmd,
+                                                 frameIndex,
+                                                 ovrd[ i ].result,
+                                                 samplers[ i ],
+                                                 true,
+                                                 ovrd[ i ].debugname,
+                                                 isUpdateable,
+                                                 swizzlings[ i ],
+                                                 std::move( ovrd[ i ].path ),
+                                                 FindEmptySlot( textures ) );
     }
 
     InsertMaterial( frameIndex,
-                    info.pTextureName,
+                    materialName,
                     Material{
                         .textures     = mtextures,
                         .isUpdateable = isUpdateable,
                     } );
+}
 
+bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
+                                        uint32_t                            frameIndex,
+                                        std::string_view                    materialName,
+                                        std::span< std::filesystem::path >  fullPaths,
+                                        std::span< SamplerManager::Handle > samplers,
+                                        RgTextureSwizzling                  customPbrSwizzling )
+{
+    assert( fullPaths.size() == TEXTURES_PER_MATERIAL_COUNT );
+    assert( samplers.size() == TEXTURES_PER_MATERIAL_COUNT );
+
+    if( materialName.empty() )
+    {
+        assert( 0 );
+        return false;
+    }
+
+
+    // clang-format off
+    TextureOverrides ovrd[] = {
+        TextureOverrides( fullPaths[ 0 ], true, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( fullPaths[ 1 ], false, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( fullPaths[ 2 ], false, GetLoader( imageLoader, imageLoaderDev ) ),
+    };
+    static_assert( std::size( ovrd ) == TEXTURES_PER_MATERIAL_COUNT );
+    // clang-format on
+
+
+    std::optional< RgTextureSwizzling > swizzlings[] = {
+        std::nullopt,
+        std::optional( customPbrSwizzling ),
+        std::nullopt,
+    };
+    static_assert( std::size( swizzlings ) == TEXTURES_PER_MATERIAL_COUNT );
+    static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
+
+
+    MakeMaterial( cmd, frameIndex, materialName, ovrd, samplers, swizzlings );
     return true;
 }
 
@@ -436,6 +494,10 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
     {
         return EMPTY_TEXTURE_INDEX;
     }
+
+
+    // TODO: check if texture exists by filepath, then return ready-to-use index
+
 
     if( targetSlot == textures.end() )
     {
@@ -495,15 +557,15 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
     return uint32_t( std::distance( textures.begin(), targetSlot ) );
 }
 
-void TextureManager::InsertMaterial( uint32_t        frameIndex,
-                                     const char*     pTextureName,
-                                     const Material& material )
+void TextureManager::InsertMaterial( uint32_t         frameIndex,
+                                     std::string_view materialName,
+                                     const Material&  material )
 {
-    auto [ iter, insertednew ] = materials.insert( { std::string( pTextureName ), material } );
+    auto [ iter, insertednew ] = materials.insert( { std::string( materialName ), material } );
 
     if( !insertednew )
     {
-        debug::Warning( "{}: Texture with the same name already exists. "
+        debug::Warning( "{}: Material with the same name already exists. "
                         "Overwriting the old one",
                         iter->first );
 

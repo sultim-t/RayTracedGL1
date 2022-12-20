@@ -303,20 +303,12 @@ const char* rgUtilGetResultDescription( RgResult result )
 
 RgColor4DPacked32 rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_t a )
 {
-    return
-        ( uint32_t( a ) << 24 ) | 
-        ( uint32_t( b ) << 16 ) | 
-        ( uint32_t( g ) << 8 ) | 
-        ( uint32_t( r ) );
+    return RTGL1::Utils::PackColor( r, g, b, a );
 }
 
 RgColor4DPacked32 rgUtilPackColorFloat4D( float r, float g, float b, float a )
 {
-    auto toUint8 = []( float c ) {
-        return uint8_t( std::clamp( int32_t( c * 255.0f ), 0, 255 ) );
-    };
-
-    return rgUtilPackColorByte4D( toUint8( r ), toUint8( g ), toUint8( b ), toUint8( a ) );
+    return RTGL1::Utils::PackColorFromFloat( r, g, b, a );
 }
 
 void rgUtilExportAsPNG( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath )

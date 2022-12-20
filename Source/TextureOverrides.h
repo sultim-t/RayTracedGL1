@@ -44,6 +44,11 @@ struct TextureOverrides
                                const RgExtent2D&            defaultSize,
                                VkFormat                     defaultFormat,
                                Loader                       loader );
+
+    explicit TextureOverrides( const std::filesystem::path& fullPath,
+                               bool                         isSRGB,
+                               Loader                       loader );
+
     ~TextureOverrides();
 
     TextureOverrides( const TextureOverrides& other )                = delete;
