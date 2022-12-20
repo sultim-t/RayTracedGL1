@@ -60,7 +60,6 @@
 #include "DebugWindows.h"
 #include "ScratchImmediate.h"
 #include "GltfExporter.h"
-#include "GltfImporter.h"
 #include "FolderObserver.h"
 
 namespace RTGL1
@@ -216,13 +215,13 @@ private:
 
     struct DebugPrim
     {
-        std::optional< uint32_t > callIndex;
-        uint32_t                  objectId;
-        std::string               meshName;
-        uint32_t                  primitiveIndex;
-        std::string               primitiveName;
-        std::string               textureName;
-        bool                      exportable;
+        UploadResult result;
+        uint32_t     callIndex;
+        uint32_t     objectId;
+        std::string  meshName;
+        uint32_t     primitiveIndex;
+        std::string  primitiveName;
+        std::string  textureName;
     };
     struct DebugNonWorld
     {

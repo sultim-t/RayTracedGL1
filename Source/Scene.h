@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ASManager.h"
+#include "GltfImporter.h"
 #include "LightManager.h"
 #include "VertexPreprocessing.h"
 
@@ -28,6 +29,15 @@
 
 namespace RTGL1
 {
+
+enum class UploadResult
+{
+    Fail,
+    Static,
+    Dynamic,
+    ExportableDynamic,
+    ExportableStatic,
+};
 
 class Scene
 {
@@ -53,19 +63,20 @@ public:
                          bool                                    allowGeometryWithSkyFlag,
                          bool                                    disableRTGeometry );
 
-    bool Upload( uint32_t                   frameIndex,
-                 const RgMeshInfo&          mesh,
-                 const RgMeshPrimitiveInfo& primitive,
-                 const TextureManager&      textureManager,
-                 bool                       isStatic );
+    UploadResult Upload( uint32_t                   frameIndex,
+                         const RgMeshInfo&          mesh,
+                         const RgMeshPrimitiveInfo& primitive,
+                         const TextureManager&      textureManager,
+                         bool                       isStatic );
 
-    void StartStatic();
-    void SubmitStatic( VkCommandBuffer cmd );
+    void NewScene( const GltfImporter& staticScene );
 
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
-    bool DoesUniqueIDExist( uint64_t uniqueID ) const;
+    bool UniqueIDExists( uint64_t uniqueID ) const;
+    bool StaticUniqueIDExists( uint64_t uniqueID ) const;
+    bool DynamicUniqueIDExists( uint64_t uniqueID ) const;
 
 private:
     std::shared_ptr< ASManager >           asManager;

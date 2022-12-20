@@ -21,7 +21,6 @@
 #pragma once
 
 #include "Common.h"
-#include "Scene.h"
 
 #include <filesystem>
 
@@ -30,6 +29,9 @@ struct cgltf_data;
 
 namespace RTGL1
 {
+
+class Scene;
+class TextureManager;
 
 class GltfImporter
 {
@@ -43,6 +45,8 @@ public:
     GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
     void UploadToScene_DEBUG( Scene& scene, TextureManager& textureManager, uint32_t frameIndex );
+
+    explicit operator bool() const;
 
 private:
     std::vector< RgPrimitiveVertex > GatherVertices( const cgltf_node& node );

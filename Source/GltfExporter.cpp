@@ -527,37 +527,32 @@ struct GltfStorage
 
 }
 
-bool RTGL1::GltfExporter::CanBeExported( const RgMeshInfo*          mesh,
-                                         const RgMeshPrimitiveInfo* primitive )
-{
-    if( mesh && primitive )
-    {
-        if( mesh->isExportable )
-        {
-            if( !Utils::IsCstrEmpty( mesh->pMeshName ) &&
-                !Utils::IsCstrEmpty( primitive->pPrimitiveNameInMesh ) )
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
-}
-
 void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
                                         const RgMeshPrimitiveInfo& primitive )
 {
-    if( !CanBeExported( &mesh, &primitive ) )
+    if( !mesh.isExportable )
     {
+        return;
+    }
+
+    if( Utils::IsCstrEmpty( mesh.pMeshName ) ||
+        Utils::IsCstrEmpty( primitive.pPrimitiveNameInMesh ) )
+    {
+        debug::Warning( "Exporter requires mesh primitives to have pMeshName and "
+                        "pPrimitiveNameInMesh specified. Ignoring primitive with ID: {} - {}",
+                        mesh.uniqueObjectID,
+                        primitive.primitiveIndexInMesh );
         return;
     }
 
     if( primitive.indexCount == 0 || primitive.pIndices == nullptr )
     {
-        debug::Warning( "Exporter doesn't support primitives without index buffer: {} - {}",
+        debug::Warning( "Exporter doesn't support primitives without index buffer: "
+                        "{} - {} (with ID: {} - {})",
                         mesh.pMeshName,
-                        primitive.pPrimitiveNameInMesh );
+                        primitive.pPrimitiveNameInMesh,
+                        mesh.uniqueObjectID,
+                        primitive.primitiveIndexInMesh );
         return;
     }
 

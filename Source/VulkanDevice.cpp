@@ -20,9 +20,6 @@
 
 #include "VulkanDevice.h"
 
-#include <algorithm>
-#include <cstring>
-
 #include "HaltonSequence.h"
 #include "Matrix.h"
 #include "RenderResolutionHelper.h"
@@ -30,7 +27,10 @@
 #include "Utils.h"
 #include "Generated/ShaderCommonC.h"
 
-#include "imgui.h"
+#include <imgui.h>
+
+#include <algorithm>
+#include <cstring>
 
 VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
 {
@@ -566,7 +566,9 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
 
     if( ImGui::Begin( "Primitives" ) )
     {
-        ImGui::Checkbox( "Enable", &debugData.primitivesTableEnable );
+        ImGui::Checkbox( "Record", &debugData.primitivesTableEnable );
+        ImGui::TextUnformatted( "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
+        ImGui::TextUnformatted( "Green  - if exportable was found in GLTF" );
 
         if( ImGui::BeginTable( "Primitives table",
                                6,
@@ -629,18 +631,33 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
                 for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ )
                 {
                     const auto& prim = debugData.primitivesTable[ i ];
+                    ImGui::TableNextRow();
 
-                    if( prim.exportable )
+                    if( prim.result == UploadResult::ExportableStatic )
                     {
-                        ImGui::PushStyleColor( ImGuiCol_TableRowBg, IM_COL32( 0, 128, 0, 64 ) );
-                        ImGui::PushStyleColor( ImGuiCol_TableRowBgAlt, IM_COL32( 0, 128, 0, 128 ) );
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0,
+                                                IM_COL32( 0, 128, 0, 64 ) );
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1,
+                                                IM_COL32( 0, 128, 0, 128 ) );
+                    }
+                    else if( prim.result == UploadResult::ExportableDynamic )
+                    {
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0,
+                                                IM_COL32( 128, 0, 0, 64 ) );
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1,
+                                                IM_COL32( 128, 0, 0, 128 ) );
+                    }
+                    else
+                    {
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0, IM_COL32( 0, 0, 0, 1 ) );
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1, IM_COL32( 0, 0, 0, 1 ) );
                     }
 
-                    ImGui::TableNextRow();
+
                     ImGui::TableNextColumn();
-                    if( prim.callIndex )
+                    if( prim.result != UploadResult::Fail )
                     {
-                        ImGui::Text( "%u", *prim.callIndex );
+                        ImGui::Text( "%u", prim.callIndex );
                     }
                     else
                     {
@@ -656,12 +673,6 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
                     ImGui::TextUnformatted( prim.primitiveName.c_str() );
                     ImGui::TableNextColumn();
                     ImGui::TextUnformatted( prim.textureName.c_str() );
-
-                    if( prim.exportable )
-                    {
-                        ImGui::PopStyleColor();
-                        ImGui::PopStyleColor();
-                    }
                 }
             }
 
@@ -672,7 +683,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
 
     if( ImGui::Begin( "Non-world Primitives" ) )
     {
-        ImGui::Checkbox( "Enable", &debugData.nonworldTableEnable );
+        ImGui::Checkbox( "Record", &debugData.nonworldTableEnable );
 
         if( ImGui::BeginTable( "Non-world Primitives table",
                                2,
@@ -709,6 +720,11 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         ImGui::CheckboxFlags( "Info", &debugData.logFlags, RG_MESSAGE_SEVERITY_INFO );
         ImGui::SameLine();
         ImGui::CheckboxFlags( "Verbose", &debugData.logFlags, RG_MESSAGE_SEVERITY_VERBOSE );
+
+        if( ImGui::Button( "Clear" ) )
+        {
+            debugData.logs.clear();
+        }
 
         for( const auto& [ severity, msg ] : debugData.logs )
         {
@@ -780,15 +796,11 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     if( !Utils::IsCstrEmpty( drawInfo.pMapName ) && currentMap != drawInfo.pMapName )
     {
         currentMap = drawInfo.pMapName;
-        
-        auto imported = GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
-                                      Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
-                                                            Utils::Normalize( defaultWorldForward ),
-                                                            defaultWorldScale ) );
-
-        scene->StartStatic();
-        imported.UploadToScene_DEBUG( *scene, *textureManager, frameIndex );
-        scene->SubmitStatic( cmd );
+        scene->NewScene(
+            GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
+                          Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
+                                                Utils::Normalize( defaultWorldForward ),
+                                                defaultWorldScale ) ) );
     }
 
 
@@ -1246,28 +1258,26 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     }
     else
     {
-        bool success = scene->Upload(
-            currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive, *textureManager, false );
+        UploadResult r = scene->Upload( currentFrameState.GetFrameIndex(),
+                                        *pMesh,
+                                        *pPrimitive,
+                                        *textureManager,
+                                        false );
 
         if( debugWindows && debugData.primitivesTableEnable )
         {
-            auto safeCstr = []( const char* ptr ) {
-                return ptr == nullptr ? "" : ptr;
-            };
-
             debugData.primitivesTable.push_back( DebugPrim{
-                .callIndex = success ? std::optional( uint32_t( debugData.primitivesTable.size() ) )
-                                     : std::nullopt,
-                .objectId  = pMesh->uniqueObjectID,
-                .meshName  = safeCstr( pMesh->pMeshName ),
+                .result         = r,
+                .callIndex      = uint32_t( debugData.primitivesTable.size() ),
+                .objectId       = pMesh->uniqueObjectID,
+                .meshName       = Utils::SafeCstr( pMesh->pMeshName ),
                 .primitiveIndex = pPrimitive->primitiveIndexInMesh,
-                .primitiveName  = safeCstr( pPrimitive->pPrimitiveNameInMesh ),
-                .textureName    = safeCstr( pPrimitive->pTextureName ),
-                .exportable     = GltfExporter::CanBeExported( pMesh, pPrimitive ),
+                .primitiveName  = Utils::SafeCstr( pPrimitive->pPrimitiveNameInMesh ),
+                .textureName    = Utils::SafeCstr( pPrimitive->pTextureName ),
             } );
         }
 
-        if( exporter && success )
+        if( exporter && pMesh->isExportable && r != UploadResult::Fail )
         {
             exporter->AddPrimitive( *pMesh, *pPrimitive );
         }

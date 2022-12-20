@@ -22,6 +22,7 @@
 
 #include "Const.h"
 #include "Matrix.h"
+#include "Scene.h"
 
 #include "cgltf/cgltf.h"
 
@@ -112,6 +113,30 @@ const char* NodeName( const cgltf_node& node )
 const char* NodeName( const cgltf_node* node )
 {
     return NodeName( *node );
+}
+
+const char* CgltfErrorName( cgltf_result r )
+{
+#define RTGL1_CGLTF_RESULT_NAME( x ) \
+    case( x ): return "(" #x ")"; break
+
+    switch( r )
+    {
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_success );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_data_too_short );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_unknown_format );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_invalid_json );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_invalid_gltf );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_invalid_options );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_file_not_found );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_io_error );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_out_of_memory );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_legacy_gltf );
+        RTGL1_CGLTF_RESULT_NAME( cgltf_result_max_enum );
+        default: assert( 0 ); return "";
+    }
+
+#undef RTGL1_CGLTF_RESULT_NAME
 }
 
 template< size_t N >
@@ -416,23 +441,30 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
     } tmp = { &data, &parsedData };
 
     r = cgltf_parse_file( &options, gltfPath.c_str(), &parsedData );
-    if( r != cgltf_result_success )
+    if( r == cgltf_result_file_not_found )
     {
-        debug::Warning( "{}: {}. Error code: {}", gltfPath, "cgltf_parse_file", int( r ) );
+        debug::Warning( "{}: Can't find a file, no static scene will be present", gltfPath );
+    }
+    else if( r != cgltf_result_success )
+    {
+        debug::Warning(
+            "{}: cgltf_parse_file. Error code: {} {}", gltfPath, int( r ), CgltfErrorName( r ) );
         return;
     }
 
     r = cgltf_load_buffers( &options, parsedData, gltfPath.c_str() );
     if( r != cgltf_result_success )
     {
-        debug::Warning( "{}: {}. Error code: {}", gltfPath, "cgltf_load_buffers", int( r ) );
+        debug::Warning(
+            "{}: cgltf_load_buffers. Error code: {} {}", gltfPath, int( r ), CgltfErrorName( r ) );
         return;
     }
 
     r = cgltf_validate( parsedData );
     if( r != cgltf_result_success )
     {
-        debug::Warning( "{}: {}. Error code: {}", gltfPath, "cgltf_validate", int( r ) );
+        debug::Warning(
+            "{}: cgltf_validate. Error code: {} {}", gltfPath, int( r ), CgltfErrorName( r ) );
         return;
     }
 
@@ -510,7 +542,7 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene&          scene,
             .uniqueObjectID =
                 uint32_t( std::hash< std::string_view >{}( srcMesh->name ) % UINT32_MAX ),
             .pMeshName    = srcMesh->name,
-            .isExportable = false,
+            .isExportable = true,
         };
 
         for( size_t i = 0; i < srcMesh->children_count; i++ )
@@ -565,10 +597,17 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( Scene&          scene,
                 .pEditorInfo          = nullptr,
             };
 
-            if( !scene.Upload( frameIndex, dstMesh, dstPrim, textureManager, true ) )
+            auto r = scene.Upload( frameIndex, dstMesh, dstPrim, textureManager, true );
+
+            if( !( r == UploadResult::Static || r == UploadResult::ExportableStatic ) )
             {
                 assert( 0 );
             }
         }
     }
+}
+
+RTGL1::GltfImporter::operator bool() const
+{
+    return data != nullptr;
 }

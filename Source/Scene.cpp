@@ -22,6 +22,7 @@
 
 #include "CmdLabel.h"
 #include "GeomInfoManager.h"
+#include "GltfImporter.h"
 #include "RgException.h"
 #include "UniqueID.h"
 
@@ -89,45 +90,81 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
     asManager->BuildTLAS( cmd, frameIndex, prepare );
 }
 
-bool RTGL1::Scene::Upload( uint32_t                   frameIndex,
-                           const RgMeshInfo&          mesh,
-                           const RgMeshPrimitiveInfo& primitive,
-                           const TextureManager&      textureManager,
-                           bool                       isStatic )
+RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
+                                          const RgMeshInfo&          mesh,
+                                          const RgMeshPrimitiveInfo& primitive,
+                                          const TextureManager&      textureManager,
+                                          bool                       isStatic )
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
 
-    if( DoesUniqueIDExist( uniqueID ) )
+    if( isStatic )
     {
-        debug::Error( "Uploading mesh primitive ({}->{}) with ID ({}->{}), but it already exists",
-                      Utils::SafeCstr( mesh.pMeshName ),
-                      Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
-                      mesh.uniqueObjectID,
-                      primitive.primitiveIndexInMesh );
-        return false;
-    }
+        // if already uploaded
+        if( StaticUniqueIDExists( uniqueID ) )
+        {
+            return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
+        }
 
-    if( asManager->AddMeshPrimitive(
-            frameIndex, mesh, primitive, isStatic, textureManager, *geomInfoMgr ) )
+        if( asManager->AddMeshPrimitive(
+                frameIndex, mesh, primitive, isStatic, textureManager, *geomInfoMgr ) )
+        {
+            staticUniqueIDs.emplace( uniqueID );
+            return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
+        }
+
+        return UploadResult::Fail;
+    }
+    else
     {
-        isStatic ? staticUniqueIDs.emplace( uniqueID ) : dynamicUniqueIDs.emplace( uniqueID );
-        return true;
-    }
+        if( mesh.isExportable )
+        {
+            // if dynamic was already uploaded (i.e. found a matching mesh inside a static scene)
+            // otherwise, continue as dynamic
+            if( StaticUniqueIDExists( uniqueID ) )
+            {
+                return UploadResult::ExportableStatic;
+            }
+        }
 
-    return false;
+        if( DynamicUniqueIDExists( uniqueID ) )
+        {
+            debug::Error( "Mesh primitive ({}->{}) with ID ({}->{}): "
+                          "Trying to upload but a primitive with the same ID already exists",
+                          Utils::SafeCstr( mesh.pMeshName ),
+                          Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
+                          mesh.uniqueObjectID,
+                          primitive.primitiveIndexInMesh );
+            return UploadResult::Fail;
+        }
+
+        if( asManager->AddMeshPrimitive(
+                frameIndex, mesh, primitive, isStatic, textureManager, *geomInfoMgr ) )
+        {
+            dynamicUniqueIDs.emplace( uniqueID );
+            return mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic;
+        }
+
+        return UploadResult::Fail;
+    }
 }
 
-void RTGL1::Scene::StartStatic()
+void RTGL1::Scene::NewScene( const GltfImporter& staticScene )
 {
-    assert( !makingStatic );
-    makingStatic = asManager->BeginStaticGeometry();
+    debug::Verbose( "Starting new scene" );
 
     staticUniqueIDs.clear();
-}
 
-void RTGL1::Scene::SubmitStatic( VkCommandBuffer cmd )
-{
-    asManager->SubmitStaticGeometry( makingStatic );
+    if( staticScene )
+    {
+        assert( !makingStatic );
+        makingStatic = asManager->BeginStaticGeometry();
+        
+        debug::Info( "Rebuilding static geometry. Waiting device idle..." );
+        asManager->SubmitStaticGeometry( makingStatic );
+
+        debug::Info( "Static geometry was rebuilt" );
+    }
 }
 
 const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()
@@ -140,8 +177,17 @@ const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPrep
     return vertPreproc;
 }
 
-bool RTGL1::Scene::DoesUniqueIDExist( uint64_t uniqueID ) const
+bool RTGL1::Scene::UniqueIDExists( uint64_t uniqueID ) const
 {
-    return std::ranges::contains( dynamicUniqueIDs, uniqueID ) ||
-           std::ranges::contains( staticUniqueIDs, uniqueID );
+    return StaticUniqueIDExists( uniqueID ) || DynamicUniqueIDExists( uniqueID );
+}
+
+bool RTGL1::Scene::StaticUniqueIDExists( uint64_t uniqueID ) const
+{
+    return std::ranges::contains( staticUniqueIDs, uniqueID );
+}
+
+bool RTGL1::Scene::DynamicUniqueIDExists( uint64_t uniqueID ) const
+{
+    return std::ranges::contains( dynamicUniqueIDs, uniqueID );
 }
