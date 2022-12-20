@@ -136,9 +136,8 @@ TextureManager::TextureManager( VkDevice                                       _
 
     if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX )
     {
-        throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
-                           "Couldn't create water normal texture with path: " +
-                               std::string( _info.pWaterNormalTexturePath ) );
+        debug::Warning( "Couldn't create water normal texture with path",
+                        Utils::SafeCstr( _info.pWaterNormalTexturePath ) );
     }
 }
 
@@ -363,15 +362,14 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
 {
     if( Utils::IsCstrEmpty( info.pTextureName ) )
     {
-        throw RgException(
-            RG_RESULT_WRONG_FUNCTION_ARGUMENT,
-            R"('pTextureName' must be not null or empty string in RgOriginalTextureInfo)" );
+        debug::Warning( "RgOriginalTextureInfo::pTextureName must not be null or an empty string" );
+        return false;
     }
 
     if( info.pPixels == nullptr )
     {
-        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
-                           R"('pPixels' must be not null in RgOriginalTextureInfo)" );
+        debug::Warning( "RgOriginalTextureInfo::pPixels must not be null" );
+        return false;
     }
 
     const auto samplerHandle =
@@ -423,61 +421,6 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
     return true;
 }
 
-/*bool TextureManager::UpdateMaterial( VkCommandBuffer cmd, const RgMaterialUpdateInfo& updateInfo )
-{
-    const auto it = materials.find( updateInfo.target );
-
-    // must exist
-    if( it == materials.end() )
-    {
-        throw RgException( RG_CANT_UPDATE_MATERIAL,
-                           "Material with ID=" + std::to_string( updateInfo.target ) +
-                               " was not created" );
-    }
-
-    // must be updateable
-    if( !it->second.isUpdateable )
-    {
-        throw RgException( RG_CANT_UPDATE_MATERIAL,
-                           "Material with ID=" + std::to_string( updateInfo.target ) +
-                               " was not marked as updateable" );
-    }
-
-    const void* updateData[ TEXTURES_PER_MATERIAL_COUNT ] = {
-        updateInfo.textures.pDataAlbedoAlpha,
-        updateInfo.textures.pDataRoughnessMetallicEmission,
-        updateInfo.textures.pDataNormal,
-    };
-
-    auto& textureIndices = it->second.textures.indices;
-    static_assert( sizeof( textureIndices ) / sizeof( textureIndices[ 0 ] ) ==
-                   TEXTURES_PER_MATERIAL_COUNT );
-
-    bool wasUpdated = false;
-
-    for( uint32_t i = 0; i < TEXTURES_PER_MATERIAL_COUNT; i++ )
-    {
-        uint32_t textureIndex = textureIndices[ i ];
-
-        if( textureIndex == EMPTY_TEXTURE_INDEX )
-        {
-            continue;
-        }
-
-        VkImage img = textures[ textureIndex ].image;
-
-        if( img == VK_NULL_HANDLE || updateData[ i ] == nullptr )
-        {
-            continue;
-        }
-
-        textureUploader->UpdateImage( cmd, img, updateData[ i ] );
-        wasUpdated = true;
-    }
-
-    return wasUpdated;
-}*/
-
 uint32_t TextureManager::PrepareTexture( VkCommandBuffer                                 cmd,
                                          uint32_t                                        frameIndex,
                                          const std::optional< ImageLoader::ResultInfo >& info,
@@ -497,20 +440,19 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
     if( targetSlot == textures.end() )
     {
         // no empty slots
-        // TODO: print warning
-        assert( 0 && "Too many textures" );
+        debug::Warning( "Reached texture limit: {}, while uploading {}",
+                        textures.size(),
+                        Utils::SafeCstr( debugName ) );
         return EMPTY_TEXTURE_INDEX;
     }
 
     if( info->baseSize.width == 0 || info->baseSize.height == 0 )
     {
-        using namespace std::string_literals;
-
-        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
-                           "Incorrect size (" + std::to_string( info->baseSize.width ) + ", " +
-                               std::to_string( info->baseSize.height ) +
-                               ") of one of images in a material" +
-                               ( debugName != nullptr ? " with name: "s + debugName : ""s ) );
+        debug::Warning( "Incorrect size ({},{}) of one of images in a texture {}",
+                        info->baseSize.width,
+                        info->baseSize.height,
+                        Utils::SafeCstr( debugName ) );
+        return EMPTY_TEXTURE_INDEX;
     }
 
     assert( info->dataSize > 0 );
@@ -553,101 +495,6 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
     return uint32_t( std::distance( textures.begin(), targetSlot ) );
 }
 
-/*uint32_t TextureManager::CreateAnimatedMaterial( VkCommandBuffer                     cmd,
-                                                 uint32_t                            frameIndex,
-                                                 const RgAnimatedMaterialCreateInfo& createInfo )
-{
-    if( createInfo.frameCount == 0 )
-    {
-        return RG_NO_MATERIAL;
-    }
-
-    std::vector< uint32_t > materialIndices( createInfo.frameCount );
-
-    // animated material is a series of static materials
-    for( uint32_t i = 0; i < createInfo.frameCount; i++ )
-    {
-        materialIndices[ i ] = CreateMaterial( cmd, frameIndex, createInfo.pFrames[ i ] );
-    }
-
-    return InsertAnimatedMaterial( materialIndices );
-}
-
-bool TextureManager::ChangeAnimatedMaterialFrame( uint32_t animMaterial, uint32_t materialFrame )
-{
-    const auto animIt = animatedMaterials.find( animMaterial );
-
-    if( animIt == animatedMaterials.end() )
-    {
-        throw RgException( RG_CANT_UPDATE_ANIMATED_MATERIAL,
-                           "Material with ID=" + std::to_string( animMaterial ) +
-                               " is not animated" );
-    }
-
-    AnimatedMaterial& anim = animIt->second;
-
-    {
-        auto maxFrameCount = static_cast< uint32_t >( anim.materialIndices.size() );
-        if( materialFrame >= maxFrameCount )
-        {
-            throw RgException( RG_CANT_UPDATE_ANIMATED_MATERIAL,
-                               "Animated material with ID=" + std::to_string( animMaterial ) +
-                                   " has only " + std::to_string( maxFrameCount ) +
-                                   " frames, but frame with index " +
-                                   std::to_string( materialFrame ) + " was requested" );
-        }
-    }
-
-    anim.currentFrame = materialFrame;
-
-    // notify subscribers
-    for( auto& ws : subscribers )
-    {
-        // if subscriber still exist
-        if( auto s = ws.lock() )
-        {
-            uint32_t frameMatIndex = anim.materialIndices[ anim.currentFrame ];
-
-            // find MaterialTextures
-            auto     it = materials.find( frameMatIndex );
-
-            if( it != materials.end() )
-            {
-                s->OnMaterialChange( animMaterial, it->second.textures );
-            }
-        }
-    }
-
-    return true;
-}
-
-uint32_t TextureManager::InsertAnimatedMaterial( std::vector< uint32_t >& materialIndices )
-{
-    bool isEmpty = true;
-
-    for( uint32_t m : materialIndices )
-    {
-        if( m != RG_NO_MATERIAL )
-        {
-            isEmpty = false;
-            break;
-        }
-    }
-
-    if( isEmpty )
-    {
-        return RG_NO_MATERIAL;
-    }
-
-    uint32_t animMatIndex             = GenerateMaterialIndex( materialIndices );
-    animatedMaterials[ animMatIndex ] = AnimatedMaterial{
-        .materialIndices = std::move( materialIndices ),
-        .currentFrame    = 0,
-    };
-
-    return animMatIndex;
-}*/
-
 void TextureManager::InsertMaterial( uint32_t        frameIndex,
                                      const char*     pTextureName,
                                      const Material& material )
@@ -656,6 +503,10 @@ void TextureManager::InsertMaterial( uint32_t        frameIndex,
 
     if( !insertednew )
     {
+        debug::Warning( "{}: Texture with the same name already exists. "
+                        "Overwriting the old one",
+                        iter->first );
+
         Material& existing = iter->second;
 
         // destroy old, overwrite with new
@@ -717,16 +568,6 @@ MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName )
     {
         return EmptyMaterialTextures;
     }
-
-    /*const auto animIt = animatedMaterials.find( materialIndex );
-
-    if( animIt != animatedMaterials.end() )
-    {
-        const AnimatedMaterial& anim = animIt->second;
-
-        // return material textures of the current frame
-        return GetMaterialTextures( anim.materialIndices[ anim.currentFrame ] );
-    }*/
 
     const auto it = materials.find( pTextureName );
 
