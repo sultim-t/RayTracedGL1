@@ -25,6 +25,7 @@
 #include "RenderResolutionHelper.h"
 #include "RgException.h"
 #include "Utils.h"
+
 #include "Generated/ShaderCommonC.h"
 
 #include <imgui.h>
@@ -1419,14 +1420,6 @@ bool RTGL1::VulkanDevice::IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique 
                 RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                 "Incorrect technique was passed to rgIsRenderUpscaleTechniqueAvailable" );
     }
-}
-
-void RTGL1::VulkanDevice::ExportAsPNG( const void* pPixels,
-                                       uint32_t    width,
-                                       uint32_t    height,
-                                       const char* pPath ) const
-{
-    // TODO: png export
 }
 
 RgPrimitiveVertex* RTGL1::VulkanDevice::ScratchAllocForVertices( uint32_t vertexCount )

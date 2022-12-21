@@ -60,12 +60,14 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
     return true;
 }
 
-bool WriteTGA( std::filesystem::path filepath, const void* pixels, const RgExtent2D& size )
-{
-    using namespace RTGL1;
+}
 
+bool RTGL1::TextureExporter::WriteTGA( std::filesystem::path filepath,
+    const void* pixels,
+    const RgExtent2D& size )
+{
     assert( std::filesystem::exists( filepath.parent_path() ) );
-    
+
     if( !stbi_write_tga( filepath.replace_extension( ".tga" ).string().c_str(),
                          int( size.width ),
                          int( size.height ),
@@ -77,8 +79,6 @@ bool WriteTGA( std::filesystem::path filepath, const void* pixels, const RgExten
     }
 
     return true;
-}
-
 }
 
 bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator,

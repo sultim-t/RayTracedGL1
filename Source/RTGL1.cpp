@@ -21,6 +21,8 @@
 #include "VulkanDevice.h"
 #include "RgException.h"
 
+#include "TextureExporter.h"
+
 namespace
 {
 #define INITIALIZED_RGINSTANCE ( reinterpret_cast< RgInstance >( 1024 ) )
@@ -311,7 +313,7 @@ RgColor4DPacked32 rgUtilPackColorFloat4D( float r, float g, float b, float a )
     return RTGL1::Utils::PackColorFromFloat( r, g, b, a );
 }
 
-void rgUtilExportAsPNG( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath )
+void rgUtilExportAsTGA( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath )
 {
-    Call( instance, &RTGL1::VulkanDevice::ExportAsPNG, pPixels, width, height, pPath );
+    RTGL1::TextureExporter::WriteTGA( pPath, pPixels, { width, height } );
 }

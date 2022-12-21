@@ -893,7 +893,7 @@ RGAPI RgBool32 RGCONV           rgUtilIsUpscaleTechniqueAvailable( RgInstance in
 RGAPI const char* RGCONV        rgUtilGetResultDescription( RgResult result );
 RGAPI RgColor4DPacked32 RGCONV  rgUtilPackColorByte4D( uint8_t r, uint8_t g, uint8_t b, uint8_t a );
 RGAPI RgColor4DPacked32 RGCONV  rgUtilPackColorFloat4D( float r, float g, float b, float a );
-RGAPI void RGCONV               rgUtilExportAsPNG( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath );
+RGAPI void RGCONV               rgUtilExportAsTGA( RgInstance instance, const void* pPixels, uint32_t width, uint32_t height, const char* pPath );
 
 #ifdef __cplusplus
 }

@@ -39,6 +39,10 @@ public:
     TextureExporter& operator=( const TextureExporter& other )     = delete;
     TextureExporter& operator=( TextureExporter&& other ) noexcept = delete;
 
+    static bool WriteTGA( std::filesystem::path filepath,
+                          const void*           pixels,
+                          const RgExtent2D&     size );
+
     bool ExportAsTGA( MemoryAllocator&             allocator,
                       CommandBufferManager&        cmdManager,
                       VkImage                      srcImage,

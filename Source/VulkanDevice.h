@@ -97,10 +97,6 @@ public:
 
     bool IsSuspended() const;
     bool IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique technique ) const;
-    void ExportAsPNG( const void* pPixels,
-                      uint32_t    width,
-                      uint32_t    height,
-                      const char* pPath ) const;
 
     RgPrimitiveVertex* ScratchAllocForVertices( uint32_t count );
     void               ScratchFree( const RgPrimitiveVertex* pPointer );
