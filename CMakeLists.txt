@@ -78,6 +78,7 @@ set(Sources
     "Source/LightGrid.cpp"
     "Source/FSR2.cpp"
     "Source/Stb/stb_image.cpp"
+    "Source/Stb/stb_image_write.cpp"
     "Source/ImageLoaderDev.cpp"
     "Source/PortalList.cpp"
     "Source/RestirBuffers.cpp"
@@ -87,6 +88,7 @@ set(Sources
     "Source/GltfExporter.cpp"
     "Source/GltfImporter.cpp"
     "Source/FolderObserver.cpp"
+    "Source/TextureExporter.cpp"
 )
 
 

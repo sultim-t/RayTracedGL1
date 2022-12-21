@@ -241,6 +241,11 @@ VkDevice RTGL1::MemoryAllocator::GetDevice()
     return device;
 }
 
+VkPhysicalDevice RTGL1::MemoryAllocator::GetPhysicalDevice()
+{
+    return physDevice->Get();
+}
+
 VkDeviceMemory RTGL1::MemoryAllocator::AllocDedicated( const VkMemoryRequirements& memReqs,
                                                        VkMemoryPropertyFlags       properties,
                                                        AllocType                   allocType,

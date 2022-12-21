@@ -50,6 +50,7 @@ public:
     MemoryAllocator& operator=( MemoryAllocator&& other ) noexcept = delete;
 
     VkDevice         GetDevice();
+    VkPhysicalDevice GetPhysicalDevice();
 
 
     // If addressQuery=true device address can be queried
