@@ -674,6 +674,7 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer cmd,
             .uniqueObjectID =
                 uint32_t( std::hash< std::string_view >{}( srcMesh->name ) % UINT32_MAX ),
             .pMeshName    = srcMesh->name,
+            .transform    = MakeRgTransformFromGltfNode( *srcMesh ),
             .isExportable = true,
         };
 
@@ -737,7 +738,6 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer cmd,
                 .pPrimitiveNameInMesh = materialName.c_str(),
                 .primitiveIndexInMesh = uint32_t( i ),
                 .flags                = dstFlags,
-                .transform            = MakeRgTransformFromGltfNode( *srcMesh ),
                 .pVertices            = vertices.data(),
                 .vertexCount          = uint32_t( vertices.size() ),
                 .pIndices             = indices.empty() ? nullptr : indices.data(),

@@ -389,7 +389,6 @@ typedef struct RgMeshPrimitiveInfo
     uint32_t                        primitiveIndexInMesh;
     RgMeshPrimitiveFlags            flags;
 
-    RgTransform                     transform;
     const RgPrimitiveVertex*        pVertices;
     uint32_t                        vertexCount;
     const uint32_t*                 pIndices;
@@ -413,6 +412,7 @@ typedef struct RgMeshInfo
     uint32_t                        uniqueObjectID;
     // Name and primitive index is used to override meshes.
     const char*                     pMeshName;
+    RgTransform                     transform;
     // Set to true, if an object can be exported.
     RgBool32                        isExportable;
     const char*                     animationName;

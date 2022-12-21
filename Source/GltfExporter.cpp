@@ -73,7 +73,8 @@ namespace RTGL1
 {
 struct DeepCopyOfPrimitive
 {
-    explicit DeepCopyOfPrimitive( const RgMeshPrimitiveInfo& c ) : info( c )
+    explicit DeepCopyOfPrimitive( const RgMeshPrimitiveInfo& c, const RgTransform& tr )
+        : info( c ), transform( tr )
     {
         std::span fromVertices( c.pVertices, c.vertexCount );
         std::span fromIndices( c.pIndices, c.indexCount );
@@ -141,7 +142,7 @@ struct DeepCopyOfPrimitive
 
     const auto& PrimitiveNameInMesh() const { return pPrimitiveNameInMesh; }
     const auto& TextureName() const { return pTextureName; }
-    const auto& Transform() const { return info.transform; }
+    const auto& Transform() const { return transform; }
 
 private:
     static void FixupPointers( DeepCopyOfPrimitive& inout )
@@ -157,6 +158,7 @@ private:
 
 private:
     RgMeshPrimitiveInfo info;
+    RgTransform         transform;
 
     // to maintain lifetimes
     std::string                      pPrimitiveNameInMesh;
@@ -580,7 +582,8 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
         return;
     }
 
-    scene[ mesh.pMeshName ].emplace_back( std::make_shared< DeepCopyOfPrimitive >( primitive ) );
+    scene[ mesh.pMeshName ].emplace_back(
+        std::make_shared< DeepCopyOfPrimitive >( primitive, mesh.transform ) );
 }
 
 void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,

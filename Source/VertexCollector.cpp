@@ -267,7 +267,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     {
         static_assert( sizeof( RgTransform ) == sizeof( VkTransformMatrixKHR ) );
         memcpy(
-            mappedTransformData + transformIndex, &info.transform, sizeof( VkTransformMatrixKHR ) );
+            mappedTransformData + transformIndex, &parentMesh.transform, sizeof( VkTransformMatrixKHR ) );
     }
 
 
@@ -328,7 +328,7 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
 
     ShGeometryInstance geomInfo = {
-        .model     = RG_MATRIX_TRANSPOSED( info.transform ),
+        .model     = RG_MATRIX_TRANSPOSED( parentMesh.transform ),
         .prevModel = { /* set later */ },
 
         .flags = GeomInfoManager::GetPrimitiveFlags( info ),

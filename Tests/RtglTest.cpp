@@ -223,13 +223,13 @@ uint32_t MurmurHash32( std::string_view str, uint32_t seed = 0 )
 using MeshName = std::string;
 struct WorldMeshPrimitive
 {
-    RgTransform                      transform;
     std::vector< RgPrimitiveVertex > vertices;
     std::vector< uint32_t >          indices;
     std::string                      texture;
     uint32_t                         indexInMesh;
 };
-std::unordered_map< MeshName, std::vector< WorldMeshPrimitive > > g_allMeshes;
+std::unordered_map< MeshName, std::pair< RgTransform, std::vector< WorldMeshPrimitive > > >
+    g_allMeshes;
 
 auto GetTexturePath( const std::filesystem::path &gltfFolder, std::string_view uri )
 {
@@ -244,6 +244,35 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
     {
         std::string_view meshName = model.meshes[ node.mesh ].name;
         uint32_t         indexInMesh = 0;
+
+        auto &[ dstTransform, dstPrimList ] = g_allMeshes[ meshName.data() ];
+
+        {
+            auto translation = node.translation.size() == 3
+                                   ? glm::make_vec3( node.translation.data() )
+                                   : glm::dvec3( 0.0 );
+            auto rotation    = node.rotation.size() == 4 ? glm::make_quat( node.rotation.data() )
+                                                         : glm::dmat4( 1.0 );
+            auto scale =
+                node.scale.size() == 3 ? glm::make_vec3( node.scale.data() ) : glm::dvec3( 1.0 );
+            glm::dmat4 dtr;
+            if( node.matrix.size() == 16 )
+            {
+                dtr = glm::make_mat4x4( node.matrix.data() );
+            }
+            else
+            {
+                dtr = glm::translate( glm::dmat4( 1.0 ), translation ) * glm::dmat4( rotation ) *
+                      glm::scale( glm::dmat4( 1.0 ), scale );
+            }
+            auto tr = glm::mat4( dtr );
+
+            dstTransform = RgTransform{ {
+                { tr[ 0 ][ 0 ], tr[ 1 ][ 0 ], tr[ 2 ][ 0 ], tr[ 3 ][ 0 ] },
+                { tr[ 0 ][ 1 ], tr[ 1 ][ 1 ], tr[ 2 ][ 1 ], tr[ 3 ][ 1 ] },
+                { tr[ 0 ][ 2 ], tr[ 1 ][ 2 ], tr[ 2 ][ 2 ], tr[ 3 ][ 2 ] },
+            } };
+        }
 
         for( const auto& primitive : model.meshes[ node.mesh ].primitives )
         {
@@ -323,31 +352,6 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
                 }
             }
 
-            auto translation = node.translation.size() == 3 ? glm::make_vec3( node.translation.data() )
-                                                            : glm::dvec3( 0.0 );
-            auto rotation    = node.rotation.size() == 4    ? glm::make_quat( node.rotation.data() )
-                                                            : glm::dmat4( 1.0 );
-            auto scale       = node.scale.size() == 3       ? glm::make_vec3( node.scale.data() )
-                                                            : glm::dvec3( 1.0 );
-            glm::dmat4 dtr;
-            if( node.matrix.size() == 16 )
-            {
-                dtr = glm::make_mat4x4( node.matrix.data() );
-            }
-            else
-            {
-                dtr = glm::translate( glm::dmat4( 1.0 ), translation ) * 
-                      glm::dmat4( rotation ) *
-                      glm::scale( glm::dmat4( 1.0 ), scale );
-            }
-            auto tr = glm::mat4( dtr );
-
-            RgTransform rgtransform = { {
-                { tr[ 0 ][ 0 ], tr[ 1 ][ 0 ], tr[ 2 ][ 0 ], tr[ 3 ][ 0 ] },
-                { tr[ 0 ][ 1 ], tr[ 1 ][ 1 ], tr[ 2 ][ 1 ], tr[ 3 ][ 1 ] },
-                { tr[ 0 ][ 2 ], tr[ 1 ][ 2 ], tr[ 2 ][ 2 ], tr[ 3 ][ 2 ] },
-            } };
-
             std::string texName;
             {
                 int tex = model.materials[ primitive.material ]
@@ -359,8 +363,7 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
                 }
             }
             
-            g_allMeshes[ meshName.data() ].push_back( WorldMeshPrimitive{
-                .transform   = rgtransform,
+            dstPrimList.push_back( WorldMeshPrimitive{
                 .vertices    = std::move( rgverts ),
                 .indices     = std::move( rgindices ),
                 .texture     = std::move( texName ),
@@ -486,13 +489,16 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         }
 
 
-        for( auto& [ meshName, primitives ] : g_allMeshes )
+        for( auto& [ meshName, src ] : g_allMeshes )
         {
+            auto& [ transform, primitives ] = src;
+
             std::string objectName = "obj_" + meshName;
 
             RgMeshInfo mesh = {
                 .uniqueObjectID = MurmurHash32( objectName ),
                 .pMeshName      = objectName.c_str(), // meshName.c_str(),
+                .transform      = transform,
                 .isExportable   = true,
                 .animationName  = nullptr,
                 .animationTime  = 0.0f,
@@ -507,7 +513,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                     .pPrimitiveNameInMesh = srcPrim.texture.c_str(),
                     .primitiveIndexInMesh = srcPrim.indexInMesh,
                     .flags                = 0,
-                    .transform            = srcPrim.transform,
                     .pVertices            = srcPrim.vertices.data(),
                     .vertexCount          = uint32_t( srcPrim.vertices.size() ),
                     .pIndices             = srcPrim.indices.data(),
@@ -528,6 +533,11 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshInfo mesh = {
                 .uniqueObjectID = 10,
                 .pMeshName      = "test",
+                .transform      = { {
+                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * float( ( frameId + 30 ) % 200 ) : 1.0f },
+                    { 0, 1, 0, 1.0f },
+                    { 0, 0, 1, 0.0f },
+                } },
                 .isExportable   = false,
                 .animationName  = nullptr,
                 .animationTime  = 0.0f,
@@ -536,11 +546,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshPrimitiveInfo prim = {
                 .primitiveIndexInMesh = 0,
                 .flags                = 0,
-                .transform            = { {
-                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * float( ( frameId + 30 ) % 200 ) : 1.0f },
-                    { 0, 1, 0, 1.0f },
-                    { 0, 0, 1, 0.0f },
-                } },
                 .pVertices            = GetCubeVertices(),
                 .vertexCount          = std::size( s_CubePositions ),
                 .pTextureName         = nullptr,
@@ -559,6 +564,11 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshInfo mesh = {
                 .uniqueObjectID = 12,
                 .pMeshName      = "test_raster",
+                .transform      = { {
+                    { 1, 0, 0, -0.5f },
+                    { 0, 1, 0, 1.0f },
+                    { 0, 0, 1, 1.0f },
+                } },
                 .isExportable   = false,
                 .animationName  = nullptr,
                 .animationTime  = 0.0f,
@@ -567,11 +577,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgMeshPrimitiveInfo prim = {
                 .primitiveIndexInMesh = 0,
                 .flags                = 0,
-                .transform            = { {
-                    { 1, 0, 0, -0.5f },
-                    { 0, 1, 0, 1.0f },
-                    { 0, 0, 1, 1.0f },
-                } },
                 .pVertices            = GetQuadVertices(),
                 .vertexCount          = std::size( s_QuadPositions ),
                 .pTextureName         = nullptr,

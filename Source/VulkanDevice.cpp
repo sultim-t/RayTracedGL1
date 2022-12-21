@@ -1255,6 +1255,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
         rasterizer->Upload( currentFrameState.GetFrameIndex(),
                             pPrimitive->flags & RG_MESH_PRIMITIVE_SKY ? GeometryRasterType::SKY
                                                                       : GeometryRasterType::WORLD,
+                            pMesh->transform,
                             *pPrimitive,
                             nullptr,
                             nullptr );
@@ -1298,6 +1299,7 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
 
     rasterizer->Upload( currentFrameState.GetFrameIndex(),
                         GeometryRasterType::SWAPCHAIN,
+                        RG_TRANSFORM_IDENTITY,
                         *pPrimitive,
                         pViewProjection,
                         pViewport );

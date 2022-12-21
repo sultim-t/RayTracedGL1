@@ -136,11 +136,12 @@ void RTGL1::Rasterizer::PrepareForFrame( uint32_t frameIndex )
 
 void RTGL1::Rasterizer::Upload( uint32_t                   frameIndex,
                                 GeometryRasterType         rasterType,
+                                const RgTransform&         transform,
                                 const RgMeshPrimitiveInfo& info,
                                 const float*               pViewProjection,
                                 const RgViewport*          pViewport )
 {
-    collector->AddPrimitive( frameIndex, rasterType, info, pViewProjection, pViewport );
+    collector->AddPrimitive( frameIndex, rasterType, transform, info, pViewProjection, pViewport );
 }
 
 void RTGL1::Rasterizer::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )

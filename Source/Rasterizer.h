@@ -70,6 +70,7 @@ public:
     void        PrepareForFrame( uint32_t frameIndex );
     void        Upload( uint32_t                   frameIndex,
                         GeometryRasterType         rasterType,
+                        const RgTransform&         transform,
                         const RgMeshPrimitiveInfo& info,
                         const float*               pViewProjection,
                         const RgViewport*          pViewport );

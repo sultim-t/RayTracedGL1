@@ -169,6 +169,7 @@ namespace
 
 void RTGL1::RasterizedDataCollector::AddPrimitive( uint32_t                   frameIndex,
                                                    GeometryRasterType         rasterType,
+                                                   const RgTransform&         transform,
                                                    const RgMeshPrimitiveInfo& info,
                                                    const float*               pViewProjection,
                                                    const RgViewport*          pViewport )
@@ -219,7 +220,7 @@ void RTGL1::RasterizedDataCollector::AddPrimitive( uint32_t                   fr
     const auto colors   = textureMgr->GetColorForLayers( info );
 
     PushInfo( rasterType ) = {
-        .transform = info.transform,
+        .transform = transform,
         .flags     = GeomInfoManager::GetPrimitiveFlags( info ),
 
         .base_textureA = textures[ 0 ].indices[ 0 ],
