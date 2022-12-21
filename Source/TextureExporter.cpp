@@ -28,6 +28,8 @@
 namespace
 {
 
+constexpr uint64_t DstBytesPerPixel = 4;
+
 bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFiles )
 {
     using namespace RTGL1;
@@ -58,23 +60,19 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
     return true;
 }
 
-bool WritePNG( const std::filesystem::path& filepath,
-               const void*                  pixels,
-               const RgExtent2D&            size,
-               const size_t                 rowPitch = 0 )
+bool WriteTGA( std::filesystem::path filepath, const void* pixels, const RgExtent2D& size )
 {
     using namespace RTGL1;
 
     assert( std::filesystem::exists( filepath.parent_path() ) );
-
-    if( !stbi_write_png( filepath.string().c_str(),
+    
+    if( !stbi_write_tga( filepath.replace_extension( ".tga" ).string().c_str(),
                          int( size.width ),
                          int( size.height ),
-                         4,
-                         pixels,
-                         int( rowPitch ) ) )
+                         DstBytesPerPixel,
+                         pixels ) )
     {
-        debug::Warning( "{}: stbi_write_png fail", filepath.string() );
+        debug::Warning( "{}: stbi_write_tga fail", filepath.string() );
         return false;
     }
 
@@ -83,7 +81,7 @@ bool WritePNG( const std::filesystem::path& filepath,
 
 }
 
-bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator,
+bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator,
                                           CommandBufferManager&        cmdManager,
                                           VkImage                      srcImage,
                                           RgExtent2D                   srcImageSize,
@@ -386,22 +384,41 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
     cmdManager.Submit( cmd );
     cmdManager.WaitGraphicsIdle();
 
+    bool success = false;
     {
         VkSubresourceLayout subresLayout = {};
         vkGetImageSubresourceLayout( device, dstImage_Linear, &subres, &subresLayout );
 
-        assert( subresLayout.size >= 4ull * srcImageSize.width * srcImageSize.height );
+        if( subresLayout.rowPitch == DstBytesPerPixel * srcImageSize.width )
+        {
+            assert( subresLayout.size ==
+                    DstBytesPerPixel * srcImageSize.width * srcImageSize.height );
 
-        uint8_t* data = nullptr;
-        VkResult r    = vkMapMemory(
-            device, dstMemory_Linear, 0, VK_WHOLE_SIZE, 0, reinterpret_cast< void** >( &data ) );
-        VK_CHECKERROR( r );
+            uint8_t* data = nullptr;
+            VkResult r    = vkMapMemory( device,
+                                      dstMemory_Linear,
+                                      0,
+                                      VK_WHOLE_SIZE,
+                                      0,
+                                      reinterpret_cast< void** >( &data ) );
+            VK_CHECKERROR( r );
 
-        WritePNG( filepath, &data[ subresLayout.offset ], srcImageSize, subresLayout.rowPitch );
+            success = WriteTGA( filepath, &data[ subresLayout.offset ], srcImageSize );
+
+            vkUnmapMemory( device, dstMemory_Linear );
+        }
+        else
+        {
+            debug::Warning( "{}: Can't export to image file, as mapped data is not tightly packed. "
+                            "VkSubresourceLayout::rowPitch is {}; expected "
+                            "( {} bytes per pixel * {} pixels in a row )",
+                            filepath.string(),
+                            subresLayout.rowPitch,
+                            DstBytesPerPixel,
+                            srcImageSize.width );
+        }
     }
     {
-        vkUnmapMemory( device, dstMemory_Linear );
-
         vkFreeMemory( device, dstMemory_Linear, nullptr );
         vkFreeMemory( device, dstMemory_Optimal, nullptr );
 
@@ -409,7 +426,7 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
         vkDestroyImage( device, dstImage_Optimal, nullptr );
     }
 
-    return true;
+    return success;
 }
 
 bool RTGL1::TextureExporter::CheckSupport( VkPhysicalDevice physDevice, VkFormat srcImageFormat )

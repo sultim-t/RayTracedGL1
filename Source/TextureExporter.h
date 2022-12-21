@@ -39,7 +39,7 @@ public:
     TextureExporter& operator=( const TextureExporter& other )     = delete;
     TextureExporter& operator=( TextureExporter&& other ) noexcept = delete;
 
-    bool ExportAsPNG( MemoryAllocator&             allocator,
+    bool ExportAsTGA( MemoryAllocator&             allocator,
                       CommandBufferManager&        cmdManager,
                       VkImage                      srcImage,
                       RgExtent2D                   srcImageSize,
