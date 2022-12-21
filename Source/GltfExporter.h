@@ -30,22 +30,41 @@ namespace RTGL1
 {
 struct DeepCopyOfPrimitive;
 
+struct GltfMeshNode
+{
+    std::string name;
+    RgTransform transform;
+
+    bool     operator==( const GltfMeshNode& other ) const;
+    bool     operator<( const GltfMeshNode& other ) const;
+    uint64_t Hash() const;
+};
+}
+
+template<>
+struct std::hash< RTGL1::GltfMeshNode >
+{
+    std::size_t operator()( RTGL1::GltfMeshNode const& m ) const noexcept { return m.Hash(); }
+};
+
+namespace RTGL1
+{
 class GltfExporter
 {
 public:
     explicit GltfExporter( const RgTransform& worldTransform );
     ~GltfExporter() = default;
 
-    GltfExporter( const GltfExporter& other )     = delete;
-    GltfExporter( GltfExporter&& other ) noexcept = delete;
-    GltfExporter& operator=( const GltfExporter& other ) = delete;
+    GltfExporter( const GltfExporter& other )                = delete;
+    GltfExporter( GltfExporter&& other ) noexcept            = delete;
+    GltfExporter& operator=( const GltfExporter& other )     = delete;
     GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
     void ExportToFiles( const std::filesystem::path& folder, std::string_view sceneName );
 
 private:
-    rgl::unordered_map< std::string, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
-    RgTransform  worldTransform;
+    rgl::unordered_map< GltfMeshNode, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
+    RgTransform worldTransform;
 };
 }

@@ -38,14 +38,68 @@
 
 namespace
 {
+template< class T >
+void HashCombine( std::size_t& seed, const T& v )
+{
+    seed ^= std::hash< T >{}( v ) + 0x9e3779b9 + ( seed << 6 ) + ( seed >> 2 );
+}
+
+bool TransformIsLess( const RgTransform& a, const RgTransform& b )
+{
+    for( size_t i = 0; i < std::size( a.matrix ); i++ )
+    {
+        for( size_t j = 0; j < std::size( a.matrix[ 0 ] ); j++ )
+        {
+            if( a.matrix[ i ][ j ] < b.matrix[ i ][ j ] )
+            {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+bool TransformsAreEqual( const RgTransform& a, const RgTransform& b )
+{
+    constexpr float eps = 0.0001f;
+    for( size_t i = 0; i < std::size( a.matrix ); i++ )
+    {
+        for( size_t j = 0; j < std::size( a.matrix[ 0 ] ); j++ )
+        {
+            if( std::abs( a.matrix[ i ][ j ] - b.matrix[ i ][ j ] ) > eps )
+            {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+uint64_t TransformHash( const RgTransform& a )
+{
+    uint64_t h = 0;
+    for( size_t i = 0; i < std::size( a.matrix ); i++ )
+    {
+        for( size_t j = 0; j < std::size( a.matrix[ 0 ] ); j++ )
+        {
+            HashCombine( h, a.matrix[ i ][ j ] );
+        }
+    }
+    return h;
+}
+}
+
+template<>
+struct std::hash< RgTransform >
+{
+    std::size_t operator()( RgTransform const& t ) const noexcept { return TransformHash( t ); }
+};
+
+namespace
+{
 auto* ConvertRefToPtr( auto& ref )
 {
     return &ref;
-}
-
-std::string SafeString( const char* cstr )
-{
-    return RTGL1::Utils::IsCstrEmpty( cstr ) ? "" : cstr;
 }
 
 std::filesystem::path GetGltfPath( const std::filesystem::path& folder, std::string_view sceneName )
@@ -54,17 +108,21 @@ std::filesystem::path GetGltfPath( const std::filesystem::path& folder, std::str
     return folder / ( std::string( sceneName ) + ".gltf" );
 }
 
-std::string GetGltfBinURI( std::string_view sceneName )
+std::filesystem::path GetGltfFolder( const std::filesystem::path& gltfPath )
 {
-    assert( !sceneName.empty() );
-    return std::string( sceneName ) + ".bin";
+    return gltfPath.parent_path();
 }
 
-std::filesystem::path GetGltfBinPath( const std::filesystem::path& folder,
-                                      std::string_view             sceneName )
+std::filesystem::path GetGltfBinPath( std::filesystem::path gltfPath )
 {
-    return folder / GetGltfBinURI( sceneName );
+    return gltfPath.replace_extension( ".bin" );
 }
+
+std::string GetGltfBinURI( const std::filesystem::path& gltfPath )
+{
+    return GetGltfBinPath( gltfPath ).filename().string();
+}
+
 }
 
 
@@ -73,8 +131,7 @@ namespace RTGL1
 {
 struct DeepCopyOfPrimitive
 {
-    explicit DeepCopyOfPrimitive( const RgMeshPrimitiveInfo& c, const RgTransform& tr )
-        : info( c ), transform( tr )
+    explicit DeepCopyOfPrimitive( const RgMeshPrimitiveInfo& c ) : info( c )
     {
         std::span fromVertices( c.pVertices, c.vertexCount );
         std::span fromIndices( c.pIndices, c.indexCount );
@@ -87,8 +144,8 @@ struct DeepCopyOfPrimitive
         static_assert( std::is_trivially_copyable_v< decltype( pIndices )::value_type > );
 
         // deep copy
-        pPrimitiveNameInMesh = SafeString( c.pPrimitiveNameInMesh );
-        pTextureName         = SafeString( c.pTextureName );
+        pPrimitiveNameInMesh = Utils::SafeCstr( c.pPrimitiveNameInMesh );
+        pTextureName         = Utils::SafeCstr( c.pTextureName );
         pVertices.assign( fromVertices.begin(), fromVertices.end() );
         pIndices.assign( fromIndices.begin(), fromIndices.end() );
 
@@ -142,7 +199,6 @@ struct DeepCopyOfPrimitive
 
     const auto& PrimitiveNameInMesh() const { return pPrimitiveNameInMesh; }
     const auto& TextureName() const { return pTextureName; }
-    const auto& Transform() const { return transform; }
 
 private:
     static void FixupPointers( DeepCopyOfPrimitive& inout )
@@ -158,7 +214,6 @@ private:
 
 private:
     RgMeshPrimitiveInfo info;
-    RgTransform         transform;
 
     // to maintain lifetimes
     std::string                      pPrimitiveNameInMesh;
@@ -180,13 +235,13 @@ namespace
 
 struct BinFile
 {
-    explicit BinFile( const std::filesystem::path& folder, std::string_view sceneName )
-        : uri( GetGltfBinURI( sceneName ) )
-        , file( GetGltfBinPath( folder, sceneName ),
-                std::ios::out | std::ios::trunc | std::ios::binary )
+    explicit BinFile( const std::filesystem::path& gltfPath )
+        : uri( GetGltfBinURI( gltfPath ) )
+        , file( GetGltfBinPath( gltfPath ), std::ios::out | std::ios::trunc | std::ios::binary )
         , fileOffset( 0 )
         , storage{}
     {
+        assert( file );
     }
 
     cgltf_buffer* Get()
@@ -433,17 +488,19 @@ auto append_n( std::vector< T >& v, size_t toadd )
 }
 
 
+// Corresponds to RgMeshInfo
 struct GltfRoot
 {
-    std::string                name;
-    cgltf_node*                parent;
-    std::vector< cgltf_node* > children;
+    std::string name;
+    RgTransform transform;
+
+    cgltf_node* thisNode;
 
     std::span< cgltf_buffer_view > bufferViews;
     std::span< cgltf_accessor >    accessors;
     std::span< cgltf_attribute >   attributes;
     std::span< cgltf_primitive >   primitives;
-    std::span< cgltf_mesh >        meshes;
+    cgltf_mesh*                    mesh;
 
     std::vector< std::shared_ptr< RTGL1::DeepCopyOfPrimitive > > source;
 };
@@ -451,7 +508,7 @@ struct GltfRoot
 struct GltfStorage
 {
     explicit GltfStorage(
-        const rgl::unordered_map< std::string,
+        const rgl::unordered_map< RTGL1::GltfMeshNode,
                                   std::vector< std::shared_ptr< RTGL1::DeepCopyOfPrimitive > > >&
             scene )
     {
@@ -461,50 +518,47 @@ struct GltfStorage
             BeginCount accessors;
             BeginCount attributes;
             BeginCount primitives;
-            BeginCount meshes;
-            BeginCount parent;
-            BeginCount children;
+            BeginCount mesh;
+            BeginCount thisNode;
         };
         std::queue< Ranges > ranges;
 
         // alloc
-        for( const auto& [ meshname, prims ] : scene )
+        for( const auto& [ meshNode, prims ] : scene )
         {
+            size_t primsPerMesh = prims.size();
+
             ranges.push( Ranges{
-                .bufferViews = append_n( allBufferViews, prims.size() * BufferViewsPerPrim ),
-                .accessors   = append_n( allAccessors, prims.size() * AccessorsPerPrim ),
-                .attributes  = append_n( allAttributes, prims.size() * AttributesPerPrim ),
-                .primitives  = append_n( allPrimitives, prims.size() ),
-                .meshes      = append_n( allMeshes, prims.size() ),
-                .parent      = append_n( allNodes, 1 ),
-                .children    = append_n( allNodes, prims.size() ),
+                .bufferViews = append_n( allBufferViews, primsPerMesh * BufferViewsPerPrim ),
+                .accessors   = append_n( allAccessors, primsPerMesh * AccessorsPerPrim ),
+                .attributes  = append_n( allAttributes, primsPerMesh * AttributesPerPrim ),
+                .primitives  = append_n( allPrimitives, primsPerMesh ),
+                .mesh        = append_n( allMeshes, 1 ),
+                .thisNode    = append_n( allNodes, 1 ),
             } );
         }
         BeginCount worldbc = append_n( allNodes, 1 );
 
         // resolve pointers
-        for( const auto& [ meshName, prims ] : scene )
+        for( const auto& [ meshNode, prims ] : scene )
         {
             const Ranges r = ranges.front();
             ranges.pop();
 
             GltfRoot root = {
-                .name        = meshName,
-                .parent      = r.parent.ToPointer( allNodes ),
-                .children    = r.children.ToVectorOfPointers( allNodes ),
+                .name        = meshNode.name,
+                .transform   = meshNode.transform,
+                .thisNode    = r.thisNode.ToPointer( allNodes ),
                 .bufferViews = r.bufferViews.ToSpan( allBufferViews ),
                 .accessors   = r.accessors.ToSpan( allAccessors ),
                 .attributes  = r.attributes.ToSpan( allAttributes ),
                 .primitives  = r.primitives.ToSpan( allPrimitives ),
-                .meshes      = r.meshes.ToSpan( allMeshes ),
+                .mesh        = r.mesh.ToPointer( allMeshes ),
                 .source      = prims,
             };
-
-            assert( root.source.size() == root.children.size() );
             assert( root.source.size() == root.primitives.size() );
-            assert( root.source.size() == root.meshes.size() );
 
-            worldRoots.push_back( root.parent );
+            worldRoots.push_back( root.thisNode );
             roots.push_back( std::move( root ) );
         }
         world = worldbc.ToPointer( allNodes );
@@ -582,8 +636,11 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
         return;
     }
 
-    scene[ mesh.pMeshName ].emplace_back(
-        std::make_shared< DeepCopyOfPrimitive >( primitive, mesh.transform ) );
+    scene[ GltfMeshNode{
+               mesh.pMeshName,
+               mesh.transform,
+           } ]
+        .emplace_back( std::make_shared< DeepCopyOfPrimitive >( primitive ) );
 }
 
 void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
@@ -610,25 +667,31 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
     }
 
 
+    {
+        std::error_code ec;
+        std::filesystem::create_directories( GetGltfFolder( gltfPath ), ec );
+
+        if( ec )
+        {
+            debug::Warning( "{}: std::filesystem::create_directories error: {}",
+                            gltfPath.string(),
+                            ec.message() );
+            return;
+        }
+    }
+
+
     const char* primExtrasExample  = nullptr; // "{ portalOutPosition\" : [0,0,0] }";
     const char* sceneExtrasExample = nullptr; // "{ tonemapping_enable\" : 1 }";
 
 
     // lock pointers
-    BinFile     fbin( folder, sceneName );
+    BinFile     fbin( gltfPath );
     GltfStorage storage( scene );
 
 
     for( GltfRoot& root : storage.roots )
     {
-        *root.parent = cgltf_node{
-            .name           = const_cast< char* >( root.name.c_str() ),
-            .parent         = nullptr,
-            .children       = std::data( root.children ),
-            .children_count = std::size( root.children ),
-            .extras         = { .data = nullptr },
-        };
-
         for( size_t i = 0; i < root.source.size(); i++ )
         {
             const DeepCopyOfPrimitive& rgprim = *root.source[ i ];
@@ -661,29 +724,29 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
                 .attributes_count = std::size( vertAttrsDst ),
                 .extras           = {},
             };
-
-            root.meshes[ i ] = cgltf_mesh{
-                .name             = const_cast< char* >( rgprim.PrimitiveNameInMesh().c_str() ),
-                .primitives       = &root.primitives[ i ],
-                .primitives_count = 1,
-                .extras           = {},
-            };
-
-            *root.children[ i ] = cgltf_node{
-                .name           = const_cast< char* >( rgprim.PrimitiveNameInMesh().c_str() ),
-                .parent         = root.parent,
-                .children       = nullptr,
-                .children_count = 0,
-                .mesh           = &root.meshes[ i ],
-                .camera         = nullptr,
-                .light          = nullptr,
-                .has_matrix     = true,
-                .matrix         = RG_TRANSFORM_TO_GLTF_MATRIX( rgprim.Transform() ),
-                .extras         = { .data = const_cast< char* >( primExtrasExample ) },
-                .has_mesh_gpu_instancing = false,
-                .mesh_gpu_instancing     = {},
-            };
         }
+
+        *root.mesh = cgltf_mesh{
+            .name             = const_cast< char* >( root.name.c_str() ),
+            .primitives       = std::data( root.primitives ),
+            .primitives_count = std::size( root.primitives ),
+            .extras           = {},
+        };
+
+        *root.thisNode = cgltf_node{
+            .name                    = const_cast< char* >( root.name.c_str() ),
+            .parent                  = nullptr, /* later */
+            .children                = nullptr,
+            .children_count          = 0,
+            .mesh                    = root.mesh,
+            .camera                  = nullptr,
+            .light                   = nullptr,
+            .has_matrix              = true,
+            .matrix                  = RG_TRANSFORM_TO_GLTF_MATRIX( root.transform ),
+            .extras                  = { .data = const_cast< char* >( primExtrasExample ) },
+            .has_mesh_gpu_instancing = false,
+            .mesh_gpu_instancing     = {},
+        };
     }
 
     // main root node
@@ -752,4 +815,23 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
     }
 
     debug::Info( "{}: Exported successfully", gltfPath.string() );
+}
+
+bool RTGL1::GltfMeshNode::operator==( const GltfMeshNode& other ) const
+{
+    return this->name == other.name && TransformsAreEqual( this->transform, other.transform );
+}
+
+bool RTGL1::GltfMeshNode::operator<( const GltfMeshNode& other ) const
+{
+    return this->name < other.name && TransformIsLess( this->transform, other.transform );
+}
+
+uint64_t RTGL1::GltfMeshNode::Hash() const
+{
+    uint64_t h = 0;
+    HashCombine( h, name );
+    HashCombine( h, transform );
+
+    return h;
 }

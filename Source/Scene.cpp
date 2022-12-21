@@ -154,7 +154,7 @@ void RTGL1::Scene::NewScene( VkCommandBuffer     cmd,
                              const GltfImporter& staticScene,
                              TextureManager&     textureManager )
 {
-    debug::Verbose( "Starting new scene" );
+    debug::Verbose( "Starting new scene..." );
 
     staticUniqueIDs.clear();
 
@@ -170,6 +170,8 @@ void RTGL1::Scene::NewScene( VkCommandBuffer     cmd,
 
         debug::Info( "Static geometry was rebuilt" );
     }
+
+    debug::Verbose( "New scene is ready" );
 }
 
 const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()
