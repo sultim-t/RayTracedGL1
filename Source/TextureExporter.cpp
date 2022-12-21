@@ -122,7 +122,39 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
         .arrayLayer = 0,
     };
 
-    VkImage dstImage = VK_NULL_HANDLE;
+    // Can't vkCmdBlit into a linear tiling directly
+    // Can't vkCmdCopy directly from a compressed format (diff block extents with rgba8)
+    // 1. Blit from compressed to optimal rgba8
+    // 2. Copy from optimal rgba8 to linear rgba8
+
+    VkImage dstImage_Optimal = VK_NULL_HANDLE;
+    VkImage dstImage_Linear  = VK_NULL_HANDLE;
+    {
+        VkImageCreateInfo info = {
+            .sType       = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+            .pNext       = nullptr,
+            .flags       = 0,
+            .imageType   = VK_IMAGE_TYPE_2D,
+            .format      = VK_FORMAT_R8G8B8A8_UNORM,
+            .extent      = { srcImageSize.width, srcImageSize.height, 1 },
+            .mipLevels   = 1,
+            .arrayLayers = 1,
+            .samples     = VK_SAMPLE_COUNT_1_BIT,
+            .tiling      = VK_IMAGE_TILING_OPTIMAL, /* optimal */
+            .usage =
+                VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT, /* dst + src */
+            .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
+            .queueFamilyIndexCount = 0,
+            .pQueueFamilyIndices   = nullptr,
+            .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
+        };
+
+        VkResult r = vkCreateImage( device, &info, nullptr, &dstImage_Optimal );
+        VK_CHECKERROR( r );
+        SET_DEBUG_NAME(
+            device, dstImage_Optimal, VK_OBJECT_TYPE_IMAGE, "Export dst image (optimal)" );
+    }
+
     {
         VkImageCreateInfo info = {
             .sType                 = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -134,33 +166,51 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
             .mipLevels             = 1,
             .arrayLayers           = 1,
             .samples               = VK_SAMPLE_COUNT_1_BIT,
-            .tiling                = VK_IMAGE_TILING_LINEAR,
-            .usage                 = VK_IMAGE_USAGE_TRANSFER_DST_BIT,
+            .tiling                = VK_IMAGE_TILING_LINEAR,          /* linear */
+            .usage                 = VK_IMAGE_USAGE_TRANSFER_DST_BIT, /* dst */
             .sharingMode           = VK_SHARING_MODE_EXCLUSIVE,
             .queueFamilyIndexCount = 0,
             .pQueueFamilyIndices   = nullptr,
             .initialLayout         = VK_IMAGE_LAYOUT_UNDEFINED,
         };
 
-        VkResult r = vkCreateImage( device, &info, nullptr, &dstImage );
+        VkResult r = vkCreateImage( device, &info, nullptr, &dstImage_Linear );
         VK_CHECKERROR( r );
+        SET_DEBUG_NAME( device,
+                        dstImage_Linear,
+                        VK_OBJECT_TYPE_IMAGE,
+                        "Export dst image (linear, host-readable)" );
     }
 
-    VkDeviceMemory dstImageMemory = VK_NULL_HANDLE;
+    VkDeviceMemory dstMemory_Optimal = VK_NULL_HANDLE;
+    VkDeviceMemory dstMemory_Linear  = VK_NULL_HANDLE;
     {
         VkMemoryRequirements memReqs = {};
-        vkGetImageMemoryRequirements( device, dstImage, &memReqs );
+        vkGetImageMemoryRequirements( device, dstImage_Optimal, &memReqs );
 
-        dstImageMemory = allocator.AllocDedicated( memReqs,
-                                                   VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-                                                       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-                                                   MemoryAllocator::AllocType::DEFAULT,
-                                                   "Export dst image" );
+        dstMemory_Optimal = allocator.AllocDedicated( memReqs,
+                                                      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                                      MemoryAllocator::AllocType::DEFAULT,
+                                                      "Export dst image (optimal)" );
 
-        VkResult r = vkBindImageMemory( device, dstImage, dstImageMemory, 0 );
+        VkResult r = vkBindImageMemory( device, dstImage_Optimal, dstMemory_Optimal, 0 );
+        VK_CHECKERROR( r );
+    }
+    {
+        VkMemoryRequirements memReqs = {};
+        vkGetImageMemoryRequirements( device, dstImage_Linear, &memReqs );
+
+        dstMemory_Linear = allocator.AllocDedicated( memReqs,
+                                                     VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                                                     MemoryAllocator::AllocType::DEFAULT,
+                                                     "Export dst image (linear, host-readable)" );
+
+        VkResult r = vkBindImageMemory( device, dstImage_Linear, dstMemory_Linear, 0 );
         VK_CHECKERROR( r );
     }
 
+    // blit srcImage -> dstImage_Optimal
     {
         VkImageMemoryBarrier2 bs[] = {
             // srcImage to transfer src
@@ -177,7 +227,7 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
                 .image               = srcImage,
                 .subresourceRange    = subresRange,
             },
-            // dstImage to transfer dst
+            // dstImage_Optimal to transfer dst
             {
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
                 .srcStageMask        = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
@@ -188,7 +238,7 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
                 .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = dstImage,
+                .image               = dstImage_Optimal,
                 .subresourceRange    = subresRange,
             },
         };
@@ -201,31 +251,73 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
 
         svkCmdPipelineBarrier2KHR( cmd, &dependencyInfo );
     }
-    /*{
+    {
         VkImageBlit blit = {
             .srcSubresource = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
                                 .mipLevel       = 0,
                                 .baseArrayLayer = 0,
                                 .layerCount     = 1 },
             .srcOffsets     = { { 0, 0, 0 },
-                                { int32_t( srcImageSize.width ), int32_t( srcImageSize.height ), 0 }
-    }, .dstSubresource = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT, .mipLevel       = 0,
+                                { int32_t( srcImageSize.width ), int32_t( srcImageSize.height ), 1 } },
+            .dstSubresource = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                .mipLevel       = 0,
                                 .baseArrayLayer = 0,
                                 .layerCount     = 1 },
             .dstOffsets     = { { 0, 0, 0 },
-                                { int32_t( srcImageSize.width ), int32_t( srcImageSize.height ), 0 }
-    },
+                                { int32_t( srcImageSize.width ), int32_t( srcImageSize.height ), 1 } },
         };
 
         vkCmdBlitImage( cmd,
                         srcImage,
-                        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                        dstImage,
-                        VK_IMAGE_LAYOUT_GENERAL,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        dstImage_Optimal,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         1,
                         &blit,
                         VK_FILTER_NEAREST );
-    }*/
+    }
+
+    // copy dstImage_Optimal -> dstImage_Linear
+    {
+        VkImageMemoryBarrier2 bs[] = {
+            {
+                // dstImage_Optimal to transfer src
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                .dstAccessMask       = VK_ACCESS_2_TRANSFER_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = dstImage_Optimal,
+                .subresourceRange    = subresRange,
+            },
+            {
+                // dstImage_Linear to transfer dst
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_ALL_GRAPHICS_BIT,
+                .srcAccessMask       = VK_ACCESS_2_NONE,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
+                .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = dstImage_Linear,
+                .subresourceRange    = subresRange,
+            },
+        };
+
+        VkDependencyInfoKHR dependencyInfo = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+            .imageMemoryBarrierCount = std::size( bs ),
+            .pImageMemoryBarriers    = std::data( bs ),
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &dependencyInfo );
+    }
     {
         VkImageCopy region = {
             .srcSubresource = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -242,13 +334,14 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
         };
 
         vkCmdCopyImage( cmd,
-                        srcImage,
+                        dstImage_Optimal,
                         VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                        dstImage,
+                        dstImage_Linear,
                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
                         1,
                         &region );
     }
+
     {
         VkImageMemoryBarrier2 bs[] = {
             {
@@ -266,7 +359,7 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
                 .subresourceRange    = subresRange,
             },
             {
-                // dstImage to host read
+                // dstImage_Linear to host read
                 .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2_KHR,
                 .srcStageMask        = VK_PIPELINE_STAGE_2_ALL_TRANSFER_BIT,
                 .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
@@ -276,7 +369,7 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
                 .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
                 .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                 .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                .image               = dstImage,
+                .image               = dstImage_Linear,
                 .subresourceRange    = subresRange,
             },
         };
@@ -289,26 +382,31 @@ bool RTGL1::TextureExporter::ExportAsPNG( MemoryAllocator&             allocator
 
         svkCmdPipelineBarrier2KHR( cmd, &dependencyInfo );
     }
+
     cmdManager.Submit( cmd );
     cmdManager.WaitGraphicsIdle();
 
     {
         VkSubresourceLayout subresLayout = {};
-        vkGetImageSubresourceLayout( device, dstImage, &subres, &subresLayout );
+        vkGetImageSubresourceLayout( device, dstImage_Linear, &subres, &subresLayout );
 
         assert( subresLayout.size >= 4ull * srcImageSize.width * srcImageSize.height );
 
         uint8_t* data = nullptr;
         VkResult r    = vkMapMemory(
-            device, dstImageMemory, 0, VK_WHOLE_SIZE, 0, reinterpret_cast< void** >( &data ) );
+            device, dstMemory_Linear, 0, VK_WHOLE_SIZE, 0, reinterpret_cast< void** >( &data ) );
         VK_CHECKERROR( r );
 
         WritePNG( filepath, &data[ subresLayout.offset ], srcImageSize, subresLayout.rowPitch );
     }
     {
-        vkUnmapMemory( device, dstImageMemory );
-        vkFreeMemory( device, dstImageMemory, nullptr );
-        vkDestroyImage( device, dstImage, nullptr );
+        vkUnmapMemory( device, dstMemory_Linear );
+
+        vkFreeMemory( device, dstMemory_Linear, nullptr );
+        vkFreeMemory( device, dstMemory_Optimal, nullptr );
+
+        vkDestroyImage( device, dstImage_Linear, nullptr );
+        vkDestroyImage( device, dstImage_Optimal, nullptr );
     }
 
     return true;
