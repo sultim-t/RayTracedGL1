@@ -253,7 +253,7 @@ auto MakeAccessors( size_t                         vertexCount,
     assert( correspondingViews.size() == BufferViewsPerPrim );
 
     return std::to_array( {
-        #define ACCESSOR_POSITION 0
+#define ACCESSOR_POSITION 0
         cgltf_accessor{
             .name           = nullptr,
             .component_type = cgltf_component_type_r_32f,
@@ -267,7 +267,7 @@ auto MakeAccessors( size_t                         vertexCount,
             .has_max        = false,
             .max            = {},
         },
-        #define ACCESSOR_NORMAL 1
+#define ACCESSOR_NORMAL 1
         cgltf_accessor{
             .name           = nullptr,
             .component_type = cgltf_component_type_r_32f,
@@ -281,7 +281,7 @@ auto MakeAccessors( size_t                         vertexCount,
             .has_max        = true,
             .max            = { 1.f, 1.f, 1.f },
         },
-        #define ACCESSOR_TANGENT 2
+#define ACCESSOR_TANGENT 2
         cgltf_accessor{
             .name           = nullptr,
             .component_type = cgltf_component_type_r_32f,
@@ -295,7 +295,7 @@ auto MakeAccessors( size_t                         vertexCount,
             .has_max        = true,
             .max            = { 1.f, 1.f, 1.f, 1.f },
         },
-        #define ACCESSOR_TEXCOORD 3
+#define ACCESSOR_TEXCOORD 3
         cgltf_accessor{
             .name           = nullptr,
             .component_type = cgltf_component_type_r_32f,
@@ -309,7 +309,7 @@ auto MakeAccessors( size_t                         vertexCount,
             .has_max        = false,
             .max            = {},
         },
-        #define ACCESSOR_COLOR 4
+#define ACCESSOR_COLOR 4
         cgltf_accessor{
             .name           = nullptr,
             .component_type = cgltf_component_type_r_8u,
@@ -323,7 +323,7 @@ auto MakeAccessors( size_t                         vertexCount,
             .has_max        = false,
             .max            = {},
         },
-        #define ACCESSOR_INDEX 5
+#define ACCESSOR_INDEX 5
         cgltf_accessor{
             .name           = nullptr,
             .component_type = cgltf_component_type_r_32u,
@@ -525,6 +525,30 @@ struct GltfStorage
 };
 
 
+bool CanWriteFile( const std::filesystem::path& p )
+{
+    if( !std::filesystem::exists( p ) )
+    {
+        return true;
+    }
+
+#ifdef _WIN32
+    auto msg = std::format( "File \"{}\" already exists.\nOverwrite?", p.string() );
+
+    int msgboxID =
+        MessageBox( nullptr, msg.c_str(), "Overwrite", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2 );
+
+    switch( msgboxID )
+    {
+        case IDYES: return true;
+        default: return false;
+    }
+#else
+    return false;
+#endif
+}
+
+
 }
 
 void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
@@ -564,13 +588,21 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
 {
     if( scene.empty() )
     {
-        debug::Warning( "Nothing to export" );
+        debug::Warning( "Nothing to export. Check uploaded primitives window" );
         return;
     }
 
     if( sceneName.empty() )
     {
         debug::Warning( "Can't export: RgDrawFrameInfo::pMapName is an empty string" );
+        return;
+    }
+
+
+    const auto gltfPath = GetGltfPath( folder, sceneName );
+    if( !CanWriteFile( gltfPath ) )
+    {
+        debug::Warning( "Denied to write to the file {}", gltfPath.string() );
         return;
     }
 
@@ -709,14 +741,12 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
         return;
     }
 
-    const auto gltfPath = GetGltfPath( folder, sceneName ).string();
-
-    r = cgltf_write_file( &options, gltfPath.c_str(), &data );
+    r = cgltf_write_file( &options, gltfPath.string().c_str(), &data );
     if( r != cgltf_result_success )
     {
         debug::Warning( "cgltf_write_file fail" );
         return;
     }
 
-    debug::Info( "{}: Exported successfully", gltfPath );
+    debug::Info( "{}: Exported successfully", gltfPath.string() );
 }
