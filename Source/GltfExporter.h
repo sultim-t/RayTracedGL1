@@ -22,9 +22,11 @@
 
 #include "Common.h"
 #include "Containers.h"
+#include "TextureManager.h"
 
 #include <filesystem>
 #include <functional>
+#include <set>
 
 namespace RTGL1
 {
@@ -39,12 +41,6 @@ struct GltfMeshNode
     bool     operator<( const GltfMeshNode& other ) const;
     uint64_t Hash() const;
 };
-
-struct GltfMaterialRef
-{
-
-};
-
 }
 
 template<>
@@ -55,6 +51,10 @@ struct std::hash< RTGL1::GltfMeshNode >
 
 namespace RTGL1
 {
+
+using MeshesToTheirPrimitives =
+    rgl::unordered_map< GltfMeshNode, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > >;
+
 class GltfExporter
 {
 public:
@@ -67,10 +67,14 @@ public:
     GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
-    void ExportToFiles( const std::filesystem::path& gltfPath );
+
+    void ExportToFiles( const std::filesystem::path& gltfPath,
+                        const TextureManager&        textureManager );
 
 private:
-    rgl::unordered_map< GltfMeshNode, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
+    MeshesToTheirPrimitives scene;
+    std::set< std::string > sceneMaterials;
+
     RgTransform worldTransform;
 };
 }

@@ -86,7 +86,6 @@ public:
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
 
-
     auto GetWaterNormalTextureIndex() const -> uint32_t;
 
     auto GetMaterialTextures( const char* materialName ) const -> MaterialTextures;
@@ -97,10 +96,16 @@ public:
     auto GetColorForLayers( const RgMeshPrimitiveInfo& primitive ) const
         -> std::array< RgColor4DPacked32, 4 >;
 
+    struct ExportResult
+    {
+        std::string relativePath;
+        RgSamplerAddressMode addressModeU, addressModeV;
+    };
+
     auto ExportMaterialTextures( const char*                  materialName,
                                  const std::filesystem::path& folder,
                                  bool                         overwriteExisting ) const
-        -> std::array< std::string /* relative path */, TEXTURES_PER_MATERIAL_COUNT >;
+        -> std::array< ExportResult, TEXTURES_PER_MATERIAL_COUNT >;
 
 
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;

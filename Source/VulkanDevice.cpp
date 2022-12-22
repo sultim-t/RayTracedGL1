@@ -1176,7 +1176,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
 
     if( exporter )
     {
-        exporter->ExportToFiles( GetGltfPath( currentMap ) );
+        exporter->ExportToFiles( GetGltfPath( currentMap ), *textureManager );
         exporter.reset();
     }
 

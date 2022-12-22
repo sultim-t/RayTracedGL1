@@ -52,21 +52,17 @@ public:
         }
     }
 
-    void decrement()
+    T& increment_and_get()
     {
-        if( count > 0 )
-        {
-            --count;
-        }
-        else
-        {
-            assert( 0 );
-        }
+        increment();
+        return this->operator[]( count - 1 );
     }
 
     void reset_count() { count = 0; }
 
     size_type get_count() const { return count; }
+
+    auto get_counted_subspan() const { return std::span( this->begin(), count ); }
 
 private:
     size_type count{ 0 };

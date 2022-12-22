@@ -707,9 +707,9 @@ std::array< RgColor4DPacked32, 4 > TextureManager::GetColorForLayers(
 auto TextureManager::ExportMaterialTextures( const char*                  materialName,
                                              const std::filesystem::path& folder,
                                              bool                         overwriteExisting ) const
-    -> std::array< std::string, TEXTURES_PER_MATERIAL_COUNT >
+    -> std::array< ExportResult, TEXTURES_PER_MATERIAL_COUNT >
 {
-    std::array< std::string, TEXTURES_PER_MATERIAL_COUNT > arr;
+    std::array< ExportResult, TEXTURES_PER_MATERIAL_COUNT > arr;
 
     if( folder.empty() )
     {
@@ -725,7 +725,7 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
         {
             continue;
         }
-        
+
         const Texture& info = textures[ mat.indices[ i ] ];
 
         if( info.image == VK_NULL_HANDLE || info.size.width == 0 || info.size.height == 0 ||
@@ -749,7 +749,10 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
                                                        overwriteExisting );
         if( exported )
         {
-            arr[ i ] = relativeFilePath.string();
+            arr[ i ].relativePath = relativeFilePath.string();
+
+            std::tie( arr[ i ].addressModeU, arr[ i ].addressModeV ) =
+                SamplerManager::AccessAddressModes( info.samplerHandle );
         }
     }
 

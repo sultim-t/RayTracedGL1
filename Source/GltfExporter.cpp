@@ -21,8 +21,11 @@
 #include "GltfExporter.h"
 
 #include "Const.h"
+#include "SpanCounted.h"
 #include "TextureExporter.h"
 #include "Utils.h"
+
+#include "Generated/ShaderCommonC.h"
 
 #define CGLTF_VALIDATE_ENABLE_ASSERTS 1
 #define CGLTF_IMPLEMENTATION
@@ -243,6 +246,19 @@ private:
 
 namespace
 {
+cgltf_sampler MakeSampler( RgSamplerAddressMode addrU, RgSamplerAddressMode addrV )
+{
+    // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_sampler_wraps
+
+    return cgltf_sampler{
+        .name       = nullptr,
+        .mag_filter = 0, // default
+        .min_filter = 0, // default
+        .wrap_s     = addrU == RG_SAMPLER_ADDRESS_MODE_CLAMP ? 33071 : 10497,
+        .wrap_t     = addrV == RG_SAMPLER_ADDRESS_MODE_CLAMP ? 33071 : 10497,
+    };
+}
+
 cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
                              cgltf_texture*                    albedo,
                              cgltf_texture*                    normal,
@@ -579,10 +595,7 @@ struct GltfRoot
 
 struct GltfStorage
 {
-    explicit GltfStorage(
-        const rgl::unordered_map< RTGL1::GltfMeshNode,
-                                  std::vector< std::shared_ptr< RTGL1::DeepCopyOfPrimitive > > >&
-            scene )
+    explicit GltfStorage( const RTGL1::MeshesToTheirPrimitives& scene )
     {
         struct Ranges
         {
@@ -646,18 +659,134 @@ struct GltfStorage
     std::vector< cgltf_accessor >    allAccessors;
     std::vector< cgltf_attribute >   allAttributes;
     std::vector< cgltf_primitive >   allPrimitives;
+    std::vector< cgltf_material >    allMaterials;
     std::vector< cgltf_mesh >        allMeshes;
     std::vector< cgltf_node >        allNodes;
 
-    std::vector< cgltf_sampler >  allSamplers;
-    std::vector< cgltf_image >    allImages;
-    std::vector< cgltf_texture >  allTextures;
-    std::vector< cgltf_material > allMaterials;
-
     std::vector< GltfRoot > roots; // each corresponds to RgMeshInfo
 
-    cgltf_node*                world;
+    cgltf_node*                world{ nullptr };
     std::vector< cgltf_node* > worldRoots;
+};
+
+
+struct GltfTextures
+{
+    explicit GltfTextures( const std::set< std::string >& sceneMaterials,
+                           const std::filesystem::path&   gltfFolder,
+                           const RTGL1::TextureManager&   textureManager )
+    {
+        // alloc max and lock pointers
+        allocStrings.resize( RTGL1::TEXTURES_PER_MATERIAL_COUNT * sceneMaterials.size() );
+        allocImages.resize( RTGL1::TEXTURES_PER_MATERIAL_COUNT * sceneMaterials.size() );
+        allocTextures.resize( RTGL1::TEXTURES_PER_MATERIAL_COUNT * sceneMaterials.size() );
+
+        strings  = rgl::span_counted( std::span( allocStrings ) );
+        images   = rgl::span_counted( std::span( allocImages ) );
+        textures = rgl::span_counted( std::span( allocTextures ) );
+
+        allocSamplers = {
+            MakeSampler( RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+            MakeSampler( RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
+            MakeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+            MakeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
+        };
+        auto findSampler = [ this ]( const RTGL1::TextureManager::ExportResult& r ) {
+            cgltf_sampler target = MakeSampler( r.addressModeU, r.addressModeV );
+            for( cgltf_sampler& found : allocSamplers )
+            {
+                if( std::memcmp( &found, &target, sizeof( cgltf_sampler ) ) == 0 )
+                {
+                    return &found;
+                }
+            }
+            assert( 0 );
+            return &allocSamplers[ 0 ];
+        };
+
+
+        // resolve
+        for( const auto& materialName : sceneMaterials )
+        {
+            if( materialName.empty() )
+            {
+                continue;
+            }
+
+            static_assert( RTGL1::TEXTURES_PER_MATERIAL_COUNT == 3 );
+            static_assert( MATERIAL_ALBEDO_ALPHA_INDEX == 0 );
+            static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
+            static_assert( MATERIAL_NORMAL_INDEX == 2 );
+
+            auto [ albedo, rme, normal ] =
+                textureManager.ExportMaterialTextures( materialName.c_str(), gltfFolder, false );
+
+            auto tryMakeCgltfTexture =
+                [ this,
+                  &findSampler ]( RTGL1::TextureManager::ExportResult&& r ) -> cgltf_texture* {
+                if( !r.relativePath.empty() )
+                {
+                    std::string&   str = strings.increment_and_get();
+                    cgltf_image&   img = images.increment_and_get();
+                    cgltf_texture& txd = textures.increment_and_get();
+
+                    // need to protect a string, to avoid dangling pointers
+                    str = std::move( r.relativePath );
+
+                    img = cgltf_image{
+                        .uri = const_cast< char* >( str.c_str() ),
+                    };
+
+                    txd = cgltf_texture{
+                        .image   = &img,
+                        .sampler = findSampler( r ),
+                    };
+
+                    return &txd;
+                }
+                return nullptr;
+            };
+
+            materialAccess[ materialName ] = TextureSet{
+                .albedo = tryMakeCgltfTexture( std::move( albedo ) ),
+                .rme    = tryMakeCgltfTexture( std::move( rme ) ),
+                .normal = tryMakeCgltfTexture( std::move( normal ) ),
+            };
+        }
+    }
+
+    struct TextureSet
+    {
+        cgltf_texture* albedo{ nullptr };
+        cgltf_texture* rme{ nullptr };
+        cgltf_texture* normal{ nullptr };
+    };
+
+    TextureSet Access( const char* pTextureName )
+    {
+        if( RTGL1::Utils::IsCstrEmpty( pTextureName ) )
+        {
+            return {};
+        }
+
+        return materialAccess[ pTextureName ];
+    }
+
+    auto Samplers() { return std::span( allocSamplers ); }
+    auto Images() { return images.get_counted_subspan(); }
+    auto Textures() { return textures.get_counted_subspan(); }
+
+private:
+    std::vector< std::string >   allocStrings;
+    std::vector< cgltf_sampler > allocSamplers;
+    std::vector< cgltf_image >   allocImages;
+    std::vector< cgltf_texture > allocTextures;
+
+    rgl::span_counted< std::string >   strings;
+    rgl::span_counted< cgltf_image >   images;
+    rgl::span_counted< cgltf_texture > textures;
+
+    std::unordered_map< std::string, TextureSet > materialAccess;
 };
 
 
@@ -754,9 +883,15 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
                mesh.transform,
            } ]
         .emplace_back( std::make_shared< DeepCopyOfPrimitive >( primitive ) );
+
+    if( !Utils::IsCstrEmpty( primitive.pTextureName ) )
+    {
+        sceneMaterials.insert( primitive.pTextureName );
+    }
 }
 
-void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath )
+void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
+                                         const TextureManager&        textureManager )
 {
     if( scene.empty() )
     {
@@ -783,8 +918,9 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath )
 
 
     // lock pointers
-    BinFile     fbin( gltfPath );
-    GltfStorage storage( scene );
+    BinFile      fbin( gltfPath );
+    GltfStorage  storage( scene );
+    GltfTextures textureStorage( sceneMaterials, GetGltfFolder( gltfPath ), textureManager );
 
 
     // for each RgMesh
@@ -899,12 +1035,12 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath )
         .buffer_views_count = std::size( storage.allBufferViews ),
         .buffers            = fbin.Get(),
         .buffers_count      = 1,
-        .images             = std::data( storage.allImages ),
-        .images_count       = std::size( storage.allImages ),
-        .textures           = std::data( storage.allTextures ),
-        .textures_count     = std::size( storage.allTextures ),
-        .samplers           = std::data( storage.allSamplers ),
-        .samplers_count     = std::size( storage.allSamplers ),
+        .images             = std::data( textureStorage.Images() ),
+        .images_count       = std::size( textureStorage.Images() ),
+        .textures           = std::data( textureStorage.Textures() ),
+        .textures_count     = std::size( textureStorage.Textures() ),
+        .samplers           = std::data( textureStorage.Samplers() ),
+        .samplers_count     = std::size( textureStorage.Samplers() ),
         .nodes              = std::data( storage.allNodes ),
         .nodes_count        = std::size( storage.allNodes ),
         .scenes             = &gltfScene,
