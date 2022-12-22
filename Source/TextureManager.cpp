@@ -20,14 +20,15 @@
 
 #include "TextureManager.h"
 
-#include <numeric>
-
 #include "Const.h"
-#include "Utils.h"
-#include "TextureOverrides.h"
-#include "Generated/ShaderCommonC.h"
 #include "RgException.h"
+#include "TextureExporter.h"
+#include "TextureOverrides.h"
+#include "Utils.h"
 
+#include "Generated/ShaderCommonC.h"
+
+#include <numeric>
 
 using namespace RTGL1;
 
@@ -38,6 +39,7 @@ namespace
 constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX,
                                                      EMPTY_TEXTURE_INDEX,
                                                      EMPTY_TEXTURE_INDEX };
+static_assert( TEXTURES_PER_MATERIAL_COUNT == 3 );
 
 constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
 
@@ -76,15 +78,17 @@ auto FindEmptySlot( std::vector< Texture >& textures )
 }
 
 
-TextureManager::TextureManager( VkDevice                                       _device,
-                                std::shared_ptr< MemoryAllocator >             _memAllocator,
-                                std::shared_ptr< SamplerManager >              _samplerMgr,
-                                const std::shared_ptr< CommandBufferManager >& _cmdManager,
-                                std::shared_ptr< UserFileLoad >                _userFileLoad,
-                                const RgInstanceCreateInfo&                    _info,
-                                const LibraryConfig::Config&                   _config )
+TextureManager::TextureManager( VkDevice                                _device,
+                                std::shared_ptr< MemoryAllocator >      _memAllocator,
+                                std::shared_ptr< SamplerManager >       _samplerMgr,
+                                std::shared_ptr< CommandBufferManager > _cmdManager,
+                                std::shared_ptr< UserFileLoad >         _userFileLoad,
+                                const RgInstanceCreateInfo&             _info,
+                                const LibraryConfig::Config&            _config )
     : device( _device )
     , pbrSwizzling( _info.pbrTextureSwizzling )
+    , memAllocator( std::move( _memAllocator ) )
+    , cmdManager( std::move( _cmdManager ) )
     , samplerMgr( std::move( _samplerMgr ) )
     , waterNormalTextureIndex( 0 )
     , currentDynamicSamplerFilter( DefaultDynamicSamplerFilter )
@@ -121,18 +125,20 @@ TextureManager::TextureManager( VkDevice                                       _
 
     textureDesc = std::make_shared< TextureDescriptors >(
         device, samplerMgr, maxTextureCount, BINDING_TEXTURES );
-    textureUploader = std::make_shared< TextureUploader >( device, std::move( _memAllocator ) );
+    textureUploader = std::make_shared< TextureUploader >( device, memAllocator );
 
     textures.resize( maxTextureCount );
 
     // submit cmd to create empty texture
-    VkCommandBuffer cmd = _cmdManager->StartGraphicsCmd();
     {
-        CreateEmptyTexture( cmd, 0 );
-        CreateWaterNormalTexture( cmd, 0, _info.pWaterNormalTexturePath );
+        VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
+        {
+            CreateEmptyTexture( cmd, 0 );
+            CreateWaterNormalTexture( cmd, 0, _info.pWaterNormalTexturePath );
+        }
+        cmdManager->Submit( cmd );
+        cmdManager->WaitGraphicsIdle();
     }
-    _cmdManager->Submit( cmd );
-    _cmdManager->WaitGraphicsIdle();
 
     if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX )
     {
@@ -553,6 +559,7 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
     *targetSlot = Texture{
         .image         = image,
         .view          = view,
+        .size          = uploadInfo.baseSize,
         .format        = uploadInfo.format,
         .samplerHandle = samplerHandle,
         .swizzling     = uploadInfo.swizzling,
@@ -592,14 +599,14 @@ void TextureManager::DestroyMaterialTextures( uint32_t frameIndex, const Materia
     }
 }
 
-bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName )
+bool TextureManager::TryDestroyMaterial( uint32_t frameIndex, const char* materialName )
 {
-    if( Utils::IsCstrEmpty( pTextureName ) )
+    if( Utils::IsCstrEmpty( materialName ) )
     {
         return false;
     }
 
-    auto it = materials.find( pTextureName );
+    auto it = materials.find( materialName );
     if( it == materials.end() )
     {
         return false;
@@ -628,14 +635,14 @@ void TextureManager::AddToBeDestroyed( uint32_t frameIndex, Texture& texture )
     texture = {};
 }
 
-MaterialTextures TextureManager::GetMaterialTextures( const char* pTextureName ) const
+MaterialTextures TextureManager::GetMaterialTextures( const char* materialName ) const
 {
-    if( Utils::IsCstrEmpty( pTextureName ) )
+    if( Utils::IsCstrEmpty( materialName ) )
     {
         return EmptyMaterialTextures;
     }
 
-    const auto it = materials.find( pTextureName );
+    const auto it = materials.find( materialName );
 
     if( it == materials.end() )
     {
@@ -695,4 +702,56 @@ std::array< RgColor4DPacked32, 4 > TextureManager::GetColorForLayers(
         IF_LAYER_NOT_NULL( pLayer2, color, 0xFFFFFFFF ),
         IF_LAYER_NOT_NULL( pLayerLightmap, color, 0xFFFFFFFF ),
     };
+}
+
+auto TextureManager::ExportMaterialTextures( const char*                  materialName,
+                                             const std::filesystem::path& folder,
+                                             bool                         overwriteExisting ) const
+    -> std::array< std::string, TEXTURES_PER_MATERIAL_COUNT >
+{
+    std::array< std::string, TEXTURES_PER_MATERIAL_COUNT > arr;
+
+    if( folder.empty() )
+    {
+        assert( 0 );
+        return {};
+    }
+
+    MaterialTextures mat = GetMaterialTextures( materialName );
+
+    for( size_t i = 0; i < std::size( mat.indices ); i++ )
+    {
+        if( mat.indices[ i ] == EMPTY_TEXTURE_INDEX )
+        {
+            continue;
+        }
+        
+        const Texture& info = textures[ mat.indices[ i ] ];
+
+        if( info.image == VK_NULL_HANDLE || info.size.width == 0 || info.size.height == 0 ||
+            info.format == VK_FORMAT_UNDEFINED )
+        {
+            continue;
+        }
+
+        auto relativeFilePath = std::filesystem::path( materialName );
+        relativeFilePath.replace_extension( "" )
+            .concat( postfixes[ i ] )
+            .replace_extension( ".tga" );
+
+        bool exported = TextureExporter().ExportAsTGA( *memAllocator,
+                                                       *cmdManager,
+                                                       info.image,
+                                                       info.size,
+                                                       info.format,
+                                                       folder / relativeFilePath,
+                                                       false,
+                                                       overwriteExisting );
+        if( exported )
+        {
+            arr[ i ] = relativeFilePath.string();
+        }
+    }
+
+    return arr;
 }

@@ -46,13 +46,13 @@ struct TextureOverrides;
 class TextureManager : public IFileDependency
 {
 public:
-    TextureManager( VkDevice                                       device,
-                    std::shared_ptr< MemoryAllocator >             memAllocator,
-                    std::shared_ptr< SamplerManager >              samplerManager,
-                    const std::shared_ptr< CommandBufferManager >& cmdManager,
-                    std::shared_ptr< UserFileLoad >                userFileLoad,
-                    const RgInstanceCreateInfo&                    info,
-                    const LibraryConfig::Config&                   config );
+    TextureManager( VkDevice                                device,
+                    std::shared_ptr< MemoryAllocator >      memAllocator,
+                    std::shared_ptr< SamplerManager >       samplerManager,
+                    std::shared_ptr< CommandBufferManager > cmdManager,
+                    std::shared_ptr< UserFileLoad >         userFileLoad,
+                    const RgInstanceCreateInfo&             info,
+                    const LibraryConfig::Config&            config );
     ~TextureManager() override;
 
     TextureManager( const TextureManager& other )                = delete;
@@ -80,17 +80,27 @@ public:
                             std::span< SamplerManager::Handle > samplers,
                             RgTextureSwizzling                  customPbrSwizzling );
 
-    bool TryDestroyMaterial( uint32_t frameIndex, const char* pTextureName );
+    bool TryDestroyMaterial( uint32_t frameIndex, const char* materialName );
 
 
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
     VkDescriptorSetLayout GetDescSetLayout() const;
-    uint32_t              GetWaterNormalTextureIndex() const;
-    MaterialTextures      GetMaterialTextures( const char* pTextureName ) const;
-    auto                  GetTexturesForLayers( const RgMeshPrimitiveInfo& primitive ) const
+
+
+    auto GetWaterNormalTextureIndex() const -> uint32_t;
+
+    auto GetMaterialTextures( const char* materialName ) const -> MaterialTextures;
+
+    auto GetTexturesForLayers( const RgMeshPrimitiveInfo& primitive ) const
         -> std::array< MaterialTextures, 4 >;
+
     auto GetColorForLayers( const RgMeshPrimitiveInfo& primitive ) const
         -> std::array< RgColor4DPacked32, 4 >;
+
+    auto ExportMaterialTextures( const char*                  materialName,
+                                 const std::filesystem::path& folder,
+                                 bool                         overwriteExisting ) const
+        -> std::array< std::string /* relative path */, TEXTURES_PER_MATERIAL_COUNT >;
 
 
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
@@ -140,6 +150,9 @@ private:
 
     std::shared_ptr< ImageLoader >    imageLoader;
     std::shared_ptr< ImageLoaderDev > imageLoaderDev;
+
+    std::shared_ptr< MemoryAllocator >      memAllocator;
+    std::shared_ptr< CommandBufferManager > cmdManager;
 
     std::shared_ptr< SamplerManager >     samplerMgr;
     std::shared_ptr< TextureDescriptors > textureDesc;

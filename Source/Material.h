@@ -33,6 +33,7 @@ struct Texture
 {
     VkImage                             image         = VK_NULL_HANDLE;
     VkImageView                         view          = VK_NULL_HANDLE;
+    RgExtent2D                          size          = {};
     VkFormat                            format        = VK_FORMAT_UNDEFINED;
     SamplerManager::Handle              samplerHandle = SamplerManager::Handle();
     std::optional< RgTextureSwizzling > swizzling     = std::nullopt;
