@@ -565,7 +565,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     }
     ImGui::End();
 
-    if( ImGui::Begin( "Primitives" ) )
+    if( ImGui::Begin( "Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
     {
         ImGui::Checkbox( "Record", &debugData.primitivesTableEnable );
         ImGui::TextUnformatted( "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
@@ -682,7 +682,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     }
     ImGui::End();
 
-    if( ImGui::Begin( "Non-world Primitives" ) )
+    if( ImGui::Begin( "Non-world Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
     {
         ImGui::Checkbox( "Record", &debugData.nonworldTableEnable );
 
@@ -712,7 +712,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     }
     ImGui::End();
     
-    if( ImGui::Begin( "Log" ) )
+    if( ImGui::Begin( "Log", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
     {
         ImGui::CheckboxFlags( "Errors", &debugData.logFlags, RG_MESSAGE_SEVERITY_ERROR );
         ImGui::SameLine();
