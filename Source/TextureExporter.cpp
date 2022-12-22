@@ -67,8 +67,8 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
 }
 
 bool RTGL1::TextureExporter::WriteTGA( std::filesystem::path filepath,
-    const void* pixels,
-    const RgExtent2D& size )
+                                       const void*           pixels,
+                                       const RgExtent2D&     size )
 {
     assert( std::filesystem::exists( filepath.parent_path() ) );
 
@@ -91,17 +91,19 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
                                           RgExtent2D                   srcImageSize,
                                           VkFormat                     srcImageFormat,
                                           const std::filesystem::path& filepath,
-                                          bool,
-                                          bool overwriteFiles )
+                                          bool                         exportAsSRGB,
+                                          bool                         overwriteFiles )
 {
     VkDevice device = allocator.GetDevice();
+
+    const VkFormat dstImageFormat = exportAsSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
 
     if( !PrepareTargetFile( filepath, overwriteFiles ) )
     {
         return false;
     }
 
-    if( !CheckSupport( allocator.GetPhysicalDevice(), srcImageFormat ) )
+    if( !CheckSupport( allocator.GetPhysicalDevice(), srcImageFormat, dstImageFormat ) )
     {
         return false;
     }
@@ -137,7 +139,7 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
             .pNext       = nullptr,
             .flags       = 0,
             .imageType   = VK_IMAGE_TYPE_2D,
-            .format      = VK_FORMAT_R8G8B8A8_UNORM,
+            .format      = dstImageFormat,
             .extent      = { srcImageSize.width, srcImageSize.height, 1 },
             .mipLevels   = 1,
             .arrayLayers = 1,
@@ -163,7 +165,7 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
             .pNext                 = nullptr,
             .flags                 = 0,
             .imageType             = VK_IMAGE_TYPE_2D,
-            .format                = VK_FORMAT_R8G8B8A8_UNORM,
+            .format                = dstImageFormat,
             .extent                = { srcImageSize.width, srcImageSize.height, 1 },
             .mipLevels             = 1,
             .arrayLayers           = 1,
@@ -433,7 +435,9 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
     return success;
 }
 
-bool RTGL1::TextureExporter::CheckSupport( VkPhysicalDevice physDevice, VkFormat srcImageFormat )
+bool RTGL1::TextureExporter::CheckSupport( VkPhysicalDevice physDevice,
+                                           VkFormat         srcImageFormat,
+                                           VkFormat         dstImageFormat )
 {
     VkFormatProperties formatProps = {};
 
@@ -447,22 +451,22 @@ bool RTGL1::TextureExporter::CheckSupport( VkPhysicalDevice physDevice, VkFormat
         }
     }
     {
-        vkGetPhysicalDeviceFormatProperties( physDevice, VK_FORMAT_R8G8B8A8_UNORM, &formatProps );
+        vkGetPhysicalDeviceFormatProperties( physDevice, dstImageFormat, &formatProps );
         if( !( formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_BLIT_DST_BIT ) )
         {
-            debug::Warning( "BLIT_DST not supported for VK_FORMAT_R8G8B8A8_UNORM" );
+            debug::Warning( "BLIT_DST not supported for VkFormat {}", uint32_t( dstImageFormat ) );
             return false;
         }
         if( !( formatProps.linearTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_SRC_BIT ) )
         {
-            debug::Warning(
-                "TRANSFER_SRC not supported for VK_FORMAT_R8G8B8A8_UNORM (linear tiling)" );
+            debug::Warning( "TRANSFER_SRC not supported for VkFormat {} (linear tiling)",
+                            uint32_t( dstImageFormat ) );
             return false;
         }
         if( !( formatProps.linearTilingFeatures & VK_FORMAT_FEATURE_TRANSFER_DST_BIT ) )
         {
-            debug::Warning(
-                "TRANSFER_DST not supported for VK_FORMAT_R8G8B8A8_UNORM (linear tiling)" );
+            debug::Warning( "TRANSFER_DST not supported for VkFormat {} (linear tiling)",
+                            uint32_t( dstImageFormat ) );
             return false;
         }
     }

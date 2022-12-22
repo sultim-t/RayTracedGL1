@@ -741,7 +741,6 @@ int main( int argc, char* argv[] )
 
         .maxTextureCount                   = 1024,
         .pOverridenTexturesFolderPath      = ASSET_DIRECTORY,
-        .overridenAlbedoAlphaTextureIsSRGB = true,
         .pWaterNormalTexturePath           = ASSET_DIRECTORY "WaterNormal_n.ktx2",
 
         // to match the GLTF standard

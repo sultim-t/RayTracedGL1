@@ -52,7 +52,9 @@ public:
                       bool                         exportAsSRGB,
                       bool                         overwriteFiles = true );
 
-    bool CheckSupport( VkPhysicalDevice physDevice, VkFormat srcImageFormat );
+    bool CheckSupport( VkPhysicalDevice physDevice,
+                       VkFormat         srcImageFormat,
+                       VkFormat         dstImageFormat );
 
 private:
 };

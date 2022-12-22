@@ -261,14 +261,6 @@ typedef struct RgInstanceCreateInfo
     // If null, then "_n" will be used.
     const char*                 pOverridenNormalTexturePostfix;
 
-    RgBool32                    originalAlbedoAlphaTextureIsSRGB;
-    RgBool32                    originalRoughnessMetallicEmissionTextureIsSRGB;
-    RgBool32                    originalNormalTextureIsSRGB;
-
-    RgBool32                    overridenAlbedoAlphaTextureIsSRGB;
-    RgBool32                    overridenRoughnessMetallicEmissionTextureIsSRGB;
-    RgBool32                    overridenNormalTextureIsSRGB;
-
     // Path to normal texture path. Ignores pOverridenTexturesFolderPath and pOverridenNormalTexturePostfix
     const char*                 pWaterNormalTexturePath;
 

@@ -176,8 +176,6 @@ private:
     RgSamplerFilter currentDynamicSamplerFilter;
 
     std::string postfixes[ TEXTURES_PER_MATERIAL_COUNT ];
-    bool        overridenIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];
-    bool        originalIsSRGB[ TEXTURES_PER_MATERIAL_COUNT ];
 
     bool forceNormalMapFilterLinear;
 };

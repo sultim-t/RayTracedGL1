@@ -98,18 +98,6 @@ TextureManager::TextureManager( VkDevice                                _device,
             DefaultIfNull(_info.pOverridenRoughnessMetallicEmissionTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION),
             DefaultIfNull(_info.pOverridenNormalTexturePostfix, DEFAULT_TEXTURE_POSTFIX_NORMAL),
         }
-    , overridenIsSRGB
-        {
-            !!_info.overridenAlbedoAlphaTextureIsSRGB,
-            !!_info.overridenRoughnessMetallicEmissionTextureIsSRGB,
-            !!_info.overridenNormalTextureIsSRGB,
-        }
-    , originalIsSRGB
-        {
-            !!_info.originalAlbedoAlphaTextureIsSRGB,
-            !!_info.originalRoughnessMetallicEmissionTextureIsSRGB,
-            !!_info.originalNormalTextureIsSRGB,
-        }
     , forceNormalMapFilterLinear( !!_info.textureSamplerForceNormalMapFilterLinear )
 {
     const uint32_t maxTextureCount =
@@ -745,7 +733,7 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
                                                        info.size,
                                                        info.format,
                                                        folder / relativeFilePath,
-                                                       false,
+                                                       i == MATERIAL_ALBEDO_ALPHA_INDEX,
                                                        overwriteExisting );
         if( exported )
         {
