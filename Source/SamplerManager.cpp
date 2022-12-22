@@ -128,6 +128,34 @@ namespace
         return index;
     }
 
+    auto GetRgAddressModesFromIndex( uint32_t index )
+    {
+        RgSamplerAddressMode u = RG_SAMPLER_ADDRESS_MODE_CLAMP;
+        RgSamplerAddressMode v = RG_SAMPLER_ADDRESS_MODE_CLAMP;
+
+        if( ( index & ADDRESS_MODE_U_MASK ) == ADDRESS_MODE_U_REPEAT ||
+            ( index & ADDRESS_MODE_U_MASK ) == ADDRESS_MODE_U_MIRRORED_REPEAT )
+        {
+            u = RG_SAMPLER_ADDRESS_MODE_REPEAT;
+        }
+
+        if( ( index & ADDRESS_MODE_V_MASK ) == ADDRESS_MODE_V_REPEAT ||
+            ( index & ADDRESS_MODE_V_MASK ) == ADDRESS_MODE_V_MIRRORED_REPEAT )
+        {
+            v = RG_SAMPLER_ADDRESS_MODE_REPEAT;
+        }
+
+        {
+            auto check =
+                ToIndex( VK_FILTER_NEAREST, RgAddressModeToVk( u ), RgAddressModeToVk( v ), false );
+
+            assert( ( check & ADDRESS_MODE_U_MASK ) == ( index & ADDRESS_MODE_U_MASK ) );
+            assert( ( check & ADDRESS_MODE_V_MASK ) == ( index & ADDRESS_MODE_V_MASK ) );
+        }
+
+        return std::make_pair( u, v );
+    }
+
     uint32_t ToIndex( RgSamplerFilter      filter,
                       RgSamplerAddressMode addressModeU,
                       RgSamplerAddressMode addressModeV,
@@ -237,7 +265,7 @@ void RTGL1::SamplerManager::CreateAllSamplers( uint32_t _anisotropy, float _mipL
                 uint32_t  index = ToIndex( filter, modeU, modeV, false );
                 VkSampler sampler;
 
-                VkResult  r = vkCreateSampler( device, &info, nullptr, &sampler );
+                VkResult r = vkCreateSampler( device, &info, nullptr, &sampler );
                 VK_CHECKERROR( r );
 
                 assert( samplers.find( index ) == samplers.end() );
@@ -256,7 +284,7 @@ void RTGL1::SamplerManager::CreateAllSamplers( uint32_t _anisotropy, float _mipL
         uint32_t  index = ToIndex( info.minFilter, info.addressModeU, info.addressModeV, true );
         VkSampler sampler;
 
-        VkResult  r = vkCreateSampler( device, &info, nullptr, &sampler );
+        VkResult r = vkCreateSampler( device, &info, nullptr, &sampler );
         VK_CHECKERROR( r );
 
         assert( samplers.find( index ) == samplers.end() );
@@ -332,6 +360,14 @@ bool RTGL1::SamplerManager::TryChangeMipLodBias( uint32_t frameIndex, float newM
 
     mipLodBias = newMipLodBias;
     return true;
+}
+
+std::pair< RgSamplerAddressMode, RgSamplerAddressMode > RTGL1::SamplerManager::AccessAddressModes(
+    const Handle& handle )
+{
+    auto r = GetRgAddressModesFromIndex( handle.internalIndex );
+
+    return r;
 }
 
 RTGL1::SamplerManager::Handle::Handle() : internalIndex( 0 ) {}

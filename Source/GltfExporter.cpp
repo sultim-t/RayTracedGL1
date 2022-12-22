@@ -21,6 +21,7 @@
 #include "GltfExporter.h"
 
 #include "Const.h"
+#include "TextureExporter.h"
 #include "Utils.h"
 
 #define CGLTF_VALIDATE_ENABLE_ASSERTS 1
@@ -97,6 +98,13 @@ struct std::hash< RgTransform >
 
 namespace
 {
+template< typename T >
+    requires( std::is_default_constructible_v< T > )
+T ValueOrDefault( const std::optional< T > v )
+{
+    return v.value_or( T{} );
+}
+
 auto* ConvertRefToPtr( auto& ref )
 {
     return &ref;
@@ -122,7 +130,6 @@ std::string GetGltfBinURI( const std::filesystem::path& gltfPath )
 {
     return GetGltfBinPath( gltfPath ).filename().string();
 }
-
 }
 
 
@@ -197,8 +204,25 @@ struct DeepCopyOfPrimitive
 
     std::span< const uint32_t > Indices() const { return { pIndices.begin(), pIndices.end() }; }
 
-    const auto& PrimitiveNameInMesh() const { return pPrimitiveNameInMesh; }
-    const auto& TextureName() const { return pTextureName; }
+    std::string_view PrimitiveNameInMesh() const { return pPrimitiveNameInMesh; }
+    std::string_view MaterialName() const { return pTextureName; }
+
+    RgFloat4D Color() const { return Utils::UnpackColor4DPacked32( info.color ); }
+    float     Emissive() const { return info.emissive; }
+
+    cgltf_alpha_mode AlphaMode() const
+    {
+        if( info.flags & RG_MESH_PRIMITIVE_ALPHA_TESTED )
+        {
+            return cgltf_alpha_mode_mask;
+        }
+        if( ( info.flags & RG_MESH_PRIMITIVE_TRANSLUCENT ) ||
+            Utils::UnpackAlphaFromPacked32( info.color ) < MESH_TRANSLUCENT_ALPHA_THRESHOLD )
+        {
+            return cgltf_alpha_mode_blend;
+        }
+        return cgltf_alpha_mode_opaque;
+    }
 
 private:
     static void FixupPointers( DeepCopyOfPrimitive& inout )
@@ -221,6 +245,56 @@ private:
     std::vector< RgPrimitiveVertex > pVertices;
     std::vector< uint32_t >          pIndices;
 };
+}
+
+namespace
+{
+cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
+                             cgltf_texture*                    albedo,
+                             cgltf_texture*                    normal,
+                             cgltf_texture*                    metalrough )
+{
+    std::optional metallicRoughness = cgltf_pbr_metallic_roughness{
+        .base_color_texture         = { .texture = albedo, .texcoord = 0 },
+        .metallic_roughness_texture = { .texture = metalrough, .texcoord = 0 },
+        .base_color_factor          = { RG_ACCESS_VEC4( rgprim.Color().data ) },
+        .metallic_factor            = 0.0f,
+        .roughness_factor           = 1.0f,
+    };
+
+    return cgltf_material{
+        .name                        = const_cast< char* >( rgprim.MaterialName().data() ),
+        .has_pbr_metallic_roughness  = metallicRoughness.has_value(),
+        .has_pbr_specular_glossiness = false,
+        .has_clearcoat               = false,
+        .has_transmission            = false,
+        .has_volume                  = false,
+        .has_ior                     = false,
+        .has_specular                = false,
+        .has_sheen                   = false,
+        .has_emissive_strength       = false,
+        .has_iridescence             = false,
+        .pbr_metallic_roughness      = ValueOrDefault( metallicRoughness ),
+        .pbr_specular_glossiness     = {},
+        .clearcoat                   = {},
+        .ior                         = {},
+        .specular                    = {},
+        .sheen                       = {},
+        .transmission                = {},
+        .volume                      = {},
+        .emissive_strength           = {},
+        .iridescence                 = {},
+        .normal_texture              = { .texture = normal, .texcoord = 0 },
+        .occlusion_texture           = { .texture = nullptr, .texcoord = 0 },
+        .emissive_texture            = { .texture = nullptr, .texcoord = 0 },
+        .emissive_factor             = { rgprim.Emissive(), rgprim.Emissive(), rgprim.Emissive() },
+        .alpha_mode                  = rgprim.AlphaMode(),
+        .alpha_cutoff                = 0.5f,
+        .double_sided                = false,
+        .unlit                       = false,
+        .extras                      = { .data = nullptr },
+    };
+}
 }
 
 
@@ -448,6 +522,9 @@ constexpr size_t AttributesPerPrim = std::size(
     std::invoke_result_t< decltype( MakeVertexAttributes ), std::span< cgltf_accessor > >{} );
 
 
+#define copy_ranges swap_ranges
+
+
 struct BeginCount
 {
     ptrdiff_t offset;
@@ -500,6 +577,7 @@ struct GltfRoot
     std::span< cgltf_accessor >    accessors;
     std::span< cgltf_attribute >   attributes;
     std::span< cgltf_primitive >   primitives;
+    std::span< cgltf_material >    materials;
     cgltf_mesh*                    mesh;
 
     std::vector< std::shared_ptr< RTGL1::DeepCopyOfPrimitive > > source;
@@ -518,6 +596,7 @@ struct GltfStorage
             BeginCount accessors;
             BeginCount attributes;
             BeginCount primitives;
+            BeginCount materials;
             BeginCount mesh;
             BeginCount thisNode;
         };
@@ -533,6 +612,7 @@ struct GltfStorage
                 .accessors   = append_n( allAccessors, primsPerMesh * AccessorsPerPrim ),
                 .attributes  = append_n( allAttributes, primsPerMesh * AttributesPerPrim ),
                 .primitives  = append_n( allPrimitives, primsPerMesh ),
+                .materials   = append_n( allMaterials, primsPerMesh ),
                 .mesh        = append_n( allMeshes, 1 ),
                 .thisNode    = append_n( allNodes, 1 ),
             } );
@@ -553,6 +633,7 @@ struct GltfStorage
                 .accessors   = r.accessors.ToSpan( allAccessors ),
                 .attributes  = r.attributes.ToSpan( allAttributes ),
                 .primitives  = r.primitives.ToSpan( allPrimitives ),
+                .materials   = r.primitives.ToSpan( allMaterials ),
                 .mesh        = r.mesh.ToPointer( allMeshes ),
                 .source      = prims,
             };
@@ -574,6 +655,11 @@ struct GltfStorage
     std::vector< cgltf_mesh >        allMeshes;
     std::vector< cgltf_node >        allNodes;
 
+    std::vector< cgltf_sampler >  allSamplers;
+    std::vector< cgltf_image >    allImages;
+    std::vector< cgltf_texture >  allTextures;
+    std::vector< cgltf_material > allMaterials;
+
     std::vector< GltfRoot > roots; // each corresponds to RgMeshInfo
 
     cgltf_node*                world;
@@ -581,29 +667,62 @@ struct GltfStorage
 };
 
 
-bool CanWriteFile( const std::filesystem::path& p )
+bool PrepareFolder( const std::filesystem::path& folder )
 {
-    if( !std::filesystem::exists( p ) )
-    {
+    using namespace RTGL1;
+
+    auto createEmptyFoldersFor = []( const std::filesystem::path& to ) {
+        std::error_code ec;
+        std::filesystem::create_directories( to, ec );
+        if( ec )
+        {
+            debug::Warning(
+                "{}: std::filesystem::create_directories error: {}", to.string(), ec.message() );
+            return false;
+        }
+        assert( std::filesystem::is_directory( to ) );
         return true;
+    };
+
+    if( !std::filesystem::exists( folder ) )
+    {
+        return createEmptyFoldersFor( folder );
     }
 
 #ifdef _WIN32
-    auto msg = std::format( "File \"{}\" already exists.\nOverwrite?", p.string() );
-
-    int msgboxID =
-        MessageBox( nullptr, msg.c_str(), "Overwrite", MB_ICONWARNING | MB_YESNO | MB_DEFBUTTON2 );
-
-    switch( msgboxID )
     {
-        case IDYES: return true;
-        default: return false;
-    }
-#else
-    return false;
-#endif
-}
+        auto msg = std::format( "Folder already exists:\n{}\n\n"
+                                "Are you sure you want to PERMANENTLY delete all its contents?",
+                                std::filesystem::absolute( folder ).string() );
 
+        int msgboxID = MessageBox(
+            nullptr, msg.c_str(), "Overwrite folder", MB_ICONSTOP | MB_YESNO | MB_DEFBUTTON2 );
+
+        if( msgboxID != IDYES )
+        {
+            return false;
+        }
+    }
+    {
+        std::error_code ec;
+
+        auto count = std::filesystem::remove_all( folder, ec );
+        if( ec )
+        {
+            debug::Warning(
+                "{}: std::filesystem::remove_all error: {}", folder.string(), ec.message() );
+            return false;
+        }
+
+        debug::Verbose( "{}: Removed {} files / directories", folder.string(), count );
+    }
+
+    return createEmptyFoldersFor( folder );
+#else
+    debug::Warning( "{}: Folder already exists, overwrite disabled", folder.string() );
+    return false;
+#endif // _WIN32
+}
 
 }
 
@@ -658,26 +777,11 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
         return;
     }
 
-
     const auto gltfPath = GetGltfPath( folder, sceneName );
-    if( !CanWriteFile( gltfPath ) )
+    if( !PrepareFolder( GetGltfFolder( gltfPath ) ) )
     {
-        debug::Warning( "Denied to write to the file {}", gltfPath.string() );
+        debug::Warning( "Denied to write to the folder of {}", gltfPath.string() );
         return;
-    }
-
-
-    {
-        std::error_code ec;
-        std::filesystem::create_directories( GetGltfFolder( gltfPath ), ec );
-
-        if( ec )
-        {
-            debug::Warning( "{}: std::filesystem::create_directories error: {}",
-                            gltfPath.string(),
-                            ec.message() );
-            return;
-        }
     }
 
 
@@ -690,8 +794,10 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
     GltfStorage storage( scene );
 
 
+    // for each RgMesh
     for( GltfRoot& root : storage.roots )
     {
+        // for each RgMeshPrimitive
         for( size_t i = 0; i < root.source.size(); i++ )
         {
             const DeepCopyOfPrimitive& rgprim = *root.source[ i ];
@@ -699,27 +805,35 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
             std::span viewsDst( root.bufferViews.begin() + ptrdiff_t( BufferViewsPerPrim * i ),
                                 BufferViewsPerPrim );
             {
-                std::ranges::swap_ranges( viewsDst, MakeBufferViews( fbin, rgprim ) );
+                std::ranges::move( MakeBufferViews( fbin, rgprim ), viewsDst.begin() );
             }
 
             std::span accessorsDst( root.accessors.begin() + ptrdiff_t( AccessorsPerPrim * i ),
                                     AccessorsPerPrim );
             {
-                std::ranges::swap_ranges(
-                    accessorsDst,
-                    MakeAccessors( rgprim.Vertices().size(), rgprim.Indices().size(), viewsDst ) );
+                std::ranges::move(
+                    MakeAccessors( rgprim.Vertices().size(), rgprim.Indices().size(), viewsDst ),
+                    accessorsDst.begin() );
             }
 
             std::span vertAttrsDst( root.attributes.begin() + ptrdiff_t( AttributesPerPrim * i ),
                                     AttributesPerPrim );
             {
-                std::ranges::swap_ranges( vertAttrsDst, MakeVertexAttributes( accessorsDst ) );
+                std::ranges::move( MakeVertexAttributes( accessorsDst ), vertAttrsDst.begin() );
             }
+
+            cgltf_texture* albedo     = nullptr;
+            cgltf_texture* normal     = nullptr;
+            cgltf_texture* metalrough = nullptr;
+            {
+            }
+
+            root.materials[ i ] = MakeMaterial( rgprim, albedo, normal, metalrough );
 
             root.primitives[ i ] = cgltf_primitive{
                 .type             = cgltf_primitive_type_triangles,
                 .indices          = GetIndicesAccessor( accessorsDst ),
-                .material         = nullptr,
+                .material         = &root.materials[ i ],
                 .attributes       = std::data( vertAttrsDst ),
                 .attributes_count = std::size( vertAttrsDst ),
                 .extras           = {},
@@ -784,12 +898,20 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
             },
         .meshes             = std::data( storage.allMeshes ),
         .meshes_count       = std::size( storage.allMeshes ),
+        .materials          = std::data( storage.allMaterials ),
+        .materials_count    = std::size( storage.allMaterials ),
         .accessors          = std::data( storage.allAccessors ),
         .accessors_count    = std::size( storage.allAccessors ),
         .buffer_views       = std::data( storage.allBufferViews ),
         .buffer_views_count = std::size( storage.allBufferViews ),
         .buffers            = fbin.Get(),
         .buffers_count      = 1,
+        .images             = std::data( storage.allImages ),
+        .images_count       = std::size( storage.allImages ),
+        .textures           = std::data( storage.allTextures ),
+        .textures_count     = std::size( storage.allTextures ),
+        .samplers           = std::data( storage.allSamplers ),
+        .samplers_count     = std::size( storage.allSamplers ),
         .nodes              = std::data( storage.allNodes ),
         .nodes_count        = std::size( storage.allNodes ),
         .scenes             = &gltfScene,

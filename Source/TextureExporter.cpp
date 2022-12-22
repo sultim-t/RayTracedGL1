@@ -42,6 +42,10 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
                             filepath.string() );
             return false;
         }
+        else
+        {
+            debug::Verbose( "{}: Overwriting existing image file", filepath.string() );
+        }
     }
     else
     {
