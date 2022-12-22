@@ -110,12 +110,6 @@ auto* ConvertRefToPtr( auto& ref )
     return &ref;
 }
 
-std::filesystem::path GetGltfPath( const std::filesystem::path& folder, std::string_view sceneName )
-{
-    assert( !sceneName.empty() );
-    return folder / ( std::string( sceneName ) + ".gltf" );
-}
-
 std::filesystem::path GetGltfFolder( const std::filesystem::path& gltfPath )
 {
     return gltfPath.parent_path();
@@ -762,8 +756,7 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
         .emplace_back( std::make_shared< DeepCopyOfPrimitive >( primitive ) );
 }
 
-void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
-                                         std::string_view             sceneName )
+void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath )
 {
     if( scene.empty() )
     {
@@ -771,16 +764,16 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
         return;
     }
 
-    if( sceneName.empty() )
+    if( gltfPath.empty() )
     {
-        debug::Warning( "Can't export: RgDrawFrameInfo::pMapName is an empty string" );
+        debug::Warning( "Can't export: Destination path is empty" );
         return;
     }
 
-    const auto gltfPath = GetGltfPath( folder, sceneName );
     if( !PrepareFolder( GetGltfFolder( gltfPath ) ) )
     {
-        debug::Warning( "Denied to write to the folder of {}", gltfPath.string() );
+        debug::Warning( "Denied to write to the folder {}",
+                        std::filesystem::absolute( GetGltfFolder( gltfPath ) ).string() );
         return;
     }
 
@@ -936,7 +929,8 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& folder,
         return;
     }
 
-    debug::Info( "{}: Exported successfully", gltfPath.string() );
+    debug::Info( "{}: Exported successfully",
+                 std::filesystem::absolute( GetGltfFolder( gltfPath ) ).string() );
 }
 
 bool RTGL1::GltfMeshNode::operator==( const GltfMeshNode& other ) const

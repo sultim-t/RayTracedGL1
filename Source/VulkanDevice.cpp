@@ -763,6 +763,10 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     
     if( ImGui::Begin( "Export" ) )
     {
+        ImGui::Text( "Resource folder: %s",
+                     std::filesystem::absolute( ovrdFolder ).string().c_str() );
+        ImGui::Separator();
+
         if( !debugData.overrideExport )
         {
             debugData.exportWorldUp      = defaultWorldUp;
@@ -771,18 +775,50 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
 
         debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
-        ImGui::Text( "Folder: %s", ovrdFolder.string().c_str() );
-        ImGui::Text( "Map name: %s", currentMap.c_str() );
+
+        ImGui::Text( "Export path: %s", GetGltfPath( currentMap ).string().c_str() );
+        ImGui::BeginDisabled( !debugData.ovrdExportNameEnable );
+        {
+            if( !debugData.ovrdExportNameEnable )
+            {
+                std::snprintf( debugData.ovrdExportName,
+                               std::size( debugData.ovrdExportName ),
+                               "%s",
+                               currentMap.c_str() );
+                debugData.ovrdExportName[ std::size( debugData.ovrdExportName ) - 1 ] = '\0';
+            }
+            ImGui::InputText(
+                "Map name", debugData.ovrdExportName, std::size( debugData.ovrdExportName ) );
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::Checkbox( "Custom", &debugData.ovrdExportNameEnable );
+        ImGui::Separator();
+
         ImGui::Checkbox( "Settings", &debugData.overrideExport );
         ImGui::BeginDisabled( !debugData.overrideExport );
-        ImGui::SliderFloat3( "World Up vector", debugData.exportWorldUp.data, -1.0f, 1.0f );
-        ImGui::SliderFloat3( "World Forward vector", debugData.exportWorldForward.data, -1.0f, 1.0f );
-        ImGui::InputFloat( "1 unit = ", &debugData.exportWorldScale );
-        ImGui::SameLine();
-        ImGui::TextUnformatted( " meters" );
+        {
+            ImGui::SliderFloat3( "World Up vector", debugData.exportWorldUp.data, -1.0f, 1.0f );
+            ImGui::SliderFloat3(
+                "World Forward vector", debugData.exportWorldForward.data, -1.0f, 1.0f );
+            ImGui::InputFloat(
+                std::format( "1 unit = {} meters", debugData.exportWorldScale ).c_str(),
+                &debugData.exportWorldScale );
+        }
         ImGui::EndDisabled();
     }
     ImGui::End();
+}
+
+std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string_view sceneName ) const
+{
+    debugData.ovrdExportName[ std::size( debugData.ovrdExportName ) - 1 ] = '\0';
+    if( debugData.ovrdExportNameEnable )
+    {
+        sceneName = debugData.ovrdExportName;
+    }
+
+    return ovrdFolder / ( std::string( sceneName ) + ".gltf" );
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
@@ -799,7 +835,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         currentMap = drawInfo.pMapName;
 
         auto staticScene =
-            GltfImporter( ovrdFolder / ( currentMap + ".gltf" ),
+            GltfImporter( GetGltfPath( currentMap ),
                           Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
                                                 Utils::Normalize( defaultWorldForward ),
                                                 defaultWorldScale ) );
@@ -1140,7 +1176,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
 
     if( exporter )
     {
-        exporter->ExportToFiles( ovrdFolder, currentMap );
+        exporter->ExportToFiles( GetGltfPath( currentMap ) );
         exporter.reset();
     }
 

@@ -232,6 +232,8 @@ private:
         uint32_t                     debugShowFlags{ 0 };
         bool                         exportPrimitives{ false };
         bool                         overrideExport{ false };
+        bool                         ovrdExportNameEnable{ false };
+        char                         ovrdExportName[ 128 ];
         RgFloat3D                    exportWorldUp{};
         RgFloat3D                    exportWorldForward{};
         float                        exportWorldScale{};
@@ -243,6 +245,7 @@ private:
                                          RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR };
         std::vector< std::pair< RgMessageSeverityFlags, std::string > > logs{};
     } debugData;
+    std::filesystem::path GetGltfPath( std::string_view sceneName ) const;
 
     bool      rayCullBackFacingTriangles;
     bool      allowGeometryWithSkyFlag;

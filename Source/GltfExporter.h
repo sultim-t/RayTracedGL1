@@ -39,6 +39,12 @@ struct GltfMeshNode
     bool     operator<( const GltfMeshNode& other ) const;
     uint64_t Hash() const;
 };
+
+struct GltfMaterialRef
+{
+
+};
+
 }
 
 template<>
@@ -61,7 +67,7 @@ public:
     GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
-    void ExportToFiles( const std::filesystem::path& folder, std::string_view sceneName );
+    void ExportToFiles( const std::filesystem::path& gltfPath );
 
 private:
     rgl::unordered_map< GltfMeshNode, std::vector< std::shared_ptr< DeepCopyOfPrimitive > > > scene;
