@@ -527,7 +527,8 @@ namespace
                                           materialName,
                                           fullPaths,
                                           samplers,
-                                          RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC );
+                                          RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
+                                          true );
 
         auto color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor );
 
@@ -718,12 +719,12 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer cmd,
                 }
                 else if( mat->alpha_mode == cgltf_alpha_mode_blend )
                 {
-                    debug::Warning(
-                        "{}: Ignoring primitive of ...->{}->{}: Found blend material, so it requires to be "
-                        "uploaded each frame, and not once on load",
-                        gltfPath,
-                        NodeName( srcMesh->parent ),
-                        NodeName( srcMesh ) );
+                    debug::Warning( "{}: Ignoring primitive of ...->{}->{}: Found blend material, "
+                                    "so it requires to be "
+                                    "uploaded each frame, and not once on load",
+                                    gltfPath,
+                                    NodeName( srcMesh->parent ),
+                                    NodeName( srcMesh ) );
                     continue;
                     dstFlags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
                 }

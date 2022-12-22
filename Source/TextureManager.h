@@ -75,10 +75,11 @@ public:
 
     bool TryCreateMaterial( VkCommandBuffer                     cmd,
                             uint32_t                            frameIndex,
-                            std::string_view                    materialName,
+                            const std::string&                  materialName,
                             std::span< std::filesystem::path >  fullPaths,
                             std::span< SamplerManager::Handle > samplers,
-                            RgTextureSwizzling                  customPbrSwizzling );
+                            RgTextureSwizzling                  customPbrSwizzling,
+                            bool                                ignoreIfExists );
 
     bool TryDestroyMaterial( uint32_t frameIndex, const char* materialName );
 
@@ -98,7 +99,7 @@ public:
 
     struct ExportResult
     {
-        std::string relativePath;
+        std::string          relativePath;
         RgSamplerAddressMode addressModeU, addressModeV;
     };
 

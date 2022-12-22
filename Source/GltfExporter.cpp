@@ -244,69 +244,6 @@ private:
 };
 }
 
-namespace
-{
-cgltf_sampler MakeSampler( RgSamplerAddressMode addrU, RgSamplerAddressMode addrV )
-{
-    // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_sampler_wraps
-
-    return cgltf_sampler{
-        .name       = nullptr,
-        .mag_filter = 0, // default
-        .min_filter = 0, // default
-        .wrap_s     = addrU == RG_SAMPLER_ADDRESS_MODE_CLAMP ? 33071 : 10497,
-        .wrap_t     = addrV == RG_SAMPLER_ADDRESS_MODE_CLAMP ? 33071 : 10497,
-    };
-}
-
-cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
-                             cgltf_texture*                    albedo,
-                             cgltf_texture*                    normal,
-                             cgltf_texture*                    metalrough )
-{
-    std::optional metallicRoughness = cgltf_pbr_metallic_roughness{
-        .base_color_texture         = { .texture = albedo, .texcoord = 0 },
-        .metallic_roughness_texture = { .texture = metalrough, .texcoord = 0 },
-        .base_color_factor          = { RG_ACCESS_VEC4( rgprim.Color().data ) },
-        .metallic_factor            = 0.0f,
-        .roughness_factor           = 1.0f,
-    };
-
-    return cgltf_material{
-        .name                        = const_cast< char* >( rgprim.MaterialName().data() ),
-        .has_pbr_metallic_roughness  = metallicRoughness.has_value(),
-        .has_pbr_specular_glossiness = false,
-        .has_clearcoat               = false,
-        .has_transmission            = false,
-        .has_volume                  = false,
-        .has_ior                     = false,
-        .has_specular                = false,
-        .has_sheen                   = false,
-        .has_emissive_strength       = false,
-        .has_iridescence             = false,
-        .pbr_metallic_roughness      = ValueOrDefault( metallicRoughness ),
-        .pbr_specular_glossiness     = {},
-        .clearcoat                   = {},
-        .ior                         = {},
-        .specular                    = {},
-        .sheen                       = {},
-        .transmission                = {},
-        .volume                      = {},
-        .emissive_strength           = {},
-        .iridescence                 = {},
-        .normal_texture              = { .texture = normal, .texcoord = 0 },
-        .occlusion_texture           = { .texture = nullptr, .texcoord = 0 },
-        .emissive_texture            = { .texture = nullptr, .texcoord = 0 },
-        .emissive_factor             = { rgprim.Emissive(), rgprim.Emissive(), rgprim.Emissive() },
-        .alpha_mode                  = rgprim.AlphaMode(),
-        .alpha_cutoff                = 0.5f,
-        .double_sided                = false,
-        .unlit                       = false,
-        .extras                      = { .data = nullptr },
-    };
-}
-}
-
 
 
 RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform )
@@ -685,14 +622,24 @@ struct GltfTextures
         images   = rgl::span_counted( std::span( allocImages ) );
         textures = rgl::span_counted( std::span( allocTextures ) );
 
+        constexpr auto makeSampler = []( RgSamplerAddressMode addrU, RgSamplerAddressMode addrV ) {
+            // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_sampler_wraps
+            return cgltf_sampler{
+                .name       = nullptr,
+                .mag_filter = 0, // default
+                .min_filter = 0, // default
+                .wrap_s     = addrU == RG_SAMPLER_ADDRESS_MODE_CLAMP ? 33071 : 10497,
+                .wrap_t     = addrV == RG_SAMPLER_ADDRESS_MODE_CLAMP ? 33071 : 10497,
+            };
+        };
         allocSamplers = {
-            MakeSampler( RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
-            MakeSampler( RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
-            MakeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
-            MakeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
+            makeSampler( RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+            makeSampler( RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
+            makeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+            makeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
         };
         auto findSampler = [ this ]( const RTGL1::TextureManager::ExportResult& r ) {
-            cgltf_sampler target = MakeSampler( r.addressModeU, r.addressModeV );
+            cgltf_sampler target = makeSampler( r.addressModeU, r.addressModeV );
             for( cgltf_sampler& found : allocSamplers )
             {
                 if( std::memcmp( &found, &target, sizeof( cgltf_sampler ) ) == 0 )
@@ -762,14 +709,10 @@ struct GltfTextures
         cgltf_texture* normal{ nullptr };
     };
 
-    TextureSet Access( const char* pTextureName )
+    TextureSet Access( std::string_view materialName ) const
     {
-        if( RTGL1::Utils::IsCstrEmpty( pTextureName ) )
-        {
-            return {};
-        }
-
-        return materialAccess[ pTextureName ];
+        auto iter = materialAccess.find( std::string( materialName ) );
+        return iter != materialAccess.end() ? iter->second : TextureSet{};
     }
 
     auto Samplers() { return std::span( allocSamplers ); }
@@ -788,6 +731,53 @@ private:
 
     std::unordered_map< std::string, TextureSet > materialAccess;
 };
+
+cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
+                             const GltfTextures&               textureStorage )
+{
+    auto txd = textureStorage.Access( rgprim.MaterialName() );
+
+    std::optional metallicRoughness = cgltf_pbr_metallic_roughness{
+        .base_color_texture         = { .texture = txd.albedo, .texcoord = 0 },
+        .metallic_roughness_texture = { .texture = txd.rme, .texcoord = 0 },
+        .base_color_factor          = { RG_ACCESS_VEC4( rgprim.Color().data ) },
+        .metallic_factor            = 0.0f,
+        .roughness_factor           = 1.0f,
+    };
+
+    return cgltf_material{
+        .name                        = const_cast< char* >( rgprim.MaterialName().data() ),
+        .has_pbr_metallic_roughness  = metallicRoughness.has_value(),
+        .has_pbr_specular_glossiness = false,
+        .has_clearcoat               = false,
+        .has_transmission            = false,
+        .has_volume                  = false,
+        .has_ior                     = false,
+        .has_specular                = false,
+        .has_sheen                   = false,
+        .has_emissive_strength       = false,
+        .has_iridescence             = false,
+        .pbr_metallic_roughness      = ValueOrDefault( metallicRoughness ),
+        .pbr_specular_glossiness     = {},
+        .clearcoat                   = {},
+        .ior                         = {},
+        .specular                    = {},
+        .sheen                       = {},
+        .transmission                = {},
+        .volume                      = {},
+        .emissive_strength           = {},
+        .iridescence                 = {},
+        .normal_texture              = { .texture = txd.normal, .texcoord = 0 },
+        .occlusion_texture           = { .texture = nullptr, .texcoord = 0 },
+        .emissive_texture            = { .texture = nullptr, .texcoord = 0 },
+        .emissive_factor             = { rgprim.Emissive(), rgprim.Emissive(), rgprim.Emissive() },
+        .alpha_mode                  = rgprim.AlphaMode(),
+        .alpha_cutoff                = 0.5f,
+        .double_sided                = false,
+        .unlit                       = false,
+        .extras                      = { .data = nullptr },
+    };
+}
 
 
 bool PrepareFolder( const std::filesystem::path& folder )
@@ -951,13 +941,7 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
                 std::ranges::move( MakeVertexAttributes( accessorsDst ), vertAttrsDst.begin() );
             }
 
-            cgltf_texture* albedo     = nullptr;
-            cgltf_texture* normal     = nullptr;
-            cgltf_texture* metalrough = nullptr;
-            {
-            }
-
-            root.materials[ i ] = MakeMaterial( rgprim, albedo, normal, metalrough );
+            root.materials[ i ] = MakeMaterial( rgprim, textureStorage );
 
             root.primitives[ i ] = cgltf_primitive{
                 .type             = cgltf_primitive_type_triangles,

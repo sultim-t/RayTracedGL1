@@ -439,10 +439,11 @@ void TextureManager::MakeMaterial( VkCommandBuffer                              
 
 bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
                                         uint32_t                            frameIndex,
-                                        std::string_view                    materialName,
+                                        const std::string&                  materialName,
                                         std::span< std::filesystem::path >  fullPaths,
                                         std::span< SamplerManager::Handle > samplers,
-                                        RgTextureSwizzling                  customPbrSwizzling )
+                                        RgTextureSwizzling                  customPbrSwizzling,
+                                        bool                                ignoreIfExists )
 {
     assert( fullPaths.size() == TEXTURES_PER_MATERIAL_COUNT );
     assert( samplers.size() == TEXTURES_PER_MATERIAL_COUNT );
@@ -451,6 +452,17 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
     {
         assert( 0 );
         return false;
+    }
+
+    if( ignoreIfExists )
+    {
+        if( materials.contains( materialName ) )
+        {
+            debug::Warning( "{}: Material with the same name already exists. "
+                            "Ignoring the new one.",
+                            materialName );
+            return false;
+        }
     }
 
 
