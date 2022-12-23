@@ -826,7 +826,7 @@ std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string sceneName ) 
     std::ranges::replace( sceneName, '\\', '_' );
     std::ranges::replace( sceneName, '/', '_' );
 
-    return ovrdFolder / "scenes" / sceneName / ( sceneName + ".gltf" );
+    return ovrdFolder / SCENES_FOLDER / sceneName / ( sceneName + ".gltf" );
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )

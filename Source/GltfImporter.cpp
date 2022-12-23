@@ -399,6 +399,38 @@ namespace
         return primIndices;
     }
 
+    std::string MakePTextureName( const cgltf_material&              mat,
+                                  std::span< std::filesystem::path > fallbacks )
+    {
+        const cgltf_texture* t = mat.pbr_metallic_roughness.base_color_texture.texture;
+
+        if( t && t->image && t->image->uri )
+        {
+            std::string name = t->image->uri;
+
+            // original textures from a game start with TEXTURES_FOLDER_JUNCTION_PREFIX
+
+            // if it's original, match to pTextureName, so we will be able to skip
+            // uploading, as such pTextureName was already provided by the game (and potentially
+            // with _n/_rme)
+            if( name.starts_with( TEXTURES_FOLDER_JUNCTION_PREFIX ) )
+            {
+                name.erase( 0, TEXTURES_FOLDER_JUNCTION_PREFIX.size() );
+                return name;
+            }
+        }
+
+        for( const auto& f : fallbacks )
+        {
+            if( !f.empty() )
+            {
+                return f.string();
+            }
+        }
+
+        return "";
+    }
+
     auto UploadTextures( VkCommandBuffer              cmd,
                          uint32_t                     frameIndex,
                          const cgltf_material*        mat,
@@ -409,18 +441,17 @@ namespace
         auto defaultValues =
             std::make_tuple( Utils::PackColor( 255, 255, 255, 255 ), std::string() );
 
-        if( mat == nullptr || Utils::IsCstrEmpty( mat->name ) )
+        if( mat == nullptr )
         {
             return defaultValues;
         }
 
-        std::string materialName = mat->name;
-
         if( !mat->has_pbr_metallic_roughness )
         {
-            debug::Warning( "{}: Ignoring material {}: Can't find PBR Metallic-Roughness",
+            debug::Warning( "{}: Ignoring material \"{}\":"
+                            "Can't find PBR Metallic-Roughness",
                             gltfPath,
-                            materialName );
+                            Utils::SafeCstr( mat->name ) );
             return defaultValues;
         }
 
@@ -477,22 +508,23 @@ namespace
 
             if( txview.texcoord != 0 )
             {
-                debug::Warning( "{}: Ignoring texture {} of material {}: Only one layer of "
-                                "texture coordinates supported. Found TEXCOORD_{}",
-                                gltfPath,
-                                Utils::SafeCstr( txview.texture->name ),
-                                materialName,
-                                txview.texcoord );
+                debug::Warning(
+                    "{}: Ignoring texture {} of material \"{}\":"
+                    "Only one layer of texture coordinates supported. Found TEXCOORD_{}",
+                    gltfPath,
+                    Utils::SafeCstr( txview.texture->name ),
+                    Utils::SafeCstr( mat->name ),
+                    txview.texcoord );
                 continue;
             }
 
             if( Utils::IsCstrEmpty( txview.texture->image->uri ) )
             {
-                debug::Warning( "{}: Ignoring texture {} of material {}: "
+                debug::Warning( "{}: Ignoring texture {} of material \"{}\": "
                                 "Texture's image URI is empty",
                                 gltfPath,
                                 Utils::SafeCstr( txview.texture->name ),
-                                materialName );
+                                Utils::SafeCstr( mat->name ) );
                 continue;
             }
 
@@ -501,11 +533,11 @@ namespace
 
                 if( !std::filesystem::is_regular_file( filePath ) )
                 {
-                    debug::Warning( "{}: Ignoring texture {} of material {}: "
+                    debug::Warning( "{}: Ignoring texture {} of material \"{}\": "
                                     "Can't find a file specified in image's URI. Searching: {}",
                                     gltfPath,
                                     Utils::SafeCstr( txview.texture->name ),
-                                    materialName,
+                                    Utils::SafeCstr( mat->name ),
                                     filePath.string() );
                     continue;
                 }
@@ -522,13 +554,20 @@ namespace
             }
         }
 
-        textureManager.TryCreateMaterial( cmd,
-                                          frameIndex,
-                                          materialName,
-                                          fullPaths,
-                                          samplers,
-                                          RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
-                                          true );
+
+        std::string materialName = MakePTextureName( *mat, fullPaths );
+
+        // if fullPaths are empty
+        if( !materialName.empty() )
+        {
+            textureManager.TryCreateMaterial( cmd,
+                                              frameIndex,
+                                              materialName,
+                                              fullPaths,
+                                              samplers,
+                                              RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
+                                              true );
+        }
 
         auto color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor );
 
@@ -695,55 +734,43 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer cmd,
                 continue;
             }
 
-            const cgltf_material* mat = srcPrim.material;
-
-
-            if( mat && Utils::IsCstrEmpty( mat->name ) )
-            {
-                debug::Warning( "{}: Ignoring primitive of ...->{}->{}: Can't find material name, "
-                                "it must match what is provided from the game",
-                                gltfPath,
-                                NodeName( srcMesh->parent ),
-                                NodeName( srcMesh ) );
-                continue;
-            }
-
 
             RgMeshPrimitiveFlags dstFlags = 0;
 
-            if( mat )
+            if( srcPrim.material )
             {
-                if( mat->alpha_mode == cgltf_alpha_mode_mask )
+                if( srcPrim.material->alpha_mode == cgltf_alpha_mode_mask )
                 {
                     dstFlags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
                 }
-                else if( mat->alpha_mode == cgltf_alpha_mode_blend )
+                else if( srcPrim.material->alpha_mode == cgltf_alpha_mode_blend )
                 {
-                    debug::Warning( "{}: Ignoring primitive of ...->{}->{}: Found blend material, "
-                                    "so it requires to be "
-                                    "uploaded each frame, and not once on load",
-                                    gltfPath,
-                                    NodeName( srcMesh->parent ),
-                                    NodeName( srcMesh ) );
+                    debug::Warning(
+                        "{}: Ignoring primitive of ...->{}->{}: Found blend material, "
+                        "so it requires to be uploaded each frame, and not once on load",
+                        gltfPath,
+                        NodeName( srcMesh->parent ),
+                        NodeName( srcMesh ) );
                     continue;
                     dstFlags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
                 }
             }
 
 
-            auto [ color, materialName ] =
-                UploadTextures( cmd, frameIndex, mat, textureManager, gltfFolder, gltfPath );
+            auto [ color, pTextureName ] = UploadTextures(
+                cmd, frameIndex, srcPrim.material, textureManager, gltfFolder, gltfPath );
 
+            auto primname = std::to_string( i );
 
             RgMeshPrimitiveInfo dstPrim = {
-                .pPrimitiveNameInMesh = materialName.c_str(),
+                .pPrimitiveNameInMesh = primname.c_str(),
                 .primitiveIndexInMesh = uint32_t( i ),
                 .flags                = dstFlags,
                 .pVertices            = vertices.data(),
                 .vertexCount          = uint32_t( vertices.size() ),
                 .pIndices             = indices.empty() ? nullptr : indices.data(),
                 .indexCount           = uint32_t( indices.size() ),
-                .pTextureName         = materialName.c_str(),
+                .pTextureName         = pTextureName.c_str(),
                 .textureFrame         = 0,
                 .color                = color,
                 .emissive             = 0.0f,

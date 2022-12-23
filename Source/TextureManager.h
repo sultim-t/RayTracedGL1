@@ -80,7 +80,7 @@ public:
                             std::span< std::filesystem::path >  fullPaths,
                             std::span< SamplerManager::Handle > samplers,
                             RgTextureSwizzling                  customPbrSwizzling,
-                            bool                                ignoreIfExists );
+                            bool                                preferExisting );
 
     bool TryDestroyMaterial( uint32_t frameIndex, const char* materialName );
 

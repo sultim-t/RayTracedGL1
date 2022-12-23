@@ -279,7 +279,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
 
     shaderManager = std::make_shared< ShaderManager >( 
         device, 
-        ovrdFolder / "shaders" );
+        ovrdFolder / SHADERS_FOLDER );
 
     scene = std::make_shared< Scene >(
         device, 

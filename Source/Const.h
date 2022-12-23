@@ -20,32 +20,41 @@
 
 #pragma once
 
+#include <string_view>
+
 namespace RTGL1
 {
 
-constexpr uint32_t    ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES = 64 * 512 * 512 * 4;
-constexpr uint32_t    ALLOCATOR_BLOCK_SIZE_TEXTURES         = 64 * 512 * 512 * 4;
+constexpr uint32_t ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES = 64 * 512 * 512 * 4;
+constexpr uint32_t ALLOCATOR_BLOCK_SIZE_TEXTURES         = 64 * 512 * 512 * 4;
 
-constexpr uint32_t    TEXTURE_FILE_PATH_MAX_LENGTH      = 512;
-constexpr uint32_t    TEXTURE_FILE_NAME_MAX_LENGTH      = 256;
-constexpr uint32_t    TEXTURE_FILE_EXTENSION_MAX_LENGTH = 16;
+constexpr uint32_t TEXTURE_FILE_PATH_MAX_LENGTH      = 512;
+constexpr uint32_t TEXTURE_FILE_NAME_MAX_LENGTH      = 256;
+constexpr uint32_t TEXTURE_FILE_EXTENSION_MAX_LENGTH = 16;
 
-constexpr uint32_t    TEXTURE_COUNT_MAX           = 4096;
-constexpr uint32_t    EMPTY_TEXTURE_INDEX         = 0;
-constexpr uint32_t    MATERIALS_MAX_LAYER_COUNT   = 3;
-constexpr uint32_t    TEXTURES_PER_MATERIAL_COUNT = 3;
+constexpr uint32_t TEXTURE_COUNT_MAX           = 4096;
+constexpr uint32_t EMPTY_TEXTURE_INDEX         = 0;
+constexpr uint32_t MATERIALS_MAX_LAYER_COUNT   = 3;
+constexpr uint32_t TEXTURES_PER_MATERIAL_COUNT = 3;
 
 constexpr const char* DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA               = "";
 constexpr const char* DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION = "_rme";
 constexpr const char* DEFAULT_TEXTURE_POSTFIX_NORMAL                     = "_n";
 
-constexpr uint32_t    MAX_PREGENERATED_MIPMAP_LEVELS = 20;
+constexpr uint32_t MAX_PREGENERATED_MIPMAP_LEVELS = 20;
 
-constexpr float       MESH_TRANSLUCENT_ALPHA_THRESHOLD = 0.98f;
+constexpr float MESH_TRANSLUCENT_ALPHA_THRESHOLD = 0.98f;
 
 // Use WORLD2 mask bit as SKY
 #define RAYCULLMASK_SKY_IS_WORLD2 1
 
 #define RTGL1_MAIN_ROOT_NODE "rtgl1_main_root"
+
+constexpr std::string_view TEXTURES_FOLDER     = "mat";
+constexpr std::string_view TEXTURES_FOLDER_DEV = "mat_dev";
+constexpr std::string_view SCENES_FOLDER       = "scenes";
+constexpr std::string_view SHADERS_FOLDER      = "shaders";
+
+constexpr std::string_view TEXTURES_FOLDER_JUNCTION_PREFIX = "mat_junction/";
 
 }

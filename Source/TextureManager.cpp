@@ -437,7 +437,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
                                         std::span< std::filesystem::path >  fullPaths,
                                         std::span< SamplerManager::Handle > samplers,
                                         RgTextureSwizzling                  customPbrSwizzling,
-                                        bool                                ignoreIfExists )
+                                        bool                                preferExisting )
 {
     assert( fullPaths.size() == TEXTURES_PER_MATERIAL_COUNT );
     assert( samplers.size() == TEXTURES_PER_MATERIAL_COUNT );
@@ -448,7 +448,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
         return false;
     }
 
-    if( ignoreIfExists )
+    if( preferExisting )
     {
         if( materials.contains( materialName ) )
         {
