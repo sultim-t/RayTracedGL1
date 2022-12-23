@@ -171,8 +171,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , libconfig( LibraryConfig::Read( info->pConfigPath ) )
     , debugMessenger( VK_NULL_HANDLE )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
-    , userFileLoad{ std::make_shared< UserFileLoad >(
-          info->pfnOpenFile, info->pfnCloseFile, info->pUserLoadFileData ) }
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
     , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
     , defaultWorldUp( Utils::SafeNormalize( info->worldUp, { 0, 1, 0 } ) )

@@ -205,16 +205,6 @@ typedef struct RgInstanceCreateInfo
     // Custom user data that is passed to pfnUserPrint.
     void*                       pUserPrintData;
 
-    // Optional function to load files: shaders, blue noise and overriden textures.
-    // If null, files will be opened with standard methods. pfnLoadFile is very simple,
-    // as it requires file data (ppOutData, pOutDataSize) to be fully loaded to the memory.
-    // The value, ppOutFileUserHandle point on, will be passed to PFN_rgCloseFile.
-    // So for example, it can be a file handle.
-    PFN_rgOpenFile              pfnOpenFile;
-    PFN_rgCloseFile             pfnCloseFile;
-    // Custom user data that is passed to pfnUserLoadFile.
-    void*                       pUserLoadFileData;
-
     // How many texture layers should be used to get albedo color for primary rays / indrect illumination.
     uint32_t                    primaryRaysMaxAlbedoLayers;
     uint32_t                    indirectIlluminationMaxAlbedoLayers;

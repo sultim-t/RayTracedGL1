@@ -66,7 +66,6 @@ set(Sources
     "Source/DepthCopying.cpp"
     "Source/RasterPass.cpp"
     "Source/SwapchainPass.cpp"
-    "Source/UserFunction.cpp"    
     "Source/RgException.cpp"
     "Source/Bloom.cpp"
     "Source/Sharpening.cpp"

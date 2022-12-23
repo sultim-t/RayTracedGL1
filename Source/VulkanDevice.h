@@ -203,7 +203,6 @@ private:
     LibraryConfig::Config             libconfig;
     VkDebugUtilsMessengerEXT          debugMessenger;
     std::unique_ptr< UserPrint >      userPrint;
-    std::shared_ptr< UserFileLoad >   userFileLoad;
     std::shared_ptr< DebugWindows >   debugWindows;
     ScratchImmediate                  scratchImmediate;
     std::unique_ptr< GltfExporter >   exporter;
