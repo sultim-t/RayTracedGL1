@@ -25,6 +25,9 @@ import subprocess
 import pathlib
 
 
+TARGET_FOLDER_PATH           = "../../Build/shaders/"
+
+
 CACHE_FOLDER_PATH           = "Build/"
 CACHE_FILE_NAME             = "GenerateShadersCache.txt"
 EXTENSIONS                  = [ ".comp", ".vert", "frag", ".rgen", ".rahit", ".rchit", ".rmiss" ]
@@ -204,7 +207,6 @@ def main():
 
     #if wereDependentModified and not forceRebuild:
     #    print("> Dependency files were modified. Rebuilding all...")
-    # print()
 
     for filenameRelative in os.listdir():
         filename = abspath(filenameRelative)
@@ -217,8 +219,10 @@ def main():
             print("> File \"" + filename + "\" has spaces in its name. Skipping.")
             continue
 
+        targetSpvFile = TARGET_FOLDER_PATH + os.path.basename(filename) + ".spv"
+
         lastModifTime = int(pathlib.Path(filename).stat().st_mtime)
-        isOutdated = filename in cache and lastModifTime != cache[filename]
+        isOutdated = not os.path.exists(targetSpvFile) or (filename in cache and lastModifTime != cache[filename])
 
         if filename not in dependencyMap or isOutdated:
             dependencyMap[filename] = set()
@@ -239,7 +243,7 @@ def main():
                 "glslc", "--target-env=vulkan1.2"
                 ] + getDependentFoldersProcArg() + [
                 filename, 
-                "-o", "../../Build/" + os.path.basename(filename) + ".spv"], 
+                "-o", targetSpvFile], 
                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
             if len(r.stdout) > 0:
