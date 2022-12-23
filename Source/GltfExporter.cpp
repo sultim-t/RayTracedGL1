@@ -674,8 +674,8 @@ struct GltfTextures
                 materialName.c_str(), texturesFolder, false );
 
             auto tryMakeCgltfTexture =
-                [ this,
-                  &findSampler ]( RTGL1::TextureManager::ExportResult&& r ) -> cgltf_texture* {
+                [ this, &findSampler, &materialName ](
+                    RTGL1::TextureManager::ExportResult&& r ) -> cgltf_texture* {
                 if( !r.relativePath.empty() )
                 {
                     std::string&   str = strings.increment_and_get();
@@ -684,9 +684,11 @@ struct GltfTextures
 
                     // need to protect a string, to avoid dangling pointers
                     str = std::string( RTGL1::TEXTURES_FOLDER_JUNCTION_PREFIX ) + r.relativePath;
-
+                    std::ranges::replace( str, '\\', '/' );
+                    
                     img = cgltf_image{
-                        .uri = const_cast< char* >( str.c_str() ),
+                        .name = const_cast< char* >( materialName.c_str() ),
+                        .uri  = const_cast< char* >( str.c_str() ),
                     };
 
                     txd = cgltf_texture{

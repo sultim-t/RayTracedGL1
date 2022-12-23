@@ -38,16 +38,14 @@ struct TextureOverrides
     using Loader = std::variant< ImageLoader*, ImageLoaderDev* >;
 
     explicit TextureOverrides( const std::filesystem::path& basePath,
-                               std::string_view             relativePath,
+                               std::string_view             name,
                                std::string_view             postfix,
                                const void*                  defaultPixels,
                                const RgExtent2D&            defaultSize,
                                VkFormat                     defaultFormat,
                                Loader                       loader );
 
-    explicit TextureOverrides( const std::filesystem::path& fullPath,
-                               bool                         isSRGB,
-                               Loader                       loader );
+    explicit TextureOverrides( const std::filesystem::path& fullPath, bool isSRGB, Loader loader );
 
     ~TextureOverrides();
 
@@ -55,6 +53,11 @@ struct TextureOverrides
     TextureOverrides( TextureOverrides&& other ) noexcept            = delete;
     TextureOverrides& operator=( const TextureOverrides& other )     = delete;
     TextureOverrides& operator=( TextureOverrides&& other ) noexcept = delete;
+
+    static std::filesystem::path GetTexturePath( std::filesystem::path basePath,
+                                                 std::string_view      name,
+                                                 std::string_view      postfix,
+                                                 std::string_view      extension );
 
     std::optional< ImageLoader::ResultInfo > result;
     char                                     debugname[ TEXTURE_DEBUG_NAME_MAX_LENGTH ];

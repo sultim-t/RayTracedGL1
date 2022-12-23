@@ -404,20 +404,27 @@ namespace
     {
         const cgltf_texture* t = mat.pbr_metallic_roughness.base_color_texture.texture;
 
-        if( t && t->image && t->image->uri )
+        if( t && t->image && t->image->name )
         {
-            std::string name = t->image->uri;
+            std::string name = t->image->name;
 
-            // original textures from a game start with TEXTURES_FOLDER_JUNCTION_PREFIX
-
-            // if it's original, match to pTextureName, so we will be able to skip
-            // uploading, as such pTextureName was already provided by the game (and potentially
-            // with _n/_rme)
-            if( name.starts_with( TEXTURES_FOLDER_JUNCTION_PREFIX ) )
+            if( t->image->uri )
             {
-                name.erase( 0, TEXTURES_FOLDER_JUNCTION_PREFIX.size() );
-                return name;
+                if( !std::string_view( t->image->uri )
+                         .starts_with( TEXTURES_FOLDER_JUNCTION_PREFIX ) )
+                {
+                    debug::Warning( "Suspicious URI \"{}\" of an image with name \"{}\": "
+                                    "If \"name\" field is provided, assumed that it's "
+                                    "the original game texture. "
+                                    "So expecting URI to start with {}. "
+                                    "Texture overloading is disabled for this texture",
+                                    t->image->uri,
+                                    t->image->name,
+                                    TEXTURES_FOLDER_JUNCTION_PREFIX );
+                }
             }
+
+            return name;
         }
 
         for( const auto& f : fallbacks )

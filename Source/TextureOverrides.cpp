@@ -95,26 +95,10 @@ namespace loader
         }
     }
 }
-
-std::filesystem::path GetTexturePath( std::filesystem::path basePath,
-                                      std::string_view      relativePath,
-                                      std::string_view      postfix,
-                                      std::string_view      extension )
-{
-    if( relativePath.empty() )
-    {
-        return basePath.replace_extension( "" ).concat( postfix ).replace_extension( extension );
-    }
-
-    return basePath.append( relativePath )
-        .replace_extension( "" )
-        .concat( postfix )
-        .replace_extension( extension );
-}
 }
 
 TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
-                                    std::string_view             _relativePath,
+                                    std::string_view             _name,
                                     std::string_view             _postfix,
                                     const void*                  _defaultPixels,
                                     const RgExtent2D&            _defaultSize,
@@ -122,12 +106,12 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
                                     Loader                       _loader )
     : result{ std::nullopt }, debugname{}, loader( _loader )
 {
-    SafeCopy( debugname, _relativePath );
+    SafeCopy( debugname, _name );
 
 
     for( const char* ext : loader::GetExtensions( loader ) )
     {
-        auto p = GetTexturePath( _basePath, _relativePath, _postfix, ext );
+        auto p = GetTexturePath( _basePath, _name, _postfix, ext );
 
         if( !std::filesystem::is_regular_file( p ) )
         {
@@ -164,7 +148,7 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
                     .baseSize       = _defaultSize,
                     .format         = _defaultFormat,
                 };
-                path = GetTexturePath( _basePath, _relativePath, _postfix, "" );
+                path = GetTexturePath( _basePath, _name, _postfix, "" );
             }
         }
     }
@@ -183,8 +167,7 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _fullPath,
 
     if( auto r = loader::Load( loader, _fullPath ) )
     {
-        r->format = _isSRGB ? Utils::ToSRGB( r->format )
-                                                    : Utils::ToUnorm( r->format );
+        r->format = _isSRGB ? Utils::ToSRGB( r->format ) : Utils::ToUnorm( r->format );
 
         result = r;
         path   = _fullPath;
@@ -194,4 +177,22 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _fullPath,
 TextureOverrides::~TextureOverrides()
 {
     loader::FreeLoaded( loader );
+}
+
+std::filesystem::path TextureOverrides::GetTexturePath( std::filesystem::path basePath,
+                                                        std::string_view      name,
+                                                        std::string_view      postfix,
+                                                        std::string_view      extension )
+{
+    auto validName = std::string( name );
+    
+    std::ranges::replace_if(
+        validName,
+        []( char c ) {
+            constexpr std::string_view invalidChars = "<>:\"|?*";
+            return invalidChars.contains( c );
+        },
+        '_' );
+
+    return basePath.append( validName ).make_preferred().concat( postfix ).concat( extension );
 }

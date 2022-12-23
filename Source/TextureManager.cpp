@@ -728,10 +728,8 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
             continue;
         }
 
-        auto relativeFilePath = std::filesystem::path( materialName );
-        relativeFilePath.replace_extension( "" )
-            .concat( postfixes[ i ] )
-            .replace_extension( ".tga" );
+        auto relativeFilePath =
+            TextureOverrides::GetTexturePath( "", materialName, postfixes[ i ], ".tga" );
 
         bool exported = TextureExporter().ExportAsTGA( *memAllocator,
                                                        *cmdManager,
