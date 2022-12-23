@@ -572,8 +572,7 @@ namespace
                                               materialName,
                                               fullPaths,
                                               samplers,
-                                              RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
-                                              true );
+                                              RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC );
         }
 
         auto color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor );

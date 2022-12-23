@@ -79,8 +79,7 @@ public:
                             const std::string&                  materialName,
                             std::span< std::filesystem::path >  fullPaths,
                             std::span< SamplerManager::Handle > samplers,
-                            RgTextureSwizzling                  customPbrSwizzling,
-                            bool                                preferExisting );
+                            RgTextureSwizzling                  customPbrSwizzling );
 
     bool TryDestroyMaterial( uint32_t frameIndex, const char* materialName );
 

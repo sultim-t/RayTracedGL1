@@ -43,6 +43,8 @@ static_assert( TEXTURES_PER_MATERIAL_COUNT == 3 );
 
 constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
 
+constexpr bool PreferExistingMaterials = true;
+
 template< typename T >
 constexpr const T* DefaultIfNull( const T* pData, const T* pDefault )
 {
@@ -360,6 +362,17 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
         return false;
     }
 
+    if( PreferExistingMaterials )
+    {
+        if( materials.contains( info.pTextureName ) )
+        {
+            debug::Warning( "{}: Material with the same name already exists. "
+                            "Ignoring the new one.",
+                            info.pTextureName );
+            return false;
+        }
+    }
+
 
     // clang-format off
     TextureOverrides ovrd[] = {
@@ -436,8 +449,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
                                         const std::string&                  materialName,
                                         std::span< std::filesystem::path >  fullPaths,
                                         std::span< SamplerManager::Handle > samplers,
-                                        RgTextureSwizzling                  customPbrSwizzling,
-                                        bool                                preferExisting )
+                                        RgTextureSwizzling                  customPbrSwizzling )
 {
     assert( fullPaths.size() == TEXTURES_PER_MATERIAL_COUNT );
     assert( samplers.size() == TEXTURES_PER_MATERIAL_COUNT );
@@ -448,7 +460,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
         return false;
     }
 
-    if( preferExisting )
+    if( PreferExistingMaterials )
     {
         if( materials.contains( materialName ) )
         {
@@ -570,15 +582,23 @@ void TextureManager::InsertMaterial( uint32_t         frameIndex,
 
     if( !insertednew )
     {
-        debug::Warning( "{}: Material with the same name already exists. "
-                        "Overwriting the old one",
-                        iter->first );
+        if( PreferExistingMaterials )
+        {
+            assert( 0 );
+        }
+        else
+        {
+            debug::Warning( "{}: Material with the same name already exists. "
+                            "Overwriting the old one",
+                            iter->first );
 
-        Material& existing = iter->second;
+            Material& existing = iter->second;
 
-        // destroy old, overwrite with new
-        DestroyMaterialTextures( frameIndex, existing );
-        existing = material;
+            // TODO: buggy
+            // destroy old, overwrite with new
+            DestroyMaterialTextures( frameIndex, existing );
+            existing = material;
+        }
     }
 }
 
