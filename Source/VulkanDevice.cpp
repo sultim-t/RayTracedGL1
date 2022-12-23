@@ -815,7 +815,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     ImGui::End();
 }
 
-std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string_view sceneName ) const
+std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string sceneName ) const
 {
     debugData.ovrdExportName[ std::size( debugData.ovrdExportName ) - 1 ] = '\0';
     if( debugData.ovrdExportNameEnable )
@@ -823,7 +823,10 @@ std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string_view sceneNa
         sceneName = debugData.ovrdExportName;
     }
 
-    return ovrdFolder / "scenes" / sceneName / ( std::string( sceneName ) + ".gltf" );
+    std::ranges::replace( sceneName, '\\', '_' );
+    std::ranges::replace( sceneName, '/', '_' );
+
+    return ovrdFolder / "scenes" / sceneName / ( sceneName + ".gltf" );
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )

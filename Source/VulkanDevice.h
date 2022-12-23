@@ -244,7 +244,7 @@ private:
                                          RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR };
         std::vector< std::pair< RgMessageSeverityFlags, std::string > > logs{};
     } debugData;
-    std::filesystem::path GetGltfPath( std::string_view sceneName ) const;
+    std::filesystem::path GetGltfPath( std::string sceneName ) const;
 
     bool      rayCullBackFacingTriangles;
     bool      allowGeometryWithSkyFlag;
