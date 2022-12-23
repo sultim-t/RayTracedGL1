@@ -774,9 +774,14 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
             debugData.exportWorldScale   = defaultWorldScale;
         }
 
+        ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.98f, 0.59f, 0.26f, 0.40f ) );
+        ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.98f, 0.59f, 0.26f, 1.00f ) );
+        ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.98f, 0.53f, 0.06f, 1.00f ) );
         debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
+        ImGui::PopStyleColor( 3 );
 
-        ImGui::Text( "Export path: %s", GetGltfPath( currentMap ).string().c_str() );
+        ImGui::Text( "Export path: %s",
+                     GetGltfPath( currentMap ).make_preferred().string().c_str() );
         ImGui::BeginDisabled( !debugData.ovrdExportNameEnable );
         {
             if( !debugData.ovrdExportNameEnable )
