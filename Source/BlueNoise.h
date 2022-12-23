@@ -23,7 +23,8 @@
 #include "Common.h"
 #include "CommandBufferManager.h"
 #include "MemoryAllocator.h"
-#include "UserFunction.h"
+
+#include <filesystem>
 
 namespace RTGL1
 {
@@ -31,17 +32,16 @@ namespace RTGL1
 class BlueNoise
 {
 public:
-    explicit BlueNoise( VkDevice                                       device,
-                        const char*                                    blueNoiseFilePath,
-                        std::shared_ptr< MemoryAllocator >             allocator,
-                        const std::shared_ptr< CommandBufferManager >& cmdManager,
-                        std::shared_ptr< UserFileLoad >                userFileLoad );
+    explicit BlueNoise( VkDevice                           device,
+                        const std::filesystem::path&       blueNoiseFilePath,
+                        std::shared_ptr< MemoryAllocator > allocator,
+                        CommandBufferManager&              cmdManager );
     ~BlueNoise();
 
-    BlueNoise( const BlueNoise& other )     = delete;
-    BlueNoise( BlueNoise&& other ) noexcept = delete;
-    BlueNoise&            operator=( const BlueNoise& other ) = delete;
-    BlueNoise&            operator=( BlueNoise&& other ) noexcept = delete;
+    BlueNoise( const BlueNoise& other )                = delete;
+    BlueNoise( BlueNoise&& other ) noexcept            = delete;
+    BlueNoise& operator=( const BlueNoise& other )     = delete;
+    BlueNoise& operator=( BlueNoise&& other ) noexcept = delete;
 
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet() const;
@@ -53,12 +53,12 @@ private:
     VkDevice                           device;
     std::shared_ptr< MemoryAllocator > allocator;
 
-    VkImage                            blueNoiseImages;
-    VkImageView                        blueNoiseImagesView;
+    VkImage     blueNoiseImages;
+    VkImageView blueNoiseImagesView;
 
-    VkDescriptorSetLayout              descSetLayout;
-    VkDescriptorPool                   descPool;
-    VkDescriptorSet                    descSet;
+    VkDescriptorSetLayout descSetLayout;
+    VkDescriptorPool      descPool;
+    VkDescriptorSet       descSet;
 };
 
 }

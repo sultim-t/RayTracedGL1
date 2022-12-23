@@ -197,15 +197,13 @@ typedef struct RgInstanceCreateInfo
     // Default: "RayTracedGL1.txt"
     const char*                 pConfigPath;
 
+    const char*                 pOverrideFolderPath;
+
     // Optional function to print messages from the library.
     // Requires "VulkanValidation" in the configuration file.
     PFN_rgPrint                 pfnPrint;
     // Custom user data that is passed to pfnUserPrint.
     void*                       pUserPrintData;
-
-    const char*                 pShaderFolderPath;
-    // Path to the file with 128 layers of uncompressed 128x128 blue noise images.
-    const char*                 pBlueNoiseFilePath;
 
     // Optional function to load files: shaders, blue noise and overriden textures.
     // If null, files will be opened with standard methods. pfnLoadFile is very simple,
@@ -236,33 +234,11 @@ typedef struct RgInstanceCreateInfo
 
     // Size of a cubemap side to render rasterized sky in.
     uint32_t                    rasterizedSkyCubemapSize;
-
-    // Max amount of textures to be used during the execution.
-    // The value is clamped to [1024..4096]
-    uint32_t                    maxTextureCount;
+    
     // If true, 'filter' in RgMaterialCreateInfo, RgCubemapCreateInfo
     // will set only magnification filter.
     RgBool32                    textureSamplerForceMinificationFilterLinear;
     RgBool32                    textureSamplerForceNormalMapFilterLinear;
-
-    // The folder to find overriding textures in.
-    const char*                 pOverridenTexturesFolderPath;
-    // If not null and the configuration file contains "Developer",
-    // this path is used instead of pOverridenTexturesFolderPath.
-    const char*                 pOverridenTexturesFolderPathDeveloper;
-    // Postfixes will be used to determine textures that should be
-    // loaded from files if the texture should be overridden
-    // i.e. if postfix="_n" then "Floor_01.*" => "Floor_01_n.*",
-    // where "*" is some image extension
-    // If null, then empty string will be used.
-    const char*                 pOverridenAlbedoAlphaTexturePostfix;
-    // If null, then "_rme" will be used.
-    const char*                 pOverridenRoughnessMetallicEmissionTexturePostfix;
-    // If null, then "_n" will be used.
-    const char*                 pOverridenNormalTexturePostfix;
-
-    // Path to normal texture path. Ignores pOverridenTexturesFolderPath and pOverridenNormalTexturePostfix
-    const char*                 pWaterNormalTexturePath;
 
     RgTextureSwizzling          pbrTextureSwizzling;
 

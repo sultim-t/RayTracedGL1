@@ -29,11 +29,13 @@ using namespace RTGL1;
 
 struct ShaderModuleDefinition
 {
-    const char*           name     = nullptr;
-    const char*           filename = nullptr;
+    std::string_view      name{};
+    std::string_view      filename{};
     // will be parsed from filename once
-    VkShaderStageFlagBits stage = VK_SHADER_STAGE_ALL;
+    VkShaderStageFlagBits stage{ VK_SHADER_STAGE_ALL };
 };
+
+// clang-format off
 
 // Note: set shader stage to VK_SHADER_STAGE_ALL, to identify stage by the file extension
 static ShaderModuleDefinition G_SHADERS[] =
@@ -91,13 +93,10 @@ static ShaderModuleDefinition G_SHADERS[] =
     { "EffectCrtDecode",            "EfCrtDecode.comp.spv"                  },
 };
 
+// clang-format on
 
-ShaderManager::ShaderManager( VkDevice                        _device,
-                              const char*                     _pShaderFolderPath,
-                              std::shared_ptr< UserFileLoad > _userFileLoad )
-    : device( _device )
-    , userFileLoad( std::move( _userFileLoad ) )
-    , shaderFolderPath( _pShaderFolderPath )
+ShaderManager::ShaderManager( VkDevice _device, std::filesystem::path _shaderFolderPath )
+    : device( _device ), shaderFolderPath( std::move( _shaderFolderPath ) )
 {
     LoadShaderModules();
 }
@@ -123,8 +122,8 @@ void ShaderManager::LoadShaderModules()
 {
     for( auto& s : G_SHADERS )
     {
-        assert( s.filename != nullptr );
-        assert( s.name != nullptr );
+        assert( !s.filename.empty() );
+        assert( !s.name.empty() );
 
         if( s.stage == VK_SHADER_STAGE_ALL )
         {
@@ -132,10 +131,10 @@ void ShaderManager::LoadShaderModules()
             s.stage = GetStageByExtension( s.filename );
         }
 
-        auto           path = shaderFolderPath + s.filename;
+        auto path = shaderFolderPath / s.filename;
 
-        VkShaderModule m = LoadModule( path.c_str() );
-        SET_DEBUG_NAME( device, m, VK_OBJECT_TYPE_SHADER_MODULE, s.name );
+        VkShaderModule m = LoadModuleFromFile( path.c_str() );
+        SET_DEBUG_NAME( device, m, VK_OBJECT_TYPE_SHADER_MODULE, s.name.data() );
 
         modules[ s.name ] = { m, s.stage };
     }
@@ -173,65 +172,40 @@ VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo( const char* name ) 
 
         throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
                            "Can't find loaded shader with name \""s + name + "\"" );
-        return {};
     }
 
-    VkPipelineShaderStageCreateInfo info = {};
-    info.sType                           = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-    info.module                          = m->second.module;
-    info.stage                           = m->second.shaderStage;
-    info.pName                           = "main";
-
-    return info;
+    return VkPipelineShaderStageCreateInfo{
+        .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage  = m->second.shaderStage,
+        .module = m->second.module,
+        .pName  = "main",
+    };
 }
 
-VkShaderModule RTGL1::ShaderManager::LoadModule( const char* path )
-{
-    if( userFileLoad->Exists() )
-    {
-        auto fileHandle = userFileLoad->Open( path );
-
-        if( !fileHandle.Contains() )
-        {
-            using namespace std::string_literals;
-            throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
-                               "Can't load shader file \""s + path +
-                                   "\" using user's file load function"s );
-        }
-
-        return LoadModuleFromMemory( static_cast< const uint32_t* >( fileHandle.pData ),
-                                     fileHandle.dataSize );
-    }
-    else
-    {
-        return LoadModuleFromFile( path );
-    }
-}
-
-VkShaderModule ShaderManager::LoadModuleFromFile( const char* path )
+VkShaderModule ShaderManager::LoadModuleFromFile( const std::filesystem::path& path )
 {
     std::ifstream          shaderFile( path, std::ios::binary );
-    std::vector< uint8_t > shaderSource( std::istreambuf_iterator< char >( shaderFile ), {} );
+    std::vector< uint8_t > shaderSource( std::istreambuf_iterator( shaderFile ), {} );
 
     if( shaderSource.empty() )
     {
-        using namespace std::string_literals;
         throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
-                           "Can't find shader file: \""s + path + "\"" );
+                           "Can't find shader file: \"" + path.string() + "\"" );
     }
 
     return LoadModuleFromMemory( reinterpret_cast< const uint32_t* >( shaderSource.data() ),
-                                 shaderSource.size() );
+                                 uint32_t( shaderSource.size() ) );
 }
 
 VkShaderModule ShaderManager::LoadModuleFromMemory( const uint32_t* pCode, uint32_t codeSize )
 {
-    VkShaderModule           shaderModule;
+    VkShaderModule shaderModule;
 
-    VkShaderModuleCreateInfo moduleInfo = {};
-    moduleInfo.sType                    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
-    moduleInfo.codeSize                 = codeSize;
-    moduleInfo.pCode                    = pCode;
+    VkShaderModuleCreateInfo moduleInfo = {
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = codeSize,
+        .pCode    = pCode,
+    };
 
     VkResult r = vkCreateShaderModule( device, &moduleInfo, nullptr, &shaderModule );
     VK_CHECKERROR( r );
@@ -239,65 +213,36 @@ VkShaderModule ShaderManager::LoadModuleFromMemory( const uint32_t* pCode, uint3
     return shaderModule;
 }
 
-VkShaderStageFlagBits ShaderManager::GetStageByExtension( const char* name )
+VkShaderStageFlagBits ShaderManager::GetStageByExtension( std::string_view name )
 {
     // assume that file names end with ".spv"
 
-    if( std::strstr( name, ".vert.spv" ) != nullptr )
+    constexpr std::pair< std::string_view, VkShaderStageFlagBits > endingToType[] = {
+        { ".vert.spv", VK_SHADER_STAGE_VERTEX_BIT },
+        { ".frag.spv", VK_SHADER_STAGE_FRAGMENT_BIT },
+        { ".comp.spv", VK_SHADER_STAGE_COMPUTE_BIT },
+        { ".rgen.spv", VK_SHADER_STAGE_RAYGEN_BIT_KHR },
+        { ".rahit.spv", VK_SHADER_STAGE_ANY_HIT_BIT_KHR },
+        { ".rchit.spv", VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR },
+        { ".rmiss.spv", VK_SHADER_STAGE_MISS_BIT_KHR },
+        { ".rcall.spv", VK_SHADER_STAGE_CALLABLE_BIT_KHR },
+        { ".rint.spv", VK_SHADER_STAGE_INTERSECTION_BIT_KHR },
+        { ".tesc.spv", VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT },
+        { ".tese.spv", VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT },
+        { ".mesh.spv", VK_SHADER_STAGE_MESH_BIT_NV },
+        { ".task.spv", VK_SHADER_STAGE_TASK_BIT_NV },
+    };
+
+    for( const auto& [ ending, type ] : endingToType )
     {
-        return VK_SHADER_STAGE_VERTEX_BIT;
-    }
-    else if( std::strstr( name, ".frag.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_FRAGMENT_BIT;
-    }
-    else if( std::strstr( name, ".comp.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_COMPUTE_BIT;
-    }
-    else if( std::strstr( name, ".rgen.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-    }
-    else if( std::strstr( name, ".rahit.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_ANY_HIT_BIT_KHR;
-    }
-    else if( std::strstr( name, ".rchit.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_CLOSEST_HIT_BIT_KHR;
-    }
-    else if( std::strstr( name, ".rmiss.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_MISS_BIT_KHR;
-    }
-    else if( std::strstr( name, ".rcall.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_CALLABLE_BIT_KHR;
-    }
-    else if( std::strstr( name, ".rint.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_INTERSECTION_BIT_KHR;
-    }
-    else if( std::strstr( name, ".tesc.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-    }
-    else if( std::strstr( name, ".tese.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
-    }
-    else if( std::strstr( name, ".mesh.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_MESH_BIT_NV;
-    }
-    else if( std::strstr( name, ".task.spv" ) != nullptr )
-    {
-        return VK_SHADER_STAGE_TASK_BIT_NV;
+        if( name.ends_with( ending ) )
+        {
+            return type;
+        }
     }
 
-    assert( 0 );
-    return VK_SHADER_STAGE_ALL;
+    throw RgException( RG_RESULT_INTERNAL_ERROR,
+                       "Can't find shader stage type for " + std::string( name ) );
 }
 
 void ShaderManager::Subscribe( std::shared_ptr< IShaderDependency > subscriber )

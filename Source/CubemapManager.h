@@ -40,56 +40,51 @@ namespace RTGL1
 class CubemapManager
 {
 public:
-    CubemapManager( VkDevice                                       device,
-                    std::shared_ptr< MemoryAllocator >             allocator,
-                    std::shared_ptr< SamplerManager >              samplerManager,
-                    const std::shared_ptr< CommandBufferManager >& cmdManager,
-                    std::shared_ptr< UserFileLoad >                userFileLoad,
-                    const RgInstanceCreateInfo&                    info,
-                    const LibraryConfig::Config&                   config );
+    CubemapManager( VkDevice                           device,
+                    std::shared_ptr< MemoryAllocator > allocator,
+                    std::shared_ptr< SamplerManager >  samplerManager,
+                    CommandBufferManager&              cmdManager );
     ~CubemapManager();
 
-    CubemapManager( const CubemapManager& other )     = delete;
-    CubemapManager( CubemapManager&& other ) noexcept = delete;
-    CubemapManager&       operator=( const CubemapManager& other ) = delete;
-    CubemapManager&       operator=( CubemapManager&& other ) noexcept = delete;
+    CubemapManager( const CubemapManager& other )                = delete;
+    CubemapManager( CubemapManager&& other ) noexcept            = delete;
+    CubemapManager& operator=( const CubemapManager& other )     = delete;
+    CubemapManager& operator=( CubemapManager&& other ) noexcept = delete;
 
 
-    bool                  TryCreateCubemap( VkCommandBuffer              cmd,
-                                            uint32_t                     frameIndex,
-                                            const RgOriginalCubemapInfo& info,
-                                            const std::filesystem::path& folder );
-    bool                  TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName );
+    bool TryCreateCubemap( VkCommandBuffer              cmd,
+                           uint32_t                     frameIndex,
+                           const RgOriginalCubemapInfo& info,
+                           const std::filesystem::path& folder );
+    bool TryDestroyCubemap( uint32_t frameIndex, const char* pTextureName );
 
 
-    uint32_t              TryGetDescriptorIndex( const char* pTextureName );
+    uint32_t TryGetDescriptorIndex( const char* pTextureName );
 
 
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
 
-    void                  PrepareForFrame( uint32_t frameIndex );
-    void                  SubmitDescriptors( uint32_t frameIndex );
+    void PrepareForFrame( uint32_t frameIndex );
+    void SubmitDescriptors( uint32_t frameIndex );
 
-    bool                  IsCubemapValid( uint32_t cubemapIndex ) const;
+    bool IsCubemapValid( uint32_t cubemapIndex ) const;
 
 private:
     void CreateEmptyCubemap( VkCommandBuffer cmd );
     void AddForDeletion( uint32_t frameIndex, Texture& txd );
 
 private:
-    VkDevice                                   device;
+    VkDevice device;
 
-    std::shared_ptr< MemoryAllocator >         allocator;
-    std::shared_ptr< ImageLoader >             imageLoader;
-    std::shared_ptr< SamplerManager >          samplerManager;
-    std::shared_ptr< TextureDescriptors >      cubemapDesc;
-    std::shared_ptr< CubemapUploader >         cubemapUploader;
+    std::shared_ptr< MemoryAllocator >    allocator;
+    std::shared_ptr< ImageLoader >        imageLoader;
+    std::shared_ptr< SamplerManager >     samplerManager;
+    std::shared_ptr< TextureDescriptors > cubemapDesc;
+    std::shared_ptr< CubemapUploader >    cubemapUploader;
 
     std::unordered_map< std::string, Texture > cubemaps;
     std::vector< Texture >                     cubemapsToDestroy[ MAX_FRAMES_IN_FLIGHT ];
-    
-    std::string                                overridenTexturePostfix;
 };
 
 }

@@ -254,9 +254,9 @@ RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform )
 namespace
 {
 
-struct BinFile
+struct GltfBin
 {
-    explicit BinFile( const std::filesystem::path& gltfPath )
+    explicit GltfBin( const std::filesystem::path& gltfPath )
         : uri( GetGltfBinURI( gltfPath ) )
         , file( GetGltfBinPath( gltfPath ), std::ios::out | std::ios::trunc | std::ios::binary )
         , fileOffset( 0 )
@@ -296,7 +296,7 @@ private:
 };
 
 
-auto MakeBufferViews( BinFile& fbin, const RTGL1::DeepCopyOfPrimitive& prim )
+auto MakeBufferViews( GltfBin& fbin, const RTGL1::DeepCopyOfPrimitive& prim )
 {
     return std::to_array( {
 #define BUFFER_VIEW_VERTICES 0
@@ -321,7 +321,7 @@ auto MakeBufferViews( BinFile& fbin, const RTGL1::DeepCopyOfPrimitive& prim )
 }
 constexpr size_t BufferViewsPerPrim =
     std::size( std::invoke_result_t< decltype( MakeBufferViews ),
-                                     BinFile&,
+                                     GltfBin&,
                                      const RTGL1::DeepCopyOfPrimitive& >{} );
 
 auto MakeAccessors( size_t                         vertexCount,
@@ -908,7 +908,7 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
 
 
     // lock pointers
-    BinFile      fbin( gltfPath );
+    GltfBin      fbin( gltfPath );
     GltfStorage  storage( scene );
     GltfTextures textureStorage( sceneMaterials, GetGltfFolder( gltfPath ), textureManager );
 

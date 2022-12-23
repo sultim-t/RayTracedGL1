@@ -58,26 +58,25 @@ public:
     };
 
 public:
-    explicit ImageLoader( std::shared_ptr< UserFileLoad > userFileLoad );
+    ImageLoader() = default;
     ~ImageLoader();
 
-    ImageLoader( const ImageLoader& other )     = delete;
-    ImageLoader( ImageLoader&& other ) noexcept = delete;
-    ImageLoader&                       operator=( const ImageLoader& other ) = delete;
-    ImageLoader&                       operator=( ImageLoader&& other ) noexcept = delete;
+    ImageLoader( const ImageLoader& other )                = delete;
+    ImageLoader( ImageLoader&& other ) noexcept            = delete;
+    ImageLoader& operator=( const ImageLoader& other )     = delete;
+    ImageLoader& operator=( ImageLoader&& other ) noexcept = delete;
 
     std::optional< ResultInfo >        Load( const std::filesystem::path& path );
     std::optional< LayeredResultInfo > LoadLayered( const std::filesystem::path& path );
 
     // Must be called after using the loaded data to free the allocated memory
-    void                               FreeLoaded();
+    void FreeLoaded();
 
 private:
     bool LoadTextureFile( const std::filesystem::path& path, ktxTexture** ppTexture );
 
 private:
-    std::shared_ptr< UserFileLoad > userFileLoad;
-    std::vector< ktxTexture* >      loadedImages;
+    std::vector< ktxTexture* > loadedImages;
 };
 
 }

@@ -50,8 +50,9 @@ public:
                     std::shared_ptr< MemoryAllocator >      memAllocator,
                     std::shared_ptr< SamplerManager >       samplerManager,
                     std::shared_ptr< CommandBufferManager > cmdManager,
-                    std::shared_ptr< UserFileLoad >         userFileLoad,
-                    const RgInstanceCreateInfo&             info,
+                    const std::filesystem::path&            waterNormalTexturePath,
+                    RgTextureSwizzling                      pbrSwizzling,
+                    bool                                    forceNormalMapFilterLinear,
                     const LibraryConfig::Config&            config );
     ~TextureManager() override;
 
@@ -100,7 +101,8 @@ public:
     struct ExportResult
     {
         std::string          relativePath;
-        RgSamplerAddressMode addressModeU, addressModeV;
+        RgSamplerAddressMode addressModeU{ RG_SAMPLER_ADDRESS_MODE_REPEAT };
+        RgSamplerAddressMode addressModeV{ RG_SAMPLER_ADDRESS_MODE_REPEAT };
     };
 
     auto ExportMaterialTextures( const char*                  materialName,
@@ -120,9 +122,9 @@ private:
 
 private:
     void CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameIndex );
-    void CreateWaterNormalTexture( VkCommandBuffer cmd,
-                                   uint32_t        frameIndex,
-                                   const char*     pFilePath );
+    void CreateWaterNormalTexture( VkCommandBuffer              cmd,
+                                   uint32_t                     frameIndex,
+                                   const std::filesystem::path& filepath );
 
     void MakeMaterial( VkCommandBuffer                                  cmd,
                        uint32_t                                         frameIndex,

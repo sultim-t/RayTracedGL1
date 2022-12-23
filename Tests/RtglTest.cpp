@@ -444,7 +444,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         const uint32_t        white      = 0xFFFFFFFF;
         RgOriginalCubemapInfo skyboxInfo = 
         {
-            .pTextureName     = "Cubemap/",
+            .pTextureName     = "_external_/cubemap/0",
             .pPixelsPositiveX = &white,
             .pPixelsNegativeX = &white,
             .pPixelsPositiveY = &white,
@@ -471,7 +471,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RG_CHECK( t );
         };
 
-        //   /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
+           /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -646,7 +646,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .skyColorMultiplier = ctl_SkyIntensity,
                 .skyColorSaturation = 1.0f,
                 .skyViewerPosition  = { 0, 0, 0 },
-                .pSkyCubemapTextureName = "Cubemap/",
+                .pSkyCubemapTextureName = "_external_/cubemap/0",
             };
 
             RgDrawFrameRenderResolutionParams resolutionParams = {
@@ -670,7 +670,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .rayLength = 10000.0f,
                 .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
                 .currentTime = GetCurrentTimeInSeconds(),
-                .pMapName = "TEST/untitled",
+                .pMapName = "untitled",
                 .pRenderResolutionParams = &resolutionParams,
                 .pSkyParams = &skyParams,
                 .postEffectParams = {
@@ -721,13 +721,12 @@ int main( int argc, char* argv[] )
         .pXlibSurfaceCreateInfo = &xlibInfo,
 #endif
 
+        .pOverrideFolderPath = ASSET_DIRECTORY,
+
         .pfnPrint = []( const char* pMessage, RgMessageSeverityFlags severity, void *pUserData )
             {
                 std::cout << pMessage << std::endl;
             },
-
-        .pShaderFolderPath  = ASSET_DIRECTORY,
-        .pBlueNoiseFilePath = ASSET_DIRECTORY "BlueNoise_LDR_RGBA_128.ktx2",
 
         .primaryRaysMaxAlbedoLayers          = 1,
         .indirectIlluminationMaxAlbedoLayers = 1,
@@ -738,10 +737,6 @@ int main( int argc, char* argv[] )
         .rasterizedMaxIndexCount  = 2048,
 
         .rasterizedSkyCubemapSize = 256,
-
-        .maxTextureCount                   = 1024,
-        .pOverridenTexturesFolderPath      = ASSET_DIRECTORY,
-        .pWaterNormalTexturePath           = ASSET_DIRECTORY "WaterNormal_n.ktx2",
 
         // to match the GLTF standard
         .pbrTextureSwizzling = RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
@@ -755,7 +750,7 @@ int main( int argc, char* argv[] )
     RG_CHECK( r );
 
     {
-        auto gltfPath = argc > 1 ? argv[ 1 ] : "Sponza/glTF/Sponza.gltf";
+        auto gltfPath = argc > 1 ? argv[ 1 ] : "_external_/Sponza/glTF/Sponza.gltf";
         MainLoop( instance, gltfPath );
     }
 

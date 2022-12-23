@@ -818,7 +818,7 @@ std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string_view sceneNa
         sceneName = debugData.ovrdExportName;
     }
 
-    return ovrdFolder / ( std::string( sceneName ) + ".gltf" );
+    return ovrdFolder / "scenes" / sceneName / ( std::string( sceneName ) + ".gltf" );
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )

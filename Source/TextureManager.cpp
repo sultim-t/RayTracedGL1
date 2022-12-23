@@ -82,11 +82,12 @@ TextureManager::TextureManager( VkDevice                                _device,
                                 std::shared_ptr< MemoryAllocator >      _memAllocator,
                                 std::shared_ptr< SamplerManager >       _samplerMgr,
                                 std::shared_ptr< CommandBufferManager > _cmdManager,
-                                std::shared_ptr< UserFileLoad >         _userFileLoad,
-                                const RgInstanceCreateInfo&             _info,
+                                const std::filesystem::path &           _waterNormalTexturePath,
+                                RgTextureSwizzling                      _pbrSwizzling,
+                                bool                                    _forceNormalMapFilterLinear,
                                 const LibraryConfig::Config&            _config )
     : device( _device )
-    , pbrSwizzling( _info.pbrTextureSwizzling )
+    , pbrSwizzling( _pbrSwizzling )
     , memAllocator( std::move( _memAllocator ) )
     , cmdManager( std::move( _cmdManager ) )
     , samplerMgr( std::move( _samplerMgr ) )
@@ -94,16 +95,13 @@ TextureManager::TextureManager( VkDevice                                _device,
     , currentDynamicSamplerFilter( DefaultDynamicSamplerFilter )
     , postfixes
         {
-            DefaultIfNull(_info.pOverridenAlbedoAlphaTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA),
-            DefaultIfNull(_info.pOverridenRoughnessMetallicEmissionTexturePostfix, DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION),
-            DefaultIfNull(_info.pOverridenNormalTexturePostfix, DEFAULT_TEXTURE_POSTFIX_NORMAL),
+            DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA,
+            DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION,
+            DEFAULT_TEXTURE_POSTFIX_NORMAL,
         }
-    , forceNormalMapFilterLinear( !!_info.textureSamplerForceNormalMapFilterLinear )
+    , forceNormalMapFilterLinear(_forceNormalMapFilterLinear  )
 {
-    const uint32_t maxTextureCount =
-        std::clamp( _info.maxTextureCount, TEXTURE_COUNT_MIN, TEXTURE_COUNT_MAX );
-
-    imageLoader = std::make_shared< ImageLoader >( std::move( _userFileLoad ) );
+    imageLoader = std::make_shared< ImageLoader >();
 
     if( _config.developerMode )
     {
@@ -112,26 +110,20 @@ TextureManager::TextureManager( VkDevice                                _device,
 
 
     textureDesc = std::make_shared< TextureDescriptors >(
-        device, samplerMgr, maxTextureCount, BINDING_TEXTURES );
+        device, samplerMgr, TEXTURE_COUNT_MAX, BINDING_TEXTURES );
     textureUploader = std::make_shared< TextureUploader >( device, memAllocator );
 
-    textures.resize( maxTextureCount );
+    textures.resize( TEXTURE_COUNT_MAX );
 
     // submit cmd to create empty texture
     {
         VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
         {
             CreateEmptyTexture( cmd, 0 );
-            CreateWaterNormalTexture( cmd, 0, _info.pWaterNormalTexturePath );
+            CreateWaterNormalTexture( cmd, 0, _waterNormalTexturePath );
         }
         cmdManager->Submit( cmd );
         cmdManager->WaitGraphicsIdle();
-    }
-
-    if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX )
-    {
-        debug::Warning( "Couldn't create water normal texture with path",
-                        Utils::SafeCstr( _info.pWaterNormalTexturePath ) );
     }
 }
 
@@ -180,13 +172,14 @@ void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameInde
 }
 
 // Check CreateStaticMaterial for notes
-void TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
-                                               uint32_t        frameIndex,
-                                               const char*     pFilePath )
+void TextureManager::CreateWaterNormalTexture( VkCommandBuffer              cmd,
+                                               uint32_t                     frameIndex,
+                                               const std::filesystem::path& filepath )
 {
-    if( Utils::IsCstrEmpty( pFilePath ) )
+    if( !std::filesystem::exists( filepath ) )
     {
         this->waterNormalTextureIndex = EMPTY_TEXTURE_INDEX;
+        debug::Warning( "Water normal texture fail: Can't find file: {}", filepath.string() );
         return;
     }
 
@@ -194,13 +187,8 @@ void TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
     constexpr RgExtent2D defaultSize   = { 1, 1 };
 
     // try to load image file
-    TextureOverrides ovrd( {} /* absolute path */,
-                           pFilePath,
-                           "",
-                           defaultData,
-                           defaultSize,
-                           VK_FORMAT_R8G8B8A8_UNORM,
-                           imageLoader.get() );
+    TextureOverrides ovrd(
+        filepath, "", "", defaultData, defaultSize, VK_FORMAT_R8G8B8A8_UNORM, imageLoader.get() );
 
     this->waterNormalTextureIndex =
         PrepareTexture( cmd,
@@ -215,6 +203,12 @@ void TextureManager::CreateWaterNormalTexture( VkCommandBuffer cmd,
                         std::nullopt,
                         std::move( ovrd.path ),
                         FindEmptySlot( textures ) );
+
+    if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX )
+    {
+        debug::Warning( "Water normal texture fail: Couldn't upload texture. Path: {}",
+                        filepath.string() );
+    }
 }
 
 TextureManager::~TextureManager()

@@ -20,52 +20,28 @@
 
 #include "ImageLoader.h"
 
-#include <algorithm>
-#include <cassert>
-
 #include <ktx.h>
 #include <ktxvulkan.h>
 
-using namespace RTGL1;
+#include <algorithm>
+#include <cassert>
 
-ImageLoader::ImageLoader( std::shared_ptr< UserFileLoad > _userFileLoad )
-    : userFileLoad( std::move( _userFileLoad ) )
-{
-}
-
-ImageLoader::~ImageLoader()
+RTGL1::ImageLoader::~ImageLoader()
 {
     assert( loadedImages.empty() );
 }
 
-bool ImageLoader::LoadTextureFile( const std::filesystem::path& path, ktxTexture** ppTexture )
+bool RTGL1::ImageLoader::LoadTextureFile( const std::filesystem::path& path,
+                                          ktxTexture**                 ppTexture )
 {
-    KTX_error_code r;
-
-    if( userFileLoad->Exists() )
-    {
-        auto fileHandle = userFileLoad->Open( path.string().c_str() );
-
-        if( !fileHandle.Contains() )
-        {
-            return false;
-        }
-
-        r = ktxTexture_CreateFromMemory( static_cast< const uint8_t* >( fileHandle.pData ),
-                                         fileHandle.dataSize,
-                                         KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-                                         ppTexture );
-    }
-    else
-    {
-        r = ktxTexture_CreateFromNamedFile(
-            path.string().c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, ppTexture );
-    }
+    KTX_error_code r = ktxTexture_CreateFromNamedFile(
+        path.string().c_str(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, ppTexture );
 
     return r == KTX_SUCCESS;
 }
 
-std::optional< ImageLoader::ResultInfo > ImageLoader::Load( const std::filesystem::path& path )
+std::optional< RTGL1::ImageLoader::ResultInfo > RTGL1::ImageLoader::Load(
+    const std::filesystem::path& path )
 {
     if( path.empty() )
     {
@@ -120,7 +96,7 @@ std::optional< ImageLoader::ResultInfo > ImageLoader::Load( const std::filesyste
     return result;
 }
 
-std::optional< ImageLoader::LayeredResultInfo > ImageLoader::LoadLayered(
+std::optional< RTGL1::ImageLoader::LayeredResultInfo > RTGL1::ImageLoader::LoadLayered(
     const std::filesystem::path& path )
 {
     if( path.empty() )
@@ -167,7 +143,7 @@ std::optional< ImageLoader::LayeredResultInfo > ImageLoader::LoadLayered(
     return result;
 }
 
-void ImageLoader::FreeLoaded()
+void RTGL1::ImageLoader::FreeLoaded()
 {
     for( ktxTexture* p : loadedImages )
     {

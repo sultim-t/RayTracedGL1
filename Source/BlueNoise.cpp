@@ -34,11 +34,10 @@ constexpr VkFormat     IMAGE_FORMAT    = VK_FORMAT_R8G8B8A8_UNORM;
 constexpr VkDeviceSize BYTES_PER_PIXEL = 4;
 }
 
-RTGL1::BlueNoise::BlueNoise( VkDevice                                       _device,
-                             const char*                                    _blueNoiseFilePath,
-                             std::shared_ptr< MemoryAllocator >             _allocator,
-                             const std::shared_ptr< CommandBufferManager >& _cmdManager,
-                             std::shared_ptr< UserFileLoad >                _userFileLoad )
+RTGL1::BlueNoise::BlueNoise( VkDevice                           _device,
+                             const std::filesystem::path&       _blueNoiseFilePath,
+                             std::shared_ptr< MemoryAllocator > _allocator,
+                             CommandBufferManager&              _cmdManager )
     : device( _device )
     , allocator( std::move( _allocator ) )
     , blueNoiseImages( VK_NULL_HANDLE )
@@ -47,20 +46,18 @@ RTGL1::BlueNoise::BlueNoise( VkDevice                                       _dev
     , descPool( VK_NULL_HANDLE )
     , descSet( VK_NULL_HANDLE )
 {
-    using namespace std::string_literals;
-
     constexpr VkDeviceSize oneLayerSize =
         BYTES_PER_PIXEL * BLUE_NOISE_TEXTURE_SIZE * BLUE_NOISE_TEXTURE_SIZE;
     constexpr VkDeviceSize dataSize = oneLayerSize * BLUE_NOISE_TEXTURE_COUNT;
 
 
-    ImageLoader            imageLoader( std::move( _userFileLoad ) );
-    const auto             resultInfo = imageLoader.LoadLayered( _blueNoiseFilePath );
+    ImageLoader imageLoader{};
+    const auto  resultInfo = imageLoader.LoadLayered( _blueNoiseFilePath );
 
     if( !resultInfo )
     {
         throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
-                           "Can't find blue noise file: "s + _blueNoiseFilePath );
+                           "Can't find blue noise file: " + _blueNoiseFilePath.string() );
     }
 
     if( resultInfo->baseSize.width != BLUE_NOISE_TEXTURE_SIZE ||
@@ -85,11 +82,11 @@ RTGL1::BlueNoise::BlueNoise( VkDevice                                       _dev
     }
 
     // allocate buffer for all textures
-    VkBufferCreateInfo stagingInfo = {};
-    stagingInfo.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
-    stagingInfo.size               = dataSize;
-    stagingInfo.usage              = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
+    VkBufferCreateInfo stagingInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size  = dataSize,
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+    };
 
     void*    mappedData    = nullptr;
     VkBuffer stagingBuffer = allocator->CreateStagingSrcTextureBuffer(
@@ -126,7 +123,7 @@ RTGL1::BlueNoise::BlueNoise( VkDevice                                       _dev
     SET_DEBUG_NAME( device, blueNoiseImages, VK_OBJECT_TYPE_IMAGE, "Blue noise Image" );
 
     // copy from buffer to image
-    VkCommandBuffer         cmd = _cmdManager->StartGraphicsCmd();
+    VkCommandBuffer cmd = _cmdManager.StartGraphicsCmd();
 
     VkImageSubresourceRange allLayersRange = {
         .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -173,8 +170,8 @@ RTGL1::BlueNoise::BlueNoise( VkDevice                                       _dev
                          allLayersRange );
 
     // submit and wait
-    _cmdManager->Submit( cmd );
-    _cmdManager->WaitGraphicsIdle();
+    _cmdManager.Submit( cmd );
+    _cmdManager.WaitGraphicsIdle();
 
     allocator->DestroyStagingSrcTextureBuffer( stagingBuffer );
 
@@ -222,7 +219,7 @@ VkDescriptorSet RTGL1::BlueNoise::GetDescSet() const
 
 void RTGL1::BlueNoise::CreateDescriptors()
 {
-    VkResult                     r;
+    VkResult r;
 
     VkDescriptorSetLayoutBinding binding = {
         .binding         = BINDING_BLUE_NOISE,

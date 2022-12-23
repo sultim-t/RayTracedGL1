@@ -30,13 +30,10 @@ constexpr uint32_t    TEXTURE_FILE_PATH_MAX_LENGTH      = 512;
 constexpr uint32_t    TEXTURE_FILE_NAME_MAX_LENGTH      = 256;
 constexpr uint32_t    TEXTURE_FILE_EXTENSION_MAX_LENGTH = 16;
 
-constexpr uint32_t    TEXTURE_COUNT_MIN           = 1024;
 constexpr uint32_t    TEXTURE_COUNT_MAX           = 4096;
 constexpr uint32_t    EMPTY_TEXTURE_INDEX         = 0;
 constexpr uint32_t    MATERIALS_MAX_LAYER_COUNT   = 3;
 constexpr uint32_t    TEXTURES_PER_MATERIAL_COUNT = 3;
-
-constexpr const char* DEFAULT_OVRD_FOLDER_PATH = "";
 
 constexpr const char* DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA               = "";
 constexpr const char* DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION = "_rme";

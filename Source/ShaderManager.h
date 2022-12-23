@@ -20,13 +20,14 @@
 
 #pragma once
 
-#include <list>
-#include <string>
-
 #include "Common.h"
 #include "Containers.h"
 #include "IShaderDependency.h"
 #include "UserFunction.h"
+
+#include <filesystem>
+#include <list>
+#include <string>
 
 namespace RTGL1
 {
@@ -35,17 +36,15 @@ namespace RTGL1
 class ShaderManager
 {
 public:
-    explicit ShaderManager( VkDevice                        device,
-                            const char*                     pShaderFolderPath,
-                            std::shared_ptr< UserFileLoad > userFileLoad );
+    explicit ShaderManager( VkDevice device, std::filesystem::path shaderFolderPath );
     ~ShaderManager();
 
-    ShaderManager( const ShaderManager& other )     = delete;
-    ShaderManager( ShaderManager&& other ) noexcept = delete;
-    ShaderManager&                  operator=( const ShaderManager& other ) = delete;
-    ShaderManager&                  operator=( ShaderManager&& other ) noexcept = delete;
+    ShaderManager( const ShaderManager& other )                = delete;
+    ShaderManager( ShaderManager&& other ) noexcept            = delete;
+    ShaderManager& operator=( const ShaderManager& other )     = delete;
+    ShaderManager& operator=( ShaderManager&& other ) noexcept = delete;
 
-    void                            ReloadShaders();
+    void ReloadShaders();
 
     VkShaderModule                  GetShaderModule( const char* name ) const;
     VkShaderStageFlagBits           GetModuleStage( const char* name ) const;
@@ -53,7 +52,7 @@ public:
 
     // Subscribe to shader reload event.
     // shared_ptr will be transformed to weak_ptr
-    void                            Subscribe( std::shared_ptr< IShaderDependency > subscriber );
+    void Subscribe( std::shared_ptr< IShaderDependency > subscriber );
 
 private:
     struct ShaderModule
@@ -63,22 +62,20 @@ private:
     };
 
 private:
-    static VkShaderStageFlagBits GetStageByExtension( const char* name );
+    static VkShaderStageFlagBits GetStageByExtension( std::string_view name );
 
-    VkShaderModule               LoadModule( const char* path );
-    VkShaderModule               LoadModuleFromFile( const char* path );
-    VkShaderModule               LoadModuleFromMemory( const uint32_t* pCode, uint32_t codeSize );
-    void                         LoadShaderModules();
-    void                         UnloadShaderModules();
+    VkShaderModule LoadModuleFromFile( const std::filesystem::path& path );
+    VkShaderModule LoadModuleFromMemory( const uint32_t* pCode, uint32_t codeSize );
+    void           LoadShaderModules();
+    void           UnloadShaderModules();
 
-    void                         NotifySubscribersAboutReload();
+    void NotifySubscribersAboutReload();
 
 private:
-    VkDevice                                        device;
-    std::shared_ptr< UserFileLoad >                 userFileLoad;
-    std::string                                     shaderFolderPath;
+    VkDevice              device;
+    std::filesystem::path shaderFolderPath;
 
-    rgl::unordered_map< std::string, ShaderModule > modules;
+    rgl::unordered_map< std::filesystem::path, ShaderModule > modules;
 
     std::list< std::weak_ptr< IShaderDependency > > subscribers;
 };

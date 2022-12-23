@@ -167,6 +167,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , surface( VK_NULL_HANDLE )
     , frameId( 1 )
     , waitForOutOfFrameFence( false )
+    , ovrdFolder( Utils::SafeCstr( info->pOverrideFolderPath ) )
     , libconfig( LibraryConfig::Read( info->pConfigPath ) )
     , debugMessenger( VK_NULL_HANDLE )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
@@ -182,20 +183,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , vsync( true )
 {
     ValidateCreateInfo( info );
-    {
-        if( libconfig.developerMode && info->pOverridenTexturesFolderPathDeveloper )
-        {
-            ovrdFolder = info->pOverridenTexturesFolderPathDeveloper;
-        }
-        else if( info->pOverridenTexturesFolderPath )
-        {
-            ovrdFolder = info->pOverridenTexturesFolderPath;
-        }
-        else
-        {
-            ovrdFolder = DEFAULT_OVRD_FOLDER_PATH;
-        }
-    }
 
 
 
@@ -272,33 +259,29 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
 
     blueNoise = std::make_shared< BlueNoise >(
         device,
-        info->pBlueNoiseFilePath, 
+        ovrdFolder / "BlueNoise_LDR_RGBA_128.ktx2", 
         memAllocator, 
-        cmdManager, 
-        userFileLoad );
+        *cmdManager );
 
     textureManager = std::make_shared< TextureManager >(
         device, 
         memAllocator, 
         worldSamplerManager,
-        cmdManager, 
-        userFileLoad,
-        *info, 
+        cmdManager,
+        ovrdFolder / "WaterNormal_n.ktx2",
+        info->pbrTextureSwizzling,
+        !!info->textureSamplerForceNormalMapFilterLinear,
         libconfig );
 
     cubemapManager = std::make_shared< CubemapManager >(
         device, 
         memAllocator, 
         genericSamplerManager, 
-        cmdManager, 
-        userFileLoad, 
-        *info, 
-        libconfig );
+        *cmdManager );
 
     shaderManager = std::make_shared< ShaderManager >( 
         device, 
-        info->pShaderFolderPath,
-        userFileLoad );
+        ovrdFolder / "shaders" );
 
     scene = std::make_shared< Scene >(
         device, 
@@ -691,7 +674,7 @@ void RTGL1::VulkanDevice::CreateInstance( const RgInstanceCreateInfo& info )
     if( libconfig.vulkanValidation )
     {
         InitInstanceExtensionFunctions_DebugUtils( instance );
-        
+
         // init debug utilsdebugMessenger
         VkDebugUtilsMessengerCreateInfoEXT debugMessengerInfo = {
             .sType           = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
