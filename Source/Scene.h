@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ASManager.h"
+#include "GltfExporter.h"
 #include "GltfImporter.h"
 #include "LightManager.h"
 #include "VertexPreprocessing.h"
@@ -92,6 +93,93 @@ private:
 
     StaticGeometryToken  makingStatic{};
     DynamicGeometryToken makingDynamic{};
+};
+
+
+class SceneImportExport : public IFileDependency
+{
+public:
+    SceneImportExport( std::shared_ptr< Scene > _scene,
+                       std::filesystem::path    _scenesFolder,
+                       const RgFloat3D&         _worldUp,
+                       const RgFloat3D&         _worldForward,
+                       const float&             _worldScale );
+    ~SceneImportExport() override = default;
+
+    SceneImportExport( const SceneImportExport& other )                = delete;
+    SceneImportExport( SceneImportExport&& other ) noexcept            = delete;
+    SceneImportExport& operator=( const SceneImportExport& other )     = delete;
+    SceneImportExport& operator=( SceneImportExport&& other ) noexcept = delete;
+
+    void PrepareForFrame();
+    void CheckForNewScene( std::string_view mapName,
+                           VkCommandBuffer  cmd,
+                           uint32_t         frameIndex,
+                           TextureManager&  textureManager );
+
+    void RequestReimport();
+    void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
+
+    void          RequestExport();
+    GltfExporter* TryGetExporter();
+
+    std::string_view GetImportMapName() const;
+    std::string_view GetExportMapName() const;
+
+    const RgFloat3D& GetWorldUp() const;
+    const RgFloat3D& GetWorldForward() const;
+    float            GetWorldScale() const;
+
+    std::filesystem::path MakeGltfPath( std::string_view mapName );
+    RgTransform           MakeWorldTransform() const;
+
+private:
+    std::shared_ptr< Scene > scene;
+    std::filesystem::path    scenesFolder;
+
+    bool reimportRequested{ false };
+
+    bool                            exportRequested{ false };
+    std::unique_ptr< GltfExporter > exporter{};
+
+    std::string currentMap{};
+    RgFloat3D   worldUp;
+    RgFloat3D   worldForward;
+    float       worldScale;
+
+public:
+    mutable struct
+    {
+        struct DevField
+        {
+            bool enable{ false };
+            char value[ 128 ]{ "" };
+
+            void SetDefaults( const SceneImportExport& s )
+            {
+                std::snprintf( value, std::size( value ), "%s", s.currentMap.c_str() );
+                value[ std::size( value ) - 1 ] = '\0';
+            }
+        };
+
+        DevField importName;
+        DevField exportName;
+
+        struct
+        {
+            bool      enable{ false };
+            RgFloat3D up{};
+            RgFloat3D forward{};
+            float     scale{};
+
+            void SetDefaults( const SceneImportExport& s )
+            {
+                up      = s.worldUp;
+                forward = s.worldForward;
+                scale   = s.worldScale;
+            }
+        } worldTransform;
+    } dev;
 };
 
 }

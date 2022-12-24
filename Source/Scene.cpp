@@ -154,24 +154,24 @@ void RTGL1::Scene::NewScene( VkCommandBuffer     cmd,
                              const GltfImporter& staticScene,
                              TextureManager&     textureManager )
 {
-    debug::Verbose( "Starting new scene..." );
-
     staticUniqueIDs.clear();
+
+    assert( !makingStatic );
+    makingStatic = asManager->BeginStaticGeometry();
 
     if( staticScene )
     {
-        assert( !makingStatic );
-        makingStatic = asManager->BeginStaticGeometry();
-
-        staticScene.UploadToScene_DEBUG( cmd, frameIndex,*this, textureManager );
-
-        debug::Info( "Rebuilding static geometry. Waiting device idle..." );
-        asManager->SubmitStaticGeometry( makingStatic );
-
-        debug::Info( "Static geometry was rebuilt" );
+        staticScene.UploadToScene_DEBUG( cmd, frameIndex, *this, textureManager );
+    }
+    else
+    {
+        debug::Info( "New scene is empty" );
     }
 
-    debug::Verbose( "New scene is ready" );
+    debug::Info( "Rebuilding static geometry. Waiting device idle..." );
+    asManager->SubmitStaticGeometry( makingStatic );
+
+    debug::Info( "Static geometry was rebuilt" );
 }
 
 const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()
@@ -197,4 +197,147 @@ bool RTGL1::Scene::StaticUniqueIDExists( uint64_t uniqueID ) const
 bool RTGL1::Scene::DynamicUniqueIDExists( uint64_t uniqueID ) const
 {
     return std::ranges::contains( dynamicUniqueIDs, uniqueID );
+}
+
+
+
+RTGL1::SceneImportExport::SceneImportExport( std::shared_ptr< Scene > _scene,
+                                             std::filesystem::path    _scenesFolder,
+                                             const RgFloat3D&         _worldUp,
+                                             const RgFloat3D&         _worldForward,
+                                             const float&             _worldScale )
+    : scene( std::move( _scene ) )
+    , scenesFolder( std::move( _scenesFolder ) )
+    , worldUp( Utils::SafeNormalize( _worldUp, { 0, 1, 0 } ) )
+    , worldForward( Utils::SafeNormalize( _worldForward, { 0, 0, 1 } ) )
+    , worldScale( std::max( 0.0f, _worldScale ) )
+{
+}
+
+void RTGL1::SceneImportExport::PrepareForFrame()
+{
+    if( exportRequested )
+    {
+        exporter        = std::make_unique< GltfExporter >( MakeWorldTransform() );
+        exportRequested = false;
+    }
+}
+
+void RTGL1::SceneImportExport::CheckForNewScene( std::string_view mapName,
+                                                 VkCommandBuffer  cmd,
+                                                 uint32_t         frameIndex,
+                                                 TextureManager&  textureManager )
+{
+    if( auto e = TryGetExporter() )
+    {
+        e->ExportToFiles( MakeGltfPath( GetExportMapName() ), textureManager );
+    }
+
+    if( currentMap != mapName || reimportRequested )
+    {
+        reimportRequested = false;
+        debug::Verbose( "Starting new scene..." );
+
+        currentMap = mapName;
+
+        auto staticScene = GltfImporter( MakeGltfPath( GetImportMapName() ), MakeWorldTransform() );
+        scene->NewScene( cmd, frameIndex, staticScene, textureManager );
+
+        debug::Verbose( "New scene is ready" );
+    }
+}
+
+void RTGL1::SceneImportExport::RequestReimport()
+{
+    reimportRequested = true;
+}
+
+void RTGL1::SceneImportExport::OnFileChanged( FileType type, const std::filesystem::path& filepath )
+{
+    if( type == FileType::GLTF && filepath == MakeGltfPath( GetImportMapName() ) )
+    {
+        debug::Verbose( "Hot-reloading GLTF..." );
+        RequestReimport();
+    }
+}
+
+RTGL1::GltfExporter* RTGL1::SceneImportExport::TryGetExporter()
+{
+    return exporter.get();
+}
+
+const RgFloat3D& RTGL1::SceneImportExport::GetWorldUp() const
+{
+    if( dev.worldTransform.enable )
+    {
+        return dev.worldTransform.up;
+    }
+
+    assert( !Utils::IsAlmostZero( worldUp ) );
+    return worldUp;
+}
+
+const RgFloat3D& RTGL1::SceneImportExport::GetWorldForward() const
+{
+    if( dev.worldTransform.enable )
+    {
+        return dev.worldTransform.forward;
+    }
+
+    assert( !Utils::IsAlmostZero( worldForward ) );
+    return worldForward;
+}
+
+float RTGL1::SceneImportExport::GetWorldScale() const
+{
+    if( dev.worldTransform.enable )
+    {
+        return dev.worldTransform.scale;
+    }
+
+    assert( worldScale >= 0.0f );
+    return worldScale;
+}
+
+RgTransform RTGL1::SceneImportExport::MakeWorldTransform() const
+{
+    return Utils::MakeTransform(
+        Utils::Normalize( GetWorldUp() ), Utils::Normalize( GetWorldForward() ), GetWorldScale() );
+}
+
+std::string_view RTGL1::SceneImportExport::GetImportMapName() const
+{
+    if( dev.importName.enable )
+    {
+        dev.importName.value[ std::size( dev.importName.value ) - 1 ] = '\0';
+        return dev.importName.value;
+    }
+
+    return currentMap;
+}
+
+std::string_view RTGL1::SceneImportExport::GetExportMapName() const
+{
+    if( dev.exportName.enable )
+    {
+        dev.exportName.value[ std::size( dev.exportName.value ) - 1 ] = '\0';
+        return dev.exportName.value;
+    }
+
+    return currentMap;
+}
+
+std::filesystem::path RTGL1::SceneImportExport::MakeGltfPath( std::string_view mapName )
+{
+    auto exportName = std::string( mapName );
+
+    std::ranges::replace( exportName, '\\', '_' );
+    std::ranges::replace( exportName, '/', '_' );
+
+    return scenesFolder / exportName / ( exportName + ".gltf" );
+}
+
+void RTGL1::SceneImportExport::RequestExport()
+{
+    exportRequested = true;
 }

@@ -59,7 +59,6 @@
 #include "Volumetric.h"
 #include "DebugWindows.h"
 #include "ScratchImmediate.h"
-#include "GltfExporter.h"
 #include "FolderObserver.h"
 
 namespace RTGL1
@@ -163,8 +162,9 @@ private:
     std::shared_ptr< RestirBuffers > restirBuffers;
     std::shared_ptr< Volumetric >    volumetric;
 
-    std::shared_ptr< GlobalUniform > uniform;
-    std::shared_ptr< Scene >         scene;
+    std::shared_ptr< GlobalUniform >     uniform;
+    std::shared_ptr< Scene >             scene;
+    std::shared_ptr< SceneImportExport > sceneImportExport;
 
     std::shared_ptr< ShaderManager >             shaderManager;
     std::shared_ptr< RayTracingPipeline >        rtPipeline;
@@ -205,7 +205,6 @@ private:
     std::unique_ptr< UserPrint >      userPrint;
     std::shared_ptr< DebugWindows >   debugWindows;
     ScratchImmediate                  scratchImmediate;
-    std::unique_ptr< GltfExporter >   exporter;
     std::unique_ptr< FolderObserver > observer;
 
     struct DebugPrim
@@ -229,13 +228,6 @@ private:
         bool                         ovrdVsync{ false };
         bool                         reloadShaders{ false };
         uint32_t                     debugShowFlags{ 0 };
-        bool                         exportPrimitives{ false };
-        bool                         overrideExport{ false };
-        bool                         ovrdExportNameEnable{ false };
-        char                         ovrdExportName[ 128 ];
-        RgFloat3D                    exportWorldUp{};
-        RgFloat3D                    exportWorldForward{};
-        float                        exportWorldScale{};
         bool                         primitivesTableEnable{ false };
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };
@@ -244,13 +236,9 @@ private:
                                          RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR };
         std::vector< std::pair< RgMessageSeverityFlags, std::string > > logs{};
     } debugData;
-    std::filesystem::path GetGltfPath( std::string sceneName ) const;
 
-    bool      rayCullBackFacingTriangles;
-    bool      allowGeometryWithSkyFlag;
-    RgFloat3D defaultWorldUp;
-    RgFloat3D defaultWorldForward;
-    float     defaultWorldScale;
+    bool rayCullBackFacingTriangles;
+    bool allowGeometryWithSkyFlag;
 
     RenderResolutionHelper renderResolution;
 
@@ -258,8 +246,6 @@ private:
     double currentFrameTime;
 
     bool vsync;
-
-    std::string currentMap{};
 };
 
 }

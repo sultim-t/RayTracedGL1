@@ -173,15 +173,11 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )
     , allowGeometryWithSkyFlag( info->allowGeometryWithSkyFlag )
-    , defaultWorldUp( Utils::SafeNormalize( info->worldUp, { 0, 1, 0 } ) )
-    , defaultWorldForward( Utils::SafeNormalize( info->worldForward, { 0, 0, 1 } ) )
-    , defaultWorldScale( std::max( info->worldScale, 0.0f ) )
     , previousFrameTime( -1.0 / 60.0 )
     , currentFrameTime( 0 )
     , vsync( true )
 {
     ValidateCreateInfo( info );
-
 
 
     // init vulkan instance
@@ -288,6 +284,13 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         cmdManager, 
         *uniform, 
         *shaderManager );
+
+    sceneImportExport = std::make_shared< SceneImportExport >(
+        scene, 
+        ovrdFolder / SCENES_FOLDER, 
+        info->worldUp, 
+        info->worldForward, 
+        info->worldScale );
 
     tonemapping = std::make_shared< Tonemapping >(
         device, 
@@ -457,6 +460,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     if( observer )
     {
         observer->Subscribe( textureManager );
+        observer->Subscribe( sceneImportExport );
     }
 }
 
@@ -464,6 +468,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
 {
     vkDeviceWaitIdle( device );
 
+    observer.reset();
     physDevice.reset();
     queues.reset();
     swapchain.reset();
@@ -490,6 +495,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     denoiser.reset();
     uniform.reset();
     scene.reset();
+    sceneImportExport.reset();
     shaderManager.reset();
     rtPipeline.reset();
     pathTracer.reset();

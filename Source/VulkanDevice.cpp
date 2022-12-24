@@ -87,16 +87,7 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
         shaderManager->ReloadShaders();
         debugData.reloadShaders = false;
     }
-    if( debugData.exportPrimitives )
-    {
-        assert( !exporter );
-        exporter = std::make_unique< GltfExporter >(
-            Utils::MakeTransform( Utils::Normalize( debugData.exportWorldUp ),
-                                  Utils::Normalize( debugData.exportWorldForward ),
-                                  debugData.exportWorldScale ) );
-
-        debugData.exportPrimitives = false;
-    }
+    sceneImportExport->PrepareForFrame();
 
 
     // reset cmds for current frame index
@@ -460,8 +451,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     gu->cameraRayConeSpreadAngle = atanf( ( 2.0f * tanf( drawInfo.fovYRadians * 0.5f ) ) /
                                           ( float )renderResolution.Height() );
 
-    assert( !Utils::IsAlmostZero( defaultWorldUp ) );
-    RG_SET_VEC3_A( gu->worldUpVector, defaultWorldUp.data );
+    RG_SET_VEC3_A( gu->worldUpVector, sceneImportExport->GetWorldUp().data );
 
     if( drawInfo.pLightmapParams != nullptr )
     {
@@ -760,73 +750,92 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     }
     ImGui::End();
 
-    
-    if( ImGui::Begin( "Export" ) )
+
+    if( ImGui::Begin( "Import/Export" ) )
     {
-        ImGui::Text( "Resource folder: %s",
-                     std::filesystem::absolute( ovrdFolder ).string().c_str() );
-        ImGui::Separator();
-
-        if( !debugData.overrideExport )
+        auto& dev = sceneImportExport->dev;
+        if( !dev.exportName.enable )
         {
-            debugData.exportWorldUp      = defaultWorldUp;
-            debugData.exportWorldForward = defaultWorldForward;
-            debugData.exportWorldScale   = defaultWorldScale;
+            dev.exportName.SetDefaults( *sceneImportExport );
+        }
+        if( !dev.importName.enable )
+        {
+            dev.importName.SetDefaults( *sceneImportExport );
+        }
+        if( !dev.worldTransform.enable )
+        {
+            dev.worldTransform.SetDefaults( *sceneImportExport );
         }
 
-        ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.98f, 0.59f, 0.26f, 0.40f ) );
-        ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.98f, 0.59f, 0.26f, 1.00f ) );
-        ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.98f, 0.53f, 0.06f, 1.00f ) );
-        debugData.exportPrimitives = ImGui::Button( "Export frame geometry", { -1, 96 } );
-        ImGui::PopStyleColor( 3 );
-
-        ImGui::Text( "Export path: %s",
-                     GetGltfPath( currentMap ).make_preferred().string().c_str() );
-        ImGui::BeginDisabled( !debugData.ovrdExportNameEnable );
         {
-            if( !debugData.ovrdExportNameEnable )
+            ImGui::Text( "Resource folder: %s",
+                         std::filesystem::absolute( ovrdFolder ).string().c_str() );
+        }
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+        {
+            if( ImGui::Button( "Reimport GLTF", { -1, 80 } ) )
             {
-                std::snprintf( debugData.ovrdExportName,
-                               std::size( debugData.ovrdExportName ),
-                               "%s",
-                               currentMap.c_str() );
-                debugData.ovrdExportName[ std::size( debugData.ovrdExportName ) - 1 ] = '\0';
+                sceneImportExport->RequestReimport();
             }
-            ImGui::InputText(
-                "Map name", debugData.ovrdExportName, std::size( debugData.ovrdExportName ) );
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::Checkbox( "Custom", &debugData.ovrdExportNameEnable );
-        ImGui::Separator();
 
-        ImGui::Checkbox( "Settings", &debugData.overrideExport );
-        ImGui::BeginDisabled( !debugData.overrideExport );
-        {
-            ImGui::SliderFloat3( "World Up vector", debugData.exportWorldUp.data, -1.0f, 1.0f );
-            ImGui::SliderFloat3(
-                "World Forward vector", debugData.exportWorldForward.data, -1.0f, 1.0f );
-            ImGui::InputFloat(
-                std::format( "1 unit = {} meters", debugData.exportWorldScale ).c_str(),
-                &debugData.exportWorldScale );
+            ImGui::Text( "Import path: %s",
+                         sceneImportExport->MakeGltfPath( sceneImportExport->GetImportMapName() )
+                             .string()
+                             .c_str() );
+            ImGui::BeginDisabled( !dev.importName.enable );
+            {
+                ImGui::InputText(
+                    "Import map name", dev.importName.value, std::size( dev.importName.value ) );
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::Checkbox( "Custom##import", &dev.importName.enable );
         }
-        ImGui::EndDisabled();
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+        {
+            ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.98f, 0.59f, 0.26f, 0.40f ) );
+            ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.98f, 0.59f, 0.26f, 1.00f ) );
+            ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.98f, 0.53f, 0.06f, 1.00f ) );
+            if( ImGui::Button( "Export frame geometry", { -1, 80 } ) )
+            {
+                sceneImportExport->RequestExport();
+            }
+            ImGui::PopStyleColor( 3 );
+
+            ImGui::Text( "Export path: %s",
+                         sceneImportExport->MakeGltfPath( sceneImportExport->GetExportMapName() )
+                             .string()
+                             .c_str() );
+            ImGui::BeginDisabled( !dev.exportName.enable );
+            {
+                ImGui::InputText(
+                    "Export map name", dev.exportName.value, std::size( dev.exportName.value ) );
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::Checkbox( "Custom##export", &dev.exportName.enable );
+        }
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+        {
+            ImGui::Checkbox( "Custom import/export world space", &dev.worldTransform.enable );
+            ImGui::BeginDisabled( !dev.worldTransform.enable );
+            {
+                ImGui::SliderFloat3( "World Up vector", dev.worldTransform.up.data, -1.0f, 1.0f );
+                ImGui::SliderFloat3(
+                    "World Forward vector", dev.worldTransform.forward.data, -1.0f, 1.0f );
+                ImGui::InputFloat(
+                    std::format( "1 unit = {} meters", dev.worldTransform.scale ).c_str(),
+                    &dev.worldTransform.scale );
+            }
+            ImGui::EndDisabled();
+        }
     }
     ImGui::End();
-}
-
-std::filesystem::path RTGL1::VulkanDevice::GetGltfPath( std::string sceneName ) const
-{
-    debugData.ovrdExportName[ std::size( debugData.ovrdExportName ) - 1 ] = '\0';
-    if( debugData.ovrdExportNameEnable )
-    {
-        sceneName = debugData.ovrdExportName;
-    }
-
-    std::ranges::replace( sceneName, '\\', '_' );
-    std::ranges::replace( sceneName, '/', '_' );
-
-    return ovrdFolder / SCENES_FOLDER / sceneName / ( sceneName + ".gltf" );
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
@@ -838,18 +847,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
 
-    if( !Utils::IsCstrEmpty( drawInfo.pMapName ) && currentMap != drawInfo.pMapName )
-    {
-        currentMap = drawInfo.pMapName;
-
-        auto staticScene =
-            GltfImporter( GetGltfPath( currentMap ),
-                          Utils::MakeTransform( Utils::Normalize( defaultWorldUp ),
-                                                Utils::Normalize( defaultWorldForward ),
-                                                defaultWorldScale ) );
-
-        scene->NewScene( cmd, frameIndex, staticScene, *textureManager );
-    }
+    sceneImportExport->CheckForNewScene(
+        Utils::SafeCstr( drawInfo.pMapName ), cmd, frameIndex, *textureManager );
 
 
     bool           mipLodBiasUpdated =
@@ -1182,12 +1181,6 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    if( exporter )
-    {
-        exporter->ExportToFiles( GetGltfPath( currentMap ), *textureManager );
-        exporter.reset();
-    }
-
     // override if requested
     if( debugWindows )
     {
@@ -1326,9 +1319,12 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
             } );
         }
 
-        if( exporter && pMesh->isExportable && r != UploadResult::Fail )
+        if( pMesh->isExportable && r != UploadResult::Fail )
         {
-            exporter->AddPrimitive( *pMesh, *pPrimitive );
+            if( auto e = sceneImportExport->TryGetExporter() )
+            {
+                e->AddPrimitive( *pMesh, *pPrimitive );
+            }
         }
     }
 }

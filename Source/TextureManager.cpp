@@ -366,8 +366,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
     {
         if( materials.contains( info.pTextureName ) )
         {
-            debug::Warning( "{}: Material with the same name already exists. "
-                            "Ignoring the new one.",
+            debug::Verbose( "Material with the same name already exists, ignoring new data: {}",
                             info.pTextureName );
             return false;
         }
@@ -464,8 +463,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
     {
         if( materials.contains( materialName ) )
         {
-            debug::Warning( "{}: Material with the same name already exists. "
-                            "Ignoring the new one.",
+            debug::Verbose( "Material with the same name already exists, ignoring new data: {}",
                             materialName );
             return false;
         }
@@ -588,8 +586,7 @@ void TextureManager::InsertMaterial( uint32_t         frameIndex,
         }
         else
         {
-            debug::Warning( "{}: Material with the same name already exists. "
-                            "Overwriting the old one",
+            debug::Warning( "Material with the same name already exists, applying new data: {}",
                             iter->first );
 
             Material& existing = iter->second;
