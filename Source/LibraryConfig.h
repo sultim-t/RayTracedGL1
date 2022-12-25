@@ -29,63 +29,13 @@ namespace RTGL1::LibraryConfig
 {
 struct Config
 {
-    bool vulkanValidation = false;
-    bool developerMode    = false;
-    bool dlssValidation   = false;
-    bool fpsMonitor       = false;
+    uint32_t version          = 0;
+    bool     developerMode    = false;
+    bool     vulkanValidation = false;
+    bool     dlssValidation   = false;
+    bool     fpsMonitor       = false;
 };
 
-namespace detail
-{
-    inline void ProcessEntry( Config& dst, std::string_view entry )
-    {
-        if( entry == "vulkanvalidation" )
-        {
-            dst.vulkanValidation = true;
-        }
-        else if( entry == "developer" )
-        {
-            dst.developerMode = true;
-        }
-        else if( entry == "dlssvalidation" )
-        {
-            dst.dlssValidation = true;
-        }
-        else if( entry == "fpsmonitor" )
-        {
-            dst.fpsMonitor = true;
-        }
-    }
-}
+Config Read( const char* pPath );
 
-inline Config Read( const char* pPath )
-{
-    if( Utils::IsCstrEmpty( pPath ) )
-    {
-        pPath = "RayTracedGL1.txt";
-    }
-
-    auto path = std::filesystem::path( pPath );
-
-    if( std::filesystem::exists( path ) )
-    {
-        std::ifstream file( path );
-
-        if( file.is_open() )
-        {
-            Config result = {};
-
-            for( std::string line; std::getline( file, line ); )
-            {
-                std::ranges::transform( line, line.begin(), ::tolower );
-
-                detail::ProcessEntry( result, line );
-            }
-
-            return result;
-        }
-    }
-
-    return {};
-}
 }

@@ -88,6 +88,7 @@ set(Sources
     "Source/GltfImporter.cpp"
     "Source/FolderObserver.cpp"
     "Source/TextureExporter.cpp"
+    "Source/LibraryConfig.cpp"
 )
 
 
