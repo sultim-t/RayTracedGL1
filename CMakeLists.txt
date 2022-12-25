@@ -247,13 +247,17 @@ else()
     message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
 endif()
 
-# ImGui
+# Debug windows - ImGui
 if (RG_WITH_IMGUI)
     target_link_libraries(RayTracedGL1 PRIVATE ImGui)
     target_include_directories(RayTracedGL1 PRIVATE ImGui)
     target_link_libraries(RayTracedGL1 PRIVATE glfw)
     target_include_directories(RayTracedGL1 PRIVATE glfw)
 endif()
+
+# Json parser - glaze
+add_subdirectory(Source/glaze)
+target_link_libraries(RayTracedGL1 PRIVATE glaze::glaze)
 
 if (RG_WITH_EXAMPLES)
     message(STATUS "RG_WITH_EXAMPLES enabled")
@@ -265,12 +269,13 @@ if (RG_WITH_EXAMPLES)
     target_include_directories(RtglExample PUBLIC Tests/Libs/glm)
 endif()
 
+# VS hot-reload - disabled because of glaze
+if (false)
 if (MSVC AND WIN32 AND NOT MSVC_VERSION VERSION_LESS 142)
-
     target_link_options(RayTracedGL1 PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
     target_compile_options(RayTracedGL1 PRIVATE $<$<CONFIG:Debug>:/ZI>)
 
     target_link_options(RtglExample PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
     target_compile_options(RtglExample PRIVATE $<$<CONFIG:Debug>:/ZI>)
-
+endif()
 endif()
