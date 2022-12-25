@@ -12,7 +12,7 @@ target_link_libraries(Vulkan INTERFACE ${Vulkan_LIBRARIES})
 
 set(PublicHeaders 
     Include/RTGL1/RTGL1.h
-    Include/RTGL1/RTGL1A.h)
+)
 
 set(Sources
     "Source/RTGL1.cpp"
