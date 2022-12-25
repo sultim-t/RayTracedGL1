@@ -134,7 +134,7 @@ void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameInde
     assert( textures[ EMPTY_TEXTURE_INDEX ].image == VK_NULL_HANDLE &&
             textures[ EMPTY_TEXTURE_INDEX ].view == VK_NULL_HANDLE );
 
-    constexpr uint32_t   data[] = { 0xFFFFFFFF };
+    constexpr uint32_t   data[] = { Utils::PackColor( 255, 255, 255, 255 ) };
     constexpr RgExtent2D size   = { 1, 1 };
 
     ImageLoader::ResultInfo info = {
@@ -178,19 +178,17 @@ void TextureManager::CreateWaterNormalTexture( VkCommandBuffer              cmd,
                                                uint32_t                     frameIndex,
                                                const std::filesystem::path& filepath )
 {
-    if( !std::filesystem::exists( filepath ) )
-    {
-        this->waterNormalTextureIndex = EMPTY_TEXTURE_INDEX;
-        debug::Warning( "Water normal texture fail: Can't find file: {}", filepath.string() );
-        return;
-    }
-
-    constexpr uint32_t   defaultData[] = { 0x7F7FFFFF };
+    constexpr uint32_t   defaultData[] = { Utils::PackColor( 127, 127, 255, 255 ) };
     constexpr RgExtent2D defaultSize   = { 1, 1 };
 
     // try to load image file
-    TextureOverrides ovrd(
-        filepath, "", "", defaultData, defaultSize, VK_FORMAT_R8G8B8A8_UNORM, imageLoader.get() );
+    TextureOverrides ovrd( filepath.parent_path(),
+                           filepath.stem().string(),
+                           "",
+                           defaultData,
+                           defaultSize,
+                           VK_FORMAT_R8G8B8A8_UNORM,
+                           imageLoader.get() );
 
     this->waterNormalTextureIndex =
         PrepareTexture( cmd,
@@ -206,7 +204,7 @@ void TextureManager::CreateWaterNormalTexture( VkCommandBuffer              cmd,
                         std::move( ovrd.path ),
                         FindEmptySlot( textures ) );
 
-    if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX )
+    if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX || !ovrd.result )
     {
         debug::Warning( "Water normal texture fail: Couldn't upload texture. Path: {}",
                         filepath.string() );
