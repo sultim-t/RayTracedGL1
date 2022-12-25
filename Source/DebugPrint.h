@@ -39,11 +39,11 @@ namespace debug
             if( g_print )
             {
                 g_print( msg, severity );
+            }
 
-                if( severity & RG_MESSAGE_SEVERITY_ERROR )
-                {
-                    assert( 0 && "Found RG_MESSAGE_SEVERITY_ERROR" );
-                }
+            if( severity & RG_MESSAGE_SEVERITY_ERROR )
+            {
+                assert( 0 && "Found RG_MESSAGE_SEVERITY_ERROR" );
             }
         }
         
