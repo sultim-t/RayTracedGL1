@@ -547,8 +547,11 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         return;
     }
 
-    if( ImGui::Begin( "Test" ) )
+    if( ImGui::Begin( "General" ) )
     {
+        ImGui::Checkbox( "Always on top", &debugData.debugWindowOnTop );
+        debugWindows->SetAlwaysOnTop( debugData.debugWindowOnTop );
+
         ImGui::Text( "%.3f ms/frame (%.1f FPS)",
                      1000.0f / ImGui::GetIO().Framerate,
                      ImGui::GetIO().Framerate );

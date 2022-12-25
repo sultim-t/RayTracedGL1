@@ -59,6 +59,8 @@ public:
     uint32_t       GetSwapchainCurrentImageIndex() const;
     VkSemaphore    GetSwapchainImageAvailableSemaphore( uint32_t frameIndex ) const;
 
+    void SetAlwaysOnTop( bool onTop );
+
 private:
     VkDevice                     device;
 
@@ -70,6 +72,8 @@ private:
     VkDescriptorPool             descPool;
     VkRenderPass                 renderPass;
     std::vector< VkFramebuffer > framebuffers;
+
+    bool alwaysOnTop;
 };
 
 }

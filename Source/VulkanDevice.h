@@ -224,6 +224,7 @@ private:
     };
     mutable struct
     {
+        bool                         debugWindowOnTop{ false };
         bool                         overrideDrawInfo{ false };
         bool                         ovrdVsync{ false };
         bool                         reloadShaders{ false };

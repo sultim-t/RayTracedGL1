@@ -58,7 +58,6 @@ GLFWwindow* CreateGLFWWindow()
 
     glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API );
     glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
-    glfwWindowHint( GLFW_FLOATING, GLFW_TRUE );
     return glfwCreateWindow( 700, 1000, "RTGL1 Dev", nullptr, nullptr );
 }
 
@@ -207,6 +206,7 @@ RTGL1::DebugWindows::DebugWindows( VkInstance                               _ins
     , swapchainImageAvailable{}
     , descPool( CreateDescPool( _device ) )
     , renderPass( VK_NULL_HANDLE )
+    , alwaysOnTop( false )
 {
     VkResult r = glfwCreateWindowSurface( _instance, customWindow, nullptr, &customSurface );
     VK_CHECKERROR( r );
@@ -354,6 +354,16 @@ VkSemaphore RTGL1::DebugWindows::GetSwapchainImageAvailableSemaphore( uint32_t f
 {
     assert( frameIndex < std::size( swapchainImageAvailable ) );
     return swapchainImageAvailable[ frameIndex ];
+}
+
+void RTGL1::DebugWindows::SetAlwaysOnTop( bool onTop )
+{
+    if( alwaysOnTop != onTop )
+    {
+        alwaysOnTop = onTop;
+        
+        glfwSetWindowAttrib( customWindow, GLFW_FLOATING, alwaysOnTop ? GLFW_TRUE : GLFW_FALSE );
+    }
 }
 
 void RTGL1::DebugWindows::OnSwapchainCreate( const Swapchain* pSwapchain )
