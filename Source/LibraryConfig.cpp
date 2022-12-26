@@ -20,27 +20,18 @@
 
 #include "LibraryConfig.h"
 
-#include <glaze/glaze.hpp>
-#include <glaze/api/impl.hpp>
-#include <glaze/api/std/deque.hpp>
-#include <glaze/api/std/unordered_set.hpp>
-#include <glaze/api/std/span.hpp>
+#include "JsonReader.inl"
 
 
 // clang-format off
-template<>
-struct glz::meta< RTGL1::LibraryConfig::Config >
-{
-    using T = RTGL1::LibraryConfig::Config;
+JSON_READER( RTGL1::LibraryConfig::Config )
 
-    static constexpr auto value = object(
-        "version",          &T::version,
-        "developerMode",    &T::developerMode,
-        "vulkanValidation", &T::vulkanValidation,
-        "dlssValidation",   &T::dlssValidation,
-        "fpsMonitor",       &T::fpsMonitor
-    );
-};
+    "developerMode",    &T::developerMode,
+    "vulkanValidation", &T::vulkanValidation,
+    "dlssValidation",   &T::dlssValidation,
+    "fpsMonitor",       &T::fpsMonitor
+
+JSON_READER_END;
 // clang-format on
 
 
@@ -50,30 +41,10 @@ RTGL1::LibraryConfig::Config RTGL1::LibraryConfig::Read( const char* pPath )
     {
         pPath = "RayTracedGL1.json";
     }
-
-    auto path = std::filesystem::path( pPath );
-
-    if( std::filesystem::exists( path ) )
+    
+    if( auto c = json_reader::LoadFile< Config >( std::filesystem::path( pPath ) ) )
     {
-        std::stringstream buffer;
-        {
-            std::ifstream file( path );
-
-            if( file.is_open() )
-            {
-                buffer << file.rdbuf();
-            }
-        }
-
-        try
-        {
-            return glz::read_json< Config >( buffer.str() );
-        }
-        catch( std::exception& e )
-        {
-            debug::Warning( e.what() );
-            return {};
-        }
+        return *c;
     }
 
     return {};

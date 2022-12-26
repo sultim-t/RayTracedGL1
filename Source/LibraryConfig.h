@@ -22,14 +22,13 @@
 
 #include "Utils.h"
 
-#include <filesystem>
-#include <fstream>
-
 namespace RTGL1::LibraryConfig
 {
 struct Config
 {
-    uint32_t version          = 0;
+    constexpr static int Version = 0;
+    constexpr static int RequiredVersion = 0;
+
     bool     developerMode    = false;
     bool     vulkanValidation = false;
     bool     dlssValidation   = false;
