@@ -267,6 +267,9 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         !!info->textureSamplerForceNormalMapFilterLinear,
         libconfig );
 
+    textureMetaManager = std::make_shared< TextureMetaManager >(
+        ovrdFolder / DATABASE_FOLDER );
+
     cubemapManager = std::make_shared< CubemapManager >(
         device, 
         memAllocator, 
@@ -286,7 +289,6 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         *shaderManager );
 
     sceneImportExport = std::make_shared< SceneImportExport >(
-        scene, 
         ovrdFolder / SCENES_FOLDER, 
         info->worldUp, 
         info->worldForward, 
@@ -460,6 +462,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     if( observer )
     {
         observer->Subscribe( textureManager );
+        observer->Subscribe( textureMetaManager );
         observer->Subscribe( sceneImportExport );
     }
 }
@@ -508,6 +511,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     genericSamplerManager.reset();
     blueNoise.reset();
     textureManager.reset();
+    textureMetaManager.reset();
     cubemapManager.reset();
     debugWindows.reset();
     memAllocator.reset();

@@ -256,7 +256,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     gu->debugShowFlags = debugData.debugShowFlags;
-    
+
     if( drawInfo.pTexturesParams != nullptr )
     {
         gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
@@ -561,7 +561,8 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
     if( ImGui::Begin( "Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
     {
         ImGui::Checkbox( "Record", &debugData.primitivesTableEnable );
-        ImGui::TextUnformatted( "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
+        ImGui::TextUnformatted(
+            "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
         ImGui::TextUnformatted( "Green  - if exportable was found in GLTF" );
 
         if( ImGui::BeginTable( "Primitives table",
@@ -704,7 +705,7 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
     }
     ImGui::End();
-    
+
     if( ImGui::Begin( "Log", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
     {
         ImGui::CheckboxFlags( "Errors", &debugData.logFlags, RG_MESSAGE_SEVERITY_ERROR );
@@ -850,11 +851,15 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
 
-    sceneImportExport->CheckForNewScene(
-        Utils::SafeCstr( drawInfo.pMapName ), cmd, frameIndex, *textureManager );
+    sceneImportExport->CheckForNewScene( Utils::SafeCstr( drawInfo.pMapName ),
+                                         cmd,
+                                         frameIndex,
+                                         *scene,
+                                         *textureManager,
+                                         *textureMetaManager );
 
 
-    bool           mipLodBiasUpdated =
+    bool mipLodBiasUpdated =
         worldSamplerManager->TryChangeMipLodBias( frameIndex, renderResolution.GetMipLodBias() );
     const RgFloat2D jitter = { uniform->GetData()->jitterX, uniform->GetData()->jitterY };
 
@@ -1103,8 +1108,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
 void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )
 {
-    uint32_t    frameIndex     = currentFrameState.GetFrameIndex();
-    uint32_t    swapchainCount = debugWindows ? 2 : 1;
+    uint32_t frameIndex     = currentFrameState.GetFrameIndex();
+    uint32_t swapchainCount = debugWindows ? 2 : 1;
 
     VkSwapchainKHR swapchains[] = {
         swapchain->GetHandle(),
@@ -1197,7 +1202,7 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
                 ImGui::BeginDisabled( !debugData.overrideDrawInfo );
 
                 ImGui::Checkbox( "Vsync", &debugData.ovrdVsync );
-                
+
                 ImGui::EndDisabled();
                 ImGui::TreePop();
             }
@@ -1290,7 +1295,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     {
         return;
     }
-    
+
     if( IsRasterized( *pMesh, *pPrimitive ) )
     {
         rasterizer->Upload( currentFrameState.GetFrameIndex(),
@@ -1303,11 +1308,8 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     }
     else
     {
-        UploadResult r = scene->Upload( currentFrameState.GetFrameIndex(),
-                                        *pMesh,
-                                        *pPrimitive,
-                                        *textureManager,
-                                        false );
+        UploadResult r = scene->Upload(
+            currentFrameState.GetFrameIndex(), *pMesh, *pPrimitive, *textureManager, false );
 
         if( debugWindows && debugData.primitivesTableEnable )
         {

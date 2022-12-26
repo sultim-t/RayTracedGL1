@@ -89,6 +89,7 @@ set(Sources
     "Source/FolderObserver.cpp"
     "Source/TextureExporter.cpp"
     "Source/LibraryConfig.cpp"
+    "Source/TextureMeta.cpp"
 )
 
 

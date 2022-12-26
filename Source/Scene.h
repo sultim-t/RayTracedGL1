@@ -25,6 +25,7 @@
 #include "GltfImporter.h"
 #include "LightManager.h"
 #include "VertexPreprocessing.h"
+#include "TextureMeta.h"
 
 #include <set>
 
@@ -99,11 +100,10 @@ private:
 class SceneImportExport : public IFileDependency
 {
 public:
-    SceneImportExport( std::shared_ptr< Scene > _scene,
-                       std::filesystem::path    _scenesFolder,
-                       const RgFloat3D&         _worldUp,
-                       const RgFloat3D&         _worldForward,
-                       const float&             _worldScale );
+    SceneImportExport( std::filesystem::path _scenesFolder,
+                       const RgFloat3D&      _worldUp,
+                       const RgFloat3D&      _worldForward,
+                       const float&          _worldScale );
     ~SceneImportExport() override = default;
 
     SceneImportExport( const SceneImportExport& other )                = delete;
@@ -112,10 +112,12 @@ public:
     SceneImportExport& operator=( SceneImportExport&& other ) noexcept = delete;
 
     void PrepareForFrame();
-    void CheckForNewScene( std::string_view mapName,
-                           VkCommandBuffer  cmd,
-                           uint32_t         frameIndex,
-                           TextureManager&  textureManager );
+    void CheckForNewScene( std::string_view    mapName,
+                           VkCommandBuffer     cmd,
+                           uint32_t            frameIndex,
+                           Scene&              scene,
+                           TextureManager&     textureManager,
+                           TextureMetaManager& textureMetaManager );
 
     void RequestReimport();
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
@@ -134,8 +136,7 @@ public:
     RgTransform           MakeWorldTransform() const;
 
 private:
-    std::shared_ptr< Scene > scene;
-    std::filesystem::path    scenesFolder;
+    std::filesystem::path scenesFolder;
 
     bool reimportRequested{ false };
 

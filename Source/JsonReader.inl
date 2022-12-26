@@ -20,7 +20,7 @@
 
 #pragma once
 
-#include "DebugPrint.h"
+#include "Common.h"
 
 #include <glaze/glaze.hpp>
 #include <glaze/api/impl.hpp>
@@ -33,15 +33,17 @@
 #include <fstream>
 #include <optional>
 
-// clang-format off
-#define JSON_READER( Type )                     \
-    template<>                                  \
-    struct glz::meta< Type >                    \
-    {                                           \
-        using T                     = Type;     \
-        static constexpr auto value = object(   
 
-#define JSON_READER_END                     ); }
+// clang-format off
+#define JSON_TYPE( Type )                           \
+template<>                                          \
+struct glz::meta< Type >                            \
+{                                                   \
+    using T = Type;                                 \
+    static constexpr std::string_view name = #Type; \
+    static constexpr auto value = glz::object(   
+
+#define JSON_TYPE_END                         ); }
 // clang-format on
 
 
@@ -55,11 +57,11 @@ struct Version
 
 
 // clang-format off
-JSON_READER( RTGL1::json_reader::detail::Version )
+JSON_TYPE( RTGL1::json_reader::detail::Version )
 
     "version", &T::version
 
-JSON_READER_END;
+JSON_TYPE_END;
 // clang-format on
 
 
@@ -88,7 +90,7 @@ template< typename T >
               std::is_same_v< decltype( T::Version ), const int >,
               T::RequiredVersion,
               std::is_same_v< decltype( T::RequiredVersion ), const int > )
-std::optional< T > LoadFile( const std::filesystem::path& path )
+std::optional< T > LoadFileAs( const std::filesystem::path& path )
 {
     if( !std::filesystem::exists( path ) )
     {
@@ -129,12 +131,12 @@ std::optional< T > LoadFile( const std::filesystem::path& path )
                             version );
             return std::nullopt;
         }
-
+        
         return detail::ReadJson< T >( buffer.str() );
     }
     catch( std::exception& e )
     {
-        debug::Warning( "Json parse fail on {}: {}", path.string(), e.what() );
+        debug::Warning( "Json parse fail on {}:\n{}", path.string(), e.what() );
         return std::nullopt;
     }
 }

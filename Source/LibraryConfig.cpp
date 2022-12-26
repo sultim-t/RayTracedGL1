@@ -24,14 +24,14 @@
 
 
 // clang-format off
-JSON_READER( RTGL1::LibraryConfig::Config )
+JSON_TYPE( RTGL1::LibraryConfig::Config )
 
     "developerMode",    &T::developerMode,
     "vulkanValidation", &T::vulkanValidation,
     "dlssValidation",   &T::dlssValidation,
     "fpsMonitor",       &T::fpsMonitor
 
-JSON_READER_END;
+JSON_TYPE_END;
 // clang-format on
 
 
@@ -42,7 +42,7 @@ RTGL1::LibraryConfig::Config RTGL1::LibraryConfig::Read( const char* pPath )
         pPath = "RayTracedGL1.json";
     }
     
-    if( auto c = json_reader::LoadFile< Config >( std::filesystem::path( pPath ) ) )
+    if( auto c = json_reader::LoadFileAs< Config >( std::filesystem::path( pPath ) ) )
     {
         return *c;
     }

@@ -60,6 +60,7 @@
 #include "DebugWindows.h"
 #include "ScratchImmediate.h"
 #include "FolderObserver.h"
+#include "TextureMeta.h"
 
 namespace RTGL1
 {
@@ -192,11 +193,12 @@ private:
     std::shared_ptr< EffectCrtDemodulateEncode > effectCrtDemodulateEncode;
     std::shared_ptr< EffectCrtDecode >           effectCrtDecode;
 
-    std::shared_ptr< SamplerManager > worldSamplerManager;
-    std::shared_ptr< SamplerManager > genericSamplerManager;
-    std::shared_ptr< BlueNoise >      blueNoise;
-    std::shared_ptr< TextureManager > textureManager;
-    std::shared_ptr< CubemapManager > cubemapManager;
+    std::shared_ptr< SamplerManager >     worldSamplerManager;
+    std::shared_ptr< SamplerManager >     genericSamplerManager;
+    std::shared_ptr< BlueNoise >          blueNoise;
+    std::shared_ptr< TextureManager >     textureManager;
+    std::shared_ptr< TextureMetaManager > textureMetaManager;
+    std::shared_ptr< CubemapManager >     cubemapManager;
 
     std::filesystem::path ovrdFolder;
 

@@ -201,13 +201,11 @@ bool RTGL1::Scene::DynamicUniqueIDExists( uint64_t uniqueID ) const
 
 
 
-RTGL1::SceneImportExport::SceneImportExport( std::shared_ptr< Scene > _scene,
-                                             std::filesystem::path    _scenesFolder,
-                                             const RgFloat3D&         _worldUp,
-                                             const RgFloat3D&         _worldForward,
-                                             const float&             _worldScale )
-    : scene( std::move( _scene ) )
-    , scenesFolder( std::move( _scenesFolder ) )
+RTGL1::SceneImportExport::SceneImportExport( std::filesystem::path _scenesFolder,
+                                             const RgFloat3D&      _worldUp,
+                                             const RgFloat3D&      _worldForward,
+                                             const float&          _worldScale )
+    : scenesFolder( std::move( _scenesFolder ) )
     , worldUp( Utils::SafeNormalize( _worldUp, { 0, 1, 0 } ) )
     , worldForward( Utils::SafeNormalize( _worldForward, { 0, 0, 1 } ) )
     , worldScale( std::max( 0.0f, _worldScale ) )
@@ -223,10 +221,12 @@ void RTGL1::SceneImportExport::PrepareForFrame()
     }
 }
 
-void RTGL1::SceneImportExport::CheckForNewScene( std::string_view mapName,
-                                                 VkCommandBuffer  cmd,
-                                                 uint32_t         frameIndex,
-                                                 TextureManager&  textureManager )
+void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
+                                                 VkCommandBuffer     cmd,
+                                                 uint32_t            frameIndex,
+                                                 Scene&              scene,
+                                                 TextureManager&     textureManager,
+                                                 TextureMetaManager& textureMetaManager )
 {
     if( auto e = TryGetExporter() )
     {
@@ -241,7 +241,8 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view mapName,
         currentMap = mapName;
 
         auto staticScene = GltfImporter( MakeGltfPath( GetImportMapName() ), MakeWorldTransform() );
-        scene->NewScene( cmd, frameIndex, staticScene, textureManager );
+        scene.NewScene( cmd, frameIndex, staticScene, textureManager );
+        textureMetaManager.RereadFromFiles( mapName );
 
         debug::Verbose( "New scene is ready" );
     }

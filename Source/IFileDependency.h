@@ -33,6 +33,7 @@ enum class FileType
     PNG,
     TGA,
     JPG,
+    JSON,
 };
 
 inline FileType MakeFileType( const std::filesystem::path& p )
@@ -61,6 +62,10 @@ inline FileType MakeFileType( const std::filesystem::path& p )
     if( ext == ".jpg" || ext == ".jpeg" )
     {
         return FileType::JPG;
+    }
+    if( ext == ".json" )
+    {
+        return FileType::JSON;
     }
 
     return FileType::Unknown;
