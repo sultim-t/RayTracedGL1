@@ -98,61 +98,63 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
 
-    if( isStatic )
-    {
-        // if already uploaded
-        if( StaticUniqueIDExists( uniqueID ) )
-        {
-            return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
-        }
-
-        if( asManager->AddMeshPrimitive(
-                frameIndex, mesh, primitive, uniqueID, isStatic, textureManager, *geomInfoMgr ) )
-        {
-            staticUniqueIDs.emplace( uniqueID );
-            return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
-        }
-
-        return UploadResult::Fail;
-    }
-    else
+    if( !isStatic )
     {
         if( mesh.isExportable )
         {
-            // if dynamic was already uploaded (i.e. found a matching mesh inside a static scene)
+            // if dynamic-exportable was already uploaded
+            // (i.e. found a matching mesh inside a static scene)
             // otherwise, continue as dynamic
-            if( StaticUniqueIDExists( uniqueID ) )
+            if( StaticMeshExists( mesh ) )
             {
                 return UploadResult::ExportableStatic;
             }
         }
+    }
 
-        if( DynamicUniqueIDExists( uniqueID ) )
-        {
-            debug::Error( "Mesh primitive ({}->{}) with ID ({}->{}): "
-                          "Trying to upload but a primitive with the same ID already exists",
-                          Utils::SafeCstr( mesh.pMeshName ),
-                          Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
-                          mesh.uniqueObjectID,
-                          primitive.primitiveIndexInMesh );
-            return UploadResult::Fail;
-        }
-
-        if( asManager->AddMeshPrimitive(
-                frameIndex, mesh, primitive, uniqueID, isStatic, textureManager, *geomInfoMgr ) )
-        {
-            dynamicUniqueIDs.emplace( uniqueID );
-            return mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic;
-        }
-
+    if( UniqueIDExists( uniqueID ) )
+    {
+        debug::Error( "Mesh primitive ({}->{}) with ID ({}->{}): "
+                      "Trying to upload but a primitive with the same ID already exists",
+                      Utils::SafeCstr( mesh.pMeshName ),
+                      Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
+                      mesh.uniqueObjectID,
+                      primitive.primitiveIndexInMesh );
         return UploadResult::Fail;
+    }
+
+    if( !asManager->AddMeshPrimitive(
+            frameIndex, mesh, primitive, uniqueID, isStatic, textureManager, *geomInfoMgr ) )
+    {
+        return UploadResult::Fail;
+    }
+
+    if( isStatic )
+    {
+        if( !Utils::IsCstrEmpty( mesh.pMeshName ) )
+        {
+            staticMeshNames.emplace( mesh.pMeshName );
+        }
+        else
+        {
+            assert( 0 );
+        }
+
+        staticUniqueIDs.emplace( uniqueID );
+        return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
+    }
+    else
+    {
+        dynamicUniqueIDs.emplace( uniqueID );
+        return mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic;
     }
 }
 
-void RTGL1::Scene::NewScene( VkCommandBuffer     cmd,
-                             uint32_t            frameIndex,
-                             const GltfImporter& staticScene,
-                             TextureManager&     textureManager )
+void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,
+                             uint32_t                  frameIndex,
+                             const GltfImporter&       staticScene,
+                             TextureManager&           textureManager,
+                             const TextureMetaManager& textureMeta )
 {
     staticUniqueIDs.clear();
 
@@ -161,7 +163,7 @@ void RTGL1::Scene::NewScene( VkCommandBuffer     cmd,
 
     if( staticScene )
     {
-        staticScene.UploadToScene_DEBUG( cmd, frameIndex, *this, textureManager );
+        staticScene.UploadToScene_DEBUG( cmd, frameIndex, *this, textureManager, textureMeta );
     }
     else
     {
@@ -186,17 +188,20 @@ const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPrep
 
 bool RTGL1::Scene::UniqueIDExists( uint64_t uniqueID ) const
 {
-    return StaticUniqueIDExists( uniqueID ) || DynamicUniqueIDExists( uniqueID );
+    return std::ranges::contains( staticUniqueIDs, uniqueID ) ||
+           std::ranges::contains( dynamicUniqueIDs, uniqueID );
 }
 
-bool RTGL1::Scene::StaticUniqueIDExists( uint64_t uniqueID ) const
+bool RTGL1::Scene::StaticMeshExists( const RgMeshInfo& mesh ) const
 {
-    return std::ranges::contains( staticUniqueIDs, uniqueID );
-}
+    if( Utils::IsCstrEmpty( mesh.pMeshName ) )
+    {
+        return false;
+    }
 
-bool RTGL1::Scene::DynamicUniqueIDExists( uint64_t uniqueID ) const
-{
-    return std::ranges::contains( dynamicUniqueIDs, uniqueID );
+    // TODO: actually, need to consider RgMeshInfo::uniqueObjectID,
+    // as there might be different instances of the same mesh
+    return std::ranges::contains( staticMeshNames, std::string( mesh.pMeshName ) );
 }
 
 
@@ -226,7 +231,7 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
                                                  uint32_t            frameIndex,
                                                  Scene&              scene,
                                                  TextureManager&     textureManager,
-                                                 TextureMetaManager& textureMetaManager )
+                                                 TextureMetaManager& textureMeta )
 {
     if( auto e = TryGetExporter() )
     {
@@ -240,9 +245,11 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
 
         currentMap = mapName;
 
+        // before importer, as it relies on texture properties
+        textureMeta.RereadFromFiles( GetImportMapName() );
+
         auto staticScene = GltfImporter( MakeGltfPath( GetImportMapName() ), MakeWorldTransform() );
-        scene.NewScene( cmd, frameIndex, staticScene, textureManager );
-        textureMetaManager.RereadFromFiles( mapName );
+        scene.NewScene( cmd, frameIndex, staticScene, textureManager, textureMeta );
 
         debug::Verbose( "New scene is ready" );
     }

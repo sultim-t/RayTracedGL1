@@ -21,6 +21,7 @@
 #include "TextureMeta.h"
 
 #include "Const.h"
+#include "Utils.h"
 
 #include "JsonReader.inl"
 
@@ -63,6 +64,32 @@ RTGL1::TextureMetaManager::TextureMetaManager( std::filesystem::path _databaseFo
     sourceGlobal = databaseFolder / TEXTURES_FILENAME;
 }
 
+auto RTGL1::TextureMetaManager::Access( const char* pTextureName ) const
+    -> std::optional< RTGL1::TextureMeta >
+{
+    if( Utils::IsCstrEmpty( pTextureName ) )
+    {
+        return std::nullopt;
+    }
+
+    auto strTextureName = std::string( pTextureName );
+    {
+        auto found = dataScene.find( strTextureName );
+        if( found != dataScene.end() )
+        {
+            return found->second;
+        }
+    }
+    {
+        auto found = dataGlobal.find( strTextureName );
+        if( found != dataGlobal.end() )
+        {
+            return found->second;
+        }
+    }
+    return std::nullopt;
+}
+
 void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile )
 {
     sourceScene = std::move( sceneFile );
@@ -99,10 +126,49 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
     reread( sourceScene, dataScene );
 }
 
+RgMeshPrimitiveInfo RTGL1::TextureMetaManager::Modify( const RgMeshPrimitiveInfo& original,
+                                                       bool                       isStatic ) const
+{
+    RgMeshPrimitiveInfo modified = original;
+
+    if( auto meta = Access( modified.pTextureName ) )
+    {
+        if( meta->forceAlphaTest )
+        {
+            modified.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
+        }
+
+        if( meta->isWater )
+        {
+            modified.flags |= RG_MESH_PRIMITIVE_WATER;
+            modified.flags &= ~RG_MESH_PRIMITIVE_GLASS;
+            modified.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+        }
+        else if( meta->isGlass )
+        {
+            modified.flags &= ~RG_MESH_PRIMITIVE_WATER;
+            modified.flags |= RG_MESH_PRIMITIVE_GLASS;
+            modified.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+        }
+        else if( meta->isMirror )
+        {
+            modified.flags &= ~RG_MESH_PRIMITIVE_WATER;
+            modified.flags &= ~RG_MESH_PRIMITIVE_GLASS;
+            modified.flags |= RG_MESH_PRIMITIVE_MIRROR;
+        }
+
+        if( meta->emissive > 0.0f )
+        {
+            modified.emissive = meta->emissive;
+        }
+    }
+
+    return modified;
+}
+
 void RTGL1::TextureMetaManager::RereadFromFiles( std::string_view currentSceneName )
 {
-    RereadFromFiles( databaseFolder / SCENES_FOLDER / currentSceneName /
-                     TEXTURES_FILENAME );
+    RereadFromFiles( databaseFolder / SCENES_FOLDER / currentSceneName / TEXTURES_FILENAME );
 }
 
 void RTGL1::TextureMetaManager::OnFileChanged( FileType                     type,

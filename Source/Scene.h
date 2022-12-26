@@ -71,17 +71,17 @@ public:
                          const TextureManager&      textureManager,
                          bool                       isStatic );
 
-    void NewScene( VkCommandBuffer     cmd,
-                   uint32_t            frameIndex,
-                   const GltfImporter& staticScene,
-                   TextureManager&     textureManager );
+    void NewScene( VkCommandBuffer           cmd,
+                   uint32_t                  frameIndex,
+                   const GltfImporter&       staticScene,
+                   TextureManager&           textureManager,
+                   const TextureMetaManager& textureMeta );
 
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
     bool UniqueIDExists( uint64_t uniqueID ) const;
-    bool StaticUniqueIDExists( uint64_t uniqueID ) const;
-    bool DynamicUniqueIDExists( uint64_t uniqueID ) const;
+    bool StaticMeshExists( const RgMeshInfo& mesh ) const;
 
 private:
     std::shared_ptr< ASManager >           asManager;
@@ -89,8 +89,9 @@ private:
     std::shared_ptr< VertexPreprocessing > vertPreproc;
 
     // Dynamic indices are cleared every frame
-    std::set< uint64_t > dynamicUniqueIDs;
-    std::set< uint64_t > staticUniqueIDs;
+    rgl::unordered_set< uint64_t > dynamicUniqueIDs;
+    rgl::unordered_set< uint64_t > staticUniqueIDs;
+    rgl::unordered_set< std::string > staticMeshNames;
 
     StaticGeometryToken  makingStatic{};
     DynamicGeometryToken makingDynamic{};

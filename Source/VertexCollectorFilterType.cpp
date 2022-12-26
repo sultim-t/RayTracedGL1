@@ -218,7 +218,8 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&      
     {
         flags |= FL( FT::PT_ALPHA_TESTED );
     }
-    else if( primitive.flags & RG_MESH_PRIMITIVE_WATER )
+    else if( ( primitive.flags & RG_MESH_PRIMITIVE_WATER ) ||
+             ( primitive.flags & RG_MESH_PRIMITIVE_GLASS ) )
     {
         flags |= FL( FT::PT_REFRACT );
     }

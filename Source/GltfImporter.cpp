@@ -664,10 +664,11 @@ RTGL1::GltfImporter::~GltfImporter()
     cgltf_free( data );
 }
 
-void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer cmd,
-                                               uint32_t        frameIndex,
-                                               Scene&          scene,
-                                               TextureManager& textureManager ) const
+void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
+                                               uint32_t                  frameIndex,
+                                               Scene&                    scene,
+                                               TextureManager&           textureManager,
+                                               const TextureMetaManager& textureMeta ) const
 {
     cgltf_node* mainNode = FindMainRootNode( data );
     if( !mainNode )
@@ -782,6 +783,7 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer cmd,
                 .emissive             = 0.0f,
                 .pEditorInfo          = nullptr,
             };
+            dstPrim = textureMeta.Modify( dstPrim, true );
 
             auto r = scene.Upload( frameIndex, dstMesh, dstPrim, textureManager, true );
 
