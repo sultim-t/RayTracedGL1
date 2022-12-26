@@ -621,7 +621,10 @@ RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
     if( r != cgltf_result_success )
     {
         debug::Warning(
-            "{}: cgltf_load_buffers. Error code: {} {}", gltfPath, int( r ), CgltfErrorName( r ) );
+            "{}: cgltf_load_buffers. Error code: {} {}. URI-s for .bin buffers might be incorrect",
+            gltfPath,
+            int( r ),
+            CgltfErrorName( r ) );
         return;
     }
 

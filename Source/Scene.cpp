@@ -157,6 +157,7 @@ void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,
                              const TextureMetaManager& textureMeta )
 {
     staticUniqueIDs.clear();
+    staticMeshNames.clear();
 
     assert( !makingStatic );
     makingStatic = asManager->BeginStaticGeometry();
