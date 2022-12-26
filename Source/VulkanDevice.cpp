@@ -1449,6 +1449,11 @@ bool RTGL1::VulkanDevice::IsSuspended() const
         return false;
     }
 
+    if( currentFrameState.WasFrameStarted() )
+    {
+        return false;
+    }
+
     return !swapchain->IsExtentOptimal();
 }
 
