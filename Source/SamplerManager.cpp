@@ -67,19 +67,11 @@ namespace
 #define ADDRESS_MODE_V_MIRROR_CLAMP_TO_EDGE ( 5u << 5 )
 #define ADDRESS_MODE_V_MASK                 ( 7u << 5 )
 
-#define FORCE_LOWEST_MIP_BOOL ( 1u << 8 )
-
     uint32_t ToIndex( VkFilter             filter,
                       VkSamplerAddressMode addressModeU,
-                      VkSamplerAddressMode addressModeV,
-                      bool                 forceLowestMip )
+                      VkSamplerAddressMode addressModeV )
     {
         uint32_t index = 0;
-
-        if( forceLowestMip )
-        {
-            return FORCE_LOWEST_MIP_BOOL;
-        }
 
         switch( filter )
         {
@@ -147,7 +139,7 @@ namespace
 
         {
             auto check =
-                ToIndex( VK_FILTER_NEAREST, RgAddressModeToVk( u ), RgAddressModeToVk( v ), false );
+                ToIndex( VK_FILTER_NEAREST, RgAddressModeToVk( u ), RgAddressModeToVk( v ) );
 
             assert( ( check & ADDRESS_MODE_U_MASK ) == ( index & ADDRESS_MODE_U_MASK ) );
             assert( ( check & ADDRESS_MODE_V_MASK ) == ( index & ADDRESS_MODE_V_MASK ) );
@@ -158,22 +150,15 @@ namespace
 
     uint32_t ToIndex( RgSamplerFilter      filter,
                       RgSamplerAddressMode addressModeU,
-                      RgSamplerAddressMode addressModeV,
-                      bool                 forceLowestMip )
+                      RgSamplerAddressMode addressModeV )
     {
         return ToIndex( RgFilterToVk( filter ),
                         RgAddressModeToVk( addressModeU ),
-                        RgAddressModeToVk( addressModeV ),
-                        forceLowestMip );
+                        RgAddressModeToVk( addressModeV ) );
     }
 
     uint32_t SwapFilterInIndex( uint32_t srcIndex, RgSamplerFilter newFilter )
     {
-        if( srcIndex & FORCE_LOWEST_MIP_BOOL )
-        {
-            return FORCE_LOWEST_MIP_BOOL;
-        }
-
         // clear previous filter type
         uint32_t i = srcIndex & ( ~FILTER_MASK );
 
@@ -262,7 +247,7 @@ void RTGL1::SamplerManager::CreateAllSamplers( uint32_t _anisotropy, float _mipL
                 info.addressModeU = modeU;
                 info.addressModeV = modeV;
 
-                uint32_t  index = ToIndex( filter, modeU, modeV, false );
+                uint32_t  index = ToIndex( filter, modeU, modeV );
                 VkSampler sampler;
 
                 VkResult r = vkCreateSampler( device, &info, nullptr, &sampler );
@@ -273,23 +258,6 @@ void RTGL1::SamplerManager::CreateAllSamplers( uint32_t _anisotropy, float _mipL
                 samplers[ index ] = sampler;
             }
         }
-    }
-
-    // corner case: create only 1 sampler with 'forceLowestMip'
-    {
-        info.minFilter = info.magFilter = VK_FILTER_LINEAR;
-        info.addressModeU = info.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
-        info.minLod                           = VK_LOD_CLAMP_NONE - 1;
-
-        uint32_t  index = ToIndex( info.minFilter, info.addressModeU, info.addressModeV, true );
-        VkSampler sampler;
-
-        VkResult r = vkCreateSampler( device, &info, nullptr, &sampler );
-        VK_CHECKERROR( r );
-
-        assert( samplers.find( index ) == samplers.end() );
-
-        samplers[ index ] = sampler;
     }
 }
 
@@ -315,10 +283,9 @@ void RTGL1::SamplerManager::PrepareForFrame( uint32_t frameIndex )
 
 VkSampler RTGL1::SamplerManager::GetSampler( RgSamplerFilter      filter,
                                              RgSamplerAddressMode addressModeU,
-                                             RgSamplerAddressMode addressModeV,
-                                             bool                 forceLowestMip ) const
+                                             RgSamplerAddressMode addressModeV ) const
 {
-    auto f = samplers.find( ToIndex( filter, addressModeU, addressModeV, forceLowestMip ) );
+    auto f = samplers.find( ToIndex( filter, addressModeU, addressModeV ) );
 
     if( f == samplers.end() )
     {
@@ -370,18 +337,24 @@ std::pair< RgSamplerAddressMode, RgSamplerAddressMode > RTGL1::SamplerManager::A
     return r;
 }
 
-RTGL1::SamplerManager::Handle::Handle() : internalIndex( 0 ) {}
+RTGL1::SamplerManager::Handle::Handle() : internalIndex( 0 ), hasDynamicSamplerFilter( false ) {}
 
 RTGL1::SamplerManager::Handle::Handle( RgSamplerFilter      filter,
                                        RgSamplerAddressMode addressModeU,
                                        RgSamplerAddressMode addressModeV )
-    : internalIndex( ToIndex( filter, addressModeU, addressModeV, false ) )
-
+    : internalIndex( ToIndex( filter, addressModeU, addressModeV ) )
+    , hasDynamicSamplerFilter( filter == RG_SAMPLER_FILTER_AUTO )
 {
 }
 
 bool RTGL1::SamplerManager::Handle::SetIfHasDynamicSamplerFilter(
     RgSamplerFilter newDynamicSamplerFilter )
 {
+    if( hasDynamicSamplerFilter )
+    {
+        internalIndex = SwapFilterInIndex( internalIndex, newDynamicSamplerFilter );
+        return true;
+    }
+
     return false;
 }

@@ -39,9 +39,9 @@ public:
 
     public:
         explicit Handle();
-        explicit Handle( RgSamplerFilter       filter,
-                         RgSamplerAddressMode  addressModeU,
-                         RgSamplerAddressMode  addressModeV  );
+        explicit Handle( RgSamplerFilter      filter,
+                         RgSamplerAddressMode addressModeU,
+                         RgSamplerAddressMode addressModeV );
 
         bool operator==( const Handle& other ) const
         {
@@ -52,39 +52,39 @@ public:
 
     private:
         uint32_t internalIndex;
+        bool     hasDynamicSamplerFilter;
     };
 
 public:
     SamplerManager( VkDevice device, uint32_t anisotropy, bool forceMinificationFilterLinear );
     ~SamplerManager();
 
-    SamplerManager( const SamplerManager& other )     = delete;
-    SamplerManager( SamplerManager&& other ) noexcept = delete;
-    SamplerManager& operator=( const SamplerManager& other ) = delete;
+    SamplerManager( const SamplerManager& other )                = delete;
+    SamplerManager( SamplerManager&& other ) noexcept            = delete;
+    SamplerManager& operator=( const SamplerManager& other )     = delete;
     SamplerManager& operator=( SamplerManager&& other ) noexcept = delete;
 
-    void            PrepareForFrame( uint32_t frameIndex );
+    void PrepareForFrame( uint32_t frameIndex );
 
-    VkSampler       GetSampler( RgSamplerFilter      filter,
-                                RgSamplerAddressMode addressModeU,
-                                RgSamplerAddressMode addressModeV,
-                                bool                 forceLowestMip = false ) const;
+    VkSampler GetSampler( RgSamplerFilter      filter,
+                          RgSamplerAddressMode addressModeU,
+                          RgSamplerAddressMode addressModeV ) const;
 
     // In case, if mip load bias was updated and a fresh sampler is required
-    VkSampler       GetSampler( const Handle& handle ) const;
+    VkSampler GetSampler( const Handle& handle ) const;
 
     // Wait idle and recreate all the samplers with new lod bias
-    bool            TryChangeMipLodBias( uint32_t frameIndex, float newMipLodBias );
+    bool TryChangeMipLodBias( uint32_t frameIndex, float newMipLodBias );
 
-   static std::pair< RgSamplerAddressMode, RgSamplerAddressMode > AccessAddressModes(
+    static std::pair< RgSamplerAddressMode, RgSamplerAddressMode > AccessAddressModes(
         const Handle& handle );
 
 private:
-    void            CreateAllSamplers( uint32_t anisotropy, float mipLodBias );
-    void            AddAllSamplersToDestroy( uint32_t frameIndex );
+    void CreateAllSamplers( uint32_t anisotropy, float mipLodBias );
+    void AddAllSamplersToDestroy( uint32_t frameIndex );
 
 private:
-    VkDevice                                  device;
+    VkDevice device;
 
     rgl::unordered_map< uint32_t, VkSampler > samplers;
     std::vector< VkSampler >                  samplersToDelete[ MAX_FRAMES_IN_FLIGHT ];
