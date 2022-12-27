@@ -185,14 +185,31 @@ std::filesystem::path TextureOverrides::GetTexturePath( std::filesystem::path ba
                                                         std::string_view      extension )
 {
     auto validName = std::string( name );
-    
-    std::ranges::replace_if(
-        validName,
-        []( char c ) {
-            constexpr std::string_view invalidChars = "<>:\"|?*";
-            return invalidChars.contains( c );
-        },
-        '_' );
+
+    for( char& c : validName )
+    {
+        switch( c )
+        {
+            case '<':
+            case '>':
+            case ':':
+            case '\"':
+            case '|':
+            case '?':
+            case '*': {
+                debug::Verbose( "Invalid char \'{}\' in material name: {}", c, name);
+                c = '_';
+                break;
+            }
+
+            case '\\': {
+                c = '/';
+                break;
+            }
+
+            default: break;
+        }
+    }
 
     return basePath.append( validName ).make_preferred().concat( postfix ).concat( extension );
 }

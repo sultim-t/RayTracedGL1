@@ -248,8 +248,10 @@ void TextureManager::PrepareForFrame( uint32_t frameIndex )
 
 void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
 {
-    for( auto& filepathNoExt : texturesToReloadNoExt )
+    for( const auto& newFilePath : texturesToReload )
     {
+        const auto newFilePathNoExt = std::filesystem::path( newFilePath ).replace_extension( "" );
+
         for( auto slot = textures.begin(); slot < textures.end(); ++slot )
         {
             if( slot->image == VK_NULL_HANDLE || slot->view == VK_NULL_HANDLE )
@@ -260,16 +262,12 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
             constexpr bool isUpdateable = false;
 
             bool sameWithoutExt =
-                std::filesystem::path( slot->filepath ).replace_extension( "" ) == filepathNoExt;
+                std::filesystem::path( slot->filepath ).replace_extension( "" ) == newFilePathNoExt;
 
             if( sameWithoutExt )
             {
-                TextureOverrides ovrd( filepathNoExt,
-                                       "",
-                                       "",
-                                       nullptr,
-                                       {},
-                                       slot->format,
+                TextureOverrides ovrd( newFilePath,
+                                       Utils::IsSRGB( slot->format ),
                                        GetLoader( imageLoader, imageLoaderDev ) );
 
                 if( ovrd.result )
@@ -298,7 +296,7 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
             }
         }
     }
-    texturesToReloadNoExt.clear();
+    texturesToReload.clear();
 }
 
 void TextureManager::SubmitDescriptors( uint32_t                         frameIndex,
@@ -687,8 +685,7 @@ void TextureManager::OnFileChanged( FileType type, const std::filesystem::path& 
     if( type == FileType::PNG || type == FileType::TGA || type == FileType::KTX2 ||
         type == FileType::JPG )
     {
-        texturesToReloadNoExt.push_back(
-            std::filesystem::path( filepath ).replace_extension( "" ) );
+        texturesToReload.push_back( filepath );
     }
 }
 

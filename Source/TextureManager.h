@@ -172,7 +172,7 @@ private:
     std::vector< Texture >               textures;
     // Textures are not destroyed immediately, but only when they are not in use anymore
     std::vector< Texture >               texturesToDestroy[ MAX_FRAMES_IN_FLIGHT ];
-    std::vector< std::filesystem::path > texturesToReloadNoExt;
+    std::vector< std::filesystem::path > texturesToReload;
 
     // TODO: string keys pool
     rgl::unordered_map< std::string, Material > materials;
