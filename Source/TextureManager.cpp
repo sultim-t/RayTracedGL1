@@ -248,6 +248,8 @@ void TextureManager::PrepareForFrame( uint32_t frameIndex )
 
 void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
 {
+    uint32_t count = 0;
+
     for( const auto& newFilePath : texturesToReload )
     {
         const auto newFilePathNoExt = std::filesystem::path( newFilePath ).replace_extension( "" );
@@ -291,11 +293,18 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
                     // must match, so materials' indices are still correct
                     assert( tindex == std::distance( textures.begin(), slot ) );
 
+                    count++;
                     break;
                 }
             }
         }
     }
+
+    if( !texturesToReload.empty() )
+    {
+        debug::Verbose( "Hot-reloaded textures: {} out of {}", count, texturesToReload.size() );
+    }
+
     texturesToReload.clear();
 }
 

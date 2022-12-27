@@ -26,7 +26,7 @@ namespace RTGL1
 {
 namespace
 {
-    constexpr auto CHECK_FREQUENCY = std::chrono::milliseconds( 100 );
+    constexpr auto CHECK_FREQUENCY = std::chrono::milliseconds( 500 );
 
     auto GetAllFolderFiles( const fs::path& folder )
     {
