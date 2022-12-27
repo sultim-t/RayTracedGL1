@@ -231,6 +231,7 @@ private:
         bool                         ovrdVsync{ false };
         bool                         reloadShaders{ false };
         uint32_t                     debugShowFlags{ 0 };
+        bool                         materialsTableEnable{ false };
         bool                         primitivesTableEnable{ false };
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };

@@ -851,6 +851,89 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
         ImGui::Text( "Export path: %s",
                      ( ovrdFolder / TEXTURES_FOLDER_ORIGINALS ).string().c_str() );
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 16 ) );
+
+        ImGui::Checkbox( "Record", &debugData.materialsTableEnable );
+        ImGui::TextUnformatted( "Blue - if material is non-original (i.e. was loaded from GLTF)" );
+        if( ImGui::BeginTable( "Materials table",
+                               1,
+                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
+                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
+                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
+        {
+            auto materialInfos = debugData.materialsTableEnable
+                                     ? textureManager->Debug_GetMaterials()
+                                     : std::vector< TextureManager::Debug_MaterialInfo >{};
+            {
+                ImGui::TableSetupColumn( "Material name" );
+                ImGui::TableHeadersRow();
+            }
+
+            if( ImGuiTableSortSpecs* sortspecs = ImGui::TableGetSortSpecs() )
+            {
+                sortspecs->SpecsDirty = true;
+
+                std::ranges::sort(
+                    materialInfos,
+                    [ sortspecs ]( const TextureManager::Debug_MaterialInfo& a,
+                                   const TextureManager::Debug_MaterialInfo& b ) -> bool {
+                        for( int n = 0; n < sortspecs->SpecsCount; n++ )
+                        {
+                            const ImGuiTableColumnSortSpecs* srt = &sortspecs->Specs[ n ];
+
+                            std::strong_ordering ord{ 0 };
+                            switch( srt->ColumnIndex )
+                            {
+                                case 0: ord = ( a.materialName <=> b.materialName ); break;
+                                default: assert( 0 ); return false;
+                            }
+
+                            if( std::is_gt( ord ) )
+                            {
+                                return srt->SortDirection != ImGuiSortDirection_Ascending;
+                            }
+
+                            if( std::is_lt( ord ) )
+                            {
+                                return srt->SortDirection == ImGuiSortDirection_Ascending;
+                            }
+                        }
+
+                        return a.materialName < b.materialName;
+                    } );
+            }
+
+            ImGuiListClipper clipper;
+            clipper.Begin( int( materialInfos.size() ) );
+            while( clipper.Step() )
+            {
+                for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ )
+                {
+                    const auto& mat = materialInfos[ i ];
+                    ImGui::TableNextRow();
+
+                    if( mat.isOriginal )
+                    {
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0,
+                                                IM_COL32( 0, 0, 128, 64 ) );
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1,
+                                                IM_COL32( 0, 0, 128, 128 ) );
+                    }
+                    else
+                    {
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0, IM_COL32( 0, 0, 0, 1 ) );
+                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1, IM_COL32( 0, 0, 0, 1 ) );
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted( mat.materialName.c_str() );
+                }
+            }
+
+            ImGui::EndTable();
+        }
     }
     ImGui::End();
 }

@@ -185,6 +185,14 @@ private:
     std::string postfixes[ TEXTURES_PER_MATERIAL_COUNT ];
 
     bool forceNormalMapFilterLinear;
+
+public:
+    struct Debug_MaterialInfo
+    {
+        std::string materialName;
+        bool        isOriginal;
+    };
+    std::vector< Debug_MaterialInfo > Debug_GetMaterials() const;
 };
 
 }

@@ -819,3 +819,16 @@ void TextureManager::ExportOriginalMaterialTextures( const std::filesystem::path
         }
     }
 }
+
+std::vector< TextureManager::Debug_MaterialInfo > TextureManager::Debug_GetMaterials() const
+{
+    std::vector< Debug_MaterialInfo > r;
+    for( const auto& [ materialName, mat ] : materials )
+    {
+        r.push_back( Debug_MaterialInfo{
+            .materialName = materialName,
+            .isOriginal   = importedMaterials.contains( materialName ),
+        } );
+    }
+    return r;
+}
