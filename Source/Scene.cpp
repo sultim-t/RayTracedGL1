@@ -112,14 +112,8 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
         }
     }
 
-    if( UniqueIDExists( uniqueID ) )
+    if( !InsertInfo( uniqueID, isStatic, mesh, primitive ) )
     {
-        debug::Error( "Mesh primitive ({}->{}) with ID ({}->{}): "
-                      "Trying to upload but a primitive with the same ID already exists",
-                      Utils::SafeCstr( mesh.pMeshName ),
-                      Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
-                      mesh.uniqueObjectID,
-                      primitive.primitiveIndexInMesh );
         return UploadResult::Fail;
     }
 
@@ -129,25 +123,52 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
         return UploadResult::Fail;
     }
 
+    return isStatic
+               ? ( mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static )
+               : ( mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic );
+}
+
+bool RTGL1::Scene::InsertInfo( uint64_t                   uniqueID,
+                               bool                       isStatic,
+                               const RgMeshInfo&          mesh,
+                               const RgMeshPrimitiveInfo& primitive )
+{
     if( isStatic )
     {
+        assert( !Utils::IsCstrEmpty( mesh.pMeshName ) );
         if( !Utils::IsCstrEmpty( mesh.pMeshName ) )
         {
             staticMeshNames.emplace( mesh.pMeshName );
         }
-        else
-        {
-            assert( 0 );
-        }
 
-        staticUniqueIDs.emplace( uniqueID );
-        return mesh.isExportable ? UploadResult::ExportableStatic : UploadResult::Static;
+        if( !dynamicUniqueIDs.contains( uniqueID ) )
+        {
+            auto [ iter, isNew ] = staticUniqueIDs.emplace( uniqueID );
+            if( isNew )
+            {
+                return true;
+            }
+        }
     }
     else
     {
-        dynamicUniqueIDs.emplace( uniqueID );
-        return mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic;
+        if( !staticUniqueIDs.contains( uniqueID ) )
+        {
+            auto [ iter, isNew ] = dynamicUniqueIDs.emplace( uniqueID );
+            if( isNew )
+            {
+                return true;
+            }
+        }
     }
+
+    debug::Error( "Mesh primitive ({}->{}) with ID ({}->{}): "
+                  "Trying to upload but a primitive with the same ID already exists",
+                  Utils::SafeCstr( mesh.pMeshName ),
+                  Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
+                  mesh.uniqueObjectID,
+                  primitive.primitiveIndexInMesh );
+    return false;
 }
 
 void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,
@@ -185,12 +206,6 @@ const std::shared_ptr< RTGL1::ASManager >& RTGL1::Scene::GetASManager()
 const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPreprocessing()
 {
     return vertPreproc;
-}
-
-bool RTGL1::Scene::UniqueIDExists( uint64_t uniqueID ) const
-{
-    return std::ranges::contains( staticUniqueIDs, uniqueID ) ||
-           std::ranges::contains( dynamicUniqueIDs, uniqueID );
 }
 
 bool RTGL1::Scene::StaticMeshExists( const RgMeshInfo& mesh ) const

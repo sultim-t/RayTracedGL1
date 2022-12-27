@@ -80,7 +80,11 @@ public:
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
-    bool UniqueIDExists( uint64_t uniqueID ) const;
+    bool InsertInfo( uint64_t                   uniqueID,
+                     bool                       isStatic,
+                     const RgMeshInfo&          mesh,
+                     const RgMeshPrimitiveInfo& primitive );
+
     bool StaticMeshExists( const RgMeshInfo& mesh ) const;
 
 private:

@@ -113,6 +113,8 @@ private:
                                 const ShGeometryInstance&      src,
                                 uint32_t                       frameIndex = 0 );
 
+    uint32_t RecalculateCount( uint32_t frameIndex ) const;
+
 private:
     VkDevice device;
 
@@ -132,6 +134,8 @@ private:
     rgl::unordered_map< VertexCollectorFilterTypeFlags,
                         rgl::subspan_incremental< ShGeometryInstance > >
         mappedBufferRegions[ MAX_FRAMES_IN_FLIGHT ]{};
+
+    uint32_t mappedBufferRegionsCount[ MAX_FRAMES_IN_FLIGHT ]{}; // optimization
 
     rgl::subspan_incremental< ShGeometryInstance >& AccessGeometryInstanceGroup(
         uint32_t frameIndex, VertexCollectorFilterTypeFlags flagsForGroup );

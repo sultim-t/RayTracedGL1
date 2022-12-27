@@ -310,6 +310,8 @@ void RTGL1::GeomInfoManager::ResetOnlyDynamic( uint32_t frameIndex )
                 AccessGeometryInstanceGroup( frameIndex, flags ).reset_subspan();
             }
         } );
+
+    mappedBufferRegionsCount[ frameIndex ] = RecalculateCount( frameIndex );
 }
 
 void RTGL1::GeomInfoManager::ResetOnlyStatic()
@@ -327,6 +329,8 @@ void RTGL1::GeomInfoManager::ResetOnlyStatic()
                     AccessGeometryInstanceGroup( frameIndex, flags ).reset_subspan();
                 }
             } );
+
+        mappedBufferRegionsCount[ frameIndex ] = RecalculateCount( frameIndex );
     }
 }
 
@@ -375,6 +379,9 @@ void RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       frame
 
         memcpy( &geomInstSpan[ localGeomIndex ], &src, sizeof( ShGeometryInstance ) );
         geomInstSpan.add_to_subspan( localGeomIndex );
+
+        // optimization
+        mappedBufferRegionsCount[ i ]++;
     }
 
     WriteInfoForNextUsage( flags, geomUniqueID, globalGeomIndex, src, frameIndex );
@@ -529,7 +536,7 @@ rgl::subspan_incremental< RTGL1::ShGeometryInstance >& RTGL1::GeomInfoManager::
     return r;
 }
 
-uint32_t RTGL1::GeomInfoManager::GetCount( uint32_t frameIndex ) const
+uint32_t RTGL1::GeomInfoManager::RecalculateCount( uint32_t frameIndex ) const
 {
     uint32_t count = 0;
 
@@ -539,4 +546,10 @@ uint32_t RTGL1::GeomInfoManager::GetCount( uint32_t frameIndex ) const
     }
 
     return count;
+}
+
+uint32_t RTGL1::GeomInfoManager::GetCount( uint32_t frameIndex ) const
+{
+    assert( RecalculateCount( frameIndex ) == mappedBufferRegionsCount[ frameIndex ] );
+    return mappedBufferRegionsCount[ frameIndex ];
 }
