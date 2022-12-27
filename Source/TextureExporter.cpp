@@ -38,13 +38,13 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
     {
         if( !overwriteFiles )
         {
-            debug::Warning( "{}: Image was not exported, as file already exists",
+            debug::Verbose( "Image was not exported, as file already exists: {}",
                             filepath.string() );
             return false;
         }
         else
         {
-            debug::Verbose( "{}: Overwriting existing image file", filepath.string() );
+            debug::Verbose( "Overwriting existing image file: {}", filepath.string() );
         }
     }
     else
@@ -96,7 +96,8 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
 {
     VkDevice device = allocator.GetDevice();
 
-    const VkFormat dstImageFormat = exportAsSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
+    const VkFormat dstImageFormat =
+        exportAsSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
 
     if( !PrepareTargetFile( filepath, overwriteFiles ) )
     {
@@ -400,8 +401,8 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
             assert( subresLayout.size ==
                     DstBytesPerPixel * srcImageSize.width * srcImageSize.height );
 
-            uint8_t* data = nullptr;
-            VkResult r    = vkMapMemory( device,
+            uint8_t* data{ nullptr };
+            VkResult r = vkMapMemory( device,
                                       dstMemory_Linear,
                                       0,
                                       VK_WHOLE_SIZE,
@@ -415,13 +416,47 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
         }
         else
         {
-            debug::Warning( "Can't export to image file, as mapped data is not tightly packed: {}. "
-                            "VkSubresourceLayout::rowPitch is {}; expected "
-                            "( {} bytes per pixel * {} pixels in a row )",
-                            filepath.string(),
-                            subresLayout.rowPitch,
-                            DstBytesPerPixel,
-                            srcImageSize.width );
+            // manually, if small enough
+            if( srcImageSize.width <= 64 && srcImageSize.height <= 64 )
+            {
+                auto pixels = std::make_unique< uint8_t[] >( DstBytesPerPixel * srcImageSize.width *
+                                                             srcImageSize.height );
+                {
+                    uint8_t* rawData{ nullptr };
+                    VkResult r = vkMapMemory( device,
+                                              dstMemory_Linear,
+                                              0,
+                                              VK_WHOLE_SIZE,
+                                              0,
+                                              reinterpret_cast< void** >( &rawData ) );
+                    VK_CHECKERROR( r );
+
+                    uint8_t* beginData = &rawData[ subresLayout.offset ];
+                    uint8_t* endData   = &rawData[ subresLayout.offset + subresLayout.size ];
+
+                    uint8_t* dstPtr = pixels.get();
+
+                    for( uint8_t* ptr = beginData; ptr < endData; ptr += subresLayout.rowPitch )
+                    {
+                        memcpy( dstPtr, ptr, DstBytesPerPixel * srcImageSize.width );
+                        dstPtr += DstBytesPerPixel * srcImageSize.width;
+                    }
+
+                    vkUnmapMemory( device, dstMemory_Linear );
+                }
+                success = WriteTGA( filepath, pixels.get(), srcImageSize );
+            }
+            else
+            {
+                debug::Warning(
+                    "Can't export to image file, as mapped data is not tightly packed: {}. "
+                    "VkSubresourceLayout::rowPitch is {}; expected "
+                    "( {} bytes per pixel * {} pixels in a row )",
+                    filepath.string(),
+                    subresLayout.rowPitch,
+                    DstBytesPerPixel,
+                    srcImageSize.width );
+            }
         }
     }
     {

@@ -797,6 +797,11 @@ void TextureManager::ExportOriginalMaterialTextures( const std::filesystem::path
 
         for( size_t i = 0; i < std::size( txds.indices ); i++ )
         {
+            if( txds.indices[ i ] == EMPTY_TEXTURE_INDEX )
+            {
+                continue;
+            }
+
             const Texture& info = textures[ txds.indices[ i ] ];
 
             if( info.image == VK_NULL_HANDLE || info.size.width == 0 || info.size.height == 0 ||

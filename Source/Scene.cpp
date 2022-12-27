@@ -251,9 +251,10 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
                                                  TextureManager&     textureManager,
                                                  TextureMetaManager& textureMeta )
 {
-    if( auto e = TryGetExporter() )
+    if( exporter )
     {
-        e->ExportToFiles( MakeGltfPath( GetExportMapName() ), textureManager );
+        exporter->ExportToFiles( MakeGltfPath( GetExportMapName() ), textureManager );
+        exporter.reset();
     }
 
     if( currentMap != mapName || reimportRequested )
