@@ -441,12 +441,12 @@ void TextureManager::MakeMaterial( VkCommandBuffer                              
                     } );
 }
 
-bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
-                                        uint32_t                            frameIndex,
-                                        const std::string&                  materialName,
-                                        std::span< std::filesystem::path >  fullPaths,
-                                        std::span< SamplerManager::Handle > samplers,
-                                        RgTextureSwizzling                  customPbrSwizzling )
+bool TextureManager::TryCreateImportedMaterial( VkCommandBuffer                     cmd,
+                                                uint32_t                            frameIndex,
+                                                const std::string&                  materialName,
+                                                std::span< std::filesystem::path >  fullPaths,
+                                                std::span< SamplerManager::Handle > samplers,
+                                                RgTextureSwizzling customPbrSwizzling )
 {
     assert( fullPaths.size() == TEXTURES_PER_MATERIAL_COUNT );
     assert( samplers.size() == TEXTURES_PER_MATERIAL_COUNT );
@@ -486,9 +486,20 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer                     cmd,
     static_assert( std::size( swizzlings ) == TEXTURES_PER_MATERIAL_COUNT );
     static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
 
+    // to free later / to prevent export from ExportOriginalMaterialTextures
+    importedMaterials.insert( materialName );
 
     MakeMaterial( cmd, frameIndex, materialName, ovrd, samplers, swizzlings );
     return true;
+}
+
+void TextureManager::FreeAllImportedMaterials( uint32_t frameIndex )
+{
+    for( const auto& materialName : importedMaterials )
+    {
+        TryDestroyMaterial( frameIndex, materialName.c_str() );
+    }
+    importedMaterials.clear();
 }
 
 uint32_t TextureManager::PrepareTexture( VkCommandBuffer                                 cmd,
@@ -726,16 +737,16 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
         return {};
     }
 
-    MaterialTextures mat = GetMaterialTextures( materialName );
+    MaterialTextures txds = GetMaterialTextures( materialName );
 
-    for( size_t i = 0; i < std::size( mat.indices ); i++ )
+    for( size_t i = 0; i < std::size( txds.indices ); i++ )
     {
-        if( mat.indices[ i ] == EMPTY_TEXTURE_INDEX )
+        if( txds.indices[ i ] == EMPTY_TEXTURE_INDEX )
         {
             continue;
         }
 
-        const Texture& info = textures[ mat.indices[ i ] ];
+        const Texture& info = textures[ txds.indices[ i ] ];
 
         if( info.image == VK_NULL_HANDLE || info.size.width == 0 || info.size.height == 0 ||
             info.format == VK_FORMAT_UNDEFINED )
@@ -764,4 +775,47 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
     }
 
     return arr;
+}
+
+void TextureManager::ExportOriginalMaterialTextures( const std::filesystem::path& folder ) const
+{
+    constexpr bool overwriteExisting = false;
+
+    for( const auto& [ materialName, mat ] : materials )
+    {
+        if( materialName.empty() )
+        {
+            continue;
+        }
+
+        if( importedMaterials.contains( materialName ) )
+        {
+            continue;
+        }
+
+        const MaterialTextures& txds = mat.textures;
+
+        for( size_t i = 0; i < std::size( txds.indices ); i++ )
+        {
+            const Texture& info = textures[ txds.indices[ i ] ];
+
+            if( info.image == VK_NULL_HANDLE || info.size.width == 0 || info.size.height == 0 ||
+                info.format == VK_FORMAT_UNDEFINED )
+            {
+                continue;
+            }
+
+            auto relativeFilePath =
+                TextureOverrides::GetTexturePath( "", materialName, postfixes[ i ], ".tga" );
+
+            TextureExporter().ExportAsTGA( *memAllocator,
+                                           *cmdManager,
+                                           info.image,
+                                           info.size,
+                                           info.format,
+                                           folder / relativeFilePath,
+                                           i == MATERIAL_ALBEDO_ALPHA_INDEX,
+                                           overwriteExisting );
+        }
+    }
 }

@@ -415,7 +415,7 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
         }
         else
         {
-            debug::Warning( "{}: Can't export to image file, as mapped data is not tightly packed. "
+            debug::Warning( "Can't export to image file, as mapped data is not tightly packed: {}. "
                             "VkSubresourceLayout::rowPitch is {}; expected "
                             "( {} bytes per pixel * {} pixels in a row )",
                             filepath.string(),

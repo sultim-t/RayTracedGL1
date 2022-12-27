@@ -180,6 +180,8 @@ void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,
     staticUniqueIDs.clear();
     staticMeshNames.clear();
 
+    textureManager.FreeAllImportedMaterials( frameIndex );
+
     assert( !makingStatic );
     makingStatic = asManager->BeginStaticGeometry();
 

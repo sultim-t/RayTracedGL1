@@ -74,12 +74,13 @@ public:
                             const RgOriginalTextureInfo& info,
                             const std::filesystem::path& folder );
 
-    bool TryCreateMaterial( VkCommandBuffer                     cmd,
-                            uint32_t                            frameIndex,
-                            const std::string&                  materialName,
-                            std::span< std::filesystem::path >  fullPaths,
-                            std::span< SamplerManager::Handle > samplers,
-                            RgTextureSwizzling                  customPbrSwizzling );
+    bool TryCreateImportedMaterial( VkCommandBuffer                     cmd,
+                                    uint32_t                            frameIndex,
+                                    const std::string&                  materialName,
+                                    std::span< std::filesystem::path >  fullPaths,
+                                    std::span< SamplerManager::Handle > samplers,
+                                    RgTextureSwizzling                  customPbrSwizzling );
+    void FreeAllImportedMaterials( uint32_t frameIndex );
 
     bool TryDestroyMaterial( uint32_t frameIndex, const char* materialName );
 
@@ -97,6 +98,7 @@ public:
     auto GetColorForLayers( const RgMeshPrimitiveInfo& primitive ) const
         -> std::array< RgColor4DPacked32, 4 >;
 
+
     struct ExportResult
     {
         std::string          relativePath;
@@ -108,6 +110,8 @@ public:
                                  const std::filesystem::path& folder,
                                  bool                         overwriteExisting ) const
         -> std::array< ExportResult, TEXTURES_PER_MATERIAL_COUNT >;
+
+    void ExportOriginalMaterialTextures( const std::filesystem::path& folder ) const;
 
 
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
@@ -172,6 +176,7 @@ private:
 
     // TODO: string keys pool
     rgl::unordered_map< std::string, Material > materials;
+    rgl::unordered_set< std::string >           importedMaterials;
 
     uint32_t waterNormalTextureIndex;
 

@@ -840,6 +840,19 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
         }
     }
     ImGui::End();
+
+
+    if( ImGui::Begin( "Textures" ) )
+    {
+        if( ImGui::Button( "Export original textures", { -1, 80 } ) )
+        {
+            textureManager->ExportOriginalMaterialTextures( ovrdFolder /
+                                                            TEXTURES_FOLDER_ORIGINALS );
+        }
+        ImGui::Text( "Export path: %s",
+                     ( ovrdFolder / TEXTURES_FOLDER_ORIGINALS ).string().c_str() );
+    }
+    ImGui::End();
 }
 
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )

@@ -50,11 +50,12 @@ constexpr float MESH_TRANSLUCENT_ALPHA_THRESHOLD = 0.98f;
 
 #define RTGL1_MAIN_ROOT_NODE "rtgl1_main_root"
 
-constexpr std::string_view TEXTURES_FOLDER     = "mat";
-constexpr std::string_view TEXTURES_FOLDER_DEV = "mat_dev";
-constexpr std::string_view SCENES_FOLDER       = "scenes";
-constexpr std::string_view SHADERS_FOLDER      = "shaders";
-constexpr std::string_view DATABASE_FOLDER     = "data";
+constexpr std::string_view TEXTURES_FOLDER           = "mat";
+constexpr std::string_view TEXTURES_FOLDER_DEV       = "mat_dev";
+constexpr std::string_view TEXTURES_FOLDER_ORIGINALS = "mat_src";
+constexpr std::string_view SCENES_FOLDER             = "scenes";
+constexpr std::string_view SHADERS_FOLDER            = "shaders";
+constexpr std::string_view DATABASE_FOLDER           = "data";
 
 constexpr std::string_view TEXTURES_FOLDER_JUNCTION_PREFIX = "mat_junction/";
 

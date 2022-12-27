@@ -567,12 +567,13 @@ namespace
         // if fullPaths are empty
         if( !materialName.empty() )
         {
-            textureManager.TryCreateMaterial( cmd,
-                                              frameIndex,
-                                              materialName,
-                                              fullPaths,
-                                              samplers,
-                                              RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC );
+            textureManager.TryCreateImportedMaterial(
+                cmd,
+                frameIndex,
+                materialName,
+                fullPaths,
+                samplers,
+                RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC );
         }
 
         auto color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor );
