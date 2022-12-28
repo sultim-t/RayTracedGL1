@@ -211,13 +211,13 @@ private:
 
     struct DebugPrim
     {
-        UploadResult result;
-        uint32_t     callIndex;
-        uint32_t     objectId;
-        std::string  meshName;
-        uint32_t     primitiveIndex;
-        std::string  primitiveName;
-        std::string  textureName;
+        std::optional< UploadResult > result;
+        uint32_t                      callIndex;
+        uint32_t                      objectId;
+        std::string                   meshName;
+        uint32_t                      primitiveIndex;
+        std::string                   primitiveName;
+        std::string                   textureName;
     };
     struct DebugNonWorld
     {
@@ -232,7 +232,7 @@ private:
         bool                         reloadShaders{ false };
         uint32_t                     debugShowFlags{ 0 };
         bool                         materialsTableEnable{ false };
-        bool                         primitivesTableEnable{ false };
+        int                          primitivesTableEnable{ 0 };
         std::vector< DebugPrim >     primitivesTable{};
         bool                         nonworldTableEnable{ false };
         std::vector< DebugNonWorld > nonworldTable{};

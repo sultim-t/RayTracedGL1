@@ -37,9 +37,9 @@ struct TextureMeta
 
     std::string textureName = {};
 
-    bool forceIgnore     = false;
-    bool forceAlphaTest  = false;
-    bool forceRasterized = false;
+    bool forceIgnore      = false;
+    bool forceAlphaTest   = false;
+    bool forceTranslucent = false;
 
     bool isMirror = false;
     bool isWater  = false;

@@ -558,7 +558,12 @@ void RTGL1::VulkanDevice::DrawDebugWindows() const
 
     if( ImGui::Begin( "Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
     {
-        ImGui::Checkbox( "Record", &debugData.primitivesTableEnable );
+        ImGui::RadioButton( "Disable", &debugData.primitivesTableEnable, 0 );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Record rasterized", &debugData.primitivesTableEnable, 1 );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Record ray-traced", &debugData.primitivesTableEnable, 2 );
+        
         ImGui::TextUnformatted(
             "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
         ImGui::TextUnformatted( "Green  - if exportable was found in GLTF" );
@@ -1406,13 +1411,26 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                             prim,
                             nullptr,
                             nullptr );
+
+        if( debugWindows && debugData.primitivesTableEnable == 1 )
+        {
+            debugData.primitivesTable.push_back( DebugPrim{
+                .result         = UploadResult::Dynamic,
+                .callIndex      = uint32_t( debugData.primitivesTable.size() ),
+                .objectId       = pMesh->uniqueObjectID,
+                .meshName       = Utils::SafeCstr( pMesh->pMeshName ),
+                .primitiveIndex = prim.primitiveIndexInMesh,
+                .primitiveName  = Utils::SafeCstr( prim.pPrimitiveNameInMesh ),
+                .textureName    = Utils::SafeCstr( prim.pTextureName ),
+            } );
+        }
     }
     else
     {
         UploadResult r = scene->Upload(
             currentFrameState.GetFrameIndex(), *pMesh, prim, *textureManager, false );
 
-        if( debugWindows && debugData.primitivesTableEnable )
+        if( debugWindows && debugData.primitivesTableEnable == 2 )
         {
             debugData.primitivesTable.push_back( DebugPrim{
                 .result         = r,

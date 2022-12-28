@@ -32,7 +32,7 @@ JSON_TYPE( RTGL1::TextureMeta )
     "textureName", &T::textureName,
     "forceIgnore", &T::forceIgnore,
     "forceAlphaTest", &T::forceAlphaTest,
-    "forceRasterized", &T::forceRasterized,
+    "forceTranslucent", &T::forceTranslucent,
     "isMirror", &T::isMirror,
     "isWater", &T::isWater,
     "isGlass", &T::isGlass,
@@ -149,6 +149,8 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
                                     v.textureName );
                 }
             }
+
+            debug::Verbose( "Reloaded texture meta: {}", filepath.string() );
         }
     };
 
@@ -167,6 +169,11 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
         if( meta->forceAlphaTest )
         {
             prim.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
+        }
+
+        if( meta->forceTranslucent )
+        {
+            prim.flags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
         }
 
         if( meta->isWater )
