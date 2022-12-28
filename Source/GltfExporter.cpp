@@ -140,7 +140,8 @@ namespace RTGL1
 {
 struct DeepCopyOfPrimitive
 {
-    explicit DeepCopyOfPrimitive( const RgMeshPrimitiveInfo& c ) : info( c )
+    explicit DeepCopyOfPrimitive( const RgMeshPrimitiveInfo& c )
+        : info( c ), editor( c.pEditorInfo ? *c.pEditorInfo : RgEditorInfo{} )
     {
         std::span fromVertices( c.pVertices, c.vertexCount );
         std::span fromIndices( c.pIndices, c.indexCount );
@@ -164,6 +165,7 @@ struct DeepCopyOfPrimitive
 
     DeepCopyOfPrimitive( DeepCopyOfPrimitive&& other ) noexcept
         : info( other.info )
+        , editor( other.editor )
         , pPrimitiveNameInMesh( std::move( other.pPrimitiveNameInMesh ) )
         , pTextureName( std::move( other.pTextureName ) )
         , pVertices( std::move( other.pVertices ) )
@@ -186,7 +188,8 @@ struct DeepCopyOfPrimitive
         this->pIndices             = std::move( other.pIndices );
 
         // copy and fix
-        this->info = other.info;
+        this->info   = other.info;
+        this->editor = other.editor;
         FixupPointers( *this );
 
         // invalidate other
@@ -210,7 +213,16 @@ struct DeepCopyOfPrimitive
     std::string_view MaterialName() const { return pTextureName; }
 
     RgFloat4D Color() const { return Utils::UnpackColor4DPacked32( info.color ); }
-    float     Emissive() const { return info.emissive; }
+    float     Emissive() const { return Utils::Saturate( info.emissive ); }
+
+    float Roughness() const
+    {
+        return editor.pbrInfoExists ? Utils::Saturate( editor.pbrInfo.roughnessDefault ) : 1.0f;
+    }
+    float Metallic() const
+    {
+        return editor.pbrInfoExists ? Utils::Saturate( editor.pbrInfo.metallicDefault ) : 0.0f;
+    }
 
     cgltf_alpha_mode AlphaMode() const
     {
@@ -236,10 +248,13 @@ private:
 
         assert( inout.info.vertexCount == inout.pVertices.size() );
         assert( inout.info.indexCount == inout.pIndices.size() );
+
+        inout.info.pEditorInfo = &inout.editor;
     }
 
 private:
     RgMeshPrimitiveInfo info;
+    RgEditorInfo        editor;
 
     // to maintain lifetimes
     std::string                      pPrimitiveNameInMesh;
@@ -665,12 +680,12 @@ struct GltfTextures
                 continue;
             }
 
-            static_assert( RTGL1::TEXTURES_PER_MATERIAL_COUNT == 3 );
-            static_assert( MATERIAL_ALBEDO_ALPHA_INDEX == 0 );
-            static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
-            static_assert( MATERIAL_NORMAL_INDEX == 2 );
-
-            auto [ albedo, rme, normal ] = textureManager.ExportMaterialTextures(
+            static_assert( RTGL1::TEXTURES_PER_MATERIAL_COUNT == 4 );
+            static_assert( RTGL1::TEXTURE_ALBEDO_ALPHA_INDEX == 0 );
+            static_assert( RTGL1::TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX == 1 );
+            static_assert( RTGL1::TEXTURE_NORMAL_INDEX == 2 );
+            static_assert( RTGL1::TEXTURE_EMISSIVE_INDEX == 3 );
+            auto [ albedo, orm, normal, emissive ] = textureManager.ExportMaterialTextures(
                 materialName.c_str(), texturesFolder, false );
 
             auto tryMakeCgltfTexture =
@@ -685,7 +700,7 @@ struct GltfTextures
                     // need to protect a string, to avoid dangling pointers
                     str = std::string( RTGL1::TEXTURES_FOLDER_JUNCTION_PREFIX ) + r.relativePath;
                     std::ranges::replace( str, '\\', '/' );
-                    
+
                     img = cgltf_image{
                         .name = const_cast< char* >( materialName.c_str() ),
                         .uri  = const_cast< char* >( str.c_str() ),
@@ -702,9 +717,10 @@ struct GltfTextures
             };
 
             materialAccess[ materialName ] = TextureSet{
-                .albedo = tryMakeCgltfTexture( std::move( albedo ) ),
-                .rme    = tryMakeCgltfTexture( std::move( rme ) ),
-                .normal = tryMakeCgltfTexture( std::move( normal ) ),
+                .albedo   = tryMakeCgltfTexture( std::move( albedo ) ),
+                .orm      = tryMakeCgltfTexture( std::move( orm ) ),
+                .normal   = tryMakeCgltfTexture( std::move( normal ) ),
+                .emissive = tryMakeCgltfTexture( std::move( emissive ) ),
             };
         }
     }
@@ -712,8 +728,9 @@ struct GltfTextures
     struct TextureSet
     {
         cgltf_texture* albedo{ nullptr };
-        cgltf_texture* rme{ nullptr };
+        cgltf_texture* orm{ nullptr };
         cgltf_texture* normal{ nullptr };
+        cgltf_texture* emissive{ nullptr };
     };
 
     TextureSet Access( std::string_view materialName ) const
@@ -744,17 +761,25 @@ cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
 {
     auto txd = textureStorage.Access( rgprim.MaterialName() );
 
-    std::optional metallicRoughness = cgltf_pbr_metallic_roughness{
+    cgltf_pbr_metallic_roughness metallicRoughness = {
         .base_color_texture         = { .texture = txd.albedo, .texcoord = 0 },
-        .metallic_roughness_texture = { .texture = txd.rme, .texcoord = 0 },
+        .metallic_roughness_texture = { .texture = txd.orm, .texcoord = 0 },
         .base_color_factor          = { RG_ACCESS_VEC4( rgprim.Color().data ) },
-        .metallic_factor            = 0.0f,
-        .roughness_factor           = 1.0f,
+        .metallic_factor            = rgprim.Metallic(),
+        .roughness_factor           = rgprim.Roughness(),
     };
 
+    // if there are PBR textures, set to RTGL1 defaults
+    if( metallicRoughness.metallic_roughness_texture.texture &&
+        metallicRoughness.metallic_roughness_texture.texture->image )
+    {
+        metallicRoughness.metallic_factor = 0.0f;
+        metallicRoughness.roughness_factor = 1.0f;
+    }
+    
     return cgltf_material{
         .name                        = nullptr,
-        .has_pbr_metallic_roughness  = metallicRoughness.has_value(),
+        .has_pbr_metallic_roughness  = true,
         .has_pbr_specular_glossiness = false,
         .has_clearcoat               = false,
         .has_transmission            = false,
@@ -764,7 +789,7 @@ cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
         .has_sheen                   = false,
         .has_emissive_strength       = false,
         .has_iridescence             = false,
-        .pbr_metallic_roughness      = ValueOrDefault( metallicRoughness ),
+        .pbr_metallic_roughness      = metallicRoughness,
         .pbr_specular_glossiness     = {},
         .clearcoat                   = {},
         .ior                         = {},
@@ -775,8 +800,8 @@ cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
         .emissive_strength           = {},
         .iridescence                 = {},
         .normal_texture              = { .texture = txd.normal, .texcoord = 0 },
-        .occlusion_texture           = { .texture = nullptr, .texcoord = 0 },
-        .emissive_texture            = { .texture = nullptr, .texcoord = 0 },
+        .occlusion_texture           = { .texture = txd.orm, .texcoord = 0 },
+        .emissive_texture            = { .texture = txd.emissive, .texcoord = 0 },
         .emissive_factor             = { rgprim.Emissive(), rgprim.Emissive(), rgprim.Emissive() },
         .alpha_mode                  = rgprim.AlphaMode(),
         .alpha_cutoff                = 0.5f,

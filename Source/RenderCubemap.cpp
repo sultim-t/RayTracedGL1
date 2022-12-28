@@ -40,7 +40,7 @@ namespace
         uint32_t textureIndex;
 
         explicit RasterizedMultiviewPushConst( const RasterizedDataCollector::DrawInfo& info )
-            : model{}, packedColor( info.base_color ), textureIndex( info.base_textureA )
+            : model{}, packedColor( info.colorFactor_base ), textureIndex( info.texture_base )
         {
             Matrix::ToMat4Transposed( model, info.transform );
         }
@@ -297,8 +297,8 @@ void RTGL1::RenderCubemap::CreateRenderPass()
     };
 
     // cubemap, 6 faces
-    uint32_t                        viewMask   = 0b00111111;
-    int32_t                         viewOffset = 0;
+    uint32_t viewMask   = 0b00111111;
+    int32_t  viewOffset = 0;
 
     VkRenderPassMultiviewCreateInfo multiview = {
         .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO,

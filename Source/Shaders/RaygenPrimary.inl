@@ -297,7 +297,7 @@ void main()
     vec2 gradDepth;
     float firstHitDepthNDC;
     float firstHitDepthLinear;
-    float screenEmission;
+    vec3 screenEmission;
     const ShHitInfo h = getHitInfoPrimaryRay(primaryPayload, cameraOrigin, cameraRayDirAX, cameraRayDirAY, motionCurToPrev, motionDepthLinearCurToPrev, gradDepth, firstHitDepthNDC, firstHitDepthLinear, screenEmission);
 
 
@@ -307,7 +307,7 @@ void main()
 
     imageStore(framebufIsSky,               pix, ivec4(0));
     imageStore(framebufAlbedo,              getRegularPixFromCheckerboardPix(pix), vec4(h.albedo, 0.0));
-    imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(h.albedo * screenEmission * throughput , 0.0));
+    imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(screenEmission * throughput , 0.0));
     imageStore(framebufAcidFogRT,           getRegularPixFromCheckerboardPix(pix), vec4(getGlowingMediaFog(currentRayMedia, firstHitDepthLinear), 0));
     imageStoreNormal(                       pix, h.normal);
     imageStoreNormalGeometry(               pix, h.normalGeom);
@@ -542,7 +542,7 @@ void main()
         }
 
         float rayLen;
-        float emis;
+        vec3 scrEmis;
 
         h = getHitInfoWithRayCone_ReflectionRefraction(
             currentPayload, rayCone, 
@@ -550,7 +550,7 @@ void main()
             virtualPos, 
             rayLen, 
             motionCurToPrev, motionDepthLinearCurToPrev,
-            emis
+            scrEmis
         );
 
 
@@ -559,7 +559,7 @@ void main()
         propagateRayCone(rayCone, rayLen);
         fullPathLength += rayLen;
         prevHitPosition = h.hitPosition;
-        screenEmission += h.albedo * emis * throughput;
+        screenEmission += scrEmis * throughput;
         acidFog += getGlowingMediaFog(currentRayMedia, rayLen) * (doSplit ? 2.0 : 1.0);
     }
 

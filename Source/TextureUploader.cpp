@@ -202,10 +202,10 @@ void TextureUploader::CopyStagingToImageMipmaps( VkCommandBuffer   cmd,
                                                  uint32_t          layerIndex,
                                                  const UploadInfo& info )
 {
-    uint32_t          mipWidth  = info.baseSize.width;
-    uint32_t          mipHeight = info.baseSize.height;
+    uint32_t mipWidth  = info.baseSize.width;
+    uint32_t mipHeight = info.baseSize.height;
 
-    uint32_t          levelCount = GetMipmapCount( info.baseSize, info );
+    uint32_t levelCount = GetMipmapCount( info.baseSize, info );
 
     VkBufferImageCopy copyRegions[ MAX_PREGENERATED_MIPMAP_LEVELS ];
 
@@ -269,10 +269,10 @@ void TextureUploader::PrepareImage( VkImage           image,
                                     const UploadInfo& info,
                                     ImagePrepareType  prepareType )
 {
-    VkCommandBuffer         cmd         = info.cmd;
-    const RgExtent2D&       size        = info.baseSize;
-    uint32_t                layerCount  = info.isCubemap ? 6 : 1;
-    uint32_t                mipmapCount = GetMipmapCount( size, info );
+    VkCommandBuffer   cmd         = info.cmd;
+    const RgExtent2D& size        = info.baseSize;
+    uint32_t          layerCount  = info.isCubemap ? 6 : 1;
+    uint32_t          mipmapCount = GetMipmapCount( size, info );
 
     VkImageSubresourceRange firstMipmap = {};
     firstMipmap.aspectMask              = VK_IMAGE_ASPECT_COLOR_BIT;
@@ -442,47 +442,56 @@ VkImageView TextureUploader::CreateImageView( VkImage                           
     {
         switch( swizzling.value() )
         {
-            case RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE:
+            case RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_ONE,
+                    .g = VK_COMPONENT_SWIZZLE_G,
+                    .b = VK_COMPONENT_SWIZZLE_B,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_NULL_METALLIC_ROUGHNESS:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_ONE,
+                    .g = VK_COMPONENT_SWIZZLE_B,
+                    .b = VK_COMPONENT_SWIZZLE_G,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_OCCLUSION_ROUGHNESS_METALLIC:
                 mapping = {
                     .r = VK_COMPONENT_SWIZZLE_R,
                     .g = VK_COMPONENT_SWIZZLE_G,
                     .b = VK_COMPONENT_SWIZZLE_B,
+                    .a = VK_COMPONENT_SWIZZLE_A,
+                };
+                break;
+
+            case RG_TEXTURE_SWIZZLING_OCCLUSION_METALLIC_ROUGHNESS:
+                mapping = {
+                    .r = VK_COMPONENT_SWIZZLE_R,
+                    .g = VK_COMPONENT_SWIZZLE_B,
+                    .b = VK_COMPONENT_SWIZZLE_G,
                     .a = VK_COMPONENT_SWIZZLE_A,
                 };
                 break;
 
             case RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC:
                 mapping = {
-                    .r = VK_COMPONENT_SWIZZLE_R,
-                    .g = VK_COMPONENT_SWIZZLE_G,
-                    .b = VK_COMPONENT_SWIZZLE_ZERO,
-                    .a = VK_COMPONENT_SWIZZLE_A,
-                };
-                break;
-
-            case RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS_EMISSIVE:
-                mapping = {
-                    .r = VK_COMPONENT_SWIZZLE_G,
+                    .r = VK_COMPONENT_SWIZZLE_ONE,
                     .g = VK_COMPONENT_SWIZZLE_R,
-                    .b = VK_COMPONENT_SWIZZLE_B,
+                    .b = VK_COMPONENT_SWIZZLE_G,
                     .a = VK_COMPONENT_SWIZZLE_A,
                 };
                 break;
 
             case RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS:
                 mapping = {
-                    .r = VK_COMPONENT_SWIZZLE_G,
-                    .g = VK_COMPONENT_SWIZZLE_R,
-                    .b = VK_COMPONENT_SWIZZLE_ZERO,
-                    .a = VK_COMPONENT_SWIZZLE_A,
-                };
-                break;
-
-            case RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC:
-                mapping = {
-                    .r = VK_COMPONENT_SWIZZLE_G,
-                    .g = VK_COMPONENT_SWIZZLE_B,
-                    .b = VK_COMPONENT_SWIZZLE_ZERO,
+                    .r = VK_COMPONENT_SWIZZLE_ONE,
+                    .g = VK_COMPONENT_SWIZZLE_G,
+                    .b = VK_COMPONENT_SWIZZLE_R,
                     .a = VK_COMPONENT_SWIZZLE_A,
                 };
                 break;
@@ -532,9 +541,9 @@ TextureUploader::UploadResult TextureUploader::UploadImage( const UploadInfo& in
     }
 
 
-    VkResult           r;
-    void*              mappedData;
-    VkImage            image;
+    VkResult r;
+    void*    mappedData;
+    VkImage  image;
 
 
     // 1. Allocate and fill buffer

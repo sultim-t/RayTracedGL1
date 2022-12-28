@@ -69,24 +69,29 @@ public:
         RgTransform                 transform = {};
         uint32_t                    flags     = 0;
 
-        uint32_t                    base_textureA = EMPTY_TEXTURE_INDEX;
-        uint32_t                    base_textureB = EMPTY_TEXTURE_INDEX;
-        uint32_t                    base_textureC = EMPTY_TEXTURE_INDEX;
-        uint32_t                    base_color    = 0xFFFFFFFF;
+        uint32_t                    texture_base     = EMPTY_TEXTURE_INDEX;
+        uint32_t                    texture_base_ORM = EMPTY_TEXTURE_INDEX;
+        uint32_t                    texture_base_N   = EMPTY_TEXTURE_INDEX;
+        uint32_t                    texture_base_E   = EMPTY_TEXTURE_INDEX;
 
-        uint32_t                    layer1_texture = EMPTY_TEXTURE_INDEX;
-        uint32_t                    layer1_color   = 0xFFFFFFFF;
+        uint32_t                    texture_layer1   = EMPTY_TEXTURE_INDEX;
+        uint32_t                    texture_layer2   = EMPTY_TEXTURE_INDEX;
+        uint32_t                    texture_lightmap = EMPTY_TEXTURE_INDEX;
 
-        uint32_t                    layer2_texture = EMPTY_TEXTURE_INDEX;
-        uint32_t                    layer2_color   = 0xFFFFFFFF;
-
-        uint32_t                    lightmap_texture = EMPTY_TEXTURE_INDEX;
-        uint32_t                    lightmap_color   = 0xFFFFFFFF;
+        RgColor4DPacked32           colorFactor_base     = Utils::PackColor( 255, 255, 255, 255 );
+        RgColor4DPacked32           colorFactor_layer1   = Utils::PackColor( 255, 255, 255, 255 );
+        RgColor4DPacked32           colorFactor_layer2   = Utils::PackColor( 255, 255, 255, 255 );
+        RgColor4DPacked32           colorFactor_lightmap = Utils::PackColor( 255, 255, 255, 255 );
 
         uint32_t                    vertexCount = 0;
         uint32_t                    firstVertex = 0;
         uint32_t                    indexCount  = 0;
         uint32_t                    firstIndex  = 0;
+
+        float                       roughnessFactor = 1.0f;
+        float                       metallicFactor  = 0.0f;
+
+        float                       emissive = 0.0f;
 
         // Raster-specific
         std::optional< Float16D >   viewProj      = std::nullopt;

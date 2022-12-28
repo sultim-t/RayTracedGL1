@@ -31,17 +31,19 @@ namespace
 
 struct RasterizedPushConst
 {
-    float    vp[ 16 ];
-    uint32_t packedColor;
-    uint32_t textureIndex;
-    uint32_t emissionTextureIndex;
+    float             vp[ 16 ];
+    uint32_t          packedColor;
+    uint32_t          textureIndex;
+    uint32_t          emissiveTextureIndex;
+    RgColor4DPacked32 emissiveMult;
 
     explicit RasterizedPushConst( const RTGL1::RasterizedDataCollector::DrawInfo& info,
                                   const float*                                    defaultViewProj )
         : vp{}
-        , packedColor{ info.base_color }
-        , textureIndex( info.base_textureA )
-        , emissionTextureIndex( info.base_textureB )
+        , packedColor{ info.colorFactor_base }
+        , textureIndex( info.texture_base )
+        , emissiveTextureIndex( info.texture_base_E )
+        , emissiveMult( info.emissive )
     {
         float model[ 16 ] = RG_MATRIX_TRANSPOSED( info.transform );
         RTGL1::Matrix::Multiply(
@@ -52,8 +54,9 @@ struct RasterizedPushConst
 static_assert( offsetof( RasterizedPushConst, vp ) == 0 );
 static_assert( offsetof( RasterizedPushConst, packedColor ) == 64 );
 static_assert( offsetof( RasterizedPushConst, textureIndex ) == 68 );
-static_assert( offsetof( RasterizedPushConst, emissionTextureIndex ) == 72 );
-static_assert( sizeof( RasterizedPushConst ) == 76 );
+static_assert( offsetof( RasterizedPushConst, emissiveTextureIndex ) == 72 );
+static_assert( offsetof( RasterizedPushConst, emissiveMult ) == 76 );
+static_assert( sizeof( RasterizedPushConst ) == 80 );
 
 }
 
@@ -334,7 +337,7 @@ void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer       cmd,
     CmdLabel label( cmd, "Rasterized to swapchain" );
 
 
-    float    defaultViewProj[ 16 ];
+    float defaultViewProj[ 16 ];
     Matrix::Multiply( defaultViewProj, view, proj );
 
 

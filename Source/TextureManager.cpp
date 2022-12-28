@@ -36,10 +36,13 @@ using namespace RTGL1;
 namespace
 {
 
-constexpr MaterialTextures EmptyMaterialTextures = { EMPTY_TEXTURE_INDEX,
-                                                     EMPTY_TEXTURE_INDEX,
-                                                     EMPTY_TEXTURE_INDEX };
-static_assert( TEXTURES_PER_MATERIAL_COUNT == 3 );
+constexpr MaterialTextures EmptyMaterialTextures = {
+    EMPTY_TEXTURE_INDEX,
+    EMPTY_TEXTURE_INDEX,
+    EMPTY_TEXTURE_INDEX,
+    EMPTY_TEXTURE_INDEX,
+};
+static_assert( TEXTURES_PER_MATERIAL_COUNT == 4 );
 
 constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
 
@@ -97,9 +100,10 @@ TextureManager::TextureManager( VkDevice                                _device,
     , currentDynamicSamplerFilter( DefaultDynamicSamplerFilter )
     , postfixes
         {
-            DEFAULT_TEXTURE_POSTFIX_ALBEDO_ALPHA,
-            DEFAULT_TEXTURE_POSTFIX_ROUGNESS_METALLIC_EMISSION,
-            DEFAULT_TEXTURE_POSTFIX_NORMAL,
+            TEXTURE_ALBEDO_ALPHA_POSTFIX,
+            TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_POSTFIX,
+            TEXTURE_NORMAL_POSTFIX,
+            TEXTURE_EMISSIVE_POSTFIX,
         }
     , forceNormalMapFilterLinear(_forceNormalMapFilterLinear  )
 {
@@ -383,6 +387,7 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
         TextureOverrides( folder, info.pTextureName, postfixes[ 0 ], info.pPixels, info.size, VK_FORMAT_R8G8B8A8_SRGB, GetLoader( imageLoader, imageLoaderDev ) ),
         TextureOverrides( folder, info.pTextureName, postfixes[ 1 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, GetLoader( imageLoader, imageLoaderDev ) ),
         TextureOverrides( folder, info.pTextureName, postfixes[ 2 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( folder, info.pTextureName, postfixes[ 3 ], nullptr, {}, VK_FORMAT_R8G8B8A8_SRGB, GetLoader( imageLoader, imageLoaderDev ) ),
     };
     static_assert( std::size( ovrd ) == TEXTURES_PER_MATERIAL_COUNT );
     // clang-format on
@@ -394,18 +399,20 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
         SamplerManager::Handle( forceNormalMapFilterLinear ? RG_SAMPLER_FILTER_LINEAR : info.filter,
                                 info.addressModeU,
                                 info.addressModeV ),
+        SamplerManager::Handle( info.filter, info.addressModeU, info.addressModeV ),
     };
     static_assert( std::size( samplers ) == TEXTURES_PER_MATERIAL_COUNT );
-    static_assert( MATERIAL_NORMAL_INDEX == 2 );
+    static_assert( TEXTURE_NORMAL_INDEX == 2 );
 
 
     std::optional< RgTextureSwizzling > swizzlings[] = {
         std::nullopt,
         std::optional( pbrSwizzling ),
         std::nullopt,
+        std::nullopt,
     };
     static_assert( std::size( swizzlings ) == TEXTURES_PER_MATERIAL_COUNT );
-    static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
+    static_assert( TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX == 1 );
 
 
     MakeMaterial( cmd, frameIndex, info.pTextureName, ovrd, samplers, swizzlings );
@@ -480,6 +487,7 @@ bool TextureManager::TryCreateImportedMaterial( VkCommandBuffer                 
         TextureOverrides( fullPaths[ 0 ], true, GetLoader( imageLoader, imageLoaderDev ) ),
         TextureOverrides( fullPaths[ 1 ], false, GetLoader( imageLoader, imageLoaderDev ) ),
         TextureOverrides( fullPaths[ 2 ], false, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( fullPaths[ 3 ], true, GetLoader( imageLoader, imageLoaderDev ) ),
     };
     static_assert( std::size( ovrd ) == TEXTURES_PER_MATERIAL_COUNT );
     // clang-format on
@@ -489,9 +497,10 @@ bool TextureManager::TryCreateImportedMaterial( VkCommandBuffer                 
         std::nullopt,
         std::optional( customPbrSwizzling ),
         std::nullopt,
+        std::nullopt,
     };
     static_assert( std::size( swizzlings ) == TEXTURES_PER_MATERIAL_COUNT );
-    static_assert( MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX == 1 );
+    static_assert( TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX == 1 );
 
     // to free later / to prevent export from ExportOriginalMaterialTextures
     importedMaterials.insert( materialName );
@@ -763,13 +772,16 @@ auto TextureManager::ExportMaterialTextures( const char*                  materi
         auto relativeFilePath =
             TextureOverrides::GetTexturePath( "", materialName, postfixes[ i ], ".tga" );
 
+        bool asSrgb = ( i == TEXTURE_ALBEDO_ALPHA_INDEX ) || ( i == TEXTURE_EMISSIVE_INDEX );
+        assert( asSrgb == Utils::IsSRGB( info.format ) );
+
         bool exported = TextureExporter().ExportAsTGA( *memAllocator,
                                                        *cmdManager,
                                                        info.image,
                                                        info.size,
                                                        info.format,
                                                        folder / relativeFilePath,
-                                                       i == MATERIAL_ALBEDO_ALPHA_INDEX,
+                                                       asSrgb,
                                                        overwriteExisting );
         if( exported )
         {
@@ -819,13 +831,16 @@ void TextureManager::ExportOriginalMaterialTextures( const std::filesystem::path
             auto relativeFilePath =
                 TextureOverrides::GetTexturePath( "", materialName, postfixes[ i ], ".tga" );
 
+            bool asSrgb = ( i == TEXTURE_ALBEDO_ALPHA_INDEX ) || ( i == TEXTURE_EMISSIVE_INDEX );
+            assert( asSrgb == Utils::IsSRGB( info.format ) );
+
             TextureExporter().ExportAsTGA( *memAllocator,
                                            *cmdManager,
                                            info.image,
                                            info.size,
                                            info.format,
                                            folder / relativeFilePath,
-                                           i == MATERIAL_ALBEDO_ALPHA_INDEX,
+                                           asSrgb,
                                            overwriteExisting );
         }
     }

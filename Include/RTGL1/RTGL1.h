@@ -154,11 +154,12 @@ typedef struct RgXlibSurfaceCreateInfo
 
 typedef enum RgTextureSwizzling
 {
-    RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC_EMISSIVE,
-    RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC,
-    RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS_EMISSIVE,
-    RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS,
     RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC,
+    RG_TEXTURE_SWIZZLING_NULL_METALLIC_ROUGHNESS,
+    RG_TEXTURE_SWIZZLING_OCCLUSION_ROUGHNESS_METALLIC,
+    RG_TEXTURE_SWIZZLING_OCCLUSION_METALLIC_ROUGHNESS,
+    RG_TEXTURE_SWIZZLING_ROUGHNESS_METALLIC,
+    RG_TEXTURE_SWIZZLING_METALLIC_ROUGHNESS,
 } RgTextureSwizzling;
 
 typedef struct RgFloat2D
@@ -329,6 +330,18 @@ typedef struct RgEditorTextureLayerInfo
     RgColor4DPacked32               color;
 } RgEditorTextureLayerInfo;
 
+typedef struct RgEditorPBRInfo
+{
+    // Multipliers for Roughness-Metallic texture.
+    // If no texture present, multipliers are used directly as plain values.
+    // Clamped to [0.0, 1.0]
+    // Default: 1.0, if Roughness-Metallic texture exists
+    //          0.0, otherwise
+    float                           metallicDefault;
+    // Default: 1.0
+    float                           roughnessDefault;
+} RgEditorPBRInfo;
+
 typedef struct RgEditorInfo
 {
     // If not null, then the primitive defines a portal.
@@ -339,6 +352,8 @@ typedef struct RgEditorInfo
     const RgEditorTextureLayerInfo* pLayer1;
     const RgEditorTextureLayerInfo* pLayer2;
     const RgEditorTextureLayerInfo* pLayerLightmap;
+    RgBool32                        pbrInfoExists;
+    RgEditorPBRInfo                 pbrInfo;
 } RgEditorInfo;
 
 // Primitive is an indexed or non-indexed geometry with a material.
@@ -538,9 +553,6 @@ typedef struct RgDrawFrameTexturesParams
     float           emissionMapBoost;
     // Upper bound for emissive materials in primary albedo channel (i.e. on screen).
     float           emissionMaxScreenColor;
-    // Set to true, if roughness should be more perceptually linear.
-    // Default: true
-    RgBool32        squareInputRoughness;
     // Default: 0.0
     float           minRoughness;
 } RgDrawFrameTexturesParams;

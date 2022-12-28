@@ -36,7 +36,9 @@ JSON_TYPE( RTGL1::TextureMeta )
     "isMirror", &T::isMirror,
     "isWater", &T::isWater,
     "isGlass", &T::isGlass,
-    "emissive", &T::emissive,
+    "metallicDefault", &T::metallicDefault,
+    "roughnessDefault", &T::roughnessDefault,
+    "emissiveMult", &T::emissiveMult,
     "attachedLightIntensity", &T::attachedLightIntensity,
     "attachedLightColor", &T::attachedLightColor
 
@@ -56,6 +58,34 @@ JSON_TYPE_END;
 namespace
 {
 std::string_view TEXTURES_FILENAME = "textures.json";
+
+template< size_t N >
+    requires( N == 3 || N == 4 )
+RgColor4DPacked32 ClampAndPackColor( std::array< int, N > color )
+{
+    if constexpr( N == 3 )
+    {
+        uint8_t rgb[] = {
+            uint8_t( std::clamp( color[ 0 ], 0, 255 ) ),
+            uint8_t( std::clamp( color[ 1 ], 0, 255 ) ),
+            uint8_t( std::clamp( color[ 2 ], 0, 255 ) ),
+        };
+        return RTGL1::Utils::PackColor( rgb[ 0 ], rgb[ 1 ], rgb[ 2 ], 255 );
+    }
+    if constexpr( N == 4 )
+    {
+        uint8_t rgba[] = {
+            uint8_t( std::clamp( color[ 0 ], 0, 255 ) ),
+            uint8_t( std::clamp( color[ 1 ], 0, 255 ) ),
+            uint8_t( std::clamp( color[ 2 ], 0, 255 ) ),
+            uint8_t( std::clamp( color[ 3 ], 0, 255 ) ),
+        };
+        return RTGL1::Utils::PackColor( rgba[ 0 ], rgba[ 1 ], rgba[ 2 ], rgba[ 3 ] );
+    }
+
+    assert( 0 );
+    return 0;
+}
 }
 
 RTGL1::TextureMetaManager::TextureMetaManager( std::filesystem::path _databaseFolder )
@@ -126,44 +156,46 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
     reread( sourceScene, dataScene );
 }
 
-RgMeshPrimitiveInfo RTGL1::TextureMetaManager::Modify( const RgMeshPrimitiveInfo& original,
-                                                       bool                       isStatic ) const
+void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
+                                        RgEditorInfo&        editor,
+                                        bool                 isStatic ) const
 {
-    RgMeshPrimitiveInfo modified = original;
+    assert( prim.pEditorInfo == &editor );
 
-    if( auto meta = Access( modified.pTextureName ) )
+    if( auto meta = Access( prim.pTextureName ) )
     {
         if( meta->forceAlphaTest )
         {
-            modified.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
+            prim.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
         }
 
         if( meta->isWater )
         {
-            modified.flags |= RG_MESH_PRIMITIVE_WATER;
-            modified.flags &= ~RG_MESH_PRIMITIVE_GLASS;
-            modified.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags |= RG_MESH_PRIMITIVE_WATER;
+            prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
+            prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
         }
         else if( meta->isGlass )
         {
-            modified.flags &= ~RG_MESH_PRIMITIVE_WATER;
-            modified.flags |= RG_MESH_PRIMITIVE_GLASS;
-            modified.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
+            prim.flags |= RG_MESH_PRIMITIVE_GLASS;
+            prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
         }
         else if( meta->isMirror )
         {
-            modified.flags &= ~RG_MESH_PRIMITIVE_WATER;
-            modified.flags &= ~RG_MESH_PRIMITIVE_GLASS;
-            modified.flags |= RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
+            prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
+            prim.flags |= RG_MESH_PRIMITIVE_MIRROR;
         }
 
-        if( meta->emissive > 0.0f )
+        prim.emissive = Utils::Saturate( meta->emissiveMult );
+
+        editor.pbrInfoExists = true;
         {
-            modified.emissive = meta->emissive;
+            editor.pbrInfo.metallicDefault  = Utils::Saturate( meta->metallicDefault );
+            editor.pbrInfo.roughnessDefault = Utils::Saturate( meta->roughnessDefault );
         }
     }
-
-    return modified;
 }
 
 void RTGL1::TextureMetaManager::RereadFromFiles( std::string_view currentSceneName )

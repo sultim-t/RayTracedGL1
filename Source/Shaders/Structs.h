@@ -25,16 +25,26 @@ struct ShTriangle
 {
     mat3    positions;
     mat3    prevPositions;
+    
     mat3    normals;
-    mat3x2  layerTexCoord[4];
-    uvec3   layerTextures[4];
-    uvec4   layerColors;
-    uint    vertexColors[3];
+    
+    mat3x2  layerTexCoord[ 4 ];
+    uint    layerColorTextures[ 4 ];
+    uint    layerColors[ 4];
+    
+    uint    vertexColors[ 3 ];
     uint    geometryInstanceFlags;
     vec4    tangent;
-    float   geomRoughness;
-    float   geomEmission;
-    float   geomMetallicity;
+
+    float   roughnessDefault;
+    float   metallicDefault;
+    uint    occlusionRougnessMetallicTexture;   // layerTexCoord[ 0 ]
+    
+    uint    normalTexture;                      // layerTexCoord[ 0 ]
+    
+    float   emissiveMult;
+    uint    emissiveTexture;                    // layerTexCoord[ 0 ]
+    
     uint    portalIndex;
 };
 
@@ -57,10 +67,10 @@ struct ShHitInfo
     vec3    normal;
     float   roughness;
     vec3    normalGeom;
-    float   emission;
-    vec3    hitPosition;
     uint    instCustomIndex;
+    vec3    hitPosition;
     uint    geometryInstanceFlags;
+    vec3    emission;
     uint    portalIndex;
 };
 

@@ -611,16 +611,10 @@ bool RTGL1::ASManager::AddMeshPrimitive( uint32_t                   frameIndex,
     auto textures = textureManager.GetTexturesForLayers( primitive );
     auto colors   = textureManager.GetColorForLayers( primitive );
 
-    if( isStatic )
-    {
-        return collectorStatic->AddPrimitive(
-            frameIndex, isStatic, mesh, primitive, uniqueID, textures, colors, geomInfoManager );
-    }
-    else
-    {
-        return collectorDynamic[ frameIndex ]->AddPrimitive(
-            frameIndex, isStatic, mesh, primitive, uniqueID, textures, colors, geomInfoManager );
-    }
+    auto& collector = isStatic ? collectorStatic : collectorDynamic[ frameIndex ];
+
+    return collector->AddPrimitive(
+        frameIndex, isStatic, mesh, primitive, uniqueID, textures, colors, geomInfoManager );
 }
 
 void RTGL1::ASManager::SubmitDynamicGeometry( DynamicGeometryToken& token,

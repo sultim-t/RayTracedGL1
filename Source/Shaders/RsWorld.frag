@@ -38,19 +38,19 @@ layout(push_constant) uniform RasterizerFrag_BT
 {
     layout(offset = 64) uint packedColor;
     layout(offset = 68) uint textureIndex;
-    layout(offset = 72) uint emissionTextureIndex;
+    layout(offset = 72) uint emissiveTextureIndex;
+    layout(offset = 76) uint emissiveMult;
 } rasterizerFragInfo;
 
 layout (constant_id = 0) const uint alphaTest = 0;
 
 #define ALPHA_THRESHOLD 0.5
-#define EMISSION_CHANNEL 2
 
 
 void main()
 {
-    vec4 albedoAlpha = getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord );
-    outColor         = unpackUintColor( rasterizerFragInfo.packedColor ) * vertColor * albedoAlpha;
+    outColor = vertColor * unpackUintColor( rasterizerFragInfo.packedColor ) *
+               getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord );
 
     if( globalUniform.lightmapEnable == 0 )
     {
@@ -72,13 +72,18 @@ void main()
 #endif
     }
 
-    float emis = 0.0;
-    if( rasterizerFragInfo.emissionTextureIndex != MATERIAL_NO_TEXTURE )
     {
-        emis = getTextureSample( rasterizerFragInfo.emissionTextureIndex,
-                                 vertTexCoord )[ EMISSION_CHANNEL ];
+        if( rasterizerFragInfo.emissiveTextureIndex != MATERIAL_NO_TEXTURE )
+        {
+            outScreenEmission =
+                rasterizerFragInfo.emissiveMult *
+                getTextureSample( rasterizerFragInfo.emissiveTextureIndex, vertTexCoord ).rgb;
+        }
+        else
+        {
+            outScreenEmission = rasterizerFragInfo.emissiveMult * outColor.rgb;
+        }
     }
-    outScreenEmission = rmeEmissionToScreenEmission( emis ) * albedoAlpha.rgb;
 
     if( alphaTest != 0 )
     {

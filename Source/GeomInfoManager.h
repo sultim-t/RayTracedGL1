@@ -26,6 +26,7 @@
 #include "Material.h"
 #include "MemoryAllocator.h"
 #include "SpanCounted.h"
+#include "Utils.h"
 #include "VertexCollectorFilterType.h"
 
 #include "Generated/ShaderCommonC.h"
@@ -140,5 +141,13 @@ private:
     rgl::subspan_incremental< ShGeometryInstance >& AccessGeometryInstanceGroup(
         uint32_t frameIndex, VertexCollectorFilterTypeFlags flagsForGroup );
 };
+
+inline RgColor4DPacked32 PackEmissiveFactorAndStrength( RgColor4DPacked32 factor, float strength )
+{
+    auto strengthClamped = static_cast< uint8_t >( std::clamp( strength, 0.0f, 255.0f ) );
+    auto emisRGB         = Utils::UnpackColor4DPacked32Components( factor );
+
+    return Utils::PackColor( emisRGB[ 0 ], emisRGB[ 1 ], emisRGB[ 2 ], strengthClamped );
+}
 
 }

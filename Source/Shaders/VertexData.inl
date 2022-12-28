@@ -375,34 +375,40 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
     }
 
 
-    tr.layerTextures[ 0 ] = uvec3( inst.base_textureA,    inst.base_textureB,  inst.base_textureC  );
-    tr.layerTextures[ 1 ] = uvec3( inst.layer1_texture,   MATERIAL_NO_TEXTURE, MATERIAL_NO_TEXTURE );
-    tr.layerTextures[ 2 ] = uvec3( inst.layer2_texture,   MATERIAL_NO_TEXTURE, MATERIAL_NO_TEXTURE );
-    tr.layerTextures[ 2 ] = uvec3( inst.lightmap_texture, MATERIAL_NO_TEXTURE, MATERIAL_NO_TEXTURE );
+    tr.layerColorTextures = uint[](
+        inst.texture_base,
+        inst.texture_layer1,
+        inst.texture_layer2,
+        inst.texture_lightmap
+    );
 
-    tr.layerColors[ 0 ] = inst.base_color;
-    tr.layerColors[ 1 ] = inst.layer1_color;
-    tr.layerColors[ 2 ] = inst.layer2_color;
-    tr.layerColors[ 2 ] = inst.lightmap_color;
+    tr.layerColors = uint[](
+        inst.colorFactor_base,
+        inst.colorFactor_layer1,
+        inst.colorFactor_layer2,
+        inst.colorFactor_lightmap
+    );
 
+    tr.roughnessDefault = inst.roughnessDefault;
+    tr.metallicDefault = inst.metallicDefault;
+    tr.occlusionRougnessMetallicTexture = inst.texture_base_ORM;
+    
+    tr.normalTexture = inst.texture_base_N;
 
-    const mat3 model3 = mat3(inst.model);
+    tr.emissiveMult = inst.emissiveMult;
+    tr.emissiveTexture = inst.texture_base_E;
 
-    // to world space
-    tr.normals[0] = model3 * tr.normals[0];
-    tr.normals[1] = model3 * tr.normals[1];
-    tr.normals[2] = model3 * tr.normals[2];
-    tr.tangent.xyz = model3 * tr.tangent.xyz;
+    {
+        const mat3 model3 = mat3(inst.model);
 
+        // to world space
+        tr.normals[0] = model3 * tr.normals[0];
+        tr.normals[1] = model3 * tr.normals[1];
+        tr.normals[2] = model3 * tr.normals[2];
+        tr.tangent.xyz = model3 * tr.tangent.xyz;
+    }
 
     tr.geometryInstanceFlags = inst.flags;
-
-    tr.geomRoughness = inst.defaultRoughness;
-    tr.geomMetallicity = inst.defaultMetallicity;
-
-    // use (first layer's color) * defaultEmission
-    tr.geomEmission = inst.defaultEmission;
-
     tr.portalIndex = 0;
 
     return tr;

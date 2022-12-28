@@ -438,19 +438,25 @@ namespace
         return "";
     }
 
-    auto UploadTextures( VkCommandBuffer              cmd,
-                         uint32_t                     frameIndex,
-                         const cgltf_material*        mat,
-                         TextureManager&              textureManager,
-                         const std::filesystem::path& gltfFolder,
-                         std::string_view             gltfPath )
+    struct UploadTexturesResult
     {
-        auto defaultValues =
-            std::make_tuple( Utils::PackColor( 255, 255, 255, 255 ), std::string() );
+        RgColor4DPacked32 color        = Utils::PackColor( 255, 255, 255, 255 );
+        float             emissiveMult = 0.0f;
+        std::string       pTextureName;
+        float             metallicFactor  = 0.0f;
+        float             roughnessFactor = 1.0f;
+    };
 
+    UploadTexturesResult UploadTextures( VkCommandBuffer              cmd,
+                                         uint32_t                     frameIndex,
+                                         const cgltf_material*        mat,
+                                         TextureManager&              textureManager,
+                                         const std::filesystem::path& gltfFolder,
+                                         std::string_view             gltfPath )
+    {
         if( mat == nullptr )
         {
-            return defaultValues;
+            return {};
         }
 
         if( !mat->has_pbr_metallic_roughness )
@@ -459,16 +465,18 @@ namespace
                             "Can't find PBR Metallic-Roughness",
                             gltfPath,
                             Utils::SafeCstr( mat->name ) );
-            return defaultValues;
+            return {};
         }
 
         // clang-format off
-        std::filesystem::path fullPaths[ TEXTURES_PER_MATERIAL_COUNT ] = {
+        std::filesystem::path fullPaths[] = {
+            std::filesystem::path(),
             std::filesystem::path(),
             std::filesystem::path(),
             std::filesystem::path(),
         };
-        SamplerManager::Handle samplers[ TEXTURES_PER_MATERIAL_COUNT ] = {
+        SamplerManager::Handle samplers[] = {
+            SamplerManager::Handle( RG_SAMPLER_FILTER_AUTO, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
             SamplerManager::Handle( RG_SAMPLER_FILTER_AUTO, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
             SamplerManager::Handle( RG_SAMPLER_FILTER_AUTO, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
             SamplerManager::Handle( RG_SAMPLER_FILTER_AUTO, RG_SAMPLER_ADDRESS_MODE_REPEAT, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
@@ -480,20 +488,62 @@ namespace
 
         const std::pair< int, const cgltf_texture_view& > txds[] = {
             {
-                MATERIAL_ALBEDO_ALPHA_INDEX,
+                TEXTURE_ALBEDO_ALPHA_INDEX,
                 mat->pbr_metallic_roughness.base_color_texture,
             },
             {
-                MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX,
+                TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX,
                 mat->pbr_metallic_roughness.metallic_roughness_texture,
             },
             {
-                MATERIAL_NORMAL_INDEX,
+                TEXTURE_NORMAL_INDEX,
                 mat->normal_texture,
+            },
+            {
+                TEXTURE_EMISSIVE_INDEX,
+                mat->emissive_texture,
             },
         };
         static_assert( std::size( txds ) == TEXTURES_PER_MATERIAL_COUNT );
 
+        RgTextureSwizzling pbrSwizzling = RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC;
+        {
+            cgltf_texture* texRM = mat->pbr_metallic_roughness.metallic_roughness_texture.texture;
+            cgltf_texture* texO  = mat->occlusion_texture.texture;
+
+            if( texRM && texRM->image )
+            {
+                if( texO && texO->image )
+                {
+                    if( texRM->image == texO->image )
+                    {
+                        pbrSwizzling = RG_TEXTURE_SWIZZLING_OCCLUSION_ROUGHNESS_METALLIC;
+                    }
+                    else
+                    {
+                        debug::Warning( "{}: Ignoring occlusion image \"{}\" of material \"{}\": "
+                                        "Occlusion should be in the Red channel of "
+                                        "Metallic-Roughness image \"{}\"",
+                                        gltfPath,
+                                        Utils::SafeCstr( texO->image->uri ),
+                                        Utils::SafeCstr( mat->name ),
+                                        Utils::SafeCstr( texRM->image->uri ) );
+                    }
+                }
+            }
+            else
+            {
+                if( texO && texO->image )
+                {
+                    debug::Warning( "{}: Ignoring occlusion image \"{}\" of material \"{}\": "
+                                    "Occlusion should be in the Red channel of Metallic-Roughness "
+                                    "image which doesn't exist on this material",
+                                    gltfPath,
+                                    Utils::SafeCstr( texO->image->uri ),
+                                    Utils::SafeCstr( mat->name ) );
+                }
+            }
+        }
 
 
         // https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#_sampler_magfilter
@@ -568,17 +618,41 @@ namespace
         if( !materialName.empty() )
         {
             textureManager.TryCreateImportedMaterial(
-                cmd,
-                frameIndex,
-                materialName,
-                fullPaths,
-                samplers,
-                RG_TEXTURE_SWIZZLING_NULL_ROUGHNESS_METALLIC );
+                cmd, frameIndex, materialName, fullPaths, samplers, pbrSwizzling );
         }
+
+        if( auto t = mat->pbr_metallic_roughness.metallic_roughness_texture.texture )
+        {
+            if( t->image )
+            {
+                if( std::abs( mat->pbr_metallic_roughness.metallic_factor - 1.0f ) > 0.01f ||
+                    std::abs( mat->pbr_metallic_roughness.roughness_factor - 1.0f ) > 0.01f )
+                {
+                    debug::Warning(
+                        "{}: Texture with image \"{}\" of material \"{}\" has "
+                        "metallic / roughness factors that are not 1.0. These values are "
+                        "used by RTGL1 only if surface doesn't have PBR texture",
+                        gltfPath,
+                        Utils::SafeCstr( t->image->uri ),
+                        Utils::SafeCstr( mat->name ) );
+                }
+            }
+        }
+
+
+        auto luminance = []( const float( &c )[ 3 ] ) {
+            return 0.2125f * c[ 0 ] + 0.7154f * c[ 1 ] + 0.0721f * c[ 2 ];
+        };
 
         auto color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor );
 
-        return std::make_tuple( color, std::move( materialName ) );
+        return UploadTexturesResult{
+            .color           = color,
+            .emissiveMult    = luminance( mat->emissive_factor ),
+            .pTextureName    = std::move( materialName ),
+            .metallicFactor  = mat->pbr_metallic_roughness.metallic_factor,
+            .roughnessFactor = mat->pbr_metallic_roughness.roughness_factor,
+        };
     }
 
 }
@@ -768,10 +842,21 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
             }
 
 
-            auto [ color, pTextureName ] = UploadTextures(
+            auto matinfo = UploadTextures(
                 cmd, frameIndex, srcPrim.material, textureManager, gltfFolder, gltfPath );
 
             auto primname = std::to_string( i );
+
+            RgEditorInfo editorInfo = {
+                .pPortal        = nullptr,
+                .pLayerBase     = nullptr,
+                .pLayer1        = nullptr,
+                .pLayer2        = nullptr,
+                .pLayerLightmap = nullptr,
+                .pbrInfoExists  = true,
+                .pbrInfo        = { .metallicDefault  = matinfo.metallicFactor,
+                                    .roughnessDefault = matinfo.roughnessFactor },
+            };
 
             RgMeshPrimitiveInfo dstPrim = {
                 .pPrimitiveNameInMesh = primname.c_str(),
@@ -781,15 +866,16 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
                 .vertexCount          = uint32_t( vertices.size() ),
                 .pIndices             = indices.empty() ? nullptr : indices.data(),
                 .indexCount           = uint32_t( indices.size() ),
-                .pTextureName         = pTextureName.c_str(),
+                .pTextureName         = matinfo.pTextureName.c_str(),
                 .textureFrame         = 0,
-                .color                = color,
-                .emissive             = 0.0f,
-                .pEditorInfo          = nullptr,
+                .color                = matinfo.color,
+                .emissive             = matinfo.emissiveMult,
+                .pEditorInfo          = &editorInfo,
             };
-            dstPrim = textureMeta.Modify( dstPrim, true );
+            textureMeta.Modify( dstPrim, editorInfo, true );
 
             auto r = scene.Upload( frameIndex, dstMesh, dstPrim, textureManager, true );
+
 
             if( !( r == UploadResult::Static || r == UploadResult::ExportableStatic ) )
             {

@@ -70,9 +70,6 @@
 #define SBT_INDEX_MISS_SHADOW (1)
 #define SBT_INDEX_HITGROUP_FULLY_OPAQUE (0)
 #define SBT_INDEX_HITGROUP_ALPHA_TESTED (1)
-#define MATERIAL_ALBEDO_ALPHA_INDEX (0)
-#define MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX (1)
-#define MATERIAL_NORMAL_INDEX (2)
 #define MATERIAL_NO_TEXTURE (0)
 #define MATERIAL_BLENDING_TYPE_OPAQUE (0)
 #define MATERIAL_BLENDING_TYPE_ALPHA (1)
@@ -258,7 +255,7 @@ struct ShGlobalUniform
     vec4 acidColorAndDensity;
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
-    uint squareInputRoughness;
+    uint _unused0;
     float upscaledRenderWidth;
     vec4 worldUpVector;
     float upscaledRenderHeight;
@@ -296,25 +293,26 @@ struct ShGeometryInstance
     mat4 model;
     mat4 prevModel;
     uint flags;
-    uint base_textureA;
-    uint base_textureB;
-    uint base_textureC;
-    uint base_color;
-    uint layer1_texture;
-    uint layer1_color;
-    uint layer2_texture;
-    uint layer2_color;
-    uint lightmap_texture;
-    uint lightmap_color;
+    uint texture_base;
+    uint texture_base_ORM;
+    uint texture_base_N;
+    uint texture_base_E;
+    uint texture_layer1;
+    uint texture_layer2;
+    uint texture_lightmap;
+    uint colorFactor_base;
+    uint colorFactor_layer1;
+    uint colorFactor_layer2;
+    uint colorFactor_lightmap;
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint prevBaseVertexIndex;
     uint prevBaseIndexIndex;
     uint vertexCount;
     uint indexCount;
-    float defaultRoughness;
-    float defaultMetallicity;
-    float defaultEmission;
+    float roughnessDefault;
+    float metallicDefault;
+    float emissiveMult;
     uint _unused0;
     uint _unused1;
     uint _unused2;
@@ -326,7 +324,6 @@ struct ShGeometryInstance
     uint _unused8;
     uint _unused9;
     uint _unused10;
-    uint _unused11;
 };
 
 struct ShTonemapping
@@ -379,9 +376,9 @@ struct ShDecalInstance
 {
     mat4 transform;
     uint textureAlbedoAlpha;
-    uint textureRougnessMetallic;
-    uint textureNormals;
-    uint __pad0;
+    uint textureOcclusionRoughnessMetallic;
+    uint textureNormal;
+    uint textureEmissive;
 };
 
 struct ShPortalInstance

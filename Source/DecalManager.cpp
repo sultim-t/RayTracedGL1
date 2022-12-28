@@ -95,14 +95,17 @@ void RTGL1::DecalManager::Upload( uint32_t                                 frame
 
     const MaterialTextures mat = textureManager->GetMaterialTextures( uploadInfo.pTextureName );
 
-    ShDecalInstance        instance  = {};
-    instance.textureAlbedoAlpha      = mat.indices[ MATERIAL_ALBEDO_ALPHA_INDEX ];
-    instance.textureRougnessMetallic = mat.indices[ MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX ];
-    instance.textureNormals          = mat.indices[ MATERIAL_NORMAL_INDEX ];
+    ShDecalInstance instance = {
+        .textureAlbedoAlpha = mat.indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .textureOcclusionRoughnessMetallic =
+            mat.indices[ TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX ],
+        .textureNormal   = mat.indices[ TEXTURE_NORMAL_INDEX ],
+        .textureEmissive = mat.indices[ TEXTURE_EMISSIVE_INDEX ],
+    };
     Matrix::ToMat4Transposed( instance.transform, uploadInfo.transform );
 
     {
-        ShDecalInstance* dst = ( ShDecalInstance* )instanceBuffer->GetMapped( frameIndex );
+        auto* dst = instanceBuffer->GetMappedAs< ShDecalInstance* >( frameIndex );
         memcpy( &dst[ decalIndex ], &instance, sizeof( ShDecalInstance ) );
     }
 }

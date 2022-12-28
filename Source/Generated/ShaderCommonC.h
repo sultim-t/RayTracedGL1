@@ -77,9 +77,6 @@ namespace RTGL1
 #define SBT_INDEX_MISS_SHADOW (1)
 #define SBT_INDEX_HITGROUP_FULLY_OPAQUE (0)
 #define SBT_INDEX_HITGROUP_ALPHA_TESTED (1)
-#define MATERIAL_ALBEDO_ALPHA_INDEX (0)
-#define MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX (1)
-#define MATERIAL_NORMAL_INDEX (2)
 #define MATERIAL_NO_TEXTURE (0)
 #define MATERIAL_BLENDING_TYPE_OPAQUE (0)
 #define MATERIAL_BLENDING_TYPE_ALPHA (1)
@@ -263,7 +260,7 @@ struct ShGlobalUniform
     float acidColorAndDensity[4];
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
-    uint32_t squareInputRoughness;
+    uint32_t _unused0;
     float upscaledRenderWidth;
     float worldUpVector[4];
     float upscaledRenderHeight;
@@ -301,25 +298,26 @@ struct ShGeometryInstance
     float model[16];
     float prevModel[16];
     uint32_t flags;
-    uint32_t base_textureA;
-    uint32_t base_textureB;
-    uint32_t base_textureC;
-    uint32_t base_color;
-    uint32_t layer1_texture;
-    uint32_t layer1_color;
-    uint32_t layer2_texture;
-    uint32_t layer2_color;
-    uint32_t lightmap_texture;
-    uint32_t lightmap_color;
+    uint32_t texture_base;
+    uint32_t texture_base_ORM;
+    uint32_t texture_base_N;
+    uint32_t texture_base_E;
+    uint32_t texture_layer1;
+    uint32_t texture_layer2;
+    uint32_t texture_lightmap;
+    uint32_t colorFactor_base;
+    uint32_t colorFactor_layer1;
+    uint32_t colorFactor_layer2;
+    uint32_t colorFactor_lightmap;
     uint32_t baseVertexIndex;
     uint32_t baseIndexIndex;
     uint32_t prevBaseVertexIndex;
     uint32_t prevBaseIndexIndex;
     uint32_t vertexCount;
     uint32_t indexCount;
-    float defaultRoughness;
-    float defaultMetallicity;
-    float defaultEmission;
+    float roughnessDefault;
+    float metallicDefault;
+    float emissiveMult;
     uint32_t _unused0;
     uint32_t _unused1;
     uint32_t _unused2;
@@ -331,7 +329,6 @@ struct ShGeometryInstance
     uint32_t _unused8;
     uint32_t _unused9;
     uint32_t _unused10;
-    uint32_t _unused11;
 };
 
 struct ShTonemapping
@@ -384,9 +381,9 @@ struct ShDecalInstance
 {
     float transform[16];
     uint32_t textureAlbedoAlpha;
-    uint32_t textureRougnessMetallic;
-    uint32_t textureNormals;
-    uint32_t __pad0;
+    uint32_t textureOcclusionRoughnessMetallic;
+    uint32_t textureNormal;
+    uint32_t textureEmissive;
 };
 
 struct ShPortalInstance

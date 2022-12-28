@@ -219,28 +219,37 @@ void RTGL1::RasterizedDataCollector::AddPrimitive( uint32_t                   fr
     const auto textures = textureMgr->GetTexturesForLayers( info );
     const auto colors   = textureMgr->GetColorForLayers( info );
 
+    const RgEditorPBRInfo* pbrInfo = ( info.pEditorInfo && info.pEditorInfo->pbrInfoExists )
+                                         ? &info.pEditorInfo->pbrInfo
+                                         : nullptr;
+
     PushInfo( rasterType ) = {
         .transform = transform,
         .flags     = GeomInfoManager::GetPrimitiveFlags( info ),
 
-        .base_textureA = textures[ 0 ].indices[ 0 ],
-        .base_textureB = textures[ 0 ].indices[ 1 ],
-        .base_textureC = textures[ 0 ].indices[ 2 ],
-        .base_color    = colors[ 0 ],
+        .texture_base     = textures[ 0 ].indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .texture_base_ORM = textures[ 0 ].indices[ TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX ],
+        .texture_base_N   = textures[ 0 ].indices[ TEXTURE_NORMAL_INDEX ],
+        .texture_base_E   = textures[ 0 ].indices[ TEXTURE_EMISSIVE_INDEX ],
 
-        .layer1_texture = textures[ 1 ].indices[ 0 ],
-        .layer1_color   = colors[ 1 ],
+        .texture_layer1   = textures[ 1 ].indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .texture_layer2   = textures[ 2 ].indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .texture_lightmap = textures[ 3 ].indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
 
-        .layer2_texture = textures[ 2 ].indices[ 0 ],
-        .layer2_color   = colors[ 2 ],
-
-        .lightmap_texture = textures[ 3 ].indices[ 0 ],
-        .lightmap_color   = colors[ 3 ],
+        .colorFactor_base     = colors[ 0 ],
+        .colorFactor_layer1   = colors[ 1 ],
+        .colorFactor_layer2   = colors[ 2 ],
+        .colorFactor_lightmap = colors[ 3 ],
 
         .vertexCount = vertexCount,
         .firstVertex = firstVertex,
         .indexCount  = indexCount,
         .firstIndex  = firstIndex,
+
+        .roughnessFactor = Utils::Saturate( pbrInfo ? pbrInfo->roughnessDefault : 1.0f ),
+        .metallicFactor  = Utils::Saturate( pbrInfo ? pbrInfo->metallicDefault : 0.0f ),
+
+        .emissive = Utils::Saturate( info.emissive ),
 
         .viewProj = IfNotNull( pViewProjection, Float16D( pViewProjection ) ),
         .viewport = IfNotNull( pViewport, ToVk( *pViewport ) ),

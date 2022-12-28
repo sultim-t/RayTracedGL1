@@ -20,6 +20,7 @@
 
 #pragma once
 
+#include <array>
 #include <optional>
 
 #include "Common.h"
@@ -194,8 +195,53 @@ namespace Utils
         requires( std::is_integral_v< T1 > && std::is_integral_v< T2 > )
     uint32_t GetWorkGroupCountT( T1 size, T2 groupSize );
 
-    RgFloat4D UnpackColor4DPacked32( RgColor4DPacked32 c );
-    float     UnpackAlphaFromPacked32( RgColor4DPacked32 c );
+    template< typename ReturnType = RgFloat4D >
+        requires( std::is_same_v< ReturnType, RgFloat4D > ||
+                  std::is_same_v< ReturnType, RgFloat3D > )
+    constexpr ReturnType UnpackColor4DPacked32( RgColor4DPacked32 c )
+    {
+        if constexpr( std::is_same_v< ReturnType, RgFloat3D > )
+        {
+            return RgFloat3D{ {
+                float( ( c >> 0 ) & 255u ) / 255.0f,
+                float( ( c >> 8 ) & 255u ) / 255.0f,
+                float( ( c >> 16 ) & 255u ) / 255.0f,
+            } };
+        }
+        if constexpr( std::is_same_v< ReturnType, RgFloat4D > )
+        {
+            return RgFloat4D{ {
+                float( ( c >> 0 ) & 255u ) / 255.0f,
+                float( ( c >> 8 ) & 255u ) / 255.0f,
+                float( ( c >> 16 ) & 255u ) / 255.0f,
+                float( ( c >> 24 ) & 255u ) / 255.0f,
+            } };
+        }
+        assert( 0 );
+        return {};
+    }
+
+    template< bool WithAlpha >
+    constexpr bool IsColor4DPacked32Zero( RgColor4DPacked32 c )
+    {
+        uint32_t mask = WithAlpha ? 0xFFFFFFFF : 0x00FFFFFF;
+        return ( c & mask ) == 0;
+    }
+
+    constexpr std::array< uint8_t, 4 > UnpackColor4DPacked32Components( RgColor4DPacked32 c )
+    {
+        return { {
+            uint8_t( ( c >> 0 ) & 255u ),
+            uint8_t( ( c >> 8 ) & 255u ),
+            uint8_t( ( c >> 16 ) & 255u ),
+            uint8_t( ( c >> 24 ) & 255u ),
+        } };
+    }
+
+    constexpr float UnpackAlphaFromPacked32( RgColor4DPacked32 c )
+    {
+        return float( ( c >> 24 ) & 255u ) / 255.0f;
+    }
 
     inline bool IsCstrEmpty( const char* cstr )
     {
@@ -220,10 +266,15 @@ namespace Utils
 
         return PackColor( toUint8( r ), toUint8( g ), toUint8( b ), toUint8( a ) );
     }
-    
+
     constexpr RgColor4DPacked32 PackColorFromFloat( const float ( &rgba )[ 4 ] )
     {
         return PackColorFromFloat( rgba[ 0 ], rgba[ 1 ], rgba[ 2 ], rgba[ 3 ] );
+    }
+
+    constexpr float Saturate( float v )
+    {
+        return std::clamp( v, 0.0f, 1.0f );
     }
 
 // clang-format off

@@ -35,7 +35,7 @@ struct Surface
     vec3    albedo;
     bool    isSky;
     vec3    specularColor;
-    float   emission;
+    vec3    emission;
     vec3    toViewerDir;
 };
 
@@ -56,7 +56,7 @@ Surface fetchGbufferSurface(const ivec2 pix)
     
     // framebufAlbedo ALWAYS uses regular layout because of the sky rasterization pass  
     s.albedo = texelFetch(framebufAlbedo_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;
-    s.emission = getLuminance(texelFetch(framebufScreenEmisRT_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb);   
+    s.emission = texelFetch(framebufScreenEmisRT_Sampler, getRegularPixFromCheckerboardPix(pix), 0).rgb;   
     {
         vec4 posEnc             = texelFetch(framebufSurfacePosition_Sampler, pix, 0);
         s.position              = posEnc.xyz;
@@ -78,7 +78,7 @@ Surface fetchGbufferSurface_NoAlbedoViewDir_Prev(const ivec2 pix)
     Surface s;
     s.isSky = false;
     s.albedo = vec3(1.0);
-    s.emission = 0.0;
+    s.emission = vec3( 0.0 );
     {
         vec4 posEnc             = texelFetch(framebufSurfacePosition_Prev_Sampler, pix, 0);
         s.position              = posEnc.xyz;

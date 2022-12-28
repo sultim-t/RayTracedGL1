@@ -29,10 +29,14 @@
 #include <array>
 #include <cstring>
 
+namespace
+{
+
 constexpr uint32_t INDEX_BUFFER_SIZE = MAX_INDEXED_PRIMITIVE_COUNT * 3 * sizeof( uint32_t );
 constexpr uint32_t TRANSFORM_BUFFER_SIZE =
     MAX_BOTTOM_LEVEL_GEOMETRIES_COUNT * sizeof( VkTransformMatrixKHR );
 
+}
 
 RTGL1::VertexCollector::VertexCollector( VkDevice                                  _device,
                                          const std::shared_ptr< MemoryAllocator >& _allocator,
@@ -266,8 +270,9 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
     {
         static_assert( sizeof( RgTransform ) == sizeof( VkTransformMatrixKHR ) );
-        memcpy(
-            mappedTransformData + transformIndex, &parentMesh.transform, sizeof( VkTransformMatrixKHR ) );
+        memcpy( mappedTransformData + transformIndex,
+                &parentMesh.transform,
+                sizeof( VkTransformMatrixKHR ) );
     }
 
 
@@ -326,6 +331,9 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
     }
 
 
+    const RgEditorPBRInfo* pbrInfo = ( info.pEditorInfo && info.pEditorInfo->pbrInfoExists )
+                                         ? &info.pEditorInfo->pbrInfo
+                                         : nullptr;
 
     ShGeometryInstance geomInfo = {
         .model     = RG_MATRIX_TRANSPOSED( parentMesh.transform ),
@@ -333,19 +341,20 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
         .flags = GeomInfoManager::GetPrimitiveFlags( info ),
 
-        .base_textureA = layerTextures[ 0 ].indices[ 0 ],
-        .base_textureB = layerTextures[ 0 ].indices[ 1 ],
-        .base_textureC = layerTextures[ 0 ].indices[ 2 ],
-        .base_color    = layerColors[ 0 ],
+        .texture_base = layerTextures[ 0 ].indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .texture_base_ORM =
+            layerTextures[ 0 ].indices[ TEXTURE_OCCLUSION_ROUGHNESS_METALLIC_INDEX ],
+        .texture_base_N = layerTextures[ 0 ].indices[ TEXTURE_NORMAL_INDEX ],
+        .texture_base_E = layerTextures[ 0 ].indices[ TEXTURE_EMISSIVE_INDEX ],
 
-        .layer1_texture = layerTextures[ 1 ].indices[ 0 ],
-        .layer1_color   = layerColors[ 1 ],
+        .texture_layer1   = layerTextures[ 1 ].indices[ 0 ],
+        .texture_layer2   = layerTextures[ 2 ].indices[ 0 ],
+        .texture_lightmap = layerTextures[ 3 ].indices[ 0 ],
 
-        .layer2_texture = layerTextures[ 2 ].indices[ 0 ],
-        .layer2_color   = layerColors[ 2 ],
-
-        .lightmap_texture = layerTextures[ 3 ].indices[ 0 ],
-        .lightmap_color   = layerColors[ 3 ],
+        .colorFactor_base     = layerColors[ 0 ],
+        .colorFactor_layer1   = layerColors[ 1 ],
+        .colorFactor_layer2   = layerColors[ 2 ],
+        .colorFactor_lightmap = layerColors[ 3 ],
 
         .baseVertexIndex     = vertIndex,
         .baseIndexIndex      = useIndices ? indIndex : UINT32_MAX,
@@ -354,9 +363,10 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
         .vertexCount         = info.vertexCount,
         .indexCount          = useIndices ? info.indexCount : UINT32_MAX,
 
-        .defaultRoughness   = 1.0f,
-        .defaultMetallicity = 0.0f,
-        .defaultEmission    = std::clamp( info.emissive, 0.0f, 1.0f ),
+        .roughnessDefault = pbrInfo ? Utils::Saturate( pbrInfo->roughnessDefault ) : 1.0f,
+        .metallicDefault  = pbrInfo ? Utils::Saturate( pbrInfo->metallicDefault ) : 0.0f,
+
+        .emissiveMult = Utils::Saturate( info.emissive ),
     };
 
 

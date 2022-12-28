@@ -263,15 +263,13 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->emissionMapBoost  = std::max( drawInfo.pTexturesParams->emissionMapBoost, 0.0f );
         gu->emissionMaxScreenColor =
             std::max( drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f );
-        gu->squareInputRoughness = !!drawInfo.pTexturesParams->squareInputRoughness;
-        gu->minRoughness         = std::clamp( drawInfo.pTexturesParams->minRoughness, 0.0f, 1.0f );
+        gu->minRoughness = std::clamp( drawInfo.pTexturesParams->minRoughness, 0.0f, 1.0f );
     }
     else
     {
         gu->normalMapStrength      = 1.0f;
         gu->emissionMapBoost       = 100.0f;
         gu->emissionMaxScreenColor = 1.5f;
-        gu->squareInputRoughness   = 1;
         gu->minRoughness           = 0.0f;
     }
 
@@ -1392,22 +1390,27 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
         return;
     }
 
-    RgMeshPrimitiveInfo primitive = textureMetaManager->Modify( *pPrimitive, false );
+    // copy to modify
+    RgMeshPrimitiveInfo prim       = *pPrimitive;
+    RgEditorInfo        primEditor = prim.pEditorInfo ? *prim.pEditorInfo : RgEditorInfo{};
+    prim.pEditorInfo               = &primEditor;
 
-    if( IsRasterized( *pMesh, primitive ) )
+    textureMetaManager->Modify( prim, primEditor, false );
+
+    if( IsRasterized( *pMesh, prim ) )
     {
         rasterizer->Upload( currentFrameState.GetFrameIndex(),
-                            primitive.flags & RG_MESH_PRIMITIVE_SKY ? GeometryRasterType::SKY
-                                                                    : GeometryRasterType::WORLD,
+                            prim.flags & RG_MESH_PRIMITIVE_SKY ? GeometryRasterType::SKY
+                                                               : GeometryRasterType::WORLD,
                             pMesh->transform,
-                            primitive,
+                            prim,
                             nullptr,
                             nullptr );
     }
     else
     {
         UploadResult r = scene->Upload(
-            currentFrameState.GetFrameIndex(), *pMesh, primitive, *textureManager, false );
+            currentFrameState.GetFrameIndex(), *pMesh, prim, *textureManager, false );
 
         if( debugWindows && debugData.primitivesTableEnable )
         {
@@ -1416,9 +1419,9 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                 .callIndex      = uint32_t( debugData.primitivesTable.size() ),
                 .objectId       = pMesh->uniqueObjectID,
                 .meshName       = Utils::SafeCstr( pMesh->pMeshName ),
-                .primitiveIndex = primitive.primitiveIndexInMesh,
-                .primitiveName  = Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
-                .textureName    = Utils::SafeCstr( primitive.pTextureName ),
+                .primitiveIndex = prim.primitiveIndexInMesh,
+                .primitiveName  = Utils::SafeCstr( prim.pPrimitiveNameInMesh ),
+                .textureName    = Utils::SafeCstr( prim.pTextureName ),
             } );
         }
 
@@ -1426,7 +1429,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
         {
             if( auto e = sceneImportExport->TryGetExporter() )
             {
-                e->AddPrimitive( *pMesh, primitive );
+                e->AddPrimitive( *pMesh, prim );
             }
         }
     }

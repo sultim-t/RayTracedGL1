@@ -304,10 +304,6 @@ CONST = {
     "SBT_INDEX_HITGROUP_FULLY_OPAQUE"       : 0,
     "SBT_INDEX_HITGROUP_ALPHA_TESTED"       : 1,
     
-    "MATERIAL_ALBEDO_ALPHA_INDEX"                   : 0,
-    "MATERIAL_ROUGHNESS_METALLIC_EMISSION_INDEX"    : 1,
-    "MATERIAL_NORMAL_INDEX"                         : 2,
-    
     "MATERIAL_NO_TEXTURE"                   : 0,
 
     "MATERIAL_BLENDING_TYPE_OPAQUE"         : 0,
@@ -572,7 +568,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "cameraRayConeSpreadAngle",         1),
     (TYPE_FLOAT32,      1,      "waterTextureAreaScale",            1),
-    (TYPE_UINT32,       1,      "squareInputRoughness",             1),
+    (TYPE_UINT32,       1,      "_unused0",                         1),
     (TYPE_FLOAT32,      1,      "upscaledRenderWidth",              1),
 
     (TYPE_FLOAT32,      4,      "worldUpVector",                    1),
@@ -624,44 +620,43 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_FLOAT32,     44,      "prevModel",            1),
 
     (TYPE_UINT32,       1,      "flags",                1),
+    (TYPE_UINT32,       1,      "texture_base",         1),
+    (TYPE_UINT32,       1,      "texture_base_ORM",     1),
+    (TYPE_UINT32,       1,      "texture_base_N",       1),
+    (TYPE_UINT32,       1,      "texture_base_E",       1),
+    (TYPE_UINT32,       1,      "texture_layer1",       1),
+    (TYPE_UINT32,       1,      "texture_layer2",       1),
+    (TYPE_UINT32,       1,      "texture_lightmap",     1),
 
-    (TYPE_UINT32,       1,      "base_textureA",        1),
-    (TYPE_UINT32,       1,      "base_textureB",        1),
-    (TYPE_UINT32,       1,      "base_textureC",        1),
-    (TYPE_UINT32,       1,      "base_color",           1),
+    (TYPE_UINT32,       1,      "colorFactor_base",     1),
+    (TYPE_UINT32,       1,      "colorFactor_layer1",   1),
+    (TYPE_UINT32,       1,      "colorFactor_layer2",   1),
+    (TYPE_UINT32,       1,      "colorFactor_lightmap", 1),
 
-    (TYPE_UINT32,       1,      "layer1_texture",       1),
-    (TYPE_UINT32,       1,      "layer1_color",         1),
-    (TYPE_UINT32,       1,      "layer2_texture",       1),
-    (TYPE_UINT32,       1,      "layer2_color",         1),
-    (TYPE_UINT32,       1,      "lightmap_texture",     1),
-    (TYPE_UINT32,       1,      "lightmap_color",       1),
-    
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),
     (TYPE_UINT32,       1,      "prevBaseVertexIndex",  1),
     (TYPE_UINT32,       1,      "prevBaseIndexIndex",   1),
+
     (TYPE_UINT32,       1,      "vertexCount",          1),
     (TYPE_UINT32,       1,      "indexCount",           1),
+    (TYPE_FLOAT32,      1,      "roughnessDefault",     1),
+    (TYPE_FLOAT32,      1,      "metallicDefault",      1),
 
-    (TYPE_FLOAT32,      1,      "defaultRoughness",     1),
-    (TYPE_FLOAT32,      1,      "defaultMetallicity",   1),
-    (TYPE_FLOAT32,      1,      "defaultEmission",      1),
+    (TYPE_FLOAT32,      1,      "emissiveMult",         1),
     (TYPE_UINT32,       1,      "_unused0",             1),
-    
     (TYPE_UINT32,       1,      "_unused1",             1),
     (TYPE_UINT32,       1,      "_unused2",             1),
-    (TYPE_UINT32,       1,      "_unused3",             1),
 
+    (TYPE_UINT32,       1,      "_unused3",             1),
     (TYPE_UINT32,       1,      "_unused4",             1),
     (TYPE_UINT32,       1,      "_unused5",             1),
     (TYPE_UINT32,       1,      "_unused6",             1),
-    (TYPE_UINT32,       1,      "_unused7",             1),
 
+    (TYPE_UINT32,       1,      "_unused7",             1),
     (TYPE_UINT32,       1,      "_unused8",             1),
     (TYPE_UINT32,       1,      "_unused9",             1),
-    (TYPE_UINT32,       1,      "_unused10",             1),
-    (TYPE_UINT32,       1,      "_unused11",             1),
+    (TYPE_UINT32,       1,      "_unused10",            1),
 ]
 
 # TODO: make more compact
@@ -707,10 +702,11 @@ LENS_FLARES_INSTANCE_STRUCT = [
 ]
 
 DECAL_INSTANCE_STRUCT = [
-    (TYPE_FLOAT32,     44,      "transform",                1),
-    (TYPE_UINT32,       1,      "textureAlbedoAlpha",       1),
-    (TYPE_UINT32,       1,      "textureRougnessMetallic",  1),
-    (TYPE_UINT32,       1,      "textureNormals",           1),
+    (TYPE_FLOAT32,     44,      "transform",                            1),
+    (TYPE_UINT32,       1,      "textureAlbedoAlpha",                   1),
+    (TYPE_UINT32,       1,      "textureOcclusionRoughnessMetallic",    1),
+    (TYPE_UINT32,       1,      "textureNormal",                        1),
+    (TYPE_UINT32,       1,      "textureEmissive",                      1),
 ]
 
 PORTAL_INSTANCE_STRUCT = [

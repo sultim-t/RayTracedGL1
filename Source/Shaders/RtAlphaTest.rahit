@@ -44,7 +44,7 @@ void main()
 
     // check only first material's albedo
     const vec4 color =
-        getTextureSample( tr.layerTextures[ 0 ][ MATERIAL_ALBEDO_ALPHA_INDEX ], texCoord ) *
+        getTextureSample( tr.layerColorTextures[ 0 ], texCoord ) *
         unpackUintColor( tr.layerColors[ 0 ] );
 
     // if must be discarded

@@ -45,7 +45,9 @@ struct TextureMeta
     bool isWater  = false;
     bool isGlass  = false;
 
-    float emissive = false;
+    float metallicDefault  = 0.0f;
+    float roughnessDefault = 1.0f;
+    float emissiveMult     = 0.0f;
 
     float                    attachedLightIntensity = 0.0f;
     std::array< uint8_t, 3 > attachedLightColor     = { { 0, 0, 0 } };
@@ -71,14 +73,14 @@ public:
     TextureMetaManager& operator=( const TextureMetaManager& other )     = delete;
     TextureMetaManager& operator=( TextureMetaManager&& other ) noexcept = delete;
 
-    RgMeshPrimitiveInfo Modify( const RgMeshPrimitiveInfo& original, bool isStatic ) const;
+    void Modify( RgMeshPrimitiveInfo& prim, RgEditorInfo& editor, bool isStatic ) const;
 
     void RereadFromFiles( std::string_view currentSceneName );
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
 
 private:
-    std::optional< TextureMeta > Access( const char *pTextureName ) const;
-    void RereadFromFiles( std::filesystem::path sceneFile );
+    std::optional< TextureMeta > Access( const char* pTextureName ) const;
+    void                         RereadFromFiles( std::filesystem::path sceneFile );
 
 private:
     std::filesystem::path databaseFolder;

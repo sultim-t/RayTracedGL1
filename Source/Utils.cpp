@@ -450,18 +450,3 @@ uint32_t RTGL1::Utils::GetWorkGroupCount( uint32_t size, uint32_t groupSize )
 
     return 1 + ( size + ( groupSize - 1 ) ) / groupSize;
 }
-
-RgFloat4D Utils::UnpackColor4DPacked32( RgColor4DPacked32 c )
-{
-    return { {
-        float( ( c >> 0 ) & 255u ) / 255.0f,
-        float( ( c >> 8 ) & 255u ) / 255.0f,
-        float( ( c >> 16 ) & 255u ) / 255.0f,
-        float( ( c >> 24 ) & 255u ) / 255.0f,
-    } };
-}
-
-float Utils::UnpackAlphaFromPacked32( RgColor4DPacked32 c )
-{
-    return float( ( c >> 24 ) & 255u ) / 255.0f;
-}

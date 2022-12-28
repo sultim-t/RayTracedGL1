@@ -555,9 +555,12 @@ bool needResolveCheckerboard( const ivec2 checkerboardPix )
 
 
 
-float rmeEmissionToScreenEmission( float rmeEmis )
+vec4 unpackEmissiveFactorAndStrength( uint packed )
 {
-    return clamp( rmeEmis, 0.0, 1.0 );
+    vec4 fs = unpackUintColor( packed );
+    // from normalized
+    fs.a *= 255;
+    return fs;
 }
 
 
