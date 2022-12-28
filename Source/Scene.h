@@ -27,7 +27,7 @@
 #include "VertexPreprocessing.h"
 #include "TextureMeta.h"
 
-#include <set>
+#include <variant>
 
 namespace RTGL1
 {
@@ -40,6 +40,14 @@ enum class UploadResult
     ExportableDynamic,
     ExportableStatic,
 };
+
+
+using GenericLight =
+    std::variant< RgDirectionalLightUploadInfo, RgSphericalLightUploadInfo, RgSpotLightUploadInfo >;
+using GenericLightPtr = std::variant< const RgDirectionalLightUploadInfo*,
+                                      const RgSphericalLightUploadInfo*,
+                                      const RgSpotLightUploadInfo* >;
+
 
 class Scene
 {
@@ -71,6 +79,9 @@ public:
                          const TextureManager&      textureManager,
                          bool                       isStatic );
 
+    void AddStaticLight( const GenericLight& newLight );
+    void UploadStaticLights( uint32_t frameIndex, LightManager& lightManager ) const;
+
     void NewScene( VkCommandBuffer           cmd,
                    uint32_t                  frameIndex,
                    const GltfImporter&       staticScene,
@@ -80,12 +91,14 @@ public:
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
+    bool StaticMeshExists( const RgMeshInfo& mesh ) const;
+    bool StaticLightExists( const GenericLightPtr& light ) const;
+
+private:
     bool InsertInfo( uint64_t                   uniqueID,
                      bool                       isStatic,
                      const RgMeshInfo&          mesh,
                      const RgMeshPrimitiveInfo& primitive );
-
-    bool StaticMeshExists( const RgMeshInfo& mesh ) const;
 
 private:
     std::shared_ptr< ASManager >           asManager;
@@ -93,9 +106,10 @@ private:
     std::shared_ptr< VertexPreprocessing > vertPreproc;
 
     // Dynamic indices are cleared every frame
-    rgl::unordered_set< uint64_t > dynamicUniqueIDs;
-    rgl::unordered_set< uint64_t > staticUniqueIDs;
+    rgl::unordered_set< uint64_t >    dynamicUniqueIDs;
+    rgl::unordered_set< uint64_t >    staticUniqueIDs;
     rgl::unordered_set< std::string > staticMeshNames;
+    std::vector< GenericLight >       staticLights;
 
     StaticGeometryToken  makingStatic{};
     DynamicGeometryToken makingDynamic{};
@@ -123,6 +137,7 @@ public:
                            Scene&              scene,
                            TextureManager&     textureManager,
                            TextureMetaManager& textureMetaManager );
+    void TryExport( TextureManager& textureManager );
 
     void RequestReimport();
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;

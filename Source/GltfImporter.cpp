@@ -742,11 +742,11 @@ RTGL1::GltfImporter::~GltfImporter()
     cgltf_free( data );
 }
 
-void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
-                                               uint32_t                  frameIndex,
-                                               Scene&                    scene,
-                                               TextureManager&           textureManager,
-                                               const TextureMetaManager& textureMeta ) const
+void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
+                                         uint32_t                  frameIndex,
+                                         Scene&                    scene,
+                                         TextureManager&           textureManager,
+                                         const TextureMetaManager& textureMeta ) const
 {
     cgltf_node* mainNode = FindMainRootNode( data );
     if( !mainNode )
@@ -754,17 +754,16 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
         return;
     }
 
-    if( mainNode->mesh )
+    if( mainNode->mesh || mainNode->light )
     {
-        debug::Warning( "{}: Found a mesh attached to node ({}). Main node should can't "
-                        "have meshes. Ignoring",
+        debug::Warning( "{}: Main node ({}) should not have meshes / lights. Ignoring",
                         gltfPath,
                         mainNode->name );
     }
 
     for( cgltf_node* srcMesh : std::span( mainNode->children, mainNode->children_count ) )
     {
-        if( !srcMesh )
+        if( !srcMesh || !srcMesh->mesh )
         {
             continue;
         }
@@ -774,15 +773,6 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
             debug::Warning( "{}: Found srcMesh with null name (a child node of {}). Ignoring",
                             gltfPath,
                             mainNode->name );
-            continue;
-        }
-
-        if( !srcMesh->mesh )
-        {
-            debug::Verbose( "{}: No mesh attached to node {}->{}. Ignoring",
-                            gltfPath,
-                            mainNode->name,
-                            srcMesh->name );
             continue;
         }
 
@@ -881,6 +871,86 @@ void RTGL1::GltfImporter::UploadToScene_DEBUG( VkCommandBuffer           cmd,
             {
                 assert( 0 );
             }
+        }
+    }
+
+    for( cgltf_node* srcLight : std::span( mainNode->children, mainNode->children_count ) )
+    {
+        if( !srcLight || !srcLight->light )
+        {
+            continue;
+        }
+
+        if( srcLight->children_count > 0 )
+        {
+            debug::Warning( "{}: Found a child nodes of {}->{}. Ignoring them",
+                            gltfPath,
+                            mainNode->name,
+                            srcLight->name );
+        }
+
+        RgTransform tr = MakeRgTransformFromGltfNode( *srcLight );
+
+        RgFloat3D position = {
+            tr.matrix[ 0 ][ 3 ],
+            tr.matrix[ 1 ][ 3 ],
+            tr.matrix[ 2 ][ 3 ],
+        };
+
+        RgFloat3D direction = {
+            -tr.matrix[ 0 ][ 2 ],
+            -tr.matrix[ 1 ][ 2 ],
+            -tr.matrix[ 2 ][ 2 ],
+        };
+
+        RgFloat3D color = {
+            srcLight->light->color[ 0 ] * srcLight->light->intensity,
+            srcLight->light->color[ 1 ] * srcLight->light->intensity,
+            srcLight->light->color[ 2 ] * srcLight->light->intensity,
+        };
+
+        // TODO: change id
+        uint64_t uniqueId = std::hash< std::string_view >{}( srcLight->name );
+
+        switch( srcLight->light->type )
+        {
+            case cgltf_light_type_directional: {
+                RgDirectionalLightUploadInfo info = {
+                    .uniqueID               = uniqueId,
+                    .isExportable           = true,
+                    .color                  = color,
+                    .direction              = direction,
+                    .angularDiameterDegrees = 0.5f,
+                };
+                scene.AddStaticLight( info );
+                break;
+            }
+            case cgltf_light_type_point: {
+                RgSphericalLightUploadInfo info = {
+                    .uniqueID     = uniqueId,
+                    .isExportable = true,
+                    .color        = color,
+                    .position     = position,
+                    .radius       = 0.1f,
+                };
+                scene.AddStaticLight( info );
+                break;
+            }
+            case cgltf_light_type_spot: {
+                RgSpotLightUploadInfo info = {
+                    .uniqueID     = uniqueId,
+                    .isExportable = true,
+                    .color        = color,
+                    .position     = position,
+                    .direction    = direction,
+                    .radius       = 0.1f,
+                    .angleOuter   = srcLight->light->spot_outer_cone_angle,
+                    .angleInner   = srcLight->light->spot_inner_cone_angle,
+                };
+                scene.AddStaticLight( info );
+                break;
+            }
+            default: break;
         }
     }
 }

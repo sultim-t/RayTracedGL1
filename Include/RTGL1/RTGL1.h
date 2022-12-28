@@ -420,6 +420,7 @@ typedef struct RgDirectionalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
+    RgBool32        isExportable;
     RgFloat3D       color;
     RgFloat3D       direction;
     float           angularDiameterDegrees;
@@ -429,6 +430,7 @@ typedef struct RgSphericalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
+    RgBool32        isExportable;
     RgFloat3D       color;
     RgFloat3D       position;
     float           radius;
@@ -438,6 +440,7 @@ typedef struct RgPolygonalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
+    RgBool32        isExportable;
     RgFloat3D       color;
     RgFloat3D       positions[3];
 } RgPolygonalLightUploadInfo;
@@ -447,6 +450,7 @@ typedef struct RgSpotLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t        uniqueID;
+    RgBool32        isExportable;
     RgFloat3D       color;
     RgFloat3D       position;
     RgFloat3D       direction;
@@ -507,7 +511,7 @@ RGAPI RgResult RGCONV rgMarkOriginalTextureAsDeleted( RgInstance instance, const
 
 
 
-RGAPI RgResult RGCONV rgStartFrame( RgInstance instance );
+RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const char* pMapName );
 
 
 
@@ -819,8 +823,6 @@ typedef struct RgDrawFrameInfo
     RgBool32                                 forceAntiFirefly;
 
     RgBool32                                 vsync;
-
-    const char*                              pMapName;
 
     // Set to null, to use default values.
     const RgDrawFrameRenderResolutionParams* pRenderResolutionParams;

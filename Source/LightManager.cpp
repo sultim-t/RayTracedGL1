@@ -30,12 +30,12 @@
 
 namespace RTGL1
 {
-constexpr double       RG_PI = 3.1415926535897932384626433;
+constexpr double RG_PI = 3.1415926535897932384626433;
 
-constexpr float        MIN_COLOR_SUM     = 0.0001f;
-constexpr float        MIN_SPHERE_RADIUS = 0.005f;
+constexpr float MIN_COLOR_SUM     = 0.0001f;
+constexpr float MIN_SPHERE_RADIUS = 0.005f;
 
-constexpr uint32_t     LIGHT_ARRAY_MAX_SIZE = 4096;
+constexpr uint32_t LIGHT_ARRAY_MAX_SIZE = 4096;
 
 constexpr VkDeviceSize GRID_LIGHTS_COUNT =
     LIGHT_GRID_CELL_SIZE * ( LIGHT_GRID_SIZE_X * LIGHT_GRID_SIZE_Y * LIGHT_GRID_SIZE_Z );
@@ -120,9 +120,9 @@ static RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightU
 
 static RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadInfo& info )
 {
-    float                 radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
+    float radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
     // disk is visible from the point
-    float                 area = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
+    float area = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
 
 
     RTGL1::ShLightEncoded lt = {};
@@ -185,11 +185,11 @@ static RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& inf
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize( direction.data );
 
-    float                 radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
-    float                 area   = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
+    float radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
+    float area   = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
 
-    float                 cosAngleInner = std::cos( std::min( info.angleInner, info.angleOuter ) );
-    float                 cosAngleOuter = std::cos( info.angleOuter );
+    float cosAngleInner = std::cos( std::min( info.angleInner, info.angleOuter ) );
+    float cosAngleOuter = std::cos( info.angleOuter );
 
 
     RTGL1::ShLightEncoded lt = {};
@@ -305,9 +305,9 @@ void RTGL1::LightManager::IncrementCount( const ShLightEncoded& encodedLight )
     }
 }
 
-void RTGL1::LightManager::AddLight( uint32_t                     frameIndex,
-                                    uint64_t                     uniqueId,
-                                    const RTGL1::ShLightEncoded& encodedLight )
+void RTGL1::LightManager::AddInternal( uint32_t                     frameIndex,
+                                       uint64_t                     uniqueId,
+                                       const RTGL1::ShLightEncoded& encodedLight )
 {
     if( GetLightArrayEnd( regLightCount, dirLightCount ) >= LIGHT_ARRAY_MAX_SIZE )
     {
@@ -330,19 +330,17 @@ void RTGL1::LightManager::AddLight( uint32_t                     frameIndex,
     uniqueIDToArrayIndex[ frameIndex ][ uniqueId ] = index;
 }
 
-void RTGL1::LightManager::AddSphericalLight( uint32_t                          frameIndex,
-                                             const RgSphericalLightUploadInfo& info )
+void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSphericalLightUploadInfo& info )
 {
     if( IsColorTooDim( info.color.data ) )
     {
         return;
     }
 
-    AddLight( frameIndex, info.uniqueID, EncodeAsSphereLight( info ) );
+    AddInternal( frameIndex, info.uniqueID, EncodeAsSphereLight( info ) );
 }
 
-void RTGL1::LightManager::AddPolygonalLight( uint32_t                          frameIndex,
-                                             const RgPolygonalLightUploadInfo& info )
+void RTGL1::LightManager::Add( uint32_t frameIndex, const RgPolygonalLightUploadInfo& info )
 {
     if( IsColorTooDim( info.color.data ) )
     {
@@ -355,26 +353,25 @@ void RTGL1::LightManager::AddPolygonalLight( uint32_t                          f
         return;
     }
 
-    AddLight( frameIndex, info.uniqueID, EncodeAsTriangleLight( info, unnormalizedNormal ) );
+    AddInternal( frameIndex, info.uniqueID, EncodeAsTriangleLight( info, unnormalizedNormal ) );
 }
 
-void RTGL1::LightManager::AddSpotlight( uint32_t frameIndex, const RgSpotLightUploadInfo& info )
+void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSpotLightUploadInfo& info )
 {
     if( IsColorTooDim( info.color.data ) || info.radius < 0.0f || info.angleOuter <= 0.0f )
     {
         return;
     }
 
-    AddLight( frameIndex, info.uniqueID, EncodeAsSpotLight( info ) );
+    AddInternal( frameIndex, info.uniqueID, EncodeAsSpotLight( info ) );
 }
 
-void RTGL1::LightManager::AddDirectionalLight( uint32_t                            frameIndex,
-                                               const RgDirectionalLightUploadInfo& info )
+void RTGL1::LightManager::Add( uint32_t frameIndex, const RgDirectionalLightUploadInfo& info )
 {
     if( dirLightCount > 0 )
     {
-        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
-                           "Only one directional light is allowed" );
+        debug::Error( "Only one directional light is allowed" );
+        return;
     }
 
     if( IsColorTooDim( info.color.data ) || info.angularDiameterDegrees < 0.0f )
@@ -382,7 +379,7 @@ void RTGL1::LightManager::AddDirectionalLight( uint32_t                         
         return;
     }
 
-    AddLight( frameIndex, info.uniqueID, EncodeAsDirectionalLight( info ) );
+    AddInternal( frameIndex, info.uniqueID, EncodeAsDirectionalLight( info ) );
 }
 
 void RTGL1::LightManager::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
@@ -411,23 +408,26 @@ void RTGL1::LightManager::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameInd
 
 void RTGL1::LightManager::BarrierLightGrid( VkCommandBuffer cmd, uint32_t frameIndex )
 {
-    VkBufferMemoryBarrier2 barrier = { .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
-                                       .pNext         = nullptr,
-                                       .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                                       .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-                                       .dstStageMask =
-                                           VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
-                                           VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
-                                       .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
-                                       .srcQueueFamilyIndex = 0,
-                                       .dstQueueFamilyIndex = 0,
-                                       .buffer = initialLightsGrid[ frameIndex ].GetBuffer(),
-                                       .offset = 0,
-                                       .size   = VK_WHOLE_SIZE };
+    VkBufferMemoryBarrier2 barrier = {
+        .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+        .pNext         = nullptr,
+        .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask =
+            VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT | VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+        .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+        .srcQueueFamilyIndex = 0,
+        .dstQueueFamilyIndex = 0,
+        .buffer              = initialLightsGrid[ frameIndex ].GetBuffer(),
+        .offset              = 0,
+        .size                = VK_WHOLE_SIZE,
+    };
 
-    VkDependencyInfo       dependency = { .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-                                          .bufferMemoryBarrierCount = 1,
-                                          .pBufferMemoryBarriers    = &barrier };
+    VkDependencyInfo dependency = {
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .bufferMemoryBarrierCount = 1,
+        .pBufferMemoryBarriers    = &barrier,
+    };
 
     svkCmdPipelineBarrier2KHR( cmd, &dependency );
 }
@@ -616,7 +616,7 @@ uint32_t RTGL1::LightManager::GetLightIndexIgnoreFPVShadows( uint32_t  frameInde
     }
     UniqueLightID uniqueId = { *pLightUniqueId };
 
-    const auto    f = uniqueIDToArrayIndex[ frameIndex ].find( uniqueId );
+    const auto f = uniqueIDToArrayIndex[ frameIndex ].find( uniqueId );
     if( f == uniqueIDToArrayIndex[ frameIndex ].end() )
     {
         return LIGHT_INDEX_NONE;

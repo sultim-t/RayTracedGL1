@@ -34,6 +34,7 @@ namespace RTGL1
 class Scene;
 class TextureManager;
 class TextureMetaManager;
+class LightManager;
 
 class GltfImporter
 {
@@ -46,11 +47,11 @@ public:
     GltfImporter& operator=( const GltfImporter& other )     = delete;
     GltfImporter& operator=( GltfImporter&& other ) noexcept = delete;
 
-    void UploadToScene_DEBUG( VkCommandBuffer           cmd,
-                              uint32_t                  frameIndex,
-                              Scene&                    scene,
-                              TextureManager&           textureManager,
-                              const TextureMetaManager& textureMeta ) const;
+    void UploadToScene( VkCommandBuffer           cmd,
+                        uint32_t                  frameIndex,
+                        Scene&                    scene,
+                        TextureManager&           textureManager,
+                        const TextureMetaManager& textureMeta ) const;
 
     explicit operator bool() const;
 

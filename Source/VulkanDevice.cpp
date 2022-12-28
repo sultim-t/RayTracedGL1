@@ -33,7 +33,7 @@
 #include <algorithm>
 #include <cstring>
 
-VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
+VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const char* pMapName )
 {
     uint32_t frameIndex = currentFrameState.IncrementFrameIndexAndGet();
 
@@ -117,6 +117,16 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame()
     lightManager->PrepareForFrame( cmd, frameIndex );
     scene->PrepareForFrame( cmd, frameIndex );
 
+    {
+        sceneImportExport->CheckForNewScene( Utils::SafeCstr( pMapName ),
+                                             cmd,
+                                             frameIndex,
+                                             *scene,
+                                             *textureManager,
+                                             *textureMetaManager );
+        scene->UploadStaticLights( frameIndex, *lightManager );
+    }
+
     return cmd;
 }
 
@@ -191,8 +201,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         }
         else
         {
-            gu->minLogLuminance     = -3.9f;
-            gu->maxLogLuminance     = -2.8f;
+            gu->minLogLuminance     = -4;
+            gu->maxLogLuminance     = 8;
             gu->luminanceWhitePoint = 10.0f;
         }
     }
@@ -950,12 +960,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     const uint32_t frameIndex = currentFrameState.GetFrameIndex();
 
 
-    sceneImportExport->CheckForNewScene( Utils::SafeCstr( drawInfo.pMapName ),
-                                         cmd,
-                                         frameIndex,
-                                         *scene,
-                                         *textureManager,
-                                         *textureMetaManager );
+    sceneImportExport->TryExport( *textureManager );
 
 
     bool mipLodBiasUpdated =
@@ -1265,14 +1270,14 @@ void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )
 
 
 
-void RTGL1::VulkanDevice::StartFrame()
+void RTGL1::VulkanDevice::StartFrame( const char* pMapName )
 {
     if( currentFrameState.WasFrameStarted() )
     {
         throw RgException( RG_RESULT_FRAME_WASNT_ENDED );
     }
 
-    VkCommandBuffer newFrameCmd = BeginFrame();
+    VkCommandBuffer newFrameCmd = BeginFrame( pMapName );
     currentFrameState.OnBeginFrame( newFrameCmd );
 }
 
@@ -1494,7 +1499,15 @@ void RTGL1::VulkanDevice::UploadDirectionalLight( const RgDirectionalLightUpload
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    lightManager->AddDirectionalLight( currentFrameState.GetFrameIndex(), *pInfo );
+    if( pInfo->isExportable )
+    {
+        if( scene->StaticLightExists( pInfo ) )
+        {
+            return;
+        }
+    }
+
+    lightManager->Add( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo )
@@ -1504,7 +1517,15 @@ void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    lightManager->AddSphericalLight( currentFrameState.GetFrameIndex(), *pInfo );
+    if( pInfo->isExportable )
+    {
+        if( scene->StaticLightExists( pInfo ) )
+        {
+            return;
+        }
+    }
+
+    lightManager->Add( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
@@ -1514,7 +1535,15 @@ void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    lightManager->AddSpotlight( currentFrameState.GetFrameIndex(), *pInfo );
+    if( pInfo->isExportable )
+    {
+        if( scene->StaticLightExists( pInfo ) )
+        {
+            return;
+        }
+    }
+
+    lightManager->Add( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo )
@@ -1524,7 +1553,15 @@ void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    lightManager->AddPolygonalLight( currentFrameState.GetFrameIndex(), *pInfo );
+    /* if( pInfo->isExportable )
+    {
+        if( scene->StaticLightExists( pInfo ) )
+        {
+            return;
+        }
+    } */
+
+    lightManager->Add( currentFrameState.GetFrameIndex(), *pInfo );
 }
 
 void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo )

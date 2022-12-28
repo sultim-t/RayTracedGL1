@@ -484,7 +484,7 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         ProcessInput();
 
         {
-            r = rgStartFrame( instance );
+            r = rgStartFrame( instance, "untitled" );
             RG_CHECK( r );
         }
 
@@ -609,6 +609,8 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         // upload the sun
         {
             RgDirectionalLightUploadInfo dirLight = {
+                .uniqueID               = 0,
+                .isExportable           = true,
                 .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
                 .direction              = { -1, -8, -1 },
                 .angularDiameterDegrees = 0.5f
@@ -670,7 +672,6 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .rayLength = 10000.0f,
                 .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
                 .currentTime = GetCurrentTimeInSeconds(),
-                .pMapName = "untitled",
                 .pRenderResolutionParams = &resolutionParams,
                 .pSkyParams = &skyParams,
                 .postEffectParams = {

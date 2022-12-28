@@ -128,6 +128,36 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
                : ( mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic );
 }
 
+void RTGL1::Scene::AddStaticLight( const GenericLight& newLight )
+{
+    constexpr auto getId = []( const GenericLight& l ) -> uint64_t {
+        return std::visit( []( auto&& specific ) { return specific.uniqueID; }, l );
+    };
+
+    auto iter = std::ranges::find_if( staticLights, [ &newLight ]( const GenericLight& other ) {
+        return getId( other ) == getId( newLight );
+    } );
+
+    if( iter != staticLights.end() )
+    {
+        debug::Warning( "Trying add a static light with a uniqueID {} that other light already has",
+                        getId( newLight ) );
+        return;
+    }
+
+    staticLights.push_back( newLight );
+}
+
+void RTGL1::Scene::UploadStaticLights( uint32_t frameIndex, LightManager& lightManager ) const
+{
+    for( const GenericLight& l : staticLights )
+    {
+        std::visit( [ &frameIndex, &lightManager ](
+                        auto&& specific ) { lightManager.Add( frameIndex, specific ); },
+                    l );
+    }
+}
+
 bool RTGL1::Scene::InsertInfo( uint64_t                   uniqueID,
                                bool                       isStatic,
                                const RgMeshInfo&          mesh,
@@ -179,6 +209,7 @@ void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,
 {
     staticUniqueIDs.clear();
     staticMeshNames.clear();
+    staticLights.clear();
 
     textureManager.FreeAllImportedMaterials( frameIndex );
 
@@ -187,7 +218,7 @@ void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,
 
     if( staticScene )
     {
-        staticScene.UploadToScene_DEBUG( cmd, frameIndex, *this, textureManager, textureMeta );
+        staticScene.UploadToScene( cmd, frameIndex, *this, textureManager, textureMeta );
     }
     else
     {
@@ -222,6 +253,13 @@ bool RTGL1::Scene::StaticMeshExists( const RgMeshInfo& mesh ) const
     return std::ranges::contains( staticMeshNames, std::string( mesh.pMeshName ) );
 }
 
+bool RTGL1::Scene::StaticLightExists( const GenericLightPtr& light ) const
+{
+    std::visit( []( auto&& specific ) { assert( specific->isExportable ); }, light );
+
+    // TODO: compare ID-s?
+    return !staticLights.empty();
+}
 
 
 RTGL1::SceneImportExport::SceneImportExport( std::filesystem::path _scenesFolder,
@@ -251,12 +289,6 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
                                                  TextureManager&     textureManager,
                                                  TextureMetaManager& textureMeta )
 {
-    if( exporter )
-    {
-        exporter->ExportToFiles( MakeGltfPath( GetExportMapName() ), textureManager );
-        exporter.reset();
-    }
-
     if( currentMap != mapName || reimportRequested )
     {
         reimportRequested = false;
@@ -267,10 +299,22 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
         // before importer, as it relies on texture properties
         textureMeta.RereadFromFiles( GetImportMapName() );
 
-        auto staticScene = GltfImporter( MakeGltfPath( GetImportMapName() ), MakeWorldTransform() );
-        scene.NewScene( cmd, frameIndex, staticScene, textureManager, textureMeta );
+        {
+            auto staticScene =
+                GltfImporter( MakeGltfPath( GetImportMapName() ), MakeWorldTransform() );
 
+            scene.NewScene( cmd, frameIndex, staticScene, textureManager, textureMeta );
+        }
         debug::Verbose( "New scene is ready" );
+    }
+}
+
+void RTGL1::SceneImportExport::TryExport( TextureManager& textureManager )
+{
+    if( exporter )
+    {
+        exporter->ExportToFiles( MakeGltfPath( GetExportMapName() ), textureManager );
+        exporter.reset();
     }
 }
 

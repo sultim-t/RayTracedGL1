@@ -224,9 +224,9 @@ RgResult rgMarkOriginalTextureAsDeleted( RgInstance instance, const char* pTextu
     return Call( instance, &RTGL1::VulkanDevice::MarkOriginalTextureAsDeleted, pTextureName );
 }
 
-RgResult rgStartFrame( RgInstance instance )
+RgResult rgStartFrame( RgInstance instance, const char* pMapName )
 {
-    return Call( instance, &RTGL1::VulkanDevice::StartFrame );
+    return Call( instance, &RTGL1::VulkanDevice::StartFrame, pMapName );
 }
 
 RgResult rgDrawFrame( RgInstance instance, const RgDrawFrameInfo* pInfo )

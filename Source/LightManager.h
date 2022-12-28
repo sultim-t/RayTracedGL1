@@ -37,27 +37,27 @@ public:
     LightManager( VkDevice device, std::shared_ptr< MemoryAllocator >& allocator );
     ~LightManager();
 
-    LightManager( const LightManager& other )     = delete;
-    LightManager( LightManager&& other ) noexcept = delete;
-    LightManager& operator=( const LightManager& other ) = delete;
+    LightManager( const LightManager& other )                = delete;
+    LightManager( LightManager&& other ) noexcept            = delete;
+    LightManager& operator=( const LightManager& other )     = delete;
     LightManager& operator=( LightManager&& other ) noexcept = delete;
 
-    void          PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
-    void          Reset();
+    void PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void Reset();
 
-    uint32_t      GetLightCount() const;
-    uint32_t      GetLightCountPrev() const;
-    uint32_t      DoesDirectionalLightExist() const;
+    uint32_t GetLightCount() const;
+    uint32_t GetLightCountPrev() const;
+    uint32_t DoesDirectionalLightExist() const;
 
     uint32_t GetLightIndexIgnoreFPVShadows( uint32_t frameIndex, uint64_t* pLightUniqueId ) const;
 
-    void     AddSphericalLight( uint32_t frameIndex, const RgSphericalLightUploadInfo& info );
-    void     AddPolygonalLight( uint32_t frameIndex, const RgPolygonalLightUploadInfo& info );
-    void     AddDirectionalLight( uint32_t frameIndex, const RgDirectionalLightUploadInfo& info );
-    void     AddSpotlight( uint32_t frameIndex, const RgSpotLightUploadInfo& info );
+    void Add( uint32_t frameIndex, const RgSphericalLightUploadInfo& info );
+    void Add( uint32_t frameIndex, const RgPolygonalLightUploadInfo& info );
+    void Add( uint32_t frameIndex, const RgDirectionalLightUploadInfo& info );
+    void Add( uint32_t frameIndex, const RgSpotLightUploadInfo& info );
 
-    void     SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
-    void     BarrierLightGrid( VkCommandBuffer cmd, uint32_t frameIndex );
+    void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void BarrierLightGrid( VkCommandBuffer cmd, uint32_t frameIndex );
 
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
@@ -65,7 +65,8 @@ public:
 private:
     LightArrayIndex GetIndex( const ShLightEncoded& encodedLight ) const;
     void            IncrementCount( const ShLightEncoded& encodedLight );
-    void AddLight( uint32_t frameIndex, uint64_t uniqueId, const ShLightEncoded& encodedLight );
+
+    void AddInternal( uint32_t frameIndex, uint64_t uniqueId, const ShLightEncoded& encodedLight );
 
     void FillMatchPrev( uint32_t        curFrameIndex,
                         LightArrayIndex lightIndexInCurFrame,
@@ -75,7 +76,7 @@ private:
     void UpdateDescriptors( uint32_t frameIndex );
 
 private:
-    VkDevice                      device;
+    VkDevice device;
 
     std::shared_ptr< AutoBuffer > lightsBuffer;
     Buffer                        lightsBuffer_Prev;
@@ -86,18 +87,18 @@ private:
     std::shared_ptr< AutoBuffer > curToPrevIndex;
 
     rgl::unordered_map< UniqueLightID, LightArrayIndex >
-                          uniqueIDToArrayIndex[ MAX_FRAMES_IN_FLIGHT ];
+        uniqueIDToArrayIndex[ MAX_FRAMES_IN_FLIGHT ];
 
-    uint32_t              regLightCount;
-    uint32_t              regLightCount_Prev;
-    uint32_t              dirLightCount;
-    uint32_t              dirLightCount_Prev;
+    uint32_t regLightCount;
+    uint32_t regLightCount_Prev;
+    uint32_t dirLightCount;
+    uint32_t dirLightCount_Prev;
 
     VkDescriptorSetLayout descSetLayout;
     VkDescriptorPool      descPool;
     VkDescriptorSet       descSets[ MAX_FRAMES_IN_FLIGHT ];
 
-    bool                  needDescSetUpdate[ MAX_FRAMES_IN_FLIGHT ];
+    bool needDescSetUpdate[ MAX_FRAMES_IN_FLIGHT ];
 };
 
 }
