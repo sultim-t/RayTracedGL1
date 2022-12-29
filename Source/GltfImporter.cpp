@@ -874,7 +874,9 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
         }
     }
 
-    bool foundLight = false;
+    bool     foundLight = false;
+    uint64_t counter    = 0;
+
     for( cgltf_node* srcLight : std::span( mainNode->children, mainNode->children_count ) )
     {
         if( !srcLight || !srcLight->light )
@@ -911,7 +913,8 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
         };
 
         // TODO: change id
-        uint64_t uniqueId = std::hash< std::string_view >{}( srcLight->name );
+        uint64_t uniqueId = UINT64_MAX - counter;
+        counter++;
 
         switch( srcLight->light->type )
         {

@@ -581,8 +581,8 @@ struct GltfStorage
                 .thisNode    = append_n( allNodes, 1 ),
             } );
         }
-        BeginCount worldbc  = append_n( allNodes, 1 );
         BeginCount lightsbc = append_n( allNodes, lightCount );
+        BeginCount worldbc  = append_n( allNodes, 1 );
 
         // resolve pointers
         for( const auto& [ meshNode, prims ] : scene )
@@ -604,14 +604,20 @@ struct GltfStorage
             };
             assert( root.source.size() == root.primitives.size() );
 
-            worldRoots.push_back( root.thisNode );
+            worldChildren.push_back( root.thisNode );
             roots.push_back( std::move( root ) );
         }
-        world      = worldbc.ToPointer( allNodes );
+
         lightNodes = lightsbc.ToSpan( allNodes );
+        for( cgltf_node& lightNode : lightNodes )
+        {
+            worldChildren.push_back( &lightNode );
+        }
+
+        world = worldbc.ToPointer( allNodes );
 
         assert( ranges.empty() );
-        assert( worldRoots.size() == roots.size() );
+        assert( worldChildren.size() == roots.size() + lightCount );
     }
 
     std::vector< cgltf_buffer_view > allBufferViews;
@@ -625,7 +631,7 @@ struct GltfStorage
     std::vector< GltfRoot > roots; // each corresponds to RgMeshInfo
 
     cgltf_node*                world{ nullptr };
-    std::vector< cgltf_node* > worldRoots;
+    std::vector< cgltf_node* > worldChildren;
 
     std::span< cgltf_node > lightNodes;
 };
@@ -954,8 +960,7 @@ private:
 
 public:
     explicit GltfLights( const std::vector< RTGL1::GenericLight >& sceneLights,
-                         std::span< cgltf_node >                   dstLightNodes,
-                         cgltf_node*                               mainNode )
+                         std::span< cgltf_node >                   dstLightNodes )
     {
         assert( dstLightNodes.size() == sceneLights.size() );
 
@@ -972,7 +977,7 @@ public:
 
             dstLightNodes[ i ] = cgltf_node{
                 .name            = nullptr,
-                .parent          = mainNode,
+                .parent          = nullptr, /* later */
                 .children        = nullptr,
                 .children_count  = 0,
                 .light           = &storage[ i ],
@@ -1178,7 +1183,7 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
     GltfStorage  storage( scene, sceneLights.size() );
     GltfTextures textureStorage(
         sceneMaterials, GetOriginalTexturesFolder( gltfPath ), textureManager );
-    GltfLights lightStorage( sceneLights, storage.lightNodes, storage.world );
+    GltfLights lightStorage( sceneLights, storage.lightNodes );
 
 
     // for each RgMesh
@@ -1249,13 +1254,13 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
         *storage.world = cgltf_node{
             .name           = const_cast< char* >( RTGL1_MAIN_ROOT_NODE ),
             .parent         = nullptr,
-            .children       = std::data( storage.worldRoots ),
-            .children_count = std::size( storage.worldRoots ),
+            .children       = std::data( storage.worldChildren ),
+            .children_count = std::size( storage.worldChildren ),
             .has_matrix     = true,
             .matrix         = RG_TRANSFORM_TO_GLTF_MATRIX( worldTransform ),
             .extras         = { .data = nullptr },
         };
-        for( cgltf_node* child : storage.worldRoots )
+        for( cgltf_node* child : storage.worldChildren )
         {
             child->parent = storage.world;
         }

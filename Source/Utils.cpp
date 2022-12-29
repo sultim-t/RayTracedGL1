@@ -398,13 +398,15 @@ void Utils::SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src )
 
 RgTransform Utils::MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale )
 {
+    RgFloat3D forw = Normalize( forward );
+
     float right[ 3 ];
-    Cross( up.data, forward.data, right );
+    Cross( up.data, forw.data, right );
 
     float rot[ 3 ][ 3 ] = {
-        { right[ 0 ], up.data[ 0 ], forward.data[ 0 ] },
-        { right[ 1 ], up.data[ 1 ], forward.data[ 1 ] },
-        { right[ 2 ], up.data[ 2 ], forward.data[ 2 ] },
+        { right[ 0 ], up.data[ 0 ], forw.data[ 0 ] },
+        { right[ 1 ], up.data[ 1 ], forw.data[ 1 ] },
+        { right[ 2 ], up.data[ 2 ], forw.data[ 2 ] },
     };
 
     float scl[ 3 ][ 3 ] = {
@@ -429,18 +431,19 @@ RgTransform Utils::MakeTransform( const RgFloat3D& up, const RgFloat3D& forward,
 
 RgTransform Utils::MakeTransform( const RgFloat3D& position, const RgFloat3D& forward )
 {
-    RgFloat3D up =
-        std::abs( forward.data[ 1 ] ) > 0.99f ? RgFloat3D{ 1, 0, 0 } : RgFloat3D{ 0, 1, 0 };
+    RgFloat3D forw = Normalize( forward );
+
+    RgFloat3D up = std::abs( forw.data[ 1 ] ) > 0.99f ? RgFloat3D{ 1, 0, 0 } : RgFloat3D{ 0, 1, 0 };
 
     RgFloat3D right{};
-    Cross( up.data, forward.data, right.data );
+    Cross( up.data, forw.data, right.data );
 
-    Cross( forward.data, right.data, up.data );
+    Cross( forw.data, right.data, up.data );
 
     float rot[ 3 ][ 3 ] = {
-        { right.data[ 0 ], up.data[ 0 ], forward.data[ 0 ] },
-        { right.data[ 1 ], up.data[ 1 ], forward.data[ 1 ] },
-        { right.data[ 2 ], up.data[ 2 ], forward.data[ 2 ] },
+        { right.data[ 0 ], up.data[ 0 ], forw.data[ 0 ] },
+        { right.data[ 1 ], up.data[ 1 ], forw.data[ 1 ] },
+        { right.data[ 2 ], up.data[ 2 ], forw.data[ 2 ] },
     };
 
     return { {
