@@ -23,6 +23,7 @@
 #include "Containers.h"
 #include "IFileDependency.h"
 
+#include <deque>
 #include <filesystem>
 
 namespace RTGL1
@@ -31,7 +32,7 @@ namespace RTGL1
 class FolderObserver
 {
 public:
-    explicit FolderObserver( std::filesystem::path folder );
+    explicit FolderObserver( const std::filesystem::path& ovrdFolder );
     ~FolderObserver() = default;
 
     FolderObserver( const FolderObserver& other )                = delete;
@@ -65,13 +66,15 @@ public:
     };
 
 private:
-    std::filesystem::path        folder;
-    Clock::time_point            lastCheck;
-    std::vector< DependentFile > prevAllFiles;
+    std::vector< std::filesystem::path > foldersToCheck;
+
+    Clock::time_point           lastCheck;
+    std::deque< DependentFile > prevAllFiles;
 
     std::vector< std::weak_ptr< IFileDependency > > subscribers;
 
-    template< typename Func, typename... Args > auto CallSubsbribers( Func f, Args&&... args )
+    template< typename Func, typename... Args >
+    auto CallSubsbribers( Func f, Args&&... args )
     {
         for( auto& ws : subscribers )
         {

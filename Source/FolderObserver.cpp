@@ -20,6 +20,8 @@
 
 #include "FolderObserver.h"
 
+#include "Const.h"
+
 namespace fs = std::filesystem;
 
 namespace RTGL1
@@ -28,17 +30,16 @@ namespace
 {
     constexpr auto CHECK_FREQUENCY = std::chrono::milliseconds( 500 );
 
-    auto GetAllFolderFiles( const fs::path& folder )
+    void InsertAllFolderFiles( std::deque< FolderObserver::DependentFile >& dst,
+                               const fs::path&                              folder )
     {
-        std::vector< FolderObserver::DependentFile > result;
-
         for( const fs::directory_entry& entry : fs::recursive_directory_iterator( folder ) )
         {
             FileType type = MakeFileType( entry.path() );
 
             if( type != FileType::Unknown )
             {
-                result.push_back( FolderObserver::DependentFile{
+                dst.push_back( FolderObserver::DependentFile{
                     .type          = type,
                     .path          = entry.path(),
                     .pathHash      = std::hash< fs::path >{}( entry.path() ),
@@ -46,13 +47,20 @@ namespace
                 } );
             }
         }
-
-        return result;
     }
 }
 }
 
-RTGL1::FolderObserver::FolderObserver( fs::path _folder ) : folder( std::move( _folder ) ) {}
+RTGL1::FolderObserver::FolderObserver( const fs::path &ovrdFolder )
+{
+    foldersToCheck = {
+        ovrdFolder / DATABASE_FOLDER,
+        ovrdFolder / SCENES_FOLDER,
+        ovrdFolder / SHADERS_FOLDER,
+        ovrdFolder / TEXTURES_FOLDER,
+        ovrdFolder / TEXTURES_FOLDER_DEV,
+    };
+}
 
 void RTGL1::FolderObserver::RecheckFiles()
 {
@@ -61,7 +69,13 @@ void RTGL1::FolderObserver::RecheckFiles()
         return;
     }
 
-    auto curAllFiles = GetAllFolderFiles( folder );
+
+    std::deque< DependentFile > curAllFiles;
+    for( const fs::path &f : foldersToCheck )
+    {
+        InsertAllFolderFiles( curAllFiles, f );
+    }
+
 
     for( const auto& cur : curAllFiles )
     {
