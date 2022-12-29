@@ -87,22 +87,24 @@ void storeSky(
     bool wasSplit )
 #endif
 {
-    imageStore(framebufIsSky, pix, ivec4(1));
+    imageStore( framebufIsSky, pix, ivec4( 1 ) );
 
     {
-        vec3 albedo;
-        
-        if (calculateSkyAndStoreToAlbedo)
+        vec3 skyColor;
+
+        if( calculateSkyAndStoreToAlbedo )
         {
-            albedo = getSkyPrimary(rayDir);
+            skyColor = getSky( rayDir );
         }
         else
         {
             // was already in G-buffer after rasterization pass
-            albedo = imageLoad(framebufAlbedo, getRegularPixFromCheckerboardPix(pix)).rgb;
+            skyColor = adjustSky(
+                imageLoad( framebufAlbedo, getRegularPixFromCheckerboardPix( pix ) ).rgb );
         }
-            
-        imageStore(framebufAlbedo, getRegularPixFromCheckerboardPix(pix), vec4(albedo, 0.0));
+
+        imageStore(
+            framebufAlbedo, getRegularPixFromCheckerboardPix( pix ), vec4( skyColor, 0.0 ) );
     }
 
     vec2 m = getMotionForInfinitePoint(pix);

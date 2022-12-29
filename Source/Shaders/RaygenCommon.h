@@ -266,34 +266,43 @@ ShPayload traceIndirectRay(uint surfInstCustomIndex, vec3 surfPosition, vec3 bou
 
 
 #ifdef DESC_SET_CUBEMAPS
-// Get sky color for primary visibility, i.e. without skyColorMultiplier
-vec3 getSkyPrimary(vec3 direction)
+vec3 adjustSaturation( vec3 c, float saturation )
 {
-    uint skyType = globalUniform.skyType;
-
-#ifdef DESC_SET_RENDER_CUBEMAP
-    if (skyType == SKY_TYPE_RASTERIZED_GEOMETRY)
-    {
-        return texture(renderCubemap, direction).rgb;
-    }
-#endif
-
-    if (skyType == SKY_TYPE_CUBEMAP)
-    {
-        direction = mat3(globalUniform.skyCubemapRotationTransform) * direction;
-        
-        return texture(globalCubemaps[nonuniformEXT(globalUniform.skyCubemapIndex)], direction).rgb;
-    }
-
-    return globalUniform.skyColorDefault.xyz;
+    float grey = getLuminance( c );
+    return mix( vec3( grey ), c, saturation );
 }
 
-vec3 getSky(vec3 direction)
+vec3 adjustSky( vec3 skyRaw )
 {
-    vec3 col = getSkyPrimary(direction);
-    float l = getLuminance(col);
+    return adjustSaturation( skyRaw, globalUniform.skyColorSaturation ) *
+           globalUniform.skyColorMultiplier;
+}
 
-    return mix(vec3(l), col, globalUniform.skyColorSaturation) * globalUniform.skyColorMultiplier;
+vec3 getSky( vec3 direction )
+{
+    vec3 skyRaw;
+
+    #ifdef DESC_SET_RENDER_CUBEMAP
+    if( globalUniform.skyType == SKY_TYPE_RASTERIZED_GEOMETRY )
+    {
+        skyRaw = texture( renderCubemap, direction ).rgb;
+    }
+    else
+    #endif
+        if( globalUniform.skyType == SKY_TYPE_CUBEMAP )
+    {
+        direction = mat3( globalUniform.skyCubemapRotationTransform ) * direction;
+
+        skyRaw =
+            texture( globalCubemaps[ nonuniformEXT( globalUniform.skyCubemapIndex ) ], direction )
+                .rgb;
+    }
+    else
+    {
+        skyRaw = globalUniform.skyColorDefault.xyz;
+    }
+
+    return adjustSky( skyRaw );
 }
 #endif
 
