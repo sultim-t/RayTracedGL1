@@ -33,7 +33,8 @@ layout(push_constant) uniform RasterizerFrag_BT
 {
     layout(offset = 64) uint packedColor;
     layout(offset = 68) uint textureIndex;
-    layout(offset = 72) uint emissionTextureIndex;
+    layout(offset = 72) uint emissiveTextureIndex;
+    layout(offset = 76) uint emissiveMult;
 } rasterizerFragInfo;
 
 layout (constant_id = 0) const uint alphaTest = 0;
