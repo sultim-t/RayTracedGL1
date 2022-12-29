@@ -28,8 +28,6 @@
 
 #include "Generated/ShaderCommonC.h"
 
-#include <imgui.h>
-
 #include <algorithm>
 #include <cstring>
 
@@ -82,10 +80,10 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const char* pMapName )
     currentFrameState.SetSemaphore( semaphoreToWaitOnSubmit );
 
 
-    if( debugData.reloadShaders )
+    if( devmode && devmode->reloadShaders )
     {
         shaderManager->ReloadShaders();
-        debugData.reloadShaders = false;
+        devmode->reloadShaders = false;
     }
     sceneImportExport->PrepareForFrame();
 
@@ -107,8 +105,11 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const char* pMapName )
             debugWindows.reset();
         }
     }
-    debugData.primitivesTable.clear();
-    debugData.nonworldTable.clear();
+    if( devmode )
+    {
+        devmode->primitivesTable.clear();
+        devmode->nonworldTable.clear();
+    }
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
     BeginCmdLabel( cmd, "Prepare for frame" );
@@ -191,20 +192,12 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        gu->stopEyeAdaptation = drawInfo.disableEyeAdaptation;
+        const auto& params = AccessParams( drawInfo.pTonemappingParams );
 
-        if( drawInfo.pTonemappingParams != nullptr )
-        {
-            gu->minLogLuminance     = drawInfo.pTonemappingParams->minLogLuminance;
-            gu->maxLogLuminance     = drawInfo.pTonemappingParams->maxLogLuminance;
-            gu->luminanceWhitePoint = drawInfo.pTonemappingParams->luminanceWhitePoint;
-        }
-        else
-        {
-            gu->minLogLuminance     = -3;
-            gu->maxLogLuminance     = 10;
-            gu->luminanceWhitePoint = 10.0f;
-        }
+        gu->stopEyeAdaptation   = drawInfo.disableEyeAdaptation;
+        gu->minLogLuminance     = params.minLogLuminance;
+        gu->maxLogLuminance     = params.maxLogLuminance;
+        gu->luminanceWhitePoint = params.luminanceWhitePoint;
     }
 
     {
@@ -215,46 +208,45 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
+        const auto& params = AccessParams( drawInfo.pSkyParams );
+
         static_assert( sizeof( gu->skyCubemapRotationTransform ) == sizeof( IdentityMat4x4 ) &&
                            sizeof( IdentityMat4x4 ) == 16 * sizeof( float ),
                        "Recheck skyCubemapRotationTransform sizes" );
         memcpy( gu->skyCubemapRotationTransform, IdentityMat4x4, 16 * sizeof( float ) );
 
-        if( drawInfo.pSkyParams != nullptr )
+
+        RG_SET_VEC3_A( gu->skyColorDefault, params.skyColorDefault.data );
+        gu->skyColorMultiplier = std::max( 0.0f, params.skyColorMultiplier );
+        gu->skyColorSaturation = std::max( 0.0f, params.skyColorSaturation );
+
+        switch( params.skyType )
         {
-            const auto& sp = *drawInfo.pSkyParams;
-
-            RG_SET_VEC3_A( gu->skyColorDefault, sp.skyColorDefault.data );
-            gu->skyColorMultiplier = sp.skyColorMultiplier;
-            gu->skyColorSaturation = std::max( sp.skyColorSaturation, 0.0f );
-
-            gu->skyType = sp.skyType == RG_SKY_TYPE_CUBEMAP ? SKY_TYPE_CUBEMAP
-                          : sp.skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY
-                              ? SKY_TYPE_RASTERIZED_GEOMETRY
-                              : SKY_TYPE_COLOR;
-
-            gu->skyCubemapIndex =
-                sp.pSkyCubemapTextureName
-                    ? cubemapManager->TryGetDescriptorIndex( sp.pSkyCubemapTextureName )
-                    : MATERIAL_NO_TEXTURE;
-
-            if( !Utils::IsAlmostZero( drawInfo.pSkyParams->skyCubemapRotationTransform ) )
-            {
-                Utils::SetMatrix3ToGLSLMat4( gu->skyCubemapRotationTransform,
-                                             drawInfo.pSkyParams->skyCubemapRotationTransform );
+            case RG_SKY_TYPE_COLOR: {
+                gu->skyType = SKY_TYPE_COLOR;
+                break;
             }
-        }
-        else
-        {
-            RG_SET_VEC3( gu->skyColorDefault, 1.0f, 1.0f, 1.0f );
-            gu->skyColorMultiplier = 1.0f;
-            gu->skyColorSaturation = 1.0f;
-            gu->skyType            = SKY_TYPE_COLOR;
-            gu->skyCubemapIndex    = MATERIAL_NO_TEXTURE;
+            case RG_SKY_TYPE_CUBEMAP: {
+                gu->skyType = SKY_TYPE_CUBEMAP;
+                break;
+            }
+            case RG_SKY_TYPE_RASTERIZED_GEOMETRY: {
+                gu->skyType = SKY_TYPE_RASTERIZED_GEOMETRY;
+                break;
+            }
+            default: gu->skyType = SKY_TYPE_COLOR;
         }
 
-        RgFloat3D skyViewerPosition =
-            drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0, 0, 0 };
+        gu->skyCubemapIndex =
+            cubemapManager->TryGetDescriptorIndex( params.pSkyCubemapTextureName );
+
+        if( !Utils::IsAlmostZero( params.skyCubemapRotationTransform ) )
+        {
+            Utils::SetMatrix3ToGLSLMat4( gu->skyCubemapRotationTransform,
+                                         params.skyCubemapRotationTransform );
+        }
+
+        RgFloat3D skyViewerPosition = params.skyViewerPosition;
 
         for( uint32_t i = 0; i < 6; i++ )
         {
@@ -265,141 +257,78 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         }
     }
 
-    gu->debugShowFlags = debugData.debugShowFlags;
+    gu->debugShowFlags = devmode ? devmode->debugShowFlags : 0;
 
-    if( drawInfo.pTexturesParams != nullptr )
     {
-        gu->normalMapStrength = drawInfo.pTexturesParams->normalMapStrength;
-        gu->emissionMapBoost  = std::max( drawInfo.pTexturesParams->emissionMapBoost, 0.0f );
-        gu->emissionMaxScreenColor =
-            std::max( drawInfo.pTexturesParams->emissionMaxScreenColor, 0.0f );
-        gu->minRoughness = std::clamp( drawInfo.pTexturesParams->minRoughness, 0.0f, 1.0f );
-    }
-    else
-    {
-        gu->normalMapStrength      = 1.0f;
-        gu->emissionMapBoost       = 100.0f;
-        gu->emissionMaxScreenColor = 1.5f;
-        gu->minRoughness           = 0.0f;
+        const auto& params = AccessParams( drawInfo.pTexturesParams );
+
+        gu->normalMapStrength      = params.normalMapStrength;
+        gu->emissionMapBoost       = std::max( params.emissionMapBoost, 0.0f );
+        gu->emissionMaxScreenColor = std::max( params.emissionMaxScreenColor, 0.0f );
+        gu->minRoughness           = std::clamp( params.minRoughness, 0.0f, 1.0f );
     }
 
-    if( drawInfo.pIlluminationParams != nullptr )
     {
-        gu->maxBounceShadowsLights = drawInfo.pIlluminationParams->maxBounceShadows;
-        gu->polyLightSpotlightFactor =
-            std::max( 0.0f, drawInfo.pIlluminationParams->polygonalLightSpotlightFactor );
-        gu->indirSecondBounce = !!drawInfo.pIlluminationParams->enableSecondBounceForIndirect;
+        const auto& params = AccessParams( drawInfo.pIlluminationParams );
+
+        gu->maxBounceShadowsLights     = params.maxBounceShadows;
+        gu->polyLightSpotlightFactor   = std::max( 0.0f, params.polygonalLightSpotlightFactor );
+        gu->indirSecondBounce          = !!params.enableSecondBounceForIndirect;
         gu->lightIndexIgnoreFPVShadows = lightManager->GetLightIndexIgnoreFPVShadows(
-            currentFrameState.GetFrameIndex(),
-            drawInfo.pIlluminationParams->lightUniqueIdIgnoreFirstPersonViewerShadows );
-        gu->cellWorldSize       = std::max( drawInfo.pIlluminationParams->cellWorldSize, 0.001f );
-        gu->gradientMultDiffuse = std::clamp(
-            drawInfo.pIlluminationParams->directDiffuseSensitivityToChange, 0.0f, 1.0f );
-        gu->gradientMultIndirect = std::clamp(
-            drawInfo.pIlluminationParams->indirectDiffuseSensitivityToChange, 0.0f, 1.0f );
-        gu->gradientMultSpecular =
-            std::clamp( drawInfo.pIlluminationParams->specularSensitivityToChange, 0.0f, 1.0f );
-    }
-    else
-    {
-        gu->maxBounceShadowsLights     = 2;
-        gu->polyLightSpotlightFactor   = 2.0f;
-        gu->indirSecondBounce          = true;
-        gu->lightIndexIgnoreFPVShadows = LIGHT_INDEX_NONE;
-        gu->cellWorldSize              = 1.0f;
-        gu->gradientMultDiffuse        = 0.5f;
-        gu->gradientMultIndirect       = 0.2f;
-        gu->gradientMultSpecular       = 0.5f;
+            currentFrameState.GetFrameIndex(), params.lightUniqueIdIgnoreFirstPersonViewerShadows );
+        gu->cellWorldSize       = std::max( params.cellWorldSize, 0.001f );
+        gu->gradientMultDiffuse = std::clamp( params.directDiffuseSensitivityToChange, 0.0f, 1.0f );
+        gu->gradientMultIndirect =
+            std::clamp( params.indirectDiffuseSensitivityToChange, 0.0f, 1.0f );
+        gu->gradientMultSpecular = std::clamp( params.specularSensitivityToChange, 0.0f, 1.0f );
     }
 
-    if( drawInfo.pBloomParams != nullptr )
     {
-        gu->bloomThreshold = std::max( drawInfo.pBloomParams->inputThreshold, 0.0f );
-        gu->bloomIntensity = std::max( drawInfo.pBloomParams->bloomIntensity, 0.0f );
-        gu->bloomEmissionMultiplier =
-            std::max( drawInfo.pBloomParams->bloomEmissionMultiplier, 0.0f );
-    }
-    else
-    {
-        gu->bloomThreshold          = 4.0f;
-        gu->bloomIntensity          = 1.0f;
-        gu->bloomEmissionMultiplier = 16.0f;
+        const auto& params = AccessParams( drawInfo.pBloomParams );
+
+        gu->bloomThreshold          = std::max( params.inputThreshold, 0.0f );
+        gu->bloomIntensity          = std::max( params.bloomIntensity, 0.0f );
+        gu->bloomEmissionMultiplier = std::max( params.bloomEmissionMultiplier, 0.0f );
     }
 
-    static_assert(
-        RG_MEDIA_TYPE_VACUUM == MEDIA_TYPE_VACUUM && RG_MEDIA_TYPE_WATER == MEDIA_TYPE_WATER &&
-            RG_MEDIA_TYPE_GLASS == MEDIA_TYPE_GLASS && RG_MEDIA_TYPE_ACID == MEDIA_TYPE_ACID,
-        "Interface and GLSL constants must be identical" );
-
-    if( drawInfo.pReflectRefractParams != nullptr )
     {
-        const auto& rr = *drawInfo.pReflectRefractParams;
+        const auto& params = AccessParams( drawInfo.pReflectRefractParams );
 
-        if( rr.typeOfMediaAroundCamera >= 0 && rr.typeOfMediaAroundCamera < MEDIA_TYPE_COUNT )
+        switch( params.typeOfMediaAroundCamera )
         {
-            gu->cameraMediaType = rr.typeOfMediaAroundCamera;
-        }
-        else
-        {
-            gu->cameraMediaType = MEDIA_TYPE_VACUUM;
+            case RG_MEDIA_TYPE_VACUUM: gu->cameraMediaType = MEDIA_TYPE_VACUUM; break;
+            case RG_MEDIA_TYPE_WATER: gu->cameraMediaType = MEDIA_TYPE_WATER; break;
+            case RG_MEDIA_TYPE_GLASS: gu->cameraMediaType = MEDIA_TYPE_GLASS; break;
+            case RG_MEDIA_TYPE_ACID: gu->cameraMediaType = MEDIA_TYPE_ACID; break;
+            default: gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         }
 
-        gu->reflectRefractMaxDepth = std::min( 4u, rr.maxReflectRefractDepth );
+        gu->reflectRefractMaxDepth = std::min( 4u, params.maxReflectRefractDepth );
 
-        gu->indexOfRefractionGlass = std::max( 0.0f, rr.indexOfRefractionGlass );
-        gu->indexOfRefractionWater = std::max( 0.0f, rr.indexOfRefractionWater );
+        gu->indexOfRefractionGlass = std::max( 0.0f, params.indexOfRefractionGlass );
+        gu->indexOfRefractionWater = std::max( 0.0f, params.indexOfRefractionWater );
 
-        memcpy( gu->waterColorAndDensity, rr.waterColor.data, 3 * sizeof( float ) );
+        memcpy( gu->waterColorAndDensity, params.waterColor.data, 3 * sizeof( float ) );
         gu->waterColorAndDensity[ 3 ] = 0.0f;
 
-        memcpy( gu->acidColorAndDensity, rr.acidColor.data, 3 * sizeof( float ) );
-        gu->acidColorAndDensity[ 3 ] = rr.acidDensity;
+        memcpy( gu->acidColorAndDensity, params.acidColor.data, 3 * sizeof( float ) );
+        gu->acidColorAndDensity[ 3 ] = std::max( 0.0f, params.acidDensity );
 
-        gu->forceNoWaterRefraction = !!rr.forceNoWaterRefraction;
-        gu->waterWaveSpeed         = rr.waterWaveSpeed;
-        gu->waterWaveStrength      = rr.waterWaveNormalStrength;
+        gu->forceNoWaterRefraction = !!params.forceNoWaterRefraction;
+        gu->waterWaveSpeed         = params.waterWaveSpeed;
+        gu->waterWaveStrength      = params.waterWaveNormalStrength;
         gu->waterTextureDerivativesMultiplier =
-            std::max( 0.0f, rr.waterWaveTextureDerivativesMultiplier );
-        if( rr.waterTextureAreaScale < 0.0001f )
-        {
-            gu->waterTextureAreaScale = 1.0f;
-        }
-        else
-        {
-            gu->waterTextureAreaScale = rr.waterTextureAreaScale;
-        }
+            std::max( 0.0f, params.waterWaveTextureDerivativesMultiplier );
+        gu->waterTextureAreaScale =
+            params.waterTextureAreaScale < 0.0001f ? 1.0f : params.waterTextureAreaScale;
 
-        gu->noBackfaceReflForNoMediaChange = !!rr.disableBackfaceReflectionsForNoMediaChange;
+        gu->noBackfaceReflForNoMediaChange = !!params.disableBackfaceReflectionsForNoMediaChange;
 
-        gu->twirlPortalNormal = !!rr.portalNormalTwirl;
-    }
-    else
-    {
-        gu->cameraMediaType        = MEDIA_TYPE_VACUUM;
-        gu->reflectRefractMaxDepth = 2;
-
-        gu->indexOfRefractionGlass = 1.52f;
-        gu->indexOfRefractionWater = 1.33f;
-
-        RG_SET_VEC3( gu->waterColorAndDensity, 0.3f, 0.73f, 0.63f );
-        gu->waterColorAndDensity[ 3 ] = 0.0f;
-
-        RG_SET_VEC3( gu->acidColorAndDensity, 0.0f, 0.66f, 0.55f );
-        gu->acidColorAndDensity[ 3 ] = 10.0f;
-
-        gu->forceNoWaterRefraction            = false;
-        gu->waterWaveSpeed                    = 1.0f;
-        gu->waterWaveStrength                 = 1.0f;
-        gu->waterTextureDerivativesMultiplier = 1.0f;
-        gu->waterTextureAreaScale             = 1.0f;
-
-        gu->noBackfaceReflForNoMediaChange = false;
-
-        gu->twirlPortalNormal = false;
+        gu->twirlPortalNormal = !!params.portalNormalTwirl;
     }
 
     gu->rayCullBackFaces  = rayCullBackFacingTriangles ? 1 : 0;
-    gu->rayLength         = clamp( drawInfo.rayLength, 0.1f, ( float )MAX_RAY_LENGTH );
+    gu->rayLength         = clamp( drawInfo.rayLength, 0.1f, float( MAX_RAY_LENGTH ) );
     gu->primaryRayMinDist = clamp( drawInfo.cameraNear, 0.001f, gu->rayLength );
 
     {
@@ -457,75 +386,55 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
 
     gu->cameraRayConeSpreadAngle = atanf( ( 2.0f * tanf( drawInfo.fovYRadians * 0.5f ) ) /
-                                          ( float )renderResolution.Height() );
+                                          float( renderResolution.Height() ) );
 
     RG_SET_VEC3_A( gu->worldUpVector, sceneImportExport->GetWorldUp().data );
 
-    if( drawInfo.pLightmapParams != nullptr )
     {
-        gu->lightmapEnable = !!drawInfo.pLightmapParams->enableLightmaps;
+        const auto& params = AccessParams( drawInfo.pLightmapParams );
 
-        if( drawInfo.pLightmapParams->lightmapLayerIndex == 1 ||
-            drawInfo.pLightmapParams->lightmapLayerIndex == 2 )
+        gu->lightmapEnable = !!params.enableLightmaps;
+        if( gu->lightmapEnable )
         {
-            gu->lightmapLayer = drawInfo.pLightmapParams->lightmapLayerIndex;
+            gu->lightmapLayer = 3;
         }
         else
         {
-            assert( 0 &&
-                    "pLightMapLayerIndex must point to a value of 1 or 2. Others are invalidated" );
+            gu->lightmapLayer = UINT8_MAX;
         }
-    }
-    else
-    {
-        gu->lightmapEnable = false;
-        gu->lightmapLayer  = UINT8_MAX;
     }
 
     gu->lensFlareCullingInputCount = 0;
     gu->applyViewProjToLensFlares  = false;
 
     {
-        gu->volumeCameraNear = std::max( drawInfo.cameraNear, 0.001f );
-        gu->volumeCameraFar  = std::min(
-            drawInfo.cameraFar,
-            drawInfo.pVolumetricParams ? drawInfo.pVolumetricParams->volumetricFar : 100.0f );
+        const auto& params = AccessParams( drawInfo.pVolumetricParams );
 
-        if( drawInfo.pVolumetricParams )
+        gu->volumeCameraNear = std::max( drawInfo.cameraNear, 0.001f );
+        gu->volumeCameraFar  = std::min( drawInfo.cameraFar, params.volumetricFar );
+
         {
-            if( drawInfo.pVolumetricParams->enable )
+            if( params.enable )
             {
-                gu->volumeEnableType = drawInfo.pVolumetricParams->useSimpleDepthBased
-                                           ? VOLUME_ENABLE_SIMPLE
-                                           : VOLUME_ENABLE_VOLUMETRIC;
+                gu->volumeEnableType =
+                    params.useSimpleDepthBased ? VOLUME_ENABLE_SIMPLE : VOLUME_ENABLE_VOLUMETRIC;
             }
             else
             {
                 gu->volumeEnableType = VOLUME_ENABLE_NONE;
             }
-            gu->volumeScattering = drawInfo.pVolumetricParams->scaterring;
-            gu->volumeSourceAsymmetry =
-                std::clamp( drawInfo.pVolumetricParams->sourceAssymetry, -1.0f, 1.0f );
+            gu->volumeScattering      = params.scaterring;
+            gu->volumeSourceAsymmetry = std::clamp( params.sourceAssymetry, -1.0f, 1.0f );
 
-            RG_SET_VEC3_A( gu->volumeAmbient, drawInfo.pVolumetricParams->ambientColor.data );
+            RG_SET_VEC3_A( gu->volumeAmbient, params.ambientColor.data );
             RG_MAX_VEC3( gu->volumeAmbient, 0.0f );
 
-            RG_SET_VEC3_A( gu->volumeSourceColor, drawInfo.pVolumetricParams->sourceColor.data );
+            RG_SET_VEC3_A( gu->volumeSourceColor, params.sourceColor.data );
             RG_MAX_VEC3( gu->volumeSourceColor, 0.0f );
 
-            RG_SET_VEC3_A( gu->volumeDirToSource,
-                           drawInfo.pVolumetricParams->sourceDirection.data );
+            RG_SET_VEC3_A( gu->volumeDirToSource, params.sourceDirection.data );
             Utils::Negate( gu->volumeDirToSource );
             Utils::Normalize( gu->volumeDirToSource );
-        }
-        else
-        {
-            gu->volumeEnableType      = VOLUME_ENABLE_VOLUMETRIC;
-            gu->volumeScattering      = 0.2f;
-            gu->volumeSourceAsymmetry = 0.4f;
-            RG_SET_VEC3( gu->volumeAmbient, 0.8f, 0.85f, 1.0f );
-            RG_SET_VEC3( gu->volumeSourceColor, 0, 0, 0 );
-            RG_SET_VEC3( gu->volumeDirToSource, 0, 1, 0 );
         }
 
         if( gu->volumeEnableType != VOLUME_ENABLE_NONE )
@@ -548,409 +457,6 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     gu->antiFireflyEnabled = !!drawInfo.forceAntiFirefly;
 }
 
-void RTGL1::VulkanDevice::DrawDebugWindows() const
-{
-    if( !debugWindows )
-    {
-        return;
-    }
-
-    if( ImGui::Begin( "General" ) )
-    {
-        ImGui::Checkbox( "Always on top", &debugData.debugWindowOnTop );
-        debugWindows->SetAlwaysOnTop( debugData.debugWindowOnTop );
-
-        ImGui::Text( "%.3f ms/frame (%.1f FPS)",
-                     1000.0f / ImGui::GetIO().Framerate,
-                     ImGui::GetIO().Framerate );
-    }
-    ImGui::End();
-
-    if( ImGui::Begin( "Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
-    {
-        ImGui::RadioButton( "Disable", &debugData.primitivesTableEnable, 0 );
-        ImGui::SameLine();
-        ImGui::RadioButton( "Record rasterized", &debugData.primitivesTableEnable, 1 );
-        ImGui::SameLine();
-        ImGui::RadioButton( "Record ray-traced", &debugData.primitivesTableEnable, 2 );
-
-        ImGui::TextUnformatted(
-            "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
-        ImGui::TextUnformatted( "Green  - if exportable was found in GLTF" );
-
-        if( ImGui::BeginTable( "Primitives table",
-                               6,
-                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
-                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
-                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
-        {
-            {
-                ImGui::TableSetupColumn( "Call" );
-                ImGui::TableSetupColumn( "Object ID" );
-                ImGui::TableSetupColumn( "Mesh name" );
-                ImGui::TableSetupColumn( "Primitive index" );
-                ImGui::TableSetupColumn( "Primitive name" );
-                ImGui::TableSetupColumn( "Texture" );
-                ImGui::TableHeadersRow();
-            }
-
-            if( ImGuiTableSortSpecs* sortspecs = ImGui::TableGetSortSpecs() )
-            {
-                sortspecs->SpecsDirty = true;
-
-                std::ranges::sort(
-                    debugData.primitivesTable,
-                    [ sortspecs ]( const DebugPrim& a, const DebugPrim& b ) -> bool {
-                        for( int n = 0; n < sortspecs->SpecsCount; n++ )
-                        {
-                            const ImGuiTableColumnSortSpecs* srt = &sortspecs->Specs[ n ];
-
-                            std::strong_ordering ord{ 0 };
-                            switch( srt->ColumnIndex )
-                            {
-                                case 0: ord = ( a.callIndex <=> b.callIndex ); break;
-                                case 1: ord = ( a.objectId <=> b.objectId ); break;
-                                case 2: ord = ( a.meshName <=> b.meshName ); break;
-                                case 3: ord = ( a.primitiveIndex <=> b.primitiveIndex ); break;
-                                case 4: ord = ( a.primitiveName <=> b.primitiveName ); break;
-                                case 5: ord = ( a.textureName <=> b.textureName ); break;
-                                default: assert( 0 ); return false;
-                            }
-
-                            if( std::is_gt( ord ) )
-                            {
-                                return srt->SortDirection != ImGuiSortDirection_Ascending;
-                            }
-
-                            if( std::is_lt( ord ) )
-                            {
-                                return srt->SortDirection == ImGuiSortDirection_Ascending;
-                            }
-                        }
-
-                        return a.callIndex < b.callIndex;
-                    } );
-            }
-
-            ImGuiListClipper clipper;
-            clipper.Begin( int( debugData.primitivesTable.size() ) );
-            while( clipper.Step() )
-            {
-                for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ )
-                {
-                    const auto& prim = debugData.primitivesTable[ i ];
-                    ImGui::TableNextRow();
-
-                    if( prim.result == UploadResult::ExportableStatic )
-                    {
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0,
-                                                IM_COL32( 0, 128, 0, 64 ) );
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1,
-                                                IM_COL32( 0, 128, 0, 128 ) );
-                    }
-                    else if( prim.result == UploadResult::ExportableDynamic )
-                    {
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0,
-                                                IM_COL32( 128, 0, 0, 64 ) );
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1,
-                                                IM_COL32( 128, 0, 0, 128 ) );
-                    }
-                    else
-                    {
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0, IM_COL32( 0, 0, 0, 1 ) );
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1, IM_COL32( 0, 0, 0, 1 ) );
-                    }
-
-
-                    ImGui::TableNextColumn();
-                    if( prim.result != UploadResult::Fail )
-                    {
-                        ImGui::Text( "%u", prim.callIndex );
-                    }
-                    else
-                    {
-                        ImGui::TextUnformatted( "fail" );
-                    }
-                    ImGui::TableNextColumn();
-                    ImGui::Text( "%u", prim.objectId );
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( prim.meshName.c_str() );
-                    ImGui::TableNextColumn();
-                    ImGui::Text( "%u", prim.primitiveIndex );
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( prim.primitiveName.c_str() );
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( prim.textureName.c_str() );
-                }
-            }
-
-            ImGui::EndTable();
-        }
-    }
-    ImGui::End();
-
-    if( ImGui::Begin( "Non-world Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
-    {
-        ImGui::Checkbox( "Record", &debugData.nonworldTableEnable );
-
-        if( ImGui::BeginTable( "Non-world Primitives table",
-                               2,
-                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
-                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
-                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
-        {
-            {
-                ImGui::TableSetupColumn( "Call" );
-                ImGui::TableSetupColumn( "Texture" );
-                ImGui::TableHeadersRow();
-            }
-
-            for( const auto& prim : debugData.nonworldTable )
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::Text( "%u", prim.callIndex );
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted( prim.textureName.c_str() );
-            }
-
-            ImGui::EndTable();
-        }
-    }
-    ImGui::End();
-
-    if( ImGui::Begin( "Log", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
-    {
-        ImGui::CheckboxFlags( "Errors", &debugData.logFlags, RG_MESSAGE_SEVERITY_ERROR );
-        ImGui::SameLine();
-        ImGui::CheckboxFlags( "Warnings", &debugData.logFlags, RG_MESSAGE_SEVERITY_WARNING );
-        ImGui::SameLine();
-        ImGui::CheckboxFlags( "Info", &debugData.logFlags, RG_MESSAGE_SEVERITY_INFO );
-        ImGui::SameLine();
-        ImGui::CheckboxFlags( "Verbose", &debugData.logFlags, RG_MESSAGE_SEVERITY_VERBOSE );
-
-        if( ImGui::Button( "Clear" ) )
-        {
-            debugData.logs.clear();
-        }
-
-        for( const auto& [ severity, msg ] : debugData.logs )
-        {
-            RgMessageSeverityFlags filtered = severity & debugData.logFlags;
-
-            ImU32 color;
-            if( filtered & RG_MESSAGE_SEVERITY_ERROR )
-            {
-                color = IM_COL32( 255, 0, 0, 255 );
-            }
-            else if( filtered & RG_MESSAGE_SEVERITY_WARNING )
-            {
-                color = IM_COL32( 255, 255, 0, 255 );
-            }
-            else if( filtered & RG_MESSAGE_SEVERITY_INFO )
-            {
-                color = IM_COL32( 255, 255, 255, 255 );
-            }
-            else if( filtered & RG_MESSAGE_SEVERITY_VERBOSE )
-            {
-                color = IM_COL32( 255, 255, 255, 255 );
-            }
-            else
-            {
-                assert( filtered == 0 );
-                continue;
-            }
-            ImGui::PushStyleColor( ImGuiCol_Text, color );
-            ImGui::TextUnformatted( msg.c_str() );
-            ImGui::PopStyleColor();
-        }
-    }
-    ImGui::End();
-
-
-    if( ImGui::Begin( "Import/Export" ) )
-    {
-        auto& dev = sceneImportExport->dev;
-        if( !dev.exportName.enable )
-        {
-            dev.exportName.SetDefaults( *sceneImportExport );
-        }
-        if( !dev.importName.enable )
-        {
-            dev.importName.SetDefaults( *sceneImportExport );
-        }
-        if( !dev.worldTransform.enable )
-        {
-            dev.worldTransform.SetDefaults( *sceneImportExport );
-        }
-
-        {
-            ImGui::Text( "Resource folder: %s",
-                         std::filesystem::absolute( ovrdFolder ).string().c_str() );
-        }
-        ImGui::Separator();
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-        {
-            if( ImGui::Button( "Reimport GLTF", { -1, 80 } ) )
-            {
-                sceneImportExport->RequestReimport();
-            }
-
-            ImGui::Text( "Import path: %s",
-                         sceneImportExport->MakeGltfPath( sceneImportExport->GetImportMapName() )
-                             .string()
-                             .c_str() );
-            ImGui::BeginDisabled( !dev.importName.enable );
-            {
-                ImGui::InputText(
-                    "Import map name", dev.importName.value, std::size( dev.importName.value ) );
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::Checkbox( "Custom##import", &dev.importName.enable );
-        }
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-        ImGui::Separator();
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-        {
-            ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.98f, 0.59f, 0.26f, 0.40f ) );
-            ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.98f, 0.59f, 0.26f, 1.00f ) );
-            ImGui::PushStyleColor( ImGuiCol_ButtonActive, ImVec4( 0.98f, 0.53f, 0.06f, 1.00f ) );
-            if( ImGui::Button( "Export frame geometry", { -1, 80 } ) )
-            {
-                sceneImportExport->RequestExport();
-            }
-            ImGui::PopStyleColor( 3 );
-
-            ImGui::Text( "Export path: %s",
-                         sceneImportExport->MakeGltfPath( sceneImportExport->GetExportMapName() )
-                             .string()
-                             .c_str() );
-            ImGui::BeginDisabled( !dev.exportName.enable );
-            {
-                ImGui::InputText(
-                    "Export map name", dev.exportName.value, std::size( dev.exportName.value ) );
-            }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            ImGui::Checkbox( "Custom##export", &dev.exportName.enable );
-        }
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-        ImGui::Separator();
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-        {
-            ImGui::Checkbox( "Custom import/export world space", &dev.worldTransform.enable );
-            ImGui::BeginDisabled( !dev.worldTransform.enable );
-            {
-                ImGui::SliderFloat3( "World Up vector", dev.worldTransform.up.data, -1.0f, 1.0f );
-                ImGui::SliderFloat3(
-                    "World Forward vector", dev.worldTransform.forward.data, -1.0f, 1.0f );
-                ImGui::InputFloat(
-                    std::format( "1 unit = {} meters", dev.worldTransform.scale ).c_str(),
-                    &dev.worldTransform.scale );
-            }
-            ImGui::EndDisabled();
-        }
-    }
-    ImGui::End();
-
-
-    if( ImGui::Begin( "Textures" ) )
-    {
-        if( ImGui::Button( "Export original textures", { -1, 80 } ) )
-        {
-            textureManager->ExportOriginalMaterialTextures( ovrdFolder /
-                                                            TEXTURES_FOLDER_ORIGINALS );
-        }
-        ImGui::Text( "Export path: %s",
-                     ( ovrdFolder / TEXTURES_FOLDER_ORIGINALS ).string().c_str() );
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-        ImGui::Separator();
-        ImGui::Dummy( ImVec2( 0, 16 ) );
-
-        ImGui::Checkbox( "Record", &debugData.materialsTableEnable );
-        ImGui::TextUnformatted( "Blue - if material is non-original (i.e. was loaded from GLTF)" );
-        if( ImGui::BeginTable( "Materials table",
-                               1,
-                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
-                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
-                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
-        {
-            auto materialInfos = debugData.materialsTableEnable
-                                     ? textureManager->Debug_GetMaterials()
-                                     : std::vector< TextureManager::Debug_MaterialInfo >{};
-            {
-                ImGui::TableSetupColumn( "Material name" );
-                ImGui::TableHeadersRow();
-            }
-
-            if( ImGuiTableSortSpecs* sortspecs = ImGui::TableGetSortSpecs() )
-            {
-                sortspecs->SpecsDirty = true;
-
-                std::ranges::sort(
-                    materialInfos,
-                    [ sortspecs ]( const TextureManager::Debug_MaterialInfo& a,
-                                   const TextureManager::Debug_MaterialInfo& b ) -> bool {
-                        for( int n = 0; n < sortspecs->SpecsCount; n++ )
-                        {
-                            const ImGuiTableColumnSortSpecs* srt = &sortspecs->Specs[ n ];
-
-                            std::strong_ordering ord{ 0 };
-                            switch( srt->ColumnIndex )
-                            {
-                                case 0: ord = ( a.materialName <=> b.materialName ); break;
-                                default: assert( 0 ); return false;
-                            }
-
-                            if( std::is_gt( ord ) )
-                            {
-                                return srt->SortDirection != ImGuiSortDirection_Ascending;
-                            }
-
-                            if( std::is_lt( ord ) )
-                            {
-                                return srt->SortDirection == ImGuiSortDirection_Ascending;
-                            }
-                        }
-
-                        return a.materialName < b.materialName;
-                    } );
-            }
-
-            ImGuiListClipper clipper;
-            clipper.Begin( int( materialInfos.size() ) );
-            while( clipper.Step() )
-            {
-                for( int i = clipper.DisplayStart; i < clipper.DisplayEnd; i++ )
-                {
-                    const auto& mat = materialInfos[ i ];
-                    ImGui::TableNextRow();
-
-                    if( mat.isOriginal )
-                    {
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0,
-                                                IM_COL32( 0, 0, 128, 64 ) );
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1,
-                                                IM_COL32( 0, 0, 128, 128 ) );
-                    }
-                    else
-                    {
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg0, IM_COL32( 0, 0, 0, 1 ) );
-                        ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1, IM_COL32( 0, 0, 0, 1 ) );
-                    }
-
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( mat.materialName.c_str() );
-                }
-            }
-
-            ImGui::EndTable();
-        }
-    }
-    ImGui::End();
-}
-
 void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo )
 {
     // end of "Prepare for frame" label
@@ -967,7 +473,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         worldSamplerManager->TryChangeMipLodBias( frameIndex, renderResolution.GetMipLodBias() );
     const RgFloat2D jitter = { uniform->GetData()->jitterX, uniform->GetData()->jitterY };
 
-    textureManager->SubmitDescriptors( frameIndex, drawInfo.pTexturesParams, mipLodBiasUpdated );
+    textureManager->SubmitDescriptors(
+        frameIndex, AccessParams( drawInfo.pTexturesParams ), mipLodBiasUpdated );
     cubemapManager->SubmitDescriptors( frameIndex );
 
     lightManager->SubmitForFrame( cmd, frameIndex );
@@ -991,8 +498,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         // draw rasterized sky to albedo before tracing primary rays
         if( uniform->GetData()->skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY )
         {
-            RgFloat3D skyViewerPosition =
-                drawInfo.pSkyParams ? drawInfo.pSkyParams->skyViewerPosition : RgFloat3D{ 0, 0, 0 };
+            RgFloat3D skyViewerPosition = AccessParams( drawInfo.pSkyParams ).skyViewerPosition;
 
             rasterizer->DrawSkyToCubemap( cmd, frameIndex, *textureManager, *uniform );
             rasterizer->DrawSkyToAlbedo( cmd,
@@ -1074,10 +580,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         cmd, frameIndex, uniform.get(), tonemapping.get(), volumetric.get() );
 
 
-    bool enableBloom =
-        drawInfo.pBloomParams == nullptr ||
-        ( drawInfo.pBloomParams != nullptr && drawInfo.pBloomParams->bloomIntensity > 0.0f );
-
+    bool enableBloom = AccessParams( drawInfo.pBloomParams ).bloomIntensity > 0.0f;
     if( enableBloom )
     {
         bloom->Prepare( cmd, frameIndex, uniform, tonemapping );
@@ -1104,9 +607,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                     drawInfo.fovYRadians );
         }
 
-        const RgExtent2D* pixelized = drawInfo.pRenderResolutionParams
-                                          ? drawInfo.pRenderResolutionParams->pPixelizedRenderSize
-                                          : nullptr;
+        const RgExtent2D* pixelized =
+            AccessParams( drawInfo.pRenderResolutionParams ).pPixelizedRenderSize;
 
         accum = framebuffers->BlitForEffects(
             cmd, frameIndex, accum, renderResolution.GetBlitFilter(), pixelized );
@@ -1293,54 +795,17 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    // override if requested
-    if( debugWindows )
-    {
-        if( ImGui::Begin( "Frame" ) )
-        {
-            debugData.reloadShaders = ImGui::Button( "Reload shaders", { -1, 96 } );
-            ImGui::Separator();
-            if( ImGui::TreeNode( "Override" ) )
-            {
-                ImGui::Checkbox( "Enable", &debugData.overrideDrawInfo );
-                ImGui::BeginDisabled( !debugData.overrideDrawInfo );
-
-                ImGui::Checkbox( "Vsync", &debugData.ovrdVsync );
-
-                ImGui::EndDisabled();
-                ImGui::TreePop();
-            }
-            if( ImGui::TreeNode( "Debug show" ) )
-            {
-                std::pair< const char*, uint32_t > fs[] = {
-                    { "Unfiltered diffuse direct", DEBUG_SHOW_FLAG_UNFILTERED_DIFFUSE },
-                    { "Unfiltered diffuse indirect", DEBUG_SHOW_FLAG_UNFILTERED_INDIRECT },
-                    { "Unfiltered specular", DEBUG_SHOW_FLAG_UNFILTERED_SPECULAR },
-                    { "Diffuse direct", DEBUG_SHOW_FLAG_ONLY_DIRECT_DIFFUSE },
-                    { "Diffuse indirect", DEBUG_SHOW_FLAG_ONLY_INDIRECT_DIFFUSE },
-                    { "Specular", DEBUG_SHOW_FLAG_ONLY_SPECULAR },
-                    { "Albedo white", DEBUG_SHOW_FLAG_ALBEDO_WHITE },
-                    { "Motion vectors", DEBUG_SHOW_FLAG_MOTION_VECTORS },
-                    { "Gradients", DEBUG_SHOW_FLAG_GRADIENTS },
-                    { "Light grid", DEBUG_SHOW_FLAG_LIGHT_GRID },
-                };
-                for( const auto [ name, f ] : fs )
-                {
-                    ImGui::CheckboxFlags( name, &debugData.debugShowFlags, f );
-                }
-                ImGui::TreePop();
-            }
-        }
-        ImGui::End();
-    }
+    const RgDrawFrameInfo& info = Dev_Override( *pInfo );
 
     VkCommandBuffer cmd = currentFrameState.GetCmdBuffer();
 
     previousFrameTime = currentFrameTime;
-    currentFrameTime  = pInfo->currentTime;
+    currentFrameTime  = info.currentTime;
 
-    renderResolution.Setup(
-        pInfo->pRenderResolutionParams, swapchain->GetWidth(), swapchain->GetHeight(), nvDlss );
+    renderResolution.Setup( AccessParams( info.pRenderResolutionParams ),
+                            swapchain->GetWidth(),
+                            swapchain->GetHeight(),
+                            nvDlss );
 
     if( observer )
     {
@@ -1349,16 +814,16 @@ void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
 
     if( renderResolution.Width() > 0 && renderResolution.Height() > 0 )
     {
-        FillUniform( uniform->GetData(), *pInfo );
-        DrawDebugWindows();
-        Render( cmd, *pInfo );
+        FillUniform( uniform->GetData(), info );
+        Dev_Draw();
+        Render( cmd, info );
     }
 
     EndFrame( cmd );
     currentFrameState.OnEndFrame();
 
     // process in next frame
-    vsync = debugData.overrideDrawInfo ? debugData.ovrdVsync : pInfo->vsync;
+    vsync = info.vsync;
 }
 
 namespace RTGL1
@@ -1417,11 +882,11 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                             nullptr,
                             nullptr );
 
-        if( debugWindows && debugData.primitivesTableEnable == 1 )
+        if( devmode && devmode->primitivesTableEnable == 1 )
         {
-            debugData.primitivesTable.push_back( DebugPrim{
+            devmode->primitivesTable.push_back( Devmode::DebugPrim{
                 .result         = UploadResult::Dynamic,
-                .callIndex      = uint32_t( debugData.primitivesTable.size() ),
+                .callIndex      = uint32_t( devmode->primitivesTable.size() ),
                 .objectId       = pMesh->uniqueObjectID,
                 .meshName       = Utils::SafeCstr( pMesh->pMeshName ),
                 .primitiveIndex = prim.primitiveIndexInMesh,
@@ -1435,11 +900,11 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
         UploadResult r = scene->UploadPrimitive(
             currentFrameState.GetFrameIndex(), *pMesh, prim, *textureManager, false );
 
-        if( debugWindows && debugData.primitivesTableEnable == 2 )
+        if( devmode && devmode->primitivesTableEnable == 2 )
         {
-            debugData.primitivesTable.push_back( DebugPrim{
+            devmode->primitivesTable.push_back( Devmode::DebugPrim{
                 .result         = r,
-                .callIndex      = uint32_t( debugData.primitivesTable.size() ),
+                .callIndex      = uint32_t( devmode->primitivesTable.size() ),
                 .objectId       = pMesh->uniqueObjectID,
                 .meshName       = Utils::SafeCstr( pMesh->pMeshName ),
                 .primitiveIndex = prim.primitiveIndexInMesh,
@@ -1473,10 +938,11 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
                         *pPrimitive,
                         pViewProjection,
                         pViewport );
-    if( debugWindows && debugData.nonworldTableEnable )
+
+    if( devmode && devmode->nonworldTableEnable )
     {
-        debugData.nonworldTable.push_back( DebugNonWorld{
-            .callIndex   = uint32_t( debugData.nonworldTable.size() ),
+        devmode->nonworldTable.push_back( Devmode::DebugNonWorld{
+            .callIndex   = uint32_t( devmode->nonworldTable.size() ),
             .textureName = pPrimitive->pTextureName ? pPrimitive->pTextureName : "",
         } );
     }
@@ -1672,9 +1138,9 @@ void RTGL1::VulkanDevice::ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget 
 
 void RTGL1::VulkanDevice::Print( std::string_view msg, RgMessageSeverityFlags severity ) const
 {
-    if( debugWindows )
+    if( devmode )
     {
-        debugData.logs.emplace_back( severity, msg );
+        devmode->logs.emplace_back( severity, msg );
     }
 
     if( userPrint )

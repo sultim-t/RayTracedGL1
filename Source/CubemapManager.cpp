@@ -31,10 +31,6 @@ namespace
 
 constexpr uint32_t MAX_CUBEMAP_COUNT = 32;
 
-// use albedo-alpha texture data
-constexpr uint32_t MATERIAL_COLOR_TEXTURE_INDEX = 0;
-static_assert( MATERIAL_COLOR_TEXTURE_INDEX < RTGL1::TEXTURES_PER_MATERIAL_COUNT );
-
 template< typename T >
 constexpr const T* DefaultIfNull( const T* pData, const T* pDefault )
 {
@@ -169,9 +165,6 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
         .pDebugName   = nullptr,
         .isCubemap    = true,
     };
-
-    // must be '0' to use special TextureOverrides constructor
-    static_assert( MATERIAL_COLOR_TEXTURE_INDEX == 0 );
 
     auto*      ldr  = imageLoader.get();
     RgExtent2D size = { info.sideSize, info.sideSize };
@@ -405,7 +398,7 @@ uint32_t RTGL1::CubemapManager::TryGetDescriptorIndex( const char* pTextureName 
 
     // TODO: TextureDescriptors should return an index on creation,
     //       now, iter must be the same as in SubmitDescriptors
-    
+
     uint32_t iter = 0;
     for( const auto& [ name, cubetxd ] : cubemaps )
     {

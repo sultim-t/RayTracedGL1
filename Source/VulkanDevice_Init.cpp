@@ -234,6 +234,8 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
             cmdManager );
         debugWindows->Init( debugWindows );
 
+        devmode = std::make_unique<Devmode>();
+
         observer = std::make_unique< FolderObserver >( ovrdFolder );
     }
 
@@ -514,6 +516,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     textureMetaManager.reset();
     cubemapManager.reset();
     debugWindows.reset();
+    devmode.reset();
     memAllocator.reset();
 
     vkDestroySurfaceKHR( instance, surface, nullptr );

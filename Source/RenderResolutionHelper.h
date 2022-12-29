@@ -41,7 +41,7 @@ public:
     RenderResolutionHelper& operator=( const RenderResolutionHelper& other ) = delete;
     RenderResolutionHelper& operator=( RenderResolutionHelper&& other ) noexcept = delete;
 
-    void                    Setup( const RgDrawFrameRenderResolutionParams* pParams,
+    void                    Setup( const RgDrawFrameRenderResolutionParams& params,
                                    uint32_t                                 windowWidth,
                                    uint32_t                                 windowHeight,
                                    const std::shared_ptr< DLSS >&           dlss )
@@ -54,20 +54,9 @@ public:
 
         dlssSharpness = 0;
 
-
-        if( pParams == nullptr )
-        {
-            upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_LINEAR;
-            sharpenTechnique = RG_RENDER_SHARPEN_TECHNIQUE_NONE;
-            resolutionMode   = RG_RENDER_RESOLUTION_MODE_CUSTOM;
-
-            return;
-        }
-
-
-        upscaleTechnique = pParams->upscaleTechnique;
-        sharpenTechnique = pParams->sharpenTechnique;
-        resolutionMode   = pParams->resolutionMode;
+        upscaleTechnique = params.upscaleTechnique;
+        sharpenTechnique = params.sharpenTechnique;
+        resolutionMode   = params.resolutionMode;
 
         // check for correct values
         {
@@ -118,8 +107,8 @@ public:
 
             if( resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM )
             {
-                renderWidth  = pParams->customRenderSize.width;
-                renderHeight = pParams->customRenderSize.height;
+                renderWidth  = params.customRenderSize.width;
+                renderHeight = params.customRenderSize.height;
             }
             else
             {
@@ -143,8 +132,8 @@ public:
         {
             if( resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM )
             {
-                renderWidth  = pParams->customRenderSize.width;
-                renderHeight = pParams->customRenderSize.height;
+                renderWidth  = params.customRenderSize.width;
+                renderHeight = params.customRenderSize.height;
             }
             else
             {
@@ -167,8 +156,8 @@ public:
         {
             if( resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM )
             {
-                renderWidth  = pParams->customRenderSize.width;
-                renderHeight = pParams->customRenderSize.height;
+                renderWidth  = params.customRenderSize.width;
+                renderHeight = params.customRenderSize.height;
             }
         }
     }
@@ -182,7 +171,7 @@ public:
         }
 
         // DLSS Programming Guide, Section 3.5
-        float ratio = ( float )Width() / ( float )UpscaledWidth();
+        float ratio = float( Width() ) / float( UpscaledWidth() );
         float bias  = nativeBias + std::log2( std::max( 0.01f, ratio ) ) - 1.0f;
 
         return bias;

@@ -61,9 +61,13 @@
 #include "ScratchImmediate.h"
 #include "FolderObserver.h"
 #include "TextureMeta.h"
+#include "VulkanDevice_Dev.h"
 
 namespace RTGL1
 {
+
+struct Devmode;
+
 
 class VulkanDevice
 {
@@ -86,13 +90,13 @@ public:
     void UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo );
     void UploadSpotlight( const RgSpotLightUploadInfo* pInfo );
     void UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo );
-    void UploadLight( const GenericLightPtr &light );
+    void UploadLight( const GenericLightPtr& light );
 
     void ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo );
     void ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo );
     void MarkOriginalTextureAsDeleted( const char* pTextureName );
 
-    void StartFrame( const char *pMapName );
+    void StartFrame( const char* pMapName );
     void DrawFrame( const RgDrawFrameInfo* pInfo );
 
 
@@ -128,11 +132,14 @@ private:
     void DestroySyncPrimitives();
 
     void FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
-    void DrawDebugWindows() const;
 
     VkCommandBuffer BeginFrame( const char* pMapName );
     void            Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
     void            EndFrame( VkCommandBuffer cmd );
+
+private:
+    void                   Dev_Draw() const;
+    const RgDrawFrameInfo& Dev_Override( const RgDrawFrameInfo& original ) const;
 
 private:
     VkInstance   instance;
@@ -210,37 +217,7 @@ private:
     ScratchImmediate                  scratchImmediate;
     std::unique_ptr< FolderObserver > observer;
 
-    struct DebugPrim
-    {
-        std::optional< UploadResult > result;
-        uint32_t                      callIndex;
-        uint32_t                      objectId;
-        std::string                   meshName;
-        uint32_t                      primitiveIndex;
-        std::string                   primitiveName;
-        std::string                   textureName;
-    };
-    struct DebugNonWorld
-    {
-        uint32_t    callIndex;
-        std::string textureName;
-    };
-    mutable struct
-    {
-        bool                         debugWindowOnTop{ false };
-        bool                         overrideDrawInfo{ false };
-        bool                         ovrdVsync{ false };
-        bool                         reloadShaders{ false };
-        uint32_t                     debugShowFlags{ 0 };
-        bool                         materialsTableEnable{ false };
-        int                          primitivesTableEnable{ 0 };
-        std::vector< DebugPrim >     primitivesTable{};
-        bool                         nonworldTableEnable{ false };
-        std::vector< DebugNonWorld > nonworldTable{};
-        RgMessageSeverityFlags logFlags{ RG_MESSAGE_SEVERITY_VERBOSE | RG_MESSAGE_SEVERITY_INFO |
-                                         RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR };
-        std::vector< std::pair< RgMessageSeverityFlags, std::string > > logs{};
-    } debugData;
+    std::unique_ptr< Devmode > devmode;
 
     bool rayCullBackFacingTriangles;
     bool allowGeometryWithSkyFlag;
@@ -252,5 +229,6 @@ private:
 
     bool vsync;
 };
+
 
 }

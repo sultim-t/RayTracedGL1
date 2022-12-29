@@ -90,6 +90,7 @@ set(Sources
     "Source/TextureExporter.cpp"
     "Source/LibraryConfig.cpp"
     "Source/TextureMeta.cpp"
+    "Source/VulkanDevice_Dev.cpp"
 )
 
 

@@ -44,8 +44,6 @@ constexpr MaterialTextures EmptyMaterialTextures = {
 };
 static_assert( TEXTURES_PER_MATERIAL_COUNT == 4 );
 
-constexpr RgSamplerFilter DefaultDynamicSamplerFilter = RG_SAMPLER_FILTER_LINEAR;
-
 constexpr bool PreferExistingMaterials = true;
 
 template< typename T >
@@ -97,7 +95,7 @@ TextureManager::TextureManager( VkDevice                                _device,
     , cmdManager( std::move( _cmdManager ) )
     , samplerMgr( std::move( _samplerMgr ) )
     , waterNormalTextureIndex( 0 )
-    , currentDynamicSamplerFilter( DefaultDynamicSamplerFilter )
+    , currentDynamicSamplerFilter( RG_SAMPLER_FILTER_LINEAR )
     , postfixes
         {
             TEXTURE_ALBEDO_ALPHA_POSTFIX,
@@ -313,13 +311,11 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
 }
 
 void TextureManager::SubmitDescriptors( uint32_t                         frameIndex,
-                                        const RgDrawFrameTexturesParams* pTexturesParams,
+                                        const RgDrawFrameTexturesParams& texturesParams,
                                         bool                             forceUpdateAllDescriptors )
 {
     // check if dynamic sampler filter was changed
-    RgSamplerFilter newDynamicSamplerFilter = pTexturesParams != nullptr
-                                                  ? pTexturesParams->dynamicSamplerFilter
-                                                  : DefaultDynamicSamplerFilter;
+    RgSamplerFilter newDynamicSamplerFilter = texturesParams.dynamicSamplerFilter;
 
     if( currentDynamicSamplerFilter != newDynamicSamplerFilter )
     {

@@ -785,10 +785,6 @@ typedef struct RgDrawFrameLightmapParams
 {
     // If true, use provided lightmaps instead of ray-traced lighting.
     RgBool32                    enableLightmaps;
-    // Specifies layer index in RgLayeredMaterial that is interpreted as a lightmap.
-    // if enableLightmaps=false, layer with this index is ignored.
-    // Can be be 1 or 2.
-    uint32_t                    lightmapLayerIndex;
 } RgDrawFrameLightmapParams;
 
 typedef enum RgDrawFrameRayCullFlagBits

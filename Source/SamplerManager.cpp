@@ -166,7 +166,11 @@ namespace
         {
             case RG_SAMPLER_FILTER_NEAREST: i |= FILTER_NEAREST; break;
             case RG_SAMPLER_FILTER_LINEAR: i |= FILTER_LINEAR; break;
-            default: assert( 0 ); break;
+            case RG_SAMPLER_FILTER_AUTO:
+            default:
+                assert( 0 );
+                i |= FILTER_LINEAR;
+                break;
         }
 
         assert( i != 0 );

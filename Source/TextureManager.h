@@ -65,7 +65,7 @@ public:
     void TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex );
 
     void SubmitDescriptors( uint32_t                         frameIndex,
-                            const RgDrawFrameTexturesParams* pTexturesParams,
+                            const RgDrawFrameTexturesParams& texturesParams,
                             bool                             forceUpdateAllDescriptors =
                                 false /* true, if mip lod bias was changed, for example */ );
 

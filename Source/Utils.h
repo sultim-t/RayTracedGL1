@@ -183,6 +183,17 @@ namespace Utils
     RgTransform MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale );
     RgTransform MakeTransform( const RgFloat3D& position, const RgFloat3D& forward );
 
+    constexpr double M_PI = 3.1415926535897932384626433;
+
+    constexpr float DegToRad( float degrees )
+    {
+        return degrees * float( M_PI ) / 180.0f;
+    }
+    constexpr float RadToDeg( float radians )
+    {
+        return radians * 180.0f / float( M_PI );
+    }
+
     uint32_t        GetPreviousByModulo( uint32_t value, uint32_t count );
     inline uint32_t PrevFrame( uint32_t frameIndex )
     {
@@ -278,7 +289,7 @@ namespace Utils
         return std::clamp( v, 0.0f, 1.0f );
     }
 
-// clang-format off
+    // clang-format off
     // Column memory order!
     #define RG_TRANSFORM_TO_GLTF_MATRIX( t ) {                                      \
         ( t ).matrix[ 0 ][ 0 ], ( t ).matrix[ 1 ][ 0 ], ( t ).matrix[ 2 ][ 0 ], 0,  \
