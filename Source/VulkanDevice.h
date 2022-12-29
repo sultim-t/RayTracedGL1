@@ -86,6 +86,7 @@ public:
     void UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo );
     void UploadSpotlight( const RgSpotLightUploadInfo* pInfo );
     void UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo );
+    void UploadLight( const GenericLightPtr &light );
 
     void ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo );
     void ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo );

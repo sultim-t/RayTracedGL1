@@ -24,6 +24,7 @@
 #include <cstring>
 #include <functional>
 #include <memory>
+#include <variant>
 
 #include <vulkan/vulkan.h>
 
@@ -88,5 +89,17 @@ inline void VK_CHECKERROR( const VkResult r )
 void AddDebugName( VkDevice device, uint64_t obj, VkObjectType type, const char* pName );
 void BeginCmdLabel( VkCommandBuffer cmd, const char* pName, const float pColor[ 4 ] = nullptr );
 void EndCmdLabel( VkCommandBuffer cmd );
+
+
+
+using GenericLight = std::variant< RgDirectionalLightUploadInfo,
+                                   RgSphericalLightUploadInfo,
+                                   RgSpotLightUploadInfo,
+                                   RgPolygonalLightUploadInfo >;
+
+using GenericLightPtr = std::variant< const RgDirectionalLightUploadInfo*,
+                                      const RgSphericalLightUploadInfo*,
+                                      const RgSpotLightUploadInfo*,
+                                      const RgPolygonalLightUploadInfo* >;
 
 }

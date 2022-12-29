@@ -67,13 +67,15 @@ public:
     GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
+    void AddLight( const GenericLightPtr& light );
 
     void ExportToFiles( const std::filesystem::path& gltfPath,
                         const TextureManager&        textureManager );
 
 private:
-    MeshesToTheirPrimitives scene;
-    std::set< std::string > sceneMaterials;
+    MeshesToTheirPrimitives     scene;
+    std::set< std::string >     sceneMaterials;
+    std::vector< GenericLight > sceneLights;
 
     RgTransform worldTransform;
 };

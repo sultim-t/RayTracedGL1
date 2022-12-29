@@ -874,6 +874,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
         }
     }
 
+    bool foundLight = false;
     for( cgltf_node* srcLight : std::span( mainNode->children, mainNode->children_count ) )
     {
         if( !srcLight || !srcLight->light )
@@ -923,6 +924,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .angularDiameterDegrees = 0.5f,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
+                foundLight = true;
                 break;
             }
             case cgltf_light_type_point: {
@@ -934,6 +936,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .radius       = 0.1f,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
+                foundLight = true;
                 break;
             }
             case cgltf_light_type_spot: {
@@ -948,10 +951,18 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .angleInner   = srcLight->light->spot_inner_cone_angle,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
+                foundLight = true;
                 break;
             }
             default: break;
         }
+    }
+
+    if( !foundLight )
+    {
+        debug::Warning( "Haven't found any lights in {}: "
+                        "Original exportable lights will be used",
+                        gltfPath );
     }
 }
 

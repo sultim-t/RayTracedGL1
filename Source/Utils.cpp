@@ -164,7 +164,7 @@ void Utils::WaitAndResetFence( VkDevice device, VkFence fence )
     VK_CHECKERROR( r );
 }
 
-void RTGL1::Utils::WaitAndResetFences( VkDevice device, VkFence fence_A, VkFence fence_B )
+void Utils::WaitAndResetFences( VkDevice device, VkFence fence_A, VkFence fence_B )
 {
     VkResult r;
     VkFence  fences[ 2 ];
@@ -256,7 +256,7 @@ bool Utils::IsAlmostZero( const RgFloat3D& v )
     return IsAlmostZero( v.data );
 }
 
-bool RTGL1::Utils::IsAlmostZero( const RgMatrix3D& m )
+bool Utils::IsAlmostZero( const RgMatrix3D& m )
 {
     float s = 0;
 
@@ -271,12 +271,12 @@ bool RTGL1::Utils::IsAlmostZero( const RgMatrix3D& m )
     return s < ALMOST_ZERO_THRESHOLD;
 }
 
-float RTGL1::Utils::Dot( const float a[ 3 ], const float b[ 3 ] )
+float Utils::Dot( const float a[ 3 ], const float b[ 3 ] )
 {
     return a[ 0 ] * b[ 0 ] + a[ 1 ] * b[ 1 ] + a[ 2 ] * b[ 2 ];
 }
 
-float RTGL1::Utils::Length( const float v[ 3 ] )
+float Utils::Length( const float v[ 3 ] )
 {
     return sqrtf( Dot( v, v ) );
 }
@@ -297,7 +297,7 @@ bool Utils::TryNormalize( float inout[ 3 ] )
 }
 
 
-void RTGL1::Utils::Normalize( float inout[ 3 ] )
+void Utils::Normalize( float inout[ 3 ] )
 {
     bool s = TryNormalize( inout );
     assert( s );
@@ -336,14 +336,14 @@ void Utils::Nullify( float inout[ 3 ] )
 }
 
 
-void RTGL1::Utils::Cross( const float a[ 3 ], const float b[ 3 ], float r[ 3 ] )
+void Utils::Cross( const float a[ 3 ], const float b[ 3 ], float r[ 3 ] )
 {
     r[ 0 ] = a[ 1 ] * b[ 2 ] - a[ 2 ] * b[ 1 ];
     r[ 1 ] = a[ 2 ] * b[ 0 ] - a[ 0 ] * b[ 2 ];
     r[ 2 ] = a[ 0 ] * b[ 1 ] - a[ 1 ] * b[ 0 ];
 }
 
-RgFloat3D RTGL1::Utils::GetUnnormalizedNormal( const RgFloat3D positions[ 3 ] )
+RgFloat3D Utils::GetUnnormalizedNormal( const RgFloat3D positions[ 3 ] )
 {
     const float* a = positions[ 0 ].data;
     const float* b = positions[ 1 ].data;
@@ -358,9 +358,7 @@ RgFloat3D RTGL1::Utils::GetUnnormalizedNormal( const RgFloat3D positions[ 3 ] )
     return n;
 }
 
-bool RTGL1::Utils::GetNormalAndArea( const RgFloat3D positions[ 3 ],
-                                     RgFloat3D&      normal,
-                                     float&          area )
+bool Utils::GetNormalAndArea( const RgFloat3D positions[ 3 ], RgFloat3D& normal, float& area )
 {
     normal = GetUnnormalizedNormal( positions );
 
@@ -374,7 +372,7 @@ bool RTGL1::Utils::GetNormalAndArea( const RgFloat3D positions[ 3 ],
 }
 
 
-void RTGL1::Utils::SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src )
+void Utils::SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src )
 {
     const bool toColumnMajor = true;
 
@@ -429,18 +427,41 @@ RgTransform Utils::MakeTransform( const RgFloat3D& up, const RgFloat3D& forward,
     return tr;
 }
 
-uint32_t RTGL1::Utils::GetPreviousByModulo( uint32_t value, uint32_t count )
+RgTransform Utils::MakeTransform( const RgFloat3D& position, const RgFloat3D& forward )
+{
+    RgFloat3D up =
+        std::abs( forward.data[ 1 ] ) > 0.99f ? RgFloat3D{ 1, 0, 0 } : RgFloat3D{ 0, 1, 0 };
+
+    RgFloat3D right{};
+    Cross( up.data, forward.data, right.data );
+
+    Cross( forward.data, right.data, up.data );
+
+    float rot[ 3 ][ 3 ] = {
+        { right.data[ 0 ], up.data[ 0 ], forward.data[ 0 ] },
+        { right.data[ 1 ], up.data[ 1 ], forward.data[ 1 ] },
+        { right.data[ 2 ], up.data[ 2 ], forward.data[ 2 ] },
+    };
+
+    return { {
+        { rot[ 0 ][ 0 ], rot[ 0 ][ 1 ], rot[ 0 ][ 2 ], position.data[ 0 ] },
+        { rot[ 1 ][ 0 ], rot[ 1 ][ 1 ], rot[ 1 ][ 2 ], position.data[ 1 ] },
+        { rot[ 2 ][ 0 ], rot[ 2 ][ 1 ], rot[ 2 ][ 2 ], position.data[ 2 ] },
+    } };
+}
+
+uint32_t Utils::GetPreviousByModulo( uint32_t value, uint32_t count )
 {
     assert( count > 0 );
     return ( value + ( count - 1 ) ) % count;
 }
 
-uint32_t RTGL1::Utils::GetWorkGroupCount( float size, uint32_t groupSize )
+uint32_t Utils::GetWorkGroupCount( float size, uint32_t groupSize )
 {
     return GetWorkGroupCount( ( uint32_t )std::ceil( size ), groupSize );
 }
 
-uint32_t RTGL1::Utils::GetWorkGroupCount( uint32_t size, uint32_t groupSize )
+uint32_t Utils::GetWorkGroupCount( uint32_t size, uint32_t groupSize )
 {
     if( groupSize == 0 )
     {

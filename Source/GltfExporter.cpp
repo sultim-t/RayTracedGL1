@@ -552,7 +552,7 @@ struct GltfRoot
 
 struct GltfStorage
 {
-    explicit GltfStorage( const RTGL1::MeshesToTheirPrimitives& scene )
+    explicit GltfStorage( const RTGL1::MeshesToTheirPrimitives& scene, size_t lightCount )
     {
         struct Ranges
         {
@@ -581,7 +581,8 @@ struct GltfStorage
                 .thisNode    = append_n( allNodes, 1 ),
             } );
         }
-        BeginCount worldbc = append_n( allNodes, 1 );
+        BeginCount worldbc  = append_n( allNodes, 1 );
+        BeginCount lightsbc = append_n( allNodes, lightCount );
 
         // resolve pointers
         for( const auto& [ meshNode, prims ] : scene )
@@ -606,7 +607,8 @@ struct GltfStorage
             worldRoots.push_back( root.thisNode );
             roots.push_back( std::move( root ) );
         }
-        world = worldbc.ToPointer( allNodes );
+        world      = worldbc.ToPointer( allNodes );
+        lightNodes = lightsbc.ToSpan( allNodes );
 
         assert( ranges.empty() );
         assert( worldRoots.size() == roots.size() );
@@ -624,6 +626,8 @@ struct GltfStorage
 
     cgltf_node*                world{ nullptr };
     std::vector< cgltf_node* > worldRoots;
+
+    std::span< cgltf_node > lightNodes;
 };
 
 
@@ -773,10 +777,10 @@ cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
     if( metallicRoughness.metallic_roughness_texture.texture &&
         metallicRoughness.metallic_roughness_texture.texture->image )
     {
-        metallicRoughness.metallic_factor = 0.0f;
+        metallicRoughness.metallic_factor  = 0.0f;
         metallicRoughness.roughness_factor = 1.0f;
     }
-    
+
     return cgltf_material{
         .name                        = nullptr,
         .has_pbr_metallic_roughness  = true,
@@ -810,6 +814,183 @@ cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
         .extras                      = { .data = nullptr },
     };
 }
+
+RgFloat3D operator-( const RgFloat3D& c )
+{
+    return { -c.data[ 0 ], -c.data[ 1 ], -c.data[ 2 ] };
+}
+
+struct GltfLights
+{
+private:
+    static float Luminance( const float ( &c )[ 3 ] )
+    {
+        return 0.2125f * c[ 0 ] + 0.7154f * c[ 1 ] + 0.0721f * c[ 2 ];
+    }
+
+    static RgFloat3D SeparateColorAndIntensity( const RgFloat3D& src, float& outIntensity )
+    {
+        outIntensity = Luminance( src.data );
+
+        float inv = outIntensity > 0.001f ? 1.0f / outIntensity : 0.0f;
+
+        return { {
+            RTGL1::Utils::Saturate( src.data[ 0 ] * inv ),
+            RTGL1::Utils::Saturate( src.data[ 1 ] * inv ),
+            RTGL1::Utils::Saturate( src.data[ 2 ] * inv ),
+        } };
+    }
+
+    static cgltf_light MakeLight( const RgDirectionalLightUploadInfo& sun )
+    {
+        float     intensity;
+        RgFloat3D color = SeparateColorAndIntensity( sun.color, intensity );
+
+        return cgltf_light{
+            .name      = nullptr,
+            .color     = { RG_ACCESS_VEC3( color.data ) },
+            .intensity = intensity,
+            .type      = cgltf_light_type_directional,
+        };
+    }
+
+    static cgltf_light MakeLight( const RgSphericalLightUploadInfo& sph )
+    {
+        float     intensity;
+        RgFloat3D color = SeparateColorAndIntensity( sph.color, intensity );
+
+        return cgltf_light{
+            .name      = nullptr,
+            .color     = { RG_ACCESS_VEC3( color.data ) },
+            .intensity = intensity,
+            .type      = cgltf_light_type_point,
+        };
+    }
+
+    static cgltf_light MakeLight( const RgSpotLightUploadInfo& spot )
+    {
+        float     intensity;
+        RgFloat3D color = SeparateColorAndIntensity( spot.color, intensity );
+
+        return cgltf_light{
+            .name                  = nullptr,
+            .color                 = { RG_ACCESS_VEC3( color.data ) },
+            .intensity             = intensity,
+            .type                  = cgltf_light_type_spot,
+            .spot_inner_cone_angle = spot.angleInner,
+            .spot_outer_cone_angle = spot.angleOuter,
+        };
+    }
+
+#define POLYLIGHT_AS_SPHERE 1
+    static cgltf_light MakeLight( const RgPolygonalLightUploadInfo& poly )
+    {
+#if POLYLIGHT_AS_SPHERE
+        RTGL1::debug::Warning( "GLTF doesn't support poly lights, exporting as sphere" );
+
+        float     intensity;
+        RgFloat3D color = SeparateColorAndIntensity( poly.color, intensity );
+
+        float     area;
+        RgFloat3D normal;
+        if( !RTGL1::Utils::GetNormalAndArea( poly.positions, normal, area ) )
+        {
+            area = 1.0f;
+        }
+
+        return cgltf_light{
+            .name      = nullptr,
+            .color     = { RG_ACCESS_VEC3( color.data ) },
+            .intensity = intensity * std::sqrt( area ),
+            .type      = cgltf_light_type_directional,
+        };
+#endif
+    }
+
+
+    static RgTransform MakeTransform( const RgDirectionalLightUploadInfo& sun )
+    {
+        return RTGL1::Utils::MakeTransform( { 0, 0, 0 }, -sun.direction );
+    }
+
+    static RgTransform MakeTransform( const RgSphericalLightUploadInfo& sph )
+    {
+        return RTGL1::Utils::MakeTransform( sph.position, { 0, 0, 1 } );
+    }
+
+    static RgTransform MakeTransform( const RgSpotLightUploadInfo& spot )
+    {
+        return RTGL1::Utils::MakeTransform( { 0, 0, 0 }, -spot.direction );
+    }
+
+    static RgTransform MakeTransform( const RgPolygonalLightUploadInfo& poly )
+    {
+#if POLYLIGHT_AS_SPHERE
+        RgFloat3D center;
+        for( const auto& v : poly.positions )
+        {
+            center.data[ 0 ] += v.data[ 0 ];
+            center.data[ 1 ] += v.data[ 1 ];
+            center.data[ 2 ] += v.data[ 2 ];
+        }
+        center.data[ 0 ] /= 3.0f;
+        center.data[ 1 ] /= 3.0f;
+        center.data[ 2 ] /= 3.0f;
+
+        float     area;
+        RgFloat3D normal;
+        if( RTGL1::Utils::GetNormalAndArea( poly.positions, normal, area ) )
+        {
+            center.data[ 0 ] += 0.1f * normal.data[ 0 ];
+            center.data[ 1 ] += 0.1f * normal.data[ 1 ];
+            center.data[ 2 ] += 0.1f * normal.data[ 2 ];
+        }
+
+        return RTGL1::Utils::MakeTransform( center, { 0, 0, 1 } );
+#else
+        return RG_TRANSFORM_IDENTITY;
+#endif
+    }
+
+public:
+    explicit GltfLights( const std::vector< RTGL1::GenericLight >& sceneLights,
+                         std::span< cgltf_node >                   dstLightNodes,
+                         cgltf_node*                               mainNode )
+    {
+        assert( dstLightNodes.size() == sceneLights.size() );
+
+        // lock pointers
+        storage.resize( sceneLights.size() );
+
+        for( size_t i = 0; i < sceneLights.size(); i++ )
+        {
+            storage[ i ] = std::visit( []( auto&& specific ) { return MakeLight( specific ); },
+                                       sceneLights[ i ] );
+
+            RgTransform lightTransform = std::visit(
+                []( auto&& specific ) { return MakeTransform( specific ); }, sceneLights[ i ] );
+
+            dstLightNodes[ i ] = cgltf_node{
+                .name            = nullptr,
+                .parent          = mainNode,
+                .children        = nullptr,
+                .children_count  = 0,
+                .light           = &storage[ i ],
+                .has_translation = false,
+                .has_rotation    = false,
+                .has_scale       = false,
+                .has_matrix      = true,
+                .matrix          = RG_TRANSFORM_TO_GLTF_MATRIX( lightTransform ),
+                .extras          = {},
+            };
+        }
+    }
+
+    auto Lights() { return std::span( storage ); }
+
+private:
+    std::vector< cgltf_light > storage;
+};
 
 
 bool PrepareFolder( const std::filesystem::path& gltfPath )
@@ -948,6 +1129,23 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
     }
 }
 
+void RTGL1::GltfExporter::AddLight( const GenericLightPtr& light )
+{
+    constexpr auto unbox = []( const GenericLightPtr& ptr ) {
+        return std::visit( []( auto&& specific ) -> GenericLight { return *specific; }, ptr );
+    };
+
+    bool isExportable =
+        std::visit( []( auto&& specific ) { return specific->isExportable; }, light );
+
+    if( !isExportable )
+    {
+        return;
+    }
+
+    sceneLights.push_back( unbox( light ) );
+}
+
 void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
                                          const TextureManager&        textureManager )
 {
@@ -977,9 +1175,10 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
 
     // lock pointers
     GltfBin      fbin( gltfPath );
-    GltfStorage  storage( scene );
+    GltfStorage  storage( scene, sceneLights.size() );
     GltfTextures textureStorage(
         sceneMaterials, GetOriginalTexturesFolder( gltfPath ), textureManager );
+    GltfLights lightStorage( sceneLights, storage.lightNodes, storage.world );
 
 
     // for each RgMesh
@@ -1094,6 +1293,8 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
         .textures_count     = std::size( textureStorage.Textures() ),
         .samplers           = std::data( textureStorage.Samplers() ),
         .samplers_count     = std::size( textureStorage.Samplers() ),
+        .lights             = std::data( lightStorage.Lights() ),
+        .lights_count       = std::size( lightStorage.Lights() ),
         .nodes              = std::data( storage.allNodes ),
         .nodes_count        = std::size( storage.allNodes ),
         .scenes             = &gltfScene,

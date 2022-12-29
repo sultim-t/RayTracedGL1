@@ -181,6 +181,7 @@ namespace Utils
     // The remaining values are initialized with identity matrix.
     void        SetMatrix3ToGLSLMat4( float dst[ 16 ], const RgMatrix3D& src );
     RgTransform MakeTransform( const RgFloat3D& up, const RgFloat3D& forward, float scale );
+    RgTransform MakeTransform( const RgFloat3D& position, const RgFloat3D& forward );
 
     uint32_t        GetPreviousByModulo( uint32_t value, uint32_t count );
     inline uint32_t PrevFrame( uint32_t frameIndex )

@@ -41,18 +41,6 @@ enum class UploadResult
     ExportableStatic,
 };
 
-
-using GenericLight = std::variant< RgDirectionalLightUploadInfo,
-                                   RgSphericalLightUploadInfo,
-                                   RgSpotLightUploadInfo,
-                                   RgPolygonalLightUploadInfo >;
-
-using GenericLightPtr = std::variant< const RgDirectionalLightUploadInfo*,
-                                      const RgSphericalLightUploadInfo*,
-                                      const RgSpotLightUploadInfo*,
-                                      const RgPolygonalLightUploadInfo* >;
-
-
 class Scene
 {
 public:

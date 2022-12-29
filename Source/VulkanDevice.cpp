@@ -1448,7 +1448,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
             } );
         }
 
-        if( pMesh->isExportable && r != UploadResult::Fail )
+        if( r == UploadResult::ExportableDynamic || r == UploadResult::ExportableStatic )
         {
             if( auto e = sceneImportExport->TryGetExporter() )
             {
@@ -1492,6 +1492,20 @@ void RTGL1::VulkanDevice::UploadDecal( const RgDecalUploadInfo* pInfo )
     decalManager->Upload( currentFrameState.GetFrameIndex(), *pInfo, textureManager );
 }
 
+void RTGL1::VulkanDevice::UploadLight( const GenericLightPtr& light )
+{
+    UploadResult r =
+        scene->UploadLight( currentFrameState.GetFrameIndex(), light, lightManager.get(), false );
+
+    if( r == UploadResult::ExportableDynamic || r == UploadResult::ExportableStatic )
+    {
+        if( auto e = sceneImportExport->TryGetExporter() )
+        {
+            e->AddLight( light );
+        }
+    }
+}
+
 void RTGL1::VulkanDevice::UploadDirectionalLight( const RgDirectionalLightUploadInfo* pInfo )
 {
     if( pInfo == nullptr )
@@ -1499,7 +1513,7 @@ void RTGL1::VulkanDevice::UploadDirectionalLight( const RgDirectionalLightUpload
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), pInfo, lightManager.get(), false );
+    UploadLight( pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo )
@@ -1509,7 +1523,7 @@ void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), pInfo, lightManager.get(), false );
+    UploadLight( pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
@@ -1519,7 +1533,7 @@ void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), pInfo, lightManager.get(), false );
+    UploadLight( pInfo );
 }
 
 void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo* pInfo )
@@ -1529,7 +1543,7 @@ void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    scene->UploadLight( currentFrameState.GetFrameIndex(), pInfo, lightManager.get(), false );
+    UploadLight( pInfo );
 }
 
 void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* pInfo )
