@@ -42,11 +42,15 @@ enum class UploadResult
 };
 
 
-using GenericLight =
-    std::variant< RgDirectionalLightUploadInfo, RgSphericalLightUploadInfo, RgSpotLightUploadInfo >;
+using GenericLight = std::variant< RgDirectionalLightUploadInfo,
+                                   RgSphericalLightUploadInfo,
+                                   RgSpotLightUploadInfo,
+                                   RgPolygonalLightUploadInfo >;
+
 using GenericLightPtr = std::variant< const RgDirectionalLightUploadInfo*,
                                       const RgSphericalLightUploadInfo*,
-                                      const RgSpotLightUploadInfo* >;
+                                      const RgSpotLightUploadInfo*,
+                                      const RgPolygonalLightUploadInfo* >;
 
 
 class Scene
@@ -73,14 +77,18 @@ public:
                          bool                                    allowGeometryWithSkyFlag,
                          bool                                    disableRTGeometry );
 
-    UploadResult Upload( uint32_t                   frameIndex,
-                         const RgMeshInfo&          mesh,
-                         const RgMeshPrimitiveInfo& primitive,
-                         const TextureManager&      textureManager,
-                         bool                       isStatic );
+    UploadResult UploadPrimitive( uint32_t                   frameIndex,
+                                  const RgMeshInfo&          mesh,
+                                  const RgMeshPrimitiveInfo& primitive,
+                                  const TextureManager&      textureManager,
+                                  bool                       isStatic );
 
-    void AddStaticLight( const GenericLight& newLight );
-    void UploadStaticLights( uint32_t frameIndex, LightManager& lightManager ) const;
+    UploadResult UploadLight( uint32_t               frameIndex,
+                              const GenericLightPtr& light,
+                              LightManager*          lightManager,
+                              bool                   isStatic );
+
+    void SubmitStaticLights( uint32_t frameIndex, LightManager& lightManager ) const;
 
     void NewScene( VkCommandBuffer           cmd,
                    uint32_t                  frameIndex,
@@ -91,14 +99,16 @@ public:
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
+private:
     bool StaticMeshExists( const RgMeshInfo& mesh ) const;
     bool StaticLightExists( const GenericLightPtr& light ) const;
 
-private:
-    bool InsertInfo( uint64_t                   uniqueID,
-                     bool                       isStatic,
-                     const RgMeshInfo&          mesh,
-                     const RgMeshPrimitiveInfo& primitive );
+    bool InsertPrimitiveInfo( uint64_t                   uniqueID,
+                              bool                       isStatic,
+                              const RgMeshInfo&          mesh,
+                              const RgMeshPrimitiveInfo& primitive );
+
+    bool InsertLightInfo( bool isStatic, const GenericLightPtr& light );
 
 private:
     std::shared_ptr< ASManager >           asManager;

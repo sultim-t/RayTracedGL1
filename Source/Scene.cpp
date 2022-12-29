@@ -90,11 +90,11 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
     asManager->BuildTLAS( cmd, frameIndex, prepare );
 }
 
-RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
-                                          const RgMeshInfo&          mesh,
-                                          const RgMeshPrimitiveInfo& primitive,
-                                          const TextureManager&      textureManager,
-                                          bool                       isStatic )
+RTGL1::UploadResult RTGL1::Scene::UploadPrimitive( uint32_t                   frameIndex,
+                                                   const RgMeshInfo&          mesh,
+                                                   const RgMeshPrimitiveInfo& primitive,
+                                                   const TextureManager&      textureManager,
+                                                   bool                       isStatic )
 {
     uint64_t uniqueID = UniqueID::MakeForPrimitive( mesh, primitive );
 
@@ -112,7 +112,7 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
         }
     }
 
-    if( !InsertInfo( uniqueID, isStatic, mesh, primitive ) )
+    if( !InsertPrimitiveInfo( uniqueID, isStatic, mesh, primitive ) )
     {
         return UploadResult::Fail;
     }
@@ -128,27 +128,46 @@ RTGL1::UploadResult RTGL1::Scene::Upload( uint32_t                   frameIndex,
                : ( mesh.isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic );
 }
 
-void RTGL1::Scene::AddStaticLight( const GenericLight& newLight )
+RTGL1::UploadResult RTGL1::Scene::UploadLight( uint32_t               frameIndex,
+                                               const GenericLightPtr& light,
+                                               LightManager*          lightManager,
+                                               bool                   isStatic )
 {
-    constexpr auto getId = []( const GenericLight& l ) -> uint64_t {
-        return std::visit( []( auto&& specific ) { return specific.uniqueID; }, l );
-    };
+    bool isExportable =
+        std::visit( []( auto&& specific ) { return specific->isExportable; }, light );
 
-    auto iter = std::ranges::find_if( staticLights, [ &newLight ]( const GenericLight& other ) {
-        return getId( other ) == getId( newLight );
-    } );
-
-    if( iter != staticLights.end() )
+    if( !isStatic )
     {
-        debug::Warning( "Trying add a static light with a uniqueID {} that other light already has",
-                        getId( newLight ) );
-        return;
+        if( isExportable )
+        {
+            if( StaticLightExists( light ) )
+            {
+                return UploadResult::ExportableStatic;
+            }
+        }
     }
 
-    staticLights.push_back( newLight );
+    if( !InsertLightInfo( isStatic, light ) )
+    {
+        return UploadResult::Fail;
+    }
+
+    std::visit(
+        [ & ]( auto&& specific ) {
+            // adding static to light manager is done separately in SubmitStaticLights
+            if( !isStatic )
+            {
+                assert( lightManager );
+                lightManager->Add( frameIndex, *specific );
+            }
+        },
+        light );
+
+    return isStatic ? ( isExportable ? UploadResult::ExportableStatic : UploadResult::Static )
+                    : ( isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic );
 }
 
-void RTGL1::Scene::UploadStaticLights( uint32_t frameIndex, LightManager& lightManager ) const
+void RTGL1::Scene::SubmitStaticLights( uint32_t frameIndex, LightManager& lightManager ) const
 {
     for( const GenericLight& l : staticLights )
     {
@@ -158,10 +177,10 @@ void RTGL1::Scene::UploadStaticLights( uint32_t frameIndex, LightManager& lightM
     }
 }
 
-bool RTGL1::Scene::InsertInfo( uint64_t                   uniqueID,
-                               bool                       isStatic,
-                               const RgMeshInfo&          mesh,
-                               const RgMeshPrimitiveInfo& primitive )
+bool RTGL1::Scene::InsertPrimitiveInfo( uint64_t                   uniqueID,
+                                        bool                       isStatic,
+                                        const RgMeshInfo&          mesh,
+                                        const RgMeshPrimitiveInfo& primitive )
 {
     if( isStatic )
     {
@@ -199,6 +218,43 @@ bool RTGL1::Scene::InsertInfo( uint64_t                   uniqueID,
                   mesh.uniqueObjectID,
                   primitive.primitiveIndexInMesh );
     return false;
+}
+
+bool RTGL1::Scene::InsertLightInfo( bool isStatic, const GenericLightPtr& light )
+{
+    constexpr auto getIdFromRef = []( const GenericLight& l ) -> uint64_t {
+        return std::visit( []( auto&& specific ) { return specific.uniqueID; }, l );
+    };
+    constexpr auto getId = []( const GenericLightPtr& l ) -> uint64_t {
+        return std::visit( []( auto&& specific ) { return specific->uniqueID; }, l );
+    };
+
+    if( isStatic )
+    {
+        // just check that there's no id collision
+        auto foundSameId =
+            std::ranges::find_if( staticLights, [ &light ]( const GenericLight& other ) {
+                return getIdFromRef( other ) == getId( light );
+            } );
+
+        if( foundSameId != staticLights.end() )
+        {
+            debug::Error(
+                "Trying add a static light with a uniqueID {} that other light already has",
+                getId( light ) );
+            return false;
+        }
+
+        // add to the list
+        std::visit(
+            [ this ]( auto&& specific ) { return this->staticLights.push_back( *specific ); },
+            light );
+        return true;
+    }
+    else
+    {
+        return true;
+    }
 }
 
 void RTGL1::Scene::NewScene( VkCommandBuffer           cmd,

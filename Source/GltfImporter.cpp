@@ -864,7 +864,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
             };
             textureMeta.Modify( dstPrim, editorInfo, true );
 
-            auto r = scene.Upload( frameIndex, dstMesh, dstPrim, textureManager, true );
+            auto r = scene.UploadPrimitive( frameIndex, dstMesh, dstPrim, textureManager, true );
 
 
             if( !( r == UploadResult::Static || r == UploadResult::ExportableStatic ) )
@@ -922,7 +922,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .direction              = direction,
                     .angularDiameterDegrees = 0.5f,
                 };
-                scene.AddStaticLight( info );
+                scene.UploadLight( frameIndex, &info, nullptr, true );
                 break;
             }
             case cgltf_light_type_point: {
@@ -933,7 +933,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .position     = position,
                     .radius       = 0.1f,
                 };
-                scene.AddStaticLight( info );
+                scene.UploadLight( frameIndex, &info, nullptr, true );
                 break;
             }
             case cgltf_light_type_spot: {
@@ -947,7 +947,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .angleOuter   = srcLight->light->spot_outer_cone_angle,
                     .angleInner   = srcLight->light->spot_inner_cone_angle,
                 };
-                scene.AddStaticLight( info );
+                scene.UploadLight( frameIndex, &info, nullptr, true );
                 break;
             }
             default: break;
