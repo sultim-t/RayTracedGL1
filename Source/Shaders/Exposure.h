@@ -41,7 +41,7 @@ float getAutoEV100()
 float getCurrentEV100()
 {
     bool manual = false;
-    return manual ? getManualEV100( 1.0 / 16.0, 1.0 / 125.0, 100 ) : getAutoEV100();
+    return manual ? getManualEV100( 1.0 / 8.0, 1.0 / 500.0, 100 ) : getAutoEV100();
 }
 
 float ev100ToLuminousExposure( float ev100 )

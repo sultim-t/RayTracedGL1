@@ -201,8 +201,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         }
         else
         {
-            gu->minLogLuminance     = -4;
-            gu->maxLogLuminance     = 8;
+            gu->minLogLuminance     = -3;
+            gu->maxLogLuminance     = 10;
             gu->luminanceWhitePoint = 10.0f;
         }
     }
@@ -321,9 +321,9 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
     else
     {
-        gu->bloomThreshold          = 15.0f;
+        gu->bloomThreshold          = 4.0f;
         gu->bloomIntensity          = 1.0f;
-        gu->bloomEmissionMultiplier = 64.0f;
+        gu->bloomEmissionMultiplier = 16.0f;
     }
 
     static_assert(
