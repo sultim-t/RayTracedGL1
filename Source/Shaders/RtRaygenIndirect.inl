@@ -143,7 +143,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
                                               oneOverPdf_Second);
     }
     
-#if SHIPPING_HACK
+#if 0
     diffuse = clamp( diffuse, vec3( 0 ), vec3( 50 ) );
 #endif
 
