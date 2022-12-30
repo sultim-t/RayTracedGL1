@@ -383,7 +383,7 @@ void RTGL1::SceneImportExport::OnFileChanged( FileType type, const std::filesyst
 {
     if( type == FileType::GLTF && filepath == MakeGltfPath( GetImportMapName() ) )
     {
-        debug::Verbose( "Hot-reloading GLTF..." );
+        debug::Info( "Hot-reloading GLTF..." );
         RequestReimport();
     }
 }

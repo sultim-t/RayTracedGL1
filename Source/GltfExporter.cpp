@@ -994,6 +994,60 @@ private:
 };
 
 
+auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
+                             const RgMeshPrimitiveInfo&       prim,
+                             const RgEditorAttachedLightInfo& lightInfo )
+{
+    constexpr auto toFloat3 = []( const float( &ptr )[ 3 ] ) {
+        return RgFloat3D{ RG_ACCESS_VEC3( ptr ) };
+    };
+    using RTGL1::Utils::ApplyTransform;
+    constexpr uint32_t maxTris = 32;
+
+    assert( prim.indexCount % 3 == 0 );
+    if( prim.indexCount / 3 > maxTris )
+    {
+        RTGL1::debug::Warning( "Too many triangles to export as attached light: {}, but max is {}. "
+                               "Ignoring others. "
+                               "On a primitive (ID {}-{}, material name: {}).",
+                               prim.indexCount / 3,
+                               maxTris,
+                               mesh.uniqueObjectID,
+                               prim.primitiveIndexInMesh,
+                               RTGL1::Utils::SafeCstr( prim.pTextureName ) );
+    }
+
+    std::vector< RTGL1::GenericLight > allLights;
+
+    for( uint32_t tri = 0; tri < prim.indexCount / 3 && tri < maxTris; tri++ )
+    {
+        RgFloat3D triLocalPositions[] = {
+            toFloat3( prim.pVertices[ prim.pIndices[ tri + 0 ] ].position ),
+            toFloat3( prim.pVertices[ prim.pIndices[ tri + 1 ] ].position ),
+            toFloat3( prim.pVertices[ prim.pIndices[ tri + 2 ] ].position ),
+        };
+
+        RgFloat3D triGlobalPositions[ 3 ] = {
+            ApplyTransform( mesh.transform, triLocalPositions[ 0 ] ),
+            ApplyTransform( mesh.transform, triLocalPositions[ 1 ] ),
+            ApplyTransform( mesh.transform, triLocalPositions[ 2 ] ),
+        };
+
+        allLights.emplace_back( RgPolygonalLightUploadInfo{
+            .uniqueID     = 0, /* ignored */
+            .isExportable = true,
+            .color        = lightInfo.color,
+            .intensity    = lightInfo.intensity,
+            .positions    = { triGlobalPositions[ 0 ],
+                              triGlobalPositions[ 1 ],
+                              triGlobalPositions[ 2 ] },
+        } );
+    }
+
+    return allLights;
+}
+
+
 bool PrepareFolder( const std::filesystem::path& gltfPath )
 {
     using namespace RTGL1;
@@ -1113,35 +1167,10 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
 
     if( primitive.pEditorInfo && primitive.pEditorInfo->attachedLightExists )
     {
-        uint32_t maxtris = 4;
+        auto primLights =
+            MakeLightsForPrimitive( mesh, primitive, primitive.pEditorInfo->attachedLight );
 
-        for( uint32_t tri = 0; tri < primitive.indexCount / 3 && tri < maxtris; tri++ )
-        {
-            const float* triLocalPositions[] = {
-                primitive.pVertices[ primitive.pIndices[ tri + 0 ] ].position,
-                primitive.pVertices[ primitive.pIndices[ tri + 1 ] ].position,
-                primitive.pVertices[ primitive.pIndices[ tri + 2 ] ].position,
-            };
-
-            RgFloat3D triGlobalPositions[ 3 ] = {
-                Utils::ApplyTransform( mesh.transform,
-                                       { RG_ACCESS_VEC3( triLocalPositions[ 0 ] ) } ),
-                Utils::ApplyTransform( mesh.transform,
-                                       { RG_ACCESS_VEC3( triLocalPositions[ 1 ] ) } ),
-                Utils::ApplyTransform( mesh.transform,
-                                       { RG_ACCESS_VEC3( triLocalPositions[ 2 ] ) } ),
-            };
-
-            sceneLights.emplace_back( RgPolygonalLightUploadInfo{
-                .uniqueID     = 0, /* ignored */
-                .isExportable = true,
-                .color        = primitive.pEditorInfo->attachedLight.color,
-                .intensity    = primitive.pEditorInfo->attachedLight.intensity,
-                .positions    = { triGlobalPositions[ 0 ],
-                                  triGlobalPositions[ 1 ],
-                                  triGlobalPositions[ 2 ] },
-            } );
-        }
+        sceneLights.insert( sceneLights.end(), primLights.begin(), primLights.end() );
     }
 }
 

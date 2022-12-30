@@ -50,7 +50,7 @@ struct TextureMeta
     float emissiveMult     = 0.0f;
 
     float                    attachedLightIntensity = 0.0f;
-    std::array< uint8_t, 3 > attachedLightColor     = { { 0, 0, 0 } };
+    std::array< uint8_t, 3 > attachedLightColor     = { { 255, 255, 255 } };
 };
 
 struct TextureMetaArray

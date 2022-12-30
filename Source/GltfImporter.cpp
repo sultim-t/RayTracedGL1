@@ -34,7 +34,6 @@ namespace RTGL1
 {
 namespace
 {
-
     RgTransform ColumnsToRows( const float arr[ 16 ] )
     {
 #define MAT( i, j ) arr[ ( i )*4 + ( j ) ]
@@ -584,23 +583,8 @@ namespace
                                 Utils::SafeCstr( mat->name ) );
                 continue;
             }
-
-            {
-                auto filePath = gltfFolder / Utils::SafeCstr( txview.texture->image->uri );
-
-                if( !std::filesystem::is_regular_file( filePath ) )
-                {
-                    debug::Warning( "{}: Ignoring texture {} of material \"{}\": "
-                                    "Can't find a file specified in image's URI. Searching: {}",
-                                    gltfPath,
-                                    Utils::SafeCstr( txview.texture->name ),
-                                    Utils::SafeCstr( mat->name ),
-                                    filePath.string() );
-                    continue;
-                }
-
-                fullPaths[ index ] = std::move( filePath );
-            }
+            
+            fullPaths[ index ] = gltfFolder / Utils::SafeCstr( txview.texture->image->uri );
 
             if( txview.texture->sampler )
             {
@@ -639,16 +623,9 @@ namespace
             }
         }
 
-
-        auto luminance = []( const float( &c )[ 3 ] ) {
-            return 0.2125f * c[ 0 ] + 0.7154f * c[ 1 ] + 0.0721f * c[ 2 ];
-        };
-
-        auto color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor );
-
         return UploadTexturesResult{
-            .color           = color,
-            .emissiveMult    = luminance( mat->emissive_factor ),
+            .color = Utils::PackColorFromFloat( mat->pbr_metallic_roughness.base_color_factor ),
+            .emissiveMult    = Utils::Luminance( mat->emissive_factor ),
             .pTextureName    = std::move( materialName ),
             .metallicFactor  = mat->pbr_metallic_roughness.metallic_factor,
             .roughnessFactor = mat->pbr_metallic_roughness.roughness_factor,

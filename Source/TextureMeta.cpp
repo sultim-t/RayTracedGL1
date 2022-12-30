@@ -39,8 +39,8 @@ JSON_TYPE( RTGL1::TextureMeta )
     "metallicDefault", &T::metallicDefault,
     "roughnessDefault", &T::roughnessDefault,
     "emissiveMult", &T::emissiveMult,
-    "attachedLightIntensity", &T::attachedLightIntensity,
-    "attachedLightColor", &T::attachedLightColor
+    "lightIntensity", &T::attachedLightIntensity,
+    "lightColor", &T::attachedLightColor
 
 JSON_TYPE_END;
 // clang-format on
@@ -150,7 +150,7 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
                 }
             }
 
-            debug::Verbose( "Reloaded texture meta: {}", filepath.string() );
+            debug::Info( "Reloaded texture meta: {}", filepath.string() );
         }
     };
 

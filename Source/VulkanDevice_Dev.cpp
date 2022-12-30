@@ -133,9 +133,11 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                     reinterpret_cast< int* >( &modifiers.resolutionMode ),
                                     RG_RENDER_RESOLUTION_MODE_QUALITY );
                 ImGui::SameLine();
+                ImGui::BeginDisabled( modifiers.upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 );
                 ImGui::RadioButton( "Ultra Quality##Resolution",
                                     reinterpret_cast< int* >( &modifiers.resolutionMode ),
                                     RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY );
+                ImGui::EndDisabled();
                 ImGui::EndDisabled();
             }
             {

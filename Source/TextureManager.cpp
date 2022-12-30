@@ -304,7 +304,7 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
 
     if( !texturesToReload.empty() )
     {
-        debug::Verbose( "Hot-reloaded textures: {} out of {}", count, texturesToReload.size() );
+        debug::Info( "Hot-reloaded textures: {} out of {}", count, texturesToReload.size() );
     }
 
     texturesToReload.clear();
@@ -477,6 +477,24 @@ bool TextureManager::TryCreateImportedMaterial( VkCommandBuffer                 
         }
     }
 
+
+    // all paths are empty
+    if( std::ranges::all_of( fullPaths, []( auto&& p ) { return p.empty(); } ) )
+    {
+        return false;
+    }
+
+    if( std::ranges::none_of( fullPaths,
+                              []( auto&& p ) { return std::filesystem::is_regular_file( p ); } ) )
+    {
+        debug::Warning( "Fail to create imported material: none of the paths lead to a file:"
+                        "\n  {}\n  {}\n  {}\n  {}",
+                        fullPaths[ 0 ].string(),
+                        fullPaths[ 1 ].string(),
+                        fullPaths[ 2 ].string(),
+                        fullPaths[ 3 ].string() );
+        return false;
+    }
 
     // clang-format off
     TextureOverrides ovrd[] = {
