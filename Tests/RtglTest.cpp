@@ -62,6 +62,7 @@ float     ctl_Roughness       = 0.05f;
 float     ctl_Metallicity     = 1.0f;
 RgBool32  ctl_MoveBoxes       = 0;
 
+// clang-format off
 bool ProcessWindow()
 {
     if( glfwWindowShouldClose( g_GlfwHandle ) ) return false;
@@ -172,15 +173,16 @@ const RgPrimitiveVertex* GetQuadVertices()
     }
     return verts;
 }
+// clang-format on
 
 uint32_t MurmurHash32( std::string_view str, uint32_t seed = 0 )
 {
-    const uint32_t m   = 0x5bd1e995;
-    const uint32_t r   = 24;
+    const uint32_t m = 0x5bd1e995;
+    const uint32_t r = 24;
 
-    uint32_t       len = uint32_t( str.length() );
-    uint32_t       h   = seed ^ len;
-    auto*          data = reinterpret_cast< const uint8_t* >( str.data() );
+    uint32_t len  = uint32_t( str.length() );
+    uint32_t h    = seed ^ len;
+    auto*    data = reinterpret_cast< const uint8_t* >( str.data() );
 
     while( len >= 4 )
     {
@@ -231,21 +233,21 @@ struct WorldMeshPrimitive
 std::unordered_map< MeshName, std::pair< RgTransform, std::vector< WorldMeshPrimitive > > >
     g_allMeshes;
 
-auto GetTexturePath( const std::filesystem::path &gltfFolder, std::string_view uri )
+auto GetTexturePath( const std::filesystem::path& gltfFolder, std::string_view uri )
 {
     return ( gltfFolder / uri ).string();
 }
 
-void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
-                      const tinygltf::Model& model,
-                      const tinygltf::Node&  node )
+void ForEachGltfMesh( const std::filesystem::path& gltfFolder,
+                      const tinygltf::Model&       model,
+                      const tinygltf::Node&        node )
 {
     if( node.mesh >= 0 && node.mesh < static_cast< int >( model.meshes.size() ) )
     {
-        std::string_view meshName = model.meshes[ node.mesh ].name;
+        std::string_view meshName    = model.meshes[ node.mesh ].name;
         uint32_t         indexInMesh = 0;
 
-        auto &[ dstTransform, dstPrimList ] = g_allMeshes[ meshName.data() ];
+        auto& [ dstTransform, dstPrimList ] = g_allMeshes[ meshName.data() ];
 
         {
             auto translation = node.translation.size() == 3
@@ -277,7 +279,7 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
         for( const auto& primitive : model.meshes[ node.mesh ].primitives )
         {
             std::vector< RgPrimitiveVertex > rgverts;
-            std::vector< uint32_t > rgindices;
+            std::vector< uint32_t >          rgindices;
 
             for( const auto& [ attribName, accessId ] : primitive.attributes )
             {
@@ -326,7 +328,8 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
                 auto& indexView     = model.bufferViews[ indexAccessor.bufferView ];
                 auto& indexBuffer   = model.buffers[ indexView.buffer ];
 
-                const uint8_t* data = &indexBuffer.data[ indexAccessor.byteOffset + indexView.byteOffset ];
+                const uint8_t* data =
+                    &indexBuffer.data[ indexAccessor.byteOffset + indexView.byteOffset ];
                 int dataStride = indexAccessor.ByteStride( indexView );
 
                 rgindices.resize( indexAccessor.count );
@@ -362,7 +365,7 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
                     texName     = GetTexturePath( gltfFolder, image.uri );
                 }
             }
-            
+
             dstPrimList.push_back( WorldMeshPrimitive{
                 .vertices    = std::move( rgverts ),
                 .indices     = std::move( rgindices ),
@@ -379,10 +382,12 @@ void ForEachGltfMesh( const std::filesystem::path &gltfFolder,
     }
 }
 
-void FillGAllMeshes( std::string_view path,
-                     const std::function< void( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
+void FillGAllMeshes(
+    std::string_view                                                               path,
+    const std::function< void(
+        const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) >& materialFunc )
 {
-    const auto gltfFolder = std::filesystem::path( path ).remove_filename();
+    const auto gltfFolder  = std::filesystem::path( path ).remove_filename();
     const auto absGltfPath = std::filesystem::path( ASSET_DIRECTORY ) / path;
 
     tinygltf::Model    model;
@@ -431,19 +436,16 @@ void FillGAllMeshes( std::string_view path,
 
 
 
-
-
 void MainLoop( RgInstance instance, std::string_view gltfPath )
 {
-    RgResult  r       = RG_RESULT_SUCCESS;
-    uint64_t  frameId = 0;
+    RgResult r       = RG_RESULT_SUCCESS;
+    uint64_t frameId = 0;
 
 
     // some resources can be initialized out of frame
     {
         const uint32_t        white      = 0xFFFFFFFF;
-        RgOriginalCubemapInfo skyboxInfo = 
-        {
+        RgOriginalCubemapInfo skyboxInfo = {
             .pTextureName     = "_external_/cubemap/0",
             .pPixelsPositiveX = &white,
             .pPixelsNegativeX = &white,
@@ -451,27 +453,24 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             .pPixelsNegativeY = &white,
             .pPixelsPositiveZ = &white,
             .pPixelsNegativeZ = &white,
-            .sideSize = 1,
+            .sideSize         = 1,
         };
         r = rgProvideOriginalCubemapTexture( instance, &skyboxInfo );
         RG_CHECK( r );
 
-        
-        auto uploadMaterial = [ instance ]( const char* pTextureName,
-                                            const void* pPixels,
-                                            uint32_t    w,
-                                            uint32_t    h ) {
-            RgOriginalTextureInfo info =
-            {
-                .pTextureName = pTextureName,
-                .pPixels = pPixels,
-                .size = { w, h },
-            };
-            RgResult t = rgProvideOriginalTexture( instance, &info );
-            RG_CHECK( t );
-        };
 
-           /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
+        auto uploadMaterial =
+            [ instance ]( const char* pTextureName, const void* pPixels, uint32_t w, uint32_t h ) {
+                RgOriginalTextureInfo info = {
+                    .pTextureName = pTextureName,
+                    .pPixels      = pPixels,
+                    .size         = { w, h },
+                };
+                RgResult t = rgProvideOriginalTexture( instance, &info );
+                RG_CHECK( t );
+            };
+
+        /* g_allMeshes = */ FillGAllMeshes( gltfPath, uploadMaterial );
     }
 
 
@@ -534,7 +533,10 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .uniqueObjectID = 10,
                 .pMeshName      = "test",
                 .transform      = { {
-                    { 1, 0, 0, ctl_MoveBoxes ? 5.0f - 0.05f * float( ( frameId + 30 ) % 200 ) : 1.0f },
+                    { 1,
+                           0,
+                           0,
+                      ctl_MoveBoxes ? 5.0f - 0.05f * float( ( frameId + 30 ) % 200 ) : 1.0f },
                     { 0, 1, 0, 1.0f },
                     { 0, 0, 1, 0.0f },
                 } },
@@ -582,8 +584,8 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .pTextureName         = nullptr,
                 .textureFrame         = 0,
                 // alpha is not 1.0
-                .color                = rgUtilPackColorByte4D( 255, 128, 128, 128 ),
-                .pEditorInfo          = nullptr,
+                .color       = rgUtilPackColorByte4D( 255, 128, 128, 128 ),
+                .pEditorInfo = nullptr,
             };
 
             r = rgUploadMeshPrimitive( instance, &mesh, &prim );
@@ -611,9 +613,10 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             RgDirectionalLightUploadInfo dirLight = {
                 .uniqueID               = 0,
                 .isExportable           = true,
-                .color                  = { ctl_SunIntensity, ctl_SunIntensity, ctl_SunIntensity },
+                .color                  = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
+                .intensity              = ctl_SunIntensity,
                 .direction              = { -1, -8, -1 },
-                .angularDiameterDegrees = 0.5f
+                .angularDiameterDegrees = 0.5f,
             };
             r = rgUploadDirectionalLight( instance, &dirLight );
             RG_CHECK( r );
@@ -657,8 +660,8 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
             };
 
             RgPostEffectChromaticAberration chromaticAberration = {
-                .isActive              = true,
-                .intensity             = 0.3f,
+                .isActive  = true,
+                .intensity = 0.3f,
             };
 
             glm::mat4 view = glm::lookAt(
@@ -693,7 +696,9 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
 
 int main( int argc, char* argv[] )
 {
-    glfwInit(); glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API ); glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
+    glfwInit();
+    glfwWindowHint( GLFW_CLIENT_API, GLFW_NO_API );
+    glfwWindowHint( GLFW_RESIZABLE, GLFW_TRUE );
     g_GlfwHandle = glfwCreateWindow( 1600, 900, "RTGL1 Test", nullptr, nullptr );
 
 
@@ -724,10 +729,9 @@ int main( int argc, char* argv[] )
 
         .pOverrideFolderPath = ASSET_DIRECTORY,
 
-        .pfnPrint = []( const char* pMessage, RgMessageSeverityFlags severity, void *pUserData )
-            {
-                std::cout << pMessage << std::endl;
-            },
+        .pfnPrint = []( const char*            pMessage,
+                        RgMessageSeverityFlags severity,
+                        void*                  pUserData ) { std::cout << pMessage << std::endl; },
 
         .primaryRaysMaxAlbedoLayers          = 1,
         .indirectIlluminationMaxAlbedoLayers = 1,
