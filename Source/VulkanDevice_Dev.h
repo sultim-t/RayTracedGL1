@@ -47,9 +47,19 @@ struct Devmode
 
     struct
     {
-        bool  enable{ false };
-        bool  vsync{ false };
-        float fovDeg{ 90.0f };
+        bool  enable;
+        bool  vsync;
+        float fovDeg;
+        bool  antiFirefly;
+
+        RgRenderUpscaleTechnique upscaleTechnique;
+        RgRenderSharpenTechnique sharpenTechnique;
+        RgRenderResolutionMode   resolutionMode;
+        int                      customRenderSize[ 2 ];
+        bool                     pixelizedEnable;
+        int                      pixelized[ 2 ];
+        RgExtent2D               pixelizedForPtr;
+
     } drawInfoOvrd;
     struct
     {
@@ -198,7 +208,7 @@ namespace detail
     struct DefaultParams< RgDrawFrameLightmapParams >
     {
         constexpr static RgDrawFrameLightmapParams value = {
-            .enableLightmaps    = false,
+            .enableLightmaps = false,
         };
     };
 }

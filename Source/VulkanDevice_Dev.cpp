@@ -24,6 +24,17 @@
 
 #include <imgui.h>
 
+namespace
+{
+
+template< typename To, typename From >
+To ClampPix( From v )
+{
+    return std::clamp( To( v ), To( 96 ), To( 3840 ) );
+}
+
+}
+
 void RTGL1::VulkanDevice::Dev_Draw() const
 {
     if( !debugWindows || !devmode )
@@ -39,15 +50,102 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         devmode->reloadShaders = ImGui::Button( "Reload shaders", { -1, 96 } );
         ImGui::PopStyleColor( 3 );
 
+        auto& modifiers = devmode->drawInfoOvrd;
+
         ImGui::Separator();
         if( ImGui::TreeNode( "Override" ) )
         {
-            ImGui::Checkbox( "Enable", &devmode->drawInfoOvrd.enable );
-            ImGui::BeginDisabled( !devmode->drawInfoOvrd.enable );
+            ImGui::Checkbox( "Enable", &modifiers.enable );
+            ImGui::BeginDisabled( !modifiers.enable );
 
-            ImGui::Checkbox( "Vsync", &devmode->drawInfoOvrd.vsync );
-            ImGui::SliderFloat(
-                "Vertical FOV", &devmode->drawInfoOvrd.fovDeg, 10, 120, "%.0f degrees" );
+            ImGui::Checkbox( "Vsync", &modifiers.vsync );
+            ImGui::SliderFloat( "Vertical FOV", &modifiers.fovDeg, 10, 120, "%.0f degrees" );
+            ImGui::Checkbox( "Anti-firefly", &modifiers.antiFirefly );
+
+            static_assert(
+                std::is_same_v< int, std::underlying_type_t< RgRenderUpscaleTechnique > > );
+            static_assert(
+                std::is_same_v< int, std::underlying_type_t< RgRenderSharpenTechnique > > );
+            static_assert(
+                std::is_same_v< int, std::underlying_type_t< RgRenderResolutionMode > > );
+
+            bool dlssOk = IsUpscaleTechniqueAvailable( RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS );
+            {
+                ImGui::RadioButton( "Linear##Upscale",
+                                    reinterpret_cast< int* >( &modifiers.upscaleTechnique ),
+                                    RG_RENDER_UPSCALE_TECHNIQUE_LINEAR );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Nearest##Upscale",
+                                    reinterpret_cast< int* >( &modifiers.upscaleTechnique ),
+                                    RG_RENDER_UPSCALE_TECHNIQUE_NEAREST );
+                ImGui::SameLine();
+                ImGui::RadioButton( "FSR 2.1##Upscale",
+                                    reinterpret_cast< int* >( &modifiers.upscaleTechnique ),
+                                    RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 );
+                ImGui::SameLine();
+                ImGui::BeginDisabled( !dlssOk );
+                ImGui::RadioButton( "DLSS 2##Upscale",
+                                    reinterpret_cast< int* >( &modifiers.upscaleTechnique ),
+                                    RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS );
+                ImGui::EndDisabled();
+            }
+            {
+                ImGui::RadioButton( "None##Sharp",
+                                    reinterpret_cast< int* >( &modifiers.sharpenTechnique ),
+                                    RG_RENDER_SHARPEN_TECHNIQUE_NONE );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Naive sharpening##Sharp",
+                                    reinterpret_cast< int* >( &modifiers.sharpenTechnique ),
+                                    RG_RENDER_SHARPEN_TECHNIQUE_NAIVE );
+                ImGui::SameLine();
+                ImGui::RadioButton( "AMD CAS sharpening##Sharp",
+                                    reinterpret_cast< int* >( &modifiers.sharpenTechnique ),
+                                    RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS );
+            }
+
+            bool forceCustom =
+                modifiers.upscaleTechnique != RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 &&
+                modifiers.upscaleTechnique != RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS;
+            if( forceCustom )
+            {
+                modifiers.resolutionMode = RG_RENDER_RESOLUTION_MODE_CUSTOM;
+            }
+
+            {
+                ImGui::RadioButton( "Custom##Resolution",
+                                    reinterpret_cast< int* >( &modifiers.resolutionMode ),
+                                    RG_RENDER_RESOLUTION_MODE_CUSTOM );
+                ImGui::SameLine();
+                ImGui::BeginDisabled( forceCustom );
+                ImGui::RadioButton( "Ultra Performance##Resolution",
+                                    reinterpret_cast< int* >( &modifiers.resolutionMode ),
+                                    RG_RENDER_RESOLUTION_MODE_ULTRA_PERFORMANCE );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Performance##Resolution",
+                                    reinterpret_cast< int* >( &modifiers.resolutionMode ),
+                                    RG_RENDER_RESOLUTION_MODE_PERFORMANCE );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Balanced##Resolution",
+                                    reinterpret_cast< int* >( &modifiers.resolutionMode ),
+                                    RG_RENDER_RESOLUTION_MODE_BALANCED );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Quality##Resolution",
+                                    reinterpret_cast< int* >( &modifiers.resolutionMode ),
+                                    RG_RENDER_RESOLUTION_MODE_QUALITY );
+                ImGui::SameLine();
+                ImGui::RadioButton( "Ultra Quality##Resolution",
+                                    reinterpret_cast< int* >( &modifiers.resolutionMode ),
+                                    RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY );
+                ImGui::EndDisabled();
+            }
+            {
+                ImGui::BeginDisabled(
+                    !( modifiers.resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM ) );
+
+                ImGui::SliderInt2( "Custom render size", modifiers.customRenderSize, 96, 3840 );
+
+                ImGui::EndDisabled();
+            }
 
             ImGui::EndDisabled();
             ImGui::TreePop();
@@ -488,6 +586,13 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         devmode->drawInfoCopy.c_Textures         = AccessParams( original.pTexturesParams );
         devmode->drawInfoCopy.c_Lightmap         = AccessParams( original.pLightmapParams );
 
+        // dynamic defaults
+        {
+            devmode->drawInfoCopy.c_RenderResolution.customRenderSize = {
+                renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()
+            };
+        }
+
         // relink
         devmode->drawInfoCopy.c.pRenderResolutionParams = &devmode->drawInfoCopy.c_RenderResolution;
         devmode->drawInfoCopy.c.pIlluminationParams     = &devmode->drawInfoCopy.c_Illumination;
@@ -500,22 +605,59 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         devmode->drawInfoCopy.c.pLightmapParams         = &devmode->drawInfoCopy.c_Lightmap;
     }
 
-    RgDrawFrameInfo& dst       = devmode->drawInfoCopy.c;
-    auto&            modifiers = devmode->drawInfoOvrd;
+    RgDrawFrameInfo&                   dst       = devmode->drawInfoCopy.c;
+    RgDrawFrameRenderResolutionParams& dst_resol = devmode->drawInfoCopy.c_RenderResolution;
+
+    auto& modifiers = devmode->drawInfoOvrd;
 
     if( modifiers.enable )
     {
         // apply modifiers
-        dst.vsync       = modifiers.vsync;
-        dst.fovYRadians = Utils::DegToRad( modifiers.fovDeg );
+        dst.vsync            = modifiers.vsync;
+        dst.fovYRadians      = Utils::DegToRad( modifiers.fovDeg );
+        dst.forceAntiFirefly = modifiers.antiFirefly;
+
+        {
+            dst_resol.upscaleTechnique = modifiers.upscaleTechnique;
+            dst_resol.sharpenTechnique = modifiers.sharpenTechnique;
+            dst_resol.resolutionMode   = modifiers.resolutionMode;
+            dst_resol.customRenderSize = { ClampPix< uint32_t >( modifiers.customRenderSize[ 0 ] ),
+                                           ClampPix< uint32_t >(
+                                               modifiers.customRenderSize[ 1 ] ) };
+            modifiers.pixelizedForPtr  = { ClampPix< uint32_t >( modifiers.pixelized[ 0 ] ),
+                                           ClampPix< uint32_t >( modifiers.pixelized[ 1 ] ) };
+            dst_resol.pPixelizedRenderSize =
+                modifiers.pixelizedEnable ? &modifiers.pixelizedForPtr : nullptr;
+        }
 
         return dst;
     }
     else
     {
         // reset modifiers
-        modifiers.vsync = dst.vsync;
-        modifiers.fovDeg = Utils::RadToDeg( dst.fovYRadians );
+        modifiers.vsync       = dst.vsync;
+        modifiers.fovDeg      = Utils::RadToDeg( dst.fovYRadians );
+        modifiers.antiFirefly = dst.forceAntiFirefly;
+
+        {
+            modifiers.upscaleTechnique = dst_resol.upscaleTechnique;
+            modifiers.sharpenTechnique = dst_resol.sharpenTechnique;
+            modifiers.resolutionMode   = dst_resol.resolutionMode;
+
+            modifiers.customRenderSize[ 0 ] = ClampPix< int >( dst_resol.customRenderSize.width );
+            modifiers.customRenderSize[ 1 ] = ClampPix< int >( dst_resol.customRenderSize.height );
+
+            modifiers.pixelizedEnable = dst_resol.pPixelizedRenderSize != nullptr;
+
+            modifiers.pixelized[ 0 ] =
+                dst_resol.pPixelizedRenderSize
+                    ? ClampPix< int >( dst_resol.pPixelizedRenderSize->width )
+                    : 0;
+            modifiers.pixelized[ 1 ] =
+                dst_resol.pPixelizedRenderSize
+                    ? ClampPix< int >( dst_resol.pPixelizedRenderSize->height )
+                    : 0;
+        }
 
         // and return original
         return original;
