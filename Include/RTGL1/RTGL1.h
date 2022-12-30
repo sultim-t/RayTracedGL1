@@ -408,8 +408,8 @@ typedef struct RgDecalUploadInfo
 {
     // Transformation from [-0.5, 0.5] cube to a scaled oriented box.
     // Orientation should transform (0,0,1) to decal's normal.
-    RgTransform     transform;
-    const char*     pTextureName;
+    RgTransform         transform;
+    const char*         pTextureName;
 } RgDecalUploadInfo;
 
 RGAPI RgResult RGCONV rgUploadDecal( RgInstance instance, const RgDecalUploadInfo* pInfo );
@@ -419,46 +419,50 @@ RGAPI RgResult RGCONV rgUploadDecal( RgInstance instance, const RgDecalUploadInf
 typedef struct RgDirectionalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
-    uint64_t        uniqueID;
-    RgBool32        isExportable;
-    RgFloat3D       color;
-    RgFloat3D       direction;
-    float           angularDiameterDegrees;
+    uint64_t            uniqueID;
+    RgBool32            isExportable;
+    RgColor4DPacked32   color;
+    float               intensity;
+    RgFloat3D           direction;
+    float               angularDiameterDegrees;
 } RgDirectionalLightUploadInfo;
 
 typedef struct RgSphericalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
-    uint64_t        uniqueID;
-    RgBool32        isExportable;
-    RgFloat3D       color;
-    RgFloat3D       position;
-    float           radius;
+    uint64_t            uniqueID;
+    RgBool32            isExportable;
+    RgColor4DPacked32   color;
+    float               intensity;
+    RgFloat3D           position;
+    float               radius;
 } RgSphericalLightUploadInfo;
 
 typedef struct RgPolygonalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
-    uint64_t        uniqueID;
-    RgBool32        isExportable;
-    RgFloat3D       color;
-    RgFloat3D       positions[3];
+    uint64_t            uniqueID;
+    RgBool32            isExportable;
+    RgColor4DPacked32   color;
+    float               intensity;
+    RgFloat3D           positions[ 3 ];
 } RgPolygonalLightUploadInfo;
 
 // Only one spotlight is available in a scene.
 typedef struct RgSpotLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
-    uint64_t        uniqueID;
-    RgBool32        isExportable;
-    RgFloat3D       color;
-    RgFloat3D       position;
-    RgFloat3D       direction;
-    float           radius;
+    uint64_t            uniqueID;
+    RgBool32            isExportable;
+    RgColor4DPacked32   color;
+    float               intensity;
+    RgFloat3D           position;
+    RgFloat3D           direction;
+    float               radius;
     // Inner cone angle. In radians.
-    float           angleOuter;
+    float               angleOuter;
     // Outer cone angle. In radians.
-    float           angleInner;
+    float               angleInner;
 } RgSpotLightUploadInfo;
 
 RGAPI RgResult RGCONV rgUploadDirectionalLight( RgInstance instance, const RgDirectionalLightUploadInfo* pInfo );

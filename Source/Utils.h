@@ -255,6 +255,11 @@ namespace Utils
         return float( ( c >> 24 ) & 255u ) / 255.0f;
     }
 
+    constexpr float Luminance( const float ( &c )[ 3 ] )
+    {
+        return 0.2125f * c[ 0 ] + 0.7154f * c[ 1 ] + 0.0721f * c[ 2 ];
+    }
+
     inline bool IsCstrEmpty( const char* cstr )
     {
         return cstr == nullptr || *cstr == '\0';

@@ -906,11 +906,10 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
             -tr.matrix[ 2 ][ 2 ],
         };
 
-        RgFloat3D color = {
-            srcLight->light->color[ 0 ] * srcLight->light->intensity,
-            srcLight->light->color[ 1 ] * srcLight->light->intensity,
-            srcLight->light->color[ 2 ] * srcLight->light->intensity,
-        };
+        RgColor4DPacked32 packedColor =
+            Utils::PackColorFromFloat( RG_ACCESS_VEC3( srcLight->light->color ), 1.0f );
+
+        float intensity = srcLight->light->intensity;
 
         // TODO: change id
         uint64_t uniqueId = UINT64_MAX - counter;
@@ -922,7 +921,8 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 RgDirectionalLightUploadInfo info = {
                     .uniqueID               = uniqueId,
                     .isExportable           = true,
-                    .color                  = color,
+                    .color                  = packedColor,
+                    .intensity              = intensity,
                     .direction              = direction,
                     .angularDiameterDegrees = 0.5f,
                 };
@@ -934,7 +934,8 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 RgSphericalLightUploadInfo info = {
                     .uniqueID     = uniqueId,
                     .isExportable = true,
-                    .color        = color,
+                    .color        = packedColor,
+                    .intensity    = intensity,
                     .position     = position,
                     .radius       = 0.1f,
                 };
@@ -946,7 +947,8 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 RgSpotLightUploadInfo info = {
                     .uniqueID     = uniqueId,
                     .isExportable = true,
-                    .color        = color,
+                    .color        = packedColor,
+                    .intensity    = intensity,
                     .position     = position,
                     .direction    = direction,
                     .radius       = 0.1f,
@@ -957,6 +959,8 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 foundLight = true;
                 break;
             }
+            case cgltf_light_type_invalid:
+            case cgltf_light_type_max_enum:
             default: break;
         }
     }

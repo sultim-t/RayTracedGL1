@@ -829,59 +829,38 @@ RgFloat3D operator-( const RgFloat3D& c )
 struct GltfLights
 {
 private:
-    static float Luminance( const float ( &c )[ 3 ] )
-    {
-        return 0.2125f * c[ 0 ] + 0.7154f * c[ 1 ] + 0.0721f * c[ 2 ];
-    }
-
-    static RgFloat3D SeparateColorAndIntensity( const RgFloat3D& src, float& outIntensity )
-    {
-        outIntensity = Luminance( src.data );
-
-        float inv = outIntensity > 0.001f ? 1.0f / outIntensity : 0.0f;
-
-        return { {
-            RTGL1::Utils::Saturate( src.data[ 0 ] * inv ),
-            RTGL1::Utils::Saturate( src.data[ 1 ] * inv ),
-            RTGL1::Utils::Saturate( src.data[ 2 ] * inv ),
-        } };
-    }
-
     static cgltf_light MakeLight( const RgDirectionalLightUploadInfo& sun )
     {
-        float     intensity;
-        RgFloat3D color = SeparateColorAndIntensity( sun.color, intensity );
+        auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( sun.color );
 
         return cgltf_light{
             .name      = nullptr,
-            .color     = { RG_ACCESS_VEC3( color.data ) },
-            .intensity = intensity,
+            .color     = { RG_ACCESS_VEC3( fcolor.data ) },
+            .intensity = sun.intensity,
             .type      = cgltf_light_type_directional,
         };
     }
 
     static cgltf_light MakeLight( const RgSphericalLightUploadInfo& sph )
     {
-        float     intensity;
-        RgFloat3D color = SeparateColorAndIntensity( sph.color, intensity );
+        auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( sph.color );
 
         return cgltf_light{
             .name      = nullptr,
-            .color     = { RG_ACCESS_VEC3( color.data ) },
-            .intensity = intensity,
+            .color     = { RG_ACCESS_VEC3( fcolor.data ) },
+            .intensity = sph.intensity,
             .type      = cgltf_light_type_point,
         };
     }
 
     static cgltf_light MakeLight( const RgSpotLightUploadInfo& spot )
     {
-        float     intensity;
-        RgFloat3D color = SeparateColorAndIntensity( spot.color, intensity );
+        auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( spot.color );
 
         return cgltf_light{
             .name                  = nullptr,
-            .color                 = { RG_ACCESS_VEC3( color.data ) },
-            .intensity             = intensity,
+            .color                 = { RG_ACCESS_VEC3( fcolor.data ) },
+            .intensity             = spot.intensity,
             .type                  = cgltf_light_type_spot,
             .spot_inner_cone_angle = spot.angleInner,
             .spot_outer_cone_angle = spot.angleOuter,
@@ -893,9 +872,8 @@ private:
     {
 #if POLYLIGHT_AS_SPHERE
         RTGL1::debug::Warning( "GLTF doesn't support poly lights, exporting as sphere" );
-
-        float     intensity;
-        RgFloat3D color = SeparateColorAndIntensity( poly.color, intensity );
+        
+        auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( poly.color );
 
         float     area;
         RgFloat3D normal;
@@ -906,8 +884,8 @@ private:
 
         return cgltf_light{
             .name      = nullptr,
-            .color     = { RG_ACCESS_VEC3( color.data ) },
-            .intensity = intensity * std::sqrt( area ),
+            .color     = { RG_ACCESS_VEC3( fcolor.data ) },
+            .intensity = poly.intensity * std::sqrt( area ),
             .type      = cgltf_light_type_directional,
         };
 #endif

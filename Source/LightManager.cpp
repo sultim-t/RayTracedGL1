@@ -101,13 +101,15 @@ static RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightU
     float angularRadius = static_cast< float >(
         0.5 * static_cast< double >( info.angularDiameterDegrees ) * RTGL1::RG_PI / 180.0 );
 
+    auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
+
 
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_DIRECTIONAL;
 
-    lt.color[ 0 ] = info.color.data[ 0 ];
-    lt.color[ 1 ] = info.color.data[ 1 ];
-    lt.color[ 2 ] = info.color.data[ 2 ];
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity;
 
     lt.data_0[ 0 ] = direction.data[ 0 ];
     lt.data_0[ 1 ] = direction.data[ 1 ];
@@ -124,13 +126,15 @@ static RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadIn
     // disk is visible from the point
     float area = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
 
+    auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
+
 
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_SPHERE;
 
-    lt.color[ 0 ] = info.color.data[ 0 ] / area;
-    lt.color[ 1 ] = info.color.data[ 1 ] / area;
-    lt.color[ 2 ] = info.color.data[ 2 ] / area;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area;
 
     lt.data_0[ 0 ] = info.position.data[ 0 ];
     lt.data_0[ 1 ] = info.position.data[ 1 ];
@@ -153,13 +157,15 @@ static RTGL1::ShLightEncoded EncodeAsTriangleLight( const RgPolygonalLightUpload
     float area = len * 0.5f;
     assert( area > 0.0f );
 
+    auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
+
 
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_TRIANGLE;
 
-    lt.color[ 0 ] = info.color.data[ 0 ] / area;
-    lt.color[ 1 ] = info.color.data[ 1 ] / area;
-    lt.color[ 2 ] = info.color.data[ 2 ] / area;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area;
 
     lt.data_0[ 0 ] = info.positions[ 0 ].data[ 0 ];
     lt.data_0[ 1 ] = info.positions[ 0 ].data[ 1 ];
@@ -191,13 +197,15 @@ static RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& inf
     float cosAngleInner = std::cos( std::min( info.angleInner, info.angleOuter ) );
     float cosAngleOuter = std::cos( info.angleOuter );
 
+    auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
+
 
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_SPOT;
 
-    lt.color[ 0 ] = info.color.data[ 0 ] / area;
-    lt.color[ 1 ] = info.color.data[ 1 ] / area;
-    lt.color[ 2 ] = info.color.data[ 2 ] / area;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area;
 
     lt.data_0[ 0 ] = info.position.data[ 0 ];
     lt.data_0[ 1 ] = info.position.data[ 1 ];
@@ -272,12 +280,6 @@ void RTGL1::LightManager::Reset()
     dirLightCount_Prev = dirLightCount = 0;
 }
 
-static bool IsColorTooDim( const float c[ 3 ] )
-{
-    return std::max( c[ 0 ], 0.0f ) + std::max( c[ 1 ], 0.0f ) + std::max( c[ 2 ], 0.0f ) <
-           RTGL1::MIN_COLOR_SUM;
-}
-
 RTGL1::LightArrayIndex RTGL1::LightManager::GetIndex(
     const RTGL1::ShLightEncoded& encodedLight ) const
 {
@@ -330,9 +332,30 @@ void RTGL1::LightManager::AddInternal( uint32_t                     frameIndex,
     uniqueIDToArrayIndex[ frameIndex ][ uniqueId ] = index;
 }
 
+namespace
+{
+
+template< typename T >
+bool IsLightColorTooDim( const T& l )
+{
+    if( l.intensity <= 0.00001f )
+    {
+        return true;
+    }
+
+    if( RTGL1::Utils::IsColor4DPacked32Zero< false >( l.color ) )
+    {
+        return true;
+    }
+
+    return false;
+}
+
+}
+
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSphericalLightUploadInfo& info )
 {
-    if( IsColorTooDim( info.color.data ) )
+    if( IsLightColorTooDim( info ) )
     {
         return;
     }
@@ -342,7 +365,7 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSphericalLightUpload
 
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgPolygonalLightUploadInfo& info )
 {
-    if( IsColorTooDim( info.color.data ) )
+    if( IsLightColorTooDim( info ) )
     {
         return;
     }
@@ -358,7 +381,7 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgPolygonalLightUpload
 
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSpotLightUploadInfo& info )
 {
-    if( IsColorTooDim( info.color.data ) || info.radius < 0.0f || info.angleOuter <= 0.0f )
+    if( IsLightColorTooDim( info ) || info.radius < 0.0f || info.angleOuter <= 0.0f )
     {
         return;
     }
@@ -374,7 +397,7 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgDirectionalLightUplo
         return;
     }
 
-    if( IsColorTooDim( info.color.data ) || info.angularDiameterDegrees < 0.0f )
+    if( IsLightColorTooDim( info ) || info.angularDiameterDegrees < 0.0f )
     {
         return;
     }
