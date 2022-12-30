@@ -30,7 +30,14 @@ namespace
 
 constexpr uint64_t DstBytesPerPixel = 4;
 
-bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFiles )
+enum class PrepareResult
+{
+    Fail,
+    AlreadyExists,
+    Success
+};
+
+PrepareResult PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFiles )
 {
     using namespace RTGL1;
 
@@ -40,7 +47,7 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
         {
             debug::Verbose( "Image was not exported, as file already exists: {}",
                             filepath.string() );
-            return false;
+            return PrepareResult::AlreadyExists;
         }
         else
         {
@@ -57,11 +64,11 @@ bool PrepareTargetFile( const std::filesystem::path& filepath, bool overwriteFil
             debug::Warning( "{}: std::filesystem::create_directories error: {}",
                             filepath.string(),
                             ec.message() );
-            return false;
+            return PrepareResult::Fail;
         }
     }
 
-    return true;
+    return PrepareResult::Success;
 }
 
 }
@@ -99,9 +106,12 @@ bool RTGL1::TextureExporter::ExportAsTGA( MemoryAllocator&             allocator
     const VkFormat dstImageFormat =
         exportAsSRGB ? VK_FORMAT_R8G8B8A8_SRGB : VK_FORMAT_R8G8B8A8_UNORM;
 
-    if( !PrepareTargetFile( filepath, overwriteFiles ) )
+    switch( PrepareTargetFile( filepath, overwriteFiles ) )
     {
-        return false;
+        case PrepareResult::AlreadyExists: return true;
+        case PrepareResult::Success: break;
+        case PrepareResult::Fail:
+        default: return false;
     }
 
     if( !CheckSupport( allocator.GetPhysicalDevice(), srcImageFormat, dstImageFormat ) )

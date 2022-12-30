@@ -338,7 +338,7 @@ namespace
                         float c[ 4 ] = { 1, 1, 1, 1 };
                         ok &= cgltf_accessor_read_float_h( attr.data, i, c );
                         primVertices[ i ].color =
-                            rgUtilPackColorFloat4D( c[ 0 ], c[ 1 ], c[ 2 ], c[ 3 ] );
+                            Utils::PackColorFromFloat( c[ 0 ], c[ 1 ], c[ 2 ], c[ 3 ] );
                     }
                     break;
 

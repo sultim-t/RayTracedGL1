@@ -643,6 +643,8 @@ struct GltfTextures
                            const std::filesystem::path&   texturesFolder,
                            const RTGL1::TextureManager&   textureManager )
     {
+        RTGL1::debug::Info( "Exporting textures..." );
+
         // alloc max and lock pointers
         allocStrings.resize( RTGL1::TEXTURES_PER_MATERIAL_COUNT * sceneMaterials.size() );
         allocImages.resize( RTGL1::TEXTURES_PER_MATERIAL_COUNT * sceneMaterials.size() );
@@ -871,8 +873,6 @@ private:
     static cgltf_light MakeLight( const RgPolygonalLightUploadInfo& poly )
     {
 #if POLYLIGHT_AS_SPHERE
-        RTGL1::debug::Warning( "GLTF doesn't support poly lights, exporting as sphere" );
-        
         auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( poly.color );
 
         float     area;
@@ -885,8 +885,8 @@ private:
         return cgltf_light{
             .name      = nullptr,
             .color     = { RG_ACCESS_VEC3( fcolor.data ) },
-            .intensity = poly.intensity * std::sqrt( area ),
-            .type      = cgltf_light_type_directional,
+            .intensity = poly.intensity,
+            .type      = cgltf_light_type_point,
         };
 #endif
     }
@@ -910,7 +910,7 @@ private:
     static RgTransform MakeTransform( const RgPolygonalLightUploadInfo& poly )
     {
 #if POLYLIGHT_AS_SPHERE
-        RgFloat3D center;
+        RgFloat3D center = { 0, 0, 0 };
         for( const auto& v : poly.positions )
         {
             center.data[ 0 ] += v.data[ 0 ];
@@ -941,6 +941,24 @@ public:
                          std::span< cgltf_node >                   dstLightNodes )
     {
         assert( dstLightNodes.size() == sceneLights.size() );
+
+#if POLYLIGHT_AS_SPHERE
+        {
+            auto foundPoly = std::ranges::find_if( sceneLights, []( const RTGL1::GenericLight& l ) {
+                return std::visit(
+                    []< typename T >( const T& ) {
+                        return std::is_same_v< T, RgPolygonalLightUploadInfo >;
+                    },
+                    l );
+            } );
+
+            if( foundPoly != sceneLights.end() )
+            {
+                RTGL1::debug::Warning(
+                    "GLTF doesn't support poly lights, exporting theme as spherical" );
+            }
+        }
+#endif
 
         // lock pointers
         storage.resize( sceneLights.size() );
@@ -1037,32 +1055,14 @@ bool PrepareFolder( const std::filesystem::path& gltfPath )
 #ifdef _WIN32
     {
         auto msg = std::format( "Folder already exists:\n{}\n\n"
-                                "Are you sure you want to PERMANENTLY delete all its contents?",
+                                "Are you sure you want to write ON TOP of its contents?",
                                 std::filesystem::absolute( folder ).string() );
 
         int msgboxID = MessageBox(
             nullptr, msg.c_str(), "Overwrite folder", MB_ICONSTOP | MB_YESNO | MB_DEFBUTTON2 );
 
-        if( msgboxID != IDYES )
-        {
-            return false;
-        }
+        return msgboxID == IDYES;
     }
-    {
-        std::error_code ec;
-
-        auto count = std::filesystem::remove_all( folder, ec );
-        if( ec )
-        {
-            debug::Warning(
-                "{}: std::filesystem::remove_all error: {}", folder.string(), ec.message() );
-            return false;
-        }
-
-        debug::Verbose( "{}: Removed {} files / directories", folder.string(), count );
-    }
-
-    return createEmptyFoldersFor();
 #else
     debug::Warning( "{}: Folder already exists, overwrite disabled", folder.string() );
     return false;
@@ -1110,6 +1110,39 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
     {
         sceneMaterials.insert( primitive.pTextureName );
     }
+
+    if( primitive.pEditorInfo && primitive.pEditorInfo->attachedLightExists )
+    {
+        uint32_t maxtris = 4;
+
+        for( uint32_t tri = 0; tri < primitive.indexCount / 3 && tri < maxtris; tri++ )
+        {
+            const float* triLocalPositions[] = {
+                primitive.pVertices[ primitive.pIndices[ tri + 0 ] ].position,
+                primitive.pVertices[ primitive.pIndices[ tri + 1 ] ].position,
+                primitive.pVertices[ primitive.pIndices[ tri + 2 ] ].position,
+            };
+
+            RgFloat3D triGlobalPositions[ 3 ] = {
+                Utils::ApplyTransform( mesh.transform,
+                                       { RG_ACCESS_VEC3( triLocalPositions[ 0 ] ) } ),
+                Utils::ApplyTransform( mesh.transform,
+                                       { RG_ACCESS_VEC3( triLocalPositions[ 1 ] ) } ),
+                Utils::ApplyTransform( mesh.transform,
+                                       { RG_ACCESS_VEC3( triLocalPositions[ 2 ] ) } ),
+            };
+
+            sceneLights.emplace_back( RgPolygonalLightUploadInfo{
+                .uniqueID     = 0, /* ignored */
+                .isExportable = true,
+                .color        = primitive.pEditorInfo->attachedLight.color,
+                .intensity    = primitive.pEditorInfo->attachedLight.intensity,
+                .positions    = { triGlobalPositions[ 0 ],
+                                  triGlobalPositions[ 1 ],
+                                  triGlobalPositions[ 2 ] },
+            } );
+        }
+    }
 }
 
 void RTGL1::GltfExporter::AddLight( const GenericLightPtr& light )
@@ -1154,6 +1187,9 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
 
     const char* primExtrasExample  = nullptr; // "{ portalOutPosition\" : [0,0,0] }";
     const char* sceneExtrasExample = nullptr; // "{ tonemapping_enable\" : 1 }";
+
+
+    debug::Info( "Export start..." );
 
 
     // lock pointers
@@ -1302,7 +1338,7 @@ void RTGL1::GltfExporter::ExportToFiles( const std::filesystem::path& gltfPath,
         return;
     }
 
-    debug::Info( "{}: Exported successfully",
+    debug::Info( "Export successful: {}",
                  std::filesystem::absolute( GetGltfFolder( gltfPath ) ).string() );
 }
 

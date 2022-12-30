@@ -342,6 +342,12 @@ typedef struct RgEditorPBRInfo
     float                           roughnessDefault;
 } RgEditorPBRInfo;
 
+typedef struct RgEditorAttachedLightInfo
+{
+    float                           intensity;
+    RgColor4DPacked32               color;
+} RgEditorAttachedLightInfo;
+
 typedef struct RgEditorInfo
 {
     // If not null, then the primitive defines a portal.
@@ -354,6 +360,8 @@ typedef struct RgEditorInfo
     const RgEditorTextureLayerInfo* pLayerLightmap;
     RgBool32                        pbrInfoExists;
     RgEditorPBRInfo                 pbrInfo;
+    RgBool32                        attachedLightExists;
+    RgEditorAttachedLightInfo       attachedLight;
 } RgEditorInfo;
 
 // Primitive is an indexed or non-indexed geometry with a material.

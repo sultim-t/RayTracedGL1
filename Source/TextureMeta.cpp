@@ -176,6 +176,17 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
         }
 
+        {
+            editor.attachedLight.intensity = meta->attachedLightIntensity;
+            editor.attachedLight.color     = Utils::PackColor( meta->attachedLightColor[ 0 ],
+                                                           meta->attachedLightColor[ 1 ],
+                                                           meta->attachedLightColor[ 2 ],
+                                                           255 );
+            editor.attachedLightExists =
+                editor.attachedLight.intensity > 0.0f &&
+                !Utils::IsColor4DPacked32Zero< false >( editor.attachedLight.color );
+        }
+
         if( meta->isWater )
         {
             prim.flags |= RG_MESH_PRIMITIVE_WATER;

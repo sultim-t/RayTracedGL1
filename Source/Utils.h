@@ -294,6 +294,18 @@ namespace Utils
         return std::clamp( v, 0.0f, 1.0f );
     }
 
+    constexpr RgFloat3D ApplyTransform( const RgTransform& tr, const RgFloat3D& local )
+    {
+        RgFloat3D global = {};
+        for( uint32_t i = 0; i < 3; i++ )
+        {
+            global.data[ i ] = tr.matrix[ i ][ 0 ] * local.data[ 0 ] +
+                               tr.matrix[ i ][ 1 ] * local.data[ 1 ] +
+                               tr.matrix[ i ][ 2 ] * local.data[ 2 ] + tr.matrix[ i ][ 3 ];
+        }
+        return global;
+    }
+
     // clang-format off
     // Column memory order!
     #define RG_TRANSFORM_TO_GLTF_MATRIX( t ) {                                      \
