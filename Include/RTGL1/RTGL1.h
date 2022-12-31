@@ -544,6 +544,12 @@ typedef struct RgDrawFrameTonemappingParams
     float           ev100Min;
     float           ev100Max;
     float           luminanceWhitePoint;
+    // A per channel adjustment, use <0 decrease, 0=no change, >0 increase.
+    // Default: 0 0 0
+    RgFloat3D       saturation;
+    // One channel must be 1.0, the rest can be <= 1.0 but not zero.
+    // Default: 1.0 1.0 1.0
+    RgFloat3D       crosstalk;
 } RgDrawFrameTonemappingParams;
 
 typedef struct RgDrawFrameSkyParams

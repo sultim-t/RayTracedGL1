@@ -58,6 +58,8 @@ struct Devmode
 
         float ev100Min;
         float ev100Max;
+        float saturation[ 3 ];
+        float crosstalk[ 3 ];
 
         float                    fovDeg;
         bool                     vsync;
@@ -153,6 +155,8 @@ namespace detail
             .ev100Min            = 0.0f,
             .ev100Max            = 10.0f,
             .luminanceWhitePoint = 10.0f,
+            .saturation          = { 0, 0, 0 },
+            .crosstalk           = { 1, 1, 1 },
         };
     };
 

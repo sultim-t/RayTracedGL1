@@ -154,6 +154,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         {
             ImGui::SliderFloat( "EV100 min", &modifiers.ev100Min, -3, 16, "%.1f" );
             ImGui::SliderFloat( "EV100 max", &modifiers.ev100Max, -3, 16, "%.1f" );
+            ImGui::SliderFloat3( "Saturation", modifiers.saturation, -1, 1, "%.1f" );
+            ImGui::SliderFloat3( "Crosstalk", modifiers.crosstalk, 0.0f, 1.0f, "%.2f" );
             ImGui::TreePop();
         }
         if( ImGui::TreeNode( "Illumination" ) )
@@ -676,8 +678,10 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
             dst_illum.specularSensitivityToChange = modifiers.specularSensitivityToChange;
         }
         {
-            dst_tnmp.ev100Min = modifiers.ev100Min;
-            dst_tnmp.ev100Max = modifiers.ev100Max;
+            dst_tnmp.ev100Min   = modifiers.ev100Min;
+            dst_tnmp.ev100Max   = modifiers.ev100Max;
+            dst_tnmp.saturation = { RG_ACCESS_VEC3( modifiers.saturation ) };
+            dst_tnmp.crosstalk  = { RG_ACCESS_VEC3( modifiers.crosstalk ) };
         }
 
         return dst;
@@ -719,6 +723,8 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         {
             modifiers.ev100Min = dst_tnmp.ev100Min;
             modifiers.ev100Max = dst_tnmp.ev100Max;
+            RG_SET_VEC3_A( modifiers.saturation, dst_tnmp.saturation.data );
+            RG_SET_VEC3_A( modifiers.crosstalk, dst_tnmp.crosstalk.data );
         }
 
         // and return original

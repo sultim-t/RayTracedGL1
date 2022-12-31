@@ -42,60 +42,67 @@ public:
                       const Volumetric&                  volumetric );
     ~ImageComposition() override;
 
-    ImageComposition( const ImageComposition& other )     = delete;
-    ImageComposition( ImageComposition&& other ) noexcept = delete;
-    ImageComposition& operator=( const ImageComposition& other ) = delete;
+    ImageComposition( const ImageComposition& other )                = delete;
+    ImageComposition( ImageComposition&& other ) noexcept            = delete;
+    ImageComposition& operator=( const ImageComposition& other )     = delete;
     ImageComposition& operator=( ImageComposition&& other ) noexcept = delete;
 
     void PrepareForRaster( VkCommandBuffer cmd, uint32_t frameIndex, const GlobalUniform* uniform );
 
-    void Finalize( VkCommandBuffer      cmd,
-                   uint32_t             frameIndex,
-                   const GlobalUniform* uniform,
-                   const Tonemapping*   tonemapping,
-                   const Volumetric*    volumetric );
+    void Finalize( VkCommandBuffer                     cmd,
+                   uint32_t                            frameIndex,
+                   const GlobalUniform&                uniform,
+                   const Tonemapping&                  tonemapping,
+                   const Volumetric&                   volumetric,
+                   const RgDrawFrameTonemappingParams& params );
 
     void OnShaderReload( const ShaderManager* shaderManager ) override;
 
 private:
-    void                    ProcessCheckerboard( VkCommandBuffer      cmd,
-                                                 uint32_t             frameIndex,
-                                                 const GlobalUniform* uniform );
-    void                    ApplyTonemapping( VkCommandBuffer      cmd,
-                                              uint32_t             frameIndex,
-                                              const GlobalUniform* uniform,
-                                              const Tonemapping*   tonemapping,
-                                              const Volumetric*    volumetric );
+    void ProcessCheckerboard( VkCommandBuffer      cmd,
+                              uint32_t             frameIndex,
+                              const GlobalUniform* uniform );
+    void ApplyTonemapping( VkCommandBuffer      cmd,
+                           uint32_t             frameIndex,
+                           const GlobalUniform& uniform,
+                           const Tonemapping&   tonemapping,
+                           const Volumetric&    volumetric );
 
     static VkPipelineLayout CreatePipelineLayout( VkDevice               device,
                                                   VkDescriptorSetLayout* pSetLayouts,
                                                   uint32_t               setLayoutCount,
                                                   const char*            pDebugName );
 
-    void                    CreateDescriptors();
+    void CreateDescriptors();
 
-    void                    CreatePipelines( const ShaderManager* shaderManager );
-    void                    DestroyPipelines();
+    void CreatePipelines( const ShaderManager* shaderManager );
+    void DestroyPipelines();
 
-    void                    SetupLpmParams( VkCommandBuffer cmd );
+    void SetupLpmParams( VkCommandBuffer                     cmd,
+                         uint32_t                            frameIndex,
+                         const RgDrawFrameTonemappingParams& params );
 
 private:
-    VkDevice                        device;
+    VkDevice device;
 
     std::shared_ptr< Framebuffers > framebuffers;
 
-    std::unique_ptr< AutoBuffer >   lpmParams;
-    bool                            lpmParamsInited;
+    std::unique_ptr< AutoBuffer > lpmParams;
+    struct
+    {
+        RgFloat3D saturation{ FLT_MAX, FLT_MAX, FLT_MAX };
+        RgFloat3D crosstalk{ FLT_MAX, FLT_MAX, FLT_MAX };
+    } lpmPrev;
 
-    VkPipelineLayout                composePipelineLayout;
-    VkPipelineLayout                checkerboardPipelineLayout;
+    VkPipelineLayout composePipelineLayout;
+    VkPipelineLayout checkerboardPipelineLayout;
 
-    VkPipeline                      composePipeline;
-    VkPipeline                      checkerboardPipeline;
+    VkPipeline composePipeline;
+    VkPipeline checkerboardPipeline;
 
-    VkDescriptorSetLayout           descLayout;
-    VkDescriptorPool                descPool;
-    VkDescriptorSet                 descSet;
+    VkDescriptorSetLayout descLayout;
+    VkDescriptorPool      descPool;
+    VkDescriptorSet       descSet;
 };
 
 }

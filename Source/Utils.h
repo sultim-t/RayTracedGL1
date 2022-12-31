@@ -163,9 +163,22 @@ namespace Utils
 
     bool AreViewportsSame( const VkViewport& a, const VkViewport& b );
 
-    bool        IsAlmostZero( const float v[ 3 ] );
-    bool        IsAlmostZero( const RgFloat3D& v );
-    bool        IsAlmostZero( const RgMatrix3D& m );
+    bool IsAlmostZero( const float v[ 3 ] );
+    bool IsAlmostZero( const RgFloat3D& v );
+    bool IsAlmostZero( const RgMatrix3D& m );
+
+    constexpr bool AreAlmostSame( const RgFloat3D& a, const RgFloat3D& b, float threshold = 0.001f )
+    {
+        for( int i = 0; i < 3; i++ )
+        {
+            if( std::abs( a.data[ i ] - b.data[ i ] ) > threshold )
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     float       Dot( const float a[ 3 ], const float b[ 3 ] );
     float       Length( const float v[ 3 ] );
     bool        TryNormalize( float inout[ 3 ] );

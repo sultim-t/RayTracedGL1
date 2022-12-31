@@ -579,8 +579,12 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                       renderResolution );
     }
 
-    imageComposition->Finalize(
-        cmd, frameIndex, uniform.get(), tonemapping.get(), volumetric.get() );
+    imageComposition->Finalize( cmd,
+                                frameIndex,
+                                *uniform,
+                                *tonemapping,
+                                *volumetric,
+                                AccessParams( drawInfo.pTonemappingParams ) );
 
 
     bool enableBloom = AccessParams( drawInfo.pBloomParams ).bloomIntensity > 0.0f;

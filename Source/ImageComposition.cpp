@@ -38,7 +38,6 @@ RTGL1::ImageComposition::ImageComposition( VkDevice                           _d
                                            const Volumetric&                  _volumetric )
     : device( _device )
     , framebuffers( std::move( _framebuffers ) )
-    , lpmParamsInited( false )
     , composePipelineLayout( VK_NULL_HANDLE )
     , checkerboardPipelineLayout( VK_NULL_HANDLE )
     , composePipeline( VK_NULL_HANDLE )
@@ -48,16 +47,14 @@ RTGL1::ImageComposition::ImageComposition( VkDevice                           _d
     , descSet( VK_NULL_HANDLE )
 {
     lpmParams = std::make_unique< AutoBuffer >( std::move( _allocator ) );
-    lpmParams->Create( LPM_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "LPM Params", 1 );
+    lpmParams->Create( LPM_BUFFER_SIZE, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, "LPM Params" );
 
     CreateDescriptors();
 
     {
         VkDescriptorSetLayout setLayouts[] = {
-            framebuffers->GetDescSetLayout(),
-            _uniform.GetDescSetLayout(),
-            _tonemapping.GetDescSetLayout(),
-            descLayout,
+            framebuffers->GetDescSetLayout(), _uniform.GetDescSetLayout(),
+            _tonemapping.GetDescSetLayout(),  descLayout,
             _volumetric.GetDescSetLayout(),
         };
 
@@ -93,13 +90,14 @@ void RTGL1::ImageComposition::PrepareForRaster( VkCommandBuffer      cmd,
     ProcessCheckerboard( cmd, frameIndex, uniform );
 }
 
-void RTGL1::ImageComposition::Finalize( VkCommandBuffer      cmd,
-                                        uint32_t             frameIndex,
-                                        const GlobalUniform* uniform,
-                                        const Tonemapping*   tonemapping,
-                                        const Volumetric*    volumetric )
+void RTGL1::ImageComposition::Finalize( VkCommandBuffer                     cmd,
+                                        uint32_t                            frameIndex,
+                                        const GlobalUniform&                uniform,
+                                        const Tonemapping&                  tonemapping,
+                                        const Volumetric&                   volumetric,
+                                        const RgDrawFrameTonemappingParams& params )
 {
-    SetupLpmParams( cmd );
+    SetupLpmParams( cmd, frameIndex, params );
     ApplyTonemapping( cmd, frameIndex, uniform, tonemapping, volumetric );
 }
 
@@ -111,16 +109,16 @@ void RTGL1::ImageComposition::OnShaderReload( const ShaderManager* shaderManager
 
 void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
                                                 uint32_t             frameIndex,
-                                                const GlobalUniform* uniform,
-                                                const Tonemapping*   tonemapping,
-                                                const Volumetric*    volumetric )
+                                                const GlobalUniform& uniform,
+                                                const Tonemapping&   tonemapping,
+                                                const Volumetric&    volumetric )
 {
     using FI = FramebufferImageIndex;
     CmdLabel label( cmd, "Prefinal framebuf compose" );
 
 
     // sync access
-    FI       fs[] = {
+    FI fs[] = {
         FI::FB_IMAGE_INDEX_SCREEN_EMISSION,
         FI::FB_IMAGE_INDEX_FINAL,
         FI::FB_IMAGE_INDEX_DEPTH_WORLD,
@@ -136,10 +134,10 @@ void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
     // bind desc sets
     VkDescriptorSet sets[] = {
         framebuffers->GetDescSet( frameIndex ),
-        uniform->GetDescSet( frameIndex ),
-        tonemapping->GetDescSet(),
+        uniform.GetDescSet( frameIndex ),
+        tonemapping.GetDescSet(),
         descSet,
-        volumetric->GetDescSet( frameIndex ),
+        volumetric.GetDescSet( frameIndex ),
     };
 
     vkCmdBindDescriptorSets( cmd,
@@ -154,8 +152,8 @@ void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
 
     vkCmdDispatch(
         cmd,
-        Utils::GetWorkGroupCount( uniform->GetData()->renderWidth, COMPUTE_COMPOSE_GROUP_SIZE_X ),
-        Utils::GetWorkGroupCount( uniform->GetData()->renderHeight, COMPUTE_COMPOSE_GROUP_SIZE_Y ),
+        Utils::GetWorkGroupCount( uniform.GetData()->renderWidth, COMPUTE_COMPOSE_GROUP_SIZE_X ),
+        Utils::GetWorkGroupCount( uniform.GetData()->renderHeight, COMPUTE_COMPOSE_GROUP_SIZE_Y ),
         1 );
 }
 
@@ -168,7 +166,7 @@ void RTGL1::ImageComposition::ProcessCheckerboard( VkCommandBuffer      cmd,
 
 
     // sync access
-    FI       fs[] = {
+    FI fs[] = {
         FI::FB_IMAGE_INDEX_PRE_FINAL,
         FI::FB_IMAGE_INDEX_SCREEN_EMIS_R_T,
         FI::FB_IMAGE_INDEX_ACID_FOG_R_T,
@@ -365,19 +363,25 @@ void LpmSetupOut( void* pContext, AU1 i, const inAU4 value )
 #include "Shaders/LPM/ffx_lpm.h"
 #include "Shaders/LPM/LpmSetupCustom.inl"
 
-void RTGL1::ImageComposition::SetupLpmParams( VkCommandBuffer cmd )
+void RTGL1::ImageComposition::SetupLpmParams( VkCommandBuffer                     cmd,
+                                              uint32_t                            frameIndex,
+                                              const RgDrawFrameTonemappingParams& params )
 {
-    if( lpmParamsInited )
+    if( Utils::AreAlmostSame( lpmPrev.saturation, params.saturation ) &&
+        Utils::AreAlmostSame( lpmPrev.crosstalk, params.crosstalk ) )
     {
         return;
     }
 
-    void* pContext = lpmParams->GetMapped( 0 );
+    void* pContext = lpmParams->GetMapped( frameIndex );
 #define LPM_RG_CONTEXT pContext,
 
     {
-        varAF3( saturation ) = initAF3( -0.1f, -0.1f, -0.1f );
-        varAF3( crosstalk )  = initAF3( 1.0f, 1.0f / 8.0f, 1.0f / 16.0f );
+        varAF3( saturation ) = initAF3(
+            params.saturation.data[ 0 ], params.saturation.data[ 1 ], params.saturation.data[ 2 ] );
+        varAF3( crosstalk ) = initAF3(
+            params.crosstalk.data[ 0 ], params.crosstalk.data[ 1 ], params.crosstalk.data[ 2 ] );
+
         LpmSetup( LPM_RG_CONTEXT false,
                   LPM_CONFIG_709_709,
                   LPM_COLORS_709_709,
@@ -390,7 +394,7 @@ void RTGL1::ImageComposition::SetupLpmParams( VkCommandBuffer cmd )
                   crosstalk );
     }
 
-    lpmParams->CopyFromStaging( cmd, 0, LPM_BUFFER_SIZE );
+    lpmParams->CopyFromStaging( cmd, frameIndex, LPM_BUFFER_SIZE );
 
     VkBufferMemoryBarrier2KHR b = {
         .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR,
@@ -411,5 +415,7 @@ void RTGL1::ImageComposition::SetupLpmParams( VkCommandBuffer cmd )
 
     svkCmdPipelineBarrier2KHR( cmd, &info );
 
-    lpmParamsInited = true;
+    //
+    lpmPrev.saturation = params.saturation;
+    lpmPrev.crosstalk  = params.crosstalk;
 }
