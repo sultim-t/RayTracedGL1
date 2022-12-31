@@ -992,6 +992,9 @@ void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
+    const_cast< RgSphericalLightUploadInfo* >( pInfo )->intensity =
+        Utils::IntensityFromNonMetric( pInfo->intensity, sceneImportExport->GetWorldScale() );
+
     UploadLight( pInfo );
 }
 
@@ -1002,6 +1005,9 @@ void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
+    const_cast< RgSpotLightUploadInfo* >( pInfo )->intensity =
+        Utils::IntensityFromNonMetric( pInfo->intensity, sceneImportExport->GetWorldScale() );
+
     UploadLight( pInfo );
 }
 
@@ -1011,6 +1017,9 @@ void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
+
+    const_cast< RgPolygonalLightUploadInfo* >( pInfo )->intensity =
+        Utils::IntensityFromNonMetric( pInfo->intensity, sceneImportExport->GetWorldScale() );
 
     UploadLight( pInfo );
 }

@@ -430,6 +430,8 @@ typedef struct RgDirectionalLightUploadInfo
     uint64_t            uniqueID;
     RgBool32            isExportable;
     RgColor4DPacked32   color;
+    // Luminous flux received by a surface, in lumen / m^2
+    // (i.e. illuminance, in lux)
     float               intensity;
     RgFloat3D           direction;
     float               angularDiameterDegrees;
@@ -441,6 +443,7 @@ typedef struct RgSphericalLightUploadInfo
     uint64_t            uniqueID;
     RgBool32            isExportable;
     RgColor4DPacked32   color;
+    // Luminous flux in lumen
     float               intensity;
     RgFloat3D           position;
     float               radius;
@@ -452,6 +455,7 @@ typedef struct RgPolygonalLightUploadInfo
     uint64_t            uniqueID;
     RgBool32            isExportable;
     RgColor4DPacked32   color;
+    // Luminous flux in lumen
     float               intensity;
     RgFloat3D           positions[ 3 ];
 } RgPolygonalLightUploadInfo;
@@ -463,6 +467,7 @@ typedef struct RgSpotLightUploadInfo
     uint64_t            uniqueID;
     RgBool32            isExportable;
     RgColor4DPacked32   color;
+    // Luminous flux in lumen
     float               intensity;
     RgFloat3D           position;
     RgFloat3D           direction;

@@ -583,7 +583,7 @@ namespace
                                 Utils::SafeCstr( mat->name ) );
                 continue;
             }
-            
+
             fullPaths[ index ] = gltfFolder / Utils::SafeCstr( txview.texture->image->uri );
 
             if( txview.texture->sampler )
@@ -869,6 +869,11 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                             srcLight->name );
         }
 
+        constexpr auto candelaToLuminousFlux = []( float lumensPerSteradian ) {
+            // to lumens
+            return lumensPerSteradian * ( 4 * float( Utils::M_PI ) );
+        };
+
         RgTransform tr = MakeRgTransformFromGltfNode( *srcLight );
 
         RgFloat3D position = {
@@ -886,8 +891,6 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
         RgColor4DPacked32 packedColor =
             Utils::PackColorFromFloat( RG_ACCESS_VEC3( srcLight->light->color ), 1.0f );
 
-        float intensity = srcLight->light->intensity;
-
         // TODO: change id
         uint64_t uniqueId = UINT64_MAX - counter;
         counter++;
@@ -899,7 +902,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .uniqueID               = uniqueId,
                     .isExportable           = true,
                     .color                  = packedColor,
-                    .intensity              = intensity,
+                    .intensity              = srcLight->light->intensity, // already in lm/m^2
                     .direction              = direction,
                     .angularDiameterDegrees = 0.5f,
                 };
@@ -912,9 +915,10 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .uniqueID     = uniqueId,
                     .isExportable = true,
                     .color        = packedColor,
-                    .intensity    = intensity,
-                    .position     = position,
-                    .radius       = 0.1f,
+                    .intensity =
+                        candelaToLuminousFlux( srcLight->light->intensity ), // from lm/sr to lm
+                    .position = position,
+                    .radius   = 0.1f,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
                 foundLight = true;
@@ -925,12 +929,13 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .uniqueID     = uniqueId,
                     .isExportable = true,
                     .color        = packedColor,
-                    .intensity    = intensity,
-                    .position     = position,
-                    .direction    = direction,
-                    .radius       = 0.1f,
-                    .angleOuter   = srcLight->light->spot_outer_cone_angle,
-                    .angleInner   = srcLight->light->spot_inner_cone_angle,
+                    .intensity =
+                        candelaToLuminousFlux( srcLight->light->intensity ), // from lm/sr to lm
+                    .position   = position,
+                    .direction  = direction,
+                    .radius     = 0.1f,
+                    .angleOuter = srcLight->light->spot_outer_cone_angle,
+                    .angleInner = srcLight->light->spot_inner_cone_angle,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
                 foundLight = true;

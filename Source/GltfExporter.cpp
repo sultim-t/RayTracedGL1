@@ -831,6 +831,12 @@ RgFloat3D operator-( const RgFloat3D& c )
 struct GltfLights
 {
 private:
+    static float LuminousFluxToCandela( float lumens )
+    {
+        // to lumens per steradian
+        return lumens / ( 4 * float( RTGL1::Utils::M_PI ) );
+    }
+
     static cgltf_light MakeLight( const RgDirectionalLightUploadInfo& sun )
     {
         auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( sun.color );
@@ -850,7 +856,7 @@ private:
         return cgltf_light{
             .name      = nullptr,
             .color     = { RG_ACCESS_VEC3( fcolor.data ) },
-            .intensity = sph.intensity,
+            .intensity = LuminousFluxToCandela( sph.intensity ),
             .type      = cgltf_light_type_point,
         };
     }
@@ -862,7 +868,7 @@ private:
         return cgltf_light{
             .name                  = nullptr,
             .color                 = { RG_ACCESS_VEC3( fcolor.data ) },
-            .intensity             = spot.intensity,
+            .intensity             = LuminousFluxToCandela( spot.intensity ),
             .type                  = cgltf_light_type_spot,
             .spot_inner_cone_angle = spot.angleInner,
             .spot_outer_cone_angle = spot.angleOuter,
@@ -885,7 +891,7 @@ private:
         return cgltf_light{
             .name      = nullptr,
             .color     = { RG_ACCESS_VEC3( fcolor.data ) },
-            .intensity = poly.intensity,
+            .intensity = LuminousFluxToCandela( poly.intensity ),
             .type      = cgltf_light_type_point,
         };
 #endif

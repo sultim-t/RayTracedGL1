@@ -306,6 +306,15 @@ namespace Utils
         return global;
     }
 
+    constexpr float IntensityToNonMetric( float metricIntensity, float oneGameUnitInMeters )
+    {
+        return metricIntensity * ( oneGameUnitInMeters * oneGameUnitInMeters );
+    }
+    constexpr float IntensityFromNonMetric( float nonMetricIntensity, float oneGameUnitInMeters )
+    {
+        return nonMetricIntensity / ( oneGameUnitInMeters * oneGameUnitInMeters );
+    }
+
     // clang-format off
     // Column memory order!
     #define RG_TRANSFORM_TO_GLTF_MATRIX( t ) {                                      \
