@@ -42,7 +42,7 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         return;
     }
 
-    if( ImGui::Begin( "General" ) )
+    if( ImGui::Begin( "General" ), nullptr, ImGuiWindowFlags_HorizontalScrollbar )
     {
         ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.59f, 0.98f, 0.26f, 0.40f ) );
         ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.59f, 0.98f, 0.26f, 1.00f ) );
@@ -508,7 +508,7 @@ void RTGL1::VulkanDevice::Dev_Draw() const
     ImGui::End();
 
 
-    if( ImGui::Begin( "Textures" ) )
+    if( ImGui::Begin( "Textures" ), nullptr, ImGuiWindowFlags_HorizontalScrollbar )
     {
         if( ImGui::Button( "Export original textures", { -1, 80 } ) )
         {
