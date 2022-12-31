@@ -636,8 +636,12 @@ namespace
 }
 
 RTGL1::GltfImporter::GltfImporter( const std::filesystem::path& _gltfPath,
-                                   const RgTransform&           _worldTransform )
-    : data( nullptr ), gltfPath( _gltfPath.string() ), gltfFolder( _gltfPath.parent_path() )
+                                   const RgTransform&           _worldTransform,
+                                   float                        _oneGameUnitInMeters )
+    : data( nullptr )
+    , gltfPath( _gltfPath.string() )
+    , gltfFolder( _gltfPath.parent_path() )
+    , oneGameUnitInMeters( _oneGameUnitInMeters )
 {
     cgltf_result  r{ cgltf_result_success };
     cgltf_options options{};
@@ -918,7 +922,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                     .intensity =
                         candelaToLuminousFlux( srcLight->light->intensity ), // from lm/sr to lm
                     .position = position,
-                    .radius   = 0.1f,
+                    .radius   = 0.05f / oneGameUnitInMeters,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
                 foundLight = true;
@@ -933,7 +937,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                         candelaToLuminousFlux( srcLight->light->intensity ), // from lm/sr to lm
                     .position   = position,
                     .direction  = direction,
-                    .radius     = 0.1f,
+                    .radius     = 0.05f / oneGameUnitInMeters,
                     .angleOuter = srcLight->light->spot_outer_cone_angle,
                     .angleInner = srcLight->light->spot_inner_cone_angle,
                 };

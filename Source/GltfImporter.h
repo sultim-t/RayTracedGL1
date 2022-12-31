@@ -39,7 +39,9 @@ class LightManager;
 class GltfImporter
 {
 public:
-    GltfImporter( const std::filesystem::path& gltfPath, const RgTransform& worldTransform );
+    GltfImporter( const std::filesystem::path& gltfPath,
+                  const RgTransform&           worldTransform,
+                  float                        oneGameUnitInMeters );
     ~GltfImporter();
 
     GltfImporter( const GltfImporter& other )                = delete;
@@ -59,6 +61,7 @@ private:
     cgltf_data*           data;
     std::string           gltfPath;
     std::filesystem::path gltfFolder;
+    float                 oneGameUnitInMeters;
 };
 
 }

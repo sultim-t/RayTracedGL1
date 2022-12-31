@@ -356,8 +356,8 @@ void RTGL1::SceneImportExport::CheckForNewScene( std::string_view    mapName,
         textureMeta.RereadFromFiles( GetImportMapName() );
 
         {
-            auto staticScene =
-                GltfImporter( MakeGltfPath( GetImportMapName() ), MakeWorldTransform() );
+            auto staticScene = GltfImporter(
+                MakeGltfPath( GetImportMapName() ), MakeWorldTransform(), GetWorldScale() );
 
             scene.NewScene( cmd, frameIndex, staticScene, textureManager, textureMeta );
         }
