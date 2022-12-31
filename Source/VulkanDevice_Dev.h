@@ -47,11 +47,20 @@ struct Devmode
 
     struct
     {
-        bool  enable;
-        bool  vsync;
-        float fovDeg;
-        bool  antiFirefly;
+        bool enable;
 
+        bool  antiFirefly;
+        int   maxBounceShadows;
+        bool  enableSecondBounceForIndirect;
+        float directDiffuseSensitivityToChange;
+        float indirectDiffuseSensitivityToChange;
+        float specularSensitivityToChange;
+
+        float ev100Min;
+        float ev100Max;
+
+        float                    fovDeg;
+        bool                     vsync;
         RgRenderUpscaleTechnique upscaleTechnique;
         RgRenderSharpenTechnique sharpenTechnique;
         RgRenderResolutionMode   resolutionMode;
@@ -141,8 +150,8 @@ namespace detail
     struct DefaultParams< RgDrawFrameTonemappingParams >
     {
         constexpr static RgDrawFrameTonemappingParams value = {
-            .minLogLuminance     = -3.0f,
-            .maxLogLuminance     = 10.0f,
+            .ev100Min            = 0.0f,
+            .ev100Max            = 10.0f,
             .luminanceWhitePoint = 10.0f,
         };
     };

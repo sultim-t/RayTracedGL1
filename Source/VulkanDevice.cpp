@@ -194,9 +194,12 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     {
         const auto& params = AccessParams( drawInfo.pTonemappingParams );
 
+        float luminanceMin = std::exp2( params.ev100Min ) * 12.5f / 100.0f;
+        float luminanceMax = std::exp2( params.ev100Max ) * 12.5f / 100.0f;
+
         gu->stopEyeAdaptation   = drawInfo.disableEyeAdaptation;
-        gu->minLogLuminance     = params.minLogLuminance;
-        gu->maxLogLuminance     = params.maxLogLuminance;
+        gu->minLogLuminance     = std::log2( luminanceMin );
+        gu->maxLogLuminance     = std::log2( luminanceMax );
         gu->luminanceWhitePoint = params.luminanceWhitePoint;
     }
 

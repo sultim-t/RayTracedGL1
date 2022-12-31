@@ -536,8 +536,8 @@ typedef enum RgSkyType
 
 typedef struct RgDrawFrameTonemappingParams
 {
-    float           minLogLuminance;
-    float           maxLogLuminance;
+    float           ev100Min;
+    float           ev100Max;
     float           luminanceWhitePoint;
 } RgDrawFrameTonemappingParams;
 

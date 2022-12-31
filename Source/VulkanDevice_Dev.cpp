@@ -53,14 +53,12 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         auto& modifiers = devmode->drawInfoOvrd;
 
         ImGui::Separator();
-        if( ImGui::TreeNode( "Override" ) )
+        ImGui::Checkbox( "Override", &modifiers.enable );
+        ImGui::BeginDisabled( !modifiers.enable );
+        if( ImGui::TreeNode( "Present" ) )
         {
-            ImGui::Checkbox( "Enable", &modifiers.enable );
-            ImGui::BeginDisabled( !modifiers.enable );
-
             ImGui::Checkbox( "Vsync", &modifiers.vsync );
             ImGui::SliderFloat( "Vertical FOV", &modifiers.fovDeg, 10, 120, "%.0f degrees" );
-            ImGui::Checkbox( "Anti-firefly", &modifiers.antiFirefly );
 
             static_assert(
                 std::is_same_v< int, std::underlying_type_t< RgRenderUpscaleTechnique > > );
@@ -133,7 +131,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                     reinterpret_cast< int* >( &modifiers.resolutionMode ),
                                     RG_RENDER_RESOLUTION_MODE_QUALITY );
                 ImGui::SameLine();
-                ImGui::BeginDisabled( modifiers.upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 );
+                ImGui::BeginDisabled( modifiers.upscaleTechnique ==
+                                      RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 );
                 ImGui::RadioButton( "Ultra Quality##Resolution",
                                     reinterpret_cast< int* >( &modifiers.resolutionMode ),
                                     RG_RENDER_RESOLUTION_MODE_ULTRA_QUALITY );
@@ -149,9 +148,44 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                 ImGui::EndDisabled();
             }
 
-            ImGui::EndDisabled();
             ImGui::TreePop();
         }
+        if( ImGui::TreeNode( "Tonemapping" ) )
+        {
+            ImGui::SliderFloat( "EV100 min", &modifiers.ev100Min, -3, 16, "%.1f" );
+            ImGui::SliderFloat( "EV100 max", &modifiers.ev100Max, -3, 16, "%.1f" );
+            ImGui::TreePop();
+        }
+        if( ImGui::TreeNode( "Illumination" ) )
+        {
+            ImGui::Checkbox( "Anti-firefly", &modifiers.antiFirefly );
+            ImGui::SliderInt( "Shadow rays max depth",
+                              &modifiers.maxBounceShadows,
+                              0,
+                              2,
+                              "%d",
+                              ImGuiSliderFlags_AlwaysClamp | ImGuiSliderFlags_NoInput );
+            ImGui::Checkbox( "Second bounce for indirect",
+                             &modifiers.enableSecondBounceForIndirect );
+            ImGui::SliderFloat( "Sensitivity to change: Diffuse Direct",
+                                &modifiers.directDiffuseSensitivityToChange,
+                                0.0f,
+                                1.0f,
+                                "%.2f" );
+            ImGui::SliderFloat( "Sensitivity to change: Diffuse Indirect",
+                                &modifiers.indirectDiffuseSensitivityToChange,
+                                0.0f,
+                                1.0f,
+                                "%.2f" );
+            ImGui::SliderFloat( "Sensitivity to change: Specular",
+                                &modifiers.specularSensitivityToChange,
+                                0.0f,
+                                1.0f,
+                                "%.2f" );
+            ImGui::TreePop();
+        }
+        ImGui::EndDisabled();
+
         if( ImGui::TreeNode( "Debug show" ) )
         {
             std::pair< const char*, uint32_t > fs[] = {
@@ -609,6 +643,8 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
 
     RgDrawFrameInfo&                   dst       = devmode->drawInfoCopy.c;
     RgDrawFrameRenderResolutionParams& dst_resol = devmode->drawInfoCopy.c_RenderResolution;
+    RgDrawFrameIlluminationParams&     dst_illum = devmode->drawInfoCopy.c_Illumination;
+    RgDrawFrameTonemappingParams&      dst_tnmp  = devmode->drawInfoCopy.c_Tonemapping;
 
     auto& modifiers = devmode->drawInfoOvrd;
 
@@ -630,6 +666,18 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
                                            ClampPix< uint32_t >( modifiers.pixelized[ 1 ] ) };
             dst_resol.pPixelizedRenderSize =
                 modifiers.pixelizedEnable ? &modifiers.pixelizedForPtr : nullptr;
+        }
+        {
+            dst_illum.maxBounceShadows                 = modifiers.maxBounceShadows;
+            dst_illum.enableSecondBounceForIndirect    = modifiers.enableSecondBounceForIndirect;
+            dst_illum.directDiffuseSensitivityToChange = modifiers.directDiffuseSensitivityToChange;
+            dst_illum.indirectDiffuseSensitivityToChange =
+                modifiers.indirectDiffuseSensitivityToChange;
+            dst_illum.specularSensitivityToChange = modifiers.specularSensitivityToChange;
+        }
+        {
+            dst_tnmp.ev100Min = modifiers.ev100Min;
+            dst_tnmp.ev100Max = modifiers.ev100Max;
         }
 
         return dst;
@@ -659,6 +707,18 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
                 dst_resol.pPixelizedRenderSize
                     ? ClampPix< int >( dst_resol.pPixelizedRenderSize->height )
                     : 0;
+        }
+        {
+            modifiers.maxBounceShadows                 = int( dst_illum.maxBounceShadows );
+            modifiers.enableSecondBounceForIndirect    = dst_illum.enableSecondBounceForIndirect;
+            modifiers.directDiffuseSensitivityToChange = dst_illum.directDiffuseSensitivityToChange;
+            modifiers.indirectDiffuseSensitivityToChange =
+                dst_illum.indirectDiffuseSensitivityToChange;
+            modifiers.specularSensitivityToChange = dst_illum.specularSensitivityToChange;
+        }
+        {
+            modifiers.ev100Min = dst_tnmp.ev100Min;
+            modifiers.ev100Max = dst_tnmp.ev100Max;
         }
 
         // and return original
