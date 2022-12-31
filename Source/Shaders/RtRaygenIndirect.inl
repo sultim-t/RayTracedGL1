@@ -207,7 +207,7 @@ float getDiffuseWeight( float roughness )
 #define TEMPORAL_RADIUS_INDIR_MAX 2.0
 
 #define SPATIAL_SAMPLES_INDIR 4
-#define SPATIAL_RADIUS_INDIR  8.0
+#define SPATIAL_RADIUS_INDIR  32.0
 
 #define DEBUG_TRACE_BIAS_CORRECT_RAY 0
 
@@ -270,10 +270,11 @@ void main()
 
     // assuming that pix is checkerboarded
     const ivec3 chRenderArea = getCheckerboardedRenderArea( pix );
-    const float motionZ      = texelFetch( framebufMotion_Sampler, pix, 0 ).z;
-    const float depthCur     = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
-    const vec2  posPrev      = getPrevScreenPos( framebufMotion_Sampler, pix );
-    
+    const float motionZ           = texelFetch( framebufMotion_Sampler, pix, 0 ).z;
+    const float depthCur          = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
+    const vec2  posPrev           = getPrevScreenPos( framebufMotion_Sampler, pix );
+
+    int spatialSamplesCount = int( SPATIAL_SAMPLES_INDIR * getDiffuseWeight( surf.roughness ) );
 
 
     for( int pixIndex = 0; pixIndex < TEMPORAL_SAMPLES_INDIR; pixIndex++ )
@@ -292,13 +293,25 @@ void main()
             {
                 continue;
             }
-
+        }
+        {
             const float depthPrev  = texelFetch( framebufDepthWorld_Prev_Sampler, pp, 0 ).r;
             const vec3  normalPrev = texelFetchNormal_Prev( pp );
 
             if( !testSurfaceForReuseIndirect(
                     chRenderArea, pp, depthCur, depthPrev - motionZ, surf.normal, normalPrev ) )
             {
+                continue;
+            }
+        }
+        {
+            const float antilagAlpha_Indir = texelFetch(
+                framebufDISGradientHistory_Sampler, pp / COMPUTE_ASVGF_STRATA_SIZE, 0 )[ 1 ];
+
+            // if there's too much difference, don't use a temporal sample
+            if( antilagAlpha_Indir > 0.25 )
+            {
+                spatialSamplesCount++;
                 continue;
             }
         }
@@ -314,10 +327,9 @@ void main()
 
 
     {
-        const int spatialCount = int( SPATIAL_SAMPLES_INDIR * getDiffuseWeight( surf.roughness ) );
         uint nobiasM = combined.M; 
 
-        for( int pixIndex = 0; pixIndex < spatialCount; pixIndex++ )
+        for( int pixIndex = 0; pixIndex < spatialSamplesCount; pixIndex++ )
         {
             // TODO: need low discrepancy noise
             ivec2 pp;
