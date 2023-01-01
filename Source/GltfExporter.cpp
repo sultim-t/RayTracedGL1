@@ -1070,91 +1070,121 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
             RTGL1::Utils::SafeCstr( prim.pTextureName ) );
     }
 
+#if POLYLIGHT_AS_SPHERE
     struct PositionNormal
     {
         RgFloat3D position;
         RgFloat3D normal;
     };
-    std::deque< PositionNormal > initial;
+    auto merge = []( const std::optional< PositionNormal >& a,
+                     const std::optional< PositionNormal >& b ) -> std::optional< PositionNormal > {
+        if( a && b )
+        {
+            return PositionNormal{
+                .position = ( a->position + b->position ) * 0.5f,
+                .normal   = RTGL1::Utils::Normalize( a->normal + b->normal ),
+            };
+        }
+        if( a && !b )
+        {
+            return a;
+        }
+        if( !a && b )
+        {
+            return b;
+        }
+        return std::nullopt;
+    };
+
+    struct Tri
+    {
+        RgFloat3D v[ 3 ];
+    };
+    auto haveCommonEdge = []( const Tri& a, const Tri& b ) {
+        auto isSameEdge = []( const RgFloat3D& v0,
+                              const RgFloat3D& v1,
+                              const RgFloat3D& u0,
+                              const RgFloat3D& u1 ) {
+            return ( RTGL1::Utils::AreAlmostSame( v0, u0 ) &&
+                     RTGL1::Utils::AreAlmostSame( v1, u1 ) ) ||
+                   ( RTGL1::Utils::AreAlmostSame( v0, u1 ) &&
+                     RTGL1::Utils::AreAlmostSame( v1, u0 ) );
+        };
+        constexpr int edges[][ 2 ] = {
+            { 0, 1 },
+            { 1, 2 },
+            { 2, 0 },
+        };
+        for( const auto& [ av0, av1 ] : edges )
+        {
+            for( const auto& [ bv0, bv1 ] : edges )
+            {
+                if( isSameEdge( a.v[ av0 ], a.v[ av1 ], b.v[ bv0 ], b.v[ bv1 ] ) )
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    };
+    std::optional< Tri >            prev;
+    std::optional< PositionNormal > accum;
+    std::deque< PositionNormal >    initial;
+
+    auto flushAccum = [ &initial, &accum ]() {
+        if( accum )
+        {
+            initial.push_back( *accum );
+            accum = std::nullopt;
+        }
+    };
 
     for( uint32_t tri = 0; tri < prim.indexCount / 3; tri++ )
     {
-        RgFloat3D triLocalPositions[] = {
+        Tri local = {
             toFloat3( prim.pVertices[ prim.pIndices[ tri * 3 + 0 ] ].position ),
             toFloat3( prim.pVertices[ prim.pIndices[ tri * 3 + 1 ] ].position ),
             toFloat3( prim.pVertices[ prim.pIndices[ tri * 3 + 2 ] ].position ),
         };
 
-        RgFloat3D triGlobalPositions[ 3 ] = {
-            ApplyTransform( mesh.transform, triLocalPositions[ 0 ] ),
-            ApplyTransform( mesh.transform, triLocalPositions[ 1 ] ),
-            ApplyTransform( mesh.transform, triLocalPositions[ 2 ] ),
+        Tri global = {
+            ApplyTransform( mesh.transform, local.v[ 0 ] ),
+            ApplyTransform( mesh.transform, local.v[ 1 ] ),
+            ApplyTransform( mesh.transform, local.v[ 2 ] ),
         };
 
-        if( auto n = TryGetNormal( triGlobalPositions ) )
+        if( auto n = TryGetNormal( global.v ) )
         {
-#if POLYLIGHT_AS_SPHERE
-            initial.push_back( PositionNormal{
-                .position = GetCenter( triGlobalPositions ),
-                .normal   = *n,
-            } );
-
-#else
-            allLights.emplace_back( RgPolygonalLightUploadInfo{
-                .uniqueID     = 0, /* ignored */
-                .isExportable = true,
-                .color        = lightInfo.color,
-                .intensity    = lightInfo.intensity,
-                .positions    = { triGlobalPositions[ 0 ],
-                                  triGlobalPositions[ 1 ],
-                                  triGlobalPositions[ 2 ] },
-            } );
-#endif
-        }
-    }
-
-#if POLYLIGHT_AS_SPHERE
-    constexpr auto distanceSq = []( const RgFloat3D& a, const RgFloat3D& b ) {
-        RgFloat3D to = b + ( -a );
-        return RTGL1::Utils::Dot( to.data, to.data );
-    };
-
-    auto areCompatible = [ distanceThresholdInGroup ]( const PositionNormal& a,
-                                                       const PositionNormal& b ) {
-        return distanceSq( a.position, b.position ) <
-                   distanceThresholdInGroup * distanceThresholdInGroup &&
-               RTGL1::Utils::Dot( a.normal.data, b.normal.data ) > 0.5f;
-    };
-    auto merge = []( const PositionNormal& a, const PositionNormal& b ) {
-        return PositionNormal{
-            .position = ( a.position + b.position ) * 0.5f,
-            .normal   = RTGL1::Utils::Normalize( a.normal + b.normal ),
-        };
-    };
-
-    std::vector< PositionNormal > grouped;
-    for( const PositionNormal& cur : initial )
-    {
-        bool foundCompatible = false;
-        for( PositionNormal& other : grouped )
-        {
-            if( areCompatible( cur, other ) )
+            if( prev )
             {
-                other = merge( cur, other );
-
-                foundCompatible = true;
-                break;
+                if( haveCommonEdge( global, *prev ) )
+                {
+                    accum = merge( accum,
+                                   PositionNormal{
+                                       .position = GetCenter( global.v ),
+                                       .normal   = *n,
+                                   } );
+                }
+                else
+                {
+                    flushAccum();
+                }
             }
-        }
-
-        if( !foundCompatible )
-        {
-            grouped.push_back( cur );
+            else
+            {
+                // initial
+                accum = PositionNormal{
+                    .position = GetCenter( global.v ),
+                    .normal   = *n,
+                };
+            }
+            prev = global;
         }
     }
+    flushAccum();
 
     std::vector< RTGL1::GenericLight > resolvedLights;
-    for( const auto& [ position, normal ] : grouped )
+    for( const auto& [ position, normal ] : initial )
     {
         resolvedLights.emplace_back( RgSphericalLightUploadInfo{
             .uniqueID     = 0, /* ignored */
