@@ -36,6 +36,7 @@ JSON_TYPE( RTGL1::TextureMeta )
     "isMirror", &T::isMirror,
     "isWater", &T::isWater,
     "isGlass", &T::isGlass,
+    "isGlassIfTranslucent", &T::isGlassIfTranslucent,
     "metallicDefault", &T::metallicDefault,
     "roughnessDefault", &T::roughnessDefault,
     "emissiveMult", &T::emissiveMult,
@@ -175,6 +176,9 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
         {
             prim.flags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
         }
+        bool isTranslucent =
+            ( prim.flags & RG_MESH_PRIMITIVE_TRANSLUCENT ) ||
+            ( Utils::UnpackAlphaFromPacked32( prim.color ) < MESH_TRANSLUCENT_ALPHA_THRESHOLD );
 
         {
             editor.attachedLight.intensity = meta->attachedLightIntensity;
@@ -193,7 +197,7 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
             prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
         }
-        else if( meta->isGlass )
+        else if( ( meta->isGlass ) || ( meta->isGlassIfTranslucent && isTranslucent ) )
         {
             prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
             prim.flags |= RG_MESH_PRIMITIVE_GLASS;

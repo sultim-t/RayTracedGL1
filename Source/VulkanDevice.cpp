@@ -839,19 +839,24 @@ namespace
 {
     bool IsRasterized( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive )
     {
-        if( primitive.flags & RG_MESH_PRIMITIVE_TRANSLUCENT )
-        {
-            return true;
-        }
-
         if( primitive.flags & RG_MESH_PRIMITIVE_SKY )
         {
             return true;
         }
 
-        if( Utils::UnpackAlphaFromPacked32( primitive.color ) < MESH_TRANSLUCENT_ALPHA_THRESHOLD )
+        if( !( primitive.flags & RG_MESH_PRIMITIVE_GLASS ) &&
+            !( primitive.flags & RG_MESH_PRIMITIVE_WATER ) )
         {
-            return true;
+            if( primitive.flags & RG_MESH_PRIMITIVE_TRANSLUCENT )
+            {
+                return true;
+            }
+
+            if( Utils::UnpackAlphaFromPacked32( primitive.color ) <
+                MESH_TRANSLUCENT_ALPHA_THRESHOLD )
+            {
+                return true;
+            }
         }
 
         return false;
