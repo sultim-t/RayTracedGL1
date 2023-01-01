@@ -58,7 +58,7 @@ using MeshesToTheirPrimitives =
 class GltfExporter
 {
 public:
-    explicit GltfExporter( const RgTransform& worldTransform );
+    explicit GltfExporter( const RgTransform& worldTransform, float oneGameUnitInMeters );
     ~GltfExporter() = default;
 
     GltfExporter( const GltfExporter& other )                = delete;
@@ -78,5 +78,6 @@ private:
     std::vector< GenericLight > sceneLights;
 
     RgTransform worldTransform;
+    float       oneGameUnitInMeters;
 };
 }

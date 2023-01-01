@@ -266,8 +266,8 @@ private:
 
 
 
-RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform )
-    : worldTransform( _worldTransform )
+RTGL1::GltfExporter::GltfExporter( const RgTransform& _worldTransform, float _oneGameUnitInMeters )
+    : worldTransform( _worldTransform ), oneGameUnitInMeters( _oneGameUnitInMeters )
 {
 }
 
@@ -823,10 +823,77 @@ cgltf_material MakeMaterial( const RTGL1::DeepCopyOfPrimitive& rgprim,
     };
 }
 
-RgFloat3D operator-( const RgFloat3D& c )
+
+constexpr RgFloat3D operator-( const RgFloat3D& c )
 {
-    return { -c.data[ 0 ], -c.data[ 1 ], -c.data[ 2 ] };
+    return {
+        -c.data[ 0 ],
+        -c.data[ 1 ],
+        -c.data[ 2 ],
+    };
 }
+constexpr RgFloat3D operator+( const RgFloat3D& a, const RgFloat3D& b )
+{
+    return {
+        a.data[ 0 ] + b.data[ 0 ],
+        a.data[ 1 ] + b.data[ 1 ],
+        a.data[ 2 ] + b.data[ 2 ],
+    };
+}
+constexpr RgFloat3D operator*( const RgFloat3D& c, float f )
+{
+    return {
+        f * c.data[ 0 ],
+        f * c.data[ 1 ],
+        f * c.data[ 2 ],
+    };
+}
+
+
+#define POLYLIGHT_AS_SPHERE 1
+
+#if POLYLIGHT_AS_SPHERE
+RgFloat3D GetCenter( const RgFloat3D ( &positions )[ 3 ] )
+{
+    RgFloat3D center = { 0, 0, 0 };
+    for( const auto& v : positions )
+    {
+        center = center + v;
+    }
+    return center * ( 1.0f / 3.0f );
+}
+
+RgFloat3D GetCenter( const RgPolygonalLightUploadInfo& poly )
+{
+    return GetCenter( poly.positions );
+}
+
+std::optional< RgFloat3D > TryGetNormal( const RgFloat3D ( &positions )[ 3 ] )
+{
+    float     area;
+    RgFloat3D normal;
+    if( !RTGL1::Utils::GetNormalAndArea( positions, normal, area ) )
+    {
+        return std::nullopt;
+    }
+    return normal;
+}
+
+RgFloat3D GetNormal( const RgFloat3D ( &positions )[ 3 ] )
+{
+    if( auto n = TryGetNormal( positions ) )
+    {
+        return n.value();
+    }
+    return { 0, 0, 0 };
+}
+
+RgFloat3D GetNormal( const RgPolygonalLightUploadInfo& poly )
+{
+    return GetNormal( poly.positions );
+}
+#endif
+
 
 struct GltfLights
 {
@@ -875,7 +942,6 @@ private:
         };
     }
 
-#define POLYLIGHT_AS_SPHERE 1
     static cgltf_light MakeLight( const RgPolygonalLightUploadInfo& poly )
     {
 #if POLYLIGHT_AS_SPHERE
@@ -916,25 +982,7 @@ private:
     static RgTransform MakeTransform( const RgPolygonalLightUploadInfo& poly )
     {
 #if POLYLIGHT_AS_SPHERE
-        RgFloat3D center = { 0, 0, 0 };
-        for( const auto& v : poly.positions )
-        {
-            center.data[ 0 ] += v.data[ 0 ];
-            center.data[ 1 ] += v.data[ 1 ];
-            center.data[ 2 ] += v.data[ 2 ];
-        }
-        center.data[ 0 ] /= 3.0f;
-        center.data[ 1 ] /= 3.0f;
-        center.data[ 2 ] /= 3.0f;
-
-        float     area;
-        RgFloat3D normal;
-        if( RTGL1::Utils::GetNormalAndArea( poly.positions, normal, area ) )
-        {
-            center.data[ 0 ] += 0.1f * normal.data[ 0 ];
-            center.data[ 1 ] += 0.1f * normal.data[ 1 ];
-            center.data[ 2 ] += 0.1f * normal.data[ 2 ];
-        }
+        RgFloat3D center = GetCenter( poly ) + GetNormal( poly ) * 0.1f;
 
         return RTGL1::Utils::MakeTransform( center, { 0, 0, 1 } );
 #else
@@ -1002,35 +1050,39 @@ private:
 
 auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
                              const RgMeshPrimitiveInfo&       prim,
-                             const RgEditorAttachedLightInfo& lightInfo )
+                             const RgEditorAttachedLightInfo& lightInfo,
+                             float                            distanceThresholdInGroup )
 {
     constexpr auto toFloat3 = []( const float( &ptr )[ 3 ] ) {
         return RgFloat3D{ RG_ACCESS_VEC3( ptr ) };
     };
     using RTGL1::Utils::ApplyTransform;
-    constexpr uint32_t maxTris = 32;
 
     assert( prim.indexCount % 3 == 0 );
-    if( prim.indexCount / 3 > maxTris )
+    if( prim.indexCount / 3 > 1024 )
     {
-        RTGL1::debug::Warning( "Too many triangles to export as attached light: {}, but max is {}. "
-                               "Ignoring others. "
-                               "On a primitive (ID {}-{}, material name: {}).",
-                               prim.indexCount / 3,
-                               maxTris,
-                               mesh.uniqueObjectID,
-                               prim.primitiveIndexInMesh,
-                               RTGL1::Utils::SafeCstr( prim.pTextureName ) );
+        RTGL1::debug::Warning(
+            "The amount of triangles on a primitive (ID {}-{}, material name: {}) "
+            "with attached light is too high ()",
+            prim.indexCount / 3,
+            mesh.uniqueObjectID,
+            prim.primitiveIndexInMesh,
+            RTGL1::Utils::SafeCstr( prim.pTextureName ) );
     }
 
-    std::vector< RTGL1::GenericLight > allLights;
+    struct PositionNormal
+    {
+        RgFloat3D position;
+        RgFloat3D normal;
+    };
+    std::deque< PositionNormal > initial;
 
-    for( uint32_t tri = 0; tri < prim.indexCount / 3 && tri < maxTris; tri++ )
+    for( uint32_t tri = 0; tri < prim.indexCount / 3; tri++ )
     {
         RgFloat3D triLocalPositions[] = {
-            toFloat3( prim.pVertices[ prim.pIndices[ tri + 0 ] ].position ),
-            toFloat3( prim.pVertices[ prim.pIndices[ tri + 1 ] ].position ),
-            toFloat3( prim.pVertices[ prim.pIndices[ tri + 2 ] ].position ),
+            toFloat3( prim.pVertices[ prim.pIndices[ tri * 3 + 0 ] ].position ),
+            toFloat3( prim.pVertices[ prim.pIndices[ tri * 3 + 1 ] ].position ),
+            toFloat3( prim.pVertices[ prim.pIndices[ tri * 3 + 2 ] ].position ),
         };
 
         RgFloat3D triGlobalPositions[ 3 ] = {
@@ -1039,18 +1091,83 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
             ApplyTransform( mesh.transform, triLocalPositions[ 2 ] ),
         };
 
-        allLights.emplace_back( RgPolygonalLightUploadInfo{
+        if( auto n = TryGetNormal( triGlobalPositions ) )
+        {
+#if POLYLIGHT_AS_SPHERE
+            initial.push_back( PositionNormal{
+                .position = GetCenter( triGlobalPositions ),
+                .normal   = *n,
+            } );
+
+#else
+            allLights.emplace_back( RgPolygonalLightUploadInfo{
+                .uniqueID     = 0, /* ignored */
+                .isExportable = true,
+                .color        = lightInfo.color,
+                .intensity    = lightInfo.intensity,
+                .positions    = { triGlobalPositions[ 0 ],
+                                  triGlobalPositions[ 1 ],
+                                  triGlobalPositions[ 2 ] },
+            } );
+#endif
+        }
+    }
+
+#if POLYLIGHT_AS_SPHERE
+    constexpr auto distanceSq = []( const RgFloat3D& a, const RgFloat3D& b ) {
+        RgFloat3D to = b + ( -a );
+        return RTGL1::Utils::Dot( to.data, to.data );
+    };
+
+    auto areCompatible = [ distanceThresholdInGroup ]( const PositionNormal& a,
+                                                       const PositionNormal& b ) {
+        return distanceSq( a.position, b.position ) <
+                   distanceThresholdInGroup * distanceThresholdInGroup &&
+               RTGL1::Utils::Dot( a.normal.data, b.normal.data ) > 0.5f;
+    };
+    auto merge = []( const PositionNormal& a, const PositionNormal& b ) {
+        return PositionNormal{
+            .position = ( a.position + b.position ) * 0.5f,
+            .normal   = RTGL1::Utils::Normalize( a.normal + b.normal ),
+        };
+    };
+
+    std::vector< PositionNormal > grouped;
+    for( const PositionNormal& cur : initial )
+    {
+        bool foundCompatible = false;
+        for( PositionNormal& other : grouped )
+        {
+            if( areCompatible( cur, other ) )
+            {
+                other = merge( cur, other );
+
+                foundCompatible = true;
+                break;
+            }
+        }
+
+        if( !foundCompatible )
+        {
+            grouped.push_back( cur );
+        }
+    }
+
+    std::vector< RTGL1::GenericLight > resolvedLights;
+    for( const auto& [ position, normal ] : grouped )
+    {
+        resolvedLights.emplace_back( RgSphericalLightUploadInfo{
             .uniqueID     = 0, /* ignored */
             .isExportable = true,
             .color        = lightInfo.color,
             .intensity    = lightInfo.intensity,
-            .positions    = { triGlobalPositions[ 0 ],
-                              triGlobalPositions[ 1 ],
-                              triGlobalPositions[ 2 ] },
+            .position     = { RG_ACCESS_VEC3( position.data ) },
+            .radius       = 0.1f, /* ignored */
         } );
     }
 
-    return allLights;
+    return resolvedLights;
+#endif
 }
 
 
@@ -1173,8 +1290,8 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
 
     if( primitive.pEditorInfo && primitive.pEditorInfo->attachedLightExists )
     {
-        auto primLights =
-            MakeLightsForPrimitive( mesh, primitive, primitive.pEditorInfo->attachedLight );
+        auto primLights = MakeLightsForPrimitive(
+            mesh, primitive, primitive.pEditorInfo->attachedLight, 0.5f / oneGameUnitInMeters );
 
         sceneLights.insert( sceneLights.end(), primLights.begin(), primLights.end() );
     }

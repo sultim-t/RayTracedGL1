@@ -333,7 +333,7 @@ void RTGL1::SceneImportExport::PrepareForFrame()
 {
     if( exportRequested )
     {
-        exporter        = std::make_unique< GltfExporter >( MakeWorldTransform() );
+        exporter        = std::make_unique< GltfExporter >( MakeWorldTransform(), GetWorldScale() );
         exportRequested = false;
     }
 }
