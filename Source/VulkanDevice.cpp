@@ -872,12 +872,20 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
         return;
     }
 
+
     // copy to modify
     RgMeshPrimitiveInfo prim       = *pPrimitive;
     RgEditorInfo        primEditor = prim.pEditorInfo ? *prim.pEditorInfo : RgEditorInfo{};
     prim.pEditorInfo               = &primEditor;
-
     textureMetaManager->Modify( prim, primEditor, false );
+
+
+    if( primEditor.attachedLightExists )
+    {
+        primEditor.attachedLight.intensity = Utils::IntensityFromNonMetric(
+            primEditor.attachedLight.intensity, sceneImportExport->GetWorldScale() );
+    }
+
 
     if( IsRasterized( *pMesh, prim ) )
     {
