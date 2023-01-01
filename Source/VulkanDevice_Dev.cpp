@@ -24,6 +24,8 @@
 
 #include <imgui.h>
 
+#include <ranges>
+
 namespace
 {
 
@@ -372,8 +374,18 @@ void RTGL1::VulkanDevice::Dev_Draw() const
     }
     ImGui::End();
 
-    if( ImGui::Begin( "Log", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
+    if( ImGui::Begin( "Log" ) )
     {
+        ImGui::Checkbox( "Auto-scroll", &devmode->logAutoScroll );
+        ImGui::SameLine();
+        ImGui::Checkbox( "Compact", &devmode->logCompact );
+        ImGui::SameLine();
+        if( ImGui::Button( "Clear" ) )
+        {
+            devmode->logs.clear();
+        }
+        ImGui::Separator();
+
         ImGui::CheckboxFlags( "Errors", &devmode->logFlags, RG_MESSAGE_SEVERITY_ERROR );
         ImGui::SameLine();
         ImGui::CheckboxFlags( "Warnings", &devmode->logFlags, RG_MESSAGE_SEVERITY_WARNING );
@@ -381,42 +393,96 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         ImGui::CheckboxFlags( "Info", &devmode->logFlags, RG_MESSAGE_SEVERITY_INFO );
         ImGui::SameLine();
         ImGui::CheckboxFlags( "Verbose", &devmode->logFlags, RG_MESSAGE_SEVERITY_VERBOSE );
+        ImGui::Separator();
 
-        if( ImGui::Button( "Clear" ) )
+        struct MsgEntry
         {
-            devmode->logs.clear();
+            uint32_t               count{ 0 };
+            RgMessageSeverityFlags severity{ 0 };
+            std::string_view       text{};
+            uint64_t               hash{ 0 };
+        };
+
+        std::deque< MsgEntry > msgs;
+        for( auto& [ severity, text, hash ] : devmode->logs | std::ranges::views::reverse )
+        {
+            bool found = false;
+
+            if( devmode->logCompact )
+            {
+                for( auto& existing : msgs )
+                {
+                    if( severity == existing.severity && hash == existing.hash &&
+                        text == existing.text )
+                    {
+                        existing.count++;
+
+                        found = true;
+                        break;
+                    }
+                }
+            }
+
+            if( !found )
+            {
+                msgs.emplace_front( MsgEntry{
+                    .count    = 1,
+                    .severity = severity,
+                    .text     = text,
+                    .hash     = std::hash< std::string_view >{}( text ),
+                } );
+            }
         }
 
-        for( const auto& [ severity, msg ] : devmode->logs )
-        {
-            RgMessageSeverityFlags filtered = severity & devmode->logFlags;
 
-            ImU32 color;
-            if( filtered & RG_MESSAGE_SEVERITY_ERROR )
+        if( ImGui::BeginChild(
+                "##LogScrollingRegion", ImVec2( 0, 0 ), false, ImGuiWindowFlags_HorizontalScrollbar ) )
+        {
+            for( const auto& msg : msgs )
             {
-                color = IM_COL32( 255, 0, 0, 255 );
+                RgMessageSeverityFlags filtered = msg.severity & devmode->logFlags;
+
+                if( filtered == 0 )
+                {
+                    continue;
+                }
+
+                std::optional< ImU32 > color;
+                if( filtered & RG_MESSAGE_SEVERITY_ERROR )
+                {
+                    color = IM_COL32( 255, 0, 0, 255 );
+                }
+                else if( filtered & RG_MESSAGE_SEVERITY_WARNING )
+                {
+                    color = IM_COL32( 255, 255, 0, 255 );
+                }
+
+                if( color )
+                {
+                    ImGui::PushStyleColor( ImGuiCol_Text, *color );
+                }
+
+                if( msg.count == 1 )
+                {
+                    ImGui::TextUnformatted( msg.text.data() );
+                }
+                else
+                {
+                    ImGui::Text( "[%u] %s", msg.count, msg.text.data() );
+                }
+
+                if( color )
+                {
+                    ImGui::PopStyleColor();
+                }
             }
-            else if( filtered & RG_MESSAGE_SEVERITY_WARNING )
+
+            if( devmode->logAutoScroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY() )
             {
-                color = IM_COL32( 255, 255, 0, 255 );
+                ImGui::SetScrollHereY( 1.0f );
             }
-            else if( filtered & RG_MESSAGE_SEVERITY_INFO )
-            {
-                color = IM_COL32( 255, 255, 255, 255 );
-            }
-            else if( filtered & RG_MESSAGE_SEVERITY_VERBOSE )
-            {
-                color = IM_COL32( 255, 255, 255, 255 );
-            }
-            else
-            {
-                assert( filtered == 0 );
-                continue;
-            }
-            ImGui::PushStyleColor( ImGuiCol_Text, color );
-            ImGui::TextUnformatted( msg.c_str() );
-            ImGui::PopStyleColor();
         }
+        ImGui::EndChild();
     }
     ImGui::End();
 

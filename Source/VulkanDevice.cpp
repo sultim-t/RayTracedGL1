@@ -1169,7 +1169,7 @@ void RTGL1::VulkanDevice::Print( std::string_view msg, RgMessageSeverityFlags se
 {
     if( devmode )
     {
-        devmode->logs.emplace_back( severity, msg );
+        devmode->logs.emplace_back( severity, msg, std::hash< std::string_view >{}( msg ) );
     }
 
     if( userPrint )

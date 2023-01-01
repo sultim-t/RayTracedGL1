@@ -488,7 +488,7 @@ bool TextureManager::TryCreateImportedMaterial( VkCommandBuffer                 
                               []( auto&& p ) { return std::filesystem::is_regular_file( p ); } ) )
     {
         debug::Warning( "Fail to create imported material: none of the paths lead to a file:"
-                        "\n  {}\n  {}\n  {}\n  {}",
+                        "\n  A: {}\n  B: {}\n  C: {}\n  D: {}",
                         fullPaths[ 0 ].string(),
                         fullPaths[ 1 ].string(),
                         fullPaths[ 2 ].string(),
