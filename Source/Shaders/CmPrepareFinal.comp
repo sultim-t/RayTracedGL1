@@ -126,16 +126,15 @@ vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis )
 
 vec3 getBloomInput( const vec3 hdr, const vec3 screenEmis )
 {
-    float emisPower = getLuminance( screenEmis );
-    vec3  emisNorm  = emisPower > 0.001 ? screenEmis / emisPower : vec3( 0 );
+    float evBloom = getCurrentEV100() + globalUniform.bloomEmissionMultiplier;
 
-    // emissive is independent of camera settings
-    float ec = emisPower * globalUniform.bloomEmissionMultiplier;
-
-    float evBloom = getCurrentEV100() + ec;
-
-    vec3 bloom = ( hdr + emisNorm * ev100ToLuminance( evBloom ) ) *
+    vec3 bloom = ( hdr + screenEmis * ev100ToLuminance( evBloom ) ) *
                  ev100ToLuminousExposure( getCurrentEV100() );
+
+    if( any( isnan( bloom ) ) || any( isinf( bloom ) ) )
+    {
+        bloom = vec3( 0 );
+    }
 
     return bloom * smoothstep( globalUniform.bloomThreshold,
                                globalUniform.bloomThreshold * 1.1,
