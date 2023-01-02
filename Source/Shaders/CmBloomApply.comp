@@ -34,6 +34,27 @@ layout( constant_id = 0 ) const uint isSourcePing = 0;
 #define EFFECT_SOURCE_IS_PING ( isSourcePing != 0 )
 #include "EfCommon.inl"
 
+vec3 sampleDirtTexture( vec2 uv )
+{
+    vec2 texsize    = vec2( textureSize( getTexture( globalUniform.dirtMaskTextureIndex ), 0 ) );
+    vec2 rendersize = vec2( effect_getFramebufSize() );
+
+    if( rendersize.x > rendersize.y )
+    {
+        float newy   = rendersize.x / float( texsize.x ) * float( texsize.y );
+        float yscale = rendersize.y / newy;
+        uv.y         = ( ( uv.y - 0.5 ) * yscale ) + 0.5;
+    }
+    else
+    {
+        float newx   = rendersize.y / float( texsize.y ) * float( texsize.x );
+        float xscale = rendersize.x / newx;
+        uv.x         = ( ( uv.x - 0.5 ) * xscale ) + 0.5;
+    }
+
+    return getTextureSampleLod( globalUniform.dirtMaskTextureIndex, uv, 0 ).rgb;
+}
+
 void main()
 {
     const ivec2 pix = ivec2( gl_GlobalInvocationID.x, gl_GlobalInvocationID.y );
@@ -45,12 +66,10 @@ void main()
     }
 
 
-    vec3 dirt = getTextureSample( globalUniform.dirtMaskTextureIndex, uv ).rgb;
-
     vec3 bloom =
         globalUniform.bloomIntensity * textureLod( framebufBloom_Result_Sampler, uv, 0 ).rgb;
 
-    bloom += 10 * dirt * textureLod( framebufBloom_Mip8_Sampler, uv, 0 ).rgb;
+    bloom += 10 * sampleDirtTexture( uv ) * textureLod( framebufBloom_Mip8_Sampler, uv, 0 ).rgb;
 
     vec3 c = effect_loadFromSource( pix ) + bloom;
     effect_storeToTarget( c, pix );
