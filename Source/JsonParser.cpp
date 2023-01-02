@@ -146,6 +146,7 @@ JSON_TYPE( RTGL1::TextureMeta )
     , "forceIgnore", &T::forceIgnore
     , "forceAlphaTest", &T::forceAlphaTest
     , "forceTranslucent", &T::forceTranslucent
+    , "forceGenerateNormals", &T::forceGenerateNormals
     , "isMirror", &T::isMirror
     , "isWater", &T::isWater
     , "isGlass", &T::isGlass

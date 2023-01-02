@@ -135,6 +135,11 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
 
     if( auto meta = Access( prim.pTextureName ) )
     {
+        if( meta->forceGenerateNormals )
+        {
+            prim.flags &= ~RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS;
+        }
+
         if( meta->forceAlphaTest )
         {
             prim.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;

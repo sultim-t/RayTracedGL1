@@ -55,6 +55,8 @@ struct TextureMeta
     bool forceAlphaTest   = false;
     bool forceTranslucent = false;
 
+    bool forceGenerateNormals = false;
+
     bool isMirror             = false;
     bool isWater              = false;
     bool isGlass              = false;
@@ -120,7 +122,7 @@ namespace json_parser
     }
 
 
-    
+
     std::string MakeJsonString( const RgLightExtraInfo& info );
 }
 
