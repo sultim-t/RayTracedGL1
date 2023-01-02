@@ -88,7 +88,7 @@ TextureManager::TextureManager( VkDevice                                _device,
                                 const std::filesystem::path &           _waterNormalTexturePath,
                                 RgTextureSwizzling                      _pbrSwizzling,
                                 bool                                    _forceNormalMapFilterLinear,
-                                const LibraryConfig::Config&            _config )
+                                const LibraryConfig&                    _config )
     : device( _device )
     , pbrSwizzling( _pbrSwizzling )
     , memAllocator( std::move( _memAllocator ) )

@@ -29,7 +29,7 @@
 #include "IFileDependency.h"
 #include "ImageLoader.h"
 #include "ImageLoaderDev.h"
-#include "LibraryConfig.h"
+#include "JsonParser.h"
 #include "Material.h"
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
@@ -53,7 +53,7 @@ public:
                     const std::filesystem::path&            waterNormalTexturePath,
                     RgTextureSwizzling                      pbrSwizzling,
                     bool                                    forceNormalMapFilterLinear,
-                    const LibraryConfig::Config&            config );
+                    const LibraryConfig&                    config );
     ~TextureManager() override;
 
     TextureManager( const TextureManager& other )                = delete;

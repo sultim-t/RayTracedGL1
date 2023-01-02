@@ -32,7 +32,6 @@
 #include "CubemapUploader.h"
 #include "CommandBufferManager.h"
 #include "ImageLoader.h"
-#include "LibraryConfig.h"
 
 namespace RTGL1
 {

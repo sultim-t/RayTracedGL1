@@ -18,7 +18,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#pragma once
+#include "JsonParser.h"
 
 #include "Common.h"
 
@@ -47,17 +47,13 @@ struct glz::meta< Type >                            \
 // clang-format on
 
 
-namespace RTGL1::json_reader::detail
-{
+
 struct Version
 {
     int version = -1;
 };
-}
-
-
 // clang-format off
-JSON_TYPE( RTGL1::json_reader::detail::Version )
+JSON_TYPE( Version )
 
     "version", &T::version
 
@@ -65,25 +61,22 @@ JSON_TYPE_END;
 // clang-format on
 
 
-namespace RTGL1::json_reader
+
+namespace
 {
-
-namespace detail
+template< typename T, bool NoException = false >
+T ReadJson( const std::string& buffer )
 {
-    template< typename T, bool NoException = false >
-    T ReadJson( const std::string& buffer )
-    {
-        constexpr auto options = glz::opts{
-            .error_on_unknown_keys = false,
-            .no_except             = NoException,
-        };
-
-        T value{};
-        glz::read< options >( value, buffer );
-
-        return value;
+    constexpr auto options = glz::opts{
+        .error_on_unknown_keys = false,
+        .no_except             = NoException,
     };
-}
+
+    T value{};
+    glz::read< options >( value, buffer );
+
+    return value;
+};
 
 template< typename T >
     requires( T::Version,
@@ -111,9 +104,11 @@ std::optional< T > LoadFileAs( const std::filesystem::path& path )
         }
     }
 
+    using namespace RTGL1;
+
     try
     {
-        auto [ version ] = detail::ReadJson< detail::Version, true >( buffer.str() );
+        auto [ version ] = ReadJson< Version, true >( buffer.str() );
 
         if( version < 0 )
         {
@@ -131,8 +126,8 @@ std::optional< T > LoadFileAs( const std::filesystem::path& path )
                             version );
             return std::nullopt;
         }
-        
-        return detail::ReadJson< T >( buffer.str() );
+
+        return ReadJson< T >( buffer.str() );
     }
     catch( std::exception& e )
     {
@@ -141,4 +136,49 @@ std::optional< T > LoadFileAs( const std::filesystem::path& path )
     }
 }
 
+}
+
+
+
+// clang-format off
+JSON_TYPE( RTGL1::TextureMeta )
+      "textureName", &T::textureName
+    , "forceIgnore", &T::forceIgnore
+    , "forceAlphaTest", &T::forceAlphaTest
+    , "forceTranslucent", &T::forceTranslucent
+    , "isMirror", &T::isMirror
+    , "isWater", &T::isWater
+    , "isGlass", &T::isGlass
+    , "isGlassIfTranslucent", &T::isGlassIfTranslucent
+    , "metallicDefault", &T::metallicDefault
+    , "roughnessDefault", &T::roughnessDefault
+    , "emissiveMult", &T::emissiveMult
+    , "lightIntensity", &T::attachedLightIntensity
+    , "lightColor", &T::attachedLightColor
+JSON_TYPE_END;
+JSON_TYPE( RTGL1::TextureMetaArray )
+    "array", &T::array
+JSON_TYPE_END;
+// clang-format on
+
+auto RTGL1::json_parser::detail::ReadTextureMetaArray( const std::filesystem::path& path )
+    -> std::optional< TextureMetaArray >
+{
+    return LoadFileAs< TextureMetaArray >( path );
+}
+
+
+// clang-format off
+JSON_TYPE( RTGL1::LibraryConfig )
+    "developerMode",    &T::developerMode,
+    "vulkanValidation", &T::vulkanValidation,
+    "dlssValidation",   &T::dlssValidation,
+    "fpsMonitor",       &T::fpsMonitor
+JSON_TYPE_END;
+// clang-format on
+
+auto RTGL1::json_parser::detail::ReadLibraryConfig( const std::filesystem::path& path )
+    -> std::optional< LibraryConfig >
+{
+    return LoadFileAs< LibraryConfig >( path );
 }

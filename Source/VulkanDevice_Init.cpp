@@ -25,10 +25,11 @@
 #include <stdexcept>
 
 #include "HaltonSequence.h"
+#include "JsonParser.h"
 #include "RenderResolutionHelper.h"
 #include "RgException.h"
+
 #include "Generated/ShaderCommonC.h"
-#include "LibraryConfig.h"
 
 namespace
 {
@@ -159,6 +160,23 @@ VkSurfaceKHR GetSurfaceFromUser( VkInstance instance, const RgInstanceCreateInfo
     throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Surface info wasn't specified" );
 }
 
+RTGL1::LibraryConfig ReadConfig( const char* pPath )
+{
+    using namespace RTGL1;
+
+    if(Utils::IsCstrEmpty( pPath ) )
+    {
+        pPath = "RayTracedGL1.json";
+    }
+
+    if( auto c = json_parser::ReadFileAs< LibraryConfig >( std::filesystem::path( pPath ) ) )
+    {
+        return *c;
+    }
+
+    return {};
+}
+
 } // anonymous namespace
 
 RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
@@ -168,7 +186,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     , frameId( 1 )
     , waitForOutOfFrameFence( false )
     , ovrdFolder( Utils::SafeCstr( info->pOverrideFolderPath ) )
-    , libconfig( LibraryConfig::Read( info->pConfigPath ) )
+    , libconfig( ReadConfig( info->pConfigPath ) )
     , debugMessenger( VK_NULL_HANDLE )
     , userPrint{ std::make_unique< UserPrint >( info->pfnPrint, info->pUserPrintData ) }
     , rayCullBackFacingTriangles( info->rayCullBackFacingTriangles )

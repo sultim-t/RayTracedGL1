@@ -23,45 +23,12 @@
 #include "Common.h"
 #include "Containers.h"
 #include "IFileDependency.h"
+#include "JsonParser.h"
 
-#include <array>
 #include <string>
 
 namespace RTGL1
 {
-
-struct TextureMeta
-{
-    constexpr static int Version{ 0 };
-    constexpr static int RequiredVersion{ 0 };
-
-    std::string textureName = {};
-
-    bool forceIgnore      = false;
-    bool forceAlphaTest   = false;
-    bool forceTranslucent = false;
-
-    bool isMirror             = false;
-    bool isWater              = false;
-    bool isGlass              = false;
-    bool isGlassIfTranslucent = false;
-
-    float metallicDefault  = 0.0f;
-    float roughnessDefault = 1.0f;
-    float emissiveMult     = 0.0f;
-
-    float                    attachedLightIntensity = 0.0f;
-    std::array< uint8_t, 3 > attachedLightColor     = { { 255, 255, 255 } };
-};
-
-struct TextureMetaArray
-{
-    constexpr static int Version{ 0 };
-    constexpr static int RequiredVersion{ 0 };
-
-    std::vector< TextureMeta > array;
-};
-
 
 class TextureMetaManager : public IFileDependency
 {

@@ -88,9 +88,9 @@ set(Sources
     "Source/GltfImporter.cpp"
     "Source/FolderObserver.cpp"
     "Source/TextureExporter.cpp"
-    "Source/LibraryConfig.cpp"
     "Source/TextureMeta.cpp"
     "Source/VulkanDevice_Dev.cpp"
+    "Source/JsonParser.cpp"
 )
 
 

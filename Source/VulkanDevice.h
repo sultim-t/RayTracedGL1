@@ -53,7 +53,6 @@
 #include "LightGrid.h"
 #include "FSR2.h"
 #include "FrameState.h"
-#include "LibraryConfig.h"
 #include "PortalList.h"
 #include "RestirBuffers.h"
 #include "Volumetric.h"
@@ -210,7 +209,7 @@ private:
 
     std::filesystem::path ovrdFolder;
 
-    LibraryConfig::Config             libconfig;
+    LibraryConfig                     libconfig;
     VkDebugUtilsMessengerEXT          debugMessenger;
     std::unique_ptr< UserPrint >      userPrint;
     std::shared_ptr< DebugWindows >   debugWindows;

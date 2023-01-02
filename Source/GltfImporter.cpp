@@ -23,6 +23,7 @@
 #include "Const.h"
 #include "Matrix.h"
 #include "Scene.h"
+#include "Utils.h"
 
 #include "Generated/ShaderCommonC.h"
 

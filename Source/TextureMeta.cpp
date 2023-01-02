@@ -23,38 +23,6 @@
 #include "Const.h"
 #include "Utils.h"
 
-#include "JsonReader.inl"
-
-
-// clang-format off
-JSON_TYPE( RTGL1::TextureMeta )
-
-      "textureName", &T::textureName
-    , "forceIgnore", &T::forceIgnore
-    , "forceAlphaTest", &T::forceAlphaTest
-    , "forceTranslucent", &T::forceTranslucent
-    , "isMirror", &T::isMirror
-    , "isWater", &T::isWater
-    , "isGlass", &T::isGlass
-    , "isGlassIfTranslucent", &T::isGlassIfTranslucent
-    , "metallicDefault", &T::metallicDefault
-    , "roughnessDefault", &T::roughnessDefault
-    , "emissiveMult", &T::emissiveMult
-    , "lightIntensity", &T::attachedLightIntensity
-    , "lightColor", &T::attachedLightColor
-
-JSON_TYPE_END;
-// clang-format on
-
-
-// clang-format off
-JSON_TYPE( RTGL1::TextureMetaArray )
-
-    "array", &T::array
-
-JSON_TYPE_END;
-// clang-format on
-
 
 namespace
 {
@@ -128,13 +96,13 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
     dataGlobal.clear();
     dataScene.clear();
 
-    auto reread = [ this ]( const std::filesystem::path filepath, auto& data ) {
+    auto reread = [ this ]( const std::filesystem::path &filepath, auto& data ) {
         if( !std::filesystem::exists( filepath ) )
         {
             return;
         }
 
-        if( auto arr = json_reader::LoadFileAs< TextureMetaArray >( filepath ) )
+        if( auto arr = json_parser::ReadFileAs< TextureMetaArray >( filepath ) )
         {
             for( const TextureMeta& v : arr->array )
             {
