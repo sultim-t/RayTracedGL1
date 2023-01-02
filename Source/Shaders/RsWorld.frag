@@ -68,7 +68,7 @@ void main()
 
         outColor.rgb *= illum;
 #else
-        outColor.rgb *= ev100ToLuminousExposure( getCurrentEV100() );
+        outColor.rgb *= max( vec3( 1 ), tonemapping.avgLuminance );
 #endif
     }
 
