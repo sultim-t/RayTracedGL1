@@ -387,6 +387,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     gu->waterNormalTextureIndex = textureManager->GetWaterNormalTextureIndex();
+    gu->dirtMaskTextureIndex    = textureManager->GetDirtMaskTextureIndex();
 
     gu->cameraRayConeSpreadAngle = atanf( ( 2.0f * tanf( drawInfo.fovYRadians * 0.5f ) ) /
                                           float( renderResolution.Height() ) );
@@ -590,7 +591,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     bool enableBloom = AccessParams( drawInfo.pBloomParams ).bloomIntensity > 0.0f;
     if( enableBloom )
     {
-        bloom->Prepare( cmd, frameIndex, uniform, tonemapping );
+        bloom->Prepare( cmd, frameIndex, *uniform, *tonemapping );
     }
 
 
@@ -645,7 +646,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         {
             accum = bloom->Apply( cmd,
                                   frameIndex,
-                                  uniform,
+                                  *uniform,
+                                  *textureManager,
                                   renderResolution.UpscaledWidth(),
                                   renderResolution.UpscaledHeight(),
                                   accum );

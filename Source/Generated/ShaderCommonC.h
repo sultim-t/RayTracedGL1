@@ -123,7 +123,7 @@ namespace RTGL1
 #define COMPUTE_BLOOM_DOWNSAMPLE_GROUP_SIZE_Y (16)
 #define COMPUTE_BLOOM_APPLY_GROUP_SIZE_X (16)
 #define COMPUTE_BLOOM_APPLY_GROUP_SIZE_Y (16)
-#define COMPUTE_BLOOM_STEP_COUNT (5)
+#define COMPUTE_BLOOM_STEP_COUNT (8)
 #define COMPUTE_EFFECT_GROUP_SIZE_X (16)
 #define COMPUTE_EFFECT_GROUP_SIZE_Y (16)
 #define COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X (16)
@@ -260,7 +260,7 @@ struct ShGlobalUniform
     float acidColorAndDensity[4];
     float cameraRayConeSpreadAngle;
     float waterTextureAreaScale;
-    uint32_t _unused0;
+    uint32_t dirtMaskTextureIndex;
     float upscaledRenderWidth;
     float worldUpVector[4];
     float upscaledRenderHeight;

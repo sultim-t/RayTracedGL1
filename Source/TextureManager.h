@@ -51,6 +51,7 @@ public:
                     std::shared_ptr< SamplerManager >       samplerManager,
                     std::shared_ptr< CommandBufferManager > cmdManager,
                     const std::filesystem::path&            waterNormalTexturePath,
+                    const std::filesystem::path&            dirtMaskTexturePath,
                     RgTextureSwizzling                      pbrSwizzling,
                     bool                                    forceNormalMapFilterLinear,
                     const LibraryConfig&                    config );
@@ -89,6 +90,7 @@ public:
     VkDescriptorSetLayout GetDescSetLayout() const;
 
     auto GetWaterNormalTextureIndex() const -> uint32_t;
+    auto GetDirtMaskTextureIndex() const -> uint32_t;
 
     auto GetMaterialTextures( const char* materialName ) const -> MaterialTextures;
 
@@ -124,10 +126,13 @@ private:
     };
 
 private:
-    void CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameIndex );
-    void CreateWaterNormalTexture( VkCommandBuffer              cmd,
-                                   uint32_t                     frameIndex,
-                                   const std::filesystem::path& filepath );
+    void     CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameIndex );
+    uint32_t CreateWaterNormalTexture( VkCommandBuffer              cmd,
+                                       uint32_t                     frameIndex,
+                                       const std::filesystem::path& filepath );
+    uint32_t CreateDirtMaskTexture( VkCommandBuffer              cmd,
+                                    uint32_t                     frameIndex,
+                                    const std::filesystem::path& filepath );
 
     void MakeMaterial( VkCommandBuffer                                  cmd,
                        uint32_t                                         frameIndex,
@@ -179,6 +184,7 @@ private:
     rgl::unordered_set< std::string >           importedMaterials;
 
     uint32_t waterNormalTextureIndex;
+    uint32_t dirtMaskTextureIndex;
 
     RgSamplerFilter currentDynamicSamplerFilter;
 

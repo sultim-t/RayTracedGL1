@@ -283,6 +283,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         worldSamplerManager,
         cmdManager,
         ovrdFolder / "WaterNormal_n.ktx2",
+        ovrdFolder / "DirtMask.ktx2",
         info->pbrTextureSwizzling,
         !!info->textureSamplerForceNormalMapFilterLinear,
         libconfig );
@@ -398,11 +399,12 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         *volumetric );
 
     bloom = std::make_shared< Bloom >( 
-        device, 
-        framebuffers, 
-        shaderManager, 
-        uniform, 
-        tonemapping );
+        device,
+        framebuffers,
+        *shaderManager,
+        *uniform,
+        *textureManager,
+        *tonemapping );
 
     amdFsr2 = std::make_shared< FSR2 >( 
         device, 

@@ -31,57 +31,60 @@ namespace RTGL1
 
 
 class RenderResolutionHelper;
+class TextureManager;
 
 
 class Bloom final : public IShaderDependency
 {
 public:
-    Bloom( VkDevice                                      device,
-           std::shared_ptr< Framebuffers >               framebuffers,
-           const std::shared_ptr< const ShaderManager >& shaderManager,
-           const std::shared_ptr< const GlobalUniform >& uniform,
-           const std::shared_ptr< const Tonemapping >&   tonemapping );
+    Bloom( VkDevice                        device,
+           std::shared_ptr< Framebuffers > framebuffers,
+           const ShaderManager&            shaderManager,
+           const GlobalUniform&            uniform,
+           const TextureManager&           textureManager,
+           const Tonemapping&              tonemapping );
     ~Bloom() override;
 
-    Bloom( const Bloom& other )     = delete;
-    Bloom( Bloom&& other ) noexcept = delete;
-    Bloom&                operator=( const Bloom& other ) = delete;
-    Bloom&                operator=( Bloom&& other ) noexcept = delete;
+    Bloom( const Bloom& other )                = delete;
+    Bloom( Bloom&& other ) noexcept            = delete;
+    Bloom& operator=( const Bloom& other )     = delete;
+    Bloom& operator=( Bloom&& other ) noexcept = delete;
 
-    void                  Prepare( VkCommandBuffer                               cmd,
-                                   uint32_t                                      frameIndex,
-                                   const std::shared_ptr< const GlobalUniform >& uniform,
-                                   const std::shared_ptr< const Tonemapping >&   tonemapping );
+    void Prepare( VkCommandBuffer      cmd,
+                  uint32_t             frameIndex,
+                  const GlobalUniform& uniform,
+                  const Tonemapping&   tonemapping );
 
-    FramebufferImageIndex Apply( VkCommandBuffer                               cmd,
-                                 uint32_t                                      frameIndex,
-                                 const std::shared_ptr< const GlobalUniform >& uniform,
-                                 uint32_t                                      width,
-                                 uint32_t                                      height,
-                                 FramebufferImageIndex                         inputFramebuf );
+    FramebufferImageIndex Apply( VkCommandBuffer       cmd,
+                                 uint32_t              frameIndex,
+                                 const GlobalUniform&  uniform,
+                                 const TextureManager& textureManager,
+                                 uint32_t              width,
+                                 uint32_t              height,
+                                 FramebufferImageIndex inputFramebuf );
 
-    void                  OnShaderReload( const ShaderManager* shaderManager ) override;
+    void OnShaderReload( const ShaderManager* shaderManager ) override;
 
 private:
-    void CreatePipelineLayout( VkDescriptorSetLayout* pSetLayouts, uint32_t setLayoutCount );
     void CreatePipelines( const ShaderManager* shaderManager );
     void CreateStepPipelines( const ShaderManager* shaderManager );
     void CreateApplyPipelines( const ShaderManager* shaderManager );
     void DestroyPipelines();
 
 private:
-    static constexpr uint32_t       StepCount = 5;
+    static constexpr uint32_t StepCount = 8;
 
-    VkDevice                        device;
+    VkDevice device;
 
     std::shared_ptr< Framebuffers > framebuffers;
 
-    VkPipelineLayout                pipelineLayout;
+    VkPipelineLayout pipelineLayout;
+    VkPipelineLayout applyPipelineLayout;
 
-    VkPipeline                      downsamplePipelines[ StepCount ];
-    VkPipeline                      upsamplePipelines[ StepCount ];
+    VkPipeline downsamplePipelines[ StepCount ];
+    VkPipeline upsamplePipelines[ StepCount ];
 
-    VkPipeline                      applyPipelines[ 2 ];
+    VkPipeline applyPipelines[ 2 ];
 };
 
 }

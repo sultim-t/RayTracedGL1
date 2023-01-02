@@ -132,9 +132,12 @@ void main()
         case 2: imageStore(framebufBloom_Mip3, downsampledPix, vec4(downsample13tap(framebufBloom_Mip2_Sampler, srcUV), 0.0)); break;
         case 3: imageStore(framebufBloom_Mip4, downsampledPix, vec4(downsample13tap(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;
         case 4: imageStore(framebufBloom_Mip5, downsampledPix, vec4(downsample13tap(framebufBloom_Mip4_Sampler, srcUV), 0.0)); break;
+        case 5: imageStore(framebufBloom_Mip6, downsampledPix, vec4(downsample13tap(framebufBloom_Mip5_Sampler, srcUV), 0.0)); break;
+        case 6: imageStore(framebufBloom_Mip7, downsampledPix, vec4(downsample13tap(framebufBloom_Mip6_Sampler, srcUV), 0.0)); break;
+        case 7: imageStore(framebufBloom_Mip8, downsampledPix, vec4(downsample13tap(framebufBloom_Mip7_Sampler, srcUV), 0.0)); break;
     }
 }
 
-#if COMPUTE_BLOOM_STEP_COUNT != 5
+#if COMPUTE_BLOOM_STEP_COUNT != 8
     #error Recheck COMPUTE_BLOOM_STEP_COUNT
 #endif

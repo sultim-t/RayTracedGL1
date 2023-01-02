@@ -85,7 +85,8 @@ TextureManager::TextureManager( VkDevice                                _device,
                                 std::shared_ptr< MemoryAllocator >      _memAllocator,
                                 std::shared_ptr< SamplerManager >       _samplerMgr,
                                 std::shared_ptr< CommandBufferManager > _cmdManager,
-                                const std::filesystem::path &           _waterNormalTexturePath,
+                                const std::filesystem::path&            _waterNormalTexturePath,
+                                const std::filesystem::path&            _dirtMaskTexturePath,
                                 RgTextureSwizzling                      _pbrSwizzling,
                                 bool                                    _forceNormalMapFilterLinear,
                                 const LibraryConfig&                    _config )
@@ -94,7 +95,8 @@ TextureManager::TextureManager( VkDevice                                _device,
     , memAllocator( std::move( _memAllocator ) )
     , cmdManager( std::move( _cmdManager ) )
     , samplerMgr( std::move( _samplerMgr ) )
-    , waterNormalTextureIndex( 0 )
+    , waterNormalTextureIndex( EMPTY_TEXTURE_INDEX )
+    , dirtMaskTextureIndex( EMPTY_TEXTURE_INDEX )
     , currentDynamicSamplerFilter( RG_SAMPLER_FILTER_LINEAR )
     , postfixes
         {
@@ -124,7 +126,9 @@ TextureManager::TextureManager( VkDevice                                _device,
         VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
         {
             CreateEmptyTexture( cmd, 0 );
-            CreateWaterNormalTexture( cmd, 0, _waterNormalTexturePath );
+
+            waterNormalTextureIndex = CreateWaterNormalTexture( cmd, 0, _waterNormalTexturePath );
+            dirtMaskTextureIndex    = CreateDirtMaskTexture( cmd, 0, _dirtMaskTexturePath );
         }
         cmdManager->Submit( cmd );
         cmdManager->WaitGraphicsIdle();
@@ -176,9 +180,9 @@ void TextureManager::CreateEmptyTexture( VkCommandBuffer cmd, uint32_t frameInde
 }
 
 // Check CreateStaticMaterial for notes
-void TextureManager::CreateWaterNormalTexture( VkCommandBuffer              cmd,
-                                               uint32_t                     frameIndex,
-                                               const std::filesystem::path& filepath )
+uint32_t TextureManager::CreateWaterNormalTexture( VkCommandBuffer              cmd,
+                                                   uint32_t                     frameIndex,
+                                                   const std::filesystem::path& filepath )
 {
     constexpr uint32_t   defaultData[] = { Utils::PackColor( 127, 127, 255, 255 ) };
     constexpr RgExtent2D defaultSize   = { 1, 1 };
@@ -192,25 +196,60 @@ void TextureManager::CreateWaterNormalTexture( VkCommandBuffer              cmd,
                            VK_FORMAT_R8G8B8A8_UNORM,
                            imageLoader.get() );
 
-    this->waterNormalTextureIndex =
-        PrepareTexture( cmd,
-                        frameIndex,
-                        ovrd.result,
-                        SamplerManager::Handle( RG_SAMPLER_FILTER_LINEAR,
-                                                RG_SAMPLER_ADDRESS_MODE_REPEAT,
-                                                RG_SAMPLER_ADDRESS_MODE_REPEAT ),
-                        true,
-                        "Water normal",
-                        false,
-                        std::nullopt,
-                        std::move( ovrd.path ),
-                        FindEmptySlot( textures ) );
-
-    if( this->waterNormalTextureIndex == EMPTY_TEXTURE_INDEX || !ovrd.result )
+    if( ovrd.result && static_cast< const void* >( ovrd.result->pData ) ==
+                           static_cast< const void* >( defaultData ) )
     {
-        debug::Warning( "Water normal texture fail: Couldn't upload texture. Path: {}",
-                        filepath.string() );
+        debug::Info( "Couldn't find water normal texture at: {}", filepath.string() );
     }
+
+    return PrepareTexture( cmd,
+                           frameIndex,
+                           ovrd.result,
+                           SamplerManager::Handle( RG_SAMPLER_FILTER_LINEAR,
+                                                   RG_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                   RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+                           true,
+                           "Water normal",
+                           false,
+                           std::nullopt,
+                           std::move( ovrd.path ),
+                           FindEmptySlot( textures ) );
+}
+
+uint32_t TextureManager::CreateDirtMaskTexture( VkCommandBuffer              cmd,
+                                                uint32_t                     frameIndex,
+                                                const std::filesystem::path& filepath )
+{
+    constexpr uint32_t   defaultData[] = { Utils::PackColor( 0, 0, 0, 0 ) };
+    constexpr RgExtent2D defaultSize   = { 1, 1 };
+
+    // try to load image file
+    TextureOverrides ovrd( filepath.parent_path(),
+                           filepath.stem().string(),
+                           "",
+                           defaultData,
+                           defaultSize,
+                           VK_FORMAT_R8G8B8A8_SRGB,
+                           imageLoader.get() );
+
+    if( ovrd.result && static_cast< const void* >( ovrd.result->pData ) ==
+                           static_cast< const void* >( defaultData ) )
+    {
+        debug::Info( "Couldn't find dirt mask texture at: {}", filepath.string() );
+    }
+
+    return PrepareTexture( cmd,
+                           frameIndex,
+                           ovrd.result,
+                           SamplerManager::Handle( RG_SAMPLER_FILTER_LINEAR,
+                                                   RG_SAMPLER_ADDRESS_MODE_REPEAT,
+                                                   RG_SAMPLER_ADDRESS_MODE_REPEAT ),
+                           true,
+                           "Dirt mask",
+                           false,
+                           std::nullopt,
+                           std::move( ovrd.path ),
+                           FindEmptySlot( textures ) );
 }
 
 TextureManager::~TextureManager()
@@ -595,6 +634,9 @@ uint32_t TextureManager::PrepareTexture( VkCommandBuffer                        
 
     if( !wasUploaded )
     {
+        debug::Warning(
+            "UploadImage fail on {}. Path: {}", Utils::SafeCstr( debugName ), filepath.string() );
+
         return EMPTY_TEXTURE_INDEX;
     }
 
@@ -724,6 +766,11 @@ void TextureManager::OnFileChanged( FileType type, const std::filesystem::path& 
 uint32_t TextureManager::GetWaterNormalTextureIndex() const
 {
     return waterNormalTextureIndex;
+}
+
+uint32_t TextureManager::GetDirtMaskTextureIndex() const
+{
+    return dirtMaskTextureIndex;
 }
 
 #define IF_LAYER_NOT_NULL( member, field, default )                                            \

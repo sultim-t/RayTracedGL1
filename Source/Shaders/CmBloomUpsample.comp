@@ -93,6 +93,9 @@ void main()
 
     switch (stepIndex)
     {
+        case 7: imageStore(framebufBloom_Mip7,   upsampledPix, 0.25 * vec4(filterTent3x3(framebufBloom_Mip8_Sampler, srcUV), 0.0)); break;
+        case 6: imageStore(framebufBloom_Mip6,   upsampledPix, 0.5 * vec4(filterTent3x3(framebufBloom_Mip7_Sampler, srcUV), 0.0)); break;
+        case 5: imageStore(framebufBloom_Mip5,   upsampledPix, 0.75 * vec4(filterTent3x3(framebufBloom_Mip6_Sampler, srcUV), 0.0)); break;
         case 4: imageStore(framebufBloom_Mip4,   upsampledPix, vec4(filterTent3x3(framebufBloom_Mip5_Sampler, srcUV), 0.0)); break;
         case 3: imageStore(framebufBloom_Mip3,   upsampledPix, vec4(filterTent3x3(framebufBloom_Mip4_Sampler, srcUV), 0.0)); break;
         case 2: imageStore(framebufBloom_Mip2,   upsampledPix, vec4(filterTent3x3(framebufBloom_Mip3_Sampler, srcUV), 0.0)); break;
@@ -101,6 +104,6 @@ void main()
     }
 }
 
-#if COMPUTE_BLOOM_STEP_COUNT != 5
+#if COMPUTE_BLOOM_STEP_COUNT != 8
     #error Recheck COMPUTE_BLOOM_STEP_COUNT
 #endif

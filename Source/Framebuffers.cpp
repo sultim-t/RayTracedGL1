@@ -342,10 +342,10 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
             ? FrameIndexToFBIndex( FB_IMAGE_INDEX_UPSCALED_PING, frameIndex )
             : FB_IMAGE_INDEX_UPSCALED_PING;
 
-    const bool       fromFinal = src == FB_IMAGE_INDEX_FINAL;
+    const bool fromFinal = src == FB_IMAGE_INDEX_FINAL;
 
-    const VkImage    srcImage = images[ src ];
-    const VkImage    dstImage = images[ dst ];
+    const VkImage srcImage = images[ src ];
+    const VkImage dstImage = images[ dst ];
 
     const VkOffset3D srcExtent      = ToSigned( GetFramebufSize( currentResolution, src ) );
     const VkOffset3D upscaledExtent = ToSigned( GetFramebufSize( currentResolution, dst ) );
@@ -448,8 +448,8 @@ RTGL1::FramebufferImageIndex RTGL1::Framebuffers::BlitForEffects(
                 break;
         }
 
-        VkImage           newSrcImage = images[ newSrc ];
-        VkImage           newDstImage = images[ newDst ];
+        VkImage newSrcImage = images[ newSrc ];
+        VkImage newDstImage = images[ newDst ];
 
         const VkOffset3D& newSrcExtent = dstExtent;
         const VkOffset3D& newDstExtent = upscaledExtent;
@@ -653,46 +653,43 @@ VkExtent2D RTGL1::Framebuffers::GetFramebufSize( const ResolutionState& resoluti
         return { 1, 1 };
     }
 
-    int downscale = 1;
+    std::optional< uint32_t > downscale;
 
-    if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_2 )
-    {
-        downscale = 2;
-    }
-    else if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3 )
+    if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_3 )
     {
         downscale = 3;
     }
-    else if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_4 )
+    else if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_BLOOM )
     {
-        downscale = 4;
+        switch( index )
+        {
+            case FB_IMAGE_INDEX_BLOOM_MIP1: downscale = 2; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP2: downscale = 4; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP3: downscale = 8; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP4: downscale = 16; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP5: downscale = 32; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP6: downscale = 64; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP7: downscale = 128; break;
+            case FB_IMAGE_INDEX_BLOOM_MIP8: downscale = 256; break;
+
+            default: assert( 0 ); break;
+        }
     }
-    else if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_8 )
-    {
-        downscale = 8;
-    }
-    else if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_16 )
-    {
-        downscale = 16;
-    }
-    else if( flags & FB_IMAGE_FLAGS_FRAMEBUF_FLAGS_FORCE_SIZE_1_32 )
-    {
-        downscale = 32;
-    }
-    else
+
+    if( !downscale )
     {
         return { resolutionState.renderWidth, resolutionState.renderHeight };
     }
 
-    VkExtent2D extent;
+    VkExtent2D extent = {
+        .width  = ( resolutionState.renderWidth + 1 ) / downscale.value(),
+        .height = ( resolutionState.renderHeight + 1 ) / downscale.value(),
+    };
 
-    extent.width  = ( resolutionState.renderWidth + 1 ) / downscale;
-    extent.height = ( resolutionState.renderHeight + 1 ) / downscale;
-
-    extent.width  = std::max( 1u, extent.width );
-    extent.height = std::max( 1u, extent.height );
-
-    return extent;
+    return VkExtent2D{
+        .width  = std::max( 1u, extent.width ),
+        .height = std::max( 1u, extent.height ),
+    };
 }
 
 void Framebuffers::CreateImages( ResolutionState resolutionState )
@@ -704,7 +701,7 @@ void Framebuffers::CreateImages( ResolutionState resolutionState )
         VkFormat              format = ShFramebuffers_Formats[ i ];
         FramebufferImageFlags flags  = ShFramebuffers_Flags[ i ];
 
-        const VkExtent2D      extent =
+        const VkExtent2D extent =
             GetFramebufSize( resolutionState, static_cast< FramebufferImageIndex >( i ) );
 
         // create image
@@ -801,8 +798,8 @@ void Framebuffers::CreateImages( ResolutionState resolutionState )
 
 void Framebuffers::UpdateDescriptors()
 {
-    const uint32_t                       allBindingsCount     = ShFramebuffers_Count * 2;
-    const uint32_t                       samplerBindingOffset = ShFramebuffers_Count;
+    const uint32_t allBindingsCount     = ShFramebuffers_Count * 2;
+    const uint32_t samplerBindingOffset = ShFramebuffers_Count;
 
     std::vector< VkDescriptorImageInfo > imageInfos( allBindingsCount );
 
