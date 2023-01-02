@@ -87,7 +87,10 @@ namespace json_parser
 
         auto ReadLibraryConfig( const std::filesystem::path& path )
             -> std::optional< LibraryConfig >;
+
+        auto ReadLightExtraInfo( const std::string_view& data ) -> RgLightExtraInfo;
     }
+
 
 
     template< typename T >
@@ -105,6 +108,20 @@ namespace json_parser
         return detail::ReadLibraryConfig( path );
     }
 
+
+
+    template< typename T >
+    auto ReadStringAs( const std::string_view& str ) = delete;
+
+    template<>
+    inline auto ReadStringAs< RgLightExtraInfo >( const std::string_view& data )
+    {
+        return detail::ReadLightExtraInfo( data );
+    }
+
+
+    
+    std::string MakeJsonString( const RgLightExtraInfo& info );
 }
 
 }

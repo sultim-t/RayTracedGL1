@@ -743,14 +743,15 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                         mainNode->name );
     }
 
-    for( cgltf_node* srcMesh : std::span( mainNode->children, mainNode->children_count ) )
+    // meshes
+    for( cgltf_node* srcNode : std::span( mainNode->children, mainNode->children_count ) )
     {
-        if( !srcMesh || !srcMesh->mesh )
+        if( !srcNode || !srcNode->mesh )
         {
             continue;
         }
 
-        if( Utils::IsCstrEmpty( srcMesh->name ) )
+        if( Utils::IsCstrEmpty( srcNode->name ) )
         {
             debug::Warning( "{}: Found srcMesh with null name (a child node of {}). Ignoring",
                             gltfPath,
@@ -758,34 +759,34 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
             continue;
         }
 
-        if( srcMesh->children_count > 0 )
+        if( srcNode->children_count > 0 )
         {
             debug::Warning( "{}: Found a child nodes of {}->{}. Ignoring them",
                             gltfPath,
                             mainNode->name,
-                            srcMesh->name );
+                            srcNode->name );
         }
 
         // TODO: really bad way to reduce hash64 to 32 bits
         RgMeshInfo dstMesh = {
             .uniqueObjectID =
-                uint32_t( std::hash< std::string_view >{}( srcMesh->name ) % UINT32_MAX ),
-            .pMeshName    = srcMesh->name,
-            .transform    = MakeRgTransformFromGltfNode( *srcMesh ),
+                uint32_t( std::hash< std::string_view >{}( srcNode->name ) % UINT32_MAX ),
+            .pMeshName    = srcNode->name,
+            .transform    = MakeRgTransformFromGltfNode( *srcNode ),
             .isExportable = true,
         };
 
-        for( uint32_t i = 0; i < srcMesh->mesh->primitives_count; i++ )
+        for( uint32_t i = 0; i < srcNode->mesh->primitives_count; i++ )
         {
-            const cgltf_primitive& srcPrim = srcMesh->mesh->primitives[ i ];
+            const cgltf_primitive& srcPrim = srcNode->mesh->primitives[ i ];
 
-            auto vertices = GatherVertices( srcPrim, *srcMesh, gltfPath );
+            auto vertices = GatherVertices( srcPrim, *srcNode, gltfPath );
             if( vertices.empty() )
             {
                 continue;
             }
 
-            auto indices = GatherIndices( srcPrim, *srcMesh, gltfPath );
+            auto indices = GatherIndices( srcPrim, *srcNode, gltfPath );
             if( indices.empty() )
             {
                 continue;
@@ -806,8 +807,8 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                         "{}: Ignoring primitive of ...->{}->{}: Found blend material, "
                         "so it requires to be uploaded each frame, and not once on load",
                         gltfPath,
-                        NodeName( srcMesh->parent ),
-                        NodeName( srcMesh ) );
+                        NodeName( srcNode->parent ),
+                        NodeName( srcNode ) );
                     continue;
                     dstFlags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
                 }
@@ -859,19 +860,20 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
     bool     foundLight = false;
     uint64_t counter    = 0;
 
-    for( cgltf_node* srcLight : std::span( mainNode->children, mainNode->children_count ) )
+    // lights
+    for( cgltf_node* srcNode : std::span( mainNode->children, mainNode->children_count ) )
     {
-        if( !srcLight || !srcLight->light )
+        if( !srcNode || !srcNode->light )
         {
             continue;
         }
 
-        if( srcLight->children_count > 0 )
+        if( srcNode->children_count > 0 )
         {
             debug::Warning( "{}: Found a child nodes of {}->{}. Ignoring them",
                             gltfPath,
                             mainNode->name,
-                            srcLight->name );
+                            srcNode->name );
         }
 
         constexpr auto candelaToLuminousFlux = []( float lumensPerSteradian ) {
@@ -879,7 +881,11 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
             return lumensPerSteradian * ( 4 * float( Utils::M_PI ) );
         };
 
-        RgTransform tr = MakeRgTransformFromGltfNode( *srcLight );
+        auto makeExtras = []( const char* extradata ) {
+            return json_parser::ReadStringAs< RgLightExtraInfo >( Utils::SafeCstr( extradata ) );
+        };
+
+        RgTransform tr = MakeRgTransformFromGltfNode( *srcNode );
 
         RgFloat3D position = {
             tr.matrix[ 0 ][ 3 ],
@@ -894,20 +900,21 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
         };
 
         RgColor4DPacked32 packedColor =
-            Utils::PackColorFromFloat( RG_ACCESS_VEC3( srcLight->light->color ), 1.0f );
+            Utils::PackColorFromFloat( RG_ACCESS_VEC3( srcNode->light->color ), 1.0f );
 
         // TODO: change id
         uint64_t uniqueId = UINT64_MAX - counter;
         counter++;
 
-        switch( srcLight->light->type )
+        switch( srcNode->light->type )
         {
             case cgltf_light_type_directional: {
                 RgDirectionalLightUploadInfo info = {
                     .uniqueID               = uniqueId,
                     .isExportable           = true,
+                    .extra                  = makeExtras( srcNode->light->extras.data ),
                     .color                  = packedColor,
-                    .intensity              = srcLight->light->intensity, // already in lm/m^2
+                    .intensity              = srcNode->light->intensity, // already in lm/m^2
                     .direction              = direction,
                     .angularDiameterDegrees = 0.5f,
                 };
@@ -919,9 +926,10 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 RgSphericalLightUploadInfo info = {
                     .uniqueID     = uniqueId,
                     .isExportable = true,
+                    .extra        = makeExtras( srcNode->light->extras.data ),
                     .color        = packedColor,
                     .intensity =
-                        candelaToLuminousFlux( srcLight->light->intensity ), // from lm/sr to lm
+                        candelaToLuminousFlux( srcNode->light->intensity ), // from lm/sr to lm
                     .position = position,
                     .radius   = 0.05f / oneGameUnitInMeters,
                 };
@@ -933,14 +941,15 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 RgSpotLightUploadInfo info = {
                     .uniqueID     = uniqueId,
                     .isExportable = true,
+                    .extra        = makeExtras( srcNode->light->extras.data ),
                     .color        = packedColor,
                     .intensity =
-                        candelaToLuminousFlux( srcLight->light->intensity ), // from lm/sr to lm
+                        candelaToLuminousFlux( srcNode->light->intensity ), // from lm/sr to lm
                     .position   = position,
                     .direction  = direction,
                     .radius     = 0.05f / oneGameUnitInMeters,
-                    .angleOuter = srcLight->light->spot_outer_cone_angle,
-                    .angleInner = srcLight->light->spot_inner_cone_angle,
+                    .angleOuter = srcNode->light->spot_outer_cone_angle,
+                    .angleInner = srcNode->light->spot_inner_cone_angle,
                 };
                 scene.UploadLight( frameIndex, &info, nullptr, true );
                 foundLight = true;

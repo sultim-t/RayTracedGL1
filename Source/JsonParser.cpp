@@ -113,7 +113,7 @@ std::optional< T > LoadFileAs( const std::filesystem::path& path )
         if( version < 0 )
         {
             debug::Warning(
-                "Json parse fail on {}: Invalid version, or \"version\" field is not set",
+                "Json read fail on {}: Invalid version, or \"version\" field is not set",
                 path.string() );
             return std::nullopt;
         }
@@ -131,7 +131,7 @@ std::optional< T > LoadFileAs( const std::filesystem::path& path )
     }
     catch( std::exception& e )
     {
-        debug::Warning( "Json parse fail on {}:\n{}", path.string(), e.what() );
+        debug::Warning( "Json read fail on {}:\n{}", path.string(), e.what() );
         return std::nullopt;
     }
 }
@@ -168,12 +168,13 @@ auto RTGL1::json_parser::detail::ReadTextureMetaArray( const std::filesystem::pa
 }
 
 
+
 // clang-format off
 JSON_TYPE( RTGL1::LibraryConfig )
-    "developerMode",    &T::developerMode,
-    "vulkanValidation", &T::vulkanValidation,
-    "dlssValidation",   &T::dlssValidation,
-    "fpsMonitor",       &T::fpsMonitor
+      "developerMode", &T::developerMode
+    , "vulkanValidation", &T::vulkanValidation
+    , "dlssValidation", &T::dlssValidation
+    , "fpsMonitor", &T::fpsMonitor
 JSON_TYPE_END;
 // clang-format on
 
@@ -181,4 +182,68 @@ auto RTGL1::json_parser::detail::ReadLibraryConfig( const std::filesystem::path&
     -> std::optional< LibraryConfig >
 {
     return LoadFileAs< LibraryConfig >( path );
+}
+
+
+
+// clang-format off
+JSON_TYPE( RgLightExtraInfo )
+    "lightstyle",   &T::lightstyle
+JSON_TYPE_END;
+// clang-format on
+
+auto RTGL1::json_parser::detail::ReadLightExtraInfo( const std::string_view& data )
+    -> RgLightExtraInfo
+{
+    try
+    {
+        if( !data.empty() )
+        {
+            auto value = RgLightExtraInfo{
+                .exists     = true,
+                .lightstyle = 0,
+            };
+
+            glz::read< glz::opts{
+                .error_on_unknown_keys = false,
+                .no_except             = false,
+            } >( value, data.data() );
+
+            return value;
+        }
+    }
+    catch( std::exception& e )
+    {
+        debug::Warning( "Json read fail on RgLightExtraInfo:\n{}", e.what() );
+    }
+
+    return RgLightExtraInfo{
+        .exists = false,
+    };
+}
+
+std::string RTGL1::json_parser::MakeJsonString( const RgLightExtraInfo& info )
+{
+    try
+    {
+        if( info.exists )
+        {
+            std::string str;
+
+            glz::write< glz::opts{
+                .error_on_unknown_keys = false,
+                .no_except             = false,
+                .prettify              = true,
+                .indentation_width     = 4,
+            } >( info, str );
+
+            return str;
+        }
+    }
+    catch( std::exception& e )
+    {
+        debug::Warning( "Json write fail on RgLightExtraInfo:\n{}", e.what() );
+    }
+
+    return {};
 }

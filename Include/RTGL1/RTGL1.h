@@ -424,11 +424,18 @@ RGAPI RgResult RGCONV rgUploadDecal( RgInstance instance, const RgDecalUploadInf
 
 
 
+typedef struct RgLightExtraInfo
+{
+    RgBool32 exists;
+    int      lightstyle;
+} RgLightExtraInfo;
+
 typedef struct RgDirectionalLightUploadInfo
 {
     // Used to match the same light source from the previous frame.
     uint64_t            uniqueID;
     RgBool32            isExportable;
+    RgLightExtraInfo    extra;
     RgColor4DPacked32   color;
     // Luminous flux received by a surface, in lumen / m^2
     // (i.e. illuminance, in lux)
@@ -442,6 +449,7 @@ typedef struct RgSphericalLightUploadInfo
     // Used to match the same light source from the previous frame.
     uint64_t            uniqueID;
     RgBool32            isExportable;
+    RgLightExtraInfo    extra;
     RgColor4DPacked32   color;
     // Luminous flux in lumen
     float               intensity;
@@ -454,6 +462,7 @@ typedef struct RgPolygonalLightUploadInfo
     // Used to match the same light source from the previous frame.
     uint64_t            uniqueID;
     RgBool32            isExportable;
+    RgLightExtraInfo    extra;
     RgColor4DPacked32   color;
     // Luminous flux in lumen
     float               intensity;
@@ -466,6 +475,7 @@ typedef struct RgSpotLightUploadInfo
     // Used to match the same light source from the previous frame.
     uint64_t            uniqueID;
     RgBool32            isExportable;
+    RgLightExtraInfo    extra;
     RgColor4DPacked32   color;
     // Luminous flux in lumen
     float               intensity;

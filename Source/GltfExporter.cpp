@@ -1016,14 +1016,27 @@ public:
 
         // lock pointers
         storage.resize( sceneLights.size() );
+        extrasStorage.resize( sceneLights.size() );
 
         for( size_t i = 0; i < sceneLights.size(); i++ )
         {
-            storage[ i ] = std::visit( []( auto&& specific ) { return MakeLight( specific ); },
-                                       sceneLights[ i ] );
+            storage[ i ] = std::visit(
+                []( auto&& specific ) { //
+                    return MakeLight( specific );
+                },
+                sceneLights[ i ] );
+
+            extrasStorage[ i ] = std::visit(
+                []( auto&& specific ) { //
+                    return RTGL1::json_parser::MakeJsonString( specific.extra );
+                },
+                sceneLights[ i ] );
 
             RgTransform lightTransform = std::visit(
-                []( auto&& specific ) { return MakeTransform( specific ); }, sceneLights[ i ] );
+                []( auto&& specific ) { //
+                    return MakeTransform( specific );
+                },
+                sceneLights[ i ] );
 
             dstLightNodes[ i ] = cgltf_node{
                 .name            = nullptr,
@@ -1039,12 +1052,23 @@ public:
                 .extras          = {},
             };
         }
+
+        // resolve extras ptrs
+        for( size_t i = 0; i < sceneLights.size(); i++ )
+        {
+            storage[ i ].extras = {
+                .data = extrasStorage[ i ].empty()
+                            ? nullptr
+                            : const_cast< char* >( extrasStorage[ i ].c_str() ),
+            };
+        }
     }
 
     auto Lights() { return std::span( storage ); }
 
 private:
     std::vector< cgltf_light > storage;
+    std::vector< std::string > extrasStorage;
 };
 
 

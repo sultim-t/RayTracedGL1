@@ -51,7 +51,7 @@ static_assert( std::is_trivial_v< LightArrayIndex > );
 }
 
 
-// default hash specialializations
+// default hash specialization
 
 
 template<> struct std::hash< RTGL1::LightArrayIndex >
