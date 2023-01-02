@@ -866,6 +866,7 @@ std::vector< TextureManager::Debug_MaterialInfo > TextureManager::Debug_GetMater
     for( const auto& [ materialName, mat ] : materials )
     {
         r.push_back( Debug_MaterialInfo{
+            .textures     = mat.textures,
             .materialName = materialName,
             .isOriginal   = importedMaterials.contains( materialName ),
         } );

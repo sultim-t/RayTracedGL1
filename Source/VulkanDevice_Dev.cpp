@@ -435,8 +435,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         }
 
 
-        if( ImGui::BeginChild(
-                "##LogScrollingRegion", ImVec2( 0, 0 ), false, ImGuiWindowFlags_HorizontalScrollbar ) )
+        if( ImGui::BeginChild( "##LogScrollingRegion",
+                               ImVec2( 0, 0 ),
+                               false,
+                               ImGuiWindowFlags_HorizontalScrollbar ) )
         {
             for( const auto& msg : msgs )
             {
@@ -587,10 +589,22 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         ImGui::Separator();
         ImGui::Dummy( ImVec2( 0, 16 ) );
 
+        enum
+        {
+            ColumnTextureIndex0,
+            ColumnTextureIndex1,
+            ColumnTextureIndex2,
+            ColumnTextureIndex3,
+            ColumnMaterialName,
+            ColumnCopyButton,
+            Column_Count,
+        };
+        static_assert( std::size( TextureManager::Debug_MaterialInfo{}.textures.indices ) == 4 );
+
         ImGui::Checkbox( "Record", &devmode->materialsTableEnable );
         ImGui::TextUnformatted( "Blue - if material is non-original (i.e. was loaded from GLTF)" );
         if( ImGui::BeginTable( "Materials table",
-                               1,
+                               Column_Count,
                                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
                                    ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
                                    ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
@@ -599,7 +613,16 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                      ? textureManager->Debug_GetMaterials()
                                      : std::vector< TextureManager::Debug_MaterialInfo >{};
             {
-                ImGui::TableSetupColumn( "Material name" );
+                ImGui::TableSetupColumn( "A", 0, 8 );
+                ImGui::TableSetupColumn( "P", 0, 8 );
+                ImGui::TableSetupColumn( "N", 0, 8 );
+                ImGui::TableSetupColumn( "E", 0, 8 );
+                ImGui::TableSetupColumn( "Material name",
+                                         ImGuiTableColumnFlags_WidthStretch |
+                                             ImGuiTableColumnFlags_DefaultSort,
+                                         -1 );
+                ImGui::TableSetupColumn(
+                    "##Copy matname button", ImGuiTableColumnFlags_NoSort, 16 );
                 ImGui::TableHeadersRow();
             }
 
@@ -618,8 +641,22 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                             std::strong_ordering ord{ 0 };
                             switch( srt->ColumnIndex )
                             {
-                                case 0: ord = ( a.materialName <=> b.materialName ); break;
-                                default: assert( 0 ); return false;
+                                case ColumnTextureIndex0:
+                                    ord = ( a.textures.indices[ 0 ] <=> b.textures.indices[ 0 ] );
+                                    break;
+                                case ColumnTextureIndex1:
+                                    ord = ( a.textures.indices[ 1 ] <=> b.textures.indices[ 1 ] );
+                                    break;
+                                case ColumnTextureIndex2:
+                                    ord = ( a.textures.indices[ 2 ] <=> b.textures.indices[ 2 ] );
+                                    break;
+                                case ColumnTextureIndex3:
+                                    ord = ( a.textures.indices[ 3 ] <=> b.textures.indices[ 3 ] );
+                                    break;
+                                case ColumnMaterialName:
+                                    ord = ( a.materialName <=> b.materialName );
+                                    break;
+                                default: continue;
                             }
 
                             if( std::is_gt( ord ) )
@@ -645,6 +682,7 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                 {
                     const auto& mat = materialInfos[ i ];
                     ImGui::TableNextRow();
+                    ImGui::PushID( i );
 
                     if( mat.isOriginal )
                     {
@@ -659,8 +697,73 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                         ImGui::TableSetBgColor( ImGuiTableBgTarget_RowBg1, IM_COL32( 0, 0, 0, 1 ) );
                     }
 
-                    ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( mat.materialName.c_str() );
+                    auto writeTexIndex = [ &mat ]( int channel ) {
+                        assert( channel >= 0 && channel < std::size( mat.textures.indices ) );
+                        if( mat.textures.indices[ channel ] != EMPTY_TEXTURE_INDEX )
+                        {
+                            ImGui::Text( "%u", mat.textures.indices[ channel ] );
+                        }
+                    };
+
+                    for( auto col = 0; col < Column_Count; col++ )
+                    {
+                        ImGui::TableNextColumn();
+
+                        switch( col )
+                        {
+                            case ColumnTextureIndex0:
+                                writeTexIndex( 0 );
+                                if( ImGui::IsItemHovered() )
+                                {
+                                    ImGui::SetTooltip( "[R]Occlusion (disabled by default)\n[G] "
+                                                       "Roughness\n[B] Metallic" );
+                                }
+                                break;
+
+                            case ColumnTextureIndex1:;
+                                writeTexIndex( 1 );
+                                if( ImGui::IsItemHovered() )
+                                {
+                                    ImGui::SetTooltip(
+                                        "[RGB]Albedo\n[A] Alpha (0.0 - fully transparent)" );
+                                }
+                                break;
+
+                            case ColumnTextureIndex2:;
+                                writeTexIndex( 2 );
+                                if( ImGui::IsItemHovered() )
+                                {
+                                    ImGui::SetTooltip( "[R] Normal X offset\n[G] Normal Y offset" );
+                                }
+                                break;
+
+                            case ColumnTextureIndex3:;
+                                writeTexIndex( 3 );
+                                if( ImGui::IsItemHovered() )
+                                {
+                                    ImGui::SetTooltip( "[RGB] Emission color" );
+                                }
+                                break;
+
+                            case ColumnMaterialName:
+                                ImGui::TextUnformatted( mat.materialName.c_str() );
+                                break;
+
+                            case ColumnCopyButton:
+                                if( ImGui::SmallButton( "Copy" ) )
+                                {
+                                    if( !mat.materialName.empty() )
+                                    {
+                                        ImGui::SetClipboardText( mat.materialName.c_str() );
+                                    }
+                                }
+                                break;
+
+                            default: break;
+                        }
+                    }
+
+                    ImGui::PopID();
                 }
             }
 

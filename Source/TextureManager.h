@@ -189,8 +189,9 @@ private:
 public:
     struct Debug_MaterialInfo
     {
-        std::string materialName;
-        bool        isOriginal;
+        MaterialTextures textures;
+        std::string      materialName;
+        bool             isOriginal;
     };
     std::vector< Debug_MaterialInfo > Debug_GetMaterials() const;
 };
