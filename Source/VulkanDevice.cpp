@@ -1119,52 +1119,6 @@ void RTGL1::VulkanDevice::ScratchFree( const RgPrimitiveVertex* pPointer )
     delete[] pPointer;
 }
 
-void RTGL1::VulkanDevice::ScratchGetIndices( RgUtilImScratchTopology topology,
-                                             uint32_t                vertexCount,
-                                             const uint32_t**        ppOutIndices,
-                                             uint32_t*               pOutIndexCount )
-{
-    const auto indices = scratchImmediate.GetIndices( topology, vertexCount );
-
-    *ppOutIndices   = indices.data();
-    *pOutIndexCount = uint32_t( indices.size() );
-}
-
-void RTGL1::VulkanDevice::ImScratchClear()
-{
-    scratchImmediate.Clear();
-}
-
-void RTGL1::VulkanDevice::ImScratchStart( RgUtilImScratchTopology topology )
-{
-    scratchImmediate.StartPrimitive( topology );
-}
-
-void RTGL1::VulkanDevice::ImScratchEnd()
-{
-    scratchImmediate.EndPrimitive();
-}
-
-void RTGL1::VulkanDevice::ImScratchVertex( const float& x, const float& y, const float& z )
-{
-    scratchImmediate.Vertex( x, y, z );
-}
-
-void RTGL1::VulkanDevice::ImScratchTexCoord( const float& u, const float& v )
-{
-    scratchImmediate.TexCoord( u, v );
-}
-
-void RTGL1::VulkanDevice::ImScratchColor( const RgColor4DPacked32& color )
-{
-    scratchImmediate.Color( color );
-}
-
-void RTGL1::VulkanDevice::ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget )
-{
-    scratchImmediate.SetToPrimitive( pTarget );
-}
-
 void RTGL1::VulkanDevice::Print( std::string_view msg, RgMessageSeverityFlags severity ) const
 {
     if( devmode )

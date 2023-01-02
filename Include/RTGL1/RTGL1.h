@@ -886,6 +886,7 @@ RGAPI void RGCONV               rgUtilScratchGetIndices( RgInstance instance, Rg
 RGAPI void RGCONV               rgUtilImScratchClear( RgInstance instance );
 RGAPI void RGCONV               rgUtilImScratchStart( RgInstance instance, RgUtilImScratchTopology topology );
 RGAPI void RGCONV               rgUtilImScratchVertex( RgInstance instance, float x, float y, float z );            // Push vertex to a list
+RGAPI void RGCONV               rgUtilImScratchNormal( RgInstance instance, float x, float y, float z );
 RGAPI void RGCONV               rgUtilImScratchTexCoord( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color );
 RGAPI void RGCONV               rgUtilImScratchEnd( RgInstance instance );

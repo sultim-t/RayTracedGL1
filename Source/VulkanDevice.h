@@ -104,18 +104,19 @@ public:
 
     RgPrimitiveVertex* ScratchAllocForVertices( uint32_t count );
     void               ScratchFree( const RgPrimitiveVertex* pPointer );
-    void               ScratchGetIndices( RgUtilImScratchTopology topology,
-                                          uint32_t                vertexCount,
-                                          const uint32_t**        ppOutIndices,
-                                          uint32_t*               pOutIndexCount );
 
-    void ImScratchClear();
-    void ImScratchStart( RgUtilImScratchTopology topology );
-    void ImScratchEnd();
-    void ImScratchVertex( const float& x, const float& y, const float& z );
-    void ImScratchTexCoord( const float& u, const float& v );
-    void ImScratchColor( const RgColor4DPacked32& color );
-    void ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget );
+    inline void ScratchGetIndices( RgUtilImScratchTopology topology,
+                                   uint32_t                vertexCount,
+                                   const uint32_t**        ppOutIndices,
+                                   uint32_t*               pOutIndexCount );
+    inline void ImScratchClear();
+    inline void ImScratchStart( RgUtilImScratchTopology topology );
+    inline void ImScratchEnd();
+    inline void ImScratchVertex( const float& x, const float& y, const float& z );
+    inline void ImScratchNormal( const float& x, const float& y, const float& z );
+    inline void ImScratchTexCoord( const float& u, const float& v );
+    inline void ImScratchColor( const RgColor4DPacked32& color );
+    inline void ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget );
 
 
     void Print( std::string_view msg, RgMessageSeverityFlags severity ) const;
@@ -229,5 +230,56 @@ private:
     bool vsync;
 };
 
+}
 
+
+inline void RTGL1::VulkanDevice::ScratchGetIndices( RgUtilImScratchTopology topology,
+                                                    uint32_t                vertexCount,
+                                                    const uint32_t**        ppOutIndices,
+                                                    uint32_t*               pOutIndexCount )
+{
+    const auto indices = scratchImmediate.GetIndices( topology, vertexCount );
+
+    *ppOutIndices   = indices.data();
+    *pOutIndexCount = uint32_t( indices.size() );
+}
+
+inline void RTGL1::VulkanDevice::ImScratchClear()
+{
+    scratchImmediate.Clear();
+}
+
+inline void RTGL1::VulkanDevice::ImScratchStart( RgUtilImScratchTopology topology )
+{
+    scratchImmediate.StartPrimitive( topology );
+}
+
+inline void RTGL1::VulkanDevice::ImScratchEnd()
+{
+    scratchImmediate.EndPrimitive();
+}
+
+inline void RTGL1::VulkanDevice::ImScratchVertex( const float& x, const float& y, const float& z )
+{
+    scratchImmediate.Vertex( x, y, z );
+}
+
+inline void RTGL1::VulkanDevice::ImScratchNormal( const float& x, const float& y, const float& z )
+{
+    scratchImmediate.Normal( x, y, z );
+}
+
+inline void RTGL1::VulkanDevice::ImScratchTexCoord( const float& u, const float& v )
+{
+    scratchImmediate.TexCoord( u, v );
+}
+
+inline void RTGL1::VulkanDevice::ImScratchColor( const RgColor4DPacked32& color )
+{
+    scratchImmediate.Color( color );
+}
+
+inline void RTGL1::VulkanDevice::ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget )
+{
+    scratchImmediate.SetToPrimitive( pTarget );
 }

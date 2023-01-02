@@ -59,6 +59,13 @@ public:
         verts.push_back( accumVertex );
     }
 
+    void Normal( float x, float y, float z )
+    {
+        accumVertex.normal[ 0 ] = x;
+        accumVertex.normal[ 1 ] = y;
+        accumVertex.normal[ 2 ] = z;
+    }
+
     void TexCoord( float u, float v )
     {
         accumVertex.texCoord[ 0 ] = u;

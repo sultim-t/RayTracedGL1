@@ -278,6 +278,12 @@ void rgUtilImScratchVertex( RgInstance instance, float x, float y, float z )
     Call( instance, &RTGL1::VulkanDevice::ImScratchVertex, x, y, z );
 }
 
+
+void rgUtilImScratchNormal( RgInstance instance, float x, float y, float z )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchNormal, x, y, z );
+}
+
 void rgUtilImScratchTexCoord( RgInstance instance, float u, float v )
 {
     Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord, u, v );
