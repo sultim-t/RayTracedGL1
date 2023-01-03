@@ -64,7 +64,7 @@ void RTGL1::FSR2::OnFramebuffersSizeChange( const ResolutionState& resolutionSta
     FfxErrorCode r;
 
     FfxFsr2ContextDescription contextDesc = {
-        .flags         = FFX_FSR2_ENABLE_AUTO_EXPOSURE, // | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE
+        .flags         = 0,
         .maxRenderSize = { resolutionState.renderWidth, resolutionState.renderHeight },
         .displaySize   = { resolutionState.upscaledWidth, resolutionState.upscaledHeight },
         .callbacks     = {},
