@@ -37,10 +37,10 @@ layout( location = 2 ) out float outReactivity;
 
 layout( push_constant ) uniform RasterizerFrag_BT
 {
-    layout( offset = 64 ) uint packedColor;
-    layout( offset = 68 ) uint textureIndex;
-    layout( offset = 72 ) uint emissiveTextureIndex;
-    layout( offset = 76 ) uint emissiveMult;
+    layout( offset = 64 ) uint  packedColor;
+    layout( offset = 68 ) uint  textureIndex;
+    layout( offset = 72 ) uint  emissiveTextureIndex;
+    layout( offset = 76 ) float emissiveMult;
 }
 rasterizerFragInfo;
 
@@ -93,7 +93,7 @@ void main()
         }
         ldrEmis *= rasterizerFragInfo.emissiveMult;
 
-        outScreenEmission = ldrEmis * globalUniform.emissionMapBoost;
+        outScreenEmission = ldrEmis;
     }
 
     if( alphaTest != 0 )

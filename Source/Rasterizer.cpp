@@ -31,11 +31,11 @@ namespace
 
 struct RasterizedPushConst
 {
-    float             vp[ 16 ];
-    uint32_t          packedColor;
-    uint32_t          textureIndex;
-    uint32_t          emissiveTextureIndex;
-    RgColor4DPacked32 emissiveMult;
+    float    vp[ 16 ];
+    uint32_t packedColor;
+    uint32_t textureIndex;
+    uint32_t emissiveTextureIndex;
+    float    emissiveMult;
 
     explicit RasterizedPushConst( const RTGL1::RasterizedDataCollector::DrawInfo& info,
                                   const float*                                    defaultViewProj )
