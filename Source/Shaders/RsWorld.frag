@@ -25,6 +25,7 @@ layout( location = 1 ) in vec2 vertTexCoord;
 
 layout( location = 0 ) out vec4 outColor;
 layout( location = 1 ) out vec3 outScreenEmission;
+layout( location = 2 ) out float outReactivity;
 
 #define DESC_SET_TEXTURES       0
 #define DESC_SET_GLOBAL_UNIFORM 1
@@ -47,11 +48,17 @@ layout( constant_id = 0 ) const uint alphaTest = 0;
 
 #define ALPHA_THRESHOLD 0.5
 
+vec4 baseColor()
+{
+    return vertColor * unpackUintColor( rasterizerFragInfo.packedColor );
+}
 
 void main()
 {
-    vec4 notexColor = vertColor * unpackUintColor( rasterizerFragInfo.packedColor );
-    outColor = notexColor * getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord );
+    vec4 ldrColor = baseColor() * getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord );
+
+    outReactivity = 0.9 * ldrColor.a;
+    outColor      = ldrColor;
 
     if( globalUniform.lightmapEnable == 0 )
     {
@@ -74,13 +81,19 @@ void main()
     }
 
     {
-        vec3 emisColor =
-            rasterizerFragInfo.emissiveTextureIndex != MATERIAL_NO_TEXTURE
-                ? getTextureSample( rasterizerFragInfo.emissiveTextureIndex, vertTexCoord ).rgb
-                : getTextureSample( rasterizerFragInfo.textureIndex, vertTexCoord ).rgb;
+        vec3 ldrEmis;
+        if( rasterizerFragInfo.emissiveTextureIndex != MATERIAL_NO_TEXTURE )
+        {
+            ldrEmis = baseColor().rgb *
+                      getTextureSample( rasterizerFragInfo.emissiveTextureIndex, vertTexCoord ).rgb;
+        }
+        else
+        {
+            ldrEmis = ldrColor.rgb;
+        }
+        ldrEmis *= rasterizerFragInfo.emissiveMult;
 
-        outScreenEmission = notexColor.rgb * emisColor * rasterizerFragInfo.emissiveMult *
-                            globalUniform.emissionMapBoost;
+        outScreenEmission = ldrEmis * globalUniform.emissionMapBoost;
     }
 
     if( alphaTest != 0 )

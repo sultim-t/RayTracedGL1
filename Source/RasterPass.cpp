@@ -51,6 +51,7 @@ RTGL1::RasterPass::RasterPass( VkDevice                    _device,
     worldRenderPass =
         CreateWorldRenderPass( ShFramebuffers_Formats[ FB_IMAGE_INDEX_FINAL ],
                                ShFramebuffers_Formats[ FB_IMAGE_INDEX_SCREEN_EMISSION ],
+                               ShFramebuffers_Formats[ FB_IMAGE_INDEX_REACTIVITY ],
                                DEPTH_FORMAT );
 
     skyRenderPass =
@@ -63,7 +64,7 @@ RTGL1::RasterPass::RasterPass( VkDevice                    _device,
                                                  _shaderManager,
                                                  "VertDefault",
                                                  "FragWorld",
-                                                 1 /* for emission */,
+                                                 true,
                                                  _instanceInfo.rasterizedVertexColorGamma );
 
     skyPipelines =
@@ -73,7 +74,7 @@ RTGL1::RasterPass::RasterPass( VkDevice                    _device,
                                                  _shaderManager,
                                                  "VertDefault",
                                                  "FragSky",
-                                                 0,
+                                                 false,
                                                  _instanceInfo.rasterizedVertexColorGamma );
 
     depthCopying = std::make_shared< DepthCopying >(
@@ -114,6 +115,7 @@ void RTGL1::RasterPass::CreateFramebuffers( uint32_t              renderWidth,
             VkImageView attchs[] = {
                 storageFramebuffers.GetImageView( FB_IMAGE_INDEX_FINAL, i ),
                 storageFramebuffers.GetImageView( FB_IMAGE_INDEX_SCREEN_EMISSION, i ),
+                storageFramebuffers.GetImageView( FB_IMAGE_INDEX_REACTIVITY, i ),
                 depthViews[ i ],
             };
 
@@ -232,6 +234,7 @@ void RTGL1::RasterPass::OnShaderReload( const ShaderManager* shaderManager )
 
 VkRenderPass RTGL1::RasterPass::CreateWorldRenderPass( VkFormat finalImageFormat,
                                                        VkFormat screenEmisionFormat,
+                                                       VkFormat reactivityFormat,
                                                        VkFormat depthImageFormat ) const
 {
     const VkAttachmentDescription attchs[] = {
@@ -258,6 +261,16 @@ VkRenderPass RTGL1::RasterPass::CreateWorldRenderPass( VkFormat finalImageFormat
             .finalLayout    = VK_IMAGE_LAYOUT_GENERAL,
         },
         {
+            .format         = reactivityFormat,
+            .samples        = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout  = VK_IMAGE_LAYOUT_GENERAL,
+            .finalLayout    = VK_IMAGE_LAYOUT_GENERAL,
+        },
+        {
             .format  = depthImageFormat,
             .samples = VK_SAMPLE_COUNT_1_BIT,
             // load depth data from depthCopying
@@ -272,17 +285,23 @@ VkRenderPass RTGL1::RasterPass::CreateWorldRenderPass( VkFormat finalImageFormat
         },
     };
 
-    VkAttachmentReference colorRefs[] = { {
-                                              .attachment = 0,
-                                              .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                          },
-                                          {
-                                              .attachment = 1,
-                                              .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                                          } };
+    VkAttachmentReference colorRefs[] = {
+        {
+            .attachment = 0,
+            .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+        {
+            .attachment = 1,
+            .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+        {
+            .attachment = 2,
+            .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        },
+    };
 
     VkAttachmentReference depthRef = {
-        .attachment = 2,
+        .attachment = 3,
         .layout     = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL,
     };
 
@@ -475,7 +494,7 @@ void RTGL1::RasterPass::CreateDepthBuffers( uint32_t              width,
 
         // make transition from undefined manually,
         // so depthAttch.initialLayout can be specified as DEPTH_STENCIL_ATTACHMENT_OPTIMAL
-        VkCommandBuffer      cmd = cmdManager.StartGraphicsCmd();
+        VkCommandBuffer cmd = cmdManager.StartGraphicsCmd();
 
         VkImageMemoryBarrier imageBarrier = {
             .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,

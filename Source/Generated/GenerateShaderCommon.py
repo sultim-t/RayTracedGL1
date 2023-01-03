@@ -814,7 +814,7 @@ FRAMEBUFFERS = {
 
     # for upscalers
     "MotionDlss"                        : (TYPE_FLOAT16,    COMPONENT_RG,   0),
-    "Reactivity"                        : (TYPE_UNORM8,     COMPONENT_R,    0),
+    "Reactivity"                        : (TYPE_UNORM8,     COMPONENT_R,    FRAMEBUF_FLAGS_IS_ATTACHMENT),
 
     "AccumHistoryLength"                : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),
     

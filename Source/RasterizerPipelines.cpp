@@ -31,7 +31,7 @@ RTGL1::RasterizerPipelines::RasterizerPipelines( VkDevice             _device,
                                                  const ShaderManager& _shaderManager,
                                                  std::string_view     _shaderNameVert,
                                                  std::string_view     _shaderNameFrag,
-                                                 uint32_t             _additionalAttachmentsCount,
+                                                 bool                 _isWorld,
                                                  bool                 _applyVertexColorGamma,
                                                  const VkViewport*    _pViewport,
                                                  const VkRect2D*      _pScissors )
@@ -46,11 +46,11 @@ RTGL1::RasterizerPipelines::RasterizerPipelines( VkDevice             _device,
     , nonDynamicViewport( _pViewport ? std::optional( *_pViewport ) : std::nullopt )
     , nonDynamicScissors( _pScissors ? std::optional( *_pScissors ) : std::nullopt )
     , applyVertexColorGamma( _applyVertexColorGamma )
-    , additionalAttachmentsCount( _additionalAttachmentsCount )
+    , isWorld( _isWorld )
 {
     VkPipelineCacheCreateInfo info = { .sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO };
 
-    VkResult                  r = vkCreatePipelineCache( device, &info, nullptr, &pipelineCache );
+    VkResult r = vkCreatePipelineCache( device, &info, nullptr, &pipelineCache );
     VK_CHECKERROR( r );
 
     OnShaderReload( &_shaderManager );
@@ -153,7 +153,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
         .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
     };
 
-    auto                                 attrs = RasterizedDataCollector::GetVertexLayout();
+    auto attrs = RasterizedDataCollector::GetVertexLayout();
 
     VkPipelineVertexInputStateCreateInfo vertexInputInfo = {
         .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -219,23 +219,49 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
             blendDst = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
         }
     }
-    VkPipelineColorBlendAttachmentState blendAttch = {
-        .blendEnable         = additive || translucent,
-        .srcColorBlendFactor = blendSrc,
-        .dstColorBlendFactor = blendDst,
-        .colorBlendOp        = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = blendSrc,
-        .dstAlphaBlendFactor = blendDst,
-        .alphaBlendOp        = VK_BLEND_OP_ADD,
-        .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+    VkPipelineColorBlendAttachmentState colorBlendAttchs[] = {
+        // base 
+        {
+            .blendEnable         = additive || translucent,
+            .srcColorBlendFactor = blendSrc,
+            .dstColorBlendFactor = blendDst,
+            .colorBlendOp        = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = blendSrc,
+            .dstAlphaBlendFactor = blendDst,
+            .alphaBlendOp        = VK_BLEND_OP_ADD,
+            .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        },
+        // screenEmission
+        {
+            .blendEnable         = additive || translucent,
+            .srcColorBlendFactor = blendSrc,
+            .dstColorBlendFactor = blendDst,
+            .colorBlendOp        = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = blendSrc,
+            .dstAlphaBlendFactor = blendDst,
+            .alphaBlendOp        = VK_BLEND_OP_ADD,
+            .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        },
+        // reactive
+        {
+            .blendEnable         = false,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .colorBlendOp        = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+            .alphaBlendOp        = VK_BLEND_OP_ADD,
+            .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
+                              VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
+        },
     };
-    VkPipelineColorBlendAttachmentState colorBlendAttchs[] = { blendAttch, blendAttch };
 
     VkPipelineColorBlendStateCreateInfo colorBlendState = {
         .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable   = VK_FALSE,
-        .attachmentCount = 1 + additionalAttachmentsCount,
+        .attachmentCount = isWorld ? uint32_t( std::size( colorBlendAttchs ) ) : 1,
         .pAttachments    = colorBlendAttchs,
     };
 

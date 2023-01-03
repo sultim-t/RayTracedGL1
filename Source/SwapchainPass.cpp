@@ -39,7 +39,7 @@ RTGL1::SwapchainPass::SwapchainPass( VkDevice                    _device,
                                                  _shaderManager,
                                                  "VertDefault",
                                                  "FragSwapchain",
-                                                 0,
+                                                 false,
                                                  _instanceInfo.rasterizedVertexColorGamma );
 }
 

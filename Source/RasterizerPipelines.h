@@ -37,24 +37,24 @@ public:
                                   const ShaderManager& shaderManager,
                                   std::string_view     shaderNameVert,
                                   std::string_view     shaderNameFrag,
-                                  uint32_t             additionalAttachmentsCount,
+                                  bool                 isWorld,
                                   bool                 applyVertexColorGamma,
                                   const VkViewport*    pViewport = nullptr,
                                   const VkRect2D*      pScissors = nullptr );
     ~RasterizerPipelines();
 
-    RasterizerPipelines( const RasterizerPipelines& other )     = delete;
-    RasterizerPipelines( RasterizerPipelines&& other ) noexcept = delete;
-    RasterizerPipelines& operator=( const RasterizerPipelines& other ) = delete;
+    RasterizerPipelines( const RasterizerPipelines& other )                = delete;
+    RasterizerPipelines( RasterizerPipelines&& other ) noexcept            = delete;
+    RasterizerPipelines& operator=( const RasterizerPipelines& other )     = delete;
     RasterizerPipelines& operator=( RasterizerPipelines&& other ) noexcept = delete;
 
-    void                 OnShaderReload( const ShaderManager* shaderManager );
+    void OnShaderReload( const ShaderManager* shaderManager );
 
-    VkPipelineLayout     GetPipelineLayout();
+    VkPipelineLayout GetPipelineLayout();
 
-    VkPipeline           BindPipelineIfNew( VkCommandBuffer    cmd,
-                                            VkPipeline         oldPipeline,
-                                            PipelineStateFlags pipelineState );
+    VkPipeline BindPipelineIfNew( VkCommandBuffer    cmd,
+                                  VkPipeline         oldPipeline,
+                                  PipelineStateFlags pipelineState );
 
 
 private:
@@ -63,24 +63,24 @@ private:
     void                     DestroyAllPipelines();
 
 private:
-    VkDevice                                             device;
+    VkDevice device;
 
-    std::string                                          shaderNameVert;
-    std::string                                          shaderNameFrag;
+    std::string shaderNameVert;
+    std::string shaderNameFrag;
 
-    VkPipelineLayout                                     pipelineLayout;
-    VkRenderPass                                         renderPass;
-    VkPipelineShaderStageCreateInfo                      vertShaderStage;
-    VkPipelineShaderStageCreateInfo                      fragShaderStage;
+    VkPipelineLayout                pipelineLayout;
+    VkRenderPass                    renderPass;
+    VkPipelineShaderStageCreateInfo vertShaderStage;
+    VkPipelineShaderStageCreateInfo fragShaderStage;
 
     rgl::unordered_map< PipelineStateFlags, VkPipeline > pipelines;
     VkPipelineCache                                      pipelineCache;
 
-    std::optional< VkViewport >                          nonDynamicViewport;
-    std::optional< VkRect2D >                            nonDynamicScissors;
+    std::optional< VkViewport > nonDynamicViewport;
+    std::optional< VkRect2D >   nonDynamicScissors;
 
-    uint32_t                                             applyVertexColorGamma;
-    uint32_t                                             additionalAttachmentsCount;
+    uint32_t applyVertexColorGamma;
+    bool     isWorld;
 };
 
 }

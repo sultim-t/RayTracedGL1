@@ -38,64 +38,65 @@ public:
                 const RgInstanceCreateInfo& instanceInfo );
     ~RasterPass() override;
 
-    RasterPass( const RasterPass& other )     = delete;
-    RasterPass( RasterPass&& other ) noexcept = delete;
-    RasterPass&  operator=( const RasterPass& other ) = delete;
-    RasterPass&  operator=( RasterPass&& other ) noexcept = delete;
+    RasterPass( const RasterPass& other )                = delete;
+    RasterPass( RasterPass&& other ) noexcept            = delete;
+    RasterPass& operator=( const RasterPass& other )     = delete;
+    RasterPass& operator=( RasterPass&& other ) noexcept = delete;
 
-    void         PrepareForFinal( VkCommandBuffer     cmd,
-                                  uint32_t            frameIndex,
-                                  const Framebuffers& storageFramebuffers,
-                                  uint32_t            renderWidth,
-                                  uint32_t            renderHeight );
+    void PrepareForFinal( VkCommandBuffer     cmd,
+                          uint32_t            frameIndex,
+                          const Framebuffers& storageFramebuffers,
+                          uint32_t            renderWidth,
+                          uint32_t            renderHeight );
 
-    void         CreateFramebuffers( uint32_t              renderWidth,
-                                     uint32_t              renderHeight,
-                                     const Framebuffers&   storageFramebuffers,
-                                     MemoryAllocator&      allocator,
-                                     CommandBufferManager& cmdManager );
-    void         DestroyFramebuffers();
+    void CreateFramebuffers( uint32_t              renderWidth,
+                             uint32_t              renderHeight,
+                             const Framebuffers&   storageFramebuffers,
+                             MemoryAllocator&      allocator,
+                             CommandBufferManager& cmdManager );
+    void DestroyFramebuffers();
 
-    void         OnShaderReload( const ShaderManager* shaderManager ) override;
+    void OnShaderReload( const ShaderManager* shaderManager ) override;
 
-    VkRenderPass GetWorldRenderPass() const;
-    VkRenderPass GetSkyRenderPass() const;
+    VkRenderPass                                  GetWorldRenderPass() const;
+    VkRenderPass                                  GetSkyRenderPass() const;
     const std::shared_ptr< RasterizerPipelines >& GetRasterPipelines() const;
     const std::shared_ptr< RasterizerPipelines >& GetSkyRasterPipelines() const;
 
-    VkFramebuffer                                 GetWorldFramebuffer( uint32_t frameIndex ) const;
-    VkFramebuffer                                 GetSkyFramebuffer( uint32_t frameIndex ) const;
+    VkFramebuffer GetWorldFramebuffer( uint32_t frameIndex ) const;
+    VkFramebuffer GetSkyFramebuffer( uint32_t frameIndex ) const;
 
 private:
     VkRenderPass CreateWorldRenderPass( VkFormat finalImageFormat,
                                         VkFormat screenEmisionFormat,
+                                        VkFormat reactivityFormat,
                                         VkFormat depthImageFormat ) const;
     VkRenderPass CreateSkyRenderPass( VkFormat skyFinalImageFormat,
                                       VkFormat depthImageFormat ) const;
 
-    void         CreateDepthBuffers( uint32_t                                       width,
-                                     uint32_t                                       height,
-                                     MemoryAllocator &      allocator,
-                                     CommandBufferManager & cmdManager );
-    void         DestroyDepthBuffers();
+    void CreateDepthBuffers( uint32_t              width,
+                             uint32_t              height,
+                             MemoryAllocator&      allocator,
+                             CommandBufferManager& cmdManager );
+    void DestroyDepthBuffers();
 
 private:
-    VkDevice                               device = VK_NULL_HANDLE;
+    VkDevice device = VK_NULL_HANDLE;
 
-    VkRenderPass                           worldRenderPass = VK_NULL_HANDLE;
-    VkRenderPass                           skyRenderPass   = VK_NULL_HANDLE;
+    VkRenderPass worldRenderPass = VK_NULL_HANDLE;
+    VkRenderPass skyRenderPass   = VK_NULL_HANDLE;
 
     std::shared_ptr< RasterizerPipelines > worldPipelines;
     std::shared_ptr< RasterizerPipelines > skyPipelines;
 
-    VkFramebuffer                          worldFramebuffers[ MAX_FRAMES_IN_FLIGHT ] = {};
-    VkFramebuffer                          skyFramebuffers[ MAX_FRAMES_IN_FLIGHT ]   = {};
+    VkFramebuffer worldFramebuffers[ MAX_FRAMES_IN_FLIGHT ] = {};
+    VkFramebuffer skyFramebuffers[ MAX_FRAMES_IN_FLIGHT ]   = {};
 
-    std::shared_ptr< DepthCopying >        depthCopying;
+    std::shared_ptr< DepthCopying > depthCopying;
 
-    VkImage                                depthImages[ MAX_FRAMES_IN_FLIGHT ] = {};
-    VkImageView                            depthViews[ MAX_FRAMES_IN_FLIGHT ]  = {};
-    VkDeviceMemory                         depthMemory[ MAX_FRAMES_IN_FLIGHT ] = {};
+    VkImage        depthImages[ MAX_FRAMES_IN_FLIGHT ] = {};
+    VkImageView    depthViews[ MAX_FRAMES_IN_FLIGHT ]  = {};
+    VkDeviceMemory depthMemory[ MAX_FRAMES_IN_FLIGHT ] = {};
 };
 
 }
