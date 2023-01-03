@@ -61,7 +61,7 @@ void RTGL1::FSR2::OnFramebuffersSizeChange( const ResolutionState& resolutionSta
     }
     context->emplace();
 
-    FfxErrorCode              r;
+    FfxErrorCode r;
 
     FfxFsr2ContextDescription contextDesc = {
         .flags         = FFX_FSR2_ENABLE_AUTO_EXPOSURE, // | FFX_FSR2_ENABLE_HIGH_DYNAMIC_RANGE
@@ -71,10 +71,11 @@ void RTGL1::FSR2::OnFramebuffersSizeChange( const ResolutionState& resolutionSta
         .device        = device,
     };
 
-    const size_t              scratchBufferSize = ffxFsr2GetScratchMemorySizeVK( physDevice );
-    void*                     scratchBuffer     = malloc( scratchBufferSize );
+    const size_t scratchBufferSize = ffxFsr2GetScratchMemorySizeVK( physDevice );
+    void*        scratchBuffer     = malloc( scratchBufferSize );
 
-    r = ffxFsr2GetInterfaceVK( &contextDesc.callbacks, scratchBuffer, scratchBufferSize, physDevice, vkGetDeviceProcAddr );
+    r = ffxFsr2GetInterfaceVK(
+        &contextDesc.callbacks, scratchBuffer, scratchBufferSize, physDevice, vkGetDeviceProcAddr );
     CheckError( r );
 
     r = ffxFsr2ContextCreate( &context->value(), &contextDesc );
@@ -85,11 +86,11 @@ namespace
 {
 constexpr RTGL1::FramebufferImageIndex OUTPUT_IMAGE_INDEX = RTGL1::FB_IMAGE_INDEX_UPSCALED_PONG;
 
-FfxResource                            ToFSRResource( RTGL1::FramebufferImageIndex  fbImage,
-                                                      uint32_t                      frameIndex,
-                                                      FfxFsr2Context*               pCtx,
-                                                      const RTGL1::Framebuffers&    framebuffers,
-                                                      const RTGL1::ResolutionState& resolutionState )
+FfxResource ToFSRResource( RTGL1::FramebufferImageIndex  fbImage,
+                           uint32_t                      frameIndex,
+                           FfxFsr2Context*               pCtx,
+                           const RTGL1::Framebuffers&    framebuffers,
+                           const RTGL1::ResolutionState& resolutionState )
 {
     auto [ image, view, format, sz ] =
         framebuffers.GetImageHandles( fbImage, frameIndex, resolutionState );
@@ -162,37 +163,37 @@ void InsertBarriers( VkCommandBuffer      cmd,
 }
 }
 
-RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply( VkCommandBuffer                        cmd,
-                                                 uint32_t                               frameIndex,
-                                                 const std::shared_ptr< Framebuffers >& framebuffers,
-                                                 const RenderResolutionHelper&          renderResolution,
-                                                 RgFloat2D                              jitterOffset,
-                                                 float                                  timeDelta,
-                                                 float                                  nearPlane,
-                                                 float                                  farPlane,
-                                                 float                                  fovVerticalRad )
+RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
+    VkCommandBuffer                        cmd,
+    uint32_t                               frameIndex,
+    const std::shared_ptr< Framebuffers >& framebuffers,
+    const RenderResolutionHelper&          renderResolution,
+    RgFloat2D                              jitterOffset,
+    float                                  timeDelta,
+    float                                  nearPlane,
+    float                                  farPlane,
+    float                                  fovVerticalRad )
 {
     assert( nearPlane > 0.0f && nearPlane < farPlane );
 
     using FI = FramebufferImageIndex;
 
     FI rs[] = {
-        FI::FB_IMAGE_INDEX_FINAL,
-        FI::FB_IMAGE_INDEX_DEPTH_NDC,
-        FI::FB_IMAGE_INDEX_MOTION_DLSS,
-        OUTPUT_IMAGE_INDEX,
+        FI::FB_IMAGE_INDEX_FINAL,      FI::FB_IMAGE_INDEX_DEPTH_NDC, FI::FB_IMAGE_INDEX_MOTION_DLSS,
+        FI::FB_IMAGE_INDEX_REACTIVITY, OUTPUT_IMAGE_INDEX,
     };
     InsertBarriers( cmd, frameIndex, *framebuffers, rs, false );
 
-    FfxFsr2Context*            pCtx = &context->value();
+    FfxFsr2Context* pCtx = &context->value();
 
+    // clang-format off
     FfxFsr2DispatchDescription info = {
         .commandList                = ffxGetCommandListVK( cmd ),
         .color                      = ToFSRResource( FI::FB_IMAGE_INDEX_FINAL, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState() ),
         .depth                      = ToFSRResource( FI::FB_IMAGE_INDEX_DEPTH_NDC, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState() ),
         .motionVectors              = ToFSRResource( FI::FB_IMAGE_INDEX_MOTION_DLSS, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState() ),
         .exposure                   = {},
-        .reactive                   = {},
+        .reactive                   = ToFSRResource( FI::FB_IMAGE_INDEX_REACTIVITY, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState() ),
         .transparencyAndComposition = {},
         .output                     = ToFSRResource( OUTPUT_IMAGE_INDEX, frameIndex, pCtx, *framebuffers, renderResolution.GetResolutionState() ),
         .jitterOffset               = { -jitterOffset.data[ 0 ], -jitterOffset.data[ 1 ] },
@@ -207,6 +208,7 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply( VkCommandBuffer                
         .cameraFar                  = farPlane,
         .cameraFovAngleVertical     = fovVerticalRad,
     };
+    // clang-format on
 
     FfxErrorCode r = ffxFsr2ContextDispatch( pCtx, &info );
     CheckError( r );

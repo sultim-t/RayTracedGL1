@@ -58,6 +58,8 @@ vec2 getMotionVectorForUpscaler(const vec2 motionCurToPrev)
     return motionCurToPrev;
 }
 
+#define UPSCALER_REACTIVITY_REFLREFR 0.8
+
 vec2 getMotionForInfinitePoint(const ivec2 pix)
 {
     // treat as a point with .w=0, i.e. at infinite distance
@@ -125,8 +127,10 @@ void storeSky(
     imageStore(framebufDepthNdc,            getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(m), 0.0, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, 0.0));
+    imageStore(framebufReactivity,          getRegularPixFromCheckerboardPix(pix), vec4(0.0));
 #else
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : -1.0));
+    imageStore(framebufReactivity,          getRegularPixFromCheckerboardPix(pix), vec4(UPSCALER_REACTIVITY_REFLREFR));
 #endif
 }
 
@@ -330,6 +334,7 @@ void main()
     // as reflections/refraction only may be losely represented via rasterization
     imageStore(framebufDepthNdc,            getRegularPixFromCheckerboardPix(pix), vec4(clamp(firstHitDepthNDC, 0.0, 1.0)));
     imageStore(framebufMotionDlss,          getRegularPixFromCheckerboardPix(pix), vec4(getMotionVectorForUpscaler(motionCurToPrev), 0.0, 0.0));
+    imageStore(framebufReactivity,          getRegularPixFromCheckerboardPix(pix), vec4(0.0));
 }
 #endif
 
@@ -585,5 +590,6 @@ void main()
     imageStore(framebufVisibilityBuffer,    pix, packVisibilityBuffer(currentPayload));
     imageStore(framebufViewDirection,       pix, vec4(rayDir, 0.0));
     imageStore(framebufThroughput,          pix, vec4(throughput, wasSplit ? 1.0 : -1.0));
+    imageStore(framebufReactivity,          getRegularPixFromCheckerboardPix(pix), vec4(UPSCALER_REACTIVITY_REFLREFR));
 }
 #endif
