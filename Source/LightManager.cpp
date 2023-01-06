@@ -59,7 +59,7 @@ RTGL1::LightManager::LightManager( VkDevice                            _device,
                           VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                           "Lights buffer" );
 
-    lightsBuffer_Prev.Init( _allocator,
+    lightsBuffer_Prev.Init( *_allocator,
                             sizeof( ShLightEncoded ) * LIGHT_ARRAY_MAX_SIZE,
                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
@@ -67,7 +67,7 @@ RTGL1::LightManager::LightManager( VkDevice                            _device,
 
     for( auto& buf : initialLightsGrid )
     {
-        buf.Init( _allocator,
+        buf.Init( *_allocator,
                   sizeof( ShLightInCell ) * GRID_LIGHTS_COUNT,
                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,

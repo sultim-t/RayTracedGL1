@@ -74,7 +74,7 @@ void ScratchBuffer::AddChunk(VkDeviceSize size)
         auto &c = chunks.back();
 
         c.buffer.Init(
-            allc, size,
+            *allc, size,
             VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
             VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
             "Scratch buffer");

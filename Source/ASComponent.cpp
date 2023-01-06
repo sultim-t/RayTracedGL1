@@ -47,7 +47,7 @@ void RTGL1::ASComponent::CreateBuffer( const std::shared_ptr< MemoryAllocator >&
 {
     assert( !buffer.IsInitted() );
 
-    buffer.Init( allocator,
+    buffer.Init( *allocator,
                  size,
                  VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR |
                      VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,

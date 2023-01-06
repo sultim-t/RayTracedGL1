@@ -183,7 +183,7 @@ void RTGL1::Tonemapping::OnShaderReload( const ShaderManager* shaderManager )
 void RTGL1::Tonemapping::CreateTonemappingBuffer(
     const std::shared_ptr< MemoryAllocator >& allocator )
 {
-    tmBuffer.Init( allocator,
+    tmBuffer.Init( *allocator,
                    sizeof( ShTonemapping ),
                    VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,

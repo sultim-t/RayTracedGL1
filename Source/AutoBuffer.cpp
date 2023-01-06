@@ -43,7 +43,7 @@ void RTGL1::AutoBuffer::Create( VkDeviceSize       size,
     {
         assert( !staging[ i ].IsInitted() );
 
-        staging[ i ].Init( allocator,
+        staging[ i ].Init( *allocator,
                            size,
                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
@@ -55,7 +55,7 @@ void RTGL1::AutoBuffer::Create( VkDeviceSize       size,
 
     assert( !deviceLocal.IsInitted() );
 
-    deviceLocal.Init( allocator,
+    deviceLocal.Init( *allocator,
                       size,
                       usage | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                       VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,

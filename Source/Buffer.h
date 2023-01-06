@@ -33,16 +33,16 @@ public:
     ~Buffer();
 
     // Create VkBuffer, allocate memory and bind it
-    void            Init( const std::shared_ptr< MemoryAllocator >& allocator,
-                          VkDeviceSize                              size,
-                          VkBufferUsageFlags                        usage,
-                          VkMemoryPropertyFlags                     properties,
-                          const char*                               debugName = nullptr );
-    void            Destroy();
+    void Init( MemoryAllocator&      allocator,
+               VkDeviceSize          size,
+               VkBufferUsageFlags    usage,
+               VkMemoryPropertyFlags properties,
+               const char*           debugName = nullptr );
+    void Destroy();
 
-    void*           Map();
-    void            Unmap();
-    bool            TryUnmap();
+    void* Map();
+    void  Unmap();
+    bool  TryUnmap();
 
 
     VkBuffer        GetBuffer() const;

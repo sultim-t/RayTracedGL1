@@ -37,11 +37,11 @@ Buffer::~Buffer()
     Destroy();
 }
 
-void Buffer::Init( const std::shared_ptr< MemoryAllocator >& allocator,
-                   VkDeviceSize                              bsize,
-                   VkBufferUsageFlags                        usage,
-                   VkMemoryPropertyFlags                     properties,
-                   const char*                               debugName )
+void Buffer::Init( MemoryAllocator&      allocator,
+                   VkDeviceSize          bsize,
+                   VkBufferUsageFlags    usage,
+                   VkMemoryPropertyFlags properties,
+                   const char*           debugName )
 {
     if( bsize == 0 )
     {
@@ -49,9 +49,9 @@ void Buffer::Init( const std::shared_ptr< MemoryAllocator >& allocator,
         return;
     }
 
-    device = allocator->GetDevice();
+    device = allocator.GetDevice();
 
-    VkResult           r;
+    VkResult r;
 
     VkBufferCreateInfo bufferInfo = {};
     bufferInfo.sType              = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
@@ -65,7 +65,7 @@ void Buffer::Init( const std::shared_ptr< MemoryAllocator >& allocator,
     VkMemoryRequirements memReq = {};
     vkGetBufferMemoryRequirements( device, buffer, &memReq );
 
-    memory = allocator->AllocDedicated(
+    memory = allocator.AllocDedicated(
         memReq, properties, MemoryAllocator::AllocType::WITH_ADDRESS_QUERY, debugName );
 
     r = vkBindBufferMemory( device, buffer, memory, 0 );
@@ -118,7 +118,7 @@ void* Buffer::Map()
     assert( memory != VK_NULL_HANDLE && size > 0 );
 
     isMapped = true;
-    void*    mapped;
+    void* mapped;
 
     VkResult r = vkMapMemory( device, memory, 0, size, 0, &mapped );
     VK_CHECKERROR( r );
