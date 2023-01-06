@@ -33,14 +33,23 @@ RTGL1::Scene::Scene( VkDevice                                _device,
                      std::shared_ptr< MemoryAllocator >&     _allocator,
                      std::shared_ptr< CommandBufferManager > _cmdManager,
                      const GlobalUniform&                    _uniform,
-                     const ShaderManager&                    _shaderManager )
+                     const ShaderManager&                    _shaderManager,
+                     bool                                    _enableTexCoordLayer1,
+                     bool                                    _enableTexCoordLayer2,
+                     bool                                    _enableTexCoordLayer3 )
 {
     VertexCollectorFilterTypeFlags_Init();
 
     geomInfoMgr = std::make_shared< GeomInfoManager >( _device, _allocator );
 
-    asManager = std::make_shared< ASManager >(
-        _device, _physDevice, _allocator, std::move( _cmdManager ), geomInfoMgr );
+    asManager = std::make_shared< ASManager >( _device,
+                                               _physDevice,
+                                               _allocator,
+                                               std::move( _cmdManager ),
+                                               geomInfoMgr,
+                                               _enableTexCoordLayer1,
+                                               _enableTexCoordLayer2,
+                                               _enableTexCoordLayer3 );
 
     vertPreproc =
         std::make_shared< VertexPreprocessing >( _device, _uniform, *asManager, _shaderManager );

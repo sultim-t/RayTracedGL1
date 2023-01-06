@@ -30,11 +30,19 @@
 #include <array>
 #include <cstring>
 
+namespace
+{
+constexpr uint32_t AdditionalTexCoordMaxCount = MAX_STATIC_VERTEX_COUNT;
+}
+
 RTGL1::ASManager::ASManager( VkDevice                                _device,
                              const PhysicalDevice&                   _physDevice,
                              std::shared_ptr< MemoryAllocator >      _allocator,
                              std::shared_ptr< CommandBufferManager > _cmdManager,
-                             std::shared_ptr< GeomInfoManager >      _geomInfoManager )
+                             std::shared_ptr< GeomInfoManager >      _geomInfoManager,
+                             bool                                    _enableTexCoordLayer1,
+                             bool                                    _enableTexCoordLayer2,
+                             bool                                    _enableTexCoordLayer3 )
     : device( _device )
     , allocator( std::move( _allocator ) )
     , staticCopyFence( VK_NULL_HANDLE )
@@ -76,11 +84,18 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
     asBuilder     = std::make_shared< ASBuilder >( device, scratchBuffer );
 
 
+    uint32_t maxVertsPerLayer[] = {
+        MAX_STATIC_VERTEX_COUNT,
+        _enableTexCoordLayer1 ? AdditionalTexCoordMaxCount : 0,
+        _enableTexCoordLayer2 ? AdditionalTexCoordMaxCount : 0,
+        _enableTexCoordLayer3 ? AdditionalTexCoordMaxCount : 0,
+    };
+
     // static and movable static vertices share the same buffer as their data won't be changing
     collectorStatic = std::make_shared< VertexCollector >(
         device,
-        allocator,
-        MAX_STATIC_VERTEX_COUNT * sizeof( ShVertex ),
+        *allocator,
+        maxVertsPerLayer,
         FT::CF_STATIC_NON_MOVABLE | FT::CF_STATIC_MOVABLE | FT::MASK_PASS_THROUGH_GROUP |
             FT::MASK_PRIMARY_VISIBILITY_GROUP );
 
@@ -88,24 +103,24 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
     // dynamic vertices
     collectorDynamic[ 0 ] = std::make_shared< VertexCollector >(
         device,
-        allocator,
-        MAX_DYNAMIC_VERTEX_COUNT * sizeof( ShVertex ),
+        *allocator,
+        maxVertsPerLayer,
         FT::CF_DYNAMIC | FT::MASK_PASS_THROUGH_GROUP | FT::MASK_PRIMARY_VISIBILITY_GROUP );
 
     // other dynamic vertex collectors should share the same device local buffers as the first one
     for( uint32_t i = 1; i < MAX_FRAMES_IN_FLIGHT; i++ )
     {
         collectorDynamic[ i ] =
-            std::make_shared< VertexCollector >( collectorDynamic[ 0 ], allocator );
+            std::make_shared< VertexCollector >( *( collectorDynamic[ 0 ] ), *allocator );
     }
 
-    previousDynamicPositions.Init( allocator,
+    previousDynamicPositions.Init( *allocator,
                                    MAX_DYNAMIC_VERTEX_COUNT * sizeof( ShVertex ),
                                    VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                    VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
                                    "Previous frame's vertex data" );
-    previousDynamicIndices.Init( allocator,
+    previousDynamicIndices.Init( *allocator,
                                  MAX_DYNAMIC_VERTEX_COUNT * sizeof( uint32_t ),
                                  VK_BUFFER_USAGE_TRANSFER_DST_BIT |
                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,

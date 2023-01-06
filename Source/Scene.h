@@ -49,7 +49,10 @@ public:
                     std::shared_ptr< MemoryAllocator >&     allocator,
                     std::shared_ptr< CommandBufferManager > cmdManager,
                     const GlobalUniform&                    uniform,
-                    const ShaderManager&                    shaderManager );
+                    const ShaderManager&                    shaderManager,
+                    bool                                    enableTexCoordLayer1,
+                    bool                                    enableTexCoordLayer2,
+                    bool                                    enableTexCoordLayer3 );
     ~Scene() = default;
 
     Scene( const Scene& other )                = delete;

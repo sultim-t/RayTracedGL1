@@ -74,8 +74,11 @@ public:
     uint32_t GetCount( uint32_t frameIndex ) const;
 
 
+    static bool     LayerExists( const RgMeshPrimitiveInfo& info, uint32_t layerIndex );
     static uint32_t GetPrimitiveFlags( const RgMeshPrimitiveInfo& info );
 
+    static const RgFloat2D* AccessLayerTexCoords( const RgMeshPrimitiveInfo& info,
+                                                  uint32_t                   layerIndex );
 
 private:
     struct GeomFrameInfo

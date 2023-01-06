@@ -32,7 +32,7 @@
 
 namespace RTGL1
 {
-    
+
 struct ShVertex;
 
 class GeomInfoManager;
@@ -43,23 +43,22 @@ class GeomInfoManager;
 class VertexCollector
 {
 public:
-    explicit VertexCollector( VkDevice                                  device,
-                              const std::shared_ptr< MemoryAllocator >& allocator,
-                              VkDeviceSize                              bufferSize,
-                              VertexCollectorFilterTypeFlags            filters );
+    explicit VertexCollector( VkDevice         device,
+                              MemoryAllocator& allocator,
+                              const uint32_t ( &maxVertsPerLayer )[ 4 ],
+                              VertexCollectorFilterTypeFlags filters );
 
     // Create new vertex collector, but with shared device local buffers
-    explicit VertexCollector( const std::shared_ptr< const VertexCollector >& src,
-                              const std::shared_ptr< MemoryAllocator >&       allocator );
+    explicit VertexCollector( const VertexCollector& src, MemoryAllocator& allocator );
 
-    ~VertexCollector();
+    ~VertexCollector() = default;
 
     VertexCollector( const VertexCollector& other )                = delete;
     VertexCollector( VertexCollector&& other ) noexcept            = delete;
     VertexCollector& operator=( const VertexCollector& other )     = delete;
     VertexCollector& operator=( VertexCollector&& other ) noexcept = delete;
 
-    
+
     bool AddPrimitive( uint32_t                          frameIndex,
                        bool                              isStatic,
                        const RgMeshInfo&                 parentMesh,
@@ -109,11 +108,10 @@ public:
     void InsertVertexPreprocessFinishBarrier( VkCommandBuffer cmd );
 
 private:
-    void InitStagingBuffers( const std::shared_ptr< MemoryAllocator >& allocator );
-
-    void CopyDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex );
+    void CopyVertexDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex );
 
     bool CopyVertexDataFromStaging( VkCommandBuffer cmd );
+    bool CopyTexCoordsFromStaging( VkCommandBuffer cmd, uint32_t layerIndex );
     bool CopyIndexDataFromStaging( VkCommandBuffer cmd );
     bool CopyTransformsFromStaging( VkCommandBuffer cmd, bool insertMemBarrier );
 
@@ -136,23 +134,95 @@ private:
     VkDevice                       device;
     VertexCollectorFilterTypeFlags filtersFlags;
 
-    Buffer                    stagingVertBuffer;
-    std::shared_ptr< Buffer > vertBuffer;
 
-    Buffer                    stagingIndexBuffer;
-    std::shared_ptr< Buffer > indexBuffer;
+    template< typename T >
+    class SharedDeviceLocal
+    {
+    private:
+        static auto MakeName( std::string_view basename, bool isStaging )
+        {
+            return std::format( "{}{}", basename, isStaging ? " (staging)" : "" );
+        }
 
-    Buffer                    stagingTransformsBuffer;
-    std::shared_ptr< Buffer > transformsBuffer;
+        void Init( std::shared_ptr< Buffer > otherDeviceLocal,
+                   MemoryAllocator&          allocator,
+                   std::string_view          name )
+        {
+            deviceLocal = std::move( otherDeviceLocal );
+            assert( deviceLocal->GetSize() > 0 );
 
-    uint32_t curVertexCount;
-    uint32_t curIndexCount;
-    uint32_t curPrimitiveCount;
-    uint32_t curTransformCount;
+            staging.Init( allocator,
+                          deviceLocal->GetSize(),
+                          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                              VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                          MakeName( name, true ).c_str() );
+            mapped = static_cast< T* >( staging.Map() );
+        }
 
-    ShVertex*             mappedVertexData;
-    uint32_t*             mappedIndexData;
-    VkTransformMatrixKHR* mappedTransformData;
+    public:
+        explicit SharedDeviceLocal( MemoryAllocator&   allocator,
+                                    uint32_t           maxElements,
+                                    VkBufferUsageFlags usage,
+                                    std::string_view   name )
+        {
+            if( maxElements > 0 )
+            {
+                deviceLocal = std::make_shared< Buffer >();
+                deviceLocal->Init( allocator,
+                                   sizeof( T ) * maxElements,
+                                   usage,
+                                   VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+                                   MakeName( name, false ).c_str() );
+                Init( deviceLocal, allocator, name );
+            }
+        }
+
+        explicit SharedDeviceLocal( const SharedDeviceLocal& other,
+                                    MemoryAllocator&         allocator,
+                                    std::string_view         name )
+        {
+            if( other.IsInitialized() )
+            {
+                Init( other.deviceLocal, allocator, name );
+            }
+        }
+
+        [[nodiscard]] bool IsInitialized() const { return deviceLocal != nullptr; }
+
+        ~SharedDeviceLocal()
+        {
+            if( IsInitialized() )
+            {
+                staging.TryUnmap();
+            }
+        }
+
+        SharedDeviceLocal( const SharedDeviceLocal& )                = delete;
+        SharedDeviceLocal( SharedDeviceLocal&& ) noexcept            = delete;
+        SharedDeviceLocal& operator=( const SharedDeviceLocal& )     = delete;
+        SharedDeviceLocal& operator=( SharedDeviceLocal&& ) noexcept = delete;
+
+        std::shared_ptr< Buffer > deviceLocal{};
+        Buffer                    staging{};
+        T*                        mapped{ nullptr };
+    };
+
+
+    SharedDeviceLocal< ShVertex >             bufVertices;
+    SharedDeviceLocal< uint32_t >             bufIndices;
+    SharedDeviceLocal< VkTransformMatrixKHR > bufTransforms;
+    SharedDeviceLocal< RgFloat2D >            bufTexcoordLayer1;
+    SharedDeviceLocal< RgFloat2D >            bufTexcoordLayer2;
+    SharedDeviceLocal< RgFloat2D >            bufTexcoordLayer3;
+
+    uint32_t curVertexCount{ 0 };
+    uint32_t curIndexCount{ 0 };
+    uint32_t curPrimitiveCount{ 0 };
+    uint32_t curTransformCount{ 0 };
+    uint32_t curTexCoordCount_Layer1{ 0 };
+    uint32_t curTexCoordCount_Layer2{ 0 };
+    uint32_t curTexCoordCount_Layer3{ 0 };
 
     rgl::unordered_map< VertexCollectorFilterTypeFlags, std::shared_ptr< VertexCollectorFilter > >
         filters;

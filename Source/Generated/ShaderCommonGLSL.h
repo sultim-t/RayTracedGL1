@@ -85,9 +85,9 @@
 #define GEOM_INST_FLAG_RESERVED_4 (1 << 12)
 #define GEOM_INST_FLAG_RESERVED_5 (1 << 13)
 #define GEOM_INST_FLAG_RESERVED_6 (1 << 14)
-#define GEOM_INST_FLAG_RESERVED_7 (1 << 15)
-#define GEOM_INST_FLAG_RESERVED_8 (1 << 16)
-#define GEOM_INST_FLAG_RESERVED_9 (1 << 17)
+#define GEOM_INST_FLAG_EXISTS_LAYER1 (1 << 15)
+#define GEOM_INST_FLAG_EXISTS_LAYER2 (1 << 16)
+#define GEOM_INST_FLAG_EXISTS_LAYER3 (1 << 17)
 #define GEOM_INST_FLAG_MEDIA_TYPE_ACID (1 << 18)
 #define GEOM_INST_FLAG_EXACT_NORMALS (1 << 19)
 #define GEOM_INST_FLAG_IGNORE_REFRACT_AFTER (1 << 20)
@@ -313,9 +313,9 @@ struct ShGeometryInstance
     float roughnessDefault;
     float metallicDefault;
     float emissiveMult;
-    uint _unused0;
-    uint _unused1;
-    uint _unused2;
+    uint firstVertex_Layer1;
+    uint firstVertex_Layer2;
+    uint firstVertex_Layer3;
     uint _unused3;
     uint _unused4;
     uint _unused5;

@@ -822,7 +822,6 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
 
             RgEditorInfo editorInfo = {
                 .pPortal        = nullptr,
-                .pLayerBase     = nullptr,
                 .pLayer1        = nullptr,
                 .pLayer2        = nullptr,
                 .pLayerLightmap = nullptr,

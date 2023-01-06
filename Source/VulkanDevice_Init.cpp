@@ -164,7 +164,7 @@ RTGL1::LibraryConfig ReadConfig( const char* pPath )
 {
     using namespace RTGL1;
 
-    if(Utils::IsCstrEmpty( pPath ) )
+    if( Utils::IsCstrEmpty( pPath ) )
     {
         pPath = "RayTracedGL1.json";
     }
@@ -307,7 +307,10 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         memAllocator, 
         cmdManager, 
         *uniform, 
-        *shaderManager );
+        *shaderManager,
+        info->allowTexCoordLayer1,
+        info->allowTexCoordLayer2,
+        info->allowTexCoordLayerLightmap );
 
     sceneImportExport = std::make_shared< SceneImportExport >(
         ovrdFolder / SCENES_FOLDER, 

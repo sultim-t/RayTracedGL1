@@ -48,7 +48,10 @@ public:
                const PhysicalDevice&                   physDevice,
                std::shared_ptr< MemoryAllocator >      allocator,
                std::shared_ptr< CommandBufferManager > cmdManager,
-               std::shared_ptr< GeomInfoManager >      geomInfoManager );
+               std::shared_ptr< GeomInfoManager >      geomInfoManager,
+               bool                                    enableTexCoordLayer1,
+               bool                                    enableTexCoordLayer2,
+               bool                                    enableTexCoordLayer3 );
     ~ASManager();
 
     ASManager( const ASManager& other )                = delete;

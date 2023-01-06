@@ -214,6 +214,9 @@ typedef struct RgInstanceCreateInfo
     // Allow RG_GEOMETRY_VISIBILITY_TYPE_SKY.
     // If true, RG_GEOMETRY_VISIBILITY_TYPE_WORLD_2 must not be used.
     RgBool32                    allowGeometryWithSkyFlag;
+    RgBool32                    allowTexCoordLayer1;
+    RgBool32                    allowTexCoordLayer2;
+    RgBool32                    allowTexCoordLayerLightmap;
 
     // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.
@@ -323,8 +326,7 @@ typedef enum RgTextureLayerBlendType
 
 typedef struct RgEditorTextureLayerInfo
 {
-    const void*                     pTexCoord;
-    uint32_t                        texCoordStride;
+    const RgFloat2D*                pTexCoord;
     const char*                     pTextureName;
     RgTextureLayerBlendType         blend;
     RgColor4DPacked32               color;
@@ -353,8 +355,7 @@ typedef struct RgEditorInfo
     // If not null, then the primitive defines a portal.
     const RgEditorPortalInfo*       pPortal;
     // Texture layer parameters. Layers can be made visible only through the Editor.
-    // Only 'blend' and 'color' are used from 'pLayerBase', as its info is provided by RgMeshPrimitiveInfo.
-    const RgEditorTextureLayerInfo* pLayerBase;
+    const RgTextureLayerBlendType*  pLayerBaseBlend;
     const RgEditorTextureLayerInfo* pLayer1;
     const RgEditorTextureLayerInfo* pLayer2;
     const RgEditorTextureLayerInfo* pLayerLightmap;

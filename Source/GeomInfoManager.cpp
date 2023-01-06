@@ -34,16 +34,22 @@ static_assert( sizeof( RTGL1::ShGeometryInstance ) % 16 == 0,
 namespace
 {
 
-uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint32_t layerIndex )
+bool LayerExistsA( const RgEditorTextureLayerInfo* layer )
 {
-    if( layerInfo == nullptr )
+    return layer && layer->pTexCoord;
+}
+
+uint32_t GetMaterialBlendFlags( const RgTextureLayerBlendType* blend, uint32_t layerIndex )
+{
+    if( blend == nullptr )
     {
         return 0;
     }
+    assert( layerIndex < GEOM_INST_FLAG_BLENDING_LAYER_COUNT );
 
     uint32_t bitOffset = MATERIAL_BLENDING_TYPE_BIT_COUNT * layerIndex;
 
-    switch( layerInfo->blend )
+    switch( *blend )
     {
         case RG_TEXTURE_LAYER_BLEND_TYPE_OPAQUE: return MATERIAL_BLENDING_TYPE_OPAQUE << bitOffset;
         case RG_TEXTURE_LAYER_BLEND_TYPE_ALPHA: return MATERIAL_BLENDING_TYPE_ALPHA << bitOffset;
@@ -53,15 +59,57 @@ uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layerInfo, uint3
     }
 }
 
+uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layer, uint32_t layerIndex )
+{
+    return GetMaterialBlendFlags( layer ? &layer->blend : nullptr, layerIndex );
+}
+
+}
+
+bool RTGL1::GeomInfoManager::LayerExists( const RgMeshPrimitiveInfo& info, uint32_t layerIndex )
+{
+    switch( layerIndex )
+    {
+        case 0: return true;
+        case 1: return info.pEditorInfo && LayerExistsA( info.pEditorInfo->pLayer1 );
+        case 2: return info.pEditorInfo && LayerExistsA( info.pEditorInfo->pLayer2 );
+        case 3: return info.pEditorInfo && LayerExistsA( info.pEditorInfo->pLayerLightmap );
+
+        default: assert( 0 ); return false;
+    }
+}
+
+const RgFloat2D* RTGL1::GeomInfoManager::AccessLayerTexCoords( const RgMeshPrimitiveInfo& info,
+                                                               uint32_t layerIndex )
+{
+    if( !LayerExists( info, layerIndex ) )
+    {
+        return nullptr;
+    }
+
+    switch( layerIndex )
+    {
+        case 1: return info.pEditorInfo->pLayer1->pTexCoord;
+        case 2: return info.pEditorInfo->pLayer2->pTexCoord;
+        case 3: return info.pEditorInfo->pLayerLightmap->pTexCoord;
+
+        case 0:
+        default: assert( 0 ); return nullptr;
+    }
 }
 
 uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& info )
 {
     uint32_t f = 0;
 
+
     if( info.pEditorInfo )
     {
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerBase, 0 );
+        f |= LayerExists( info, 1 ) ? GEOM_INST_FLAG_EXISTS_LAYER1 : 0;
+        f |= LayerExists( info, 2 ) ? GEOM_INST_FLAG_EXISTS_LAYER2 : 0;
+        f |= LayerExists( info, 3 ) ? GEOM_INST_FLAG_EXISTS_LAYER3 : 0;
+
+        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerBaseBlend, 0 );
         f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer1, 1 );
         f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer2, 2 );
         f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerLightmap, 3 );
@@ -90,10 +138,9 @@ uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& i
     {
         f |= GEOM_INST_FLAG_GENERATE_NORMALS;
     }
-    
+
     return f;
 }
-
 
 RTGL1::GeomInfoManager::GeomInfoManager( VkDevice                            _device,
                                          std::shared_ptr< MemoryAllocator >& _allocator )
@@ -301,15 +348,14 @@ void RTGL1::GeomInfoManager::ResetMatchPrevForGroup( uint32_t                   
 
 void RTGL1::GeomInfoManager::ResetOnlyDynamic( uint32_t frameIndex )
 {
-    VertexCollectorFilterTypeFlags_IterateOverFlags(
-        [ & ]( VertexCollectorFilterTypeFlags flags ) {
-            //
-            if( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC )
-            {
-                ResetMatchPrevForGroup( frameIndex, flags );
-                AccessGeometryInstanceGroup( frameIndex, flags ).reset_subspan();
-            }
-        } );
+    VertexCollectorFilterTypeFlags_IterateOverFlags( [ & ]( VertexCollectorFilterTypeFlags flags ) {
+        //
+        if( flags & VertexCollectorFilterTypeFlagBits::CF_DYNAMIC )
+        {
+            ResetMatchPrevForGroup( frameIndex, flags );
+            AccessGeometryInstanceGroup( frameIndex, flags ).reset_subspan();
+        }
+    } );
 
     mappedBufferRegionsCount[ frameIndex ] = RecalculateCount( frameIndex );
 }
@@ -375,7 +421,7 @@ void RTGL1::GeomInfoManager::WriteGeomInfo( uint32_t                       frame
     {
         FillWithPrevFrameData( flags, geomUniqueID, globalGeomIndex, src, i );
 
-        auto &geomInstSpan = AccessGeometryInstanceGroup( i, flags );
+        auto& geomInstSpan = AccessGeometryInstanceGroup( i, flags );
 
         memcpy( &geomInstSpan[ localGeomIndex ], &src, sizeof( ShGeometryInstance ) );
         geomInstSpan.add_to_subspan( localGeomIndex );
