@@ -424,8 +424,7 @@ void main()
     }
 
     {
-        imageStoreUnfilteredIndirectSH(
-            pix, irradianceToSH( diffuse, safeNormalize( surfToHitPoint ) ) );
+        imageStoreUnfilteredIndir( pix, diffuse );
     }
 }
 #endif // RT_RAYGEN_INDIRECT_FINAL

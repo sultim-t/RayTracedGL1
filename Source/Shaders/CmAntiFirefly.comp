@@ -29,7 +29,7 @@ layout( local_size_x = COMPUTE_ANTIFIREFLY_GROUP_SIZE_X,
         local_size_z = 1 ) in;
 
 #define FILTER_RADIUS 2
-#define MAXFLOAT 1000000
+#define MAXFLOAT      1000000
 
 
 
@@ -39,7 +39,7 @@ struct Data
 {
     vec3 diffuse;
     vec3 specular;
-    SH   sh;
+    vec3 indir;
 };
 
 shared Data s_data[ SHARED_WIDTH ][ SHARED_WIDTH ];
@@ -52,7 +52,7 @@ void fillFilterData( const ivec2 globalBasePix, const int sharedOffset )
     Data data;
     data.diffuse  = texelFetchDiffTemporary( globalPix );
     data.specular = texelFetchSpecAccumColor( globalPix );
-    data.sh       = texelFetchIndirAccumSH( globalPix );
+    data.indir    = texelFetchIndirAccum( globalPix );
 
     s_data[ sharedPix.y ][ sharedPix.x ] = data;
 }
@@ -106,14 +106,13 @@ void main()
         return;
     }
 
-    if (globalUniform.antiFireflyEnabled == 0)
+    if( globalUniform.antiFireflyEnabled == 0 )
     {
         Data c = GET_SDATA( 0, 0 );
 
-        // TODO: separate buffer to write?
         imageStoreDiffAccumColor( pix, c.diffuse );
         imageStoreSpecPingColor( pix, c.specular );
-        imageStoreIndirPingSH( pix, c.sh );
+        imageStoreIndirPing( pix, c.indir );
         return;
     }
 
@@ -121,16 +120,12 @@ void main()
     Data smin;
     smin.diffuse  = vec3( +MAXFLOAT );
     smin.specular = vec3( +MAXFLOAT );
-    smin.sh.r     = vec4( +MAXFLOAT );
-    smin.sh.g     = vec4( +MAXFLOAT );
-    smin.sh.b     = vec4( +MAXFLOAT );
+    smin.indir    = vec3( +MAXFLOAT );
 
     Data smax;
     smax.diffuse  = vec3( -MAXFLOAT );
     smax.specular = vec3( -MAXFLOAT );
-    smax.sh.r     = vec4( -MAXFLOAT );
-    smax.sh.g     = vec4( -MAXFLOAT );
-    smax.sh.b     = vec4( -MAXFLOAT );
+    smax.indir    = vec3( -MAXFLOAT );
 
     for( int i = -FILTER_RADIUS; i <= FILTER_RADIUS; i++ )
     {
@@ -145,26 +140,20 @@ void main()
 
             smin.diffuse  = min( smin.diffuse, other.diffuse );
             smin.specular = min( smin.specular, other.specular );
-            smin.sh.r     = min( smin.sh.r, other.sh.r );
-            smin.sh.g     = min( smin.sh.g, other.sh.g );
-            smin.sh.b     = min( smin.sh.b, other.sh.b );
+            smin.indir    = min( smin.indir, other.indir );
 
             smax.diffuse  = max( smax.diffuse, other.diffuse );
             smax.specular = max( smax.specular, other.specular );
-            smax.sh.r     = max( smax.sh.r, other.sh.r );
-            smax.sh.g     = max( smax.sh.g, other.sh.g );
-            smax.sh.b     = max( smax.sh.b, other.sh.b );
+            smax.indir    = max( smax.indir, other.indir );
         }
     }
 
     Data c     = GET_SDATA( 0, 0 );
-    c.diffuse  = clamp( c.diffuse,  smin.diffuse,  smax.diffuse );
+    c.diffuse  = clamp( c.diffuse, smin.diffuse, smax.diffuse );
     c.specular = clamp( c.specular, smin.specular, smax.specular );
-    c.sh.r     = clamp( c.sh.r,     smin.sh.r,     smax.sh.r );
-    c.sh.g     = clamp( c.sh.g,     smin.sh.g,     smax.sh.g );
-    c.sh.b     = clamp( c.sh.b,     smin.sh.b,     smax.sh.b );
+    c.indir    = clamp( c.indir, smin.indir, smax.indir );
 
     imageStoreDiffAccumColor( pix, c.diffuse );
     imageStoreSpecPingColor( pix, c.specular );
-    imageStoreIndirPingSH( pix, c.sh );
+    imageStoreIndirPing( pix, c.indir );
 }

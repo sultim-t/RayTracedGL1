@@ -107,9 +107,9 @@ void main()
         return;
     }
 
-    const vec3 unfilteredDiff   = texelFetchUnfilteredDirect(       pix);
-    const SH unfilteredIndirSH  = texelFetchUnfilteredIndirectSH(   pix);
-    const vec3 unfilteredSpec   = texelFetchUnfilteredSpecular(     pix);
+    const vec3 unfilteredDiff   = texelFetchUnfilteredDirect( pix );
+    const vec3 unfilteredIndir  = texelFetchUnfilteredIndir( pix );
+    const vec3 unfilteredSpec   = texelFetchUnfilteredSpecular( pix );
     // xyz - direction, w - hit distance
     const vec4 unfilteredRayInfo= texelFetch(framebufViewDirection_Sampler, pix, 0);
 
@@ -142,7 +142,7 @@ void main()
     vec3 diffPrev = vec3(0.0);
     vec2 momentsPrev = vec2(0.0);
     vec3 specPrevOnSurf = vec3(0.0);
-    SH indirPrev = newSH();
+    vec3 indirPrev = vec3(0.0);
     float weightSum = 0.0;
 
     // 2x2 tap bilinear interpolation
@@ -169,7 +169,7 @@ void main()
                     momentsPrev         += weight * texelFetch(framebufDiffAccumMoments_Prev_Sampler,   xy, 0).rg;    
                     historyLengthDIS    += weight * texelFetch(framebufAccumHistoryLength_Prev_Sampler, xy, 0);
                     specPrevOnSurf      += weight * texelFetchSpecAccumColor_Prev(xy);
-                    accumulateSH(indirPrev, texelFetchIndirAccumSH_Prev(xy), weight);
+                    indirPrev           += weight * texelFetchIndirAccum_Prev(xy);
 
                     weightSum += weight;
                 }
@@ -319,7 +319,7 @@ void main()
     vec2 diffMomentsAccum;
     float diffHistoryLengthAccum;
 
-    SH indirSHAccum;
+    vec3 indirAccum;
     float indirHistoryLengthAccum;
 
     // found consistent info
@@ -327,9 +327,9 @@ void main()
     {
         const float invWeightSum = 1.0 / weightSum;
 
-        diffPrev          *= invWeightSum;
-        momentsPrev       *= invWeightSum;
-        multiplySH(indirPrev, invWeightSum);
+        diffPrev    *= invWeightSum;
+        momentsPrev *= invWeightSum;
+        indirPrev   *= invWeightSum;
 
         float diffHistoryLength  = historyLengthDIS[0] * invWeightSum;
         float indirHistoryLength = historyLengthDIS[1] * invWeightSum;
@@ -361,7 +361,7 @@ void main()
 
             alphaColor = mix(alphaColor, 1.0, antilagAlpha_Indir);
 
-            indirSHAccum = mixSH(indirPrev, unfilteredIndirSH, alphaColor);
+            indirAccum = mix(indirPrev, unfilteredIndir, alphaColor);
             indirHistoryLengthAccum = indirHistoryLength;
         }
     }
@@ -371,7 +371,7 @@ void main()
         diffMomentsAccum = moments;
         diffHistoryLengthAccum = 1.0;
 
-        indirSHAccum = unfilteredIndirSH;
+        indirAccum = unfilteredIndir;
         indirHistoryLengthAccum = 1.0;
     }
 
@@ -381,5 +381,5 @@ void main()
 
     imageStoreSpecAccumColor(               pix, specColorAccum);
 
-    imageStoreIndirAccumSH(                 pix, indirSHAccum);
+    imageStoreIndirAccum(                   pix, indirAccum);
 }

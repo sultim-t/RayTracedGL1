@@ -69,8 +69,10 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
 
 
     // bind desc sets
-    VkDescriptorSet               sets[] = { framebuffers->GetDescSet( frameIndex ),
-                               uniform->GetDescSet( frameIndex ) };
+    VkDescriptorSet sets[] = {
+        framebuffers->GetDescSet( frameIndex ),
+        uniform->GetDescSet( frameIndex ),
+    };
 
     vkCmdBindDescriptorSets( cmd,
                              VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -127,7 +129,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
 
         CmdLabel label( cmd, "Temporal accumulation" );
 
-        FI       fs[] = {
+        FI fs[] = {
             FI::FB_IMAGE_INDEX_MOTION,
             FI::FB_IMAGE_INDEX_DEPTH_WORLD,
             FI::FB_IMAGE_INDEX_DEPTH_GRAD,
@@ -138,9 +140,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
             FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
             FI::FB_IMAGE_INDEX_UNFILTERED_DIRECT,
             FI::FB_IMAGE_INDEX_UNFILTERED_SPECULAR,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_R,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_G,
-            FI::FB_IMAGE_INDEX_UNFILTERED_INDIRECT_S_H_B,
+            FI::FB_IMAGE_INDEX_UNFILTERED_INDIR,
             FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY,
 #if GRADIENT_ESTIMATION_ENABLED
             FI::FB_IMAGE_INDEX_D_I_S_PING_GRADIENT,
@@ -162,11 +162,10 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
 
         CmdLabel label( cmd, "Antifirefly" );
 
-        FI       fs[] = {
-
-            FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR,  FI::FB_IMAGE_INDEX_SPEC_ACCUM_COLOR,
-            FI::FB_IMAGE_INDEX_INDIR_ACCUM_S_H_R, FI::FB_IMAGE_INDEX_INDIR_ACCUM_S_H_G,
-            FI::FB_IMAGE_INDEX_INDIR_ACCUM_S_H_B,
+        FI fs[] = {
+            FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR,
+            FI::FB_IMAGE_INDEX_SPEC_ACCUM_COLOR,
+            FI::FB_IMAGE_INDEX_INDIR_ACCUM,
         };
         framebuffers->BarrierMultiple( cmd, frameIndex, fs );
 
@@ -185,7 +184,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
 
         CmdLabel label( cmd, "SVGF Variance estimation" );
 
-        FI       fs[] = { FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR,
+        FI fs[] = { FI::FB_IMAGE_INDEX_DIFF_ACCUM_COLOR,
                     FI::FB_IMAGE_INDEX_DIFF_ACCUM_MOMENTS,
                     FI::FB_IMAGE_INDEX_ACCUM_HISTORY_LENGTH };
         framebuffers->BarrierMultiple( cmd, frameIndex, fs );
@@ -211,9 +210,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
             case 0: {
                 FI fs[] = { FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE,
                             FI::FB_IMAGE_INDEX_SPEC_PING_COLOR,
-                            FI::FB_IMAGE_INDEX_INDIR_PING_S_H_R,
-                            FI::FB_IMAGE_INDEX_INDIR_PING_S_H_G,
-                            FI::FB_IMAGE_INDEX_INDIR_PING_S_H_B,
+                            FI::FB_IMAGE_INDEX_INDIR_PING,
 
                             FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS };
 
@@ -223,9 +220,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
             case 1: {
                 FI fs[] = { FI::FB_IMAGE_INDEX_DIFF_COLOR_HISTORY,
                             FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR,
-                            FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_R,
-                            FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_G,
-                            FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B,
+                            FI::FB_IMAGE_INDEX_INDIR_PONG,
                             // on iteration 0 prefiltered variance was calculated
                             FI::FB_IMAGE_INDEX_ATROUS_FILTERED_VARIANCE };
 
@@ -235,9 +230,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
             case 2: {
                 FI fs[] = { FI::FB_IMAGE_INDEX_DIFF_PING_COLOR_AND_VARIANCE,
                             FI::FB_IMAGE_INDEX_SPEC_PING_COLOR,
-                            FI::FB_IMAGE_INDEX_INDIR_PING_S_H_R,
-                            FI::FB_IMAGE_INDEX_INDIR_PING_S_H_G,
-                            FI::FB_IMAGE_INDEX_INDIR_PING_S_H_B };
+                            FI::FB_IMAGE_INDEX_INDIR_PING };
 
                 framebuffers->BarrierMultiple( cmd, frameIndex, fs );
                 break;
@@ -245,9 +238,7 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
             case 3: {
                 FI fs[] = { FI::FB_IMAGE_INDEX_DIFF_PONG_COLOR_AND_VARIANCE,
                             FI::FB_IMAGE_INDEX_SPEC_PONG_COLOR,
-                            FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_R,
-                            FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_G,
-                            FI::FB_IMAGE_INDEX_INDIR_PONG_S_H_B,
+                            FI::FB_IMAGE_INDEX_INDIR_PONG,
                             FI::FB_IMAGE_INDEX_THROUGHPUT };
 
                 framebuffers->BarrierMultiple( cmd, frameIndex, fs );
@@ -311,7 +302,7 @@ void RTGL1::Denoiser::DestroyPipelines()
 
 void RTGL1::Denoiser::CreatePipelines( const ShaderManager* shaderManager )
 {
-    uint32_t                 gAtrousIteration = 0;
+    uint32_t gAtrousIteration = 0;
 
     VkSpecializationMapEntry specEntry = {
         .constantID = 0,

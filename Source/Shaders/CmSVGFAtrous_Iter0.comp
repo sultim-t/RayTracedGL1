@@ -75,6 +75,8 @@ struct AtrousData
     vec3    directDiffuseColor;
     // E5B9G9R9
     uint    encSpecularColor;
+    // E5B9G9R9
+    uint    encIndirColor;
     float   roughness;
     uint    encNormalGeometry;
     float   depth;
@@ -87,10 +89,11 @@ shared AtrousData atrousData[SHARED_WIDTH][SHARED_WIDTH];
 shared float directDiffuseVariance[SHARED_WIDTH][SHARED_WIDTH];
 
 
-void fillFilterData(
-    sampler2D samplerDiff, 
-    usampler2D samplerSpec, 
-    const ivec2 globalBasePix, const int sharedOffset)
+void fillFilterData( sampler2D   samplerDiff,
+                     usampler2D  samplerSpec,
+                     usampler2D  samplerIndir,
+                     const ivec2 globalBasePix,
+                     const int   sharedOffset )
 {
     const ivec2 sharedPix = ivec2(sharedOffset % SHARED_WIDTH, sharedOffset / SHARED_WIDTH);
     const ivec2 globalPix = globalBasePix + sharedPix;
@@ -104,18 +107,16 @@ void fillFilterData(
     data.directDiffuseColor = cv.rgb;
     directDiffuseVariance[sharedPix.y][sharedPix.x] = cv.a;
     
-    //data.indirectDiffuseSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, globalPix);
     data.roughness          = texelFetch(framebufMetallicRoughness_Sampler, globalPix, 0).g;
     data.encSpecularColor   = texelFetch(samplerSpec,                       globalPix, 0).r;
+    data.encIndirColor      = texelFetch(samplerIndir,                      globalPix, 0).r;
     data.encNormalGeometry  = texelFetchEncNormal(                          globalPix); 
 
     atrousData[sharedPix.y][sharedPix.x] = data;
 }
 
 
-void preload(
-    sampler2D samplerDiff, 
-    usampler2D samplerSpec)
+void preload( sampler2D samplerDiff, usampler2D samplerSpec, usampler2D samplerIndir )
 {
     const ivec2 globalBasePix = ivec2(gl_WorkGroupID.xy) * COMPUTE_SVGF_ATROUS_GROUP_SIZE_X - ivec2(FILTER_RADIUS);
     const int threadIndex = int(gl_LocalInvocationIndex);
@@ -132,7 +133,7 @@ void preload(
     {
         // first threads need to preload only 1 pixel
         fillFilterData(
-            samplerDiff, samplerSpec,
+            samplerDiff, samplerSpec, samplerIndir,
             globalBasePix, threadIndex);
     }
     else
@@ -141,11 +142,11 @@ void preload(
         const int neighborsIndex = threadIndex - oneLoadCount;
 
         fillFilterData(
-            samplerDiff, samplerSpec,
+            samplerDiff, samplerSpec, samplerIndir,
             globalBasePix, oneLoadCount + neighborsIndex * 2 + 0);
        
         fillFilterData(
-            samplerDiff, samplerSpec,
+            samplerDiff, samplerSpec, samplerIndir,
             globalBasePix, oneLoadCount + neighborsIndex * 2 + 1);
     }
 }
@@ -193,10 +194,9 @@ float dotEnc(uint n1, uint n2)
 
 
 void atrous0(
-    sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
     out vec3 outDiff, out float outVariance, 
     out vec3 outSpec,
-    out SH outIndirSH)
+    out vec3 outIndir)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
@@ -210,7 +210,7 @@ void atrous0(
         outVariance = 0.0;
         outDiff = vec3(0.0);
         outSpec = vec3(0.0);
-        outIndirSH  = newSH();
+        outIndir = vec3(0.0);
 
         return;
     }
@@ -219,7 +219,7 @@ void atrous0(
     outVariance = GET_DIR_DIFF_VARIANCE(0, 0);
     outDiff     = center.directDiffuseColor;
     outSpec     = decodeE5B9G9R9(center.encSpecularColor);
-    outIndirSH  = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
+    outIndir    = decodeE5B9G9R9(center.encIndirColor);
 
     const float l = getLuminance(outDiff);
     const float wLumMultiplier = 1.0 / (SIGMA_LUMINANCE * prefilterLuminanceVariance() + 0.00001);
@@ -283,8 +283,7 @@ void atrous0(
 
             outDiff += other.directDiffuseColor * wDiff;
             outSpec += decodeE5B9G9R9(other.encSpecularColor) * wSpec;
-            // SH are fetched here, because storing it in shared memory causes short scoreboard stalls
-            accumulateSH(outIndirSH, texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix_q), wDiffIndir);
+            outIndir += decodeE5B9G9R9(other.encIndirColor) * wDiffIndir;
 
             outVariance += GET_DIR_DIFF_VARIANCE(offset.x, offset.y) * wDiff * wDiff;
 
@@ -301,7 +300,7 @@ void atrous0(
     outDiff     *= invWeightSum;
     outVariance *= invWeightSum * invWeightSum;
     outSpec     *= invWeightSumSpec;
-    multiplySH(outIndirSH, invWeightSumIdir);
+    outIndir    *= invWeightSumIdir;
 }
 
 
@@ -310,9 +309,9 @@ void main()
     ivec2 pix = ivec2(gl_GlobalInvocationID);
 
 
-    preload(
-        framebufDiffPingColorAndVariance_Sampler, 
-        framebufSpecPingColor_Sampler);
+    preload( framebufDiffPingColorAndVariance_Sampler,
+             framebufSpecPingColor_Sampler,
+             framebufIndirPing_Sampler );
     barrier();
 
 
@@ -323,18 +322,14 @@ void main()
 
 
     float updatedVariance;
-    vec3 filteredDiff;
-    vec3 filteredSpec;
-    SH filteredIndir;
-
-
-    atrous0(
-        framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler,
-        filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
+    vec3  filteredDiff;
+    vec3  filteredSpec;
+    vec3  filteredIndir;
+    atrous0( filteredDiff, updatedVariance, filteredSpec, filteredIndir );
 
 
     // for the first iteration, save to color history buffer for temporal accumulation
-    imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
-    imageStoreSpecPongColor(                     pix, filteredSpec); 
-    imageStoreIndirPongSH(                       pix, filteredIndir); 
+    imageStore(framebufDiffColorHistory, pix, vec4(filteredDiff, updatedVariance)); 
+    imageStoreSpecPongColor(             pix, filteredSpec); 
+    imageStoreIndirPong(                 pix, filteredIndir); 
 }

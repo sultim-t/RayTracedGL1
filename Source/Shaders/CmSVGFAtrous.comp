@@ -72,10 +72,10 @@ void atrous(sampler2D samplerDiff,
             // TODO: more generic handling of different formats for samplers
             // now it's just hardcoded E5B9G9R9
             usampler2D samplerSpec, 
-            sampler2D samplerIndirR, sampler2D samplerIndirG, sampler2D samplerIndirB,
+            usampler2D samplerIndir,
             out vec3 outDiff, out float outVariance, 
             out vec3 outSpec,
-            out SH outIndirSH)
+            out vec3 outIndir)
 {
     const ivec2 pix = ivec2(gl_GlobalInvocationID);
     const ivec3 chRenderArea = getCheckerboardedRenderArea(pix);
@@ -87,7 +87,7 @@ void atrous(sampler2D samplerDiff,
 
     outSpec       = decodeE5B9G9R9(texelFetch(samplerSpec, pix, 0).r);
 
-    outIndirSH    = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix);
+    outIndir      = decodeE5B9G9R9(texelFetch(samplerIndir, pix, 0).r);
 
 
     const float depth = texelFetch(framebufDepthWorld_Sampler, pix, 0).r;
@@ -172,7 +172,7 @@ void atrous(sampler2D samplerDiff,
             const float l_q         = getLuminance(diffColor_q);
             const float n_n         = max(0.0, dot(normal, normal_q));
 
-            const SH indirSH_q      = texelFetchSH(samplerIndirR, samplerIndirG, samplerIndirB, pix_q);
+            const vec3 indir_q      = decodeE5B9G9R9(texelFetch(samplerIndir,       pix_q, 0).r);
 
 
             const float w_z = abs(depth - depth_q) / max(gradDepth * (abs(xx) + abs(yy)), 0.01);
@@ -199,8 +199,8 @@ void atrous(sampler2D samplerDiff,
 
             outDiff += diffColor_q * wDiff;
             outSpec += specColor_q * wSpec;
-            accumulateSH(outIndirSH, indirSH_q, wDiffIndir);
-
+            outIndir += indir_q * wDiffIndir;
+            
             outVariance += variance_q * wDiff * wDiff;
 
             weightSum += wDiff;
@@ -216,7 +216,7 @@ void atrous(sampler2D samplerDiff,
     outDiff     *= invWeightSum;
     outVariance *= invWeightSum * invWeightSum;
     outSpec     *= invWeightSumSpec;
-    multiplySH(outIndirSH, invWeightSumIdir);
+    outIndir    *= invWeightSumIdir;
 }
 
 
@@ -231,29 +231,29 @@ void main()
 
     vec3 filteredDiff;
     vec3 filteredSpec;
-    SH filteredIndir;
+    vec3 filteredIndir;
     float updatedVariance;
 
     switch (atrousIteration)
     {
         case 0: atrous(framebufDiffPingColorAndVariance_Sampler, 
                        framebufSpecPingColor_Sampler,
-                       framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler,
+                       framebufIndirPing_Sampler, 
                        filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
                 break;
         case 1: atrous(framebufDiffColorHistory_Sampler,         
                        framebufSpecPongColor_Sampler, 
-                       framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler,
+                       framebufIndirPong_Sampler,
                        filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
                 break;
         case 2: atrous(framebufDiffPingColorAndVariance_Sampler, 
                        framebufSpecPingColor_Sampler, 
-                       framebufIndirPingSH_R_Sampler, framebufIndirPingSH_G_Sampler, framebufIndirPingSH_B_Sampler,
+                       framebufIndirPing_Sampler, 
                        filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
                 break;
         case 3: atrous(framebufDiffPongColorAndVariance_Sampler, 
                        framebufSpecPongColor_Sampler, 
-                       framebufIndirPongSH_R_Sampler, framebufIndirPongSH_G_Sampler, framebufIndirPongSH_B_Sampler,
+                       framebufIndirPong_Sampler,
                        filteredDiff, updatedVariance, filteredSpec, filteredIndir); 
                 break;
     }
@@ -263,15 +263,15 @@ void main()
     {
         case 0: imageStore(framebufDiffColorHistory,         pix, vec4(filteredDiff, updatedVariance)); 
                 imageStoreSpecPongColor(                     pix, filteredSpec); 
-                imageStoreIndirPongSH(                       pix, filteredIndir); 
+                imageStoreIndirPong(                         pix, filteredIndir); 
                 break;
         case 1: imageStore(framebufDiffPingColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
                 imageStoreSpecPingColor(                     pix, filteredSpec); 
-                imageStoreIndirPingSH(                       pix, filteredIndir); 
+                imageStoreIndirPing(                         pix, filteredIndir); 
                 break;
         case 2: imageStore(framebufDiffPongColorAndVariance, pix, vec4(filteredDiff, updatedVariance)); 
                 imageStoreSpecPongColor(                     pix, filteredSpec); 
-                imageStoreIndirPongSH(                       pix, filteredIndir); 
+                imageStoreIndirPong(                         pix, filteredIndir); 
                 break;
     }
 
@@ -295,9 +295,9 @@ void main()
             const float roughness = mrFb.y;
 
             const vec3 diffuse = filteredDiff;
-            const vec3 indirect = SHToIrradiance(filteredIndir, normal);
+            const vec3 indirect = filteredIndir;
 
-            // to prevent noise, specular will be replaced with SH, if the surface is too rough
+            // to prevent noise, specular will be replaced with indir, if the surface is too rough
             const vec3 specular = mix(
                 filteredSpec,
                 indirect,
