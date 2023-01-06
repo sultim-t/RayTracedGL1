@@ -186,7 +186,7 @@ bool testSurfaceForReuseIndirect(
     const vec3 curNormal, const vec3 otherNormal)
 {
     const float DepthThreshold = 0.05;
-    const float NormalThreshold = 0.9;
+    const float NormalThreshold = 0.0;
 
     return 
         testPixInRenderArea(otherPix, curChRenderArea) &&
@@ -206,8 +206,8 @@ float getDiffuseWeight( float roughness )
 #define TEMPORAL_SAMPLES_INDIR    1
 #define TEMPORAL_RADIUS_INDIR_MAX 2.0
 
-#define SPATIAL_SAMPLES_INDIR 4
-#define SPATIAL_RADIUS_INDIR  32.0
+#define SPATIAL_SAMPLES_INDIR 6
+#define SPATIAL_RADIUS_INDIR  mix( 8.0, 32.0, clamp( globalUniform.renderHeight / 1080.0, 0.0, 1.0 ) ) 
 
 #define DEBUG_TRACE_BIAS_CORRECT_RAY 0
 
