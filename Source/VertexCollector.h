@@ -109,6 +109,9 @@ public:
 
 private:
     void CopyVertexDataToStaging( const RgMeshPrimitiveInfo& info, uint32_t vertIndex );
+    void CopyTexCoordsToStaging( uint32_t                   layerIndex,
+                                 const RgMeshPrimitiveInfo& info,
+                                 uint32_t                   dstTexcoordIndex );
 
     bool CopyVertexDataFromStaging( VkCommandBuffer cmd );
     bool CopyTexCoordsFromStaging( VkCommandBuffer cmd, uint32_t layerIndex );

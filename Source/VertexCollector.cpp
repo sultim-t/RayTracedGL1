@@ -213,31 +213,9 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
 
     // copy data to buffers
     CopyVertexDataToStaging( info, vertIndex );
-
-    std::tuple< uint32_t, SharedDeviceLocal< RgFloat2D >*, uint32_t > txc[] = {
-        { 1, &bufTexcoordLayer1, texcIndex_1 },
-        { 2, &bufTexcoordLayer2, texcIndex_2 },
-        { 3, &bufTexcoordLayer3, texcIndex_3 },
-    };
-    for( auto& [ layerIndex, bufTexcoord, dstElem ] : txc )
-    {
-        if( const RgFloat2D* src = GeomInfoManager::AccessLayerTexCoords( info, layerIndex ) )
-        {
-            if( bufTexcoord->mapped && bufTexcoord->IsInitialized() )
-            {
-                memcpy(
-                    &bufTexcoord->mapped[ dstElem ], src, info.vertexCount * sizeof( RgFloat2D ) );
-            }
-            else
-            {
-                debug::Error(
-                    "Found Layer{} texture coords on a primitive, but buffer was not allocated. "
-                    "Recheck \'allowTexCoordLayer1\', \'allowTexCoordLayer2\' and "
-                    "\'allowTexCoordLayerLightmap\'",
-                    layerIndex );
-            }
-        }
-    }
+    CopyTexCoordsToStaging( 1, info, texcIndex_1 );
+    CopyTexCoordsToStaging( 2, info, texcIndex_2 );
+    CopyTexCoordsToStaging( 3, info, texcIndex_3 );
 
     if( useIndices )
     {
@@ -381,6 +359,39 @@ void RTGL1::VertexCollector::CopyVertexDataToStaging( const RgMeshPrimitiveInfo&
     static_assert( offsetof( ShVertex, color ) == offsetof( RgPrimitiveVertex, color ) );
 
     memcpy( pDst, info.pVertices, info.vertexCount * sizeof( ShVertex ) );
+}
+
+void RTGL1::VertexCollector::CopyTexCoordsToStaging( uint32_t                   layerIndex,
+                                                     const RgMeshPrimitiveInfo& info,
+                                                     uint32_t                   dstTexcoordIndex )
+{
+    SharedDeviceLocal< RgFloat2D >* txc = nullptr;
+    switch( layerIndex )
+    {
+        case 1: txc = &bufTexcoordLayer1; break;
+        case 2: txc = &bufTexcoordLayer2; break;
+        case 3: txc = &bufTexcoordLayer3; break;
+        default: assert( 0 ); return;
+    }
+
+    if( const RgFloat2D* src = GeomInfoManager::AccessLayerTexCoords( info, layerIndex ) )
+    {
+        if( txc->IsInitialized() && txc->mapped )
+        {
+            memcpy( &txc->mapped[ dstTexcoordIndex ], src, info.vertexCount * sizeof( RgFloat2D ) );
+        }
+        else
+        {
+            debug::Error(
+                "Found Layer{} texture coords on a primitive, but buffer was not allocated. "
+                "Recheck RgInstanceCreateInfo::{}",
+                layerIndex,
+                layerIndex == 1   ? "allowTexCoordLayer1"
+                : layerIndex == 2 ? "allowTexCoordLayer2"
+                : layerIndex == 3 ? "allowTexCoordLayerLightmap"
+                                  : "<unknown>" );
+        }
+    }
 }
 
 void RTGL1::VertexCollector::Reset()
@@ -568,38 +579,13 @@ bool RTGL1::VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
 
         for( uint32_t layerIndex : { 1, 2, 3 } )
         {
-            VkBuffer buffer    = VK_NULL_HANDLE;
-            size_t   elemCount = 0;
+            std::pair< SharedDeviceLocal< RgFloat2D >*, uint32_t /* elem count */ > txc = {};
 
             switch( layerIndex )
             {
-                case 1:
-                    if( !bufTexcoordLayer1.IsInitialized() )
-                    {
-                        continue;
-                    }
-                    buffer    = bufTexcoordLayer1.deviceLocal->GetBuffer();
-                    elemCount = curTexCoordCount_Layer1;
-                    break;
-
-                case 2:
-                    if( !bufTexcoordLayer2.IsInitialized() )
-                    {
-                        continue;
-                    }
-                    buffer    = bufTexcoordLayer2.deviceLocal->GetBuffer();
-                    elemCount = curTexCoordCount_Layer2;
-                    break;
-
-                case 3:
-                    if( !bufTexcoordLayer3.IsInitialized() )
-                    {
-                        continue;
-                    }
-                    buffer    = bufTexcoordLayer3.deviceLocal->GetBuffer();
-                    elemCount = curTexCoordCount_Layer3;
-                    break;
-
+                case 1: txc = { &bufTexcoordLayer1, curTexCoordCount_Layer1 }; break;
+                case 2: txc = { &bufTexcoordLayer2, curTexCoordCount_Layer2 }; break;
+                case 3: txc = { &bufTexcoordLayer3, curTexCoordCount_Layer3 }; break;
                 default: assert( 0 ); continue;
             }
 
@@ -611,9 +597,9 @@ bool RTGL1::VertexCollector::CopyFromStaging( VkCommandBuffer cmd )
                     .dstAccessMask       = VK_ACCESS_SHADER_READ_BIT,
                     .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
                     .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-                    .buffer              = buffer,
+                    .buffer              = txc.first->deviceLocal->GetBuffer(),
                     .offset              = 0,
-                    .size                = elemCount * sizeof( RgFloat2D ),
+                    .size                = txc.second * sizeof( RgFloat2D ),
                 };
                 copiedAny = true;
             }
