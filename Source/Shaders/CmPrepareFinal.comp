@@ -108,19 +108,17 @@ vec3 tonemapRT(vec3 c)
 }
 
 
-vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis )
+vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis, const ivec2 regularPix )
 {
-    if( !classicShading( ivec2( gl_GlobalInvocationID.x, gl_GlobalInvocationID.y ) ) )
-    {
-        vec3 c = hdr * ev100ToLuminousExposure( getCurrentEV100() ) +
-                 screenEmis * globalUniform.emissionMaxScreenColor;
-
-        return tonemapRT(c);
-    }
-    else
+    if( classicShading( regularPix ) )
     {
         return clamp( hdr, vec3( 0.0 ), vec3( 1.0 ) );
     }
+
+    vec3 c = hdr * ev100ToLuminousExposure( getCurrentEV100() ) +
+             screenEmis * globalUniform.emissionMaxScreenColor;
+
+    return tonemapRT( c );
 }
 
 
@@ -203,7 +201,7 @@ void main()
     const vec3 hdr        = texelFetch( framebufFinal_Sampler, pix, 0 ).rgb;
     const vec3 screenEmis = texelFetch( framebufScreenEmission_Sampler, pix, 0 ).rgb;
 
-    vec3 color = finalizeColor( hdr, screenEmis );
+    vec3 color = finalizeColor( hdr, screenEmis, pix );
     vec3 bloom = getBloomInput( hdr, screenEmis );
 
     color = applyVolumetrics( pix, color );
