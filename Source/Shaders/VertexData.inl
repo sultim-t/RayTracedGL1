@@ -100,6 +100,56 @@ layout(
     uint prevDynamicIndices[];
 };
 
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_STATIC_TEXCOORD_LAYER_1)
+    readonly
+    buffer StaticTexCoordLayer1_BT
+{
+    vec2 g_staticTexCoords_Layer1[];
+};
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_STATIC_TEXCOORD_LAYER_2)
+    readonly
+    buffer StaticTexCoordLayer2_BT
+{
+    vec2 g_staticTexCoords_Layer2[];
+};
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_STATIC_TEXCOORD_LAYER_3)
+    readonly
+    buffer StaticTexCoordLayer3_BT
+{
+    vec2 g_staticTexCoords_Layer3[];
+};
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_DYNAMIC_TEXCOORD_LAYER_1)
+    readonly
+    buffer DynamicTexCoordLayer1_BT
+{
+    vec2 g_dynamicTexCoords_Layer1[];
+};
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_DYNAMIC_TEXCOORD_LAYER_2)
+    readonly
+    buffer DynamicTexCoordLayer2_BT
+{
+    vec2 g_dynamicTexCoords_Layer2[];
+};
+layout(
+    set = DESC_SET_VERTEX_DATA,
+    binding = BINDING_DYNAMIC_TEXCOORD_LAYER_3)
+    readonly
+    buffer DynamicTexCoordLayer3_BT
+{
+    vec2 g_dynamicTexCoords_Layer3[];
+};
+
+
 vec3 getStaticVerticesPositions(uint index)
 {
     return g_staticVertices[index].position.xyz;
@@ -234,18 +284,6 @@ ShTriangle makeTriangle(const ShVertex a, const ShVertex b, const ShVertex c)
     tr.layerTexCoord[0][1] = b.texCoord;
     tr.layerTexCoord[0][2] = c.texCoord;
 
-    tr.layerTexCoord[1][0] = vec2( 0, 0 );
-    tr.layerTexCoord[1][1] = vec2( 0, 0 );
-    tr.layerTexCoord[1][2] = vec2( 0, 0 );
-
-    tr.layerTexCoord[2][0] = vec2( 0, 0 );
-    tr.layerTexCoord[2][1] = vec2( 0, 0 );
-    tr.layerTexCoord[2][2] = vec2( 0, 0 );
-
-    tr.layerTexCoord[3][0] = vec2( 0, 0 );
-    tr.layerTexCoord[3][1] = vec2( 0, 0 );
-    tr.layerTexCoord[3][2] = vec2( 0, 0 );
-
     if (globalUniform.lightmapEnable != 0)
     {
         tr.vertexColors[0] = a.color;
@@ -339,6 +377,31 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
                 g_staticVertices[vertIndices[0]],
                 g_staticVertices[vertIndices[1]],
                 g_staticVertices[vertIndices[2]]);
+        }
+
+        if( ( inst.flags & GEOM_INST_FLAG_EXISTS_LAYER1 ) != 0 )
+        {
+            const uvec3 vertIndices =
+                getVertIndicesStatic( inst.firstVertex_Layer1, inst.baseIndexIndex, primitiveId );
+            tr.layerTexCoord[ 1 ][ 0 ] = g_staticTexCoords_Layer1[ vertIndices[ 0 ] ];
+            tr.layerTexCoord[ 1 ][ 1 ] = g_staticTexCoords_Layer1[ vertIndices[ 1 ] ];
+            tr.layerTexCoord[ 1 ][ 2 ] = g_staticTexCoords_Layer1[ vertIndices[ 2 ] ];
+        }
+        if( ( inst.flags & GEOM_INST_FLAG_EXISTS_LAYER2 ) != 0 )
+        {
+            const uvec3 vertIndices =
+                getVertIndicesStatic( inst.firstVertex_Layer2, inst.baseIndexIndex, primitiveId );
+            tr.layerTexCoord[ 2 ][ 0 ] = g_staticTexCoords_Layer2[ vertIndices[ 0 ] ];
+            tr.layerTexCoord[ 2 ][ 1 ] = g_staticTexCoords_Layer2[ vertIndices[ 1 ] ];
+            tr.layerTexCoord[ 2 ][ 2 ] = g_staticTexCoords_Layer2[ vertIndices[ 2 ] ];
+        }
+        if( ( inst.flags & GEOM_INST_FLAG_EXISTS_LAYER3 ) != 0 )
+        {
+            const uvec3 vertIndices =
+                getVertIndicesStatic( inst.firstVertex_Layer3, inst.baseIndexIndex, primitiveId );
+            tr.layerTexCoord[ 3 ][ 0 ] = g_staticTexCoords_Layer3[ vertIndices[ 0 ] ];
+            tr.layerTexCoord[ 3 ][ 1 ] = g_staticTexCoords_Layer3[ vertIndices[ 1 ] ];
+            tr.layerTexCoord[ 3 ][ 2 ] = g_staticTexCoords_Layer3[ vertIndices[ 2 ] ];
         }
 
         const vec4 prevLocalPos[] =

@@ -160,104 +160,182 @@ RTGL1::ASManager::ASManager( VkDevice                                _device,
     SET_DEBUG_NAME( device, staticCopyFence, VK_OBJECT_TYPE_FENCE, "Static BLAS fence" );
 }
 
+namespace
+{
+
+template< size_t N >
+constexpr bool CheckBindings( const VkDescriptorSetLayoutBinding ( &bindings )[ N ] )
+{
+    for( size_t i = 0; i < N; i++ )
+    {
+        if( bindings[ i ].binding != i )
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+template< size_t N >
+constexpr bool CheckBindings( const VkWriteDescriptorSet ( &bindings )[ N ] )
+{
+    for( size_t i = 0; i < N; i++ )
+    {
+        if( bindings[ i ].dstBinding != i )
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+}
+
 void RTGL1::ASManager::CreateDescriptors()
 {
     VkResult                              r;
     std::array< VkDescriptorPoolSize, 2 > poolSizes{};
 
     {
-        std::array< VkDescriptorSetLayoutBinding, 8 > bindings{};
+        constexpr VkDescriptorSetLayoutBinding bindings[] = {
+            {
+                .binding         = BINDING_VERTEX_BUFFER_STATIC,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_VERTEX_BUFFER_DYNAMIC,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_INDEX_BUFFER_STATIC,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_INDEX_BUFFER_DYNAMIC,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_GEOMETRY_INSTANCES,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_GEOMETRY_INSTANCES_MATCH_PREV,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_PREV_INDEX_BUFFER_DYNAMIC,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_STATIC_TEXCOORD_LAYER_1,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_STATIC_TEXCOORD_LAYER_2,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_STATIC_TEXCOORD_LAYER_3,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_DYNAMIC_TEXCOORD_LAYER_1,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_DYNAMIC_TEXCOORD_LAYER_2,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+            {
+                .binding         = BINDING_DYNAMIC_TEXCOORD_LAYER_3,
+                .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                .descriptorCount = 1,
+                .stageFlags      = VK_SHADER_STAGE_ALL,
+            },
+        };
+        static_assert( CheckBindings( bindings ) );
 
-        // static vertex data
-        bindings[ 0 ].binding         = BINDING_VERTEX_BUFFER_STATIC;
-        bindings[ 0 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 0 ].descriptorCount = 1;
-        bindings[ 0 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        // dynamic vertex data
-        bindings[ 1 ].binding         = BINDING_VERTEX_BUFFER_DYNAMIC;
-        bindings[ 1 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 1 ].descriptorCount = 1;
-        bindings[ 1 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        bindings[ 2 ].binding         = BINDING_INDEX_BUFFER_STATIC;
-        bindings[ 2 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 2 ].descriptorCount = 1;
-        bindings[ 2 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        bindings[ 3 ].binding         = BINDING_INDEX_BUFFER_DYNAMIC;
-        bindings[ 3 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 3 ].descriptorCount = 1;
-        bindings[ 3 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        bindings[ 4 ].binding         = BINDING_GEOMETRY_INSTANCES;
-        bindings[ 4 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 4 ].descriptorCount = 1;
-        bindings[ 4 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        bindings[ 5 ].binding         = BINDING_GEOMETRY_INSTANCES_MATCH_PREV;
-        bindings[ 5 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 5 ].descriptorCount = 1;
-        bindings[ 5 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        bindings[ 6 ].binding         = BINDING_PREV_POSITIONS_BUFFER_DYNAMIC;
-        bindings[ 6 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 6 ].descriptorCount = 1;
-        bindings[ 6 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        bindings[ 7 ].binding         = BINDING_PREV_INDEX_BUFFER_DYNAMIC;
-        bindings[ 7 ].descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        bindings[ 7 ].descriptorCount = 1;
-        bindings[ 7 ].stageFlags      = VK_SHADER_STAGE_ALL;
-
-        static_assert( bindings.size() == 8 );
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-        layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = bindings.size();
-        layoutInfo.pBindings    = bindings.data();
-
+        VkDescriptorSetLayoutCreateInfo layoutInfo = {
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = std::size( bindings ),
+            .pBindings    = bindings,
+        };
         r = vkCreateDescriptorSetLayout( device, &layoutInfo, nullptr, &buffersDescSetLayout );
         VK_CHECKERROR( r );
 
-        poolSizes[ 0 ].type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        poolSizes[ 0 ].descriptorCount = MAX_FRAMES_IN_FLIGHT * bindings.size();
+        poolSizes[ 0 ] = {
+            .type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = MAX_FRAMES_IN_FLIGHT * std::size( bindings ),
+        };
     }
 
     {
-        VkDescriptorSetLayoutBinding bnd = {};
-        bnd.binding                      = BINDING_ACCELERATION_STRUCTURE_MAIN;
-        bnd.descriptorType               = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        bnd.descriptorCount              = 1;
-        bnd.stageFlags                   = VK_SHADER_STAGE_RAYGEN_BIT_KHR;
-
-        VkDescriptorSetLayoutCreateInfo layoutInfo = {};
-        layoutInfo.sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        layoutInfo.bindingCount = 1;
-        layoutInfo.pBindings    = &bnd;
-
+        VkDescriptorSetLayoutBinding bnd = {
+            .binding         = BINDING_ACCELERATION_STRUCTURE_MAIN,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .descriptorCount = 1,
+            .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR,
+        };
+        VkDescriptorSetLayoutCreateInfo layoutInfo = {
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings    = &bnd,
+        };
         r = vkCreateDescriptorSetLayout( device, &layoutInfo, nullptr, &asDescSetLayout );
         VK_CHECKERROR( r );
 
-        poolSizes[ 1 ].type            = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR;
-        poolSizes[ 1 ].descriptorCount = MAX_FRAMES_IN_FLIGHT;
+        poolSizes[ 1 ] = {
+            .type            = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+            .descriptorCount = MAX_FRAMES_IN_FLIGHT,
+        };
     }
 
-    VkDescriptorPoolCreateInfo poolInfo = {};
-    poolInfo.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-    poolInfo.poolSizeCount              = poolSizes.size();
-    poolInfo.pPoolSizes                 = poolSizes.data();
-    poolInfo.maxSets                    = MAX_FRAMES_IN_FLIGHT * 2;
-
+    VkDescriptorPoolCreateInfo poolInfo = {
+        .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets       = MAX_FRAMES_IN_FLIGHT * 2,
+        .poolSizeCount = poolSizes.size(),
+        .pPoolSizes    = poolSizes.data(),
+    };
     r = vkCreateDescriptorPool( device, &poolInfo, nullptr, &descPool );
     VK_CHECKERROR( r );
 
     SET_DEBUG_NAME( device, descPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "AS manager Desc pool" );
 
-    VkDescriptorSetAllocateInfo descSetInfo = {};
-    descSetInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descSetInfo.descriptorPool              = descPool;
-    descSetInfo.descriptorSetCount          = 1;
+    VkDescriptorSetAllocateInfo descSetInfo = {
+        .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool     = descPool,
+        .descriptorSetCount = 1,
+    };
 
     SET_DEBUG_NAME( device,
                     buffersDescSetLayout,
@@ -322,6 +400,36 @@ void RTGL1::ASManager::UpdateBufferDescriptors( uint32_t frameIndex )
         },
         {
             .buffer = previousDynamicIndices.GetBuffer(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        },
+        {
+            .buffer = collectorStatic->GetTexcoordBuffer_Layer1(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        },
+        {
+            .buffer = collectorStatic->GetTexcoordBuffer_Layer2(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        },
+        {
+            .buffer = collectorStatic->GetTexcoordBuffer_Layer3(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        },
+        {
+            .buffer = collectorDynamic[ frameIndex ]->GetTexcoordBuffer_Layer1(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        },
+        {
+            .buffer = collectorDynamic[ frameIndex ]->GetTexcoordBuffer_Layer2(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        },
+        {
+            .buffer = collectorDynamic[ frameIndex ]->GetTexcoordBuffer_Layer3(),
             .offset = 0,
             .range  = VK_WHOLE_SIZE,
         },
@@ -400,7 +508,62 @@ void RTGL1::ASManager::UpdateBufferDescriptors( uint32_t frameIndex )
             .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
             .pBufferInfo     = &infos[ BINDING_PREV_INDEX_BUFFER_DYNAMIC ],
         },
+        {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = buffersDescSets[ frameIndex ],
+            .dstBinding      = BINDING_STATIC_TEXCOORD_LAYER_1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &infos[ BINDING_STATIC_TEXCOORD_LAYER_1 ],
+        },
+        {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = buffersDescSets[ frameIndex ],
+            .dstBinding      = BINDING_STATIC_TEXCOORD_LAYER_2,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &infos[ BINDING_STATIC_TEXCOORD_LAYER_2 ],
+        },
+        {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = buffersDescSets[ frameIndex ],
+            .dstBinding      = BINDING_STATIC_TEXCOORD_LAYER_3,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &infos[ BINDING_STATIC_TEXCOORD_LAYER_3 ],
+        },
+        {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = buffersDescSets[ frameIndex ],
+            .dstBinding      = BINDING_DYNAMIC_TEXCOORD_LAYER_1,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &infos[ BINDING_DYNAMIC_TEXCOORD_LAYER_1 ],
+        },
+        {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = buffersDescSets[ frameIndex ],
+            .dstBinding      = BINDING_DYNAMIC_TEXCOORD_LAYER_2,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &infos[ BINDING_DYNAMIC_TEXCOORD_LAYER_2 ],
+        },
+        {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = buffersDescSets[ frameIndex ],
+            .dstBinding      = BINDING_DYNAMIC_TEXCOORD_LAYER_3,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &infos[ BINDING_DYNAMIC_TEXCOORD_LAYER_3 ],
+        },
     };
+    assert( CheckBindings( writes ) );
 
     static_assert( std::size( infos ) == std::size( writes ) );
 

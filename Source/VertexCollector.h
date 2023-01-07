@@ -78,6 +78,9 @@ public:
 
 
     VkBuffer GetVertexBuffer() const;
+    VkBuffer GetTexcoordBuffer_Layer1() const;
+    VkBuffer GetTexcoordBuffer_Layer2() const;
+    VkBuffer GetTexcoordBuffer_Layer3() const;
     VkBuffer GetIndexBuffer() const;
     uint32_t GetCurrentVertexCount() const;
     uint32_t GetCurrentIndexCount() const;

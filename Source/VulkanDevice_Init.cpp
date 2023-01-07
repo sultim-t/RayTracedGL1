@@ -787,8 +787,17 @@ void RTGL1::VulkanDevice::CreateDevice()
         .inheritedQueries                        = 1,
     };
 
+    VkPhysicalDeviceRobustness2FeaturesEXT robustness = {
+        .sType               = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT,
+        .pNext               = nullptr,
+        .robustBufferAccess2 = false,
+        .robustImageAccess2  = false,
+        .nullDescriptor      = true,
+    };
+
     VkPhysicalDeviceVulkan12Features vulkan12Features = {
         .sType                    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+        .pNext                    = &robustness,
         .samplerMirrorClampToEdge = 1,
         .drawIndirectCount        = 1,
         .shaderFloat16            = 1,
@@ -809,16 +818,19 @@ void RTGL1::VulkanDevice::CreateDevice()
         .pNext                    = &multiviewFeatures,
         .storageBuffer16BitAccess = 1,
     };
+
     VkPhysicalDeviceSynchronization2FeaturesKHR sync2Features = {
         .sType            = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR,
         .pNext            = &storage16,
         .synchronization2 = 1,
     };
+
     VkPhysicalDeviceRayTracingPipelineFeaturesKHR rtPipelineFeatures = {
         .sType              = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
         .pNext              = &sync2Features,
         .rayTracingPipeline = 1,
     };
+
     VkPhysicalDeviceAccelerationStructureFeaturesKHR asFeatures = {
         .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
         .pNext = &rtPipelineFeatures,

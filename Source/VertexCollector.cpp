@@ -653,6 +653,24 @@ VkBuffer RTGL1::VertexCollector::GetVertexBuffer() const
     return bufVertices.deviceLocal->GetBuffer();
 }
 
+VkBuffer RTGL1::VertexCollector::GetTexcoordBuffer_Layer1() const
+{
+    return bufTexcoordLayer1.IsInitialized() ? bufTexcoordLayer1.deviceLocal->GetBuffer()
+                                             : VK_NULL_HANDLE;
+}
+
+VkBuffer RTGL1::VertexCollector::GetTexcoordBuffer_Layer2() const
+{
+    return bufTexcoordLayer2.IsInitialized() ? bufTexcoordLayer2.deviceLocal->GetBuffer()
+                                             : VK_NULL_HANDLE;
+}
+
+VkBuffer RTGL1::VertexCollector::GetTexcoordBuffer_Layer3() const
+{
+    return bufTexcoordLayer3.IsInitialized() ? bufTexcoordLayer3.deviceLocal->GetBuffer()
+                                             : VK_NULL_HANDLE;
+}
+
 VkBuffer RTGL1::VertexCollector::GetIndexBuffer() const
 {
     return bufIndices.deviceLocal->GetBuffer();
