@@ -55,9 +55,28 @@ vec3 processAlbedo(
 
     for( int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++ )
     {
-        if( globalUniform.lightmapEnable == 0 )
+        if( i == 1 )
         {
-            if( i == globalUniform.lightmapLayer )
+            if( ( geometryInstanceFlags & GEOM_INST_FLAG_EXISTS_LAYER1 ) == 0 )
+            {
+                continue;
+            }
+        }
+        else if( i == 2 )
+        {
+            if( ( geometryInstanceFlags & GEOM_INST_FLAG_EXISTS_LAYER2 ) == 0 )
+            {
+                continue;
+            }
+        }
+        else if( i == 3 )
+        {
+            if( globalUniform.lightmapEnable == 0 )
+            {
+                continue;
+            }
+            
+            if( ( geometryInstanceFlags & GEOM_INST_FLAG_EXISTS_LAYER3 ) == 0 )
             {
                 continue;
             }
@@ -89,12 +108,10 @@ vec3 processAlbedo(
             opq = opq || ( alp && i == 0 );
             alp = alp && !opq;
 
-
-
-            // TODO: fix blendsFlags!!!
-            dst = src.rgb;
-
-
+            dst = float(opq) * (src.rgb) +
+                  float(alp) * (src.rgb * src.a + dst * (1 - src.a)) + 
+                  float(add) * (src.rgb + dst) +
+                  float(shd) * (src.rgb * dst * 2);
 
             hasAnyAlbedoTexture = true;
         }

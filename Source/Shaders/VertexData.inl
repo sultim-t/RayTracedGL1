@@ -338,6 +338,31 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
                 g_dynamicVertices[vertIndices[2]]);
         }
 
+        if( ( inst.flags & GEOM_INST_FLAG_EXISTS_LAYER1 ) != 0 )
+        {
+            const uvec3 vertIndices =
+                getVertIndicesDynamic( inst.firstVertex_Layer1, inst.baseIndexIndex, primitiveId );
+            tr.layerTexCoord[ 1 ][ 0 ] = g_dynamicTexCoords_Layer1[ vertIndices[ 0 ] ];
+            tr.layerTexCoord[ 1 ][ 1 ] = g_dynamicTexCoords_Layer1[ vertIndices[ 1 ] ];
+            tr.layerTexCoord[ 1 ][ 2 ] = g_dynamicTexCoords_Layer1[ vertIndices[ 2 ] ];
+        }
+        if( ( inst.flags & GEOM_INST_FLAG_EXISTS_LAYER2 ) != 0 )
+        {
+            const uvec3 vertIndices =
+                getVertIndicesDynamic( inst.firstVertex_Layer2, inst.baseIndexIndex, primitiveId );
+            tr.layerTexCoord[ 2 ][ 0 ] = g_dynamicTexCoords_Layer2[ vertIndices[ 0 ] ];
+            tr.layerTexCoord[ 2 ][ 1 ] = g_dynamicTexCoords_Layer2[ vertIndices[ 1 ] ];
+            tr.layerTexCoord[ 2 ][ 2 ] = g_dynamicTexCoords_Layer2[ vertIndices[ 2 ] ];
+        }
+        if( ( inst.flags & GEOM_INST_FLAG_EXISTS_LAYER3 ) != 0 )
+        {
+            const uvec3 vertIndices =
+                getVertIndicesDynamic( inst.firstVertex_Layer3, inst.baseIndexIndex, primitiveId );
+            tr.layerTexCoord[ 3 ][ 0 ] = g_dynamicTexCoords_Layer3[ vertIndices[ 0 ] ];
+            tr.layerTexCoord[ 3 ][ 1 ] = g_dynamicTexCoords_Layer3[ vertIndices[ 1 ] ];
+            tr.layerTexCoord[ 3 ][ 2 ] = g_dynamicTexCoords_Layer3[ vertIndices[ 2 ] ];
+        }
+
         // to world space
         tr.positions[0] = (inst.model * vec4(tr.positions[0], 1.0)).xyz;
         tr.positions[1] = (inst.model * vec4(tr.positions[1], 1.0)).xyz;
