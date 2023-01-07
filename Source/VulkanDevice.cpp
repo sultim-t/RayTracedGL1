@@ -398,14 +398,6 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         const auto& params = AccessParams( drawInfo.pLightmapParams );
 
         gu->lightmapEnable = !!params.enableLightmaps;
-        if( gu->lightmapEnable )
-        {
-            gu->lightmapLayer = 3;
-        }
-        else
-        {
-            gu->lightmapLayer = UINT8_MAX;
-        }
     }
 
     gu->lensFlareCullingInputCount = 0;

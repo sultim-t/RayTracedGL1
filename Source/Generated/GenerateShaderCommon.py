@@ -511,7 +511,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "cellWorldSize",                1),
     (TYPE_UINT32,       1,      "lightmapEnable",               1),
-    (TYPE_UINT32,       1,      "lightmapLayer",                1),
+    (TYPE_UINT32,       1,      "_unused0",                     1),
     (TYPE_FLOAT32,      1,      "renderWidth",                  1),
 
     (TYPE_FLOAT32,      1,      "renderHeight",                 1),
