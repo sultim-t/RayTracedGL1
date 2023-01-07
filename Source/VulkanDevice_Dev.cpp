@@ -35,6 +35,51 @@ To ClampPix( From v )
     return std::clamp( To( v ), To( 96 ), To( 3840 ) );
 }
 
+struct WholeWindow
+{
+    explicit WholeWindow( std::string_view name )
+    {
+#ifdef IMGUI_HAS_VIEWPORT
+        ImGuiViewport* viewport = ImGui::GetMainViewport();
+        ImGui::SetNextWindowPos( viewport->WorkPos );
+        ImGui::SetNextWindowSize( viewport->WorkSize );
+        ImGui::SetNextWindowViewport( viewport->ID );
+#else
+        ImGui::SetNextWindowPos( ImVec2( 0.0f, 0.0f ) );
+        ImGui::SetNextWindowSize( ImGui::GetIO().DisplaySize );
+#endif
+        ImGui::PushStyleVar( ImGuiStyleVar_WindowRounding, 0.0f );
+
+        if( ImGui::Begin( name.data(),
+                          nullptr,
+                          ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
+                              ImGuiWindowFlags_NoBackground ) )
+        {
+            beginSuccess = ImGui::BeginTabBar( "##TabBar" );
+        }
+    }
+
+    WholeWindow( const WholeWindow& other )                = delete;
+    WholeWindow( WholeWindow&& other ) noexcept            = delete;
+    WholeWindow& operator=( const WholeWindow& other )     = delete;
+    WholeWindow& operator=( WholeWindow&& other ) noexcept = delete;
+
+    explicit operator bool() const { return beginSuccess; }
+
+    ~WholeWindow()
+    {
+        if( beginSuccess )
+        {
+            ImGui::EndTabBar();
+        }
+        ImGui::End();
+        ImGui::PopStyleVar( 1 );
+    }
+
+private:
+    bool beginSuccess{ false };
+};
+
 }
 
 void RTGL1::VulkanDevice::Dev_Draw() const
@@ -44,7 +89,18 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         return;
     }
 
-    if( ImGui::Begin( "General" ), nullptr, ImGuiWindowFlags_HorizontalScrollbar )
+    if( debugWindows->IsMinimized() )
+    {
+        return;
+    }
+
+    auto w = WholeWindow( "Main window" );
+    if( !w )
+    {
+        return;
+    }
+
+    if( ImGui::BeginTabItem( "General" ) )
     {
         ImGui::PushStyleColor( ImGuiCol_Button, ImVec4( 0.59f, 0.98f, 0.26f, 0.40f ) );
         ImGui::PushStyleColor( ImGuiCol_ButtonHovered, ImVec4( 0.59f, 0.98f, 0.26f, 1.00f ) );
@@ -222,10 +278,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         ImGui::Text( "%.3f ms/frame (%.1f FPS)",
                      1000.0f / ImGui::GetIO().Framerate,
                      ImGui::GetIO().Framerate );
+        ImGui::EndTabItem();
     }
-    ImGui::End();
 
-    if( ImGui::Begin( "Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
+    if( ImGui::BeginTabItem( "Primitives" ) )
     {
         ImGui::RadioButton( "Disable", &devmode->primitivesTableEnable, 0 );
         ImGui::SameLine();
@@ -346,10 +402,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
 
             ImGui::EndTable();
         }
+        ImGui::EndTabItem();
     }
-    ImGui::End();
 
-    if( ImGui::Begin( "Non-world Primitives", nullptr, ImGuiWindowFlags_HorizontalScrollbar ) )
+    if( ImGui::BeginTabItem( "Non-world Primitives" ) )
     {
         ImGui::Checkbox( "Record", &devmode->nonworldTableEnable );
 
@@ -376,10 +432,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
 
             ImGui::EndTable();
         }
+        ImGui::EndTabItem();
     }
-    ImGui::End();
 
-    if( ImGui::Begin( "Log" ) )
+    if( ImGui::BeginTabItem( "Log" ) )
     {
         ImGui::Checkbox( "Auto-scroll", &devmode->logAutoScroll );
         ImGui::SameLine();
@@ -490,11 +546,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
             }
         }
         ImGui::EndChild();
+        ImGui::EndTabItem();
     }
-    ImGui::End();
 
-
-    if( ImGui::Begin( "Import/Export" ) )
+    if( ImGui::BeginTabItem( "Import/Export" ) )
     {
         auto& dev = sceneImportExport->dev;
         if( !dev.exportName.enable )
@@ -577,11 +632,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
             }
             ImGui::EndDisabled();
         }
+        ImGui::EndTabItem();
     }
-    ImGui::End();
 
-
-    if( ImGui::Begin( "Textures" ), nullptr, ImGuiWindowFlags_HorizontalScrollbar )
+    if( ImGui::BeginTabItem( "Textures" ) )
     {
         if( ImGui::Button( "Export original textures", { -1, 80 } ) )
         {
@@ -774,8 +828,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
 
             ImGui::EndTable();
         }
+        ImGui::EndTabItem();
     }
-    ImGui::End();
 }
 
 const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo& original ) const
