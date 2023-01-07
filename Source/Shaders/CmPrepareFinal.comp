@@ -119,7 +119,7 @@ vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis )
     }
     else
     {
-        return uncharted2Tonemap(hdr, 1.0);
+        return clamp( hdr, vec3( 0.0 ), vec3( 1.0 ) );
     }
 }
 
