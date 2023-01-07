@@ -95,22 +95,16 @@ void storeSky(
     imageStore( framebufIsSky, pix, ivec4( 1 ) );
 
     {
-        vec3 skyColor;
-
-        if( calculateSkyAndStoreToAlbedo )
+        // check if was already in G-buffer after rasterization pass
+        vec3 skyColor =
+            calculateSkyAndStoreToAlbedo
+                ? getSkyAlbedo( rayDir )
+                : imageLoad( framebufAlbedo, getRegularPixFromCheckerboardPix( pix ) ).rgb;
+                
+        if( !classicShading_PRIM() )
         {
-            skyColor = getSky( rayDir );
-        }
-        else
-        {
-            // was already in G-buffer after rasterization pass
-            skyColor = imageLoad( framebufAlbedo, getRegularPixFromCheckerboardPix( pix ) ).rgb;
-
-            if( !classicShading( getRegularPixFromCheckerboardPix( pix ) ) )
-            {
-                // to hdr
-                skyColor = adjustSky( skyColor );
-            }
+            // to hdr
+            skyColor = adjustSky( skyColor );
         }
 
         imageStore(

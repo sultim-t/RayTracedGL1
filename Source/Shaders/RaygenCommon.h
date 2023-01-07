@@ -278,14 +278,12 @@ vec3 adjustSky( vec3 skyRaw )
            globalUniform.skyColorMultiplier;
 }
 
-vec3 getSky( vec3 direction )
+vec3 getSkyAlbedo( vec3 direction )
 {
-    vec3 skyRaw;
-
     #ifdef DESC_SET_RENDER_CUBEMAP
     if( globalUniform.skyType == SKY_TYPE_RASTERIZED_GEOMETRY )
     {
-        skyRaw = texture( renderCubemap, direction ).rgb;
+        return texture( renderCubemap, direction ).rgb;
     }
     else
     #endif
@@ -293,16 +291,19 @@ vec3 getSky( vec3 direction )
     {
         direction = mat3( globalUniform.skyCubemapRotationTransform ) * direction;
 
-        skyRaw =
-            texture( globalCubemaps[ nonuniformEXT( globalUniform.skyCubemapIndex ) ], direction )
-                .rgb;
+        return texture( globalCubemaps[ nonuniformEXT( globalUniform.skyCubemapIndex ) ],
+                        direction )
+            .rgb;
     }
     else
     {
-        skyRaw = globalUniform.skyColorDefault.xyz;
+        return globalUniform.skyColorDefault.xyz;
     }
+}
 
-    return adjustSky( skyRaw );
+vec3 getSky( vec3 direction )
+{
+    return adjustSky( getSkyAlbedo( direction ) );
 }
 #endif
 
