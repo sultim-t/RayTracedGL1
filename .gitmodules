@@ -12,7 +12,7 @@
 	url = https://github.com/glfw/glfw.git
 [submodule "Source/cgltf"]
 	path = Source/cgltf
-	url = https://github.com/jkuhlmann/cgltf.git
+	url = https://github.com/sultim-t/cgltf
 [submodule "Source/glaze"]
 	path = Source/glaze
 	url = https://github.com/stephenberry/glaze.git
