@@ -287,9 +287,9 @@ void TrySetTexLayer( RgMeshPrimitiveInfo* pTarget, uint32_t layerIndex, std::spa
 
     switch( layerIndex )
     {
-        case 1: dst = pTarget->pEditorInfo->pLayer1; break;
-        case 2: dst = pTarget->pEditorInfo->pLayer2; break;
-        case 3: dst = pTarget->pEditorInfo->pLayerLightmap; break;
+        case 1: dst = &pTarget->pEditorInfo->layer1; break;
+        case 2: dst = &pTarget->pEditorInfo->layer2; break;
+        case 3: dst = &pTarget->pEditorInfo->layerLightmap; break;
         default: assert( 0 ); return;
     }
 

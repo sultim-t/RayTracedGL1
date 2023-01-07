@@ -34,11 +34,6 @@ static_assert( sizeof( RTGL1::ShGeometryInstance ) % 16 == 0,
 namespace
 {
 
-bool LayerExistsA( const RgEditorTextureLayerInfo* layer )
-{
-    return layer && layer->pTexCoord;
-}
-
 uint32_t GetMaterialBlendFlags( const RgTextureLayerBlendType* blend, uint32_t layerIndex )
 {
     if( blend == nullptr )
@@ -59,22 +54,44 @@ uint32_t GetMaterialBlendFlags( const RgTextureLayerBlendType* blend, uint32_t l
     }
 }
 
-uint32_t GetMaterialBlendFlags( const RgEditorTextureLayerInfo* layer, uint32_t layerIndex )
+uint32_t GetMaterialBlendFlags( const RgEditorInfo& info, uint32_t layerIndex )
 {
-    return GetMaterialBlendFlags( layer ? &layer->blend : nullptr, layerIndex );
+    assert( layerIndex <= 3 );
+
+    switch( layerIndex )
+    {
+        case 0: return GetMaterialBlendFlags( &info.layerBaseBlend, layerIndex );
+        case 1:
+            return GetMaterialBlendFlags( info.layer1Exists ? &info.layer1.blend : nullptr,
+                                          layerIndex );
+        case 2:
+            return GetMaterialBlendFlags( info.layer2Exists ? &info.layer2.blend : nullptr,
+                                          layerIndex );
+        case 3:
+            return GetMaterialBlendFlags(
+                info.layerLightmapExists ? &info.layerLightmap.blend : nullptr, layerIndex );
+        default: assert( 0 ); return 0;
+    }
 }
 
 }
 
 bool RTGL1::GeomInfoManager::LayerExists( const RgMeshPrimitiveInfo& info, uint32_t layerIndex )
 {
+    assert( layerIndex >= 1 && layerIndex <= 3 );
+
+    if( !info.pEditorInfo )
+    {
+        return false;
+    }
+
     switch( layerIndex )
     {
-        case 0: return true;
-        case 1: return info.pEditorInfo && LayerExistsA( info.pEditorInfo->pLayer1 );
-        case 2: return info.pEditorInfo && LayerExistsA( info.pEditorInfo->pLayer2 );
-        case 3: return info.pEditorInfo && LayerExistsA( info.pEditorInfo->pLayerLightmap );
-
+        case 1: return info.pEditorInfo->layer1Exists && info.pEditorInfo->layer1.pTexCoord;
+        case 2: return info.pEditorInfo->layer2Exists && info.pEditorInfo->layer2.pTexCoord;
+        case 3:
+            return info.pEditorInfo->layerLightmapExists &&
+                   info.pEditorInfo->layerLightmap.pTexCoord;
         default: assert( 0 ); return false;
     }
 }
@@ -89,11 +106,10 @@ const RgFloat2D* RTGL1::GeomInfoManager::AccessLayerTexCoords( const RgMeshPrimi
 
     switch( layerIndex )
     {
-        case 1: return info.pEditorInfo->pLayer1->pTexCoord;
-        case 2: return info.pEditorInfo->pLayer2->pTexCoord;
-        case 3: return info.pEditorInfo->pLayerLightmap->pTexCoord;
+        case 1: return info.pEditorInfo->layer1.pTexCoord;
+        case 2: return info.pEditorInfo->layer2.pTexCoord;
+        case 3: return info.pEditorInfo->layerLightmap.pTexCoord;
 
-        case 0:
         default: assert( 0 ); return nullptr;
     }
 }
@@ -109,10 +125,10 @@ uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& i
         f |= LayerExists( info, 2 ) ? GEOM_INST_FLAG_EXISTS_LAYER2 : 0;
         f |= LayerExists( info, 3 ) ? GEOM_INST_FLAG_EXISTS_LAYER3 : 0;
 
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerBaseBlend, 0 );
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer1, 1 );
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayer2, 2 );
-        f |= GetMaterialBlendFlags( info.pEditorInfo->pLayerLightmap, 3 );
+        f |= GetMaterialBlendFlags( *info.pEditorInfo, 0 );
+        f |= GetMaterialBlendFlags( *info.pEditorInfo, 1 );
+        f |= GetMaterialBlendFlags( *info.pEditorInfo, 2 );
+        f |= GetMaterialBlendFlags( *info.pEditorInfo, 3 );
     }
 
     if( info.flags & RG_MESH_PRIMITIVE_MIRROR )

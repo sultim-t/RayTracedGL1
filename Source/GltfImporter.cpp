@@ -821,10 +821,6 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
             auto primname = std::to_string( i );
 
             RgEditorInfo editorInfo = {
-                .pPortal        = nullptr,
-                .pLayer1        = nullptr,
-                .pLayer2        = nullptr,
-                .pLayerLightmap = nullptr,
                 .pbrInfoExists  = true,
                 .pbrInfo        = { .metallicDefault  = matinfo.metallicFactor,
                                     .roughnessDefault = matinfo.roughnessFactor },

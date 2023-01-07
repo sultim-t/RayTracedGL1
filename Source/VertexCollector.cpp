@@ -396,10 +396,13 @@ void RTGL1::VertexCollector::CopyTexCoordsToStaging( uint32_t                   
 
 void RTGL1::VertexCollector::Reset()
 {
-    curVertexCount    = 0;
-    curIndexCount     = 0;
-    curPrimitiveCount = 0;
-    curTransformCount = 0;
+    curVertexCount          = 0;
+    curIndexCount           = 0;
+    curPrimitiveCount       = 0;
+    curTransformCount       = 0;
+    curTexCoordCount_Layer1 = 0;
+    curTexCoordCount_Layer2 = 0;
+    curTexCoordCount_Layer3 = 0;
 
     for( auto& f : filters )
     {

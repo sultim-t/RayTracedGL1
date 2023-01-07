@@ -352,13 +352,15 @@ typedef struct RgEditorAttachedLightInfo
 
 typedef struct RgEditorInfo
 {
-    // If not null, then the primitive defines a portal.
-    const RgEditorPortalInfo*       pPortal;
-    // Texture layer parameters. Layers can be made visible only through the Editor.
-    const RgTextureLayerBlendType*  pLayerBaseBlend;
-    const RgEditorTextureLayerInfo* pLayer1;
-    const RgEditorTextureLayerInfo* pLayer2;
-    const RgEditorTextureLayerInfo* pLayerLightmap;
+    RgBool32                        portalExists;
+    RgEditorPortalInfo              portal;
+    RgTextureLayerBlendType         layerBaseBlend;
+    RgBool32                        layer1Exists;
+    RgEditorTextureLayerInfo        layer1;
+    RgBool32                        layer2Exists;
+    RgEditorTextureLayerInfo        layer2;
+    RgBool32                        layerLightmapExists;
+    RgEditorTextureLayerInfo        layerLightmap;
     RgBool32                        pbrInfoExists;
     RgEditorPBRInfo                 pbrInfo;
     RgBool32                        attachedLightExists;

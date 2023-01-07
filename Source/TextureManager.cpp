@@ -773,9 +773,9 @@ uint32_t TextureManager::GetDirtMaskTextureIndex() const
     return dirtMaskTextureIndex;
 }
 
-#define IF_LAYER_NOT_NULL( member, field, default )                                            \
-    ( primitive.pEditorInfo                                                                    \
-          ? primitive.pEditorInfo->member ? primitive.pEditorInfo->member->field : ( default ) \
+#define IF_LAYER_EXISTS( member, field, default )                        \
+    ( ( primitive.pEditorInfo && primitive.pEditorInfo->member##Exists ) \
+          ? primitive.pEditorInfo->member.field                          \
           : ( default ) )
 
 std::array< MaterialTextures, 4 > TextureManager::GetTexturesForLayers(
@@ -783,9 +783,9 @@ std::array< MaterialTextures, 4 > TextureManager::GetTexturesForLayers(
 {
     return {
         GetMaterialTextures( primitive.pTextureName ),
-        GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer1, pTextureName, nullptr ) ),
-        GetMaterialTextures( IF_LAYER_NOT_NULL( pLayer2, pTextureName, nullptr ) ),
-        GetMaterialTextures( IF_LAYER_NOT_NULL( pLayerLightmap, pTextureName, nullptr ) ),
+        GetMaterialTextures( IF_LAYER_EXISTS( layer1, pTextureName, nullptr ) ),
+        GetMaterialTextures( IF_LAYER_EXISTS( layer2, pTextureName, nullptr ) ),
+        GetMaterialTextures( IF_LAYER_EXISTS( layerLightmap, pTextureName, nullptr ) ),
     };
 }
 
@@ -794,9 +794,9 @@ std::array< RgColor4DPacked32, 4 > TextureManager::GetColorForLayers(
 {
     return {
         primitive.color,
-        IF_LAYER_NOT_NULL( pLayer1, color, 0xFFFFFFFF ),
-        IF_LAYER_NOT_NULL( pLayer2, color, 0xFFFFFFFF ),
-        IF_LAYER_NOT_NULL( pLayerLightmap, color, 0xFFFFFFFF ),
+        IF_LAYER_EXISTS( layer1, color, 0xFFFFFFFF ),
+        IF_LAYER_EXISTS( layer2, color, 0xFFFFFFFF ),
+        IF_LAYER_EXISTS( layerLightmap, color, 0xFFFFFFFF ),
     };
 }
 
