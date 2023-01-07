@@ -61,6 +61,13 @@ GLFWwindow* CreateGLFWWindow()
     return glfwCreateWindow( 700, 1000, "RTGL1 Dev", nullptr, nullptr );
 }
 
+bool IsSizeNull( GLFWwindow* wnd )
+{
+    int w, h;
+    glfwGetWindowSize( wnd, &w, &h );
+    return w == 0 || h == 0;
+}
+
 void UploadFonts( RTGL1::CommandBufferManager& cmdManager )
 {
     VkCommandBuffer cmd = cmdManager.StartGraphicsCmd();
@@ -207,6 +214,7 @@ RTGL1::DebugWindows::DebugWindows( VkInstance                               _ins
     , descPool( CreateDescPool( _device ) )
     , renderPass( VK_NULL_HANDLE )
     , alwaysOnTop( false )
+    , isMinimized( false )
 {
     VkResult r = glfwCreateWindowSurface( _instance, customWindow, nullptr, &customSurface );
     VK_CHECKERROR( r );
@@ -298,6 +306,12 @@ bool RTGL1::DebugWindows::PrepareForFrame( uint32_t frameIndex )
 
     glfwPollEvents();
 
+    isMinimized = IsSizeNull( customWindow );
+    if( isMinimized )
+    {
+        return true;
+    }
+
     customSwapchain->AcquireImage( swapchainImageAvailable[ frameIndex ] );
 
     ImGui_ImplVulkan_NewFrame();
@@ -309,6 +323,11 @@ bool RTGL1::DebugWindows::PrepareForFrame( uint32_t frameIndex )
 
 void RTGL1::DebugWindows::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
+    if( isMinimized )
+    {
+        return;
+    }
+
     CmdLabel label( cmd, "ImGui" );
     assert( framebuffers.size() == customSwapchain->GetImageCount() );
 
@@ -320,7 +339,7 @@ void RTGL1::DebugWindows::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameInd
     if( mainDrawData->DisplaySize.x > 0.0f && mainDrawData->DisplaySize.y > 0.0f )
     {
         VkClearValue clearValue = {
-            .color = { .float32 = { 0.45f, 0.55f, 0.60f, 1.00f } },
+            .color = { .float32 = { 0.0f, 0.0f, 0.0f, 1.0f } },
         };
 
         VkRenderPassBeginInfo info = {
@@ -347,7 +366,10 @@ void RTGL1::DebugWindows::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameInd
 
 void RTGL1::DebugWindows::OnQueuePresent( VkResult queuePresentResult )
 {
-    customSwapchain->OnQueuePresent( queuePresentResult );
+    if( !isMinimized )
+    {
+        customSwapchain->OnQueuePresent( queuePresentResult );
+    }
 }
 
 VkSemaphore RTGL1::DebugWindows::GetSwapchainImageAvailableSemaphore( uint32_t frameIndex ) const

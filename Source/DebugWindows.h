@@ -40,29 +40,30 @@ public:
                   std::shared_ptr< CommandBufferManager >& cmdManager );
     ~DebugWindows() override;
 
-    DebugWindows( const DebugWindows& other )     = delete;
-    DebugWindows( DebugWindows&& other ) noexcept = delete;
-    DebugWindows&  operator=( const DebugWindows& other ) = delete;
-    DebugWindows&  operator=( DebugWindows&& other ) noexcept = delete;
+    DebugWindows( const DebugWindows& other )                = delete;
+    DebugWindows( DebugWindows&& other ) noexcept            = delete;
+    DebugWindows& operator=( const DebugWindows& other )     = delete;
+    DebugWindows& operator=( DebugWindows&& other ) noexcept = delete;
 
     // TODO: remove
-    void           Init( std::shared_ptr< DebugWindows > self );
+    void Init( std::shared_ptr< DebugWindows > self );
 
-    bool           PrepareForFrame( uint32_t frameIndex );
-    void           SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
-    void           OnQueuePresent( VkResult queuePresentResult );
+    bool PrepareForFrame( uint32_t frameIndex );
+    void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void OnQueuePresent( VkResult queuePresentResult );
 
-    void           OnSwapchainCreate( const Swapchain* pSwapchain ) override;
-    void           OnSwapchainDestroy() override;
+    void OnSwapchainCreate( const Swapchain* pSwapchain ) override;
+    void OnSwapchainDestroy() override;
 
     VkSwapchainKHR GetSwapchainHandle() const;
     uint32_t       GetSwapchainCurrentImageIndex() const;
     VkSemaphore    GetSwapchainImageAvailableSemaphore( uint32_t frameIndex ) const;
 
     void SetAlwaysOnTop( bool onTop );
+    bool IsMinimized() const { return isMinimized; }
 
 private:
-    VkDevice                     device;
+    VkDevice device;
 
     GLFWwindow*                  customWindow;
     VkSurfaceKHR                 customSurface;
@@ -74,6 +75,8 @@ private:
     std::vector< VkFramebuffer > framebuffers;
 
     bool alwaysOnTop;
+
+    bool isMinimized;
 };
 
 }

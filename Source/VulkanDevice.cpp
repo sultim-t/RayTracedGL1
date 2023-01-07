@@ -716,7 +716,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )
 {
     uint32_t frameIndex     = currentFrameState.GetFrameIndex();
-    uint32_t swapchainCount = debugWindows ? 2 : 1;
+    uint32_t swapchainCount = debugWindows && !debugWindows->IsMinimized() ? 2 : 1;
 
     VkSwapchainKHR swapchains[] = {
         swapchain->GetHandle(),
