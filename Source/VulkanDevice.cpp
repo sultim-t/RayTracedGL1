@@ -397,7 +397,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     {
         const auto& params = AccessParams( drawInfo.pLightmapParams );
 
-        gu->lightmapEnable = !!params.enableLightmaps;
+        gu->lightmapScreenCoverage = std::clamp( params.lightmapScreenCoverage, 0.0f, 1.0f );
     }
 
     gu->lensFlareCullingInputCount = 0;

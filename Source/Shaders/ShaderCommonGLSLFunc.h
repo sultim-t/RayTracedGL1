@@ -522,6 +522,6 @@ vec3 getRayDirAY( vec2 inUV )
 
 bool classicShading( ivec2 regularPix )
 {
-    return globalUniform.lightmapEnable != 0 ? regularPix.x < globalUniform.renderWidth / 2 : false;
+    return regularPix.x < globalUniform.lightmapScreenCoverage * globalUniform.renderWidth;
 }
 #endif // DESC_SET_GLOBAL_UNIFORM

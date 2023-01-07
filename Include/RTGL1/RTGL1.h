@@ -819,8 +819,9 @@ typedef struct RgDrawFrameRenderResolutionParams
 
 typedef struct RgDrawFrameLightmapParams
 {
-    // If true, use provided lightmaps instead of ray-traced lighting.
-    RgBool32                    enableLightmaps;
+    // How much of the screen should be rendered in a lightmap mode.
+    // In [0.0, 1.0]
+    float                       lightmapScreenCoverage;
 } RgDrawFrameLightmapParams;
 
 typedef enum RgDrawFrameRayCullFlagBits

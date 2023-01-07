@@ -71,6 +71,8 @@ struct Devmode
         int                      pixelized[ 2 ];
         RgExtent2D               pixelizedForPtr;
 
+        float lightmapScreenCoverage;
+
     } drawInfoOvrd;
     struct
     {
@@ -223,7 +225,7 @@ namespace detail
     struct DefaultParams< RgDrawFrameLightmapParams >
     {
         constexpr static RgDrawFrameLightmapParams value = {
-            .enableLightmaps = false,
+            .lightmapScreenCoverage = 0.0f,
         };
     };
 }

@@ -188,6 +188,11 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                 "%.2f" );
             ImGui::TreePop();
         }
+        if( ImGui::TreeNode( "Lightmap" ) )
+        {
+            ImGui::SliderFloat( "Screen coverage", &modifiers.lightmapScreenCoverage, 0.0f, 1.0f );
+            ImGui::TreePop();
+        }
         ImGui::EndDisabled();
 
         if( ImGui::TreeNode( "Debug show" ) )
@@ -816,6 +821,7 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
     RgDrawFrameRenderResolutionParams& dst_resol = devmode->drawInfoCopy.c_RenderResolution;
     RgDrawFrameIlluminationParams&     dst_illum = devmode->drawInfoCopy.c_Illumination;
     RgDrawFrameTonemappingParams&      dst_tnmp  = devmode->drawInfoCopy.c_Tonemapping;
+    RgDrawFrameLightmapParams&         dst_ltmp  = devmode->drawInfoCopy.c_Lightmap;
 
     auto& modifiers = devmode->drawInfoOvrd;
 
@@ -851,6 +857,9 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
             dst_tnmp.ev100Max   = modifiers.ev100Max;
             dst_tnmp.saturation = { RG_ACCESS_VEC3( modifiers.saturation ) };
             dst_tnmp.crosstalk  = { RG_ACCESS_VEC3( modifiers.crosstalk ) };
+        }
+        {
+            dst_ltmp.lightmapScreenCoverage = modifiers.lightmapScreenCoverage;
         }
 
         return dst;
@@ -894,6 +903,9 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
             modifiers.ev100Max = dst_tnmp.ev100Max;
             RG_SET_VEC3_A( modifiers.saturation, dst_tnmp.saturation.data );
             RG_SET_VEC3_A( modifiers.crosstalk, dst_tnmp.crosstalk.data );
+        }
+        {
+            modifiers.lightmapScreenCoverage = dst_ltmp.lightmapScreenCoverage;
         }
 
         // and return original

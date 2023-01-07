@@ -216,7 +216,7 @@ struct ShGlobalUniform
     float volumeViewProj_Prev[16];
     float volumeViewProjInv_Prev[16];
     float cellWorldSize;
-    uint32_t lightmapEnable;
+    float lightmapScreenCoverage;
     uint32_t _unused0;
     float renderWidth;
     float renderHeight;
