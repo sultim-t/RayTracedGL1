@@ -39,6 +39,9 @@
 #endif 
 
 
+#define HITINFO_INL_CLASSIC_SHADING
+bool classicShading_PRIM();
+
 
 #define DESC_SET_TLAS 0
 #define DESC_SET_FRAMEBUFFERS 1
@@ -101,8 +104,13 @@ void storeSky(
         else
         {
             // was already in G-buffer after rasterization pass
-            skyColor = adjustSky(
-                imageLoad( framebufAlbedo, getRegularPixFromCheckerboardPix( pix ) ).rgb );
+            skyColor = imageLoad( framebufAlbedo, getRegularPixFromCheckerboardPix( pix ) ).rgb;
+
+            if( !classicShading( getRegularPixFromCheckerboardPix( pix ) ) )
+            {
+                // to hdr
+                skyColor = adjustSky( skyColor );
+            }
         }
 
         imageStore(
@@ -263,6 +271,12 @@ vec3 getNormal(const vec3 position, const vec3 normalFromMap, const vec3 normalG
 
         return normalize(n);
     }
+}
+
+bool classicShading_PRIM()
+{
+    const ivec2 regularPix = ivec2( gl_LaunchIDEXT.xy );
+    return classicShading( regularPix );
 }
 
 #ifdef RAYGEN_PRIMARY_SHADER

@@ -110,7 +110,7 @@ vec3 tonemapRT(vec3 c)
 
 vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis )
 {
-    if( globalUniform.lightmapEnable == 0 )
+    if( !classicShading( ivec2( gl_GlobalInvocationID.x, gl_GlobalInvocationID.y ) ) )
     {
         vec3 c = hdr * ev100ToLuminousExposure( getCurrentEV100() ) +
                  screenEmis * globalUniform.emissionMaxScreenColor;

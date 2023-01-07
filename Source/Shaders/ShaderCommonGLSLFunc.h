@@ -519,4 +519,9 @@ vec3 getRayDirAY( vec2 inUV )
     const float AY = 1.0 / globalUniform.renderHeight;
     return getRayDir( inUV + vec2( 0, AY ) );
 }
+
+bool classicShading( ivec2 regularPix )
+{
+    return globalUniform.lightmapEnable != 0 ? regularPix.x < globalUniform.renderWidth / 2 : false;
+}
 #endif // DESC_SET_GLOBAL_UNIFORM

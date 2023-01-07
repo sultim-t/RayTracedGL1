@@ -60,7 +60,7 @@ void main()
     outReactivity = 0.9 * ldrColor.a;
     outColor      = ldrColor;
 
-    if( globalUniform.lightmapEnable == 0 )
+    if( !classicShading( ivec2( gl_FragCoord ) ) )
     {
 #if ILLUMINATION_VOLUME
         vec4 ndc = vec4( gl_FragCoord.xyz, 1.0 );

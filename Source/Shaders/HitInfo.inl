@@ -71,12 +71,14 @@ vec3 processAlbedo(
         }
         else if( i == 3 )
         {
-            if( globalUniform.lightmapEnable == 0 )
+#if defined( HITINFO_INL_CLASSIC_SHADING )
+            if( !classicShading_PRIM() )
             {
                 continue;
             }
             
             if( ( geometryInstanceFlags & GEOM_INST_FLAG_EXISTS_LAYER3 ) == 0 )
+#endif
             {
                 continue;
             }
@@ -448,7 +450,8 @@ ShHitInfo getHitInfoBounce(
         h.normal = h.normalGeom;
     }
 
-    if (globalUniform.lightmapEnable != 0)
+#if defined( HITINFO_INL_CLASSIC_SHADING )
+    if( classicShading_PRIM() )
     {
         h.albedo *= (
             unpackUintColor(tr.vertexColors[0]).rgb * baryCoords[0] +
@@ -456,6 +459,7 @@ ShHitInfo getHitInfoBounce(
             unpackUintColor(tr.vertexColors[2]).rgb * baryCoords[2] 
         );
     }
+#endif
 
     h.instCustomIndex = instCustomIndex;
     h.geometryInstanceFlags = tr.geometryInstanceFlags;

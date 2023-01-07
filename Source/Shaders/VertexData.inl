@@ -284,12 +284,9 @@ ShTriangle makeTriangle(const ShVertex a, const ShVertex b, const ShVertex c)
     tr.layerTexCoord[0][1] = b.texCoord;
     tr.layerTexCoord[0][2] = c.texCoord;
 
-    if (globalUniform.lightmapEnable != 0)
-    {
-        tr.vertexColors[0] = a.color;
-        tr.vertexColors[1] = b.color;
-        tr.vertexColors[2] = c.color;
-    }
+    tr.vertexColors[0] = a.color;
+    tr.vertexColors[1] = b.color;
+    tr.vertexColors[2] = c.color;
 
     // get very coarse normal for triangle to determine bitangent's handedness
     tr.tangent = getTangent(tr.positions, safeNormalize(tr.normals[0] + tr.normals[1] + tr.normals[2]), tr.layerTexCoord[0]);

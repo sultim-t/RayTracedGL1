@@ -286,7 +286,7 @@ void main()
 
         vec3 illuminated;
 
-        if( !isSkyPix( pix ) && ( globalUniform.lightmapEnable == 0 ) )
+        if( !isSkyPix( pix ) && !classicShading( getRegularPixFromCheckerboardPix(pix) ) )
         {
             const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
             const vec3 normal = texelFetchNormal(pix);
