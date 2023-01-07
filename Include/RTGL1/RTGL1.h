@@ -889,6 +889,9 @@ RGAPI void RGCONV               rgUtilImScratchStart( RgInstance instance, RgUti
 RGAPI void RGCONV               rgUtilImScratchVertex( RgInstance instance, float x, float y, float z );            // Push vertex to a list
 RGAPI void RGCONV               rgUtilImScratchNormal( RgInstance instance, float x, float y, float z );
 RGAPI void RGCONV               rgUtilImScratchTexCoord( RgInstance instance, float u, float v );
+RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer1( RgInstance instance, float u, float v );
+RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer2( RgInstance instance, float u, float v );
+RGAPI void RGCONV               rgUtilImScratchTexCoord_LayerLightmap( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color );
 RGAPI void RGCONV               rgUtilImScratchEnd( RgInstance instance );
 RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo *pTarget ); // Set accumulated vertices to pTarget

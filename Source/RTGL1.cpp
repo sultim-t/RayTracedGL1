@@ -289,6 +289,21 @@ void rgUtilImScratchTexCoord( RgInstance instance, float u, float v )
     Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord, u, v );
 }
 
+void rgUtilImScratchTexCoord_Layer1( RgInstance instance, float u, float v )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord_Layer1, u, v );
+}
+
+void rgUtilImScratchTexCoord_Layer2( RgInstance instance, float u, float v )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord_Layer2, u, v );
+}
+
+void rgUtilImScratchTexCoord_LayerLightmap( RgInstance instance, float u, float v )
+{
+    Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord_Lightmap, u, v );
+}
+
 void rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color )
 {
     Call( instance, &RTGL1::VulkanDevice::ImScratchColor, color );

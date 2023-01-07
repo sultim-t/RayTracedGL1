@@ -222,9 +222,15 @@ std::span< const uint32_t > RTGL1::ScratchImmediate::GetIndices( RgUtilImScratch
 void RTGL1::ScratchImmediate::Clear()
 {
     verts.clear();
+    texLayer1.clear();
+    texLayer2.clear();
+    texLayerLightmap.clear();
     lastbatch = std::nullopt;
     accumIndices.clear();
-    accumTopology = std::nullopt;
+    accumTopology         = std::nullopt;
+    accumTexLayer1        = std::nullopt;
+    accumTexLayer2        = std::nullopt;
+    accumTexLayerLightmap = std::nullopt;
 }
 
 void RTGL1::ScratchImmediate::StartPrimitive( RgUtilImScratchTopology topology )
@@ -253,6 +259,52 @@ void RTGL1::ScratchImmediate::EndPrimitive()
     lastbatch = std::nullopt;
 }
 
+namespace
+{
+
+void TrySetTexLayer( RgMeshPrimitiveInfo* pTarget, uint32_t layerIndex, std::span< RgFloat2D > src )
+{
+    if( src.empty() )
+    {
+        return;
+    }
+
+    // each texcoord is tied to each vertex, so amount must be the same
+    if( src.size() != pTarget->vertexCount )
+    {
+        assert( 0 );
+        return;
+    }
+
+    // nowhere to set
+    if( !pTarget || !pTarget->pEditorInfo )
+    {
+        assert( 0 );
+        return;
+    }
+
+    const RgEditorTextureLayerInfo* dst = nullptr;
+
+    switch( layerIndex )
+    {
+        case 1: dst = pTarget->pEditorInfo->pLayer1; break;
+        case 2: dst = pTarget->pEditorInfo->pLayer2; break;
+        case 3: dst = pTarget->pEditorInfo->pLayerLightmap; break;
+        default: assert( 0 ); return;
+    }
+
+    // nowhere to set
+    if( !dst )
+    {
+        assert( 0 );
+        return;
+    }
+
+    const_cast< RgEditorTextureLayerInfo* >( dst )->pTexCoord = src.data();
+}
+
+}
+
 void RTGL1::ScratchImmediate::SetToPrimitive( RgMeshPrimitiveInfo* pTarget )
 {
     if( !pTarget )
@@ -265,4 +317,8 @@ void RTGL1::ScratchImmediate::SetToPrimitive( RgMeshPrimitiveInfo* pTarget )
 
     pTarget->pIndices   = accumIndices.data();
     pTarget->indexCount = uint32_t( accumIndices.size() );
+
+    TrySetTexLayer( pTarget, 1, texLayer1 );
+    TrySetTexLayer( pTarget, 2, texLayer2 );
+    TrySetTexLayer( pTarget, 3, texLayerLightmap );
 }

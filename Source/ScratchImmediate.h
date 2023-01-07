@@ -56,6 +56,19 @@ public:
         accumVertex.position[ 1 ] = y;
         accumVertex.position[ 2 ] = z;
 
+        if( accumTexLayer1 )
+        {
+            texLayer1.push_back( *accumTexLayer1 );
+        }
+        if( accumTexLayer2 )
+        {
+            texLayer2.push_back( *accumTexLayer2 );
+        }
+        if( accumTexLayerLightmap )
+        {
+            texLayerLightmap.push_back( *accumTexLayerLightmap );
+        }
+
         verts.push_back( accumVertex );
     }
 
@@ -71,11 +84,11 @@ public:
         accumVertex.texCoord[ 0 ] = u;
         accumVertex.texCoord[ 1 ] = v;
     }
+    void TexCoord_Layer1( float u, float v ) { accumTexLayer1 = { u, v }; }
+    void TexCoord_Layer2( float u, float v ) { accumTexLayer2 = { u, v }; }
+    void TexCoord_LayerLightmap( float u, float v ) { accumTexLayerLightmap = { u, v }; }
 
-    void Color( RgColor4DPacked32 color )
-    {
-        accumVertex.color = color;
-    }
+    void Color( RgColor4DPacked32 color ) { accumVertex.color = color; }
 
     void SetToPrimitive( RgMeshPrimitiveInfo* pTarget );
 
@@ -84,6 +97,9 @@ public:
 
 private:
     std::vector< RgPrimitiveVertex > verts;
+    std::vector< RgFloat2D >         texLayer1;
+    std::vector< RgFloat2D >         texLayer2;
+    std::vector< RgFloat2D >         texLayerLightmap;
     std::optional< PrimitiveRange >  lastbatch;
 
     std::vector< uint32_t > indicesTriangles;
@@ -101,6 +117,9 @@ private:
         .color    = rgUtilPackColorByte4D( 255, 255, 255, 255 ),
     };
     std::optional< RgUtilImScratchTopology > accumTopology;
+    std::optional< RgFloat2D >               accumTexLayer1;
+    std::optional< RgFloat2D >               accumTexLayer2;
+    std::optional< RgFloat2D >               accumTexLayerLightmap;
 };
 
 }
