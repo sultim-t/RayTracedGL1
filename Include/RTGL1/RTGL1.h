@@ -287,15 +287,16 @@ typedef uint32_t RgColor4DPacked32;
 
 typedef enum RgMeshPrimitiveFlagBits
 {
-    RG_MESH_PRIMITIVE_ALPHA_TESTED          = 1,
-    RG_MESH_PRIMITIVE_TRANSLUCENT           = 2,
-    RG_MESH_PRIMITIVE_FIRST_PERSON          = 4,
-    RG_MESH_PRIMITIVE_FIRST_PERSON_VIEWER   = 8,
-    RG_MESH_PRIMITIVE_SKY                   = 16,
-    RG_MESH_PRIMITIVE_MIRROR                = 32,
-    RG_MESH_PRIMITIVE_GLASS                 = 64,
-    RG_MESH_PRIMITIVE_WATER                 = 128,
-    RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS = 256,
+    RG_MESH_PRIMITIVE_ALPHA_TESTED              = 1,
+    RG_MESH_PRIMITIVE_TRANSLUCENT               = 2,
+    RG_MESH_PRIMITIVE_FIRST_PERSON              = 4,
+    RG_MESH_PRIMITIVE_FIRST_PERSON_VIEWER       = 8,
+    RG_MESH_PRIMITIVE_SKY                       = 16,
+    RG_MESH_PRIMITIVE_MIRROR                    = 32,
+    RG_MESH_PRIMITIVE_GLASS                     = 64,
+    RG_MESH_PRIMITIVE_WATER                     = 128,
+    RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS     = 256,
+    RG_MESH_PRIMITIVE_NO_DEPTH_TEST_ON_RASTER   = 512,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 
