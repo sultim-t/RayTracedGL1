@@ -55,7 +55,7 @@ struct WholeWindow
                           ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove |
                               ImGuiWindowFlags_NoBackground ) )
         {
-            beginSuccess = ImGui::BeginTabBar( "##TabBar" );
+            beginSuccess = ImGui::BeginTabBar( "##TabBar", ImGuiTabBarFlags_Reorderable );
         }
     }
 
@@ -283,11 +283,22 @@ void RTGL1::VulkanDevice::Dev_Draw() const
 
     if( ImGui::BeginTabItem( "Primitives" ) )
     {
-        ImGui::RadioButton( "Disable", &devmode->primitivesTableEnable, 0 );
+        using PrimMode = Devmode::DebugPrimMode;
+
+        int*     modePtr = reinterpret_cast< int* >( &devmode->primitivesTableMode );
+        PrimMode mode    = devmode->primitivesTableMode;
+
+        ImGui::TextUnformatted( "Record: " );
         ImGui::SameLine();
-        ImGui::RadioButton( "Record rasterized", &devmode->primitivesTableEnable, 1 );
+        ImGui::RadioButton( "None", modePtr, static_cast< int >( PrimMode::None ) );
         ImGui::SameLine();
-        ImGui::RadioButton( "Record ray-traced", &devmode->primitivesTableEnable, 2 );
+        ImGui::RadioButton( "Ray-traced", modePtr, static_cast< int >( PrimMode::RayTraced ) );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Rasterized", modePtr, static_cast< int >( PrimMode::Rasterized ) );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Non-world", modePtr, static_cast< int >( PrimMode::NonWorld ) );
+        ImGui::SameLine();
+        ImGui::RadioButton( "Decals", modePtr, static_cast< int >( PrimMode::Decal ) );
 
         ImGui::TextUnformatted(
             "Red    - if exportable, but not found in GLTF, so uploading as dynamic" );
@@ -300,13 +311,22 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                    ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
         {
             {
-                ImGui::TableSetupColumn( "Call" );
-                ImGui::TableSetupColumn( "Object ID" );
-                ImGui::TableSetupColumn( "Mesh name" );
-                ImGui::TableSetupColumn( "Primitive index" );
-                ImGui::TableSetupColumn( "Primitive name" );
-                ImGui::TableSetupColumn( "Texture" );
+                ImGui::TableSetupColumn( "Call",
+                                         ImGuiTableColumnFlags_NoHeaderWidth |
+                                             ImGuiTableColumnFlags_DefaultSort );
+                ImGui::TableSetupColumn( "Object ID", ImGuiTableColumnFlags_NoHeaderWidth );
+                ImGui::TableSetupColumn( "Mesh name", ImGuiTableColumnFlags_NoHeaderWidth );
+                ImGui::TableSetupColumn( "Primitive index", ImGuiTableColumnFlags_NoHeaderWidth );
+                ImGui::TableSetupColumn( "Primitive name", ImGuiTableColumnFlags_NoHeaderWidth );
+                ImGui::TableSetupColumn( "Texture",
+                                         ImGuiTableColumnFlags_NoHeaderWidth |
+                                             ImGuiTableColumnFlags_WidthStretch );
                 ImGui::TableHeadersRow();
+                if( ImGui::IsItemHovered() )
+                {
+                    ImGui::SetTooltip(
+                        "Right-click to open menu\nMiddle-click to copy texture name" );
+                }
             }
 
             if( ImGuiTableSortSpecs* sortspecs = ImGui::TableGetSortSpecs() )
@@ -387,47 +407,51 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                     {
                         ImGui::TextUnformatted( "fail" );
                     }
+
                     ImGui::TableNextColumn();
-                    ImGui::Text( "%u", prim.objectId );
+                    if( mode != PrimMode::Decal && mode != PrimMode::NonWorld )
+                    {
+                        ImGui::Text( "%u", prim.objectId );
+                    }
+
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( prim.meshName.c_str() );
+                    if( mode != PrimMode::Decal && mode != PrimMode::NonWorld )
+                    {
+                        ImGui::TextUnformatted( prim.meshName.c_str() );
+                    }
+
                     ImGui::TableNextColumn();
-                    ImGui::Text( "%u", prim.primitiveIndex );
+                    if( mode != PrimMode::Decal )
+                    {
+                        ImGui::Text( "%u", prim.primitiveIndex );
+                    }
+
                     ImGui::TableNextColumn();
-                    ImGui::TextUnformatted( prim.primitiveName.c_str() );
+                    if( mode != PrimMode::Decal )
+                    {
+                        ImGui::TextUnformatted( prim.primitiveName.c_str() );
+                    }
+
                     ImGui::TableNextColumn();
                     ImGui::TextUnformatted( prim.textureName.c_str() );
+                    if( ImGui::IsMouseReleased( ImGuiMouseButton_Middle ) &&
+                        ImGui::IsItemHovered() )
+                    {
+                        ImGui::SetClipboardText( prim.textureName.c_str() );
+                    }
+                    else
+                    {
+                        if( ImGui::BeginPopupContextItem( std::format( "##popup{}", i ).c_str() ) )
+                        {
+                            if( ImGui::MenuItem( "Copy texture name" ) )
+                            {
+                                ImGui::SetClipboardText( prim.textureName.c_str() );
+                                ImGui::CloseCurrentPopup();
+                            }
+                            ImGui::EndPopup();
+                        }
+                    }
                 }
-            }
-
-            ImGui::EndTable();
-        }
-        ImGui::EndTabItem();
-    }
-
-    if( ImGui::BeginTabItem( "Non-world Primitives" ) )
-    {
-        ImGui::Checkbox( "Record", &devmode->nonworldTableEnable );
-
-        if( ImGui::BeginTable( "Non-world Primitives table",
-                               2,
-                               ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
-                                   ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
-                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
-        {
-            {
-                ImGui::TableSetupColumn( "Call" );
-                ImGui::TableSetupColumn( "Texture" );
-                ImGui::TableHeadersRow();
-            }
-
-            for( const auto& prim : devmode->nonworldTable )
-            {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::Text( "%u", prim.callIndex );
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted( prim.textureName.c_str() );
             }
 
             ImGui::EndTable();
@@ -655,7 +679,6 @@ void RTGL1::VulkanDevice::Dev_Draw() const
             ColumnTextureIndex2,
             ColumnTextureIndex3,
             ColumnMaterialName,
-            ColumnCopyButton,
             Column_Count,
         };
         static_assert( std::size( TextureManager::Debug_MaterialInfo{}.textures.indices ) == 4 );
@@ -680,9 +703,12 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                          ImGuiTableColumnFlags_WidthStretch |
                                              ImGuiTableColumnFlags_DefaultSort,
                                          -1 );
-                ImGui::TableSetupColumn(
-                    "##Copy matname button", ImGuiTableColumnFlags_NoSort, 16 );
                 ImGui::TableHeadersRow();
+                if( ImGui::IsItemHovered() )
+                {
+                    ImGui::SetTooltip(
+                        "Right-click to open menu\nMiddle-click to copy texture name" );
+                }
             }
 
             if( ImGuiTableSortSpecs* sortspecs = ImGui::TableGetSortSpecs() )
@@ -772,48 +798,63 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                         {
                             case ColumnTextureIndex0:
                                 writeTexIndex( 0 );
-                                if( ImGui::IsItemHovered() )
+                                if( ImGui::TableGetColumnFlags( col ) &
+                                    ImGuiTableColumnFlags_IsHovered )
                                 {
-                                    ImGui::SetTooltip( "[R]Occlusion (disabled by default)\n[G] "
-                                                       "Roughness\n[B] Metallic" );
+                                    ImGui::SetTooltip( "Image\n[RGB]Albedo\n[A] "
+                                                       "Alpha (0.0 - fully transparent)" );
                                 }
                                 break;
 
-                            case ColumnTextureIndex1:;
+                            case ColumnTextureIndex1:
                                 writeTexIndex( 1 );
-                                if( ImGui::IsItemHovered() )
+                                if( ImGui::TableGetColumnFlags( col ) &
+                                    ImGuiTableColumnFlags_IsHovered )
                                 {
                                     ImGui::SetTooltip(
-                                        "[RGB]Albedo\n[A] Alpha (0.0 - fully transparent)" );
+                                        "Image\n[R]Occlusion (disabled by default)\n[G] "
+                                        "Roughness\n[B] Metallic" );
                                 }
                                 break;
 
-                            case ColumnTextureIndex2:;
+                            case ColumnTextureIndex2:
                                 writeTexIndex( 2 );
-                                if( ImGui::IsItemHovered() )
+                                if( ImGui::TableGetColumnFlags( col ) &
+                                    ImGuiTableColumnFlags_IsHovered )
                                 {
-                                    ImGui::SetTooltip( "[R] Normal X offset\n[G] Normal Y offset" );
+                                    ImGui::SetTooltip(
+                                        "Image\n[R] Normal X offset\n[G] Normal Y offset" );
                                 }
                                 break;
 
-                            case ColumnTextureIndex3:;
+                            case ColumnTextureIndex3:
                                 writeTexIndex( 3 );
-                                if( ImGui::IsItemHovered() )
+                                if( ImGui::TableGetColumnFlags( col ) &
+                                    ImGuiTableColumnFlags_IsHovered )
                                 {
-                                    ImGui::SetTooltip( "[RGB] Emission color" );
+                                    ImGui::SetTooltip( "Image\n[RGB] Emission color" );
                                 }
                                 break;
 
                             case ColumnMaterialName:
                                 ImGui::TextUnformatted( mat.materialName.c_str() );
-                                break;
 
-                            case ColumnCopyButton:
-                                if( ImGui::SmallButton( "Copy" ) )
+                                if( ImGui::IsMouseReleased( ImGuiMouseButton_Middle ) &&
+                                    ImGui::IsItemHovered() )
                                 {
-                                    if( !mat.materialName.empty() )
+                                    ImGui::SetClipboardText( mat.materialName.c_str() );
+                                }
+                                else
+                                {
+                                    if( ImGui::BeginPopupContextItem(
+                                            std::format( "##popup{}", i ).c_str() ) )
                                     {
-                                        ImGui::SetClipboardText( mat.materialName.c_str() );
+                                        if( ImGui::MenuItem( "Copy texture name" ) )
+                                        {
+                                            ImGui::SetClipboardText( mat.materialName.c_str() );
+                                            ImGui::CloseCurrentPopup();
+                                        }
+                                        ImGui::EndPopup();
                                     }
                                 }
                                 break;

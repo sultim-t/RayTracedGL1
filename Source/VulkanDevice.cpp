@@ -108,7 +108,6 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const char* pMapName )
     if( devmode )
     {
         devmode->primitivesTable.clear();
-        devmode->nonworldTable.clear();
     }
 
     VkCommandBuffer cmd = cmdManager->StartGraphicsCmd();
@@ -896,7 +895,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                             nullptr,
                             nullptr );
 
-        if( devmode && devmode->primitivesTableEnable == 1 )
+        if( devmode && devmode->primitivesTableMode == Devmode::DebugPrimMode::Rasterized )
         {
             devmode->primitivesTable.push_back( Devmode::DebugPrim{
                 .result         = UploadResult::Dynamic,
@@ -914,7 +913,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
         UploadResult r = scene->UploadPrimitive(
             currentFrameState.GetFrameIndex(), *pMesh, prim, *textureManager, false );
 
-        if( devmode && devmode->primitivesTableEnable == 2 )
+        if( devmode && devmode->primitivesTableMode == Devmode::DebugPrimMode::RayTraced )
         {
             devmode->primitivesTable.push_back( Devmode::DebugPrim{
                 .result         = r,
@@ -953,11 +952,16 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
                         pViewProjection,
                         pViewport );
 
-    if( devmode && devmode->nonworldTableEnable )
+    if( devmode && devmode->primitivesTableMode == Devmode::DebugPrimMode::NonWorld )
     {
-        devmode->nonworldTable.push_back( Devmode::DebugNonWorld{
-            .callIndex   = uint32_t( devmode->nonworldTable.size() ),
-            .textureName = pPrimitive->pTextureName ? pPrimitive->pTextureName : "",
+        devmode->primitivesTable.push_back( Devmode::DebugPrim{
+            .result         = UploadResult::Dynamic,
+            .callIndex      = uint32_t( devmode->primitivesTable.size() ),
+            .objectId       = 0,
+            .meshName       = {},
+            .primitiveIndex = pPrimitive->primitiveIndexInMesh,
+            .primitiveName  = Utils::SafeCstr( pPrimitive->pPrimitiveNameInMesh ),
+            .textureName    = Utils::SafeCstr( pPrimitive->pTextureName ),
         } );
     }
 }
@@ -970,6 +974,19 @@ void RTGL1::VulkanDevice::UploadDecal( const RgDecalUploadInfo* pInfo )
     }
 
     decalManager->Upload( currentFrameState.GetFrameIndex(), *pInfo, textureManager );
+
+    if( devmode && devmode->primitivesTableMode == Devmode::DebugPrimMode::Decal )
+    {
+        devmode->primitivesTable.push_back( Devmode::DebugPrim{
+            .result         = UploadResult::Dynamic,
+            .callIndex      = uint32_t( devmode->primitivesTable.size() ),
+            .objectId       = 0,
+            .meshName       = {},
+            .primitiveIndex = 0,
+            .primitiveName  = {},
+            .textureName    = Utils::SafeCstr( pInfo->pTextureName ),
+        } );
+    }
 }
 
 void RTGL1::VulkanDevice::UploadLight( const GenericLightPtr& light )

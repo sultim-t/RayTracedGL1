@@ -35,10 +35,13 @@ struct Devmode
         std::string                   textureName;
     };
 
-    struct DebugNonWorld
+    enum class DebugPrimMode : int
     {
-        uint32_t    callIndex;
-        std::string textureName;
+        None,
+        RayTraced,
+        Rasterized,
+        NonWorld,
+        Decal,
     };
 
     bool     debugWindowOnTop{ false };
@@ -90,11 +93,8 @@ struct Devmode
 
     bool materialsTableEnable{ false };
 
-    int                      primitivesTableEnable{ 0 };
+    DebugPrimMode            primitivesTableMode{ DebugPrimMode::None };
     std::vector< DebugPrim > primitivesTable{};
-
-    bool                         nonworldTableEnable{ false };
-    std::vector< DebugNonWorld > nonworldTable{};
 
     RgMessageSeverityFlags logFlags{ RG_MESSAGE_SEVERITY_VERBOSE | RG_MESSAGE_SEVERITY_INFO |
                                      RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR };
