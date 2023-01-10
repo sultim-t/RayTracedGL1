@@ -47,8 +47,12 @@ enum class PipelineStateFlagBits
     DEPTH_WRITE   = 0b010000,
     DRAW_AS_LINES = 0b100000,
 };
-typedef uint32_t          PipelineStateFlags;
+using PipelineStateFlags = uint32_t;
 
+inline PipelineStateFlags operator|( PipelineStateFlagBits a, PipelineStateFlagBits b )
+{
+    return static_cast< PipelineStateFlags >( a ) | static_cast< PipelineStateFlags >( b );
+}
 inline PipelineStateFlags operator|( PipelineStateFlags a, PipelineStateFlagBits b )
 {
     return a | static_cast< PipelineStateFlags >( b );

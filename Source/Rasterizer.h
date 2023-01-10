@@ -62,58 +62,63 @@ public:
                          const RgInstanceCreateInfo&             instanceInfo );
     ~Rasterizer() override;
 
-    Rasterizer( const Rasterizer& other )     = delete;
-    Rasterizer( Rasterizer&& other ) noexcept = delete;
-    Rasterizer& operator=( const Rasterizer& other ) = delete;
+    Rasterizer( const Rasterizer& other )                = delete;
+    Rasterizer( Rasterizer&& other ) noexcept            = delete;
+    Rasterizer& operator=( const Rasterizer& other )     = delete;
     Rasterizer& operator=( Rasterizer&& other ) noexcept = delete;
 
-    void        PrepareForFrame( uint32_t frameIndex );
-    void        Upload( uint32_t                   frameIndex,
-                        GeometryRasterType         rasterType,
-                        const RgTransform&         transform,
-                        const RgMeshPrimitiveInfo& info,
-                        const float*               pViewProjection,
-                        const RgViewport*          pViewport );
-    void        SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void PrepareForFrame( uint32_t frameIndex );
+    void Upload( uint32_t                   frameIndex,
+                 GeometryRasterType         rasterType,
+                 const RgTransform&         transform,
+                 const RgMeshPrimitiveInfo& info,
+                 const float*               pViewProjection,
+                 const RgViewport*          pViewport );
+    void UploadLensFlare( uint32_t                     frameIndex,
+                          const RgLensFlareUploadInfo& info,
+                          const TextureManager&        textureManager );
+    void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
 
-    void        DrawSkyToCubemap( VkCommandBuffer       cmd,
-                                  uint32_t              frameIndex,
-                                  const TextureManager& textureManager,
-                                  const GlobalUniform&  uniform );
+    void DrawSkyToCubemap( VkCommandBuffer       cmd,
+                           uint32_t              frameIndex,
+                           const TextureManager& textureManager,
+                           const GlobalUniform&  uniform );
 
-    void        DrawSkyToAlbedo( VkCommandBuffer               cmd,
-                                 uint32_t                      frameIndex,
-                                 const TextureManager&         textureManager,
-                                 const float*                  view,
-                                 const float                   skyViewerPos[ 3 ],
-                                 const float*                  proj,
-                                 const RgFloat2D&              jitter,
-                                 const RenderResolutionHelper& renderResolution );
+    void DrawSkyToAlbedo( VkCommandBuffer               cmd,
+                          uint32_t                      frameIndex,
+                          const TextureManager&         textureManager,
+                          const float*                  view,
+                          const float                   skyViewerPos[ 3 ],
+                          const float*                  proj,
+                          const RgFloat2D&              jitter,
+                          const RenderResolutionHelper& renderResolution );
 
-    void        DrawToFinalImage( VkCommandBuffer               cmd,
-                                  uint32_t                      frameIndex,
-                                  const TextureManager&         textureManager,
-                                  const GlobalUniform&          uniform,
-                                  const Tonemapping&            tonemapping,
-                                  const Volumetric&             volumetric,
-                                  const float*                  view,
-                                  const float*                  proj,
-                                  const RgFloat2D&              jitter,
-                                  const RenderResolutionHelper& renderResolution );
+    void DrawToFinalImage( VkCommandBuffer               cmd,
+                           uint32_t                      frameIndex,
+                           const TextureManager&         textureManager,
+                           const GlobalUniform&          uniform,
+                           const Tonemapping&            tonemapping,
+                           const Volumetric&             volumetric,
+                           const float*                  view,
+                           const float*                  proj,
+                           const RgFloat2D&              jitter,
+                           const RenderResolutionHelper& renderResolution );
 
-    void        DrawToSwapchain( VkCommandBuffer       cmd,
-                                 uint32_t              frameIndex,
-                                 FramebufferImageIndex imageToDrawIn,
-                                 const TextureManager& textureManager,
-                                 const float*          view,
-                                 const float*          proj,
-                                 uint32_t              swapchainWidth,
-                                 uint32_t              swapchainHeight );
+    void DrawToSwapchain( VkCommandBuffer       cmd,
+                          uint32_t              frameIndex,
+                          FramebufferImageIndex imageToDrawIn,
+                          const TextureManager& textureManager,
+                          const float*          view,
+                          const float*          proj,
+                          uint32_t              swapchainWidth,
+                          uint32_t              swapchainHeight );
 
-    void        OnShaderReload( const ShaderManager* shaderManager ) override;
-    void        OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;
+    void OnShaderReload( const ShaderManager* shaderManager ) override;
+    void OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;
 
     const std::shared_ptr< RenderCubemap >& GetRenderCubemap() const;
+
+    uint32_t GetLensFlareCullingInputCount() const;
 
 private:
     void Draw( VkCommandBuffer cmd, uint32_t frameIndex, const RasterDrawParams& drawParams );
@@ -123,20 +128,22 @@ private:
                                 VkDescriptorSetLayout  texturesSetLayout );
 
 private:
-    VkDevice                                   device;
-    VkPipelineLayout                           rasterPassPipelineLayout;
-    VkPipelineLayout                           swapchainPassPipelineLayout;
+    VkDevice         device;
+    VkPipelineLayout rasterPassPipelineLayout;
+    VkPipelineLayout swapchainPassPipelineLayout;
 
-    std::shared_ptr< MemoryAllocator >         allocator;
-    std::shared_ptr< CommandBufferManager >    cmdManager;
-    std::shared_ptr< Framebuffers >            storageFramebuffers;
+    std::shared_ptr< MemoryAllocator >      allocator;
+    std::shared_ptr< CommandBufferManager > cmdManager;
+    std::shared_ptr< Framebuffers >         storageFramebuffers;
 
-    std::shared_ptr< RasterPass >              rasterPass;
-    std::shared_ptr< SwapchainPass >           swapchainPass;
+    std::shared_ptr< RasterPass >    rasterPass;
+    std::shared_ptr< SwapchainPass > swapchainPass;
 
     std::shared_ptr< RasterizedDataCollector > collector;
 
-    std::shared_ptr< RenderCubemap >           renderCubemap;
+    std::shared_ptr< RenderCubemap > renderCubemap;
+
+    std::unique_ptr< LensFlares > lensFlares;
 };
 
 }

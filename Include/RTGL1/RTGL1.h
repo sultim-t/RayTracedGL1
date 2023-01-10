@@ -287,16 +287,15 @@ typedef uint32_t RgColor4DPacked32;
 
 typedef enum RgMeshPrimitiveFlagBits
 {
-    RG_MESH_PRIMITIVE_ALPHA_TESTED              = 1,
-    RG_MESH_PRIMITIVE_TRANSLUCENT               = 2,
-    RG_MESH_PRIMITIVE_FIRST_PERSON              = 4,
-    RG_MESH_PRIMITIVE_FIRST_PERSON_VIEWER       = 8,
-    RG_MESH_PRIMITIVE_SKY                       = 16,
-    RG_MESH_PRIMITIVE_MIRROR                    = 32,
-    RG_MESH_PRIMITIVE_GLASS                     = 64,
-    RG_MESH_PRIMITIVE_WATER                     = 128,
-    RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS     = 256,
-    RG_MESH_PRIMITIVE_NO_DEPTH_TEST_ON_RASTER   = 512,
+    RG_MESH_PRIMITIVE_ALPHA_TESTED          = 1,
+    RG_MESH_PRIMITIVE_TRANSLUCENT           = 2,
+    RG_MESH_PRIMITIVE_FIRST_PERSON          = 4,
+    RG_MESH_PRIMITIVE_FIRST_PERSON_VIEWER   = 8,
+    RG_MESH_PRIMITIVE_SKY                   = 16,
+    RG_MESH_PRIMITIVE_MIRROR                = 32,
+    RG_MESH_PRIMITIVE_GLASS                 = 64,
+    RG_MESH_PRIMITIVE_WATER                 = 128,
+    RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS = 256,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 
@@ -426,12 +425,28 @@ typedef struct RgDecalUploadInfo
 
 RGAPI RgResult RGCONV rgUploadDecal( RgInstance instance, const RgDecalUploadInfo* pInfo );
 
+// Render specified vertex geometry, if 'pointToCheck' is not hidden.
+typedef struct RgLensFlareUploadInfo
+{
+    // Must be in world space.
+    uint32_t                    vertexCount;
+    const RgPrimitiveVertex*    pVertices;
+    // Must not be null.
+    uint32_t                    indexCount;
+    const uint32_t*             pIndices;
+    const char*                 pTextureName;
+    // Point in the world space.
+    RgFloat3D                   pointToCheck;
+} RgLensFlareUploadInfo;
+
+RGAPI RgResult RGCONV rgUploadLensFlare( RgInstance instance, const RgLensFlareUploadInfo* pInfo );
+
 
 
 typedef struct RgLightExtraInfo
 {
-    RgBool32 exists;
-    int      lightstyle;
+    RgBool32            exists;
+    int                 lightstyle;
 } RgLightExtraInfo;
 
 typedef struct RgDirectionalLightUploadInfo

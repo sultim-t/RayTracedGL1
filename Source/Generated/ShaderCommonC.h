@@ -274,7 +274,7 @@ struct ShGlobalUniform
     float jitterY;
     float primaryRayMinDist;
     uint32_t rayCullMaskWorld_Shadow;
-    uint32_t lensFlareCullingInputCount;
+    uint32_t _unused1;
     uint32_t applyViewProjToLensFlares;
     uint32_t twirlPortalNormal;
     uint32_t lightIndexIgnoreFPVShadows;

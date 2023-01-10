@@ -20,8 +20,6 @@
 
 #version 460
 
-#if 0
-
 #define DESC_SET_GLOBAL_UNIFORM 0
 #define DESC_SET_FRAMEBUFFERS 1
 #define DESC_SET_LENS_FLARES 2
@@ -32,6 +30,10 @@ layout(local_size_x = COMPUTE_INDIRECT_DRAW_FLARES_GROUP_SIZE_X, local_size_y = 
 
 layout(constant_id = 0) const uint positionToCheckIsInScreenSpace = 0;
 
+layout(push_constant) uniform CullLensFlaresPush_BT
+{
+    uint inputCount;
+} push;
 
 void getPixAndDepthFromWorldPoint(const vec3 position, out ivec2 pix, out float depthNdc)
 {
@@ -61,7 +63,7 @@ void main()
 {
     uint index = gl_GlobalInvocationID.x;
 
-    if (index >= globalUniform.lensFlareCullingInputCount)
+    if (index >= push.inputCount)
     {
         return;
     }
@@ -98,7 +100,3 @@ void main()
         lensFlareDrawCmds[lensFlareDrawCmdIndex] = l;
     }
 }
-
-#else
-void main() {}
-#endif

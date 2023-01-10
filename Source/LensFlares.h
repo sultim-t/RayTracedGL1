@@ -20,8 +20,6 @@
 
 #pragma once
 
-#if 0
-
 #include "AutoBuffer.h"
 #include "Framebuffers.h"
 #include "GlobalUniform.h"
@@ -35,83 +33,82 @@ namespace RTGL1
 class LensFlares : public IShaderDependency
 {
 public:
-    LensFlares(VkDevice device, 
-               std::shared_ptr<MemoryAllocator> &allocator, 
-               const std::shared_ptr<ShaderManager> &shaderManager,
-               VkRenderPass renderPass,
-               std::shared_ptr<GlobalUniform> uniform,
-               std::shared_ptr<Framebuffers> framebuffers,
-               std::shared_ptr<TextureManager> textureManager,
-               const RgInstanceCreateInfo &instanceInfo);
+    LensFlares( VkDevice                            device,
+                std::shared_ptr< MemoryAllocator >& allocator,
+                const ShaderManager&                shaderManager,
+                VkRenderPass                        renderPass,
+                const GlobalUniform&                uniform,
+                const Framebuffers&                 framebuffers,
+                const TextureManager&               textureManager,
+                const RgInstanceCreateInfo&         instanceInfo );
     ~LensFlares() override;
 
-    LensFlares(const LensFlares &other) = delete;
-    LensFlares(LensFlares &&other) noexcept = delete;
-    LensFlares &operator=(const LensFlares &other) = delete;
-    LensFlares &operator=(LensFlares &&other) noexcept = delete;
+    LensFlares( const LensFlares& other )                = delete;
+    LensFlares( LensFlares&& other ) noexcept            = delete;
+    LensFlares& operator=( const LensFlares& other )     = delete;
+    LensFlares& operator=( LensFlares&& other ) noexcept = delete;
 
-    void PrepareForFrame(uint32_t frameIndex);
-    void Upload(uint32_t frameIndex, const RgLensFlareUploadInfo &uploadInfo);
-    void SubmitForFrame(VkCommandBuffer cmd, uint32_t frameIndex);
-    void SetParams(const RgDrawFrameLensFlareParams *pLensFlareParams);
-    void Cull(VkCommandBuffer cmd, uint32_t frameIndex);
-    void SyncForDraw(VkCommandBuffer cmd, uint32_t frameIndex);
-    void Draw(VkCommandBuffer cmd, uint32_t frameIndex);
+    void PrepareForFrame( uint32_t frameIndex );
+    void Upload( uint32_t                     frameIndex,
+                 const RgLensFlareUploadInfo& uploadInfo,
+                 const TextureManager&        textureManager );
+    void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void Cull( VkCommandBuffer      cmd,
+               uint32_t             frameIndex,
+               const GlobalUniform& uniform,
+               const Framebuffers&  framebuffers );
+    void SyncForDraw( VkCommandBuffer cmd, uint32_t frameIndex );
+    void Draw( VkCommandBuffer       cmd,
+               uint32_t              frameIndex,
+               const GlobalUniform&  uniform,
+               const TextureManager& textureManager );
 
     uint32_t GetCullingInputCount() const;
 
-    void OnShaderReload(const ShaderManager *shaderManager) override;
+    void OnShaderReload( const ShaderManager* shaderManager ) override;
 
 private:
     void CreateCullDescriptors();
     void CreateRasterDescriptors();
-    void CreatePipelineLayouts(VkDescriptorSetLayout uniform,
-                               VkDescriptorSetLayout textures,
-                               VkDescriptorSetLayout raster,
-                               VkDescriptorSetLayout lensFlaresCull,
-                               VkDescriptorSetLayout framebufs);
-    void CreatePipelines(const ShaderManager *shaderManager);
+    void CreatePipelineLayouts( VkDescriptorSetLayout uniform,
+                                VkDescriptorSetLayout textures,
+                                VkDescriptorSetLayout raster,
+                                VkDescriptorSetLayout lensFlaresCull,
+                                VkDescriptorSetLayout framebufs );
+    void CreatePipelines( const ShaderManager* shaderManager );
     void DestroyPipelines();
 
 private:
     VkDevice device;
-    std::shared_ptr<GlobalUniform> uniform;
-    std::shared_ptr<Framebuffers> framebuffers;
-    std::shared_ptr<TextureManager> textureManager;
 
+    std::unique_ptr< AutoBuffer > cullingInput;
+    Buffer                        indirectDrawCommands;
 
-    std::unique_ptr<AutoBuffer> cullingInput;
-    Buffer indirectDrawCommands;
-
-    std::unique_ptr<AutoBuffer> vertexBuffer;
-    std::unique_ptr<AutoBuffer> indexBuffer;
-    std::unique_ptr<AutoBuffer> instanceBuffer;
+    std::unique_ptr< AutoBuffer > vertexBuffer;
+    std::unique_ptr< AutoBuffer > indexBuffer;
+    std::unique_ptr< AutoBuffer > instanceBuffer;
 
     uint32_t cullingInputCount;
     uint32_t vertexCount;
     uint32_t indexCount;
 
 
-    VkPipelineLayout vertFragPipelineLayout;
-    std::unique_ptr<RasterizerPipelines> rasterPipelines;
+    VkPipelineLayout                       vertFragPipelineLayout;
+    std::unique_ptr< RasterizerPipelines > rasterPipelines;
 
-    VkDescriptorPool rasterDescPool;
-    VkDescriptorSet rasterDescSet;
+    VkDescriptorPool      rasterDescPool;
+    VkDescriptorSet       rasterDescSet;
     VkDescriptorSetLayout rasterDescSetLayout;
 
 
     VkPipelineLayout cullPipelineLayout;
-    VkPipeline cullPipeline;
+    VkPipeline       cullPipeline;
 
-    VkDescriptorPool cullDescPool;
-    VkDescriptorSet cullDescSet;
+    VkDescriptorPool      cullDescPool;
+    VkDescriptorSet       cullDescSet;
     VkDescriptorSetLayout cullDescSetLayout;
 
-    RgBlendFactor lensFlareBlendFactorSrc;
-    RgBlendFactor lensFlareBlendFactorDst;
     uint32_t isPointToCheckInScreenSpace;
 };
 
 }
-
-#endif

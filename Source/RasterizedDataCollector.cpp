@@ -127,10 +127,7 @@ namespace
         // allow depth test for world / sky geometry
         if( rasterType != GeometryRasterType::SWAPCHAIN )
         {
-            if( !( info.flags & RG_MESH_PRIMITIVE_NO_DEPTH_TEST_ON_RASTER ) )
-            {
-                r = r | PipelineStateFlagBits::DEPTH_TEST;
-            }
+            r = r | PipelineStateFlagBits::DEPTH_TEST;
 
             // depth write if not semi-transparent
             if( !( r & PipelineStateFlagBits::TRANSLUCENT ) )

@@ -189,6 +189,11 @@ RgResult rgUploadDecal( RgInstance instance, const RgDecalUploadInfo* pInfo )
     return Call( instance, &RTGL1::VulkanDevice::UploadDecal, pInfo );
 }
 
+RgResult rgUploadLensFlare( RgInstance instance, const RgLensFlareUploadInfo* pInfo )
+{
+    return Call( instance, &RTGL1::VulkanDevice::UploadLensFlare, pInfo );
+}
+
 RgResult rgUploadDirectionalLight( RgInstance instance, const RgDirectionalLightUploadInfo* pInfo )
 {
     return Call( instance, &RTGL1::VulkanDevice::UploadDirectionalLight, pInfo );

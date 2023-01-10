@@ -113,16 +113,14 @@ RTGL1::Rasterizer::Rasterizer( VkDevice                                _device,
                                                        *cmdManager,
                                                        _instanceInfo );
 
-    /*
     lensFlares = std::make_unique< LensFlares >( device,
                                                  allocator,
                                                  _shaderManager,
                                                  rasterPass->GetWorldRenderPass(),
                                                  _uniform,
-                                                 storageFramebuffers,
-                                                 _textureManager,
+                                                 *storageFramebuffers,
+                                                 *_textureManager,
                                                  _instanceInfo );
-    */
 }
 
 RTGL1::Rasterizer::~Rasterizer()
@@ -134,7 +132,7 @@ RTGL1::Rasterizer::~Rasterizer()
 void RTGL1::Rasterizer::PrepareForFrame( uint32_t frameIndex )
 {
     collector->Clear( frameIndex );
-    // lensFlares->PrepareForFrame( frameIndex );
+    lensFlares->PrepareForFrame( frameIndex );
 }
 
 void RTGL1::Rasterizer::Upload( uint32_t                   frameIndex,
@@ -147,11 +145,19 @@ void RTGL1::Rasterizer::Upload( uint32_t                   frameIndex,
     collector->AddPrimitive( frameIndex, rasterType, transform, info, pViewProjection, pViewport );
 }
 
+void RTGL1::Rasterizer::UploadLensFlare( uint32_t                     frameIndex,
+                                         const RgLensFlareUploadInfo& info,
+                                         const TextureManager&        textureManager )
+{
+    lensFlares->Upload( frameIndex, info, textureManager );
+}
+
 void RTGL1::Rasterizer::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
 {
     CmdLabel label( cmd, "Copying rasterizer data" );
 
     collector->CopyFromStaging( cmd, frameIndex );
+    lensFlares->SubmitForFrame( cmd, frameIndex );
 }
 
 void RTGL1::Rasterizer::DrawSkyToCubemap( VkCommandBuffer       cmd,
@@ -200,19 +206,27 @@ namespace
 namespace RTGL1
 {
 
+struct RasterLensFlares
+{
+    const GlobalUniform&  uniform;
+    const TextureManager& textureManager;
+};
+
 struct RasterDrawParams
 {
-    const std::shared_ptr< RTGL1::RasterizerPipelines >&           pipelines;
-    const std::vector< RTGL1::RasterizedDataCollector::DrawInfo >& drawInfos;
-    VkRenderPass                                                   renderPass;
-    VkFramebuffer                                                  framebuffer;
-    uint32_t                                                       width;
-    uint32_t                                                       height;
-    VkBuffer                                                       vertexBuffer;
-    VkBuffer                                                       indexBuffer;
-    const VkDescriptorSet*                                         descSets;
-    uint32_t                                                       descSetsCount;
-    float*                                                         defaultViewProj;
+    RasterizerPipelines&                                 pipelines;
+    std::span< const RasterizedDataCollector::DrawInfo > drawInfos{};
+
+    VkRenderPass                      renderPass{ VK_NULL_HANDLE };
+    VkFramebuffer                     framebuffer{ VK_NULL_HANDLE };
+    uint32_t                          width{ 0 };
+    uint32_t                          height{ 0 };
+    VkBuffer                          vertexBuffer{ VK_NULL_HANDLE };
+    VkBuffer                          indexBuffer{ VK_NULL_HANDLE };
+    std::span< VkDescriptorSet >      descSets{};
+    float*                            defaultViewProj{ nullptr };
+    // not the best way to optionally draw lens flares with a world pass
+    std::optional< RasterLensFlares > flaresParams{};
 };
 
 }
@@ -248,7 +262,7 @@ void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer               cmd,
     };
 
     const RasterDrawParams params = {
-        .pipelines       = rasterPass->GetSkyRasterPipelines(),
+        .pipelines       = *rasterPass->GetSkyRasterPipelines(),
         .drawInfos       = collector->GetSkyDrawInfos(),
         .renderPass      = rasterPass->GetSkyRenderPass(),
         .framebuffer     = rasterPass->GetSkyFramebuffer( frameIndex ),
@@ -257,7 +271,6 @@ void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer               cmd,
         .vertexBuffer    = collector->GetVertexBuffer(),
         .indexBuffer     = collector->GetIndexBuffer(),
         .descSets        = sets,
-        .descSetsCount   = std::size( sets ),
         .defaultViewProj = defaultSkyViewProj,
     };
 
@@ -286,6 +299,10 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer               cmd,
     storageFramebuffers->BarrierMultiple( cmd, frameIndex, fs );
 
 
+    // prepare lens flares draw commands
+    lensFlares->Cull( cmd, frameIndex, uniform, *storageFramebuffers );
+
+
     // copy depth buffer
     rasterPass->PrepareForFinal( cmd,
                                  frameIndex,
@@ -309,7 +326,7 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer               cmd,
     };
 
     const RasterDrawParams params = {
-        .pipelines       = rasterPass->GetRasterPipelines(),
+        .pipelines       = *rasterPass->GetRasterPipelines(),
         .drawInfos       = collector->GetRasterDrawInfos(),
         .renderPass      = rasterPass->GetWorldRenderPass(),
         .framebuffer     = rasterPass->GetWorldFramebuffer( frameIndex ),
@@ -318,8 +335,12 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer               cmd,
         .vertexBuffer    = collector->GetVertexBuffer(),
         .indexBuffer     = collector->GetIndexBuffer(),
         .descSets        = sets,
-        .descSetsCount   = std::size( sets ),
         .defaultViewProj = defaultViewProj,
+        .flaresParams =
+            RasterLensFlares{
+                .uniform        = uniform,
+                .textureManager = textureManager,
+            },
     };
 
     Draw( cmd, frameIndex, params );
@@ -346,7 +367,7 @@ void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer       cmd,
     };
 
     const RasterDrawParams params = {
-        .pipelines       = swapchainPass->GetSwapchainPipelines(),
+        .pipelines       = *swapchainPass->GetSwapchainPipelines(),
         .drawInfos       = collector->GetSwapchainDrawInfos(),
         .renderPass      = swapchainPass->GetSwapchainRenderPass(),
         .framebuffer     = swapchainPass->GetSwapchainFramebuffer( imageToDrawIn, frameIndex ),
@@ -355,7 +376,6 @@ void RTGL1::Rasterizer::DrawToSwapchain( VkCommandBuffer       cmd,
         .vertexBuffer    = collector->GetVertexBuffer(),
         .indexBuffer     = collector->GetIndexBuffer(),
         .descSets        = sets,
-        .descSetsCount   = std::size( sets ),
         .defaultViewProj = defaultViewProj,
     };
 
@@ -367,9 +387,18 @@ void RTGL1::Rasterizer::Draw( VkCommandBuffer         cmd,
                               const RasterDrawParams& drawParams )
 {
     assert( drawParams.framebuffer != VK_NULL_HANDLE );
-    if( drawParams.drawInfos.empty() )
+
+    const bool draw           = !drawParams.drawInfos.empty();
+    const bool drawLensFlares = drawParams.flaresParams && lensFlares->GetCullingInputCount() > 0;
+
+    if( !draw && !drawLensFlares )
     {
         return;
+    }
+
+    if( drawLensFlares )
+    {
+        lensFlares->SyncForDraw( cmd, frameIndex );
     }
 
     const VkViewport defaultViewport = {
@@ -407,55 +436,71 @@ void RTGL1::Rasterizer::Draw( VkCommandBuffer         cmd,
     vkCmdBeginRenderPass( cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
 
 
-    VkPipeline curPipeline = drawParams.pipelines->BindPipelineIfNew(
-        cmd, VK_NULL_HANDLE, drawParams.drawInfos[ 0 ].pipelineState );
-
-    vkCmdBindDescriptorSets( cmd,
-                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                             drawParams.pipelines->GetPipelineLayout(),
-                             0,
-                             drawParams.descSetsCount,
-                             drawParams.descSets,
-                             0,
-                             nullptr );
-
-    VkDeviceSize offset = 0;
-    vkCmdBindVertexBuffers( cmd, 0, 1, &drawParams.vertexBuffer, &offset );
-    vkCmdBindIndexBuffer( cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32 );
-
-
-    vkCmdSetScissor( cmd, 0, 1, &defaultRenderArea );
-    vkCmdSetViewport( cmd, 0, 1, &defaultViewport );
-    VkViewport curViewport = defaultViewport;
-
-
-    for( const auto& info : drawParams.drawInfos )
+    if( draw )
     {
-        SetViewportIfNew( cmd, info, defaultViewport, curViewport );
-        curPipeline =
-            drawParams.pipelines->BindPipelineIfNew( cmd, curPipeline, info.pipelineState );
+        VkPipeline curPipeline = drawParams.pipelines.BindPipelineIfNew(
+            cmd, VK_NULL_HANDLE, drawParams.drawInfos[ 0 ].pipelineState );
 
-        // push const
-        {
-            RasterizedPushConst push( info, drawParams.defaultViewProj );
+        vkCmdBindDescriptorSets( cmd,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 drawParams.pipelines.GetPipelineLayout(),
+                                 0,
+                                 uint32_t( drawParams.descSets.size() ),
+                                 drawParams.descSets.data(),
+                                 0,
+                                 nullptr );
 
-            vkCmdPushConstants( cmd,
-                                drawParams.pipelines->GetPipelineLayout(),
-                                VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
-                                0,
-                                sizeof( push ),
-                                &push );
-        }
+        VkDeviceSize offset = 0;
+        vkCmdBindVertexBuffers( cmd, 0, 1, &drawParams.vertexBuffer, &offset );
+        vkCmdBindIndexBuffer( cmd, drawParams.indexBuffer, offset, VK_INDEX_TYPE_UINT32 );
 
-        // draw
-        if( info.indexCount > 0 )
+
+        vkCmdSetScissor( cmd, 0, 1, &defaultRenderArea );
+        vkCmdSetViewport( cmd, 0, 1, &defaultViewport );
+        VkViewport curViewport = defaultViewport;
+
+
+        for( const auto& info : drawParams.drawInfos )
         {
-            vkCmdDrawIndexed( cmd, info.indexCount, 1, info.firstIndex, info.firstVertex, 0 );
+            SetViewportIfNew( cmd, info, defaultViewport, curViewport );
+            curPipeline =
+                drawParams.pipelines.BindPipelineIfNew( cmd, curPipeline, info.pipelineState );
+
+            // push const
+            {
+                RasterizedPushConst push( info, drawParams.defaultViewProj );
+
+                vkCmdPushConstants( cmd,
+                                    drawParams.pipelines.GetPipelineLayout(),
+                                    VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+                                    0,
+                                    sizeof( push ),
+                                    &push );
+            }
+
+            // draw
+            if( info.indexCount > 0 )
+            {
+                vkCmdDrawIndexed(
+                    cmd, info.indexCount, 1, info.firstIndex, int32_t( info.firstVertex ), 0 );
+            }
+            else
+            {
+                vkCmdDraw( cmd, info.vertexCount, 1, info.firstVertex, 0 );
+            }
         }
-        else
-        {
-            vkCmdDraw( cmd, info.vertexCount, 1, info.firstVertex, 0 );
-        }
+    }
+
+
+    if( drawLensFlares )
+    {
+        vkCmdSetScissor( cmd, 0, 1, &defaultRenderArea );
+        vkCmdSetViewport( cmd, 0, 1, &defaultViewport );
+
+        lensFlares->Draw( cmd,
+                          frameIndex,
+                          drawParams.flaresParams->uniform,
+                          drawParams.flaresParams->textureManager );
     }
 
 
@@ -472,6 +517,7 @@ void RTGL1::Rasterizer::OnShaderReload( const ShaderManager* shaderManager )
     rasterPass->OnShaderReload( shaderManager );
     swapchainPass->OnShaderReload( shaderManager );
     renderCubemap->OnShaderReload( shaderManager );
+    lensFlares->OnShaderReload( shaderManager );
 }
 
 void RTGL1::Rasterizer::OnFramebuffersSizeChange( const ResolutionState& resolutionState )

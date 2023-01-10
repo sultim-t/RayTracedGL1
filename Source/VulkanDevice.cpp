@@ -398,9 +398,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
         gu->lightmapScreenCoverage = std::clamp( params.lightmapScreenCoverage, 0.0f, 1.0f );
     }
-
-    gu->lensFlareCullingInputCount = 0;
-    gu->applyViewProjToLensFlares  = false;
+    
+    gu->applyViewProjToLensFlares = LENSFLARES_IN_WORLDSPACE;
 
     {
         const auto& params = AccessParams( drawInfo.pVolumetricParams );
@@ -987,6 +986,16 @@ void RTGL1::VulkanDevice::UploadDecal( const RgDecalUploadInfo* pInfo )
             .textureName    = Utils::SafeCstr( pInfo->pTextureName ),
         } );
     }
+}
+
+void RTGL1::VulkanDevice::UploadLensFlare( const RgLensFlareUploadInfo* pInfo )
+{
+    if( pInfo == nullptr )
+    {
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
+    }
+
+    rasterizer->UploadLensFlare( currentFrameState.GetFrameIndex(), *pInfo, *textureManager );
 }
 
 void RTGL1::VulkanDevice::UploadLight( const GenericLightPtr& light )

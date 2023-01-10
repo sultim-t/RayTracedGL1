@@ -84,6 +84,7 @@ public:
                                   const float*               pViewProjection,
                                   const RgViewport*          pViewport );
     void UploadDecal( const RgDecalUploadInfo* pInfo );
+    void UploadLensFlare( const RgLensFlareUploadInfo* pInfo );
 
     void UploadDirectionalLight( const RgDirectionalLightUploadInfo* pInfo );
     void UploadSphericalLight( const RgSphericalLightUploadInfo* pInfo );
