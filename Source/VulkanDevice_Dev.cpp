@@ -110,7 +110,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
 
         auto& modifiers = devmode->drawInfoOvrd;
 
+        ImGui::Dummy( ImVec2( 0, 4 ) );
         ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+
         ImGui::Checkbox( "Override", &modifiers.enable );
         ImGui::BeginDisabled( !modifiers.enable );
         if( ImGui::TreeNode( "Present" ) )
@@ -251,6 +254,10 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         }
         ImGui::EndDisabled();
 
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+
         if( ImGui::TreeNode( "Debug show" ) )
         {
             std::pair< const char*, uint32_t > fs[] = {
@@ -271,6 +278,22 @@ void RTGL1::VulkanDevice::Dev_Draw() const
             }
             ImGui::TreePop();
         }
+
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+
+        devmode->breakOnTexture[ std::size( devmode->breakOnTexture ) - 1 ] = '\0';
+        ImGui::TextUnformatted( "Debug break on texture: " );
+        ImGui::Checkbox( "Image upload", &devmode->breakOnTextureImage );
+        ImGui::Checkbox( "Primitive upload", &devmode->breakOnTexturePrimitive );
+        ImGui::InputText( "##Debug break on texture text",
+                          devmode->breakOnTexture,
+                          std::size( devmode->breakOnTexture ) );
+
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 4 ) );
 
         ImGui::Checkbox( "Always on top", &devmode->debugWindowOnTop );
         debugWindows->SetAlwaysOnTop( devmode->debugWindowOnTop );
@@ -1006,4 +1029,42 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         // and return original
         return original;
     }
+}
+
+void RTGL1::VulkanDevice::Dev_TryBreak( const char* pTextureName, bool isImageUpload )
+{
+#ifdef _MSC_VER
+    if( !devmode)
+    {
+        return;
+    }
+
+    if( isImageUpload )
+    {
+        if( !devmode->breakOnTextureImage )
+        {
+            return;
+        }
+    }
+    else
+    {
+        if( !devmode->breakOnTexturePrimitive )
+        {
+            return;
+        }
+    }
+
+    if( Utils::IsCstrEmpty( devmode->breakOnTexture ) || Utils::IsCstrEmpty( pTextureName ) )
+    {
+        return;
+    }
+
+    devmode->breakOnTexture[ std::size( devmode->breakOnTexture ) - 1 ] = '\0';
+    if( std::strcmp( devmode->breakOnTexture, Utils::SafeCstr( pTextureName ) ) == 0 )
+    {
+        __debugbreak();
+        devmode->breakOnTextureImage = false;
+        devmode->breakOnTexturePrimitive = false;
+    }
+#endif
 }

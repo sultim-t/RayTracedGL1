@@ -868,6 +868,7 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     {
         return;
     }
+    Dev_TryBreak( pPrimitive->pTextureName, false );
 
 
     // copy to modify
@@ -943,6 +944,7 @@ void RTGL1::VulkanDevice::UploadNonWorldPrimitive( const RgMeshPrimitiveInfo* pP
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
+    Dev_TryBreak( pPrimitive->pTextureName, false );
 
     rasterizer->Upload( currentFrameState.GetFrameIndex(),
                         GeometryRasterType::SWAPCHAIN,
@@ -971,6 +973,7 @@ void RTGL1::VulkanDevice::UploadDecal( const RgDecalUploadInfo* pInfo )
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
+    Dev_TryBreak( pInfo->pTextureName, false );
 
     decalManager->Upload( currentFrameState.GetFrameIndex(), *pInfo, textureManager );
 
@@ -1067,6 +1070,7 @@ void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* p
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
+    Dev_TryBreak( pInfo->pTextureName, true );
 
     textureManager->TryCreateMaterial( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
                                        currentFrameState.GetFrameIndex(),
@@ -1081,6 +1085,7 @@ void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemap
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
+    Dev_TryBreak( pInfo->pTextureName, true );
 
     cubemapManager->TryCreateCubemap( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
                                       currentFrameState.GetFrameIndex(),

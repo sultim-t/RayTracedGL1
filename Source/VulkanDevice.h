@@ -144,6 +144,7 @@ private:
 private:
     void                   Dev_Draw() const;
     const RgDrawFrameInfo& Dev_Override( const RgDrawFrameInfo& original ) const;
+    void                   Dev_TryBreak( const char* pTextureName, bool isImageUpload );
 
 private:
     VkInstance   instance;

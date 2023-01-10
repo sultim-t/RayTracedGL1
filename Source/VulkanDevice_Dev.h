@@ -96,6 +96,10 @@ struct Devmode
     DebugPrimMode            primitivesTableMode{ DebugPrimMode::None };
     std::vector< DebugPrim > primitivesTable{};
 
+    bool breakOnTexturePrimitive{ false };
+    bool breakOnTextureImage{ false };
+    char breakOnTexture[ 256 ];
+
     RgMessageSeverityFlags logFlags{ RG_MESSAGE_SEVERITY_VERBOSE | RG_MESSAGE_SEVERITY_INFO |
                                      RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR };
     bool                   logAutoScroll{ true };
