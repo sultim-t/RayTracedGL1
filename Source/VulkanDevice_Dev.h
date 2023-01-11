@@ -138,6 +138,8 @@ namespace detail
             .specularSensitivityToChange                 = 0.5f,
             .polygonalLightSpotlightFactor               = 2.0f,
             .lightUniqueIdIgnoreFirstPersonViewerShadows = nullptr,
+            .lightstyleValuesCount                       = 0,
+            .pLightstyleValues                           = nullptr,
         };
     };
 

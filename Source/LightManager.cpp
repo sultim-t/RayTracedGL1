@@ -93,7 +93,10 @@ RTGL1::LightManager::~LightManager()
     vkDestroyDescriptorPool( device, descPool, nullptr );
 }
 
-static RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightUploadInfo& info )
+namespace
+{
+
+RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightUploadInfo& info, float mult )
 {
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize( direction.data );
@@ -107,9 +110,9 @@ static RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightU
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_DIRECTIONAL;
 
-    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity;
-    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity;
-    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity * mult;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity * mult;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity * mult;
 
     lt.data_0[ 0 ] = direction.data[ 0 ];
     lt.data_0[ 1 ] = direction.data[ 1 ];
@@ -120,7 +123,7 @@ static RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightU
     return lt;
 }
 
-static RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadInfo& info )
+RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadInfo& info, float mult )
 {
     float radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
     // disk is visible from the point
@@ -132,9 +135,9 @@ static RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadIn
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_SPHERE;
 
-    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area;
-    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area;
-    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area * mult;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area * mult;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area * mult;
 
     lt.data_0[ 0 ] = info.position.data[ 0 ];
     lt.data_0[ 1 ] = info.position.data[ 1 ];
@@ -145,8 +148,9 @@ static RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadIn
     return lt;
 }
 
-static RTGL1::ShLightEncoded EncodeAsTriangleLight( const RgPolygonalLightUploadInfo& info,
-                                                    const RgFloat3D& unnormalizedNormal )
+RTGL1::ShLightEncoded EncodeAsTriangleLight( const RgPolygonalLightUploadInfo& info,
+                                             const RgFloat3D&                  unnormalizedNormal,
+                                             float                             mult )
 {
     RgFloat3D n   = unnormalizedNormal;
     float     len = RTGL1::Utils::Length( n.data );
@@ -163,9 +167,9 @@ static RTGL1::ShLightEncoded EncodeAsTriangleLight( const RgPolygonalLightUpload
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_TRIANGLE;
 
-    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area;
-    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area;
-    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area * mult;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area * mult;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area * mult;
 
     lt.data_0[ 0 ] = info.positions[ 0 ].data[ 0 ];
     lt.data_0[ 1 ] = info.positions[ 0 ].data[ 1 ];
@@ -186,7 +190,7 @@ static RTGL1::ShLightEncoded EncodeAsTriangleLight( const RgPolygonalLightUpload
     return lt;
 }
 
-static RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& info )
+RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& info, float mult )
 {
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize( direction.data );
@@ -203,9 +207,9 @@ static RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& inf
     RTGL1::ShLightEncoded lt = {};
     lt.lightType             = LIGHT_TYPE_SPOT;
 
-    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area;
-    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area;
-    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area;
+    lt.color[ 0 ] = fcolor.data[ 0 ] * info.intensity / area * mult;
+    lt.color[ 1 ] = fcolor.data[ 1 ] * info.intensity / area * mult;
+    lt.color[ 2 ] = fcolor.data[ 2 ] * info.intensity / area * mult;
 
     lt.data_0[ 0 ] = info.position.data[ 0 ];
     lt.data_0[ 1 ] = info.position.data[ 1 ];
@@ -223,10 +227,12 @@ static RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& inf
     return lt;
 }
 
-static uint32_t GetLightArrayEnd( uint32_t regCount, uint32_t dirCount )
+uint32_t GetLightArrayEnd( uint32_t regCount, uint32_t dirCount )
 {
     // assuming that reg lights are always after directional ones
     return LIGHT_ARRAY_REGULAR_LIGHTS_OFFSET + regCount;
+}
+
 }
 
 void RTGL1::LightManager::PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
@@ -240,11 +246,12 @@ void RTGL1::LightManager::PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIn
     // TODO: similar system to just swap desc sets, instead of actual copying
     if( GetLightArrayEnd( regLightCount_Prev, dirLightCount_Prev ) > 0 )
     {
-        VkBufferCopy info = {};
-        info.srcOffset    = 0;
-        info.dstOffset    = 0;
-        info.size =
-            GetLightArrayEnd( regLightCount_Prev, dirLightCount_Prev ) * sizeof( ShLightEncoded );
+        VkBufferCopy info = {
+            .srcOffset = 0,
+            .dstOffset = 0,
+            .size      = GetLightArrayEnd( regLightCount_Prev, dirLightCount_Prev ) *
+                    sizeof( ShLightEncoded ),
+        };
 
         vkCmdCopyBuffer(
             cmd, lightsBuffer->GetDeviceLocal(), lightsBuffer_Prev.GetBuffer(), 1, &info );
@@ -280,8 +287,7 @@ void RTGL1::LightManager::Reset()
     dirLightCount_Prev = dirLightCount = 0;
 }
 
-RTGL1::LightArrayIndex RTGL1::LightManager::GetIndex(
-    const RTGL1::ShLightEncoded& encodedLight ) const
+RTGL1::LightArrayIndex RTGL1::LightManager::GetIndex( const ShLightEncoded& encodedLight ) const
 {
     switch( encodedLight.lightType )
     {
@@ -307,9 +313,9 @@ void RTGL1::LightManager::IncrementCount( const ShLightEncoded& encodedLight )
     }
 }
 
-void RTGL1::LightManager::AddInternal( uint32_t                     frameIndex,
-                                       uint64_t                     uniqueId,
-                                       const RTGL1::ShLightEncoded& encodedLight )
+void RTGL1::LightManager::AddInternal( uint32_t              frameIndex,
+                                       uint64_t              uniqueId,
+                                       const ShLightEncoded& encodedLight )
 {
     if( GetLightArrayEnd( regLightCount, dirLightCount ) >= LIGHT_ARRAY_MAX_SIZE )
     {
@@ -320,8 +326,8 @@ void RTGL1::LightManager::AddInternal( uint32_t                     frameIndex,
     const LightArrayIndex index = GetIndex( encodedLight );
     IncrementCount( encodedLight );
 
-    auto* dst = ( ShLightEncoded* )lightsBuffer->GetMapped( frameIndex );
-    memcpy( &dst[ index.GetArrayIndex() ], &encodedLight, sizeof( RTGL1::ShLightEncoded ) );
+    auto* dst = lightsBuffer->GetMappedAs< ShLightEncoded* >( frameIndex );
+    memcpy( &dst[ index.GetArrayIndex() ], &encodedLight, sizeof( ShLightEncoded ) );
 
 
     FillMatchPrev( frameIndex, index, uniqueId );
@@ -351,6 +357,25 @@ bool IsLightColorTooDim( const T& l )
     return false;
 }
 
+template< typename T >
+float CalculateLightStyle( const T& l, const std::vector< float > &lightstyles )
+{
+    const RgLightExtraInfo& extra = l.extra;
+
+    if( extra.exists )
+    {
+        if( extra.lightstyle < lightstyles.size() )
+        {
+            return lightstyles[ extra.lightstyle ];
+        }
+        else
+        {
+            assert( 0 );
+        }
+    }
+    return 1.0f;
+}
+
 }
 
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSphericalLightUploadInfo& info )
@@ -360,7 +385,9 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSphericalLightUpload
         return;
     }
 
-    AddInternal( frameIndex, info.uniqueID, EncodeAsSphereLight( info ) );
+    AddInternal( frameIndex,
+                 info.uniqueID,
+                 EncodeAsSphereLight( info, CalculateLightStyle( info, lightstyles ) ) );
 }
 
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgPolygonalLightUploadInfo& info )
@@ -376,7 +403,10 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgPolygonalLightUpload
         return;
     }
 
-    AddInternal( frameIndex, info.uniqueID, EncodeAsTriangleLight( info, unnormalizedNormal ) );
+    AddInternal( frameIndex,
+                 info.uniqueID,
+                 EncodeAsTriangleLight(
+                     info, unnormalizedNormal, CalculateLightStyle( info, lightstyles ) ) );
 }
 
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSpotLightUploadInfo& info )
@@ -386,7 +416,9 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgSpotLightUploadInfo&
         return;
     }
 
-    AddInternal( frameIndex, info.uniqueID, EncodeAsSpotLight( info ) );
+    AddInternal( frameIndex,
+                 info.uniqueID,
+                 EncodeAsSpotLight( info, CalculateLightStyle( info, lightstyles ) ) );
 }
 
 void RTGL1::LightManager::Add( uint32_t frameIndex, const RgDirectionalLightUploadInfo& info )
@@ -402,7 +434,9 @@ void RTGL1::LightManager::Add( uint32_t frameIndex, const RgDirectionalLightUplo
         return;
     }
 
-    AddInternal( frameIndex, info.uniqueID, EncodeAsDirectionalLight( info ) );
+    AddInternal( frameIndex,
+                 info.uniqueID,
+                 EncodeAsDirectionalLight( info, CalculateLightStyle( info, lightstyles ) ) );
 }
 
 void RTGL1::LightManager::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
@@ -481,10 +515,10 @@ void RTGL1::LightManager::FillMatchPrev( uint32_t        curFrameIndex,
 
     LightArrayIndex lightIndexInPrevFrame = found->second;
 
-    uint32_t* prev2cur = static_cast< uint32_t* >( prevToCurIndex->GetMapped( curFrameIndex ) );
+    auto* prev2cur = prevToCurIndex->GetMappedAs< uint32_t* >( curFrameIndex );
     prev2cur[ lightIndexInPrevFrame.GetArrayIndex() ] = lightIndexInCurFrame.GetArrayIndex();
 
-    uint32_t* cur2prev = static_cast< uint32_t* >( curToPrevIndex->GetMapped( curFrameIndex ) );
+    auto* cur2prev = curToPrevIndex->GetMappedAs< uint32_t* >( curFrameIndex );
     cur2prev[ lightIndexInCurFrame.GetArrayIndex() ] = lightIndexInPrevFrame.GetArrayIndex();
 }
 

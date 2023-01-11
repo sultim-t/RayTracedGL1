@@ -26,6 +26,8 @@
 #include "AutoBuffer.h"
 #include "LightDefs.h"
 
+#include <span>
+
 namespace RTGL1
 {
 
@@ -61,6 +63,12 @@ public:
 
     VkDescriptorSetLayout GetDescSetLayout() const;
     VkDescriptorSet       GetDescSet( uint32_t frameIndex ) const;
+
+    void SetLightstyles( const RgDrawFrameIlluminationParams &params )
+    {
+        auto values = std::span( params.pLightstyleValues, params.lightstyleValuesCount );
+        lightstyles.assign( values.begin(), values.end() );
+    }
 
 private:
     LightArrayIndex GetIndex( const ShLightEncoded& encodedLight ) const;
@@ -99,6 +107,8 @@ private:
     VkDescriptorSet       descSets[ MAX_FRAMES_IN_FLIGHT ];
 
     bool needDescSetUpdate[ MAX_FRAMES_IN_FLIGHT ];
+
+    std::vector< float > lightstyles;
 };
 
 }

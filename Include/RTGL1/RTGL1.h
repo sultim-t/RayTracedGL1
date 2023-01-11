@@ -643,6 +643,8 @@ typedef struct RgDrawFrameIlluminationParams
     // E.g. first-person flashlight.
     // Null, if none.
     uint64_t*   lightUniqueIdIgnoreFirstPersonViewerShadows;
+    uint32_t    lightstyleValuesCount;
+    float       *pLightstyleValues;
 } RgDrawFrameIlluminationParams;
 
 typedef struct RgDrawFrameVolumetricParams

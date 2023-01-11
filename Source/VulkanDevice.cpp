@@ -471,6 +471,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         frameIndex, AccessParams( drawInfo.pTexturesParams ), mipLodBiasUpdated );
     cubemapManager->SubmitDescriptors( frameIndex );
 
+    lightManager->SetLightstyles( AccessParams( drawInfo.pIlluminationParams ) );
     lightManager->SubmitForFrame( cmd, frameIndex );
 
     // submit geometry and upload uniform after getting data from a scene
