@@ -89,12 +89,21 @@ void main()
     {
         getPixAndDepthFromWorldPoint(vec3(l.positionToCheck_X, l.positionToCheck_Y, l.positionToCheck_Z), pix, depth);
     }
-    
-    float occluderDepth = texelFetch(framebufDepthNdc_Sampler, pix, 0).r;
 
-    if (depth < occluderDepth + 0.00001 && 
-        all(greaterThan(pix, ivec2(0))) &&
-        all(lessThan(pix, ivec2(globalUniform.renderWidth, globalUniform.renderHeight))))
+    float occluderDepth;
+    {
+        vec2 size   = vec2( globalUniform.renderWidth, globalUniform.renderHeight );
+        vec4 depth4 = textureGather( framebufDepthNdc_Sampler, vec2( pix ) / size, 0 );
+
+        occluderDepth = max( depth4[ 0 ], max( depth4[ 1 ], max( depth4[ 2 ], depth4[ 3 ] ) ) );
+        
+        // the larger the depth, apply less bias
+        occluderDepth += mix( 0.01, 0, occluderDepth );
+    }
+
+    if( depth < occluderDepth &&
+        all( greaterThan( pix, ivec2( 0 ) ) ) &&
+        all( lessThan( pix, ivec2( globalUniform.renderWidth, globalUniform.renderHeight ) ) ) )
     {
         uint lensFlareDrawCmdIndex = atomicAdd(lensFlareDrawCmdsCount, 1);
         lensFlareDrawCmds[lensFlareDrawCmdIndex] = l;
