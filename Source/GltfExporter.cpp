@@ -976,7 +976,7 @@ private:
 
     static RgTransform MakeTransform( const RgSpotLightUploadInfo& spot )
     {
-        return RTGL1::Utils::MakeTransform( { 0, 0, 0 }, -spot.direction );
+        return RTGL1::Utils::MakeTransform( spot.position, -spot.direction );
     }
 
     static RgTransform MakeTransform( const RgPolygonalLightUploadInfo& poly )
