@@ -586,7 +586,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "rayCullMaskWorld_Shadow",          1),
     (TYPE_UINT32,       1,      "_unused1",                         1),
-    (TYPE_UINT32,       1,      "applyViewProjToLensFlares",        1),
+    (TYPE_UINT32,       1,      "_unused2",                         1),
     (TYPE_UINT32,       1,      "twirlPortalNormal",                1),
 
     (TYPE_UINT32,       1,      "lightIndexIgnoreFPVShadows",       1),

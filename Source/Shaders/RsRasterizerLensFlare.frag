@@ -28,7 +28,7 @@ layout( location = 0 ) out vec4 outColor;
 layout( location = 1 ) out vec3 outScreenEmission;
 layout( location = 2 ) out float outReactivity;
 
-#define DESC_SET_TEXTURES 1
+#define DESC_SET_TEXTURES 0
 #include "ShaderCommonGLSLFunc.h"
 
 layout( constant_id = 0 ) const uint alphaTest = 0;

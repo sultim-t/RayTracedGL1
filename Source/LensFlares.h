@@ -60,8 +60,8 @@ public:
     void SyncForDraw( VkCommandBuffer cmd, uint32_t frameIndex );
     void Draw( VkCommandBuffer       cmd,
                uint32_t              frameIndex,
-               const GlobalUniform&  uniform,
-               const TextureManager& textureManager );
+               const TextureManager& textureManager,
+               const float*          defaultViewProj );
 
     uint32_t GetCullingInputCount() const;
 

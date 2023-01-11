@@ -28,8 +28,7 @@ layout( location = 0 ) out vec4 outColor;
 layout( location = 1 ) out vec2 outTexCoord;
 layout( location = 2 ) out uint outTextureIndex;
 
-#define DESC_SET_GLOBAL_UNIFORM              0
-#define DESC_SET_LENS_FLARE_VERTEX_INSTANCES 2
+#define DESC_SET_LENS_FLARE_VERTEX_INSTANCES 1
 #include "ShaderCommonGLSLFunc.h"
 
 layout( set     = DESC_SET_LENS_FLARE_VERTEX_INSTANCES,
@@ -38,6 +37,11 @@ layout( set     = DESC_SET_LENS_FLARE_VERTEX_INSTANCES,
     ShLensFlareInstance lensFlareInstances[];
 };
 
+layout( push_constant ) uniform RasterizerVert_BT
+{
+    layout( offset = 0 ) mat4 viewProj;
+}
+rasterizerVertInfo;
 
 layout( constant_id = 0 ) const uint applyVertexColorGamma = 0;
 
@@ -52,15 +56,8 @@ void main()
         outColor = color;
     }
 
-    outTexCoord     = texCoord;
     outTextureIndex = lensFlareInstances[ gl_InstanceIndex ].textureIndex;
 
-    if( globalUniform.applyViewProjToLensFlares != 0 )
-    {
-        gl_Position = globalUniform.projection * globalUniform.view * vec4( position, 1.0 );
-    }
-    else
-    {
-        gl_Position = vec4( position, 1.0 );
-    }
+    outTexCoord = texCoord;
+    gl_Position = rasterizerVertInfo.viewProj * vec4( position, 1.0 );
 }

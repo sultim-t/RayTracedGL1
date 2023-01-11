@@ -26,6 +26,9 @@
 
 namespace
 {
+constexpr bool LENSFLARES_IN_WORLDSPACE = true;
+
+
 constexpr VkDeviceSize MAX_VERTEX_COUNT = 1 << 16;
 constexpr VkDeviceSize MAX_INDEX_COUNT  = 1 << 18;
 
@@ -400,8 +403,8 @@ void RTGL1::LensFlares::SyncForDraw( VkCommandBuffer cmd, uint32_t frameIndex )
 
 void RTGL1::LensFlares::Draw( VkCommandBuffer       cmd,
                               uint32_t              frameIndex,
-                              const GlobalUniform&  uniform,
-                              const TextureManager& textureManager )
+                              const TextureManager& textureManager,
+                              const float*          defaultViewProj )
 {
     if( cullingInputCount == 0 )
     {
@@ -412,7 +415,6 @@ void RTGL1::LensFlares::Draw( VkCommandBuffer       cmd,
         cmd, VK_NULL_HANDLE, PipelineStateFlagBits::TRANSLUCENT | PipelineStateFlagBits::ADDITIVE );
 
     VkDescriptorSet sets[] = {
-        uniform.GetDescSet( frameIndex ),
         textureManager.GetDescSet( frameIndex ),
         rasterDescSet,
     };
@@ -424,6 +426,21 @@ void RTGL1::LensFlares::Draw( VkCommandBuffer       cmd,
                              sets,
                              0,
                              nullptr );
+
+    static constexpr float Identity[ 4 ][ 4 ] = {
+        { 1, 0, 0, 0 },
+        { 0, 1, 0, 0 },
+        { 0, 0, 1, 0 },
+        { 0, 0, 0, 1 },
+    };
+
+    vkCmdPushConstants( cmd,
+                        rasterPipelines->GetPipelineLayout(),
+                        VK_SHADER_STAGE_VERTEX_BIT,
+                        0,
+                        16 * sizeof( float ),
+                        LENSFLARES_IN_WORLDSPACE ? defaultViewProj
+                                                 : reinterpret_cast< const float* >( Identity ) );
 
     VkBuffer     vb     = vertexBuffer->GetDeviceLocal();
     VkDeviceSize offset = 0;
@@ -452,15 +469,22 @@ void RTGL1::LensFlares::CreatePipelineLayouts( VkDescriptorSetLayout uniform,
 {
     {
         VkDescriptorSetLayout s[] = {
-            uniform,
             textures,
             raster,
         };
 
+        VkPushConstantRange push = {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset     = 0,
+            .size       = 16 * sizeof( float ),
+        };
+
         VkPipelineLayoutCreateInfo layoutInfo = {
-            .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .setLayoutCount = std::size( s ),
-            .pSetLayouts    = s,
+            .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount         = std::size( s ),
+            .pSetLayouts            = s,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges    = &push,
         };
 
         VkResult r =

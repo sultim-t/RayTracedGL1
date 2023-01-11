@@ -398,8 +398,6 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
         gu->lightmapScreenCoverage = std::clamp( params.lightmapScreenCoverage, 0.0f, 1.0f );
     }
-    
-    gu->applyViewProjToLensFlares = LENSFLARES_IN_WORLDSPACE;
 
     {
         const auto& params = AccessParams( drawInfo.pVolumetricParams );

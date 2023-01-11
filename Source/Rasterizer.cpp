@@ -208,8 +208,7 @@ namespace RTGL1
 
 struct RasterLensFlares
 {
-    const GlobalUniform&  uniform;
-    const TextureManager& textureManager;
+    const TextureManager* textureManager;
 };
 
 struct RasterDrawParams
@@ -336,11 +335,7 @@ void RTGL1::Rasterizer::DrawToFinalImage( VkCommandBuffer               cmd,
         .indexBuffer     = collector->GetIndexBuffer(),
         .descSets        = sets,
         .defaultViewProj = defaultViewProj,
-        .flaresParams =
-            RasterLensFlares{
-                .uniform        = uniform,
-                .textureManager = textureManager,
-            },
+        .flaresParams    = RasterLensFlares{ .textureManager = &textureManager },
     };
 
     Draw( cmd, frameIndex, params );
@@ -497,10 +492,8 @@ void RTGL1::Rasterizer::Draw( VkCommandBuffer         cmd,
         vkCmdSetScissor( cmd, 0, 1, &defaultRenderArea );
         vkCmdSetViewport( cmd, 0, 1, &defaultViewport );
 
-        lensFlares->Draw( cmd,
-                          frameIndex,
-                          drawParams.flaresParams->uniform,
-                          drawParams.flaresParams->textureManager );
+        lensFlares->Draw(
+            cmd, frameIndex, *drawParams.flaresParams->textureManager, drawParams.defaultViewProj );
     }
 
 

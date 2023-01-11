@@ -51,8 +51,6 @@ constexpr uint32_t MAX_PREGENERATED_MIPMAP_LEVELS = 20;
 
 constexpr float MESH_TRANSLUCENT_ALPHA_THRESHOLD = 0.98f;
 
-constexpr bool LENSFLARES_IN_WORLDSPACE = true; 
-
 // Use WORLD2 mask bit as SKY
 #define RAYCULLMASK_SKY_IS_WORLD2 1
 

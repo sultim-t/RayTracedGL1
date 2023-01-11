@@ -270,7 +270,7 @@ struct ShGlobalUniform
     float primaryRayMinDist;
     uint rayCullMaskWorld_Shadow;
     uint _unused1;
-    uint applyViewProjToLensFlares;
+    uint _unused2;
     uint twirlPortalNormal;
     uint lightIndexIgnoreFPVShadows;
     float gradientMultDiffuse;
