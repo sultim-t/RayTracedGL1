@@ -210,7 +210,7 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
     {
         if( additive )
         {
-            blendSrc = VK_BLEND_FACTOR_ONE;
+            blendSrc = VK_BLEND_FACTOR_SRC_ALPHA;
             blendDst = VK_BLEND_FACTOR_ONE;
         }
         else
@@ -235,11 +235,11 @@ VkPipeline RTGL1::RasterizerPipelines::CreatePipeline( PipelineStateFlags pipeli
         // screenEmission
         {
             .blendEnable         = additive || translucent,
-            .srcColorBlendFactor = blendSrc,
-            .dstColorBlendFactor = blendDst,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE,
             .colorBlendOp        = VK_BLEND_OP_ADD,
-            .srcAlphaBlendFactor = blendSrc,
-            .dstAlphaBlendFactor = blendDst,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
             .alphaBlendOp        = VK_BLEND_OP_ADD,
             .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
                               VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
