@@ -350,10 +350,10 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     decalManager = std::make_shared< DecalManager >(
         device, 
         memAllocator, 
-        shaderManager, 
-        uniform, 
         framebuffers,
-        textureManager );
+        *shaderManager, 
+        *uniform, 
+        *textureManager );
 
     portalList = std::make_shared< PortalList >( 
         device,

@@ -25,18 +25,18 @@
 #include "Generated/ShaderCommonC.h"
 
 
-constexpr uint32_t            DECAL_MAX_COUNT = 4096;
+constexpr uint32_t DECAL_MAX_COUNT = 4096;
 
 constexpr uint32_t            CUBE_VERTEX_COUNT = 14;
 constexpr VkPrimitiveTopology CUBE_TOPOLOGY     = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 
 
-RTGL1::DecalManager::DecalManager( VkDevice                                 _device,
-                                   std::shared_ptr< MemoryAllocator >&      _allocator,
-                                   const std::shared_ptr< ShaderManager >&  _shaderManager,
-                                   const std::shared_ptr< GlobalUniform >&  _uniform,
-                                   std::shared_ptr< Framebuffers >          _storageFramebuffers,
-                                   const std::shared_ptr< TextureManager >& _textureManager )
+RTGL1::DecalManager::DecalManager( VkDevice                           _device,
+                                   std::shared_ptr< MemoryAllocator > _allocator,
+                                   std::shared_ptr< Framebuffers >    _storageFramebuffers,
+                                   const ShaderManager&               _shaderManager,
+                                   const GlobalUniform&               _uniform,
+                                   const TextureManager&              _textureManager )
     : device( _device )
     , storageFramebuffers( std::move( _storageFramebuffers ) )
     , decalCount( 0 )
@@ -48,19 +48,21 @@ RTGL1::DecalManager::DecalManager( VkDevice                                 _dev
     , descSetLayout( VK_NULL_HANDLE )
     , descSet( VK_NULL_HANDLE )
 {
-    instanceBuffer = std::make_unique< AutoBuffer >( _allocator );
+    instanceBuffer = std::make_unique< AutoBuffer >( std::move( _allocator ) );
     instanceBuffer->Create( DECAL_MAX_COUNT * sizeof( ShDecalInstance ),
                             VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                             "Decal instance buffer" );
 
     CreateDescriptors();
     CreateRenderPass();
-    VkDescriptorSetLayout setLayouts[] = { _uniform->GetDescSetLayout(),
-                                           storageFramebuffers->GetDescSetLayout(),
-                                           _textureManager->GetDescSetLayout(),
-                                           descSetLayout };
+    VkDescriptorSetLayout setLayouts[] = {
+        _uniform.GetDescSetLayout(),
+        storageFramebuffers->GetDescSetLayout(),
+        _textureManager.GetDescSetLayout(),
+        descSetLayout,
+    };
     CreatePipelineLayout( setLayouts, std::size( setLayouts ) );
-    CreatePipelines( _shaderManager.get() );
+    CreatePipelines( &_shaderManager );
 }
 
 RTGL1::DecalManager::~DecalManager()
@@ -136,20 +138,22 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
     CmdLabel label( cmd, "Decal draw" );
 
     {
-        VkBufferMemoryBarrier2KHR b = {};
-        b.sType                     = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR;
-        b.srcStageMask              = VK_PIPELINE_STAGE_2_COPY_BIT_KHR;
-        b.srcAccessMask             = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR;
-        b.dstStageMask              = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR;
-        b.dstAccessMask             = VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR;
-        b.buffer                    = instanceBuffer->GetDeviceLocal();
-        b.offset                    = 0;
-        b.size                      = decalCount * sizeof( ShDecalInstance );
+        VkBufferMemoryBarrier2KHR b = {
+            .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_COPY_BIT_KHR,
+            .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR,
+            .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR,
+            .buffer        = instanceBuffer->GetDeviceLocal(),
+            .offset        = 0,
+            .size          = decalCount * sizeof( ShDecalInstance ),
+        };
 
-        VkDependencyInfoKHR info      = {};
-        info.sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR;
-        info.bufferMemoryBarrierCount = 1;
-        info.pBufferMemoryBarriers    = &b;
+        VkDependencyInfoKHR info = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+            .bufferMemoryBarrierCount = 1,
+            .pBufferMemoryBarriers    = &b,
+        };
 
         svkCmdPipelineBarrier2KHR( cmd, &info );
     }
@@ -168,26 +172,37 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
     assert( passFramebuffers[ frameIndex ] != VK_NULL_HANDLE );
 
     const VkViewport viewport = {
-        0, 0, uniform->GetData()->renderWidth, uniform->GetData()->renderHeight, 0.0f, 1.0f
+        .x        = 0,
+        .y        = 0,
+        .width    = uniform->GetData()->renderWidth,
+        .height   = uniform->GetData()->renderHeight,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
     };
-    const VkRect2D        renderArea = { { 0, 0 },
-                                  { ( uint32_t )uniform->GetData()->renderWidth,
-                                    ( uint32_t )uniform->GetData()->renderHeight } };
 
-    VkRenderPassBeginInfo beginInfo = {};
-    beginInfo.sType                 = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO;
-    beginInfo.renderPass            = renderPass;
-    beginInfo.framebuffer           = passFramebuffers[ frameIndex ];
-    beginInfo.renderArea            = renderArea;
-    beginInfo.clearValueCount       = 0;
+    const VkRect2D renderArea = {
+        .offset = { .x = 0, .y = 0 },
+        .extent = { .width  = uint32_t( uniform->GetData()->renderWidth ),
+                    .height = uint32_t( uniform->GetData()->renderHeight ) },
+    };
+
+    VkRenderPassBeginInfo beginInfo = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass      = renderPass,
+        .framebuffer     = passFramebuffers[ frameIndex ],
+        .renderArea      = renderArea,
+        .clearValueCount = 0,
+    };
 
     vkCmdBeginRenderPass( cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
     vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
-    VkDescriptorSet sets[] = { uniform->GetDescSet( frameIndex ),
-                               framebuffers->GetDescSet( frameIndex ),
-                               textureManager->GetDescSet( frameIndex ),
-                               descSet };
+    VkDescriptorSet sets[] = {
+        uniform->GetDescSet( frameIndex ),
+        framebuffers->GetDescSet( frameIndex ),
+        textureManager->GetDescSet( frameIndex ),
+        descSet,
+    };
 
     vkCmdBindDescriptorSets( cmd,
                              VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -220,50 +235,54 @@ void RTGL1::DecalManager::OnFramebuffersSizeChange( const ResolutionState& resol
 
 void RTGL1::DecalManager::CreateRenderPass()
 {
-    VkAttachmentDescription colorAttch = {};
-    colorAttch.format                  = ShFramebuffers_Formats[ FB_IMAGE_INDEX_ALBEDO ];
-    colorAttch.samples                 = VK_SAMPLE_COUNT_1_BIT;
-    colorAttch.loadOp                  = VK_ATTACHMENT_LOAD_OP_LOAD;
-    colorAttch.storeOp                 = VK_ATTACHMENT_STORE_OP_STORE;
-    colorAttch.stencilLoadOp           = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
-    colorAttch.stencilStoreOp          = VK_ATTACHMENT_STORE_OP_DONT_CARE;
-    colorAttch.initialLayout           = VK_IMAGE_LAYOUT_GENERAL;
-    colorAttch.finalLayout             = VK_IMAGE_LAYOUT_GENERAL;
+    VkAttachmentDescription colorAttch = {
+        .format         = ShFramebuffers_Formats[ FB_IMAGE_INDEX_ALBEDO ],
+        .samples        = VK_SAMPLE_COUNT_1_BIT,
+        .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
+        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .initialLayout  = VK_IMAGE_LAYOUT_GENERAL,
+        .finalLayout    = VK_IMAGE_LAYOUT_GENERAL,
+    };
 
-    VkAttachmentReference colorRef = {};
-    colorRef.attachment            = 0;
-    colorRef.layout                = VK_IMAGE_LAYOUT_GENERAL;
+    VkAttachmentReference colorRef = {
+        .attachment = 0,
+        .layout     = VK_IMAGE_LAYOUT_GENERAL,
+    };
 
-    VkSubpassDescription subpass    = {};
-    subpass.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS;
-    subpass.inputAttachmentCount    = 0;
-    subpass.pInputAttachments       = nullptr;
-    subpass.colorAttachmentCount    = 1;
-    subpass.pColorAttachments       = &colorRef;
-    subpass.pResolveAttachments     = nullptr;
-    subpass.pDepthStencilAttachment = nullptr;
-    subpass.preserveAttachmentCount = 0;
-    subpass.pPreserveAttachments    = nullptr;
+    VkSubpassDescription subpass = {
+        .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
+        .inputAttachmentCount    = 0,
+        .pInputAttachments       = nullptr,
+        .colorAttachmentCount    = 1,
+        .pColorAttachments       = &colorRef,
+        .pResolveAttachments     = nullptr,
+        .pDepthStencilAttachment = nullptr,
+        .preserveAttachmentCount = 0,
+        .pPreserveAttachments    = nullptr,
+    };
 
-    VkSubpassDependency dependency = {};
-    dependency.srcSubpass          = VK_SUBPASS_EXTERNAL;
-    dependency.dstSubpass          = 0;
-    dependency.srcStageMask =
-        VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT;
-    dependency.dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    dependency.srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT; // imageStore
-    dependency.dstAccessMask =
-        VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+    VkSubpassDependency dependency = {
+        .srcSubpass = VK_SUBPASS_EXTERNAL,
+        .dstSubpass = 0,
+        .srcStageMask =
+            VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT,
+        .dstStageMask  = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+        .srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT, // imageStore
+        .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+    };
 
-    VkRenderPassCreateInfo info = {};
-    info.sType                  = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
-    info.flags                  = 0;
-    info.attachmentCount        = 1;
-    info.pAttachments           = &colorAttch;
-    info.subpassCount           = 1;
-    info.pSubpasses             = &subpass;
-    info.dependencyCount        = 1;
-    info.pDependencies          = &dependency;
+    VkRenderPassCreateInfo info = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
+        .flags           = 0,
+        .attachmentCount = 1,
+        .pAttachments    = &colorAttch,
+        .subpassCount    = 1,
+        .pSubpasses      = &subpass,
+        .dependencyCount = 1,
+        .pDependencies   = &dependency,
+    };
 
     VkResult r = vkCreateRenderPass( device, &info, nullptr, &renderPass );
     VK_CHECKERROR( r );
@@ -275,16 +294,17 @@ void RTGL1::DecalManager::CreateFramebuffers( uint32_t width, uint32_t height )
     {
         assert( passFramebuffers[ i ] == VK_NULL_HANDLE );
 
-        VkImageView             v = storageFramebuffers->GetImageView( FB_IMAGE_INDEX_ALBEDO, i );
+        VkImageView v = storageFramebuffers->GetImageView( FB_IMAGE_INDEX_ALBEDO, i );
 
-        VkFramebufferCreateInfo info = {};
-        info.sType                   = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
-        info.renderPass              = renderPass;
-        info.attachmentCount         = 1;
-        info.pAttachments            = &v;
-        info.width                   = width;
-        info.height                  = height;
-        info.layers                  = 1;
+        VkFramebufferCreateInfo info = {
+            .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
+            .renderPass      = renderPass,
+            .attachmentCount = 1,
+            .pAttachments    = &v,
+            .width           = width,
+            .height          = height,
+            .layers          = 1,
+        };
 
         VkResult r = vkCreateFramebuffer( device, &info, nullptr, &passFramebuffers[ i ] );
         VK_CHECKERROR( r );
@@ -306,12 +326,13 @@ void RTGL1::DecalManager::DestroyFramebuffers()
 void RTGL1::DecalManager::CreatePipelineLayout( const VkDescriptorSetLayout* pSetLayouts,
                                                 uint32_t                     setLayoutCount )
 {
-    VkPipelineLayoutCreateInfo info = {};
-    info.sType                      = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
-    info.setLayoutCount             = setLayoutCount;
-    info.pSetLayouts                = pSetLayouts;
-    info.pushConstantRangeCount     = 0;
-    info.pPushConstantRanges        = nullptr;
+    VkPipelineLayoutCreateInfo info = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount         = setLayoutCount,
+        .pSetLayouts            = pSetLayouts,
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = nullptr,
+    };
 
     VkResult r = vkCreatePipelineLayout( device, &info, nullptr, &pipelineLayout );
     VK_CHECKERROR( r );
@@ -328,92 +349,103 @@ void RTGL1::DecalManager::CreatePipelines( const ShaderManager* shaderManager )
         shaderManager->GetStageInfo( "FragDecal" ),
     };
 
-    VkPipelineVertexInputStateCreateInfo vertexInput = {};
-    vertexInput.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
-    vertexInput.vertexBindingDescriptionCount   = 0;
-    vertexInput.vertexAttributeDescriptionCount = 0;
+    VkPipelineVertexInputStateCreateInfo vertexInput = {
+        .sType                         = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
+        .vertexBindingDescriptionCount = 0,
+        .vertexAttributeDescriptionCount = 0,
+    };
 
-    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
-    inputAssembly.sType    = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
-    inputAssembly.topology = CUBE_TOPOLOGY;
-    inputAssembly.primitiveRestartEnable = VK_FALSE;
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
+        .topology               = CUBE_TOPOLOGY,
+        .primitiveRestartEnable = VK_FALSE,
+    };
 
-    VkPipelineViewportStateCreateInfo viewportState = {};
-    viewportState.sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
-    viewportState.viewportCount = 1;
-    viewportState.pViewports    = nullptr; // dynamic state
-    viewportState.scissorCount  = 1;
-    viewportState.pScissors     = nullptr; // dynamic state
+    VkPipelineViewportStateCreateInfo viewportState = {
+        .sType         = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports    = nullptr, // dynamic state
+        .scissorCount  = 1,
+        .pScissors     = nullptr, // dynamic state
+    };
 
-    VkPipelineRasterizationStateCreateInfo raster = {};
-    raster.sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
-    raster.depthClampEnable        = VK_FALSE;
-    raster.rasterizerDiscardEnable = VK_FALSE;
-    raster.polygonMode             = VK_POLYGON_MODE_FILL;
-    raster.cullMode                = VK_CULL_MODE_NONE;
-    raster.frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE;
-    raster.depthBiasEnable         = VK_FALSE;
-    raster.depthBiasConstantFactor = 0;
-    raster.depthBiasClamp          = 0;
-    raster.depthBiasSlopeFactor    = 0;
-    raster.lineWidth               = 1.0f;
+    VkPipelineRasterizationStateCreateInfo raster = {
+        .sType                   = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .depthClampEnable        = VK_FALSE,
+        .rasterizerDiscardEnable = VK_FALSE,
+        .polygonMode             = VK_POLYGON_MODE_FILL,
+        .cullMode                = VK_CULL_MODE_NONE,
+        .frontFace               = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+        .depthBiasEnable         = VK_FALSE,
+        .depthBiasConstantFactor = 0,
+        .depthBiasClamp          = 0,
+        .depthBiasSlopeFactor    = 0,
+        .lineWidth               = 1.0f,
+    };
 
-    VkPipelineMultisampleStateCreateInfo multisampling = {};
-    multisampling.sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
-    multisampling.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
-    multisampling.sampleShadingEnable  = VK_FALSE;
+    VkPipelineMultisampleStateCreateInfo multisampling = {
+        .sType                = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .sampleShadingEnable  = VK_FALSE,
+    };
 
-    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
-    depthStencil.sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
-    depthStencil.depthCompareOp        = VK_COMPARE_OP_LESS_OR_EQUAL;
-    depthStencil.depthTestEnable       = VK_FALSE; // must be true, if depthWrite is true
-    depthStencil.depthWriteEnable      = VK_FALSE;
-    depthStencil.stencilTestEnable     = VK_FALSE;
-    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    VkPipelineDepthStencilStateCreateInfo depthStencil = {
+        .sType                 = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+        .depthTestEnable       = VK_FALSE, // must be true, if depthWrite is true
+        .depthWriteEnable      = VK_FALSE,
+        .depthCompareOp        = VK_COMPARE_OP_LESS_OR_EQUAL,
+        .depthBoundsTestEnable = VK_FALSE,
+        .stencilTestEnable     = VK_FALSE,
+    };
 
-    VkPipelineColorBlendAttachmentState colorBlendAttch = {};
-    colorBlendAttch.blendEnable                         = VK_TRUE;
-    colorBlendAttch.colorBlendOp = colorBlendAttch.alphaBlendOp = VK_BLEND_OP_ADD;
-    colorBlendAttch.srcColorBlendFactor = colorBlendAttch.srcAlphaBlendFactor =
-        VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttch.dstColorBlendFactor = colorBlendAttch.dstAlphaBlendFactor =
-        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttch.colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | 0;
+    VkPipelineColorBlendAttachmentState colorBlendAttch = {
+        .blendEnable         = VK_TRUE,
+        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .colorBlendOp        = VK_BLEND_OP_ADD,
+        .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+        .alphaBlendOp        = VK_BLEND_OP_ADD,
+        .colorWriteMask =
+            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | 0,
+    };
 
-    VkPipelineColorBlendStateCreateInfo colorBlendState = {};
-    colorBlendState.sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
-    colorBlendState.logicOpEnable   = VK_FALSE;
-    colorBlendState.attachmentCount = 1;
-    colorBlendState.pAttachments    = &colorBlendAttch;
+    VkPipelineColorBlendStateCreateInfo colorBlendState = {
+        .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+        .logicOpEnable   = VK_FALSE,
+        .attachmentCount = 1,
+        .pAttachments    = &colorBlendAttch,
+    };
 
     VkDynamicState dynamicStates[] = {
         VK_DYNAMIC_STATE_VIEWPORT,
         VK_DYNAMIC_STATE_SCISSOR,
     };
 
-    VkPipelineDynamicStateCreateInfo dynamicInfo = {};
-    dynamicInfo.sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO;
-    dynamicInfo.dynamicStateCount = std::size( dynamicStates );
-    dynamicInfo.pDynamicStates    = dynamicStates;
+    VkPipelineDynamicStateCreateInfo dynamicInfo = {
+        .sType             = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = std::size( dynamicStates ),
+        .pDynamicStates    = dynamicStates,
+    };
 
-    VkGraphicsPipelineCreateInfo info = {};
-    info.sType                        = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
-    info.stageCount                   = std::size( stages );
-    info.pStages                      = stages;
-    info.pVertexInputState            = &vertexInput;
-    info.pInputAssemblyState          = &inputAssembly;
-    info.pTessellationState           = nullptr;
-    info.pViewportState               = &viewportState;
-    info.pRasterizationState          = &raster;
-    info.pMultisampleState            = &multisampling;
-    info.pDepthStencilState           = &depthStencil;
-    info.pColorBlendState             = &colorBlendState;
-    info.pDynamicState                = &dynamicInfo;
-    info.layout                       = pipelineLayout;
-    info.renderPass                   = renderPass;
-    info.subpass                      = 0;
-    info.basePipelineHandle           = VK_NULL_HANDLE;
+    VkGraphicsPipelineCreateInfo info = {
+        .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount          = std::size( stages ),
+        .pStages             = stages,
+        .pVertexInputState   = &vertexInput,
+        .pInputAssemblyState = &inputAssembly,
+        .pTessellationState  = nullptr,
+        .pViewportState      = &viewportState,
+        .pRasterizationState = &raster,
+        .pMultisampleState   = &multisampling,
+        .pDepthStencilState  = &depthStencil,
+        .pColorBlendState    = &colorBlendState,
+        .pDynamicState       = &dynamicInfo,
+        .layout              = pipelineLayout,
+        .renderPass          = renderPass,
+        .subpass             = 0,
+        .basePipelineHandle  = VK_NULL_HANDLE,
+    };
 
     VkResult r = vkCreateGraphicsPipelines( device, VK_NULL_HANDLE, 1, &info, nullptr, &pipeline );
     VK_CHECKERROR( r );
@@ -430,15 +462,17 @@ void RTGL1::DecalManager::DestroyPipelines()
 void RTGL1::DecalManager::CreateDescriptors()
 {
     {
-        VkDescriptorPoolSize poolSize = {};
-        poolSize.type                 = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        poolSize.descriptorCount      = 1;
+        VkDescriptorPoolSize poolSize = {
+            .type            = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+        };
 
-        VkDescriptorPoolCreateInfo poolInfo = {};
-        poolInfo.sType                      = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
-        poolInfo.poolSizeCount              = 1;
-        poolInfo.pPoolSizes                 = &poolSize;
-        poolInfo.maxSets                    = 1;
+        VkDescriptorPoolCreateInfo poolInfo = {
+            .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .maxSets       = 1,
+            .poolSizeCount = 1,
+            .pPoolSizes    = &poolSize,
+        };
 
         VkResult r = vkCreateDescriptorPool( device, &poolInfo, nullptr, &descPool );
         VK_CHECKERROR( r );
@@ -446,16 +480,18 @@ void RTGL1::DecalManager::CreateDescriptors()
         SET_DEBUG_NAME( device, descPool, VK_OBJECT_TYPE_DESCRIPTOR_POOL, "Decal desc pool" );
     }
     {
-        VkDescriptorSetLayoutBinding binding = {};
-        binding.binding                      = BINDING_DECAL_INSTANCES;
-        binding.descriptorType               = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        binding.descriptorCount              = 1;
-        binding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+        VkDescriptorSetLayoutBinding binding = {
+            .binding         = BINDING_DECAL_INSTANCES,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .descriptorCount = 1,
+            .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT,
+        };
 
-        VkDescriptorSetLayoutCreateInfo info = {};
-        info.sType                           = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
-        info.bindingCount                    = 1;
-        info.pBindings                       = &binding;
+        VkDescriptorSetLayoutCreateInfo info = {
+            .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+            .bindingCount = 1,
+            .pBindings    = &binding,
+        };
 
         VkResult r = vkCreateDescriptorSetLayout( device, &info, nullptr, &descSetLayout );
         VK_CHECKERROR( r );
@@ -465,11 +501,12 @@ void RTGL1::DecalManager::CreateDescriptors()
     }
 
     {
-        VkDescriptorSetAllocateInfo allocInfo = {};
-        allocInfo.sType                       = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-        allocInfo.descriptorPool              = descPool;
-        allocInfo.descriptorSetCount          = 1;
-        allocInfo.pSetLayouts                 = &descSetLayout;
+        VkDescriptorSetAllocateInfo allocInfo = {
+            .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+            .descriptorPool     = descPool,
+            .descriptorSetCount = 1,
+            .pSetLayouts        = &descSetLayout,
+        };
 
         VkResult r = vkAllocateDescriptorSets( device, &allocInfo, &descSet );
         VK_CHECKERROR( r );
@@ -477,19 +514,21 @@ void RTGL1::DecalManager::CreateDescriptors()
         SET_DEBUG_NAME( device, descSet, VK_OBJECT_TYPE_DESCRIPTOR_SET, "Decal desc set" );
     }
     {
-        VkDescriptorBufferInfo b = {};
-        b.buffer                 = instanceBuffer->GetDeviceLocal();
-        b.offset                 = 0;
-        b.range                  = VK_WHOLE_SIZE;
+        VkDescriptorBufferInfo b = {
+            .buffer = instanceBuffer->GetDeviceLocal(),
+            .offset = 0,
+            .range  = VK_WHOLE_SIZE,
+        };
 
-        VkWriteDescriptorSet w = {};
-        w.sType                = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-        w.dstSet               = descSet;
-        w.dstBinding           = BINDING_DECAL_INSTANCES;
-        w.dstArrayElement      = 0;
-        w.descriptorType       = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        w.descriptorCount      = 1;
-        w.pBufferInfo          = &b;
+        VkWriteDescriptorSet w = {
+            .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+            .dstSet          = descSet,
+            .dstBinding      = BINDING_DECAL_INSTANCES,
+            .dstArrayElement = 0,
+            .descriptorCount = 1,
+            .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+            .pBufferInfo     = &b,
+        };
 
         vkUpdateDescriptorSets( device, 1, &w, 0, nullptr );
     }

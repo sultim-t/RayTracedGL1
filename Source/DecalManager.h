@@ -34,32 +34,32 @@ class DecalManager
     , public IFramebuffersDependency
 {
 public:
-    DecalManager( VkDevice                                 device,
-                  std::shared_ptr< MemoryAllocator >&      allocator,
-                  const std::shared_ptr< ShaderManager >&  shaderManager,
-                  const std::shared_ptr< GlobalUniform >&  uniform,
-                  std::shared_ptr< Framebuffers >          _storageFramebuffers,
-                  const std::shared_ptr< TextureManager >& textureManager );
+    DecalManager( VkDevice                           device,
+                  std::shared_ptr< MemoryAllocator > allocator,
+                  std::shared_ptr< Framebuffers >    storageFramebuffers,
+                  const ShaderManager&               shaderManager,
+                  const GlobalUniform&               uniform,
+                  const TextureManager&              textureManager );
     ~DecalManager() override;
 
-    DecalManager( const DecalManager& other )     = delete;
-    DecalManager( DecalManager&& other ) noexcept = delete;
-    DecalManager& operator=( const DecalManager& other ) = delete;
+    DecalManager( const DecalManager& other )                = delete;
+    DecalManager( DecalManager&& other ) noexcept            = delete;
+    DecalManager& operator=( const DecalManager& other )     = delete;
     DecalManager& operator=( DecalManager&& other ) noexcept = delete;
 
-    void          PrepareForFrame( uint32_t frameIndex );
-    void          Upload( uint32_t                                 frameIndex,
-                          const RgDecalUploadInfo&                 uploadInfo,
-                          const std::shared_ptr< TextureManager >& textureManager );
-    void          SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
-    void          Draw( VkCommandBuffer                          cmd,
-                        uint32_t                                 frameIndex,
-                        const std::shared_ptr< GlobalUniform >&  uniform,
-                        const std::shared_ptr< Framebuffers >&   framebuffers,
-                        const std::shared_ptr< TextureManager >& textureManager );
+    void PrepareForFrame( uint32_t frameIndex );
+    void Upload( uint32_t                                 frameIndex,
+                 const RgDecalUploadInfo&                 uploadInfo,
+                 const std::shared_ptr< TextureManager >& textureManager );
+    void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
+    void Draw( VkCommandBuffer                          cmd,
+               uint32_t                                 frameIndex,
+               const std::shared_ptr< GlobalUniform >&  uniform,
+               const std::shared_ptr< Framebuffers >&   framebuffers,
+               const std::shared_ptr< TextureManager >& textureManager );
 
-    void          OnShaderReload( const ShaderManager* shaderManager ) override;
-    void          OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;
+    void OnShaderReload( const ShaderManager* shaderManager ) override;
+    void OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;
 
 private:
     void CreateRenderPass();
@@ -74,18 +74,18 @@ private:
     VkDevice                        device;
     std::shared_ptr< Framebuffers > storageFramebuffers;
 
-    std::unique_ptr< AutoBuffer >   instanceBuffer;
-    uint32_t                        decalCount;
+    std::unique_ptr< AutoBuffer > instanceBuffer;
+    uint32_t                      decalCount;
 
-    VkRenderPass                    renderPass;
-    VkFramebuffer                   passFramebuffers[ MAX_FRAMES_IN_FLIGHT ];
+    VkRenderPass  renderPass;
+    VkFramebuffer passFramebuffers[ MAX_FRAMES_IN_FLIGHT ];
 
-    VkPipelineLayout                pipelineLayout;
-    VkPipeline                      pipeline;
+    VkPipelineLayout pipelineLayout;
+    VkPipeline       pipeline;
 
-    VkDescriptorPool                descPool;
-    VkDescriptorSetLayout           descSetLayout;
-    VkDescriptorSet                 descSet;
+    VkDescriptorPool      descPool;
+    VkDescriptorSetLayout descSetLayout;
+    VkDescriptorSet       descSet;
 };
 
 }
