@@ -169,7 +169,8 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
             .sType         = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2_KHR,
             .srcStageMask  = VK_PIPELINE_STAGE_2_COPY_BIT_KHR,
             .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT_KHR,
-            .dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_VERTEX_SHADER_BIT_KHR |
+                            VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT_KHR,
             .dstAccessMask = VK_ACCESS_2_SHADER_STORAGE_READ_BIT_KHR,
             .buffer        = instanceBuffer->GetDeviceLocal(),
             .offset        = 0,
@@ -228,8 +229,8 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
                 VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
             .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
             .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
             .image            = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
             .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
                                   .baseMipLevel   = 0,
@@ -301,6 +302,35 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
 
     // copy normals back from attachment to G-buffer
     {
+        {
+            VkImageMemoryBarrier2KHR b = {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .srcAccessMask       = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
+                .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                      .baseMipLevel   = 0,
+                                      .levelCount     = 1,
+                                      .baseArrayLayer = 0,
+                                      .layerCount     = 1 },
+            };
+
+            VkDependencyInfoKHR info = {
+                .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers    = &b,
+            };
+
+            svkCmdPipelineBarrier2KHR( cmd, &info );
+        }
+
         VkDescriptorSet sets[] = {
             framebuffers->GetDescSet( frameIndex ),
             uniform->GetDescSet( frameIndex ),
@@ -321,33 +351,35 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
                                                  COMPUTE_DECAL_APPLY_GROUP_SIZE_X ),
                        1 );
 
+        {
+            VkImageMemoryBarrier2KHR b = {
+                .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext         = nullptr,
+                .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+                .dstStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT |
+                                VK_PIPELINE_STAGE_2_RAY_TRACING_SHADER_BIT_KHR,
+                .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL, frameIndex ),
+                .subresourceRange    = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .baseMipLevel   = 0,
+                                         .levelCount     = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount     = 1 },
+            };
 
-        VkImageMemoryBarrier2KHR b = {
-            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .pNext               = nullptr,
-            .srcStageMask        = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .srcAccessMask       = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
-            .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT,
-            .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
-            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
-            .srcQueueFamilyIndex = 0,
-            .dstQueueFamilyIndex = 0,
-            .image            = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
-            .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                                  .baseMipLevel   = 0,
-                                  .levelCount     = 1,
-                                  .baseArrayLayer = 0,
-                                  .layerCount     = 1 },
-        };
+            VkDependencyInfoKHR info = {
+                .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+                .imageMemoryBarrierCount = 1,
+                .pImageMemoryBarriers    = &b,
+            };
 
-        VkDependencyInfoKHR info = {
-            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers    = &b,
-        };
-
-        svkCmdPipelineBarrier2KHR( cmd, &info );
+            svkCmdPipelineBarrier2KHR( cmd, &info );
+        }
     }
 }
 
