@@ -1,15 +1,15 @@
 // Copyright (c) 2022 Sultim Tsyrendashiev
-// 
+//
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in all
 // copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -22,27 +22,38 @@
 
 #define FRAMEBUF_IGNORE_ATTACHMENTS
 #define DESC_SET_GLOBAL_UNIFORM 0
-#define DESC_SET_FRAMEBUFFERS 1
-#define DESC_SET_TEXTURES 2
-#define DESC_SET_DECALS 3
+#define DESC_SET_FRAMEBUFFERS   1
+#define DESC_SET_TEXTURES       2
+#define DESC_SET_DECALS         3
 #include "ShaderCommonGLSLFunc.h"
 
-layout (location = 0) flat in uint instanceIndex;
+layout( location = 0 ) flat in uint instanceIndex;
 
-layout (location = 0) out vec4 outAlbedo;
+layout( location = 0 ) out vec4 out_albedo;
+layout( location = 1 ) out uint out_normal;
+
+vec3 getNormal( const ShDecalInstance decal, const vec2 texCoord )
+{
+    vec2 nmap = getTextureSample( decal.textureNormal, texCoord ).xy;
+    nmap.xy   = nmap.xy * 2.0 - vec2( 1.0 );
+
+    // decal.transform defines a basis
+    return safeNormalize( decal.transform[ 0 ].xyz * nmap.x + decal.transform[ 1 ].xyz * nmap.y +
+                          decal.transform[ 2 ].xyz );
+}
 
 void main()
 {
-    const ivec2 pix = getCheckerboardPix(ivec2(gl_FragCoord.xy));
+    const ivec2 pix = getCheckerboardPix( ivec2( gl_FragCoord.xy ) );
 
-    const ShDecalInstance decal = decalInstances[instanceIndex];
-    
-    const vec3 worldPosition = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
-    const mat4 worldToLocal = inverse(decal.transform); // TODO: on CPU
-    const vec4 localPosition = worldToLocal * vec4(worldPosition, 1.0);
+    const ShDecalInstance decal = decalInstances[ instanceIndex ];
+
+    const vec3 worldPosition = texelFetch( framebufSurfacePosition_Sampler, pix, 0 ).xyz;
+    const mat4 worldToLocal  = inverse( decal.transform ); // TODO: on CPU
+    const vec4 localPosition = worldToLocal * vec4( worldPosition, 1.0 );
 
     // if not inside [-0.5, 0.5] box
-    if (any(greaterThan(abs(localPosition.xyz), vec3(0.5))))
+    if( any( greaterThan( abs( localPosition.xyz ), vec3( 0.5 ) ) ) )
     {
         discard;
     }
@@ -50,7 +61,6 @@ void main()
     // Z points from surface to outside
     const vec2 texCoord = localPosition.xy + 0.5;
 
-    const vec4 decalAlbedo = getTextureSample(decal.textureAlbedoAlpha, texCoord);
-
-    outAlbedo = decalAlbedo;
+    out_albedo = getTextureSample( decal.textureAlbedoAlpha, texCoord );
+    out_normal = encodeNormal( getNormal( decal, texCoord ) );
 }

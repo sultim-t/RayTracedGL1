@@ -22,14 +22,38 @@
 
 #include "CmdLabel.h"
 #include "Matrix.h"
+#include "Utils.h"
+
 #include "Generated/ShaderCommonC.h"
 
 
+namespace
+{
 constexpr uint32_t DECAL_MAX_COUNT = 4096;
 
 constexpr uint32_t            CUBE_VERTEX_COUNT = 14;
 constexpr VkPrimitiveTopology CUBE_TOPOLOGY     = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
 
+
+[[nodiscard]] VkPipelineLayout CreatePipelineLayout( VkDevice                           device,
+                                                     std::span< VkDescriptorSetLayout > setLayouts )
+{
+    VkPipelineLayoutCreateInfo info = {
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount         = uint32_t( setLayouts.size() ),
+        .pSetLayouts            = setLayouts.data(),
+        .pushConstantRangeCount = 0,
+        .pPushConstantRanges    = nullptr,
+    };
+
+    VkPipelineLayout pipelineLayout = VK_NULL_HANDLE;
+
+    VkResult r = vkCreatePipelineLayout( device, &info, nullptr, &pipelineLayout );
+    RTGL1::VK_CHECKERROR( r );
+
+    return pipelineLayout;
+}
+}
 
 RTGL1::DecalManager::DecalManager( VkDevice                           _device,
                                    std::shared_ptr< MemoryAllocator > _allocator,
@@ -37,16 +61,7 @@ RTGL1::DecalManager::DecalManager( VkDevice                           _device,
                                    const ShaderManager&               _shaderManager,
                                    const GlobalUniform&               _uniform,
                                    const TextureManager&              _textureManager )
-    : device( _device )
-    , storageFramebuffers( std::move( _storageFramebuffers ) )
-    , decalCount( 0 )
-    , renderPass( VK_NULL_HANDLE )
-    , passFramebuffers{}
-    , pipelineLayout( VK_NULL_HANDLE )
-    , pipeline( VK_NULL_HANDLE )
-    , descPool( VK_NULL_HANDLE )
-    , descSetLayout( VK_NULL_HANDLE )
-    , descSet( VK_NULL_HANDLE )
+    : device( _device ), storageFramebuffers( std::move( _storageFramebuffers ) )
 {
     instanceBuffer = std::make_unique< AutoBuffer >( std::move( _allocator ) );
     instanceBuffer->Create( DECAL_MAX_COUNT * sizeof( ShDecalInstance ),
@@ -55,13 +70,24 @@ RTGL1::DecalManager::DecalManager( VkDevice                           _device,
 
     CreateDescriptors();
     CreateRenderPass();
-    VkDescriptorSetLayout setLayouts[] = {
-        _uniform.GetDescSetLayout(),
-        storageFramebuffers->GetDescSetLayout(),
-        _textureManager.GetDescSetLayout(),
-        descSetLayout,
-    };
-    CreatePipelineLayout( setLayouts, std::size( setLayouts ) );
+
+    {
+        VkDescriptorSetLayout setLayouts[] = {
+            _uniform.GetDescSetLayout(),
+            storageFramebuffers->GetDescSetLayout(),
+            _textureManager.GetDescSetLayout(),
+            descSetLayout,
+        };
+        pipelineLayout = CreatePipelineLayout( device, setLayouts );
+    }
+    {
+        VkDescriptorSetLayout setLayouts[] = {
+            storageFramebuffers->GetDescSetLayout(),
+            _uniform.GetDescSetLayout(),
+        };
+        copyingPipelineLayout = CreatePipelineLayout( device, setLayouts );
+    }
+
     CreatePipelines( &_shaderManager );
 }
 
@@ -71,6 +97,7 @@ RTGL1::DecalManager::~DecalManager()
     vkDestroyDescriptorPool( device, descPool, nullptr );
 
     vkDestroyPipelineLayout( device, pipelineLayout, nullptr );
+    vkDestroyPipelineLayout( device, copyingPipelineLayout, nullptr );
     DestroyPipelines();
 
     vkDestroyRenderPass( device, renderPass, nullptr );
@@ -169,6 +196,57 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
         framebuffers->BarrierMultiple( cmd, frameIndex, fs );
     }
 
+    // copy normals from G-buffer to attachment
+    {
+        VkDescriptorSet sets[] = {
+            framebuffers->GetDescSet( frameIndex ),
+            uniform->GetDescSet( frameIndex ),
+        };
+        vkCmdBindDescriptorSets( cmd,
+                                 VK_PIPELINE_BIND_POINT_COMPUTE,
+                                 copyingPipelineLayout,
+                                 0,
+                                 std::size( sets ),
+                                 sets,
+                                 0,
+                                 nullptr );
+        vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_COMPUTE, copyNormalsToAttachment );
+        vkCmdDispatch( cmd,
+                       Utils::GetWorkGroupCount( uniform->GetData()->renderWidth,
+                                                 COMPUTE_DECAL_APPLY_GROUP_SIZE_X ),
+                       Utils::GetWorkGroupCount( uniform->GetData()->renderHeight,
+                                                 COMPUTE_DECAL_APPLY_GROUP_SIZE_X ),
+                       1 );
+
+        VkImageMemoryBarrier2KHR b = {
+            .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext         = nullptr,
+            .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+            .dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .dstAccessMask =
+                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+            .image            = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
+            .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                  .baseMipLevel   = 0,
+                                  .levelCount     = 1,
+                                  .baseArrayLayer = 0,
+                                  .layerCount     = 1 },
+        };
+
+        VkDependencyInfoKHR info = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers    = &b,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &info );
+    }
+
     assert( passFramebuffers[ frameIndex ] != VK_NULL_HANDLE );
 
     const VkViewport viewport = {
@@ -195,30 +273,82 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
     };
 
     vkCmdBeginRenderPass( cmd, &beginInfo, VK_SUBPASS_CONTENTS_INLINE );
-    vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
+    {
+        vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline );
 
-    VkDescriptorSet sets[] = {
-        uniform->GetDescSet( frameIndex ),
-        framebuffers->GetDescSet( frameIndex ),
-        textureManager->GetDescSet( frameIndex ),
-        descSet,
-    };
+        VkDescriptorSet sets[] = {
+            uniform->GetDescSet( frameIndex ),
+            framebuffers->GetDescSet( frameIndex ),
+            textureManager->GetDescSet( frameIndex ),
+            descSet,
+        };
 
-    vkCmdBindDescriptorSets( cmd,
-                             VK_PIPELINE_BIND_POINT_GRAPHICS,
-                             pipelineLayout,
-                             0,
-                             std::size( sets ),
-                             sets,
-                             0,
-                             nullptr );
+        vkCmdBindDescriptorSets( cmd,
+                                 VK_PIPELINE_BIND_POINT_GRAPHICS,
+                                 pipelineLayout,
+                                 0,
+                                 std::size( sets ),
+                                 sets,
+                                 0,
+                                 nullptr );
 
-    vkCmdSetScissor( cmd, 0, 1, &renderArea );
-    vkCmdSetViewport( cmd, 0, 1, &viewport );
+        vkCmdSetScissor( cmd, 0, 1, &renderArea );
+        vkCmdSetViewport( cmd, 0, 1, &viewport );
 
-    vkCmdDraw( cmd, CUBE_VERTEX_COUNT, decalCount, 0, 0 );
-
+        vkCmdDraw( cmd, CUBE_VERTEX_COUNT, decalCount, 0, 0 );
+    }
     vkCmdEndRenderPass( cmd );
+
+    // copy normals back from attachment to G-buffer
+    {
+        VkDescriptorSet sets[] = {
+            framebuffers->GetDescSet( frameIndex ),
+            uniform->GetDescSet( frameIndex ),
+        };
+        vkCmdBindDescriptorSets( cmd,
+                                 VK_PIPELINE_BIND_POINT_COMPUTE,
+                                 copyingPipelineLayout,
+                                 0,
+                                 std::size( sets ),
+                                 sets,
+                                 0,
+                                 nullptr );
+        vkCmdBindPipeline( cmd, VK_PIPELINE_BIND_POINT_COMPUTE, copyNormalsToGbuffer );
+        vkCmdDispatch( cmd,
+                       Utils::GetWorkGroupCount( uniform->GetData()->renderWidth,
+                                                 COMPUTE_DECAL_APPLY_GROUP_SIZE_X ),
+                       Utils::GetWorkGroupCount( uniform->GetData()->renderHeight,
+                                                 COMPUTE_DECAL_APPLY_GROUP_SIZE_X ),
+                       1 );
+
+
+        VkImageMemoryBarrier2KHR b = {
+            .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .pNext               = nullptr,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+            .srcAccessMask       = VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_READ_BIT,
+            .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = 0,
+            .dstQueueFamilyIndex = 0,
+            .image            = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
+            .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                  .baseMipLevel   = 0,
+                                  .levelCount     = 1,
+                                  .baseArrayLayer = 0,
+                                  .layerCount     = 1 },
+        };
+
+        VkDependencyInfoKHR info = {
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers    = &b,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &info );
+    }
 }
 
 void RTGL1::DecalManager::OnShaderReload( const ShaderManager* shaderManager )
@@ -235,28 +365,46 @@ void RTGL1::DecalManager::OnFramebuffersSizeChange( const ResolutionState& resol
 
 void RTGL1::DecalManager::CreateRenderPass()
 {
-    VkAttachmentDescription colorAttch = {
-        .format         = ShFramebuffers_Formats[ FB_IMAGE_INDEX_ALBEDO ],
-        .samples        = VK_SAMPLE_COUNT_1_BIT,
-        .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
-        .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
-        .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-        .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .initialLayout  = VK_IMAGE_LAYOUT_GENERAL,
-        .finalLayout    = VK_IMAGE_LAYOUT_GENERAL,
+    VkAttachmentDescription colorAttchs[] = {
+        {
+            .format         = ShFramebuffers_Formats[ FB_IMAGE_INDEX_ALBEDO ],
+            .samples        = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout  = VK_IMAGE_LAYOUT_GENERAL,
+            .finalLayout    = VK_IMAGE_LAYOUT_GENERAL,
+        },
+        {
+            .format         = ShFramebuffers_Formats[ FB_IMAGE_INDEX_NORMAL_DECAL ],
+            .samples        = VK_SAMPLE_COUNT_1_BIT,
+            .loadOp         = VK_ATTACHMENT_LOAD_OP_LOAD,
+            .storeOp        = VK_ATTACHMENT_STORE_OP_STORE,
+            .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+            .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+            .initialLayout  = VK_IMAGE_LAYOUT_GENERAL,
+            .finalLayout    = VK_IMAGE_LAYOUT_GENERAL,
+        },
     };
 
-    VkAttachmentReference colorRef = {
-        .attachment = 0,
-        .layout     = VK_IMAGE_LAYOUT_GENERAL,
+    VkAttachmentReference colorRefs[] = {
+        {
+            .attachment = 0,
+            .layout     = VK_IMAGE_LAYOUT_GENERAL,
+        },
+        {
+            .attachment = 1,
+            .layout     = VK_IMAGE_LAYOUT_GENERAL,
+        },
     };
 
     VkSubpassDescription subpass = {
         .pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
         .inputAttachmentCount    = 0,
         .pInputAttachments       = nullptr,
-        .colorAttachmentCount    = 1,
-        .pColorAttachments       = &colorRef,
+        .colorAttachmentCount    = uint32_t( std::size( colorRefs ) ),
+        .pColorAttachments       = colorRefs,
         .pResolveAttachments     = nullptr,
         .pDepthStencilAttachment = nullptr,
         .preserveAttachmentCount = 0,
@@ -276,8 +424,8 @@ void RTGL1::DecalManager::CreateRenderPass()
     VkRenderPassCreateInfo info = {
         .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
         .flags           = 0,
-        .attachmentCount = 1,
-        .pAttachments    = &colorAttch,
+        .attachmentCount = std::size( colorAttchs ),
+        .pAttachments    = colorAttchs,
         .subpassCount    = 1,
         .pSubpasses      = &subpass,
         .dependencyCount = 1,
@@ -294,13 +442,16 @@ void RTGL1::DecalManager::CreateFramebuffers( uint32_t width, uint32_t height )
     {
         assert( passFramebuffers[ i ] == VK_NULL_HANDLE );
 
-        VkImageView v = storageFramebuffers->GetImageView( FB_IMAGE_INDEX_ALBEDO, i );
+        VkImageView vs[] = {
+            storageFramebuffers->GetImageView( FB_IMAGE_INDEX_ALBEDO, i ),
+            storageFramebuffers->GetImageView( FB_IMAGE_INDEX_NORMAL_DECAL, i ),
+        };
 
         VkFramebufferCreateInfo info = {
             .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
             .renderPass      = renderPass,
-            .attachmentCount = 1,
-            .pAttachments    = &v,
+            .attachmentCount = std::size( vs ),
+            .pAttachments    = vs,
             .width           = width,
             .height          = height,
             .layers          = 1,
@@ -323,26 +474,63 @@ void RTGL1::DecalManager::DestroyFramebuffers()
     }
 }
 
-void RTGL1::DecalManager::CreatePipelineLayout( const VkDescriptorSetLayout* pSetLayouts,
-                                                uint32_t                     setLayoutCount )
-{
-    VkPipelineLayoutCreateInfo info = {
-        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount         = setLayoutCount,
-        .pSetLayouts            = pSetLayouts,
-        .pushConstantRangeCount = 0,
-        .pPushConstantRanges    = nullptr,
-    };
-
-    VkResult r = vkCreatePipelineLayout( device, &info, nullptr, &pipelineLayout );
-    VK_CHECKERROR( r );
-}
-
 void RTGL1::DecalManager::CreatePipelines( const ShaderManager* shaderManager )
 {
-    assert( pipeline == VK_NULL_HANDLE );
+    assert( pipeline == VK_NULL_HANDLE && copyNormalsToAttachment == VK_NULL_HANDLE &&
+            copyNormalsToGbuffer == VK_NULL_HANDLE );
     assert( renderPass != VK_NULL_HANDLE );
-    assert( pipelineLayout != VK_NULL_HANDLE );
+    assert( pipelineLayout != VK_NULL_HANDLE && copyingPipelineLayout != VK_NULL_HANDLE );
+
+    {
+        uint32_t copyFromDecalToGbuffer = 0;
+
+        VkSpecializationMapEntry entry = {
+            .constantID = 0,
+            .offset     = 0,
+            .size       = sizeof( copyFromDecalToGbuffer ),
+        };
+
+        VkSpecializationInfo spec = {
+            .mapEntryCount = 1,
+            .pMapEntries   = &entry,
+            .dataSize      = sizeof( copyFromDecalToGbuffer ),
+            .pData         = &copyFromDecalToGbuffer,
+        };
+
+        VkComputePipelineCreateInfo copyingInfo = {
+            .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+            .pNext  = nullptr,
+            .flags  = 0,
+            .stage  = shaderManager->GetStageInfo( "DecalNormalsCopy" ),
+            .layout = copyingPipelineLayout,
+        };
+        copyingInfo.stage.pSpecializationInfo = &spec;
+
+        {
+            copyFromDecalToGbuffer = 0;
+
+            VkResult r = vkCreateComputePipelines(
+                device, VK_NULL_HANDLE, 1, &copyingInfo, nullptr, &copyNormalsToAttachment );
+
+            VK_CHECKERROR( r );
+            SET_DEBUG_NAME( device,
+                            copyNormalsToAttachment,
+                            VK_OBJECT_TYPE_PIPELINE,
+                            "Decal normals copy: Gbuffer to Attch" );
+        }
+        {
+            copyFromDecalToGbuffer = 1;
+
+            VkResult r = vkCreateComputePipelines(
+                device, VK_NULL_HANDLE, 1, &copyingInfo, nullptr, &copyNormalsToGbuffer );
+
+            VK_CHECKERROR( r );
+            SET_DEBUG_NAME( device,
+                            copyNormalsToGbuffer,
+                            VK_OBJECT_TYPE_PIPELINE,
+                            "Decal normals copy: Attch to Gbuffer" );
+        }
+    }
 
     VkPipelineShaderStageCreateInfo stages[] = {
         shaderManager->GetStageInfo( "VertDecal" ),
@@ -398,23 +586,29 @@ void RTGL1::DecalManager::CreatePipelines( const ShaderManager* shaderManager )
         .stencilTestEnable     = VK_FALSE,
     };
 
-    VkPipelineColorBlendAttachmentState colorBlendAttch = {
-        .blendEnable         = VK_TRUE,
-        .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .colorBlendOp        = VK_BLEND_OP_ADD,
-        .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-        .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-        .alphaBlendOp        = VK_BLEND_OP_ADD,
-        .colorWriteMask =
-            VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | 0,
+    VkPipelineColorBlendAttachmentState colorBlendAttchs[] = {
+        {
+            .blendEnable         = VK_TRUE,
+            .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+            .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .colorBlendOp        = VK_BLEND_OP_ADD,
+            .srcAlphaBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+            .dstAlphaBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+            .alphaBlendOp        = VK_BLEND_OP_ADD,
+            .colorWriteMask =
+                VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | 0,
+        },
+        {
+            .blendEnable    = VK_FALSE,
+            .colorWriteMask = VK_COLOR_COMPONENT_R_BIT,
+        },
     };
 
     VkPipelineColorBlendStateCreateInfo colorBlendState = {
         .sType           = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable   = VK_FALSE,
-        .attachmentCount = 1,
-        .pAttachments    = &colorBlendAttch,
+        .attachmentCount = std::size( colorBlendAttchs ),
+        .pAttachments    = colorBlendAttchs,
     };
 
     VkDynamicState dynamicStates[] = {
@@ -457,6 +651,10 @@ void RTGL1::DecalManager::DestroyPipelines()
 
     vkDestroyPipeline( device, pipeline, nullptr );
     pipeline = VK_NULL_HANDLE;
+    vkDestroyPipeline( device, copyNormalsToGbuffer, nullptr );
+    copyNormalsToGbuffer = VK_NULL_HANDLE;
+    vkDestroyPipeline( device, copyNormalsToAttachment, nullptr );
+    copyNormalsToAttachment = VK_NULL_HANDLE;
 }
 
 void RTGL1::DecalManager::CreateDescriptors()

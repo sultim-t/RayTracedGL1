@@ -65,7 +65,6 @@ private:
     void CreateRenderPass();
     void CreateFramebuffers( uint32_t width, uint32_t height );
     void DestroyFramebuffers();
-    void CreatePipelineLayout( const VkDescriptorSetLayout* pSetLayouts, uint32_t setLayoutCount );
     void CreatePipelines( const ShaderManager* shaderManager );
     void DestroyPipelines();
     void CreateDescriptors();
@@ -75,17 +74,21 @@ private:
     std::shared_ptr< Framebuffers > storageFramebuffers;
 
     std::unique_ptr< AutoBuffer > instanceBuffer;
-    uint32_t                      decalCount;
+    uint32_t                      decalCount{ 0 };
 
-    VkRenderPass  renderPass;
-    VkFramebuffer passFramebuffers[ MAX_FRAMES_IN_FLIGHT ];
+    VkRenderPass  renderPass{ VK_NULL_HANDLE };
+    VkFramebuffer passFramebuffers[ MAX_FRAMES_IN_FLIGHT ]{};
 
-    VkPipelineLayout pipelineLayout;
-    VkPipeline       pipeline;
+    VkPipelineLayout pipelineLayout{ VK_NULL_HANDLE };
+    VkPipeline       pipeline{ VK_NULL_HANDLE };
 
-    VkDescriptorPool      descPool;
-    VkDescriptorSetLayout descSetLayout;
-    VkDescriptorSet       descSet;
+    VkPipelineLayout copyingPipelineLayout{ VK_NULL_HANDLE };
+    VkPipeline       copyNormalsToAttachment{ VK_NULL_HANDLE };
+    VkPipeline       copyNormalsToGbuffer{ VK_NULL_HANDLE };
+
+    VkDescriptorPool      descPool{ VK_NULL_HANDLE };
+    VkDescriptorSetLayout descSetLayout{ VK_NULL_HANDLE };
+    VkDescriptorSet       descSet{ VK_NULL_HANDLE };
 };
 
 }

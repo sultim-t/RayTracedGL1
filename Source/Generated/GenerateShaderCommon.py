@@ -357,6 +357,8 @@ CONST = {
 
     "COMPUTE_COMPOSE_GROUP_SIZE_X"          : 16,
     "COMPUTE_COMPOSE_GROUP_SIZE_Y"          : 16,
+
+    "COMPUTE_DECAL_APPLY_GROUP_SIZE_X"      : 16,
     
     "COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_X"   : 16,
     "COMPUTE_BLOOM_UPSAMPLE_GROUP_SIZE_Y"   : 16,
@@ -838,6 +840,8 @@ FRAMEBUFFERS = {
     "IndirPong"                         : (TYPE_PACK_E5,    COMPONENT_RGB,  0),
 
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R,    0),
+    
+    "NormalDecal"                       : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_IS_ATTACHMENT),
 
     # TODO: remove after implementing media volumetrics
     "AcidFogRT"                         : (TYPE_PACK_11,    COMPONENT_RGB,  0),
