@@ -26,21 +26,12 @@
 #define DESC_SET_TEXTURES       2
 #define DESC_SET_DECALS         3
 #include "ShaderCommonGLSLFunc.h"
+#include "Random.h"
 
 layout( location = 0 ) flat in uint instanceIndex;
 
 layout( location = 0 ) out vec4 out_albedo;
 layout( location = 1 ) out uint out_normal;
-
-vec3 getNormal( const ShDecalInstance decal, const vec2 texCoord )
-{
-    vec2 nmap = getTextureSample( decal.textureNormal, texCoord ).xy;
-    nmap.xy   = nmap.xy * 2.0 - vec2( 1.0 );
-
-    // decal.transform defines a basis
-    return safeNormalize( decal.transform[ 0 ].xyz * nmap.x + decal.transform[ 1 ].xyz * nmap.y +
-                          decal.transform[ 2 ].xyz );
-}
 
 void main()
 {
@@ -61,6 +52,24 @@ void main()
     // Z points from surface to outside
     const vec2 texCoord = localPosition.xy + 0.5;
 
-    out_albedo = getTextureSample( decal.textureAlbedoAlpha, texCoord );
-    out_normal = encodeNormal( getNormal( decal, texCoord ) );
+    {
+        out_albedo = getTextureSample( decal.textureAlbedoAlpha, texCoord );
+    }
+
+    if( decal.textureNormal != MATERIAL_NO_TEXTURE )
+    {
+        const vec3 underlyingNormal = texelFetchNormal( pix );
+
+        mat3 basis = getONB( underlyingNormal );
+
+        vec2 nmap = getTextureSample( decal.textureNormal, texCoord ).xy;
+        nmap.xy   = nmap.xy * 2.0 - vec2( 1.0 );
+
+        out_normal =
+            encodeNormal( safeNormalize( basis[ 0 ] * nmap.x + basis[ 1 ] * nmap.y + basis[ 2 ] ) );
+    }
+    else
+    {
+        out_normal = texelFetchEncNormal( pix );
+    }
 }

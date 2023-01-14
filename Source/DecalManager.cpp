@@ -219,30 +219,51 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
                                                  COMPUTE_DECAL_APPLY_GROUP_SIZE_X ),
                        1 );
 
-        VkImageMemoryBarrier2KHR b = {
-            .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-            .pNext         = nullptr,
-            .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-            .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-            .dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
-            .dstAccessMask =
-                VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
-            .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
-            .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
-            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-            .image            = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
-            .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
-                                  .baseMipLevel   = 0,
-                                  .levelCount     = 1,
-                                  .baseArrayLayer = 0,
-                                  .layerCount     = 1 },
+        VkImageMemoryBarrier2KHR bs[] = {
+            {
+                .sType         = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext         = nullptr,
+                .srcStageMask  = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+                .dstStageMask  = VK_PIPELINE_STAGE_2_COLOR_ATTACHMENT_OUTPUT_BIT,
+                .dstAccessMask =
+                    VK_ACCESS_2_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_2_COLOR_ATTACHMENT_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL_DECAL, frameIndex ),
+                .subresourceRange = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                      .baseMipLevel   = 0,
+                                      .levelCount     = 1,
+                                      .baseArrayLayer = 0,
+                                      .layerCount     = 1 },
+            },
+            {
+                .sType        = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext        = nullptr,
+                .srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                .srcAccessMask =
+                    VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT | VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+                .dstAccessMask       = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .newLayout           = VK_IMAGE_LAYOUT_GENERAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = framebuffers->GetImage( FB_IMAGE_INDEX_NORMAL, frameIndex ),
+                .subresourceRange    = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .baseMipLevel   = 0,
+                                         .levelCount     = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount     = 1 },
+            },
         };
 
         VkDependencyInfoKHR info = {
             .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO_KHR,
-            .imageMemoryBarrierCount = 1,
-            .pImageMemoryBarriers    = &b,
+            .imageMemoryBarrierCount = std::size( bs ),
+            .pImageMemoryBarriers    = bs,
         };
 
         svkCmdPipelineBarrier2KHR( cmd, &info );
