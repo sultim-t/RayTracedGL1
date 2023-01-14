@@ -80,7 +80,7 @@ Surface traceBounce(const vec3 originPosition, float originRoughness, uint origi
 
 vec3 processSecondDiffuseBounce(const uint seed, const Surface surf, const vec3 bounceDir, float oneOverPdf)
 {
-    const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01,
+    const Surface hitSurf = traceBounce(surf.position + surf.normal * 0.01,
                                         surf.roughness,
                                         surf.instCustomIndex,
                                         bounceDir,
@@ -110,10 +110,10 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
                                    surf.toViewerDir,
                                    oneOverSourcePdf );
 #else
-    bounceDir = getDiffuseBounce( seed, 1, surf.normalGeom, oneOverSourcePdf );
+    bounceDir = getDiffuseBounce( seed, 1, surf.normal, oneOverSourcePdf );
 #endif
 
-    const Surface hitSurf = traceBounce(surf.position + surf.normalGeom * 0.01, 
+    const Surface hitSurf = traceBounce(surf.position + surf.normal * 0.01, 
                                         surf.roughness, 
                                         surf.instCustomIndex, 
                                         bounceDir, 
@@ -135,7 +135,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
     if( globalUniform.indirSecondBounce != 0 )
     {
         float oneOverPdf_Second;
-        const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normalGeom, oneOverPdf_Second);
+        const vec3 bounceDir_Second = getDiffuseBounce(seed, 2, hitSurf.normal, oneOverPdf_Second);
 
         diffuse += processSecondDiffuseBounce(seed, 
                                               hitSurf,
@@ -149,7 +149,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
 
     SampleIndirect s;
     s.position  = hitSurf.position;
-    s.normal    = hitSurf.normalGeom;
+    s.normal    = hitSurf.normal;
     s.radiance  = (hitSurf.emission + diffuse) * hitSurf.albedo;
 
     return s;
@@ -160,9 +160,8 @@ void shade(const Surface surf, const SampleIndirect indir, float oneOverPdf,
 {
     vec3 l = safeNormalize(indir.position - surf.position);
     float nl = dot(surf.normal, l);
-    float ngl = dot(surf.normalGeom, l);
 
-    if (nl <= 0 || ngl <= 0)
+    if (nl <= 0)
     {
         diffuse = specular = vec3(0);
         return;

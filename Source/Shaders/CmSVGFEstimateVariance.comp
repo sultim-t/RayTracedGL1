@@ -63,7 +63,7 @@ struct FilterData
     float depth;
     // E5B9G9R9
     uint encColor;
-    uint encNormalGeometry;
+    uint encNormal;
 };
 
 // Preloaded data for filter pixel data. Additional FILTER_RADIUS pixels at both ends for each dimension
@@ -77,9 +77,9 @@ void fillFilterData(const ivec2 globalBasePix, const int sharedOffset)
     const ivec2 globalPix = globalBasePix + sharedPix;
 
     FilterData data;
-    data.encColor           = texelFetch(framebufDiffAccumColor_Sampler, globalPix, 0).r;
-    data.encNormalGeometry  = texelFetchEncNormalGeometry(               globalPix);
-    data.depth              = texelFetch(framebufDepthWorld_Sampler,     globalPix, 0).r;
+    data.encColor  = texelFetch( framebufDiffAccumColor_Sampler, globalPix, 0 ).r;
+    data.encNormal = texelFetchEncNormal(                        globalPix );
+    data.depth     = texelFetch( framebufDepthWorld_Sampler,     globalPix, 0 ).r;
 
     filterData[sharedPix.y][sharedPix.x] = data;
 }
@@ -179,7 +179,7 @@ void main()
             const float l_q = getLuminance(color_q);
 
             const float w_z = exp(-abs(pixData.depth - qData.depth) / max(max(pixData.depth, qData.depth), 0.01));
-            const float w_n = pow(max(0.0, dotEnc(pixData.encNormalGeometry, qData.encNormalGeometry)), 128.0);
+            const float w_n = pow(max(0.0, dotEnc(pixData.encNormal, qData.encNormal)), 128.0);
 
             const float w = w_z * w_n;
 

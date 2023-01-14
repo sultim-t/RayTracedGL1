@@ -114,7 +114,6 @@ void storeSky(
     vec2 m = getMotionForInfinitePoint(pix);
 
     imageStoreNormal(                       pix, vec3(0.0));
-    imageStoreNormalGeometry(               pix, vec3(0.0));
     imageStore(framebufMetallicRoughness,   pix, vec4(0.0));
     imageStore(framebufDepthWorld,          pix, vec4(MAX_RAY_LENGTH * 2.0));
     imageStore(framebufMotion,              pix, vec4(m, 0.0, 0.0));
@@ -147,14 +146,14 @@ uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
     return getMediaTypeFromFlags(geometryInstanceFlags);
 }
 
-vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalGeom, const vec3 position, bool wasPortal)
+vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 baseNormal, const vec3 position, bool wasPortal)
 {
-    const mat3 basis = getONB(normalGeom);
+    const mat3 basis = getONB(baseNormal);
     const vec2 baseUV = vec2(dot(position, basis[0]), dot(position, basis[1])); 
 
 
     // how much vertical flow to apply
-    float verticality = 1.0 - abs(dot(normalGeom, globalUniform.worldUpVector.xyz));
+    float verticality = 1.0 - abs(dot(baseNormal, globalUniform.worldUpVector.xyz));
 
     // project basis[0] and basis[1] on up vector
     vec2 flowSpeedVertical = 10 * vec2(dot(basis[0], globalUniform.worldUpVector.xyz), 
@@ -169,7 +168,7 @@ vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 normalG
 
 
     // for texture sampling
-    float derivU = globalUniform.waterTextureDerivativesMultiplier * 0.5 * uvScale * getWaterDerivU(rayCone, rayDir, normalGeom);
+    float derivU = globalUniform.waterTextureDerivativesMultiplier * 0.5 * uvScale * getWaterDerivU(rayCone, rayDir, baseNormal);
 
     // make water sharper if visible through the portal
     if (wasPortal)
@@ -236,34 +235,35 @@ vec3 getPortalNormal(const vec3 baseNormal, const vec3 inWorldOffset)
     return inLookAt_Plain * normalize(localN);
 }
 
-bool isBackface(const vec3 normalGeom, const vec3 rayDir)
+bool isBackface( const vec3 normal, const vec3 rayDir )
 {
-    return dot(normalGeom, -rayDir) < 0.0;
+    return dot( normal, -rayDir ) < 0.0;
 }
 
-vec3 getNormal(const vec3 position, const vec3 normalFromMap, const vec3 normalGeom, const RayCone rayCone, const vec3 rayDir, bool isWater, bool wasPortal)
+vec3 getNormal( const vec3    position,
+                vec3          normal,
+                const RayCone rayCone,
+                const vec3    rayDir,
+                bool          isWater,
+                bool          wasPortal )
 {
-    if (isWater)
+    if( isWater )
     {
-        vec3 n = normalGeom;
-
-        if (isBackface(normalGeom, rayDir))
+        if( isBackface( normal, rayDir ) )
         {
-            n *= -1;
+            normal *= -1;
         }
 
-        return getWaterNormal(rayCone, rayDir, n, position, wasPortal);
+        return getWaterNormal( rayCone, rayDir, normal, position, wasPortal );
     }
     else
     {
-        vec3 n = normalFromMap;
-
-        if (isBackface(normalGeom, rayDir))
+        if( isBackface( normal, rayDir ) )
         {
-           n *= -1;
+            normal *= -1;
         }
 
-        return normalize(n);
+        return normalize( normal );
     }
 }
 
@@ -324,7 +324,6 @@ void main()
     imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(screenEmission * throughput , 0.0));
     imageStore(framebufAcidFogRT,           getRegularPixFromCheckerboardPix(pix), vec4(getGlowingMediaFog(currentRayMedia, firstHitDepthLinear), 0));
     imageStoreNormal(                       pix, h.normal);
-    imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
     imageStore(framebufDepthWorld,          pix, vec4(firstHitDepthLinear));
     // depth gradients is not 2d, to remove vertical/horizontal artifacts
@@ -376,7 +375,6 @@ void main()
     h.hitPosition                           = texelFetch(framebufSurfacePosition_Sampler, pix, 0).xyz;
     h.geometryInstanceFlags                 = primaryToReflRefrBuf.r;
     h.portalIndex                           = primaryToReflRefrBuf.b;
-    h.normalGeom                            = texelFetchNormalGeometry(pix);
     h.normal                                = texelFetchNormal(pix);
     h.roughness                             = texelFetch( framebufMetallicRoughness_Sampler, pix, 0 ).g;
     const vec3  motionBuf                   = texelFetch(framebufMotion_Sampler, pix, 0).rgb;
@@ -442,7 +440,6 @@ void main()
         const vec3 normal = getNormal(
             h.hitPosition,
             h.normal,
-            h.normalGeom,
             rayCone,
             rayDir,
             !isPortal && ( newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER ||
@@ -459,7 +456,7 @@ void main()
             newRayMedia = currentRayMedia;
             
             // if reflections are disabled if viewing from inside of NO_MEDIA_CHANGE geometry
-            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && isBackface(h.normalGeom, rayDir);
+            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && isBackface(h.normal, rayDir);
         }
 
            
@@ -590,7 +587,6 @@ void main()
     imageStore(framebufScreenEmisRT,        getRegularPixFromCheckerboardPix(pix), vec4(screenEmission + ( globalUniform.cameraMediaType != MEDIA_TYPE_ACID ? acidFog * 0.05 : vec3( 0.0 ) ), 0.0));
     imageStore(framebufAcidFogRT,           getRegularPixFromCheckerboardPix(pix), vec4(acidFog, 0));
     imageStoreNormal(                       pix, h.normal);
-    imageStoreNormalGeometry(               pix, h.normalGeom);
     imageStore(framebufMetallicRoughness,   pix, vec4(h.metallic, h.roughness, 0, 0));
     imageStore(framebufDepthWorld,          pix, vec4(fullPathLength));
     imageStore(framebufMotion,              pix, vec4(motionCurToPrev, motionDepthLinearCurToPrev, 0.0));

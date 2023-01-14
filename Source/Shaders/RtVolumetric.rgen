@@ -146,7 +146,6 @@ void main()
         {
             s.position        = center;
             s.instCustomIndex = 0;
-            s.normalGeom      = n;
             s.roughness       = 1.0;
             s.normal          = n;
             s.albedo          = vec3( 1.0 );

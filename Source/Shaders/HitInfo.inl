@@ -245,17 +245,17 @@ ShHitInfo getHitInfoBounce(
 
     if( ( tr.geometryInstanceFlags & GEOM_INST_FLAG_EXACT_NORMALS ) == 0 )
     {
-        h.normalGeom = normalize( tr.normals * baryCoords );
+        h.normal = normalize( tr.normals * baryCoords );
     }
     else
     {
-        h.normalGeom = safeNormalize(
+        h.normal = safeNormalize(
             cross( tr.positions[ 1 ] - tr.positions[ 0 ], tr.positions[ 2 ] - tr.positions[ 0 ] ) );
 
         // always face ray origin
-        if( dot( h.normalGeom, h.hitPosition - rayOrigin ) > 0 )
+        if( dot( h.normal, h.hitPosition - rayOrigin ) > 0 )
         {
-            h.normalGeom *= -1;
+            h.normal *= -1;
         }
     }
 
@@ -359,7 +359,7 @@ ShHitInfo getHitInfoBounce(
 
 
 #if defined(HITINFO_INL_RFL)
-    DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normalGeom, rayCone, rayDir);
+    DerivativeSet derivSet = getTriangleUVDerivativesFromRayCone(tr, h.normal, rayCone, rayDir);
 
     h.albedo = processAlbedoRayConeDeriv( tr.geometryInstanceFlags,
                                           texCoords,
@@ -424,7 +424,9 @@ ShHitInfo getHitInfoBounce(
     h.emission *= globalUniform.emissionMapBoost;
 
 
-#if !defined(HITINFO_INL_INDIR)
+#if defined(HITINFO_INL_INDIR)
+    // ignore precise normals for indirect
+#else
     if (tr.normalTexture != MATERIAL_NO_TEXTURE)
     {
         // less details in normal maps for better denoising
@@ -439,16 +441,12 @@ ShHitInfo getHitInfoBounce(
             .xy;
         nrm.xy = nrm.xy * 2.0 - vec2( 1.0 );
 
-        const vec3 bitangent = cross(h.normalGeom, tr.tangent.xyz) * tr.tangent.w;
-        h.normal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normalGeom);
+        const vec3 bitangent = cross(h.normal, tr.tangent.xyz) * tr.tangent.w;
+        const vec3 newNormal = safeNormalize(tr.tangent.xyz * nrm.x + bitangent * nrm.y + h.normal);
 
-        h.normal = safeNormalize(mix(h.normalGeom, h.normal, globalUniform.normalMapStrength));
+        h.normal = safeNormalize(mix(h.normal, newNormal, globalUniform.normalMapStrength));
     }
-    else
 #endif // HITINFO_INL_INDIR
-    {
-        h.normal = h.normalGeom;
-    }
 
 #if defined( HITINFO_INL_CLASSIC_SHADING )
     if( classicShading_PRIM() )

@@ -134,7 +134,6 @@ void RTGL1::Denoiser::Denoise( VkCommandBuffer                               cmd
             FI::FB_IMAGE_INDEX_DEPTH_WORLD,
             FI::FB_IMAGE_INDEX_DEPTH_GRAD,
             FI::FB_IMAGE_INDEX_NORMAL,
-            FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
             FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
             FI::FB_IMAGE_INDEX_SURFACE_POSITION,
             FI::FB_IMAGE_INDEX_VIEW_DIRECTION,

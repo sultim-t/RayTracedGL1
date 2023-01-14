@@ -78,7 +78,7 @@ struct AtrousData
     // E5B9G9R9
     uint    encIndirColor;
     float   roughness;
-    uint    encNormalGeometry;
+    uint    encNormal;
     float   depth;
     float   gradDepth;
 };
@@ -106,11 +106,11 @@ void fillFilterData( sampler2D   samplerDiff,
     const vec4 cv           = texelFetch(samplerDiff,                       globalPix, 0);
     data.directDiffuseColor = cv.rgb;
     directDiffuseVariance[sharedPix.y][sharedPix.x] = cv.a;
-    
-    data.roughness          = texelFetch(framebufMetallicRoughness_Sampler, globalPix, 0).g;
-    data.encSpecularColor   = texelFetch(samplerSpec,                       globalPix, 0).r;
-    data.encIndirColor      = texelFetch(samplerIndir,                      globalPix, 0).r;
-    data.encNormalGeometry  = texelFetchEncNormal(                          globalPix); 
+
+    data.roughness        = texelFetch( framebufMetallicRoughness_Sampler, globalPix, 0 ).g;
+    data.encSpecularColor = texelFetch( samplerSpec,                       globalPix, 0 ).r;
+    data.encIndirColor    = texelFetch( samplerIndir,                      globalPix, 0 ).r;
+    data.encNormal        = texelFetchEncNormal(                           globalPix );
 
     atrousData[sharedPix.y][sharedPix.x] = data;
 }
@@ -257,7 +257,7 @@ void atrous0(
 
 
             const float l_q = getLuminance(other.directDiffuseColor);
-            const float n_n = max(0.0, dotEnc(center.encNormalGeometry, other.encNormalGeometry));
+            const float n_n = max(0.0, dotEnc(center.encNormal, other.encNormal));
 
             const float w_z = abs(center.depth - other.depth) / max(gradDepth * (abs(xx) + abs(yy)), 0.01);
             const float w_n = pow(n_n, 128.0);

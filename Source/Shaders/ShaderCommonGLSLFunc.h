@@ -407,42 +407,15 @@ vec3 texelFetchNormal_Prev(const ivec2 pix)
     return decodeNormal(texelFetch(framebufNormal_Prev_Sampler, pix, 0).r);
 }
 
-vec3 texelFetchNormalGeometry(const ivec2 pix)
-{
-    return decodeNormal(texelFetch(framebufNormalGeometry_Sampler, pix, 0).r);
-}
-
-vec3 texelFetchNormalGeometry_Prev(const ivec2 pix)
-{
-    return decodeNormal(texelFetch(framebufNormalGeometry_Prev_Sampler, pix, 0).r);
-}
-
-uvec4 textureGatherEncNormalGeometry_Prev(const vec2 uv)
-{
-    // get R components of 4 texels 
-    return textureGather(framebufNormalGeometry_Prev_Sampler, uv, 0);
-}
-
 uint texelFetchEncNormal(const ivec2 pix)
 {
     // fetch encoded normal
     return texelFetch(framebufNormal_Sampler, pix, 0).r;
 }
 
-uint texelFetchEncNormalGeometry(const ivec2 pix)
-{
-    // fetch encoded geometry normal
-    return texelFetch(framebufNormalGeometry_Sampler, pix, 0).r;
-}
-
 void imageStoreNormal(const ivec2 pix, const vec3 normal)
 {
     imageStore(framebufNormal, pix, uvec4(encodeNormal(normal)));
-}
-
-void imageStoreNormalGeometry(const ivec2 pix, const vec3 normal)
-{
-    imageStore(framebufNormalGeometry, pix, uvec4(encodeNormal(normal)));
 }
 
 bool isSkyPix(const ivec2 pix)

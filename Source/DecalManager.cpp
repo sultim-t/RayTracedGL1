@@ -158,7 +158,6 @@ void RTGL1::DecalManager::Draw( VkCommandBuffer                          cmd,
         FramebufferImageIndex fs[] = {
             FB_IMAGE_INDEX_ALBEDO,
             FB_IMAGE_INDEX_SURFACE_POSITION,
-            FB_IMAGE_INDEX_NORMAL_GEOMETRY,
             FB_IMAGE_INDEX_NORMAL,
             FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         };

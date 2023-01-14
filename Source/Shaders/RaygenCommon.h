@@ -360,9 +360,8 @@ void shade(const Surface surf, const LightSample light, float oneOverPdf, out ve
 {
     vec3 l = safeNormalize(light.position - surf.position);
     float nl = dot(surf.normal, l);
-    float ngl = dot(surf.normalGeom, l);
 
-    if (nl <= 0 || ngl <= 0)
+    if( nl <= 0 )
     {
         diffuse = specular = vec3(0);
         return;

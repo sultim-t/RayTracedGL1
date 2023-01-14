@@ -112,7 +112,6 @@ void PathTracer::TracePrimaryRays( const TraceParams& params )
     FI fs[]  = {
         FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_NORMAL,
-        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_DEPTH_WORLD,
         FI::FB_IMAGE_INDEX_DEPTH_GRAD,
@@ -138,7 +137,6 @@ void PathTracer::TraceReflectionRefractionRays( const TraceParams& params )
     FI fs[]  = {
         FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_NORMAL,
-        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_DEPTH_WORLD,
         FI::FB_IMAGE_INDEX_MOTION,
@@ -165,7 +163,6 @@ void PathTracer::CalculateInitialReservoirs( const TraceParams& params )
         FI::FB_IMAGE_INDEX_SURFACE_POSITION,
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_NORMAL,
-        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
         FI::FB_IMAGE_INDEX_VIEW_DIRECTION,
     };
     params.framebuffers->BarrierMultiple( params.cmd, params.frameIndex, fs );
@@ -184,7 +181,6 @@ void PathTracer::TraceDirectllumination( const TraceParams& params )
         FI::FB_IMAGE_INDEX_RESERVOIRS_INITIAL,
         FI::FB_IMAGE_INDEX_ALBEDO,
         FI::FB_IMAGE_INDEX_NORMAL,
-        FI::FB_IMAGE_INDEX_NORMAL_GEOMETRY,
         FI::FB_IMAGE_INDEX_METALLIC_ROUGHNESS,
         FI::FB_IMAGE_INDEX_DEPTH_WORLD,
         FI::FB_IMAGE_INDEX_DEPTH_GRAD,

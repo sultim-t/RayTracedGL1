@@ -66,11 +66,10 @@ struct ShHitInfo
     float   metallic;
     vec3    normal;
     float   roughness;
-    vec3    normalGeom;
-    uint    instCustomIndex;
     vec3    hitPosition;
-    uint    geometryInstanceFlags;
+    uint    instCustomIndex;
     vec3    emission;
+    uint    geometryInstanceFlags;
     uint    portalIndex;
 };
 
