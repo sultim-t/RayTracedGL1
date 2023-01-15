@@ -537,8 +537,8 @@ layout(set = DESC_SET_FRAMEBUFFERS, binding = 45, r16f) uniform image2D framebuf
 #ifndef FRAMEBUF_IGNORE_ATTACHMENTS
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 46, r32ui) uniform uimage2D framebufNormalDecal;
 #endif
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 47, r11f_g11f_b10f) uniform image2D framebufScattering;
-layout(set = DESC_SET_FRAMEBUFFERS, binding = 48, r11f_g11f_b10f) uniform image2D framebufScattering_Prev;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 47, rgba16f) uniform image2D framebufScattering;
+layout(set = DESC_SET_FRAMEBUFFERS, binding = 48, rgba16f) uniform image2D framebufScattering_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 49, r16f) uniform image2D framebufScatteringHistory;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 50, r16f) uniform image2D framebufScatteringHistory_Prev;
 layout(set = DESC_SET_FRAMEBUFFERS, binding = 51, r11f_g11f_b10f) uniform image2D framebufAcidFogRT;
