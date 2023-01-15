@@ -140,53 +140,6 @@ vec3 getBloomInput( const vec3 hdr, const vec3 screenEmis )
 }
 
 
-vec3 applyVolumetrics( const ivec2 pix, const vec3 color )
-{
-    if( globalUniform.volumeEnableType == VOLUME_ENABLE_NONE )
-    {
-        return color;
-    }
-
-    uint seed = getRandomSeed( pix, globalUniform.frameId );
-    vec3 rnd  = rnd8_4( seed, 0 ).xyz;
-
-    const vec2 inUV         = getPixelUVWithJitter( pix );
-    const vec3 cameraRayDir = getRayDir( inUV );
-
-    float virtualdepth = texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
-    bool  isSky        = virtualdepth > MAX_RAY_LENGTH;
-
-    if( globalUniform.volumeEnableType == VOLUME_ENABLE_VOLUMETRIC )
-    {
-        vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
-
-#ifdef DEBUG_VOLUME_ILLUMINATION
-        vec3 sp = volume_toSamplePosition_T(
-            position.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
-        vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
-        return color * illum;
-#endif
-
-        vec4 v = volume_sampleDithered( position, rnd, 2.0 );
-        return color * v.a + v.rgb;
-    }
-    else
-    {
-        float density = globalUniform.volumeScattering * 0.00005;
-
-        if( !isSky )
-        {
-            float f = exp( -virtualdepth * density );
-            return mix( globalUniform.volumeAmbient.rgb, color, f );
-        }
-        else
-        {
-            return color;
-        }
-    }
-}
-
-
 vec3 processDebug( const ivec2 pix, const vec3 fallback );
 
 
@@ -198,13 +151,17 @@ void main()
         return;
     }
 
-    const vec3 hdr        = texelFetch( framebufFinal_Sampler, pix, 0 ).rgb;
+    vec3       hdr        = texelFetch( framebufFinal_Sampler, pix, 0 ).rgb;
     const vec3 screenEmis = texelFetch( framebufScreenEmission_Sampler, pix, 0 ).rgb;
+
+    {
+        vec4 volumetric = texelFetch( framebufScattering_Sampler, pix, 0 );
+        hdr             = hdr * volumetric.a + volumetric.rgb;
+    }
 
     vec3 color = finalizeColor( hdr, screenEmis, pix );
     vec3 bloom = getBloomInput( hdr, screenEmis );
 
-    color = applyVolumetrics( pix, color );
 #if SHIPPING_HACK
     color += texelFetch( framebufAcidFog_Sampler, pix, 0 ).rgb;
 #endif

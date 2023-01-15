@@ -444,6 +444,7 @@ CONST = {
     "VOLUMETRIC_SIZE_Z"                     : 64,
     "COMPUTE_VOLUMETRIC_GROUP_SIZE_X"       : 16,
     "COMPUTE_VOLUMETRIC_GROUP_SIZE_Y"       : 16,
+    "COMPUTE_SCATTER_ACCUM_GROUP_SIZE_X"    : 16,
 
     "VOLUME_ENABLE_NONE"                    : 0,
     "VOLUME_ENABLE_SIMPLE"                  : 1,
@@ -843,6 +844,8 @@ FRAMEBUFFERS = {
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R,    0),
     
     "NormalDecal"                       : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_IS_ATTACHMENT),
+    
+    "Scattering"                        : (TYPE_PACK_11,    COMPONENT_RGB,  FRAMEBUF_FLAGS_STORE_PREV),
 
     # TODO: remove after implementing media volumetrics
     "AcidFogRT"                         : (TYPE_PACK_11,    COMPONENT_RGB,  0),

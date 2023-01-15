@@ -546,12 +546,11 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
         pathTracer->CalculateGradientsSamples( params );
         denoiser->Denoise( cmd, frameIndex, uniform );
-        volumetric->ProcessScattering( cmd, frameIndex, uniform.get(), blueNoise.get() );
+        volumetric->ProcessScattering( cmd, frameIndex, *uniform, *blueNoise, *framebuffers );
         tonemapping->CalculateExposure( cmd, frameIndex, uniform );
     }
 
     imageComposition->PrepareForRaster( cmd, frameIndex, uniform.get() );
-    volumetric->BarrierToReadScattering( cmd, frameIndex );
     volumetric->BarrierToReadIllumination( cmd );
 
     if( !drawInfo.disableRasterization )

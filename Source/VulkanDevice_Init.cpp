@@ -327,11 +327,12 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
 
     volumetric = std::make_shared< Volumetric >( 
         device,
-        cmdManager.get(),
-        memAllocator.get(),
-        shaderManager.get(),
-        uniform.get(),
-        blueNoise.get() );
+        *cmdManager,
+        *memAllocator,
+        *shaderManager,
+        *uniform,
+        *blueNoise,
+        *framebuffers );
 
     rasterizer = std::make_shared< Rasterizer >( 
         device,

@@ -57,6 +57,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     { "CLuminanceHistogram",        "CmLuminanceHistogram.comp.spv"         },
     { "CLuminanceAvg",              "CmLuminanceAvg.comp.spv"               },
     { "CVolumetricProcess",         "CmVolumetricProcess.comp.spv"          },
+    { "ScatterAccum",               "CmScatterAccum.comp.spv"               },
     { "FragWorld",                  "RsWorld.frag.spv"                      },
     { "FragSky",                    "RsSky.frag.spv"                        },
     { "FragSwapchain",              "RsSwapchain.frag.spv"                  },

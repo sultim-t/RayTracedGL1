@@ -1,0 +1,92 @@
+// Copyright (c) 2022 Sultim Tsyrendashiev
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+
+#version 460
+
+#define DESC_SET_VOLUMETRIC     0
+#define DESC_SET_GLOBAL_UNIFORM 1
+#define DESC_SET_RANDOM         2
+#define DESC_SET_FRAMEBUFFERS   3
+#include "ShaderCommonGLSLFunc.h"
+#include "Random.h"
+#include "Volumetric.h"
+
+layout( local_size_x = COMPUTE_SCATTER_ACCUM_GROUP_SIZE_X,
+        local_size_y = COMPUTE_SCATTER_ACCUM_GROUP_SIZE_X,
+        local_size_z = 1 ) in;
+
+
+
+vec4 applyVolumetrics( const ivec2 pix )
+{
+    if( globalUniform.volumeEnableType == VOLUME_ENABLE_NONE )
+    {
+        return vec4( vec3( 0 ), 1.0 );
+    }
+
+    uint seed = getRandomSeed( pix, globalUniform.frameId );
+    vec3 rnd  = rnd8_4( seed, 0 ).xyz;
+
+    const vec2 inUV         = getPixelUVWithJitter( pix );
+    const vec3 cameraRayDir = getRayDir( inUV );
+
+    float virtualdepth = texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
+    bool  isSky        = virtualdepth > MAX_RAY_LENGTH;
+
+    if( globalUniform.volumeEnableType == VOLUME_ENABLE_VOLUMETRIC )
+    {
+        vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
+
+#ifdef DEBUG_VOLUME_ILLUMINATION
+        vec3 sp = volume_toSamplePosition_T(
+            position.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
+        vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
+        return color * illum;
+#endif
+
+        return volume_sampleDithered( position, rnd, 2.0 );
+    }
+    else
+    {
+        float density = globalUniform.volumeScattering * 0.00005;
+
+        if( !isSky )
+        {
+            float f = exp( -virtualdepth * density );
+            return vec4( globalUniform.volumeAmbient.rgb * ( 1.0f - f ), f );
+        }
+        else
+        {
+            return vec4( vec3( 0 ), 1.0 );
+        }
+    }
+}
+
+void main()
+{
+    const ivec2 pix = ivec2( gl_GlobalInvocationID.x, gl_GlobalInvocationID.y );
+    if( pix.x >= uint( globalUniform.renderWidth ) || pix.y >= uint( globalUniform.renderHeight ) )
+    {
+        return;
+    }
+    const ivec2 checkerboardPix = getCheckerboardPix( pix );
+
+    imageStore( framebufScattering, pix, applyVolumetrics( pix ) );
+}
