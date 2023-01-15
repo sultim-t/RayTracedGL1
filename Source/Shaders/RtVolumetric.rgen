@@ -76,40 +76,6 @@ void main()
         center += radius * rnd;
     }
 
-#if 1
-    {
-        ivec2 pix;
-        float depth;
-        {
-            vec4 ndc = globalUniform.projection * globalUniform.view * vec4( center, 1.0 );
-            ndc.xyz /= ndc.w;
-            ndc.xy = ndc.xy * 0.5 + 0.5;
-
-            pix   = ivec2( ndc.xy * vec2( globalUniform.renderWidth, globalUniform.renderHeight ) );
-            depth = ndc.z;
-        }
-
-        {
-            uint instCustomIndex = floatBitsToUint(
-                texelFetch( framebufSurfacePosition_Sampler, getCheckerboardPix( pix ), 0 ).a );
-
-            float surfDepth = texelFetch( framebufDepthNdc_Sampler, pix, 0 ).r;
-
-            if( ( instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC ) == 0 )
-            {
-                if( depth > surfDepth )
-                {
-                    imageStore( g_volumetric, cell, vec4( 0.0 ) );
-    #if ILLUMINATION_VOLUME
-                    imageStore( g_illuminationVolume, cell, vec4( 0.0 ) );
-    #endif
-                    return;
-                }
-            }
-        }
-    }
-#endif
-
     vec3 lighting = globalUniform.volumeAmbient.rgb;
     vec3 radiance = vec3( 0.0 );
 
