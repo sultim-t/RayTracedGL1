@@ -34,20 +34,33 @@ layout( local_size_x = COMPUTE_SCATTER_ACCUM_GROUP_SIZE_X,
 
 
 
-vec4 applyVolumetrics( const ivec2 pix )
+vec4 applyVolumetrics( ivec2 pix )
 {
     if( globalUniform.volumeEnableType == VOLUME_ENABLE_NONE )
     {
         return vec4( vec3( 0 ), 1.0 );
     }
 
+    // allow only refractive
+    bool isPixOdd = isCheckerboardPixOdd( pix ) != 0;
+    if( !isPixOdd )
+    {
+        // force being odd
+        pix = getRegularPixFromCheckerboardPix( pix );
+        pix.x += 1;
+        pix = getCheckerboardPix( pix );
+    }
+
     uint seed = getRandomSeed( pix, globalUniform.frameId );
     vec3 rnd  = rnd8_4( seed, 0 ).xyz;
 
-    const vec2 inUV         = getPixelUVWithJitter( pix );
+    const vec2 inUV         = getPixelUVWithJitter( getRegularPixFromCheckerboardPix( pix ) );
     const vec3 cameraRayDir = getRayDir( inUV );
 
-    float virtualdepth = texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( pix ), 0 ).r;
+    float      oop;
+    const vec3 offset = sampleHemisphere( rnd.x, rnd.y, oop );
+
+    float virtualdepth = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
     bool  isSky        = virtualdepth > MAX_RAY_LENGTH;
 
     if( globalUniform.volumeEnableType == VOLUME_ENABLE_VOLUMETRIC )
@@ -61,7 +74,7 @@ vec4 applyVolumetrics( const ivec2 pix )
         return color * illum;
 #endif
 
-        return volume_sampleDithered( position, rnd, 2.0 );
+        return volume_sampleDithered( position, rnd.z, -offset, 2.0f );
     }
     else
     {
@@ -86,7 +99,63 @@ void main()
     {
         return;
     }
-    const ivec2 checkerboardPix = getCheckerboardPix( pix );
 
-    imageStore( framebufScattering, pix, applyVolumetrics( pix ) );
+    const float motionZ = texelFetch( framebufMotion_Sampler, pix, 0 ).z;
+    const float depth   = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
+    const vec3  normal  = texelFetchNormal( pix );
+
+    ivec2 pixPrev;
+    vec2  subPix;
+    {
+        const vec2 posPrev = getPrevScreenPos( framebufMotion_Sampler, pix );
+
+        pixPrev = ivec2( floor( posPrev - 0.5 ) );
+        subPix  = ( posPrev - 0.5 ) - floor( posPrev - 0.5 );
+    }
+    const float bilinearWeights[ 2 ][ 2 ] = {
+        { ( 1.0 - subPix.x ) * ( 1.0 - subPix.y ), subPix.x * ( 1.0 - subPix.y ) },
+        { ( 1.0 - subPix.x ) * subPix.y, subPix.x * subPix.y },
+    };
+
+    vec4  accum      = vec4( 0 );
+    float historyLen = 0;
+    float weightSum  = 0;
+
+    // 2x2 tap bilinear interpolation
+    for( int yy = 0; yy <= 1; yy++ )
+    {
+        for( int xx = 0; xx <= 1; xx++ )
+        {
+            ivec2 xy = pixPrev + ivec2( xx, yy );
+
+            float depthPrev  = texelFetch( framebufDepthWorld_Prev_Sampler, xy, 0 ).r;
+            vec3  normalPrev = texelFetchNormal_Prev( xy );
+
+            if( testPixInRenderArea( xy, getCheckerboardedRenderArea( pix ) ) &&
+                testReprojectedDepth( depth, depthPrev, motionZ ) &&
+                testReprojectedNormal( normal, normalPrev ) )
+            {
+                const float weight = bilinearWeights[ yy ][ xx ];
+
+                accum += weight * texelFetch( framebufScattering_Prev_Sampler,
+                                              getRegularPixFromCheckerboardPix( xy ),
+                                              0 );
+                historyLen += weight * texelFetch( framebufScatteringHistory_Prev_Sampler,
+                                                   getRegularPixFromCheckerboardPix( xy ),
+                                                   0 )
+                                           .r;
+                weightSum += weight;
+            }
+        }
+    }
+
+    historyLen = weightSum > 0.0001 ? historyLen / weightSum : 0;
+    accum      = weightSum > 0.0001 ? accum / weightSum : vec4( 0 );
+
+    historyLen = clamp( historyLen + 1, 1, 8 );
+    accum      = mix( accum, applyVolumetrics( pix ), 1.0 / historyLen );
+
+    imageStore( framebufScattering, getRegularPixFromCheckerboardPix( pix ), accum );
+    imageStore(
+        framebufScatteringHistory, getRegularPixFromCheckerboardPix( pix ), vec4( historyLen ) );
 }

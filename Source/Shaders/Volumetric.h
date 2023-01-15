@@ -112,16 +112,15 @@ vec4 volume_sample_Prev( const ivec3 curcell )
     return textureLod( g_volumetric_Sampler_Prev, spPrev, 0.0 );
 }
 
-vec4 volume_sampleDithered( const vec3 world, const vec3 rnd01, float ditherRadius )
+vec4 volume_sampleDithered( const vec3  world,
+                            const float rnd01,
+                            const vec3  unitBasis,
+                            float       ditherRadius )
 {
     vec3 sp = volume_toSamplePosition_T(
         world, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
 
-#if SHIPPING_HACK
-    ditherRadius = 0.0;
-#endif
-
-    sp += ditherRadius * ( rnd01 * 2 - 1 ) /
+    sp += rnd01 * ditherRadius * unitBasis /
           vec3( VOLUMETRIC_SIZE_X, VOLUMETRIC_SIZE_Y, VOLUMETRIC_SIZE_Z );
 
     return textureLod( g_volumetric_Sampler, sp, 0.0 );
