@@ -24,10 +24,8 @@
 #define DESC_SET_GLOBAL_UNIFORM 1
 #define DESC_SET_TONEMAPPING 2
 #define DESC_SET_LPM_PARAMS 3
-#define DESC_SET_VOLUMETRIC 4
 #include "ShaderCommonGLSLFunc.h"
 #include "LightGrid.h"
-#include "Volumetric.h"
 #include "Random.h"
 #include "Exposure.h"
 

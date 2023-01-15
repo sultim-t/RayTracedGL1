@@ -38,8 +38,7 @@ public:
                       std::shared_ptr< Framebuffers >    framebuffers,
                       const ShaderManager&               shaderManager,
                       const GlobalUniform&               uniform,
-                      const Tonemapping&                 tonemapping,
-                      const Volumetric&                  volumetric );
+                      const Tonemapping&                 tonemapping );
     ~ImageComposition() override;
 
     ImageComposition( const ImageComposition& other )                = delete;
@@ -53,7 +52,6 @@ public:
                    uint32_t                            frameIndex,
                    const GlobalUniform&                uniform,
                    const Tonemapping&                  tonemapping,
-                   const Volumetric&                   volumetric,
                    const RgDrawFrameTonemappingParams& params );
 
     void OnShaderReload( const ShaderManager* shaderManager ) override;
@@ -65,8 +63,7 @@ private:
     void ApplyTonemapping( VkCommandBuffer      cmd,
                            uint32_t             frameIndex,
                            const GlobalUniform& uniform,
-                           const Tonemapping&   tonemapping,
-                           const Volumetric&    volumetric );
+                           const Tonemapping&   tonemapping );
 
     static VkPipelineLayout CreatePipelineLayout( VkDevice               device,
                                                   VkDescriptorSetLayout* pSetLayouts,

@@ -572,7 +572,6 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                 frameIndex,
                                 *uniform,
                                 *tonemapping,
-                                *volumetric,
                                 AccessParams( drawInfo.pTonemappingParams ) );
 
 

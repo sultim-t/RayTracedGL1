@@ -399,8 +399,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
         framebuffers, 
         *shaderManager, 
         *uniform, 
-        *tonemapping,
-        *volumetric );
+        *tonemapping );
 
     bloom = std::make_shared< Bloom >( 
         device,

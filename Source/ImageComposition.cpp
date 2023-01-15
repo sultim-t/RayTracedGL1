@@ -34,8 +34,7 @@ RTGL1::ImageComposition::ImageComposition( VkDevice                           _d
                                            std::shared_ptr< Framebuffers >    _framebuffers,
                                            const ShaderManager&               _shaderManager,
                                            const GlobalUniform&               _uniform,
-                                           const Tonemapping&                 _tonemapping,
-                                           const Volumetric&                  _volumetric )
+                                           const Tonemapping&                 _tonemapping )
     : device( _device )
     , framebuffers( std::move( _framebuffers ) )
     , composePipelineLayout( VK_NULL_HANDLE )
@@ -53,9 +52,10 @@ RTGL1::ImageComposition::ImageComposition( VkDevice                           _d
 
     {
         VkDescriptorSetLayout setLayouts[] = {
-            framebuffers->GetDescSetLayout(), _uniform.GetDescSetLayout(),
-            _tonemapping.GetDescSetLayout(),  descLayout,
-            _volumetric.GetDescSetLayout(),
+            framebuffers->GetDescSetLayout(),
+            _uniform.GetDescSetLayout(),
+            _tonemapping.GetDescSetLayout(),
+            descLayout,
         };
 
         composePipelineLayout = CreatePipelineLayout(
@@ -94,11 +94,10 @@ void RTGL1::ImageComposition::Finalize( VkCommandBuffer                     cmd,
                                         uint32_t                            frameIndex,
                                         const GlobalUniform&                uniform,
                                         const Tonemapping&                  tonemapping,
-                                        const Volumetric&                   volumetric,
                                         const RgDrawFrameTonemappingParams& params )
 {
     SetupLpmParams( cmd, frameIndex, params );
-    ApplyTonemapping( cmd, frameIndex, uniform, tonemapping, volumetric );
+    ApplyTonemapping( cmd, frameIndex, uniform, tonemapping );
 }
 
 void RTGL1::ImageComposition::OnShaderReload( const ShaderManager* shaderManager )
@@ -110,8 +109,7 @@ void RTGL1::ImageComposition::OnShaderReload( const ShaderManager* shaderManager
 void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
                                                 uint32_t             frameIndex,
                                                 const GlobalUniform& uniform,
-                                                const Tonemapping&   tonemapping,
-                                                const Volumetric&    volumetric )
+                                                const Tonemapping&   tonemapping )
 {
     using FI = FramebufferImageIndex;
     CmdLabel label( cmd, "Prefinal framebuf compose" );
@@ -119,10 +117,8 @@ void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
 
     // sync access
     FI fs[] = {
-        FI::FB_IMAGE_INDEX_SCREEN_EMISSION,
-        FI::FB_IMAGE_INDEX_FINAL,
-        FI::FB_IMAGE_INDEX_DEPTH_WORLD,
-        FI::FB_IMAGE_INDEX_ACID_FOG,
+        FI::FB_IMAGE_INDEX_SCREEN_EMISSION, FI::FB_IMAGE_INDEX_FINAL,
+        FI::FB_IMAGE_INDEX_DEPTH_WORLD,     FI::FB_IMAGE_INDEX_ACID_FOG,
         FI::FB_IMAGE_INDEX_SCATTERING,
     };
     framebuffers->BarrierMultiple( cmd, frameIndex, fs );
@@ -138,7 +134,6 @@ void RTGL1::ImageComposition::ApplyTonemapping( VkCommandBuffer      cmd,
         uniform.GetDescSet( frameIndex ),
         tonemapping.GetDescSet(),
         descSet,
-        volumetric.GetDescSet( frameIndex ),
     };
 
     vkCmdBindDescriptorSets( cmd,
@@ -180,8 +175,10 @@ void RTGL1::ImageComposition::ProcessCheckerboard( VkCommandBuffer      cmd,
 
 
     // bind desc sets
-    VkDescriptorSet sets[] = { framebuffers->GetDescSet( frameIndex ),
-                               uniform->GetDescSet( frameIndex ) };
+    VkDescriptorSet sets[] = {
+        framebuffers->GetDescSet( frameIndex ),
+        uniform->GetDescSet( frameIndex ),
+    };
 
     vkCmdBindDescriptorSets( cmd,
                              VK_PIPELINE_BIND_POINT_COMPUTE,
