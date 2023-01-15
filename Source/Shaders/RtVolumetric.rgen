@@ -40,7 +40,14 @@
 float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float assymetry )
 {
     float costheta = dot( tolight, toviewer );
-    float k        = 1.55 * assymetry - 0.55 * assymetry * assymetry * assymetry;
+
+#if SHIPPING_HACK
+    // so no light source's ring is visible
+    const float maxdot = 0.9;
+    costheta           = clamp( costheta, -maxdot, maxdot );
+#endif
+
+    float k = 1.55 * assymetry - 0.55 * assymetry * assymetry * assymetry;
 
     return ( 1 - square( k ) ) / ( 4 * M_PI * square( 1 + k * costheta ) );
 }
@@ -78,7 +85,7 @@ void main()
             ndc.xyz /= ndc.w;
             ndc.xy = ndc.xy * 0.5 + 0.5;
 
-            pix = ivec2( ndc.xy * vec2( globalUniform.renderWidth, globalUniform.renderHeight ) );
+            pix   = ivec2( ndc.xy * vec2( globalUniform.renderWidth, globalUniform.renderHeight ) );
             depth = ndc.z;
         }
 
@@ -86,7 +93,7 @@ void main()
             uint instCustomIndex = floatBitsToUint(
                 texelFetch( framebufSurfacePosition_Sampler, getCheckerboardPix( pix ), 0 ).a );
 
-            float surfDepth = texelFetch(framebufDepthNdc_Sampler, pix, 0).r;
+            float surfDepth = texelFetch( framebufDepthNdc_Sampler, pix, 0 ).r;
 
             if( ( instCustomIndex & INSTANCE_CUSTOM_INDEX_FLAG_DYNAMIC ) == 0 )
             {
@@ -106,18 +113,6 @@ void main()
     vec3 lighting = globalUniform.volumeAmbient.rgb;
     vec3 radiance = vec3( 0.0 );
 
-#if SHIPPING_HACK
-    if( getLuminance( globalUniform.volumeSourceColor.rgb ) > 0.01 )
-    {
-        bool isShadowed = traceShadowRay(
-            0, center, center + MAX_RAY_LENGTH * globalUniform.volumeDirToSource.xyz, true );
-
-        radiance += globalUniform.volumeSourceColor.rgb * float( !isShadowed );
-        lighting += radiance * phaseFunction_Schlick( globalUniform.volumeDirToSource.xyz,
-                                                      toviewer,
-                                                      globalUniform.volumeSourceAsymmetry );
-    }
-#else
     if( globalUniform.directionalLightExists != 0 )
     {
         DirectionalLight l =
@@ -125,9 +120,9 @@ void main()
         bool isShadowed = traceShadowRay( 0, center, center - MAX_RAY_LENGTH * l.direction, true );
 
         radiance += l.color * float( !isShadowed );
-        lighting += radiance * phaseFunction_Schlick( -l.direction, toviewer, 0.4 );
+        lighting += radiance * phaseFunction_Schlick(
+                                   -l.direction, toviewer, globalUniform.volumeSourceAsymmetry );
     }
-#endif
 
 #if ILLUMINATION_VOLUME
     {
@@ -137,7 +132,8 @@ void main()
             radiance_Prev = vec3( 0 );
         }
 
-        uint seed = getRandomSeed( ivec2( cell.x + cell.z, cell.y + 19 * cell.z ), globalUniform.frameId );
+        uint seed =
+            getRandomSeed( ivec2( cell.x + cell.z, cell.y + 19 * cell.z ), globalUniform.frameId );
 
         // TODO: processDirectIllumination without normals
         vec3 n = safeNormalize( toviewer );
