@@ -843,6 +843,8 @@ FRAMEBUFFERS = {
 
     "AtrousFilteredVariance"            : (TYPE_FLOAT16,    COMPONENT_R,    0),
     
+    "HistogramInput"                    : (TYPE_FLOAT16,    COMPONENT_R,    0),
+    
     "NormalDecal"                       : (TYPE_UINT32,     COMPONENT_R,    FRAMEBUF_FLAGS_IS_ATTACHMENT),
     
     "Scattering"                        : (TYPE_FLOAT16,    COMPONENT_RGBA, FRAMEBUF_FLAGS_STORE_PREV),

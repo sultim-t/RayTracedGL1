@@ -85,7 +85,7 @@ void RTGL1::Tonemapping::CalculateExposure( VkCommandBuffer cmd,
     }
 
     // sync access
-    framebuffers->BarrierOne( cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_PRE_FINAL );
+    framebuffers->BarrierOne( cmd, frameIndex, FramebufferImageIndex::FB_IMAGE_INDEX_HISTOGRAM_INPUT );
 
 
     // bind desc sets

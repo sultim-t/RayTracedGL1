@@ -38,17 +38,16 @@ layout(local_size_x = COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X, local_size_y = COMPUTE
 shared uint histogramWorkGroup[COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_X * COMPUTE_LUM_HISTOGRAM_GROUP_SIZE_Y];
 
 // c -- linear HDR color
-uint getColorBin(vec3 c, float minLogLuminance, float maxLogLuminance)
+uint getColorBin(float inputLum, float minLogLuminance, float maxLogLuminance)
 {
-    float luminance = getLuminance(c);
     float inverseLogLuminanceRange = 1.0 / (maxLogLuminance - minLogLuminance);
 
-    if (luminance < LUMINANCE_EPS)
+    if (inputLum < LUMINANCE_EPS)
     {
         return 0;
     }
 
-    float logLuminance = clamp((log2(luminance) - minLogLuminance) * inverseLogLuminanceRange, 0.0, 1.0);
+    float logLuminance = clamp((log2(inputLum) - minLogLuminance) * inverseLogLuminanceRange, 0.0, 1.0);
 
     // [0.0, 1.0] -> [1, 255]
     return uint(logLuminance * 254.0 + 1.0);
@@ -71,9 +70,9 @@ void main()
 
     if (pix.x < uint(globalUniform.renderWidth) && pix.y < uint(globalUniform.renderHeight))
     {
-        const vec3 hdrColor = texelFetch(framebufPreFinal_Sampler, pix, 0).rgb;
+        float lum = texelFetch( framebufHistogramInput_Sampler, pix, 0 ).r;
 
-        const uint colorBin = getColorBin(hdrColor, globalUniform.minLogLuminance, globalUniform.maxLogLuminance);
+        const uint colorBin = getColorBin(lum, globalUniform.minLogLuminance, globalUniform.maxLogLuminance);
         atomicAdd(histogramWorkGroup[colorBin], 1);
     }
 

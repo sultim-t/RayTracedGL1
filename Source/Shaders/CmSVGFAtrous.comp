@@ -286,7 +286,7 @@ void main()
 
         vec3 illuminated;
 
-        if( !isSkyPix( pix ) && !classicShading( getRegularPixFromCheckerboardPix(pix) ) )
+        if( !isSkyPix( pix ) )
         {
             const vec2 mrFb   = texelFetch(framebufMetallicRoughness_Sampler, pix, 0).xy;
             const vec3 normal = texelFetchNormal(pix);
@@ -331,7 +331,20 @@ void main()
             illuminated = albedo * throughput;
         }
 
-        imageStore(framebufPreFinal, getRegularPixFromCheckerboardPix(pix), vec4(max(vec3(0.0), illuminated), 0));
+        // even with classic shading, use RT illumination to calc exposure,
+        // otherwise classic pixels will be dark, and avg exposure will be too high
+        imageStore( framebufHistogramInput,
+                    getRegularPixFromCheckerboardPix( pix ),
+                    vec4( max( 0.0, getLuminance( illuminated ) ) ) );
+
+        if( classicShading( getRegularPixFromCheckerboardPix( pix ) ) )
+        {
+            illuminated = albedo * throughput;
+        }
+
+        imageStore( framebufPreFinal,
+                    getRegularPixFromCheckerboardPix( pix ),
+                    vec4( max( vec3( 0.0 ), illuminated ), 0 ) );
     }
 }
 
