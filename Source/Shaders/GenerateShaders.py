@@ -114,6 +114,8 @@ def main():
     #    print("> Couldn't parse arguments")
     #    return
 
+    pathlib.Path(TARGET_FOLDER_PATH).mkdir(parents=True, exist_ok=True)
+
     fillDependencyFolders()
 
     if not os.path.exists(CACHE_FOLDER_PATH):
