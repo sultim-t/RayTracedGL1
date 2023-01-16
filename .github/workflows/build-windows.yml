@@ -23,3 +23,11 @@ jobs:
         run: cmake -B ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRG_WITH_SURFACE_WIN32=ON
       - name: Build
         run: cmake --build ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} --config ${{env.BUILD_TYPE}}
+      - name: Upload
+        uses: actions/upload-artifact@v3
+        with:
+          name: RayTracedGL1-${{ github.event.head_commit.message }}
+          path: |
+              BuildCmake/**/**/RayTracedGL1.dll
+              BuildCmake/**/**/RayTracedGL1.lib
+              BuildCmake/**/**/RayTracedGL1.pdb
