@@ -50,12 +50,12 @@ RTGL1::PortalList::~PortalList()
 {
     if( info.portalIndex >= PORTAL_MAX_COUNT )
     {
-        throw RgException( RG_WRONG_ARGUMENT, "Portal index must be in [0, 62]" );
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Portal index must be in [0, 62]" );
     }
 
     if( uploadedIndices.test( info.portalIndex ) )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "Portal with such index was already uploaded in this frame" );
     }
 

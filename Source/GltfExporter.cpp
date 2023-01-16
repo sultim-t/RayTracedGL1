@@ -1283,7 +1283,7 @@ bool PrepareFolder( const std::filesystem::path& gltfPath )
         return createEmptyFoldersFor();
     }
 
-#ifdef _WIN32
+#ifdef RG_USE_SURFACE_WIN32
     {
         auto msg = std::format( "Folder already exists:\n{}\n\n"
                                 "Are you sure you want to write ON TOP of its contents?",
@@ -1297,7 +1297,7 @@ bool PrepareFolder( const std::filesystem::path& gltfPath )
 #else
     debug::Warning( "{}: Folder already exists, overwrite disabled", folder.string() );
     return false;
-#endif // _WIN32
+#endif // RG_USE_SURFACE_WIN32
 }
 
 }

@@ -59,7 +59,7 @@ VkSurfaceKHR GetSurfaceFromUser( VkInstance instance, const RgInstanceCreateInfo
 #else
     if( info.pWin32SurfaceInfo != nullptr )
     {
-        throw RgException( RG_WRONG_ARGUMENT,
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT,
                            "pWin32SurfaceInfo is specified, but the library wasn't built with "
                            "RG_USE_SURFACE_WIN32 option" );
     }

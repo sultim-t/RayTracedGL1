@@ -584,7 +584,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     RgFloat2D                              jitterOffset )
 {
     throw RgException(
-        RG_WRONG_ARGUMENT,
+        RG_RESULT_WRONG_FUNCTION_ARGUMENT,
         "RTGL1 was built without DLSS support. Enable RG_WITH_NVIDIA_DLSS CMake option." );
 }
 
@@ -596,7 +596,7 @@ void RTGL1::DLSS::GetOptimalSettings( uint32_t               userWidth,
                                       float*                 pOutSharpness ) const
 {
     throw RgException(
-        RG_WRONG_ARGUMENT,
+        RG_RESULT_WRONG_FUNCTION_ARGUMENT,
         "RTGL1 was built without DLSS support. Enable RG_WITH_NVIDIA_DLSS CMake option." );
 }
 
