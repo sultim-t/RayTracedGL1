@@ -5,7 +5,7 @@ on: push
 env:
   BUILD_TYPE: RelWithDebInfo
   TARGET_FOLDER: Build/Release
-  
+
 jobs:
   build-msvc:
     runs-on: windows-latest
@@ -13,6 +13,9 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: recursive
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
       - name: Vulkan SDK
         uses: humbletim/setup-vulkan-sdk@v1.2.0
@@ -27,16 +30,22 @@ jobs:
       - name: Build
         run: cmake --build ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} --config ${{env.BUILD_TYPE}}
 
+      - name: Shaders
+        run: |
+          cd Source/Shaders
+          python GenerateShaders.py
+
       - name: Folder
-        run: mkdir final/bin
-        run: copy BuildCMake/RelWithDebInfo/RayTracedGL1.lib final/bin/RayTracedGL1.lib
-        run: copy BuildCMake/RelWithDebInfo/RayTracedGL1.pdb final/bin/RayTracedGL1.pdb
-        run: copy BuildCMake/RelWithDebInfo/RayTracedGL1.dll final/bin/RayTracedGL1.dll
-        run: mkdir final/ovrd
-        run: copy Tools/BlueNoise_LDR_RGBA_128.ktx2 final/ovrd/CreateKTX2.py
-        run: copy Tools/CreateKTX2.py final/ovrd/BlueNoise_LDR_RGBA_128.ktx2
-        run: mkdir final/ovrd/shaders
-        run: copy Build/shaders/*.spv final/ovrd/shaders
+        run: |
+          mkdir final/bin
+          copy BuildCMake/RelWithDebInfo/RayTracedGL1.lib final/bin/RayTracedGL1.lib
+          copy BuildCMake/RelWithDebInfo/RayTracedGL1.pdb final/bin/RayTracedGL1.pdb
+          copy BuildCMake/RelWithDebInfo/RayTracedGL1.dll final/bin/RayTracedGL1.dll
+          mkdir final/ovrd
+          copy Tools/BlueNoise_LDR_RGBA_128.ktx2 final/ovrd/CreateKTX2.py
+          copy Tools/CreateKTX2.py final/ovrd/BlueNoise_LDR_RGBA_128.ktx2
+          mkdir final/ovrd/shaders
+          copy Build/shaders/*.spv final/ovrd/shaders
 
       - name: Upload
         uses: actions/upload-artifact@v3
