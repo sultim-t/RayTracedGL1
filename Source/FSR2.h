@@ -36,12 +36,12 @@ public:
     FSR2( VkDevice device, VkPhysicalDevice physDevice );
     ~FSR2() override;
 
-    FSR2( const FSR2& other )     = delete;
-    FSR2( FSR2&& other ) noexcept = delete;
-    FSR2& operator=( const FSR2& other ) = delete;
+    FSR2( const FSR2& other )                = delete;
+    FSR2( FSR2&& other ) noexcept            = delete;
+    FSR2& operator=( const FSR2& other )     = delete;
     FSR2& operator=( FSR2&& other ) noexcept = delete;
 
-    void  OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;
+    void OnFramebuffersSizeChange( const ResolutionState& resolutionState ) override;
 
     FramebufferImageIndex Apply( VkCommandBuffer                        cmd,
                                  uint32_t                               frameIndex,
@@ -53,11 +53,11 @@ public:
                                  float                                  farPlane,
                                  float                                  fovVerticalRad );
 
-    static RgFloat2D      GetJitter( const ResolutionState& resolutionState, uint32_t frameId );
+    static RgFloat2D GetJitter( const ResolutionState& resolutionState, uint32_t frameId );
 
 private:
-    VkDevice                                           device;
-    VkPhysicalDevice                                   physDevice;
+    VkDevice         device;
+    VkPhysicalDevice physDevice;
 
     std::unique_ptr< std::optional< FfxFsr2Context > > context;
 };

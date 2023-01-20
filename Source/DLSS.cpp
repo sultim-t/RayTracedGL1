@@ -91,7 +91,7 @@ bool RTGL1::DLSS::TryInit( VkInstance       instance,
 {
     NVSDK_NGX_Result r;
 
-    std::wstring     dllPath = GetFolderPath() + ( enableDebug ? L"/dev/" : L"/rel/" );
+    std::wstring dllPath = GetFolderPath() + ( enableDebug ? L"/dev/" : L"/rel/" );
     #ifdef NV_WINDOWS
     wchar_t* dllPath_c = ( wchar_t* )dllPath.c_str();
     #else
@@ -169,9 +169,9 @@ bool RTGL1::DLSS::CheckSupport() const
         return false;
     }
 
-    int              needsUpdatedDriver    = 0;
-    unsigned int     minDriverVersionMajor = 0;
-    unsigned int     minDriverVersionMinor = 0;
+    int          needsUpdatedDriver    = 0;
+    unsigned int minDriverVersionMajor = 0;
+    unsigned int minDriverVersionMinor = 0;
 
     NVSDK_NGX_Result r_upd =
         pParams->Get( NVSDK_NGX_Parameter_SuperSampling_NeedsUpdatedDriver, &needsUpdatedDriver );
@@ -348,8 +348,8 @@ bool RTGL1::DLSS::ValidateDlssFeature( VkCommandBuffer               cmd,
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
 
     // only one phys device
-    uint32_t         creationNodeMask   = 1;
-    uint32_t         visibilityNodeMask = 1;
+    uint32_t creationNodeMask   = 1;
+    uint32_t visibilityNodeMask = 1;
 
 
     NVSDK_NGX_Result r = NGX_VULKAN_CREATE_DLSS_EXT(
@@ -420,7 +420,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     CmdLabel label( cmd, "DLSS" );
 
 
-    FI       fs[] = {
+    FI fs[] = {
         FI::FB_IMAGE_INDEX_FINAL,
         FI::FB_IMAGE_INDEX_MOTION_DLSS,
         FI::FB_IMAGE_INDEX_DEPTH_NDC,
@@ -441,10 +441,12 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     };
 
 
+    // clang-format off
     NVSDK_NGX_Resource_VK unresolvedColorResource = ToNGXResource( framebuffers, frameIndex, FI::FB_IMAGE_INDEX_FINAL, sourceSize );
     NVSDK_NGX_Resource_VK resolvedColorResource   = ToNGXResource( framebuffers, frameIndex, outputImage, targetSize, true );
     NVSDK_NGX_Resource_VK motionVectorsResource   = ToNGXResource( framebuffers, frameIndex, FI::FB_IMAGE_INDEX_MOTION_DLSS, sourceSize );
     NVSDK_NGX_Resource_VK depthResource           = ToNGXResource( framebuffers, frameIndex, FI::FB_IMAGE_INDEX_DEPTH_NDC, sourceSize );
+    // clang-format on
 
 
     NVSDK_NGX_VK_DLSS_Eval_Params evalParams = {
@@ -513,10 +515,10 @@ void RTGL1::DLSS::GetOptimalSettings( uint32_t               userWidth,
 
 std::vector< const char* > RTGL1::DLSS::GetDlssVulkanInstanceExtensions()
 {
-    uint32_t         instanceExtCount;
-    const char**     ppInstanceExts;
-    uint32_t         deviceExtCount;
-    const char**     ppDeviceExts;
+    uint32_t     instanceExtCount;
+    const char** ppInstanceExts;
+    uint32_t     deviceExtCount;
+    const char** ppDeviceExts;
 
     NVSDK_NGX_Result r = NVSDK_NGX_VULKAN_RequiredExtensions(
         &instanceExtCount, &ppInstanceExts, &deviceExtCount, &ppDeviceExts );
@@ -534,10 +536,10 @@ std::vector< const char* > RTGL1::DLSS::GetDlssVulkanInstanceExtensions()
 
 std::vector< const char* > RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
 {
-    uint32_t         instanceExtCount;
-    const char**     ppInstanceExts;
-    uint32_t         deviceExtCount;
-    const char**     ppDeviceExts;
+    uint32_t     instanceExtCount;
+    const char** ppInstanceExts;
+    uint32_t     deviceExtCount;
+    const char** ppDeviceExts;
 
     NVSDK_NGX_Result r = NVSDK_NGX_VULKAN_RequiredExtensions(
         &instanceExtCount, &ppInstanceExts, &deviceExtCount, &ppDeviceExts );

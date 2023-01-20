@@ -44,25 +44,25 @@ public:
           bool             enableDebug );
     ~DLSS();
 
-    DLSS( const DLSS& other )                 = delete;
-    DLSS( DLSS&& other ) noexcept             = delete;
-    DLSS&                             operator=( const DLSS& other ) = delete;
-    DLSS&                             operator=( DLSS&& other ) noexcept = delete;
+    DLSS( const DLSS& other )                = delete;
+    DLSS( DLSS&& other ) noexcept            = delete;
+    DLSS& operator=( const DLSS& other )     = delete;
+    DLSS& operator=( DLSS&& other ) noexcept = delete;
 
-    FramebufferImageIndex             Apply( VkCommandBuffer                        cmd,
-                                             uint32_t                               frameIndex,
-                                             const std::shared_ptr< Framebuffers >& framebuffers,
-                                             const RenderResolutionHelper&          renderResolution,
-                                             RgFloat2D                              jitterOffset );
+    FramebufferImageIndex Apply( VkCommandBuffer                        cmd,
+                                 uint32_t                               frameIndex,
+                                 const std::shared_ptr< Framebuffers >& framebuffers,
+                                 const RenderResolutionHelper&          renderResolution,
+                                 RgFloat2D                              jitterOffset );
 
-    void                              GetOptimalSettings( uint32_t               userWidth,
-                                                          uint32_t               userHeight,
-                                                          RgRenderResolutionMode mode,
-                                                          uint32_t*              pOutWidth,
-                                                          uint32_t*              pOutHeight,
-                                                          float*                 pOutSharpness ) const;
+    void GetOptimalSettings( uint32_t               userWidth,
+                             uint32_t               userHeight,
+                             RgRenderResolutionMode mode,
+                             uint32_t*              pOutWidth,
+                             uint32_t*              pOutHeight,
+                             float*                 pOutSharpness ) const;
 
-    bool                              IsDlssAvailable() const;
+    bool IsDlssAvailable() const;
 
     static std::vector< const char* > GetDlssVulkanInstanceExtensions();
     static std::vector< const char* > GetDlssVulkanDeviceExtensions();
@@ -83,7 +83,7 @@ private:
     bool ValidateDlssFeature( VkCommandBuffer cmd, const RenderResolutionHelper& renderResolution );
 
 private:
-    VkDevice             device;
+    VkDevice device;
 
     bool                 isInitialized;
     NVSDK_NGX_Parameter* pParams;
