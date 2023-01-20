@@ -578,6 +578,7 @@ typedef enum RgSkyType
 
 typedef struct RgDrawFrameTonemappingParams
 {
+    RgBool32        disableEyeAdaptation;
     float           ev100Min;
     float           ev100Max;
     float           luminanceWhitePoint;
@@ -878,8 +879,6 @@ typedef struct RgDrawFrameInfo
     RgBool32                                 disableRasterization;
 
     double                                   currentTime;
-    RgBool32                                 disableEyeAdaptation;
-    RgBool32                                 forceAntiFirefly;
 
     RgBool32                                 vsync;
 

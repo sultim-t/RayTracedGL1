@@ -48,17 +48,19 @@ struct Devmode
     bool     reloadShaders{ false };
     uint32_t debugShowFlags{ 0 };
 
+    bool antiFirefly{ true };
+
     struct
     {
         bool enable;
 
-        bool  antiFirefly;
         int   maxBounceShadows;
         bool  enableSecondBounceForIndirect;
         float directDiffuseSensitivityToChange;
         float indirectDiffuseSensitivityToChange;
         float specularSensitivityToChange;
 
+        bool  disableEyeAdaptation;
         float ev100Min;
         float ev100Max;
         float saturation[ 3 ];
@@ -164,11 +166,12 @@ namespace detail
     struct DefaultParams< RgDrawFrameTonemappingParams >
     {
         constexpr static RgDrawFrameTonemappingParams value = {
-            .ev100Min            = 0.0f,
-            .ev100Max            = 10.0f,
-            .luminanceWhitePoint = 10.0f,
-            .saturation          = { 0, 0, 0 },
-            .crosstalk           = { 1, 1, 1 },
+            .disableEyeAdaptation = false,
+            .ev100Min             = 0.0f,
+            .ev100Max             = 10.0f,
+            .luminanceWhitePoint  = 10.0f,
+            .saturation           = { 0, 0, 0 },
+            .crosstalk            = { 1, 1, 1 },
         };
     };
 

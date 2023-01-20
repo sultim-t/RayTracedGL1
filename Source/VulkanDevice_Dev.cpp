@@ -213,6 +213,7 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         }
         if( ImGui::TreeNode( "Tonemapping" ) )
         {
+            ImGui::Checkbox( "Disable eye adaptation", &modifiers.disableEyeAdaptation );
             ImGui::SliderFloat( "EV100 min", &modifiers.ev100Min, -3, 16, "%.1f" );
             ImGui::SliderFloat( "EV100 max", &modifiers.ev100Max, -3, 16, "%.1f" );
             ImGui::SliderFloat3( "Saturation", modifiers.saturation, -1, 1, "%.1f" );
@@ -221,7 +222,7 @@ void RTGL1::VulkanDevice::Dev_Draw() const
         }
         if( ImGui::TreeNode( "Illumination" ) )
         {
-            ImGui::Checkbox( "Anti-firefly", &modifiers.antiFirefly );
+            ImGui::Checkbox( "Anti-firefly", &devmode->antiFirefly );
             ImGui::SliderInt( "Shadow rays max depth",
                               &modifiers.maxBounceShadows,
                               0,
@@ -956,7 +957,6 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         // apply modifiers
         dst.vsync            = modifiers.vsync;
         dst.fovYRadians      = Utils::DegToRad( modifiers.fovDeg );
-        dst.forceAntiFirefly = modifiers.antiFirefly;
 
         {
             dst_resol.upscaleTechnique = modifiers.upscaleTechnique;
@@ -979,10 +979,11 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
             dst_illum.specularSensitivityToChange = modifiers.specularSensitivityToChange;
         }
         {
-            dst_tnmp.ev100Min   = modifiers.ev100Min;
-            dst_tnmp.ev100Max   = modifiers.ev100Max;
-            dst_tnmp.saturation = { RG_ACCESS_VEC3( modifiers.saturation ) };
-            dst_tnmp.crosstalk  = { RG_ACCESS_VEC3( modifiers.crosstalk ) };
+            dst_tnmp.disableEyeAdaptation = modifiers.disableEyeAdaptation;
+            dst_tnmp.ev100Min             = modifiers.ev100Min;
+            dst_tnmp.ev100Max             = modifiers.ev100Max;
+            dst_tnmp.saturation           = { RG_ACCESS_VEC3( modifiers.saturation ) };
+            dst_tnmp.crosstalk            = { RG_ACCESS_VEC3( modifiers.crosstalk ) };
         }
         {
             dst_ltmp.lightmapScreenCoverage = modifiers.lightmapScreenCoverage;
@@ -995,7 +996,7 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         // reset modifiers
         modifiers.vsync       = dst.vsync;
         modifiers.fovDeg      = Utils::RadToDeg( dst.fovYRadians );
-        modifiers.antiFirefly = dst.forceAntiFirefly;
+        devmode->antiFirefly = true;
 
         {
             modifiers.upscaleTechnique = dst_resol.upscaleTechnique;
@@ -1025,8 +1026,9 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
             modifiers.specularSensitivityToChange = dst_illum.specularSensitivityToChange;
         }
         {
-            modifiers.ev100Min = dst_tnmp.ev100Min;
-            modifiers.ev100Max = dst_tnmp.ev100Max;
+            modifiers.disableEyeAdaptation = dst_tnmp.disableEyeAdaptation;
+            modifiers.ev100Min             = dst_tnmp.ev100Min;
+            modifiers.ev100Max             = dst_tnmp.ev100Max;
             RG_SET_VEC3_A( modifiers.saturation, dst_tnmp.saturation.data );
             RG_SET_VEC3_A( modifiers.crosstalk, dst_tnmp.crosstalk.data );
         }
@@ -1042,7 +1044,7 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
 void RTGL1::VulkanDevice::Dev_TryBreak( const char* pTextureName, bool isImageUpload )
 {
 #ifdef _MSC_VER
-    if( !devmode)
+    if( !devmode )
     {
         return;
     }
@@ -1071,7 +1073,7 @@ void RTGL1::VulkanDevice::Dev_TryBreak( const char* pTextureName, bool isImageUp
     if( std::strcmp( devmode->breakOnTexture, Utils::SafeCstr( pTextureName ) ) == 0 )
     {
         __debugbreak();
-        devmode->breakOnTextureImage = false;
+        devmode->breakOnTextureImage     = false;
         devmode->breakOnTexturePrimitive = false;
     }
 #endif
