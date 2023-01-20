@@ -636,12 +636,12 @@ GEOM_INSTANCE_STRUCT = [
     (TYPE_UINT32,       1,      "texture_base_E",       1),
     (TYPE_UINT32,       1,      "texture_layer1",       1),
     (TYPE_UINT32,       1,      "texture_layer2",       1),
-    (TYPE_UINT32,       1,      "texture_lightmap",     1),
+    (TYPE_UINT32,       1,      "texture_layer3",       1),
 
     (TYPE_UINT32,       1,      "colorFactor_base",     1),
     (TYPE_UINT32,       1,      "colorFactor_layer1",   1),
     (TYPE_UINT32,       1,      "colorFactor_layer2",   1),
-    (TYPE_UINT32,       1,      "colorFactor_lightmap", 1),
+    (TYPE_UINT32,       1,      "colorFactor_layer3", 1),
 
     (TYPE_UINT32,       1,      "baseVertexIndex",      1),
     (TYPE_UINT32,       1,      "baseIndexIndex",       1),

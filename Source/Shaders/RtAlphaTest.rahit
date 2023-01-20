@@ -23,6 +23,7 @@
 
 // don't need "processAlbedo" function
 #define MATERIAL_MAX_ALBEDO_LAYERS 0
+#define MATERIAL_LIGHTMAP_LAYER_INDEX -1
 
 #define DESC_SET_GLOBAL_UNIFORM 2
 #define DESC_SET_VERTEX_DATA 3

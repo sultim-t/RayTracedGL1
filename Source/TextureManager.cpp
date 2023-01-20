@@ -785,7 +785,7 @@ std::array< MaterialTextures, 4 > TextureManager::GetTexturesForLayers(
         GetMaterialTextures( primitive.pTextureName ),
         GetMaterialTextures( IF_LAYER_EXISTS( layer1, pTextureName, nullptr ) ),
         GetMaterialTextures( IF_LAYER_EXISTS( layer2, pTextureName, nullptr ) ),
-        GetMaterialTextures( IF_LAYER_EXISTS( layerLightmap, pTextureName, nullptr ) ),
+        GetMaterialTextures( IF_LAYER_EXISTS( layer3, pTextureName, nullptr ) ),
     };
 }
 
@@ -796,7 +796,7 @@ std::array< RgColor4DPacked32, 4 > TextureManager::GetColorForLayers(
         primitive.color,
         IF_LAYER_EXISTS( layer1, color, 0xFFFFFFFF ),
         IF_LAYER_EXISTS( layer2, color, 0xFFFFFFFF ),
-        IF_LAYER_EXISTS( layerLightmap, color, 0xFFFFFFFF ),
+        IF_LAYER_EXISTS( layer3, color, 0xFFFFFFFF ),
     };
 }
 

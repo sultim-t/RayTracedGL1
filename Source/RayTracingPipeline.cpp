@@ -115,29 +115,32 @@ RTGL1::RayTracingPipeline::RayTracingPipeline( VkDevice                         
 
     assert( _rgInfo.primaryRaysMaxAlbedoLayers <= MATERIALS_MAX_LAYER_COUNT );
     assert( _rgInfo.indirectIlluminationMaxAlbedoLayers <= MATERIALS_MAX_LAYER_COUNT );
+    assert( _rgInfo.lightmapTexCoordLayerIndex <= MATERIALS_MAX_LAYER_COUNT );
 
+    // clang-format off
     // shader modules in the pipeline will have the exact order
     shaderStageInfos = {
-        { "RGenPrimary",        std::make_shared< uint32_t >( _rgInfo.primaryRaysMaxAlbedoLayers ) },
-        { "RGenReflRefr",       std::make_shared< uint32_t >( _rgInfo.primaryRaysMaxAlbedoLayers ) },
-        { "RGenDirect",         nullptr },        
-        { "RGenIndirectInit",   std::make_shared< uint32_t >( _rgInfo.indirectIlluminationMaxAlbedoLayers ) },
-        { "RGenIndirectFinal",  std::make_shared< uint32_t >( _rgInfo.indirectIlluminationMaxAlbedoLayers ) },
-        { "RGenGradients",      nullptr },
-        { "RInitialReservoirs", nullptr },
-        { "RVolumetric",        nullptr },
-        { "RMiss",              nullptr },
-        { "RMissShadow",        nullptr },
-        { "RClsOpaque",         nullptr },
-        { "RAlphaTest",         nullptr },
+        ShaderStageInfo{ "RGenPrimary",         SpecConst{ _rgInfo.primaryRaysMaxAlbedoLayers, _rgInfo.lightmapTexCoordLayerIndex } },
+        ShaderStageInfo{ "RGenReflRefr",        SpecConst{ _rgInfo.primaryRaysMaxAlbedoLayers, _rgInfo.lightmapTexCoordLayerIndex } },
+        ShaderStageInfo{ "RGenDirect",          std::nullopt },
+        ShaderStageInfo{ "RGenIndirectInit",    SpecConst{ _rgInfo.indirectIlluminationMaxAlbedoLayers, _rgInfo.lightmapTexCoordLayerIndex } },
+        ShaderStageInfo{ "RGenIndirectFinal",   SpecConst{ _rgInfo.indirectIlluminationMaxAlbedoLayers, _rgInfo.lightmapTexCoordLayerIndex } },
+        ShaderStageInfo{ "RGenGradients",       std::nullopt },
+        ShaderStageInfo{ "RInitialReservoirs",  std::nullopt },
+        ShaderStageInfo{ "RVolumetric",         std::nullopt },
+        ShaderStageInfo{ "RMiss",               std::nullopt },
+        ShaderStageInfo{ "RMissShadow",         std::nullopt },
+        ShaderStageInfo{ "RClsOpaque",          std::nullopt },
+        ShaderStageInfo{ "RAlphaTest",          std::nullopt },
     };
+    // clang-format on
 
 #pragma region Utilities
     // simple lambda to get index in "stages" by name
-    auto toIndex = [ this ]( const char* shaderName ) {
+    auto toIndex = [ this ]( std::string_view shaderName ) {
         for( uint32_t i = 0; i < shaderStageInfos.size(); i++ )
         {
-            if( std::strcmp( shaderName, shaderStageInfos[ i ].pName ) == 0 )
+            if( shaderStageInfos[ i ].name == shaderName )
             {
                 return i;
             }
@@ -183,14 +186,26 @@ void RTGL1::RayTracingPipeline::CreatePipeline( const ShaderManager* shaderManag
     std::vector< VkPipelineShaderStageCreateInfo > stages;
     for( const auto& s : shaderStageInfos )
     {
-        stages.push_back( shaderManager->GetStageInfo( s.pName ) );
+        stages.push_back( shaderManager->GetStageInfo( s.name ) );
     }
 
-    const VkSpecializationMapEntry specEntryCommonDef = {
-        .constantID = 0,
-        .offset     = 0,
-        .size       = sizeof( *shaderStageInfos[ 0 ].specConst ),
+
+    constexpr VkSpecializationMapEntry specEntryCommonDef[ SpecConst::MemberCount ] = {
+        {
+            .constantID = 0,
+            .offset     = offsetof( SpecConst, maxAlbedoLayers ),
+            .size       = sizeof( SpecConst::maxAlbedoLayers ),
+        },
+        {
+            .constantID = 1,
+            .offset     = offsetof( SpecConst, lightmapLayerIndex ),
+            .size       = sizeof( SpecConst::lightmapLayerIndex ),
+        },
     };
+    static_assert( SpecConst::MemberCount == 2 );
+    static_assert( specEntryCommonDef[ 0 ].size + specEntryCommonDef[ 1 ].size ==
+                   sizeof( SpecConst ) );
+
 
     std::vector< VkSpecializationInfo > specInfos;
     for( const auto& s : shaderStageInfos )
@@ -200,11 +215,11 @@ void RTGL1::RayTracingPipeline::CreatePipeline( const ShaderManager* shaderManag
         if( s.specConst )
         {
             specInfo = {
-                .mapEntryCount = 1,
-                .pMapEntries   = &specEntryCommonDef,
-                .dataSize      = sizeof( *s.specConst ),
+                .mapEntryCount = std::size( specEntryCommonDef ),
+                .pMapEntries   = specEntryCommonDef,
+                .dataSize      = sizeof( s.specConst.value() ),
                 // need to be careful with addresses
-                .pData = s.specConst.get(),
+                .pData = &( s.specConst.value() ),
             };
         }
         else

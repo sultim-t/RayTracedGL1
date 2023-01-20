@@ -152,19 +152,19 @@ void ShaderManager::UnloadShaderModules()
     modules.clear();
 }
 
-VkShaderModule ShaderManager::GetShaderModule( const char* name ) const
+VkShaderModule ShaderManager::GetShaderModule( std::string_view name ) const
 {
     const auto& m = modules.find( name );
     return m != modules.end() ? m->second.module : VK_NULL_HANDLE;
 }
 
-VkShaderStageFlagBits ShaderManager::GetModuleStage( const char* name ) const
+VkShaderStageFlagBits ShaderManager::GetModuleStage( std::string_view name ) const
 {
     const auto& m = modules.find( name );
     return m != modules.end() ? m->second.shaderStage : static_cast< VkShaderStageFlagBits >( 0 );
 }
 
-VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo( const char* name ) const
+VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo( std::string_view name ) const
 {
     const auto& m = modules.find( name );
 
@@ -173,7 +173,7 @@ VkPipelineShaderStageCreateInfo ShaderManager::GetStageInfo( const char* name ) 
         using namespace std::string_literals;
 
         throw RgException( RG_RESULT_ERROR_CANT_FIND_HARDCODED_RESOURCES,
-                           "Can't find loaded shader with name \""s + name + "\"" );
+                           std::format( "Can't find loaded shader with name \"{}\"", name ) );
     }
 
     return VkPipelineShaderStageCreateInfo{

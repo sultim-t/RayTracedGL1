@@ -738,6 +738,11 @@ int main( int argc, char* argv[] )
 
         .rayCullBackFacingTriangles = false,
 
+        .allowTexCoordLayer1        = true,
+        .allowTexCoordLayer2        = true,
+        .allowTexCoordLayer3        = true,
+        .lightmapTexCoordLayerIndex = 1,
+
         .rasterizedMaxVertexCount = 4096,
         .rasterizedMaxIndexCount  = 2048,
 

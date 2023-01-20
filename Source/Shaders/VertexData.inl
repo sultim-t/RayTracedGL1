@@ -464,14 +464,14 @@ ShTriangle getTriangle(int instanceID, int instanceCustomIndex, int localGeometr
         inst.texture_base,
         inst.texture_layer1,
         inst.texture_layer2,
-        inst.texture_lightmap
+        inst.texture_layer3
     );
 
     tr.layerColors = uint[](
         inst.colorFactor_base,
         inst.colorFactor_layer1,
         inst.colorFactor_layer2,
-        inst.colorFactor_lightmap
+        inst.colorFactor_layer3
     );
 
     tr.roughnessDefault = inst.roughnessDefault;

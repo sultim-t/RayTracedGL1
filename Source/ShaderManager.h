@@ -46,9 +46,9 @@ public:
 
     void ReloadShaders();
 
-    VkShaderModule                  GetShaderModule( const char* name ) const;
-    VkShaderStageFlagBits           GetModuleStage( const char* name ) const;
-    VkPipelineShaderStageCreateInfo GetStageInfo( const char* name ) const;
+    VkShaderModule                  GetShaderModule( std::string_view name ) const;
+    VkShaderStageFlagBits           GetModuleStage( std::string_view name ) const;
+    VkPipelineShaderStageCreateInfo GetStageInfo( std::string_view name ) const;
 
     // Subscribe to shader reload event.
     // shared_ptr will be transformed to weak_ptr

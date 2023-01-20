@@ -64,9 +64,9 @@ public:
         {
             texLayer2.push_back( *accumTexLayer2 );
         }
-        if( accumTexLayerLightmap )
+        if( accumTexLayer3 )
         {
-            texLayerLightmap.push_back( *accumTexLayerLightmap );
+            texLayer3.push_back( *accumTexLayer3 );
         }
 
         verts.push_back( accumVertex );
@@ -86,7 +86,7 @@ public:
     }
     void TexCoord_Layer1( float u, float v ) { accumTexLayer1 = { u, v }; }
     void TexCoord_Layer2( float u, float v ) { accumTexLayer2 = { u, v }; }
-    void TexCoord_LayerLightmap( float u, float v ) { accumTexLayerLightmap = { u, v }; }
+    void TexCoord_Layer3( float u, float v ) { accumTexLayer3 = { u, v }; }
 
     void Color( RgColor4DPacked32 color ) { accumVertex.color = color; }
 
@@ -99,7 +99,7 @@ private:
     std::vector< RgPrimitiveVertex > verts;
     std::vector< RgFloat2D >         texLayer1;
     std::vector< RgFloat2D >         texLayer2;
-    std::vector< RgFloat2D >         texLayerLightmap;
+    std::vector< RgFloat2D >         texLayer3;
     std::optional< PrimitiveRange >  lastbatch;
 
     std::vector< uint32_t > indicesTriangles;
@@ -119,7 +119,7 @@ private:
     std::optional< RgUtilImScratchTopology > accumTopology;
     std::optional< RgFloat2D >               accumTexLayer1;
     std::optional< RgFloat2D >               accumTexLayer2;
-    std::optional< RgFloat2D >               accumTexLayerLightmap;
+    std::optional< RgFloat2D >               accumTexLayer3;
 };
 
 }

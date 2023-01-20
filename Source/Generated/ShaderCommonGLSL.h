@@ -308,11 +308,11 @@ struct ShGeometryInstance
     uint texture_base_E;
     uint texture_layer1;
     uint texture_layer2;
-    uint texture_lightmap;
+    uint texture_layer3;
     uint colorFactor_base;
     uint colorFactor_layer1;
     uint colorFactor_layer2;
-    uint colorFactor_lightmap;
+    uint colorFactor_layer3;
     uint baseVertexIndex;
     uint baseIndexIndex;
     uint prevBaseVertexIndex;

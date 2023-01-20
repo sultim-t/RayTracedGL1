@@ -87,13 +87,20 @@ private:
     void AddHitGroup( uint32_t closestHitIndex, uint32_t anyHitIndex, uint32_t intersectionIndex );
 
 private:
+    struct SpecConst
+    {
+        uint32_t maxAlbedoLayers{ 0 };
+        uint32_t lightmapLayerIndex{ 0 };
+
+        constexpr static int MemberCount = 2;
+    };
+
     struct ShaderStageInfo
     {
-        const char* pName;
+        std::string_view           name{};
         // One uint specialization const to use in the shader.
-        // Must exist throughout class lifetime,
-        // as CreatePipeline can be called any time.
-        std::shared_ptr< uint32_t > specConst;
+        // Must exist throughout class lifetime, as CreatePipeline can be called any time.
+        std::optional< SpecConst > specConst{};
     };
 
 private:

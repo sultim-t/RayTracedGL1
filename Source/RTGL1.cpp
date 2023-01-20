@@ -304,9 +304,9 @@ void rgUtilImScratchTexCoord_Layer2( RgInstance instance, float u, float v )
     Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord_Layer2, u, v );
 }
 
-void rgUtilImScratchTexCoord_LayerLightmap( RgInstance instance, float u, float v )
+void rgUtilImScratchTexCoord_Layer3( RgInstance instance, float u, float v )
 {
-    Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord_LayerLightmap, u, v );
+    Call( instance, &RTGL1::VulkanDevice::ImScratchTexCoord_Layer3, u, v );
 }
 
 void rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color )

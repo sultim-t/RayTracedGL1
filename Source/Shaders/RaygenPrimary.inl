@@ -37,6 +37,9 @@
 #ifndef MATERIAL_MAX_ALBEDO_LAYERS
     #error MATERIAL_MAX_ALBEDO_LAYERS is not defined
 #endif 
+#ifndef MATERIAL_LIGHTMAP_LAYER_INDEX
+    #error MATERIAL_LIGHTMAP_LAYER_INDEX is not defined
+#endif 
 
 
 #define HITINFO_INL_CLASSIC_SHADING

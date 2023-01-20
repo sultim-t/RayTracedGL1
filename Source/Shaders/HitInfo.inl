@@ -53,7 +53,7 @@ vec3 processAlbedo(
     vec3 dst                 = vec3( 1.0 );
     bool hasAnyAlbedoTexture = false;
 
-    for( int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++ )
+    [[unroll]] for( int i = 0; i < MATERIAL_MAX_ALBEDO_LAYERS; i++ )
     {
         if( i == 1 )
         {
@@ -71,18 +71,22 @@ vec3 processAlbedo(
         }
         else if( i == 3 )
         {
-#if defined( HITINFO_INL_CLASSIC_SHADING )
-            if( !classicShading_PRIM() )
-            {
-                continue;
-            }
-            
             if( ( geometryInstanceFlags & GEOM_INST_FLAG_EXISTS_LAYER3 ) == 0 )
-#endif
             {
                 continue;
             }
         }
+
+    #if defined( HITINFO_INL_CLASSIC_SHADING )
+        if( !classicShading_PRIM() )
+        {
+            if( i == MATERIAL_LIGHTMAP_LAYER_INDEX )
+            {
+                // ignore lightmap layer, if using RT illumination
+                continue;
+            }
+        }
+    #endif
 
         if( layerColorTextures[ i ] != MATERIAL_NO_TEXTURE )
         {

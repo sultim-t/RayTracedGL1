@@ -22,6 +22,7 @@
 
 // don't need albedo for direct illumination
 #define MATERIAL_MAX_ALBEDO_LAYERS 0
+#define MATERIAL_LIGHTMAP_LAYER_INDEX -1
 
 #define DESC_SET_TLAS 0
 #define DESC_SET_FRAMEBUFFERS 1

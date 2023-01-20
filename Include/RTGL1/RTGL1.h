@@ -216,7 +216,9 @@ typedef struct RgInstanceCreateInfo
     RgBool32                    allowGeometryWithSkyFlag;
     RgBool32                    allowTexCoordLayer1;
     RgBool32                    allowTexCoordLayer2;
-    RgBool32                    allowTexCoordLayerLightmap;
+    RgBool32                    allowTexCoordLayer3;
+    // Which layer to interpret as a lightmap. Can be 1, 2 or 3.
+    uint32_t                    lightmapTexCoordLayerIndex;
 
     // Memory that must be allocated for vertex and index buffers of rasterized geometry.
     // It can't be changed after rgCreateInstance.
@@ -359,8 +361,8 @@ typedef struct RgEditorInfo
     RgEditorTextureLayerInfo        layer1;
     RgBool32                        layer2Exists;
     RgEditorTextureLayerInfo        layer2;
-    RgBool32                        layerLightmapExists;
-    RgEditorTextureLayerInfo        layerLightmap;
+    RgBool32                        layer3Exists;
+    RgEditorTextureLayerInfo        layer3;
     RgBool32                        pbrInfoExists;
     RgEditorPBRInfo                 pbrInfo;
     RgBool32                        attachedLightExists;
@@ -912,7 +914,7 @@ RGAPI void RGCONV               rgUtilImScratchNormal( RgInstance instance, floa
 RGAPI void RGCONV               rgUtilImScratchTexCoord( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer1( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer2( RgInstance instance, float u, float v );
-RGAPI void RGCONV               rgUtilImScratchTexCoord_LayerLightmap( RgInstance instance, float u, float v );
+RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer3( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color );
 RGAPI void RGCONV               rgUtilImScratchEnd( RgInstance instance );
 RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo *pTarget ); // Set accumulated vertices to pTarget

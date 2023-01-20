@@ -68,8 +68,8 @@ uint32_t GetMaterialBlendFlags( const RgEditorInfo& info, uint32_t layerIndex )
             return GetMaterialBlendFlags( info.layer2Exists ? &info.layer2.blend : nullptr,
                                           layerIndex );
         case 3:
-            return GetMaterialBlendFlags(
-                info.layerLightmapExists ? &info.layerLightmap.blend : nullptr, layerIndex );
+            return GetMaterialBlendFlags( info.layer3Exists ? &info.layer3.blend : nullptr,
+                                          layerIndex );
         default: assert( 0 ); return 0;
     }
 }
@@ -89,9 +89,7 @@ bool RTGL1::GeomInfoManager::LayerExists( const RgMeshPrimitiveInfo& info, uint3
     {
         case 1: return info.pEditorInfo->layer1Exists && info.pEditorInfo->layer1.pTexCoord;
         case 2: return info.pEditorInfo->layer2Exists && info.pEditorInfo->layer2.pTexCoord;
-        case 3:
-            return info.pEditorInfo->layerLightmapExists &&
-                   info.pEditorInfo->layerLightmap.pTexCoord;
+        case 3: return info.pEditorInfo->layer3Exists && info.pEditorInfo->layer3.pTexCoord;
         default: assert( 0 ); return false;
     }
 }
@@ -108,7 +106,7 @@ const RgFloat2D* RTGL1::GeomInfoManager::AccessLayerTexCoords( const RgMeshPrimi
     {
         case 1: return info.pEditorInfo->layer1.pTexCoord;
         case 2: return info.pEditorInfo->layer2.pTexCoord;
-        case 3: return info.pEditorInfo->layerLightmap.pTexCoord;
+        case 3: return info.pEditorInfo->layer3.pTexCoord;
 
         default: assert( 0 ); return nullptr;
     }

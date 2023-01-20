@@ -118,7 +118,7 @@ public:
     inline void ImScratchTexCoord( const float& u, const float& v );
     inline void ImScratchTexCoord_Layer1( const float& u, const float& v );
     inline void ImScratchTexCoord_Layer2( const float& u, const float& v );
-    inline void ImScratchTexCoord_LayerLightmap( const float& u, const float& v );
+    inline void ImScratchTexCoord_Layer3( const float& u, const float& v );
     inline void ImScratchColor( const RgColor4DPacked32& color );
     inline void ImScratchSetToPrimitive( RgMeshPrimitiveInfo* pTarget );
 
@@ -289,9 +289,9 @@ inline void RTGL1::VulkanDevice::ImScratchTexCoord_Layer2( const float& u, const
     scratchImmediate.TexCoord_Layer2( u, v );
 }
 
-inline void RTGL1::VulkanDevice::ImScratchTexCoord_LayerLightmap( const float& u, const float& v )
+inline void RTGL1::VulkanDevice::ImScratchTexCoord_Layer3( const float& u, const float& v )
 {
-    scratchImmediate.TexCoord_LayerLightmap( u, v );
+    scratchImmediate.TexCoord_Layer3( u, v );
 }
 
 inline void RTGL1::VulkanDevice::ImScratchColor( const RgColor4DPacked32& color )

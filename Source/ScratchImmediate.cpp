@@ -224,13 +224,13 @@ void RTGL1::ScratchImmediate::Clear()
     verts.clear();
     texLayer1.clear();
     texLayer2.clear();
-    texLayerLightmap.clear();
+    texLayer3.clear();
     lastbatch = std::nullopt;
     accumIndices.clear();
-    accumTopology         = std::nullopt;
-    accumTexLayer1        = std::nullopt;
-    accumTexLayer2        = std::nullopt;
-    accumTexLayerLightmap = std::nullopt;
+    accumTopology  = std::nullopt;
+    accumTexLayer1 = std::nullopt;
+    accumTexLayer2 = std::nullopt;
+    accumTexLayer3 = std::nullopt;
 }
 
 void RTGL1::ScratchImmediate::StartPrimitive( RgUtilImScratchTopology topology )
@@ -289,7 +289,7 @@ void TrySetTexLayer( RgMeshPrimitiveInfo* pTarget, uint32_t layerIndex, std::spa
     {
         case 1: dst = &pTarget->pEditorInfo->layer1; break;
         case 2: dst = &pTarget->pEditorInfo->layer2; break;
-        case 3: dst = &pTarget->pEditorInfo->layerLightmap; break;
+        case 3: dst = &pTarget->pEditorInfo->layer3; break;
         default: assert( 0 ); return;
     }
 
@@ -320,5 +320,5 @@ void RTGL1::ScratchImmediate::SetToPrimitive( RgMeshPrimitiveInfo* pTarget )
 
     TrySetTexLayer( pTarget, 1, texLayer1 );
     TrySetTexLayer( pTarget, 2, texLayer2 );
-    TrySetTexLayer( pTarget, 3, texLayerLightmap );
+    TrySetTexLayer( pTarget, 3, texLayer3 );
 }

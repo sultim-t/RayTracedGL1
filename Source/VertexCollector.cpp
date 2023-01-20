@@ -306,14 +306,14 @@ bool RTGL1::VertexCollector::AddPrimitive( uint32_t                          fra
         .texture_base_N = layerTextures[ 0 ].indices[ TEXTURE_NORMAL_INDEX ],
         .texture_base_E = layerTextures[ 0 ].indices[ TEXTURE_EMISSIVE_INDEX ],
 
-        .texture_layer1   = layerTextures[ 1 ].indices[ 0 ],
-        .texture_layer2   = layerTextures[ 2 ].indices[ 0 ],
-        .texture_lightmap = layerTextures[ 3 ].indices[ 0 ],
+        .texture_layer1 = layerTextures[ 1 ].indices[ 0 ],
+        .texture_layer2 = layerTextures[ 2 ].indices[ 0 ],
+        .texture_layer3 = layerTextures[ 3 ].indices[ 0 ],
 
-        .colorFactor_base     = layerColors[ 0 ],
-        .colorFactor_layer1   = layerColors[ 1 ],
-        .colorFactor_layer2   = layerColors[ 2 ],
-        .colorFactor_lightmap = layerColors[ 3 ],
+        .colorFactor_base   = layerColors[ 0 ],
+        .colorFactor_layer1 = layerColors[ 1 ],
+        .colorFactor_layer2 = layerColors[ 2 ],
+        .colorFactor_layer3 = layerColors[ 3 ],
 
         .baseVertexIndex     = vertIndex,
         .baseIndexIndex      = useIndices ? indIndex : UINT32_MAX,
@@ -388,7 +388,7 @@ void RTGL1::VertexCollector::CopyTexCoordsToStaging( uint32_t                   
                 layerIndex,
                 layerIndex == 1   ? "allowTexCoordLayer1"
                 : layerIndex == 2 ? "allowTexCoordLayer2"
-                : layerIndex == 3 ? "allowTexCoordLayerLightmap"
+                : layerIndex == 3 ? "allowTexCoordLayer3"
                                   : "<unknown>" );
         }
     }

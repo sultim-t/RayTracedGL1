@@ -19,7 +19,9 @@
 // SOFTWARE.
 
 layout (constant_id = 0) const uint maxAlbedoLayerCount = 0;
+layout (constant_id = 1) const uint lightmapLayerIndex = 3;
 #define MATERIAL_MAX_ALBEDO_LAYERS maxAlbedoLayerCount
+#define MATERIAL_LIGHTMAP_LAYER_INDEX lightmapLayerIndex
 
 #define FORCE_EVALBRDF_GGX_LOOSE
 
