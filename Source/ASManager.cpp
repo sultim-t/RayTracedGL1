@@ -985,7 +985,8 @@ std::pair< RTGL1::ASManager::TLASPrepareResult, RTGL1::ShVertPreprocessing > RTG
                             ShGlobalUniform& uniformData,
                             uint32_t         uniformData_rayCullMaskWorld,
                             bool             allowGeometryWithSkyFlag,
-                            bool             disableRTGeometry ) const
+                            bool             disableRTGeometry,
+                            bool             disableStaticGeometry ) const
 {
     typedef VertexCollectorFilterTypeFlagBits FT;
 
@@ -1021,6 +1022,14 @@ std::pair< RTGL1::ASManager::TLASPrepareResult, RTGL1::ShVertPreprocessing > RTG
         for( const auto& blas : *blasArr )
         {
             bool isDynamic = blas->GetFilter() & FT::CF_DYNAMIC;
+
+            if( disableStaticGeometry )
+            {
+                if( !isDynamic )
+                {
+                    continue;
+                }
+            }
 
             // add to TLAS instances array
             bool isAdded = SetupTLASInstanceFromBLAS( *blas,

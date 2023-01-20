@@ -307,6 +307,11 @@ void RTGL1::VulkanDevice::Dev_Draw() const
 
     if( ImGui::BeginTabItem( "Primitives" ) )
     {
+        ImGui::Checkbox( "Ignore external geometry", &devmode->ignoreExternalGeometry );
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+        ImGui::Separator();
+        ImGui::Dummy( ImVec2( 0, 4 ) );
+
         using PrimMode = Devmode::DebugPrimMode;
 
         int*     modePtr = reinterpret_cast< int* >( &devmode->primitivesTableMode );
@@ -332,7 +337,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                6,
                                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
                                    ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
-                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
+                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders |
+                                   ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY ) )
         {
             {
                 ImGui::TableSetupColumn( "Call",
@@ -713,7 +719,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                                Column_Count,
                                ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_Resizable |
                                    ImGuiTableFlags_Sortable | ImGuiTableFlags_SortMulti |
-                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders ) )
+                                   ImGuiTableFlags_RowBg | ImGuiTableFlags_Borders |
+                                   ImGuiTableFlags_ScrollX | ImGuiTableFlags_ScrollY ) )
         {
             auto materialInfos = devmode->materialsTableEnable
                                      ? textureManager->Debug_GetMaterials()

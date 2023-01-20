@@ -91,6 +91,8 @@ struct Devmode
         RgDrawFrameLightmapParams         c_Lightmap{};
     } drawInfoCopy;
 
+    bool ignoreExternalGeometry{ false };
+
     bool materialsTableEnable{ false };
 
     DebugPrimMode            primitivesTableMode{ DebugPrimMode::None };

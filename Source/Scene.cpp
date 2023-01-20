@@ -55,10 +55,13 @@ RTGL1::Scene::Scene( VkDevice                                _device,
         std::make_shared< VertexPreprocessing >( _device, _uniform, *asManager, _shaderManager );
 }
 
-void RTGL1::Scene::PrepareForFrame( VkCommandBuffer cmd, uint32_t frameIndex )
+void RTGL1::Scene::PrepareForFrame( VkCommandBuffer cmd,
+                                    uint32_t        frameIndex,
+                                    bool            _ignoreExternalGeometry )
 {
     assert( !makingDynamic );
     assert( !makingStatic );
+    this->ignoreExternalGeometry = _ignoreExternalGeometry;
 
     geomInfoMgr->PrepareForFrame( frameIndex );
 
@@ -86,7 +89,8 @@ void RTGL1::Scene::SubmitForFrame( VkCommandBuffer                         cmd,
                                                                       *uniform->GetData(),
                                                                       uniformData_rayCullMaskWorld,
                                                                       allowGeometryWithSkyFlag,
-                                                                      disableRTGeometry );
+                                                                      disableRTGeometry,
+                                                                      ignoreExternalGeometry );
 
     // upload uniform data
     uniform->Upload( cmd, frameIndex );
@@ -109,14 +113,17 @@ RTGL1::UploadResult RTGL1::Scene::UploadPrimitive( uint32_t                   fr
 
     if( !isStatic )
     {
-        if( mesh.isExportable )
+        if( !ignoreExternalGeometry )
         {
-            // if dynamic-exportable was already uploaded
-            // (i.e. found a matching mesh inside a static scene)
-            // otherwise, continue as dynamic
-            if( StaticMeshExists( mesh ) )
+            if( mesh.isExportable )
             {
-                return UploadResult::ExportableStatic;
+                // if dynamic-exportable was already uploaded
+                // (i.e. found a matching mesh inside a static scene)
+                // otherwise, continue as dynamic
+                if( StaticMeshExists( mesh ) )
+                {
+                    return UploadResult::ExportableStatic;
+                }
             }
         }
     }

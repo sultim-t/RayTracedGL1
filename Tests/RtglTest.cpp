@@ -483,7 +483,11 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
         ProcessInput();
 
         {
-            r = rgStartFrame( instance, "untitled" );
+            RgStartFrameInfo info = {
+                .pMapName = "untitled",
+            };
+
+            r = rgStartFrame( instance, &info );
             RG_CHECK( r );
         }
 

@@ -31,7 +31,7 @@
 #include <algorithm>
 #include <cstring>
 
-VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const char* pMapName )
+VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& info )
 {
     uint32_t frameIndex = currentFrameState.IncrementFrameIndexAndGet();
 
@@ -115,10 +115,13 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const char* pMapName )
 
     textureManager->TryHotReload( cmd, frameIndex );
     lightManager->PrepareForFrame( cmd, frameIndex );
-    scene->PrepareForFrame( cmd, frameIndex );
+    scene->PrepareForFrame( cmd,
+                            frameIndex,
+                            info.ignoreExternalGeometry ||
+                                ( devmode && devmode->ignoreExternalGeometry ) );
 
     {
-        sceneImportExport->CheckForNewScene( Utils::SafeCstr( pMapName ),
+        sceneImportExport->CheckForNewScene( Utils::SafeCstr( info.pMapName ),
                                              cmd,
                                              frameIndex,
                                              *scene,
@@ -395,8 +398,10 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
     {
         const auto& params = AccessParams( drawInfo.pLightmapParams );
-
-        gu->lightmapScreenCoverage = std::clamp( params.lightmapScreenCoverage, 0.0f, 1.0f );
+        
+        gu->lightmapScreenCoverage = params.lightmapScreenCoverage < 0.01f
+                                         ? 0
+                                         : std::clamp( params.lightmapScreenCoverage, 0.0f, 1.0f );
     }
 
     {
@@ -768,14 +773,19 @@ void RTGL1::VulkanDevice::EndFrame( VkCommandBuffer cmd )
 
 
 
-void RTGL1::VulkanDevice::StartFrame( const char* pMapName )
+void RTGL1::VulkanDevice::StartFrame( const RgStartFrameInfo* pInfo )
 {
     if( currentFrameState.WasFrameStarted() )
     {
         throw RgException( RG_RESULT_FRAME_WASNT_ENDED );
     }
 
-    VkCommandBuffer newFrameCmd = BeginFrame( pMapName );
+    if( pInfo == nullptr )
+    {
+        throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
+    }
+
+    VkCommandBuffer newFrameCmd = BeginFrame( *pInfo );
     currentFrameState.OnBeginFrame( newFrameCmd );
 }
 

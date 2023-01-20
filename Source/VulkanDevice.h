@@ -96,7 +96,7 @@ public:
     void ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo );
     void MarkOriginalTextureAsDeleted( const char* pTextureName );
 
-    void StartFrame( const char* pMapName );
+    void StartFrame( const RgStartFrameInfo* pInfo );
     void DrawFrame( const RgDrawFrameInfo* pInfo );
 
 
@@ -137,7 +137,7 @@ private:
 
     void FillUniform( ShGlobalUniform* gu, const RgDrawFrameInfo& drawInfo ) const;
 
-    VkCommandBuffer BeginFrame( const char* pMapName );
+    VkCommandBuffer BeginFrame( const RgStartFrameInfo& info );
     void            Render( VkCommandBuffer cmd, const RgDrawFrameInfo& drawInfo );
     void            EndFrame( VkCommandBuffer cmd );
 

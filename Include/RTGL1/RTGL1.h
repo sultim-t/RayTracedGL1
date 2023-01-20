@@ -559,7 +559,13 @@ RGAPI RgResult RGCONV rgMarkOriginalTextureAsDeleted( RgInstance instance, const
 
 
 
-RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const char* pMapName );
+typedef struct RgStartFrameInfo
+{
+    const char* pMapName;
+    RgBool32    ignoreExternalGeometry;
+} RgStartFrameInfo;
+
+RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const RgStartFrameInfo* pInfo );
 
 
 

@@ -89,7 +89,8 @@ public:
         ShGlobalUniform& uniformData,
         uint32_t         uniformData_rayCullMaskWorld,
         bool             allowGeometryWithSkyFlag,
-        bool             disableRTGeometry ) const;
+        bool             disableRTGeometry,
+        bool             disableStaticGeometry ) const;
     void BuildTLAS( VkCommandBuffer cmd, uint32_t frameIndex, const TLASPrepareResult& info );
 
 
