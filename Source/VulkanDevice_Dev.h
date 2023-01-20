@@ -127,6 +127,7 @@ namespace detail
             .resolutionMode       = RG_RENDER_RESOLUTION_MODE_QUALITY,
             .customRenderSize     = {},
             .pPixelizedRenderSize = nullptr,
+            .resetUpscalerHistory = false,
         };
     };
 

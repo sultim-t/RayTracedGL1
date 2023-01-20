@@ -51,7 +51,8 @@ public:
                                  float                                  timeDelta,
                                  float                                  nearPlane,
                                  float                                  farPlane,
-                                 float                                  fovVerticalRad );
+                                 float                                  fovVerticalRad,
+                                 bool                                   resetAccumulation );
 
     static RgFloat2D GetJitter( const ResolutionState& resolutionState, uint32_t frameId );
 

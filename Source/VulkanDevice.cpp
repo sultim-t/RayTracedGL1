@@ -592,19 +592,27 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         // upscale finalized image
         if( renderResolution.IsNvDlssEnabled() )
         {
-            accum = nvDlss->Apply( cmd, frameIndex, framebuffers, renderResolution, jitter );
+            accum = nvDlss->Apply(
+                cmd,
+                frameIndex,
+                framebuffers,
+                renderResolution,
+                jitter,
+                AccessParams( drawInfo.pRenderResolutionParams ).resetUpscalerHistory );
         }
         else if( renderResolution.IsAmdFsr2Enabled() )
         {
-            accum = amdFsr2->Apply( cmd,
-                                    frameIndex,
-                                    framebuffers,
-                                    renderResolution,
-                                    jitter,
-                                    uniform->GetData()->timeDelta,
-                                    drawInfo.cameraNear,
-                                    drawInfo.cameraFar,
-                                    drawInfo.fovYRadians );
+            accum = amdFsr2->Apply(
+                cmd,
+                frameIndex,
+                framebuffers,
+                renderResolution,
+                jitter,
+                uniform->GetData()->timeDelta,
+                drawInfo.cameraNear,
+                drawInfo.cameraFar,
+                drawInfo.fovYRadians,
+                AccessParams( drawInfo.pRenderResolutionParams ).resetUpscalerHistory );
         }
 
         const RgExtent2D* pixelized =

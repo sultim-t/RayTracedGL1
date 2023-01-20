@@ -42,10 +42,9 @@ static void PrintCallback( const char*             message,
                            NVSDK_NGX_Logging_Level loggingLevel,
                            NVSDK_NGX_Feature       sourceComponent )
 {
-    printf( "DLSS (sourceComponent = %d): %s \n", sourceComponent, message );
+    RTGL1::debug::Verbose(
+        "DLSS: NVSDK_NGX_Feature={}: {}", static_cast< int >( sourceComponent ), message );
 }
-
-// TODO: DLSS: add LOG INFO / ERROR
 
 RTGL1::DLSS::DLSS( VkInstance       _instance,
                    VkDevice         _device,
@@ -147,12 +146,17 @@ bool RTGL1::DLSS::TryInit( VkInstance       instance,
 
     if( NVSDK_NGX_FAILED( r ) )
     {
+        debug::Warning( "DLSS: NVSDK_NGX_VULKAN_Init_with_ProjectID fail: {}",
+                        static_cast< int >( r ) );
         return false;
     }
 
     r = NVSDK_NGX_VULKAN_GetCapabilityParameters( &pParams );
     if( NVSDK_NGX_FAILED( r ) )
     {
+        debug::Warning( "DLSS: NVSDK_NGX_VULKAN_GetCapabilityParameters fail: {}",
+                        static_cast< int >( r ) );
+
         NVSDK_NGX_VULKAN_Shutdown();
         pParams = nullptr;
 
@@ -184,20 +188,18 @@ bool RTGL1::DLSS::CheckSupport() const
     {
         if( needsUpdatedDriver )
         {
-            // LOG ERROR("NVIDIA DLSS cannot be loaded due to outdated driver.
-            //            Min Driver Version required :
-            //            minDriverVersionMajor.minDriverVersionMinor");
+            debug::Warning( "DLSS: Can't load: Outdated driver. Min driver version: {}",
+                            minDriverVersionMinor );
             return false;
         }
         else
         {
-            // LOG INFO("NIDIA DLSS Minimum driver version was reported as:
-            // minDriverVersionMajor.minDriverVersionMinor");
+            debug::Verbose( "DLSS: Reported Min driver version: {}", minDriverVersionMinor );
         }
     }
     else
     {
-        // LOG INFO("NVIDIA DLSS Minimum driver version was not reported.");
+        debug::Warning( "DLSS: Minimum driver version was not reported" );
     }
 
 
@@ -214,8 +216,8 @@ bool RTGL1::DLSS::CheckSupport() const
                                       ( int* )&featureInitResult );
         if( NVSDK_NGX_SUCCEED( r ) )
         {
-            // LOG INFO("NVIDIA DLSS not available on this hardward/platform., FeatureInitResult =
-            // 0x%08x, info: %ls\n", featureInitResult, GetNGXResultAsString(featureInitResult));
+            debug::Warning( "DLSS: Not available on this hardware/platform. FeatureInitResult={}",
+                            static_cast< int >( featureInitResult ) );
         }
 
         return false;
@@ -240,8 +242,7 @@ void RTGL1::DLSS::DestroyDlssFeature()
 
     if( NVSDK_NGX_FAILED( r ) )
     {
-        // LOG ERROR("Failed to NVSDK_NGX_VULKAN_ReleaseFeature, code = 0x%08x, info: %ls", r,
-        // GetNGXResultAsString(t));
+        debug::Warning( "DLSS: NVSDK_NGX_VULKAN_ReleaseFeature fail: {}", static_cast< int >( r ) );
     }
 }
 
@@ -356,8 +357,7 @@ bool RTGL1::DLSS::ValidateDlssFeature( VkCommandBuffer               cmd,
         cmd, creationNodeMask, visibilityNodeMask, &pDlssFeature, pParams, &dlssParams );
     if( NVSDK_NGX_FAILED( r ) )
     {
-        // LOG ERROR("Failed to create DLSS Features = 0x%08x, info: %ls", r,
-        // GetNGXResultAsString(r));
+        debug::Warning( "DLSS: NGX_VULKAN_CREATE_DLSS_EXT fail: {}", static_cast< int >( r ) );
 
         pDlssFeature = nullptr;
         return false;
@@ -392,7 +392,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     uint32_t                               frameIndex,
     const std::shared_ptr< Framebuffers >& framebuffers,
     const RenderResolutionHelper&          renderResolution,
-    RgFloat2D                              jitterOffset )
+    RgFloat2D                              jitterOffset,
+    bool                                   resetAccumulation )
 {
     if( !IsDlssAvailable() )
     {
@@ -428,10 +429,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     framebuffers->BarrierMultiple( cmd, frameIndex, fs, Framebuffers::BarrierType::Storage );
 
 
-    // TODO: DLSS: resettable accumulation
-    int                   resetAccumulation = 0;
-    NVSDK_NGX_Coordinates sourceOffset      = { 0, 0 };
-    NVSDK_NGX_Dimensions  sourceSize        = {
+    NVSDK_NGX_Coordinates sourceOffset = { 0, 0 };
+    NVSDK_NGX_Dimensions  sourceSize   = {
         renderResolution.Width(),
         renderResolution.Height(),
     };
@@ -458,7 +457,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
         .InJitterOffsetX           = jitterOffset.data[ 0 ] * ( -1 ),
         .InJitterOffsetY           = jitterOffset.data[ 1 ] * ( -1 ),
         .InRenderSubrectDimensions = sourceSize,
-        .InReset                   = resetAccumulation,
+        .InReset                   = resetAccumulation ? 1 : 0,
         .InMVScaleX                = float( sourceSize.Width ),
         .InMVScaleY                = float( sourceSize.Height ),
         .InColorSubrectBase        = sourceOffset,
@@ -471,8 +470,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
 
     if( NVSDK_NGX_FAILED( r ) )
     {
-        // LOG ERROR("Failed to NVSDK_NGX_VULKAN_EvaluateFeature for DLSS, code = 0x%08x, info:
-        // %ls", r, GetNGXResultAsString(r));
+        debug::Warning( "DLSS: NGX_VULKAN_EVALUATE_DLSS_EXT fail: {}", static_cast< int >( r ) );
     }
 
     return outputImage;
@@ -508,8 +506,7 @@ void RTGL1::DLSS::GetOptimalSettings( uint32_t               userWidth,
                                                         pOutSharpness );
     if( NVSDK_NGX_FAILED( r ) )
     {
-        // LOG INFO("Querying Optimal Settings failed! code = 0x%08x, info: %ls", r,
-        // GetNGXResultAsString(r));
+        debug::Warning( "DLSS: NGX_DLSS_GET_OPTIMAL_SETTINGS fail: {}", static_cast< int >( r ) );
     }
 }
 
@@ -522,7 +519,11 @@ std::vector< const char* > RTGL1::DLSS::GetDlssVulkanInstanceExtensions()
 
     NVSDK_NGX_Result r = NVSDK_NGX_VULKAN_RequiredExtensions(
         &instanceExtCount, &ppInstanceExts, &deviceExtCount, &ppDeviceExts );
-    assert( NVSDK_NGX_SUCCEED( r ) );
+    if( !NVSDK_NGX_SUCCEED( r ) )
+    {
+        debug::Warning( "DLSS: NVSDK_NGX_VULKAN_RequiredExtensions fail: {}",
+                        static_cast< int >( r ) );
+    }
 
     std::vector< const char* > v;
 
@@ -543,7 +544,11 @@ std::vector< const char* > RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
 
     NVSDK_NGX_Result r = NVSDK_NGX_VULKAN_RequiredExtensions(
         &instanceExtCount, &ppInstanceExts, &deviceExtCount, &ppDeviceExts );
-    assert( NVSDK_NGX_SUCCEED( r ) );
+    if( !NVSDK_NGX_SUCCEED( r ) )
+    {
+        debug::Warning( "DLSS: NVSDK_NGX_VULKAN_RequiredExtensions fail: {}",
+                        static_cast< int >( r ) );
+    }
 
     std::vector< const char* > v;
 
@@ -567,7 +572,7 @@ std::vector< const char* > RTGL1::DLSS::GetDlssVulkanDeviceExtensions()
 RTGL1::DLSS::DLSS( VkInstance       _instance,
                    VkDevice         _device,
                    VkPhysicalDevice _physDevice,
-                   const char*      pAppGuid,
+                   const char*      _pAppGuid,
                    bool             _enableDebug )
     : device( _device )
     , isInitialized( false )
@@ -583,7 +588,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     uint32_t                               frameIndex,
     const std::shared_ptr< Framebuffers >& framebuffers,
     const RenderResolutionHelper&          renderResolution,
-    RgFloat2D                              jitterOffset )
+    RgFloat2D                              jitterOffset,
+    bool                                   resetAccumulation )
 {
     throw RgException(
         RG_RESULT_WRONG_FUNCTION_ARGUMENT,

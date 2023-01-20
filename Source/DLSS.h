@@ -53,7 +53,8 @@ public:
                                  uint32_t                               frameIndex,
                                  const std::shared_ptr< Framebuffers >& framebuffers,
                                  const RenderResolutionHelper&          renderResolution,
-                                 RgFloat2D                              jitterOffset );
+                                 RgFloat2D                              jitterOffset,
+                                 bool                                   resetAccumulation );
 
     void GetOptimalSettings( uint32_t               userWidth,
                              uint32_t               userHeight,

@@ -842,6 +842,8 @@ typedef struct RgDrawFrameRenderResolutionParams
     // Needed, if pixelized look is needed, but the actual rendering should
     // be done in higher resolution.
     const RgExtent2D*           pPixelizedRenderSize;
+    // Drop history, e.g. if there's camera changed its position drastically.
+    RgBool32                    resetUpscalerHistory;
 } RgDrawFrameRenderResolutionParams;
 
 typedef struct RgDrawFrameLightmapParams

@@ -32,6 +32,7 @@ void CheckError( FfxErrorCode r )
 {
     if( r != FFX_OK )
     {
+        RTGL1::debug::Error( "FSR2: Fail, FfxErrorCode={}", r );
         throw RTGL1::RgException( RG_RESULT_GRAPHICS_API_ERROR, "Can't initialize FSR2" );
     }
 }
@@ -172,7 +173,8 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
     float                                  timeDelta,
     float                                  nearPlane,
     float                                  farPlane,
-    float                                  fovVerticalRad )
+    float                                  fovVerticalRad,
+    bool                                   resetAccumulation )
 {
     assert( nearPlane > 0.0f && nearPlane < farPlane );
 
@@ -203,7 +205,7 @@ RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
         .sharpness                  = renderResolution.GetSharpeningIntensity(),
         .frameTimeDelta             = timeDelta,
         .preExposure                = 1.0f,
-        .reset                      = false,
+        .reset                      = resetAccumulation,
         .cameraNear                 = nearPlane,
         .cameraFar                  = farPlane,
         .cameraFovAngleVertical     = fovVerticalRad,
