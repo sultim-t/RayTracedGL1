@@ -136,23 +136,26 @@ void main()
     }
 
 
-    vec3 gradDIS = vec3(0.0);
+    vec3 gradDIS = vec3( 0.0 );
 
     {
-        const float gradSample = forwardProjectedLuminance.x - prevLuminance.x;
-        const float normFactor = max(forwardProjectedLuminance.x, prevLuminance.x);
+        float gradSample = forwardProjectedLuminance.x - prevLuminance.x;
+        float normFactor = max( forwardProjectedLuminance.x, prevLuminance.x );
 
-        gradDIS[0] = getAntilagAlpha(gradSample, normFactor);
+        gradDIS[ 0 ] = getAntilagAlpha( gradSample, normFactor );
     }
     {
-        // indirect diffuse: just use direct diffuse gradient
-        gradDIS[1] = gradDIS[0];
+        // consider direct diffuse, only if it's suddenly become dark
+        float gradSample = max( 0.0, prevLuminance.x - forwardProjectedLuminance.x );
+        float normFactor = max( forwardProjectedLuminance.x, prevLuminance.x );
+
+        gradDIS[ 1 ] = getAntilagAlpha( gradSample, normFactor );
     }
     {
-        const float gradSample = forwardProjectedLuminance.y - prevLuminance.y;
-        const float normFactor = max(forwardProjectedLuminance.y, prevLuminance.y);
+        float gradSample = forwardProjectedLuminance.y - prevLuminance.y;
+        float normFactor = max( forwardProjectedLuminance.y, prevLuminance.y );
 
-        gradDIS[2] = getAntilagAlpha(gradSample, normFactor);
+        gradDIS[ 2 ] = getAntilagAlpha( gradSample, normFactor );
     }
 
 
