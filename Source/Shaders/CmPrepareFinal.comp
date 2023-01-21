@@ -85,9 +85,10 @@ vec3 uncharted2TonemapOp(const vec3 x)
     return ((x*(A*x+C*B)+D*E)/(x*(A*x+B)+D*F))-E/F;
 }
 
-vec3 uncharted2Tonemap(const vec3 color, float whitePoint)
+vec3 uncharted2Tonemap( const vec3 color )
 {
-    return uncharted2TonemapOp(2.0 * color) / uncharted2TonemapOp(vec3(whitePoint));
+    return uncharted2TonemapOp( 2.0 * color ) /
+           uncharted2TonemapOp( vec3( globalUniform.luminanceWhitePoint ) );
 }
 
 
@@ -99,10 +100,9 @@ vec3 reinhard(const vec3 c)
 }
 
 
-vec3 tonemapRT(vec3 c)
+vec3 tonemapRT( vec3 c )
 {
-    return lpmTonemap(c);
-    // return uncharted2Tonemap(c, globalUniform.luminanceWhitePoint);
+    return lpmTonemap( c );
 }
 
 
@@ -110,7 +110,7 @@ vec3 finalizeColor( const vec3 hdr, const vec3 screenEmis, const ivec2 regularPi
 {
     if( classicShading( regularPix ) )
     {
-        return clamp( hdr, vec3( 0.0 ), vec3( 1.0 ) );
+        return uncharted2Tonemap( hdr );
     }
 
     vec3 c = hdr * ev100ToLuminousExposure( getCurrentEV100() ) +
