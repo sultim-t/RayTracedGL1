@@ -215,7 +215,7 @@ struct ShGlobalUniform
     mat4 volumeViewProjInv_Prev;
     float cellWorldSize;
     float lightmapScreenCoverage;
-    uint _unused0;
+    uint illumVolumeEnable;
     float renderWidth;
     float renderHeight;
     uint frameId;
@@ -284,12 +284,12 @@ struct ShGlobalUniform
     float volumeCameraFar;
     uint antiFireflyEnabled;
     vec4 volumeAmbient;
-    vec4 volumeSourceColor;
-    vec4 volumeDirToSource;
-    float volumeSourceAsymmetry;
-    float _pad1;
-    float _pad2;
-    float _pad3;
+    vec4 volumeFallbackSrcColor;
+    vec4 volumeFallbackSrcDirection;
+    float volumeAsymmetry;
+    uint volumeLightSourceIndex;
+    float volumeFallbackSrcExists;
+    float volumeLightMult;
     ivec4 instanceGeomInfoOffset[12];
     ivec4 instanceGeomInfoOffsetPrev[12];
     ivec4 instanceGeomCount[12];

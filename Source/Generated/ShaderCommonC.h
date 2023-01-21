@@ -220,7 +220,7 @@ struct ShGlobalUniform
     float volumeViewProjInv_Prev[16];
     float cellWorldSize;
     float lightmapScreenCoverage;
-    uint32_t _unused0;
+    uint32_t illumVolumeEnable;
     float renderWidth;
     float renderHeight;
     uint32_t frameId;
@@ -289,12 +289,12 @@ struct ShGlobalUniform
     float volumeCameraFar;
     uint32_t antiFireflyEnabled;
     float volumeAmbient[4];
-    float volumeSourceColor[4];
-    float volumeDirToSource[4];
-    float volumeSourceAsymmetry;
-    float _pad1;
-    float _pad2;
-    float _pad3;
+    float volumeFallbackSrcColor[4];
+    float volumeFallbackSrcDirection[4];
+    float volumeAsymmetry;
+    uint32_t volumeLightSourceIndex;
+    float volumeFallbackSrcExists;
+    float volumeLightMult;
     int32_t instanceGeomInfoOffset[48];
     int32_t instanceGeomInfoOffsetPrev[48];
     int32_t instanceGeomCount[48];

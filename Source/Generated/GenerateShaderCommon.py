@@ -515,7 +515,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_FLOAT32,      1,      "cellWorldSize",                1),
     (TYPE_FLOAT32,      1,      "lightmapScreenCoverage",       1),
-    (TYPE_UINT32,       1,      "_unused0",                     1),
+    (TYPE_UINT32,       1,      "illumVolumeEnable",            1),
     (TYPE_FLOAT32,      1,      "renderWidth",                  1),
 
     (TYPE_FLOAT32,      1,      "renderHeight",                 1),
@@ -604,13 +604,13 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "antiFireflyEnabled",               1),
 
     (TYPE_FLOAT32,      4,      "volumeAmbient",                    1),
-    (TYPE_FLOAT32,      4,      "volumeSourceColor",                1),
-    (TYPE_FLOAT32,      4,      "volumeDirToSource",                1),
+    (TYPE_FLOAT32,      4,      "volumeFallbackSrcColor",           1),
+    (TYPE_FLOAT32,      4,      "volumeFallbackSrcDirection",       1),
 
-    (TYPE_FLOAT32,      1,      "volumeSourceAsymmetry",            1),
-    (TYPE_FLOAT32,      1,      "_pad1",                            1),
-    (TYPE_FLOAT32,      1,      "_pad2",                            1),
-    (TYPE_FLOAT32,      1,      "_pad3",                            1),
+    (TYPE_FLOAT32,      1,      "volumeAsymmetry",                  1),
+    (TYPE_UINT32,       1,      "volumeLightSourceIndex",           1),
+    (TYPE_FLOAT32,      1,      "volumeFallbackSrcExists",          1),
+    (TYPE_FLOAT32,      1,      "volumeLightMult",                  1),
 
     #(TYPE_FLOAT32,      1,      "_pad0",                            1),
     #(TYPE_FLOAT32,      1,      "_pad1",                            1),

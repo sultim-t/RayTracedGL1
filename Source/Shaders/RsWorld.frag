@@ -62,22 +62,27 @@ void main()
 
     if( !classicShading( ivec2( gl_FragCoord ) ) )
     {
-#if ILLUMINATION_VOLUME
-        vec4 ndc = vec4( gl_FragCoord.xyz, 1.0 );
-        ndc.xy /= vec2( globalUniform.renderWidth, globalUniform.renderHeight );
-        ndc.xy = ndc.xy * 2.0 - 1.0;
+#if !SHIPPING_HACK
+        if( globalUniform.illumVolumeEnable != 0 )
+        {
+            vec4 ndc = vec4( gl_FragCoord.xyz, 1.0 );
+            ndc.xy /= vec2( globalUniform.renderWidth, globalUniform.renderHeight );
+            ndc.xy = ndc.xy * 2.0 - 1.0;
 
-        vec4 worldpos = globalUniform.invView * globalUniform.invProjection * ndc;
-        worldpos.xyz /= worldpos.w;
+            vec4 worldpos = globalUniform.invView * globalUniform.invProjection * ndc;
+            worldpos.xyz /= worldpos.w;
 
-        vec3 sp = volume_toSamplePosition_T(
-            worldpos.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
-        vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
+            vec3 sp = volume_toSamplePosition_T(
+                worldpos.xyz, globalUniform.volumeViewProj, globalUniform.cameraPosition.xyz );
+            vec3 illum = textureLod( g_illuminationVolume_Sampler, sp, 0.0 ).rgb;
 
-        outColor.rgb *= illum;
-#else
-        outColor.rgb *= max( vec3( 1 ), tonemapping.avgLuminance );
+            outColor.rgb *= illum;
+        }
+        else
 #endif
+        {
+            outColor.rgb *= max( vec3( 1 ), tonemapping.avgLuminance );
+        }
     }
 
     {

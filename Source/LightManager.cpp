@@ -664,8 +664,8 @@ uint32_t RTGL1::LightManager::DoesDirectionalLightExist() const
     return dirLightCount > 0 ? 1 : 0;
 }
 
-uint32_t RTGL1::LightManager::GetLightIndexIgnoreFPVShadows( uint32_t  frameIndex,
-                                                             uint64_t* pLightUniqueId ) const
+uint32_t RTGL1::LightManager::GetLightIndexForShaders( uint32_t  frameIndex,
+                                                       uint64_t* pLightUniqueId ) const
 {
     if( pLightUniqueId == nullptr )
     {

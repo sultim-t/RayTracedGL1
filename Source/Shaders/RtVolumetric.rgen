@@ -20,7 +20,7 @@
 
 #version 460
 
-#define MATERIAL_MAX_ALBEDO_LAYERS 0
+#define MATERIAL_MAX_ALBEDO_LAYERS    0
 #define MATERIAL_LIGHTMAP_LAYER_INDEX -1
 
 #define DESC_SET_TLAS           0
@@ -53,6 +53,36 @@ float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float assy
     return ( 1 - square( k ) ) / ( 4 * M_PI * square( 1 + k * costheta ) );
 }
 
+vec3 traceDirectIllumination_SpecificLight( const vec3 from, inout vec3 out_lightdirection )
+{
+    if( globalUniform.volumeLightSourceIndex != LIGHT_INDEX_NONE )
+    {
+        LightSample light =
+            sampleLight( lightSources[ globalUniform.volumeLightSourceIndex ], from, vec2( 0 ) );
+
+        vec3 radiance = light.dw * light.color;
+
+        if( getLuminance( radiance ) > 0.0 )
+        {
+            bool isShadowed = traceShadowRay( 0, from, light.position, true );
+
+            out_lightdirection = safeNormalize( from - light.position );
+            return radiance * float( !isShadowed );
+        }
+    }
+    else if( globalUniform.volumeFallbackSrcExists != 0 )
+    {
+        bool isShadowed = traceShadowRay(
+            0, from, from - MAX_RAY_LENGTH * globalUniform.volumeFallbackSrcDirection.xyz, true );
+
+        out_lightdirection = globalUniform.volumeFallbackSrcDirection.xyz;
+        return globalUniform.volumeFallbackSrcColor.rgb * float( !isShadowed );
+    }
+
+    out_lightdirection = vec3( 0, -1, 0 );
+    return vec3( 0 );
+}
+
 void main()
 {
     const ivec3 cell = ivec3( gl_LaunchIDEXT.xyz );
@@ -60,9 +90,10 @@ void main()
     if( globalUniform.volumeEnableType != VOLUME_ENABLE_VOLUMETRIC )
     {
         imageStore( g_volumetric, cell, vec4( 0.0 ) );
-#if ILLUMINATION_VOLUME
-        imageStore( g_illuminationVolume, cell, vec4( 0.0 ) );
-#endif
+        if( globalUniform.illumVolumeEnable != 0 )
+        {
+            imageStore( g_illuminationVolume, cell, vec4( 0.0 ) );
+        }
         return;
     }
 
@@ -80,18 +111,7 @@ void main()
     vec3 lighting = globalUniform.volumeAmbient.rgb;
     vec3 radiance = vec3( 0.0 );
 
-    if( globalUniform.directionalLightExists != 0 )
-    {
-        DirectionalLight l =
-            decodeAsDirectionalLight( lightSources[ LIGHT_ARRAY_DIRECTIONAL_LIGHT_OFFSET ] );
-        bool isShadowed = traceShadowRay( 0, center, center - MAX_RAY_LENGTH * l.direction, true );
-
-        radiance += l.color * float( !isShadowed );
-        lighting += radiance * phaseFunction_Schlick(
-                                   -l.direction, toviewer, globalUniform.volumeSourceAsymmetry );
-    }
-
-#if ILLUMINATION_VOLUME
+    if( globalUniform.illumVolumeEnable != 0 )
     {
         vec3 radiance_Prev = imageLoad( g_illuminationVolume, cell ).rgb;
         if( any( isnan( radiance_Prev ) ) || any( isinf( radiance_Prev ) ) )
@@ -114,26 +134,35 @@ void main()
             s.albedo          = vec3( 1.0 );
             s.isSky           = false;
             s.specularColor   = vec3( 0.04 );
-            s.emission        = 0.0;
+            s.emission        = vec3( 0.0 );
             s.toViewerDir     = toviewer;
         }
 
         vec3 tolight = vec3( 0, 1, 0 );
 
-        radiance += processDirectIllumination( seed, s, 0, tolight );
-
+        radiance += processDirectIllumination( seed, s, 0, tolight ) * 4 * M_PI;
         radiance = mix( radiance_Prev, radiance, 0.05 );
-        lighting += radiance * phaseFunction_Schlick( tolight, toviewer, 0.4 );
+
+        lighting += globalUniform.volumeLightMult * radiance *
+                    phaseFunction_Schlick( tolight, toviewer, globalUniform.volumeAsymmetry );
     }
-#endif
+    else
+    {
+        vec3 lightdir;
+        radiance += traceDirectIllumination_SpecificLight( center, lightdir );
+
+        lighting += globalUniform.volumeLightMult * radiance *
+                    phaseFunction_Schlick( -lightdir, toviewer, globalUniform.volumeAsymmetry );
+    }
 
 
     float scattering = globalUniform.volumeScattering * 0.001;
     float absorbtion = 0.0;
 
 
-#if ILLUMINATION_VOLUME
-    imageStore( g_illuminationVolume, cell, vec4( radiance, 0.0 ) );
-#endif
     imageStore( g_volumetric, cell, vec4( lighting * scattering, scattering + absorbtion ) );
+    if( globalUniform.illumVolumeEnable != 0 )
+    {
+        imageStore( g_illuminationVolume, cell, vec4( radiance, 0.0 ) );
+    }
 }

@@ -279,7 +279,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->maxBounceShadowsLights     = params.maxBounceShadows;
         gu->polyLightSpotlightFactor   = std::max( 0.0f, params.polygonalLightSpotlightFactor );
         gu->indirSecondBounce          = !!params.enableSecondBounceForIndirect;
-        gu->lightIndexIgnoreFPVShadows = lightManager->GetLightIndexIgnoreFPVShadows(
+        gu->lightIndexIgnoreFPVShadows = lightManager->GetLightIndexForShaders(
             currentFrameState.GetFrameIndex(), params.lightUniqueIdIgnoreFirstPersonViewerShadows );
         gu->cellWorldSize       = std::max( params.cellWorldSize, 0.001f );
         gu->gradientMultDiffuse = std::clamp( params.directDiffuseSensitivityToChange, 0.0f, 1.0f );
@@ -420,18 +420,28 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
             {
                 gu->volumeEnableType = VOLUME_ENABLE_NONE;
             }
-            gu->volumeScattering      = params.scaterring;
-            gu->volumeSourceAsymmetry = std::clamp( params.sourceAssymetry, -1.0f, 1.0f );
+            gu->volumeScattering = params.scaterring;
+            gu->volumeAsymmetry  = std::clamp( params.assymetry, -1.0f, 1.0f );
 
             RG_SET_VEC3_A( gu->volumeAmbient, params.ambientColor.data );
             RG_MAX_VEC3( gu->volumeAmbient, 0.0f );
 
-            RG_SET_VEC3_A( gu->volumeSourceColor, params.sourceColor.data );
-            RG_MAX_VEC3( gu->volumeSourceColor, 0.0f );
+            gu->illumVolumeEnable = params.useIlluminationVolume;
+            
+            gu->volumeLightSourceIndex = lightManager->GetLightIndexForShaders(
+                currentFrameState.GetFrameIndex(), params.lightUniqueId );
 
-            RG_SET_VEC3_A( gu->volumeDirToSource, params.sourceDirection.data );
-            Utils::Negate( gu->volumeDirToSource );
-            Utils::Normalize( gu->volumeDirToSource );
+            RG_SET_VEC3_A( gu->volumeFallbackSrcColor, params.fallbackSourceColor.data );
+            RG_MAX_VEC3( gu->volumeFallbackSrcColor, 0.0f );
+
+            RG_SET_VEC3_A( gu->volumeFallbackSrcDirection, params.fallbackSourceDirection.data );
+
+            gu->volumeFallbackSrcExists = Utils::TryNormalize( gu->volumeFallbackSrcDirection ) &&
+                                          ( gu->volumeFallbackSrcColor[ 0 ] > 0.01f &&
+                                            gu->volumeFallbackSrcColor[ 1 ] > 0.01f &&
+                                            gu->volumeFallbackSrcColor[ 2 ] > 0.01f );
+
+             gu->volumeLightMult = std::max( 0.0f, params.lightMultiplier );
         }
 
         if( gu->volumeEnableType != VOLUME_ENABLE_NONE )

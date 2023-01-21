@@ -152,14 +152,17 @@ namespace detail
     struct DefaultParams< RgDrawFrameVolumetricParams >
     {
         constexpr static RgDrawFrameVolumetricParams value = {
-            .enable              = true,
-            .useSimpleDepthBased = false,
-            .volumetricFar       = std::numeric_limits< float >::max(),
-            .ambientColor        = { 0.8f, 0.85f, 1.0f },
-            .scaterring          = 0.2f,
-            .sourceColor         = { 0, 0, 0 },
-            .sourceDirection     = { 0, 1, 0 },
-            .sourceAssymetry     = 0.75f,
+            .enable                  = true,
+            .useSimpleDepthBased     = false,
+            .volumetricFar           = std::numeric_limits< float >::max(),
+            .ambientColor            = { 0.8f, 0.85f, 1.0f },
+            .scaterring              = 0.2f,
+            .assymetry               = 0.75f,
+            .useIlluminationVolume   = false,
+            .lightUniqueId           = nullptr,
+            .fallbackSourceColor     = { 0, 0, 0 },
+            .fallbackSourceDirection = { 0, -1, 0 },
+            .lightMultiplier         = 1.0f,
         };
     };
 

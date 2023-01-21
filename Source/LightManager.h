@@ -51,7 +51,7 @@ public:
     uint32_t GetLightCountPrev() const;
     uint32_t DoesDirectionalLightExist() const;
 
-    uint32_t GetLightIndexIgnoreFPVShadows( uint32_t frameIndex, uint64_t* pLightUniqueId ) const;
+    uint32_t GetLightIndexForShaders( uint32_t frameIndex, uint64_t* pLightUniqueId ) const;
 
     void Add( uint32_t frameIndex, const RgSphericalLightUploadInfo& info );
     void Add( uint32_t frameIndex, const RgPolygonalLightUploadInfo& info );
