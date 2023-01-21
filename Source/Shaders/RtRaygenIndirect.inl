@@ -144,10 +144,6 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
                                               bounceDir_Second,
                                               oneOverPdf_Second);
     }
-    
-#if 0
-    diffuse = clamp( diffuse, vec3( 0 ), vec3( 50 ) );
-#endif
 
     SampleIndirect s;
     s.position  = hitSurf.position;
