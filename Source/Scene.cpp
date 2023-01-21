@@ -227,12 +227,12 @@ bool RTGL1::Scene::InsertPrimitiveInfo( uint64_t                   uniqueID,
         }
     }
 
-    debug::Error( "Mesh primitive ({}->{}) with ID ({}->{}): "
-                  "Trying to upload but a primitive with the same ID already exists",
-                  Utils::SafeCstr( mesh.pMeshName ),
-                  Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
-                  mesh.uniqueObjectID,
-                  primitive.primitiveIndexInMesh );
+    debug::Warning( "Mesh primitive ({}->{}) with ID ({}->{}): "
+                    "Trying to upload but a primitive with the same ID already exists",
+                    Utils::SafeCstr( mesh.pMeshName ),
+                    Utils::SafeCstr( primitive.pPrimitiveNameInMesh ),
+                    mesh.uniqueObjectID,
+                    primitive.primitiveIndexInMesh );
     return false;
 }
 
@@ -255,7 +255,7 @@ bool RTGL1::Scene::InsertLightInfo( bool isStatic, const GenericLightPtr& light 
 
         if( foundSameId != staticLights.end() )
         {
-            debug::Error(
+            debug::Warning(
                 "Trying add a static light with a uniqueID {} that other light already has",
                 getId( light ) );
             return false;
