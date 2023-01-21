@@ -149,6 +149,10 @@ void main()
         float gradSample = max( 0.0, prevLuminance.x - forwardProjectedLuminance.x );
         float normFactor = max( forwardProjectedLuminance.x, prevLuminance.x );
 
+        // if it's bright enough, don't drop history
+        float brightness = getLuminance( texelFetchIndirAccum_Prev( prevShadingPix ) );
+        gradSample *= 1.0 - smoothstep( 1.0, 10.0, brightness );
+
         gradDIS[ 1 ] = getAntilagAlpha( gradSample, normFactor );
     }
     {
