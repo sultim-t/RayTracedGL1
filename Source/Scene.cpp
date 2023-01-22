@@ -313,6 +313,19 @@ const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPrep
     return vertPreproc;
 }
 
+std::optional< uint64_t > RTGL1::Scene::TryGetStaticSun() const
+{
+    for( const GenericLight& var : staticLights )
+    {
+        if( auto sun = std::get_if< RgDirectionalLightUploadInfo >( &var ) )
+        {
+            return sun->uniqueID;
+        }
+    }
+
+    return std::nullopt;
+}
+
 bool RTGL1::Scene::StaticMeshExists( const RgMeshInfo& mesh ) const
 {
     if( Utils::IsCstrEmpty( mesh.pMeshName ) )

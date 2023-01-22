@@ -90,6 +90,8 @@ public:
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
+    std::optional< uint64_t > TryGetStaticSun() const;
+
 private:
     bool StaticMeshExists( const RgMeshInfo& mesh ) const;
     bool StaticLightExists( const GenericLightPtr& light ) const;

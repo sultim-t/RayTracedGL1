@@ -676,6 +676,7 @@ typedef struct RgDrawFrameVolumetricParams
     // illumination, that is used for scattering.
     RgBool32    useIlluminationVolume;
     // Otherwise, try to use this optional light source for scattering.
+    // If GLTF is used, this can be overwritten by a GLTF's sun.
     uint64_t*   lightUniqueId;
     // If light source is not provided, use this fallback info.
     // If color is too dim or direction is invalid,
