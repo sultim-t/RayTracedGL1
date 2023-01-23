@@ -56,11 +56,15 @@ struct TextureMeta
     bool forceTranslucent = false;
 
     bool forceGenerateNormals = false;
+    bool forceExactNormals    = false;
 
     bool isMirror             = false;
     bool isWater              = false;
     bool isGlass              = false;
     bool isGlassIfTranslucent = false;
+
+    bool isGlassIfSmooth  = false;
+    bool isMirrorIfSmooth = false;
 
     float metallicDefault  = 0.0f;
     float roughnessDefault = 1.0f;

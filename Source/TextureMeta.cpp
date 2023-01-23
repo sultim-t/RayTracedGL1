@@ -140,6 +140,11 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags &= ~RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS;
         }
 
+        if( meta->forceExactNormals )
+        {
+            prim.flags |= RG_MESH_PRIMITIVE_FORCE_EXACT_NORMALS;
+        }
+
         if( meta->forceAlphaTest )
         {
             prim.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
@@ -181,6 +186,15 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
             prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
             prim.flags |= RG_MESH_PRIMITIVE_MIRROR;
+        }
+
+        if( meta->isGlassIfSmooth )
+        {
+            prim.flags |= RG_MESH_PRIMITIVE_GLASS_IF_SMOOTH;
+        }
+        else if( meta->isMirrorIfSmooth )
+        {
+            prim.flags |= RG_MESH_PRIMITIVE_MIRROR_IF_SMOOTH;
         }
 
         prim.emissive = Utils::Saturate( meta->emissiveMult );

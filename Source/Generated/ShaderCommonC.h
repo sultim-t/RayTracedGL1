@@ -96,8 +96,8 @@ namespace RTGL1
 #define GEOM_INST_FLAG_RESERVED_2 (1 << 10)
 #define GEOM_INST_FLAG_RESERVED_3 (1 << 11)
 #define GEOM_INST_FLAG_RESERVED_4 (1 << 12)
-#define GEOM_INST_FLAG_RESERVED_5 (1 << 13)
-#define GEOM_INST_FLAG_RESERVED_6 (1 << 14)
+#define GEOM_INST_FLAG_GLASS_IF_SMOOTH (1 << 13)
+#define GEOM_INST_FLAG_MIRROR_IF_SMOOTH (1 << 14)
 #define GEOM_INST_FLAG_EXISTS_LAYER1 (1 << 15)
 #define GEOM_INST_FLAG_EXISTS_LAYER2 (1 << 16)
 #define GEOM_INST_FLAG_EXISTS_LAYER3 (1 << 17)
@@ -259,7 +259,7 @@ struct ShGlobalUniform
     float waterTextureDerivativesMultiplier;
     uint32_t volumeEnableType;
     float volumeScattering;
-    uint32_t forceNoWaterRefraction;
+    uint32_t _unused0;
     uint32_t waterNormalTextureIndex;
     uint32_t noBackfaceReflForNoMediaChange;
     float time;

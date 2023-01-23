@@ -138,7 +138,7 @@ void storeSky(
 #endif
 }
 
-uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
+uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags, float roughness)
 {
     // if camera is not in vacuum, assume that new media is vacuum
     if (i == 0 && globalUniform.cameraMediaType != MEDIA_TYPE_VACUUM)
@@ -146,7 +146,7 @@ uint getNewRayMedia(int i, uint prevMedia, uint geometryInstanceFlags)
        return MEDIA_TYPE_VACUUM;
     }
 
-    return getMediaTypeFromFlags(geometryInstanceFlags);
+    return getMediaTypeFromFlags(geometryInstanceFlags, roughness);
 }
 
 vec3 getWaterNormal(const RayCone rayCone, const vec3 rayDir, const vec3 baseNormal, const vec3 position, bool wasPortal)
@@ -419,16 +419,13 @@ void main()
         bool isPixOdd = isCheckerboardPixOdd(pix) != 0;
 
 
-        uint newRayMedia = getNewRayMedia(i, currentRayMedia, h.geometryInstanceFlags);
+        uint newRayMedia =
+            getNewRayMedia( i, currentRayMedia, h.geometryInstanceFlags, h.roughness );
 
-        bool isPortal = isPortalFromFlags(h.geometryInstanceFlags) && h.portalIndex != PORTAL_INDEX_NONE;
-        bool toRefract = isRefractFromFlags(h.geometryInstanceFlags);
-    #if SHIPPING_HACK
-        bool toReflect = isReflectFromFlags( h.geometryInstanceFlags );
-    #else
-        bool toReflect = h.roughness < globalUniform.minRoughness ||
-                         isReflectFromFlags( h.geometryInstanceFlags );
-    #endif
+        bool isPortal =
+            isPortalFromFlags( h.geometryInstanceFlags ) && h.portalIndex != PORTAL_INDEX_NONE;
+        bool toRefract = isRefractFromFlags( h.geometryInstanceFlags, h.roughness );
+        bool toReflect = isReflectFromFlags( h.geometryInstanceFlags, h.roughness );
 
 
         if (!toReflect && !toRefract && !isPortal)

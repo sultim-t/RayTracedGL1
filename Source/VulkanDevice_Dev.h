@@ -197,7 +197,6 @@ namespace detail
             .typeOfMediaAroundCamera                    = RgMediaType::RG_MEDIA_TYPE_VACUUM,
             .indexOfRefractionGlass                     = 1.52f,
             .indexOfRefractionWater                     = 1.33f,
-            .forceNoWaterRefraction                     = false,
             .waterWaveSpeed                             = 1.0f,
             .waterWaveNormalStrength                    = 1.0f,
             .waterColor                                 = { 0.3f, 0.73f, 0.63f },

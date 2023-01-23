@@ -327,8 +327,8 @@ CONST = {
     "GEOM_INST_FLAG_RESERVED_2"             : BIT( 10 ),
     "GEOM_INST_FLAG_RESERVED_3"             : BIT( 11 ),
     "GEOM_INST_FLAG_RESERVED_4"             : BIT( 12 ),
-    "GEOM_INST_FLAG_RESERVED_5"             : BIT( 13 ),
-    "GEOM_INST_FLAG_RESERVED_6"             : BIT( 14 ),
+    "GEOM_INST_FLAG_GLASS_IF_SMOOTH"        : BIT( 13 ),
+    "GEOM_INST_FLAG_MIRROR_IF_SMOOTH"       : BIT( 14 ),
     "GEOM_INST_FLAG_EXISTS_LAYER1"          : BIT( 15 ),
     "GEOM_INST_FLAG_EXISTS_LAYER2"          : BIT( 16 ),
     "GEOM_INST_FLAG_EXISTS_LAYER3"          : BIT( 17 ),
@@ -565,7 +565,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "volumeEnableType",                 1),
     (TYPE_FLOAT32,      1,      "volumeScattering",                 1),
-    (TYPE_UINT32,       1,      "forceNoWaterRefraction",           1),
+    (TYPE_UINT32,       1,      "_unused0",                         1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 
     (TYPE_UINT32,       1,      "noBackfaceReflForNoMediaChange",   1),

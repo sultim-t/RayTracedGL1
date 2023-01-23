@@ -318,8 +318,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
         memcpy( gu->acidColorAndDensity, params.acidColor.data, 3 * sizeof( float ) );
         gu->acidColorAndDensity[ 3 ] = std::max( 0.0f, params.acidDensity );
-
-        gu->forceNoWaterRefraction = !!params.forceNoWaterRefraction;
+        
         gu->waterWaveSpeed         = params.waterWaveSpeed;
         gu->waterWaveStrength      = params.waterWaveNormalStrength;
         gu->waterTextureDerivativesMultiplier =

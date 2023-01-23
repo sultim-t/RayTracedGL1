@@ -298,6 +298,13 @@ typedef enum RgMeshPrimitiveFlagBits
     RG_MESH_PRIMITIVE_GLASS                 = 64,
     RG_MESH_PRIMITIVE_WATER                 = 128,
     RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS = 256,
+    RG_MESH_PRIMITIVE_FORCE_EXACT_NORMALS   = 512,
+    // If roughness is too small, act as a mirror (perfect reflection).
+    RG_MESH_PRIMITIVE_MIRROR_IF_SMOOTH      = 1024,
+    // If roughness is too small, act as a glass (perfect reflection/refraction).
+    RG_MESH_PRIMITIVE_GLASS_IF_SMOOTH       = 2048,
+    // Ignore refracting geometry behind this primitive.
+    RG_MESH_PRIMITIVE_IGNORE_REFRACT_AFTER  = 4096,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 
@@ -796,7 +803,6 @@ typedef struct RgDrawFrameReflectRefractParams
     float       indexOfRefractionGlass;
     // Default: 1.33
     float       indexOfRefractionWater;
-    RgBool32    forceNoWaterRefraction;
     float       waterWaveSpeed;
     float       waterWaveNormalStrength;
     // Color at 1 meter depth.

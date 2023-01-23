@@ -147,10 +147,13 @@ JSON_TYPE( RTGL1::TextureMeta )
     , "forceAlphaTest", &T::forceAlphaTest
     , "forceTranslucent", &T::forceTranslucent
     , "forceGenerateNormals", &T::forceGenerateNormals
+    , "forceExactNormals", &T::forceExactNormals
     , "isMirror", &T::isMirror
     , "isWater", &T::isWater
     , "isGlass", &T::isGlass
     , "isGlassIfTranslucent", &T::isGlassIfTranslucent
+    , "isGlassIfSmooth", &T::isGlassIfSmooth
+    , "isMirrorIfSmooth", &T::isMirrorIfSmooth
     , "metallicDefault", &T::metallicDefault
     , "roughnessDefault", &T::roughnessDefault
     , "emissiveMult", &T::emissiveMult

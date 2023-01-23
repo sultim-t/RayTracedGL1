@@ -96,17 +96,21 @@ bool calcRefractionDirection(float n1, float n2, const vec3 I, const vec3 N, out
     return true;
 }
 
-uint getMediaTypeFromFlags(uint geometryInstanceFlags)
+#define TEST_FLAG( value, mask ) ( ( value & mask ) != 0 )
+
+uint getMediaTypeFromFlags(uint geometryInstanceFlags, float roughness)
 {
-    if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_WATER) != 0)
+    if( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_MEDIA_TYPE_WATER ) )
     {
         return MEDIA_TYPE_WATER;
     }
-    else if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_GLASS) != 0)
+    else if( ( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_MEDIA_TYPE_GLASS ) ) ||
+             ( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_GLASS_IF_SMOOTH ) &&
+               roughness < 0.1 ) )
     {
         return MEDIA_TYPE_GLASS;
     }
-    else if ((geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_ACID) != 0)
+    else if( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_MEDIA_TYPE_ACID ) )
     {
         return MEDIA_TYPE_ACID;
     }
@@ -116,23 +120,23 @@ uint getMediaTypeFromFlags(uint geometryInstanceFlags)
     }
 }
 
-bool isPortalFromFlags(uint geometryInstanceFlags)
+bool isPortalFromFlags( uint geometryInstanceFlags )
 {
-    return (geometryInstanceFlags & GEOM_INST_FLAG_PORTAL) != 0;
+    return TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_PORTAL );
 }
 
-bool isRefractFromFlags(uint geometryInstanceFlags)
+bool isRefractFromFlags( uint geometryInstanceFlags, float roughness )
 {
-    // if water, but water refraction is disabled, return false;
-    // otherwise, check refract flag
-    return 
-        !(globalUniform.forceNoWaterRefraction != 0 && (geometryInstanceFlags & GEOM_INST_FLAG_MEDIA_TYPE_WATER) != 0) &&
-        ((geometryInstanceFlags & GEOM_INST_FLAG_REFRACT) != 0);
+    return ( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_REFRACT ) ) ||
+           ( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_GLASS_IF_SMOOTH ) &&
+             roughness < 0.1 );
 }
 
-bool isReflectFromFlags(uint geometryInstanceFlags)
+bool isReflectFromFlags( uint geometryInstanceFlags, float roughness )
 {
-    return (geometryInstanceFlags & GEOM_INST_FLAG_REFLECT) != 0;
+    return ( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_REFLECT ) ) ||
+           ( TEST_FLAG( geometryInstanceFlags, GEOM_INST_FLAG_MIRROR_IF_SMOOTH ) &&
+             roughness < 0.1 );
 }
 
 #endif // MEDIA_H_

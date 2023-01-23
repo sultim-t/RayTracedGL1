@@ -148,9 +148,29 @@ uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& i
         f |= GEOM_INST_FLAG_REFRACT;
     }
 
+    if( info.flags & RG_MESH_PRIMITIVE_GLASS_IF_SMOOTH )
+    {
+        f |= GEOM_INST_FLAG_GLASS_IF_SMOOTH;
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_MIRROR_IF_SMOOTH )
+    {
+        f |= GEOM_INST_FLAG_MIRROR_IF_SMOOTH;
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_IGNORE_REFRACT_AFTER )
+    {
+        f |= GEOM_INST_FLAG_IGNORE_REFRACT_AFTER;
+    }
+
     if( !( info.flags & RG_MESH_PRIMITIVE_DONT_GENERATE_NORMALS ) )
     {
         f |= GEOM_INST_FLAG_GENERATE_NORMALS;
+    }
+
+    if( info.flags & RG_MESH_PRIMITIVE_FORCE_EXACT_NORMALS )
+    {
+        f |= GEOM_INST_FLAG_EXACT_NORMALS;
     }
 
     return f;
