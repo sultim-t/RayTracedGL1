@@ -53,7 +53,8 @@ public:
                             uint32_t             frameIndex,
                             const GlobalUniform& uniform,
                             const BlueNoise&     rnd,
-                            const Framebuffers&  framebuffers );
+                            const Framebuffers&  framebuffers,
+                            float                maxHistoryLength );
     void BarrierToReadIllumination( VkCommandBuffer cmd );
 
     void OnShaderReload( const ShaderManager* shaderManager ) override;

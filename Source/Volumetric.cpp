@@ -72,7 +72,8 @@ void RTGL1::Volumetric::ProcessScattering( VkCommandBuffer      cmd,
                                            uint32_t             frameIndex,
                                            const GlobalUniform& uniform,
                                            const BlueNoise&     rnd,
-                                           const Framebuffers&  framebuffers )
+                                           const Framebuffers&  framebuffers,
+                                           float                maxHistoryLength )
 {
     CmdLabel label( cmd, "Volumetric Process" );
 
@@ -177,6 +178,13 @@ void RTGL1::Volumetric::ProcessScattering( VkCommandBuffer      cmd,
                                  sets,
                                  0,
                                  nullptr );
+
+        vkCmdPushConstants( cmd,
+                            accumPipelineLayout,
+                            VK_SHADER_STAGE_COMPUTE_BIT,
+                            0,
+                            sizeof( maxHistoryLength ),
+                            &maxHistoryLength );
 
         vkCmdDispatch( cmd,
                        Utils::GetWorkGroupCount( uniform.GetData()->renderWidth,
@@ -559,12 +567,20 @@ void RTGL1::Volumetric::CreatePipelineLayouts( const GlobalUniform& uniform,
             framebuffers.GetDescSetLayout(),
         };
 
+        VkPushConstantRange push = {
+            .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+            .offset     = 0,
+            .size       = sizeof( float ),
+        };
+
         VkPipelineLayoutCreateInfo info = {
-            .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-            .pNext          = nullptr,
-            .flags          = 0,
-            .setLayoutCount = std::size( sets ),
-            .pSetLayouts    = sets,
+            .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .pNext                  = nullptr,
+            .flags                  = 0,
+            .setLayoutCount         = std::size( sets ),
+            .pSetLayouts            = sets,
+            .pushConstantRangeCount = 1,
+            .pPushConstantRanges    = &push,
         };
 
         VkResult r = vkCreatePipelineLayout( device, &info, nullptr, &accumPipelineLayout );

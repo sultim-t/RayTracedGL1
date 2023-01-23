@@ -535,6 +535,11 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         decalManager->SubmitForFrame( cmd, frameIndex );
         portalList->SubmitForFrame( cmd, frameIndex );
 
+        float volumetricMaxHistoryLen =
+            AccessParams( drawInfo.pRenderResolutionParams ).resetUpscalerHistory
+                ? 0
+                : AccessParams( drawInfo.pVolumetricParams ).maxHistoryLength;
+
         const auto params = pathTracer->Bind( cmd,
                                               frameIndex,
                                               renderResolution.Width(),
@@ -569,7 +574,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
         pathTracer->CalculateGradientsSamples( params );
         denoiser->Denoise( cmd, frameIndex, uniform );
-        volumetric->ProcessScattering( cmd, frameIndex, *uniform, *blueNoise, *framebuffers );
+        volumetric->ProcessScattering(
+            cmd, frameIndex, *uniform, *blueNoise, *framebuffers, volumetricMaxHistoryLen );
         tonemapping->CalculateExposure( cmd, frameIndex, uniform );
     }
 

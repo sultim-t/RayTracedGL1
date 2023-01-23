@@ -659,6 +659,8 @@ typedef struct RgDrawFrameIlluminationParams
 typedef struct RgDrawFrameVolumetricParams
 {
     RgBool32    enable;
+    // Default: 8.0
+    float       maxHistoryLength;
     // If true, volumetric illumination is not calculated, just
     // using simple depth-based fog with ambient color.
     RgBool32    useSimpleDepthBased;

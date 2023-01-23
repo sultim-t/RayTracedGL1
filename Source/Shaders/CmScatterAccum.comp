@@ -32,7 +32,11 @@ layout( local_size_x = COMPUTE_SCATTER_ACCUM_GROUP_SIZE_X,
         local_size_y = COMPUTE_SCATTER_ACCUM_GROUP_SIZE_X,
         local_size_z = 1 ) in;
 
-
+layout( push_constant ) uniform ScatterAccumPush_BT
+{
+    float maxHistoryLength;
+}
+push;
 
 vec4 applyVolumetrics( ivec2 pix )
 {
@@ -152,7 +156,7 @@ void main()
     historyLen = weightSum > 0.0001 ? historyLen / weightSum : 0;
     accum      = weightSum > 0.0001 ? accum / weightSum : vec4( 0 );
 
-    historyLen = clamp( historyLen + 1, 1, 8 );
+    historyLen = clamp( historyLen + 1, 1, max( 1.0, push.maxHistoryLength ) );
     accum      = mix( accum, applyVolumetrics( pix ), 1.0 / historyLen );
 
     imageStore( framebufScattering, getRegularPixFromCheckerboardPix( pix ), accum );
