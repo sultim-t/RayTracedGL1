@@ -565,7 +565,7 @@ GLOBAL_UNIFORM_STRUCT = [
 
     (TYPE_UINT32,       1,      "volumeEnableType",                 1),
     (TYPE_FLOAT32,      1,      "volumeScattering",                 1),
-    (TYPE_UINT32,       1,      "_unused0",                         1),
+    (TYPE_FLOAT32,      1,      "lensDirtIntensity",                1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 
     (TYPE_UINT32,       1,      "noBackfaceReflForNoMediaChange",   1),

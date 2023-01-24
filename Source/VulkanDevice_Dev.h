@@ -186,6 +186,7 @@ namespace detail
             .bloomIntensity          = 1.0f,
             .inputThreshold          = 4.0f,
             .bloomEmissionMultiplier = 16.0f,
+            .lensDirtIntensity       = 2.0f,
         };
     };
 

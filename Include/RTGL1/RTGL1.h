@@ -702,6 +702,7 @@ typedef struct RgDrawFrameBloomParams
     float       bloomIntensity;
     float       inputThreshold;
     float       bloomEmissionMultiplier;
+    float       lensDirtIntensity;
 } RgDrawFrameBloomParams;
 
 typedef struct RgPostEffectWipe

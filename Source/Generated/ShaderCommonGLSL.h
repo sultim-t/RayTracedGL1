@@ -254,7 +254,7 @@ struct ShGlobalUniform
     float waterTextureDerivativesMultiplier;
     uint volumeEnableType;
     float volumeScattering;
-    uint _unused0;
+    float lensDirtIntensity;
     uint waterNormalTextureIndex;
     uint noBackfaceReflForNoMediaChange;
     float time;

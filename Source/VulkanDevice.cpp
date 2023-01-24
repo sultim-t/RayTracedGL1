@@ -294,6 +294,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
         gu->bloomThreshold          = std::max( params.inputThreshold, 0.0f );
         gu->bloomIntensity          = std::max( params.bloomIntensity, 0.0f );
         gu->bloomEmissionMultiplier = std::max( params.bloomEmissionMultiplier, 0.0f );
+        gu->lensDirtIntensity       = std::max( params.lensDirtIntensity, 0.0f );
     }
 
     {
