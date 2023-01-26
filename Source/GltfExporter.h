@@ -67,6 +67,7 @@ public:
     GltfExporter& operator=( GltfExporter&& other ) noexcept = delete;
 
     void AddPrimitive( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
+    void AddPrimitiveLights( const RgMeshInfo& mesh, const RgMeshPrimitiveInfo& primitive );
     void AddLight( const GenericLightPtr& light );
 
     void ExportToFiles( const std::filesystem::path& gltfPath,

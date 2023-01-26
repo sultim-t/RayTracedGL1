@@ -966,12 +966,15 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
             } );
         }
 
-        if( r == UploadResult::ExportableDynamic || r == UploadResult::ExportableStatic )
+        if( auto e = sceneImportExport->TryGetExporter() )
         {
-            if( auto e = sceneImportExport->TryGetExporter() )
+            if( r == UploadResult::ExportableDynamic || r == UploadResult::ExportableStatic )
             {
                 e->AddPrimitive( *pMesh, prim );
             }
+
+            // SHIPPING_HACK: add lights even for non-exportable geometry
+            e->AddPrimitiveLights( *pMesh, prim );
         }
     }
 }
@@ -1046,9 +1049,9 @@ void RTGL1::VulkanDevice::UploadLight( const GenericLightPtr& light )
     UploadResult r =
         scene->UploadLight( currentFrameState.GetFrameIndex(), light, lightManager.get(), false );
 
-    if( r == UploadResult::ExportableDynamic || r == UploadResult::ExportableStatic )
+    if( auto e = sceneImportExport->TryGetExporter() )
     {
-        if( auto e = sceneImportExport->TryGetExporter() )
+        if( r == UploadResult::ExportableDynamic || r == UploadResult::ExportableStatic )
         {
             e->AddLight( light );
         }

@@ -1305,11 +1305,6 @@ bool PrepareFolder( const std::filesystem::path& gltfPath )
 void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
                                         const RgMeshPrimitiveInfo& primitive )
 {
-    if( !mesh.isExportable )
-    {
-        return;
-    }
-
     if( Utils::IsCstrEmpty( mesh.pMeshName ) ||
         Utils::IsCstrEmpty( primitive.pPrimitiveNameInMesh ) )
     {
@@ -1341,7 +1336,11 @@ void RTGL1::GltfExporter::AddPrimitive( const RgMeshInfo&          mesh,
     {
         sceneMaterials.insert( primitive.pTextureName );
     }
+}
 
+void RTGL1::GltfExporter::AddPrimitiveLights( const RgMeshInfo&          mesh,
+                                              const RgMeshPrimitiveInfo& primitive )
+{
     if( primitive.pEditorInfo && primitive.pEditorInfo->attachedLightExists )
     {
         auto primLights = MakeLightsForPrimitive(
@@ -1356,14 +1355,6 @@ void RTGL1::GltfExporter::AddLight( const GenericLightPtr& light )
     constexpr auto unbox = []( const GenericLightPtr& ptr ) {
         return std::visit( []( auto&& specific ) -> GenericLight { return *specific; }, ptr );
     };
-
-    bool isExportable =
-        std::visit( []( auto&& specific ) { return specific->isExportable; }, light );
-
-    if( !isExportable )
-    {
-        return;
-    }
 
     sceneLights.push_back( unbox( light ) );
 }
