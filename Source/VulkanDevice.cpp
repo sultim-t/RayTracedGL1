@@ -737,7 +737,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     }
 
     // blit result image to present on a surface
-    framebuffers->PresentToSwapchain( cmd, frameIndex, swapchain, accum, VK_FILTER_NEAREST );
+    framebuffers->PresentToSwapchain(
+        cmd, frameIndex, swapchain, accum, VK_FILTER_NEAREST, drawInfo.presentPrevFrame );
 
     if( debugWindows )
     {

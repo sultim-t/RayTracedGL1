@@ -898,6 +898,7 @@ typedef struct RgDrawFrameInfo
 
     RgBool32                                 disableRayTracedGeometry;
     RgBool32                                 disableRasterization;
+    RgBool32                                 presentPrevFrame;
 
     double                                   currentTime;
 

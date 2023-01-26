@@ -74,11 +74,12 @@ public:
                                            const FramebufferImageIndex ( &framebufImageIndices )[ BARRIER_COUNT ],
                                            BarrierType barrierTypeFrom = BarrierType::All );
 
-    void                  PresentToSwapchain( VkCommandBuffer                     cmd,
-                                              uint32_t                            frameIndex,
-                                              const std::shared_ptr< Swapchain >& swapchain,
-                                              FramebufferImageIndex               framebufImageIndex,
-                                              VkFilter                            filter );
+    void PresentToSwapchain( VkCommandBuffer                     cmd,
+                             uint32_t                            frameIndex,
+                             const std::shared_ptr< Swapchain >& swapchain,
+                             FramebufferImageIndex               framebufImageIndex,
+                             VkFilter                            filter,
+                             bool                                showPrevious );
 
     FramebufferImageIndex BlitForEffects( VkCommandBuffer       cmd,
                                           uint32_t              frameIndex,

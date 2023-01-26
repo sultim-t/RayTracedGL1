@@ -53,6 +53,7 @@ public:
                                uint32_t        srcImageHeight,
                                VkFilter        filter,
                                VkImageLayout   srcImageLayout = VK_IMAGE_LAYOUT_GENERAL );
+    void       BlitPreviousForPresent( VkCommandBuffer cmd );
     void       OnQueuePresent( VkResult queuePresentResult );
 
     // Subscribe to swapchain size chagne event.

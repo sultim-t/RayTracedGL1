@@ -278,6 +278,146 @@ void RTGL1::Swapchain::BlitForPresent( VkCommandBuffer cmd,
                          swapchainImageLayout );
 }
 
+void RTGL1::Swapchain::BlitPreviousForPresent( VkCommandBuffer cmd )
+{
+    VkImage src = swapchainImages[ Utils::GetPreviousByModulo(
+        currentSwapchainIndex, uint32_t( swapchainImages.size() ) ) ];
+
+    VkImage dst = swapchainImages[ currentSwapchainIndex ];
+
+    {
+        VkImageMemoryBarrier2 bs[] = {
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                .srcAccessMask       = VK_ACCESS_2_NONE,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
+                .dstAccessMask       = VK_ACCESS_2_TRANSFER_READ_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = src,
+                .subresourceRange    = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .baseMipLevel   = 0,
+                                         .levelCount     = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount     = 1 },
+            },
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT,
+                .srcAccessMask       = VK_ACCESS_2_NONE,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
+                .dstAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .oldLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = dst,
+                .subresourceRange    = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .baseMipLevel   = 0,
+                                         .levelCount     = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount     = 1 },
+            },
+        };
+
+        VkDependencyInfo info = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext                    = nullptr,
+            .dependencyFlags          = 0,
+            .memoryBarrierCount       = 0,
+            .pMemoryBarriers          = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers    = nullptr,
+            .imageMemoryBarrierCount  = std::size( bs ),
+            .pImageMemoryBarriers     = bs,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &info );
+    }
+    {
+        VkImageCopy region = {
+            .srcSubresource = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                .mipLevel       = 0,
+                                .baseArrayLayer = 0,
+                                .layerCount     = 1 },
+            .srcOffset      = { 0, 0, 0 },
+            .dstSubresource = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                .mipLevel       = 0,
+                                .baseArrayLayer = 0,
+                                .layerCount     = 1 },
+            .dstOffset      = { 0, 0, 0 },
+            .extent         = { surfaceExtent.width, surfaceExtent.height, 1 },
+        };
+
+        vkCmdCopyImage( cmd,
+                        src,
+                        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                        dst,
+                        VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                        1,
+                        &region );
+    }
+    {
+        VkImageMemoryBarrier2 bs[] = {
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
+                .srcAccessMask       = VK_ACCESS_2_TRANSFER_READ_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+                .dstAccessMask       = VK_ACCESS_2_NONE,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = src,
+                .subresourceRange    = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .baseMipLevel   = 0,
+                                         .levelCount     = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount     = 1 },
+            },
+            {
+                .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+                .pNext               = nullptr,
+                .srcStageMask        = VK_PIPELINE_STAGE_2_COPY_BIT,
+                .srcAccessMask       = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                .dstStageMask        = VK_PIPELINE_STAGE_2_BOTTOM_OF_PIPE_BIT,
+                .dstAccessMask       = VK_ACCESS_2_NONE,
+                .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                .newLayout           = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+                .image               = dst,
+                .subresourceRange    = { .aspectMask     = VK_IMAGE_ASPECT_COLOR_BIT,
+                                         .baseMipLevel   = 0,
+                                         .levelCount     = 1,
+                                         .baseArrayLayer = 0,
+                                         .layerCount     = 1 },
+            },
+        };
+
+        VkDependencyInfo info = {
+            .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .pNext                    = nullptr,
+            .dependencyFlags          = 0,
+            .memoryBarrierCount       = 0,
+            .pMemoryBarriers          = nullptr,
+            .bufferMemoryBarrierCount = 0,
+            .pBufferMemoryBarriers    = nullptr,
+            .imageMemoryBarrierCount  = std::size( bs ),
+            .pImageMemoryBarriers     = bs,
+        };
+
+        svkCmdPipelineBarrier2KHR( cmd, &info );
+    }
+}
+
 void RTGL1::Swapchain::OnQueuePresent( VkResult queuePresentResult )
 {
     if( queuePresentResult == VK_ERROR_OUT_OF_DATE_KHR || queuePresentResult == VK_SUBOPTIMAL_KHR )

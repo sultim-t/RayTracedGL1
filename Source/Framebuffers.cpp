@@ -242,9 +242,16 @@ void Framebuffers::PresentToSwapchain( VkCommandBuffer                     cmd,
                                        uint32_t                            frameIndex,
                                        const std::shared_ptr< Swapchain >& swapchain,
                                        FramebufferImageIndex               framebufImageIndex,
-                                       VkFilter                            filter )
+                                       VkFilter                            filter,
+                                       bool                                showPrevious )
 {
     CmdLabel label( cmd, "Present to swapchain" );
+
+    if( showPrevious )
+    {
+        swapchain->BlitPreviousForPresent( cmd );
+        return;
+    }
 
     BarrierOne( cmd, frameIndex, framebufImageIndex );
 
