@@ -416,7 +416,7 @@ ShHitInfo getHitInfoBounce(
             getTextureSampleLod( tr.emissiveTexture, texCoords[ 0 ], lod ).rgb;
     #endif
 
-        h.emission = etex * tr.emissiveMult;
+        h.emission = etex;
     }
     else
     {
