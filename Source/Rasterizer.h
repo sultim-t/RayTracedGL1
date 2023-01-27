@@ -88,7 +88,7 @@ public:
                           uint32_t                      frameIndex,
                           const TextureManager&         textureManager,
                           const float*                  view,
-                          const float                   skyViewerPos[ 3 ],
+                          const RgFloat3D&              skyViewerPos,
                           const float*                  proj,
                           const RgFloat2D&              jitter,
                           const RenderResolutionHelper& renderResolution );

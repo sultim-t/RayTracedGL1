@@ -649,7 +649,20 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
 
         // submit the frame
         {
-            RgDrawFrameSkyParams skyParams = {
+            RgPostEffectChromaticAberration chromaticAberration = {
+                .isActive  = true,
+                .intensity = 0.3f,
+            };
+
+            RgDrawFramePostEffectsParams postEffects = {
+                .sType                = RG_STRUCTURE_TYPE_POSTEFFECTS,
+                .pNext                = nullptr,
+                .pChromaticAberration = &chromaticAberration,
+            };
+
+            RgDrawFrameSkyParams sky = {
+                .sType              = RG_STRUCTURE_TYPE_SKY,
+                .pNext              = &postEffects,
                 .skyType            = ctl_SkyboxEnable ? RG_SKY_TYPE_CUBEMAP : RG_SKY_TYPE_COLOR,
                 .skyColorDefault    = { 0.71f, 0.88f, 1.0f },
                 .skyColorMultiplier = ctl_SkyIntensity,
@@ -658,32 +671,24 @@ void MainLoop( RgInstance instance, std::string_view gltfPath )
                 .pSkyCubemapTextureName = "_external_/cubemap/0",
             };
 
-            RgDrawFrameRenderResolutionParams resolutionParams = {
+            RgDrawFrameRenderResolutionParams resolution = {
+                .sType            = RG_STRUCTURE_TYPE_RENDER_RESOLUTION,
+                .pNext            = &sky,
                 .upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
                 .resolutionMode   = RG_RENDER_RESOLUTION_MODE_BALANCED,
-            };
-
-            RgPostEffectChromaticAberration chromaticAberration = {
-                .isActive  = true,
-                .intensity = 0.3f,
             };
 
             glm::mat4 view = glm::lookAt(
                 ctl_CameraPosition, ctl_CameraPosition + ctl_CameraDirection, { 0, 1, 0 } );
 
-            RgDrawFrameInfo frameInfo =
-            {
-                .fovYRadians = glm::radians(75.0f),
-                .cameraNear = 0.1f,
-                .cameraFar = 10000.0f,
-                .rayLength = 10000.0f,
+            RgDrawFrameInfo frameInfo = {
+                .fovYRadians      = glm::radians( 75.0f ),
+                .cameraNear       = 0.1f,
+                .cameraFar        = 10000.0f,
+                .rayLength        = 10000.0f,
                 .rayCullMaskWorld = RG_DRAW_FRAME_RAY_CULL_WORLD_0_BIT,
-                .currentTime = GetCurrentTimeInSeconds(),
-                .pRenderResolutionParams = &resolutionParams,
-                .pSkyParams = &skyParams,
-                .postEffectParams = {
-                    .pChromaticAberration = &chromaticAberration,
-                },
+                .currentTime      = GetCurrentTimeInSeconds(),
+                .pParams          = &resolution,
             };
             // GLM is column major, copy matrix data directly
             memcpy( frameInfo.view, &view[ 0 ][ 0 ], 16 * sizeof( float ) );

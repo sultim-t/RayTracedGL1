@@ -24,6 +24,7 @@
 
 #include <memory>
 
+// clang-format off
 #include "Common.h"
 
 #include "CommandBufferManager.h"
@@ -60,7 +61,10 @@
 #include "ScratchImmediate.h"
 #include "FolderObserver.h"
 #include "TextureMeta.h"
+#include "SceneMeta.h"
+#include "DrawFrameInfo.h"
 #include "VulkanDevice_Dev.h"
+// clang-format on
 
 namespace RTGL1
 {
@@ -142,9 +146,9 @@ private:
     void            EndFrame( VkCommandBuffer cmd );
 
 private:
-    void                   Dev_Draw() const;
-    const RgDrawFrameInfo& Dev_Override( const RgDrawFrameInfo& original ) const;
-    void                   Dev_TryBreak( const char* pTextureName, bool isImageUpload );
+    void Dev_Draw() const;
+    void Dev_Override( DrawFrameInfoCopy& copy ) const;
+    void Dev_TryBreak( const char* pTextureName, bool isImageUpload );
 
 private:
     VkInstance   instance;
@@ -211,6 +215,7 @@ private:
     std::shared_ptr< BlueNoise >          blueNoise;
     std::shared_ptr< TextureManager >     textureManager;
     std::shared_ptr< TextureMetaManager > textureMetaManager;
+    std::shared_ptr< SceneMetaManager >   sceneMetaManager;
     std::shared_ptr< CubemapManager >     cubemapManager;
 
     std::filesystem::path ovrdFolder;

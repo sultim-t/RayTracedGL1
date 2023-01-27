@@ -250,7 +250,7 @@ typedef struct RgInstanceCreateInfo
 
 } RgInstanceCreateInfo;
 
-RGAPI RgResult RGCONV rgCreateInstance( const RgInstanceCreateInfo *pInfo, RgInstance *pResult );
+RGAPI RgResult RGCONV rgCreateInstance( const RgInstanceCreateInfo* pInfo, RgInstance* pResult );
 RGAPI RgResult RGCONV rgDestroyInstance( RgInstance instance );
 
 
@@ -576,6 +576,21 @@ RGAPI RgResult RGCONV rgStartFrame( RgInstance instance, const RgStartFrameInfo*
 
 
 
+typedef enum RgStructureType
+{
+    RG_STRUCTURE_TYPE_NONE,
+    RG_STRUCTURE_TYPE_RENDER_RESOLUTION,
+    RG_STRUCTURE_TYPE_ILLUMINATION,
+    RG_STRUCTURE_TYPE_VOLUMETRIC,
+    RG_STRUCTURE_TYPE_TONEMAPPING,
+    RG_STRUCTURE_TYPE_BLOOM,
+    RG_STRUCTURE_TYPE_REFLECTREFRACT,
+    RG_STRUCTURE_TYPE_SKY,
+    RG_STRUCTURE_TYPE_TEXTURES,
+    RG_STRUCTURE_TYPE_LIGHTMAP,
+    RG_STRUCTURE_TYPE_POSTEFFECTS,
+} RgStructureType;
+
 typedef enum RgSkyType
 {
     RG_SKY_TYPE_COLOR,
@@ -585,6 +600,8 @@ typedef enum RgSkyType
 
 typedef struct RgDrawFrameTonemappingParams
 {
+    RgStructureType sType;
+    void*           pNext;
     RgBool32        disableEyeAdaptation;
     float           ev100Min;
     float           ev100Max;
@@ -599,6 +616,8 @@ typedef struct RgDrawFrameTonemappingParams
 
 typedef struct RgDrawFrameSkyParams
 {
+    RgStructureType sType;
+    void*           pNext;
     RgSkyType       skyType;
     // Used as a main color for RG_SKY_TYPE_COLOR.
     RgFloat3D       skyColorDefault;
@@ -608,7 +627,7 @@ typedef struct RgDrawFrameSkyParams
     // A point from which rays are traced while using RG_SKY_TYPE_RASTERIZED_GEOMETRY.
     RgFloat3D       skyViewerPosition;
     // If sky type is RG_SKY_TYPE_CUBEMAP, this cubemap is used.
-    const char      *pSkyCubemapTextureName;
+    const char*     pSkyCubemapTextureName;
     // Apply this transform to the direction when sampling a sky cubemap (RG_SKY_TYPE_CUBEMAP).
     // If equals to zero, then default value is used.
     // Default: identity matrix.
@@ -617,6 +636,8 @@ typedef struct RgDrawFrameSkyParams
 
 typedef struct RgDrawFrameTexturesParams
 {
+    RgStructureType sType;
+    void*           pNext;
     // What sampler filter to use for materials with RG_MATERIAL_CREATE_DYNAMIC_SAMPLER_FILTER_BIT.
     // Should be changed infrequently, as it reloads all texture descriptors.
     RgSamplerFilter dynamicSamplerFilter;
@@ -631,6 +652,8 @@ typedef struct RgDrawFrameTexturesParams
 
 typedef struct RgDrawFrameIlluminationParams
 {
+    RgStructureType sType;
+    void*           pNext;
     // Shadow rays are cast, if illumination bounce index is in [0, maxBounceShadows).
     uint32_t        maxBounceShadows;
     // If false, only one bounce will be cast from a primary surface.
@@ -665,44 +688,48 @@ typedef struct RgDrawFrameIlluminationParams
 
 typedef struct RgDrawFrameVolumetricParams
 {
-    RgBool32    enable;
+    RgStructureType sType;
+    void*           pNext;
+    RgBool32        enable;
     // Default: 8.0
-    float       maxHistoryLength;
+    float           maxHistoryLength;
     // If true, volumetric illumination is not calculated, just
     // using simple depth-based fog with ambient color.
-    RgBool32    useSimpleDepthBased;
+    RgBool32        useSimpleDepthBased;
     // Farthest distance for volumetric illumination calculation.
     // Should be minimal to have better precision around camera.
     // Default: 100.0
-    float       volumetricFar;
-    RgFloat3D   ambientColor;
+    float           volumetricFar;
+    RgFloat3D       ambientColor;
     // Default: 0.2
-    float       scaterring;
+    float           scaterring;
     // g parameter [-1..1] for the Henyey–Greenstein phase function.
     // Default: 0.0 (isotropic)
-    float       assymetry;
+    float           assymetry;
     // If true, maintain a world-space grid, each cell of which contains
     // illumination, that is used for scattering.
-    RgBool32    useIlluminationVolume;
+    RgBool32        useIlluminationVolume;
     // Otherwise, try to use this optional light source for scattering.
     // If GLTF is used, this can be overwritten by a GLTF's sun.
-    uint64_t*   lightUniqueId;
+    uint64_t*       lightUniqueId;
     // If light source is not provided, use this fallback info.
     // If color is too dim or direction is invalid,
     // then no light sources for scattering.
-    RgFloat3D   fallbackSourceColor;
-    RgFloat3D   fallbackSourceDirection;
+    RgFloat3D       fallbackSourceColor;
+    RgFloat3D       fallbackSourceDirection;
     // Multiplier for light for scattering.
-    float       lightMultiplier;
+    float           lightMultiplier;
 } RgDrawFrameVolumetricParams;
 
 typedef struct RgDrawFrameBloomParams
 {
+    RgStructureType sType;
+    void*           pNext;
     // Negative value disables bloom pass
-    float       bloomIntensity;
-    float       inputThreshold;
-    float       bloomEmissionMultiplier;
-    float       lensDirtIntensity;
+    float           bloomIntensity;
+    float           inputThreshold;
+    float           bloomEmissionMultiplier;
+    float           lensDirtIntensity;
 } RgDrawFrameBloomParams;
 
 typedef struct RgPostEffectWipe
@@ -775,6 +802,8 @@ typedef struct RgPostEffectCRT
 
 typedef struct RgDrawFramePostEffectsParams
 {
+    RgStructureType                         sType;
+    void*                                   pNext;
     // Must be null, if effectWipeIsUsed was false.
     const RgPostEffectWipe*                 pWipe;
     const RgPostEffectRadialBlur*           pRadialBlur;
@@ -797,32 +826,34 @@ typedef enum RgMediaType
 
 typedef struct RgDrawFrameReflectRefractParams
 {
-    uint32_t    maxReflectRefractDepth;
+    RgStructureType sType;
+    void*           pNext;
+    uint32_t        maxReflectRefractDepth;
     // Media type, in which camera currently is.
-    RgMediaType typeOfMediaAroundCamera;
+    RgMediaType     typeOfMediaAroundCamera;
     // Default: 1.52
-    float       indexOfRefractionGlass;
+    float           indexOfRefractionGlass;
     // Default: 1.33
-    float       indexOfRefractionWater;
-    float       waterWaveSpeed;
-    float       waterWaveNormalStrength;
+    float           indexOfRefractionWater;
+    float           waterWaveSpeed;
+    float           waterWaveNormalStrength;
     // Color at 1 meter depth.
-    RgFloat3D   waterColor;
+    RgFloat3D       waterColor;
     // Color at 1 meter depth.
-    RgFloat3D   acidColor;
-    float       acidDensity;
+    RgFloat3D       acidColor;
+    float           acidDensity;
     // The lower this value, the sharper water normal textures.
     // Default: 1.0
-    float       waterWaveTextureDerivativesMultiplier;
+    float           waterWaveTextureDerivativesMultiplier;
     // The larger this value, the larger the area one water texture covers.
     // If equals to 0.0, then default value is used.
     // Default: 1.0
-    float       waterTextureAreaScale;
+    float           waterTextureAreaScale;
     // If true, reflections are disabled for backface triangles
     // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
-    RgBool32    disableBackfaceReflectionsForNoMediaChange;
+    RgBool32        disableBackfaceReflectionsForNoMediaChange;
     // If true, portal normal will be twirled around its 'inPosition'.
-    RgBool32    portalNormalTwirl;
+    RgBool32        portalNormalTwirl;
 } RgDrawFrameReflectRefractParams;
 
 typedef enum RgRenderUpscaleTechnique
@@ -852,6 +883,8 @@ typedef enum RgRenderResolutionMode
 
 typedef struct RgDrawFrameRenderResolutionParams
 {
+    RgStructureType             sType;
+    void*                       pNext;
     RgRenderUpscaleTechnique    upscaleTechnique;
     RgRenderSharpenTechnique    sharpenTechnique; 
     RgRenderResolutionMode      resolutionMode;
@@ -867,6 +900,8 @@ typedef struct RgDrawFrameRenderResolutionParams
 
 typedef struct RgDrawFrameLightmapParams
 {
+    RgStructureType             sType;
+    void*                       pNext;
     // How much of the screen should be rendered in a lightmap mode.
     // In [0.0, 1.0]
     float                       lightmapScreenCoverage;
@@ -884,38 +919,29 @@ typedef uint32_t RgDrawFrameRayCullFlags;
 typedef struct RgDrawFrameInfo
 {
     // View matrix is column major.
-    float                                    view[ 16 ];
+    float                       view[ 16 ];
 
     // Additional info for ray cones, it's used to calculate differentials for texture sampling. Also, for FSR2.
-    float                                    fovYRadians;
+    float                       fovYRadians;
     // Near and far planes for a projection matrix.
-    float                                    cameraNear;
-    float                                    cameraFar;
+    float                       cameraNear;
+    float                       cameraFar;
     // Max value: 10000.0
-    float                                    rayLength;
+    float                       rayLength;
     // What world parts to render. First-person related geometry is always enabled.
-    RgDrawFrameRayCullFlags                  rayCullMaskWorld;
+    RgDrawFrameRayCullFlags     rayCullMaskWorld;
 
-    RgBool32                                 disableRayTracedGeometry;
-    RgBool32                                 disableRasterization;
-    RgBool32                                 presentPrevFrame;
+    RgBool32                    disableRayTracedGeometry;
+    RgBool32                    disableRasterization;
+    RgBool32                    presentPrevFrame;
 
-    double                                   currentTime;
+    double                      currentTime;
 
-    RgBool32                                 vsync;
+    RgBool32                    vsync;
 
-    // Set to null, to use default values.
-    const RgDrawFrameRenderResolutionParams* pRenderResolutionParams;
-    const RgDrawFrameIlluminationParams*     pIlluminationParams;
-    const RgDrawFrameVolumetricParams*       pVolumetricParams;
-    const RgDrawFrameTonemappingParams*      pTonemappingParams;
-    const RgDrawFrameBloomParams*            pBloomParams;
-    const RgDrawFrameReflectRefractParams*   pReflectRefractParams;
-    const RgDrawFrameSkyParams*              pSkyParams;
-    const RgDrawFrameTexturesParams*         pTexturesParams;
-    const RgDrawFrameLightmapParams*         pLightmapParams;
-    RgDrawFramePostEffectsParams             postEffectParams;
-
+    // A linked list of RgDrawFrame*Params structs.
+    // sType of each must be specified corresponding to their type.
+    void*                       pParams;
 } RgDrawFrameInfo;
 
 RGAPI RgResult RGCONV           rgDrawFrame( RgInstance instance, const RgDrawFrameInfo* pInfo );
@@ -944,7 +970,7 @@ RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer2( RgInstance insta
 RGAPI void RGCONV               rgUtilImScratchTexCoord_Layer3( RgInstance instance, float u, float v );
 RGAPI void RGCONV               rgUtilImScratchColor( RgInstance instance, RgColor4DPacked32 color );
 RGAPI void RGCONV               rgUtilImScratchEnd( RgInstance instance );
-RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo *pTarget ); // Set accumulated vertices to pTarget
+RGAPI void RGCONV               rgUtilImScratchSetToPrimitive( RgInstance instance, RgMeshPrimitiveInfo* pTarget ); // Set accumulated vertices to pTarget
 
 RGAPI RgBool32 RGCONV           rgUtilIsUpscaleTechniqueAvailable( RgInstance instance, RgRenderUpscaleTechnique technique );
 RGAPI const char* RGCONV        rgUtilGetResultDescription( RgResult result );

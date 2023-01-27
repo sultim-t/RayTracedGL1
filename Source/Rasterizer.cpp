@@ -234,7 +234,7 @@ void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer               cmd,
                                          uint32_t                      frameIndex,
                                          const TextureManager&         textureManager,
                                          const float*                  view,
-                                         const float                   skyViewerPos[ 3 ],
+                                         const RgFloat3D&              skyViewerPos,
                                          const float*                  proj,
                                          const RgFloat2D&              jitter,
                                          const RenderResolutionHelper& renderResolution )
@@ -247,7 +247,7 @@ void RTGL1::Rasterizer::DrawSkyToAlbedo( VkCommandBuffer               cmd,
 
 
     float skyView[ 16 ];
-    Matrix::SetNewViewerPosition( skyView, view, skyViewerPos );
+    Matrix::SetNewViewerPosition( skyView, view, skyViewerPos.data );
 
     float jitterredProj[ 16 ];
     ApplyJitter( jitterredProj, proj, jitter, renderResolution );

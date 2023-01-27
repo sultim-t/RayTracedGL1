@@ -194,7 +194,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        const auto& params = AccessParams( drawInfo.pTonemappingParams );
+        const auto& params = AccessParams< RgDrawFrameTonemappingParams >( drawInfo );
 
         float luminanceMin = std::exp2( params.ev100Min ) * 12.5f / 100.0f;
         float luminanceMax = std::exp2( params.ev100Max ) * 12.5f / 100.0f;
@@ -213,7 +213,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        const auto& params = AccessParams( drawInfo.pSkyParams );
+        const auto& params = AccessParams< RgDrawFrameSkyParams >( drawInfo );
 
         static_assert( sizeof( gu->skyCubemapRotationTransform ) == sizeof( IdentityMat4x4 ) &&
                            sizeof( IdentityMat4x4 ) == 16 * sizeof( float ),
@@ -265,7 +265,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     gu->debugShowFlags = devmode ? devmode->debugShowFlags : 0;
 
     {
-        const auto& params = AccessParams( drawInfo.pTexturesParams );
+        const auto& params = AccessParams< RgDrawFrameTexturesParams >( drawInfo );
 
         gu->normalMapStrength      = params.normalMapStrength;
         gu->emissionMapBoost       = std::max( params.emissionMapBoost, 0.0f );
@@ -274,7 +274,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        const auto& params = AccessParams( drawInfo.pIlluminationParams );
+        const auto& params = AccessParams< RgDrawFrameIlluminationParams >( drawInfo );
 
         gu->maxBounceShadowsLights     = params.maxBounceShadows;
         gu->polyLightSpotlightFactor   = std::max( 0.0f, params.polygonalLightSpotlightFactor );
@@ -289,7 +289,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        const auto& params = AccessParams( drawInfo.pBloomParams );
+        const auto& params = AccessParams< RgDrawFrameBloomParams >( drawInfo );
 
         gu->bloomThreshold          = std::max( params.inputThreshold, 0.0f );
         gu->bloomIntensity          = std::max( params.bloomIntensity, 0.0f );
@@ -298,7 +298,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     }
 
     {
-        const auto& params = AccessParams( drawInfo.pReflectRefractParams );
+        const auto& params = AccessParams< RgDrawFrameReflectRefractParams >( drawInfo );
 
         switch( params.typeOfMediaAroundCamera )
         {
@@ -319,9 +319,9 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
         memcpy( gu->acidColorAndDensity, params.acidColor.data, 3 * sizeof( float ) );
         gu->acidColorAndDensity[ 3 ] = std::max( 0.0f, params.acidDensity );
-        
-        gu->waterWaveSpeed         = params.waterWaveSpeed;
-        gu->waterWaveStrength      = params.waterWaveNormalStrength;
+
+        gu->waterWaveSpeed    = params.waterWaveSpeed;
+        gu->waterWaveStrength = params.waterWaveNormalStrength;
         gu->waterTextureDerivativesMultiplier =
             std::max( 0.0f, params.waterWaveTextureDerivativesMultiplier );
         gu->waterTextureAreaScale =
@@ -397,15 +397,15 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
     RG_SET_VEC3_A( gu->worldUpVector, sceneImportExport->GetWorldUp().data );
 
     {
-        const auto& params = AccessParams( drawInfo.pLightmapParams );
-        
+        const auto& params = AccessParams< RgDrawFrameLightmapParams >( drawInfo );
+
         gu->lightmapScreenCoverage = params.lightmapScreenCoverage < 0.01f
                                          ? 0
                                          : std::clamp( params.lightmapScreenCoverage, 0.0f, 1.0f );
     }
 
     {
-        const auto& params = AccessParams( drawInfo.pVolumetricParams );
+        const auto& params = AccessParams< RgDrawFrameVolumetricParams >( drawInfo );
 
         gu->volumeCameraNear = std::max( drawInfo.cameraNear, 0.001f );
         gu->volumeCameraFar  = std::min( drawInfo.cameraFar, params.volumetricFar );
@@ -449,7 +449,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
                                             gu->volumeFallbackSrcColor[ 1 ] > 0.01f &&
                                             gu->volumeFallbackSrcColor[ 2 ] > 0.01f );
 
-             gu->volumeLightMult = std::max( 0.0f, params.lightMultiplier );
+            gu->volumeLightMult = std::max( 0.0f, params.lightMultiplier );
         }
 
         if( gu->volumeEnableType != VOLUME_ENABLE_NONE )
@@ -489,10 +489,10 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     const RgFloat2D jitter = { uniform->GetData()->jitterX, uniform->GetData()->jitterY };
 
     textureManager->SubmitDescriptors(
-        frameIndex, AccessParams( drawInfo.pTexturesParams ), mipLodBiasUpdated );
+        frameIndex, AccessParams< RgDrawFrameTexturesParams >( drawInfo ), mipLodBiasUpdated );
     cubemapManager->SubmitDescriptors( frameIndex );
 
-    lightManager->SetLightstyles( AccessParams( drawInfo.pIlluminationParams ) );
+    lightManager->SetLightstyles( AccessParams< RgDrawFrameIlluminationParams >( drawInfo ) );
     lightManager->SubmitForFrame( cmd, frameIndex );
 
     // submit geometry and upload uniform after getting data from a scene
@@ -514,17 +514,16 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         // draw rasterized sky to albedo before tracing primary rays
         if( uniform->GetData()->skyType == RG_SKY_TYPE_RASTERIZED_GEOMETRY )
         {
-            RgFloat3D skyViewerPosition = AccessParams( drawInfo.pSkyParams ).skyViewerPosition;
-
             rasterizer->DrawSkyToCubemap( cmd, frameIndex, *textureManager, *uniform );
-            rasterizer->DrawSkyToAlbedo( cmd,
-                                         frameIndex,
-                                         *textureManager,
-                                         uniform->GetData()->view,
-                                         skyViewerPosition.data,
-                                         uniform->GetData()->projection,
-                                         jitter,
-                                         renderResolution );
+            rasterizer->DrawSkyToAlbedo(
+                cmd,
+                frameIndex,
+                *textureManager,
+                uniform->GetData()->view,
+                AccessParams< RgDrawFrameSkyParams >( drawInfo ).skyViewerPosition,
+                uniform->GetData()->projection,
+                jitter,
+                renderResolution );
         }
     }
 
@@ -536,9 +535,9 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
         portalList->SubmitForFrame( cmd, frameIndex );
 
         float volumetricMaxHistoryLen =
-            AccessParams( drawInfo.pRenderResolutionParams ).resetUpscalerHistory
+            AccessParams< RgDrawFrameRenderResolutionParams >( drawInfo ).resetUpscalerHistory
                 ? 0
-                : AccessParams( drawInfo.pVolumetricParams ).maxHistoryLength;
+                : AccessParams< RgDrawFrameVolumetricParams >( drawInfo ).maxHistoryLength;
 
         const auto params = pathTracer->Bind( cmd,
                                               frameIndex,
@@ -601,10 +600,10 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                 frameIndex,
                                 *uniform,
                                 *tonemapping,
-                                AccessParams( drawInfo.pTonemappingParams ) );
+                                AccessParams< RgDrawFrameTonemappingParams >( drawInfo ) );
 
 
-    bool enableBloom = AccessParams( drawInfo.pBloomParams ).bloomIntensity > 0.0f;
+    bool enableBloom = AccessParams< RgDrawFrameBloomParams >( drawInfo ).bloomIntensity > 0.0f;
     if( enableBloom )
     {
         bloom->Prepare( cmd, frameIndex, *uniform, *tonemapping );
@@ -613,37 +612,34 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
     FramebufferImageIndex accum = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
     {
+        const auto& params = AccessParams< RgDrawFrameRenderResolutionParams >( drawInfo );
+
         // upscale finalized image
         if( renderResolution.IsNvDlssEnabled() )
         {
-            accum = nvDlss->Apply(
-                cmd,
-                frameIndex,
-                framebuffers,
-                renderResolution,
-                jitter,
-                AccessParams( drawInfo.pRenderResolutionParams ).resetUpscalerHistory );
+            accum = nvDlss->Apply( cmd,
+                                   frameIndex,
+                                   framebuffers,
+                                   renderResolution,
+                                   jitter,
+                                   params.resetUpscalerHistory );
         }
         else if( renderResolution.IsAmdFsr2Enabled() )
         {
-            accum = amdFsr2->Apply(
-                cmd,
-                frameIndex,
-                framebuffers,
-                renderResolution,
-                jitter,
-                uniform->GetData()->timeDelta,
-                drawInfo.cameraNear,
-                drawInfo.cameraFar,
-                drawInfo.fovYRadians,
-                AccessParams( drawInfo.pRenderResolutionParams ).resetUpscalerHistory );
+            accum = amdFsr2->Apply( cmd,
+                                    frameIndex,
+                                    framebuffers,
+                                    renderResolution,
+                                    jitter,
+                                    uniform->GetData()->timeDelta,
+                                    drawInfo.cameraNear,
+                                    drawInfo.cameraFar,
+                                    drawInfo.fovYRadians,
+                                    params.resetUpscalerHistory );
         }
 
-        const RgExtent2D* pixelized =
-            AccessParams( drawInfo.pRenderResolutionParams ).pPixelizedRenderSize;
-
         accum = framebuffers->BlitForEffects(
-            cmd, frameIndex, accum, renderResolution.GetBlitFilter(), pixelized );
+            cmd, frameIndex, accum, renderResolution.GetBlitFilter(), params.pPixelizedRenderSize );
     }
 
 
@@ -676,32 +672,34 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                   renderResolution.UpscaledHeight(),
                                   accum );
         }
-        if( effectColorTint->Setup( args, drawInfo.postEffectParams.pColorTint ) )
+
+        const auto& postef = AccessParams< RgDrawFramePostEffectsParams >( drawInfo );
+
+        if( effectColorTint->Setup( args, postef.pColorTint ) )
         {
             accum = effectColorTint->Apply( args, accum );
         }
-        if( effectInverseBW->Setup( args, drawInfo.postEffectParams.pInverseBlackAndWhite ) )
+        if( effectInverseBW->Setup( args, postef.pInverseBlackAndWhite ) )
         {
             accum = effectInverseBW->Apply( args, accum );
         }
-        if( effectHueShift->Setup( args, drawInfo.postEffectParams.pHueShift ) )
+        if( effectHueShift->Setup( args, postef.pHueShift ) )
         {
             accum = effectHueShift->Apply( args, accum );
         }
-        if( effectChromaticAberration->Setup( args,
-                                              drawInfo.postEffectParams.pChromaticAberration ) )
+        if( effectChromaticAberration->Setup( args, postef.pChromaticAberration ) )
         {
             accum = effectChromaticAberration->Apply( args, accum );
         }
-        if( effectDistortedSides->Setup( args, drawInfo.postEffectParams.pDistortedSides ) )
+        if( effectDistortedSides->Setup( args, postef.pDistortedSides ) )
         {
             accum = effectDistortedSides->Apply( args, accum );
         }
-        if( effectWaves->Setup( args, drawInfo.postEffectParams.pWaves ) )
+        if( effectWaves->Setup( args, postef.pWaves ) )
         {
             accum = effectWaves->Apply( args, accum );
         }
-        if( effectRadialBlur->Setup( args, drawInfo.postEffectParams.pRadialBlur ) )
+        if( effectRadialBlur->Setup( args, postef.pRadialBlur ) )
         {
             accum = effectRadialBlur->Apply( args, accum );
         }
@@ -722,11 +720,13 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
     // post-effect that work on swapchain geometry too
     {
-        if( effectWipe->Setup( args, drawInfo.postEffectParams.pWipe, swapchain, frameId ) )
+        const auto& postef = AccessParams< RgDrawFramePostEffectsParams >( drawInfo );
+
+        if( effectWipe->Setup( args, postef.pWipe, swapchain, frameId ) )
         {
             accum = effectWipe->Apply( args, blueNoise, accum );
         }
-        if( drawInfo.postEffectParams.pCRT != nullptr && drawInfo.postEffectParams.pCRT->isActive )
+        if( postef.pCRT != nullptr && postef.pCRT->isActive )
         {
             effectCrtDemodulateEncode->Setup( args );
             accum = effectCrtDemodulateEncode->Apply( args, accum );
@@ -822,26 +822,36 @@ void RTGL1::VulkanDevice::StartFrame( const RgStartFrameInfo* pInfo )
     currentFrameState.OnBeginFrame( newFrameCmd );
 }
 
-void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pInfo )
+void RTGL1::VulkanDevice::DrawFrame( const RgDrawFrameInfo* pOriginalInfo )
 {
     if( !currentFrameState.WasFrameStarted() )
     {
         throw RgException( RG_RESULT_FRAME_WASNT_STARTED );
     }
 
-    if( pInfo == nullptr )
+    if( pOriginalInfo == nullptr )
     {
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    const RgDrawFrameInfo& info = Dev_Override( *pInfo );
+    DrawFrameInfoCopy modifiedCopy( *pOriginalInfo );
+    {
+        sceneMetaManager->Modify(
+            sceneImportExport->GetImportMapName(),
+            *AccessParamsForWrite< RgDrawFrameVolumetricParams >( modifiedCopy.info ),
+            *AccessParamsForWrite< RgDrawFrameSkyParams >( modifiedCopy.info ) );
+
+        Dev_Override( modifiedCopy );
+    }
+    const RgDrawFrameInfo& info = modifiedCopy.info;
+
 
     VkCommandBuffer cmd = currentFrameState.GetCmdBuffer();
 
     previousFrameTime = currentFrameTime;
     currentFrameTime  = info.currentTime;
 
-    renderResolution.Setup( AccessParams( info.pRenderResolutionParams ),
+    renderResolution.Setup( AccessParams< RgDrawFrameRenderResolutionParams >( info ),
                             swapchain->GetWidth(),
                             swapchain->GetHeight(),
                             nvDlss );

@@ -204,7 +204,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                 ImGui::BeginDisabled(
                     !( modifiers.resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM ) );
 
-                ImGui::SliderInt2( "Custom render size", modifiers.customRenderSize, 96, 3840 );
+                ImGui::SliderFloat(
+                    "Custom render size", &modifiers.customRenderSizeScale, 0.1f, 1.5f );
 
                 ImGui::EndDisabled();
             }
@@ -905,68 +906,41 @@ void RTGL1::VulkanDevice::Dev_Draw() const
     }
 }
 
-const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo& original ) const
+void RTGL1::VulkanDevice::Dev_Override( DrawFrameInfoCopy& copy ) const
 {
     if( !debugWindows || !devmode )
     {
-        return original;
+        return;
     }
-
-    // in devmode, deep copy original info to modify it
-    {
-        devmode->drawInfoCopy.c                  = original;
-        devmode->drawInfoCopy.c_RenderResolution = AccessParams( original.pRenderResolutionParams );
-        devmode->drawInfoCopy.c_Illumination     = AccessParams( original.pIlluminationParams );
-        devmode->drawInfoCopy.c_Volumetric       = AccessParams( original.pVolumetricParams );
-        devmode->drawInfoCopy.c_Tonemapping      = AccessParams( original.pTonemappingParams );
-        devmode->drawInfoCopy.c_Bloom            = AccessParams( original.pBloomParams );
-        devmode->drawInfoCopy.c_ReflectRefract   = AccessParams( original.pReflectRefractParams );
-        devmode->drawInfoCopy.c_Sky              = AccessParams( original.pSkyParams );
-        devmode->drawInfoCopy.c_Textures         = AccessParams( original.pTexturesParams );
-        devmode->drawInfoCopy.c_Lightmap         = AccessParams( original.pLightmapParams );
-
-        // dynamic defaults
-        {
-            devmode->drawInfoCopy.c_RenderResolution.customRenderSize = {
-                renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight()
-            };
-        }
-
-        // relink
-        devmode->drawInfoCopy.c.pRenderResolutionParams = &devmode->drawInfoCopy.c_RenderResolution;
-        devmode->drawInfoCopy.c.pIlluminationParams     = &devmode->drawInfoCopy.c_Illumination;
-        devmode->drawInfoCopy.c.pVolumetricParams       = &devmode->drawInfoCopy.c_Volumetric;
-        devmode->drawInfoCopy.c.pTonemappingParams      = &devmode->drawInfoCopy.c_Tonemapping;
-        devmode->drawInfoCopy.c.pBloomParams            = &devmode->drawInfoCopy.c_Bloom;
-        devmode->drawInfoCopy.c.pReflectRefractParams   = &devmode->drawInfoCopy.c_ReflectRefract;
-        devmode->drawInfoCopy.c.pSkyParams              = &devmode->drawInfoCopy.c_Sky;
-        devmode->drawInfoCopy.c.pTexturesParams         = &devmode->drawInfoCopy.c_Textures;
-        devmode->drawInfoCopy.c.pLightmapParams         = &devmode->drawInfoCopy.c_Lightmap;
-    }
-
-    RgDrawFrameInfo&                   dst       = devmode->drawInfoCopy.c;
-    RgDrawFrameRenderResolutionParams& dst_resol = devmode->drawInfoCopy.c_RenderResolution;
-    RgDrawFrameIlluminationParams&     dst_illum = devmode->drawInfoCopy.c_Illumination;
-    RgDrawFrameTonemappingParams&      dst_tnmp  = devmode->drawInfoCopy.c_Tonemapping;
-    RgDrawFrameLightmapParams&         dst_ltmp  = devmode->drawInfoCopy.c_Lightmap;
 
     auto& modifiers = devmode->drawInfoOvrd;
 
     if( modifiers.enable )
     {
+        auto& dst       = copy.info;
+        auto& dst_resol = *AccessParamsForWrite< RgDrawFrameRenderResolutionParams >( copy.info );
+        auto& dst_illum = *AccessParamsForWrite< RgDrawFrameIlluminationParams >( copy.info );
+        auto& dst_tnmp  = *AccessParamsForWrite< RgDrawFrameTonemappingParams >( copy.info );
+        auto& dst_ltmp  = *AccessParamsForWrite< RgDrawFrameLightmapParams >( copy.info );
+
         // apply modifiers
-        dst.vsync            = modifiers.vsync;
-        dst.fovYRadians      = Utils::DegToRad( modifiers.fovDeg );
+        dst.vsync       = modifiers.vsync;
+        dst.fovYRadians = Utils::DegToRad( modifiers.fovDeg );
 
         {
             dst_resol.upscaleTechnique = modifiers.upscaleTechnique;
             dst_resol.sharpenTechnique = modifiers.sharpenTechnique;
             dst_resol.resolutionMode   = modifiers.resolutionMode;
-            dst_resol.customRenderSize = { ClampPix< uint32_t >( modifiers.customRenderSize[ 0 ] ),
-                                           ClampPix< uint32_t >(
-                                               modifiers.customRenderSize[ 1 ] ) };
-            modifiers.pixelizedForPtr  = { ClampPix< uint32_t >( modifiers.pixelized[ 0 ] ),
-                                           ClampPix< uint32_t >( modifiers.pixelized[ 1 ] ) };
+            dst_resol.customRenderSize = {
+                ClampPix< uint32_t >( modifiers.customRenderSizeScale *
+                                      float( renderResolution.UpscaledWidth() ) ),
+                ClampPix< uint32_t >( modifiers.customRenderSizeScale *
+                                      float( renderResolution.UpscaledHeight() ) ),
+            };
+            modifiers.pixelizedForPtr = {
+                ClampPix< uint32_t >( modifiers.pixelized[ 0 ] ),
+                ClampPix< uint32_t >( modifiers.pixelized[ 1 ] ),
+            };
             dst_resol.pPixelizedRenderSize =
                 modifiers.pixelizedEnable ? &modifiers.pixelizedForPtr : nullptr;
         }
@@ -988,56 +962,64 @@ const RgDrawFrameInfo& RTGL1::VulkanDevice::Dev_Override( const RgDrawFrameInfo&
         {
             dst_ltmp.lightmapScreenCoverage = modifiers.lightmapScreenCoverage;
         }
-
-        return dst;
     }
     else
     {
+        const auto& src       = copy.info;
+        const auto& src_resol = AccessParams< RgDrawFrameRenderResolutionParams >( copy.info );
+        const auto& src_illum = AccessParams< RgDrawFrameIlluminationParams >( copy.info );
+        const auto& src_tnmp  = AccessParams< RgDrawFrameTonemappingParams >( copy.info );
+        const auto& src_ltmp  = AccessParams< RgDrawFrameLightmapParams >( copy.info );
+
         // reset modifiers
-        modifiers.vsync       = dst.vsync;
-        modifiers.fovDeg      = Utils::RadToDeg( dst.fovYRadians );
+        modifiers.vsync      = src.vsync;
+        modifiers.fovDeg     = Utils::RadToDeg( src.fovYRadians );
         devmode->antiFirefly = true;
 
         {
-            modifiers.upscaleTechnique = dst_resol.upscaleTechnique;
-            modifiers.sharpenTechnique = dst_resol.sharpenTechnique;
-            modifiers.resolutionMode   = dst_resol.resolutionMode;
+            modifiers.upscaleTechnique = src_resol.upscaleTechnique;
+            modifiers.sharpenTechnique = src_resol.sharpenTechnique;
+            modifiers.resolutionMode   = src_resol.resolutionMode;
 
-            modifiers.customRenderSize[ 0 ] = ClampPix< int >( dst_resol.customRenderSize.width );
-            modifiers.customRenderSize[ 1 ] = ClampPix< int >( dst_resol.customRenderSize.height );
+            if( modifiers.resolutionMode == RG_RENDER_RESOLUTION_MODE_CUSTOM )
+            {
+                modifiers.customRenderSizeScale = float( src_resol.customRenderSize.height ) /
+                                                  float( renderResolution.UpscaledHeight() );
+            }
+            else
+            {
+                modifiers.customRenderSizeScale = 1.0f;
+            }
 
-            modifiers.pixelizedEnable = dst_resol.pPixelizedRenderSize != nullptr;
+            modifiers.pixelizedEnable = src_resol.pPixelizedRenderSize != nullptr;
 
             modifiers.pixelized[ 0 ] =
-                dst_resol.pPixelizedRenderSize
-                    ? ClampPix< int >( dst_resol.pPixelizedRenderSize->width )
+                src_resol.pPixelizedRenderSize
+                    ? ClampPix< int >( src_resol.pPixelizedRenderSize->width )
                     : 0;
             modifiers.pixelized[ 1 ] =
-                dst_resol.pPixelizedRenderSize
-                    ? ClampPix< int >( dst_resol.pPixelizedRenderSize->height )
+                src_resol.pPixelizedRenderSize
+                    ? ClampPix< int >( src_resol.pPixelizedRenderSize->height )
                     : 0;
         }
         {
-            modifiers.maxBounceShadows                 = int( dst_illum.maxBounceShadows );
-            modifiers.enableSecondBounceForIndirect    = dst_illum.enableSecondBounceForIndirect;
-            modifiers.directDiffuseSensitivityToChange = dst_illum.directDiffuseSensitivityToChange;
+            modifiers.maxBounceShadows                 = int( src_illum.maxBounceShadows );
+            modifiers.enableSecondBounceForIndirect    = src_illum.enableSecondBounceForIndirect;
+            modifiers.directDiffuseSensitivityToChange = src_illum.directDiffuseSensitivityToChange;
             modifiers.indirectDiffuseSensitivityToChange =
-                dst_illum.indirectDiffuseSensitivityToChange;
-            modifiers.specularSensitivityToChange = dst_illum.specularSensitivityToChange;
+                src_illum.indirectDiffuseSensitivityToChange;
+            modifiers.specularSensitivityToChange = src_illum.specularSensitivityToChange;
         }
         {
-            modifiers.disableEyeAdaptation = dst_tnmp.disableEyeAdaptation;
-            modifiers.ev100Min             = dst_tnmp.ev100Min;
-            modifiers.ev100Max             = dst_tnmp.ev100Max;
-            RG_SET_VEC3_A( modifiers.saturation, dst_tnmp.saturation.data );
-            RG_SET_VEC3_A( modifiers.crosstalk, dst_tnmp.crosstalk.data );
+            modifiers.disableEyeAdaptation = src_tnmp.disableEyeAdaptation;
+            modifiers.ev100Min             = src_tnmp.ev100Min;
+            modifiers.ev100Max             = src_tnmp.ev100Max;
+            RG_SET_VEC3_A( modifiers.saturation, src_tnmp.saturation.data );
+            RG_SET_VEC3_A( modifiers.crosstalk, src_tnmp.crosstalk.data );
         }
         {
-            modifiers.lightmapScreenCoverage = dst_ltmp.lightmapScreenCoverage;
+            modifiers.lightmapScreenCoverage = src_ltmp.lightmapScreenCoverage;
         }
-
-        // and return original
-        return original;
     }
 }
 

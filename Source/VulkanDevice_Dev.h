@@ -71,7 +71,7 @@ struct Devmode
         RgRenderUpscaleTechnique upscaleTechnique;
         RgRenderSharpenTechnique sharpenTechnique;
         RgRenderResolutionMode   resolutionMode;
-        int                      customRenderSize[ 2 ];
+        float                    customRenderSizeScale;
         bool                     pixelizedEnable;
         int                      pixelized[ 2 ];
         RgExtent2D               pixelizedForPtr;
@@ -79,19 +79,6 @@ struct Devmode
         float lightmapScreenCoverage;
 
     } drawInfoOvrd;
-    struct
-    {
-        RgDrawFrameInfo                   c{};
-        RgDrawFrameRenderResolutionParams c_RenderResolution{};
-        RgDrawFrameIlluminationParams     c_Illumination{};
-        RgDrawFrameVolumetricParams       c_Volumetric{};
-        RgDrawFrameTonemappingParams      c_Tonemapping{};
-        RgDrawFrameBloomParams            c_Bloom{};
-        RgDrawFrameReflectRefractParams   c_ReflectRefract{};
-        RgDrawFrameSkyParams              c_Sky{};
-        RgDrawFrameTexturesParams         c_Textures{};
-        RgDrawFrameLightmapParams         c_Lightmap{};
-    } drawInfoCopy;
 
     bool ignoreExternalGeometry{ false };
 
@@ -110,149 +97,5 @@ struct Devmode
     bool                   logCompact{ true };
     std::deque< std::tuple< RgMessageSeverityFlags, std::string, uint64_t /* str hash */ > > logs{};
 };
-
-namespace detail
-{
-    template< typename T >
-    struct DefaultParams
-    {
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameRenderResolutionParams >
-    {
-        constexpr static RgDrawFrameRenderResolutionParams value = {
-            .upscaleTechnique     = RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2,
-            .sharpenTechnique     = RG_RENDER_SHARPEN_TECHNIQUE_NONE,
-            .resolutionMode       = RG_RENDER_RESOLUTION_MODE_QUALITY,
-            .customRenderSize     = {},
-            .pPixelizedRenderSize = nullptr,
-            .resetUpscalerHistory = false,
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameIlluminationParams >
-    {
-        constexpr static RgDrawFrameIlluminationParams value = {
-            .maxBounceShadows                            = 2,
-            .enableSecondBounceForIndirect               = true,
-            .cellWorldSize                               = 1.0f,
-            .directDiffuseSensitivityToChange            = 0.5f,
-            .indirectDiffuseSensitivityToChange          = 0.2f,
-            .specularSensitivityToChange                 = 0.5f,
-            .polygonalLightSpotlightFactor               = 2.0f,
-            .lightUniqueIdIgnoreFirstPersonViewerShadows = nullptr,
-            .lightstyleValuesCount                       = 0,
-            .pLightstyleValues                           = nullptr,
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameVolumetricParams >
-    {
-        constexpr static RgDrawFrameVolumetricParams value = {
-            .enable                  = true,
-            .useSimpleDepthBased     = false,
-            .volumetricFar           = std::numeric_limits< float >::max(),
-            .ambientColor            = { 0.8f, 0.85f, 1.0f },
-            .scaterring              = 0.2f,
-            .assymetry               = 0.75f,
-            .useIlluminationVolume   = false,
-            .lightUniqueId           = nullptr,
-            .fallbackSourceColor     = { 0, 0, 0 },
-            .fallbackSourceDirection = { 0, -1, 0 },
-            .lightMultiplier         = 1.0f,
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameTonemappingParams >
-    {
-        constexpr static RgDrawFrameTonemappingParams value = {
-            .disableEyeAdaptation = false,
-            .ev100Min             = 0.0f,
-            .ev100Max             = 10.0f,
-            .luminanceWhitePoint  = 10.0f,
-            .saturation           = { 0, 0, 0 },
-            .crosstalk            = { 1, 1, 1 },
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameBloomParams >
-    {
-        constexpr static RgDrawFrameBloomParams value = {
-            .bloomIntensity          = 1.0f,
-            .inputThreshold          = 4.0f,
-            .bloomEmissionMultiplier = 16.0f,
-            .lensDirtIntensity       = 2.0f,
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameReflectRefractParams >
-    {
-        constexpr static RgDrawFrameReflectRefractParams value = {
-            .maxReflectRefractDepth                     = 2,
-            .typeOfMediaAroundCamera                    = RgMediaType::RG_MEDIA_TYPE_VACUUM,
-            .indexOfRefractionGlass                     = 1.52f,
-            .indexOfRefractionWater                     = 1.33f,
-            .waterWaveSpeed                             = 1.0f,
-            .waterWaveNormalStrength                    = 1.0f,
-            .waterColor                                 = { 0.3f, 0.73f, 0.63f },
-            .acidColor                                  = { 0.0f, 0.66f, 0.55f },
-            .acidDensity                                = 10.0f,
-            .waterWaveTextureDerivativesMultiplier      = 1.0f,
-            .waterTextureAreaScale                      = 1.0f,
-            .disableBackfaceReflectionsForNoMediaChange = false,
-            .portalNormalTwirl                          = false,
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameSkyParams >
-    {
-        constexpr static RgDrawFrameSkyParams value = {
-            .skyType                     = RgSkyType::RG_SKY_TYPE_COLOR,
-            .skyColorDefault             = { 199 / 255.0f, 233 / 255.0f, 255 / 255.0f },
-            .skyColorMultiplier          = 1000.0f,
-            .skyColorSaturation          = 1.0f,
-            .skyViewerPosition           = {},
-            .pSkyCubemapTextureName      = nullptr,
-            .skyCubemapRotationTransform = {},
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameTexturesParams >
-    {
-        constexpr static RgDrawFrameTexturesParams value = {
-            .dynamicSamplerFilter   = RG_SAMPLER_FILTER_LINEAR,
-            .normalMapStrength      = 1.0f,
-            .emissionMapBoost       = 100.0f,
-            .emissionMaxScreenColor = 1.5f,
-            .minRoughness           = 0.0f,
-        };
-    };
-
-    template<>
-    struct DefaultParams< RgDrawFrameLightmapParams >
-    {
-        constexpr static RgDrawFrameLightmapParams value = {
-            .lightmapScreenCoverage = 0.0f,
-        };
-    };
-}
-
-template< typename T >
-constexpr const T& AccessParams( const T* originalParams )
-{
-    if( originalParams == nullptr )
-    {
-        return detail::DefaultParams< T >::value;
-    }
-    return *originalParams;
-}
 
 }
