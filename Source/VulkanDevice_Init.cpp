@@ -291,6 +291,9 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     textureMetaManager = std::make_shared< TextureMetaManager >(
         ovrdFolder / DATABASE_FOLDER );
 
+    sceneMetaManager = std::make_shared< SceneMetaManager >(
+        ovrdFolder / DATABASE_FOLDER / "scenes.json" );
+
     cubemapManager = std::make_shared< CubemapManager >(
         device, 
         memAllocator, 
@@ -488,6 +491,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     {
         observer->Subscribe( textureManager );
         observer->Subscribe( textureMetaManager );
+        observer->Subscribe( sceneMetaManager );
         observer->Subscribe( sceneImportExport );
     }
 }
@@ -537,6 +541,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     blueNoise.reset();
     textureManager.reset();
     textureMetaManager.reset();
+    sceneMetaManager.reset();
     cubemapManager.reset();
     debugWindows.reset();
     devmode.reset();

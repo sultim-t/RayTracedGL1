@@ -91,6 +91,7 @@ set(Sources
     "Source/TextureMeta.cpp"
     "Source/VulkanDevice_Dev.cpp"
     "Source/JsonParser.cpp"
+    "Source/SceneMeta.cpp"
 )
 
 

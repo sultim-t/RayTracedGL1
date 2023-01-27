@@ -84,12 +84,35 @@ struct TextureMetaArray
 
 
 
+struct SceneMeta
+{
+    constexpr static int Version{ 0 };
+    constexpr static int RequiredVersion{ 0 };
+
+    std::string sceneName = {};
+    float       sky       = 100.0f;
+    float       scatter   = 1.0f;
+};
+
+struct SceneMetaArray
+{
+    constexpr static int Version{ 0 };
+    constexpr static int RequiredVersion{ 0 };
+
+    std::vector< SceneMeta > array;
+};
+
+
+
 namespace json_parser
 {
     namespace detail
     {
         auto ReadTextureMetaArray( const std::filesystem::path& path )
             -> std::optional< TextureMetaArray >;
+
+        auto ReadSceneMetaArray( const std::filesystem::path& path )
+            -> std::optional< SceneMetaArray >;
 
         auto ReadLibraryConfig( const std::filesystem::path& path )
             -> std::optional< LibraryConfig >;
@@ -106,6 +129,12 @@ namespace json_parser
     inline auto ReadFileAs< TextureMetaArray >( const std::filesystem::path& path )
     {
         return detail::ReadTextureMetaArray( path );
+    }
+
+    template<>
+    inline auto ReadFileAs< SceneMetaArray >( const std::filesystem::path& path )
+    {
+        return detail::ReadSceneMetaArray( path );
     }
 
     template<>

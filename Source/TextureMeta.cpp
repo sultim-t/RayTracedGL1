@@ -104,7 +104,7 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
 
         if( auto arr = json_parser::ReadFileAs< TextureMetaArray >( filepath ) )
         {
-            for( const TextureMeta& v : arr->array )
+            for( TextureMeta& v : arr->array )
             {
                 if( !data.contains( v.textureName ) )
                 {

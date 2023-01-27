@@ -174,6 +174,25 @@ auto RTGL1::json_parser::detail::ReadTextureMetaArray( const std::filesystem::pa
 
 
 // clang-format off
+JSON_TYPE( RTGL1::SceneMeta )
+      "sceneName", &T::sceneName
+    , "sky", &T::sky
+    , "scatter", &T::scatter
+JSON_TYPE_END;
+JSON_TYPE( RTGL1::SceneMetaArray )
+    "array", &T::array
+JSON_TYPE_END;
+// clang-format on
+
+auto RTGL1::json_parser::detail::ReadSceneMetaArray( const std::filesystem::path& path )
+    -> std::optional< SceneMetaArray >
+{
+    return LoadFileAs< SceneMetaArray >( path );
+}
+
+
+
+// clang-format off
 JSON_TYPE( RTGL1::LibraryConfig )
       "developerMode", &T::developerMode
     , "vulkanValidation", &T::vulkanValidation
