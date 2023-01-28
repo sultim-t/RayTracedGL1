@@ -220,7 +220,8 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&      
     }
     else if( ( primitive.flags & RG_MESH_PRIMITIVE_WATER ) ||
              ( primitive.flags & RG_MESH_PRIMITIVE_GLASS ) ||
-             ( primitive.flags & RG_MESH_PRIMITIVE_GLASS_IF_SMOOTH ) )
+             ( primitive.flags & RG_MESH_PRIMITIVE_GLASS_IF_SMOOTH ) ||
+             ( primitive.flags & RG_MESH_PRIMITIVE_ACID ) )
     {
         flags |= FL( FT::PT_REFRACT );
     }

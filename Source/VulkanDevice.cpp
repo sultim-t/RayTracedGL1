@@ -887,7 +887,8 @@ namespace
         }
 
         if( !( primitive.flags & RG_MESH_PRIMITIVE_GLASS ) &&
-            !( primitive.flags & RG_MESH_PRIMITIVE_WATER ) )
+            !( primitive.flags & RG_MESH_PRIMITIVE_WATER ) &&
+            !( primitive.flags & RG_MESH_PRIMITIVE_ACID ) )
         {
             if( primitive.flags & RG_MESH_PRIMITIVE_TRANSLUCENT )
             {

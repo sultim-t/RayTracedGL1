@@ -152,6 +152,7 @@ JSON_TYPE( RTGL1::TextureMeta )
     , "isWater", &T::isWater
     , "isGlass", &T::isGlass
     , "isGlassIfTranslucent", &T::isGlassIfTranslucent
+    , "isAcid", &T::isAcid
     , "isGlassIfSmooth", &T::isGlassIfSmooth
     , "isMirrorIfSmooth", &T::isMirrorIfSmooth
     , "metallicDefault", &T::metallicDefault

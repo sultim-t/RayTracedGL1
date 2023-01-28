@@ -174,18 +174,28 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags |= RG_MESH_PRIMITIVE_WATER;
             prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
             prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags &= ~RG_MESH_PRIMITIVE_ACID;
         }
         else if( ( meta->isGlass ) || ( meta->isGlassIfTranslucent && isTranslucent ) )
         {
             prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
             prim.flags |= RG_MESH_PRIMITIVE_GLASS;
             prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags &= ~RG_MESH_PRIMITIVE_ACID;
         }
         else if( meta->isMirror )
         {
             prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
             prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
             prim.flags |= RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags &= ~RG_MESH_PRIMITIVE_ACID;
+        }
+        else if( meta->isAcid )
+        {
+            prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
+            prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
+            prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags |= RG_MESH_PRIMITIVE_ACID;
         }
 
         if( meta->isGlassIfSmooth )

@@ -305,6 +305,7 @@ typedef enum RgMeshPrimitiveFlagBits
     RG_MESH_PRIMITIVE_GLASS_IF_SMOOTH       = 2048,
     // Ignore refracting geometry behind this primitive.
     RG_MESH_PRIMITIVE_IGNORE_REFRACT_AFTER  = 4096,
+    RG_MESH_PRIMITIVE_ACID                  = 8192,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 
