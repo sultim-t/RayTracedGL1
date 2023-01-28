@@ -379,7 +379,11 @@ void main()
     h.geometryInstanceFlags                 = primaryToReflRefrBuf.r;
     h.portalIndex                           = primaryToReflRefrBuf.b;
     h.normal                                = texelFetchNormal(pix);
-    h.roughness                             = texelFetch( framebufMetallicRoughness_Sampler, pix, 0 ).g;
+    {
+        vec2 mr                             = texelFetch( framebufMetallicRoughness_Sampler, pix, 0 ).rg;
+        h.metallic                          = mr.r;
+        h.roughness                         = mr.g;
+    }
     const vec3  motionBuf                   = texelFetch(framebufMotion_Sampler, pix, 0).rgb;
     vec2        motionCurToPrev             = motionBuf.rg;
     float       motionDepthLinearCurToPrev  = motionBuf.b;
@@ -437,14 +441,12 @@ void main()
         const float curIndexOfRefraction = getIndexOfRefraction(currentRayMedia);
         const float newIndexOfRefraction = getIndexOfRefraction(newRayMedia);
 
-        const vec3 normal = getNormal(
-            h.hitPosition,
-            h.normal,
-            rayCone,
-            rayDir,
+        const bool isWater =
             !isPortal && ( newRayMedia == MEDIA_TYPE_WATER || currentRayMedia == MEDIA_TYPE_WATER ||
-                           newRayMedia == MEDIA_TYPE_ACID || currentRayMedia == MEDIA_TYPE_ACID ),
-            wasPortal );
+                           newRayMedia == MEDIA_TYPE_ACID || currentRayMedia == MEDIA_TYPE_ACID );
+
+        const vec3 normal =
+            getNormal( h.hitPosition, h.normal, rayCone, rayDir, isWater, wasPortal );
 
 
         bool delaySplitOnNextTime = false;
@@ -522,23 +524,22 @@ void main()
         else
         {
             rayDir = reflect(rayDir, normal);
-            throughput *= F;
+
+            if( !isWater )
+            {
+                throughput *= getFresnelSchlick( max( 0, dot( normal, rayDir ) ),
+                                                 getSpecularColor( h.albedo, h.metallic ) );
+            }
+            else
+            {
+                throughput *= F;
+            }
         }
 
         if (doSplit)
         {
             throughput *= 2;
             wasSplit = true;
-        }
-
-
-        if ((h.geometryInstanceFlags & GEOM_INST_FLAG_REFL_REFR_ALBEDO_MULT) != 0)
-        {
-            throughput *= h.albedo;
-        }
-        else if ((h.geometryInstanceFlags & GEOM_INST_FLAG_REFL_REFR_ALBEDO_ADD) != 0)
-        {
-            throughput += h.albedo;
         }
 
 
