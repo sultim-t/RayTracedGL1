@@ -150,7 +150,18 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags |= RG_MESH_PRIMITIVE_ALPHA_TESTED;
         }
 
-        if( meta->forceTranslucent )
+        if( meta->forceOpaque )
+        {
+            prim.flags &= ~RG_MESH_PRIMITIVE_TRANSLUCENT;
+            prim.flags &= ~RG_MESH_PRIMITIVE_WATER;
+            prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
+            prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
+            prim.flags &= ~RG_MESH_PRIMITIVE_ACID;
+
+            auto c = Utils::UnpackColor4DPacked32Components( prim.color );
+            prim.color = Utils::PackColor( c[ 0 ], c[ 1 ], c[ 2 ], 255 );
+        }
+        else if( meta->forceTranslucent )
         {
             prim.flags |= RG_MESH_PRIMITIVE_TRANSLUCENT;
         }

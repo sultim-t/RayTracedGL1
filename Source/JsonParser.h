@@ -54,6 +54,7 @@ struct TextureMeta
     bool forceIgnore      = false;
     bool forceAlphaTest   = false;
     bool forceTranslucent = false;
+    bool forceOpaque = false;
 
     bool forceGenerateNormals = false;
     bool forceExactNormals    = false;
