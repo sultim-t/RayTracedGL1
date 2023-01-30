@@ -38,38 +38,23 @@ layout( push_constant ) uniform ScatterAccumPush_BT
 }
 push;
 
-vec4 applyVolumetrics( ivec2 pix )
+vec4 fializeScattering( ivec2 regularPix )
 {
-    if( globalUniform.volumeEnableType == VOLUME_ENABLE_NONE )
-    {
-        return vec4( vec3( 0 ), 1.0 );
-    }
-
-    // allow only refractive
-    bool isPixOdd = isCheckerboardPixOdd( pix ) != 0;
-    if( !isPixOdd )
-    {
-        // force being odd
-        pix = getRegularPixFromCheckerboardPix( pix );
-        pix.x += 1;
-        pix = getCheckerboardPix( pix );
-    }
-
-    uint seed = getRandomSeed( pix, globalUniform.frameId );
-    vec3 rnd  = rnd8_4( seed, 0 ).xyz;
-
-    const vec2 inUV         = getPixelUVWithJitter( getRegularPixFromCheckerboardPix( pix ) );
-    const vec3 cameraRayDir = getRayDir( inUV );
-
-    float      oop;
-    const vec3 offset = sampleHemisphere( rnd.x, rnd.y, oop );
-
-    float virtualdepth = texelFetch( framebufDepthWorld_Sampler, pix, 0 ).r;
-    bool  isSky        = virtualdepth > MAX_RAY_LENGTH;
-
     if( globalUniform.volumeEnableType == VOLUME_ENABLE_VOLUMETRIC )
     {
-        vec3 position = globalUniform.cameraPosition.xyz + cameraRayDir * virtualdepth;
+        vec3 position;
+        {
+            vec2 screen = { float( regularPix.x ) / globalUniform.renderWidth,
+                            float( regularPix.y ) / globalUniform.renderHeight };
+
+            vec4 ndc = { screen.x * 2.0 - 1.0,
+                         screen.y * 2.0 - 1.0,
+                         texelFetch( framebufDepthNdc_Sampler, regularPix, 0 ).x,
+                         1.0 };
+
+            vec4 worldpos = globalUniform.invView * globalUniform.invProjection * ndc;
+            position      = worldpos.xyz / worldpos.w;
+        }
 
 #ifdef DEBUG_VOLUME_ILLUMINATION
         vec3 sp = volume_toSamplePosition_T(
@@ -78,10 +63,20 @@ vec4 applyVolumetrics( ivec2 pix )
         return color * illum;
 #endif
 
+        uint seed = getRandomSeed( regularPix, globalUniform.frameId );
+        vec3 rnd  = rnd8_4( seed, 0 ).xyz;
+
+        float      oop;
+        const vec3 offset = sampleHemisphere( rnd.x, rnd.y, oop );
+
         return volume_sampleDithered( position, rnd.z, -offset, 2.0f );
     }
-    else
+    else if( globalUniform.volumeEnableType == VOLUME_ENABLE_SIMPLE )
     {
+        float virtualdepth =
+            texelFetch( framebufDepthWorld_Sampler, getCheckerboardPix( regularPix ), 0 ).r;
+        bool isSky = virtualdepth > MAX_RAY_LENGTH;
+
         float density = globalUniform.volumeScattering * 0.00005;
 
         if( !isSky )
@@ -93,6 +88,10 @@ vec4 applyVolumetrics( ivec2 pix )
         {
             return vec4( vec3( 0 ), 1.0 );
         }
+    }
+    else
+    {
+        return vec4( vec3( 0 ), 1.0 );
     }
 }
 
@@ -157,7 +156,7 @@ void main()
     accum      = weightSum > 0.0001 ? accum / weightSum : vec4( 0 );
 
     historyLen = clamp( historyLen + 1, 1, max( 1.0, push.maxHistoryLength ) );
-    accum      = mix( accum, applyVolumetrics( pix ), 1.0 / historyLen );
+    accum      = mix( accum, fializeScattering( getRegularPixFromCheckerboardPix( pix ) ), 1.0 / historyLen );
 
     imageStore( framebufScattering, getRegularPixFromCheckerboardPix( pix ), accum );
     imageStore(
