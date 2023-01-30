@@ -820,11 +820,7 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
 
             auto primname = std::to_string( i );
 
-            RgEditorInfo editorInfo = {
-                .pbrInfoExists  = true,
-                .pbrInfo        = { .metallicDefault  = matinfo.metallicFactor,
-                                    .roughnessDefault = matinfo.roughnessFactor },
-            };
+            RgEditorInfo editorInfo = {};
 
             RgMeshPrimitiveInfo dstPrim = {
                 .pPrimitiveNameInMesh = primname.c_str(),
@@ -840,7 +836,12 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 .emissive             = matinfo.emissiveMult,
                 .pEditorInfo          = &editorInfo,
             };
+
             textureMeta.Modify( dstPrim, editorInfo, true );
+            // pbr info from gltf has higher priority
+            editorInfo.pbrInfoExists = true;
+            editorInfo.pbrInfo       = { .metallicDefault  = matinfo.metallicFactor,
+                                         .roughnessDefault = matinfo.roughnessFactor };
 
             auto r = scene.UploadPrimitive( frameIndex, dstMesh, dstPrim, textureManager, true );
 
