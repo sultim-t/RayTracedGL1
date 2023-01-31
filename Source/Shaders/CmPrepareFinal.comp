@@ -132,8 +132,8 @@ vec3 getBloomInput( const vec3 hdr, const vec3 screenEmis )
         bloom = vec3( 0 );
     }
 
-    return bloom * smoothstep( globalUniform.bloomThreshold,
-                               globalUniform.bloomThreshold * 1.1,
+    return bloom * smoothstep( 0,
+                               globalUniform.bloomThreshold,
                                getLuminance( bloom ) );
 }
 
