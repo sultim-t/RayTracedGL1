@@ -91,10 +91,14 @@ struct SceneMeta
     constexpr static int Version{ 0 };
     constexpr static int RequiredVersion{ 0 };
 
-    std::string            sceneName = {};
-    std::optional< float > sky       = {};
-    std::optional< float > scatter   = {};
-    std::optional< float > volumeFar = {};
+    std::string sceneName = {};
+
+    std::optional< float > sky;
+
+    std::optional< float > scatter;
+    std::optional< float > volumeFar;
+
+    std::optional< std::array< float, 3 > > volumeAmbient;
 };
 
 struct SceneMetaArray

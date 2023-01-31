@@ -20,6 +20,8 @@
 
 #include "SceneMeta.h"
 
+#include "Utils.h"
+
 RTGL1::SceneMetaManager::SceneMetaManager( std::filesystem::path filepath )
     : metafile( std::move( filepath ) )
 {
@@ -51,6 +53,11 @@ void RTGL1::SceneMetaManager::Modify( std::string_view             sceneName,
     if( m.volumeFar )
     {
         volumetric.volumetricFar = *m.volumeFar;
+    }
+
+    if( m.volumeAmbient )
+    {
+        volumetric.ambientColor = { RG_ACCESS_VEC3( *m.volumeAmbient ) };
     }
 }
 
