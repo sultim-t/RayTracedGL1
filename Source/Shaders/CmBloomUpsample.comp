@@ -42,9 +42,11 @@ vec2 getInverseUpscampledSize()
 }
 
 // get UV coords in [0..1] range
-vec2 getSrcUV(const ivec2 upsampledPix)
+vec2 getSrcUV( const ivec2 upsampledPix )
 {
-    return (vec2(upsampledPix) + 0.5) * getInverseUpscampledSize();
+    // additional half-pixel in src size
+    return ( vec2( upsampledPix ) + 0.5 ) * getInverseUpscampledSize() +
+           ( vec2( 0.5 ) * getInverseSrcSize() );
 }
 
 vec3 getSample(sampler2D srcSampler, const vec2 uv)
