@@ -180,6 +180,7 @@ JSON_TYPE( RTGL1::SceneMeta )
       "sceneName", &T::sceneName
     , "sky", &T::sky
     , "scatter", &T::scatter
+    , "volumeFar", &T::volumeFar
 JSON_TYPE_END;
 JSON_TYPE( RTGL1::SceneMetaArray )
     "array", &T::array

@@ -54,7 +54,7 @@ struct TextureMeta
     bool forceIgnore      = false;
     bool forceAlphaTest   = false;
     bool forceTranslucent = false;
-    bool forceOpaque = false;
+    bool forceOpaque      = false;
 
     bool forceGenerateNormals = false;
     bool forceExactNormals    = false;
@@ -91,9 +91,10 @@ struct SceneMeta
     constexpr static int Version{ 0 };
     constexpr static int RequiredVersion{ 0 };
 
-    std::string sceneName = {};
-    float       sky       = 100.0f;
-    float       scatter   = 1.0f;
+    std::string            sceneName = {};
+    std::optional< float > sky       = {};
+    std::optional< float > scatter   = {};
+    std::optional< float > volumeFar = {};
 };
 
 struct SceneMetaArray

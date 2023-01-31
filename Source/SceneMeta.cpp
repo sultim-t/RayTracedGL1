@@ -38,8 +38,20 @@ void RTGL1::SceneMetaManager::Modify( std::string_view             sceneName,
 
     const SceneMeta& m = iter->second;
 
-    volumetric.scaterring  = m.scatter;
-    sky.skyColorMultiplier = m.sky;
+    if( m.scatter )
+    {
+        volumetric.scaterring = *m.scatter;
+    }
+
+    if( m.sky )
+    {
+        sky.skyColorMultiplier = *m.sky;
+    }
+
+    if( m.volumeFar )
+    {
+        volumetric.volumetricFar = *m.volumeFar;
+    }
 }
 
 void RTGL1::SceneMetaManager::OnFileChanged( FileType type, const std::filesystem::path& filepath )
