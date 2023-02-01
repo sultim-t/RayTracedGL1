@@ -61,12 +61,15 @@ struct TextureMeta
 
     bool isMirror             = false;
     bool isWater              = false;
+    bool isWaterIfTranslucent = false;
     bool isGlass              = false;
     bool isGlassIfTranslucent = false;
     bool isAcid               = false;
 
     bool isGlassIfSmooth  = false;
     bool isMirrorIfSmooth = false;
+
+    bool isThinMedia = false;
 
     float metallicDefault  = 0.0f;
     float roughnessDefault = 1.0f;

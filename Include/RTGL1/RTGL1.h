@@ -306,6 +306,7 @@ typedef enum RgMeshPrimitiveFlagBits
     // Ignore refracting geometry behind this primitive.
     RG_MESH_PRIMITIVE_IGNORE_REFRACT_AFTER  = 4096,
     RG_MESH_PRIMITIVE_ACID                  = 8192,
+    RG_MESH_PRIMITIVE_THIN_MEDIA            = 16384,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 
@@ -836,6 +837,7 @@ typedef struct RgDrawFrameReflectRefractParams
     float           indexOfRefractionGlass;
     // Default: 1.33
     float           indexOfRefractionWater;
+    float           thinMediaWidth;
     float           waterWaveSpeed;
     float           waterWaveNormalStrength;
     // Color at 1 meter depth.
@@ -850,9 +852,6 @@ typedef struct RgDrawFrameReflectRefractParams
     // If equals to 0.0, then default value is used.
     // Default: 1.0
     float           waterTextureAreaScale;
-    // If true, reflections are disabled for backface triangles
-    // of geometry that is marked RG_GEOMETRY_UPLOAD_NO_MEDIA_CHANGE_ON_REFRACT_BIT
-    RgBool32        disableBackfaceReflectionsForNoMediaChange;
     // If true, portal normal will be twirled around its 'inPosition'.
     RgBool32        portalNormalTwirl;
 } RgDrawFrameReflectRefractParams;

@@ -180,7 +180,7 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
                 !Utils::IsColor4DPacked32Zero< false >( editor.attachedLight.color );
         }
 
-        if( meta->isWater )
+        if( ( meta->isWater ) || ( meta->isWaterIfTranslucent && isTranslucent ) )
         {
             prim.flags |= RG_MESH_PRIMITIVE_WATER;
             prim.flags &= ~RG_MESH_PRIMITIVE_GLASS;
@@ -216,6 +216,11 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
         else if( meta->isMirrorIfSmooth )
         {
             prim.flags |= RG_MESH_PRIMITIVE_MIRROR_IF_SMOOTH;
+        }
+
+        if( meta->isThinMedia )
+        {
+            prim.flags |= RG_MESH_PRIMITIVE_THIN_MEDIA;
         }
 
         prim.emissive = Utils::Saturate( meta->emissiveMult );

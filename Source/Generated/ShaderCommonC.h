@@ -106,7 +106,7 @@ namespace RTGL1
 #define GEOM_INST_FLAG_IGNORE_REFRACT_AFTER (1 << 20)
 #define GEOM_INST_FLAG_RESERVED_5 (1 << 21)
 #define GEOM_INST_FLAG_RESERVED_6 (1 << 22)
-#define GEOM_INST_FLAG_NO_MEDIA_CHANGE (1 << 23)
+#define GEOM_INST_FLAG_THIN_MEDIA (1 << 23)
 #define GEOM_INST_FLAG_REFRACT (1 << 24)
 #define GEOM_INST_FLAG_REFLECT (1 << 25)
 #define GEOM_INST_FLAG_PORTAL (1 << 26)
@@ -261,7 +261,7 @@ struct ShGlobalUniform
     float volumeScattering;
     float lensDirtIntensity;
     uint32_t waterNormalTextureIndex;
-    uint32_t noBackfaceReflForNoMediaChange;
+    float thinMediaWidth;
     float time;
     float waterWaveSpeed;
     float waterWaveStrength;

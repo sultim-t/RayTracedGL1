@@ -313,6 +313,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
         gu->indexOfRefractionGlass = std::max( 0.0f, params.indexOfRefractionGlass );
         gu->indexOfRefractionWater = std::max( 0.0f, params.indexOfRefractionWater );
+        gu->thinMediaWidth         = std::max( 0.0f, params.thinMediaWidth );
 
         memcpy( gu->waterColorAndDensity, params.waterColor.data, 3 * sizeof( float ) );
         gu->waterColorAndDensity[ 3 ] = 0.0f;
@@ -326,8 +327,6 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
             std::max( 0.0f, params.waterWaveTextureDerivativesMultiplier );
         gu->waterTextureAreaScale =
             params.waterTextureAreaScale < 0.0001f ? 1.0f : params.waterTextureAreaScale;
-
-        gu->noBackfaceReflForNoMediaChange = !!params.disableBackfaceReflectionsForNoMediaChange;
 
         gu->twirlPortalNormal = !!params.portalNormalTwirl;
     }

@@ -401,7 +401,6 @@ void main()
     rayCone.spreadAngle = globalUniform.cameraRayConeSpreadAngle;
 
     float fullPathLength = firstHitDepthLinear;
-    vec3 prevHitPosition = h.hitPosition;
     bool wasSplit = false;
     bool wasPortal = false;
     vec3 virtualPos = h.hitPosition;
@@ -448,35 +447,12 @@ void main()
         const vec3 normal =
             getNormal( h.hitPosition, h.normal, rayCone, rayDir, isWater, wasPortal );
 
-
-        bool delaySplitOnNextTime = false;
-            
-        if ((h.geometryInstanceFlags & GEOM_INST_FLAG_NO_MEDIA_CHANGE) != 0)
-        {
-            // apply small new media transmittance, and ignore the media (but not the refraction indices)
-            throughput *= getMediaTransmittance(newRayMedia, 1.0);
-            newRayMedia = currentRayMedia;
-            
-            // if reflections are disabled if viewing from inside of NO_MEDIA_CHANGE geometry
-            delaySplitOnNextTime = (globalUniform.noBackfaceReflForNoMediaChange != 0) && isBackface(h.normal, rayDir);
-        }
-
-           
-
-        vec3 rayOrigin = h.hitPosition;
-        bool doSplit = !wasSplit;
-        bool doRefraction;
-        vec3 refractionDir;
+        vec3  rayOrigin = h.hitPosition;
+        bool  doSplit   = !wasSplit;
+        bool  doRefraction;
+        vec3  refractionDir;
         float F;
 
-        if (delaySplitOnNextTime)
-        {
-            doSplit = false;
-            // force refraction for all pixels
-            toRefract = true;
-            isPixOdd = true;
-        }
-        
         if (toRefract && calcRefractionDirection(curIndexOfRefraction, newIndexOfRefraction, rayDir, normal, refractionDir))
         {
             doRefraction = isPixOdd;
@@ -494,6 +470,27 @@ void main()
         {
             rayDir = refractionDir;
             throughput *= (1 - F);
+
+            if( ( h.geometryInstanceFlags & GEOM_INST_FLAG_THIN_MEDIA ) != 0 )
+            {
+                // simulate media, knowing its width along normal
+                float len = globalUniform.thinMediaWidth / max( 0.001, -dot( normal, rayDir ) );
+
+                rayOrigin += rayDir * len;
+                throughput *= getMediaTransmittance( newRayMedia, len );
+                fullPathLength += len;
+                
+                // change media back
+                if( calcRefractionDirection( newIndexOfRefraction,
+                                             curIndexOfRefraction,
+                                             rayDir,
+                                             normal,
+                                             refractionDir ) )
+                {
+                    rayDir = refractionDir;
+                }
+                newRayMedia = currentRayMedia;
+            }
 
             // change media
             currentRayMedia = newRayMedia;
@@ -571,7 +568,6 @@ void main()
         throughput *= getMediaTransmittance(currentRayMedia, rayLen);
         propagateRayCone(rayCone, rayLen);
         fullPathLength += rayLen;
-        prevHitPosition = h.hitPosition;
         screenEmission += scrEmis * throughput;
         acidFog += getGlowingMediaFog(currentRayMedia, rayLen) * (doSplit ? 2.0 : 1.0);
     }

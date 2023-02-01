@@ -180,6 +180,11 @@ uint32_t RTGL1::GeomInfoManager::GetPrimitiveFlags( const RgMeshPrimitiveInfo& i
         f |= GEOM_INST_FLAG_EXACT_NORMALS;
     }
 
+    if( info.flags & RG_MESH_PRIMITIVE_THIN_MEDIA )
+    {
+        f |= GEOM_INST_FLAG_THIN_MEDIA;
+    }
+
     return f;
 }
 

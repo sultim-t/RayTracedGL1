@@ -337,7 +337,7 @@ CONST = {
     "GEOM_INST_FLAG_IGNORE_REFRACT_AFTER"   : BIT( 20 ),
     "GEOM_INST_FLAG_RESERVED_5"             : BIT( 21 ),
     "GEOM_INST_FLAG_RESERVED_6"             : BIT( 22 ),
-    "GEOM_INST_FLAG_NO_MEDIA_CHANGE"        : BIT( 23 ),
+    "GEOM_INST_FLAG_THIN_MEDIA"             : BIT( 23 ),
     "GEOM_INST_FLAG_REFRACT"                : BIT( 24 ),
     "GEOM_INST_FLAG_REFLECT"                : BIT( 25 ),
     "GEOM_INST_FLAG_PORTAL"                 : BIT( 26 ),
@@ -568,7 +568,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "lensDirtIntensity",                1),
     (TYPE_UINT32,       1,      "waterNormalTextureIndex",          1),
 
-    (TYPE_UINT32,       1,      "noBackfaceReflForNoMediaChange",   1),
+    (TYPE_FLOAT32,      1,      "thinMediaWidth",                   1),
     (TYPE_FLOAT32,      1,      "time",                             1),
     (TYPE_FLOAT32,      1,      "waterWaveSpeed",                   1),
     (TYPE_FLOAT32,      1,      "waterWaveStrength",                1),

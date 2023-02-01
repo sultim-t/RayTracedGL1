@@ -134,6 +134,7 @@ namespace detail
             .typeOfMediaAroundCamera                    = RgMediaType::RG_MEDIA_TYPE_VACUUM,
             .indexOfRefractionGlass                     = 1.52f,
             .indexOfRefractionWater                     = 1.33f,
+            .thinMediaWidth                             = 0.1f,
             .waterWaveSpeed                             = 1.0f,
             .waterWaveNormalStrength                    = 1.0f,
             .waterColor                                 = { 0.3f, 0.73f, 0.63f },
@@ -141,7 +142,6 @@ namespace detail
             .acidDensity                                = 10.0f,
             .waterWaveTextureDerivativesMultiplier      = 1.0f,
             .waterTextureAreaScale                      = 1.0f,
-            .disableBackfaceReflectionsForNoMediaChange = false,
             .portalNormalTwirl                          = false,
         };
     };
