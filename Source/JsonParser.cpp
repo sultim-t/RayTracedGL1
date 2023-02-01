@@ -251,6 +251,39 @@ auto RTGL1::json_parser::detail::ReadLightExtraInfo( const std::string_view& dat
     };
 }
 
+
+
+// clang-format off
+JSON_TYPE( RTGL1::PrimitiveExtraInfo )
+    "isGlass", &T::isGlass
+JSON_TYPE_END;
+// clang-format on
+
+auto RTGL1::json_parser::detail::ReadPrimitiveExtraInfo( const std::string_view& data )
+    -> PrimitiveExtraInfo
+{
+    try
+    {
+        if( !data.empty() )
+        {
+            auto value = PrimitiveExtraInfo{};
+
+            glz::read< glz::opts{
+                .error_on_unknown_keys = false,
+                .no_except             = false,
+            } >( value, data.data() );
+
+            return value;
+        }
+    }
+    catch( std::exception& e )
+    {
+        debug::Warning( "Json read fail on PrimitiveExtraInfo:\n{}", e.what() );
+    }
+
+    return PrimitiveExtraInfo{};
+}
+
 std::string RTGL1::json_parser::MakeJsonString( const RgLightExtraInfo& info )
 {
     try

@@ -114,6 +114,13 @@ struct SceneMetaArray
 
 
 
+struct PrimitiveExtraInfo
+{
+    int isGlass = 0;
+};
+
+
+
 namespace json_parser
 {
     namespace detail
@@ -128,6 +135,8 @@ namespace json_parser
             -> std::optional< LibraryConfig >;
 
         auto ReadLightExtraInfo( const std::string_view& data ) -> RgLightExtraInfo;
+
+        auto ReadPrimitiveExtraInfo( const std::string_view& data ) -> PrimitiveExtraInfo;
     }
 
 
@@ -162,6 +171,12 @@ namespace json_parser
     inline auto ReadStringAs< RgLightExtraInfo >( const std::string_view& data )
     {
         return detail::ReadLightExtraInfo( data );
+    }
+
+    template<>
+    inline auto ReadStringAs< PrimitiveExtraInfo >( const std::string_view& data )
+    {
+        return detail::ReadPrimitiveExtraInfo( data );
     }
 
 

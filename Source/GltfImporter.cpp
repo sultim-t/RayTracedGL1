@@ -766,6 +766,9 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                             mainNode->name,
                             srcNode->name );
         }
+        
+        auto primitiveExtra = json_parser::ReadStringAs< PrimitiveExtraInfo >(
+            Utils::SafeCstr( srcNode->extras.data ) );
 
         // TODO: really bad way to reduce hash64 to 32 bits
         RgMeshInfo dstMesh = {
@@ -838,10 +841,17 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
             };
 
             textureMeta.Modify( dstPrim, editorInfo, true );
-            // pbr info from gltf has higher priority
-            editorInfo.pbrInfoExists = true;
-            editorInfo.pbrInfo       = { .metallicDefault  = matinfo.metallicFactor,
-                                         .roughnessDefault = matinfo.roughnessFactor };
+            {
+                // pbr info from gltf has higher priority
+                editorInfo.pbrInfoExists = true;
+                editorInfo.pbrInfo       = { .metallicDefault  = matinfo.metallicFactor,
+                                             .roughnessDefault = matinfo.roughnessFactor };
+            }
+
+            if( primitiveExtra.isGlass )
+            {
+                dstPrim.flags |= RG_MESH_PRIMITIVE_GLASS;
+            }
 
             auto r = scene.UploadPrimitive( frameIndex, dstMesh, dstPrim, textureManager, true );
 
