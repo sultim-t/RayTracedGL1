@@ -183,6 +183,7 @@ JSON_TYPE( RTGL1::SceneMeta )
     , "sky", &T::sky
     , "scatter", &T::scatter
     , "volumeFar", &T::volumeFar
+    , "volumeAssymetry", &T::volumeAssymetry
     , "volumeAmbient", &T::volumeAmbient
 JSON_TYPE_END;
 JSON_TYPE( RTGL1::SceneMetaArray )

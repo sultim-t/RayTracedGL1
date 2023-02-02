@@ -55,6 +55,11 @@ void RTGL1::SceneMetaManager::Modify( std::string_view             sceneName,
         volumetric.volumetricFar = *m.volumeFar;
     }
 
+    if( m.volumeAssymetry )
+    {
+        volumetric.assymetry = std::clamp( *m.volumeAssymetry, 0.0f, 1.0f );
+    }
+
     if( m.volumeAmbient )
     {
         volumetric.ambientColor = { RG_ACCESS_VEC3( *m.volumeAmbient ) };
