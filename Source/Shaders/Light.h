@@ -164,7 +164,7 @@ float getLightColorWeight(const vec3 color)
     return clamp(getLuminance(color) * 0.1 + 0.9, 1.0, 10.0);
 }
 
-float getDirectionalLightWeight(const SphereLight l, const vec3 cellCenter, float cellRadius)
+float getDirectionalLightWeight(const DirectionalLight l, const vec3 cellCenter, float cellRadius)
 {
     return 
         getLightColorWeight(l.color);
@@ -292,7 +292,7 @@ float getLightWeight(const ShLightEncoded encoded, const vec3 cellCenter, float 
 {
     switch (encoded.lightType)
     {
-        case LIGHT_TYPE_DIRECTIONAL:    return getDirectionalLightWeight(decodeAsSphereLight        (encoded), cellCenter, cellRadius);
+        case LIGHT_TYPE_DIRECTIONAL:    return getDirectionalLightWeight(decodeAsDirectionalLight   (encoded), cellCenter, cellRadius);
         case LIGHT_TYPE_SPHERE:         return getSphereLightWeight     (decodeAsSphereLight        (encoded), cellCenter, cellRadius);
         case LIGHT_TYPE_TRIANGLE:       return getTriangleLightWeight   (decodeAsTriangleLight      (encoded), cellCenter, cellRadius);
         case LIGHT_TYPE_SPOT:           return getSpotLightWeight       (decodeAsSpotLight          (encoded), cellCenter, cellRadius);
