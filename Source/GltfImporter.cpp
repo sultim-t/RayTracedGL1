@@ -853,6 +853,11 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 dstPrim.flags |= RG_MESH_PRIMITIVE_GLASS;
             }
 
+            if( primitiveExtra.isSkyVisibility )
+            {
+                dstPrim.flags |= RG_MESH_PRIMITIVE_SKY_VISIBILITY;
+            }
+
             auto r = scene.UploadPrimitive( frameIndex, dstMesh, dstPrim, textureManager, true );
 
 

@@ -239,7 +239,7 @@ FL RTGL1::VertexCollectorFilterTypeFlags_GetForGeometry( const RgMeshInfo&      
     {
         flags |= FL( FT::PV_FIRST_PERSON_VIEWER );
     }
-    else if( primitive.flags & RG_MESH_PRIMITIVE_SKY )
+    else if( primitive.flags & RG_MESH_PRIMITIVE_SKY_VISIBILITY )
     {
 #if RAYCULLMASK_SKY_IS_WORLD2
         flags |= FL( FT::PV_WORLD_2 );

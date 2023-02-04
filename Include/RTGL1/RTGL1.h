@@ -307,6 +307,7 @@ typedef enum RgMeshPrimitiveFlagBits
     RG_MESH_PRIMITIVE_IGNORE_REFRACT_AFTER  = 4096,
     RG_MESH_PRIMITIVE_ACID                  = 8192,
     RG_MESH_PRIMITIVE_THIN_MEDIA            = 16384,
+    RG_MESH_PRIMITIVE_SKY_VISIBILITY        = 32768,
 } RgMeshPrimitiveFlagBits;
 typedef uint32_t RgMeshPrimitiveFlags;
 

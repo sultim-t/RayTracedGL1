@@ -118,7 +118,8 @@ struct SceneMetaArray
 
 struct PrimitiveExtraInfo
 {
-    int isGlass = 0;
+    int isGlass         = 0;
+    int isSkyVisibility = 0;
 };
 
 
