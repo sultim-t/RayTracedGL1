@@ -147,9 +147,10 @@ void RTGL1::Rasterizer::Upload( uint32_t                   frameIndex,
 
 void RTGL1::Rasterizer::UploadLensFlare( uint32_t                     frameIndex,
                                          const RgLensFlareUploadInfo& info,
+                                         float                        emissiveMult,
                                          const TextureManager&        textureManager )
 {
-    lensFlares->Upload( frameIndex, info, textureManager );
+    lensFlares->Upload( frameIndex, info, emissiveMult, textureManager );
 }
 
 void RTGL1::Rasterizer::SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex )

@@ -42,6 +42,7 @@ public:
     TextureMetaManager& operator=( TextureMetaManager&& other ) noexcept = delete;
 
     void Modify( RgMeshPrimitiveInfo& prim, RgEditorInfo& editor, bool isStatic ) const;
+    float GetEmissiveMult( const char* pTextureName ) const;
 
     void RereadFromFiles( std::string_view currentSceneName );
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;

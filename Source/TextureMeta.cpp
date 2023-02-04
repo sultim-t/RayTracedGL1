@@ -233,6 +233,15 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
     }
 }
 
+float RTGL1::TextureMetaManager::GetEmissiveMult( const char* pTextureName ) const
+{
+    if( auto meta = Access( pTextureName ) )
+    {
+        return meta->emissiveMult;
+    }
+    return 0.0f;
+}
+
 void RTGL1::TextureMetaManager::RereadFromFiles( std::string_view currentSceneName )
 {
     RereadFromFiles( databaseFolder / SCENES_FOLDER / currentSceneName / TEXTURES_FILENAME );

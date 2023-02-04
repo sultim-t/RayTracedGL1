@@ -20,13 +20,15 @@
 
 #version 460
 
-layout( location = 0 ) in vec3 position;
-layout( location = 1 ) in vec4 color;
-layout( location = 2 ) in vec2 texCoord;
+layout( location = 0 ) in vec3 in_position;
+layout( location = 1 ) in vec4 in_color;
+layout( location = 2 ) in vec2 in_texCoord;
 
-layout( location = 0 ) out vec4 outColor;
-layout( location = 1 ) out vec2 outTexCoord;
-layout( location = 2 ) out uint outTextureIndex;
+layout( location = 0 ) out vec4 out_color;
+layout( location = 1 ) out vec2 out_texCoord;
+layout( location = 2 ) out uint out_textureIndex;
+layout( location = 3 ) out uint out_emissiveTextureIndex;
+layout( location = 4 ) out float out_emissiveMult;
 
 #define DESC_SET_LENS_FLARE_VERTEX_INSTANCES 1
 #include "ShaderCommonGLSLFunc.h"
@@ -45,19 +47,28 @@ rasterizerVertInfo;
 
 layout( constant_id = 0 ) const uint applyVertexColorGamma = 0;
 
-void main()
+vec4 baseColor( uint instPackedColor )
 {
     if( applyVertexColorGamma != 0 )
     {
-        outColor = vec4( pow( color.rgb, vec3( 2.2 ) ), color.a );
+        return vec4( pow( in_color.rgb, vec3( 2.2 ) ), in_color.a ) *
+               unpackUintColor( instPackedColor );
     }
     else
     {
-        outColor = color;
+        return in_color * unpackUintColor( instPackedColor );
     }
+}
 
-    outTextureIndex = lensFlareInstances[ gl_InstanceIndex ].textureIndex;
+void main()
+{
+    const ShLensFlareInstance inst = lensFlareInstances[ gl_InstanceIndex ];
 
-    outTexCoord = texCoord;
-    gl_Position = rasterizerVertInfo.viewProj * vec4( position, 1.0 );
+    out_color                = baseColor( inst.packedColor );
+    out_texCoord             = in_texCoord;
+    out_textureIndex         = inst.textureIndex;
+    out_emissiveTextureIndex = inst.emissiveTextureIndex;
+    out_emissiveMult         = inst.emissiveMult;
+
+    gl_Position = rasterizerVertInfo.viewProj * vec4( in_position, 1.0 );
 }

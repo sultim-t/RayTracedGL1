@@ -20,13 +20,15 @@
 
 #version 460
 
-layout( location = 0 ) in vec4 vertColor;
-layout( location = 1 ) in vec2 vertTexCoord;
-layout( location = 2 ) flat in uint textureIndex;
+layout( location = 0 ) in vec4 in_color;
+layout( location = 1 ) in vec2 in_texCoord;
+layout( location = 2 ) flat in uint in_textureIndex;
+layout( location = 3 ) flat in uint in_emissiveTextureIndex;
+layout( location = 4 ) flat in float in_emissiveMult;
 
-layout( location = 0 ) out vec4 outColor;
-layout( location = 1 ) out vec3 outScreenEmission;
-layout( location = 2 ) out float outReactivity;
+layout( location = 0 ) out vec4 out_color;
+layout( location = 1 ) out vec3 out_screenEmission;
+layout( location = 2 ) out float out_reactivity;
 
 #define DESC_SET_TEXTURES 0
 #include "ShaderCommonGLSLFunc.h"
@@ -37,13 +39,29 @@ layout( constant_id = 0 ) const uint alphaTest = 0;
 
 void main()
 {
-    outColor          = vertColor * getTextureSample( textureIndex, vertTexCoord );
-    outReactivity     = 0.9 * outColor.a;
-    outScreenEmission = vec3( 0 );
+    vec4 ldrColor = in_color * getTextureSample( in_textureIndex, in_texCoord );
+
+    out_reactivity = 0.9 * ldrColor.a;
+    out_color      = ldrColor;
+
+    {
+        vec3 ldrEmis;
+        if( in_emissiveTextureIndex != MATERIAL_NO_TEXTURE )
+        {
+            ldrEmis = in_color.rgb * getTextureSample( in_emissiveTextureIndex, in_texCoord ).rgb;
+        }
+        else
+        {
+            ldrEmis = ldrColor.rgb;
+        }
+        ldrEmis *= in_emissiveMult;
+
+        out_screenEmission = ldrEmis;
+    }
 
     if( alphaTest != 0 )
     {
-        if( outColor.a < ALPHA_THRESHOLD )
+        if( out_color.a < ALPHA_THRESHOLD )
         {
             discard;
         }

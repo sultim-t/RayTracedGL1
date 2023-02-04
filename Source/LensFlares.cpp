@@ -169,6 +169,7 @@ void RTGL1::LensFlares::PrepareForFrame( uint32_t frameIndex )
 
 void RTGL1::LensFlares::Upload( uint32_t                     frameIndex,
                                 const RgLensFlareUploadInfo& uploadInfo,
+                                float                        emissiveMult,
                                 const TextureManager&        textureManager )
 {
     if( cullingInputCount + 1 >= LENS_FLARES_MAX_DRAW_CMD_COUNT )
@@ -223,9 +224,13 @@ void RTGL1::LensFlares::Upload( uint32_t                     frameIndex,
 
 
     // instances
+    auto tex = textureManager.GetMaterialTextures( uploadInfo.pTextureName );
+
     ShLensFlareInstance instance = {
-        .textureIndex = textureManager.GetMaterialTextures( uploadInfo.pTextureName )
-                            .indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .packedColor          = Utils::PackColor( 255, 255, 255, 255 ),
+        .textureIndex         = tex.indices[ TEXTURE_ALBEDO_ALPHA_INDEX ],
+        .emissiveTextureIndex = tex.indices[ TEXTURE_EMISSIVE_INDEX ],
+        .emissiveMult         = emissiveMult,
     };
 
     {

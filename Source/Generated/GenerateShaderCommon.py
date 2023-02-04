@@ -708,7 +708,10 @@ INDIRECT_DRAW_CMD_STRUCT = [
 ]
 
 LENS_FLARES_INSTANCE_STRUCT = [
+    (TYPE_UINT32,       1,      "packedColor",          1),
     (TYPE_UINT32,       1,      "textureIndex",         1),
+    (TYPE_UINT32,       1,      "emissiveTextureIndex", 1),
+    (TYPE_FLOAT32,      1,      "emissiveMult",         1),
 ]
 
 DECAL_INSTANCE_STRUCT = [

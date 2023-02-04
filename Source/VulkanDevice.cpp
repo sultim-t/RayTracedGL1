@@ -1054,7 +1054,10 @@ void RTGL1::VulkanDevice::UploadLensFlare( const RgLensFlareUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    rasterizer->UploadLensFlare( currentFrameState.GetFrameIndex(), *pInfo, *textureManager );
+    rasterizer->UploadLensFlare( currentFrameState.GetFrameIndex(),
+                                 *pInfo,
+                                 textureMetaManager->GetEmissiveMult( pInfo->pTextureName ),
+                                 *textureManager );
 }
 
 void RTGL1::VulkanDevice::UploadLight( const GenericLightPtr& light )

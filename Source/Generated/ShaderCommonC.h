@@ -383,7 +383,10 @@ struct ShIndirectDrawCommand
 
 struct ShLensFlareInstance
 {
+    uint32_t packedColor;
     uint32_t textureIndex;
+    uint32_t emissiveTextureIndex;
+    float emissiveMult;
 };
 
 struct ShDecalInstance

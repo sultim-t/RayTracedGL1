@@ -76,6 +76,7 @@ public:
                  const RgViewport*          pViewport );
     void UploadLensFlare( uint32_t                     frameIndex,
                           const RgLensFlareUploadInfo& info,
+                          float                        emissiveMult,
                           const TextureManager&        textureManager );
     void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
 

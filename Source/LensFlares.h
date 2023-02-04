@@ -51,6 +51,7 @@ public:
     void PrepareForFrame( uint32_t frameIndex );
     void Upload( uint32_t                     frameIndex,
                  const RgLensFlareUploadInfo& uploadInfo,
+                 float                        emissiveMult,
                  const TextureManager&        textureManager );
     void SubmitForFrame( VkCommandBuffer cmd, uint32_t frameIndex );
     void Cull( VkCommandBuffer      cmd,
