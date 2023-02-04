@@ -83,7 +83,6 @@ namespace detail
             .scaterring              = 0.2f,
             .assymetry               = 0.75f,
             .useIlluminationVolume   = false,
-            .lightUniqueId           = nullptr,
             .fallbackSourceColor     = { 0, 0, 0 },
             .fallbackSourceDirection = { 0, -1, 0 },
             .lightMultiplier         = 1.0f,

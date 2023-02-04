@@ -218,7 +218,8 @@ auto RTGL1::json_parser::detail::ReadLibraryConfig( const std::filesystem::path&
 
 // clang-format off
 JSON_TYPE( RgLightExtraInfo )
-    "lightstyle",   &T::lightstyle
+      "lightstyle",   &T::lightstyle
+    , "isVolumetric", &T::isVolumetric
 JSON_TYPE_END;
 // clang-format on
 
@@ -230,8 +231,9 @@ auto RTGL1::json_parser::detail::ReadLightExtraInfo( const std::string_view& dat
         if( !data.empty() )
         {
             auto value = RgLightExtraInfo{
-                .exists     = true,
-                .lightstyle = 0,
+                .exists       = true,
+                .lightstyle   = 0,
+                .isVolumetric = 0,
             };
 
             glz::read< glz::opts{

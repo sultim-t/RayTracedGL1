@@ -458,6 +458,10 @@ typedef struct RgLightExtraInfo
 {
     RgBool32            exists;
     int                 lightstyle;
+    // Use the light source for scattering.
+    // Only one per scene is allowed.
+    // If GLTF is used, this can be overwritten by a GLTF's sun.
+    RgBool32            isVolumetric;
 } RgLightExtraInfo;
 
 typedef struct RgDirectionalLightUploadInfo
@@ -711,10 +715,7 @@ typedef struct RgDrawFrameVolumetricParams
     // If true, maintain a world-space grid, each cell of which contains
     // illumination, that is used for scattering.
     RgBool32        useIlluminationVolume;
-    // Otherwise, try to use this optional light source for scattering.
-    // If GLTF is used, this can be overwritten by a GLTF's sun.
-    uint64_t*       lightUniqueId;
-    // If light source is not provided, use this fallback info.
+    // If light source is not provided (RgLightExtraInfo::isVolumetric), use this fallback info.
     // If color is too dim or direction is invalid,
     // then no light sources for scattering.
     RgFloat3D       fallbackSourceColor;

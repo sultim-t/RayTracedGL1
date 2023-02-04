@@ -427,15 +427,14 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
             gu->illumVolumeEnable = params.useIlluminationVolume;
 
-            if( auto sunUniqueId = scene->TryGetStaticSun() )
+            if( auto uniqueId = scene->TryGetVolumetricLight() )
             {
                 gu->volumeLightSourceIndex = lightManager->GetLightIndexForShaders(
-                    currentFrameState.GetFrameIndex(), &sunUniqueId.value() );
+                    currentFrameState.GetFrameIndex(), &uniqueId.value() );
             }
             else
             {
-                gu->volumeLightSourceIndex = lightManager->GetLightIndexForShaders(
-                    currentFrameState.GetFrameIndex(), params.lightUniqueId );
+                gu->volumeLightSourceIndex = LIGHT_INDEX_NONE;
             }
 
             RG_SET_VEC3_A( gu->volumeFallbackSrcColor, params.fallbackSourceColor.data );
