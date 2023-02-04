@@ -802,6 +802,13 @@ typedef struct RgPostEffectCRT
     RgBool32    isActive;
 } RgPostEffectCRT;
 
+typedef struct RgPostEffectTeleport
+{
+    RgBool32    isActive;
+    float       transitionDurationIn;
+    float       transitionDurationOut;
+} RgPostEffectTeleport;
+
 typedef struct RgDrawFramePostEffectsParams
 {
     RgStructureType                         sType;
@@ -815,6 +822,7 @@ typedef struct RgDrawFramePostEffectsParams
     const RgPostEffectDistortedSides*       pDistortedSides;
     const RgPostEffectWaves*                pWaves;
     const RgPostEffectColorTint*            pColorTint;
+    const RgPostEffectTeleport*             pTeleport;
     const RgPostEffectCRT*                  pCRT;
 } RgDrawFramePostEffectsParams;
 

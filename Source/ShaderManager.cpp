@@ -90,6 +90,7 @@ static ShaderModuleDefinition G_SHADERS[] =
     { "EffectDistortedSides",       "EfDistortedSides.comp.spv"             },
     { "EffectWaves",                "EfWaves.comp.spv"                      },
     { "EffectColorTint",            "EfColorTint.comp.spv"                  },
+    { "EffectTeleport",             "EfTeleport.comp.spv"                   },
     { "EffectHueShift",             "EfHueShift.comp.spv"                   },
     { "EffectCrtDemodulateEncode",  "EfCrtDemodulateEncode.comp.spv"        },
     { "EffectCrtDecode",            "EfCrtDecode.comp.spv"                  },

@@ -455,6 +455,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     effectDistortedSides      = CONSTRUCT_SIMPLE_EFFECT( EffectDistortedSides );
     effectWaves               = CONSTRUCT_SIMPLE_EFFECT( EffectWaves );
     effectColorTint           = CONSTRUCT_SIMPLE_EFFECT( EffectColorTint );
+    effectTeleport            = CONSTRUCT_SIMPLE_EFFECT( EffectTeleport );
     effectCrtDemodulateEncode = CONSTRUCT_SIMPLE_EFFECT( EffectCrtDemodulateEncode );
     effectCrtDecode           = CONSTRUCT_SIMPLE_EFFECT( EffectCrtDecode );
 #undef SIMPLE_EFFECT_CONSTRUCTOR_PARAMS
@@ -479,6 +480,7 @@ RTGL1::VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     shaderManager->Subscribe( effectDistortedSides );
     shaderManager->Subscribe( effectWaves );
     shaderManager->Subscribe( effectColorTint );
+    shaderManager->Subscribe( effectTeleport );
     shaderManager->Subscribe( effectCrtDemodulateEncode );
     shaderManager->Subscribe( effectCrtDecode );
 
@@ -522,6 +524,7 @@ RTGL1::VulkanDevice::~VulkanDevice()
     effectDistortedSides.reset();
     effectWaves.reset();
     effectColorTint.reset();
+    effectTeleport.reset();
     effectCrtDemodulateEncode.reset();
     effectCrtDecode.reset();
     denoiser.reset();

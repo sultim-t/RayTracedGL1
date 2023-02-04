@@ -145,6 +145,29 @@ struct EffectColorTint final : public EffectSimple<EffectColorTint_PushConst>
 // ------------------ //
 
 
+struct EffectTeleport_PushConst
+{
+};
+
+struct EffectTeleport final : public EffectSimple< EffectTeleport_PushConst >
+{
+    RTGL1_EFFECT_SIMPLE_INHERIT_CONSTRUCTOR(EffectTeleport, "EffectTeleport")
+
+    bool Setup(const CommonnlyUsedEffectArguments &args, const RgPostEffectTeleport *params)
+    {
+        if (params == nullptr)
+        {
+            return SetupNull();
+        }
+        
+        return EffectSimple::Setup(args, params->isActive, params->transitionDurationIn, params->transitionDurationOut);
+    }
+};
+
+
+// ------------------ //
+
+
 struct EffectHueShift_PushConst
 {};
 

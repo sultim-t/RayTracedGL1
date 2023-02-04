@@ -208,6 +208,7 @@ namespace detail
             .pDistortedSides       = nullptr,
             .pWaves                = nullptr,
             .pColorTint            = nullptr,
+            .pTeleport             = nullptr,
             .pCRT                  = nullptr,
         };
     };

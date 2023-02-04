@@ -674,6 +674,10 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
 
         const auto& postef = AccessParams< RgDrawFramePostEffectsParams >( drawInfo );
 
+        if( effectTeleport->Setup( args, postef.pTeleport ) )
+        {
+            accum = effectTeleport->Apply( args, accum );
+        }
         if( effectColorTint->Setup( args, postef.pColorTint ) )
         {
             accum = effectColorTint->Apply( args, accum );
