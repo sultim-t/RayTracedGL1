@@ -101,6 +101,7 @@ struct SceneMeta
     std::optional< float > scatter;
     std::optional< float > volumeFar;
     std::optional< float > volumeAssymetry;
+    std::optional< float > volumeLightMultiplier;
 
     std::optional< std::array< float, 3 > > volumeAmbient;
 };
