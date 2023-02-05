@@ -3,6 +3,10 @@ project(RayTracedGL1 CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 
+include(CheckIPOSupported)
+check_ipo_supported()
+set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
+
 # Vulkan
 message(STATUS "Adding Vulkan. VulkanSDK: $ENV{VULKAN_SDK}")
 find_package(Vulkan REQUIRED)
