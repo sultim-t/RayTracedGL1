@@ -25,6 +25,8 @@
 RTGL1::SceneMetaManager::SceneMetaManager( std::filesystem::path filepath )
     : metafile( std::move( filepath ) )
 {
+    // initial
+    OnFileChanged( FileType::JSON, metafile );
 }
 
 void RTGL1::SceneMetaManager::Modify( std::string_view             sceneName,
