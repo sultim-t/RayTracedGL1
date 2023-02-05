@@ -40,6 +40,9 @@ jobs:
           copy BuildCMake/RelWithDebInfo/RayTracedGL1.lib final/bin/RayTracedGL1.lib
           copy BuildCMake/RelWithDebInfo/RayTracedGL1.pdb final/bin/RayTracedGL1.pdb
           copy BuildCMake/RelWithDebInfo/RayTracedGL1.dll final/bin/RayTracedGL1.dll
+          mkdir final/include
+          mkdir final/include/RTGL1
+          copy Include/RTGL1/RTGL1.h final/include/RTGL1/RTGL1.h
           mkdir final/ovrd
           copy Tools/BlueNoise_LDR_RGBA_128.ktx2 final/ovrd/BlueNoise_LDR_RGBA_128.ktx2
           copy Tools/CreateKTX2.py final/ovrd/CreateKTX2.py
