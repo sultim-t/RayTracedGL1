@@ -63,6 +63,7 @@ constexpr std::string_view SCENES_FOLDER             = "scenes";
 constexpr std::string_view SHADERS_FOLDER            = "shaders";
 constexpr std::string_view DATABASE_FOLDER           = "data";
 
+constexpr std::string_view TEXTURES_FOLDER_JUNCTION        = "mat_junction";
 constexpr std::string_view TEXTURES_FOLDER_JUNCTION_PREFIX = "mat_junction/";
 
 }

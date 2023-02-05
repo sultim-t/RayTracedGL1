@@ -33,18 +33,31 @@ namespace
     void InsertAllFolderFiles( std::deque< FolderObserver::DependentFile >& dst,
                                const fs::path&                              folder )
     {
-        for( const fs::directory_entry& entry : fs::recursive_directory_iterator( folder ) )
+        for( const fs::directory_entry& entry : fs::directory_iterator( folder ) )
         {
-            FileType type = MakeFileType( entry.path() );
-
-            if( type != FileType::Unknown )
+            if( entry.is_regular_file() )
             {
-                dst.push_back( FolderObserver::DependentFile{
-                    .type          = type,
-                    .path          = entry.path(),
-                    .pathHash      = std::hash< fs::path >{}( entry.path() ),
-                    .lastWriteTime = entry.last_write_time(),
-                } );
+                FileType type = MakeFileType( entry.path() );
+
+                if( type != FileType::Unknown )
+                {
+                    dst.push_back( FolderObserver::DependentFile{
+                        .type          = type,
+                        .path          = entry.path(),
+                        .pathHash      = std::hash< fs::path >{}( entry.path() ),
+                        .lastWriteTime = entry.last_write_time(),
+                    } );
+                }
+            }
+            else if( entry.is_directory() )
+            {
+                // ignore
+                if( entry.path().filename() == TEXTURES_FOLDER_JUNCTION )
+                {
+                    continue;
+                }
+
+                InsertAllFolderFiles( dst, entry.path() );
             }
         }
     }
