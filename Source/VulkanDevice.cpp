@@ -1058,6 +1058,19 @@ void RTGL1::VulkanDevice::UploadLensFlare( const RgLensFlareUploadInfo* pInfo )
                                  *pInfo,
                                  textureMetaManager->GetEmissiveMult( pInfo->pTextureName ),
                                  *textureManager );
+
+    if( devmode && devmode->primitivesTableMode == Devmode::DebugPrimMode::Rasterized )
+    {
+        devmode->primitivesTable.push_back( Devmode::DebugPrim{
+            .result         = UploadResult::Dynamic,
+            .callIndex      = uint32_t( devmode->primitivesTable.size() ),
+            .objectId       = 0,
+            .meshName       = {},
+            .primitiveIndex = 0,
+            .primitiveName  = {},
+            .textureName    = Utils::SafeCstr( pInfo->pTextureName ),
+        } );
+    }
 }
 
 void RTGL1::VulkanDevice::UploadLight( const GenericLightPtr& light )
