@@ -35,7 +35,7 @@ layout(local_size_x = COMPUTE_COMPOSE_GROUP_SIZE_X, local_size_y = COMPUTE_COMPO
 
 #define A_GLSL 1
 #define A_GPU 1
-#include "ffx_a.h"
+#include "LPM/ffx_a.h"
 layout(set = DESC_SET_LPM_PARAMS, binding = BINDING_LPM_PARAMS) readonly uniform LpmParams_BT
 {
     AU4 g_lpmParams[24];
@@ -48,7 +48,7 @@ layout(set = DESC_SET_LPM_PARAMS, binding = BINDING_LPM_PARAMS) readonly uniform
     #define LPM_NO_SETUP 1
     AU4  LpmFilterCtl(AU1 i)         { return g_lpmParams[i]; }
 #endif
-#include "ffx_lpm.h"
+#include "LPM/ffx_lpm.h"
 #define LPM_RG_CONTEXT  /* used on CPU side */
 
 vec3 lpmTonemap(vec3 c)
