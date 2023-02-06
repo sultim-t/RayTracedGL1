@@ -5,10 +5,15 @@ on: push
 env:
   BUILD_TYPE: RelWithDebInfo
   TARGET_FOLDER: Build/Release
+  DLSS_SDK_PATH: ${{ github.workspace }}\DLSS
 
 jobs:
   build-msvc:
     runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        dlss: [ON, OFF]
     steps:
       - uses: actions/checkout@v3
         with:
@@ -23,13 +28,20 @@ jobs:
           version: 1.3.204.1
           cache: true
 
+      - name: DLSS
+        uses: actions/checkout@v3
+        if: matrix.dlss == 'ON'
+        with:
+          repository: NVIDIA/DLSS
+          path: ${{ env.DLSS_SDK_PATH }}
+
       - name: Shaders
         run: |
           cd Source/Shaders
           python GenerateShaders.py
 
       - name: CMake
-        run: cmake -B ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRG_WITH_SURFACE_WIN32=ON
+        run: cmake -B ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRG_WITH_SURFACE_WIN32=ON -DRG_WITH_NVIDIA_DLSS=${{ matrix.dlss }}
 
       - name: Build
         run: cmake --build ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} --config ${{env.BUILD_TYPE}}
