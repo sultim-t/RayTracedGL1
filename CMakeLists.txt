@@ -3,6 +3,8 @@ project(RayTracedGL1 CXX C)
 
 set(CMAKE_CXX_STANDARD 23)
 
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE )
+
 include(CheckIPOSupported)
 check_ipo_supported()
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON)
@@ -220,7 +222,6 @@ if (RG_WITH_NVIDIA_DLSS)
         target_include_directories(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/include")
         if (WIN32)
             add_definitions(-DNV_WINDOWS)
-            string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE )
             if (BUILD_TYPE STREQUAL "DEBUG")
                 target_link_libraries(RayTracedGL1 PRIVATE "$ENV{DLSS_SDK_PATH}/lib/Windows_x86_64/x86_64/nvsdk_ngx_d_dbg.lib")
             else()

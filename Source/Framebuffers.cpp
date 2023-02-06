@@ -185,7 +185,7 @@ void RTGL1::Framebuffers::CreateSamplers()
 {
     VkSamplerCreateInfo info = {
         .sType                   = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-        .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_NEAREST,
         .addressModeU            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .addressModeV            = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
         .addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT,

@@ -33,6 +33,11 @@ namespace
     void InsertAllFolderFiles( std::deque< FolderObserver::DependentFile >& dst,
                                const fs::path&                              folder )
     {
+        if( !fs::exists( folder ) )
+        {
+            return;
+        }
+
         for( const fs::directory_entry& entry : fs::directory_iterator( folder ) )
         {
             if( entry.is_regular_file() )

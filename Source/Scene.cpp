@@ -349,7 +349,7 @@ bool RTGL1::Scene::StaticMeshExists( const RgMeshInfo& mesh ) const
 
     // TODO: actually, need to consider RgMeshInfo::uniqueObjectID,
     // as there might be different instances of the same mesh
-    return std::ranges::contains( staticMeshNames, std::string( mesh.pMeshName ) );
+    return staticMeshNames.contains( std::string( mesh.pMeshName ) );
 }
 
 bool RTGL1::Scene::StaticLightExists( const GenericLightPtr& light ) const
