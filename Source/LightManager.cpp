@@ -198,8 +198,15 @@ RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& info, floa
     float radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
     float area   = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
 
-    float cosAngleInner = std::cos( std::min( info.angleInner, info.angleOuter ) );
-    float cosAngleOuter = std::cos( info.angleOuter );
+    constexpr auto clampForCos = []( float a ) {
+        return std::clamp( a, 0.0f, float( RTGL1::RG_PI ) - 0.001f );
+    };
+
+    float angleInner = std::min( info.angleInner, info.angleOuter );
+    float angleOuter = info.angleOuter;
+
+    float cosAngleInner = std::cos( clampForCos( angleInner ) );
+    float cosAngleOuter = std::cos( clampForCos( angleOuter ) );
 
     auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
 
