@@ -1211,8 +1211,8 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
             .position     = position + normal * offset,
             .direction    = normal,
             .radius       = 0.1f, /* ignored */
-            .angleOuter   = RTGL1::Utils::DegToRad( 179 ),
-            .angleInner   = RTGL1::Utils::DegToRad( 150 ),
+            .angleOuter   = RTGL1::Utils::DegToRad( 89 ),
+            .angleInner   = RTGL1::Utils::DegToRad( 75 ),
         } );
     }
 
