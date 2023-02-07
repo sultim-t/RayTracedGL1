@@ -1181,28 +1181,18 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
         {
             if( prev )
             {
-                if( haveCommonEdge( global, *prev ) )
-                {
-                    accum = merge( accum,
-                                   PositionNormal{
-                                       .position = GetCenter( global.v ),
-                                       .normal   = *n,
-                                   } );
-                }
-                else
+                if( !haveCommonEdge( global, *prev ) )
                 {
                     flushAccum();
                 }
             }
-            else
-            {
-                // initial
-                accum = PositionNormal{
-                    .position = GetCenter( global.v ),
-                    .normal   = *n,
-                };
-            }
             prev = global;
+
+            accum = merge( accum,
+                           PositionNormal{
+                               .position = GetCenter( global.v ),
+                               .normal   = *n,
+                           } );
         }
     }
     flushAccum();
@@ -1210,13 +1200,19 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
     std::vector< RTGL1::GenericLight > resolvedLights;
     for( const auto& [ position, normal ] : initial )
     {
-        resolvedLights.emplace_back( RgSphericalLightUploadInfo{
+        float offset = 0.1f;
+
+        resolvedLights.emplace_back( RgSpotLightUploadInfo{
             .uniqueID     = 0, /* ignored */
             .isExportable = true,
+            .extra        = {},
             .color        = lightInfo.color,
             .intensity    = lightInfo.intensity,
-            .position     = { RG_ACCESS_VEC3( position.data ) },
+            .position     = position + normal * offset,
+            .direction    = normal,
             .radius       = 0.1f, /* ignored */
+            .angleOuter   = RTGL1::Utils::DegToRad( 179 ),
+            .angleInner   = RTGL1::Utils::DegToRad( 150 ),
         } );
     }
 
