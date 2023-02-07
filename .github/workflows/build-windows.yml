@@ -63,6 +63,14 @@ jobs:
 
       - name: Upload
         uses: actions/upload-artifact@v3
+        if: matrix.dlss != 'ON'
         with:
           name: RayTracedGL1-Bundle
+          path: final/*
+          
+      - name: Upload (DLSS)
+        uses: actions/upload-artifact@v3
+        if: matrix.dlss == 'ON'
+        with:
+          name: RayTracedGL1-Bundle-DLSS
           path: final/*
