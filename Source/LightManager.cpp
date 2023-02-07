@@ -101,9 +101,7 @@ RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightUploadIn
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize( direction.data );
 
-    float angularRadius = static_cast< float >(
-        0.5 * static_cast< double >( info.angularDiameterDegrees ) * RTGL1::RG_PI / 180.0 );
-
+    float angularRadius = 0.5f * RTGL1::Utils::DegToRad( info.angularDiameterDegrees );
     auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
 
 
@@ -127,7 +125,7 @@ RTGL1::ShLightEncoded EncodeAsSphereLight( const RgSphericalLightUploadInfo& inf
 {
     float radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
     // disk is visible from the point
-    float area = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
+    float area = float( RTGL1::RG_PI ) * radius * radius;
 
     auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
 
@@ -196,13 +194,13 @@ RTGL1::ShLightEncoded EncodeAsSpotLight( const RgSpotLightUploadInfo& info, floa
     RTGL1::Utils::Normalize( direction.data );
 
     float radius = std::max( RTGL1::MIN_SPHERE_RADIUS, info.radius );
-    float area   = static_cast< float >( RTGL1::RG_PI ) * radius * radius;
+    float area   = float( RTGL1::RG_PI ) * radius * radius;
 
     constexpr auto clampForCos = []( float a ) {
-        return std::clamp( a, 0.0f, float( RTGL1::RG_PI ) - 0.001f );
+        return std::clamp( a, 0.0f, RTGL1::Utils::DegToRad( 89 ) );
     };
 
-    float angleInner = std::min( info.angleInner, info.angleOuter );
+    float angleInner = std::min( info.angleInner, info.angleOuter - RTGL1::Utils::DegToRad( 1 ) );
     float angleOuter = info.angleOuter;
 
     float cosAngleInner = std::cos( clampForCos( angleInner ) );
