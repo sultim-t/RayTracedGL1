@@ -520,7 +520,7 @@ void main()
         }
         else
         {
-            rayDir = reflect(rayDir, normal);
+            rayDir = reflect( normalize( rayDir ), normal );
 
             if( !isWater )
             {
@@ -530,6 +530,10 @@ void main()
             else
             {
                 throughput *= F;
+
+    #if SHIPPING_HACK
+                rayOrigin += rayDir * 0.005;
+    #endif
             }
         }
 
