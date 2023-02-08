@@ -260,6 +260,8 @@ auto RTGL1::json_parser::detail::ReadLightExtraInfo( const std::string_view& dat
 // clang-format off
 JSON_TYPE( RTGL1::PrimitiveExtraInfo )
       "isGlass", &T::isGlass
+    , "isMirror", &T::isMirror
+    , "isWater", &T::isWater
     , "isSkyVisibility", &T::isSkyVisibility
 JSON_TYPE_END;
 // clang-format on

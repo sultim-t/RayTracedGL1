@@ -853,6 +853,16 @@ void RTGL1::GltfImporter::UploadToScene( VkCommandBuffer           cmd,
                 dstPrim.flags |= RG_MESH_PRIMITIVE_GLASS;
             }
 
+            if( primitiveExtra.isMirror )
+            {
+                dstPrim.flags |= RG_MESH_PRIMITIVE_MIRROR;
+            }
+
+            if( primitiveExtra.isWater )
+            {
+                dstPrim.flags |= RG_MESH_PRIMITIVE_WATER;
+            }
+
             if( primitiveExtra.isSkyVisibility )
             {
                 dstPrim.flags |= RG_MESH_PRIMITIVE_SKY_VISIBILITY;
