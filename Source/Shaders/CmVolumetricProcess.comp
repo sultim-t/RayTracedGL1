@@ -33,7 +33,7 @@ layout( local_size_x = COMPUTE_VOLUMETRIC_GROUP_SIZE_X,
         local_size_y = COMPUTE_VOLUMETRIC_GROUP_SIZE_Y,
         local_size_z = 1 ) in;
 
-const float g_temporalWeight = 0.2;
+const float g_temporalWeight = 0.0;
 
 // rgb - in−scattered light accumulated so far
 // a   - accumulated scattering coefficient
