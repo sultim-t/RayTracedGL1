@@ -1001,9 +1001,32 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
                                                              tempStorageInit,
                                                              tempStorageLights );
 
+                auto hashCombine = []< typename T >( uint64_t seed, const T& v ) {
+                    seed ^= std::hash< T >{}( v ) + 0x9e3779b9 + ( seed << 6 ) + ( seed >> 2 );
+                    return seed;
+                };
+
+                uint64_t hashBase = 0;
+
+                hashBase = hashCombine( hashBase,
+                                        std::string_view( Utils::SafeCstr( prim.pTextureName ) ) );
+                hashBase = hashCombine( hashBase,
+                                        std::string_view( Utils::SafeCstr( pMesh->pMeshName ) ) );
+                hashBase = hashCombine( hashBase, prim.primitiveIndexInMesh );
+
+                uint64_t counter = 0;
+
                 for( auto& l : tempStorageLights )
                 {
-                    UploadSpotlight( &l );
+                    // TODO: change ID; hope that there's no collision
+                    uint64_t h32 = hashCombine( hashBase, counter ) % UINT32_MAX;
+
+                    l.uniqueID = h32 << 16ull;
+                    l.isExportable = false;
+
+                    UploadLight( &l );
+
+                    counter++;
                 }
 
                 tempStorageInit.clear();
