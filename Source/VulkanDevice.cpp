@@ -989,6 +989,27 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
             // SHIPPING_HACK: add lights even for non-exportable geometry
             e->AddPrimitiveLights( *pMesh, prim );
         }
+
+
+        if( prim.pEditorInfo && prim.pEditorInfo->attachedLightExists )
+        {
+            if( prim.pEditorInfo->attachedLightEvenOnDynamic )
+            {
+                GltfExporter::MakeLightsForPrimitiveDynamic( *pMesh,
+                                                             prim,
+                                                             sceneImportExport->GetWorldScale(),
+                                                             tempStorageInit,
+                                                             tempStorageLights );
+
+                for( auto& l : tempStorageLights )
+                {
+                    UploadSpotlight( &l );
+                }
+
+                tempStorageInit.clear();
+                tempStorageLights.clear();
+            }
+        }
     }
 }
 
@@ -1104,6 +1125,7 @@ void RTGL1::VulkanDevice::UploadSphericalLight( const RgSphericalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
+    // TODO: remove! add to extras or assume only metric space
     const_cast< RgSphericalLightUploadInfo* >( pInfo )->intensity =
         Utils::IntensityFromNonMetric( pInfo->intensity, sceneImportExport->GetWorldScale() );
 
@@ -1117,6 +1139,7 @@ void RTGL1::VulkanDevice::UploadSpotlight( const RgSpotLightUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
+    // TODO: remove! add to extras or assume only metric space
     const_cast< RgSpotLightUploadInfo* >( pInfo )->intensity =
         Utils::IntensityFromNonMetric( pInfo->intensity, sceneImportExport->GetWorldScale() );
 
@@ -1130,6 +1153,7 @@ void RTGL1::VulkanDevice::UploadPolygonalLight( const RgPolygonalLightUploadInfo
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
+    // TODO: remove! add to extras or assume only metric space
     const_cast< RgPolygonalLightUploadInfo* >( pInfo )->intensity =
         Utils::IntensityFromNonMetric( pInfo->intensity, sceneImportExport->GetWorldScale() );
 

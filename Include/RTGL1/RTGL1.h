@@ -376,6 +376,7 @@ typedef struct RgEditorInfo
     RgBool32                        pbrInfoExists;
     RgEditorPBRInfo                 pbrInfo;
     RgBool32                        attachedLightExists;
+    RgBool32                        attachedLightEvenOnDynamic;
     RgEditorAttachedLightInfo       attachedLight;
 } RgEditorInfo;
 

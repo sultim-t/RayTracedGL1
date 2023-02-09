@@ -163,6 +163,7 @@ JSON_TYPE( RTGL1::TextureMeta )
     , "emissiveMult", &T::emissiveMult
     , "lightIntensity", &T::attachedLightIntensity
     , "lightColor", &T::attachedLightColor
+    , "lightEvenOnDynamic", &T::attachedLightEvenOnDynamic
 JSON_TYPE_END;
 JSON_TYPE( RTGL1::TextureMetaArray )
     "array", &T::array

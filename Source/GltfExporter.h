@@ -41,6 +41,12 @@ struct GltfMeshNode
     bool     operator<( const GltfMeshNode& other ) const;
     uint64_t Hash() const;
 };
+
+struct PositionNormal
+{
+    RgFloat3D position;
+    RgFloat3D normal;
+};
 }
 
 template<>
@@ -72,6 +78,14 @@ public:
 
     void ExportToFiles( const std::filesystem::path& gltfPath,
                         const TextureManager&        textureManager );
+
+    // TODO: allocators, to not pass references
+    static void MakeLightsForPrimitiveDynamic(
+        const RgMeshInfo&                     mesh,
+        const RgMeshPrimitiveInfo&            primitive,
+        float                                 oneGameUnitInMeters,
+        std::vector< PositionNormal >&        tempStorage,
+        std::vector< RgSpotLightUploadInfo >& resultStorage );
 
 private:
     MeshesToTheirPrimitives     scene;

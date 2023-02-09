@@ -75,8 +75,9 @@ struct TextureMeta
     float roughnessDefault = 1.0f;
     float emissiveMult     = 0.0f;
 
-    float                    attachedLightIntensity = 0.0f;
-    std::array< uint8_t, 3 > attachedLightColor     = { { 255, 255, 255 } };
+    float                    attachedLightIntensity     = 0.0f;
+    std::array< uint8_t, 3 > attachedLightColor         = { { 255, 255, 255 } };
+    bool                     attachedLightEvenOnDynamic = false;
 };
 
 struct TextureMetaArray

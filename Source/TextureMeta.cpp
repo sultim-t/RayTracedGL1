@@ -178,6 +178,11 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             editor.attachedLightExists =
                 editor.attachedLight.intensity > 0.0f &&
                 !Utils::IsColor4DPacked32Zero< false >( editor.attachedLight.color );
+
+            if( meta->attachedLightEvenOnDynamic )
+            {
+                editor.attachedLightEvenOnDynamic = true;
+            }
         }
 
         if( ( meta->isWater ) || ( meta->isWaterIfTranslucent && isTranslucent ) )

@@ -1072,11 +1072,16 @@ private:
 };
 
 
-auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
-                             const RgMeshPrimitiveInfo&       prim,
-                             const RgEditorAttachedLightInfo& lightInfo,
-                             float                            oneGameUnitInMeters )
+void MakeLightsForPrimitive( const RgMeshInfo&                     mesh,
+                             const RgMeshPrimitiveInfo&            prim,
+                             const RgEditorAttachedLightInfo&      lightInfo,
+                             float                                 oneGameUnitInMeters,
+                             std::vector< RTGL1::PositionNormal >& initial,
+                             std::vector< RgSpotLightUploadInfo >& result )
 {
+    assert( initial.empty() );
+    assert( result.empty() );
+
     constexpr auto toFloat3 = []( const float( &ptr )[ 3 ] ) {
         return RgFloat3D{ RG_ACCESS_VEC3( ptr ) };
     };
@@ -1095,11 +1100,8 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
     }
 
 #if POLYLIGHT_AS_SPHERE
-    struct PositionNormal
-    {
-        RgFloat3D position;
-        RgFloat3D normal;
-    };
+    using PositionNormal = RTGL1::PositionNormal;
+
     auto merge = []( const std::optional< PositionNormal >& a,
                      const std::optional< PositionNormal >& b ) -> std::optional< PositionNormal > {
         if( a && b )
@@ -1153,7 +1155,6 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
     };
     std::optional< Tri >            prev;
     std::optional< PositionNormal > accum;
-    std::deque< PositionNormal >    initial;
 
     auto flushAccum = [ &initial, &accum ]() {
         if( accum )
@@ -1197,12 +1198,11 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
     }
     flushAccum();
 
-    std::vector< RTGL1::GenericLight > resolvedLights;
     for( const auto& [ position, normal ] : initial )
     {
         float offset = 0.1f / oneGameUnitInMeters;
 
-        resolvedLights.emplace_back( RgSpotLightUploadInfo{
+        result.emplace_back( RgSpotLightUploadInfo{
             .uniqueID     = 0, /* ignored */
             .isExportable = true,
             .extra        = {},
@@ -1215,9 +1215,20 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
             .angleInner   = RTGL1::Utils::DegToRad( 75 ),
         } );
     }
-
-    return resolvedLights;
 #endif
+}
+
+
+auto MakeLightsForPrimitive( const RgMeshInfo&                     mesh,
+                             const RgMeshPrimitiveInfo&            prim,
+                             const RgEditorAttachedLightInfo&      lightInfo,
+                             float                                 oneGameUnitInMeters )
+{
+    std::vector< RTGL1::PositionNormal > initial;
+    std::vector< RgSpotLightUploadInfo > resolved;
+    MakeLightsForPrimitive( mesh, prim, lightInfo, oneGameUnitInMeters, initial, resolved );
+
+    return resolved;
 }
 
 
@@ -1343,6 +1354,27 @@ void RTGL1::GltfExporter::AddPrimitiveLights( const RgMeshInfo&          mesh,
             mesh, primitive, primitive.pEditorInfo->attachedLight, oneGameUnitInMeters );
 
         sceneLights.insert( sceneLights.end(), primLights.begin(), primLights.end() );
+    }
+}
+
+void RTGL1::GltfExporter::MakeLightsForPrimitiveDynamic(
+    const RgMeshInfo&                     mesh,
+    const RgMeshPrimitiveInfo&            primitive,
+    float                                 oneGameUnitInMeters,
+    std::vector< PositionNormal >&        tempStorage,
+    std::vector< RgSpotLightUploadInfo >& resultStorage )
+{
+    assert( tempStorage.empty() );
+    assert( resultStorage.empty() );
+
+    if( primitive.pEditorInfo && primitive.pEditorInfo->attachedLightExists )
+    {
+        MakeLightsForPrimitive( mesh,
+                                primitive,
+                                primitive.pEditorInfo->attachedLight,
+                                oneGameUnitInMeters,
+                                tempStorage,
+                                resultStorage );
     }
 }
 
