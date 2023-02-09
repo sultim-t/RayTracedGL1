@@ -1075,7 +1075,7 @@ private:
 auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
                              const RgMeshPrimitiveInfo&       prim,
                              const RgEditorAttachedLightInfo& lightInfo,
-                             float                            distanceThresholdInGroup )
+                             float                            oneGameUnitInMeters )
 {
     constexpr auto toFloat3 = []( const float( &ptr )[ 3 ] ) {
         return RgFloat3D{ RG_ACCESS_VEC3( ptr ) };
@@ -1200,7 +1200,7 @@ auto MakeLightsForPrimitive( const RgMeshInfo&                mesh,
     std::vector< RTGL1::GenericLight > resolvedLights;
     for( const auto& [ position, normal ] : initial )
     {
-        float offset = 0.1f;
+        float offset = 0.1f / oneGameUnitInMeters;
 
         resolvedLights.emplace_back( RgSpotLightUploadInfo{
             .uniqueID     = 0, /* ignored */
@@ -1340,7 +1340,7 @@ void RTGL1::GltfExporter::AddPrimitiveLights( const RgMeshInfo&          mesh,
     if( primitive.pEditorInfo && primitive.pEditorInfo->attachedLightExists )
     {
         auto primLights = MakeLightsForPrimitive(
-            mesh, primitive, primitive.pEditorInfo->attachedLight, 0.5f / oneGameUnitInMeters );
+            mesh, primitive, primitive.pEditorInfo->attachedLight, oneGameUnitInMeters );
 
         sceneLights.insert( sceneLights.end(), primLights.begin(), primLights.end() );
     }
