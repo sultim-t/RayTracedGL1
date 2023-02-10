@@ -127,7 +127,7 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
     reread( sourceScene, dataScene );
 }
 
-void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
+bool RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
                                         RgEditorInfo&        editor,
                                         bool                 isStatic ) const
 {
@@ -235,7 +235,19 @@ void RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             editor.pbrInfo.metallicDefault  = Utils::Saturate( meta->metallicDefault );
             editor.pbrInfo.roughnessDefault = Utils::Saturate( meta->roughnessDefault );
         }
+
+        if( meta->forceIgnore )
+        {
+            return false;
+        }
+
+        if( meta->forceIgnoreIfRasterized && isTranslucent )
+        {
+            return false; 
+        }
     }
+
+    return true;
 }
 
 float RTGL1::TextureMetaManager::GetEmissiveMult( const char* pTextureName ) const

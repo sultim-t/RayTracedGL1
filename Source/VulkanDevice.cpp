@@ -928,7 +928,10 @@ void RTGL1::VulkanDevice::UploadMeshPrimitive( const RgMeshInfo*          pMesh,
     RgMeshPrimitiveInfo prim       = *pPrimitive;
     RgEditorInfo        primEditor = prim.pEditorInfo ? *prim.pEditorInfo : RgEditorInfo{};
     prim.pEditorInfo               = &primEditor;
-    textureMetaManager->Modify( prim, primEditor, false );
+    if( !textureMetaManager->Modify( prim, primEditor, false ) )
+    {
+        return;
+    }
 
 
     if( primEditor.attachedLightExists )

@@ -41,7 +41,7 @@ public:
     TextureMetaManager& operator=( const TextureMetaManager& other )     = delete;
     TextureMetaManager& operator=( TextureMetaManager&& other ) noexcept = delete;
 
-    void Modify( RgMeshPrimitiveInfo& prim, RgEditorInfo& editor, bool isStatic ) const;
+    bool Modify( RgMeshPrimitiveInfo& prim, RgEditorInfo& editor, bool isStatic ) const;
     float GetEmissiveMult( const char* pTextureName ) const;
 
     void RereadFromFiles( std::string_view currentSceneName );

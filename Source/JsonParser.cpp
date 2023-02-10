@@ -144,6 +144,7 @@ std::optional< T > LoadFileAs( const std::filesystem::path& path )
 JSON_TYPE( RTGL1::TextureMeta )
       "textureName", &T::textureName
     , "forceIgnore", &T::forceIgnore
+    , "forceIgnoreIfRasterized", &T::forceIgnoreIfRasterized
     , "forceAlphaTest", &T::forceAlphaTest
     , "forceTranslucent", &T::forceTranslucent
     , "forceOpaque", &T::forceOpaque

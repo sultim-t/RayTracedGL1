@@ -51,7 +51,9 @@ struct TextureMeta
 
     std::string textureName = {};
 
-    bool forceIgnore      = false;
+    bool forceIgnore             = false;
+    bool forceIgnoreIfRasterized = false;
+
     bool forceAlphaTest   = false;
     bool forceTranslucent = false;
     bool forceOpaque      = false;
