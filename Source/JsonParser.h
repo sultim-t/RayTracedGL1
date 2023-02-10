@@ -100,6 +100,7 @@ struct SceneMeta
     std::string sceneName = {};
 
     std::optional< float > sky;
+    std::optional< std::array< float, 3 > > forceSkyPlainColor;
 
     std::optional< float > scatter;
     std::optional< float > volumeFar;

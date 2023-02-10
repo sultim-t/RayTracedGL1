@@ -52,6 +52,12 @@ void RTGL1::SceneMetaManager::Modify( std::string_view             sceneName,
         sky.skyColorMultiplier = *m.sky;
     }
 
+    if( m.forceSkyPlainColor )
+    {
+        sky.skyType = RG_SKY_TYPE_COLOR;
+        sky.skyColorDefault = { RG_ACCESS_VEC3( *m.forceSkyPlainColor ) };
+    }
+
     if( m.volumeFar )
     {
         volumetric.volumetricFar = *m.volumeFar;
