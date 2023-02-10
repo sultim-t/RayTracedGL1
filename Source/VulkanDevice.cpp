@@ -1101,10 +1101,20 @@ void RTGL1::VulkanDevice::UploadLensFlare( const RgLensFlareUploadInfo* pInfo )
         throw RgException( RG_RESULT_WRONG_FUNCTION_ARGUMENT, "Argument is null" );
     }
 
-    rasterizer->UploadLensFlare( currentFrameState.GetFrameIndex(),
-                                 *pInfo,
-                                 textureMetaManager->GetEmissiveMult( pInfo->pTextureName ),
-                                 *textureManager );
+    float emisMult = 0.0f;
+
+    if( auto meta = textureMetaManager->Access( pInfo->pTextureName ) )
+    {
+        emisMult = meta->emissiveMult;
+
+        if( meta->forceIgnore || meta->forceIgnoreIfRasterized )
+        {
+            return;
+        }
+    }
+
+    rasterizer->UploadLensFlare(
+        currentFrameState.GetFrameIndex(), *pInfo, emisMult, *textureManager );
 
     if( devmode && devmode->primitivesTableMode == Devmode::DebugPrimMode::Rasterized )
     {

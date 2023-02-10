@@ -64,7 +64,7 @@ RTGL1::TextureMetaManager::TextureMetaManager( std::filesystem::path _databaseFo
 }
 
 auto RTGL1::TextureMetaManager::Access( const char* pTextureName ) const
-    -> std::optional< RTGL1::TextureMeta >
+    -> std::optional< TextureMeta >
 {
     if( Utils::IsCstrEmpty( pTextureName ) )
     {
@@ -96,7 +96,7 @@ void RTGL1::TextureMetaManager::RereadFromFiles( std::filesystem::path sceneFile
     dataGlobal.clear();
     dataScene.clear();
 
-    auto reread = [ this ]( const std::filesystem::path &filepath, auto& data ) {
+    auto reread = [ this ]( const std::filesystem::path& filepath, auto& data ) {
         if( !std::filesystem::exists( filepath ) )
         {
             return;
@@ -158,7 +158,7 @@ bool RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
             prim.flags &= ~RG_MESH_PRIMITIVE_MIRROR;
             prim.flags &= ~RG_MESH_PRIMITIVE_ACID;
 
-            auto c = Utils::UnpackColor4DPacked32Components( prim.color );
+            auto c     = Utils::UnpackColor4DPacked32Components( prim.color );
             prim.color = Utils::PackColor( c[ 0 ], c[ 1 ], c[ 2 ], 255 );
         }
         else if( meta->forceTranslucent )
@@ -243,20 +243,11 @@ bool RTGL1::TextureMetaManager::Modify( RgMeshPrimitiveInfo& prim,
 
         if( meta->forceIgnoreIfRasterized && isTranslucent )
         {
-            return false; 
+            return false;
         }
     }
 
     return true;
-}
-
-float RTGL1::TextureMetaManager::GetEmissiveMult( const char* pTextureName ) const
-{
-    if( auto meta = Access( pTextureName ) )
-    {
-        return meta->emissiveMult;
-    }
-    return 0.0f;
 }
 
 void RTGL1::TextureMetaManager::RereadFromFiles( std::string_view currentSceneName )

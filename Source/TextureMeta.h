@@ -42,14 +42,13 @@ public:
     TextureMetaManager& operator=( TextureMetaManager&& other ) noexcept = delete;
 
     bool Modify( RgMeshPrimitiveInfo& prim, RgEditorInfo& editor, bool isStatic ) const;
-    float GetEmissiveMult( const char* pTextureName ) const;
+    std::optional< TextureMeta > Access( const char* pTextureName ) const;
 
     void RereadFromFiles( std::string_view currentSceneName );
     void OnFileChanged( FileType type, const std::filesystem::path& filepath ) override;
 
 private:
-    std::optional< TextureMeta > Access( const char* pTextureName ) const;
-    void                         RereadFromFiles( std::filesystem::path sceneFile );
+    void RereadFromFiles( std::filesystem::path sceneFile );
 
 private:
     std::filesystem::path databaseFolder;
