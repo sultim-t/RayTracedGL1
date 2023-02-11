@@ -96,13 +96,14 @@ RTGL1::LightManager::~LightManager()
 namespace
 {
 
-RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightUploadInfo& info, float mult )
+RTGL1::ShLightEncoded EncodeAsDirectionalLight( const RgDirectionalLightUploadInfo& info,
+                                                float                               mult )
 {
     RgFloat3D direction = info.direction;
     RTGL1::Utils::Normalize( direction.data );
 
     float angularRadius = 0.5f * RTGL1::Utils::DegToRad( info.angularDiameterDegrees );
-    auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
+    auto  fcolor        = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( info.color );
 
 
     RTGL1::ShLightEncoded lt = {};
@@ -363,13 +364,13 @@ bool IsLightColorTooDim( const T& l )
 }
 
 template< typename T >
-float CalculateLightStyle( const T& l, const std::vector< float > &lightstyles )
+float CalculateLightStyle( const T& l, std::span< const float > lightstyles )
 {
     const RgLightExtraInfo& extra = l.extra;
 
     if( extra.exists )
     {
-        if( extra.lightstyle < lightstyles.size() )
+        if( extra.lightstyle >= 0 && size_t( extra.lightstyle ) < lightstyles.size() )
         {
             return lightstyles[ extra.lightstyle ];
         }
@@ -685,6 +686,54 @@ uint32_t RTGL1::LightManager::GetLightIndexForShaders( uint32_t  frameIndex,
     }
 
     return f->second.GetArrayIndex();
+}
+
+std::optional< uint64_t > RTGL1::LightManager::TryGetVolumetricLight(
+    const std::vector< GenericLight >& from, std::span< const float > fromLightstyles )
+{
+    auto getId = []( const auto& l ) {
+        return l.uniqueID;
+    };
+
+    auto approxVolumetricIntensity = [ &fromLightstyles ]( const auto& l ) {
+        if( !l.extra.exists || !l.extra.isVolumetric )
+        {
+            return 0.0f;
+        }
+
+        return l.intensity * CalculateLightStyle( l, fromLightstyles );
+    };
+
+    struct Candidate
+    {
+        uint64_t id;
+        float    intensity;
+    };
+    std::optional< Candidate > best;
+
+    for( const auto& l : from )
+    {
+        float intensity = std::visit( approxVolumetricIntensity, l );
+
+        if( intensity > 0.0f )
+        {
+            if( !best || intensity > best->intensity )
+            {
+                best = Candidate{
+                    .id        = std::visit( getId, l ),
+                    .intensity = intensity,
+                };
+            }
+        }
+    }
+
+    if( best )
+    {
+        assert( best->intensity > 0.0f );
+        return best->id;
+    }
+
+    return std::nullopt;
 }
 
 static_assert( RTGL1::MAX_FRAMES_IN_FLIGHT == 2 );

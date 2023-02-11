@@ -313,22 +313,17 @@ const std::shared_ptr< RTGL1::VertexPreprocessing >& RTGL1::Scene::GetVertexPrep
     return vertPreproc;
 }
 
-std::optional< uint64_t > RTGL1::Scene::TryGetVolumetricLight() const
+std::optional< uint64_t > RTGL1::Scene::TryGetVolumetricLight(
+    const RgDrawFrameIlluminationParams& params ) const
 {
-    auto found = std::ranges::find_if( staticLights, []( const auto& genericLt ) {
-        return std::visit(
-            []( const auto& specific ) {
-                return specific.extra.exists && specific.extra.isVolumetric;
-            },
-            genericLt );
-    } );
+    auto lightstyles = std::span( params.pLightstyleValues, params.lightstyleValuesCount );
 
-    if( found != staticLights.end() )
+    if( auto best = LightManager::TryGetVolumetricLight( staticLights, lightstyles ) )
     {
-        return std::visit( []( const auto& specific ) { return specific.uniqueID; }, *found );
+        return best;
     }
 
-    // if nothing, try find sun
+    // if nothing, just try find sun
     for( const GenericLight& var : staticLights )
     {
         if( auto sun = std::get_if< RgDirectionalLightUploadInfo >( &var ) )

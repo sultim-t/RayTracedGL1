@@ -26,6 +26,7 @@
 #include "AutoBuffer.h"
 #include "LightDefs.h"
 
+#include <optional>
 #include <span>
 
 namespace RTGL1
@@ -69,6 +70,9 @@ public:
         auto values = std::span( params.pLightstyleValues, params.lightstyleValuesCount );
         lightstyles.assign( values.begin(), values.end() );
     }
+
+    static std::optional< uint64_t > TryGetVolumetricLight(
+        const std::vector< GenericLight >& from, std::span< const float > fromLightstyles );
 
 private:
     LightArrayIndex GetIndex( const ShLightEncoded& encodedLight ) const;

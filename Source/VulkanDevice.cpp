@@ -427,7 +427,8 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
 
             gu->illumVolumeEnable = params.useIlluminationVolume;
 
-            if( auto uniqueId = scene->TryGetVolumetricLight() )
+            if( auto uniqueId = scene->TryGetVolumetricLight(
+                    AccessParams< RgDrawFrameIlluminationParams >( drawInfo ) ) )
             {
                 gu->volumeLightSourceIndex = lightManager->GetLightIndexForShaders(
                     currentFrameState.GetFrameIndex(), &uniqueId.value() );

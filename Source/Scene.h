@@ -90,7 +90,8 @@ public:
     const std::shared_ptr< ASManager >&           GetASManager();
     const std::shared_ptr< VertexPreprocessing >& GetVertexPreprocessing();
 
-    std::optional< uint64_t > TryGetVolumetricLight() const;
+    std::optional< uint64_t > TryGetVolumetricLight(
+        const RgDrawFrameIlluminationParams& params ) const;
 
 private:
     bool StaticMeshExists( const RgMeshInfo& mesh ) const;
