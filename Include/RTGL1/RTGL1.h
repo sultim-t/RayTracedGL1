@@ -205,6 +205,7 @@ typedef struct RgInstanceCreateInfo
     PFN_rgPrint                 pfnPrint;
     // Custom user data that is passed to pfnUserPrint.
     void*                       pUserPrintData;
+    RgMessageSeverityFlags      allowedMessages;
 
     // How many texture layers should be used to get albedo color for primary rays / indrect illumination.
     uint32_t                    primaryRaysMaxAlbedoLayers;

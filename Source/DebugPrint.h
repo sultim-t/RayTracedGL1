@@ -34,8 +34,15 @@ namespace debug
         using DebugPrintFn = std::function< void( std::string_view, RgMessageSeverityFlags ) >;
         extern DebugPrintFn g_print;
 
+        extern RgMessageSeverityFlags g_printSeverity;
+
         inline void Print( RgMessageSeverityFlags severity, std::string_view msg )
         {
+            if( ( g_printSeverity & severity ) == 0 )
+            {
+                return;
+            }
+
             if( g_print )
             {
                 g_print( msg, severity );
@@ -50,8 +57,14 @@ namespace debug
         template< typename... Args >
         void Print( RgMessageSeverityFlags severity, std::string_view msg, Args&&... args )
         {
+            if( ( g_printSeverity & severity ) == 0 )
+            {
+                return;
+            }
+
             auto str =
                 std::vformat( msg, std::make_format_args( std::forward< Args >( args )... ) );
+
             Print( severity, std::string_view( str ) );
         }
     }

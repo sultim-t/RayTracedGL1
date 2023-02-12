@@ -741,6 +741,8 @@ int main( int argc, char* argv[] )
         .pfnPrint = []( const char*            pMessage,
                         RgMessageSeverityFlags severity,
                         void*                  pUserData ) { std::cout << pMessage << std::endl; },
+        .allowedMessages = RG_MESSAGE_SEVERITY_VERBOSE | RG_MESSAGE_SEVERITY_INFO |
+                           RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR,
 
         .primaryRaysMaxAlbedoLayers          = 1,
         .indirectIlluminationMaxAlbedoLayers = 1,

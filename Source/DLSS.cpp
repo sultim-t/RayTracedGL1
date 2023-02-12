@@ -133,7 +133,8 @@ bool RTGL1::DLSS::TryInit( VkInstance       instance,
     if( enableDebug )
     {
         std::error_code err;
-        if( !std::filesystem::create_directory( dataPath, err ) )
+        std::filesystem::create_directory( dataPath, err );
+        if( err )
         {
             debug::Warning( "Failed to create DLSSTemp directory. create_directory error: {}",
                             err.message() );

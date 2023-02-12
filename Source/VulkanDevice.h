@@ -128,6 +128,7 @@ public:
 
 
     void Print( std::string_view msg, RgMessageSeverityFlags severity ) const;
+    bool IsDevMode() const { return devmode != nullptr; }
 
 private:
     void CreateInstance( const RgInstanceCreateInfo& info );

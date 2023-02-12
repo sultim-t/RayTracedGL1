@@ -55,7 +55,8 @@ RTGL1::VulkanDevice& GetDevice( RgInstance rgInstance )
 
 namespace RTGL1::debug::detail
 {
-DebugPrintFn g_print{};
+DebugPrintFn           g_print{};
+RgMessageSeverityFlags g_printSeverity{ 0 };
 }
 
 
@@ -69,6 +70,19 @@ RgResult rgCreateInstance( const RgInstanceCreateInfo* pInfo, RgInstance* pResul
         return RG_RESULT_ALREADY_INITIALIZED;
     }
 
+    // during init, use raw logger
+    {
+        RTGL1::debug::detail::g_printSeverity = pInfo ? pInfo->allowedMessages : 0;
+        RTGL1::debug::detail::g_print         = [ pInfo ]( std::string_view       msg,
+                                                   RgMessageSeverityFlags severity ) {
+            if( pInfo && pInfo->pfnPrint )
+            {
+                assert( RTGL1::debug::detail::g_printSeverity & severity );
+                pInfo->pfnPrint( msg.data(), severity, pInfo->pUserPrintData );
+            }
+        };
+    }
+
     try
     {
         g_device = std::make_unique< RTGL1::VulkanDevice >( pInfo );
@@ -77,24 +91,31 @@ RgResult rgCreateInstance( const RgInstanceCreateInfo* pInfo, RgInstance* pResul
         *pResult = g_deviceRgInstance;
     }
     // TODO: VulkanDevice must clean all the resources if initialization failed!
-    // So for now exceptions should not happen. But if they did, target application must be closed.
+    // So for now exceptions must not happen. But if they did, target application must be closed.
     catch( RTGL1::RgException& e )
     {
-        // UserPrint class probably wasn't initialized, print manually
-        if( pInfo->pfnPrint != nullptr )
-        {
-            pInfo->pfnPrint( e.what(), RG_MESSAGE_SEVERITY_ERROR, pInfo->pUserPrintData );
-        }
-
+        RTGL1::debug::Error( e.what() );
         return e.GetErrorCode();
     }
 
-    RTGL1::debug::detail::g_print = []( std::string_view msg, RgMessageSeverityFlags severity ) {
-        if( g_device )
-        {
-            g_device->Print( msg, severity );
-        }
-    };
+    // now use a fancy logger
+    {
+        RgMessageSeverityFlags allmsg = RG_MESSAGE_SEVERITY_VERBOSE | RG_MESSAGE_SEVERITY_INFO |
+                                        RG_MESSAGE_SEVERITY_WARNING | RG_MESSAGE_SEVERITY_ERROR;
+        RgMessageSeverityFlags usermsg = pInfo ? pInfo->allowedMessages : 0;
+
+        RTGL1::debug::detail::g_printSeverity =
+            g_device && g_device->IsDevMode() ? allmsg : usermsg;
+
+        RTGL1::debug::detail::g_print = []( std::string_view       msg,
+                                            RgMessageSeverityFlags severity ) {
+            if( g_device )
+            {
+                assert( RTGL1::debug::detail::g_printSeverity & severity );
+                g_device->Print( msg, severity );
+            }
+        };
+    }
 
     return RG_RESULT_SUCCESS;
 }
