@@ -52,8 +52,6 @@ public:
         upscaledWidth  = windowWidth;
         upscaledHeight = windowHeight;
 
-        dlssSharpness = 0;
-
         upscaleTechnique = params.upscaleTechnique;
         sharpenTechnique = params.sharpenTechnique;
         resolutionMode   = params.resolutionMode;
@@ -141,8 +139,7 @@ public:
                                           windowHeight,
                                           resolutionMode,
                                           &renderWidth,
-                                          &renderHeight,
-                                          &dlssSharpness );
+                                          &renderHeight );
 
                 // ultra quality returns (0,0)
                 if( renderWidth == 0 || renderHeight == 0 )
@@ -195,7 +192,6 @@ public:
     bool  IsUpscaleEnabled() const { return IsAmdFsr2Enabled() || IsNvDlssEnabled(); }
 
     float GetAmdFsrSharpness() const { return 1.0f; } // 0.0 - max, 1.0 - min
-    float GetNvDlssSharpness() const { return dlssSharpness; }
 
     bool  IsCASInsideFSR2() const
     {
@@ -235,8 +231,6 @@ private:
     RgRenderUpscaleTechnique upscaleTechnique = RG_RENDER_UPSCALE_TECHNIQUE_LINEAR;
     RgRenderSharpenTechnique sharpenTechnique = RG_RENDER_SHARPEN_TECHNIQUE_NONE;
     RgRenderResolutionMode   resolutionMode   = RG_RENDER_RESOLUTION_MODE_CUSTOM;
-
-    float                    dlssSharpness = 0.0f;
 };
 
 }

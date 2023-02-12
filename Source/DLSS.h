@@ -54,14 +54,14 @@ public:
                                  const std::shared_ptr< Framebuffers >& framebuffers,
                                  const RenderResolutionHelper&          renderResolution,
                                  RgFloat2D                              jitterOffset,
+                                 double                                 timeDelta,
                                  bool                                   resetAccumulation );
 
     void GetOptimalSettings( uint32_t               userWidth,
                              uint32_t               userHeight,
                              RgRenderResolutionMode mode,
                              uint32_t*              pOutWidth,
-                             uint32_t*              pOutHeight,
-                             float*                 pOutSharpness ) const;
+                             uint32_t*              pOutHeight ) const;
 
     bool IsDlssAvailable() const;
 

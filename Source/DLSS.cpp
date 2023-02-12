@@ -20,6 +20,7 @@
 
 #include "DLSS.h"
 
+#include <filesystem>
 #include <regex>
 
 #include "RTGL1/RTGL1.h"
@@ -90,29 +91,22 @@ bool RTGL1::DLSS::TryInit( VkInstance       instance,
 {
     NVSDK_NGX_Result r;
 
-    std::wstring dllPath = GetFolderPath() + ( enableDebug ? L"/dev/" : L"/rel/" );
-    #ifdef NV_WINDOWS
-    wchar_t* dllPath_c = ( wchar_t* )dllPath.c_str();
-    #else
-    char  dllPath_c_buf[ PATH_MAX ];
-    char* dllPath_c = &dllPath_c_buf[ 0 ];
-    std::wcstombs( dllPath_c, dllPath.c_str(), PATH_MAX );
-    #endif
+    std::wstring   dllPath   = GetFolderPath() + ( enableDebug ? L"/dev/" : L"/rel/" );
+    const wchar_t* dllPath_c = dllPath.c_str();
 
     NVSDK_NGX_PathListInfo pathsInfo = {
         .Path   = &dllPath_c,
         .Length = 1,
     };
 
-    NGSDK_NGX_LoggingInfo releaseLogInfo = {};
-    NGSDK_NGX_LoggingInfo debugLogInfo   = {
-          .LoggingCallback     = &PrintCallback,
-          .MinimumLoggingLevel = NVSDK_NGX_Logging_Level::NVSDK_NGX_LOGGING_LEVEL_ON,
-    };
-
     NVSDK_NGX_FeatureCommonInfo commonInfo = {
         .PathListInfo = pathsInfo,
-        .LoggingInfo  = enableDebug ? debugLogInfo : releaseLogInfo,
+        .LoggingInfo =
+            enableDebug
+                ? NVSDK_NGX_LoggingInfo{ .LoggingCallback     = &PrintCallback,
+                                         .MinimumLoggingLevel = NVSDK_NGX_LOGGING_LEVEL_ON }
+                : NVSDK_NGX_LoggingInfo{ .LoggingCallback     = nullptr,
+                                         .MinimumLoggingLevel = NVSDK_NGX_LOGGING_LEVEL_OFF },
     };
 
     {
@@ -135,13 +129,26 @@ bool RTGL1::DLSS::TryInit( VkInstance       instance,
         }
     }
 
+    auto dataPath = L"DLSSTemp/";
+    if( enableDebug )
+    {
+        std::error_code err;
+        if( !std::filesystem::create_directory( dataPath, err ) )
+        {
+            debug::Warning( "Failed to create DLSSTemp directory. create_directory error: {}",
+                            err.message() );
+        }
+    }
+
     r = NVSDK_NGX_VULKAN_Init_with_ProjectID( pAppGuid,
                                               NVSDK_NGX_EngineType::NVSDK_NGX_ENGINE_TYPE_CUSTOM,
                                               RG_RTGL_VERSION_API,
-                                              L"DLSSTemp/",
+                                              dataPath,
                                               instance,
                                               physDevice,
                                               device,
+                                              nullptr,
+                                              nullptr,
                                               &commonInfo );
 
     if( NVSDK_NGX_FAILED( r ) )
@@ -157,7 +164,7 @@ bool RTGL1::DLSS::TryInit( VkInstance       instance,
         debug::Warning( "DLSS: NVSDK_NGX_VULKAN_GetCapabilityParameters fail: {}",
                         static_cast< int >( r ) );
 
-        NVSDK_NGX_VULKAN_Shutdown();
+        NVSDK_NGX_VULKAN_Shutdown1( device );
         pParams = nullptr;
 
         return false;
@@ -258,7 +265,7 @@ void RTGL1::DLSS::Destroy()
         }
 
         NVSDK_NGX_VULKAN_DestroyParameters( pParams );
-        NVSDK_NGX_VULKAN_Shutdown();
+        NVSDK_NGX_VULKAN_Shutdown1( device );
 
         pParams       = nullptr;
         isInitialized = false;
@@ -345,7 +352,6 @@ bool RTGL1::DLSS::ValidateDlssFeature( VkCommandBuffer               cmd,
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_MVJittered;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_IsHDR;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_AutoExposure;
-    dlssCreateFeatureFlags |= NVSDK_NGX_DLSS_Feature_Flags_DoSharpening;
     dlssCreateFeatureFlags |= 0; // NVSDK_NGX_DLSS_Feature_Flags_DepthInverted;
 
     // only one phys device
@@ -393,6 +399,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     const std::shared_ptr< Framebuffers >& framebuffers,
     const RenderResolutionHelper&          renderResolution,
     RgFloat2D                              jitterOffset,
+    double                                 timeDelta,
     bool                                   resetAccumulation )
 {
     if( !IsDlssAvailable() )
@@ -445,14 +452,13 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     NVSDK_NGX_Resource_VK resolvedColorResource   = ToNGXResource( framebuffers, frameIndex, outputImage, targetSize, true );
     NVSDK_NGX_Resource_VK motionVectorsResource   = ToNGXResource( framebuffers, frameIndex, FI::FB_IMAGE_INDEX_MOTION_DLSS, sourceSize );
     NVSDK_NGX_Resource_VK depthResource           = ToNGXResource( framebuffers, frameIndex, FI::FB_IMAGE_INDEX_DEPTH_NDC, sourceSize );
+    NVSDK_NGX_Resource_VK rayLengthResource       = ToNGXResource( framebuffers, frameIndex, FI::FB_IMAGE_INDEX_DEPTH_WORLD, sourceSize );
     // clang-format on
 
 
     NVSDK_NGX_VK_DLSS_Eval_Params evalParams = {
-        .Feature                   = { .pInColor    = &unresolvedColorResource,
-                                       .pInOutput   = &resolvedColorResource,
-                                       .InSharpness = renderResolution.GetNvDlssSharpness() },
-        .pInDepth                  = &depthResource,
+        .Feature  = { .pInColor = &unresolvedColorResource, .pInOutput = &resolvedColorResource },
+        .pInDepth = &depthResource,
         .pInMotionVectors          = &motionVectorsResource,
         .InJitterOffsetX           = jitterOffset.data[ 0 ] * ( -1 ),
         .InJitterOffsetY           = jitterOffset.data[ 1 ] * ( -1 ),
@@ -464,6 +470,8 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
         .InDepthSubrectBase        = sourceOffset,
         .InMVSubrectBase           = sourceOffset,
         .InTranslucencySubrectBase = sourceOffset,
+        .InFrameTimeDeltaInMsec    = float( timeDelta * 1000.0 ),
+        .pInRayTracingHitDistance  = &rayLengthResource,
     };
 
     NVSDK_NGX_Result r = NGX_VULKAN_EVALUATE_DLSS_EXT( cmd, pDlssFeature, pParams, &evalParams );
@@ -480,19 +488,19 @@ void RTGL1::DLSS::GetOptimalSettings( uint32_t               userWidth,
                                       uint32_t               userHeight,
                                       RgRenderResolutionMode mode,
                                       uint32_t*              pOutWidth,
-                                      uint32_t*              pOutHeight,
-                                      float*                 pOutSharpness ) const
+                                      uint32_t*              pOutHeight ) const
 {
-    *pOutWidth     = userWidth;
-    *pOutHeight    = userHeight;
-    *pOutSharpness = 0.0f;
+    *pOutWidth  = userWidth;
+    *pOutHeight = userHeight;
 
     if( !isInitialized || pParams == nullptr )
     {
         return;
     }
 
-    uint32_t         minWidth, minHeight, maxWidth, maxHeight;
+    uint32_t minWidth, minHeight, maxWidth, maxHeight;
+    float    dummy;
+
     NVSDK_NGX_Result r = NGX_DLSS_GET_OPTIMAL_SETTINGS( pParams,
                                                         userWidth,
                                                         userHeight,
@@ -503,7 +511,7 @@ void RTGL1::DLSS::GetOptimalSettings( uint32_t               userWidth,
                                                         &maxHeight,
                                                         &minWidth,
                                                         &minHeight,
-                                                        pOutSharpness );
+                                                        &dummy );
     if( NVSDK_NGX_FAILED( r ) )
     {
         debug::Warning( "DLSS: NGX_DLSS_GET_OPTIMAL_SETTINGS fail: {}", static_cast< int >( r ) );
@@ -600,8 +608,7 @@ void RTGL1::DLSS::GetOptimalSettings( uint32_t               userWidth,
                                       uint32_t               userHeight,
                                       RgRenderResolutionMode mode,
                                       uint32_t*              pOutWidth,
-                                      uint32_t*              pOutHeight,
-                                      float*                 pOutSharpness ) const
+                                      uint32_t*              pOutHeight ) const
 {
     throw RgException(
         RG_RESULT_WRONG_FUNCTION_ARGUMENT,

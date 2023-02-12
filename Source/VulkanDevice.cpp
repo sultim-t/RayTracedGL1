@@ -612,6 +612,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     FramebufferImageIndex accum = FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
     {
         const auto& params = AccessParams< RgDrawFrameRenderResolutionParams >( drawInfo );
+        double      timeDelta = std::max< double >( currentFrameTime - previousFrameTime, 0.0001 );
 
         // upscale finalized image
         if( renderResolution.IsNvDlssEnabled() )
@@ -621,6 +622,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                    framebuffers,
                                    renderResolution,
                                    jitter,
+                                   timeDelta,
                                    params.resetUpscalerHistory );
         }
         else if( renderResolution.IsAmdFsr2Enabled() )
@@ -630,7 +632,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                     framebuffers,
                                     renderResolution,
                                     jitter,
-                                    uniform->GetData()->timeDelta,
+                                    timeDelta,
                                     drawInfo.cameraNear,
                                     drawInfo.cameraFar,
                                     drawInfo.fovYRadians,
@@ -648,7 +650,7 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
                                                 uniform,
                                                 renderResolution.UpscaledWidth(),
                                                 renderResolution.UpscaledHeight(),
-                                                ( float )currentFrameTime };
+                                                float( currentFrameTime ) };
     {
         if( renderResolution.IsDedicatedSharpeningEnabled() )
         {

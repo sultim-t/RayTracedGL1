@@ -48,7 +48,7 @@ public:
                                  const std::shared_ptr< Framebuffers >& framebuffers,
                                  const RenderResolutionHelper&          renderResolution,
                                  RgFloat2D                              jitterOffset,
-                                 float                                  timeDelta,
+                                 double                                 timeDelta,
                                  float                                  nearPlane,
                                  float                                  farPlane,
                                  float                                  fovVerticalRad,
