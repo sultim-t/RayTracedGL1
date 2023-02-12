@@ -598,6 +598,7 @@ RTGL1::FramebufferImageIndex RTGL1::DLSS::Apply(
     const std::shared_ptr< Framebuffers >& framebuffers,
     const RenderResolutionHelper&          renderResolution,
     RgFloat2D                              jitterOffset,
+    double                                 timeDelta,
     bool                                   resetAccumulation )
 {
     throw RgException(
