@@ -60,6 +60,8 @@ jobs:
           copy Tools/CreateKTX2.py final/ovrd/CreateKTX2.py
           mkdir final/ovrd/shaders
           copy Build/shaders/*.spv final/ovrd/shaders
+          copy LICENSE final/LICENSE
+          echo "${{ github.sha }}" | Out-File -encoding ASCII final/VERSION
 
       - name: Upload
         uses: actions/upload-artifact@v3
