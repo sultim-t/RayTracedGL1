@@ -932,13 +932,28 @@ private:
     {
         auto fcolor = RTGL1::Utils::UnpackColor4DPacked32< RgFloat3D >( spot.color );
 
+        // Note: need to be careful, cgltf doesn't write angles if they're equal to default,
+        // and Blender's importer fails if outerConeAngle/innerConeAngle are not specified :(
+        auto clampAngle = []( float radians ) {
+            constexpr float defaultInner = 0.0f;
+            constexpr float defaultOuter = 3.14159265358979323846f / 4.0f;
+
+            if( std::abs( radians - defaultInner ) < 0.05f ||
+                std::abs( radians - defaultOuter ) < 0.05f )
+            {
+                radians += 0.05f;
+            }
+
+            return std::clamp( radians, RTGL1::Utils::DegToRad( 1 ), RTGL1::Utils::DegToRad( 89 ) );
+        };
+
         return cgltf_light{
             .name                  = nullptr,
             .color                 = { RG_ACCESS_VEC3( fcolor.data ) },
             .intensity             = LuminousFluxToCandela( spot.intensity ),
             .type                  = cgltf_light_type_spot,
-            .spot_inner_cone_angle = spot.angleInner,
-            .spot_outer_cone_angle = spot.angleOuter,
+            .spot_inner_cone_angle = clampAngle( spot.angleInner ),
+            .spot_outer_cone_angle = clampAngle( spot.angleOuter ),
         };
     }
 
