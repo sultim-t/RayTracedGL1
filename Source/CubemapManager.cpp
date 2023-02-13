@@ -155,7 +155,7 @@ RTGL1::CubemapManager::~CubemapManager()
 bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
                                               uint32_t                     frameIndex,
                                               const RgOriginalCubemapInfo& info,
-                                              const std::filesystem::path& folder )
+                                              const std::filesystem::path& ovrdFolder )
 {
     TextureUploader::UploadInfo upload = {
         .cmd          = cmd,
@@ -166,7 +166,8 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
         .isCubemap    = true,
     };
 
-    auto*      ldr  = imageLoader.get();
+    auto loaders = TextureOverrides::Loader{ std::make_tuple( imageLoader.get() ) };
+    
     RgExtent2D size = { info.sideSize, info.sideSize };
 
     std::string faceNames[] = {
@@ -181,12 +182,12 @@ bool RTGL1::CubemapManager::TryCreateCubemap( VkCommandBuffer              cmd,
 
     // clang-format off
     TextureOverrides ovrd[] = {
-        TextureOverrides( folder, faceNames[ 0 ], "", facePixels[ 0 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
-        TextureOverrides( folder, faceNames[ 1 ], "", facePixels[ 1 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
-        TextureOverrides( folder, faceNames[ 2 ], "", facePixels[ 2 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
-        TextureOverrides( folder, faceNames[ 3 ], "", facePixels[ 3 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
-        TextureOverrides( folder, faceNames[ 4 ], "", facePixels[ 4 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
-        TextureOverrides( folder, faceNames[ 5 ], "", facePixels[ 5 ], size, VK_FORMAT_R8G8B8A8_SRGB, ldr ),
+        TextureOverrides( ovrdFolder, faceNames[ 0 ], "", facePixels[ 0 ], size, VK_FORMAT_R8G8B8A8_SRGB, loaders ),
+        TextureOverrides( ovrdFolder, faceNames[ 1 ], "", facePixels[ 1 ], size, VK_FORMAT_R8G8B8A8_SRGB, loaders ),
+        TextureOverrides( ovrdFolder, faceNames[ 2 ], "", facePixels[ 2 ], size, VK_FORMAT_R8G8B8A8_SRGB, loaders ),
+        TextureOverrides( ovrdFolder, faceNames[ 3 ], "", facePixels[ 3 ], size, VK_FORMAT_R8G8B8A8_SRGB, loaders ),
+        TextureOverrides( ovrdFolder, faceNames[ 4 ], "", facePixels[ 4 ], size, VK_FORMAT_R8G8B8A8_SRGB, loaders ),
+        TextureOverrides( ovrdFolder, faceNames[ 5 ], "", facePixels[ 5 ], size, VK_FORMAT_R8G8B8A8_SRGB, loaders ),
     };
     // clang-format on
 

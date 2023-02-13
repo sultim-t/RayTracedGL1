@@ -20,13 +20,14 @@
 
 #pragma once
 
-#include <optional>
-#include <vector>
-#include <filesystem>
-
 #include "Common.h"
 #include "Const.h"
 #include "UserFunction.h"
+
+#include <filesystem>
+#include <optional>
+#include <span>
+#include <vector>
 
 struct ktxTexture;
 
@@ -71,6 +72,13 @@ public:
 
     // Must be called after using the loaded data to free the allocated memory
     void FreeLoaded();
+
+    static auto GetExtensions()
+    {
+        static const char* arr[] = { ".ktx2" };
+        return std::span( arr );
+    }
+    static auto GetFolder() { return TEXTURES_FOLDER; }
 
 private:
     bool LoadTextureFile( const std::filesystem::path& path, ktxTexture** ppTexture );

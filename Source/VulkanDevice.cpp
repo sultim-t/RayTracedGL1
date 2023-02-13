@@ -1210,8 +1210,7 @@ void RTGL1::VulkanDevice::ProvideOriginalTexture( const RgOriginalTextureInfo* p
     textureManager->TryCreateMaterial( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
                                        currentFrameState.GetFrameIndex(),
                                        *pInfo,
-                                       libconfig.developerMode ? ovrdFolder / TEXTURES_FOLDER_DEV
-                                                               : ovrdFolder / TEXTURES_FOLDER );
+                                       ovrdFolder );
 }
 
 void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemapInfo* pInfo )
@@ -1225,8 +1224,7 @@ void RTGL1::VulkanDevice::ProvideOriginalCubemapTexture( const RgOriginalCubemap
     cubemapManager->TryCreateCubemap( currentFrameState.GetCmdBufferForMaterials( cmdManager ),
                                       currentFrameState.GetFrameIndex(),
                                       *pInfo,
-                                      libconfig.developerMode ? ovrdFolder / TEXTURES_FOLDER_DEV
-                                                              : ovrdFolder / TEXTURES_FOLDER );
+                                      ovrdFolder );
 }
 
 void RTGL1::VulkanDevice::MarkOriginalTextureAsDeleted( const char* pTextureName )

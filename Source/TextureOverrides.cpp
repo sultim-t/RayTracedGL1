@@ -55,85 +55,157 @@ std::optional< uint32_t > ResolveDefaultDataSize( VkFormat format, const RgExten
     return defaultBytesPerPixel * size.width * size.height;
 }
 
+
+
 namespace loader
 {
-    auto Load( TextureOverrides::Loader loader, const std::filesystem::path& filepath )
+    namespace detail
     {
-        if( std::holds_alternative< ImageLoaderDev* >( loader ) )
+        template< typename T >
+        auto LoadByFullPath( T& specificLoader, const std::filesystem::path& filepath )
         {
-            return std::get< ImageLoaderDev* >( loader )->Load( filepath );
+            if( std::filesystem::is_regular_file( filepath ) )
+            {
+                if( auto r = specificLoader.Load( filepath ) )
+                {
+                    return r;
+                }
+            }
+
+            return std::optional< ImageLoader::ResultInfo >{};
         }
-        else
+
+        template< size_t I, typename Loaders >
+            requires( I >= std::tuple_size_v< Loaders > )
+        auto LoadByIndex( Loaders&,
+                          const std::filesystem::path&,
+                          std::string_view,
+                          std::string_view,
+                          std::filesystem::path& outPath )
         {
-            return std::get< ImageLoader* >( loader )->Load( filepath );
+            assert( outPath.empty() );
+            return std::optional< ImageLoader::ResultInfo >{};
+        }
+
+        template< size_t I, typename Loaders >
+            requires( I < std::tuple_size_v< Loaders > )
+        auto LoadByIndex( Loaders&                     loaders,
+                          const std::filesystem::path& ovrdFolder,
+                          std::string_view             name,
+                          std::string_view             postfix,
+                          std::filesystem::path&       outPath )
+        {
+            if( auto l = std::get< I >( loaders ) )
+            {
+                using LoaderType = std::remove_pointer_t< std::tuple_element_t< I, Loaders > >;
+
+                auto basePath = ovrdFolder / LoaderType::GetFolder();
+
+                for( const char* ext : LoaderType::GetExtensions() )
+                {
+                    auto filepath =
+                        TextureOverrides::GetTexturePath( basePath, name, postfix, ext );
+
+                    if( auto r = LoadByFullPath( *l, filepath ) )
+                    {
+                        outPath = std::move( filepath );
+                        return r;
+                    }
+                }
+            }
+
+            return LoadByIndex< I + 1 >( loaders, ovrdFolder, name, postfix, outPath );
+        }
+
+        template< size_t I, typename Loaders >
+            requires( I >= std::tuple_size_v< Loaders > )
+        auto LoadByFullPathByIndex( Loaders&, const std::filesystem::path& )
+        {
+            return std::optional< ImageLoader::ResultInfo >{};
+        }
+
+        template< size_t I, typename Loaders >
+            requires( I < std::tuple_size_v< Loaders > )
+        auto LoadByFullPathByIndex( Loaders& loaders, const std::filesystem::path& filepath )
+        {
+            if( auto l = std::get< I >( loaders ) )
+            {
+                if( auto r = LoadByFullPath( *l, filepath ) )
+                {
+                    return r;
+                }
+            }
+
+            return LoadByFullPathByIndex< I + 1 >( loaders, filepath );
         }
     }
 
-    void FreeLoaded( TextureOverrides::Loader loader )
+    template< typename Loaders >
+    auto Load( Loaders&                     loaders,
+               const std::filesystem::path& ovrdFolder,
+               std::string_view             name,
+               std::string_view             postfix,
+               std::filesystem::path&       outPath )
     {
-        if( std::holds_alternative< ImageLoaderDev* >( loader ) )
-        {
-            std::get< ImageLoaderDev* >( loader )->FreeLoaded();
-        }
-        else
-        {
-            std::get< ImageLoader* >( loader )->FreeLoaded();
-        }
+        return detail::LoadByIndex< 0 >( loaders, ovrdFolder, name, postfix, outPath );
     }
 
-    std::span< const char* > GetExtensions( TextureOverrides::Loader loader )
+    template< typename Loaders >
+    auto Load( Loaders& loaders, const std::filesystem::path& fullpath )
     {
-        if( std::holds_alternative< ImageLoaderDev* >( loader ) )
-        {
-            static const char* arr[] = { ".png", ".tga", ".jpg", ".jpeg" };
-            return arr;
-        }
-        else
-        {
-            static const char* arr[] = { ".ktx2" };
-            return arr;
-        }
+        return detail::LoadByFullPathByIndex< 0 >( loaders, fullpath );
+    }
+
+    template< typename Loaders >
+    void FreeLoaded( Loaders& loaders )
+    {
+        std::apply(
+            []( auto*... specific ) {
+                //
+                auto freeIfNotNull = []( auto* t ) {
+                    if( t )
+                    {
+                        t->FreeLoaded();
+                    }
+                };
+
+                ( freeIfNotNull( specific ), ... );
+            },
+            loaders );
     }
 }
+
 }
 
-TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
+TextureOverrides::TextureOverrides( const std::filesystem::path& _ovrdFolder,
                                     std::string_view             _name,
                                     std::string_view             _postfix,
                                     const void*                  _defaultPixels,
                                     const RgExtent2D&            _defaultSize,
                                     VkFormat                     _defaultFormat,
                                     Loader                       _loader )
-    : result{ std::nullopt }, debugname{}, loader( _loader )
+    : result{ std::nullopt }, debugname{}, iloader( std::move( _loader ) )
 {
     SafeCopy( debugname, _name );
 
+    
+    std::visit(
+        [ & ]( auto&& specific ) {
+            if( auto r = loader::Load( specific, _ovrdFolder, _name, _postfix, path ) )
+            {
+                r->format = Utils::IsSRGB( _defaultFormat ) ? Utils::ToSRGB( r->format )
+                                                            : Utils::ToUnorm( r->format );
 
-    for( const char* ext : loader::GetExtensions( loader ) )
-    {
-        auto p = GetTexturePath( _basePath, _name, _postfix, ext );
-
-        if( !std::filesystem::is_regular_file( p ) )
-        {
-            continue;
-        }
-
-        if( auto r = loader::Load( loader, p ) )
-        {
-            r->format = Utils::IsSRGB( _defaultFormat ) ? Utils::ToSRGB( r->format )
-                                                        : Utils::ToUnorm( r->format );
-
-            result = r;
-            path   = std::move( p );
-
-            break;
-        }
-    }
-
+                result = r;
+            }
+        },
+        iloader );
 
     // if file wasn't found, use defaults
     if( !result )
     {
+        assert( path.empty() );
+
         if( _defaultPixels )
         {
             if( auto dataSize = ResolveDefaultDataSize( _defaultFormat, _defaultSize ) )
@@ -148,7 +220,7 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
                     .baseSize       = _defaultSize,
                     .format         = _defaultFormat,
                 };
-                path = GetTexturePath( _basePath, _name, _postfix, "" );
+                path = GetTexturePath( _ovrdFolder / TEXTURES_FOLDER_DEV, _name, _postfix, "" );
             }
         }
     }
@@ -157,26 +229,26 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _basePath,
 TextureOverrides::TextureOverrides( const std::filesystem::path& _fullPath,
                                     bool                         _isSRGB,
                                     Loader                       _loader )
-    : result{ std::nullopt }, debugname{}, loader( _loader )
+    : result{ std::nullopt }, debugname{}, iloader( std::move( _loader ) )
 {
-    if( !std::filesystem::is_regular_file( _fullPath ) )
-    {
-        return;
-    }
     SafeCopy( debugname, _fullPath.string() );
 
-    if( auto r = loader::Load( loader, _fullPath ) )
-    {
-        r->format = _isSRGB ? Utils::ToSRGB( r->format ) : Utils::ToUnorm( r->format );
+    std::visit(
+        [ & ]( auto&& specific ) {
+            if( auto r = loader::Load( specific, _fullPath ) )
+            {
+                r->format = _isSRGB ? Utils::ToSRGB( r->format ) : Utils::ToUnorm( r->format );
 
-        result = r;
-        path   = _fullPath;
-    }
+                result = r;
+                path   = _fullPath;
+            }
+        },
+        iloader );
 }
 
 TextureOverrides::~TextureOverrides()
 {
-    loader::FreeLoaded( loader );
+    std::visit( []( auto&& specific ) { loader::FreeLoaded( specific ); }, iloader );
 }
 
 std::filesystem::path TextureOverrides::GetTexturePath( std::filesystem::path basePath,
@@ -197,7 +269,7 @@ std::filesystem::path TextureOverrides::GetTexturePath( std::filesystem::path ba
             case '|':
             case '?':
             case '*': {
-                debug::Verbose( "Invalid char \'{}\' in material name: {}", c, name);
+                debug::Verbose( "Invalid char \'{}\' in material name: {}", c, name );
                 c = '_';
                 break;
             }

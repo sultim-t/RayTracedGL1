@@ -20,10 +20,9 @@
 
 #pragma once
 
-#include <variant>
+#include "RTGL1/RTGL1.h"
 
 #include "Common.h"
-#include "RTGL1/RTGL1.h"
 #include "ImageLoader.h"
 #include "ImageLoaderDev.h"
 
@@ -35,9 +34,13 @@ constexpr uint32_t TEXTURE_DEBUG_NAME_MAX_LENGTH = 32;
 // Struct for loading overriding texture files. Should be created on stack.
 struct TextureOverrides
 {
-    using Loader = std::variant< ImageLoader*, ImageLoaderDev* >;
+    using Loader = std::variant< std::tuple< ImageLoader* >,
+                                 std::tuple< ImageLoaderDev* >,
+                                 std::tuple< ImageLoader*, ImageLoaderDev* >,
+                                 std::tuple< ImageLoaderDev*, ImageLoader* > >;
 
-    explicit TextureOverrides( const std::filesystem::path& basePath,
+
+    explicit TextureOverrides( const std::filesystem::path& ovrdFolder,
                                std::string_view             name,
                                std::string_view             postfix,
                                const void*                  defaultPixels,
@@ -64,7 +67,7 @@ struct TextureOverrides
     std::filesystem::path                    path;
 
 private:
-    Loader loader;
+    Loader iloader;
 };
 
 }

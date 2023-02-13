@@ -20,24 +20,16 @@
 
 #include "ImageLoaderDev.h"
 
-#include <algorithm>
 #include <cassert>
 
 #include "Stb/stb_image.h"
 
-using namespace RTGL1;
-
-ImageLoaderDev::ImageLoaderDev( std::shared_ptr< ImageLoader > _fallback )
-    : fallback( std::move( _fallback ) )
-{
-}
-
-ImageLoaderDev::~ImageLoaderDev()
+RTGL1::ImageLoaderDev::~ImageLoaderDev()
 {
     assert( loadedImages.empty() );
 }
 
-std::optional< ImageLoader::ResultInfo > ImageLoaderDev::Load( const std::filesystem::path& path )
+std::optional< RTGL1::ImageLoader::ResultInfo > RTGL1::ImageLoaderDev::Load( const std::filesystem::path& path )
 {
     if( path.empty() )
     {
@@ -51,8 +43,7 @@ std::optional< ImageLoader::ResultInfo > ImageLoaderDev::Load( const std::filesy
     if( pData == nullptr )
     {
         const char* reason = stbi_failure_reason();
-
-        return fallback->Load( path );
+        return {};
     }
 
     const uint32_t width  = x;
@@ -75,13 +66,11 @@ std::optional< ImageLoader::ResultInfo > ImageLoaderDev::Load( const std::filesy
     return result;
 }
 
-void ImageLoaderDev::FreeLoaded()
+void RTGL1::ImageLoaderDev::FreeLoaded()
 {
     for( void* pData : loadedImages )
     {
         stbi_image_free( pData );
     }
     loadedImages.clear();
-
-    fallback->FreeLoaded();
 }

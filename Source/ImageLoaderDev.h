@@ -22,6 +22,8 @@
 
 #include "ImageLoader.h"
 
+#include <span>
+
 namespace RTGL1
 {
 
@@ -29,21 +31,27 @@ namespace RTGL1
 class ImageLoaderDev final
 {
 public:
-    explicit ImageLoaderDev( std::shared_ptr< ImageLoader > fallback );
+    explicit ImageLoaderDev() = default;
     ~ImageLoaderDev();
 
-    ImageLoaderDev( const ImageLoaderDev& other )     = delete;
-    ImageLoaderDev( ImageLoaderDev&& other ) noexcept = delete;
-    ImageLoaderDev&                          operator=( const ImageLoaderDev& other ) = delete;
-    ImageLoaderDev&                          operator=( ImageLoaderDev&& other ) noexcept = delete;
+    ImageLoaderDev( const ImageLoaderDev& other )                = delete;
+    ImageLoaderDev( ImageLoaderDev&& other ) noexcept            = delete;
+    ImageLoaderDev& operator=( const ImageLoaderDev& other )     = delete;
+    ImageLoaderDev& operator=( ImageLoaderDev&& other ) noexcept = delete;
 
     std::optional< ImageLoader::ResultInfo > Load( const std::filesystem::path& path );
     // Must be called after using the loaded data to free the allocated memory
     void                                     FreeLoaded();
 
+    static auto GetExtensions()
+    {
+        static const char* arr[] = { ".png", ".tga", ".jpg", ".jpeg" };
+        return std::span( arr );
+    }
+    static auto GetFolder() { return TEXTURES_FOLDER_DEV; }
+
 private:
-    std::shared_ptr< ImageLoader > fallback;
-    std::vector< void* >           loadedImages;
+    std::vector< void* > loadedImages;
 };
 
 }

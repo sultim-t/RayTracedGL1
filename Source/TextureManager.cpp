@@ -52,13 +52,6 @@ constexpr const T* DefaultIfNull( const T* pData, const T* pDefault )
     return pData != nullptr ? pData : pDefault;
 }
 
-TextureOverrides::Loader GetLoader( const std::shared_ptr< ImageLoader >&    defaultLoader,
-                                    const std::shared_ptr< ImageLoaderDev >& devLoader )
-{
-    return devLoader ? TextureOverrides::Loader( devLoader.get() )
-                     : TextureOverrides::Loader( defaultLoader.get() );
-}
-
 bool ContainsTextures( const MaterialTextures& m )
 {
     for( uint32_t t : m.indices )
@@ -92,6 +85,9 @@ TextureManager::TextureManager( VkDevice                                _device,
                                 const LibraryConfig&                    _config )
     : device( _device )
     , pbrSwizzling( _pbrSwizzling )
+    , imageLoaderKtx( std::make_shared< ImageLoader >() )
+    , imageLoaderRaw( std::make_shared< ImageLoaderDev >() )
+    , isdevmode( _config.developerMode )
     , memAllocator( std::move( _memAllocator ) )
     , cmdManager( std::move( _cmdManager ) )
     , samplerMgr( std::move( _samplerMgr ) )
@@ -107,14 +103,6 @@ TextureManager::TextureManager( VkDevice                                _device,
         }
     , forceNormalMapFilterLinear(_forceNormalMapFilterLinear  )
 {
-    imageLoader = std::make_shared< ImageLoader >();
-
-    if( _config.developerMode )
-    {
-        imageLoaderDev = std::make_shared< ImageLoaderDev >( imageLoader );
-    }
-
-
     textureDesc = std::make_shared< TextureDescriptors >(
         device, samplerMgr, TEXTURE_COUNT_MAX, BINDING_TEXTURES );
     textureUploader = std::make_shared< TextureUploader >( device, memAllocator );
@@ -194,7 +182,7 @@ uint32_t TextureManager::CreateWaterNormalTexture( VkCommandBuffer              
                            defaultData,
                            defaultSize,
                            VK_FORMAT_R8G8B8A8_UNORM,
-                           imageLoader.get() );
+                           AnyImageLoader() );
 
     if( ovrd.result && static_cast< const void* >( ovrd.result->pData ) ==
                            static_cast< const void* >( defaultData ) )
@@ -230,7 +218,7 @@ uint32_t TextureManager::CreateDirtMaskTexture( VkCommandBuffer              cmd
                            defaultData,
                            defaultSize,
                            VK_FORMAT_R8G8B8A8_SRGB,
-                           imageLoader.get() );
+                           AnyImageLoader() );
 
     if( ovrd.result && static_cast< const void* >( ovrd.result->pData ) ==
                            static_cast< const void* >( defaultData ) )
@@ -309,9 +297,8 @@ void TextureManager::TryHotReload( VkCommandBuffer cmd, uint32_t frameIndex )
 
             if( sameWithoutExt )
             {
-                TextureOverrides ovrd( newFilePath,
-                                       Utils::IsSRGB( slot->format ),
-                                       GetLoader( imageLoader, imageLoaderDev ) );
+                TextureOverrides ovrd(
+                    newFilePath, Utils::IsSRGB( slot->format ), AnyImageLoader() );
 
                 if( ovrd.result )
                 {
@@ -392,7 +379,7 @@ void TextureManager::SubmitDescriptors( uint32_t                         frameIn
 bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
                                         uint32_t                     frameIndex,
                                         const RgOriginalTextureInfo& info,
-                                        const std::filesystem::path& folder )
+                                        const std::filesystem::path& ovrdFolder )
 {
     if( Utils::IsCstrEmpty( info.pTextureName ) )
     {
@@ -419,10 +406,10 @@ bool TextureManager::TryCreateMaterial( VkCommandBuffer              cmd,
 
     // clang-format off
     TextureOverrides ovrd[] = {
-        TextureOverrides( folder, info.pTextureName, postfixes[ 0 ], info.pPixels, info.size, VK_FORMAT_R8G8B8A8_SRGB, GetLoader( imageLoader, imageLoaderDev ) ),
-        TextureOverrides( folder, info.pTextureName, postfixes[ 1 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, GetLoader( imageLoader, imageLoaderDev ) ),
-        TextureOverrides( folder, info.pTextureName, postfixes[ 2 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, GetLoader( imageLoader, imageLoaderDev ) ),
-        TextureOverrides( folder, info.pTextureName, postfixes[ 3 ], nullptr, {}, VK_FORMAT_R8G8B8A8_SRGB, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( ovrdFolder, info.pTextureName, postfixes[ 0 ], info.pPixels, info.size, VK_FORMAT_R8G8B8A8_SRGB, OnlyKTX2LoaderIfNonDevMode() ),
+        TextureOverrides( ovrdFolder, info.pTextureName, postfixes[ 1 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, OnlyKTX2LoaderIfNonDevMode() ),
+        TextureOverrides( ovrdFolder, info.pTextureName, postfixes[ 2 ], nullptr, {}, VK_FORMAT_R8G8B8A8_UNORM, OnlyKTX2LoaderIfNonDevMode() ),
+        TextureOverrides( ovrdFolder, info.pTextureName, postfixes[ 3 ], nullptr, {}, VK_FORMAT_R8G8B8A8_SRGB, OnlyKTX2LoaderIfNonDevMode() ),
     };
     static_assert( std::size( ovrd ) == TEXTURES_PER_MATERIAL_COUNT );
     // clang-format on
@@ -537,10 +524,10 @@ bool TextureManager::TryCreateImportedMaterial( VkCommandBuffer                 
 
     // clang-format off
     TextureOverrides ovrd[] = {
-        TextureOverrides( fullPaths[ 0 ], true, GetLoader( imageLoader, imageLoaderDev ) ),
-        TextureOverrides( fullPaths[ 1 ], false, GetLoader( imageLoader, imageLoaderDev ) ),
-        TextureOverrides( fullPaths[ 2 ], false, GetLoader( imageLoader, imageLoaderDev ) ),
-        TextureOverrides( fullPaths[ 3 ], true, GetLoader( imageLoader, imageLoaderDev ) ),
+        TextureOverrides( fullPaths[ 0 ], true, AnyImageLoader() ),
+        TextureOverrides( fullPaths[ 1 ], false, AnyImageLoader() ),
+        TextureOverrides( fullPaths[ 2 ], false, AnyImageLoader() ),
+        TextureOverrides( fullPaths[ 3 ], true, AnyImageLoader() ),
     };
     static_assert( std::size( ovrd ) == TEXTURES_PER_MATERIAL_COUNT );
     // clang-format on

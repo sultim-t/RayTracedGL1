@@ -34,6 +34,7 @@
 #include "MemoryAllocator.h"
 #include "SamplerManager.h"
 #include "TextureDescriptors.h"
+#include "TextureOverrides.h"
 #include "TextureUploader.h"
 
 namespace RTGL1
@@ -73,7 +74,7 @@ public:
     bool TryCreateMaterial( VkCommandBuffer              cmd,
                             uint32_t                     frameIndex,
                             const RgOriginalTextureInfo& info,
-                            const std::filesystem::path& folder );
+                            const std::filesystem::path& ovrdFolder );
 
     bool TryCreateImportedMaterial( VkCommandBuffer                     cmd,
                                     uint32_t                            frameIndex,
@@ -160,12 +161,45 @@ private:
                          const Material&  material );
     void DestroyMaterialTextures( uint32_t frameIndex, const Material& material );
 
+    TextureOverrides::Loader AnyImageLoader()
+    {
+        // prefer raw formats in devmode
+        if( isdevmode )
+        {
+            return std::tuple{
+                imageLoaderRaw.get(),
+                imageLoaderKtx.get(),
+            };
+        }
+
+        return std::tuple{
+            imageLoaderKtx.get(),
+            imageLoaderRaw.get(),
+        };
+    }
+
+    TextureOverrides::Loader OnlyKTX2LoaderIfNonDevMode()
+    {
+        if( isdevmode )
+        {
+            return std::tuple{
+                imageLoaderRaw.get(),
+                imageLoaderKtx.get(),
+            };
+        }
+
+        return std::tuple{
+            imageLoaderKtx.get(),
+        };
+    }
+
 private:
     VkDevice           device;
     RgTextureSwizzling pbrSwizzling;
 
-    std::shared_ptr< ImageLoader >    imageLoader;
-    std::shared_ptr< ImageLoaderDev > imageLoaderDev;
+    std::shared_ptr< ImageLoader >    imageLoaderKtx;
+    std::shared_ptr< ImageLoaderDev > imageLoaderRaw;
+    bool                              isdevmode;
 
     std::shared_ptr< MemoryAllocator >      memAllocator;
     std::shared_ptr< CommandBufferManager > cmdManager;
