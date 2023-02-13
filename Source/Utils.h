@@ -282,6 +282,17 @@ namespace Utils
         return cstr ? cstr : "";
     }
 
+    template< size_t N >
+    void SafeCstrCopy( char ( &dst )[ N ], std::string_view src )
+    {
+        memset( dst, 0, N );
+
+        for( size_t i = 0; i < N - 1 && i < src.length(); i++ )
+        {
+            dst[ i ] = src[ i ];
+        }
+    }
+
     constexpr RgColor4DPacked32 PackColor( uint8_t r, uint8_t g, uint8_t b, uint8_t a )
     {
         return ( uint32_t( a ) << 24 ) | ( uint32_t( b ) << 16 ) | ( uint32_t( g ) << 8 ) |

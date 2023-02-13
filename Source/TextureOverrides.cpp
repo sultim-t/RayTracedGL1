@@ -32,16 +32,6 @@ using namespace RTGL1;
 
 namespace
 {
-template< size_t N >
-void SafeCopy( char ( &dst )[ N ], std::string_view src )
-{
-    memset( dst, 0, N );
-
-    for( size_t i = 0; i < N - 1 && i < src.length(); i++ )
-    {
-        dst[ i ] = src[ i ];
-    }
-}
 
 std::optional< uint32_t > ResolveDefaultDataSize( VkFormat format, const RgExtent2D& size )
 {
@@ -186,7 +176,7 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _ovrdFolder,
                                     Loader                       _loader )
     : result{ std::nullopt }, debugname{}, iloader( std::move( _loader ) )
 {
-    SafeCopy( debugname, _name );
+    Utils::SafeCstrCopy( debugname, _name );
 
     
     std::visit(
@@ -231,7 +221,7 @@ TextureOverrides::TextureOverrides( const std::filesystem::path& _fullPath,
                                     Loader                       _loader )
     : result{ std::nullopt }, debugname{}, iloader( std::move( _loader ) )
 {
-    SafeCopy( debugname, _fullPath.string() );
+    Utils::SafeCstrCopy( debugname, _fullPath.string() );
 
     std::visit(
         [ & ]( auto&& specific ) {

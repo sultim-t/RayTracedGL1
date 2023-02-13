@@ -176,18 +176,24 @@ uint32_t TextureManager::CreateWaterNormalTexture( VkCommandBuffer              
     constexpr RgExtent2D defaultSize   = { 1, 1 };
 
     // try to load image file
-    TextureOverrides ovrd( filepath.parent_path(),
-                           filepath.stem().string(),
-                           "",
-                           defaultData,
-                           defaultSize,
-                           VK_FORMAT_R8G8B8A8_UNORM,
-                           AnyImageLoader() );
+    TextureOverrides ovrd( filepath, false, AnyImageLoader() );
 
-    if( ovrd.result && static_cast< const void* >( ovrd.result->pData ) ==
-                           static_cast< const void* >( defaultData ) )
+    if( !ovrd.result )
     {
         debug::Info( "Couldn't find water normal texture at: {}", filepath.string() );
+
+        ovrd.result = ImageLoader::ResultInfo{
+            .levelOffsets   = { 0 },
+            .levelSizes     = { sizeof( defaultData ) },
+            .levelCount     = 1,
+            .isPregenerated = false,
+            .pData          = reinterpret_cast< const uint8_t* >( defaultData ),
+            .dataSize       = sizeof( defaultData ),
+            .baseSize       = defaultSize,
+            .format         = VK_FORMAT_R8G8B8A8_UNORM,
+        };
+        ovrd.path = filepath;
+        Utils::SafeCstrCopy( ovrd.debugname, "WaterNormal" );
     }
 
     return PrepareTexture( cmd,
@@ -212,18 +218,24 @@ uint32_t TextureManager::CreateDirtMaskTexture( VkCommandBuffer              cmd
     constexpr RgExtent2D defaultSize   = { 1, 1 };
 
     // try to load image file
-    TextureOverrides ovrd( filepath.parent_path(),
-                           filepath.stem().string(),
-                           "",
-                           defaultData,
-                           defaultSize,
-                           VK_FORMAT_R8G8B8A8_SRGB,
-                           AnyImageLoader() );
+    TextureOverrides ovrd( filepath, true, AnyImageLoader() );
 
-    if( ovrd.result && static_cast< const void* >( ovrd.result->pData ) ==
-                           static_cast< const void* >( defaultData ) )
+    if( !ovrd.result )
     {
         debug::Info( "Couldn't find dirt mask texture at: {}", filepath.string() );
+
+        ovrd.result = ImageLoader::ResultInfo{
+            .levelOffsets   = { 0 },
+            .levelSizes     = { sizeof( defaultData ) },
+            .levelCount     = 1,
+            .isPregenerated = false,
+            .pData          = reinterpret_cast< const uint8_t* >( defaultData ),
+            .dataSize       = sizeof( defaultData ),
+            .baseSize       = defaultSize,
+            .format         = VK_FORMAT_R8G8B8A8_SRGB,
+        };
+        ovrd.path = filepath;
+        Utils::SafeCstrCopy( ovrd.debugname, "WaterNormal" );
     }
 
     return PrepareTexture( cmd,
