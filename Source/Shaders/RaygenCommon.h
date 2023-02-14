@@ -180,7 +180,11 @@ uint getIndirectIlluminationCullMask(uint surfInstCustomIndex)
 
 uint getAdditionalRayFlags()
 {
+#if LIGHT_SAMPLE_METHOD == LIGHT_SAMPLE_METHOD_VOLUME
+    return 0;
+#else
     return globalUniform.rayCullBackFaces != 0 ? gl_RayFlagsCullFrontFacingTrianglesEXT : 0;
+#endif
 }
 
 
