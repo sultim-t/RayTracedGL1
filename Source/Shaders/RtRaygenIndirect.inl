@@ -353,9 +353,7 @@ void main()
 
             ReservoirIndirect reservoir_q = loadInitialSampleAsReservoir( pp );
 
-            // TODO: acceptable jacobian values
-            float oneOverJacobian = 1.0;
-            #if 0
+            float oneOverJacobian;
             {
                 const vec3 x1_r = surf.position;
                 const vec3 x1_q = texelFetch( framebufSurfacePosition_Sampler, pp, 0 ).xyz;
@@ -369,8 +367,11 @@ void main()
                 oneOverJacobian =
                     safePositiveRcp( getGeometryFactorClamped( n2_q, phi_r.dir, phi_r.len ) ) *
                     getGeometryFactorClamped( n2_q, phi_q.dir, phi_q.len );
+
+    #if SHIPPING_HACK
+                oneOverJacobian = clamp( oneOverJacobian, 0.0, 1.0 );
+    #endif
             }
-            #endif
 
             float targetPdf_curSurf = 0.0;
 
