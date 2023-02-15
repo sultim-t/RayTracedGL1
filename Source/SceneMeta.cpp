@@ -77,6 +77,12 @@ void RTGL1::SceneMetaManager::Modify( std::string_view             sceneName,
     {
         volumetric.ambientColor = { RG_ACCESS_VEC3( *m.volumeAmbient ) };
     }
+
+    if( m.volumeUnderwaterColor )
+    {
+        volumetric.allowTintUnderwater = true;
+        volumetric.underwaterColor     = { RG_ACCESS_VEC3( *m.volumeUnderwaterColor ) };
+    }
 }
 
 void RTGL1::SceneMetaManager::OnFileChanged( FileType type, const std::filesystem::path& filepath )

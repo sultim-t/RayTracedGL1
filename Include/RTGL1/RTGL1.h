@@ -725,6 +725,8 @@ typedef struct RgDrawFrameVolumetricParams
     RgFloat3D       fallbackSourceDirection;
     // Multiplier for light for scattering.
     float           lightMultiplier;
+    RgBool32        allowTintUnderwater;
+    RgFloat3D       underwaterColor;
 } RgDrawFrameVolumetricParams;
 
 typedef struct RgDrawFrameBloomParams

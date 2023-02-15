@@ -79,7 +79,10 @@ public:
                               LightManager*          lightManager,
                               bool                   isStatic );
 
-    void SubmitStaticLights( uint32_t frameIndex, LightManager& lightManager ) const;
+    void SubmitStaticLights( uint32_t          frameIndex,
+                             LightManager&     lightManager,
+                             bool              isUnderwater,
+                             RgColor4DPacked32 underwaterColor ) const;
 
     void NewScene( VkCommandBuffer           cmd,
                    uint32_t                  frameIndex,

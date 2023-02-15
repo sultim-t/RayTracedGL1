@@ -277,7 +277,7 @@ struct ShGlobalUniform
     float jitterY;
     float primaryRayMinDist;
     uint32_t rayCullMaskWorld_Shadow;
-    uint32_t _unused1;
+    uint32_t volumeAllowTintUnderwater;
     uint32_t _unused2;
     uint32_t twirlPortalNormal;
     uint32_t lightIndexIgnoreFPVShadows;
@@ -289,6 +289,7 @@ struct ShGlobalUniform
     float volumeCameraFar;
     uint32_t antiFireflyEnabled;
     float volumeAmbient[4];
+    float volumeUnderwaterColor[4];
     float volumeFallbackSrcColor[4];
     float volumeFallbackSrcDirection[4];
     float volumeAsymmetry;

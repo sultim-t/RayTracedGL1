@@ -189,6 +189,7 @@ JSON_TYPE( RTGL1::SceneMeta )
     , "volumeAssymetry", &T::volumeAssymetry
     , "volumeLightMultiplier", &T::volumeLightMultiplier
     , "volumeAmbient", &T::volumeAmbient
+    , "volumeUnderwaterColor", &T::volumeUnderwaterColor
 JSON_TYPE_END;
 JSON_TYPE( RTGL1::SceneMetaArray )
     "array", &T::array

@@ -589,7 +589,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_FLOAT32,      1,      "primaryRayMinDist",                1),
 
     (TYPE_UINT32,       1,      "rayCullMaskWorld_Shadow",          1),
-    (TYPE_UINT32,       1,      "_unused1",                         1),
+    (TYPE_UINT32,       1,      "volumeAllowTintUnderwater",        1),
     (TYPE_UINT32,       1,      "_unused2",                         1),
     (TYPE_UINT32,       1,      "twirlPortalNormal",                1),
 
@@ -604,6 +604,7 @@ GLOBAL_UNIFORM_STRUCT = [
     (TYPE_UINT32,       1,      "antiFireflyEnabled",               1),
 
     (TYPE_FLOAT32,      4,      "volumeAmbient",                    1),
+    (TYPE_FLOAT32,      4,      "volumeUnderwaterColor",            1),
     (TYPE_FLOAT32,      4,      "volumeFallbackSrcColor",           1),
     (TYPE_FLOAT32,      4,      "volumeFallbackSrcDirection",       1),
 

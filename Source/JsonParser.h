@@ -108,6 +108,7 @@ struct SceneMeta
     std::optional< float > volumeLightMultiplier;
 
     std::optional< std::array< float, 3 > > volumeAmbient;
+    std::optional< std::array< float, 3 > > volumeUnderwaterColor;
 };
 
 struct SceneMetaArray

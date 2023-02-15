@@ -127,7 +127,13 @@ VkCommandBuffer RTGL1::VulkanDevice::BeginFrame( const RgStartFrameInfo& info )
                                              *scene,
                                              *textureManager,
                                              *textureMetaManager );
-        scene->SubmitStaticLights( frameIndex, *lightManager );
+        scene->SubmitStaticLights(
+            frameIndex,
+            *lightManager,
+            // SHIPPING HACK
+            uniform->GetData()->volumeAllowTintUnderwater &&
+                uniform->GetData()->cameraMediaType == RG_MEDIA_TYPE_WATER,
+            Utils::PackColorFromFloat( uniform->GetData()->volumeUnderwaterColor ) );
     }
 
     return cmd;
@@ -449,6 +455,10 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
                                             gu->volumeFallbackSrcColor[ 2 ] > 0.01f );
 
             gu->volumeLightMult = std::max( 0.0f, params.lightMultiplier );
+
+            gu->volumeAllowTintUnderwater = params.allowTintUnderwater;
+            RG_SET_VEC3_A( gu->volumeUnderwaterColor, params.underwaterColor.data );
+            RG_MAX_VEC3( gu->volumeUnderwaterColor, 0.0f );
         }
 
         if( gu->volumeEnableType != VOLUME_ENABLE_NONE )

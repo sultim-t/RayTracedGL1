@@ -183,13 +183,34 @@ RTGL1::UploadResult RTGL1::Scene::UploadLight( uint32_t               frameIndex
                     : ( isExportable ? UploadResult::ExportableDynamic : UploadResult::Dynamic );
 }
 
-void RTGL1::Scene::SubmitStaticLights( uint32_t frameIndex, LightManager& lightManager ) const
+void RTGL1::Scene::SubmitStaticLights( uint32_t          frameIndex,
+                                       LightManager&     lightManager,
+                                       bool              isUnderwater,
+                                       RgColor4DPacked32 underwaterColor ) const
 {
     for( const GenericLight& l : staticLights )
     {
-        std::visit( [ &frameIndex, &lightManager ](
-                        auto&& specific ) { lightManager.Add( frameIndex, specific ); },
-                    l );
+        std::visit(
+            [ & ]< typename T >( const T& specific ) {
+
+                // SHIPPING HACK - BEGIN: tint sun if underwater
+                if constexpr( std::is_same_v< RgDirectionalLightUploadInfo, T > )
+                {
+                    if( isUnderwater )
+                    {
+                        RgDirectionalLightUploadInfo tinted = specific;
+
+                        tinted.color = underwaterColor;
+
+                        lightManager.Add( frameIndex, tinted );
+                        return;
+                    }
+                }
+                // SHIPPING HACK - END
+
+                lightManager.Add( frameIndex, specific );
+            },
+            l );
     }
 }
 
