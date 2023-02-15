@@ -154,6 +154,8 @@ void main()
     {
         float temporalVariance = max(0.0, temporalMoments.y - temporalMoments.x * temporalMoments.x);
 
+        temporalVariance /= max(1.0, historyLength - HISTORY_LENGTH_THRESHOLD);
+
         imageStore(framebufDiffPingColorAndVariance, pix, vec4(pixDataColor, temporalVariance));
         return;
     }
@@ -178,7 +180,7 @@ void main()
             const vec3 color_q = decodeE5B9G9R9(qData.encColor);
             const float l_q = getLuminance(color_q);
 
-            const float w_z = exp(-abs(pixData.depth - qData.depth) / max(max(pixData.depth, qData.depth), 0.01));
+            const float w_z = exp(-abs(pixData.depth - qData.depth) * safePositiveRcp(max(pixData.depth, qData.depth)));
             const float w_n = pow(max(0.0, dotEnc(pixData.encNormal, qData.encNormal)), 128.0);
 
             const float w = w_z * w_n;
@@ -193,7 +195,7 @@ void main()
         }
     }
 
-    const float invWeightSum = 1.0 / weightSum;
+    const float invWeightSum = safePositiveRcp( weightSum );
     spatialMoments *= invWeightSum;
     pixDataColor *= invWeightSum;
 
