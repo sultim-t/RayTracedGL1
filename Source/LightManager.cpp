@@ -695,6 +695,10 @@ std::optional< uint64_t > RTGL1::LightManager::TryGetVolumetricLight(
         return l.uniqueID;
     };
 
+    auto isVolumetric = []( const auto& l ) {
+        return l.extra.exists && l.extra.isVolumetric;
+    };
+
     auto approxVolumetricIntensity = [ &fromLightstyles ]( const auto& l ) {
         if( !l.extra.exists || !l.extra.isVolumetric )
         {
@@ -710,6 +714,7 @@ std::optional< uint64_t > RTGL1::LightManager::TryGetVolumetricLight(
         float    intensity;
     };
     std::optional< Candidate > best;
+    std::optional< Candidate > any;
 
     for( const auto& l : from )
     {
@@ -725,12 +730,30 @@ std::optional< uint64_t > RTGL1::LightManager::TryGetVolumetricLight(
                 };
             }
         }
+
+        if( !any )
+        {
+            if( std::visit( isVolumetric, l ) )
+            {
+                any = Candidate{
+                    .id        = std::visit( getId, l ),
+                    .intensity = intensity,
+                };
+            }
+        }
     }
 
     if( best )
     {
         assert( best->intensity > 0.0f );
         return best->id;
+    }
+
+    // SHIPPING_HACK: don't fallback to sun, if at least
+    // one light is marked as isVolumetric, but has 0 intensity
+    if( any )
+    {
+        return any->id;
     }
 
     return std::nullopt;
