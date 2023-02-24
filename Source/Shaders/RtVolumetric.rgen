@@ -41,14 +41,11 @@
 float phaseFunction_Schlick( const vec3 tolight, const vec3 toviewer, float assymetry )
 {
     float costheta = dot( tolight, toviewer );
+    float k = 1.55 * assymetry - 0.55 * assymetry * assymetry * assymetry;
 
 #if SHIPPING_HACK
-    // so no light source's ring is visible
-    const float maxdot = 0.9;
-    costheta           = clamp( costheta, -maxdot, maxdot );
+    k = min( k, 1.0 );
 #endif
-
-    float k = 1.55 * assymetry - 0.55 * assymetry * assymetry * assymetry;
 
     return ( 1 - square( k ) ) / ( 4 * M_PI * square( 1 + k * costheta ) );
 }
