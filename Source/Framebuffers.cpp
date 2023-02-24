@@ -145,7 +145,7 @@ void Framebuffers::CreateDescriptors()
                 .descriptorCount = allBindingsCount * FRAMEBUFFERS_HISTORY_LENGTH,
             },
             {
-                .type            = VK_DESCRIPTOR_TYPE_SAMPLER,
+                .type            = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
                 .descriptorCount = allBindingsCount * FRAMEBUFFERS_HISTORY_LENGTH,
             },
         };
