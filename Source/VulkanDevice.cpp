@@ -315,7 +315,7 @@ void RTGL1::VulkanDevice::FillUniform( RTGL1::ShGlobalUniform* gu,
             default: gu->cameraMediaType = MEDIA_TYPE_VACUUM;
         }
 
-        gu->reflectRefractMaxDepth = std::min( 4u, params.maxReflectRefractDepth );
+        gu->reflectRefractMaxDepth = std::min( 16u, params.maxReflectRefractDepth );
 
         gu->indexOfRefractionGlass = std::max( 0.0f, params.indexOfRefractionGlass );
         gu->indexOfRefractionWater = std::max( 0.0f, params.indexOfRefractionWater );
