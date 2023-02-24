@@ -127,6 +127,8 @@ struct PrimitiveExtraInfo
     int isMirror        = 0;
     int isWater         = 0;
     int isSkyVisibility = 0;
+    int isAcid          = 0;
+    int isThinMedia     = 0;
 };
 
 

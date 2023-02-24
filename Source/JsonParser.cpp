@@ -267,6 +267,8 @@ JSON_TYPE( RTGL1::PrimitiveExtraInfo )
     , "isMirror", &T::isMirror
     , "isWater", &T::isWater
     , "isSkyVisibility", &T::isSkyVisibility
+    , "isAcid", &T::isAcid
+    , "isThinMedia", &T::isThinMedia
 JSON_TYPE_END;
 // clang-format on
 
