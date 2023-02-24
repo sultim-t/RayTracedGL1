@@ -338,6 +338,7 @@ void RTGL1::ImageComposition::DestroyPipelines()
 }
 
 #define A_CPU 1
+#include <cmath>
 #include "Shaders/LPM/ffx_a.h"
 
 namespace

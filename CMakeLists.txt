@@ -210,7 +210,8 @@ if (WIN32)
         target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64.lib" )
     endif()
 else()
-    message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
+  #message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
+  add_compile_definitions(FFX_GCC)
 endif()
 
 
