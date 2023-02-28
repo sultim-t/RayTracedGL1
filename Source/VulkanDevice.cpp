@@ -723,6 +723,8 @@ void RTGL1::VulkanDevice::Render( VkCommandBuffer cmd, const RgDrawFrameInfo& dr
     // draw geometry such as HUD into an upscaled framebuf
     if( !drawInfo.disableRasterization )
     {
+        framebuffers->BarrierOne( cmd, frameIndex, accum, RTGL1::Framebuffers::BarrierType::Storage );
+
         rasterizer->DrawToSwapchain( cmd,
                                      frameIndex,
                                      accum,
