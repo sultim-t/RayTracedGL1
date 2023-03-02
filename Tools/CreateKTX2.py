@@ -24,10 +24,10 @@ import os
 import subprocess
 import pathlib
 
-DEFAULT_INPUT_FOLDER_NAME = "Raw"
-DEFAULT_OUTPUT_FOLDER_NAME = "Compressed"
+DEFAULT_INPUT_FOLDER_NAME = "mat_dev"
+DEFAULT_OUTPUT_FOLDER_NAME = "mat"
 
-INPUT_EXTENSIONS = [".png"]
+INPUT_EXTENSIONS = [".tga",".png"]
 OUTPUT_EXTENSION = ".ktx2"
 
 CACHE_FILE_NAME = "CreateKTX2Cache.txt"
@@ -102,14 +102,18 @@ def main():
 
                 isNormalMap = pathNoExt[-2:] == "_n"
 
-                if isNormalMap:
+                sizeInBytes = os.stat(fullRelativeFilename).st_size
+                minKilobytesForCompression = 25
+
+                if sizeInBytes < minKilobytesForCompression * 1024:
+                    compressionFormat = "ARGB_8888"
+                elif isNormalMap:
                     compressionFormat = "BC5"
                 else:
                     compressionFormat = "BC7"
 
                 print("> Converting " + filename + " (" + compressionFormat + ")")
 
-        
                 inputFile = os.path.join(DEFAULT_INPUT_FOLDER_NAME, filename)
                 outputFile = os.path.join(DEFAULT_OUTPUT_FOLDER_NAME, pathNoExt + OUTPUT_EXTENSION)
 
