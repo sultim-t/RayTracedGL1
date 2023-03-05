@@ -1,15 +1,6 @@
 # RTGL1
 
-RTGL1 is a library that aims to simplify the process of porting 3D applications to *real-time path tracing*, via hardware accelerated ray tracing, denoising algorithms (A-SVGF) and advanced sampling algorithms (ReSTIR, ReSTIR GI) to improve the image quality by aggressively reusing spatio-temporal data.
-
-## RUG1 (development)
-
-RUG1 (stands for **R**ay-traced **U**pdated **G**raphics Library **1**) is the next generation of RTGL1. 
-
-Goals:
-* overriding not just textures, but 3D models with animations
-* thinner interface
-* internal restructuring
+RTGL1 is a library that aims to simplify the process of porting 3D applications to *real-time path tracing*, via hardware accelerated ray tracing, denoising algorithms (A-SVGF) and sampling algorithms (ReSTIR, ReSTIR GI) to improve the image quality by reusing spatio-temporal data.
 
 ## Build
 1. Requirements:
@@ -80,7 +71,5 @@ On RTGL1 initialization, `RgInstanceCreateInfo::pOverridenTexturesFolderPath` sh
 # Projects
 * https://github.com/sultim-t/Serious-Engine-RT/releases
 * https://github.com/sultim-t/prboom-plus-rt
-
-## Screenshots
-![Screenshot 00](/Doc/Screenshots/Screenshot_00.png)
-![Screenshot 01](/Doc/Screenshots/Screenshot_01.png)
+* https://github.com/sultim-t/vkquake-rt
+* https://github.com/sultim-t/xash-rt
