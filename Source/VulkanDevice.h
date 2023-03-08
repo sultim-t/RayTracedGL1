@@ -173,6 +173,8 @@ private:
     std::shared_ptr< Queues >         queues;
     std::shared_ptr< Swapchain >      swapchain;
 
+    bool fp16_supported;
+
     std::shared_ptr< MemoryAllocator > memAllocator;
 
     std::shared_ptr< CommandBufferManager > cmdManager;
