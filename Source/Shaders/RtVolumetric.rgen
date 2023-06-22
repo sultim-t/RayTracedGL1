@@ -131,7 +131,6 @@ void main()
             s.albedo          = vec3( 1.0 );
             s.isSky           = false;
             s.specularColor   = vec3( 0.04 );
-            s.emission        = vec3( 0.0 );
             s.toViewerDir     = toviewer;
         }
 

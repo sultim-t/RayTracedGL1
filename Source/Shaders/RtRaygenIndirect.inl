@@ -64,7 +64,7 @@ vec3 getDiffuseBounce(const uint seed, uint bounceIndex, const vec3 n, out float
 #define SECOND_BOUNCE_MIP_BIAS 32
 
 Surface traceBounce(const vec3 originPosition, float originRoughness, uint originInstCustomIndex,
-                    const vec3 bounceDir, float bounceMipBias)
+                    const vec3 bounceDir, float bounceMipBias, out vec3 out_emission)
 {
     const ShPayload p = traceIndirectRay(originInstCustomIndex, originPosition, bounceDir); 
 
@@ -76,17 +76,20 @@ Surface traceBounce(const vec3 originPosition, float originRoughness, uint origi
     }
 
     return hitInfoToSurface_Indirect(
-        getHitInfoBounce(p, originPosition, originRoughness, bounceMipBias), 
+        getHitInfoBounce(p, originPosition, originRoughness, bounceMipBias, out_emission), 
         bounceDir);
 }
 
 vec3 processSecondDiffuseBounce(const uint seed, const Surface surf, const vec3 bounceDir, float oneOverPdf)
 {
+    vec3 emis;
     const Surface hitSurf = traceBounce(surf.position + surf.normal * 0.01,
                                         surf.roughness,
                                         surf.instCustomIndex,
                                         bounceDir,
-                                        SECOND_BOUNCE_MIP_BIAS);
+                                        SECOND_BOUNCE_MIP_BIAS,
+                                        emis);
+    emis *= globalUniform.emissionMapBoost;
 
     if (hitSurf.isSky)
     {
@@ -96,7 +99,7 @@ vec3 processSecondDiffuseBounce(const uint seed, const Surface surf, const vec3 
     // calculate direct illumination in a hit position
     const vec3 diffuse = processDirectIllumination(seed, hitSurf, 2);
 
-    return (hitSurf.emission + diffuse) * hitSurf.albedo * oneOverPdf;
+    return (emis + diffuse) * hitSurf.albedo * oneOverPdf;
 }
 
 SampleIndirect processIndirect( const uint seed, const Surface surf, out float oneOverSourcePdf )
@@ -115,11 +118,14 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
     bounceDir = getDiffuseBounce( seed, 1, surf.normal, oneOverSourcePdf );
 #endif
 
+    vec3 emis;
     const Surface hitSurf = traceBounce(surf.position + surf.normal * 0.01, 
                                         surf.roughness, 
                                         surf.instCustomIndex, 
                                         bounceDir, 
-                                        FIRST_BOUNCE_MIP_BIAS); 
+                                        FIRST_BOUNCE_MIP_BIAS,
+                                        emis);
+    emis *= globalUniform.emissionMapBoost;
 
     if (hitSurf.isSky)
     {
@@ -148,7 +154,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
     SampleIndirect s;
     s.position  = hitSurf.position;
     s.normal    = hitSurf.normal;
-    s.radiance  = (hitSurf.emission + diffuse) * hitSurf.albedo;
+    s.radiance  = (emis + diffuse) * hitSurf.albedo;
 
     return s;
 }

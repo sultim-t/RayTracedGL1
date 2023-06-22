@@ -206,7 +206,7 @@ ShHitInfo getHitInfoPrimaryRay(
     const vec3 rayOrigin, const vec3 rayDirAX, const vec3 rayDirAY, 
     out vec2 motion, out float motionDepthLinear, 
     out vec2 gradDepth, out float depthNDC, out float depthLinear,
-    out vec3 screenEmission)
+    out vec3 emission)
 
 #elif defined(HITINFO_INL_RFL)
 
@@ -216,12 +216,13 @@ ShHitInfo getHitInfoWithRayCone_ReflectionRefraction(
     in out vec3 virtualPosForMotion,
     out float rayLen,
     out vec2 motion, out float motionDepthLinear,
-    out vec3 screenEmission)
+    out vec3 emission)
 
 #elif defined(HITINFO_INL_INDIR)
 
 ShHitInfo getHitInfoBounce(
-    const ShPayload pl, const vec3 rayOrigin, float originRoughness, float bounceMipBias)
+    const ShPayload pl, const vec3 rayOrigin, float originRoughness, float bounceMipBias,
+    out vec3 emission)
 
 #endif
 {
@@ -407,7 +408,7 @@ ShHitInfo getHitInfoBounce(
 
     if( tr.emissiveTexture != MATERIAL_NO_TEXTURE )
     {
-        vec3 etex =
+        emission =
     #if defined( HITINFO_INL_PRIM )
             getTextureSampleGrad( tr.emissiveTexture, texCoords[ 0 ], dTdx[ 0 ], dTdy[ 0 ] ).rgb;
     #elif defined( HITINFO_INL_RFL )
@@ -415,17 +416,11 @@ ShHitInfo getHitInfoBounce(
     #elif defined( HITINFO_INL_INDIR )
             getTextureSampleLod( tr.emissiveTexture, texCoords[ 0 ], lod ).rgb;
     #endif
-
-        h.emission = etex;
     }
     else
     {
-        h.emission = h.albedo * tr.emissiveMult;
+        emission = h.albedo * tr.emissiveMult;
     }
-#if defined( HITINFO_INL_PRIM ) || defined( HITINFO_INL_RFL )
-    screenEmission = h.emission;
-#endif
-    h.emission *= globalUniform.emissionMapBoost;
 
 
 #if defined(HITINFO_INL_INDIR)
