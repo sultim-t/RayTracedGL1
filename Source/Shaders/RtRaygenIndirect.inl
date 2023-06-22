@@ -124,7 +124,7 @@ SampleIndirect processIndirect( const uint seed, const Surface surf, out float o
     if (hitSurf.isSky)
     {
         SampleIndirect s;
-        s.position  = hitSurf.position + bounceDir * MAX_RAY_LENGTH;
+        s.position  = surf.position + bounceDir * MAX_RAY_LENGTH;
         s.normal    = -bounceDir;
         s.radiance  = getSky(bounceDir);
         
