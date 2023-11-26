@@ -41,7 +41,7 @@ jobs:
           python GenerateShaders.py
 
       - name: CMake
-        run: cmake -B ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRG_WITH_SURFACE_WIN32=ON -DRG_WITH_NVIDIA_DLSS=${{ matrix.dlss }}
+        run: cmake -B ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}} -DRG_WITH_SURFACE_WIN32=ON -DRG_WITH_NVIDIA_DLSS=${{ matrix.dlss }} -DRG_WITH_SHADERS=OFF
 
       - name: Build
         run: cmake --build ${{github.workspace}}/BuildCMake/${{env.BUILD_FOLDER}} --config ${{env.BUILD_TYPE}}

@@ -110,6 +110,17 @@ def main():
         subprocess.run(["python", "../Generated/GenerateShaderCommon.py", "--path", "../Generated/"])
     if "-psout" in sys.argv or "--psout" in sys.argv or "-ps" in sys.argv or "--ps" in sys.argv:
         powerShellOutput = True
+
+    global TARGET_FOLDER_PATH
+    try:
+        buildDirIndex = sys.argv.index("-builddir")
+        if len(sys.argv) == buildDirIndex:
+            print("No build directory specified")
+            return
+        TARGET_FOLDER_PATH = sys.argv[buildDirIndex + 1] + "/"
+    except ValueError:
+        pass
+
     #elif len(sys.argv) > 1:
     #    print("> Couldn't parse arguments")
     #    return

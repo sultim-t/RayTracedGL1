@@ -135,6 +135,7 @@ option(RG_WITH_IMGUI            "Build RTGL1 with ImGui debug windows"      ON)
 option(RG_WITH_AMD_FSR2         "Build RTGL1 with AMD FSR2"                 ON)
 
 option(RG_WITH_EXAMPLES         "Build with examples executable"            ON)
+option(RG_WITH_SHADERS          "Compile shaders during build"              ON)
 
 
 # for KTX-Software
@@ -292,4 +293,14 @@ if (MSVC AND WIN32 AND NOT MSVC_VERSION VERSION_LESS 142)
     target_link_options(RtglExample PRIVATE $<$<CONFIG:Debug>:/INCREMENTAL>)
     target_compile_options(RtglExample PRIVATE $<$<CONFIG:Debug>:/ZI>)
 endif()
+endif()
+
+if (RG_WITH_SHADERS)
+    message(STATUS "RG_WITH_SHADERS enabled")
+    # Build shaders as custom target
+    add_custom_target(Shaders
+                      COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shaders/GenerateShaders.py -builddir ${CMAKE_CURRENT_BINARY_DIR}/shaders
+                      WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/Source/Shaders)
+
+    add_dependencies(RayTracedGL1 Shaders)
 endif()

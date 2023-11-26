@@ -35,9 +35,6 @@ RTGL1 is a library that aims to simplify the process of porting 3D applications 
 1. Build
     * `cmake --build .`
 
-1. Build shaders
-    * Run `Source/Shaders/GenerateShaders.py` with Python3, it will generate SPIR-V files to `Build` folder
-
 ### Notes:
 * RTGL1 requires a set of blue noise images on start-up: `RgInstanceCreateInfo::pBlueNoiseFilePath`. A ready-to-use resource can be found here: `Tools/BlueNoise_LDR_RGBA_128.ktx2`
 
