@@ -28,6 +28,7 @@
 #include "Generated/ShaderCommonC.h"
 
 #include "cgltf/cgltf.h"
+#include <cfloat>
 
 #include <format>
 

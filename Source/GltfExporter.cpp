@@ -670,7 +670,7 @@ struct GltfTextures
             makeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_REPEAT ),
             makeSampler( RG_SAMPLER_ADDRESS_MODE_CLAMP, RG_SAMPLER_ADDRESS_MODE_CLAMP ),
         };
-        auto findSampler = [ this ]( const RTGL1::TextureManager::ExportResult& r ) {
+        auto findSampler = [ this, makeSampler ]( const RTGL1::TextureManager::ExportResult& r ) {
             cgltf_sampler target = makeSampler( r.addressModeU, r.addressModeV );
             for( cgltf_sampler& found : allocSamplers )
             {
