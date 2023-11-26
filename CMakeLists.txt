@@ -132,6 +132,7 @@ option(RG_WITH_SURFACE_XLIB     "Build with Xlib VkSurfaceKHR support"      OFF)
 
 option(RG_WITH_NVIDIA_DLSS      "Build RTGL1 with Nvidia DLSS"              OFF)
 option(RG_WITH_IMGUI            "Build RTGL1 with ImGui debug windows"      ON)
+option(RG_WITH_AMD_FSR2         "Build RTGL1 with AMD FSR2"                 ON)
 
 option(RG_WITH_EXAMPLES         "Build with examples executable"            ON)
 
@@ -243,17 +244,21 @@ target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 
 # FSR2
-target_include_directories(RayTracedGL1 PRIVATE "Source/FSR2/include" )
-if (WIN32)
-    if (BUILD_TYPE STREQUAL "DEBUG")
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64d.lib" )
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64d.lib" )
+if (RG_WITH_AMD_FSR2)
+    message(STATUS "RG_WITH_AMD_FSR2 enabled")
+    add_definitions(-DRG_USE_AMD_FSR2)
+    target_include_directories(RayTracedGL1 PRIVATE "Source/FSR2/include" )
+    if (WIN32)
+        if (BUILD_TYPE STREQUAL "DEBUG")
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64d.lib" )
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64d.lib" )
+        else()
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64.lib" )
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64.lib" )
+        endif()
     else()
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64.lib" )
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64.lib" )
+        message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
     endif()
-else()
-    message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
 endif()
 
 # Debug windows - ImGui

@@ -56,6 +56,7 @@ public:
 
     static RgFloat2D GetJitter( const ResolutionState& resolutionState, uint32_t frameId );
 
+   static bool IsFsr2Available();
 private:
     VkDevice         device;
     VkPhysicalDevice physDevice;
