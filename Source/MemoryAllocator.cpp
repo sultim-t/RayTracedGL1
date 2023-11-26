@@ -38,7 +38,6 @@ RTGL1::MemoryAllocator::MemoryAllocator( VkInstance                        _inst
                                                                     // dedicated allocation
         .physicalDevice   = physDevice->Get(),
         .device           = device,
-        .frameInUseCount  = MAX_FRAMES_IN_FLIGHT,
         .instance         = _instance,
         .vulkanApiVersion = VK_API_VERSION_1_2,
     };
@@ -185,11 +184,9 @@ void RTGL1::MemoryAllocator::CreateTexturesStagingPool()
     VK_CHECKERROR( r );
 
     VmaPoolCreateInfo poolInfo = {};
-    poolInfo.frameInUseCount   = MAX_FRAMES_IN_FLIGHT;
     poolInfo.memoryTypeIndex   = memTypeIndex;
     poolInfo.blockSize         = ALLOCATOR_BLOCK_SIZE_STAGING_TEXTURES;
-    // buddy algorithm as textures has commonly a size of power of 2
-    poolInfo.flags = VMA_POOL_CREATE_BUDDY_ALGORITHM_BIT;
+
 
     r = vmaCreatePool( allocator, &poolInfo, &texturesStagingPool );
     VK_CHECKERROR( r );
@@ -226,10 +223,7 @@ void RTGL1::MemoryAllocator::CreateTexturesFinalPool()
 
     VmaPoolCreateInfo poolInfo = {
         .memoryTypeIndex = memTypeIndex,
-        // buddy algorithm as textures has commonly a size of power of 2
-        .flags           = VMA_POOL_CREATE_BUDDY_ALGORITHM_BIT,
         .blockSize       = ALLOCATOR_BLOCK_SIZE_TEXTURES,
-        .frameInUseCount = MAX_FRAMES_IN_FLIGHT,
     };
 
     r = vmaCreatePool( allocator, &poolInfo, &texturesFinalPool );

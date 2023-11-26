@@ -1265,8 +1265,9 @@ bool RTGL1::VulkanDevice::IsUpscaleTechniqueAvailable( RgRenderUpscaleTechnique 
     switch( technique )
     {
         case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
-        case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
-        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2: return true;
+        case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR: return true;
+
+        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2: return amdFsr2->IsFsr2Available();
 
         case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS: return nvDlss->IsDlssAvailable();
 

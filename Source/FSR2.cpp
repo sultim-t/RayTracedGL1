@@ -20,6 +20,8 @@
 
 #include "FSR2.h"
 
+#ifdef RG_USE_AMD_FSR2
+
 #include <ffx_fsr2.h>
 #include <vk/ffx_fsr2_vk.h>
 
@@ -232,3 +234,46 @@ RgFloat2D RTGL1::FSR2::GetJitter( const ResolutionState& resolutionState, uint32
 
     return jitter;
 }
+
+bool RTGL1::FSR2::IsFsr2Available() {
+   return true;
+}
+
+#else
+
+struct FfxFsr2Context {};
+
+RTGL1::FSR2::FSR2(VkDevice _device, VkPhysicalDevice _physDevice)
+        : device(_device)
+        , physDevice(_physDevice) {}
+
+RTGL1::FSR2::~FSR2() {}
+
+void RTGL1::FSR2::OnFramebuffersSizeChange(const ResolutionState &resolutionState) {}
+
+RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
+    VkCommandBuffer                        cmd,
+    uint32_t                               frameIndex,
+    const std::shared_ptr< Framebuffers >& framebuffers,
+    const RenderResolutionHelper&          renderResolution,
+    RgFloat2D                              jitterOffset,
+    double                                 timeDelta,
+    float                                  nearPlane,
+    float                                  farPlane,
+    float                                  fovVerticalRad,
+    bool                                   resetAccumulation )
+{
+   return FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+}
+
+RgFloat2D RTGL1::FSR2::GetJitter(const RTGL1::ResolutionState &resolutionState, uint32_t frameId)
+{
+   return RgFloat2D{0, 0};
+}
+
+bool RTGL1::FSR2::IsFsr2Available()
+{
+   return false;
+}
+
+#endif

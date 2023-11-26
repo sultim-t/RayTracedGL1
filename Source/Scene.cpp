@@ -270,7 +270,7 @@ bool RTGL1::Scene::InsertLightInfo( bool isStatic, const GenericLightPtr& light 
     {
         // just check that there's no id collision
         auto foundSameId =
-            std::ranges::find_if( staticLights, [ &light ]( const GenericLight& other ) {
+            std::ranges::find_if( staticLights, [ &light, getIdFromRef, getId ]( const GenericLight& other ) {
                 return getIdFromRef( other ) == getId( light );
             } );
 

@@ -122,11 +122,14 @@ void RTGL1::VulkanDevice::Dev_Draw() const
             ImGui::SliderFloat( "Vertical FOV", &modifiers.fovDeg, 10, 120, "%.0f degrees" );
 
             static_assert(
-                std::is_same_v< int, std::underlying_type_t< RgRenderUpscaleTechnique > > );
+                std::is_same_v< int, std::underlying_type_t< RgRenderUpscaleTechnique > > ||
+                std::is_same_v< unsigned int, std::underlying_type_t< RgRenderUpscaleTechnique > >);
             static_assert(
-                std::is_same_v< int, std::underlying_type_t< RgRenderSharpenTechnique > > );
+                std::is_same_v< int, std::underlying_type_t< RgRenderSharpenTechnique > > ||
+                std::is_same_v< unsigned int, std::underlying_type_t< RgRenderSharpenTechnique > > );
             static_assert(
-                std::is_same_v< int, std::underlying_type_t< RgRenderResolutionMode > > );
+                std::is_same_v< int, std::underlying_type_t< RgRenderResolutionMode > > ||
+                std::is_same_v< unsigned int, std::underlying_type_t< RgRenderResolutionMode > > );
 
             bool dlssOk = IsUpscaleTechniqueAvailable( RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS );
             {
@@ -373,7 +376,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                         {
                             const ImGuiTableColumnSortSpecs* srt = &sortspecs->Specs[ n ];
 
-                            std::strong_ordering ord{ 0 };
+                            // dummy value for the default constructor
+                            std::strong_ordering ord = (0 <=> 0);
                             switch( srt->ColumnIndex )
                             {
                                 case 0: ord = ( a.callIndex <=> b.callIndex ); break;
@@ -756,7 +760,8 @@ void RTGL1::VulkanDevice::Dev_Draw() const
                         {
                             const ImGuiTableColumnSortSpecs* srt = &sortspecs->Specs[ n ];
 
-                            std::strong_ordering ord{ 0 };
+                            // dummy value for the default constructor
+                            std::strong_ordering ord = (0 <=> 0);
                             switch( srt->ColumnIndex )
                             {
                                 case ColumnTextureIndex0:

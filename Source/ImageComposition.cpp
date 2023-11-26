@@ -20,6 +20,7 @@
 
 #include "ImageComposition.h"
 
+#include <cmath>
 #include "Generated/ShaderCommonC.h"
 #include "CmdLabel.h"
 #include "Utils.h"

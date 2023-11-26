@@ -26,6 +26,7 @@
 #include "GlobalUniform.h"
 #include "Tonemapping.h"
 #include "Volumetric.h"
+#include <cfloat>
 
 namespace RTGL1
 {
