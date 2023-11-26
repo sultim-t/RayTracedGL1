@@ -68,10 +68,7 @@ layout(
     binding = BINDING_TEXTURES)
     uniform sampler2D globalTextures[];
 
-sampler2D getTexture(uint textureIndex)
-{
-    return globalTextures[nonuniformEXT(textureIndex)];
-}
+#define getTexture(textureIndex) globalTextures[nonuniformEXT(textureIndex)]
 
 vec4 getTextureSample(uint textureIndex, const vec2 texCoord)
 {
