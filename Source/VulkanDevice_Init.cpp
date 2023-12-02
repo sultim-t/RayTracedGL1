@@ -737,6 +737,22 @@ void RTGL1::VulkanDevice::CreateInstance( const RgInstanceCreateInfo& info )
 
 void RTGL1::VulkanDevice::CreateDevice()
 {
+    // check for fp16 support
+    VkPhysicalDevice16BitStorageFeatures features_16bit_storage = {
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES,
+    };
+    {
+        VkPhysicalDeviceVulkan12Features device_features_1_2 = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+            .pNext = &features_16bit_storage
+        };
+        VkPhysicalDeviceFeatures2 device_features = {
+            .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR, .pNext = &device_features_1_2
+        };
+        vkGetPhysicalDeviceFeatures2( physDevice->Get(), &device_features );
+        fp16_supported = device_features_1_2.shaderFloat16 && features_16bit_storage.storageBuffer16BitAccess;
+    }
+
     VkPhysicalDeviceFeatures features = {
         .robustBufferAccess                      = 1,
         .fullDrawIndexUint32                     = 1,
@@ -779,7 +795,7 @@ void RTGL1::VulkanDevice::CreateDevice()
         .shaderCullDistance                      = 1,
         .shaderFloat64                           = 1,
         .shaderInt64                             = 1,
-        .shaderInt16                             = 1,
+        .shaderInt16                             = fp16_supported,
         .shaderResourceResidency                 = 1,
         .shaderResourceMinLod                    = 1,
         .sparseBinding                           = 0,
@@ -808,7 +824,7 @@ void RTGL1::VulkanDevice::CreateDevice()
         .pNext                    = &robustness,
         .samplerMirrorClampToEdge = 1,
         .drawIndirectCount        = 1,
-        .shaderFloat16            = 1,
+        .shaderFloat16            = fp16_supported,
         .shaderSampledImageArrayNonUniformIndexing  = 1,
         .shaderStorageBufferArrayNonUniformIndexing = 1,
         .runtimeDescriptorArray                     = 1,
