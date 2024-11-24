@@ -13,6 +13,7 @@ RTGL1 is a library that aims to simplify the process of porting 3D applications 
  
 1. Clone the repository
     * `git clone https://github.com/sultim-t/RayTracedGL1.git`
+    * `git submodule update --init`
 
 1. Configure with CMake
     * on Windows, with Visual Studio: 
