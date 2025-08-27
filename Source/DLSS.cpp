@@ -100,11 +100,11 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
     pathsInfo.Path = &dllPath_c;
     pathsInfo.Length = 1;
 
-    NGSDK_NGX_LoggingInfo debugLogInfo = {};
+    NVSDK_NGX_LoggingInfo debugLogInfo = {};
     debugLogInfo.LoggingCallback = &PrintCallback;
     debugLogInfo.MinimumLoggingLevel = NVSDK_NGX_Logging_Level::NVSDK_NGX_LOGGING_LEVEL_ON;
 
-    NGSDK_NGX_LoggingInfo releaseLogInfo = {};
+    NVSDK_NGX_LoggingInfo releaseLogInfo = {};
 
     NVSDK_NGX_FeatureCommonInfo commonInfo = {};
     commonInfo.PathListInfo = pathsInfo;
@@ -122,9 +122,20 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
         throw RgException(RG_WRONG_ARGUMENT, "Provided application GUID is not GUID. Generate and specify correct GUID to use DLSS.");
     }
 
+    // Fix: Pass nullptr for PFN_vkGetInstanceProcAddr and PFN_vkGetDeviceProcAddr, then pass &commonInfo as the 10th argument
     r = NVSDK_NGX_VULKAN_Init_with_ProjectID(
         pAppGuid,
-        NVSDK_NGX_EngineType::NVSDK_NGX_ENGINE_TYPE_CUSTOM, RG_RTGL_VERSION_API, L"DLSSTemp/", instance, physDevice, device, &commonInfo);
+        NVSDK_NGX_EngineType::NVSDK_NGX_ENGINE_TYPE_CUSTOM,
+        RG_RTGL_VERSION_API,
+        L"DLSSTemp/",
+        instance,
+        physDevice,
+        device,
+        nullptr, // PFN_vkGetInstanceProcAddr
+        nullptr, // PFN_vkGetDeviceProcAddr
+        &commonInfo, // const NVSDK_NGX_FeatureCommonInfo *
+        NVSDK_NGX_Version_API
+    );
 
     if (NVSDK_NGX_FAILED(r))
     {
@@ -134,7 +145,7 @@ bool RTGL1::DLSS::TryInit(VkInstance instance, VkDevice device, VkPhysicalDevice
     r = NVSDK_NGX_VULKAN_GetCapabilityParameters(&pParams);
     if (NVSDK_NGX_FAILED(r))
     {
-        NVSDK_NGX_VULKAN_Shutdown();
+        NVSDK_NGX_VULKAN_Shutdown1(nullptr);
         pParams = nullptr;
         
         return false;
@@ -229,7 +240,7 @@ void RTGL1::DLSS::Destroy()
         }
 
         NVSDK_NGX_VULKAN_DestroyParameters(pParams);
-        NVSDK_NGX_VULKAN_Shutdown();
+        NVSDK_NGX_VULKAN_Shutdown1(nullptr);
 
         pParams = nullptr;
         isInitialized = false;
