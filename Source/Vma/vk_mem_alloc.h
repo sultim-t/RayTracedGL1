@@ -4151,8 +4151,10 @@ static void* vma_aligned_alloc(size_t alignment, size_t size)
     // availabe for 10.15. That's why the preprocessor checks for 10.16 but
     // the __builtin_available checks for 10.15.
     // People who use C++17 could call aligned_alloc with the 10.15 SDK already.
-    if (__builtin_available(macOS 10.15, iOS 13, *))
-        return aligned_alloc(alignment, size);
+    // macOS: aligned_alloc() returns NULL for alignments below sizeof(void*)
+    // (VMA copies name strings with alignment 1), so use posix_memalign below
+    // if (__builtin_available(macOS 10.15, iOS 13, *))
+    //     return aligned_alloc(alignment, size);
 #endif
 #endif
     // alignment must be >= sizeof(void*)

@@ -304,7 +304,11 @@ inAF3 crosstalk){ // One channel must be 1.0, the rest can be <= 1.0 but not zer
  // Contrast needs to be 1.0 based for no contrast.
  contrast+=AF1_(1.0);
  // Saturation is based on contrast.
+#if defined(A_GPU) && defined(A_GLSL)
+ saturation+=AF3_(contrast);
+#else
  opAAddOneF3(saturation,saturation,contrast);
+#endif
 //-----------------------------------------------------------------------------------------------------------------------------
  // The 'softGap' must actually be above zero.
  softGap=AMaxF1(softGap,AF1_(1.0/1024.0));

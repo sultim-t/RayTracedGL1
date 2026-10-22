@@ -20,6 +20,8 @@
 
 #include "FSR2.h"
 
+#ifdef RG_USE_AMD_FSR2
+
 #include <ffx_fsr2.h>
 #include <vk/ffx_fsr2_vk.h>
 
@@ -215,3 +217,48 @@ RgFloat2D RTGL1::FSR2::GetJitter(const ResolutionState& resolutionState, uint32_
 
     return jitter;
 }
+
+bool RTGL1::FSR2::IsFsr2Available()
+{
+    return true;
+}
+
+#elif !defined(__APPLE__) // !RG_USE_AMD_FSR2 (macOS: see FSR2_Metal.mm)
+
+#include "RenderResolutionHelper.h"
+
+struct FfxFsr2Context {};
+
+RTGL1::FSR2::FSR2(VkDevice _device, VkPhysicalDevice _physDevice)
+    : device(_device)
+    , physDevice(_physDevice)
+    , context(std::make_unique<std::optional<FfxFsr2Context>>())
+{
+}
+
+RTGL1::FSR2::~FSR2() = default;
+
+void RTGL1::FSR2::OnFramebuffersSizeChange(const ResolutionState &resolutionState) {}
+
+RTGL1::FramebufferImageIndex RTGL1::FSR2::Apply(
+    VkCommandBuffer cmd, uint32_t frameIndex,
+    const std::shared_ptr<Framebuffers> &framebuffers,
+    const RenderResolutionHelper &renderResolution,
+    RgFloat2D jitterOffset,
+    float timeDelta,
+    float nearPlane, float farPlane, float fovVerticalRad)
+{
+    return FramebufferImageIndex::FB_IMAGE_INDEX_FINAL;
+}
+
+RgFloat2D RTGL1::FSR2::GetJitter(const ResolutionState &resolutionState, uint32_t frameId)
+{
+    return RgFloat2D{ { 0, 0 } };
+}
+
+bool RTGL1::FSR2::IsFsr2Available()
+{
+    return false;
+}
+
+#endif // RG_USE_AMD_FSR2
