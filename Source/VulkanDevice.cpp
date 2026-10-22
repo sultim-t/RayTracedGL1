@@ -577,7 +577,7 @@ void VulkanDevice::FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawI
     gu->antiFireflyEnabled = !!drawInfo.forceAntiFirefly;
 }
 
-void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
+void VulkanDevice::Render(VkCommandBuffer &cmd, const RgDrawFrameInfo &drawInfo)
 {
     // end of "Prepare for frame" label
     EndCmdLabel(cmd);
@@ -624,6 +624,16 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         decalManager->SubmitForFrame(cmd, frameIndex);
         portalList->SubmitForFrame(cmd, frameIndex);
 
+#ifdef __APPLE__
+        // macOS (MoltenVK): after a ray tracing dispatch, later commands in the same
+        // command buffer may read wrong push constants, so continue each pass in a
+        // fresh command buffer
+        pathTracer->SetCommandBufferSplitter( [ this, &cmd ]( VkCommandBuffer old ) {
+            cmdManager->Submit( old );
+            cmd = cmdManager->StartGraphicsCmd();
+            return cmd;
+        } );
+#endif
         const auto params = pathTracer->Bind( cmd,
                                               frameIndex,
                                               renderResolution.Width(),
@@ -656,6 +666,7 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         pathTracer->TraceVolumetric(params);
 
         pathTracer->CalculateGradientsSamples(params);
+        pathTracer->SetCommandBufferSplitter( nullptr );
         denoiser->Denoise(cmd, frameIndex, uniform);
         volumetric->ProcessScattering( cmd, frameIndex, uniform.get(), blueNoise.get() );
         tonemapping->CalculateExposure(cmd, frameIndex, uniform);
@@ -706,6 +717,11 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
         else if (renderResolution.IsAmdFsr2Enabled())
         {
+#ifdef __APPLE__
+            // MetalFX encodes its own Metal command buffer on the same queue
+            cmdManager->Submit(cmd);
+            cmd = VK_NULL_HANDLE;
+#endif
             accum = amdFsr2->Apply(cmd, frameIndex, 
                                                 framebuffers, 
                                                 renderResolution, 
@@ -714,6 +730,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                                 drawInfo.cameraNear, 
                                                 drawInfo.cameraFar, 
                                                 drawInfo.fovYRadians );
+#ifdef __APPLE__
+            cmd = cmdManager->StartGraphicsCmd();
+#endif
         }
 
         const RgExtent2D* pixelized = drawInfo.pRenderResolutionParams
@@ -767,6 +786,13 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
         }
     }
 
+#ifdef __APPLE__
+    // macOS (MoltenVK): draw the HUD and present from a fresh command buffer,
+    // for the same reason as the path tracer's command buffer splitting
+    cmdManager->Submit(cmd);
+    cmd = cmdManager->StartGraphicsCmd();
+#endif
+
     // draw geometry such as HUD into an upscaled framebuf
     if (!drawInfo.disableRasterization)
     {
@@ -780,8 +806,9 @@ void VulkanDevice::Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo)
                                      renderResolution.UpscaledHeight() );
     }
 
-    // post-effect that work on swapchain geometry too
+    // post-effect that work on swapchain geometry too (cmd may have been replaced above)
     {
+        const CommonnlyUsedEffectArguments args = { cmd, frameIndex, framebuffers, uniform, renderResolution.UpscaledWidth(), renderResolution.UpscaledHeight(), (float)currentFrameTime };
         if (effectWipe->Setup(args, drawInfo.postEffectParams.pWipe, swapchain, frameId))
         {
             accum = effectWipe->Apply(args, blueNoise, accum);
@@ -887,8 +914,9 @@ bool RTGL1::VulkanDevice::IsRenderUpscaleTechniqueAvailable(RgRenderUpscaleTechn
     {
         case RG_RENDER_UPSCALE_TECHNIQUE_NEAREST:
         case RG_RENDER_UPSCALE_TECHNIQUE_LINEAR:
-        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2:
             return true;
+        case RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2:
+            return FSR2::IsFsr2Available();
         case RG_RENDER_UPSCALE_TECHNIQUE_NVIDIA_DLSS:
             return nvDlss->IsDlssAvailable();
         default:

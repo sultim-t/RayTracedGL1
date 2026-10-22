@@ -21,6 +21,9 @@
 #pragma once
 
 #include <optional>
+#include <limits>
+#include <algorithm>
+#include <cmath>
 
 #include "Common.h"
 #include "RTGL1/RTGL1.h"

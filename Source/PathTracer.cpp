@@ -81,6 +81,10 @@ PathTracer::TraceParams PathTracer::Bind( VkCommandBuffer                  cmd,
                              0,
                              nullptr );
 
+    static_assert( sizeof( sets ) <= sizeof( boundSets ) );
+    boundSetCount = static_cast< uint32_t >( std::size( sets ) );
+    std::copy( std::begin( sets ), std::end( sets ), boundSets );
+
     TraceParams p = {};
     p.cmd = cmd;
     p.frameIndex = frameIndex;
@@ -101,6 +105,26 @@ void PathTracer::TraceRays(VkCommandBuffer cmd, uint32_t sbtRayGenIndex, uint32_
         cmd,
         &raygenEntry, &missEntry, &hitEntry, &callableEntry,
         width, height, depth);
+}
+
+void PathTracer::TraceRaysSplit(const TraceParams &params, uint32_t sbtRayGenIndex, uint32_t width, uint32_t height, uint32_t depth)
+{
+    TraceRays(params.cmd, sbtRayGenIndex, width, height, depth);
+
+    if (splitter)
+    {
+        params.cmd = splitter(params.cmd);
+
+        rtPipeline->Bind(params.cmd);
+        vkCmdBindDescriptorSets( params.cmd,
+                                 VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+                                 rtPipeline->GetLayout(),
+                                 0,
+                                 boundSetCount,
+                                 boundSets,
+                                 0,
+                                 nullptr );
+    }
 }
 
 void PathTracer::TracePrimaryRays(const TraceParams &params)
@@ -127,7 +151,7 @@ void PathTracer::TracePrimaryRays(const TraceParams &params)
     params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    TraceRays(params.cmd, SBT_INDEX_RAYGEN_PRIMARY, params.width, params.height);
+    TraceRaysSplit(params, SBT_INDEX_RAYGEN_PRIMARY, params.width, params.height);
 }
 
 void PathTracer::TraceReflectionRefractionRays(const TraceParams &params)
@@ -152,7 +176,7 @@ void PathTracer::TraceReflectionRefractionRays(const TraceParams &params)
     params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    TraceRays(params.cmd, SBT_INDEX_RAYGEN_REFL_REFR, params.width, params.height);
+    TraceRaysSplit(params, SBT_INDEX_RAYGEN_REFL_REFR, params.width, params.height);
 }
 
 void PathTracer::CalculateInitialReservoirs(const TraceParams& params)
@@ -173,7 +197,7 @@ void PathTracer::CalculateInitialReservoirs(const TraceParams& params)
     params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    TraceRays(params.cmd, SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS, params.width, params.height);
+    TraceRaysSplit(params, SBT_INDEX_RAYGEN_INITIAL_RESERVOIRS, params.width, params.height);
 }
 
 void PathTracer::TraceDirectllumination(const TraceParams &params)
@@ -197,7 +221,7 @@ void PathTracer::TraceDirectllumination(const TraceParams &params)
     params.framebuffers->BarrierMultiple(params.cmd, params.frameIndex, fs);
 
 
-    TraceRays(params.cmd, SBT_INDEX_RAYGEN_DIRECT, params.width, params.height);
+    TraceRaysSplit(params, SBT_INDEX_RAYGEN_DIRECT, params.width, params.height);
 }
 
 void PathTracer::CalculateGradientsSamples(const TraceParams &params)
@@ -221,7 +245,7 @@ void PathTracer::CalculateGradientsSamples(const TraceParams &params)
     uint32_t gradHeight = (params.height + COMPUTE_ASVGF_STRATA_SIZE - 1) / COMPUTE_ASVGF_STRATA_SIZE;
 
 
-    TraceRays(params.cmd, SBT_INDEX_RAYGEN_GRADIENTS, gradWidth, gradHeight);
+    TraceRaysSplit(params, SBT_INDEX_RAYGEN_GRADIENTS, gradWidth, gradHeight);
 }
 
 void PathTracer::TraceIndirectllumination(const TraceParams &params)
@@ -238,7 +262,7 @@ void PathTracer::TraceIndirectllumination(const TraceParams &params)
         params.framebuffers->BarrierMultiple( params.cmd, params.frameIndex, fs );
 
 
-        TraceRays( params.cmd, SBT_INDEX_RAYGEN_INDIRECT_INIT, params.width, params.height );
+        TraceRaysSplit( params, SBT_INDEX_RAYGEN_INDIRECT_INIT, params.width, params.height );
     }
 
     {
@@ -247,7 +271,7 @@ void PathTracer::TraceIndirectllumination(const TraceParams &params)
         params.restirBuffers->BarrierInitial( params.cmd );
 
 
-        TraceRays( params.cmd, SBT_INDEX_RAYGEN_INDIRECT_FINAL, params.width, params.height );
+        TraceRaysSplit( params, SBT_INDEX_RAYGEN_INDIRECT_FINAL, params.width, params.height );
     }
 }
 
@@ -255,7 +279,7 @@ void PathTracer::TraceVolumetric( const TraceParams& params )
 {
     CmdLabel label( params.cmd, "Volumetric illumination" );
 
-    TraceRays( params.cmd,
+    TraceRaysSplit( params,
                SBT_INDEX_RAYGEN_VOLUMETRIC,
                VOLUMETRIC_SIZE_X,
                VOLUMETRIC_SIZE_Y,

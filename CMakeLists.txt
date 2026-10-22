@@ -200,17 +200,46 @@ target_link_libraries(RayTracedGL1 PUBLIC Vulkan)
 target_include_directories(RayTracedGL1 PUBLIC "Include")
 
 # FSR2
-target_include_directories(RayTracedGL1 PRIVATE "Source/FSR2/include" )
 if (WIN32)
-    if (BUILD_TYPE STREQUAL "DEBUG")
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64d.lib" )
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64d.lib" )
-    else()
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64.lib" )
-        target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64.lib" )
-    endif()
+    option(RG_WITH_AMD_FSR2     "Build RTGL1 with AMD FSR2"                 ON)
 else()
-    message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
+    option(RG_WITH_AMD_FSR2     "Build RTGL1 with AMD FSR2"                 OFF)
+endif()
+target_include_directories(RayTracedGL1 PRIVATE "Source/FSR2/include" )
+if (RG_WITH_AMD_FSR2)
+    target_compile_definitions(RayTracedGL1 PRIVATE RG_USE_AMD_FSR2)
+    if (WIN32)
+        if (BUILD_TYPE STREQUAL "DEBUG")
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64d.lib" )
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64d.lib" )
+        else()
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_x64.lib" )
+            target_link_libraries(RayTracedGL1 PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/Source/FSR2/win32/ffx_fsr2_api_vk_x64.lib" )
+        endif()
+    else()
+        message(FATAL_ERROR "On non-WIN32, please, provide static libraries of FSR2 or disable FSR2")
+    endif()
+endif()
+
+if (APPLE)
+    # MetalFX temporal upscaler fills the FSR2 slot
+    enable_language(OBJCXX)
+    target_sources(RayTracedGL1 PRIVATE "Source/FSR2_Metal.mm")
+    set_source_files_properties("Source/FSR2_Metal.mm" PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+    target_link_libraries(RayTracedGL1 PRIVATE "-framework Foundation" "-framework Metal" "-framework MetalFX")
+    set_target_properties(RayTracedGL1 PROPERTIES INSTALL_NAME_DIR "@rpath")
+    # libc++ doesn't include standard headers transitively like MSVC's STL does
+    target_compile_options(RayTracedGL1 PRIVATE
+        "$<$<COMPILE_LANGUAGE:CXX>:-includealgorithm>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includecmath>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includecstring>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includecstdio>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includecfloat>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includelimits>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includememory>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includestring>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-includefunctional>"
+        "$<$<COMPILE_LANGUAGE:CXX>:-Wno-nullability-completeness>")
 endif()
 
 

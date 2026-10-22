@@ -100,6 +100,8 @@ uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags req
     }
     
 
+    const uint32_t originalTypeBits = memoryTypeBits;
+
     // for each memory type available for this device
     for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
     {
@@ -118,6 +120,20 @@ uint32_t PhysicalDevice::GetMemoryTypeIndex(uint32_t memoryTypeBits, VkFlags req
         }
 
         memoryTypeBits >>= 1u;
+    }
+
+    // Unified memory (e.g. Apple GPUs): every host-visible type is also device-local,
+    // so retry without the exclusion
+    for (uint32_t i = 0; i < memoryProperties.memoryTypeCount; i++)
+    {
+        if ((originalTypeBits >> i) & 1u)
+        {
+            VkMemoryPropertyFlags flags = memoryProperties.memoryTypes[i].propertyFlags;
+            if ((flags & requirementsMask) == requirementsMask)
+            {
+                return i;
+            }
+        }
     }
 
     throw RgException(RG_GRAPHICS_API_ERROR, "Can't find memory type for given memory property flags (" + std::to_string(requirementsMask) + ")");

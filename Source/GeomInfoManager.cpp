@@ -84,7 +84,7 @@ bool RTGL1::GeomInfoManager::CopyFromStaging(VkCommandBuffer cmd, uint32_t frame
                     offset *= sizeof(int32_t);
 
                     // min of upper-bound size and max size of the group
-                    uint64_t size = std::min(upperBoundSize, VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(cf | pt | pm) * sizeof(int32_t));
+                    uint64_t size = std::min<uint64_t>(upperBoundSize, VertexCollectorFilterTypeFlags_GetAmountInGlobalArray(cf | pt | pm) * sizeof(int32_t));
 
                     // copy to staging
                     {

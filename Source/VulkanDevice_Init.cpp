@@ -222,6 +222,7 @@ VulkanDevice::VulkanDevice( const RgInstanceCreateInfo* info )
     amdFsr2             = std::make_shared<FSR2>(
         device,
         physDevice->Get());
+    amdFsr2->SetQueue(queues->GetGraphics());
 
     nvDlss              = std::make_shared<DLSS>(
         instance, 
@@ -602,6 +603,52 @@ void VulkanDevice::CreateDevice()
     physicalDeviceFeatures2.pNext = &asFeatures;
     physicalDeviceFeatures2.features = features;
 
+#ifdef __APPLE__
+    // MoltenVK doesn't support every feature requested above (e.g. float64, depth bounds).
+    // Only request what the device reports, and log the rest so missing features are visible.
+    {
+        VkPhysicalDeviceVulkan12Features s12 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES };
+        VkPhysicalDeviceMultiviewFeatures sMv = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES, &s12 };
+        VkPhysicalDevice16BitStorageFeatures s16 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES, &sMv };
+        VkPhysicalDeviceSynchronization2FeaturesKHR sSync2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR, &s16 };
+        VkPhysicalDeviceRayTracingPipelineFeaturesKHR sRt = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR, &sSync2 };
+        VkPhysicalDeviceAccelerationStructureFeaturesKHR sAs = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR, &sRt };
+        VkPhysicalDeviceFeatures2 sF2 = { VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2, &sAs };
+        vkGetPhysicalDeviceFeatures2(physDevice->Get(), &sF2);
+
+        auto maskBools = [this](const char *structName, VkBool32 *want, const VkBool32 *have, size_t count) {
+            for (size_t i = 0; i < count; i++)
+            {
+                if (want[i] && !have[i])
+                {
+                    want[i] = 0;
+                    char buf[160];
+                    snprintf(buf, sizeof(buf), "RTGL1/macOS: unsupported device feature %s[%zu], disabled", structName, i);
+                    userPrint->Print(buf);
+                }
+            }
+        };
+        #define RG_MASK_STRUCT(name, want, have, firstField) \
+            maskBools(name, &want.firstField, &have.firstField, \
+                      (sizeof(want) - offsetof(decltype(want), firstField)) / sizeof(VkBool32))
+        maskBools("VkPhysicalDeviceFeatures", &physicalDeviceFeatures2.features.robustBufferAccess,
+                  &sF2.features.robustBufferAccess, sizeof(VkPhysicalDeviceFeatures) / sizeof(VkBool32));
+        RG_MASK_STRUCT("Vulkan12", vulkan12Features, s12, samplerMirrorClampToEdge);
+        RG_MASK_STRUCT("Multiview", multiviewFeatures, sMv, multiview);
+        RG_MASK_STRUCT("16BitStorage", storage16, s16, storageBuffer16BitAccess);
+        RG_MASK_STRUCT("Sync2", sync2Features, sSync2, synchronization2);
+        RG_MASK_STRUCT("RayTracingPipeline", rtPipelineFeatures, sRt, rayTracingPipeline);
+        RG_MASK_STRUCT("AccelerationStructure", asFeatures, sAs, accelerationStructure);
+        #undef RG_MASK_STRUCT
+
+        if (!sRt.rayTracingPipeline || !sAs.accelerationStructure)
+        {
+            userPrint->Print("RTGL1/macOS: ray tracing is NOT reported by MoltenVK. "
+                             "Is MVK_CONFIG_ENABLE_EXPERIMENTAL_RAY_TRACING=1 set?");
+        }
+    }
+#endif // __APPLE__
+
     std::vector<VkExtensionProperties> supportedDeviceExtensions;
     uint32_t supportedExtensionsCount;
 
@@ -620,6 +667,21 @@ void VulkanDevice::CreateDevice()
         VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME,
         VK_KHR_SHADER_FLOAT16_INT8_EXTENSION_NAME,
     };
+
+#ifdef __APPLE__
+    // Required by the Vulkan spec when the implementation exposes it (MoltenVK)
+    for (const VkExtensionProperties &ext : supportedDeviceExtensions)
+    {
+        if (!std::strcmp(ext.extensionName, "VK_KHR_portability_subset"))
+        {
+            deviceExtensions.push_back("VK_KHR_portability_subset");
+        }
+        if (!std::strcmp(ext.extensionName, "VK_EXT_metal_objects"))
+        {
+            deviceExtensions.push_back("VK_EXT_metal_objects"); // MetalFX upscaler (FSR2_Metal.mm)
+        }
+    }
+#endif // __APPLE__
 
     for (const char *n : DLSS::GetDlssVulkanDeviceExtensions())
     {

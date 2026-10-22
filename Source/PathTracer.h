@@ -29,6 +29,8 @@
 #include "RestirBuffers.h"
 #include "Volumetric.h"
 
+#include <functional>
+
 namespace RTGL1
 {
 
@@ -40,7 +42,7 @@ public:
     private:
         friend class PathTracer;
 
-        VkCommandBuffer                  cmd        = VK_NULL_HANDLE;
+        mutable VkCommandBuffer          cmd        = VK_NULL_HANDLE; // macOS: replaced after each trace
         uint32_t                         frameIndex = 0;
         uint32_t                         width      = 0;
         uint32_t                         height     = 0;
@@ -80,14 +82,26 @@ public:
     void TraceIndirectllumination(const TraceParams &params);
     void TraceVolumetric( const TraceParams& params );
 
+    // macOS: if set, called after every vkCmdTraceRaysKHR with the current command buffer;
+    // must submit it and return a fresh one (works around state corruption in the
+    // experimental MoltenVK ray tracing for the rest of a command buffer)
+    void SetCommandBufferSplitter( std::function< VkCommandBuffer( VkCommandBuffer ) > fn ) { splitter = std::move( fn ); }
+
 private:
     void TraceRays(
         VkCommandBuffer cmd,
         uint32_t sbtRayGenIndex,
         uint32_t width, uint32_t height, uint32_t depth = 1);
+    void TraceRaysSplit(
+        const TraceParams &params,
+        uint32_t sbtRayGenIndex,
+        uint32_t width, uint32_t height, uint32_t depth = 1);
 
 private:
     std::shared_ptr<RayTracingPipeline> rtPipeline;
+    std::function< VkCommandBuffer( VkCommandBuffer ) > splitter;
+    VkDescriptorSet boundSets[ 16 ] = {};
+    uint32_t        boundSetCount   = 0;
 };
 
 }

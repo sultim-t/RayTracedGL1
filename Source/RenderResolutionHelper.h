@@ -198,7 +198,11 @@ public:
     float GetAmdFsrSharpness()  const { return 1.0f; }          // 0.0 - max, 1.0 - min
     float GetNvDlssSharpness()  const { return dlssSharpness; } 
 
+#ifdef __APPLE__
+    bool IsCASInsideFSR2()      const { return false; } // MetalFX has no built-in sharpening
+#else
     bool IsCASInsideFSR2()      const { return upscaleTechnique == RG_RENDER_UPSCALE_TECHNIQUE_AMD_FSR2 && sharpenTechnique == RG_RENDER_SHARPEN_TECHNIQUE_AMD_CAS; }
+#endif
 
     // For the additional sharpening pass
     bool                     IsDedicatedSharpeningEnabled() const { return IsCASInsideFSR2() ? false : sharpenTechnique != RG_RENDER_SHARPEN_TECHNIQUE_NONE; }

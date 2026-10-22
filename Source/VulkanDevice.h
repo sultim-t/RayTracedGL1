@@ -126,7 +126,7 @@ private:
     void FillUniform(ShGlobalUniform *gu, const RgDrawFrameInfo &drawInfo) const;
 
     VkCommandBuffer BeginFrame(const RgStartFrameInfo &startInfo);
-    void Render(VkCommandBuffer cmd, const RgDrawFrameInfo &drawInfo);
+    void Render(VkCommandBuffer &cmd, const RgDrawFrameInfo &drawInfo);
     void EndFrame(VkCommandBuffer cmd);
 
 private:

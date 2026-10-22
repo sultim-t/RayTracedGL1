@@ -52,10 +52,14 @@ namespace RTGL1
             float nearPlane, float farPlane, float fovVerticalRad);
 
         static RgFloat2D GetJitter(const ResolutionState &resolutionState, uint32_t frameId);
+        static bool IsFsr2Available();
+        // macOS (MetalFX): the queue RTGL1 submits to
+        void SetQueue(VkQueue q) { queue = q; }
 
     private:
         VkDevice device;
         VkPhysicalDevice physDevice;
+        VkQueue queue = VK_NULL_HANDLE;
 
         std::unique_ptr<std::optional<FfxFsr2Context>> context;
     };

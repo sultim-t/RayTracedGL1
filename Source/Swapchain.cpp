@@ -86,11 +86,24 @@ Swapchain::Swapchain(VkDevice _device,
 
         for (VkFormat f : acceptFormats)
         {
+            // prefer standard sRGB: MoltenVK lists every format with many colour
+            // spaces (P3 linear, HDR, ...); picking the last one washes the image out
             for (VkSurfaceFormatKHR sf : surfaceFormats)
             {
-                if (sf.format == f)
+                if (sf.format == f && sf.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
                 {
                     surfaceFormat = sf;
+                    break;
+                }
+            }
+            if (surfaceFormat.format == VK_FORMAT_UNDEFINED)
+            {
+                for (VkSurfaceFormatKHR sf : surfaceFormats)
+                {
+                    if (sf.format == f)
+                    {
+                        surfaceFormat = sf;
+                    }
                 }
             }
 
